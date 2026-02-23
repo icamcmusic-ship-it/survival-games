@@ -1,0 +1,5 @@
+{
+  "name": "Hunger Games Text Simulator",
+  "description": "A highly replayable, robust text-based Hunger Games simulator with dynamic arenas, attributes, and gamemaker mode.",
+  "requestFramePermissions": []
+}
