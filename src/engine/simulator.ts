@@ -10,6 +10,37 @@ const COMBAT_TEMPLATES = [
     "{killer} shoots {victim} from a distance."
 ];
 
+const INTERVIEW_SCENARIOS = [
+    {
+        strategy: "The Star-Crossed Lover",
+        success: "{tribute} tells a heartbreaking story about a loved one back home. The audience is moved to tears.",
+        failure: "{tribute} tries to act heartbroken, but it comes off as fake and manipulative.",
+        charismaBuff: 1,
+        trustMultiplier: 1.5
+    },
+    {
+        strategy: "The Ruthless Warrior",
+        success: "{tribute} displays cold confidence and promises a bloodbath. The Careers are impressed.",
+        failure: "{tribute} tries to be intimidating but ends up looking like a try-hard.",
+        charismaBuff: 0,
+        trustMultiplier: 1.2
+    },
+    {
+        strategy: "The Humble Underdog",
+        success: "{tribute} speaks with genuine modesty and determination. Sponsors appreciate the sincerity.",
+        failure: "{tribute} comes across as too weak and unlikely to survive the first hour.",
+        charismaBuff: 1,
+        trustMultiplier: 1.3
+    },
+    {
+        strategy: "The Mysterious Enigma",
+        success: "{tribute} gives short, cryptic answers that leave the audience wanting more.",
+        failure: "{tribute} is so quiet that the interview becomes painfully awkward.",
+        charismaBuff: 0,
+        trustMultiplier: 1.1
+    }
+];
+
 export class Simulator {
     private state: GameState;
     private rng: RNG;
@@ -53,8 +84,6 @@ export class Simulator {
             
             this.logEvent(`${t.name} focused on ${boosted} during training and scored a ${t.trainingScore}.`, [t.id]);
         });
-        
-        this.state.phase = 'interviews';
     }
 
     public processInterviews() {
@@ -62,20 +91,23 @@ export class Simulator {
         this.rng = new RNG(`${this.state.seed}-interviews`);
 
         this.getAlive().forEach(t => {
-            const interviewQuality = t.attributes.charisma + this.rng.nextInt(-2, 3);
-            if (interviewQuality > 8) {
-                t.sponsorTrust += 20;
-                t.excitementRating += 15;
-                this.logEvent(`${t.name} charmed the audience during the interview!`, [t.id], true);
-            } else if (interviewQuality < 4) {
-                t.sponsorTrust -= 10;
-                this.logEvent(`${t.name} had an awkward interview.`, [t.id]);
+            const scenario = this.rng.pick(INTERVIEW_SCENARIOS);
+            const roll = t.attributes.charisma + this.rng.nextInt(-2, 3);
+            const isSuccess = roll >= 5;
+
+            if (isSuccess) {
+                t.attributes.charisma = Math.min(10, t.attributes.charisma + scenario.charismaBuff);
+                t.sponsorTrust = Math.floor(t.sponsorTrust * scenario.trustMultiplier);
+                t.excitementRating += 20;
+                this.logEvent(scenario.success.replace('{tribute}', t.name), [t.id], true);
             } else {
-                t.sponsorTrust += 5;
-                this.logEvent(`${t.name} had a standard interview.`, [t.id]);
+                t.sponsorTrust = Math.max(0, t.sponsorTrust - 10);
+                this.logEvent(scenario.failure.replace('{tribute}', t.name), [t.id]);
             }
         });
+    }
 
+    public startGames() {
         this.state.phase = 'bloodbath';
         this.state.day = 1;
     }

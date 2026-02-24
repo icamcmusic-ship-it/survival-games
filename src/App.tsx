@@ -40,10 +40,13 @@ export default function App() {
     const state = simulator.getState();
     if (state.phase === 'setup') {
       simulator.processTraining();
+    } else if (state.phase === 'training') {
+      simulator.processInterviews();
     } else if (state.phase === 'interviews') {
+      simulator.startGames();
+    } else if (state.phase === 'bloodbath') {
       simulator.processBloodbath();
     } else if (state.phase === 'ended') {
-      // Handle end game
       return;
     } else {
       simulator.processTurn();
