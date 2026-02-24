@@ -2,13 +2,43 @@ import { GameState, Tribute, EventLog, Phase, Item } from '../models/types';
 import { RNG } from '../utils/rng';
 import { ITEMS } from '../data/constants';
 
-const COMBAT_TEMPLATES = [
-    "{killer} overpowers {victim} and kills them.",
-    "{killer} ambushes {victim} from behind.",
-    "{killer} wins a brutal duel against {victim}.",
-    "{victim} begs for mercy, but {killer} shows none.",
-    "{killer} shoots {victim} from a distance."
-];
+const WEAPON_KILL_TEMPLATES: Record<string, string[]> = {
+    'sword': [
+        "{killer} decapitates {victim} with a swift sword strike.",
+        "{killer} runs {victim} through with their sword.",
+        "{killer} wins a brutal sword duel against {victim}."
+    ],
+    'bow': [
+        "{killer} shoots {victim} through the heart from a distance.",
+        "{killer} pins {victim} to a tree with an arrow.",
+        "{victim} is struck by {killer}'s arrow while trying to flee."
+    ],
+    'axe': [
+        "{killer} cleaves {victim}'s skull with an axe.",
+        "{killer} buries their axe into {victim}'s chest.",
+        "{killer} hacks {victim} to pieces."
+    ],
+    'knife': [
+        "{killer} backstabs {victim} with a knife.",
+        "{killer} throws a knife directly into {victim}'s throat.",
+        "{killer} overpowers {victim} and slits their throat."
+    ],
+    'spear': [
+        "{killer} impales {victim} with a spear.",
+        "{killer} throws a spear through {victim}'s chest.",
+        "{killer} catches {victim} off guard and spears them."
+    ],
+    'mace': [
+        "{killer} crushes {victim}'s skull with a mace.",
+        "{killer} shatters {victim}'s ribs with a heavy mace blow.",
+        "{killer} bludgeons {victim} to death."
+    ],
+    'unarmed': [
+        "{killer} strangles {victim} to death.",
+        "{killer} beats {victim} to death with their bare hands.",
+        "{killer} snaps {victim}'s neck in a brutal struggle."
+    ]
+};
 
 const INTERVIEW_SCENARIOS = [
     {
@@ -167,25 +197,53 @@ export class Simulator {
     private resolveCombat(t1: Tribute, t2: Tribute, isBloodbath: boolean = false) {
         if (t1.status === 'dead' || t2.status === 'dead') return;
 
-        const t1Power = t1.attributes.strength + t1.attributes.agility + (t1.inventory.some(i => i.type === 'weapon') ? 5 : 0) + this.rng.nextInt(0, 5);
-        const t2Power = t2.attributes.strength + t2.attributes.agility + (t2.inventory.some(i => i.type === 'weapon') ? 5 : 0) + this.rng.nextInt(0, 5);
+        const t1Weapon = t1.inventory.find(i => i.type === 'weapon');
+        const t2Weapon = t2.inventory.find(i => i.type === 'weapon');
+
+        let t1Power = t1.attributes.strength + t1.attributes.agility + (t1Weapon ? t1Weapon.value / 10 : 0) + this.rng.nextInt(0, 5);
+        let t2Power = t2.attributes.strength + t2.attributes.agility + (t2Weapon ? t2Weapon.value / 10 : 0) + this.rng.nextInt(0, 5);
+
+        // Injury penalties
+        if (t1.injuries.arms) t1Power -= 2;
+        if (t1.injuries.legs) t1Power -= 2;
+        if (t2.injuries.arms) t2Power -= 2;
+        if (t2.injuries.legs) t2Power -= 2;
 
         if (t1Power > t2Power + 3) {
-            this.killTribute(t2, t1, isBloodbath);
+            this.killTribute(t2, t1, isBloodbath, t1Weapon);
         } else if (t2Power > t1Power + 3) {
-            this.killTribute(t1, t2, isBloodbath);
+            this.killTribute(t1, t2, isBloodbath, t2Weapon);
         } else {
             t1.health -= 20;
             t2.health -= 20;
             t1.injuries.bleeding = true;
             t2.injuries.bleeding = true;
+            
+            // Random localized injury
+            if (this.rng.chance(0.3)) t1.injuries.arms = true;
+            if (this.rng.chance(0.3)) t2.injuries.legs = true;
+
             this.logEvent(`${t1.name} and ${t2.name} fight but both escape injured.`, [t1.id, t2.id]);
+            
+            // Weapon durability loss
+            if (t1Weapon && t1Weapon.durability) t1Weapon.durability -= 10;
+            if (t2Weapon && t2Weapon.durability) t2Weapon.durability -= 10;
+
+            // Grudge formed
+            t1.relationships[t2.id] = (t1.relationships[t2.id] || 0) - 20;
+            t2.relationships[t1.id] = (t2.relationships[t1.id] || 0) - 20;
+
             this.checkDeath(t1);
             this.checkDeath(t2);
         }
+
+        // Clean up broken weapons
+        [t1, t2].forEach(t => {
+            t.inventory = t.inventory.filter(i => i.type !== 'weapon' || (i.durability === undefined || i.durability > 0));
+        });
     }
 
-    private killTribute(victim: Tribute, killer?: Tribute, isBloodbath: boolean = false) {
+    private killTribute(victim: Tribute, killer?: Tribute, isBloodbath: boolean = false, weapon?: Item) {
         victim.status = 'dead';
         victim.health = 0;
         victim.dayOfDeath = this.state.day;
@@ -195,8 +253,12 @@ export class Simulator {
             killer.excitementRating += 20;
             victim.causeOfDeath = `Killed by ${killer.name}`;
             
-            const template = this.rng.pick(COMBAT_TEMPLATES);
+            const weaponType = weapon ? weapon.id : 'unarmed';
+            const templates = WEAPON_KILL_TEMPLATES[weaponType] || WEAPON_KILL_TEMPLATES['unarmed'];
+            const template = this.rng.pick(templates);
             const text = template.replace('{killer}', killer.name).replace('{victim}', victim.name);
+
+            if (weapon && weapon.durability) weapon.durability -= 10;
 
             if (victim.inventory.length > 0) {
                 const loot = victim.inventory[0];
@@ -283,10 +345,46 @@ export class Simulator {
         this.rng = new RNG(`${this.state.seed}-${this.state.day}-${time}`);
         const alive = this.getAlive();
         
+        // 1. Item Degradation & Spoilage
         alive.forEach(t => {
-            t.vitals.hunger += 10;
-            t.vitals.thirst += 15;
-            t.vitals.fatigue += time === 'day' ? 10 : -20;
+            t.inventory = t.inventory.filter(item => {
+                if (item.type === 'food' && item.spoilage !== undefined) {
+                    item.spoilage -= 1;
+                    if (item.spoilage <= 0) {
+                        this.logEvent(`${t.name}'s ${item.name} has spoiled.`, [t.id]);
+                        return false;
+                    }
+                }
+                return true;
+            });
+        });
+
+        // 2. Vitals & Arena Environmental Effects
+        alive.forEach(t => {
+            let hungerDrain = 10;
+            let thirstDrain = 15;
+            let fatigueDrain = time === 'day' ? 10 : -20;
+
+            if (this.state.arena.id === 'frozen') {
+                const hasWarmth = t.inventory.some(i => i.id === 'matches' || i.id === 'fire');
+                if (!hasWarmth) {
+                    fatigueDrain += 10;
+                    t.health -= 5;
+                }
+            } else if (this.state.arena.id === 'solar') {
+                thirstDrain *= 2;
+            } else if (this.state.arena.id === 'toxic') {
+                if (this.rng.chance(0.2)) t.vitals.sanity -= 15;
+            }
+
+            // Trait Effects
+            if (t.traits.includes('Hydrophilic')) thirstDrain -= 5;
+            if (t.traits.includes('Insomniac') && time === 'night') fatigueDrain += 10;
+            if (t.traits.includes('Iron Stomach')) hungerDrain -= 5;
+
+            t.vitals.hunger += hungerDrain;
+            t.vitals.thirst += thirstDrain;
+            t.vitals.fatigue += fatigueDrain;
             
             if (t.vitals.hunger > 80) t.health -= 5;
             if (t.vitals.thirst > 80) t.health -= 10;
@@ -314,8 +412,43 @@ export class Simulator {
         });
 
         const currentAlive = this.getAlive();
-        const shuffled = [...currentAlive].sort(() => this.rng.nextFloat() - 0.5);
         
+        // 3. Dynamic Stances, Movement (Zones) & Crafting
+        currentAlive.forEach(t => {
+            // Crafting
+            const hasRope = t.inventory.findIndex(i => i.id === 'rope');
+            const hasKnife = t.inventory.findIndex(i => i.id === 'knife');
+            if (hasRope >= 0 && hasKnife >= 0 && !t.inventory.some(i => i.id === 'spear')) {
+                t.inventory.splice(Math.max(hasRope, hasKnife), 1);
+                t.inventory.splice(Math.min(hasRope, hasKnife), 1);
+                const spear = ITEMS.find(i => i.id === 'spear')!;
+                t.inventory.push({ ...spear });
+                this.logEvent(`${t.name} crafts a Spear using a Rope and a Knife.`, [t.id]);
+            }
+
+            // Update Stance
+            const hasWeapon = t.inventory.some(i => i.type === 'weapon');
+            if (t.health < 40 || t.injuries.bleeding) {
+                t.stance = 'Evasive';
+            } else if (hasWeapon && t.health > 70 && (t.isCareer || t.traits.includes('Bloodthirsty'))) {
+                t.stance = 'Aggressive';
+            } else {
+                t.stance = 'Defensive';
+            }
+
+            // Movement
+            if (t.stance === 'Evasive' || this.rng.chance(0.5)) {
+                const newZone = this.rng.pick(this.state.arena.zones);
+                if (t.zone !== newZone) {
+                    t.zone = newZone;
+                    if (t.stance !== 'Evasive') {
+                        this.logEvent(`${t.name} travels to ${newZone}.`, [t.id]);
+                    }
+                }
+            }
+        });
+
+        const shuffled = [...currentAlive].sort(() => this.rng.nextFloat() - 0.5);
         const acted = new Set<string>();
 
         shuffled.forEach(t => {
@@ -325,9 +458,9 @@ export class Simulator {
                 const event = this.rng.pick(this.state.arena.events);
                 if (this.rng.chance(0.5)) {
                     t.health -= 30;
-                    this.logEvent(`${t.name} is caught in a ${event} and is severely injured!`, [t.id], true);
+                    this.logEvent(`${t.name} is caught in a ${event} in ${t.zone} and is severely injured!`, [t.id], true);
                 } else {
-                    this.logEvent(`${t.name} barely escapes a ${event}.`, [t.id]);
+                    this.logEvent(`${t.name} barely escapes a ${event} in ${t.zone}.`, [t.id]);
                 }
                 this.checkDeath(t);
                 acted.add(t.id);
@@ -337,30 +470,45 @@ export class Simulator {
             if (this.rng.chance(0.1)) {
                 const mutt = this.rng.pick(this.state.arena.mutts);
                 if (t.attributes.agility > 6 && this.rng.chance(0.7)) {
-                    this.logEvent(`${t.name} outruns a pack of ${mutt}.`, [t.id]);
+                    this.logEvent(`${t.name} outruns a pack of ${mutt} in ${t.zone}.`, [t.id]);
                 } else {
                     t.health -= 40;
                     t.injuries.bleeding = true;
-                    this.logEvent(`${t.name} is attacked by ${mutt} and barely survives.`, [t.id], true);
+                    this.logEvent(`${t.name} is attacked by ${mutt} in ${t.zone} and barely survives.`, [t.id], true);
                 }
                 this.checkDeath(t);
                 acted.add(t.id);
                 return;
             }
 
-            const others = shuffled.filter(o => o.id !== t.id && !acted.has(o.id) && o.status === 'alive');
-            if (others.length > 0 && this.rng.chance(0.3)) {
+            // Only encounter others in the SAME ZONE
+            const others = shuffled.filter(o => o.id !== t.id && !acted.has(o.id) && o.status === 'alive' && o.zone === t.zone);
+            if (others.length > 0 && this.rng.chance(0.4)) {
                 const other = others[0];
                 
-                if (t.stance === 'Aggressive' || other.stance === 'Aggressive' || t.isCareer) {
+                // Career Alliance Logic
+                const isCareerAlliance = t.isCareer && other.isCareer && currentAlive.length > 8;
+                
+                // Grudge/Debt Logic
+                const relationship = t.relationships[other.id] || 0;
+
+                if (isCareerAlliance) {
+                    this.logEvent(`${t.name} and ${other.name} patrol ${t.zone} together.`, [t.id, other.id]);
+                } else if (relationship > 20) {
+                    this.logEvent(`${t.name} and ${other.name} share resources in ${t.zone}.`, [t.id, other.id]);
+                    t.vitals.hunger = Math.max(0, t.vitals.hunger - 10);
+                    other.vitals.hunger = Math.max(0, other.vitals.hunger - 10);
+                } else if (t.stance === 'Aggressive' || other.stance === 'Aggressive' || relationship < -10) {
                     this.resolveCombat(t, other);
                 } else {
                     if (this.rng.chance(0.5)) {
-                        this.logEvent(`${t.name} and ${other.name} spot each other but decide not to fight.`, [t.id, other.id]);
+                        this.logEvent(`${t.name} and ${other.name} spot each other in ${t.zone} but decide not to fight.`, [t.id, other.id]);
                     } else {
                         this.logEvent(`${t.name} and ${other.name} share a moment of peace.`, [t.id, other.id]);
                         t.vitals.sanity = Math.min(100, t.vitals.sanity + 10);
                         other.vitals.sanity = Math.min(100, other.vitals.sanity + 10);
+                        t.relationships[other.id] = (t.relationships[other.id] || 0) + 10;
+                        other.relationships[t.id] = (other.relationships[t.id] || 0) + 10;
                     }
                 }
                 acted.add(t.id);
@@ -369,19 +517,34 @@ export class Simulator {
             }
 
             if (t.stance === 'Evasive') {
-                this.logEvent(`${t.name} hides quietly.`, [t.id]);
+                this.logEvent(`${t.name} hides quietly in ${t.zone}.`, [t.id]);
             } else if (t.stance === 'Defensive') {
                 if (this.rng.chance(0.4)) {
                     const item = this.rng.pick(ITEMS.filter(i => i.type === 'food' || i.type === 'water'));
                     t.inventory.push(item);
-                    this.logEvent(`${t.name} forages and finds a ${item.name}.`, [t.id]);
+                    this.logEvent(`${t.name} forages in ${t.zone} and finds a ${item.name}.`, [t.id]);
                 } else {
-                    this.logEvent(`${t.name} sets up camp and rests.`, [t.id]);
+                    this.logEvent(`${t.name} sets up camp and rests in ${t.zone}.`, [t.id]);
                 }
             } else {
-                this.logEvent(`${t.name} hunts for other tributes but finds no one.`, [t.id]);
+                this.logEvent(`${t.name} hunts for other tributes in ${t.zone} but finds no one.`, [t.id]);
             }
             acted.add(t.id);
+        });
+
+        this.processSponsors();
+    }
+
+    private processSponsors() {
+        const alive = this.getAlive();
+        alive.forEach(t => {
+            const sponsorScore = t.excitementRating + t.sponsorTrust;
+            if (sponsorScore > 100 && this.rng.chance(0.3)) {
+                const gift = this.rng.pick(ITEMS.filter(i => i.value > 20));
+                t.inventory.push(gift);
+                t.excitementRating -= 50; // Consume some rating
+                this.logEvent(`${t.name} receives a sponsor gift: ${gift.name}!`, [t.id], true);
+            }
         });
     }
 

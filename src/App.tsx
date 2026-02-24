@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { GameState, Arena, Tribute, Phase } from './models/types';
+import { GameState, Arena, Tribute, Phase, HallOfFameEntry } from './models/types';
 import { ARENAS } from './data/constants';
 import { generateTributes } from './engine/generator';
 import { Simulator } from './engine/simulator';
-import { Shield, Swords, Skull, Heart, Droplets, Zap, Brain, Eye, User, Settings, Trophy, Play, FastForward, Activity } from 'lucide-react';
+import { Shield, Swords, Skull, Heart, Droplets, Zap, Brain, Eye, User, Settings, Trophy, Play, FastForward, Activity, MapPin, X } from 'lucide-react';
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -50,6 +50,24 @@ export default function App() {
       return;
     } else {
       simulator.processTurn();
+      
+      const newState = simulator.getState();
+      if (newState.phase === 'ended') {
+        const winner = newState.tributes.find(t => t.status === 'alive');
+        if (winner) {
+          const entry: HallOfFameEntry = {
+            id: Math.random().toString(36).substring(2, 9),
+            seed: newState.seed,
+            arenaName: newState.arena.name,
+            winnerName: winner.name,
+            winnerDistrict: winner.district,
+            kills: winner.kills,
+            date: new Date().toISOString()
+          };
+          const existing = JSON.parse(localStorage.getItem('hungerGamesHoF') || '[]');
+          localStorage.setItem('hungerGamesHoF', JSON.stringify([entry, ...existing]));
+        }
+      }
     }
     
     setGameState({ ...simulator.getState() });
@@ -67,6 +85,7 @@ export default function App() {
             <button onClick={() => setView('setup')} className={`text-sm uppercase tracking-wider font-semibold ${view === 'setup' ? 'text-red-500' : 'text-zinc-500 hover:text-zinc-300'}`}>New Game</button>
             {gameState && <button onClick={() => setView('roster')} className={`text-sm uppercase tracking-wider font-semibold ${view === 'roster' ? 'text-red-500' : 'text-zinc-500 hover:text-zinc-300'}`}>Roster</button>}
             {gameState && gameState.phase !== 'setup' && <button onClick={() => setView('game')} className={`text-sm uppercase tracking-wider font-semibold ${view === 'game' ? 'text-red-500' : 'text-zinc-500 hover:text-zinc-300'}`}>Arena</button>}
+            <button onClick={() => setView('hallOfFame')} className={`text-sm uppercase tracking-wider font-semibold ${view === 'hallOfFame' ? 'text-red-500' : 'text-zinc-500 hover:text-zinc-300'}`}>Hall of Fame</button>
           </nav>
         </div>
       </header>
@@ -90,6 +109,7 @@ export default function App() {
             setGameState={setGameState}
           />
         )}
+        {view === 'hallOfFame' && <HallOfFameScreen />}
       </main>
     </div>
   );
@@ -234,6 +254,8 @@ function Stat({ icon, label, value }: { icon: React.ReactNode, label: string, va
 }
 
 function GameScreen({ gameState, onNextPhase, simulator, setGameState }: { gameState: GameState, onNextPhase: () => void, simulator: Simulator, setGameState: (state: GameState) => void }) {
+  const [selectedTribute, setSelectedTribute] = useState<Tribute | null>(null);
+
   const aliveCount = gameState.tributes.filter(t => t.status === 'alive').length;
   const deadCount = gameState.tributes.filter(t => t.status === 'dead').length;
 
@@ -333,7 +355,11 @@ function GameScreen({ gameState, onNextPhase, simulator, setGameState }: { gameS
           <h3 className="font-bold uppercase tracking-widest text-zinc-500 text-xs mb-4">Tributes</h3>
           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
             {gameState.tributes.map(t => (
-              <div key={t.id} className={`p-3 rounded-lg border flex justify-between items-center ${t.status === 'dead' ? 'bg-zinc-950/50 border-zinc-900 opacity-50' : 'bg-zinc-950 border-zinc-800'}`}>
+              <div 
+                key={t.id} 
+                onClick={() => t.status === 'alive' && setSelectedTribute(t)}
+                className={`p-3 rounded-lg border flex justify-between items-center transition-colors ${t.status === 'dead' ? 'bg-zinc-950/50 border-zinc-900 opacity-50' : 'bg-zinc-950 border-zinc-800 hover:border-zinc-600 cursor-pointer'}`}
+              >
                 <div>
                   <div className={`font-bold text-sm ${t.status === 'dead' ? 'line-through text-zinc-600' : 'text-zinc-300'}`}>{t.name}</div>
                   <div className="text-[10px] uppercase tracking-wider text-zinc-500 flex gap-2 mt-1">
@@ -341,6 +367,7 @@ function GameScreen({ gameState, onNextPhase, simulator, setGameState }: { gameS
                       <>
                         <span className="flex items-center gap-1"><Heart className="w-3 h-3 text-red-500" /> {t.health}</span>
                         <span className="flex items-center gap-1"><Swords className="w-3 h-3 text-zinc-400" /> {t.kills}</span>
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-blue-400" /> {t.zone}</span>
                       </>
                     ) : (
                       <span>Day {t.dayOfDeath}</span>
@@ -353,6 +380,153 @@ function GameScreen({ gameState, onNextPhase, simulator, setGameState }: { gameS
           </div>
         </div>
       </div>
+
+      {selectedTribute && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setSelectedTribute(null)}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-2xl font-black text-white">{selectedTribute.name}</h3>
+                <p className="text-zinc-400 text-sm flex items-center gap-1 mt-1">
+                  <MapPin className="w-4 h-4" /> {selectedTribute.zone}
+                </p>
+              </div>
+              <button onClick={() => setSelectedTribute(null)} className="text-zinc-500 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Vitals & Status</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-zinc-950 p-2 rounded border border-zinc-800">
+                    <div className="text-xs text-zinc-500">Health</div>
+                    <div className="font-mono text-white">{selectedTribute.health}%</div>
+                  </div>
+                  <div className="bg-zinc-950 p-2 rounded border border-zinc-800">
+                    <div className="text-xs text-zinc-500">Hunger</div>
+                    <div className="font-mono text-white">{selectedTribute.vitals.hunger}%</div>
+                  </div>
+                  <div className="bg-zinc-950 p-2 rounded border border-zinc-800">
+                    <div className="text-xs text-zinc-500">Thirst</div>
+                    <div className="font-mono text-white">{selectedTribute.vitals.thirst}%</div>
+                  </div>
+                  <div className="bg-zinc-950 p-2 rounded border border-zinc-800">
+                    <div className="text-xs text-zinc-500">Fatigue</div>
+                    <div className="font-mono text-white">{selectedTribute.vitals.fatigue}%</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Injuries</h4>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(selectedTribute.injuries).filter(([_, v]) => v).length === 0 ? (
+                    <span className="text-sm text-zinc-400">None</span>
+                  ) : (
+                    Object.entries(selectedTribute.injuries).filter(([_, v]) => v).map(([k]) => (
+                      <span key={k} className="px-2 py-1 bg-red-950/30 text-red-500 border border-red-900/50 rounded text-xs uppercase tracking-wider">
+                        {k}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Inventory</h4>
+                <div className="space-y-2">
+                  {selectedTribute.inventory.length === 0 ? (
+                    <span className="text-sm text-zinc-400">Empty</span>
+                  ) : (
+                    selectedTribute.inventory.map((item, i) => (
+                      <div key={i} className="flex justify-between items-center bg-zinc-950 p-2 rounded border border-zinc-800">
+                        <span className="text-sm text-white">{item.name}</span>
+                        <span className="text-xs text-zinc-500 uppercase">{item.type}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Relationships</h4>
+                <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+                  {Object.entries(selectedTribute.relationships).length === 0 ? (
+                    <span className="text-sm text-zinc-400">None</span>
+                  ) : (
+                    Object.entries(selectedTribute.relationships).map(([id, val]) => {
+                      const other = gameState.tributes.find(t => t.id === id);
+                      if (!other) return null;
+                      const numVal = val as number;
+                      return (
+                        <div key={id} className="flex justify-between text-sm">
+                          <span className="text-zinc-300">{other.name}</span>
+                          <span className={numVal > 0 ? 'text-green-400' : 'text-red-400'}>{numVal > 0 ? `+${numVal}` : numVal}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HallOfFameScreen() {
+  const [entries, setEntries] = useState<HallOfFameEntry[]>([]);
+
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem('hungerGamesHoF') || '[]');
+    setEntries(saved);
+  }, []);
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8">
+      <div className="text-center space-y-4 mb-12">
+        <h2 className="text-5xl font-black uppercase tracking-tighter text-white flex items-center justify-center gap-4">
+          <Trophy className="w-12 h-12 text-yellow-500" /> Hall of Fame
+        </h2>
+        <p className="text-zinc-400 text-lg">The legendary victors of past games.</p>
+      </div>
+
+      {entries.length === 0 ? (
+        <div className="text-center py-12 text-zinc-500 border border-dashed border-zinc-800 rounded-xl">
+          No victors have been crowned yet.
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {entries.map(entry => (
+            <div key={entry.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+              <div>
+                <h3 className="text-2xl font-black text-white">{entry.winnerName}</h3>
+                <div className="text-zinc-400 text-sm mt-1">
+                  Victor of {entry.arenaName}
+                </div>
+              </div>
+              <div className="flex gap-6 text-sm">
+                <div className="text-center">
+                  <div className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Kills</div>
+                  <div className="font-mono text-white text-lg">{entry.kills}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Seed</div>
+                  <div className="font-mono text-white text-lg">{entry.seed}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Date</div>
+                  <div className="font-mono text-white text-lg">{new Date(entry.date).toLocaleDateString()}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

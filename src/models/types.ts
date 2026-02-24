@@ -55,6 +55,7 @@ export interface Tribute {
     kills: number;
     causeOfDeath?: string;
     dayOfDeath?: number;
+    zone: string;
 }
 
 export interface Arena {
@@ -63,6 +64,7 @@ export interface Arena {
     description: string;
     mutts: string[];
     events: string[];
+    zones: string[];
 }
 
 export type Phase = 'setup' | 'roster' | 'training' | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'ended';
@@ -84,4 +86,14 @@ export interface EventLog {
     text: string;
     tributesInvolved: string[];
     important: boolean;
+}
+
+export interface HallOfFameEntry {
+    id: string;
+    seed: string;
+    arenaName: string;
+    winnerName: string;
+    winnerDistrict: number;
+    kills: number;
+    date: string;
 }

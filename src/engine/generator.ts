@@ -68,7 +68,8 @@ export function generateTributes(seed: string): Tribute[] {
                 excitementRating: 0,
                 sponsorTrust: 50,
                 trainingScore: 0,
-                kills: 0
+                kills: 0,
+                zone: 'The Cornucopia'
             });
         }
     }
