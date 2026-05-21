@@ -2,6 +2,57 @@ import { RNG } from '../utils/rng';
 import { Tribute, Attributes } from '../models/types';
 import { TRAITS } from '../data/constants';
 
+const DISTRICT_NAMES: Record<number, { Male: string[]; Female: string[] }> = {
+    1: {
+        Male: ['Marvel', 'Gloss', 'Cashmere', 'Velvet', 'Suede', 'Jewel', 'Royal', 'Prince', 'Sterling', 'Lux', 'Diamond', 'Emerald', 'Ruby', 'Garnet', 'Amethyst', 'Onyx', 'Sapphire', 'Jasper', 'Gold', 'Silver', 'Aurelius', 'Baron'],
+        Female: ['Glimmer', 'Crystal', 'Diamond', 'Emerald', 'Opal', 'Sapphire', 'Silk', 'Lace', 'Amber', 'Pearl', 'Ruby', 'Jade', 'Luster', 'Ivory', 'Tiara', 'Platinum', 'Shimmer', 'Glitter', 'Satin', 'Bijou', 'Sparkle', 'Diva']
+    },
+    2: {
+        Male: ['Cato', 'Brutus', 'Marcus', 'Titus', 'Maximus', 'Rex', 'Leon', 'Victor', 'Justin', 'Caesar', 'Quintus', 'Decimus', 'Cassius', 'Lucius', 'Hector', 'Achilles', 'Valerius', 'Iron', 'Steel', 'Granite', 'Flint', 'Commander'],
+        Female: ['Clove', 'Enobaria', 'Livia', 'Diana', 'Victoria', 'Aurelia', 'Octavia', 'Portia', 'Juno', 'Sabina', 'Minerva', 'Vesta', 'Camilla', 'Bellona', 'Drusilla', 'Antonia', 'Valeria', 'Corinna', 'Pax', 'Alexandria', 'Aria']
+    },
+    3: {
+        Male: ['Beetee', 'Circuit', 'Byte', 'Vector', 'Pixel', 'Watt', 'Silicon', 'Analog', 'Turing', 'Helix', 'Pascal', 'Linux', 'Kernel', 'Cache', 'Giga', 'Binary', 'Tera', 'Code', 'Quantum', 'Link', 'Node', 'Cyber'],
+        Female: ['Wiress', 'Cyra', 'Nova', 'Matrix', 'Data', 'Glitch', 'Beta', 'Micro', 'Echo', 'Cyber', 'Ada', 'Dot', 'Array', 'Cache', 'Logic', 'Syntax', 'Spark', 'Schema', 'Meg', 'Interface', 'Signal', 'Hedy']
+    },
+    4: {
+        Male: ['Finnick', 'Odair', 'Triton', 'Fisher', 'Reef', 'Tide', 'Wave', 'Hook', 'Anchor', 'Finn', 'Sailor', 'Neptune', 'Drake', 'River', 'Captain', 'Marina', 'Barnacle', 'Gill', 'Marlin', 'Ray', 'Harbour', 'Coast'],
+        Female: ['Annie', 'Cresta', 'Mags', 'Nerida', 'Pearl', 'Shelly', 'Coral', 'Siren', 'Delta', 'Coralia', 'Marina', 'Ocean', 'Brooke', 'Sandy', 'Wavelet', 'Aqua', 'Naida', 'Tallulah', 'Undine', 'Kelp', 'Lagoon', 'Cove']
+    },
+    5: {
+        Male: ['Bolt', 'Spark', 'Voltz', 'Cable', 'Ohm', 'Joule', 'Photon', 'Proton', 'Amp', 'Tesla', 'Watts', 'Neutron', 'Fusion', 'Dyno', 'Grid', 'Radar', 'Current', 'Electro', 'Surge', 'Turbine', 'Anode', 'Cathode'],
+        Female: ['Electra', 'Tesla', 'Current', 'Nova', 'Astra', 'Ray', 'Flare', 'Aurora', 'Vibe', 'Lumina', 'Static', 'Sparkle', 'Gamma', 'Shocka', 'Solara', 'Dynamo', 'Energy', 'Power', 'Nebula', 'Helix', 'Voltina', 'Solenoid']
+    },
+    6: {
+        Male: ['Axel', 'Gear', 'Diesel', 'Otto', 'Miles', 'Jet', 'Porter', 'Track', 'Rover', 'Buster', 'Gauge', 'Aero', 'Transit', 'Piston', 'Fender', 'Express', 'Driver', 'Coach', 'Pilot', 'Turbo', 'Brake', 'Steer'],
+        Female: ['Aero', 'Transit', 'Lane', 'Piper', 'Stella', 'Velocity', 'Siena', 'Mercedes', 'Cheyenne', 'Cab', 'Raven', 'Carline', 'Aviara', 'Jet', 'Highway', 'Subaru', 'Taxi', 'Turbo', 'Rail', 'Glide', 'Siren', 'Odometer']
+    },
+    7: {
+        Male: ['Timber', 'Oak', 'Birch', 'Cedar', 'Ash', 'Forrest', 'Woody', 'Sawyer', 'Bark', 'Lumber', 'Pine', 'Spruce', 'Redwood', 'Branch', 'Axe', 'Chip', 'Log', 'Grover', 'Maple', 'Barky', 'Stump', 'Cutter'],
+        Female: ['Johanna', 'Pine', 'Willow', 'Birch', 'Maple', 'Hazel', 'Flora', 'Fern', 'Leaf', 'Branch', 'Clover', 'Ivy', 'Season', 'Sylvan', 'Amber', 'Aspen', 'Sequoia', 'Holly', 'Bloom', 'Autumn', 'Blossom', 'Juniper']
+    },
+    8: {
+        Male: ['Spindle', 'Bobbin', 'Hem', 'Weaver', 'Stitch', 'Wool', 'Cotton', 'Tailor', 'Patches', 'Loom', 'Flax', 'Fiber', 'Needle', 'Shear', 'Pattern', 'Nylon', 'Corduroy', 'Tweed', 'Velvet', 'Silk', 'Jean', 'Twill'],
+        Female: ['Cecelia', 'Satin', 'Velvet', 'Needle', 'Thread', 'Lace', 'Pattern', 'Paisley', 'Silk', 'Denim', 'Chiffon', 'Brocade', 'Taffeta', 'Ribbon', 'Yarn', 'Hemmy', 'Gingham', 'Polyester', 'Linen', 'Angora', 'Felt', 'Shear']
+    },
+    9: {
+        Male: ['Rye', 'Wheat', 'Barley', 'Oat', 'Baker', 'Mill', 'Flour', 'Bran', 'Stalk', 'Kernel', 'Straw', 'Reaper', 'Field', 'Loaf', 'Yeast', 'Grits', 'Sieve', 'Paddy', 'Chaff', 'Grain', 'Sower', 'Sheaf'],
+        Female: ['Amber', 'Meadow', 'Grain', 'Blossom', 'Cerealia', 'Harvest', 'Clover', 'Poppy', 'Flora', 'Saffron', 'Barley', 'Ceres', 'Autumn', 'Maize', 'Rye', 'Sesame', 'Honey', 'Bread', 'Wheatley', 'Sierra', 'Graine', 'Millet']
+    },
+    10: {
+        Male: ['Shepherd', 'Buck', 'Colt', 'Tanner', 'Herd', 'Drake', 'Hunt', 'Ranger', 'Buster', 'Billy', 'Corral', 'Bovine', 'Steer', 'Lasso', 'Cowboy', 'Leather', 'Spur', 'Wooly', 'Bronc', 'Stallion', 'Calf', 'Groom'],
+        Female: ['Brandy', 'Lassie', 'Fawn', 'Doe', 'Filly', 'Flora', 'Sierra', 'Clover', 'Meadow', 'Dixie', 'Bella', 'Daisy', 'Molly', 'Dolly', 'Bessie', 'Wooly', 'Ryder', 'Saddle', 'Ranch', 'Buttercup', 'Heifer', 'Mane']
+    },
+    11: {
+        Male: ['Thresh', 'Chaff', 'Reap', 'Clay', 'Soil', 'Bud', 'Root', 'Sprout', 'Arbor', 'Farmer', 'Booker', 'Branch', 'Seed', 'Harvest', 'Clover', 'Peaches', 'Melon', 'Pete', 'Cotton', 'Grove', 'Scythe', 'Till'],
+        Female: ['Rue', 'Seeder', 'Blossom', 'Daisy', 'Holly', 'Lily', 'Rose', 'Petal', 'Flora', 'Rosemary', 'Lavender', 'Poppy', 'Autumn', 'Cherry', 'Peach', 'Berry', 'Clover', 'Olive', 'Marigold', 'Jasmine', 'Fern', 'Bud']
+    },
+    12: {
+        Male: ['Peeta', 'Gale', 'Haymitch', 'Coal', 'Ash', 'Flint', 'Dust', 'Slate', 'Stone', 'Ore', 'Miner', 'Shaft', 'Carbon', 'Pickaxe', 'Shovel', 'Soot', 'Copper', 'Bronze', 'Brick', 'Pebble', 'Lignite', 'Coke'],
+        Female: ['Katniss', 'Primrose', 'Ember', 'Cinder', 'Raven', 'Hazel', 'Opal', 'Pearl', 'Iris', 'Violet', 'Onyx', 'Dusty', 'Coalette', 'Seam', 'Healer', 'Sage', 'Myrrh', 'Rue', 'Willow', 'Amber', 'Jewel', 'Diamond']
+    }
+};
+
 export function generateTributes(seed: string): Tribute[] {
     const rng = new RNG(seed);
     const tributes: Tribute[] = [];
@@ -50,11 +101,13 @@ export function generateTributes(seed: string): Tribute[] {
                 }
             }
 
+            const chosenName = rng.pick(DISTRICT_NAMES[district][gender]);
+
             tributes.push({
                 id: `d${district}-${gender.toLowerCase()}`,
                 district,
                 gender,
-                name: `District ${district} ${gender}`,
+                name: chosenName,
                 isCareer,
                 attributes,
                 traits,

@@ -68,7 +68,7 @@ export interface Arena {
     zones: string[];
 }
 
-export type Phase = 'setup' | 'roster' | 'training' | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'ended';
+export type Phase = 'setup' | 'roster' | 'training' | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'epilogue' | 'ended';
 
 export interface GameState {
     seed: string;
@@ -78,6 +78,8 @@ export interface GameState {
     day: number;
     log: EventLog[];
     gamemakerMode: boolean;
+    collapsedZones?: string[];
+    epilogueInterview?: EpilogueQA[];
 }
 
 export interface EventLog {
@@ -87,6 +89,21 @@ export interface EventLog {
     text: string;
     tributesInvolved: string[];
     important: boolean;
+    zone?: string;
+}
+
+export interface EpilogueQA {
+    question: string;
+    answer: string;
+}
+
+export interface TributeHoFSummary {
+    name: string;
+    district: number;
+    kills: number;
+    causeOfDeath?: string;
+    status: 'alive' | 'dead';
+    dayOfDeath?: number;
 }
 
 export interface HallOfFameEntry {
@@ -97,4 +114,7 @@ export interface HallOfFameEntry {
     winnerDistrict: number;
     kills: number;
     date: string;
+    winnerTraits?: string[];
+    winnerEndHealth?: number;
+    tributeSummaries?: TributeHoFSummary[];
 }

@@ -1,4 +1,4 @@
-import { GameState, Tribute, EventLog, Phase, Item } from '../models/types';
+import { GameState, Tribute, EventLog, Phase, Item, EpilogueQA } from '../models/types';
 import { RNG } from '../utils/rng';
 import { ITEMS } from '../data/constants';
 import { WEAPON_KILL_TEMPLATES, INTERVIEW_SCENARIOS, SURVIVAL_TEXTS, ENCOUNTER_TEXTS, SYSTEM_TEXTS, SANITY_TEXTS } from '../data/flavorText';
@@ -16,14 +16,22 @@ export class Simulator {
         return this.state;
     }
 
-    private logEvent(text: string, tributesInvolved: string[], important: boolean = false) {
+    private logEvent(text: string, tributesInvolved: string[], important: boolean = false, zone?: string) {
+        let resolvedZone = zone;
+        if (!resolvedZone && tributesInvolved.length > 0) {
+            const firstTribute = this.state.tributes.find(t => t.id === tributesInvolved[0]);
+            if (firstTribute) {
+                resolvedZone = firstTribute.zone;
+            }
+        }
         this.state.log.push({
             id: this.rng.nextInt(0, 1000000).toString(),
             day: this.state.day,
             phase: this.state.phase,
             text,
             tributesInvolved,
-            important
+            important,
+            zone: resolvedZone
         });
     }
 
@@ -130,9 +138,14 @@ export class Simulator {
             const t1 = fighters.splice(this.rng.nextInt(0, fighters.length - 1), 1)[0];
             const t2 = fighters.splice(this.rng.nextInt(0, fighters.length - 1), 1)[0];
 
-            this.resolveCombat(t1, t2, true);
-            if (t1.status === 'alive') fighters.push(t1);
-            if (t2.status === 'alive') fighters.push(t2);
+            if (t1 && t2) {
+                this.resolveCombat(t1, t2, true);
+                if (t1.status === 'alive') fighters.push(t1);
+                if (t2.status === 'alive') fighters.push(t2);
+            } else {
+                if (t1 && t1.status === 'alive') fighters.push(t1);
+                if (t2 && t2.status === 'alive') fighters.push(t2);
+            }
         }
 
         if (fighters.length === 1) {
@@ -148,6 +161,12 @@ export class Simulator {
 
     private resolveCombat(t1: Tribute, t2: Tribute, isBloodbath: boolean = false) {
         if (t1.status === 'dead' || t2.status === 'dead') return;
+
+        // Star-crossed lovers refuse to fight each other!
+        if (t1.traits.includes('Star-Crossed') && t2.traits.includes('Star-Crossed') && t1.district === t2.district) {
+            this.logEvent(`${t1.name} and ${t2.name} refuse to fight each other due to their deep bond as star-crossed lovers.`, [t1.id, t2.id]);
+            return;
+        }
 
         const t1Weapon = t1.inventory.find(i => i.type === 'weapon');
         const t2Weapon = t2.inventory.find(i => i.type === 'weapon');
@@ -200,6 +219,16 @@ export class Simulator {
         victim.health = 0;
         victim.dayOfDeath = this.state.day;
         
+        // Star-crossed lover heartbreak logic
+        if (victim.traits.includes('Star-Crossed')) {
+            const partner = this.state.tributes.find(t => t.district === victim.district && t.id !== victim.id && t.status === 'alive');
+            if (partner && partner.traits.includes('Star-Crossed')) {
+                partner.vitals.sanity = Math.max(0, partner.vitals.sanity - 60);
+                partner.excitementRating += 55;
+                this.logEvent(`TRAGEDY: ${partner.name} screams in agony as their star-crossed lover ${victim.name} is eliminated, suffering a devastating blow to their sanity.`, [partner.id, victim.id], true);
+            }
+        }
+        
         if (killer) {
             killer.kills += 1;
             killer.excitementRating += 20;
@@ -221,9 +250,10 @@ export class Simulator {
             if (weapon && weapon.durability) weapon.durability -= 10;
 
             if (victim.inventory.length > 0) {
-                const loot = victim.inventory[0];
-                killer.inventory.push(loot);
-                this.logEvent(`${text} ${killer.name} loots a ${loot.name}.`, [killer.id, victim.id], true);
+                const lootNames = victim.inventory.map(i => i.name).join(', ');
+                killer.inventory.push(...victim.inventory);
+                victim.inventory = [];
+                this.logEvent(`${text} ${killer.name} loots: ${lootNames}.`, [killer.id, victim.id], true);
             } else {
                 this.logEvent(text, [killer.id, victim.id], true);
             }
@@ -255,13 +285,8 @@ export class Simulator {
         }
 
         if (this.getAlive().length <= 1) {
-            this.state.phase = 'ended';
-            const winner = this.getAlive()[0];
-            if (winner) {
-                this.logEvent(`The Hunger Games are over! ${winner.name} is the victor!`, [winner.id], true);
-            } else {
-                this.logEvent(`The Hunger Games are over! There are no survivors.`, [], true);
-            }
+            this.state.phase = 'epilogue';
+            this.processEpilogue();
         }
     }
 
@@ -294,6 +319,10 @@ export class Simulator {
                 const victim = this.rng.pick(members.filter(m => m.id !== betrayer.id));
                 
                 if (victim) {
+                    // Star-crossed lovers never betray each other
+                    if (betrayer.traits.includes('Star-Crossed') && victim.traits.includes('Star-Crossed') && betrayer.district === victim.district) {
+                        return;
+                    }
                     this.logEvent(`${betrayer.name} betrays the alliance and attacks ${victim.name}!`, [betrayer.id, victim.id], true);
                     delete betrayer.allianceId; // Betrayer leaves
                     this.resolveCombat(betrayer, victim);
@@ -301,7 +330,7 @@ export class Simulator {
             }
         });
 
-        // 3. Dynamic Alliance Formation
+        // 3. Dynamic Alliance Formation & Star-Crossed Lovers
         if (alive.length > 4) {
             for (let i = 0; i < alive.length; i++) {
                 for (let j = i + 1; j < alive.length; j++) {
@@ -317,6 +346,39 @@ export class Simulator {
                             this.logEvent(`${t1.name} and ${t2.name} form a formal alliance.`, [t1.id, t2.id], true);
                         }
                     }
+                }
+            }
+        }
+
+        // 4. Romantic "Star-Crossed Lovers" formation check (District partners of opposite gender)
+        for (let dist = 1; dist <= 12; dist++) {
+            const districtTributes = alive.filter(t => t.district === dist);
+            if (districtTributes.length === 2 && districtTributes[0].gender !== districtTributes[1].gender) {
+                const t1 = districtTributes[0];
+                const t2 = districtTributes[1];
+                let currentRel = t1.relationships[t2.id] || 0;
+
+                // Romance grows if they reside in the same zone or support each other
+                if (t1.zone === t2.zone) {
+                    currentRel = Math.min(100, currentRel + this.rng.nextInt(4, 10));
+                    t1.relationships[t2.id] = currentRel;
+                    t2.relationships[t1.id] = currentRel;
+                }
+
+                if (currentRel >= 80 && !t1.traits.includes('Star-Crossed')) {
+                    t1.traits.push('Star-Crossed');
+                    t2.traits.push('Star-Crossed');
+
+                    const bondId = `lovers-${dist}-${this.state.seed}`;
+                    t1.allianceId = bondId;
+                    t2.allianceId = bondId;
+
+                    t1.sponsorTrust = Math.min(100, t1.sponsorTrust + 40);
+                    t2.sponsorTrust = Math.min(100, t2.sponsorTrust + 40);
+                    t1.excitementRating += 50;
+                    t2.excitementRating += 50;
+
+                    this.logEvent(`ROMANCE: ${t1.name} and ${t2.name} of District ${dist} have formed an unshakeable bond as Star-Crossed Lovers! The Capitol audience is completely captivated.`, [t1.id, t2.id], true);
                 }
             }
         }
@@ -345,9 +407,15 @@ export class Simulator {
         while (shuffled.length > 1) {
             const t1 = shuffled.splice(this.rng.nextInt(0, shuffled.length - 1), 1)[0];
             const t2 = shuffled.splice(this.rng.nextInt(0, shuffled.length - 1), 1)[0];
-            this.resolveCombat(t1, t2);
-            if (t1.status === 'alive') shuffled.push(t1);
-            if (t2.status === 'alive') shuffled.push(t2);
+            
+            if (t1 && t2) {
+                this.resolveCombat(t1, t2);
+                if (t1.status === 'alive') shuffled.push(t1);
+                if (t2.status === 'alive') shuffled.push(t2);
+            } else {
+                if (t1 && t1.status === 'alive') shuffled.push(t1);
+                if (t2 && t2.status === 'alive') shuffled.push(t2);
+            }
         }
 
         if (shuffled.length === 1) {
@@ -366,6 +434,27 @@ export class Simulator {
         this.rng = new RNG(`${this.state.seed}-${this.state.day}-${time}`);
         const alive = this.getAlive();
         
+        // 0. Hazard Escalation & Safe Zone Shrinking over time (starts Day 5+)
+        const isEscalated = this.state.day >= 5;
+        if (isEscalated) {
+            const collapseCount = Math.min(this.state.arena.zones.length - 1, this.state.day - 4);
+            const collapsedList = this.state.arena.zones.slice(this.state.arena.zones.length - collapseCount);
+            this.state.collapsedZones = collapsedList;
+
+            alive.forEach(t => {
+                if (collapsedList.includes(t.zone)) {
+                    const damage = 20 + (this.state.day - 5) * 10;
+                    t.health -= damage;
+                    const safeZones = this.state.arena.zones.filter(z => !collapsedList.includes(z));
+                    const newSafeZone = safeZones[0] || 'The Cornucopia';
+                    
+                    this.logEvent(`HAZARD ESCALATION: ${t.name} is trapped inside the collapsing border of ${t.zone}! They sustain ${damage} injury damage and desperately flee into the safe sector of ${newSafeZone}.`, [t.id], true, newSafeZone);
+                    t.zone = newSafeZone;
+                    this.checkDeath(t);
+                }
+            });
+        }
+
         // 1. Item Degradation & Spoilage
         alive.forEach(t => {
             t.inventory = t.inventory.filter(item => {
@@ -402,6 +491,10 @@ export class Simulator {
             if (t.traits.includes('Hydrophilic')) thirstDrain -= 5;
             if (t.traits.includes('Insomniac') && time === 'night') fatigueDrain += 10;
             if (t.traits.includes('Iron Stomach')) hungerDrain -= 5;
+            if (t.traits.includes('Star-Crossed')) {
+                t.sponsorTrust = Math.min(100, t.sponsorTrust + 5);
+                t.excitementRating += 10;
+            }
 
             t.vitals.hunger += hungerDrain;
             t.vitals.thirst += thirstDrain;
@@ -430,12 +523,36 @@ export class Simulator {
                 }
             }
 
+            // Consume medical items to heal wounds, cure infections, or restore health
+            const medkitIdx = t.inventory.findIndex(i => i.id === 'medkit');
+            if (medkitIdx >= 0 && (t.health < 70 || Object.values(t.injuries).some(v => v))) {
+                t.inventory.splice(medkitIdx, 1);
+                t.health = Math.min(100, t.health + 50);
+                t.injuries.bleeding = false;
+                t.injuries.infected = false;
+                t.injuries.head = false;
+                t.injuries.torso = false;
+                t.injuries.arms = false;
+                t.injuries.legs = false;
+                this.logEvent(`${t.name} uses a First Aid Kit to heal their wounds.`, [t.id], true);
+            } else {
+                const ointmentIdx = t.inventory.findIndex(i => i.id === 'ointment');
+                if (ointmentIdx >= 0 && (t.health < 85 || t.injuries.infected || t.injuries.bleeding)) {
+                    t.inventory.splice(ointmentIdx, 1);
+                    t.health = Math.min(100, t.health + 25);
+                    t.injuries.infected = false;
+                    t.injuries.bleeding = false;
+                    this.logEvent(`${t.name} applies Burn Ointment, soothing their injuries and infections.`, [t.id], true);
+                }
+            }
+
             this.checkDeath(t);
         });
 
         const currentAlive = this.getAlive();
         
         // 3. Dynamic Stances, Movement (Zones) & Crafting
+        const acted = new Set<string>();
         currentAlive.forEach(t => {
             // Crafting
             const hasRope = t.inventory.findIndex(i => i.id === 'rope');
@@ -471,7 +588,10 @@ export class Simulator {
                 const leader = allianceMembers[0]; // Simple leader logic
                 if (t.id === leader.id) {
                     if (t.stance === 'Evasive' || this.rng.chance(0.5)) {
-                        const newZone = this.rng.pick(this.state.arena.zones);
+                        const collapsedList = this.state.collapsedZones || [];
+                        const activeZones = this.state.arena.zones.filter(z => !collapsedList.includes(z));
+                        const pool = activeZones.length > 0 ? activeZones : this.state.arena.zones;
+                        const newZone = this.rng.pick(pool);
                         if (t.zone !== newZone) {
                             allianceMembers.forEach(m => m.zone = newZone);
                             if (t.stance !== 'Evasive') {
@@ -481,7 +601,10 @@ export class Simulator {
                     }
                 }
             } else if (t.stance === 'Evasive' || this.rng.chance(0.5)) {
-                const newZone = this.rng.pick(this.state.arena.zones);
+                const collapsedList = this.state.collapsedZones || [];
+                const activeZones = this.state.arena.zones.filter(z => !collapsedList.includes(z));
+                const pool = activeZones.length > 0 ? activeZones : this.state.arena.zones;
+                const newZone = this.rng.pick(pool);
                 if (t.zone !== newZone) {
                     t.zone = newZone;
                     if (t.stance !== 'Evasive') {
@@ -492,12 +615,19 @@ export class Simulator {
         });
 
         const shuffled = [...currentAlive].sort(() => this.rng.nextFloat() - 0.5);
-        const acted = new Set<string>();
 
         shuffled.forEach(t => {
             if (acted.has(t.id) || t.status === 'dead') return;
 
-            if (this.rng.chance(0.1)) {
+            let eventChance = 0.1;
+            let muttChance = 0.1;
+            if (isEscalated) {
+                const multiplier = 1 + (this.state.day - 5) * 0.3;
+                eventChance = Math.min(0.35, eventChance * multiplier);
+                muttChance = Math.min(0.35, muttChance * multiplier);
+            }
+
+            if (this.rng.chance(eventChance)) {
                 const event = this.rng.pick(this.state.arena.events);
                 if (this.rng.chance(0.5)) {
                     t.health -= 30;
@@ -510,7 +640,7 @@ export class Simulator {
                 return;
             }
 
-            if (this.rng.chance(0.1)) {
+            if (this.rng.chance(muttChance)) {
                 const mutt = this.rng.pick(this.state.arena.mutts);
                 if (t.attributes.agility > 6 && this.rng.chance(0.7)) {
                     this.logEvent(`${t.name} outruns a pack of ${mutt} in ${t.zone}.`, [t.id]);
@@ -667,8 +797,96 @@ export class Simulator {
                 t.vitals.sanity -= 10;
             });
         } else if (type === 'feast') {
-            this.logEvent(`GAMEMAKER: A feast is announced at the Cornucopia!`, [], true);
-            this.state.phase = 'feast';
+                this.logEvent(`GAMEMAKER: A feast is announced at the Cornucopia!`, [], true);
+                this.state.phase = 'feast';
+            }
         }
+
+    public processEpilogue() {
+        this.state.phase = 'epilogue';
+        const alive = this.getAlive();
+        const winner = alive[0];
+        
+        const qas: EpilogueQA[] = [];
+        
+        if (!winner) {
+            qas.push({
+                question: "Caesar Flickerman: 'The Arena is silent. There is no victor. What are your final thoughts on this dark chapter?'",
+                answer: "Official broadcast: 'A grim end. For the first time, no tribute survived the Arena hazards. Deep mourning is declared across all Districts.'"
+            });
+        } else {
+            qas.push({
+                question: `Caesar Flickerman: 'Ladies and gentlemen, the victor of the hunger games... ${winner.name} of District ${winner.district}! What a spectacular run. Tell us, what was going through your mind when you first stepped onto that pedestal?'`,
+                answer: `${winner.name}: 'Honestly, Caesar, that first sound of the gong was terrifying. I just knew I had to survive, no matter what it took.'`
+            });
+
+            if (winner.traits.includes('Bloodthirsty')) {
+                qas.push({
+                    question: "Caesar Flickerman: 'You showed a remarkably aggressive, almost lethal hunger out there. Some would call it... bloodthirsty. Did you enjoy the hunt?'",
+                    answer: `${winner.name}: 'It is a game of kill or be killed, Caesar. I embraced the fire. The Capitol wanted a show, and I gave them exactly that.'`
+                });
+            } else if (winner.traits.includes('Pacifist')) {
+                qas.push({
+                    question: "Caesar Flickerman: 'You played with a quiet, noble, peaceful strategy. Some of the audience was holding their breath, wondering how a pacifist could survive such a brutal arena. How do you feel now?'",
+                    answer: `${winner.name}: 'I feel a profound sorrow for everyone who did not make it. I only defended myself when I had to. I dream of a day where we do not have to fight.'`
+                });
+            } else if (winner.traits.includes('Star-Crossed')) {
+                qas.push({
+                    question: `Caesar Flickerman: 'Your story has touched the hearts of the entire Capitol. The tragedy of District ${winner.district} and your star-crossed companion... We wept for you. How will you hold their memory?'`,
+                    answer: `${winner.name}: 'Every single victory in this arena belongs to both of us. Part of me died with them, and I will spend my life making sure their name is never forgotten.'`
+                });
+            } else if (winner.traits.includes('Strategist')) {
+                qas.push({
+                    question: "Caesar Flickerman: 'Our analysts noticed your incredibly sharp tactical play. You always seemed one step ahead of the hazards. Was it all calculated?'",
+                    answer: `${winner.name}: 'The arena is like a chessboard, Caesar. You cannot just react; you have to predict. Knowing when to move and when to hide made all the difference.'`
+                });
+            } else if (winner.isCareer) {
+                qas.push({
+                    question: "Caesar Flickerman: 'As a career tribute, you have been training for this since you were a child. Did the reality of the arena live up to your expectations?'",
+                    answer: `${winner.name}: 'Training in District ${winner.district} makes you strong, but nothing can fully prepare you for the real arena. It was an honor, and I am proud to bring glory back to my home.'`
+                });
+            } else {
+                qas.push({
+                    question: "Caesar Flickerman: 'You entered as a massive underdog, but you outmaneuvered every career and hazard. What kept you going in those lonely nights?'",
+                    answer: `${winner.name}: 'I kept thinking about my friends and family back in District ${winner.district}. Whenever I was close to giving up, their faces pushed me forward.'`
+                });
+            }
+
+            if (winner.kills >= 4) {
+                qas.push({
+                    question: `Caesar Flickerman: 'An incredible ${winner.kills} eliminations to your name! A true force of nature in the arena. Which battle was the most intense?'`,
+                    answer: `${winner.name}: 'Every face-to-face clash was a heartbeat away from death. You do not think in those moments, Caesar; your hands move, and you pray you are the one standing.'`
+                });
+            } else if (winner.kills === 0) {
+                qas.push({
+                    question: "Caesar Flickerman: 'Fascinatingly, you did not eliminate any competitors yourself. You survived purely through flawless stealth and environmental strategy! A ghost of the arena!'",
+                    answer: `${winner.name}: 'I did not want to take a life if I did not have to, Caesar. Letting the others and the arena fight each other while I hid in the shadows was my only option.'`
+                });
+            } else {
+                qas.push({
+                    question: `Caesar Flickerman: 'You made ${winner.kills} critical elimination${winner.kills > 1 ? 's' : ''} during the simulation. What did it feel like to overcome your opponents?'`,
+                    answer: `${winner.name}: 'It was pure instinct. No regrets, but also no pride. We were all thrust into a nightmare, and I did what was required.'`
+                });
+            }
+
+            if (winner.sponsorTrust > 75) {
+                qas.push({
+                    question: "Caesar Flickerman: 'The sponsors absolutely showered you with silver parachutes. Their gifts of food and medical supplies saved you multiple times. Would you like to thank them?'",
+                    answer: `${winner.name}: 'To everyone in the Capitol who sent a gift: you saved my life. Every package felt like a lifeline when I was shivering in the dark. Thank you.'`
+                });
+            } else {
+                qas.push({
+                    question: "Caesar Flickerman: 'You survived on an incredibly lean budget, with very few sponsor parachutes! That is a true testament to your raw self-reliance!'",
+                    answer: `${winner.name}: 'I had to learn how to forage, find water, and rely purely on my own two hands. It was tough, but it taught me what I am truly capable of.'`
+                });
+            }
+
+            qas.push({
+                question: "Caesar Flickerman: 'Well, champion, the crown is yours, and the Capitol is celebrating your triumphant return!'",
+                answer: `${winner.name}: 'Thank you, Caesar. Let the people of the Capitol hear: I am going home.'`
+            });
+        }
+        
+        this.state.epilogueInterview = qas;
     }
 }
