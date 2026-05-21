@@ -8,7 +8,7 @@ import { GameState, Arena, Tribute, Phase, HallOfFameEntry } from './models/type
 import { ARENAS } from './data/constants';
 import { generateTributes } from './engine/generator';
 import { Simulator } from './engine/simulator';
-import { Shield, Swords, Skull, Heart, Droplets, Zap, Brain, Eye, User, Settings, Trophy, Play, FastForward, Activity, MapPin, X } from 'lucide-react';
+import { Shield, Swords, Skull, Heart, Droplets, Zap, Brain, Eye, User, Settings, Trophy, Play, FastForward, Activity, MapPin, X, Users } from 'lucide-react';
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -64,13 +64,19 @@ export default function App() {
             kills: winner.kills,
             date: new Date().toISOString()
           };
-          const existing = JSON.parse(localStorage.getItem('hungerGamesHoF') || '[]');
+          let existing = [];
+          try {
+            existing = JSON.parse(localStorage.getItem('hungerGamesHoF') || '[]');
+            if (!Array.isArray(existing)) existing = [];
+          } catch (e) {
+            existing = [];
+          }
           localStorage.setItem('hungerGamesHoF', JSON.stringify([entry, ...existing]));
         }
       }
     }
     
-    setGameState({ ...simulator.getState() });
+    setGameState(JSON.parse(JSON.stringify(simulator.getState())));
   };
 
   return (
@@ -368,6 +374,7 @@ function GameScreen({ gameState, onNextPhase, simulator, setGameState }: { gameS
                         <span className="flex items-center gap-1"><Heart className="w-3 h-3 text-red-500" /> {t.health}</span>
                         <span className="flex items-center gap-1"><Swords className="w-3 h-3 text-zinc-400" /> {t.kills}</span>
                         <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-blue-400" /> {t.zone}</span>
+                        {t.allianceId && <span className="flex items-center gap-1"><Users className="w-3 h-3 text-emerald-400" /></span>}
                       </>
                     ) : (
                       <span>Day {t.dayOfDeath}</span>
@@ -387,9 +394,16 @@ function GameScreen({ gameState, onNextPhase, simulator, setGameState }: { gameS
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h3 className="text-2xl font-black text-white">{selectedTribute.name}</h3>
-                <p className="text-zinc-400 text-sm flex items-center gap-1 mt-1">
-                  <MapPin className="w-4 h-4" /> {selectedTribute.zone}
-                </p>
+                <div className="flex gap-3 mt-1">
+                  <p className="text-zinc-400 text-sm flex items-center gap-1">
+                    <MapPin className="w-4 h-4" /> {selectedTribute.zone}
+                  </p>
+                  {selectedTribute.allianceId && (
+                    <p className="text-emerald-400 text-sm flex items-center gap-1">
+                      <Users className="w-4 h-4" /> Alliance
+                    </p>
+                  )}
+                </div>
               </div>
               <button onClick={() => setSelectedTribute(null)} className="text-zinc-500 hover:text-white">
                 <X className="w-6 h-6" />
@@ -482,7 +496,13 @@ function HallOfFameScreen() {
   const [entries, setEntries] = useState<HallOfFameEntry[]>([]);
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('hungerGamesHoF') || '[]');
+    let saved = [];
+    try {
+      saved = JSON.parse(localStorage.getItem('hungerGamesHoF') || '[]');
+      if (!Array.isArray(saved)) saved = [];
+    } catch (e) {
+      saved = [];
+    }
     setEntries(saved);
   }, []);
 

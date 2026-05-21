@@ -56,6 +56,7 @@ export interface Tribute {
     causeOfDeath?: string;
     dayOfDeath?: number;
     zone: string;
+    allianceId?: string;
 }
 
 export interface Arena {

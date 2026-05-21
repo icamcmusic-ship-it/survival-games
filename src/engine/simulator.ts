@@ -1,75 +1,7 @@
 import { GameState, Tribute, EventLog, Phase, Item } from '../models/types';
 import { RNG } from '../utils/rng';
 import { ITEMS } from '../data/constants';
-
-const WEAPON_KILL_TEMPLATES: Record<string, string[]> = {
-    'sword': [
-        "{killer} decapitates {victim} with a swift sword strike.",
-        "{killer} runs {victim} through with their sword.",
-        "{killer} wins a brutal sword duel against {victim}."
-    ],
-    'bow': [
-        "{killer} shoots {victim} through the heart from a distance.",
-        "{killer} pins {victim} to a tree with an arrow.",
-        "{victim} is struck by {killer}'s arrow while trying to flee."
-    ],
-    'axe': [
-        "{killer} cleaves {victim}'s skull with an axe.",
-        "{killer} buries their axe into {victim}'s chest.",
-        "{killer} hacks {victim} to pieces."
-    ],
-    'knife': [
-        "{killer} backstabs {victim} with a knife.",
-        "{killer} throws a knife directly into {victim}'s throat.",
-        "{killer} overpowers {victim} and slits their throat."
-    ],
-    'spear': [
-        "{killer} impales {victim} with a spear.",
-        "{killer} throws a spear through {victim}'s chest.",
-        "{killer} catches {victim} off guard and spears them."
-    ],
-    'mace': [
-        "{killer} crushes {victim}'s skull with a mace.",
-        "{killer} shatters {victim}'s ribs with a heavy mace blow.",
-        "{killer} bludgeons {victim} to death."
-    ],
-    'unarmed': [
-        "{killer} strangles {victim} to death.",
-        "{killer} beats {victim} to death with their bare hands.",
-        "{killer} snaps {victim}'s neck in a brutal struggle."
-    ]
-};
-
-const INTERVIEW_SCENARIOS = [
-    {
-        strategy: "The Star-Crossed Lover",
-        success: "{tribute} tells a heartbreaking story about a loved one back home. The audience is moved to tears.",
-        failure: "{tribute} tries to act heartbroken, but it comes off as fake and manipulative.",
-        charismaBuff: 1,
-        trustMultiplier: 1.5
-    },
-    {
-        strategy: "The Ruthless Warrior",
-        success: "{tribute} displays cold confidence and promises a bloodbath. The Careers are impressed.",
-        failure: "{tribute} tries to be intimidating but ends up looking like a try-hard.",
-        charismaBuff: 0,
-        trustMultiplier: 1.2
-    },
-    {
-        strategy: "The Humble Underdog",
-        success: "{tribute} speaks with genuine modesty and determination. Sponsors appreciate the sincerity.",
-        failure: "{tribute} comes across as too weak and unlikely to survive the first hour.",
-        charismaBuff: 1,
-        trustMultiplier: 1.3
-    },
-    {
-        strategy: "The Mysterious Enigma",
-        success: "{tribute} gives short, cryptic answers that leave the audience wanting more.",
-        failure: "{tribute} is so quiet that the interview becomes painfully awkward.",
-        charismaBuff: 0,
-        trustMultiplier: 1.1
-    }
-];
+import { WEAPON_KILL_TEMPLATES, INTERVIEW_SCENARIOS, SURVIVAL_TEXTS, ENCOUNTER_TEXTS, SYSTEM_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 
 export class Simulator {
     private state: GameState;
@@ -140,6 +72,24 @@ export class Simulator {
     public startGames() {
         this.state.phase = 'bloodbath';
         this.state.day = 1;
+        this.initializeCareerAlliance();
+    }
+
+    private initializeCareerAlliance() {
+        const careers = this.getAlive().filter(t => t.isCareer);
+        if (careers.length > 1) {
+            const allianceId = `career-pack-${this.state.seed}`;
+            careers.forEach(t => {
+                t.allianceId = allianceId;
+                // Set initial positive relationships within the pack
+                careers.forEach(other => {
+                    if (t.id !== other.id) {
+                        t.relationships[other.id] = 50;
+                    }
+                });
+            });
+            this.logEvent("The Careers from Districts 1, 2, and 4 have formed a lethal pack.", careers.map(c => c.id), true);
+        }
     }
 
     public processBloodbath() {
@@ -181,6 +131,8 @@ export class Simulator {
             const t2 = fighters.splice(this.rng.nextInt(0, fighters.length - 1), 1)[0];
 
             this.resolveCombat(t1, t2, true);
+            if (t1.status === 'alive') fighters.push(t1);
+            if (t2.status === 'alive') fighters.push(t2);
         }
 
         if (fighters.length === 1) {
@@ -252,6 +204,14 @@ export class Simulator {
             killer.kills += 1;
             killer.excitementRating += 20;
             victim.causeOfDeath = `Killed by ${killer.name}`;
+
+            // Trauma Triggers
+            if (killer.traits.includes('Pacifist')) {
+                killer.vitals.sanity -= 40;
+                this.logEvent(`${killer.name} is deeply traumatized by the act of killing.`, [killer.id]);
+            } else if (!killer.isCareer) {
+                killer.vitals.sanity -= 10;
+            }
             
             const weaponType = weapon ? weapon.id : 'unarmed';
             const templates = WEAPON_KILL_TEMPLATES[weaponType] || WEAPON_KILL_TEMPLATES['unarmed'];
@@ -280,6 +240,8 @@ export class Simulator {
     }
 
     public processTurn() {
+        this.processAlliances();
+
         if (this.state.phase === 'day') {
             this.processDayNight('day');
             this.state.phase = 'night';
@@ -299,6 +261,63 @@ export class Simulator {
                 this.logEvent(`The Hunger Games are over! ${winner.name} is the victor!`, [winner.id], true);
             } else {
                 this.logEvent(`The Hunger Games are over! There are no survivors.`, [], true);
+            }
+        }
+    }
+
+    private processAlliances() {
+        const alive = this.getAlive();
+        const alliances = new Map<string, Tribute[]>();
+
+        alive.forEach(t => {
+            if (t.allianceId) {
+                if (!alliances.has(t.allianceId)) alliances.set(t.allianceId, []);
+                alliances.get(t.allianceId)!.push(t);
+            }
+        });
+
+        // 1. Dissolve small alliances
+        alliances.forEach((members, id) => {
+            if (members.length < 2) {
+                members.forEach(m => delete m.allianceId);
+                alliances.delete(id);
+            }
+        });
+
+        // 2. Betrayal Logic
+        alliances.forEach((members, id) => {
+            // Betrayal chance increases as fewer tributes remain
+            const betrayalThreshold = alive.length <= 4 ? 0.3 : 0.05;
+            
+            if (this.rng.chance(betrayalThreshold)) {
+                const betrayer = this.rng.pick(members);
+                const victim = this.rng.pick(members.filter(m => m.id !== betrayer.id));
+                
+                if (victim) {
+                    this.logEvent(`${betrayer.name} betrays the alliance and attacks ${victim.name}!`, [betrayer.id, victim.id], true);
+                    delete betrayer.allianceId; // Betrayer leaves
+                    this.resolveCombat(betrayer, victim);
+                }
+            }
+        });
+
+        // 3. Dynamic Alliance Formation
+        if (alive.length > 4) {
+            for (let i = 0; i < alive.length; i++) {
+                for (let j = i + 1; j < alive.length; j++) {
+                    const t1 = alive[i];
+                    const t2 = alive[j];
+                    
+                    if (!t1.allianceId && !t2.allianceId) {
+                        const rel = t1.relationships[t2.id] || 0;
+                        if (rel > 40 && this.rng.chance(0.2)) {
+                            const newId = `alliance-${t1.id}-${t2.id}`;
+                            t1.allianceId = newId;
+                            t2.allianceId = newId;
+                            this.logEvent(`${t1.name} and ${t2.name} form a formal alliance.`, [t1.id, t2.id], true);
+                        }
+                    }
+                }
             }
         }
     }
@@ -327,6 +346,8 @@ export class Simulator {
             const t1 = shuffled.splice(this.rng.nextInt(0, shuffled.length - 1), 1)[0];
             const t2 = shuffled.splice(this.rng.nextInt(0, shuffled.length - 1), 1)[0];
             this.resolveCombat(t1, t2);
+            if (t1.status === 'alive') shuffled.push(t1);
+            if (t2.status === 'alive') shuffled.push(t2);
         }
 
         if (shuffled.length === 1) {
@@ -366,7 +387,7 @@ export class Simulator {
             let fatigueDrain = time === 'day' ? 10 : -20;
 
             if (this.state.arena.id === 'frozen') {
-                const hasWarmth = t.inventory.some(i => i.id === 'matches' || i.id === 'fire');
+                const hasWarmth = t.inventory.some(i => i.id === 'matches');
                 if (!hasWarmth) {
                     fatigueDrain += 10;
                     t.health -= 5;
@@ -385,6 +406,7 @@ export class Simulator {
             t.vitals.hunger += hungerDrain;
             t.vitals.thirst += thirstDrain;
             t.vitals.fatigue += fatigueDrain;
+            t.vitals.sanity -= 5; // Base sanity drain
             
             if (t.vitals.hunger > 80) t.health -= 5;
             if (t.vitals.thirst > 80) t.health -= 10;
@@ -437,7 +459,28 @@ export class Simulator {
             }
 
             // Movement
-            if (t.stance === 'Evasive' || this.rng.chance(0.5)) {
+            if (t.vitals.sanity < 30 && this.rng.chance(0.4)) {
+                this.handleInsanity(t);
+                acted.add(t.id);
+                return;
+            }
+
+            if (t.allianceId) {
+                // Alliance members move together
+                const allianceMembers = currentAlive.filter(m => m.allianceId === t.allianceId);
+                const leader = allianceMembers[0]; // Simple leader logic
+                if (t.id === leader.id) {
+                    if (t.stance === 'Evasive' || this.rng.chance(0.5)) {
+                        const newZone = this.rng.pick(this.state.arena.zones);
+                        if (t.zone !== newZone) {
+                            allianceMembers.forEach(m => m.zone = newZone);
+                            if (t.stance !== 'Evasive') {
+                                this.logEvent(`The alliance of ${allianceMembers.map(m => m.name).join(', ')} travels to ${newZone}.`, allianceMembers.map(m => m.id));
+                            }
+                        }
+                    }
+                }
+            } else if (t.stance === 'Evasive' || this.rng.chance(0.5)) {
                 const newZone = this.rng.pick(this.state.arena.zones);
                 if (t.zone !== newZone) {
                     t.zone = newZone;
@@ -486,25 +529,40 @@ export class Simulator {
             if (others.length > 0 && this.rng.chance(0.4)) {
                 const other = others[0];
                 
-                // Career Alliance Logic
-                const isCareerAlliance = t.isCareer && other.isCareer && currentAlive.length > 8;
+                // Alliance Logic
+                const inSameAlliance = t.allianceId && t.allianceId === other.allianceId;
                 
                 // Grudge/Debt Logic
                 const relationship = t.relationships[other.id] || 0;
 
-                if (isCareerAlliance) {
-                    this.logEvent(`${t.name} and ${other.name} patrol ${t.zone} together.`, [t.id, other.id]);
+                if (inSameAlliance) {
+                    // Share resources within alliance
+                    const tHungry = t.vitals.hunger > 40;
+                    const oHasFood = other.inventory.some(i => i.type === 'food');
+                    if (tHungry && oHasFood) {
+                        const foodIdx = other.inventory.findIndex(i => i.type === 'food');
+                        const food = other.inventory.splice(foodIdx, 1)[0];
+                        t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
+                        this.logEvent(`${other.name} shares their ${food.name} with ${t.name}.`, [t.id, other.id]);
+                    }
+                    this.logEvent(`${t.name} and ${other.name} support each other in ${t.zone}.`, [t.id, other.id]);
                 } else if (relationship > 20) {
-                    this.logEvent(`${t.name} and ${other.name} share resources in ${t.zone}.`, [t.id, other.id]);
+                    const template = this.rng.pick(ENCOUNTER_TEXTS.shareResources);
+                    const text = template.replace('{t1}', t.name).replace('{t2}', other.name).replace('{zone}', t.zone);
+                    this.logEvent(text, [t.id, other.id]);
                     t.vitals.hunger = Math.max(0, t.vitals.hunger - 10);
                     other.vitals.hunger = Math.max(0, other.vitals.hunger - 10);
                 } else if (t.stance === 'Aggressive' || other.stance === 'Aggressive' || relationship < -10) {
                     this.resolveCombat(t, other);
                 } else {
                     if (this.rng.chance(0.5)) {
-                        this.logEvent(`${t.name} and ${other.name} spot each other in ${t.zone} but decide not to fight.`, [t.id, other.id]);
+                        const template = this.rng.pick(ENCOUNTER_TEXTS.peaceful);
+                        const text = template.replace('{t1}', t.name).replace('{t2}', other.name).replace('{zone}', t.zone);
+                        this.logEvent(text, [t.id, other.id]);
                     } else {
-                        this.logEvent(`${t.name} and ${other.name} share a moment of peace.`, [t.id, other.id]);
+                        const template = this.rng.pick(ENCOUNTER_TEXTS.friendly);
+                        const text = template.replace('{t1}', t.name).replace('{t2}', other.name).replace('{zone}', t.zone);
+                        this.logEvent(text, [t.id, other.id]);
                         t.vitals.sanity = Math.min(100, t.vitals.sanity + 10);
                         other.vitals.sanity = Math.min(100, other.vitals.sanity + 10);
                         t.relationships[other.id] = (t.relationships[other.id] || 0) + 10;
@@ -533,6 +591,37 @@ export class Simulator {
         });
 
         this.processSponsors();
+    }
+
+    private handleInsanity(t: Tribute) {
+        const roll = this.rng.nextFloat();
+        if (roll < 0.4) {
+            // Hallucination
+            const template = this.rng.pick(SANITY_TEXTS.hallucination);
+            const text = template.replace('{tribute}', t.name).replace('{zone}', t.zone);
+            this.logEvent(text, [t.id], true);
+            t.vitals.sanity -= 5;
+        } else if (roll < 0.7) {
+            // Ruin Stealth
+            const template = this.rng.pick(SANITY_TEXTS.ruinStealth);
+            const text = template.replace('{tribute}', t.name).replace('{zone}', t.zone);
+            this.logEvent(text, [t.id], true);
+            t.attributes.stealth = Math.max(0, t.attributes.stealth - 2);
+            // Alert others - increase encounter chance in this zone? 
+            // For now just log it as important.
+        } else if (t.inventory.length > 0) {
+            // Drop Item
+            const itemIdx = this.rng.nextInt(0, t.inventory.length - 1);
+            const item = t.inventory.splice(itemIdx, 1)[0];
+            const template = this.rng.pick(SANITY_TEXTS.dropItem);
+            const text = template.replace('{tribute}', t.name).replace('{item}', item.name).replace('{zone}', t.zone);
+            this.logEvent(text, [t.id], true);
+        } else {
+            // Default to hallucination if no items
+            const template = this.rng.pick(SANITY_TEXTS.hallucination);
+            const text = template.replace('{tribute}', t.name).replace('{zone}', t.zone);
+            this.logEvent(text, [t.id], true);
+        }
     }
 
     private processSponsors() {
