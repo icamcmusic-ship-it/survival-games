@@ -60,6 +60,34 @@ export function RosterScreen({
                 </div>
             )}
 
+            {phase === 'interviews' && (
+                <div className="bg-zinc-900 border border-yellow-600/30 rounded-xl p-5 space-y-3">
+                    <h3 className="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2">
+                        📊 Final Odds Board
+                    </h3>
+                    <p className="text-zinc-400 text-xs">
+                        Training scores and interview performance are locked in. Betting has closed — here is how the Capitol rates each tribute's chances.
+                    </p>
+                    <div className="space-y-1.5">
+                        {[...tributes]
+                            .sort((a, b) => getOddsAndMultiplier(b).pct - getOddsAndMultiplier(a).pct)
+                            .map((t, idx) => {
+                                const { pct, mult } = getOddsAndMultiplier(t);
+                                return (
+                                    <div key={t.id} className="flex items-center justify-between bg-zinc-950 border border-zinc-850 rounded px-3 py-1.5 text-sm">
+                                        <span className="flex items-center gap-2">
+                                            <span className="text-zinc-500 font-mono text-xs">#{idx + 1}</span>
+                                            <span className="text-white font-semibold">{t.name}</span>
+                                            <span className="text-zinc-500 text-xs">(D{t.district})</span>
+                                        </span>
+                                        <span className="font-mono text-xs text-yellow-500 font-bold">{pct}% · {mult.toFixed(1)}x</span>
+                                    </div>
+                                );
+                            })}
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {tributes.map(t => {
                     const { pct, mult } = getOddsAndMultiplier(t);
@@ -161,6 +189,13 @@ export function RosterScreen({
                                             Wagered: {currentBet} Coins (Est. Returns: {Math.floor(currentBet * mult)} Coins)
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {phase === 'interviews' && (
+                                <div className="mt-2 pt-3 border-t border-zinc-800/80 flex justify-between text-zinc-500 font-mono text-[10px]">
+                                    <span>Final Odds</span>
+                                    <span className="text-yellow-500 font-bold">{pct}% ({mult.toFixed(1)}x)</span>
                                 </div>
                             )}
                         </div>
