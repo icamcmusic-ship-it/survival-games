@@ -1,9 +1,16 @@
-import { GameState, GameConfig, HallOfFameEntry } from '../models/types';
+import { GameState, GameConfig, HallOfFameEntry, Arena } from '../models/types';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { generateTributes } from '../engine/generator';
 import { Simulator } from '../engine/simulator';
 import { computeOddsScore } from '../engine/odds';
+import { parseProceduralArenaId, generateProceduralArena } from '../data/proceduralArena';
 import { createStore } from './createStore';
+
+function resolveArena(seed: string, arenaId: string): Arena {
+    const procedural = parseProceduralArenaId(arenaId);
+    if (procedural) return generateProceduralArena(seed, procedural.biome, procedural.size, procedural.hazard);
+    return ARENAS.find(a => a.id === arenaId) || ARENAS[0];
+}
 
 export type ViewName = 'setup' | 'roster' | 'game' | 'hallOfFame';
 
@@ -74,7 +81,7 @@ export const gameActions = {
     },
 
     startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false) {
-        const arena = ARENAS.find(a => a.id === arenaId) || ARENAS[0];
+        const arena = resolveArena(seed, arenaId);
         const tributes = generateTributes(seed, config);
 
         const initialState: GameState = {

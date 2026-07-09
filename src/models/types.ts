@@ -46,10 +46,13 @@ export interface Injuries {
     exhausted: boolean;
 }
 
+export type WeaponSubtype = 'melee' | 'ranged' | 'thrown';
+
 export interface Item {
     id: string;
     name: string;
     type: 'weapon' | 'food' | 'water' | 'medical' | 'utility';
+    subtype?: WeaponSubtype;
     durability?: number;
     spoilage?: number;
     value: number;

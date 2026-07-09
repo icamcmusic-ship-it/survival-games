@@ -47,6 +47,43 @@ export const WEAPON_KILL_TEMPLATES: Record<string, string[]> = {
         "{killer} snaps {victim}'s neck in a brutal struggle.",
         "{killer} tackles {victim} off a ledge, surviving the fall while {victim} perishes.",
         "{victim} exhausts themselves fighting {killer}, who easily overpowers them."
+    ],
+    'trident': [
+        "{killer} skewers {victim} with a three-pronged trident.",
+        "{killer} traps {victim} against a wall with a trident and finishes them off.",
+        "{killer} hurls a trident clean through {victim}'s chest.",
+        "{victim} is cornered near the water and run through by {killer}'s trident."
+    ],
+    'crossbow': [
+        "{killer} fires a crossbow bolt straight through {victim}'s skull.",
+        "{victim} never hears the crossbow bolt that ends them.",
+        "{killer} reloads calmly after dropping {victim} with a single bolt.",
+        "{killer} lines up a perfect shot and drops {victim} from the treeline."
+    ],
+    'whip': [
+        "{killer} lashes {victim} until they collapse, then finishes the job.",
+        "{killer} disarms {victim} with a whip crack and closes in for the kill.",
+        "{victim} is dragged off their feet by {killer}'s whip and overpowered."
+    ],
+    'machete': [
+        "{killer} hacks through the brush and through {victim} in one motion.",
+        "{killer} delivers a brutal machete strike to {victim}'s neck.",
+        "{victim} is cut down mid-sprint by {killer}'s machete."
+    ],
+    'sickle': [
+        "{killer} catches {victim} across the throat with a sickle.",
+        "{killer} hooks {victim}'s leg with a sickle and finishes them on the ground.",
+        "{victim} is caught off guard by {killer}'s curved blade."
+    ],
+    'warhammer': [
+        "{killer} crushes {victim} under a single warhammer blow.",
+        "{killer} shatters {victim}'s ribcage with a two-handed warhammer swing.",
+        "{victim} is flattened before they can even raise a defense against {killer}."
+    ],
+    'blowgun': [
+        "{killer} silently drops {victim} with a poisoned dart.",
+        "{victim} never sees {killer} in the brush before the dart lands.",
+        "{killer} waits patiently, then ends {victim} with a single blowgun shot."
     ]
 };
 

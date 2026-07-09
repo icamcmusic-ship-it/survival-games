@@ -15,8 +15,17 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
     const t1Weapon = t1.inventory.find(i => i.type === 'weapon');
     const t2Weapon = t2.inventory.find(i => i.type === 'weapon');
 
-    let t1Power = t1.attributes.strength + t1.attributes.agility + (t1Weapon ? t1Weapon.value / 10 : 0) + ctx.rng.nextInt(0, 5) + getArchetypeModifiers(t1).combatPower;
-    let t2Power = t2.attributes.strength + t2.attributes.agility + (t2Weapon ? t2Weapon.value / 10 : 0) + ctx.rng.nextInt(0, 5) + getArchetypeModifiers(t2).combatPower;
+    // Ranged/thrown weapons reward agility (accuracy); melee rewards raw strength.
+    const weaponPower = (t: Tribute, weapon?: Item) => {
+        if (!weapon) return 0;
+        const base = weapon.value / 10;
+        if (weapon.subtype === 'ranged') return base + t.attributes.agility * 0.3;
+        if (weapon.subtype === 'thrown') return base + t.attributes.agility * 0.15;
+        return base;
+    };
+
+    let t1Power = t1.attributes.strength + t1.attributes.agility + weaponPower(t1, t1Weapon) + ctx.rng.nextInt(0, 5) + getArchetypeModifiers(t1).combatPower;
+    let t2Power = t2.attributes.strength + t2.attributes.agility + weaponPower(t2, t2Weapon) + ctx.rng.nextInt(0, 5) + getArchetypeModifiers(t2).combatPower;
 
     // Injury penalties
     if (t1.injuries.arms) t1Power -= 2;

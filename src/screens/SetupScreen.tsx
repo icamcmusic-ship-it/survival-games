@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { GameConfig } from '../models/types';
+import { ARENA_BIOMES, ARENA_SIZES, HAZARD_DENSITIES, ArenaBiome, ArenaSize, HazardDensity, proceduralArenaId } from '../data/proceduralArena';
 import { Play } from 'lucide-react';
 
 function ConfigSlider({ label, value, min, max, step, format, onChange }: {
@@ -28,10 +29,16 @@ function ConfigSlider({ label, value, min, max, step, format, onChange }: {
 
 export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig) => void }) {
     const [seed, setSeed] = useState(Math.random().toString(36).substring(2, 8).toUpperCase());
+    const [arenaSource, setArenaSource] = useState<'preset' | 'procedural'>('preset');
     const [arenaId, setArenaId] = useState(ARENAS[0].id);
+    const [biome, setBiome] = useState<ArenaBiome>('forest');
+    const [size, setSize] = useState<ArenaSize>('medium');
+    const [hazardDensity, setHazardDensity] = useState<HazardDensity>('medium');
     const [gamemakerMode, setGamemakerMode] = useState(false);
     const [config, setConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
     const [showAdvanced, setShowAdvanced] = useState(false);
+
+    const resolvedArenaId = arenaSource === 'preset' ? arenaId : proceduralArenaId(biome, size, hazardDensity);
 
     return (
         <div className="max-w-2xl mx-auto space-y-8">
@@ -60,19 +67,85 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500">Select Arena</label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {ARENAS.map(a => (
-                            <button
-                                key={a.id}
-                                onClick={() => setArenaId(a.id)}
-                                className={`p-4 rounded-lg border text-left transition-all ${arenaId === a.id ? 'bg-red-950/30 border-red-500/50' : 'bg-zinc-950 border-zinc-800 hover:border-zinc-600'}`}
-                            >
-                                <h3 className="font-bold text-white mb-1">{a.name}</h3>
-                                <p className="text-xs text-zinc-400 line-clamp-2">{a.description}</p>
-                            </button>
-                        ))}
+                    <div className="flex justify-between items-center">
+                        <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500">Select Arena</label>
+                        <div className="inline-flex rounded-lg bg-zinc-950 p-1 border border-zinc-850">
+                            {(['preset', 'procedural'] as const).map(s => (
+                                <button
+                                    key={s}
+                                    onClick={() => setArenaSource(s)}
+                                    className={`px-3 py-1 rounded-md font-bold text-[10px] uppercase tracking-wider transition-colors ${arenaSource === s ? 'bg-red-600/20 text-red-400 border border-red-900/40' : 'text-zinc-500 hover:text-zinc-300 border border-transparent'}`}
+                                >
+                                    {s === 'preset' ? 'Preset' : 'Procedural'}
+                                </button>
+                            ))}
+                        </div>
                     </div>
+
+                    {arenaSource === 'preset' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {ARENAS.map(a => (
+                                <button
+                                    key={a.id}
+                                    onClick={() => setArenaId(a.id)}
+                                    className={`p-4 rounded-lg border text-left transition-all ${arenaId === a.id ? 'bg-red-950/30 border-red-500/50' : 'bg-zinc-950 border-zinc-800 hover:border-zinc-600'}`}
+                                >
+                                    <h3 className="font-bold text-white mb-1">{a.name}</h3>
+                                    <p className="text-xs text-zinc-400 line-clamp-2">{a.description}</p>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 space-y-4">
+                            <div className="space-y-2">
+                                <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">Biome</span>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {ARENA_BIOMES.map(b => (
+                                        <button
+                                            key={b}
+                                            onClick={() => setBiome(b)}
+                                            className={`py-1.5 rounded border text-xs capitalize transition-colors ${biome === b ? 'bg-red-950/30 border-red-500/50 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'}`}
+                                        >
+                                            {b}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">Size</span>
+                                    <div className="flex gap-2">
+                                        {ARENA_SIZES.map(s => (
+                                            <button
+                                                key={s}
+                                                onClick={() => setSize(s)}
+                                                className={`flex-1 py-1.5 rounded border text-xs capitalize transition-colors ${size === s ? 'bg-red-950/30 border-red-500/50 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'}`}
+                                            >
+                                                {s}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">Hazard Density</span>
+                                    <div className="flex gap-2">
+                                        {HAZARD_DENSITIES.map(h => (
+                                            <button
+                                                key={h}
+                                                onClick={() => setHazardDensity(h)}
+                                                className={`flex-1 py-1.5 rounded border text-xs capitalize transition-colors ${hazardDensity === h ? 'bg-red-950/30 border-red-500/50 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'}`}
+                                            >
+                                                {h}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="text-[11px] text-zinc-500">
+                                A unique map is generated from your seed each time — same seed + settings always reproduces the same arena.
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-2 pt-4 border-t border-zinc-800">
@@ -156,7 +229,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                 </div>
 
                 <button
-                    onClick={() => onStart(seed, arenaId, gamemakerMode, config)}
+                    onClick={() => onStart(seed, resolvedArenaId, gamemakerMode, config)}
                     className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-bold uppercase tracking-widest rounded-lg transition-colors flex items-center justify-center gap-2 mt-8"
                 >
                     <Play className="w-5 h-5" />
