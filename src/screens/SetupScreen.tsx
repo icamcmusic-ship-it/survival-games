@@ -1,11 +1,37 @@
 import React, { useState } from 'react';
-import { ARENAS } from '../data/constants';
+import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
+import { GameConfig } from '../models/types';
 import { Play } from 'lucide-react';
 
-export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: string, gamemakerMode: boolean) => void }) {
+function ConfigSlider({ label, value, min, max, step, format, onChange }: {
+    label: string, value: number, min: number, max: number, step: number,
+    format: (v: number) => string, onChange: (v: number) => void
+}) {
+    return (
+        <div className="space-y-1">
+            <div className="flex justify-between text-xs">
+                <span className="text-zinc-400 font-semibold">{label}</span>
+                <span className="text-white font-mono">{format(value)}</span>
+            </div>
+            <input
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                onChange={(e) => onChange(Number(e.target.value))}
+                className="w-full accent-red-500"
+            />
+        </div>
+    );
+}
+
+export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig) => void }) {
     const [seed, setSeed] = useState(Math.random().toString(36).substring(2, 8).toUpperCase());
     const [arenaId, setArenaId] = useState(ARENAS[0].id);
     const [gamemakerMode, setGamemakerMode] = useState(false);
+    const [config, setConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
     return (
         <div className="max-w-2xl mx-auto space-y-8">
@@ -67,8 +93,70 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     </label>
                 </div>
 
+                <div className="space-y-3 pt-4 border-t border-zinc-800">
+                    <button
+                        onClick={() => setShowAdvanced(v => !v)}
+                        className="text-xs uppercase tracking-widest font-semibold text-zinc-500 hover:text-zinc-300 transition-colors"
+                    >
+                        {showAdvanced ? '▾' : '▸'} Advanced Simulation Settings
+                    </button>
+
+                    {showAdvanced && (
+                        <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 space-y-4">
+                            <ConfigSlider
+                                label="Districts (2 tributes each)"
+                                value={config.districtCount}
+                                min={2} max={12} step={1}
+                                format={(v) => `${v} districts (${v * 2} tributes)`}
+                                onChange={(v) => setConfig(c => ({ ...c, districtCount: v }))}
+                            />
+                            <ConfigSlider
+                                label="Hazard Rate"
+                                value={config.hazardRate}
+                                min={0.25} max={2.5} step={0.25}
+                                format={(v) => `${v.toFixed(2)}x`}
+                                onChange={(v) => setConfig(c => ({ ...c, hazardRate: v }))}
+                            />
+                            <ConfigSlider
+                                label="Alliance Betrayal Rate"
+                                value={config.betrayalRate}
+                                min={0} max={3} step={0.25}
+                                format={(v) => `${v.toFixed(2)}x`}
+                                onChange={(v) => setConfig(c => ({ ...c, betrayalRate: v }))}
+                            />
+                            <ConfigSlider
+                                label="Sponsor Generosity"
+                                value={config.sponsorGenerosity}
+                                min={0} max={3} step={0.25}
+                                format={(v) => `${v.toFixed(2)}x`}
+                                onChange={(v) => setConfig(c => ({ ...c, sponsorGenerosity: v }))}
+                            />
+                            <div className="flex gap-4 pt-2">
+                                <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={config.enableFeast}
+                                        onChange={(e) => setConfig(c => ({ ...c, enableFeast: e.target.checked }))}
+                                        className="rounded bg-zinc-950 border-zinc-800 text-red-600"
+                                    />
+                                    Allow Feast Events
+                                </label>
+                                <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={config.enableSanity}
+                                        onChange={(e) => setConfig(c => ({ ...c, enableSanity: e.target.checked }))}
+                                        className="rounded bg-zinc-950 border-zinc-800 text-red-600"
+                                    />
+                                    Enable Sanity Breakdowns
+                                </label>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 <button
-                    onClick={() => onStart(seed, arenaId, gamemakerMode)}
+                    onClick={() => onStart(seed, arenaId, gamemakerMode, config)}
                     className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-bold uppercase tracking-widest rounded-lg transition-colors flex items-center justify-center gap-2 mt-8"
                 >
                     <Play className="w-5 h-5" />

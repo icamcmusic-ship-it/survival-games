@@ -34,11 +34,16 @@ export interface Item {
     value: number;
 }
 
+export type Build = 'Frail' | 'Slight' | 'Average' | 'Athletic' | 'Stocky' | 'Muscular';
+
 export interface Tribute {
     id: string;
     district: number;
     gender: Gender;
     name: string;
+    age: number;
+    heightCm: number;
+    build: Build;
     isCareer: boolean;
     attributes: Attributes;
     traits: string[];
@@ -68,7 +73,16 @@ export interface Arena {
     zones: string[];
 }
 
-export type Phase = 'setup' | 'roster' | 'training' | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'epilogue' | 'ended';
+export type Phase = 'setup' | 'roster' | 'reaping' | 'training' | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'epilogue' | 'ended';
+
+export interface GameConfig {
+    districtCount: number; // 1-12, each district reaps 2 tributes
+    hazardRate: number; // multiplier on random event/mutt attack chance
+    betrayalRate: number; // multiplier on alliance betrayal chance
+    sponsorGenerosity: number; // multiplier on sponsor gift chance
+    enableFeast: boolean;
+    enableSanity: boolean;
+}
 
 export interface GameState {
     seed: string;
@@ -78,6 +92,7 @@ export interface GameState {
     day: number;
     log: EventLog[];
     gamemakerMode: boolean;
+    config: GameConfig;
     collapsedZones?: string[];
     epilogueInterview?: EpilogueQA[];
 }

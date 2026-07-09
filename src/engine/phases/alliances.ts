@@ -24,7 +24,7 @@ export function processAlliances(ctx: SimContext) {
     // 2. Betrayal Logic
     alliances.forEach((members) => {
         // Betrayal chance increases as fewer tributes remain
-        const betrayalThreshold = alive.length <= 4 ? 0.3 : 0.05;
+        const betrayalThreshold = (alive.length <= 4 ? 0.3 : 0.05) * ctx.state.config.betrayalRate;
 
         if (ctx.rng.chance(betrayalThreshold)) {
             const betrayer = ctx.rng.pick(members);

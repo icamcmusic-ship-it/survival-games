@@ -19,7 +19,7 @@ export function EndScreen({
         .sort((a, b) => b.kills - a.kills)
         .filter(t => t.kills > 0);
 
-    const lastStandingPerDistrict = Array.from({ length: 12 }, (_, i) => {
+    const lastStandingPerDistrict = Array.from({ length: gameState.config.districtCount }, (_, i) => {
         const dist = i + 1;
         const distTributes = gameState.tributes.filter(t => t.district === dist);
         const survivor = distTributes.find(t => t.status === 'alive');
@@ -199,7 +199,7 @@ export function EndScreen({
                                 {sortedCauses.map(([cause, count]) => (
                                     <div key={cause} className="flex justify-between text-zinc-400 py-1.5 border-b border-zinc-800/60 font-mono">
                                         <span className="text-zinc-300">{cause}</span>
-                                        <span className="text-white font-bold">{count} tributes ({Math.round(count / 24 * 100)}%)</span>
+                                        <span className="text-white font-bold">{count} tributes ({Math.round(count / gameState.tributes.length * 100)}%)</span>
                                     </div>
                                 ))}
                             </div>

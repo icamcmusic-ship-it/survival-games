@@ -152,7 +152,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         }
 
         // Movement
-        if (t.vitals.sanity < 30 && ctx.rng.chance(0.4)) {
+        if (ctx.state.config.enableSanity && t.vitals.sanity < 30 && ctx.rng.chance(0.4)) {
             handleInsanity(ctx, t);
             acted.add(t.id);
             return;
@@ -202,6 +202,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             eventChance = Math.min(0.35, eventChance * multiplier);
             muttChance = Math.min(0.35, muttChance * multiplier);
         }
+        eventChance = Math.min(0.9, eventChance * ctx.state.config.hazardRate);
+        muttChance = Math.min(0.9, muttChance * ctx.state.config.hazardRate);
 
         if (ctx.rng.chance(eventChance)) {
             const event = ctx.rng.pick(ctx.state.arena.events);

@@ -7,6 +7,7 @@ import React, { useEffect } from 'react';
 import { Swords } from 'lucide-react';
 import { ShareButton } from './components/ShareButton';
 import { SetupScreen } from './screens/SetupScreen';
+import { ReapingScreen } from './screens/ReapingScreen';
 import { RosterScreen } from './screens/RosterScreen';
 import { GameScreen } from './screens/GameScreen';
 import { EndScreen } from './screens/EndScreen';
@@ -14,6 +15,7 @@ import { HallOfFameScreen } from './screens/HallOfFameScreen';
 import { VictorInterviewScreen } from './screens/VictorInterviewScreen';
 import { gameActions, gameStore } from './store/gameStore';
 import { useStore } from './store/createStore';
+import { DEFAULT_GAME_CONFIG } from './data/constants';
 
 export default function App() {
   const gameState = useStore(gameStore, s => s.gameState);
@@ -31,7 +33,7 @@ export default function App() {
     const urlArena = params.get('arena');
     const urlGamemaker = params.get('gamemaker') === 'true';
     if (urlSeed && urlArena) {
-      gameActions.startGame(urlSeed, urlArena, urlGamemaker, true);
+      gameActions.startGame(urlSeed, urlArena, urlGamemaker, DEFAULT_GAME_CONFIG, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -66,8 +68,15 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto p-4 py-8">
-        {view === 'setup' && <SetupScreen onStart={(seed, arenaId, gamemakerMode) => gameActions.startGame(seed, arenaId, gamemakerMode)} />}
-        {view === 'roster' && gameState && (
+        {view === 'setup' && <SetupScreen onStart={(seed, arenaId, gamemakerMode, config) => gameActions.startGame(seed, arenaId, gamemakerMode, config)} />}
+        {view === 'roster' && gameState && gameState.phase === 'reaping' && (
+          <ReapingScreen
+            tributes={gameState.tributes}
+            onReroll={gameActions.rerollCast}
+            onConfirm={gameActions.confirmReaping}
+          />
+        )}
+        {view === 'roster' && gameState && gameState.phase !== 'reaping' && (
           <RosterScreen
             tributes={gameState.tributes}
             phase={gameState.phase}

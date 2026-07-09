@@ -1,5 +1,5 @@
-import { GameState, HallOfFameEntry } from '../models/types';
-import { ARENAS } from '../data/constants';
+import { GameState, GameConfig, HallOfFameEntry } from '../models/types';
+import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { generateTributes } from '../engine/generator';
 import { Simulator } from '../engine/simulator';
 import { createStore } from './createStore';
@@ -84,18 +84,19 @@ export const gameActions = {
         gameStore.setState({ coins });
     },
 
-    startGame(seed: string, arenaId: string, gamemakerMode: boolean, markReplayed = false) {
+    startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false) {
         const arena = ARENAS.find(a => a.id === arenaId) || ARENAS[0];
-        const tributes = generateTributes(seed);
+        const tributes = generateTributes(seed, config);
 
         const initialState: GameState = {
             seed,
             arena,
             tributes,
-            phase: 'setup',
+            phase: 'reaping',
             day: 0,
             log: [],
-            gamemakerMode
+            gamemakerMode,
+            config,
         };
 
         gameStore.setState({
@@ -106,6 +107,26 @@ export const gameActions = {
             betWonMessage: null,
             isReplayedRun: markReplayed || gameStore.getState().isReplayedRun,
         });
+    },
+
+    rerollCast() {
+        const { gameState } = gameStore.getState();
+        if (!gameState || gameState.phase !== 'reaping') return;
+
+        const baseSeed = gameState.seed.split('~')[0];
+        const newSeed = `${baseSeed}~${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+        const tributes = generateTributes(newSeed, gameState.config);
+        const newState: GameState = { ...gameState, seed: newSeed, tributes, log: [] };
+
+        gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });
+    },
+
+    confirmReaping() {
+        const { gameState } = gameStore.getState();
+        if (!gameState || gameState.phase !== 'reaping') return;
+
+        const newState: GameState = { ...gameState, phase: 'setup' };
+        gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });
     },
 
     syncFromSimulator() {

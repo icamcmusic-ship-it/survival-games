@@ -31,6 +31,7 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
             t.vitals.sanity -= 10;
         });
     } else if (type === 'feast') {
+        if (!ctx.state.config.enableFeast) return;
         ctx.logEvent(`GAMEMAKER: A feast is announced at the Cornucopia!`, [], true);
         ctx.state.phase = 'feast';
     }
