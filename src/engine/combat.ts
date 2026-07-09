@@ -1,6 +1,7 @@
 import { Tribute, Item } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES } from '../data/flavorText';
+import { getArchetypeModifiers } from '../data/archetypes';
 
 export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBloodbath: boolean = false) {
     if (t1.status === 'dead' || t2.status === 'dead') return;
@@ -14,8 +15,8 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
     const t1Weapon = t1.inventory.find(i => i.type === 'weapon');
     const t2Weapon = t2.inventory.find(i => i.type === 'weapon');
 
-    let t1Power = t1.attributes.strength + t1.attributes.agility + (t1Weapon ? t1Weapon.value / 10 : 0) + ctx.rng.nextInt(0, 5);
-    let t2Power = t2.attributes.strength + t2.attributes.agility + (t2Weapon ? t2Weapon.value / 10 : 0) + ctx.rng.nextInt(0, 5);
+    let t1Power = t1.attributes.strength + t1.attributes.agility + (t1Weapon ? t1Weapon.value / 10 : 0) + ctx.rng.nextInt(0, 5) + getArchetypeModifiers(t1).combatPower;
+    let t2Power = t2.attributes.strength + t2.attributes.agility + (t2Weapon ? t2Weapon.value / 10 : 0) + ctx.rng.nextInt(0, 5) + getArchetypeModifiers(t2).combatPower;
 
     // Injury penalties
     if (t1.injuries.arms) t1Power -= 2;

@@ -16,6 +16,22 @@ export interface Vitals {
     sanity: number; // 0-100, 0 is insane
 }
 
+export interface ArchetypeModifiers {
+    combatPower?: number; // added to power roll in combat resolution
+    sponsorAppeal?: number; // added to sponsor gift chance (percentage points)
+    sanityDrainMod?: number; // added to base per-turn sanity drain (negative = drains less)
+    trainingBonus?: number; // added to training score
+    interviewBonus?: number; // added to interview success roll
+    hazardSurvivalBonus?: number; // reduces chance of taking full hazard/mutt damage
+}
+
+export interface ArchetypeDef {
+    id: string;
+    name: string;
+    description: string;
+    modifiers: ArchetypeModifiers;
+}
+
 export interface Injuries {
     head: boolean;
     torso: boolean;
@@ -47,6 +63,8 @@ export interface Tribute {
     isCareer: boolean;
     attributes: Attributes;
     traits: string[];
+    archetype: string;
+    secondaryArchetypes: string[];
     vitals: Vitals;
     injuries: Injuries;
     health: number; // 0-100

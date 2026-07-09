@@ -1,6 +1,8 @@
 import React from 'react';
 import { Tribute, Phase } from '../models/types';
 import { Stat } from '../components/Stat';
+import { ARCHETYPE_BY_ID } from '../data/archetypes';
+import { computeOddsScore, computeOddsAndMultiplier } from '../engine/odds';
 import { Swords, Zap, Brain, Eye, User, FastForward } from 'lucide-react';
 
 export function RosterScreen({
@@ -23,33 +25,8 @@ export function RosterScreen({
     const buttonText = phase === 'setup' ? 'Begin Training' : 'Return to Arena';
 
     // Calculate total power score across all tributes for normalized survival odds
-    const totalOddsScore = tributes.reduce((sum, t) => {
-        const strength = t.attributes.strength;
-        const agility = t.attributes.agility;
-        const training = t.trainingScore || 5;
-        let score = 100 * 0.4 + strength * 2 + agility * 2 + training * 4;
-        if (t.traits.includes('Brute')) score += 15;
-        if (t.traits.includes('Bloodthirsty')) score += 15;
-        if (t.traits.includes('Pacifist')) score -= 10;
-        if (t.traits.includes('Strategist')) score += 12;
-        return sum + Math.max(10, score);
-    }, 0);
-
-    const getOddsAndMultiplier = (t: Tribute) => {
-        const strength = t.attributes.strength;
-        const agility = t.attributes.agility;
-        const training = t.trainingScore || 5;
-        let score = 100 * 0.4 + strength * 2 + agility * 2 + training * 4;
-        if (t.traits.includes('Brute')) score += 15;
-        if (t.traits.includes('Bloodthirsty')) score += 15;
-        if (t.traits.includes('Pacifist')) score -= 10;
-        if (t.traits.includes('Strategist')) score += 12;
-        const finalScore = Math.max(10, score);
-        const rawOdds = finalScore / totalOddsScore;
-        const pct = Math.round(rawOdds * 100) || 4;
-        const mult = Math.max(1.1, Math.min(25.0, 100 / pct));
-        return { pct, mult };
-    };
+    const totalOddsScore = tributes.reduce((sum, t) => sum + computeOddsScore(t), 0);
+    const getOddsAndMultiplier = (t: Tribute) => computeOddsAndMultiplier(t, totalOddsScore);
 
     return (
         <div className="space-y-8">
@@ -109,6 +86,23 @@ export function RosterScreen({
                             </div>
 
                             <div className="flex flex-wrap gap-1">
+                                {ARCHETYPE_BY_ID[t.archetype] && (
+                                    <span
+                                        title={ARCHETYPE_BY_ID[t.archetype].description}
+                                        className="px-2 py-0.5 bg-red-950/30 text-red-400 text-[10px] font-bold uppercase tracking-wider rounded border border-red-900/50"
+                                    >
+                                        {ARCHETYPE_BY_ID[t.archetype].name}
+                                    </span>
+                                )}
+                                {t.secondaryArchetypes.map(id => ARCHETYPE_BY_ID[id] && (
+                                    <span
+                                        key={id}
+                                        title={ARCHETYPE_BY_ID[id].description}
+                                        className="px-2 py-0.5 bg-red-950/10 text-red-400/80 text-[10px] uppercase tracking-wider rounded border border-red-900/30"
+                                    >
+                                        {ARCHETYPE_BY_ID[id].name}
+                                    </span>
+                                ))}
                                 {t.traits.map(trait => (
                                     <span key={trait} className="px-2 py-0.5 bg-zinc-800 text-zinc-300 text-[10px] uppercase tracking-wider rounded border border-zinc-700">
                                         {trait}

@@ -1,6 +1,7 @@
 import { RNG } from '../utils/rng';
 import { Tribute, Attributes, Build, GameConfig } from '../models/types';
 import { TRAITS, BUILDS, DEFAULT_GAME_CONFIG } from '../data/constants';
+import { ARCHETYPES } from '../data/archetypes';
 
 const DISTRICT_NAMES: Record<number, { Male: string[]; Female: string[] }> = {
     1: {
@@ -113,6 +114,16 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
             const heightCm = gender === 'Male' ? rng.nextInt(155, 195) : rng.nextInt(148, 185);
             const build = buildFromStrength(rng, attributes.strength);
 
+            const archetype = rng.pick(ARCHETYPES).id;
+            const secondaryArchetypes: string[] = [];
+            if (rng.chance(0.3)) {
+                let secondary = rng.pick(ARCHETYPES).id;
+                while (secondary === archetype) {
+                    secondary = rng.pick(ARCHETYPES).id;
+                }
+                secondaryArchetypes.push(secondary);
+            }
+
             tributes.push({
                 id: `d${district}-${gender.toLowerCase()}`,
                 district,
@@ -124,6 +135,8 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 isCareer,
                 attributes,
                 traits,
+                archetype,
+                secondaryArchetypes,
                 vitals: { hunger: 0, thirst: 0, fatigue: 0, sanity: 100 },
                 injuries: { head: false, torso: false, arms: false, legs: false, bleeding: false, infected: false },
                 health: 100,

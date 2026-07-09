@@ -5,6 +5,7 @@ import { ITEMS } from '../../data/constants';
 import { ENCOUNTER_TEXTS, SANITY_TEXTS } from '../../data/flavorText';
 import { checkDeath, resolveCombat } from '../combat';
 import { processSponsors } from '../sponsors';
+import { getArchetypeModifiers } from '../../data/archetypes';
 
 export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     ctx.rng = new RNG(`${ctx.state.seed}-${ctx.state.day}-${time}`);
@@ -75,7 +76,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         t.vitals.hunger += hungerDrain;
         t.vitals.thirst += thirstDrain;
         t.vitals.fatigue += fatigueDrain;
-        t.vitals.sanity -= 5; // Base sanity drain
+        t.vitals.sanity -= 5 + getArchetypeModifiers(t).sanityDrainMod; // Base sanity drain
 
         if (t.vitals.hunger > 80) t.health -= 5;
         if (t.vitals.thirst > 80) t.health -= 10;
@@ -207,7 +208,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
         if (ctx.rng.chance(eventChance)) {
             const event = ctx.rng.pick(ctx.state.arena.events);
-            if (ctx.rng.chance(0.5)) {
+            const hazardBonus = getArchetypeModifiers(t).hazardSurvivalBonus;
+            if (ctx.rng.chance(Math.max(0.05, 0.5 - hazardBonus * 0.05))) {
                 t.health -= 30;
                 ctx.logEvent(`${t.name} is caught in a ${event} in ${t.zone} and is severely injured!`, [t.id], true);
             } else {
@@ -220,7 +222,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
         if (ctx.rng.chance(muttChance)) {
             const mutt = ctx.rng.pick(ctx.state.arena.mutts);
-            if (t.attributes.agility > 6 && ctx.rng.chance(0.7)) {
+            const hazardBonus = getArchetypeModifiers(t).hazardSurvivalBonus;
+            if (t.attributes.agility > 6 && ctx.rng.chance(Math.min(0.95, 0.7 + hazardBonus * 0.05))) {
                 ctx.logEvent(`${t.name} outruns a pack of ${mutt} in ${t.zone}.`, [t.id]);
             } else {
                 t.health -= 40;

@@ -2,6 +2,7 @@ import { GameState, GameConfig, HallOfFameEntry } from '../models/types';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { generateTributes } from '../engine/generator';
 import { Simulator } from '../engine/simulator';
+import { computeOddsScore } from '../engine/odds';
 import { createStore } from './createStore';
 
 export type ViewName = 'setup' | 'roster' | 'game' | 'hallOfFame';
@@ -14,18 +15,6 @@ export interface GameStoreState {
     bets: Record<string, number>;
     betWonMessage: string | null;
     isReplayedRun: boolean;
-}
-
-function computeOddsScore(t: GameState['tributes'][number]) {
-    const strength = t.attributes.strength;
-    const agility = t.attributes.agility;
-    const training = t.trainingScore || 5;
-    let score = 100 * 0.4 + strength * 2 + agility * 2 + training * 4;
-    if (t.traits.includes('Brute')) score += 15;
-    if (t.traits.includes('Bloodthirsty')) score += 15;
-    if (t.traits.includes('Pacifist')) score -= 10;
-    if (t.traits.includes('Strategist')) score += 12;
-    return Math.max(10, score);
 }
 
 function saveHallOfFame(state: GameState) {

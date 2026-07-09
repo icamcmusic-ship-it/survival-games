@@ -1,5 +1,6 @@
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
+import { getArchetypeModifiers } from '../../data/archetypes';
 
 export function processTraining(ctx: SimContext) {
     ctx.state.phase = 'training';
@@ -11,7 +12,7 @@ export function processTraining(ctx: SimContext) {
         t.attributes[boosted] = Math.min(10, t.attributes[boosted] + 1);
 
         const totalStats = Object.values(t.attributes).reduce((a, b) => a + b, 0);
-        t.trainingScore = Math.min(12, Math.max(1, Math.floor(totalStats / 4) + ctx.rng.nextInt(-2, 2)));
+        t.trainingScore = Math.min(12, Math.max(1, Math.floor(totalStats / 4) + ctx.rng.nextInt(-2, 2) + getArchetypeModifiers(t).trainingBonus));
         t.excitementRating += t.trainingScore * 5;
 
         ctx.logEvent(`${t.name} focused on ${boosted} during training and scored a ${t.trainingScore}.`, [t.id]);

@@ -1,6 +1,7 @@
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { INTERVIEW_SCENARIOS } from '../../data/flavorText';
+import { getArchetypeModifiers } from '../../data/archetypes';
 
 export function processInterviews(ctx: SimContext) {
     ctx.state.phase = 'interviews';
@@ -8,7 +9,7 @@ export function processInterviews(ctx: SimContext) {
 
     getAlive(ctx.state).forEach(t => {
         const scenario = ctx.rng.pick(INTERVIEW_SCENARIOS);
-        const roll = t.attributes.charisma + ctx.rng.nextInt(-2, 3);
+        const roll = t.attributes.charisma + ctx.rng.nextInt(-2, 3) + getArchetypeModifiers(t).interviewBonus;
         const isSuccess = roll >= 5;
 
         if (isSuccess) {
