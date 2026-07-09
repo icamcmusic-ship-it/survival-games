@@ -6,6 +6,15 @@ import { ENCOUNTER_TEXTS, SANITY_TEXTS } from '../../data/flavorText';
 import { checkDeath, resolveCombat } from '../combat';
 import { processSponsors } from '../sponsors';
 import { getArchetypeModifiers } from '../../data/archetypes';
+import { getAdjacentZones } from '../zoneGraph';
+
+function movementPool(ctx: SimContext, currentZone: string): string[] {
+    const collapsedList = ctx.state.collapsedZones || [];
+    const activeZones = ctx.state.arena.zones.filter(z => !collapsedList.includes(z));
+    const adjacent = getAdjacentZones(ctx.state.arena.zones, currentZone).filter(z => activeZones.includes(z));
+    if (adjacent.length > 0) return adjacent;
+    return activeZones.length > 0 ? activeZones : ctx.state.arena.zones;
+}
 
 export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     ctx.rng = new RNG(`${ctx.state.seed}-${ctx.state.day}-${time}`);
@@ -57,11 +66,26 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             if (!hasWarmth) {
                 fatigueDrain += 10;
                 t.health -= 5;
+                if (ctx.rng.chance(0.15)) {
+                    t.injuries.frostbitten = true;
+                    ctx.logEvent(`${t.name} is showing signs of frostbite from the relentless cold.`, [t.id], true);
+                }
             }
         } else if (ctx.state.arena.id === 'solar') {
             thirstDrain *= 2;
         } else if (ctx.state.arena.id === 'toxic') {
             if (ctx.rng.chance(0.2)) t.vitals.sanity -= 15;
+            if (ctx.rng.chance(0.12) && !t.injuries.poisoned) {
+                t.injuries.poisoned = true;
+                ctx.logEvent(`${t.name} breathes in toxic fumes and becomes poisoned.`, [t.id], true);
+            }
+        }
+
+        // Exhaustion status: engages past a fatigue threshold, clears once rested
+        if (t.vitals.fatigue > 90) {
+            t.injuries.exhausted = true;
+        } else if (t.vitals.fatigue < 50) {
+            t.injuries.exhausted = false;
         }
 
         // Trait Effects
@@ -82,6 +106,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         if (t.vitals.thirst > 80) t.health -= 10;
         if (t.injuries.bleeding) t.health -= 15;
         if (t.injuries.infected) t.health -= 10;
+        if (t.injuries.poisoned) t.health -= 8;
+        if (t.injuries.burned) t.health -= 5;
+        if (t.injuries.frostbitten) t.health -= 6;
 
         if (t.vitals.hunger > 50) {
             const foodIdx = t.inventory.findIndex(i => i.type === 'food');
@@ -111,14 +138,20 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             t.injuries.torso = false;
             t.injuries.arms = false;
             t.injuries.legs = false;
+            t.injuries.poisoned = false;
+            t.injuries.burned = false;
+            t.injuries.frostbitten = false;
+            t.injuries.concussed = false;
             ctx.logEvent(`${t.name} uses a First Aid Kit to heal their wounds.`, [t.id], true);
         } else {
             const ointmentIdx = t.inventory.findIndex(i => i.id === 'ointment');
-            if (ointmentIdx >= 0 && (t.health < 85 || t.injuries.infected || t.injuries.bleeding)) {
+            if (ointmentIdx >= 0 && (t.health < 85 || t.injuries.infected || t.injuries.bleeding || t.injuries.burned || t.injuries.poisoned)) {
                 t.inventory.splice(ointmentIdx, 1);
                 t.health = Math.min(100, t.health + 25);
                 t.injuries.infected = false;
                 t.injuries.bleeding = false;
+                t.injuries.burned = false;
+                t.injuries.poisoned = false;
                 ctx.logEvent(`${t.name} applies Burn Ointment, soothing their injuries and infections.`, [t.id], true);
             }
         }
@@ -144,7 +177,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
         // Update Stance
         const hasWeapon = t.inventory.some(i => i.type === 'weapon');
-        if (t.health < 40 || t.injuries.bleeding) {
+        if (t.health < 40 || t.injuries.bleeding || t.injuries.exhausted) {
             t.stance = 'Evasive';
         } else if (hasWeapon && t.health > 70 && (t.isCareer || t.traits.includes('Bloodthirsty'))) {
             t.stance = 'Aggressive';
@@ -165,9 +198,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             const leader = allianceMembers[0]; // Simple leader logic
             if (t.id === leader.id) {
                 if (t.stance === 'Evasive' || ctx.rng.chance(0.5)) {
-                    const collapsedList = ctx.state.collapsedZones || [];
-                    const activeZones = ctx.state.arena.zones.filter(z => !collapsedList.includes(z));
-                    const pool = activeZones.length > 0 ? activeZones : ctx.state.arena.zones;
+                    const pool = movementPool(ctx, t.zone);
                     const newZone = ctx.rng.pick(pool);
                     if (t.zone !== newZone) {
                         allianceMembers.forEach(m => m.zone = newZone);
@@ -178,9 +209,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                 }
             }
         } else if (t.stance === 'Evasive' || ctx.rng.chance(0.5)) {
-            const collapsedList = ctx.state.collapsedZones || [];
-            const activeZones = ctx.state.arena.zones.filter(z => !collapsedList.includes(z));
-            const pool = activeZones.length > 0 ? activeZones : ctx.state.arena.zones;
+            const pool = movementPool(ctx, t.zone);
             const newZone = ctx.rng.pick(pool);
             if (t.zone !== newZone) {
                 t.zone = newZone;
@@ -211,6 +240,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             const hazardBonus = getArchetypeModifiers(t).hazardSurvivalBonus;
             if (ctx.rng.chance(Math.max(0.05, 0.5 - hazardBonus * 0.05))) {
                 t.health -= 30;
+                if (/fire|blaze|flare|explosion|lava/i.test(event) && ctx.rng.chance(0.4)) {
+                    t.injuries.burned = true;
+                }
                 ctx.logEvent(`${t.name} is caught in a ${event} in ${t.zone} and is severely injured!`, [t.id], true);
             } else {
                 ctx.logEvent(`${t.name} barely escapes a ${event} in ${t.zone}.`, [t.id]);
@@ -228,6 +260,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             } else {
                 t.health -= 40;
                 t.injuries.bleeding = true;
+                if (ctx.rng.chance(0.3)) t.injuries.concussed = true;
                 ctx.logEvent(`${t.name} is attacked by ${mutt} in ${t.zone} and barely survives.`, [t.id], true);
             }
             checkDeath(ctx, t);

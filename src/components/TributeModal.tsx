@@ -1,6 +1,7 @@
 import React from 'react';
 import { GameState, Tribute } from '../models/types';
 import { MapPin, Users, X } from 'lucide-react';
+import { getRelationshipLabel, RELATIONSHIP_COLORS } from '../engine/relationships';
 
 export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute, gameState: GameState, onClose: () => void }) {
     return (
@@ -89,10 +90,14 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                     const other = gameState.tributes.find(t => t.id === id);
                                     if (!other) return null;
                                     const numVal = val as number;
+                                    const label = getRelationshipLabel(tribute, other, numVal);
                                     return (
-                                        <div key={id} className="flex justify-between text-sm">
+                                        <div key={id} className="flex justify-between items-center text-sm">
                                             <span className="text-zinc-300">{other.name}</span>
-                                            <span className={numVal > 0 ? 'text-green-400' : 'text-red-400'}>{numVal > 0 ? `+${numVal}` : numVal}</span>
+                                            <span className="flex items-center gap-2">
+                                                <span className={`text-[10px] uppercase tracking-wider font-bold ${RELATIONSHIP_COLORS[label]}`}>{label}</span>
+                                                <span className={numVal > 0 ? 'text-green-400' : 'text-red-400'}>{numVal > 0 ? `+${numVal}` : numVal}</span>
+                                            </span>
                                         </div>
                                     );
                                 })

@@ -138,7 +138,7 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 archetype,
                 secondaryArchetypes,
                 vitals: { hunger: 0, thirst: 0, fatigue: 0, sanity: 100 },
-                injuries: { head: false, torso: false, arms: false, legs: false, bleeding: false, infected: false },
+                injuries: { head: false, torso: false, arms: false, legs: false, bleeding: false, infected: false, poisoned: false, burned: false, frostbitten: false, concussed: false, exhausted: false },
                 health: 100,
                 status: 'alive',
                 inventory: [],

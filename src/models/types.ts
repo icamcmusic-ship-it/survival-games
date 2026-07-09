@@ -39,6 +39,11 @@ export interface Injuries {
     legs: boolean;
     bleeding: boolean;
     infected: boolean;
+    poisoned: boolean;
+    burned: boolean;
+    frostbitten: boolean;
+    concussed: boolean;
+    exhausted: boolean;
 }
 
 export interface Item {

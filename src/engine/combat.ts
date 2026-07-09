@@ -21,8 +21,12 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
     // Injury penalties
     if (t1.injuries.arms) t1Power -= 2;
     if (t1.injuries.legs) t1Power -= 2;
+    if (t1.injuries.concussed) t1Power -= 2;
+    if (t1.injuries.exhausted) t1Power -= 2;
     if (t2.injuries.arms) t2Power -= 2;
     if (t2.injuries.legs) t2Power -= 2;
+    if (t2.injuries.concussed) t2Power -= 2;
+    if (t2.injuries.exhausted) t2Power -= 2;
 
     if (t1Power > t2Power + 3) {
         killTribute(ctx, t2, t1, isBloodbath, t1Weapon);
