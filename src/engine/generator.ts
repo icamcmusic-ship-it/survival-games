@@ -1,6 +1,6 @@
 import { RNG } from '../utils/rng';
-import { Tribute, Attributes } from '../models/types';
-import { TRAITS } from '../data/constants';
+import { Tribute, Attributes, Build, GameConfig } from '../models/types';
+import { TRAITS, BUILDS, DEFAULT_GAME_CONFIG } from '../data/constants';
 
 const DISTRICT_NAMES: Record<number, { Male: string[]; Female: string[] }> = {
     1: {
@@ -53,14 +53,21 @@ const DISTRICT_NAMES: Record<number, { Male: string[]; Female: string[] }> = {
     }
 };
 
-export function generateTributes(seed: string): Tribute[] {
+function buildFromStrength(rng: RNG, strength: number): Build {
+    // Roughly correlate build with strength while keeping some randomness.
+    const idx = Math.min(BUILDS.length - 1, Math.max(0, Math.floor(strength / 2) + rng.nextInt(-1, 1)));
+    return BUILDS[idx];
+}
+
+export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME_CONFIG): Tribute[] {
     const rng = new RNG(seed);
     const tributes: Tribute[] = [];
+    const districtCount = Math.min(12, Math.max(1, config.districtCount));
 
-    for (let district = 1; district <= 12; district++) {
+    for (let district = 1; district <= districtCount; district++) {
         for (const gender of ['Male', 'Female'] as const) {
             const isCareer = [1, 2, 4].includes(district);
-            
+
             // Base attributes
             const attributes: Attributes = {
                 strength: rng.nextInt(3, 7),
@@ -102,12 +109,18 @@ export function generateTributes(seed: string): Tribute[] {
             }
 
             const chosenName = rng.pick(DISTRICT_NAMES[district][gender]);
+            const age = rng.nextInt(12, 18);
+            const heightCm = gender === 'Male' ? rng.nextInt(155, 195) : rng.nextInt(148, 185);
+            const build = buildFromStrength(rng, attributes.strength);
 
             tributes.push({
                 id: `d${district}-${gender.toLowerCase()}`,
                 district,
                 gender,
                 name: chosenName,
+                age,
+                heightCm,
+                build,
                 isCareer,
                 attributes,
                 traits,

@@ -1,4 +1,15 @@
-import { Arena, Item } from '../models/types';
+import { Arena, Item, GameConfig, Build } from '../models/types';
+
+export const DEFAULT_GAME_CONFIG: GameConfig = {
+    districtCount: 12,
+    hazardRate: 1.0,
+    betrayalRate: 1.0,
+    sponsorGenerosity: 1.0,
+    enableFeast: true,
+    enableSanity: true,
+};
+
+export const BUILDS: Build[] = ['Frail', 'Slight', 'Average', 'Athletic', 'Stocky', 'Muscular'];
 
 export const ARENAS: Arena[] = [
     {
