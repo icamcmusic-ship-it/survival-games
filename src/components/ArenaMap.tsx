@@ -10,6 +10,11 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
     const zones = gameState.arena.zones;
     const collapsed = gameState.collapsedZones || [];
 
+    const TERRAIN_ICONS: Record<string, string> = {
+        open: '⛳', forest: '🌲', water: '🌊', highland: '⛰️', ruins: '🏚️', wetland: '🥀'
+    };
+    const dangerLabel = (d: number) => d >= 0.7 ? 'HIGH RISK' : d >= 0.4 ? 'MODERATE' : 'LOW RISK';
+
     return (
         <div className="space-y-4 text-left">
             <div className="flex justify-between items-center">
@@ -18,7 +23,8 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                {zones.map((zoneName) => {
+                {zones.map((zone) => {
+                    const zoneName = zone.name;
                     const isCollapsed = collapsed.includes(zoneName);
                     const tributesInZone = tributes.filter(t => t.status === 'alive' && t.zone === zoneName);
                     const isSelected = selectedZone === zoneName;
@@ -51,8 +57,14 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                     )}
                                 </div>
                                 <h4 className="font-extrabold text-xs tracking-tight leading-snug line-clamp-2 mt-2 font-sans">
-                                    {zoneName}
+                                    {TERRAIN_ICONS[zone.terrain] || ''} {zoneName}
                                 </h4>
+                                <div className="flex justify-between text-[8px] font-mono uppercase tracking-wider">
+                                    <span className={zone.danger >= 0.7 ? 'text-red-400' : zone.danger >= 0.4 ? 'text-amber-400' : 'text-emerald-400'}>
+                                        ⚠ {dangerLabel(zone.danger)}
+                                    </span>
+                                    <span className="text-zinc-500">{zone.terrain}</span>
+                                </div>
                             </div>
 
                             <div className="space-y-2 z-10 mt-auto w-full">

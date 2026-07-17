@@ -1,6 +1,7 @@
 import { RNG } from '../utils/rng';
-import { Tribute, Attributes, Build, GameConfig } from '../models/types';
+import { Tribute, Attributes, Build, GameConfig, ArchetypeId } from '../models/types';
 import { TRAITS, BUILDS, DEFAULT_GAME_CONFIG } from '../data/constants';
+import { ARCHETYPES } from '../data/archetypes';
 
 const DISTRICT_NAMES: Record<number, { Male: string[]; Female: string[] }> = {
     1: {
@@ -53,6 +54,16 @@ const DISTRICT_NAMES: Record<number, { Male: string[]; Female: string[] }> = {
     }
 };
 
+const NON_CAREER_ARCHETYPES: ArchetypeId[] = ['strategist', 'survivalist', 'protector', 'trickster', 'wildcard', 'underdog'];
+
+function pickArchetype(rng: RNG, isCareer: boolean, district: number): ArchetypeId {
+    // Careers usually embrace their training, but a few break the mold.
+    if (isCareer && rng.chance(0.8)) return 'career';
+    if (district === 3 && rng.chance(0.4)) return 'strategist';
+    if ((district === 11 || district === 12) && rng.chance(0.35)) return 'survivalist';
+    return rng.pick(NON_CAREER_ARCHETYPES);
+}
+
 function buildFromStrength(rng: RNG, strength: number): Build {
     // Roughly correlate build with strength while keeping some randomness.
     const idx = Math.min(BUILDS.length - 1, Math.max(0, Math.floor(strength / 2) + rng.nextInt(-1, 1)));
@@ -93,14 +104,24 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 attributes.agility += rng.nextInt(1, 2);
             }
 
+            // Archetype: shapes stats, traits, and in-game behavior
+            const archetype = pickArchetype(rng, isCareer, district);
+            const archetypeDef = ARCHETYPES[archetype];
+            (Object.entries(archetypeDef.statBias) as Array<[keyof Attributes, number]>).forEach(([k, bonus]) => {
+                attributes[k] += bonus;
+            });
+
             // Cap at 10
             (Object.keys(attributes) as Array<keyof Attributes>).forEach(k => {
                 attributes[k] = Math.min(10, attributes[k]);
             });
 
-            // Traits
+            // Traits: first trait leans toward the archetype's preferred pool
             const numTraits = rng.nextInt(1, 3);
             const traits: string[] = [];
+            if (archetypeDef.preferredTraits.length > 0 && rng.chance(0.6)) {
+                traits.push(rng.pick(archetypeDef.preferredTraits));
+            }
             while (traits.length < numTraits) {
                 const trait = rng.pick(TRAITS);
                 if (!traits.includes(trait)) {
@@ -122,10 +143,11 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 heightCm,
                 build,
                 isCareer,
+                archetype,
                 attributes,
                 traits,
                 vitals: { hunger: 0, thirst: 0, fatigue: 0, sanity: 100 },
-                injuries: { head: false, torso: false, arms: false, legs: false, bleeding: false, infected: false },
+                injuries: { head: false, torso: false, arms: false, legs: false, bleeding: false, infected: false, poisoned: false, burned: false, frostbitten: false },
                 health: 100,
                 status: 'alive',
                 inventory: [],

@@ -1,6 +1,8 @@
 export type Gender = 'Male' | 'Female';
 export type Stance = 'Aggressive' | 'Defensive' | 'Evasive';
 
+export type ArchetypeId = 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog';
+
 export interface Attributes {
     strength: number;
     agility: number;
@@ -23,7 +25,12 @@ export interface Injuries {
     legs: boolean;
     bleeding: boolean;
     infected: boolean;
+    poisoned: boolean;
+    burned: boolean;
+    frostbitten: boolean;
 }
+
+export type WeaponClass = 'melee' | 'ranged' | 'thrown';
 
 export interface Item {
     id: string;
@@ -32,6 +39,9 @@ export interface Item {
     durability?: number;
     spoilage?: number;
     value: number;
+    weaponClass?: WeaponClass;
+    damage?: number;
+    poison?: boolean;
 }
 
 export type Build = 'Frail' | 'Slight' | 'Average' | 'Athletic' | 'Stocky' | 'Muscular';
@@ -45,6 +55,7 @@ export interface Tribute {
     heightCm: number;
     build: Build;
     isCareer: boolean;
+    archetype: ArchetypeId;
     attributes: Attributes;
     traits: string[];
     vitals: Vitals;
@@ -64,13 +75,23 @@ export interface Tribute {
     allianceId?: string;
 }
 
+export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland';
+
+export interface Zone {
+    name: string;
+    terrain: Terrain;
+    danger: number;    // 0-1, multiplier bias for hazard/mutt encounters
+    resources: number; // 0-1, forage success bias
+    adjacent: string[]; // names of connected zones
+}
+
 export interface Arena {
     id: string;
     name: string;
     description: string;
     mutts: string[];
     events: string[];
-    zones: string[];
+    zones: Zone[];
 }
 
 export type Phase = 'setup' | 'roster' | 'reaping' | 'training' | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'epilogue' | 'ended';

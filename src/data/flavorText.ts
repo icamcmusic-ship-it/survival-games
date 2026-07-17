@@ -41,6 +41,38 @@ export const WEAPON_KILL_TEMPLATES: Record<string, string[]> = {
         "{killer} swings their mace with terrifying force, breaking {victim}'s defenses.",
         "{victim} is knocked to the ground and mercilessly beaten by {killer}."
     ],
+    'trident': [
+        "{killer} pins {victim} to the ground with a three-pronged trident strike.",
+        "{killer} hurls their trident with deadly precision, skewering {victim}.",
+        "{killer} sweeps {victim}'s legs and finishes them with a downward trident thrust.",
+        "{victim} is cornered against the rocks and impaled on {killer}'s trident."
+    ],
+    'machete': [
+        "{killer} hacks through the undergrowth and cuts {victim} down with a machete.",
+        "{killer} slashes {victim} across the chest with a rusted machete.",
+        "{killer} ambushes {victim} from the brush, machete flashing.",
+        "{victim} blocks the first machete swing, but not the second."
+    ],
+    'sickle': [
+        "{killer} hooks {victim}'s ankle with a sickle and drags them down for the kill.",
+        "{killer} opens {victim}'s throat with a wicked sickle slash.",
+        "{killer} reaps {victim} like wheat with a curved sickle."
+    ],
+    'blowgun': [
+        "{killer} sends a poisoned dart into {victim}'s neck from the shadows.",
+        "{victim} slaps at what they think is an insect bite — {killer}'s dart has already done its work.",
+        "{killer} watches from the canopy as their venom-tipped dart drops {victim} mid-stride."
+    ],
+    'garrote': [
+        "{killer} slips a wire garrote around {victim}'s throat in total silence.",
+        "{victim} never hears {killer} approach before the wire tightens.",
+        "{killer} strangles {victim} with a length of razor wire."
+    ],
+    'slingshot': [
+        "{killer} cracks {victim}'s skull with a stone from their slingshot.",
+        "{killer} lands a perfect slingshot strike on {victim}'s temple.",
+        "{victim} laughs at {killer}'s slingshot — right up until the stone hits."
+    ],
     'unarmed': [
         "{killer} strangles {victim} to death.",
         "{killer} beats {victim} to death with their bare hands.",

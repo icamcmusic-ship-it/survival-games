@@ -41,7 +41,7 @@ export function processFeast(ctx: SimContext) {
         const winner = shuffled[0];
         const item1 = ctx.rng.pick(ITEMS);
         const item2 = ctx.rng.pick(ITEMS);
-        winner.inventory.push(item1, item2);
+        winner.inventory.push({ ...item1 }, { ...item2 });
         winner.health = Math.min(100, winner.health + 50);
         winner.vitals.hunger = 0;
         winner.vitals.thirst = 0;

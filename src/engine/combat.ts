@@ -1,6 +1,37 @@
 import { Tribute, Item } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES } from '../data/flavorText';
+import { ARCHETYPES } from '../data/archetypes';
+
+function bestWeapon(t: Tribute): Item | undefined {
+    const weapons = t.inventory.filter(i => i.type === 'weapon');
+    if (weapons.length === 0) return undefined;
+    return weapons.reduce((best, w) => ((w.damage ?? 0) > (best.damage ?? 0) ? w : best));
+}
+
+function combatPower(ctx: SimContext, t: Tribute, weapon?: Item): number {
+    let power = t.attributes.strength + t.attributes.agility + ctx.rng.nextInt(0, 5);
+
+    if (weapon) {
+        power += weapon.damage ?? weapon.value / 10;
+        // Ranged weapons reward agility; melee rewards raw strength
+        if (weapon.weaponClass === 'ranged') power += Math.floor(t.attributes.agility / 3);
+        else if (weapon.weaponClass === 'melee') power += Math.floor(t.attributes.strength / 3);
+    }
+
+    // Archetype edge: aggressive fighters commit harder
+    power += ARCHETYPES[t.archetype].aggression * 4;
+
+    // Injury and status penalties
+    if (t.injuries.arms) power -= 2;
+    if (t.injuries.legs) power -= 2;
+    if (t.injuries.poisoned) power -= 3;
+    if (t.injuries.burned) power -= 1;
+    if (t.injuries.frostbitten) power -= 2;
+    if (t.vitals.fatigue > 80) power -= 2;
+
+    return power;
+}
 
 export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBloodbath: boolean = false) {
     if (t1.status === 'dead' || t2.status === 'dead') return;
@@ -11,17 +42,11 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
         return;
     }
 
-    const t1Weapon = t1.inventory.find(i => i.type === 'weapon');
-    const t2Weapon = t2.inventory.find(i => i.type === 'weapon');
+    const t1Weapon = bestWeapon(t1);
+    const t2Weapon = bestWeapon(t2);
 
-    let t1Power = t1.attributes.strength + t1.attributes.agility + (t1Weapon ? t1Weapon.value / 10 : 0) + ctx.rng.nextInt(0, 5);
-    let t2Power = t2.attributes.strength + t2.attributes.agility + (t2Weapon ? t2Weapon.value / 10 : 0) + ctx.rng.nextInt(0, 5);
-
-    // Injury penalties
-    if (t1.injuries.arms) t1Power -= 2;
-    if (t1.injuries.legs) t1Power -= 2;
-    if (t2.injuries.arms) t2Power -= 2;
-    if (t2.injuries.legs) t2Power -= 2;
+    const t1Power = combatPower(ctx, t1, t1Weapon);
+    const t2Power = combatPower(ctx, t2, t2Weapon);
 
     if (t1Power > t2Power + 3) {
         killTribute(ctx, t2, t1, isBloodbath, t1Weapon);
@@ -32,6 +57,16 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
         t2.health -= 20;
         t1.injuries.bleeding = true;
         t2.injuries.bleeding = true;
+
+        // Poisoned weapons leave their mark even in a draw
+        if (t1Weapon?.poison && ctx.rng.chance(0.5)) {
+            t2.injuries.poisoned = true;
+            ctx.logEvent(`${t2.name} is grazed by ${t1.name}'s poisoned dart and feels the venom spreading.`, [t2.id, t1.id], true);
+        }
+        if (t2Weapon?.poison && ctx.rng.chance(0.5)) {
+            t1.injuries.poisoned = true;
+            ctx.logEvent(`${t1.name} is grazed by ${t2.name}'s poisoned dart and feels the venom spreading.`, [t1.id, t2.id], true);
+        }
 
         // Random localized injury
         if (ctx.rng.chance(0.3)) t1.injuries.arms = true;
@@ -47,8 +82,8 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
         t1.relationships[t2.id] = (t1.relationships[t2.id] || 0) - 20;
         t2.relationships[t1.id] = (t2.relationships[t1.id] || 0) - 20;
 
-        checkDeath(ctx, t1);
-        checkDeath(ctx, t2);
+        checkDeath(ctx, t1, `Bled out after a brutal fight with ${t2.name}`);
+        checkDeath(ctx, t2, `Bled out after a brutal fight with ${t1.name}`);
     }
 
     // Clean up broken weapons
@@ -57,7 +92,7 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
     });
 }
 
-export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, isBloodbath: boolean = false, weapon?: Item) {
+export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, isBloodbath: boolean = false, weapon?: Item, cause?: string) {
     victim.status = 'dead';
     victim.health = 0;
     victim.dayOfDeath = ctx.state.day;
@@ -75,7 +110,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     if (killer) {
         killer.kills += 1;
         killer.excitementRating += 20;
-        victim.causeOfDeath = `Killed by ${killer.name}`;
+        victim.causeOfDeath = weapon ? `Killed by ${killer.name} (${weapon.name})` : `Killed by ${killer.name}`;
 
         // Trauma Triggers
         if (killer.traits.includes('Pacifist')) {
@@ -101,13 +136,13 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             ctx.logEvent(text, [killer.id, victim.id], true);
         }
     } else {
-        victim.causeOfDeath = 'Died to environment';
-        ctx.logEvent(`${victim.name} dies.`, [victim.id], true);
+        victim.causeOfDeath = cause || 'Died to environment';
+        ctx.logEvent(`${victim.name} dies. (${victim.causeOfDeath})`, [victim.id], true);
     }
 }
 
-export function checkDeath(ctx: SimContext, t: Tribute) {
+export function checkDeath(ctx: SimContext, t: Tribute, cause?: string) {
     if (t.health <= 0 && t.status === 'alive') {
-        killTribute(ctx, t);
+        killTribute(ctx, t, undefined, false, undefined, cause);
     }
 }

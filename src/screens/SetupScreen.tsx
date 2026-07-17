@@ -72,6 +72,13 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 <p className="text-xs text-zinc-400 line-clamp-2">{a.description}</p>
                             </button>
                         ))}
+                        <button
+                            onClick={() => setArenaId('procedural')}
+                            className={`p-4 rounded-lg border text-left transition-all ${arenaId === 'procedural' ? 'bg-red-950/30 border-red-500/50' : 'bg-zinc-950 border-zinc-800 hover:border-zinc-600'}`}
+                        >
+                            <h3 className="font-bold text-white mb-1">🎲 Procedural Arena</h3>
+                            <p className="text-xs text-zinc-400 line-clamp-2">The Gamemakers craft a brand-new arena from your seed — biome, sectors, mutts, and hazards all generated fresh.</p>
+                        </button>
                     </div>
                 </div>
 

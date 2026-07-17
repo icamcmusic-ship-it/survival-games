@@ -1,5 +1,6 @@
 import React from 'react';
 import { Tribute, Phase } from '../models/types';
+import { ARCHETYPES } from '../data/archetypes';
 import { Stat } from '../components/Stat';
 import { Swords, Zap, Brain, Eye, User, FastForward } from 'lucide-react';
 
@@ -96,6 +97,14 @@ export function RosterScreen({
                                     <div className="flex gap-2 text-xs mt-1">
                                         {t.isCareer && <span className="text-yellow-500 font-semibold uppercase tracking-wider">Career</span>}
                                         <span className="text-zinc-500">District {t.district}</span>
+                                    </div>
+                                    <div className="mt-1">
+                                        <span
+                                            title={ARCHETYPES[t.archetype].description}
+                                            className="px-2 py-0.5 bg-red-950/30 text-red-400 text-[10px] font-bold uppercase tracking-wider rounded border border-red-900/40"
+                                        >
+                                            {ARCHETYPES[t.archetype].name}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
