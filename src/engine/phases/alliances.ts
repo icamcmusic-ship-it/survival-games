@@ -1,6 +1,7 @@
 import { SimContext, getAlive } from '../context';
 import { Tribute } from '../../models/types';
 import { resolveCombat } from '../combat';
+import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
 
 export function processAlliances(ctx: SimContext) {
     const alive = getAlive(ctx.state);
@@ -27,7 +28,12 @@ export function processAlliances(ctx: SimContext) {
         const betrayalThreshold = (alive.length <= 4 ? 0.3 : 0.05) * ctx.state.config.betrayalRate;
 
         if (ctx.rng.chance(betrayalThreshold)) {
-            const betrayer = ctx.rng.pick(members);
+            // Treacherous archetypes are the likeliest to turn on their allies
+            const weighted = members.flatMap(m => {
+                const copies = 1 + Math.max(0, Math.round(ARCHETYPES[m.archetype].treachery * 10));
+                return Array(copies).fill(m) as Tribute[];
+            });
+            const betrayer = ctx.rng.pick(weighted);
             const victim = ctx.rng.pick(members.filter(m => m.id !== betrayer.id));
 
             if (victim) {
@@ -51,7 +57,12 @@ export function processAlliances(ctx: SimContext) {
 
                 if (!t1.allianceId && !t2.allianceId) {
                     const rel = t1.relationships[t2.id] || 0;
-                    if (rel > 40 && ctx.rng.chance(0.2)) {
+                    // Archetype chemistry: affinity of both parties plus pair compatibility
+                    const affinity = (ARCHETYPES[t1.archetype].allianceAffinity + ARCHETYPES[t2.archetype].allianceAffinity) / 2;
+                    const compat = archetypeCompatibility(t1.archetype, t2.archetype);
+                    const formChance = Math.max(0.02, 0.2 + affinity + compat);
+                    const relThreshold = 40 - compat * 100; // compatible pairs need less history
+                    if (rel > relThreshold && ctx.rng.chance(formChance)) {
                         const newId = `alliance-${t1.id}-${t2.id}`;
                         t1.allianceId = newId;
                         t2.allianceId = newId;

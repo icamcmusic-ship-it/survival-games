@@ -1,5 +1,6 @@
 import React from 'react';
 import { GameState, Tribute } from '../models/types';
+import { ARCHETYPES } from '../data/archetypes';
 import { MapPin, Users, X } from 'lucide-react';
 
 export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute, gameState: GameState, onClose: () => void }) {
@@ -9,6 +10,12 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                 <div className="flex justify-between items-start mb-6">
                     <div>
                         <h3 className="text-2xl font-black text-white">{tribute.name}</h3>
+                        <span
+                            title={ARCHETYPES[tribute.archetype].description}
+                            className="inline-block mt-1 px-2 py-0.5 bg-red-950/30 text-red-400 text-[10px] font-bold uppercase tracking-wider rounded border border-red-900/40"
+                        >
+                            {ARCHETYPES[tribute.archetype].name}
+                        </span>
                         <div className="flex gap-3 mt-1">
                             <p className="text-zinc-400 text-sm flex items-center gap-1">
                                 <MapPin className="w-4 h-4" /> {tribute.zone}

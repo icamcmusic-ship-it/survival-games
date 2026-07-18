@@ -1,35 +1,58 @@
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
-import { Tribute } from '../../models/types';
+import { Tribute, Zone } from '../../models/types';
 import { ITEMS } from '../../data/constants';
+import { ARCHETYPES } from '../../data/archetypes';
 import { ENCOUNTER_TEXTS, SANITY_TEXTS } from '../../data/flavorText';
 import { checkDeath, resolveCombat } from '../combat';
 import { processSponsors } from '../sponsors';
+import { zoneNames, getZone, reachableZones } from '../map';
+
+function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Zone {
+    // Cautious tributes prefer safe, resource-rich zones; aggressive ones follow danger (prey gathers there)
+    const arch = ARCHETYPES[t.archetype];
+    const scored = options.map(z => {
+        let score = 1;
+        score += z.resources * (1 + arch.caution);
+        score += z.danger * (arch.aggression > 0 ? arch.aggression * 2 : -arch.caution * 2);
+        if (t.stance === 'Evasive') score -= z.danger * 2;
+        return { z, score: Math.max(0.1, score) };
+    });
+    let roll = ctx.rng.nextFloat() * scored.reduce((s, o) => s + o.score, 0);
+    for (const o of scored) {
+        roll -= o.score;
+        if (roll <= 0) return o.z;
+    }
+    return scored[scored.length - 1].z;
+}
 
 export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     ctx.rng = new RNG(`${ctx.state.seed}-${ctx.state.day}-${time}`);
     const alive = getAlive(ctx.state);
+    const allZoneNames = zoneNames(ctx.state.arena);
 
     // 0. Hazard Escalation & Safe Zone Shrinking over time (starts Day 5+)
     const isEscalated = ctx.state.day >= 5;
     if (isEscalated) {
-        const collapseCount = Math.min(ctx.state.arena.zones.length - 1, ctx.state.day - 4);
-        const collapsedList = ctx.state.arena.zones.slice(ctx.state.arena.zones.length - collapseCount);
+        const collapseCount = Math.min(allZoneNames.length - 1, ctx.state.day - 4);
+        const collapsedList = allZoneNames.slice(allZoneNames.length - collapseCount);
         ctx.state.collapsedZones = collapsedList;
 
         alive.forEach(t => {
             if (collapsedList.includes(t.zone)) {
                 const damage = 20 + (ctx.state.day - 5) * 10;
                 t.health -= damage;
-                const safeZones = ctx.state.arena.zones.filter(z => !collapsedList.includes(z));
-                const newSafeZone = safeZones[0] || 'The Cornucopia';
+                const safeZones = allZoneNames.filter(z => !collapsedList.includes(z));
+                const newSafeZone = safeZones[0] || allZoneNames[0];
 
-                ctx.logEvent(`HAZARD ESCALATION: ${t.name} is trapped inside the collapsing border of ${t.zone}! They sustain ${damage} injury damage and desperately flee into the safe sector of ${newSafeZone}.`, [t.id], true, newSafeZone);
+                const trappedZone = t.zone;
+                ctx.logEvent(`HAZARD ESCALATION: ${t.name} is trapped inside the collapsing border of ${trappedZone}! They sustain ${damage} injury damage and desperately flee into the safe sector of ${newSafeZone}.`, [t.id], true, newSafeZone);
                 t.zone = newSafeZone;
-                checkDeath(ctx, t);
+                checkDeath(ctx, t, `Caught in the collapsing border of ${trappedZone}`);
             }
         });
     }
+    const collapsed = ctx.state.collapsedZones || [];
 
     // 1. Item Degradation & Spoilage
     alive.forEach(t => {
@@ -45,22 +68,43 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         });
     });
 
-    // 2. Vitals & Arena Environmental Effects
+    // 2. Vitals, Terrain & Status Effects
     alive.forEach(t => {
+        const zone = getZone(ctx.state.arena, t.zone);
         let hungerDrain = 10;
         let thirstDrain = 15;
         let fatigueDrain = time === 'day' ? 10 : -20;
 
+        // Terrain effects
+        if (zone) {
+            if (zone.terrain === 'water' || zone.terrain === 'wetland') thirstDrain -= 8;
+            if (zone.terrain === 'highland') fatigueDrain += 8;
+            if (zone.terrain === 'forest' && time === 'night') fatigueDrain -= 5; // shelter
+        }
+
+        // Arena climate effects
         if (ctx.state.arena.id === 'frozen') {
             const hasWarmth = t.inventory.some(i => i.id === 'matches');
             if (!hasWarmth) {
                 fatigueDrain += 10;
                 t.health -= 5;
+                if (time === 'night' && ctx.rng.chance(0.15) && !t.injuries.frostbitten) {
+                    t.injuries.frostbitten = true;
+                    ctx.logEvent(`${t.name}'s fingers blacken with frostbite in the freezing night.`, [t.id], true);
+                }
             }
         } else if (ctx.state.arena.id === 'solar') {
             thirstDrain *= 2;
+            if (time === 'day' && ctx.rng.chance(0.1) && !t.injuries.burned) {
+                t.injuries.burned = true;
+                ctx.logEvent(`${t.name} suffers severe sunburns under the merciless solar glare.`, [t.id]);
+            }
         } else if (ctx.state.arena.id === 'toxic') {
             if (ctx.rng.chance(0.2)) t.vitals.sanity -= 15;
+            if (ctx.rng.chance(0.08) && !t.injuries.poisoned) {
+                t.injuries.poisoned = true;
+                ctx.logEvent(`${t.name} drinks tainted water and is poisoned by the toxins.`, [t.id], true);
+            }
         }
 
         // Trait Effects
@@ -73,7 +117,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         }
 
         t.vitals.hunger += hungerDrain;
-        t.vitals.thirst += thirstDrain;
+        t.vitals.thirst += Math.max(0, thirstDrain);
         t.vitals.fatigue += fatigueDrain;
         t.vitals.sanity -= 5; // Base sanity drain
 
@@ -81,6 +125,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         if (t.vitals.thirst > 80) t.health -= 10;
         if (t.injuries.bleeding) t.health -= 15;
         if (t.injuries.infected) t.health -= 10;
+        if (t.injuries.poisoned) { t.health -= 12; t.vitals.sanity -= 5; }
+        if (t.injuries.burned) t.health -= 4;
+        if (t.injuries.frostbitten) t.health -= 6;
 
         if (t.vitals.hunger > 50) {
             const foodIdx = t.inventory.findIndex(i => i.type === 'food');
@@ -99,37 +146,52 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             }
         }
 
+        // Antidote cures poison before it becomes lethal
+        if (t.injuries.poisoned) {
+            const antidoteIdx = t.inventory.findIndex(i => i.id === 'antidote');
+            if (antidoteIdx >= 0) {
+                t.inventory.splice(antidoteIdx, 1);
+                t.injuries.poisoned = false;
+                ctx.logEvent(`${t.name} downs an Antidote Vial just in time, purging the venom from their blood.`, [t.id], true);
+            }
+        }
+
         // Consume medical items to heal wounds, cure infections, or restore health
         const medkitIdx = t.inventory.findIndex(i => i.id === 'medkit');
         if (medkitIdx >= 0 && (t.health < 70 || Object.values(t.injuries).some(v => v))) {
             t.inventory.splice(medkitIdx, 1);
             t.health = Math.min(100, t.health + 50);
-            t.injuries.bleeding = false;
-            t.injuries.infected = false;
-            t.injuries.head = false;
-            t.injuries.torso = false;
-            t.injuries.arms = false;
-            t.injuries.legs = false;
+            t.injuries = { head: false, torso: false, arms: false, legs: false, bleeding: false, infected: false, poisoned: t.injuries.poisoned, burned: false, frostbitten: false };
             ctx.logEvent(`${t.name} uses a First Aid Kit to heal their wounds.`, [t.id], true);
         } else {
             const ointmentIdx = t.inventory.findIndex(i => i.id === 'ointment');
-            if (ointmentIdx >= 0 && (t.health < 85 || t.injuries.infected || t.injuries.bleeding)) {
+            if (ointmentIdx >= 0 && (t.health < 85 || t.injuries.infected || t.injuries.bleeding || t.injuries.burned)) {
                 t.inventory.splice(ointmentIdx, 1);
                 t.health = Math.min(100, t.health + 25);
                 t.injuries.infected = false;
                 t.injuries.bleeding = false;
+                t.injuries.burned = false;
                 ctx.logEvent(`${t.name} applies Burn Ointment, soothing their injuries and infections.`, [t.id], true);
             }
         }
 
-        checkDeath(ctx, t);
+        const cause = t.injuries.poisoned ? 'Succumbed to poison'
+            : t.injuries.frostbitten ? 'Froze to death'
+            : t.vitals.thirst > 80 ? 'Died of dehydration'
+            : t.vitals.hunger > 80 ? 'Died of starvation'
+            : t.injuries.bleeding ? 'Bled out from untreated wounds'
+            : t.injuries.infected ? 'Succumbed to an infected wound'
+            : undefined;
+        checkDeath(ctx, t, cause);
     });
 
     const currentAlive = getAlive(ctx.state);
 
-    // 3. Dynamic Stances, Movement (Zones) & Crafting
+    // 3. Dynamic Stances, Movement (Zone Graph) & Crafting
     const acted = new Set<string>();
     currentAlive.forEach(t => {
+        const arch = ARCHETYPES[t.archetype];
+
         // Crafting
         const hasRope = t.inventory.findIndex(i => i.id === 'rope');
         const hasKnife = t.inventory.findIndex(i => i.id === 'knife');
@@ -140,12 +202,22 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             t.inventory.push({ ...spear });
             ctx.logEvent(`${t.name} crafts a Spear using a Rope and a Knife.`, [t.id]);
         }
+        // Tricksters can improvise a garrote from wire
+        if (t.archetype === 'trickster') {
+            const hasWire = t.inventory.findIndex(i => i.id === 'wire');
+            if (hasWire >= 0 && !t.inventory.some(i => i.id === 'garrote')) {
+                t.inventory.splice(hasWire, 1);
+                const garrote = ITEMS.find(i => i.id === 'garrote')!;
+                t.inventory.push({ ...garrote });
+                ctx.logEvent(`${t.name} twists a length of wire into a deadly garrote.`, [t.id]);
+            }
+        }
 
-        // Update Stance
+        // Update Stance (archetype-aware)
         const hasWeapon = t.inventory.some(i => i.type === 'weapon');
-        if (t.health < 40 || t.injuries.bleeding) {
+        if (t.health < 40 || t.injuries.bleeding || (arch.caution > 0.2 && t.health < 55)) {
             t.stance = 'Evasive';
-        } else if (hasWeapon && t.health > 70 && (t.isCareer || t.traits.includes('Bloodthirsty'))) {
+        } else if (hasWeapon && t.health > 70 && (t.isCareer || t.traits.includes('Bloodthirsty') || (arch.aggression > 0.1 && ctx.rng.chance(0.5 + arch.aggression)))) {
             t.stance = 'Aggressive';
         } else {
             t.stance = 'Defensive';
@@ -164,27 +236,27 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             const leader = allianceMembers[0]; // Simple leader logic
             if (t.id === leader.id) {
                 if (t.stance === 'Evasive' || ctx.rng.chance(0.5)) {
-                    const collapsedList = ctx.state.collapsedZones || [];
-                    const activeZones = ctx.state.arena.zones.filter(z => !collapsedList.includes(z));
-                    const pool = activeZones.length > 0 ? activeZones : ctx.state.arena.zones;
-                    const newZone = ctx.rng.pick(pool);
-                    if (t.zone !== newZone) {
-                        allianceMembers.forEach(m => m.zone = newZone);
-                        if (t.stance !== 'Evasive') {
-                            ctx.logEvent(`The alliance of ${allianceMembers.map(m => m.name).join(', ')} travels to ${newZone}.`, allianceMembers.map(m => m.id));
+                    const options = reachableZones(ctx.state.arena, t.zone, collapsed);
+                    if (options.length > 0) {
+                        const newZone = pickDestination(ctx, t, options).name;
+                        if (t.zone !== newZone) {
+                            allianceMembers.forEach(m => m.zone = newZone);
+                            if (t.stance !== 'Evasive') {
+                                ctx.logEvent(`The alliance of ${allianceMembers.map(m => m.name).join(', ')} travels to ${newZone}.`, allianceMembers.map(m => m.id));
+                            }
                         }
                     }
                 }
             }
         } else if (t.stance === 'Evasive' || ctx.rng.chance(0.5)) {
-            const collapsedList = ctx.state.collapsedZones || [];
-            const activeZones = ctx.state.arena.zones.filter(z => !collapsedList.includes(z));
-            const pool = activeZones.length > 0 ? activeZones : ctx.state.arena.zones;
-            const newZone = ctx.rng.pick(pool);
-            if (t.zone !== newZone) {
-                t.zone = newZone;
-                if (t.stance !== 'Evasive') {
-                    ctx.logEvent(`${t.name} travels to ${newZone}.`, [t.id]);
+            const options = reachableZones(ctx.state.arena, t.zone, collapsed);
+            if (options.length > 0) {
+                const newZone = pickDestination(ctx, t, options).name;
+                if (t.zone !== newZone) {
+                    t.zone = newZone;
+                    if (t.stance !== 'Evasive') {
+                        ctx.logEvent(`${t.name} travels to ${newZone}.`, [t.id]);
+                    }
                 }
             }
         }
@@ -195,8 +267,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     shuffled.forEach(t => {
         if (acted.has(t.id) || t.status === 'dead') return;
 
-        let eventChance = 0.1;
-        let muttChance = 0.1;
+        const zone = getZone(ctx.state.arena, t.zone);
+        const zoneDanger = zone ? 0.5 + zone.danger : 1; // 0.5x-1.5x from zone danger
+        let eventChance = 0.1 * zoneDanger;
+        let muttChance = 0.1 * zoneDanger;
         if (isEscalated) {
             const multiplier = 1 + (ctx.state.day - 5) * 0.3;
             eventChance = Math.min(0.35, eventChance * multiplier);
@@ -210,10 +284,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             if (ctx.rng.chance(0.5)) {
                 t.health -= 30;
                 ctx.logEvent(`${t.name} is caught in a ${event} in ${t.zone} and is severely injured!`, [t.id], true);
+                checkDeath(ctx, t, `Killed by a ${event} in ${t.zone}`);
             } else {
                 ctx.logEvent(`${t.name} barely escapes a ${event} in ${t.zone}.`, [t.id]);
             }
-            checkDeath(ctx, t);
             acted.add(t.id);
             return;
         }
@@ -227,7 +301,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                 t.injuries.bleeding = true;
                 ctx.logEvent(`${t.name} is attacked by ${mutt} in ${t.zone} and barely survives.`, [t.id], true);
             }
-            checkDeath(ctx, t);
+            checkDeath(ctx, t, `Torn apart by ${mutt} in ${t.zone}`);
             acted.add(t.id);
             return;
         }
@@ -253,6 +327,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                     t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
                     ctx.logEvent(`${other.name} shares their ${food.name} with ${t.name}.`, [t.id, other.id]);
                 }
+                // Fighting side by side deepens the bond
+                t.relationships[other.id] = Math.min(100, (t.relationships[other.id] || 0) + 5);
+                other.relationships[t.id] = Math.min(100, (other.relationships[t.id] || 0) + 5);
                 ctx.logEvent(`${t.name} and ${other.name} support each other in ${t.zone}.`, [t.id, other.id]);
             } else if (relationship > 20) {
                 const template = ctx.rng.pick(ENCOUNTER_TEXTS.shareResources);
@@ -260,6 +337,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                 ctx.logEvent(text, [t.id, other.id]);
                 t.vitals.hunger = Math.max(0, t.vitals.hunger - 10);
                 other.vitals.hunger = Math.max(0, other.vitals.hunger - 10);
+                t.relationships[other.id] = Math.min(100, relationship + 5);
+                other.relationships[t.id] = Math.min(100, (other.relationships[t.id] || 0) + 5);
             } else if (t.stance === 'Aggressive' || other.stance === 'Aggressive' || relationship < -10) {
                 resolveCombat(ctx, t, other);
             } else {
@@ -285,9 +364,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         if (t.stance === 'Evasive') {
             ctx.logEvent(`${t.name} hides quietly in ${t.zone}.`, [t.id]);
         } else if (t.stance === 'Defensive') {
-            if (ctx.rng.chance(0.4)) {
+            const forageChance = 0.25 + (zone ? zone.resources * 0.4 : 0.15) + (t.archetype === 'survivalist' ? 0.15 : 0);
+            if (ctx.rng.chance(forageChance)) {
                 const item = ctx.rng.pick(ITEMS.filter(i => i.type === 'food' || i.type === 'water'));
-                t.inventory.push(item);
+                t.inventory.push({ ...item });
                 ctx.logEvent(`${t.name} forages in ${t.zone} and finds a ${item.name}.`, [t.id]);
             } else {
                 ctx.logEvent(`${t.name} sets up camp and rests in ${t.zone}.`, [t.id]);

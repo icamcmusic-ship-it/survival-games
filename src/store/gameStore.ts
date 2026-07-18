@@ -1,6 +1,7 @@
 import { GameState, GameConfig, HallOfFameEntry } from '../models/types';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { generateTributes } from '../engine/generator';
+import { generateArena } from '../engine/arenaGenerator';
 import { Simulator } from '../engine/simulator';
 import { createStore } from './createStore';
 
@@ -85,8 +86,12 @@ export const gameActions = {
     },
 
     startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false) {
-        const arena = ARENAS.find(a => a.id === arenaId) || ARENAS[0];
+        const arena = arenaId.startsWith('procedural')
+            ? generateArena(seed)
+            : (ARENAS.find(a => a.id === arenaId) || ARENAS[0]);
         const tributes = generateTributes(seed, config);
+        const startZone = arena.zones[0].name;
+        tributes.forEach(t => { t.zone = startZone; });
 
         const initialState: GameState = {
             seed,

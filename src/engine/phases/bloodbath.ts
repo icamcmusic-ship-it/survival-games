@@ -2,6 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
+import { ARCHETYPES } from '../../data/archetypes';
 import { resolveCombat } from '../combat';
 
 export function startGames(ctx: SimContext) {
@@ -43,6 +44,7 @@ export function processBloodbath(ctx: SimContext) {
         if (t.attributes.strength > 7) fightChance += 0.2;
         if (t.traits.includes('Bloodthirsty')) fightChance += 0.3;
         if (t.traits.includes('Pacifist')) fightChance -= 0.3;
+        fightChance += ARCHETYPES[t.archetype].aggression - ARCHETYPES[t.archetype].caution * 0.5;
 
         if (ctx.rng.chance(fightChance)) {
             fighters.push(t);
@@ -56,7 +58,7 @@ export function processBloodbath(ctx: SimContext) {
             ctx.logEvent(`${t.name} runs away from the Cornucopia.`, [t.id]);
         } else {
             const item = ctx.rng.pick(ITEMS);
-            t.inventory.push(item);
+            t.inventory.push({ ...item });
             ctx.logEvent(`${t.name} grabs a ${item.name} and runs away.`, [t.id]);
         }
     });
@@ -79,7 +81,7 @@ export function processBloodbath(ctx: SimContext) {
         const winner = fighters[0];
         const item1 = ctx.rng.pick(ITEMS);
         const item2 = ctx.rng.pick(ITEMS);
-        winner.inventory.push(item1, item2);
+        winner.inventory.push({ ...item1 }, { ...item2 });
         ctx.logEvent(`${winner.name} survives the bloodbath and claims ${item1.name} and ${item2.name}.`, [winner.id]);
     }
 
