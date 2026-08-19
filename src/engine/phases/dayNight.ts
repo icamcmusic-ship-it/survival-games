@@ -3,10 +3,20 @@ import { RNG } from '../../utils/rng';
 import { Tribute, Zone } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
-import { ENCOUNTER_TEXTS, SANITY_TEXTS } from '../../data/flavorText';
+import { ENCOUNTER_TEXTS, SANITY_TEXTS, ALLIANCE_TEXTS, AMBIENT_TEXTS } from '../../data/flavorText';
+import { arenaFlavor, ArenaEventDef } from '../../data/arenaFlavor';
 import { checkDeath, resolveCombat } from '../combat';
 import { processSponsors } from '../sponsors';
 import { zoneNames, getZone, reachableZones } from '../map';
+import { clampTribute } from '../vitals';
+import { itemPhrase } from '../items';
+
+function fill(template: string, vars: Record<string, string>): string {
+    return Object.entries(vars).reduce(
+        (text, [key, value]) => text.split(`{${key}}`).join(value),
+        template
+    );
+}
 
 function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Zone {
     // Cautious tributes prefer safe, resource-rich zones; aggressive ones follow danger (prey gathers there)
@@ -26,10 +36,57 @@ function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Zone {
     return scored[scored.length - 1].z;
 }
 
+/** Applies one arena-specific event to a tribute, honouring their dodge stat. */
+function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
+    const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
+    const vars = { tribute: t.name, zone: t.zone };
+
+    if (event.dodgeStat) {
+        const difficulty = event.dodgeDifficulty ?? 6;
+        const roll = t.attributes[event.dodgeStat] + ctx.rng.nextInt(0, 4) - (t.injuries.legs ? 2 : 0);
+        if (roll > difficulty) {
+            ctx.logEvent(fill(event.escapeText, vars), [t.id], { category: isBoon ? 'survival' : 'hazard' });
+            return;
+        }
+    }
+
+    if (event.damage) t.health -= event.damage;
+    if (event.heal) t.health = Math.min(100, t.health + event.heal);
+    if (event.bleeding) t.injuries.bleeding = true;
+    if (event.poisoned) t.injuries.poisoned = true;
+    if (event.burned) t.injuries.burned = true;
+    if (event.frostbitten) t.injuries.frostbitten = true;
+    if (event.infected) t.injuries.infected = true;
+    if (event.sanity) t.vitals.sanity -= event.sanity;
+    if (event.thirst) t.vitals.thirst += event.thirst;
+    if (event.hunger) t.vitals.hunger += event.hunger;
+    if (event.fatigue) t.vitals.fatigue += event.fatigue;
+    if (event.quench) t.vitals.thirst = Math.max(0, t.vitals.thirst - event.quench);
+    if (event.feed) t.vitals.hunger = Math.max(0, t.vitals.hunger - event.feed);
+    if (event.grantItem) {
+        const item = ITEMS.find(i => i.id === event.grantItem);
+        if (item) t.inventory.push({ ...item });
+    }
+    clampTribute(t);
+
+    ctx.logEvent(fill(event.text, vars), [t.id], {
+        important: !isBoon,
+        category: isBoon ? 'survival' : 'hazard',
+    });
+    if (!isBoon) checkDeath(ctx, t, event.cause);
+}
+
 export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     ctx.rng = new RNG(`${ctx.state.seed}-${ctx.state.day}-${time}`);
     const alive = getAlive(ctx.state);
     const allZoneNames = zoneNames(ctx.state.arena);
+    const flavor = arenaFlavor(ctx.state.arena.id);
+
+    // Occasional scene-setting line so the feed reads like a broadcast, not a spreadsheet.
+    if (ctx.rng.chance(0.35)) {
+        const pool = ctx.rng.chance(0.6) ? flavor.ambient : AMBIENT_TEXTS;
+        ctx.logEvent(ctx.pickText(pool), [], { category: 'arena' });
+    }
 
     // 0. Hazard Escalation & Safe Zone Shrinking over time (starts Day 5+)
     const isEscalated = ctx.state.day >= 5;
@@ -46,8 +103,13 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                 const newSafeZone = safeZones[0] || allZoneNames[0];
 
                 const trappedZone = t.zone;
-                ctx.logEvent(`HAZARD ESCALATION: ${t.name} is trapped inside the collapsing border of ${trappedZone}! They sustain ${damage} injury damage and desperately flee into the safe sector of ${newSafeZone}.`, [t.id], true, newSafeZone);
+                ctx.logEvent(
+                    `BORDER COLLAPSE: ${t.name} is caught inside the failing border of ${trappedZone}. They take ${damage} damage clawing their way into ${newSafeZone}.`,
+                    [t.id],
+                    { important: true, zone: newSafeZone, category: 'hazard' }
+                );
                 t.zone = newSafeZone;
+                clampTribute(t);
                 checkDeath(ctx, t, `Caught in the collapsing border of ${trappedZone}`);
             }
         });
@@ -55,12 +117,12 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     const collapsed = ctx.state.collapsedZones || [];
 
     // 1. Item Degradation & Spoilage
-    alive.forEach(t => {
+    getAlive(ctx.state).forEach(t => {
         t.inventory = t.inventory.filter(item => {
             if (item.type === 'food' && item.spoilage !== undefined) {
                 item.spoilage -= 1;
                 if (item.spoilage <= 0) {
-                    ctx.logEvent(`${t.name}'s ${item.name} has spoiled.`, [t.id]);
+                    ctx.logEvent(`${t.name} throws away their spoiled ${item.name}.`, [t.id], { category: 'survival' });
                     return false;
                 }
             }
@@ -69,7 +131,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     });
 
     // 2. Vitals, Terrain & Status Effects
-    alive.forEach(t => {
+    getAlive(ctx.state).forEach(t => {
         const zone = getZone(ctx.state.arena, t.zone);
         let hungerDrain = 10;
         let thirstDrain = 15;
@@ -90,20 +152,20 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                 t.health -= 5;
                 if (time === 'night' && ctx.rng.chance(0.15) && !t.injuries.frostbitten) {
                     t.injuries.frostbitten = true;
-                    ctx.logEvent(`${t.name}'s fingers blacken with frostbite in the freezing night.`, [t.id], true);
+                    ctx.logEvent(`${t.name}'s fingers blacken with frostbite in the freezing night.`, [t.id], { important: true, category: 'injury' });
                 }
             }
         } else if (ctx.state.arena.id === 'solar') {
             thirstDrain *= 2;
             if (time === 'day' && ctx.rng.chance(0.1) && !t.injuries.burned) {
                 t.injuries.burned = true;
-                ctx.logEvent(`${t.name} suffers severe sunburns under the merciless solar glare.`, [t.id]);
+                ctx.logEvent(`${t.name} blisters badly under the merciless solar glare.`, [t.id], { category: 'injury' });
             }
         } else if (ctx.state.arena.id === 'toxic') {
             if (ctx.rng.chance(0.2)) t.vitals.sanity -= 15;
             if (ctx.rng.chance(0.08) && !t.injuries.poisoned) {
                 t.injuries.poisoned = true;
-                ctx.logEvent(`${t.name} drinks tainted water and is poisoned by the toxins.`, [t.id], true);
+                ctx.logEvent(`${t.name} drinks tainted swamp water and the toxins take hold.`, [t.id], { important: true, category: 'injury' });
             }
         }
 
@@ -116,10 +178,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             t.excitementRating += 10;
         }
 
-        t.vitals.hunger += hungerDrain;
+        t.vitals.hunger += Math.max(0, hungerDrain);
         t.vitals.thirst += Math.max(0, thirstDrain);
         t.vitals.fatigue += fatigueDrain;
         t.vitals.sanity -= 5; // Base sanity drain
+        clampTribute(t);
 
         if (t.vitals.hunger > 80) t.health -= 5;
         if (t.vitals.thirst > 80) t.health -= 10;
@@ -128,13 +191,14 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         if (t.injuries.poisoned) { t.health -= 12; t.vitals.sanity -= 5; }
         if (t.injuries.burned) t.health -= 4;
         if (t.injuries.frostbitten) t.health -= 6;
+        clampTribute(t);
 
         if (t.vitals.hunger > 50) {
             const foodIdx = t.inventory.findIndex(i => i.type === 'food');
             if (foodIdx >= 0) {
-                t.inventory.splice(foodIdx, 1);
+                const food = t.inventory.splice(foodIdx, 1)[0];
                 t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
-                ctx.logEvent(`${t.name} eats some food.`, [t.id]);
+                ctx.logEvent(`${t.name} eats their ${food.name}.`, [t.id], { category: 'survival' });
             }
         }
         if (t.vitals.thirst > 50) {
@@ -142,7 +206,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             if (waterIdx >= 0) {
                 t.inventory.splice(waterIdx, 1);
                 t.vitals.thirst = Math.max(0, t.vitals.thirst - 50);
-                ctx.logEvent(`${t.name} drinks some water.`, [t.id]);
+                ctx.logEvent(`${t.name} drains their water ration.`, [t.id], { category: 'survival' });
             }
         }
 
@@ -152,7 +216,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             if (antidoteIdx >= 0) {
                 t.inventory.splice(antidoteIdx, 1);
                 t.injuries.poisoned = false;
-                ctx.logEvent(`${t.name} downs an Antidote Vial just in time, purging the venom from their blood.`, [t.id], true);
+                ctx.logEvent(`${t.name} downs an Antidote Vial just in time, purging the venom from their blood.`, [t.id], { important: true, category: 'survival' });
             }
         }
 
@@ -162,7 +226,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             t.inventory.splice(medkitIdx, 1);
             t.health = Math.min(100, t.health + 50);
             t.injuries = { head: false, torso: false, arms: false, legs: false, bleeding: false, infected: false, poisoned: t.injuries.poisoned, burned: false, frostbitten: false };
-            ctx.logEvent(`${t.name} uses a First Aid Kit to heal their wounds.`, [t.id], true);
+            ctx.logEvent(`${t.name} works through a First Aid Kit, stitching and binding everything they can reach.`, [t.id], { important: true, category: 'survival' });
         } else {
             const ointmentIdx = t.inventory.findIndex(i => i.id === 'ointment');
             if (ointmentIdx >= 0 && (t.health < 85 || t.injuries.infected || t.injuries.bleeding || t.injuries.burned)) {
@@ -171,9 +235,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                 t.injuries.infected = false;
                 t.injuries.bleeding = false;
                 t.injuries.burned = false;
-                ctx.logEvent(`${t.name} applies Burn Ointment, soothing their injuries and infections.`, [t.id], true);
+                ctx.logEvent(`${t.name} works Burn Ointment into their wounds and feels the sting fade.`, [t.id], { important: true, category: 'survival' });
             }
         }
+
+        clampTribute(t);
 
         const cause = t.injuries.poisoned ? 'Succumbed to poison'
             : t.injuries.frostbitten ? 'Froze to death'
@@ -200,7 +266,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             t.inventory.splice(Math.min(hasRope, hasKnife), 1);
             const spear = ITEMS.find(i => i.id === 'spear')!;
             t.inventory.push({ ...spear });
-            ctx.logEvent(`${t.name} crafts a Spear using a Rope and a Knife.`, [t.id]);
+            ctx.logEvent(`${t.name} lashes a knife to a shaft with rope and walks away holding a Spear.`, [t.id], { category: 'loot' });
         }
         // Tricksters can improvise a garrote from wire
         if (t.archetype === 'trickster') {
@@ -209,7 +275,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                 t.inventory.splice(hasWire, 1);
                 const garrote = ITEMS.find(i => i.id === 'garrote')!;
                 t.inventory.push({ ...garrote });
-                ctx.logEvent(`${t.name} twists a length of wire into a deadly garrote.`, [t.id]);
+                ctx.logEvent(`${t.name} twists a length of wire into a garrote and tests it on a branch.`, [t.id], { category: 'loot' });
             }
         }
 
@@ -232,9 +298,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
         if (t.allianceId) {
             // Alliance members move together
-            const allianceMembers = currentAlive.filter(m => m.allianceId === t.allianceId);
-            const leader = allianceMembers[0]; // Simple leader logic
-            if (t.id === leader.id) {
+            const allianceMembers = currentAlive.filter(m => m.allianceId === t.allianceId && m.status === 'alive');
+            const leader = allianceMembers[0];
+            if (leader && t.id === leader.id) {
                 if (t.stance === 'Evasive' || ctx.rng.chance(0.5)) {
                     const options = reachableZones(ctx.state.arena, t.zone, collapsed);
                     if (options.length > 0) {
@@ -242,7 +308,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                         if (t.zone !== newZone) {
                             allianceMembers.forEach(m => m.zone = newZone);
                             if (t.stance !== 'Evasive') {
-                                ctx.logEvent(`The alliance of ${allianceMembers.map(m => m.name).join(', ')} travels to ${newZone}.`, allianceMembers.map(m => m.id));
+                                ctx.logEvent(
+                                    `The alliance of ${allianceMembers.map(m => m.name).join(', ')} moves out to ${newZone}.`,
+                                    allianceMembers.map(m => m.id),
+                                    { zone: newZone, category: 'travel' }
+                                );
                             }
                         }
                     }
@@ -255,14 +325,18 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                 if (t.zone !== newZone) {
                     t.zone = newZone;
                     if (t.stance !== 'Evasive') {
-                        ctx.logEvent(`${t.name} travels to ${newZone}.`, [t.id]);
+                        ctx.logEvent(
+                            fill(ctx.pickText(flavor.actions.travel), { tribute: t.name, zone: newZone }),
+                            [t.id],
+                            { zone: newZone, category: 'travel' }
+                        );
                     }
                 }
             }
         }
     });
 
-    const shuffled = [...currentAlive].sort(() => ctx.rng.nextFloat() - 0.5);
+    const shuffled = ctx.rng.shuffle(currentAlive);
 
     shuffled.forEach(t => {
         if (acted.has(t.id) || t.status === 'dead') return;
@@ -280,14 +354,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         muttChance = Math.min(0.9, muttChance * ctx.state.config.hazardRate);
 
         if (ctx.rng.chance(eventChance)) {
-            const event = ctx.rng.pick(ctx.state.arena.events);
-            if (ctx.rng.chance(0.5)) {
-                t.health -= 30;
-                ctx.logEvent(`${t.name} is caught in a ${event} in ${t.zone} and is severely injured!`, [t.id], true);
-                checkDeath(ctx, t, `Killed by a ${event} in ${t.zone}`);
-            } else {
-                ctx.logEvent(`${t.name} barely escapes a ${event} in ${t.zone}.`, [t.id]);
-            }
+            applyArenaEvent(ctx, t, ctx.rng.pick(flavor.events));
             acted.add(t.id);
             return;
         }
@@ -295,13 +362,14 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         if (ctx.rng.chance(muttChance)) {
             const mutt = ctx.rng.pick(ctx.state.arena.mutts);
             if (t.attributes.agility > 6 && ctx.rng.chance(0.7)) {
-                ctx.logEvent(`${t.name} outruns a pack of ${mutt} in ${t.zone}.`, [t.id]);
+                ctx.logEvent(`${t.name} outruns a pack of ${mutt} through ${t.zone}.`, [t.id], { category: 'mutt' });
             } else {
                 t.health -= 40;
                 t.injuries.bleeding = true;
-                ctx.logEvent(`${t.name} is attacked by ${mutt} in ${t.zone} and barely survives.`, [t.id], true);
+                clampTribute(t);
+                ctx.logEvent(`${t.name} is set upon by ${mutt} in ${t.zone} and barely breaks free.`, [t.id], { important: true, category: 'mutt' });
+                checkDeath(ctx, t, `Torn apart by ${mutt}`);
             }
-            checkDeath(ctx, t, `Torn apart by ${mutt} in ${t.zone}`);
             acted.add(t.id);
             return;
         }
@@ -311,11 +379,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         if (others.length > 0 && ctx.rng.chance(0.4)) {
             const other = others[0];
 
-            // Alliance Logic
             const inSameAlliance = t.allianceId && t.allianceId === other.allianceId;
-
-            // Grudge/Debt Logic
             const relationship = t.relationships[other.id] || 0;
+            const vars = { t1: t.name, t2: other.name, zone: t.zone };
 
             if (inSameAlliance) {
                 // Share resources within alliance
@@ -325,16 +391,13 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                     const foodIdx = other.inventory.findIndex(i => i.type === 'food');
                     const food = other.inventory.splice(foodIdx, 1)[0];
                     t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
-                    ctx.logEvent(`${other.name} shares their ${food.name} with ${t.name}.`, [t.id, other.id]);
+                    ctx.logEvent(`${other.name} hands ${t.name} their ${food.name} without being asked.`, [t.id, other.id], { category: 'alliance' });
                 }
-                // Fighting side by side deepens the bond
                 t.relationships[other.id] = Math.min(100, (t.relationships[other.id] || 0) + 5);
                 other.relationships[t.id] = Math.min(100, (other.relationships[t.id] || 0) + 5);
-                ctx.logEvent(`${t.name} and ${other.name} support each other in ${t.zone}.`, [t.id, other.id]);
+                ctx.logEvent(fill(ctx.pickText(ALLIANCE_TEXTS.support), vars), [t.id, other.id], { category: 'alliance' });
             } else if (relationship > 20) {
-                const template = ctx.rng.pick(ENCOUNTER_TEXTS.shareResources);
-                const text = template.replace('{t1}', t.name).replace('{t2}', other.name).replace('{zone}', t.zone);
-                ctx.logEvent(text, [t.id, other.id]);
+                ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.shareResources), vars), [t.id, other.id], { category: 'alliance' });
                 t.vitals.hunger = Math.max(0, t.vitals.hunger - 10);
                 other.vitals.hunger = Math.max(0, other.vitals.hunger - 10);
                 t.relationships[other.id] = Math.min(100, relationship + 5);
@@ -343,17 +406,13 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                 resolveCombat(ctx, t, other);
             } else {
                 if (ctx.rng.chance(0.5)) {
-                    const template = ctx.rng.pick(ENCOUNTER_TEXTS.peaceful);
-                    const text = template.replace('{t1}', t.name).replace('{t2}', other.name).replace('{zone}', t.zone);
-                    ctx.logEvent(text, [t.id, other.id]);
+                    ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.peaceful), vars), [t.id, other.id], { category: 'survival' });
                 } else {
-                    const template = ctx.rng.pick(ENCOUNTER_TEXTS.friendly);
-                    const text = template.replace('{t1}', t.name).replace('{t2}', other.name).replace('{zone}', t.zone);
-                    ctx.logEvent(text, [t.id, other.id]);
+                    ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.friendly), vars), [t.id, other.id], { category: 'alliance' });
                     t.vitals.sanity = Math.min(100, t.vitals.sanity + 10);
                     other.vitals.sanity = Math.min(100, other.vitals.sanity + 10);
-                    t.relationships[other.id] = (t.relationships[other.id] || 0) + 10;
-                    other.relationships[t.id] = (other.relationships[t.id] || 0) + 10;
+                    t.relationships[other.id] = Math.min(100, (t.relationships[other.id] || 0) + 10);
+                    other.relationships[t.id] = Math.min(100, (other.relationships[t.id] || 0) + 10);
                 }
             }
             acted.add(t.id);
@@ -361,19 +420,24 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             return;
         }
 
+        // Idle action, flavoured by the arena the tribute is standing in.
         if (t.stance === 'Evasive') {
-            ctx.logEvent(`${t.name} hides quietly in ${t.zone}.`, [t.id]);
+            ctx.logEvent(fill(ctx.pickText(flavor.actions.hide), { tribute: t.name, zone: t.zone }), [t.id], { category: 'survival' });
         } else if (t.stance === 'Defensive') {
             const forageChance = 0.25 + (zone ? zone.resources * 0.4 : 0.15) + (t.archetype === 'survivalist' ? 0.15 : 0);
             if (ctx.rng.chance(forageChance)) {
                 const item = ctx.rng.pick(ITEMS.filter(i => i.type === 'food' || i.type === 'water'));
                 t.inventory.push({ ...item });
-                ctx.logEvent(`${t.name} forages in ${t.zone} and finds a ${item.name}.`, [t.id]);
+                ctx.logEvent(
+                    fill(ctx.pickText(flavor.actions.forage), { tribute: t.name, zone: t.zone, item: itemPhrase(item) }),
+                    [t.id],
+                    { category: 'loot' }
+                );
             } else {
-                ctx.logEvent(`${t.name} sets up camp and rests in ${t.zone}.`, [t.id]);
+                ctx.logEvent(fill(ctx.pickText(flavor.actions.rest), { tribute: t.name, zone: t.zone }), [t.id], { category: 'survival' });
             }
         } else {
-            ctx.logEvent(`${t.name} hunts for other tributes in ${t.zone} but finds no one.`, [t.id]);
+            ctx.logEvent(fill(ctx.pickText(flavor.actions.hunt), { tribute: t.name, zone: t.zone }), [t.id], { category: 'survival' });
         }
         acted.add(t.id);
     });
@@ -383,29 +447,19 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
 function handleInsanity(ctx: SimContext, t: Tribute) {
     const roll = ctx.rng.nextFloat();
+    const vars = { tribute: t.name, zone: t.zone };
     if (roll < 0.4) {
-        // Hallucination
-        const template = ctx.rng.pick(SANITY_TEXTS.hallucination);
-        const text = template.replace('{tribute}', t.name).replace('{zone}', t.zone);
-        ctx.logEvent(text, [t.id], true);
+        ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.hallucination), vars), [t.id], { important: true, category: 'sanity' });
         t.vitals.sanity -= 5;
     } else if (roll < 0.7) {
-        // Ruin Stealth
-        const template = ctx.rng.pick(SANITY_TEXTS.ruinStealth);
-        const text = template.replace('{tribute}', t.name).replace('{zone}', t.zone);
-        ctx.logEvent(text, [t.id], true);
+        ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.ruinStealth), vars), [t.id], { important: true, category: 'sanity' });
         t.attributes.stealth = Math.max(0, t.attributes.stealth - 2);
     } else if (t.inventory.length > 0) {
-        // Drop Item
         const itemIdx = ctx.rng.nextInt(0, t.inventory.length - 1);
         const item = t.inventory.splice(itemIdx, 1)[0];
-        const template = ctx.rng.pick(SANITY_TEXTS.dropItem);
-        const text = template.replace('{tribute}', t.name).replace('{item}', item.name).replace('{zone}', t.zone);
-        ctx.logEvent(text, [t.id], true);
+        ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.dropItem), { ...vars, item: item.name }), [t.id], { important: true, category: 'sanity' });
     } else {
-        // Default to hallucination if no items
-        const template = ctx.rng.pick(SANITY_TEXTS.hallucination);
-        const text = template.replace('{tribute}', t.name).replace('{zone}', t.zone);
-        ctx.logEvent(text, [t.id], true);
+        ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.hallucination), vars), [t.id], { important: true, category: 'sanity' });
     }
+    clampTribute(t);
 }

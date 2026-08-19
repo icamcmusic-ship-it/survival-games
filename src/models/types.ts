@@ -96,6 +96,33 @@ export interface Arena {
 
 export type Phase = 'setup' | 'roster' | 'reaping' | 'training' | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'epilogue' | 'ended';
 
+/**
+ * Semantic category for every logged event. Drives the colour coding of the
+ * chronicle feed so a reader can scan a day and immediately tell a death from
+ * a sponsor gift from a quiet forage.
+ */
+export type EventCategory =
+    | 'death'
+    | 'kill'
+    | 'combat'
+    | 'injury'
+    | 'hazard'
+    | 'mutt'
+    | 'alliance'
+    | 'betrayal'
+    | 'romance'
+    | 'sponsor'
+    | 'loot'
+    | 'survival'
+    | 'travel'
+    | 'sanity'
+    | 'arena'
+    | 'gamemaker'
+    | 'training'
+    | 'interview'
+    | 'feast'
+    | 'system';
+
 export interface GameConfig {
     districtCount: number; // 1-12, each district reaps 2 tributes
     hazardRate: number; // multiplier on random event/mutt attack chance
@@ -116,6 +143,12 @@ export interface GameState {
     config: GameConfig;
     collapsedZones?: string[];
     epilogueInterview?: EpilogueQA[];
+    /** Day the next Gamemaker feast is scheduled for (undefined = none scheduled). */
+    feastDay?: number;
+    /** Feasts already held this run, used to space them out. */
+    feastsHeld?: number;
+    /** Monotonic counter guaranteeing unique event log ids. */
+    logCounter?: number;
 }
 
 export interface EventLog {
@@ -126,6 +159,13 @@ export interface EventLog {
     tributesInvolved: string[];
     important: boolean;
     zone?: string;
+    category: EventCategory;
+}
+
+export interface LogOptions {
+    important?: boolean;
+    zone?: string;
+    category?: EventCategory;
 }
 
 export interface EpilogueQA {

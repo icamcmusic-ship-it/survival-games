@@ -106,7 +106,10 @@ export function generateArena(seed: string): Arena {
     }];
 
     const usedNames = new Set<string>(['The Cornucopia']);
-    while (zones.length < zoneCount) {
+    // Bounded: if a biome's name pools run dry the arena simply comes out
+    // smaller, instead of looping forever looking for an unused name.
+    let attempts = zoneCount * 40;
+    while (zones.length < zoneCount && attempts-- > 0) {
         const terrain = rng.pick(biome.terrains);
         const pool = (biome.zoneNames[terrain] || []).filter(n => !usedNames.has(n));
         if (pool.length === 0) continue;

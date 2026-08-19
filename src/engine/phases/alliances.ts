@@ -2,6 +2,10 @@ import { SimContext, getAlive } from '../context';
 import { Tribute } from '../../models/types';
 import { resolveCombat } from '../combat';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
+import { ALLIANCE_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
+
+const fill = (template: string, vars: Record<string, string>) =>
+    Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
 
 export function processAlliances(ctx: SimContext) {
     const alive = getAlive(ctx.state);
@@ -41,7 +45,11 @@ export function processAlliances(ctx: SimContext) {
                 if (betrayer.traits.includes('Star-Crossed') && victim.traits.includes('Star-Crossed') && betrayer.district === victim.district) {
                     return;
                 }
-                ctx.logEvent(`${betrayer.name} betrays the alliance and attacks ${victim.name}!`, [betrayer.id, victim.id], true);
+                ctx.logEvent(
+                    fill(ctx.pickText(ALLIANCE_TEXTS.betray), { betrayer: betrayer.name, victim: victim.name, zone: betrayer.zone }),
+                    [betrayer.id, victim.id],
+                    { important: true, category: 'betrayal' }
+                );
                 delete betrayer.allianceId; // Betrayer leaves
                 resolveCombat(ctx, betrayer, victim);
             }
@@ -49,11 +57,14 @@ export function processAlliances(ctx: SimContext) {
     });
 
     // 3. Dynamic Alliance Formation & Star-Crossed Lovers
-    if (alive.length > 4) {
-        for (let i = 0; i < alive.length; i++) {
-            for (let j = i + 1; j < alive.length; j++) {
-                const t1 = alive[i];
-                const t2 = alive[j];
+    // Re-read the living: betrayals above may have killed someone since the
+    // snapshot at the top of this function.
+    const stillAlive = getAlive(ctx.state);
+    if (stillAlive.length > 4) {
+        for (let i = 0; i < stillAlive.length; i++) {
+            for (let j = i + 1; j < stillAlive.length; j++) {
+                const t1 = stillAlive[i];
+                const t2 = stillAlive[j];
 
                 if (!t1.allianceId && !t2.allianceId) {
                     const rel = t1.relationships[t2.id] || 0;
@@ -66,7 +77,11 @@ export function processAlliances(ctx: SimContext) {
                         const newId = `alliance-${t1.id}-${t2.id}`;
                         t1.allianceId = newId;
                         t2.allianceId = newId;
-                        ctx.logEvent(`${t1.name} and ${t2.name} form a formal alliance.`, [t1.id, t2.id], true);
+                        ctx.logEvent(
+                            fill(ctx.pickText(ALLIANCE_TEXTS.form), { t1: t1.name, t2: t2.name, zone: t1.zone }),
+                            [t1.id, t2.id],
+                            { important: true, category: 'alliance' }
+                        );
                     }
                 }
             }
@@ -74,8 +89,8 @@ export function processAlliances(ctx: SimContext) {
     }
 
     // 4. Romantic "Star-Crossed Lovers" formation check (District partners of opposite gender)
-    for (let dist = 1; dist <= 12; dist++) {
-        const districtTributes = alive.filter(t => t.district === dist);
+    for (let dist = 1; dist <= ctx.state.config.districtCount; dist++) {
+        const districtTributes = getAlive(ctx.state).filter(t => t.district === dist);
         if (districtTributes.length === 2 && districtTributes[0].gender !== districtTributes[1].gender) {
             const t1 = districtTributes[0];
             const t2 = districtTributes[1];
@@ -101,7 +116,11 @@ export function processAlliances(ctx: SimContext) {
                 t1.excitementRating += 50;
                 t2.excitementRating += 50;
 
-                ctx.logEvent(`ROMANCE: ${t1.name} and ${t2.name} of District ${dist} have formed an unshakeable bond as Star-Crossed Lovers! The Capitol audience is completely captivated.`, [t1.id, t2.id], true);
+                ctx.logEvent(
+                    fill(ctx.pickText(ROMANCE_TEXTS), { t1: t1.name, t2: t2.name, district: String(dist) }),
+                    [t1.id, t2.id],
+                    { important: true, category: 'romance' }
+                );
             }
         }
     }

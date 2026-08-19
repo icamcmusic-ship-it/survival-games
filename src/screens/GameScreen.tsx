@@ -1,229 +1,238 @@
-import React, { useState, useEffect } from 'react';
-import { GameState, Tribute, HallOfFameEntry } from '../models/types';
-import { Simulator } from '../engine/simulator';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { EventCategory, GameState } from '../models/types';
 import { ArenaMap } from '../components/ArenaMap';
 import { TributeModal } from '../components/TributeModal';
-import { Skull, Heart, Zap as _Zap, Settings, FastForward, MapPin, Users, Swords } from 'lucide-react';
+import { EventFeed, FeedLine } from '../components/EventFeed';
+import { CATEGORY_GROUPS } from '../ui/eventStyles';
+import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause } from 'lucide-react';
 
-function saveHallOfFame(state: GameState) {
-    const winner = state.tributes.find(t => t.status === 'alive');
-    if (!winner) return;
-    const entry: HallOfFameEntry = {
-        id: Math.random().toString(36).substring(2, 9),
-        seed: state.seed,
-        arenaName: state.arena.name,
-        winnerName: winner.name,
-        winnerDistrict: winner.district,
-        kills: winner.kills,
-        date: new Date().toISOString(),
-        winnerTraits: winner.traits,
-        winnerEndHealth: winner.health,
-        tributeSummaries: state.tributes.map(t => ({
-            name: t.name,
-            district: t.district,
-            kills: t.kills,
-            status: t.status,
-            causeOfDeath: t.causeOfDeath,
-            dayOfDeath: t.dayOfDeath
-        }))
-    };
-    let existing = [];
-    try {
-        existing = JSON.parse(localStorage.getItem('hungerGamesHoF') || '[]');
-        if (!Array.isArray(existing)) existing = [];
-    } catch (e) {
-        existing = [];
-    }
-    localStorage.setItem('hungerGamesHoF', JSON.stringify([entry, ...existing]));
-}
+type Speed = 'manual' | '1x' | '5x' | 'auto';
+
+const SPEED_DELAY: Record<Exclude<Speed, 'manual'>, number> = { '1x': 1200, '5x': 350, auto: 60 };
 
 export function GameScreen({
     gameState,
     onNextPhase,
-    simulator,
-    setGameState,
+    onRunToEnd,
+    onGamemakerEvent,
 }: {
     gameState: GameState,
     onNextPhase: () => void,
-    simulator: Simulator,
-    setGameState: (state: GameState) => void,
-    coins: number,
-    bets: Record<string, number>,
-    setCoins: (coins: number) => void,
-    setBets: React.Dispatch<React.SetStateAction<Record<string, number>>>
+    onRunToEnd: () => void,
+    onGamemakerEvent: (type: 'mutt' | 'weather' | 'feast', targetId?: string) => void,
 }) {
-    const [selectedTribute, setSelectedTribute] = useState<Tribute | null>(null);
-    const [speed, setSpeed] = useState<'manual' | '1x' | '5x' | 'auto'>('manual');
-    const [importantOnly, setImportantOnly] = useState<boolean>(false);
-    const [muttTargetId, setMuttTargetId] = useState<string>('');
+    const [selectedTributeId, setSelectedTributeId] = useState<string | null>(null);
+    const [speed, setSpeed] = useState<Speed>('manual');
+    const [importantOnly, setImportantOnly] = useState(false);
+    const [muttTargetId, setMuttTargetId] = useState('');
     const [tacticalTab, setTacticalTab] = useState<'chronicle' | 'map'>('chronicle');
     const [selectedZone, setSelectedZone] = useState<string | null>(null);
+    const [mutedGroups, setMutedGroups] = useState<Set<string>>(new Set());
+    const [showFilters, setShowFilters] = useState(false);
+    const nextPhaseRef = useRef(onNextPhase);
+    nextPhaseRef.current = onNextPhase;
 
     const aliveCount = gameState.tributes.filter(t => t.status === 'alive').length;
-    const deadCount = gameState.tributes.filter(t => t.status === 'dead').length;
+    const deadCount = gameState.tributes.length - aliveCount;
+    const isOver = gameState.phase === 'ended';
 
-    // Auto-advance logic
+    // The modal reads live tribute data instead of a snapshot captured on click,
+    // so vitals keep updating while the simulation runs behind it.
+    const selectedTribute = selectedTributeId
+        ? gameState.tributes.find(t => t.id === selectedTributeId) ?? null
+        : null;
+
+    const mutedCategories = useMemo(() => {
+        const muted = new Set<EventCategory>();
+        CATEGORY_GROUPS.forEach(group => {
+            if (mutedGroups.has(group.id)) group.categories.forEach(c => muted.add(c));
+        });
+        return muted;
+    }, [mutedGroups]);
+
+    // Auto-advance
     useEffect(() => {
-        if (speed === 'manual' || gameState.phase === 'ended') return;
-
-        const delay = speed === '1x' ? 1200 : speed === '5x' ? 300 : 50;
-        const timer = setTimeout(() => {
-            onNextPhase();
-        }, delay);
-
+        if (speed === 'manual' || isOver) return;
+        const timer = setTimeout(() => nextPhaseRef.current(), SPEED_DELAY[speed]);
         return () => clearTimeout(timer);
-    }, [speed, gameState.phase, gameState.day, onNextPhase]);
+    }, [speed, isOver, gameState.phase, gameState.day, gameState.log.length]);
 
-    // Run to completion instantly
-    const handleRunToEnd = () => {
-        let state = simulator.getState();
-        let maxCycles = 500;
-        while (state.phase !== 'ended' && maxCycles > 0) {
-            if (state.phase === 'setup') {
-                simulator.processTraining();
-            } else if (state.phase === 'training') {
-                simulator.processInterviews();
-            } else if (state.phase === 'interviews') {
-                simulator.startGames();
-            } else if (state.phase === 'bloodbath') {
-                simulator.processBloodbath();
-            } else {
-                simulator.processTurn();
+    // Keyboard shortcuts: space advances, F toggles filters, M/C swap panes, Esc clears.
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement | null;
+            if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+            if (e.key === ' ' && !isOver) {
+                e.preventDefault();
+                onNextPhase();
+            } else if (e.key.toLowerCase() === 'f') {
+                setShowFilters(v => !v);
+            } else if (e.key.toLowerCase() === 'm') {
+                setTacticalTab(t => (t === 'map' ? 'chronicle' : 'map'));
+            } else if (e.key === 'Escape') {
+                setSelectedTributeId(null);
+                setSelectedZone(null);
             }
-            state = simulator.getState();
-            maxCycles--;
-        }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [onNextPhase, isOver]);
 
-        if (state.phase === 'ended') {
-            saveHallOfFame(state);
-        }
-        setGameState(JSON.parse(JSON.stringify(simulator.getState())));
-    };
-
-    // Group and Filter Logs
-    const filteredLogs = gameState.log.filter(log => {
+    const filteredLogs = useMemo(() => gameState.log.filter(log => {
         if (importantOnly && !log.important) return false;
         if (selectedZone && log.zone !== selectedZone) return false;
+        if (mutedCategories.has(log.category)) return false;
         return true;
-    });
+    }), [gameState.log, importantOnly, selectedZone, mutedCategories]);
 
-    const groupedLogs = filteredLogs.reduce((acc, log) => {
-        const key = `Day ${log.day} - ${log.phase.charAt(0).toUpperCase() + log.phase.slice(1)}`;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(log);
-        return acc;
-    }, {} as Record<string, typeof gameState.log>);
-
-    // Sort tributes for sidebar: group alive allied together, alive solo, then deceased
-    const sortedSidebarTributes = [...gameState.tributes].sort((a, b) => {
-        if (a.status !== b.status) {
-            return a.status === 'alive' ? -1 : 1;
-        }
+    const sortedSidebarTributes = useMemo(() => [...gameState.tributes].sort((a, b) => {
+        if (a.status !== b.status) return a.status === 'alive' ? -1 : 1;
         if (a.status === 'alive') {
             if (a.allianceId && !b.allianceId) return -1;
             if (!a.allianceId && b.allianceId) return 1;
-            if (a.allianceId && b.allianceId) {
+            if (a.allianceId && b.allianceId && a.allianceId !== b.allianceId) {
                 return a.allianceId.localeCompare(b.allianceId);
             }
         }
-        if (a.district !== b.district) {
-            return a.district - b.district;
-        }
+        if (a.district !== b.district) return a.district - b.district;
         return a.gender.localeCompare(b.gender);
-    });
+    }), [gameState.tributes]);
 
-    const getAllianceBorderClass = (allianceId?: string) => {
-        if (!allianceId) return '';
-        const colors = [
-            'border-l-4 border-l-emerald-500 bg-emerald-950/10 hover:border-r hover:border-zinc-650',
-            'border-l-4 border-l-cyan-500 bg-cyan-950/10 hover:border-r hover:border-zinc-650',
-            'border-l-4 border-l-amber-500 bg-amber-950/10 hover:border-r hover:border-zinc-650',
-            'border-l-4 border-l-purple-500 bg-purple-950/10 hover:border-r hover:border-zinc-650',
-            'border-l-4 border-l-pink-500 bg-pink-955/10 hover:border-r hover:border-zinc-650'
-        ];
+    const allianceAccent = (allianceId?: string) => {
+        if (!allianceId) return undefined;
+        const palette = ['#3fd07a', '#4db4ff', '#ffb454', '#a56bff', '#ff8ec6'];
         let hash = 0;
         for (let i = 0; i < allianceId.length; i++) {
             hash = allianceId.charCodeAt(i) + ((hash << 5) - hash);
         }
-        return colors[Math.abs(hash) % colors.length];
+        return palette[Math.abs(hash) % palette.length];
     };
 
+    const toggleGroup = (id: string) => setMutedGroups(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+    });
+
+    const phaseLabel = isOver
+        ? 'The Games Have Ended'
+        : gameState.day === 0
+            ? gameState.phase.toUpperCase()
+            : `Day ${gameState.day} — ${gameState.phase.toUpperCase()}`;
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-                <div className="flex flex-col gap-4 bg-zinc-900 border border-zinc-800 p-5 rounded-xl">
-                    <div className="flex justify-between items-center pb-3 border-b border-zinc-850">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-5">
+                {/* ---------- control deck ---------- */}
+                <div className="panel p-5 space-y-4">
+                    <div className="flex flex-wrap justify-between items-start gap-4 pb-3 border-b border-[var(--color-ink-800)]">
                         <div>
-                            <h2 className="text-2xl font-black uppercase tracking-tight text-white">
-                                {gameState.phase === 'ended' ? 'The Games Have Ended' : `Day ${gameState.day} - ${gameState.phase.toUpperCase()}`}
-                            </h2>
-                            <p className="text-zinc-400 text-sm">{gameState.arena.name}</p>
+                            <h2 className="display-title text-2xl">{phaseLabel}</h2>
+                            <p className="text-[var(--color-ink-400)] text-sm mt-0.5">{gameState.arena.name}</p>
                         </div>
-                        {gameState.phase !== 'ended' && (
+                        {!isOver && (
                             <div className="flex items-center gap-2">
-                                <button
-                                    onClick={handleRunToEnd}
-                                    className="px-4 py-2 bg-zinc-950 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 font-bold uppercase tracking-widest rounded-lg text-xs transition-colors"
-                                >
+                                <button onClick={onRunToEnd} className="btn" title="Simulate the entire run at once">
                                     Run to End
                                 </button>
-                                <button
-                                    onClick={onNextPhase}
-                                    className="px-6 py-2 bg-red-600 hover:bg-red-500 text-white font-bold uppercase tracking-widest rounded-lg text-xs transition-colors flex items-center gap-2"
-                                >
+                                <button onClick={onNextPhase} className="btn btn-primary" title="Advance one phase (Space)">
                                     Proceed <FastForward className="w-4 h-4" />
                                 </button>
                             </div>
                         )}
                     </div>
 
-                    {gameState.phase !== 'ended' && (
-                        <div className="flex flex-wrap items-center justify-between gap-4 text-xs">
+                    {!isOver && (
+                        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
                             <div className="flex items-center gap-2">
-                                <span className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Sim Speed:</span>
-                                <div className="inline-flex rounded-lg bg-zinc-950 p-1 border border-zinc-850">
+                                <span className="eyebrow">Sim speed</span>
+                                <div className="seg">
                                     {(['manual', '1x', '5x', 'auto'] as const).map(s => (
                                         <button
                                             key={s}
                                             onClick={() => setSpeed(s)}
-                                            className={`px-3 py-1.5 rounded-md font-bold text-[10px] uppercase tracking-wider transition-colors ${speed === s ? 'bg-red-600/20 text-red-400 border border-red-900/40' : 'text-zinc-500 hover:text-zinc-300 border border-transparent'}`}
+                                            aria-pressed={speed === s}
+                                            className="seg-item"
                                         >
-                                            {s === 'manual' ? 'Manual' : s === 'auto' ? 'Auto' : s}
+                                            {s === 'manual' ? <Pause className="w-3 h-3 inline" /> : s === 'auto' ? <Play className="w-3 h-3 inline" /> : null}
+                                            <span className="ml-1">{s === 'manual' ? 'Manual' : s === 'auto' ? 'Max' : s}</span>
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="flex gap-1 bg-zinc-950 p-1 border border-zinc-850 rounded-lg">
-                                <button
-                                    onClick={() => setTacticalTab('chronicle')}
-                                    className={`px-3 py-1 rounded-md font-bold text-[10px] uppercase tracking-wider transition-all border ${tacticalTab === 'chronicle' ? 'bg-zinc-800 text-white border-zinc-705' : 'text-zinc-500 border-transparent hover:text-zinc-300'}`}
-                                >
-                                    Chronicle feed
+                            <div className="seg">
+                                <button onClick={() => setTacticalTab('chronicle')} aria-pressed={tacticalTab === 'chronicle'} className="seg-item">
+                                    Chronicle
                                 </button>
-                                <button
-                                    onClick={() => setTacticalTab('map')}
-                                    className={`px-3 py-1 rounded-md font-bold text-[10px] uppercase tracking-wider transition-all border ${tacticalTab === 'map' ? 'bg-zinc-800 text-white border-zinc-705' : 'text-zinc-500 border-transparent hover:text-zinc-300'}`}
-                                >
-                                    Hologram Map
+                                <button onClick={() => setTacticalTab('map')} aria-pressed={tacticalTab === 'map'} className="seg-item">
+                                    Arena Map
                                 </button>
                             </div>
 
-                            <label className="flex items-center gap-2 cursor-pointer text-zinc-400 hover:text-zinc-200">
+                            <button onClick={() => setShowFilters(v => !v)} aria-pressed={showFilters} className="seg-item" title="Toggle filters (F)">
+                                <Filter className="w-3 h-3 inline mr-1" /> Filters
+                                {(mutedGroups.size > 0 || importantOnly) && <span className="ml-1 text-[var(--color-blood-400)]">•</span>}
+                            </button>
+
+                            <span className="ml-auto text-[10px] uppercase tracking-widest text-[var(--color-ink-600)] hidden md:inline">
+                                Space · advance &nbsp; F · filters &nbsp; M · map
+                            </span>
+                        </div>
+                    )}
+
+                    {showFilters && (
+                        <div className="panel-flush p-4 space-y-3 animate-fadeIn">
+                            <label className="flex items-center gap-2 cursor-pointer w-fit">
                                 <input
                                     type="checkbox"
                                     checked={importantOnly}
-                                    onChange={(e) => setImportantOnly(e.target.checked)}
-                                    className="rounded bg-zinc-950 border-zinc-800 text-red-600 focus:ring-red-600 cursor-pointer w-4 h-4"
+                                    onChange={e => setImportantOnly(e.target.checked)}
+                                    className="w-4 h-4 accent-[var(--color-blood-500)] cursor-pointer"
                                 />
-                                <span className="text-[10px] uppercase font-bold tracking-wider">Show Important Events Only</span>
+                                <span className="eyebrow">Headline events only</span>
                             </label>
+                            <div>
+                                <div className="eyebrow mb-2">Event categories — click to mute</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {CATEGORY_GROUPS.map(group => {
+                                        const muted = mutedGroups.has(group.id);
+                                        return (
+                                            <button
+                                                key={group.id}
+                                                onClick={() => toggleGroup(group.id)}
+                                                className={`chip ${muted ? 'opacity-40 line-through' : ''}`}
+                                                title={group.categories.join(', ')}
+                                            >
+                                                <span className="flex gap-0.5">
+                                                    {group.categories.slice(0, 4).map(c => (
+                                                        <span key={c} className="legend-dot" style={{ ['--cat' as string]: `var(--cat-${c})` }} />
+                                                    ))}
+                                                </span>
+                                                {group.label}
+                                            </button>
+                                        );
+                                    })}
+                                    {(mutedGroups.size > 0 || importantOnly) && (
+                                        <button
+                                            onClick={() => { setMutedGroups(new Set()); setImportantOnly(false); }}
+                                            className="chip chip-accent"
+                                        >
+                                            Reset filters
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="text-[10px] text-[var(--color-ink-500)]">
+                                Showing {filteredLogs.length} of {gameState.log.length} logged events.
+                            </div>
                         </div>
                     )}
                 </div>
 
+                {/* ---------- main pane ---------- */}
                 {tacticalTab === 'map' ? (
-                    <div className="bg-zinc-900 border border-zinc-850 p-5 rounded-xl space-y-4">
+                    <div className="panel p-5 space-y-4">
                         <ArenaMap
                             gameState={gameState}
                             selectedZone={selectedZone}
@@ -232,170 +241,150 @@ export function GameScreen({
                         />
 
                         {selectedZone ? (
-                            <div className="p-4 bg-zinc-950 rounded-xl border border-red-900/40 animate-fadeIn">
+                            <div className="panel-flush p-4 animate-fadeIn">
                                 <div className="flex justify-between items-center mb-3">
-                                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-red-400">Decrypted Records: {selectedZone}</span>
-                                    <button
-                                        onClick={() => setSelectedZone(null)}
-                                        className="text-[9px] text-zinc-500 hover:text-zinc-300 uppercase font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800"
-                                    >
-                                        Clear Filter
-                                    </button>
+                                    <span className="panel-title text-[var(--color-blood-400)]">Sector log — {selectedZone}</span>
+                                    <button onClick={() => setSelectedZone(null)} className="btn btn-sm btn-ghost">Clear</button>
                                 </div>
-                                <div className="space-y-2 max-h-56 overflow-y-auto pr-1 text-sm custom-scrollbar">
+                                <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
                                     {filteredLogs.length === 0 ? (
-                                        <div className="text-zinc-500 text-xs text-center py-6 font-mono">No telemetry captured in this sector.</div>
+                                        <div className="empty-state">Nothing has happened in this sector yet.</div>
                                     ) : (
-                                        filteredLogs.map(l => (
-                                            <div key={l.id} className="p-2.5 bg-zinc-900/60 rounded border border-zinc-850/40 text-zinc-300">
-                                                {l.text}
-                                            </div>
-                                        ))
+                                        [...filteredLogs].reverse().map(l => <FeedLine key={l.id} log={l} />)
                                     )}
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center py-8 text-xs text-zinc-500 border border-dashed border-zinc-800 bg-zinc-950/20 rounded-xl">
-                                💡 Select any sector in the holographic grid above to review activities that occurred there.
-                            </div>
+                            <div className="empty-state">Select a sector above to isolate everything that happened there.</div>
                         )}
                     </div>
                 ) : (
-                    <div className="space-y-8 bg-zinc-900/30 p-4 rounded-xl border border-zinc-850/40">
+                    <div className="panel p-5 space-y-4">
                         {selectedZone && (
-                            <div className="flex justify-between items-center bg-red-955/10 border border-red-900/30 px-3 py-1.5 rounded-lg text-xs text-red-400">
-                                <span>Displaying coordinates for: <strong>{selectedZone}</strong></span>
-                                <button onClick={() => setSelectedZone(null)} className="underline hover:text-white font-bold">Clear Filter</button>
+                            <div className="flex justify-between items-center panel-flush px-3 py-2 text-xs text-[var(--color-blood-400)]">
+                                <span>Filtered to sector <strong>{selectedZone}</strong></span>
+                                <button onClick={() => setSelectedZone(null)} className="btn btn-sm btn-ghost">Clear</button>
                             </div>
                         )}
-                        {Object.entries(groupedLogs).length > 0 ? (
-                            Object.entries(groupedLogs).reverse().map(([key, logs]) => (
-                                <div key={key} className="space-y-4">
-                                    <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-800 pb-2">{key}</h3>
-                                    <div className="space-y-2">
-                                        {logs.map(log => (
-                                            <div key={log.id} className={`p-3 rounded-lg border transition-all ${log.important ? 'bg-red-955/20 border-red-900/50 text-red-200 shadow-sm shadow-red-950/50' : 'bg-zinc-900/50 border-zinc-800/50 text-zinc-300'}`}>
-                                                {log.text}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))
+                        {filteredLogs.length > 0 ? (
+                            <EventFeed logs={filteredLogs} />
                         ) : (
-                            <div className="text-center py-12 text-zinc-505 border border-dashed border-zinc-800 rounded-xl">
-                                {importantOnly ? 'No important events logged in this phase. Disable filter to view casual activities.' : 'No events have occurred yet. Proceed to start the games!'}
+                            <div className="empty-state">
+                                {gameState.log.length === 0
+                                    ? 'Nothing has happened yet. Hit Proceed to begin.'
+                                    : 'Every logged event is hidden by your current filters.'}
                             </div>
                         )}
                     </div>
                 )}
             </div>
 
-            <div className="space-y-6">
-                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-                    <h3 className="font-bold uppercase tracking-widest text-zinc-500 text-xs mb-4">Status</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800 text-center">
+            {/* ---------- sidebar ---------- */}
+            <div className="space-y-5">
+                <div className="panel p-4">
+                    <h3 className="panel-title mb-3">Status</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="stat-tile">
                             <div className="text-3xl font-black text-white">{aliveCount}</div>
-                            <div className="text-xs uppercase tracking-widest text-zinc-500 mt-1">Alive</div>
+                            <div className="eyebrow mt-1">Alive</div>
                         </div>
-                        <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800 text-center">
-                            <div className="text-3xl font-black text-red-500">{deadCount}</div>
-                            <div className="text-xs uppercase tracking-widest text-zinc-500 mt-1">Deceased</div>
+                        <div className="stat-tile">
+                            <div className="text-3xl font-black text-[var(--color-blood-400)]">{deadCount}</div>
+                            <div className="eyebrow mt-1">Fallen</div>
                         </div>
                     </div>
                 </div>
 
-                {gameState.gamemakerMode && gameState.phase !== 'ended' && (
-                    <div className="bg-zinc-900 border border-red-900/50 rounded-xl p-4 space-y-4">
-                        <h3 className="font-bold uppercase tracking-widest text-red-500 text-xs flex items-center gap-2">
-                            <Settings className="w-4 h-4" /> Gamemaker Controls
+                {gameState.gamemakerMode && !isOver && (
+                    <div className="panel p-4 space-y-3" style={{ borderColor: 'rgba(220,36,64,0.35)' }}>
+                        <h3 className="panel-title text-[var(--color-blood-400)] flex items-center gap-2">
+                            <Settings className="w-3.5 h-3.5" /> Gamemaker Controls
                         </h3>
-                        <div className="space-y-3">
-                            <div className="space-y-1">
-                                <label className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">Mutt Target</label>
-                                <select
-                                    value={muttTargetId}
-                                    onChange={(e) => setMuttTargetId(e.target.value)}
-                                    className="w-full bg-zinc-950 border border-zinc-850 rounded px-2.5 py-1.5 text-xs text-zinc-350 focus:outline-none focus:border-red-500"
-                                >
-                                    <option value="">-- Random Tribute --</option>
-                                    {gameState.tributes.filter(t => t.status === 'alive').map(t => (
-                                        <option key={t.id} value={t.id}>{t.name} (Dist. {t.district})</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <button
-                                onClick={() => {
-                                    simulator.triggerGamemakerEvent('mutt', muttTargetId || undefined);
-                                    setGameState({ ...simulator.getState() });
-                                    setMuttTargetId('');
-                                }}
-                                className="w-full py-2 bg-zinc-950 hover:bg-zinc-850 border border-zinc-800 hover:border-red-900/50 text-red-400 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                        <div className="space-y-1">
+                            <label className="eyebrow" htmlFor="mutt-target">Mutt target</label>
+                            <select
+                                id="mutt-target"
+                                value={muttTargetId}
+                                onChange={e => setMuttTargetId(e.target.value)}
+                                className="field text-xs"
                             >
-                                <Skull className="w-4 h-4 text-red-500" /> Release Mutts
-                            </button>
-                            <button
-                                onClick={() => { simulator.triggerGamemakerEvent('weather'); setGameState({ ...simulator.getState() }); }}
-                                className="w-full py-2 bg-zinc-950 hover:bg-zinc-805 border border-zinc-800 rounded text-sm font-semibold transition-colors"
-                            >
-                                Trigger Weather Event
-                            </button>
-                            <button
-                                onClick={() => { simulator.triggerGamemakerEvent('feast'); setGameState({ ...simulator.getState() }); }}
-                                className="w-full py-2 bg-zinc-950 hover:bg-zinc-850 border border-zinc-800 rounded text-sm font-semibold transition-colors"
-                            >
-                                Announce Feast
-                            </button>
+                                <option value="">Random tribute</option>
+                                {gameState.tributes.filter(t => t.status === 'alive').map(t => (
+                                    <option key={t.id} value={t.id}>{t.name} (D{t.district})</option>
+                                ))}
+                            </select>
                         </div>
+                        <button
+                            onClick={() => { onGamemakerEvent('mutt', muttTargetId || undefined); setMuttTargetId(''); }}
+                            className="btn w-full"
+                        >
+                            <Skull className="w-4 h-4 text-[var(--color-blood-400)]" /> Release Mutts
+                        </button>
+                        <button onClick={() => onGamemakerEvent('weather')} className="btn w-full">Force Weather Event</button>
+                        <button
+                            onClick={() => onGamemakerEvent('feast')}
+                            className="btn w-full"
+                            disabled={!gameState.config.enableFeast}
+                            title={gameState.config.enableFeast ? 'Call a feast at the Cornucopia' : 'Feasts are disabled in this run\'s settings'}
+                        >
+                            Announce Feast
+                        </button>
                     </div>
                 )}
 
-                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-                    <h3 className="font-bold uppercase tracking-widest text-zinc-500 text-xs mb-4">Tributes</h3>
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="panel p-4">
+                    <h3 className="panel-title mb-3">Tributes</h3>
+                    <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1.5 custom-scrollbar">
                         {sortedSidebarTributes.map(t => {
-                            const allianceClass = t.status === 'alive' && t.allianceId ? getAllianceBorderClass(t.allianceId) : 'bg-zinc-950 border-zinc-800 hover:border-zinc-600 cursor-pointer';
+                            const accent = t.status === 'alive' ? allianceAccent(t.allianceId) : undefined;
+                            const dead = t.status === 'dead';
                             return (
-                                <div
+                                <button
                                     key={t.id}
-                                    onClick={() => t.status === 'alive' && setSelectedTribute(t)}
-                                    className={`p-3 rounded-lg border flex flex-col gap-2 transition-all ${t.status === 'dead' ? 'bg-zinc-950/50 border-zinc-900 opacity-50' : allianceClass}`}
+                                    onClick={() => setSelectedTributeId(t.id)}
+                                    className={`w-full text-left panel-flush p-2.5 flex flex-col gap-2 transition-colors hover:border-[var(--color-ink-600)] ${dead ? 'opacity-50' : ''}`}
+                                    style={accent ? { borderLeft: `3px solid ${accent}` } : undefined}
+                                    title={dead ? `${t.name} — deceased` : `${t.name} — open profile`}
                                 >
-                                    <div className="flex justify-between items-center w-full">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <div className={`font-bold text-sm ${t.status === 'dead' ? 'line-through text-zinc-650' : 'text-zinc-300'}`}>{t.name}</div>
-                                                {t.status === 'alive' && t.allianceId && (
-                                                    <span className="flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700">
-                                                        <Users className="w-2.5 h-2.5 text-emerald-400" /> Group
+                                    <div className="flex justify-between items-center w-full gap-2">
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className={`font-bold text-sm truncate ${dead ? 'line-through text-[var(--color-ink-500)]' : 'text-[var(--color-ink-100)]'}`}>
+                                                    {t.name}
+                                                </span>
+                                                <span className="chip">D{t.district}</span>
+                                                {!dead && t.allianceId && (
+                                                    <span className="chip" style={accent ? { color: accent, borderColor: accent } : undefined}>
+                                                        <Users className="w-2.5 h-2.5" /> Pack
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="text-[10px] uppercase tracking-wider text-zinc-500 flex gap-2 mt-1">
-                                                {t.status === 'alive' ? (
-                                                    <>
-                                                        <span className="flex items-center gap-1"><Heart className="w-3 h-3 text-red-500" /> {t.health}</span>
-                                                        <span className="flex items-center gap-1"><Swords className="w-3 h-3 text-zinc-400" /> {t.kills}</span>
-                                                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-blue-400" /> {t.zone}</span>
-                                                    </>
+                                            <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-500)] flex flex-wrap gap-2 mt-1">
+                                                {dead ? (
+                                                    <span className="truncate">Day {t.dayOfDeath ?? '—'} · {t.causeOfDeath ?? 'Eliminated'}</span>
                                                 ) : (
-                                                    <span>Day {t.dayOfDeath} • {t.causeOfDeath ?? 'Eliminated'}</span>
+                                                    <>
+                                                        <span className="flex items-center gap-1"><Heart className="w-3 h-3 text-[var(--cat-death)]" /> {t.health}</span>
+                                                        <span className="flex items-center gap-1"><Swords className="w-3 h-3" /> {t.kills}</span>
+                                                        <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3 text-[var(--cat-travel)]" /> {t.zone}</span>
+                                                    </>
                                                 )}
                                             </div>
                                         </div>
-                                        {t.status === 'dead' && <Skull className="w-4 h-4 text-zinc-600" />}
+                                        {dead && <Skull className="w-4 h-4 text-[var(--color-ink-600)] flex-none" />}
                                     </div>
 
-                                    {t.status === 'alive' && (
-                                        <div className="w-full bg-zinc-900/80 h-1 rounded-full overflow-hidden border border-zinc-850">
-                                            <div
-                                                className={`h-full ${t.health >= 70 ? 'bg-emerald-500' : t.health >= 35 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                                                style={{ width: `${t.health}%` }}
+                                    {!dead && (
+                                        <div className="meter">
+                                            <span
+                                                style={{
+                                                    width: `${t.health}%`,
+                                                    background: t.health >= 70 ? 'var(--cat-alliance)' : t.health >= 35 ? 'var(--cat-training)' : 'var(--cat-death)',
+                                                }}
                                             />
                                         </div>
                                     )}
-                                </div>
+                                </button>
                             );
                         })}
                     </div>
@@ -403,7 +392,7 @@ export function GameScreen({
             </div>
 
             {selectedTribute && (
-                <TributeModal tribute={selectedTribute} gameState={gameState} onClose={() => setSelectedTribute(null)} />
+                <TributeModal tribute={selectedTribute} gameState={gameState} onClose={() => setSelectedTributeId(null)} />
             )}
         </div>
     );

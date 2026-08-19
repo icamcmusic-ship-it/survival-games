@@ -4,6 +4,11 @@ import { Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
 import { resolveCombat } from '../combat';
+import { BLOODBATH_TEXTS } from '../../data/flavorText';
+import { itemPhrase } from '../items';
+
+const fill = (template: string, vars: Record<string, string>) =>
+    Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
 
 export function startGames(ctx: SimContext) {
     ctx.state.phase = 'bloodbath';
@@ -24,7 +29,11 @@ function initializeCareerAlliance(ctx: SimContext) {
                 }
             });
         });
-        ctx.logEvent("The Careers from Districts 1, 2, and 4 have formed a lethal pack.", careers.map(c => c.id), true);
+        ctx.logEvent(
+            `The Careers — ${careers.map(c => `${c.name} (D${c.district})`).join(', ')} — close ranks into a single pack. Everyone else in the arena just became prey.`,
+            careers.map(c => c.id),
+            { important: true, category: 'alliance' }
+        );
     }
 }
 
@@ -33,7 +42,13 @@ export function processBloodbath(ctx: SimContext) {
     ctx.rng = new RNG(`${ctx.state.seed}-bloodbath`);
     const alive = getAlive(ctx.state);
 
-    const shuffled = [...alive].sort(() => ctx.rng.nextFloat() - 0.5);
+    ctx.logEvent(
+        `The gong sounds. ${alive.length} tributes come off their plates at once.`,
+        [],
+        { important: true, category: 'system' }
+    );
+
+    const shuffled = ctx.rng.shuffle(alive);
 
     const runners: Tribute[] = [];
     const fighters: Tribute[] = [];
@@ -55,26 +70,44 @@ export function processBloodbath(ctx: SimContext) {
 
     runners.forEach(t => {
         if (ctx.rng.chance(0.8)) {
-            ctx.logEvent(`${t.name} runs away from the Cornucopia.`, [t.id]);
+            ctx.logEvent(fill(ctx.pickText(BLOODBATH_TEXTS.flee), { tribute: t.name }), [t.id], { category: 'survival' });
         } else {
             const item = ctx.rng.pick(ITEMS);
             t.inventory.push({ ...item });
-            ctx.logEvent(`${t.name} grabs a ${item.name} and runs away.`, [t.id]);
+            ctx.logEvent(
+                fill(ctx.pickText(BLOODBATH_TEXTS.fleeWithItem), { tribute: t.name, item: itemPhrase(item) }),
+                [t.id],
+                { category: 'loot' }
+            );
         }
     });
 
-    while (fighters.length > 1) {
+    // Bounded brawl: two tributes who never manage to kill each other (a draw
+    // every round, or star-crossed lovers who refuse to fight) used to spin
+    // this loop forever and hang the whole simulation.
+    let rounds = fighters.length * 6 + 12;
+    while (fighters.length > 1 && rounds-- > 0) {
         const t1 = fighters.splice(ctx.rng.nextInt(0, fighters.length - 1), 1)[0];
         const t2 = fighters.splice(ctx.rng.nextInt(0, fighters.length - 1), 1)[0];
 
-        if (t1 && t2) {
-            resolveCombat(ctx, t1, t2, true);
-            if (t1.status === 'alive') fighters.push(t1);
-            if (t2.status === 'alive') fighters.push(t2);
-        } else {
-            if (t1 && t1.status === 'alive') fighters.push(t1);
-            if (t2 && t2.status === 'alive') fighters.push(t2);
-        }
+        resolveCombat(ctx, t1, t2, true);
+        // A draw usually means they break off rather than immediately
+        // re-engaging the same opponent.
+        if (t1.status === 'alive' && ctx.rng.chance(0.55)) fighters.push(t1);
+        if (t2.status === 'alive' && ctx.rng.chance(0.55)) fighters.push(t2);
+    }
+
+    if (fighters.length > 1) {
+        ctx.logEvent(
+            `The survivors at the Cornucopia — ${fighters.map(f => f.name).join(', ')} — break off and scatter rather than finish it here.`,
+            fighters.map(f => f.id),
+            { category: 'combat' }
+        );
+        fighters.splice(1).forEach(t => {
+            const item = ctx.rng.pick(ITEMS);
+            t.inventory.push({ ...item });
+            ctx.logEvent(`${t.name} grabs ${itemPhrase(item)} on the way out.`, [t.id], { category: 'loot' });
+        });
     }
 
     if (fighters.length === 1) {
@@ -82,8 +115,21 @@ export function processBloodbath(ctx: SimContext) {
         const item1 = ctx.rng.pick(ITEMS);
         const item2 = ctx.rng.pick(ITEMS);
         winner.inventory.push({ ...item1 }, { ...item2 });
-        ctx.logEvent(`${winner.name} survives the bloodbath and claims ${item1.name} and ${item2.name}.`, [winner.id]);
+        ctx.logEvent(
+            fill(ctx.pickText(BLOODBATH_TEXTS.survive), { tribute: winner.name, items: `${item1.name} and ${item2.name}` }),
+            [winner.id],
+            { important: true, category: 'loot' }
+        );
     }
+
+    const fallen = alive.filter(t => t.status === 'dead').length;
+    ctx.logEvent(
+        fallen === 0
+            ? 'The bloodbath ends without a single cannon. The Gamemakers are not pleased.'
+            : `${fallen} cannon${fallen === 1 ? '' : 's'} mark the end of the bloodbath.`,
+        [],
+        { important: true, category: fallen === 0 ? 'system' : 'death' }
+    );
 
     ctx.state.phase = 'day';
 }

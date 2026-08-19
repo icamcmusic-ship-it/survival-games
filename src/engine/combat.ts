@@ -1,7 +1,8 @@
 import { Tribute, Item } from '../models/types';
 import { SimContext } from './context';
-import { WEAPON_KILL_TEMPLATES } from '../data/flavorText';
+import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
+import { clampTribute } from './vitals';
 
 function bestWeapon(t: Tribute): Item | undefined {
     const weapons = t.inventory.filter(i => i.type === 'weapon');
@@ -61,18 +62,20 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
         // Poisoned weapons leave their mark even in a draw
         if (t1Weapon?.poison && ctx.rng.chance(0.5)) {
             t2.injuries.poisoned = true;
-            ctx.logEvent(`${t2.name} is grazed by ${t1.name}'s poisoned dart and feels the venom spreading.`, [t2.id, t1.id], true);
+            ctx.logEvent(`${t2.name} is grazed by ${t1.name}'s poisoned dart and feels the venom spreading.`, [t2.id, t1.id], { important: true, category: 'injury' });
         }
         if (t2Weapon?.poison && ctx.rng.chance(0.5)) {
             t1.injuries.poisoned = true;
-            ctx.logEvent(`${t1.name} is grazed by ${t2.name}'s poisoned dart and feels the venom spreading.`, [t1.id, t2.id], true);
+            ctx.logEvent(`${t1.name} is grazed by ${t2.name}'s poisoned dart and feels the venom spreading.`, [t1.id, t2.id], { important: true, category: 'injury' });
         }
 
         // Random localized injury
         if (ctx.rng.chance(0.3)) t1.injuries.arms = true;
         if (ctx.rng.chance(0.3)) t2.injuries.legs = true;
 
-        ctx.logEvent(`${t1.name} and ${t2.name} fight but both escape injured.`, [t1.id, t2.id]);
+        clampTribute(t1);
+        clampTribute(t2);
+        ctx.logEvent(`${t1.name} and ${t2.name} trade blows in ${t1.zone} and break apart, both bleeding.`, [t1.id, t2.id], { important: true, category: 'combat' });
 
         // Weapon durability loss
         if (t1Weapon && t1Weapon.durability) t1Weapon.durability -= 10;
@@ -97,13 +100,18 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     victim.health = 0;
     victim.dayOfDeath = ctx.state.day;
 
+    // A corpse is not part of an alliance; leaving the id set kept dead
+    // tributes in the alliance roster and skewed betrayal targeting.
+    delete victim.allianceId;
+
     // Star-crossed lover heartbreak logic
     if (victim.traits.includes('Star-Crossed')) {
         const partner = ctx.state.tributes.find(t => t.district === victim.district && t.id !== victim.id && t.status === 'alive');
         if (partner && partner.traits.includes('Star-Crossed')) {
             partner.vitals.sanity = Math.max(0, partner.vitals.sanity - 60);
             partner.excitementRating += 55;
-            ctx.logEvent(`TRAGEDY: ${partner.name} screams in agony as their star-crossed lover ${victim.name} is eliminated, suffering a devastating blow to their sanity.`, [partner.id, victim.id], true);
+            clampTribute(partner);
+            ctx.logEvent(`TRAGEDY: ${partner.name} hears the cannon and knows. Their star-crossed lover ${victim.name} is gone, and something in them goes with it.`, [partner.id, victim.id], { important: true, category: 'romance' });
         }
     }
 
@@ -115,29 +123,41 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         // Trauma Triggers
         if (killer.traits.includes('Pacifist')) {
             killer.vitals.sanity -= 40;
-            ctx.logEvent(`${killer.name} is deeply traumatized by the act of killing.`, [killer.id]);
+            ctx.logEvent(`${killer.name} stares at what they have done and cannot stop shaking. This is not who they were.`, [killer.id], { category: 'sanity' });
         } else if (!killer.isCareer) {
             killer.vitals.sanity -= 10;
         }
 
         const weaponType = weapon ? weapon.id : 'unarmed';
         const templates = WEAPON_KILL_TEMPLATES[weaponType] || WEAPON_KILL_TEMPLATES['unarmed'];
-        const template = ctx.rng.pick(templates);
-        const text = template.replace('{killer}', killer.name).replace('{victim}', victim.name);
+        const template = ctx.pickText(templates);
+        // split/join, not replace: `replace` with a string pattern only
+        // substitutes the FIRST match, so templates naming {victim} twice
+        // printed a raw placeholder into the feed.
+        const text = template
+            .split('{killer}').join(killer.name)
+            .split('{victim}').join(victim.name);
 
         if (weapon && weapon.durability) weapon.durability -= 10;
+
+        clampTribute(killer);
 
         if (victim.inventory.length > 0) {
             const lootNames = victim.inventory.map(i => i.name).join(', ');
             killer.inventory.push(...victim.inventory);
             victim.inventory = [];
-            ctx.logEvent(`${text} ${killer.name} loots: ${lootNames}.`, [killer.id, victim.id], true);
+            ctx.logEvent(`${text} ${killer.name} strips the body: ${lootNames}.`, [killer.id, victim.id], { important: true, category: 'kill' });
         } else {
-            ctx.logEvent(text, [killer.id, victim.id], true);
+            ctx.logEvent(text, [killer.id, victim.id], { important: true, category: 'kill' });
         }
     } else {
         victim.causeOfDeath = cause || 'Died to environment';
-        ctx.logEvent(`${victim.name} dies. (${victim.causeOfDeath})`, [victim.id], true);
+        const template = ctx.rng.pick(DEATH_TEXTS.environmental);
+        const text = template
+            .split('{tribute}').join(victim.name)
+            .split('{zone}').join(victim.zone)
+            .split('{cause}').join(victim.causeOfDeath);
+        ctx.logEvent(text, [victim.id], { important: true, category: 'death' });
     }
 }
 

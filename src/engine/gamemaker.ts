@@ -1,6 +1,7 @@
 import { SimContext, getAlive } from './context';
 import { checkDeath } from './combat';
 import { getZone } from './map';
+import { clampTribute } from './vitals';
 
 const WEATHER_EFFECTS = [
     { name: 'a torrential downpour', fatigue: 15, sanity: 5, quench: true },
@@ -19,11 +20,12 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
             if (t && t.status === 'alive') {
                 t.health -= 50;
                 t.injuries.bleeding = true;
-                ctx.logEvent(`GAMEMAKER: A pack of ${mutt} is unleashed directly on ${t.name}!`, [t.id], true);
+                clampTribute(t);
+                ctx.logEvent(`GAMEMAKER: A pack of ${mutt} is dropped directly onto ${t.name} in ${t.zone}.`, [t.id], { important: true, category: 'gamemaker' });
                 checkDeath(ctx, t, `Torn apart by Gamemaker-released ${mutt}`);
             }
         } else {
-            ctx.logEvent(`GAMEMAKER: ${mutt} are released into the arena!`, [], true);
+            ctx.logEvent(`GAMEMAKER: ${mutt} are released into the arena!`, [], { important: true, category: 'gamemaker' });
             getAlive(ctx.state).forEach(t => {
                 // Tributes in dangerous zones are easier prey for released mutts
                 const zone = getZone(ctx.state.arena, t.zone);
@@ -31,14 +33,15 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
                 if (ctx.rng.chance(hitChance)) {
                     t.health -= 20 + ctx.rng.nextInt(0, 15);
                     if (ctx.rng.chance(0.3)) t.injuries.bleeding = true;
-                    ctx.logEvent(`${t.name} is mauled by the ${mutt} prowling through ${t.zone}.`, [t.id], true);
-                    checkDeath(ctx, t, `Torn apart by ${mutt} in ${t.zone}`);
+                    clampTribute(t);
+                    ctx.logEvent(`${t.name} is mauled by the ${mutt} prowling through ${t.zone}.`, [t.id], { important: true, category: 'gamemaker' });
+                    checkDeath(ctx, t, `Torn apart by ${mutt}`);
                 }
             });
         }
     } else if (type === 'weather') {
         const weather = ctx.rng.pick(WEATHER_EFFECTS);
-        ctx.logEvent(`GAMEMAKER: The weather shifts drastically. ${weather.name.charAt(0).toUpperCase() + weather.name.slice(1)} sweeps the arena!`, [], true);
+        ctx.logEvent(`GAMEMAKER: The weather shifts drastically. ${weather.name.charAt(0).toUpperCase() + weather.name.slice(1)} sweeps the arena!`, [], { important: true, category: 'gamemaker' });
         getAlive(ctx.state).forEach(t => {
             t.vitals.fatigue += weather.fatigue;
             t.vitals.sanity -= weather.sanity;
@@ -46,17 +49,26 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
             if (weather.quench) t.vitals.thirst = Math.max(0, t.vitals.thirst - 30);
             if (weather.frostbite && ctx.rng.chance(0.15) && !t.injuries.frostbitten) {
                 t.injuries.frostbitten = true;
-                ctx.logEvent(`${t.name} is caught in the open and suffers frostbite.`, [t.id], true);
+                ctx.logEvent(`${t.name} is caught in the open and suffers frostbite.`, [t.id], { important: true, category: 'gamemaker' });
             }
+            clampTribute(t);
             if (weather.poison && ctx.rng.chance(0.15) && !t.injuries.poisoned) {
                 t.injuries.poisoned = true;
-                ctx.logEvent(`${t.name} inhales the toxic fog and is poisoned.`, [t.id], true);
+                ctx.logEvent(`${t.name} inhales the toxic fog and is poisoned.`, [t.id], { important: true, category: 'gamemaker' });
             }
             checkDeath(ctx, t, `Perished in ${weather.name}`);
         });
     } else if (type === 'feast') {
-        if (!ctx.state.config.enableFeast) return;
-        ctx.logEvent(`GAMEMAKER: A feast is announced at the Cornucopia!`, [], true);
+        if (!ctx.state.config.enableFeast) {
+            ctx.logEvent('GAMEMAKER: A feast is requested, but feasts are disabled for these Games.', [], { category: 'gamemaker' });
+            return;
+        }
+        // A feast during the bloodbath would silently swallow the bloodbath phase.
+        if (ctx.state.phase !== 'day' && ctx.state.phase !== 'night') {
+            ctx.logEvent('GAMEMAKER: The feast horn can only sound once the Games proper are under way.', [], { category: 'gamemaker' });
+            return;
+        }
+        ctx.logEvent(`GAMEMAKER: A feast is announced at the Cornucopia!`, [], { important: true, category: 'gamemaker' });
         ctx.state.phase = 'feast';
     }
 }

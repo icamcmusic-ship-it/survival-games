@@ -13,12 +13,12 @@ export function processInterviews(ctx: SimContext) {
 
         if (isSuccess) {
             t.attributes.charisma = Math.min(10, t.attributes.charisma + scenario.charismaBuff);
-            t.sponsorTrust = Math.floor(t.sponsorTrust * scenario.trustMultiplier);
+            t.sponsorTrust = Math.min(100, Math.floor(t.sponsorTrust * scenario.trustMultiplier));
             t.excitementRating += 20;
-            ctx.logEvent(scenario.success.replace('{tribute}', t.name), [t.id], true);
+            ctx.logEvent(`[${scenario.strategy}] ` + ctx.pickText(scenario.success).split('{tribute}').join(t.name), [t.id], { important: true, category: 'interview' });
         } else {
             t.sponsorTrust = Math.max(0, t.sponsorTrust - 10);
-            ctx.logEvent(scenario.failure.replace('{tribute}', t.name), [t.id]);
+            ctx.logEvent(`[${scenario.strategy}] ` + ctx.pickText(scenario.failure).split('{tribute}').join(t.name), [t.id], { category: 'interview' });
         }
     });
 }

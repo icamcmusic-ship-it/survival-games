@@ -40,4 +40,17 @@ export class RNG {
     chance(probability: number): boolean {
         return this.random() < probability;
     }
+    /**
+     * Deterministic Fisher-Yates. `[...arr].sort(() => rng() - 0.5)` was used
+     * previously, which is both biased and dependent on the engine's sort
+     * implementation — the same seed could produce different runs.
+     */
+    shuffle<T>(arr: T[]): T[] {
+        const out = [...arr];
+        for (let i = out.length - 1; i > 0; i--) {
+            const j = this.nextInt(0, i);
+            [out[i], out[j]] = [out[j], out[i]];
+        }
+        return out;
+    }
 }
