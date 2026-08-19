@@ -3,10 +3,12 @@ import { Gender } from '../models/types';
 /**
  * Reaping pools, one per district and gender.
  *
- * Each pool is deliberately over-stocked (45+ entries) so that a full 24-tribute
+ * Each pool is deliberately over-stocked (70+ entries) so that a full 24-tribute
  * reaping can draw unique names without collisions, and so repeat runs on
  * different seeds feel like a different cast rather than the same twelve faces.
- * Names lean on each district's industry the way Panem's naming conventions do.
+ * Names lean on each district's industry the way Panem's naming conventions do:
+ * luxury goods in 1, Roman masonry in 2, circuitry in 3, and so on down to the
+ * coal seams of 12.
  */
 export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
     // District 1 — Luxury goods
@@ -18,6 +20,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Bullion', 'Carat', 'Facet', 'Filigree', 'Gilder', 'Halo', 'Ingot', 'Lacquer', 'Lapis', 'Luxor',
             'Marquis', 'Mirage', 'Obsidian', 'Ornament', 'Plush', 'Regalia', 'Rhodium', 'Scepter', 'Solitaire',
             'Splendor', 'Tourmaline', 'Trinket', 'Vanity', 'Zircon', 'Brocade', 'Chandelier', 'Coronet',
+            'Alloy', 'Aurum', 'Baroque', 'Bezel', 'Cabochon', 'Cravat', 'Ermine', 'Gemini', 'Gilt', 'Iridian',
+            'Karat', 'Lustrous', 'Medallion', 'Mink', 'Opulence', 'Ormolu', 'Pearlman', 'Quartz', 'Regal', 'Satinet',
+            'Tassel', 'Topaz', 'Vermeil', 'Chalice', 'Damascene', 'Ferrier',
         ],
         Female: [
             'Glimmer', 'Crystal', 'Diamond', 'Emerald', 'Opal', 'Sapphire', 'Silk', 'Lace', 'Amber', 'Pearl',
@@ -26,6 +31,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Aurelia', 'Bauble', 'Beryl', 'Cameo', 'Chalice', 'Charm', 'Countess', 'Damask', 'Duchess',
             'Facette', 'Gilda', 'Jewelia', 'Lustra', 'Marquise', 'Opaline', 'Pendant', 'Peridot', 'Prism',
             'Regalia', 'Sequin', 'Silhouette', 'Tulle', 'Velour', 'Vitrine', 'Zirconia', 'Brilliance',
+            'Adorna', 'Alabaster', 'Aurelie', 'Brocada', 'Cachet', 'Carnelia', 'Coronetta', 'Filigrine', 'Gemma', 'Goldleaf',
+            'Iolite', 'Lavaliere', 'Lucent', 'Mirabelle', 'Nacre', 'Ophira', 'Parure', 'Reverie', 'Sable', 'Seraphine',
+            'Topaza', 'Vermeille', 'Zaffre', 'Ambrosia', 'Etoile', 'Perle',
         ],
     },
     // District 2 — Masonry & Peacekeepers
@@ -37,6 +45,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Anvil', 'Basalt', 'Bastion', 'Bulwark', 'Chisel', 'Cornelius', 'Fortis', 'Garrison', 'Hadrian',
             'Keystone', 'Legion', 'Marble', 'Mason', 'Obelisk', 'Praetor', 'Quarry', 'Rampart', 'Severus',
             'Slate', 'Tacitus', 'Tiberius', 'Trajan', 'Turret', 'Vulcan', 'Warden', 'Aurelian',
+            'Ballista', 'Buttress', 'Caius', 'Centurion', 'Cobble', 'Corvus', 'Drusus', 'Felix', 'Flavian', 'Fortress',
+            'Gaius', 'Lintel', 'Magnus', 'Mortar', 'Octavian', 'Plinth', 'Portcullis', 'Quintilian', 'Sentinel', 'Sledge',
+            'Stonewall', 'Traverse', 'Vespasian', 'Vigil', 'Cassian', 'Ashlar',
         ],
         Female: [
             'Clove', 'Enobaria', 'Livia', 'Diana', 'Victoria', 'Aurelia', 'Octavia', 'Portia', 'Juno', 'Sabina',
@@ -46,6 +57,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Julia', 'Lavinia', 'Lucilla', 'Marcella', 'Marmora', 'Nerva', 'Obsidia', 'Paloma', 'Petra',
             'Quarra', 'Regula', 'Roma', 'Severa', 'Tullia', 'Verona', 'Vitrea', 'Volumnia', 'Aquila',
             'Aurora', 'Sentina',
+            'Aemilia', 'Arcadia', 'Aurelina', 'Bastia', 'Claudia', 'Constance', 'Crenella', 'Faustina', 'Flavia', 'Helvia',
+            'Junia', 'Legionna', 'Livilla', 'Marmoreal', 'Octavina', 'Palatia', 'Pilaster', 'Plinthia', 'Sabinia', 'Sculpta',
+            'Terracotta', 'Valentia', 'Vigilia', 'Aureliana', 'Basalta', 'Keystona',
         ],
     },
     // District 3 — Technology
@@ -58,6 +72,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Fuse', 'Hertz', 'Lattice', 'Ledger', 'Modem', 'Nyquist', 'Packet', 'Processor', 'Protocol',
             'Relay', 'Resistor', 'Router', 'Servo', 'Solder', 'Transistor', 'Vertex',
             'Voltaic', 'Waveform',
+            'Algorithm', 'Bandwidth', 'Bitwise', 'Byteson', 'Circuitry', 'Codec', 'Cortex', 'Daemon', 'Decibel', 'Ether',
+            'Gateway', 'Inductor', 'Kelvin', 'Latch', 'Logicus', 'Ohmsley', 'Oscillator', 'Payload', 'Raster', 'Silica',
+            'Switchboard', 'Terabyte', 'Anodyne', 'Bitfield', 'Nodeling', 'Sensor',
         ],
         Female: [
             'Wiress', 'Cyra', 'Nova', 'Matrix', 'Data', 'Glitch', 'Beta', 'Micro', 'Echo', 'Cyber',
@@ -66,6 +83,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Alpha', 'Ampera', 'Binaria', 'Bitsy', 'Circuita', 'Delta', 'Filament', 'Gigi', 'Grace',
             'Hexa', 'Indexia', 'Iris', 'Kilo', 'Lumen', 'Nano', 'Octa', 'Pixie', 'Quanta', 'Query',
             'Radia', 'Sigma', 'Solstice', 'Tessa', 'Vectra', 'Wavelet', 'Zeta',
+            'Algora', 'Analytica', 'Byteia', 'Cascada', 'Cirra', 'Codexa', 'Decima', 'Elektra', 'Fibra', 'Halcyon',
+            'Indigo', 'Kernelle', 'Luminia', 'Memoria', 'Nyx', 'Optica', 'Photonia', 'Prisma', 'Rasteria', 'Syntaxia',
+            'Terabith', 'Vectoria', 'Verity', 'Zenobia', 'Circuitry', 'Databelle',
         ],
     },
     // District 4 — Fishing
@@ -78,6 +98,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Halibut', 'Keel', 'Kraken', 'Mariner', 'Mast', 'Nautilus', 'Netter', 'Pike', 'Rudder',
             'Salt', 'Schooner', 'Shoal', 'Skipper', 'Sterling', 'Tackle', 'Trawler', 'Wharf',
             'Windward', 'Yawl',
+            'Albacore', 'Bilge', 'Brine', 'Buoy', 'Caspian', 'Cleat', 'Coralus', 'Dorado', 'Dredge', 'Ebb',
+            'Fjord', 'Galleon', 'Grommet', 'Gunwale', 'Halyard', 'Jetty', 'Lanyard', 'Longline', 'Neptunus', 'Oarsman',
+            'Pelagus', 'Quay', 'Sextant', 'Sturgeon', 'Whaler', 'Undertow',
         ],
         Female: [
             'Annie', 'Cresta', 'Mags', 'Nerida', 'Pearl', 'Shelly', 'Coral', 'Siren', 'Delta', 'Coralia',
@@ -86,6 +109,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Anemone', 'Aria', 'Azura', 'Beacon', 'Caspia', 'Cascade', 'Dune', 'Estuary', 'Galley',
             'Harbora', 'Isla', 'Jetsam', 'Kelpie', 'Mira', 'Nerissa', 'Oceana', 'Oyster', 'Reefa',
             'Saline', 'Seaglass', 'Selkie', 'Shorewyn', 'Sirena', 'Thalassa', 'Tidal', 'Vela',
+            'Abalone', 'Almira', 'Bayla', 'Brinelle', 'Buoya', 'Calypso', 'Cordelia', 'Dorada', 'Fathoma', 'Foam',
+            'Halcyona', 'Larimar', 'Lorelei', 'Marisol', 'Meridia', 'Nautica', 'Neptunia', 'Pelagia', 'Quaya', 'Ripple',
+            'Seaspray', 'Serenity', 'Spindrift', 'Tidewyn', 'Wavelin', 'Brackish',
         ],
     },
     // District 5 — Power
@@ -98,6 +124,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Generator', 'Halogen', 'Ionis', 'Kilowatt', 'Magneto', 'Nucleus', 'Pylon', 'Reactor',
             'Rectifier', 'Solaris', 'Static', 'Substation', 'Terminal', 'Thermal', 'Transformer', 'Volt',
             'Voltaire', 'Yield',
+            'Ampersand', 'Battery', 'Brownout', 'Capacitance', 'Cinderwatt', 'Electrode', 'Emitter', 'Gigawatt', 'Grounding', 'Impulse',
+            'Insulator', 'Inverter', 'Kelvinor', 'Livewire', 'Megawatt', 'Meltdown', 'Ohmar', 'Overload', 'Polarity', 'Quantus',
+            'Rheostat', 'Solar', 'Sparkplug', 'Torque', 'Wattage', 'Diodus',
         ],
         Female: [
             'Electra', 'Tesla', 'Current', 'Nova', 'Astra', 'Ray', 'Flare', 'Aurora', 'Vibe', 'Lumina',
@@ -107,6 +136,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Ionia', 'Joulene', 'Kilowatta', 'Lumen', 'Magnetta', 'Neon', 'Plasma', 'Pulse', 'Radiance',
             'Reactra', 'Solstice', 'Surga', 'Thermia', 'Turbina', 'Watta', 'Zenith',
             'Voltessa', 'Wyre',
+            'Amplitude', 'Anodia', 'Blackout', 'Cyclotra', 'Dynama', 'Electria', 'Enerja', 'Fulgora', 'Gridley', 'Incandia',
+            'Insulata', 'Jouletta', 'Livewyre', 'Luminara', 'Megawatta', 'Ohmina', 'Photia', 'Polara', 'Radiata', 'Reactora',
+            'Sparkla', 'Terawatt', 'Turbinia', 'Voltia', 'Wattlyn', 'Zappa',
         ],
     },
     // District 6 — Transportation
@@ -119,6 +151,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Freight', 'Hauler', 'Junction', 'Locomotive', 'Manifold', 'Motor', 'Pullman', 'Rail',
             'Signal', 'Sleeper', 'Sprocket', 'Switch', 'Tandem', 'Throttle', 'Trestle', 'Wheeler',
             'Yardmaster', 'Zephyr',
+            'Aileron', 'Boxcarl', 'Cabriolet', 'Camber', 'Carburetor', 'Chariot', 'Coupling', 'Crank', 'Dieselwyn', 'Driveshaft',
+            'Fuselage', 'Gantry', 'Hangar', 'Ignition', 'Kestrel', 'Mainline', 'Propeller', 'Rotor', 'Runabout', 'Skiff',
+            'Steamer', 'Tarmac', 'Trackman', 'Voyager', 'Overpass', 'Roadwell',
         ],
         Female: [
             'Aero', 'Transit', 'Lane', 'Piper', 'Stella', 'Velocity', 'Siena', 'Mercedes', 'Cheyenne',
@@ -128,6 +163,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Dashiell', 'Engina', 'Ferria', 'Gearette', 'Jetta', 'Junction', 'Marquis', 'Mileva',
             'Overpass', 'Parkway', 'Pinion', 'Skyway', 'Sonic', 'Terminal', 'Trolley', 'Vespa', 'Voyage',
             'Wagoneer', 'Zephyra',
+            'Aerodyne', 'Aviatrix', 'Berlina', 'Cabriole', 'Carriage', 'Chevron', 'Coachlyn', 'Coupe', 'Cruisette', 'Dashline',
+            'Ferryn', 'Flightly', 'Gantry', 'Ignitia', 'Kestra', 'Locomora', 'Manifolda', 'Meridian', 'Navia', 'Pistonia',
+            'Railene', 'Runway', 'Sedana', 'Steamera', 'Transita', 'Vectorine',
         ],
     },
     // District 7 — Lumber
@@ -139,6 +177,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Alder', 'Amber', 'Balsam', 'Beech', 'Bristlecone', 'Bough', 'Chestnut', 'Cypress', 'Elm',
             'Fell', 'Grain', 'Hemlock', 'Hickory', 'Kindling', 'Knot', 'Larch', 'Mahogany', 'Rosin',
             'Sap', 'Sequoyah', 'Splinter', 'Teak', 'Thicket', 'Walnut', 'Whittle', 'Yew',
+            'Adze', 'Basswood', 'Boughton', 'Bracken', 'Buckthorn', 'Cordwood', 'Deadfall', 'Ebonwood', 'Fir', 'Greenwood',
+            'Hardwood', 'Ironbark', 'Lumberly', 'Pitchpine', 'Planer', 'Poplar', 'Rafter', 'Ridgepole', 'Sawmill', 'Shingle',
+            'Timbrel', 'Treeline', 'Underbrush', 'Woodsman', 'Yardarm', 'Cantwell',
         ],
         Female: [
             'Johanna', 'Pine', 'Willow', 'Birch', 'Maple', 'Hazel', 'Flora', 'Fern', 'Leaf', 'Branch',
@@ -147,6 +188,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Acacia', 'Alder', 'Arbor', 'Bramble', 'Briar', 'Camellia', 'Canopy', 'Cedrella', 'Dryad',
             'Elmira', 'Fernleaf', 'Grove', 'Hollow', 'Laurel', 'Linden', 'Magnolia', 'Mossy', 'Myrtle',
             'Olive', 'Rowan', 'Sapling', 'Sorrel', 'Sylva', 'Tamarack', 'Verdance', 'Woodrow',
+            'Ashling', 'Balsamine', 'Beechwyn', 'Birchwyn', 'Boughlyn', 'Cambium', 'Cedarly', 'Copse', 'Dendra', 'Evergreen',
+            'Foliage', 'Glade', 'Greenleaf', 'Heartwood', 'Ivywood', 'Larkspur', 'Leaflet', 'Nutmeg', 'Pinecone', 'Resina',
+            'Rosewood', 'Sawdust', 'Sprucella', 'Thistle', 'Timberlyn', 'Willowbrook',
         ],
     },
     // District 8 — Textiles
@@ -158,6 +202,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Baste', 'Bolt', 'Brocade', 'Buckram', 'Calico', 'Canvas', 'Cambric', 'Dye', 'Fleece',
             'Gabardine', 'Gusset', 'Herringbone', 'Jacquard', 'Knit', 'Muslin', 'Percale', 'Pleat',
             'Poplin', 'Sateen', 'Selvedge', 'Serge', 'Spool', 'Thimble', 'Warp', 'Weft', 'Worsted',
+            'Applique', 'Batik', 'Bobbinet', 'Buttonhole', 'Chambray', 'Cordwainer', 'Crochet', 'Damaskus', 'Fulling', 'Grosgrain',
+            'Hessian', 'Interlock', 'Jersey', 'Lacer', 'Loomis', 'Mender', 'Organdy', 'Presser', 'Quilt', 'Ravel',
+            'Sartor', 'Shuttle', 'Stitchwell', 'Tacker', 'Threadbare', 'Velveteen',
         ],
         Female: [
             'Cecelia', 'Satin', 'Velvet', 'Needle', 'Thread', 'Lace', 'Pattern', 'Paisley', 'Silk',
@@ -167,6 +214,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Filature', 'Georgette', 'Jacquarda', 'Kersey', 'Lawn', 'Merino', 'Mohair', 'Organza',
             'Percaline', 'Plisse', 'Sarcenet', 'Seam', 'Spindra', 'Tulle', 'Velour', 'Voile', 'Weaverly',
             'Warpwyn', 'Zibeline',
+            'Alpaca', 'Basketweave', 'Bobbinelle', 'Broadcloth', 'Cashmira', 'Chintz', 'Corduroya', 'Cottonelle', 'Dobby', 'Faille',
+            'Flannel', 'Gauze', 'Hemline', 'Herringbella', 'Lacewyn', 'Loomelle', 'Madras', 'Needlepoint', 'Piquet', 'Quilta',
+            'Sarita', 'Shantung', 'Stitchery', 'Threadleigh', 'Twillia', 'Weftly',
         ],
     },
     // District 9 — Grain
@@ -179,6 +229,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Husk', 'Miller', 'Ordway', 'Plow', 'Quern', 'Ripener', 'Rowen', 'Semolina', 'Silo',
             'Sorghum', 'Spelt', 'Thresher', 'Tiller', 'Winnow', 'Yield',
             'Zephyr', 'Ryeland', 'Cropley',
+            'Baleman', 'Binder', 'Bindle', 'Buckwheat', 'Cornmeal', 'Croft', 'Dough', 'Einkorn', 'Fallowfield', 'Farmstead',
+            'Gleaner', 'Grist', 'Haymow', 'Millstone', 'Oatley', 'Pannier', 'Rickyard', 'Sheafer', 'Sourdough', 'Stook',
+            'Swather', 'Tares', 'Wheatstone', 'Barleyman', 'Loamfield', 'Sifter',
         ],
         Female: [
             'Amber', 'Meadow', 'Grain', 'Blossom', 'Cerealia', 'Harvest', 'Clover', 'Poppy', 'Flora',
@@ -188,6 +241,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Fielda', 'Golden', 'Granaria', 'Hearth', 'Kamut', 'Loafa', 'Marla', 'Oatlyn', 'Pollen',
             'Quinoa', 'Sheafa', 'Silage', 'Sunna', 'Threshia', 'Tillie', 'Wheaten', 'Winnowa',
             'Yeasta', 'Zephyra',
+            'Barleigh', 'Chaffina', 'Cornflower', 'Doughlyn', 'Einkorna', 'Farrowyn', 'Fieldrose', 'Gleanna', 'Grista', 'Harrowyn',
+            'Hayloft', 'Kernella', 'Levain', 'Millstona', 'Oatmeal', 'Panary', 'Reapa', 'Rickfield', 'Ryebelle', 'Semolia',
+            'Sheaflyn', 'Stubble', 'Thresha', 'Wheatberry', 'Windrow', 'Chaffron',
         ],
     },
     // District 10 — Livestock
@@ -200,6 +256,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Gelding', 'Grazer', 'Hoof', 'Latigo', 'Mustang', 'Paddock', 'Pasture', 'Rawhide', 'Rodeo',
             'Saddler', 'Stirrup', 'Tallow', 'Trough', 'Wrangler', 'Yoke',
             'Zebulon', 'Whicker', 'Vaquero',
+            'Barnaby', 'Bellwether', 'Branding', 'Brahman', 'Byre', 'Cattleman', 'Chuckwagon', 'Currycomb', 'Dairyman', 'Drove',
+            'Farrier', 'Halter', 'Herdsman', 'Longhorn', 'Maverick', 'Nickerson', 'Oxley', 'Pommel', 'Rancher', 'Reins',
+            'Shearling', 'Stockman', 'Tackman', 'Wether', 'Yeoman', 'Cudworth',
         ],
         Female: [
             'Brandy', 'Lassie', 'Fawn', 'Doe', 'Filly', 'Flora', 'Sierra', 'Clover', 'Meadow', 'Dixie',
@@ -209,6 +268,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Ewelyn', 'Grazia', 'Hearthstone', 'Holstein', 'Jersey', 'Lariat', 'Marigold', 'Palomina',
             'Pastura', 'Prairie', 'Roan', 'Rustica', 'Shearla', 'Stampede', 'Tallowyn', 'Willa',
             'Winnowa', 'Yearling', 'Zephyrine',
+            'Ayrshire', 'Bovina', 'Charolais', 'Creamline', 'Curry', 'Dairylyn', 'Ewelia', 'Fleecy', 'Guernsey', 'Halterlyn',
+            'Herdwick', 'Hereford', 'Longhorna', 'Maverine', 'Milkweed', 'Nubian', 'Pastoral', 'Pennyroyal', 'Rambouillet', 'Saanen',
+            'Shorthorn', 'Suffolk', 'Wetherly', 'Woolsey', 'Byrelyn', 'Drovena',
         ],
     },
     // District 11 — Agriculture
@@ -221,6 +283,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Hoe', 'Loam', 'Mulch', 'Orchard', 'Pecan', 'Pomel', 'Rind', 'Sorghum', 'Stalk', 'Sunhat',
             'Tendril', 'Trellis', 'Vine', 'Winnow', 'Yam',
             'Zucca', 'Sorrel', 'Husk',
+            'Chicory', 'Cider', 'Coriander', 'Cropwell', 'Dill', 'Fallowman', 'Fennel', 'Gourd', 'Grafter', 'Harvestman',
+            'Husker', 'Irrigator', 'Kale', 'Milo', 'Nectar', 'Okra', 'Orchardist', 'Reedman', 'Ripefield', 'Rootstock',
+            'Sicklewell', 'Sowerby', 'Sunfield', 'Tuber', 'Vintner', 'Barrowman',
         ],
         Female: [
             'Rue', 'Seeder', 'Blossom', 'Daisy', 'Holly', 'Lily', 'Rose', 'Petal', 'Flora', 'Rosemary',
@@ -230,6 +295,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Harvestine', 'Hyacinth', 'Juniper', 'Meadowlark', 'Mulberry', 'Nectarine', 'Orchidea',
             'Persimmon', 'Plum', 'Quince', 'Sage', 'Sorrel', 'Sunflower', 'Tansy', 'Verbena', 'Zinnia',
             'Willowbee', 'Yarrow',
+            'Almondine', 'Anise', 'Bergamot', 'Blackberry', 'Bloomfield', 'Cardamom', 'Chicoria', 'Cilantro', 'Clementine', 'Coriandra',
+            'Cranberry', 'Elderflower', 'Figgy', 'Gourdine', 'Hollyhock', 'Honeydew', 'Melonie', 'Nettle', 'Orchardia', 'Peppermint',
+            'Pomegranate', 'Rhubarb', 'Sorghina', 'Tamarind', 'Vinelle', 'Wisteria',
         ],
     },
     // District 12 — Mining
@@ -242,6 +310,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Ember', 'Gravel', 'Grit', 'Hewer', 'Lantern', 'Lode', 'Mica', 'Pitch', 'Quarrier',
             'Seamus', 'Shale', 'Smelt', 'Sooty', 'Tunnel', 'Vein', 'Winch',
             'Wickham', 'Yardley', 'Zinc',
+            'Adit', 'Blackdamp', 'Bore', 'Braddock', 'Carbide', 'Chert', 'Colliery', 'Dampier', 'Drift', 'Firedamp',
+            'Flintlock', 'Grimsby', 'Hodder', 'Ironstone', 'Kerosene', 'Marl', 'Nugget', 'Overburden', 'Pickman', 'Quarryman',
+            'Sludge', 'Sootfall', 'Stopes', 'Tipple', 'Trammer', 'Blacklung',
         ],
         Female: [
             'Katniss', 'Primrose', 'Ember', 'Cinder', 'Raven', 'Hazel', 'Opal', 'Pearl', 'Iris', 'Violet',
@@ -251,6 +322,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Emberly', 'Flinta', 'Galena', 'Graphite', 'Hearth', 'Lantana', 'Lignia', 'Mica', 'Minerva',
             'Obsidia', 'Pitchy', 'Quarra', 'Shalene', 'Sootheart', 'Tallow', 'Veina', 'Wickley',
             'Xanthe', 'Zephyrine',
+            'Adita', 'Ashfall', 'Blackthorn', 'Carbona', 'Cavelyn', 'Charcoal', 'Colliera', 'Dampwyn', 'Delvina', 'Drossy',
+            'Emberline', 'Flintlyn', 'Grimwell', 'Hollowell', 'Ironvein', 'Lamplight', 'Marlena', 'Nuggetta', 'Pitchblende', 'Sableen',
+            'Seamstone', 'Slatewyn', 'Sootlyn', 'Tipplewyn', 'Veinley', 'Cindermoor',
         ],
     },
 };

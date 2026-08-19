@@ -1,7 +1,9 @@
 import { SimContext, getAlive } from './context';
-import { checkDeath } from './combat';
+import { applyDamage, checkDeath } from './combat';
 import { getZone } from './map';
 import { clampTribute } from './vitals';
+import { addZoneThreat } from './memory';
+import { MEMORY } from '../data/balance';
 
 const WEATHER_EFFECTS = [
     { name: 'a torrential downpour', fatigue: 15, sanity: 5, quench: true },
@@ -18,9 +20,9 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
         if (targetId) {
             const t = ctx.state.tributes.find(tr => tr.id === targetId);
             if (t && t.status === 'alive') {
-                t.health -= 50;
+                applyDamage(ctx, t, 50, { cause: `Torn apart by Gamemaker-released ${mutt}`, kind: 'gamemaker' });
                 t.injuries.bleeding = true;
-                clampTribute(t);
+                addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat * 2);
                 ctx.logEvent(`GAMEMAKER: A pack of ${mutt} is dropped directly onto ${t.name} in ${t.zone}.`, [t.id], { important: true, category: 'gamemaker' });
                 checkDeath(ctx, t, `Torn apart by Gamemaker-released ${mutt}`);
             }
@@ -31,9 +33,9 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
                 const zone = getZone(ctx.state.arena, t.zone);
                 const hitChance = 0.2 + (zone ? zone.danger * 0.3 : 0.1);
                 if (ctx.rng.chance(hitChance)) {
-                    t.health -= 20 + ctx.rng.nextInt(0, 15);
+                    applyDamage(ctx, t, 20 + ctx.rng.nextInt(0, 15), { cause: `Torn apart by ${mutt}`, kind: 'gamemaker' });
                     if (ctx.rng.chance(0.3)) t.injuries.bleeding = true;
-                    clampTribute(t);
+                    addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
                     ctx.logEvent(`${t.name} is mauled by the ${mutt} prowling through ${t.zone}.`, [t.id], { important: true, category: 'gamemaker' });
                     checkDeath(ctx, t, `Torn apart by ${mutt}`);
                 }
@@ -51,6 +53,8 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
                 t.injuries.frostbitten = true;
                 ctx.logEvent(`${t.name} is caught in the open and suffers frostbite.`, [t.id], { important: true, category: 'gamemaker' });
             }
+            // Exposure itself is what kills in a Gamemaker weather event.
+            applyDamage(ctx, t, 3, { cause: `Perished in ${weather.name}`, kind: 'gamemaker' });
             clampTribute(t);
             if (weather.poison && ctx.rng.chance(0.15) && !t.injuries.poisoned) {
                 t.injuries.poisoned = true;

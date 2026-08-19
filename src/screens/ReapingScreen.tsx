@@ -43,7 +43,12 @@ export function ReapingScreen({ tributes, arenaName, seed, onReroll, onConfirm }
                         {pair.map(t => (
                             <div key={t.id} className="panel-flush p-3 flex justify-between items-center gap-3">
                                 <div className="min-w-0">
-                                    <div className="font-black text-[var(--ink)] truncate">{t.name}</div>
+                                    <div className="font-black text-[var(--ink)] truncate">
+                                        {t.name}
+                                        {t.fanFavourite && (
+                                            <span className="ml-1.5 text-[var(--gold)]" title="A Capitol favourite before the Games have even begun.">★</span>
+                                        )}
+                                    </div>
                                     <div className="eyebrow mt-0.5">{t.gender}</div>
                                 </div>
                                 <div className="text-right text-[11px] text-[var(--color-ink-500)] font-mono font-semibold leading-relaxed flex-none">

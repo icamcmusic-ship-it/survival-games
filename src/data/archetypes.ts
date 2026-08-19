@@ -93,6 +93,51 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
     },
 };
 
+/**
+ * Archetype weighting by district.
+ *
+ * This used to be an if/chance cascade — `if (district === 3 && rng.chance(0.4))`
+ * — which meant adding a district flavour or a new archetype required editing
+ * control flow rather than data. A weight table says the same thing in a form
+ * you can extend, read at a glance, and reason about probabilistically.
+ */
+export type ArchetypeWeights = Partial<Record<ArchetypeId, number>>;
+
+const BASE_WEIGHTS: ArchetypeWeights = {
+    strategist: 1,
+    survivalist: 1,
+    protector: 1,
+    trickster: 1,
+    wildcard: 1,
+    underdog: 1,
+};
+
+/** Career districts train for it; everyone else is shaped by their industry. */
+export const DISTRICT_ARCHETYPE_WEIGHTS: Record<number, ArchetypeWeights> = {
+    1:  { career: 7, trickster: 1.5, strategist: 1 },
+    2:  { career: 8, protector: 1.5, wildcard: 1 },
+    3:  { strategist: 4, trickster: 2, underdog: 1.5 },
+    4:  { career: 6, survivalist: 2, protector: 1.5 },
+    5:  { strategist: 2.5, trickster: 2, wildcard: 1.5 },
+    6:  { wildcard: 2.5, underdog: 2, trickster: 1.5 },
+    7:  { protector: 2.5, survivalist: 2, wildcard: 1.5 },
+    8:  { underdog: 2.5, trickster: 2, protector: 1.5 },
+    9:  { survivalist: 2.5, underdog: 2, protector: 1.5 },
+    10: { protector: 2.5, survivalist: 2, wildcard: 1.5 },
+    11: { survivalist: 3.5, underdog: 2.5, protector: 1.5 },
+    12: { survivalist: 3, underdog: 3, trickster: 1.5 },
+};
+
+/** Merged weights for a district, with the shared baseline underneath. */
+export function archetypeWeightsFor(district: number): Array<[ArchetypeId, number]> {
+    const merged: ArchetypeWeights = { ...BASE_WEIGHTS };
+    const districtWeights = DISTRICT_ARCHETYPE_WEIGHTS[district] || {};
+    (Object.entries(districtWeights) as Array<[ArchetypeId, number]>).forEach(([id, w]) => {
+        merged[id] = (merged[id] ?? 0) + w;
+    });
+    return (Object.entries(merged) as Array<[ArchetypeId, number]>).filter(([, w]) => w > 0);
+}
+
 // Pairs that get a bonus when considering an alliance
 const COMPATIBLE: Array<[ArchetypeId, ArchetypeId]> = [
     ['career', 'career'],

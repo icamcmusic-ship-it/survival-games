@@ -1,18 +1,41 @@
 import { Tribute } from '../models/types';
+import { ODDS } from '../data/balance';
 
 /**
- * Single source of truth for betting odds. The roster screen, the payout and
- * the end screen previously each carried their own copy of this maths, so a
- * tweak in one place silently disagreed with the others.
+ * Betting odds, live.
+ *
+ * The score used to be computed purely from base attributes, the training
+ * score and a couple of traits — none of which change once the gong sounds.
+ * A tribute at 8 health with four kills and no allies read exactly the same on
+ * day 6 as they had on day 0, which made the odds board decorative. In-run
+ * performance is now part of the number: kills, condition, alliance backing and
+ * simple survival all move it.
  */
 export function oddsScore(t: Tribute): number {
+    if (t.status === 'dead') return 0;
+
     const training = t.trainingScore || 5;
-    let score = 40 + t.attributes.strength * 2 + t.attributes.agility * 2 + training * 4;
+    let score = ODDS.base
+        + t.attributes.strength * ODDS.strengthWeight
+        + t.attributes.agility * ODDS.agilityWeight
+        + training * ODDS.trainingWeight;
+
     if (t.traits.includes('Brute')) score += 15;
     if (t.traits.includes('Bloodthirsty')) score += 15;
     if (t.traits.includes('Pacifist')) score -= 10;
     if (t.traits.includes('Strategist')) score += 12;
-    return Math.max(10, score);
+    if (t.fanFavourite) score += ODDS.fanFavouriteBonus;
+
+    // Live form.
+    score += t.kills * ODDS.killWeight;
+    score -= (100 - t.health) * ODDS.healthWeight;
+    if (t.allianceId) score += ODDS.allianceBonus;
+    if (t.injuries.bleeding || t.injuries.poisoned || t.injuries.infected) score -= ODDS.woundedPenalty;
+    if (t.vitals.sanity < 30) score -= ODDS.sanityPenalty;
+    // Every day survived is evidence.
+    score += (t.dayOfDeath === undefined ? 1 : 0) * ODDS.survivalDayWeight;
+
+    return Math.max(ODDS.minScore, Math.round(score));
 }
 
 export interface TributeOdds {
@@ -23,8 +46,12 @@ export interface TributeOdds {
 }
 
 export function tributeOdds(t: Tribute, field: Tribute[]): TributeOdds {
-    const total = field.reduce((sum, other) => sum + oddsScore(other), 0);
-    const pct = total > 0 ? Math.max(1, Math.round((oddsScore(t) / total) * 100)) : 4;
+    // Only the living compete for the crown; a dead field member is not a rival.
+    const contenders = field.filter(o => o.status === 'alive');
+    const pool = contenders.length > 0 ? contenders : field;
+    const total = pool.reduce((sum, other) => sum + oddsScore(other), 0);
+    const own = oddsScore(t);
+    const pct = total > 0 ? Math.max(1, Math.round((own / total) * 100)) : 4;
     const mult = Math.max(1.1, Math.min(25.0, 100 / pct));
     return { pct, mult };
 }

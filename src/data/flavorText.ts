@@ -377,3 +377,79 @@ export const AMBIENT_TEXTS = [
     'Capitol betting odds are updated live on every screen in the city.',
     'Somewhere far above, an audience of millions leans in.',
 ];
+
+/**
+ * Grief, vengeance and relief. A cannon reshapes everyone still breathing —
+ * these are the lines that let the feed show it instead of only tallying it.
+ */
+export const GRIEF_TEXTS = [
+    '{mourner} hears the cannon and stops dead in {zone}. {victim} is gone, and it takes a long moment before they move again.',
+    '{mourner} watches the sky over {zone} and sees {victim}\'s face. They sit down in the dirt and stay there.',
+    'The anthem plays. {mourner} counts the faces, finds {victim} among them, and something closes behind their eyes.',
+    '{mourner} says {victim}\'s name out loud in {zone}, once, to nobody.',
+];
+
+export const VENGEANCE_TEXTS = [
+    'VENGEANCE: {mourner} learns it was {killer} who killed {victim}. They stop running and start hunting.',
+    'VENGEANCE: {mourner} will not say {victim}\'s name again until {killer} is dead. They mean it.',
+    'VENGEANCE: Something in {mourner} snaps clean through. {killer} took {victim}, and nothing else matters now.',
+];
+
+export const RELIEF_TEXTS = [
+    '{tribute} hears the cannon and lets out a breath they have been holding since the reaping. {victim} was never going to let them live.',
+    '{tribute} sees {victim}\'s face in the sky over {zone} and feels nothing at all. That frightens them more than grief would.',
+    '{tribute} allows themselves one hard, ugly smile in {zone}. {victim} is off the board.',
+];
+
+/** Multi-round duels: the exchanges between the opening and the ending. */
+export const DUEL_TEXTS = {
+    open: [
+        '{t1} and {t2} come together in {zone} and there is no talking.',
+        '{t1} closes on {t2} in {zone}. Neither of them backs up.',
+        'It starts badly and fast: {t1} and {t2}, alone in {zone}.',
+    ],
+    exchange: [
+        '{winner} opens {loser} up and drives them back a step.',
+        '{loser} takes the worse of it — {winner} lands clean and keeps coming.',
+        '{winner} gets inside {loser}\'s guard and makes them pay for it.',
+        '{loser} blocks two and misses the third. {winner} presses.',
+    ],
+    stalemate: [
+        '{t1} and {t2} circle, breathing hard, and neither finds an opening.',
+        'The exchange comes to nothing. {t1} and {t2} reset, watching hands.',
+    ],
+    retreat: [
+        '{fleer} decides this is not the hill and breaks off, leaving {stayer} bleeding in {zone}.',
+        '{fleer} disengages and runs. {stayer} does not follow far.',
+        '{fleer} throws everything they are carrying at {stayer} and uses the second it buys to get clear.',
+    ],
+    mutualBreak: [
+        '{t1} and {t2} break apart at the same moment, both bleeding, neither willing to finish it.',
+        'It ends the way most of them do: {t1} and {t2} back away from each other, wrecked and alive.',
+    ],
+};
+
+/** Group brawls: three or more tributes in one zone with nowhere to be polite. */
+export const GROUP_COMBAT_TEXTS = {
+    open: [
+        'GROUP FIGHT: {names} all reach {zone} at once, and the arithmetic goes bad immediately.',
+        'GROUP FIGHT: {zone} turns into a scrum — {names}, all of them at once.',
+        'GROUP FIGHT: {names} collide in {zone}. Nobody has time to pick a side carefully.',
+    ],
+    gangUp: [
+        '{attackers} converge on {target} together. It is not a fight so much as a decision.',
+        '{target} is caught in the open by {attackers} and cannot cover every angle.',
+        '{attackers} work {target} from three sides at once.',
+    ],
+    scatter: [
+        'The brawl in {zone} comes apart. {names} scatter into cover in different directions.',
+        'Whatever that was in {zone}, it ends with {names} running the other way.',
+    ],
+};
+
+/** Training-floor reactions — the rest of the cast watching a rival score high. */
+export const INTIMIDATION_TEXTS = [
+    '{tribute} posts a {score} and the training floor goes quiet. Every tribute in the room recalculates.',
+    'Word of {tribute}\'s {score} is around the Training Centre before dinner. Nobody sleeps well.',
+    '{tribute}\'s {score} is the only number anyone repeats that night. It gets larger each time it is told.',
+];

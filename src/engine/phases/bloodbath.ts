@@ -3,9 +3,12 @@ import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
-import { resolveCombat } from '../combat';
+import { resolveCombat, resolveGroupCombat } from '../combat';
 import { BLOODBATH_TEXTS } from '../../data/flavorText';
 import { itemPhrase } from '../items';
+import { personaThreat } from './alliances';
+import { getRel, setRel } from '../relationships';
+import { noteSighting } from '../memory';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -22,10 +25,12 @@ function initializeCareerAlliance(ctx: SimContext) {
         const allianceId = `career-pack-${ctx.state.seed}`;
         careers.forEach(t => {
             t.allianceId = allianceId;
-            // Set initial positive relationships within the pack
+            // Set initial positive relationships within the pack. They already
+            // knew each other from the academy; closing ranks in the
+            // arena raises that to working trust without erasing the history.
             careers.forEach(other => {
                 if (t.id !== other.id) {
-                    t.relationships[other.id] = 50;
+                    setRel(t, other.id, Math.max(45, getRel(t, other.id) + 20));
                 }
             });
         });
@@ -60,6 +65,9 @@ export function processBloodbath(ctx: SimContext) {
         if (t.traits.includes('Bloodthirsty')) fightChance += 0.3;
         if (t.traits.includes('Pacifist')) fightChance -= 0.3;
         fightChance += ARCHETYPES[t.archetype].aggression - ARCHETYPES[t.archetype].caution * 0.5;
+        // The persona sold on the interview couch is a promise the crowd — and
+        // everyone else on the plates — remembers.
+        fightChance += personaThreat(t) * 0.6;
 
         if (ctx.rng.chance(fightChance)) {
             fighters.push(t);
@@ -82,13 +90,30 @@ export function processBloodbath(ctx: SimContext) {
         }
     });
 
+    // Everyone in the scrum can see everyone else — that is what the Cornucopia
+    // is. The sighting seeds every survivor's memory of the place.
+    const cornucopia = ctx.state.arena.zones[0]?.name ?? 'The Cornucopia';
+    [...fighters, ...runners].forEach(t => {
+        noteSighting(ctx.state, t, cornucopia, Math.max(0, fighters.length - 1), 0);
+    });
+
     // Bounded brawl: two tributes who never manage to kill each other (a draw
     // every round, or star-crossed lovers who refuse to fight) used to spin
     // this loop forever and hang the whole simulation.
     let rounds = fighters.length * 6 + 12;
     while (fighters.length > 1 && rounds-- > 0) {
+        // A knot of three at the mouth of the horn is not three tidy duels.
+        if (fighters.length >= 3 && ctx.rng.chance(0.35)) {
+            const party = fighters.splice(0, 3);
+            resolveGroupCombat(ctx, party);
+            party.forEach(t => { if (t.status === 'alive' && ctx.rng.chance(0.5)) fighters.push(t); });
+            continue;
+        }
+
         const t1 = fighters.splice(ctx.rng.nextInt(0, fighters.length - 1), 1)[0];
-        const t2 = fighters.splice(ctx.rng.nextInt(0, fighters.length - 1), 1)[0];
+        // Targeting is not blind: a tribute goes for whoever they already have
+        // reason to hate, or whoever promised the crowd a bloodbath.
+        const t2 = fighters.splice(pickOpponentIndex(ctx, t1, fighters), 1)[0];
 
         resolveCombat(ctx, t1, t2, true);
         // A draw usually means they break off rather than immediately
@@ -132,4 +157,27 @@ export function processBloodbath(ctx: SimContext) {
     );
 
     ctx.state.phase = 'day';
+}
+
+/**
+ * Who a tribute swings at first. Weighted by grudge, by the threat the target
+ * advertised in their interview, and by how easy they look — never uniform.
+ */
+function pickOpponentIndex(ctx: SimContext, attacker: Tribute, pool: Tribute[]): number {
+    if (pool.length <= 1) return 0;
+    const weights = pool.map(target => {
+        let weight = 1;
+        weight += Math.max(0, -getRel(attacker, target.id)) * 0.03;
+        weight += personaThreat(target) * 2;
+        // Careers hunt the weak first; that is the whole strategy.
+        if (attacker.isCareer) weight += (10 - target.attributes.strength) * 0.15;
+        weight *= Math.max(0.1, 1 - Math.max(0, getRel(attacker, target.id)) / 120);
+        return Math.max(0.05, weight);
+    });
+    let roll = ctx.rng.nextFloat() * weights.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < weights.length; i++) {
+        roll -= weights[i];
+        if (roll <= 0) return i;
+    }
+    return weights.length - 1;
 }

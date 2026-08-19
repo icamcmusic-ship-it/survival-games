@@ -1,23 +1,77 @@
 import { RNG } from '../utils/rng';
 import { Tribute, Attributes, Build, GameConfig, ArchetypeId, Gender } from '../models/types';
-import { TRAITS, BUILDS, DEFAULT_GAME_CONFIG } from '../data/constants';
-import { ARCHETYPES } from '../data/archetypes';
+import { TRAITS, BUILDS, DEFAULT_GAME_CONFIG, traitFits } from '../data/constants';
+import { ARCHETYPES, archetypeWeightsFor } from '../data/archetypes';
+import { GENERATION } from '../data/balance';
 import { DISTRICT_NAMES } from '../data/names';
+import { blankMemory } from './memory';
+import { seedBackstoryRelationships } from './relationships';
 
-const NON_CAREER_ARCHETYPES: ArchetypeId[] = ['strategist', 'survivalist', 'protector', 'trickster', 'wildcard', 'underdog'];
+/** Weighted draw from the district's archetype table. */
+function pickArchetype(rng: RNG, district: number): ArchetypeId {
+    const weights = archetypeWeightsFor(district);
+    const total = weights.reduce((sum, [, w]) => sum + w, 0);
+    let roll = rng.nextFloat() * total;
+    for (const [id, w] of weights) {
+        roll -= w;
+        if (roll <= 0) return id;
+    }
+    return weights[weights.length - 1][0];
+}
 
-function pickArchetype(rng: RNG, isCareer: boolean, district: number): ArchetypeId {
-    // Careers usually embrace their training, but a few break the mold.
-    if (isCareer && rng.chance(0.8)) return 'career';
-    if (district === 3 && rng.chance(0.4)) return 'strategist';
-    if ((district === 11 || district === 12) && rng.chance(0.35)) return 'survivalist';
-    return rng.pick(NON_CAREER_ARCHETYPES);
+/** The most raw strength a tribute of this age can possibly have. */
+export function strengthCapForAge(age: number): number {
+    return Math.min(10, GENERATION.strengthCapAtMinAge + (age - GENERATION.minAge) * GENERATION.strengthCapPerYear);
 }
 
 function buildFromStrength(rng: RNG, strength: number): Build {
     // Roughly correlate build with strength while keeping some randomness.
     const idx = Math.min(BUILDS.length - 1, Math.max(0, Math.floor(strength / 2) + rng.nextInt(-1, 1)));
     return BUILDS[idx];
+}
+
+/**
+ * Age is no longer decorative.
+ *
+ * A twelve-year-old and an eighteen-year-old were previously mechanically
+ * identical, which is how the roster ended up printing a 12-year-old with a
+ * strength of 9 and a straight face. Physical stats now scale with age, the
+ * youngest are quicker but frailer, and the crowd is softer on them.
+ */
+function applyAgeProfile(attributes: Attributes, age: number) {
+    const yearsFromMid = age - GENERATION.ageMidpoint;
+    attributes.strength += Math.round(yearsFromMid * GENERATION.strengthPerYear);
+    // Agility peaks in the mid-teens and tails off either side of it.
+    attributes.agility -= Math.round(Math.abs(age - GENERATION.agilityPeakAge) * 0.35);
+    // Years in school and years watching the Games both count for something.
+    if (age >= 17) attributes.intelligence += 1;
+    if (age <= 13) {
+        attributes.stealth += 1;
+        attributes.strength -= 1;
+    }
+}
+
+/**
+ * Per-tribute identity.
+ *
+ * Base rolls plus archetype bias made everyone in a given archetype read the
+ * same. Every tribute now gets a talent level (are they simply better or worse
+ * than average?) and one spiked and one dumped attribute, so "the survivalist
+ * from 11" is a person rather than a template.
+ */
+function applyPersonalVariance(rng: RNG, attributes: Attributes) {
+    const talent = rng.nextInt(-GENERATION.talentSpread, GENERATION.talentSpread);
+    const keys = rng.shuffle(Object.keys(attributes) as Array<keyof Attributes>);
+
+    // Talent is spread thinly across everything.
+    keys.forEach(k => { attributes[k] += Math.round(talent / 2.5); });
+
+    for (let i = 0; i < GENERATION.spikeCount && i < keys.length; i++) {
+        attributes[keys[i]] += GENERATION.spikeSize;
+    }
+    for (let i = 0; i < GENERATION.dumpCount && keys.length - 1 - i >= GENERATION.spikeCount; i++) {
+        attributes[keys[keys.length - 1 - i]] -= GENERATION.dumpSize;
+    }
 }
 
 export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME_CONFIG): Tribute[] {
@@ -65,35 +119,50 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 attributes.agility += rng.nextInt(1, 2);
             }
 
+            const age = rng.nextInt(GENERATION.minAge, GENERATION.maxAge);
+            applyAgeProfile(attributes, age);
+            applyPersonalVariance(rng, attributes);
+
             // Archetype: shapes stats, traits, and in-game behavior
-            const archetype = pickArchetype(rng, isCareer, district);
+            const archetype = pickArchetype(rng, district);
             const archetypeDef = ARCHETYPES[archetype];
             (Object.entries(archetypeDef.statBias) as Array<[keyof Attributes, number]>).forEach(([k, bonus]) => {
                 attributes[k] += bonus;
             });
 
-            // Cap at 10
+            // Clamp into the playable band. A floor of 1 matters now that age
+            // and dump stats can both bite the same attribute.
             (Object.keys(attributes) as Array<keyof Attributes>).forEach(k => {
-                attributes[k] = Math.min(10, attributes[k]);
+                attributes[k] = Math.max(1, Math.min(10, Math.round(attributes[k])));
             });
+            // Age is a hard ceiling on raw strength, not just a modifier —
+            // otherwise a District 2 twelve-year-old still rolls a 9.
+            attributes.strength = Math.min(attributes.strength, strengthCapForAge(age));
 
-            // Traits: first trait leans toward the archetype's preferred pool
+            // Traits: first trait leans toward the archetype's preferred pool,
+            // and nothing contradictory is ever stacked on top of it.
             const numTraits = rng.nextInt(1, 3);
             const traits: string[] = [];
             if (archetypeDef.preferredTraits.length > 0 && rng.chance(0.6)) {
                 traits.push(rng.pick(archetypeDef.preferredTraits));
             }
-            while (traits.length < numTraits) {
+            let traitAttempts = TRAITS.length * 4;
+            while (traits.length < numTraits && traitAttempts-- > 0) {
                 const trait = rng.pick(TRAITS);
-                if (!traits.includes(trait)) {
-                    traits.push(trait);
-                }
+                if (traitFits(traits, trait)) traits.push(trait);
             }
 
             const chosenName = drawName(district, gender);
-            const age = rng.nextInt(12, 18);
-            const heightCm = gender === 'Male' ? rng.nextInt(155, 195) : rng.nextInt(148, 185);
+            const heightCm = gender === 'Male'
+                ? rng.nextInt(148 + (age - GENERATION.minAge) * 4, 168 + (age - GENERATION.minAge) * 4)
+                : rng.nextInt(142 + (age - GENERATION.minAge) * 4, 160 + (age - GENERATION.minAge) * 4);
             const build = buildFromStrength(rng, attributes.strength);
+
+            // Reputation: the trust level the crowd keeps drifting back toward.
+            const reputation = GENERATION.baseSponsorTrust
+                + rng.nextInt(-GENERATION.trustSpread, GENERATION.trustSpread)
+                + (age <= 13 ? GENERATION.youthSympathy : 0)
+                + Math.round((attributes.charisma - 5) * 1.5);
 
             tributes.push({
                 id: `d${district}-${gender.toLowerCase()}`,
@@ -115,13 +184,38 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 stance: 'Defensive',
                 relationships: {},
                 excitementRating: 0,
-                sponsorTrust: 50,
+                sponsorTrust: Math.max(5, Math.min(95, reputation)),
+                reputation: Math.max(5, Math.min(95, reputation)),
                 trainingScore: 0,
                 kills: 0,
-                zone: 'The Cornucopia'
+                zone: 'The Cornucopia',
+                memory: blankMemory(),
+                stanceHeld: 0,
+                fanFavourite: false,
             });
         }
     }
+
+    // Audience meta: the Capitol has favourites before the gong.
+    // Charisma, a good story and a career pedigree all feed the pre-Games buzz.
+    const buzz = tributes.map(t => ({
+        t,
+        score: t.attributes.charisma * 3
+            + (t.isCareer ? 6 : 0)
+            + (t.age <= 13 ? 5 : 0)
+            + (t.traits.includes('Charismatic') ? 8 : 0)
+            + rng.nextInt(0, 10),
+    })).sort((a, b) => b.score - a.score);
+
+    buzz.slice(0, Math.min(GENERATION.fanFavouriteCount, tributes.length)).forEach(({ t }) => {
+        t.fanFavourite = true;
+        t.reputation = Math.min(95, t.reputation + GENERATION.fanFavouriteTrust);
+        t.sponsorTrust = t.reputation;
+        t.excitementRating += GENERATION.fanFavouriteExcitement;
+    });
+
+    // Nobody walks in a stranger.
+    seedBackstoryRelationships(tributes, rng);
 
     return tributes;
 }

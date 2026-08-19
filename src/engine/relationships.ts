@@ -1,0 +1,250 @@
+import { GameState, Tribute } from '../models/types';
+import { RNG } from '../utils/rng';
+import { RELATIONSHIPS, GENERATION } from '../data/balance';
+import { ARCHETYPES } from '../data/archetypes';
+import { SimContext } from './context';
+import { clampTribute } from './vitals';
+import { ensureMemory, swearVengeance, noteContact } from './memory';
+import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS } from '../data/flavorText';
+
+/**
+ * The social graph, and everything that writes to it.
+ *
+ * Relationships used to be a bare number nudged in half a dozen places with no
+ * shared rules — which is how a betrayal could end in a kill and leave the
+ * relationship map completely untouched. Every write now goes through here,
+ * stays inside [-100, 100], and leaves a trace in the tribute's memory.
+ */
+
+const clampRel = (v: number) => Math.max(RELATIONSHIPS.min, Math.min(RELATIONSHIPS.max, Math.round(v * 10) / 10));
+
+export function getRel(a: Tribute, bId: string): number {
+    return a.relationships[bId] || 0;
+}
+
+export function adjustRel(a: Tribute, bId: string, delta: number): number {
+    const next = clampRel(getRel(a, bId) + delta);
+    a.relationships[bId] = next;
+    return next;
+}
+
+/** Most interactions move both sides of the pair. */
+export function adjustMutual(state: GameState, a: Tribute, b: Tribute, delta: number) {
+    adjustRel(a, b.id, delta);
+    adjustRel(b, a.id, delta);
+    noteContact(state, a, b);
+}
+
+export function setRel(a: Tribute, bId: string, value: number) {
+    a.relationships[bId] = clampRel(value);
+}
+
+/**
+ * Backstory: nobody walks into the arena a total stranger.
+ *
+ * District partners rode the same train. Careers trained in the same academy
+ * for a decade. A twelve-year-old and an eighteen-year-old size each other up
+ * very differently than two sixteen-year-olds do. This is all pre-Games, so it
+ * runs once at generation and gives the alliance layer something to work with
+ * on day one instead of a wall of zeroes.
+ */
+export function seedBackstoryRelationships(tributes: Tribute[], rng: RNG) {
+    const spread = (base: number, range: number) => base + rng.nextInt(-range, range);
+
+    for (let i = 0; i < tributes.length; i++) {
+        for (let j = i + 1; j < tributes.length; j++) {
+            const a = tributes[i];
+            const b = tributes[j];
+            let value = 0;
+
+            if (a.district === b.district) {
+                // Home is home, even when only one of you is coming back.
+                value += spread(RELATIONSHIPS.districtPartnerBase, RELATIONSHIPS.districtPartnerSpread);
+            } else if (a.isCareer && b.isCareer) {
+                // Academy classmates, with the edge of knowing one of them wins.
+                value += spread(RELATIONSHIPS.careerPackBase, RELATIONSHIPS.careerPackSpread);
+                value -= RELATIONSHIPS.careerRivalPenalty;
+            }
+
+            if (a.archetype === b.archetype) value += RELATIONSHIPS.archetypeKinship;
+            if (ARCHETYPES[a.archetype].treachery > 0.2 && ARCHETYPES[b.archetype].caution > 0.2) {
+                value -= RELATIONSHIPS.archetypeKinship;
+            }
+
+            const ageGap = Math.abs(a.age - b.age);
+            value += ageGap <= 1 ? RELATIONSHIPS.ageAffinity : -Math.min(RELATIONSHIPS.ageAffinity, ageGap);
+
+            // A protector cannot look at a twelve-year-old and feel nothing.
+            const younger = a.age < b.age ? a : b;
+            const older = a.age < b.age ? b : a;
+            if (younger.age <= 13 && ARCHETYPES[older.archetype].allianceAffinity > 0.15) {
+                adjustRel(older, younger.id, RELATIONSHIPS.ageAffinity * 2);
+            }
+
+            if (value !== 0) {
+                adjustRel(a, b.id, value);
+                adjustRel(b, a.id, value);
+            }
+
+            // Being the crowd's darling costs you with the other tributes.
+            if (a.fanFavourite && !b.fanFavourite) adjustRel(b, a.id, -RELATIONSHIPS.fanFavouriteEnvy);
+            if (b.fanFavourite && !a.fanFavourite) adjustRel(a, b.id, -RELATIONSHIPS.fanFavouriteEnvy);
+        }
+    }
+}
+
+const fill = (template: string, vars: Record<string, string>) =>
+    Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
+
+/**
+ * Death fallout: a cannon is never just the victim's problem.
+ *
+ * Anyone who cared about the dead tribute takes a sanity hit scaled to the
+ * bond, turns on the killer, and may swear vengeance outright. Anyone who
+ * hated them exhales. The crowd notices when a favourite is put down. The old
+ * code did exactly one of these things, for exactly one trait.
+ */
+export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?: Tribute) {
+    const state = ctx.state;
+
+    state.tributes.forEach(other => {
+        if (other.status !== 'alive' || other.id === victim.id) return;
+        const bond = getRel(other, victim.id);
+        const wereAllied = other.allianceId !== undefined && other.allianceId === victim.allianceId;
+        const isLover = other.traits.includes('Star-Crossed') && victim.traits.includes('Star-Crossed') && other.district === victim.district;
+
+        if (bond >= RELATIONSHIPS.grievableBond || wereAllied || isLover) {
+            const intensity = isLover ? 1 : Math.min(1, (bond + (wereAllied ? 25 : 0)) / 100);
+            const sanityHit = isLover
+                ? RELATIONSHIPS.griefSanityMax + 15
+                : RELATIONSHIPS.griefSanityMin + intensity * (RELATIONSHIPS.griefSanityMax - RELATIONSHIPS.griefSanityMin);
+
+            other.vitals.sanity -= sanityHit;
+            other.excitementRating += Math.round(10 + intensity * 25);
+            // The crowd rewards visible grief.
+            other.sponsorTrust += Math.round(intensity * 6);
+            ensureMemory(other).mourned.push(victim.id);
+            clampTribute(other);
+
+            if (killer && killer.id !== other.id) {
+                const hatred = RELATIONSHIPS.griefTowardKiller * intensity
+                    + (wereAllied ? RELATIONSHIPS.griefTowardKillerAllyBonus : 0);
+                const now = adjustRel(other, killer.id, -hatred);
+                if (now <= RELATIONSHIPS.vengeanceThreshold) {
+                    swearVengeance(other, killer.id);
+                    other.stance = 'Aggressive';
+                    other.stanceHeld = 0;
+                    ctx.logEvent(
+                        fill(ctx.pickText(VENGEANCE_TEXTS), { mourner: other.name, victim: victim.name, killer: killer.name }),
+                        [other.id, killer.id, victim.id],
+                        { important: true, category: 'sanity' }
+                    );
+                }
+            }
+
+            if (isLover) {
+                ctx.logEvent(
+                    `TRAGEDY: ${other.name} hears the cannon and knows. Their star-crossed lover ${victim.name} is gone, and something in them goes with it.`,
+                    [other.id, victim.id],
+                    { important: true, category: 'romance' }
+                );
+            } else if (intensity > 0.45) {
+                ctx.logEvent(
+                    fill(ctx.pickText(GRIEF_TEXTS), { mourner: other.name, victim: victim.name, zone: other.zone }),
+                    [other.id, victim.id],
+                    { important: true, category: 'sanity' }
+                );
+            }
+        } else if (bond <= RELATIONSHIPS.enemyBond) {
+            other.vitals.sanity += RELATIONSHIPS.reliefSanity;
+            clampTribute(other);
+            if (ctx.rng.chance(0.4)) {
+                ctx.logEvent(
+                    fill(ctx.pickText(RELIEF_TEXTS), { tribute: other.name, victim: victim.name, zone: other.zone }),
+                    [other.id, victim.id],
+                    { category: 'survival' }
+                );
+            }
+        }
+    });
+
+    // Sponsor reaction: putting down a crowd favourite is not a free action.
+    if (killer && (victim.fanFavourite || victim.sponsorTrust > 75)) {
+        killer.sponsorTrust -= 12;
+        killer.excitementRating += 25;
+        clampTribute(killer);
+        ctx.logEvent(
+            `The Capitol audience goes quiet. ${victim.name} was a favourite, and ${killer.name} just took them off the board.`,
+            [killer.id, victim.id],
+            { important: true, category: 'sponsor' }
+        );
+    }
+}
+
+/**
+ * Betrayal fallout: the knife itself moves the numbers, whether
+ * or not the fight that follows resolves in a draw.
+ */
+export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim: Tribute, witnesses: Tribute[]) {
+    adjustRel(victim, betrayer.id, -RELATIONSHIPS.betrayalDirectPenalty);
+    adjustRel(betrayer, victim.id, -RELATIONSHIPS.betrayalDirectPenalty / 2);
+
+    const victimMem = ensureMemory(victim);
+    victimMem.timesBetrayed += 1;
+    if (!victimMem.betrayedBy.includes(betrayer.id)) victimMem.betrayedBy.push(betrayer.id);
+    swearVengeance(victim, betrayer.id);
+
+    victim.vitals.sanity -= 15;
+    betrayer.excitementRating += 30;
+    // The Capitol loves the drama and distrusts the man.
+    betrayer.sponsorTrust -= 8;
+    clampTribute(victim);
+    clampTribute(betrayer);
+
+    witnesses.forEach(w => {
+        if (w.id === betrayer.id || w.id === victim.id) return;
+        adjustRel(w, betrayer.id, -RELATIONSHIPS.betrayalWitnessPenalty);
+        const mem = ensureMemory(w);
+        if (!mem.betrayedBy.includes(betrayer.id)) mem.betrayedBy.push(betrayer.id);
+        // Watching an ally get knifed poisons the whole group, not just the pair.
+        Object.keys(w.relationships).forEach(id => {
+            if (id === betrayer.id) return;
+            adjustRel(w, id, -RELATIONSHIPS.betrayedDistrustPenalty / 2);
+        });
+    });
+
+    // A tribute who has been sold out once stops trusting the room.
+    Object.keys(victim.relationships).forEach(id => {
+        if (id === betrayer.id) return;
+        adjustRel(victim, id, -RELATIONSHIPS.betrayedDistrustPenalty);
+    });
+}
+
+/**
+ * Trust erosion inside a standing alliance. Rations run short, the
+ * field thins, and everyone starts doing arithmetic about who is left.
+ */
+export function decayAllianceTrust(state: GameState) {
+    const alive = state.tributes.filter(t => t.status === 'alive');
+    const lateGame = alive.length <= RELATIONSHIPS.lateGameAliveCount;
+    const rate = lateGame ? RELATIONSHIPS.lateGameTrustDecay : RELATIONSHIPS.trustDecayPerCycle;
+
+    alive.forEach(t => {
+        if (!t.allianceId) return;
+        alive.forEach(other => {
+            if (other.id === t.id || other.allianceId !== t.allianceId) return;
+            // Star-crossed lovers are the one bond the endgame cannot erode.
+            const bonded = t.traits.includes('Star-Crossed') && other.traits.includes('Star-Crossed') && t.district === other.district;
+            if (bonded) return;
+            const paranoia = t.traits.includes('Paranoid') ? 1.8 : 1;
+            adjustRel(t, other.id, -rate * paranoia);
+        });
+    });
+}
+
+/** Baseline sponsor trust drifts back toward the tribute's reputation. */
+export function driftReputation(t: Tribute, rate: number) {
+    const target = t.reputation ?? GENERATION.baseSponsorTrust;
+    if (t.sponsorTrust > target) t.sponsorTrust = Math.max(target, t.sponsorTrust - rate);
+    else if (t.sponsorTrust < target) t.sponsorTrust = Math.min(target, t.sponsorTrust + rate);
+}
