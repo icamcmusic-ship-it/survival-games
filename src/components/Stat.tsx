@@ -1,11 +1,17 @@
 import React from 'react';
 
 export function Stat({ icon, label, value }: { icon: React.ReactNode, label: string, value: number }) {
+    const pct = Math.max(0, Math.min(100, value * 10));
     return (
-        <div className="flex items-center gap-2 bg-zinc-950 p-2 rounded border border-zinc-800/50">
-            {icon}
-            <span className="text-zinc-500 text-xs font-mono">{label}</span>
-            <span className="text-white font-mono ml-auto">{value}/10</span>
+        <div className="panel-flush px-2 py-1.5 space-y-1" title={`${label} ${value} of 10`}>
+            <div className="flex items-center gap-1.5">
+                {icon}
+                <span className="text-[var(--color-ink-500)] text-[10px] font-mono tracking-wider">{label}</span>
+                <span className="text-white font-mono text-xs ml-auto">{value}</span>
+            </div>
+            <div className="meter">
+                <span style={{ width: `${pct}%`, background: 'var(--color-ink-500)' }} />
+            </div>
         </div>
     );
 }
