@@ -44,7 +44,7 @@ await step('gamemaker mode toggles', async () => {
 
 await step('seed randomiser works', async () => {
   const before = await page.locator('#seed-input').inputValue();
-  await page.getByRole('button', { name: /roll/i }).click();
+  await page.getByRole('button', { name: /randomize/i }).click();
   const after = await page.locator('#seed-input').inputValue();
   if (before === after) throw new Error('seed did not change');
 });
@@ -63,10 +63,10 @@ await step('start game reaches reaping', async () => {
 });
 
 await step('reroll cast changes names', async () => {
-  const before = await page.locator('.panel .font-bold.text-white').first().textContent();
+  const before = await page.locator('.panel .font-black').first().textContent();
   await page.getByRole('button', { name: /reroll cast/i }).click();
   await page.waitForTimeout(200);
-  const after = await page.locator('.panel .font-bold.text-white').first().textContent();
+  const after = await page.locator('.panel .font-black').first().textContent();
   if (before === after) console.log('   (note: reroll produced same first name — possible but unlikely)');
 });
 
@@ -89,7 +89,7 @@ await step('search and sort roster', async () => {
   await page.getByRole('button', { name: 'District', exact: true }).click();
 });
 
-const coinsText = async () => (await page.locator('header .chip-coin').last().textContent()).trim();
+const coinsText = async () => (await page.locator('header .chip-gold').last().textContent()).trim();
 
 await step('betting deducts and refunds coins', async () => {
   const before = parseInt(await coinsText());

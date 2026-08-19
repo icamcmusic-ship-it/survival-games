@@ -1,58 +1,108 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   CAPITOL BROADCAST — design system
-   A single place for colour, elevation, and the repeated component shapes the
-   simulator uses. Screens compose these classes instead of restating a dozen
-   utility classes (several of which, like `zinc-855`, never existed and
-   silently rendered as nothing).
+   CAPITOL PROPAGANDA — design system
+   A screen-printed poster aesthetic: mustard gold masthead bands, hard black
+   ink borders, offset "sticker" shadows on primary actions, condensed
+   display type for headlines, monospace for data and navigation.
+
+   Fonts are self-hosted (public/fonts) rather than pulled from Google Fonts
+   at runtime: one less external dependency for a page that otherwise has
+   none, and it keeps the poster look from silently degrading to a system
+   sans if the CDN is ever unreachable.
    ========================================================================== */
 
+@font-face {
+    font-family: 'Anton';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/survival-games/fonts/Anton-400.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('/survival-games/fonts/Inter-variable.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('/survival-games/fonts/JetBrainsMono-variable.woff2') format('woff2');
+}
+
 @theme {
-    --color-ink-950: #08080b;
-    --color-ink-900: #0d0e12;
-    --color-ink-850: #12141a;
-    --color-ink-800: #191c24;
-    --color-ink-700: #23272f;
-    --color-ink-600: #333844;
-    --color-ink-500: #4b5160;
-    --color-ink-400: #6f7686;
-    --color-ink-300: #9aa1b1;
-    --color-ink-200: #c3c8d4;
-    --color-ink-100: #e6e9f0;
+    --font-display: "Anton", "Archivo Black", "Arial Narrow", sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+    --font-sans: "Inter", system-ui, sans-serif;
 
-    --color-blood-600: #b4162c;
-    --color-blood-500: #dc2440;
-    --color-blood-400: #f2536b;
-    --color-gold-500: #d9a520;
-    --color-gold-400: #f0c24a;
-    --color-coin-400: #35d6b6;
+    /* Cream-to-ink text/surface ramp (950 = palest surface, 100 = near-black text) */
+    --color-ink-950: #f5efe0;
+    --color-ink-900: #efe4cd;
+    --color-ink-850: #e8dabb;
+    --color-ink-800: #d9c69e;
+    --color-ink-700: #b7a173;
+    --color-ink-600: #8f7c56;
+    --color-ink-500: #6b5c42;
+    --color-ink-400: #4a3f2d;
+    --color-ink-300: #372e21;
+    --color-ink-200: #241d14;
+    --color-ink-100: #140a06;
 
-    --font-display: "Oswald", "Bebas Neue", "Arial Narrow", system-ui, sans-serif;
+    --color-blood-600: #8f0f1a;
+    --color-blood-500: #c11624;
+    --color-blood-400: #d93a3f;
+
+    --color-gold-500: #d2a124;
+    --color-gold-400: #e3ae27;
+
+    --color-coin-400: #1f7a6c;
 }
 
 :root {
+    /* Dedicated poster chrome tokens — used directly by component classes so
+       borders/shadows stay crisp black regardless of the text/surface ramp. */
+    --ink: #140a06;
+    --ink-soft: #2b1f16;
+    --paper: #f5efe0;
+    --paper-panel: #faf5e8;
+    --paper-flush: #efe2c6;
+    --line: #140a06;
+    --line-soft: #d9c69e;
+    --red: #c11624;
+    --red-deep: #8f0f1a;
+    --gold: #e3ae27;
+    --gold-deep: #d2a124;
+    --gold-line: #684c13;
+    --shadow-ink: 6px 6px 0 var(--ink);
+    --shadow-ink-sm: 4px 4px 0 var(--ink);
+
     /* Event category colours — one hue per kind of thing that can happen. */
-    --cat-death: #f2536b;
-    --cat-kill: #ff6b3d;
-    --cat-combat: #ffa23d;
-    --cat-injury: #e0703f;
-    --cat-hazard: #e0b93f;
-    --cat-mutt: #b978f0;
-    --cat-alliance: #3fd07a;
-    --cat-betrayal: #ff4d7d;
-    --cat-romance: #ff8ec6;
-    --cat-sponsor: #35d6b6;
-    --cat-loot: #4db4ff;
-    --cat-survival: #8b93a6;
-    --cat-travel: #6f8fd0;
-    --cat-sanity: #a56bff;
-    --cat-arena: #7a8296;
-    --cat-gamemaker: #ff5252;
-    --cat-training: #ffd166;
-    --cat-interview: #f19bff;
-    --cat-feast: #ffb454;
-    --cat-system: #7a8296;
+    --cat-death: #8f0f1a;
+    --cat-kill: #b3401b;
+    --cat-combat: #c1791a;
+    --cat-injury: #a15a2e;
+    --cat-hazard: #8a6a1f;
+    --cat-mutt: #6b3fa0;
+    --cat-alliance: #2f7a4f;
+    --cat-betrayal: #a11d4a;
+    --cat-romance: #b23e78;
+    --cat-sponsor: #1f7a6c;
+    --cat-loot: #2461a8;
+    --cat-survival: #6b6155;
+    --cat-travel: #3a5a9c;
+    --cat-sanity: #5a3f9c;
+    --cat-arena: #7c6a4a;
+    --cat-gamemaker: #9c1f14;
+    --cat-training: #96721b;
+    --cat-interview: #a83f8f;
+    --cat-feast: #b3691b;
+    --cat-system: #6b6155;
 }
 
 html,
@@ -62,19 +112,22 @@ body,
 }
 
 body {
-    background-color: var(--color-ink-950);
-    background-image:
-        radial-gradient(1100px 600px at 50% -10%, rgba(220, 36, 64, 0.13), transparent 60%),
-        linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
-    background-size: auto, 44px 44px, 44px 44px;
-    color: var(--color-ink-200);
+    background-color: var(--paper);
+    color: var(--color-ink-300);
+    font-family: var(--font-sans);
+}
+
+/* Gold dot-texture, reused by the masthead bands. */
+@property --dot-noop { syntax: '<number>'; inherits: false; initial-value: 0; }
+.dot-texture {
+    background-image: radial-gradient(rgba(20, 10, 6, 0.16) 1px, transparent 1px);
+    background-size: 14px 14px;
 }
 
 @layer utilities {
     .custom-scrollbar::-webkit-scrollbar {
-        width: 7px;
-        height: 7px;
+        width: 8px;
+        height: 8px;
     }
 
     .custom-scrollbar::-webkit-scrollbar-track {
@@ -83,11 +136,8 @@ body {
 
     .custom-scrollbar::-webkit-scrollbar-thumb {
         background-color: var(--color-ink-700);
-        border-radius: 10px;
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background-color: var(--color-ink-600);
+        border-radius: 3px;
+        border: 2px solid var(--paper);
     }
 
     .animate-fadeIn {
@@ -131,41 +181,101 @@ body {
 }
 
 @layer components {
+    /* ---------- masthead: the gold hero band every screen opens with ---------- */
+    .masthead {
+        position: relative;
+        overflow: hidden;
+        background-color: var(--gold);
+        border: 3px solid var(--ink);
+        padding: 2.5rem 1.75rem;
+    }
+
+    .masthead-ghost {
+        position: absolute;
+        top: -0.35em;
+        right: -0.1em;
+        font-family: var(--font-display);
+        font-size: clamp(9rem, 18vw, 15rem);
+        line-height: 1;
+        color: var(--gold-deep);
+        opacity: 0.55;
+        pointer-events: none;
+        user-select: none;
+        z-index: 0;
+    }
+
+    .masthead > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    .masthead-eyebrow {
+        display: inline-block;
+        background: var(--red);
+        color: #fff;
+        font-family: var(--font-mono);
+        font-weight: 800;
+        font-size: 0.7rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        padding: 0.4rem 0.85rem;
+        margin-bottom: 1.1rem;
+    }
+
+    .masthead-title {
+        font-family: var(--font-display);
+        font-weight: 400;
+        text-transform: uppercase;
+        letter-spacing: -0.01em;
+        line-height: 0.92;
+        color: var(--ink);
+        margin: 0;
+    }
+
+    .masthead-sub {
+        color: var(--gold-line);
+        font-weight: 600;
+        margin-top: 0.9rem;
+        max-width: 42rem;
+    }
+
     /* ---------- surfaces ---------- */
     .panel {
-        background: linear-gradient(180deg, rgba(25, 28, 36, 0.92), rgba(13, 14, 18, 0.92));
-        border: 1px solid var(--color-ink-700);
-        border-radius: 0.9rem;
-        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 12px 30px -22px rgba(0, 0, 0, 0.9);
+        background: var(--paper-panel);
+        border: 2px solid var(--line);
+        border-radius: 2px;
     }
 
     .panel-flush {
-        background: var(--color-ink-900);
-        border: 1px solid var(--color-ink-800);
-        border-radius: 0.75rem;
+        background: var(--paper-flush);
+        border: 1.5px solid var(--line-soft);
+        border-radius: 2px;
     }
 
     .panel-title {
+        font-family: var(--font-mono);
         font-size: 0.65rem;
         font-weight: 800;
-        letter-spacing: 0.18em;
+        letter-spacing: 0.16em;
         text-transform: uppercase;
-        color: var(--color-ink-400);
+        color: var(--color-ink-500);
     }
 
     .eyebrow {
-        font-size: 0.6rem;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
         font-weight: 800;
-        letter-spacing: 0.24em;
+        letter-spacing: 0.18em;
         text-transform: uppercase;
         color: var(--color-ink-500);
     }
 
     .display-title {
-        font-weight: 900;
-        letter-spacing: -0.03em;
+        font-family: var(--font-display);
+        font-weight: 400;
+        letter-spacing: -0.01em;
         text-transform: uppercase;
-        color: #fff;
+        color: var(--ink);
         line-height: 0.95;
     }
 
@@ -175,97 +285,105 @@ body {
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
-        padding: 0.55rem 1rem;
-        border-radius: 0.6rem;
-        border: 1px solid var(--color-ink-700);
-        background: var(--color-ink-850);
-        color: var(--color-ink-200);
+        padding: 0.6rem 1.1rem;
+        border-radius: 2px;
+        border: 2px solid var(--line);
+        background: var(--paper-panel);
+        color: var(--ink);
+        font-family: var(--font-mono);
         font-size: 0.7rem;
         font-weight: 800;
-        letter-spacing: 0.14em;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
         cursor: pointer;
-        transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+        transition: background-color 0.15s ease, transform 0.08s ease, box-shadow 0.08s ease;
     }
 
     .btn:hover:not(:disabled) {
-        background: var(--color-ink-800);
-        border-color: var(--color-ink-600);
-        color: #fff;
+        background: var(--paper-flush);
     }
 
     .btn:active:not(:disabled) {
-        transform: translateY(1px);
+        transform: translate(1px, 1px);
     }
 
     .btn:disabled {
-        opacity: 0.45;
+        opacity: 0.4;
         cursor: not-allowed;
     }
 
     .btn:focus-visible {
-        outline: 2px solid var(--color-blood-400);
+        outline: 2px solid var(--red);
         outline-offset: 2px;
     }
 
     .btn-primary {
-        background: linear-gradient(180deg, var(--color-blood-500), var(--color-blood-600));
-        border-color: transparent;
+        background: var(--red);
+        border-color: var(--ink);
         color: #fff;
-        box-shadow: 0 10px 24px -14px var(--color-blood-500);
+        box-shadow: var(--shadow-ink-sm);
     }
 
     .btn-primary:hover:not(:disabled) {
-        background: linear-gradient(180deg, var(--color-blood-400), var(--color-blood-500));
-        border-color: transparent;
+        background: #d3202f;
         color: #fff;
     }
 
+    .btn-primary:active:not(:disabled) {
+        box-shadow: 2px 2px 0 var(--ink);
+    }
+
     .btn-gold {
-        background: linear-gradient(180deg, var(--color-gold-400), var(--color-gold-500));
-        border-color: transparent;
-        color: #1a1206;
+        background: var(--gold);
+        border-color: var(--ink);
+        color: var(--ink);
+        box-shadow: var(--shadow-ink-sm);
     }
 
     .btn-gold:hover:not(:disabled) {
-        color: #1a1206;
-        background: linear-gradient(180deg, #ffd469, var(--color-gold-400));
+        background: #ecbb42;
+        color: var(--ink);
+    }
+
+    .btn-gold:active:not(:disabled) {
+        box-shadow: 2px 2px 0 var(--ink);
     }
 
     .btn-sm {
         padding: 0.35rem 0.65rem;
-        font-size: 0.625rem;
+        font-size: 0.62rem;
     }
 
     .btn-ghost {
         background: transparent;
         border-color: transparent;
-        color: var(--color-ink-400);
+        color: var(--color-ink-500);
     }
 
     .btn-ghost:hover:not(:disabled) {
-        background: var(--color-ink-850);
-        border-color: var(--color-ink-700);
+        background: var(--paper-flush);
+        border-color: var(--line-soft);
     }
 
     /* segmented control */
     .seg {
         display: inline-flex;
-        gap: 0.15rem;
+        gap: 0.2rem;
         padding: 0.2rem;
-        background: var(--color-ink-950);
-        border: 1px solid var(--color-ink-800);
-        border-radius: 0.6rem;
+        background: var(--paper-flush);
+        border: 1.5px solid var(--line);
+        border-radius: 2px;
     }
 
     .seg-item {
-        padding: 0.3rem 0.7rem;
-        border-radius: 0.45rem;
-        font-size: 0.625rem;
+        padding: 0.32rem 0.7rem;
+        border-radius: 1px;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
         font-weight: 800;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: var(--color-ink-400);
+        color: var(--color-ink-500);
         border: 1px solid transparent;
         cursor: pointer;
         transition: all 0.15s ease;
@@ -273,29 +391,30 @@ body {
     }
 
     .seg-item:hover {
-        color: var(--color-ink-100);
+        color: var(--ink);
     }
 
     .seg-item[aria-pressed="true"],
     .seg-item.is-active {
-        background: rgba(220, 36, 64, 0.16);
-        border-color: rgba(220, 36, 64, 0.45);
-        color: var(--color-blood-400);
+        background: var(--ink);
+        color: #fff;
     }
 
     .field {
         width: 100%;
-        background: var(--color-ink-950);
-        border: 1px solid var(--color-ink-700);
-        border-radius: 0.6rem;
-        padding: 0.55rem 0.8rem;
-        color: #fff;
-        transition: border-color 0.15s ease;
+        background: var(--paper-panel);
+        border: 2px solid var(--line);
+        border-radius: 2px;
+        padding: 0.6rem 0.85rem;
+        color: var(--ink);
+        font-family: var(--font-mono);
+        font-weight: 700;
+        transition: background-color 0.15s ease;
     }
 
     .field:focus {
         outline: none;
-        border-color: var(--color-blood-500);
+        background: #fff;
     }
 
     /* ---------- bits ---------- */
@@ -303,56 +422,57 @@ body {
         display: inline-flex;
         align-items: center;
         gap: 0.25rem;
-        padding: 0.1rem 0.45rem;
-        border-radius: 0.35rem;
-        border: 1px solid var(--color-ink-700);
-        background: var(--color-ink-850);
+        padding: 0.12rem 0.5rem;
+        border-radius: 1px;
+        border: 1.5px solid var(--line);
+        background: var(--paper-panel);
         color: var(--color-ink-300);
+        font-family: var(--font-mono);
         font-size: 0.6rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
+        font-weight: 800;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
         white-space: nowrap;
     }
 
     .chip-accent {
-        border-color: rgba(220, 36, 64, 0.4);
-        background: rgba(220, 36, 64, 0.12);
-        color: var(--color-blood-400);
+        border-color: var(--red);
+        background: var(--red);
+        color: #fff;
     }
 
     .chip-gold {
-        border-color: rgba(217, 165, 32, 0.45);
-        background: rgba(217, 165, 32, 0.12);
-        color: var(--color-gold-400);
+        border-color: var(--ink);
+        background: var(--gold);
+        color: var(--ink);
     }
 
     .chip-coin {
-        border-color: rgba(53, 214, 182, 0.4);
-        background: rgba(53, 214, 182, 0.1);
-        color: var(--color-coin-400);
+        border-color: var(--ink);
+        background: var(--color-coin-400);
+        color: #fff;
     }
 
     .stat-tile {
-        background: var(--color-ink-950);
-        border: 1px solid var(--color-ink-800);
-        border-radius: 0.7rem;
+        background: var(--paper-panel);
+        border: 2px solid var(--line);
+        border-radius: 2px;
         padding: 0.85rem;
         text-align: center;
     }
 
     .meter {
-        height: 5px;
+        height: 7px;
         width: 100%;
-        border-radius: 999px;
-        background: var(--color-ink-800);
+        border-radius: 1px;
+        background: var(--paper-flush);
+        border: 1.5px solid var(--line);
         overflow: hidden;
     }
 
     .meter > span {
         display: block;
         height: 100%;
-        border-radius: 999px;
         transition: width 0.4s ease;
     }
 
@@ -361,39 +481,39 @@ body {
         --cat: var(--cat-system);
         position: relative;
         padding: 0.6rem 0.8rem 0.6rem 0.95rem;
-        border-radius: 0.55rem;
-        border: 1px solid var(--color-ink-800);
-        background: rgba(13, 14, 18, 0.6);
-        color: var(--color-ink-200);
+        border-radius: 1px;
+        border: 1.5px solid var(--line-soft);
+        border-left: 5px solid var(--cat);
+        background: var(--paper-panel);
+        color: var(--color-ink-300);
         font-size: 0.875rem;
         line-height: 1.45;
-        border-left: 3px solid var(--cat);
-        transition: background-color 0.15s ease, border-color 0.15s ease;
+        transition: background-color 0.15s ease;
     }
 
     .feed-item:hover {
-        background: rgba(25, 28, 36, 0.75);
+        background: #fff;
     }
 
     .feed-item.is-important {
-        background: color-mix(in srgb, var(--cat) 12%, rgba(13, 14, 18, 0.85));
-        border-color: color-mix(in srgb, var(--cat) 35%, var(--color-ink-800));
-        color: #fff;
-        font-weight: 500;
+        background: color-mix(in srgb, var(--cat) 10%, var(--paper-panel));
+        border-color: var(--cat);
+        color: var(--ink);
+        font-weight: 600;
     }
 
     .feed-tag {
         display: inline-block;
         margin-right: 0.5rem;
-        padding: 0.05rem 0.35rem;
-        border-radius: 0.25rem;
+        padding: 0.05rem 0.4rem;
+        border-radius: 1px;
+        font-family: var(--font-mono);
         font-size: 0.55rem;
         font-weight: 900;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: var(--cat);
-        background: color-mix(in srgb, var(--cat) 14%, transparent);
-        border: 1px solid color-mix(in srgb, var(--cat) 32%, transparent);
+        color: #fff;
+        background: var(--cat);
         vertical-align: middle;
     }
 
@@ -407,11 +527,11 @@ body {
     }
 
     .empty-state {
-        border: 1px dashed var(--color-ink-700);
-        border-radius: 0.9rem;
+        border: 2px dashed var(--line-soft);
+        border-radius: 2px;
         padding: 2.5rem 1rem;
         text-align: center;
-        color: var(--color-ink-400);
+        color: var(--color-ink-500);
         font-size: 0.8rem;
     }
 }

@@ -46,22 +46,19 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen text-[var(--color-ink-200)] selection:bg-[var(--color-blood-600)] selection:text-white">
-      <header className="sticky top-0 z-20 border-b border-[var(--color-ink-800)] bg-[rgba(8,8,11,0.82)] backdrop-blur-md">
-        <div className="max-w-6xl mx-auto flex justify-between items-center flex-wrap gap-3 px-4 py-3">
-          <h1 className="display-title text-xl flex items-center gap-2 text-[var(--color-blood-500)]">
-            <Swords className="w-5 h-5" />
+    <div className="min-h-screen text-[var(--color-ink-300)] selection:bg-[var(--red)] selection:text-white">
+      <header className="sticky top-0 z-20 bg-[var(--ink)] border-b-[3px] border-[var(--red)]">
+        <div className="max-w-6xl mx-auto flex justify-between items-center flex-wrap gap-3 px-4 py-3.5">
+          <h1 className="text-xl md:text-2xl uppercase tracking-tight flex items-center gap-2 text-white m-0" style={{ fontFamily: 'var(--font-display)' }}>
+            <Swords className="w-5 h-5 text-[var(--red)]" />
             Survival Games
-            <span className="hidden sm:inline text-[var(--color-ink-500)] font-normal tracking-normal normal-case text-xs ml-1">
-              Capitol Simulation Network
-            </span>
           </h1>
 
-          <nav className="flex gap-1.5 items-center flex-wrap">
+          <nav className="flex gap-1 items-center flex-wrap">
             {isReplayedRun && gameState && (
               <span className="chip chip-coin hidden sm:inline-flex">Replay · {gameState.seed}</span>
             )}
-            <span className="chip chip-coin" title="Capitol Coins available for wagers">{coins} ⨷</span>
+            <span className="chip chip-gold" title="Capitol Coins available for wagers">{coins} ⨷</span>
             {gameState && (
               <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} />
             )}
@@ -70,7 +67,8 @@ export default function App() {
                 key={item.id}
                 onClick={() => gameActions.setView(item.id)}
                 aria-pressed={view === item.id}
-                className="seg-item"
+                className="px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] transition-colors"
+                style={{ fontFamily: 'var(--font-mono)', color: view === item.id ? 'var(--red)' : '#a89a86' }}
               >
                 {item.label}
               </button>

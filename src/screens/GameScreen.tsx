@@ -100,7 +100,9 @@ export function GameScreen({
 
     const allianceAccent = (allianceId?: string) => {
         if (!allianceId) return undefined;
-        const palette = ['#3fd07a', '#4db4ff', '#ffb454', '#a56bff', '#ff8ec6'];
+        // Reuses the category palette so alliance colours read as part of the
+        // same system as the chronicle feed, instead of clashing neon accents.
+        const palette = ['#2f7a4f', '#2461a8', '#b3691b', '#5a3f9c', '#b23e78'];
         let hash = 0;
         for (let i = 0; i < allianceId.length; i++) {
             hash = allianceId.charCodeAt(i) + ((hash << 5) - hash);
@@ -172,7 +174,7 @@ export function GameScreen({
 
                             <button onClick={() => setShowFilters(v => !v)} aria-pressed={showFilters} className="seg-item" title="Toggle filters (F)">
                                 <Filter className="w-3 h-3 inline mr-1" /> Filters
-                                {(mutedGroups.size > 0 || importantOnly) && <span className="ml-1 text-[var(--color-blood-400)]">•</span>}
+                                {(mutedGroups.size > 0 || importantOnly) && <span className="ml-1 text-[var(--red)]">•</span>}
                             </button>
 
                             <span className="ml-auto text-[10px] uppercase tracking-widest text-[var(--color-ink-600)] hidden md:inline">
@@ -243,7 +245,7 @@ export function GameScreen({
                         {selectedZone ? (
                             <div className="panel-flush p-4 animate-fadeIn">
                                 <div className="flex justify-between items-center mb-3">
-                                    <span className="panel-title text-[var(--color-blood-400)]">Sector log — {selectedZone}</span>
+                                    <span className="panel-title text-[var(--red)]">Sector log — {selectedZone}</span>
                                     <button onClick={() => setSelectedZone(null)} className="btn btn-sm btn-ghost">Clear</button>
                                 </div>
                                 <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
@@ -261,7 +263,7 @@ export function GameScreen({
                 ) : (
                     <div className="panel p-5 space-y-4">
                         {selectedZone && (
-                            <div className="flex justify-between items-center panel-flush px-3 py-2 text-xs text-[var(--color-blood-400)]">
+                            <div className="flex justify-between items-center panel-flush px-3 py-2 text-xs text-[var(--red)]">
                                 <span>Filtered to sector <strong>{selectedZone}</strong></span>
                                 <button onClick={() => setSelectedZone(null)} className="btn btn-sm btn-ghost">Clear</button>
                             </div>
@@ -285,19 +287,19 @@ export function GameScreen({
                     <h3 className="panel-title mb-3">Status</h3>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="stat-tile">
-                            <div className="text-3xl font-black text-white">{aliveCount}</div>
+                            <div className="text-3xl font-black text-[var(--ink)]">{aliveCount}</div>
                             <div className="eyebrow mt-1">Alive</div>
                         </div>
                         <div className="stat-tile">
-                            <div className="text-3xl font-black text-[var(--color-blood-400)]">{deadCount}</div>
+                            <div className="text-3xl font-black text-[var(--red)]">{deadCount}</div>
                             <div className="eyebrow mt-1">Fallen</div>
                         </div>
                     </div>
                 </div>
 
                 {gameState.gamemakerMode && !isOver && (
-                    <div className="panel p-4 space-y-3" style={{ borderColor: 'rgba(220,36,64,0.35)' }}>
-                        <h3 className="panel-title text-[var(--color-blood-400)] flex items-center gap-2">
+                    <div className="panel p-4 space-y-3" style={{ borderColor: 'var(--red)', borderWidth: '3px' }}>
+                        <h3 className="panel-title text-[var(--red)] flex items-center gap-2">
                             <Settings className="w-3.5 h-3.5" /> Gamemaker Controls
                         </h3>
                         <div className="space-y-1">
@@ -318,7 +320,7 @@ export function GameScreen({
                             onClick={() => { onGamemakerEvent('mutt', muttTargetId || undefined); setMuttTargetId(''); }}
                             className="btn w-full"
                         >
-                            <Skull className="w-4 h-4 text-[var(--color-blood-400)]" /> Release Mutts
+                            <Skull className="w-4 h-4 text-[var(--red)]" /> Release Mutts
                         </button>
                         <button onClick={() => onGamemakerEvent('weather')} className="btn w-full">Force Weather Event</button>
                         <button
