@@ -38,7 +38,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                             onClick={() => onSelectZone(isSelected ? null : zone.name)}
                             title={`${zone.name} — ${zone.terrain}, ${dangerLabel(zone.danger)}, ${Math.round(zone.resources * 100)}% resources`}
                             className={`panel-flush p-3.5 text-left transition-all flex flex-col justify-between gap-3 min-h-[136px] hover:border-[var(--color-ink-600)] ${
-                                isSelected ? 'ring-1 ring-[var(--color-blood-500)] border-[var(--color-blood-500)]' : ''
+                                isSelected ? 'ring-2 ring-[var(--red)] border-[var(--red)]' : ''
                             } ${isCollapsed ? 'opacity-60' : ''}`}
                         >
                             <div className="space-y-1.5 w-full">
@@ -50,7 +50,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                         <span className="chip chip-accent">{occupants.length} here</span>
                                     )}
                                 </div>
-                                <h4 className="font-extrabold text-sm leading-snug text-white">
+                                <h4 className="font-extrabold text-sm leading-snug text-[var(--ink)]">
                                     {TERRAIN_ICONS[zone.terrain] || ''} {zone.name}
                                 </h4>
                                 <div className="flex justify-between text-[10px] uppercase tracking-wider font-mono">

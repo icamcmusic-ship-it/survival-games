@@ -82,24 +82,28 @@ export function RosterScreen({
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-wrap justify-between items-end gap-4 border-b border-[var(--color-ink-800)] pb-4">
-                <div>
-                    <h2 className="display-title text-3xl">The Tributes</h2>
-                    <p className="text-[var(--color-ink-400)] text-sm mt-1">
-                        {tributes.length} reaped · {tributes.filter(t => t.isCareer).length} careers
-                        {!bettingOpen && ' · betting is closed once the Games begin'}
-                    </p>
+            <div className="masthead dot-texture">
+                <span className="masthead-ghost" aria-hidden="true">03</span>
+                <span className="masthead-eyebrow">03 — Review The Roster</span>
+                <div className="flex flex-wrap justify-between items-end gap-4">
+                    <div>
+                        <h2 className="masthead-title text-4xl md:text-5xl">The Tributes</h2>
+                        <p className="text-[var(--gold-line)] font-semibold text-sm mt-2">
+                            {tributes.length} reaped · {tributes.filter(t => t.isCareer).length} careers
+                            {!bettingOpen && ' · betting is closed once the Games begin'}
+                        </p>
+                    </div>
+                    <button onClick={onProceed} className="btn btn-primary flex-none">
+                        {buttonText} <FastForward className="w-4 h-4" />
+                    </button>
                 </div>
-                <button onClick={onProceed} className="btn btn-primary">
-                    {buttonText} <FastForward className="w-4 h-4" />
-                </button>
             </div>
 
             {bettingOpen && (
                 <div className="panel p-5 flex flex-col md:flex-row justify-between items-center gap-5">
                     <div className="space-y-1">
                         <h3 className="display-title text-lg">Capitol Betting Parlour</h3>
-                        <p className="text-[var(--color-ink-400)] text-xs max-w-lg">
+                        <p className="text-[var(--color-ink-500)] text-xs max-w-lg">
                             Spread your wager across as many tributes as you like before the bloodbath. Payouts scale
                             inversely with survival odds — backing a long shot is where the money is.
                         </p>
@@ -111,7 +115,7 @@ export function RosterScreen({
                         </div>
                         <div className="stat-tile">
                             <div className="eyebrow">Staked</div>
-                            <div className="text-2xl font-black text-white font-mono">{totalStaked}</div>
+                            <div className="text-2xl font-black text-[var(--ink)] font-mono">{totalStaked}</div>
                         </div>
                     </div>
                 </div>
@@ -149,7 +153,7 @@ export function RosterScreen({
                             <div key={t.id} className="panel p-4 flex flex-col gap-3.5 animate-riseIn">
                                 <div className="flex justify-between items-start gap-2">
                                     <div className="min-w-0">
-                                        <h3 className="font-bold text-lg text-white truncate">{t.name}</h3>
+                                        <h3 className="font-black text-lg text-[var(--ink)] truncate">{t.name}</h3>
                                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                                             <span className="chip">District {t.district}</span>
                                             {t.isCareer && <span className="chip chip-gold">Career</span>}
@@ -164,9 +168,9 @@ export function RosterScreen({
                                             title="Training score — anything above 8 is exceptionally rare"
                                         >
                                             <div className={`text-xl font-black font-mono ${
-                                                t.trainingScore >= 11 ? 'text-[var(--color-gold-400)]'
+                                                t.trainingScore >= 11 ? 'text-[var(--red)]'
                                                     : t.trainingScore >= 9 ? 'text-[var(--cat-training)]'
-                                                    : 'text-white'
+                                                    : 'text-[var(--ink)]'
                                             }`}>
                                                 {t.trainingScore}
                                             </div>
@@ -188,10 +192,10 @@ export function RosterScreen({
                                 </div>
 
                                 {bettingOpen && (
-                                    <div className="pt-3 border-t border-[var(--color-ink-800)] space-y-2">
+                                    <div className="pt-3 border-t-2 border-[var(--line-soft)] space-y-2">
                                         <div className="flex justify-between text-[10px] font-mono text-[var(--color-ink-500)]">
                                             <span>SURVIVAL ODDS / PAYOUT</span>
-                                            <span className="text-white font-bold">{pct}% · {mult.toFixed(1)}×</span>
+                                            <span className="text-[var(--ink)] font-bold">{pct}% · {mult.toFixed(1)}×</span>
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <button onClick={() => placeBet(t, 50)} disabled={coins < 50} className="btn btn-sm flex-1">+50</button>

@@ -79,11 +79,13 @@ export function EndScreen({
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
-            <div className="text-center space-y-3">
-                <span className="eyebrow">{gameState.arena.name} · seed {gameState.seed} · {gameState.day} days</span>
-                <h2 className="display-title text-4xl md:text-5xl text-[var(--color-blood-500)]">The Arena Closes</h2>
-                <div className="flex flex-wrap justify-center gap-2 pt-1">
-                    <div className="seg">
+            <div className="masthead dot-texture text-center">
+                <span className="masthead-ghost" aria-hidden="true">06</span>
+                <span className="masthead-eyebrow">06 — {gameState.arena.name} · {gameState.day} days</span>
+                <h2 className="masthead-title text-4xl md:text-5xl">The Arena Closes</h2>
+                <p className="masthead-sub text-sm mx-auto">Seed {gameState.seed} · detailed debrief of the simulated Games.</p>
+                <div className="flex flex-wrap justify-center gap-2 pt-5">
+                    <div className="seg" style={{ background: 'var(--paper-panel)' }}>
                         <button onClick={() => setActiveTab('stats')} aria-pressed={activeTab === 'stats'} className="seg-item">Debrief</button>
                         <button onClick={() => setActiveTab('logs')} aria-pressed={activeTab === 'logs'} className="seg-item">Full chronicle</button>
                     </div>
@@ -104,7 +106,7 @@ export function EndScreen({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
                     {betWonMessage && (
                         <div className="md:col-span-2 panel p-5 flex flex-wrap justify-between items-center gap-4"
-                            style={{ borderColor: 'rgba(53,214,182,0.35)' }}>
+                            style={{ borderColor: 'var(--color-coin-400)', borderWidth: '3px' }}>
                             <div className="space-y-1">
                                 <span className="eyebrow text-[var(--color-coin-400)]">Capitol bet resolution</span>
                                 <p className="text-sm text-[var(--color-ink-200)]">{betWonMessage}</p>
@@ -118,7 +120,7 @@ export function EndScreen({
 
                     {winner ? (
                         <div className="md:col-span-2 panel p-6 flex flex-col md:flex-row justify-between items-center gap-6"
-                            style={{ borderColor: 'rgba(217,165,32,0.4)' }}>
+                            style={{ borderColor: 'var(--gold)', borderWidth: '3px' }}>
                             <div className="space-y-2">
                                 <span className="eyebrow text-[var(--color-gold-400)] flex items-center gap-1.5">
                                     <Trophy className="w-4 h-4" /> Crowned victor
@@ -135,7 +137,7 @@ export function EndScreen({
                             </div>
                             <div className="stat-tile min-w-[140px]">
                                 <div className="eyebrow">Eliminations</div>
-                                <div className="text-5xl font-black text-white font-mono mt-1">{winner.kills}</div>
+                                <div className="text-5xl font-black text-[var(--ink)] font-mono mt-1">{winner.kills}</div>
                             </div>
                         </div>
                     ) : (
@@ -179,7 +181,7 @@ export function EndScreen({
                             </h3>
                             <div className="panel-flush p-3 mt-2.5 flex justify-between items-center gap-3">
                                 <div className="min-w-0">
-                                    <div className="font-bold text-white truncate">{mostDangerousZone.name}</div>
+                                    <div className="font-bold text-[var(--ink)] truncate">{mostDangerousZone.name}</div>
                                     <div className="text-xs text-[var(--color-ink-500)] mt-0.5">Most bodies recovered</div>
                                 </div>
                                 <span className="chip chip-accent">{mostDangerousZone.count} {mostDangerousZone.count === 1 ? 'death' : 'deaths'}</span>
@@ -195,7 +197,7 @@ export function EndScreen({
                                     <div key={cause} className="space-y-1">
                                         <div className="flex justify-between text-xs font-mono">
                                             <span className="text-[var(--color-ink-200)]">{cause}</span>
-                                            <span className="text-white font-bold">
+                                            <span className="text-[var(--ink)] font-bold">
                                                 {count} ({Math.round((count / Math.max(1, dead.length)) * 100)}%)
                                             </span>
                                         </div>

@@ -33,12 +33,13 @@ export function HallOfFameScreen() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-7">
-            <div className="text-center space-y-3">
-                <span className="eyebrow">Capitol records division</span>
-                <h2 className="display-title text-4xl md:text-5xl flex items-center justify-center gap-3">
-                    <Trophy className="w-9 h-9 text-[var(--color-gold-500)]" /> Hall of Fame
+            <div className="masthead dot-texture text-center">
+                <span className="masthead-ghost" aria-hidden="true">★</span>
+                <span className="masthead-eyebrow">Capitol Records Division</span>
+                <h2 className="masthead-title text-4xl md:text-5xl flex items-center justify-center gap-3">
+                    <Trophy className="w-9 h-9" /> Hall of Fame
                 </h2>
-                <p className="text-[var(--color-ink-400)]">
+                <p className="masthead-sub text-sm mx-auto">
                     {entries.length === 0
                         ? 'No victors on record yet.'
                         : `${entries.length} victor${entries.length === 1 ? '' : 's'} · ${totalKills} total eliminations`}
@@ -77,7 +78,7 @@ export function HallOfFameScreen() {
                                             <h3 className="display-title text-2xl">{entry.winnerName}</h3>
                                             <div className="text-[var(--color-ink-400)] text-sm mt-1">
                                                 District {entry.winnerDistrict} · victor of the{' '}
-                                                <span className="text-[var(--color-blood-400)] font-semibold">{entry.arenaName}</span>
+                                                <span className="text-[var(--red)] font-semibold">{entry.arenaName}</span>
                                             </div>
                                             {entry.winnerTraits && entry.winnerTraits.length > 0 && (
                                                 <div className="flex flex-wrap gap-1 mt-2">
@@ -89,17 +90,17 @@ export function HallOfFameScreen() {
                                         <div className="flex flex-wrap gap-2.5 items-center">
                                             <div className="stat-tile !py-2 !px-3">
                                                 <div className="eyebrow">Kills</div>
-                                                <div className="font-mono text-white">{entry.kills}</div>
+                                                <div className="font-mono text-[var(--ink)]">{entry.kills}</div>
                                             </div>
                                             {typeof entry.winnerEndHealth === 'number' && (
                                                 <div className="stat-tile !py-2 !px-3">
                                                     <div className="eyebrow">Health</div>
-                                                    <div className="font-mono text-white">{entry.winnerEndHealth}%</div>
+                                                    <div className="font-mono text-[var(--ink)]">{entry.winnerEndHealth}%</div>
                                                 </div>
                                             )}
                                             <div className="stat-tile !py-2 !px-3">
                                                 <div className="eyebrow">Crowned</div>
-                                                <div className="font-mono text-white text-xs">
+                                                <div className="font-mono text-[var(--ink)] text-xs">
                                                     {new Date(entry.date).toLocaleDateString()}
                                                 </div>
                                             </div>

@@ -4,14 +4,17 @@ import { ARCHETYPES } from '../data/archetypes';
 import { MapPin, Users, X, Heart } from 'lucide-react';
 
 function VitalBar({ label, value, invert = false }: { label: string; value: number; invert?: boolean }) {
-    // For hunger/thirst/fatigue a high number is bad; for health/sanity it is good.
-    const severity = invert ? value : 100 - value;
+    // For hunger/thirst/fatigue a high number is bad (severity = value). For
+    // health/sanity/sponsor trust a high number is good, so severity runs the
+    // other way — this was backwards before, which painted a tribute at full
+    // health in danger-red.
+    const severity = invert ? 100 - value : value;
     const color = severity >= 66 ? 'var(--cat-death)' : severity >= 33 ? 'var(--cat-training)' : 'var(--cat-alliance)';
     return (
         <div className="panel-flush p-2.5 space-y-1.5">
             <div className="flex justify-between items-baseline">
                 <span className="eyebrow">{label}</span>
-                <span className="font-mono text-white text-sm">{value}%</span>
+                <span className="font-mono text-[var(--ink)] text-sm">{value}%</span>
             </div>
             <div className="meter">
                 <span style={{ width: `${Math.max(0, Math.min(100, value))}%`, background: color }} />
@@ -113,7 +116,7 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                 <span className="text-sm text-[var(--color-ink-400)]">Carrying nothing</span>
                             ) : tribute.inventory.map((item, i) => (
                                 <div key={`${item.id}-${i}`} className="panel-flush p-2 flex justify-between items-center gap-2">
-                                    <span className="text-sm text-white truncate">{item.name}</span>
+                                    <span className="text-sm text-[var(--ink)] truncate">{item.name}</span>
                                     <span className="flex items-center gap-2 flex-none">
                                         {item.durability !== undefined && (
                                             <span className="text-[10px] font-mono text-[var(--color-ink-500)]">{item.durability} dur</span>
