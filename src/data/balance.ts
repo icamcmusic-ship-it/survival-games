@@ -504,10 +504,120 @@ export const MOVEMENT = {
     shelterSeekWeight: 1.5,
 } as const;
 
-/** Field-expedient making. */
+/**
+ * Standing intentions. See `engine/objectives.ts`.
+ *
+ * The lifetimes are the important numbers here: an objective that expires every
+ * cycle is not an objective, and one that never expires is a tribute who cannot
+ * change their mind. These are tuned so a plan survives long enough to be
+ * legible in the chronicle without outliving the situation that produced it.
+ */
+export const OBJECTIVES = {
+    /** How long each kind of intention survives before it is re-evaluated. */
+    huntCycles: 4,
+    reachCycles: 4,
+    holdCycles: 3,
+    fleeCycles: 2,
+    protectCycles: 5,
+
+    /** Fear of someone standing next to you that makes leaving the plan. */
+    fleeFear: 45,
+    /** Fear at which a hunter gives up on their quarry. */
+    huntAbandonFear: 70,
+    /** An ally this hurt, or this close, is worth guarding. */
+    wardHealth: 55,
+    wardBond: 45,
+    /** Health below which finding somewhere to hole up becomes the priority. */
+    holeUpHealth: 45,
+    /** Ground worth standing on: good forage and no bad memories. */
+    holdMinResources: 0.5,
+    holdMaxThreat: 0.4,
+} as const;
+
+/**
+ * Field-expedient making.
+ *
+ * `craft()` supported exactly two recipes: rope+knife makes a spear, and a
+ * Trickster with wire makes a garrote. There was no snare, no deadfall, no fire
+ * despite matches existing and warding cold, no shelter, no water purification
+ * despite the Toxic Swamps' entire premise being undrinkable water, no poison
+ * application and no camouflage. Traps in particular were the obvious missing
+ * verb: the Trickster archetype's `treachery: 0.35` had exactly one expression
+ * in the whole simulation.
+ */
 export const CRAFTING = {
     /** Per-cycle odds an empty-handed tribute improvises something to swing. */
     improviseChance: 0.12,
+    /** Odds a free turn is spent preparing rather than foraging. */
+    fieldcraftChance: 0.35,
+
+    /** Fire: wards cold, cooks, purifies — and is visible for miles. */
+    fireCycles: 2,
+    fireConcealmentPenalty: 0.25,
+    fireSanityRecovery: 4,
+    /** Shelter: somewhere to actually sleep. Needs cover to build in. */
+    shelterCycles: 3,
+    shelterRecoveryBonus: 4,
+    shelterExposureReduction: 0.5,
+    /** Camouflage: mud, ash and foliage. The cheapest concealment in the arena. */
+    camouflageCycles: 2,
+    camouflageConcealment: 0.18,
+
+    /** Base odds a build attempt succeeds, before intelligence. */
+    buildBaseChance: 0.45,
+    buildPerIntelligence: 0.04,
+} as const;
+
+/**
+ * Traps: the missing verb.
+ *
+ * A trap is the one thing in the arena that keeps working while its owner is
+ * somewhere else, which is what makes it the Trickster's whole argument. It is
+ * also the only mechanic here that can kill without either party being present,
+ * so the numbers are deliberately modest.
+ */
+export const TRAPS = {
+    /** Cycles before an unsprung trap rots, is found by the arena, or is stepped over. */
+    lifetime: 6,
+    /** How many a single tribute can have set at once. */
+    maxPerTribute: 2,
+    /** Base odds a build attempt produces a working trap. */
+    buildBaseChance: 0.5,
+    buildPerIntelligence: 0.045,
+    buildPerTracking: 0.08,
+    /** Tricksters have been thinking about this their whole lives. */
+    trickeryBonus: 0.2,
+
+    /** Concealment the trap is set with, rolled against a passer-by's awareness. */
+    baseConcealment: 0.45,
+    concealmentPerIntelligence: 0.03,
+    maxConcealment: 0.85,
+    /** Cover to hide a snare in, and open ground that will not. */
+    coverConcealmentBonus: 0.12,
+    openConcealmentPenalty: 0.15,
+
+    /** Damage when someone walks into one. */
+    snareDamage: 12,
+    deadfallDamage: 34,
+    /** Odds the victim is left bleeding. */
+    snareBleedChance: 0.3,
+    deadfallBleedChance: 0.6,
+    /** A snare holds someone in place; a deadfall just hurts them. */
+    snareLegInjuryChance: 0.45,
+
+    /** Odds an unsprung snare catches an animal instead, feeding its owner. */
+    gameCatchChance: 0.22,
+    gameFeed: 30,
+} as const;
+
+/** Applying venom to a blade — the Trickster's other unspoken speciality. */
+export const POISONING = {
+    /** Items that can be rendered down into something to coat a blade with. */
+    sources: ['nightlock', 'berries'] as const,
+    baseChance: 0.4,
+    perIntelligence: 0.05,
+    /** Odds a botched attempt poisons the poisoner. */
+    selfPoisonChance: 0.25,
 } as const;
 
 /** What a tribute can physically carry. */
@@ -543,6 +653,8 @@ export const ZONES = {
      *  hunting or hiding — just far less reliably than someone actively foraging. */
     aggressiveForageMultiplier: 0.4,
     evasiveForageMultiplier: 0.25,
+    /** Share of successful forages that turn up nightlock instead of a meal. */
+    nightlockChance: 0.12,
 } as const;
 
 /** What tributes remember, and how fast they forget it. */

@@ -55,6 +55,9 @@ let oddsMoved = 0, oddsCompared = 0;
 let clots = 0, fieldDressings = 0, restRecoveries = 0, huntOrCraft = 0;
 let zoneDrinks = 0, pursuits = 0, desperationFights = 0, fearFelt = 0;
 let bestProficiencySeen = 0;
+// Intentions and fieldcraft.
+let objectivesFormed = 0, trapsSet = 0, trapsTriggered = 0;
+let firesLit = 0, sheltersBuilt = 0, camouflaged = 0, weaponsPoisoned = 0;
 let maxAbsRelationship = 0;
 
 for (let i = 0; i < 240; i++) {
@@ -176,7 +179,24 @@ for (let i = 0; i < 240; i++) {
     if (/drinks their fill from the water|risks a drink from|boils water from/.test(l.text)) zoneDrinks++;
     if (l.text.includes('hunting ')) pursuits++;
     if (/too few left for either|Only one of them is going home|the week runs out|wanting has stopped mattering|small enough now to decide things/.test(l.text)) desperationFights++;
+    // --- Intentions and fieldcraft. ---
+    if (/starts hunting |sets off for |worth holding and digs in|wants to be anywhere but|not dying on their watch/.test(l.text)) objectivesFormed++;
+    if (/sets a snare|balances a deadfall/.test(l.text)) trapsSet++;
+    if (/snare closes on their leg|deadfall comes down on|pulls apart a (snare|deadfall)/.test(l.text)) trapsTriggered++;
+    if (/gets a fire going/.test(l.text)) firesLit++;
+    if (/lashes together a shelter/.test(l.text)) sheltersBuilt++;
+    if (/works mud and leaf litter/.test(l.text)) camouflaged++;
+    if (/coats their .* with it/.test(l.text)) weaponsPoisoned++;
   });
+
+  // --- Traps must never outlive their bounds or belong to nobody. ---
+  (state.traps ?? []).forEach(trap => {
+    if (!state.tributes.some(o => o.id === trap.ownerId)) note(`trap owned by a non-existent tribute in ${seed}`);
+    if (trap.concealment < 0 || trap.concealment > 1) note(`trap concealment out of range in ${seed}`);
+  });
+  if ((state.traps ?? []).length > state.tributes.length * 2) {
+    note(`traps accumulated without bound in ${seed}: ${(state.traps ?? []).length}`);
+  }
 
   // --- Bleeding must be a rate, not a boolean. Any tribute flagged as
   // bleeding must carry a severity inside the damage table's bounds, or the
@@ -400,6 +420,13 @@ if (pursuits === 0) note('no hunter ever pursued a rival across zones');
 if (desperationFights === 0) note('the narrowing field never forced a fight between strangers');
 if (fearFelt === 0) note('no tribute was ever afraid of another — fear has no teeth');
 if (bestProficiencySeen === 0) note('no proficiency ever grew — skills do not improve with use');
+if (objectivesFormed === 0) note('no tribute ever formed an objective — the intent layer is inert');
+if (trapsSet === 0) note('nobody ever set a trap');
+if (trapsTriggered === 0) note('no trap was ever spotted or sprung — traps are decorative');
+if (firesLit === 0) note('nobody ever lit a fire');
+if (sheltersBuilt === 0) note('nobody ever built a shelter');
+if (camouflaged === 0) note('nobody ever used camouflage');
+if (weaponsPoisoned === 0) note('nobody ever poisoned a weapon');
 
 console.log(`runs=${runs} victors=${victors} wipeouts=${wipeouts} avgDays=${(totalDays/runs).toFixed(1)} avgLogs=${(totalLogs/runs).toFixed(0)} runsWithFeast=${feastRuns}`);
 console.log('phases seen:', [...phasesSeen].sort().join(', '));
@@ -409,6 +436,8 @@ console.log(`stealth: ambushes=${ambushes} unnoticed=${hiddenMoments}`);
 console.log(`wounds: clots=${clots} fieldDressings=${fieldDressings} restRecoveries=${restRecoveries}`);
 console.log(`agency: hunts/crafts=${huntOrCraft} zoneDrinks=${zoneDrinks} pursuits=${pursuits} desperationFights=${desperationFights}`);
 console.log(`psychology: fear entries=${fearFelt} peakProficiency=${bestProficiencySeen.toFixed(2)} (cap ${PROFICIENCY.max})`);
+console.log(`intentions: objectives formed=${objectivesFormed}`);
+console.log(`fieldcraft: trapsSet=${trapsSet} trapsTriggered=${trapsTriggered} fires=${firesLit} shelters=${sheltersBuilt} camouflage=${camouflaged} poisonedWeapons=${weaponsPoisoned}`);
 console.log(`alliances: recruitments=${recruitments} organicGroupsOf3Plus=${organicTrios} largestSeen=${maxAllianceSeen}`);
 console.log(`inventory: overloaded drops=${overloadedDrops}`);
 console.log(`zones: runsWithDepletion=${zonesEverDepleted} runsWithRecovery=${zonesEverRecovered} peakDepletion=${maxDepletionSeen.toFixed(2)} (floor ${(1 - ZONES.minYieldFraction).toFixed(2)})`);

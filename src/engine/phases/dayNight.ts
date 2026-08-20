@@ -8,14 +8,16 @@ import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
 import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone } from '../map';
-import { giveItem } from '../items';
+import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, decayMemories, decayRelationships, noteSighting,
 } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { isNoticed } from '../stealth';
-import { pickDestination, pursuitTarget } from '../movement';
+import { pickDestination } from '../movement';
+import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
+import { checkTraps, tickTraps } from '../fieldcraft';
 import { decayFear } from '../fear';
 import { updateStance } from '../stance';
 import { processSpoilage, processVitals } from '../survival';
@@ -69,6 +71,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         noteSighting(ctx.state, t, t.zone, hostiles, depletionOf(ctx.state, t.zone));
 
         updateStance(ctx, t, here);
+        // Stance first, then intention: what they mean to do this cycle depends
+        // on how threatened they have just decided they are.
+        updateObjective(ctx, t, here);
 
         if (isBreakingDown(ctx, t)) {
             handleInsanity(ctx, t);
@@ -77,6 +82,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         }
 
         move(ctx, t, currentAlive, collapsed, flavor);
+        // Walking into a zone is what springs things left in it.
+        checkTraps(ctx, t);
     });
 
     // 4. Hazards, mutts and everyone who runs into everyone else.
@@ -85,6 +92,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // 5. Cycle upkeep: the arena restocks, memories fade, bonds cool, the
     // crowd's attention wanders.
     regenerateZones(ctx.state);
+    tickTraps(ctx);
     decayMemories(ctx.state);
     decayRelationships(ctx.state);
     decayAllianceTrust(ctx.state);
@@ -93,6 +101,16 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         // Bloodlust cools. A kill on day 3 should not still be making someone
         // braver on day 8.
         if (t.momentum) t.momentum = Math.max(0, t.momentum - HUNTING.momentumDecayPerCycle);
+        // Capacity can shrink under a tribute — losing the Backpack is the
+        // usual way — and `giveItem` only checks when something is added.
+        const spilled = enforceCapacity(t);
+        if (spilled.length > 0) {
+            ctx.logEvent(
+                `${t.name} cannot manage it all without a pack and leaves ${spilled.map(i => i.name).join(', ')} behind in ${t.zone}.`,
+                [t.id],
+                { category: 'loot' }
+            );
+        }
         // Excitement is a decaying asset — a tribute cannot coast on a day-1
         // highlight reel while someone else is having a far more eventful day 6.
         t.excitementRating = Math.max(0, Math.round(
@@ -205,11 +223,16 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         const allianceMembers = currentAlive.filter(m => m.allianceId === t.allianceId && m.status === 'alive');
         const leader = allianceMembers[0];
         if (!leader || t.id !== leader.id) return;
-        if (!ctx.rng.chance(wanderChanceFor(t))) return;
 
         const options = reachableZones(ctx.state.arena, t.zone, collapsed);
         if (options.length === 0) return;
-        const newZone = pickDestination(ctx, t, options).name;
+
+        // The group follows whatever its leader has decided to do; only when the
+        // leader has no standing intention does the pack drift.
+        if (objectiveHolds(t)) return;
+        const led = objectiveStep(ctx, t, options);
+        if (!led && !ctx.rng.chance(wanderChanceFor(t))) return;
+        const newZone = (led ?? pickDestination(ctx, t, options)).name;
         if (t.zone === newZone) return;
 
         // Only members actually standing with the leader travel — anyone
@@ -232,20 +255,18 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     const options = reachableZones(ctx.state.arena, t.zone, collapsed);
     if (options.length === 0) return;
 
-    // A hunter who knows where somebody went follows them, and does so whether
-    // or not the wander roll would have moved them at all — going after someone
-    // is a decision, not a wander.
-    const pursued = pursuitTarget(ctx, t, options);
-    if (pursued && pursued.name !== t.zone) {
-        const quarry = ctx.state.tributes.find(o => o.status === 'alive' && o.zone === pursued.name && o.id !== t.id);
+    // A tribute who has decided to be somewhere goes there, by the shortest
+    // route over the adjacency graph, and does so whether or not the wander
+    // roll would have moved them. Deciding is not the same as drifting.
+    if (objectiveHolds(t)) return;
+    const step = objectiveStep(ctx, t, options);
+    if (step && step.name !== t.zone) {
         const from = t.zone;
-        t.zone = pursued.name;
+        t.zone = step.name;
         ctx.logEvent(
-            quarry
-                ? `${t.name} breaks camp in ${from} and moves on ${pursued.name}, hunting ${quarry.name}.`
-                : `${t.name} follows a trail out of ${from} into ${pursued.name}.`,
-            quarry ? [t.id, quarry.id] : [t.id],
-            { zone: pursued.name, important: !!quarry, category: 'travel' }
+            `${t.name} leaves ${from} for ${step.name} — ${objectiveLabel(ctx.state, t).toLowerCase()}.`,
+            [t.id],
+            { zone: step.name, category: 'travel' }
         );
         return;
     }

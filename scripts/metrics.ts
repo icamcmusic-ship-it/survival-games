@@ -139,8 +139,9 @@ interface Indicator {
     /** Regression bound. Failing this fails the build. */
     guard: (v: number) => boolean;
     guardText: string;
-    /** Design intent, informational only. */
+    /** Design intent, informational only. Reported but never fails the build. */
     goal?: string;
+    goalMet?: (v: number) => boolean;
     baseline: string;
     fmt: (v: number) => string;
 }
@@ -157,6 +158,7 @@ const indicators: Indicator[] = [
         guard: v => v <= 0.13,
         guardText: '<= 13%',
         goal: '<= 10%',
+        goalMet: v => v <= 0.10,
         baseline: '33.1%',
         fmt: asPct,
     },
@@ -169,6 +171,7 @@ const indicators: Indicator[] = [
         guard: v => v >= 0.33,
         guardText: '>= 33%',
         goal: '>= 40%',
+        goalMet: v => v >= 0.40,
         baseline: '25.7%',
         fmt: asPct,
     },
@@ -190,6 +193,7 @@ const indicators: Indicator[] = [
         guard: v => v <= 0.32,
         guardText: '<= 32%',
         goal: '<= 25%',
+        goalMet: v => v <= 0.25,
         baseline: '43.4%',
         fmt: asPct,
     },
@@ -249,12 +253,13 @@ indicators.forEach(ind => {
     const ok = ind.guard(ind.value);
     if (!ok) failed++;
     const shown = ind.fmt(ind.value);
-    const goalNote = ind.goal ? `  goal ${ind.goal}` : '';
+    const metGoal = ind.goalMet ? ind.goalMet(ind.value) : true;
+    const goalNote = ind.goal ? `  goal ${ind.goal}${metGoal ? ' MET' : ' unmet'}` : '';
     console.log(
         `  ${ok ? 'PASS' : 'FAIL'}  ${ind.label.padEnd(36)} ${shown.padStart(7)}` +
         `  (was ${ind.baseline}, guard ${ind.guardText}${goalNote})`
     );
-    if (ok && ind.goal) shortOfGoal++;
+    if (!metGoal) shortOfGoal++;
 });
 
 // The goals are deliberately still printed when unmet. A design target that

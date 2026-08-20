@@ -40,6 +40,27 @@ export interface Injuries {
  */
 export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking';
 
+/** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
+export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage';
+
+/**
+ * A standing intention, held across cycles.
+ *
+ * Every decision used to be a fresh per-cycle scored roll, so nothing persisted:
+ * a tribute never decided "I am going to the water source" or "I am going to
+ * find the girl from 11", they simply re-rolled a destination lottery every
+ * cycle and the chronicle read "Marvel moved to Sector 2" instead of "Marvel is
+ * hunting Rue". An objective is re-evaluated only when it expires or is
+ * invalidated, which is what makes it an intention rather than a mood.
+ */
+export type Objective =
+    | { kind: 'survive' }
+    | { kind: 'hunt'; targetId: string; expires: number }
+    | { kind: 'reach'; zone: string; reason: ObjectiveReason; expires: number }
+    | { kind: 'hold'; zone: string; expires: number }
+    | { kind: 'flee'; from: string; expires: number }
+    | { kind: 'protect'; wardId: string; expires: number };
+
 export type WeaponClass = 'melee' | 'ranged' | 'thrown';
 
 export interface Item {
@@ -173,6 +194,21 @@ export interface Tribute {
     momentum?: number;
     /** Skills that improve with successful use. See `Proficiency`. */
     proficiencies?: Partial<Record<Proficiency, number>>;
+    /** What they are currently trying to do. See `Objective`. */
+    objective?: Objective;
+}
+
+/** A snare, deadfall or tripline left in a zone, waiting for whoever walks into it. */
+export interface Trap {
+    id: string;
+    kind: 'snare' | 'deadfall';
+    zone: string;
+    /** Who set it. They know it is there; nobody else does until they find it. */
+    ownerId: string;
+    /** How well hidden it is — rolled against a passer-by's awareness. */
+    concealment: number;
+    /** Cycle it was set, so the arena can rot them out rather than accumulating forever. */
+    setCycle: number;
 }
 
 export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland';
@@ -255,6 +291,10 @@ export interface GameState {
     cycle?: number;
     /** Zone name -> deaths that have happened there, broadcast by the sky each night. */
     zoneDeaths?: Record<string, number>;
+    /** Traps currently set in the arena, by whoever set them. */
+    traps?: Trap[];
+    /** Tribute id -> cycle their fire/shelter/camouflage lapses. */
+    camps?: Record<string, { fire?: number; shelter?: number; camouflage?: number }>;
 }
 
 export interface EventLog {

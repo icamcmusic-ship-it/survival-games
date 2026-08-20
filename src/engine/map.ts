@@ -42,6 +42,53 @@ export function nearestSafeZone(arena: Arena, from: string, safeNames: string[])
 }
 
 /**
+ * The first step of a route from `from` to `target`, avoiding collapsed ground.
+ *
+ * `pickDestination` is a one-step weighted lottery, which is the right model for
+ * a tribute wandering in search of water and cover and the wrong one for a
+ * tribute who has decided to be somewhere. An objective two zones away needs a
+ * route, not a coin flip that happens to lean the right way — otherwise
+ * "I am going to the lake" is indistinguishable from drifting.
+ *
+ * Returns undefined when the target is unreachable or is where they already
+ * stand, so the caller can fall back to wandering.
+ */
+export function nextHopToward(
+    arena: Arena,
+    from: string,
+    target: string,
+    collapsed: string[],
+): string | undefined {
+    if (from === target) return undefined;
+    const blocked = new Set(collapsed);
+    // Breadth-first from the destination outwards, so the first time the search
+    // touches one of `from`'s neighbours we have a shortest route and that
+    // neighbour is the step to take.
+    const origin = getZone(arena, from);
+    if (!origin) return undefined;
+    const firstHops = new Set(origin.adjacent.filter(n => !blocked.has(n)));
+    if (firstHops.has(target)) return target;
+
+    const visited = new Set<string>([target]);
+    let frontier = [target];
+    while (frontier.length > 0) {
+        const next: string[] = [];
+        for (const name of frontier) {
+            const zone = getZone(arena, name);
+            if (!zone) continue;
+            for (const neighbor of zone.adjacent) {
+                if (visited.has(neighbor) || blocked.has(neighbor)) continue;
+                if (firstHops.has(neighbor)) return neighbor;
+                visited.add(neighbor);
+                next.push(neighbor);
+            }
+        }
+        frontier = next;
+    }
+    return undefined;
+}
+
+/**
  * Zone economy.
  *
  * A zone's printed `resources` is its potential, not its stock. Foraging draws

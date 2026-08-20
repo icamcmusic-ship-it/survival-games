@@ -70,6 +70,30 @@ export function giveItem(t: Tribute, ...items: Item[]): Item[] {
     return dropped;
 }
 
+/**
+ * Drops whatever no longer fits, and returns it so the caller can narrate.
+ *
+ * Capacity is not constant: it depends on holding a Backpack, so a tribute who
+ * loses the pack — dropped in a sanity breakdown, or taken off a body by
+ * someone else — instantly has less room than they are using. `giveItem` only
+ * enforces the limit at the moment something is added, so nothing noticed the
+ * shrink and a tribute could walk around permanently over capacity.
+ */
+export function enforceCapacity(t: Tribute): Item[] {
+    const capacity = carryCapacity(t);
+    const dropped: Item[] = [];
+    while (t.inventory.length > capacity) {
+        let worstIdx = 0;
+        let worstValue = Infinity;
+        t.inventory.forEach((item, idx) => {
+            const value = keepValue(t, item);
+            if (value < worstValue) { worstValue = value; worstIdx = idx; }
+        });
+        dropped.push(...t.inventory.splice(worstIdx, 1));
+    }
+    return dropped;
+}
+
 /** How many cycles of shelf life a Backpack adds to fresh food. */
 export function spoilageBonus(t: Tribute): number {
     return hasBackpack(t) ? INVENTORY.backpackSpoilageBonus : 0;

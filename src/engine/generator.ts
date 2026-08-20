@@ -202,6 +202,7 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 proficiencies: blankProficiencies(archetype),
                 bleedSeverity: 0,
                 momentum: 0,
+                objective: { kind: 'survive' },
                 stanceHeld: 0,
                 fanFavourite: false,
             });
