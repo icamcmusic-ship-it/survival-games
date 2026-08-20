@@ -587,3 +587,114 @@ export const INTIMIDATION_TEXTS = [
     'Word of {tribute}\'s {score} is around the Training Centre before dinner. Nobody sleeps well.',
     '{tribute}\'s {score} is the only number anyone repeats that night. It gets larger each time it is told.',
 ];
+
+/**
+ * SIDE-05: the interview as three beats rather than one roll.
+ *
+ * Caesar's job on that couch is to find the thing the tribute did not intend to
+ * say. The follow-up is where the persona is actually decided — a tribute walks
+ * out with the angle they rehearsed only if they hold it under one question.
+ */
+export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]; broke: string[] }> = {
+    'The Star-Crossed Lover': {
+        question: "Caesar leans in: 'And if it comes down to the two of you out there?'",
+        held: [
+            "{tribute} does not blink. 'Then I hope they're the one who comes home.' The room makes a sound it has not made in years.",
+            "'It won't,' {tribute} says, and says nothing else. Caesar lets it stand.",
+        ],
+        broke: [
+            "{tribute} opens their mouth and nothing comes out. The silence goes on a beat too long, and the audience watches the story come apart.",
+            "'I — I'd do what I had to.' The front row shifts in its seats. That is not the answer anybody wanted.",
+        ],
+    },
+    'The Ruthless Warrior': {
+        question: "Caesar smiles: 'Big words. Who in that arena actually worries you?'",
+        held: [
+            "'Nobody.' {tribute} lets it sit there, and the Careers in the wings stop finding it funny.",
+            "{tribute} names three tributes, in order, and explains what they will do about each. Nobody laughs.",
+        ],
+        broke: [
+            "{tribute} names a Career and then, hearing it out loud, tries to take it back. The damage is done both ways.",
+            "'I'm not — I mean, I'm not worried.' The 'I'm not' arrives half a second too late.",
+        ],
+    },
+    'The Humble Underdog': {
+        question: "Caesar, gently: 'What would you say to your district right now?'",
+        held: [
+            "{tribute} thanks their district by name, and then their mentor, and then somebody nobody has heard of. It costs nothing and buys everything.",
+            "'That I'm going to try.' It is not a promise, and everyone in the room understands why they did not make one.",
+        ],
+        broke: [
+            "{tribute} freezes at the question and manages 'thank you' twice. The applause is kind, which is worse.",
+            "{tribute} recites something obviously written for them, and the Capitol can hear the punctuation.",
+        ],
+    },
+    'The Mysterious Enigma': {
+        question: "Caesar tilts his head: 'You have told us nothing at all. Is that the plan?'",
+        held: [
+            "{tribute} smiles once and says nothing. The bookmakers move the line on a smile.",
+            "'You'll see it when everyone else does.' Caesar throws up his hands and the crowd howls.",
+        ],
+        broke: [
+            "Pressed, {tribute} fills the silence — and fills it, and keeps filling it. The mystery evaporates on live television.",
+            "{tribute} explains the strategy. Out loud. On camera. To everyone.",
+        ],
+    },
+    'The Charming Flirt': {
+        question: "Caesar grins: 'Half the Capitol is already in love. What do you want from them?'",
+        held: [
+            "'Everything,' {tribute} says, to the cameras rather than to Caesar, and the switchboard lights up.",
+            "{tribute} answers with a question of their own and lets Caesar flounder for once. The crowd is delighted.",
+        ],
+        broke: [
+            "{tribute} pushes it one line too far and the laughter turns into the other kind of laughter.",
+            "The charm slips for a second and something much more frightened shows underneath it.",
+        ],
+    },
+    'The Arrogant Brute': {
+        question: "Caesar, evenly: 'Some would call that arrogance.'",
+        held: [
+            "'Some would be right.' {tribute} does not smile, and neither does anybody else.",
+            "{tribute} shrugs so completely that the question stops existing.",
+        ],
+        broke: [
+            "{tribute} takes offence at the word and spends thirty seconds proving it fits.",
+            "The comeback lands badly, and for the rest of the segment {tribute} is a large person in a chair.",
+        ],
+    },
+    'The Quirky Oddball': {
+        question: "Caesar, delighted: 'I have no idea what you are going to say next. Do you?'",
+        held: [
+            "{tribute} says something that makes no sense whatsoever and brings the house down.",
+            "{tribute} answers a question Caesar did not ask, perfectly, and the Capitol decides it adores them.",
+        ],
+        broke: [
+            "The joke does not land. {tribute} tries it again, slower. It lands worse.",
+            "{tribute} misjudges the room by a wide margin and finishes the answer into complete silence.",
+        ],
+    },
+};
+
+/** Where a persona goes when the tribute cannot hold it under one question. */
+export const PERSONA_DRIFT: Record<string, string> = {
+    'The Star-Crossed Lover': 'The Humble Underdog',
+    'The Ruthless Warrior': 'The Arrogant Brute',
+    'The Humble Underdog': 'The Mysterious Enigma',
+    'The Mysterious Enigma': 'The Quirky Oddball',
+    'The Charming Flirt': 'The Quirky Oddball',
+    'The Arrogant Brute': 'The Humble Underdog',
+    'The Quirky Oddball': 'The Mysterious Enigma',
+};
+
+export const INTERVIEW_CLOSERS = {
+    strong: [
+        "Caesar takes {tribute}'s hand and holds it up. 'District {district}, remember that face.' The applause runs past the buzzer.",
+        "{tribute} stands, turns to the cameras rather than the crowd, and lets the silence do the last of the work.",
+        "'Sixty seconds,' Caesar says, 'and I already want to bet on you.' The Capitol agrees loudly enough to hear in the training centre.",
+    ],
+    weak: [
+        "The buzzer catches {tribute} mid-sentence. Caesar covers it professionally and moves on.",
+        "{tribute} leaves the couch to the applause the Capitol gives everybody, which is the least useful sound in Panem.",
+        "Caesar says {tribute}'s name warmly, twice, which is what he does when there is nothing else to say.",
+    ],
+};

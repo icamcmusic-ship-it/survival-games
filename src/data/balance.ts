@@ -1250,7 +1250,57 @@ export const GENERATION = {
 } as const;
 
 /** Training visibility: what the rest of the cast makes of a big score. */
+/**
+ * SIDE-05: the interview, as three beats. See `phases/interviews.ts`.
+ *
+ * The whole segment used to be one charisma roll against 5, which made the
+ * persona — the most consequential value the pre-Games produces — a coin flip.
+ */
+export const INTERVIEWS = {
+    /** Poise needed to land the opening angle at all. */
+    openingThreshold: 5,
+    /** Holding the angle under Caesar's follow-up. */
+    holdBase: 0.25,
+    holdPerCharisma: 0.06,
+    holdOpenedBonus: 0.12,
+    openedExcitement: 20,
+    fumbledTrust: 10,
+    heldTrust: 8,
+    heldExcitement: 12,
+    brokeTrust: 6,
+} as const;
+
 export const TRAINING = {
+    /**
+     * SIDE-04. Training used to be one line: +1 to a random attribute and a
+     * score from total stats. No station choice, no private session, no
+     * strategy, and the number appeared the instant it was rolled.
+     */
+    /** Days on the training floor before the private sessions. */
+    days: 3,
+    /** Attribute points a day at a station is worth, before aptitude. */
+    stationAttributeGain: 0.5,
+    /** Proficiency a day at a station is worth. */
+    stationProficiencyGain: 0.4,
+    /** Chance a tribute deliberately hides what they can do. */
+    concealChance: 0.22,
+    /** Chance they play to the gallery instead. */
+    showcaseChance: 0.3,
+    /** Score swing for each strategy in the private session. */
+    concealPenalty: 2,
+    showcaseBonus: 1,
+    /** Sponsor trust a showcase buys, and the price of hiding. */
+    showcaseTrust: 6,
+    concealTrust: -4,
+    /**
+     * The private session is not a fair examination — the Gamemakers have been
+     * watching tributes all day and are bored by the end of it. A tribute who
+     * does something genuinely unexpected while the gallery is distracted can
+     * land far above their merit, which is the single most famous training
+     * score in the source material.
+     */
+    stuntChance: 0.08,
+    stuntBonus: 3,
     /** Score at or above which the field takes notice. */
     intimidationScore: 9,
     /** Sanity shaved off everyone else by a legendary score. */

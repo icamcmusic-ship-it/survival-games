@@ -243,6 +243,8 @@ export interface Tribute {
      * only by the bloodbath.
      */
     platePosition?: number;
+    /** How they played the training floor: showcase, conceal, or neither. */
+    trainingStrategy?: 'showcase' | 'conceal' | 'balanced';
     /** They put their hand up rather than being drawn out of the bowl. */
     volunteered?: boolean;
     /** The reaping-day line: how they came to be standing on that plate. */

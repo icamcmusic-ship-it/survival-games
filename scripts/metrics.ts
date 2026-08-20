@@ -92,6 +92,11 @@ const sampleBoard = (tributes: Tribute[]) => {
 // material, and roughly half the field dies in it.
 let bloodbathDeaths = 0;
 let bloodbathFields = 0;
+// SIDE-04. The training board, against the shape the source material describes.
+let scored = 0;
+let scoredElite = 0;
+let careerScores = 0;
+let careerCount = 0;
 
 for (let i = 0; i < RUNS; i++) {
     const seed = `METRIC${i}`;
@@ -100,7 +105,14 @@ for (let i = 0; i < RUNS; i++) {
     let state = sim.getState();
 
     while (state.phase !== 'ended' && guard-- > 0) {
-        if (state.phase === 'setup') sim.processTraining();
+        if (state.phase === 'setup') {
+            sim.processTraining();
+            sim.getState().tributes.forEach(t => {
+                scored++;
+                if (t.trainingScore >= 9) scoredElite++;
+                if (t.isCareer) { careerScores += t.trainingScore; careerCount++; }
+            });
+        }
         else if (state.phase === 'training') sim.processInterviews();
         else if (state.phase === 'interviews') sim.startGames();
         else if (state.phase === 'bloodbath') {
@@ -185,6 +197,30 @@ interface Indicator {
 const asPct = (v: number) => `${(v * 100).toFixed(1)}%`;
 
 const indicators: Indicator[] = [
+    {
+        // SIDE-04. In the source material a 9 or a 10 marks you as a Career or
+        // a genuine threat and the rest of the board sits in the middle. The
+        // old one-line roll put a fifth of every field at 8 and above.
+        label: 'training scores of 9 or better',
+        value: scoredElite / Math.max(1, scored),
+        guard: v => v >= 0.07 && v <= 0.24,
+        guardText: '7%-24%',
+        goal: '12%-18%',
+        goalMet: v => v >= 0.12 && v <= 0.18,
+        baseline: '9.1%',
+        fmt: asPct,
+    },
+    {
+        // The Careers should reliably be the top of the board without owning
+        // all of it — the whole point of the training broadcast is that the
+        // field learns who to be afraid of.
+        label: 'average Career training score',
+        value: careerScores / Math.max(1, careerCount),
+        guard: v => v >= 6.8 && v <= 9,
+        guardText: '6.8-9.0',
+        baseline: '6.4',
+        fmt: v => v.toFixed(2),
+    },
     {
         // CANON-01. Half the field dies at the Cornucopia in the first ten
         // minutes. The old scramble managed 0.84 deaths out of 24 — and every
