@@ -77,20 +77,20 @@ export class Simulator {
         // below has to see that.
         if (this.state.phase === 'day') fireScheduledWildcard(this.ctx);
 
-        // A feast announced yesterday convenes today — the intervening day and
-        // night were the journey, driven by the 'feast' objective.
-        if (this.state.phase === 'day' && this.state.feastDay === this.state.day && this.state.config.enableFeast) {
-            this.state.phase = 'feast';
-        }
-
         if (this.state.phase === 'day') {
             processDayNight(this.ctx, 'day');
             this.state.phase = 'night';
         } else if (this.state.phase === 'night') {
             processDayNight(this.ctx, 'night');
             this.state.day += 1;
-            this.state.phase = 'day';
             this.maybeAnnounceFeast();
+            // A feast announced yesterday convenes today — the intervening day
+            // and night were the journey, driven by the 'feast' objective. The
+            // phase is set here rather than at the top of the next turn so the
+            // UI actually renders a FEAST phase to advance into.
+            this.state.phase = this.state.feastDay === this.state.day && this.state.config.enableFeast
+                ? 'feast'
+                : 'day';
         } else if (this.state.phase === 'feast') {
             // A feast replaces that day's day-phase rather than adding an
             // extra one — otherwise two "day" phases play out under the same
@@ -114,6 +114,9 @@ export class Simulator {
     private maybeAnnounceFeast() {
         if (!this.state.config.enableFeast) return;
         if ((this.state.feastsHeld ?? 0) >= MAX_FEASTS) return;
+        // One already announced and not yet convened — re-announcing would push
+        // the date back a day every night and the table would never be laid.
+        if (this.state.feastDay !== undefined) return;
         if (this.state.day < 3) return;
 
         const alive = getAlive(this.state).length;

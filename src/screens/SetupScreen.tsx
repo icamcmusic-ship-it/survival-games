@@ -4,6 +4,7 @@ import { GameConfig } from '../models/types';
 import { Play, ChevronDown, ChevronRight, ArrowRight, History } from 'lucide-react';
 import { gameActions, readSavedRun } from '../store/gameStore';
 import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
+import { SIGNATURE_BLURBS } from '../engine/arenaSignature';
 
 function randomSeed() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -199,6 +200,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     <div className="min-w-0">
                                         <div className={`font-black uppercase text-base ${selected ? 'text-white' : 'text-[var(--ink)]'}`}>{a.name}</div>
                                         <div className={`text-xs mt-0.5 ${selected ? 'text-[#c9b8a0]' : 'text-[var(--color-ink-500)]'}`}>{a.description}</div>
+                                    {SIGNATURE_BLURBS[a.id] && (
+                                        <div className={`text-[10px] mt-1 font-mono ${selected ? 'text-[var(--red)]' : 'text-[var(--color-ink-600)]'}`}>
+                                            ⚙ {SIGNATURE_BLURBS[a.id]}
+                                        </div>
+                                    )}
                                     </div>
                                     {selected ? (
                                         <span className="flex-none text-[var(--red)] font-mono text-[11px] font-extrabold uppercase tracking-wider">Selected</span>

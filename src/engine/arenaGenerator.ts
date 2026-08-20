@@ -241,7 +241,10 @@ function generateMuttNames(rng: RNG, activeTags: string[]): string[] {
 export function generateArena(seed: string): Arena {
     const rng = new RNG(`${seed}-arena`);
     const biome = rng.pick(BIOMES);
-    const zoneCount = rng.nextInt(5, 7);
+    // Matched to the hand-authored arenas (10-11 zones). Five zones for
+    // twenty-four tributes put ~4 people in every sector at the gong; a tribute
+    // could never genuinely disappear, which is most of what an arena is for.
+    const zoneCount = rng.nextInt(9, 12);
     const topology = rng.pick(TOPOLOGIES);
 
     // The Cornucopia is always the hub

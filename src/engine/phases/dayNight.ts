@@ -28,6 +28,7 @@ import {
 } from '../encounters';
 import { tickPersistentMutts } from '../mutts';
 import { restockCornucopia, rollAmbientZoneEffects, tickZoneEffects } from '../zoneEffects';
+import { runArenaSignature } from '../arenaSignature';
 import { gamemakerProfile } from '../../data/gamemakers';
 import { escalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
@@ -115,6 +116,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // A mutt that has found someone keeps looking for them for a few more
     // cycles, independent of the ordinary per-cycle mutt roll.
     tickPersistentMutts(ctx);
+
+    // 4b. The arena's own rule — the clock, the tide, the blackout schedule.
+    // Runs after movement and encounters so it acts on where tributes actually
+    // ended up, and before upkeep so the effects it starts tick normally.
+    runArenaSignature(ctx);
 
     // 5. Cycle upkeep: the arena restocks, memories fade, bonds cool, the
     // crowd's attention wanders.
