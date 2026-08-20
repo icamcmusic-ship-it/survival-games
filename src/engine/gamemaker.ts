@@ -1,15 +1,98 @@
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
+import { ExposureProfile, applyExposure } from './exposure';
 import { getZone } from './map';
-import { clampTribute } from './vitals';
 import { addZoneThreat } from './memory';
-import { MEMORY } from '../data/balance';
+import { GAMEMAKER, MEMORY } from '../data/balance';
 
-const WEATHER_EFFECTS = [
-    { name: 'a torrential downpour', fatigue: 15, sanity: 5, quench: true },
-    { name: 'a scorching heatwave', fatigue: 20, sanity: 10, thirst: 20 },
-    { name: 'a freezing cold snap', fatigue: 25, sanity: 10, frostbite: true },
-    { name: 'a choking toxic fog', fatigue: 10, sanity: 20, poison: true },
+/**
+ * Gamemaker weather, expressed as exposure profiles.
+ *
+ * These used to be a second, independent damage-over-time implementation with
+ * its own frostbite roll, its own damage numbers and its own cause-of-death
+ * strings — so a manual cold snap on the Frozen Wasteland stacked two different
+ * freezing systems on the same tribute. They are the same kind of thing the
+ * arena's own climate is, so they are now the same kind of object, run through
+ * `applyExposure`. `intensity` is what makes a Gamemaker storm worse than
+ * weather: the same profile shape, turned up.
+ */
+const WEATHER_EFFECTS: ExposureProfile[] = [
+    {
+        name: 'a torrential downpour',
+        cause: 'Drowned in the Gamemakers\' downpour',
+        fatigue: 15,
+        sanity: 5,
+        quench: 30,
+        intensity: GAMEMAKER.weatherIntensity,
+    },
+    {
+        name: 'a scorching heatwave',
+        cause: 'Died of heatstroke in the Gamemakers\' heatwave',
+        fatigue: 20,
+        sanity: 10,
+        thirst: 20,
+        burn: 0.1,
+        intensity: GAMEMAKER.weatherIntensity,
+    },
+    {
+        name: 'a freezing cold snap',
+        cause: 'Froze to death in the Gamemakers\' cold snap',
+        fatigue: 25,
+        sanity: 10,
+        frostbite: 0.15,
+        intensity: GAMEMAKER.weatherIntensity,
+        onFrostbite: t => `${t.name} is caught in the open and suffers frostbite.`,
+    },
+    {
+        name: 'a choking toxic fog',
+        cause: 'Suffocated in the Gamemakers\' toxic fog',
+        fatigue: 10,
+        sanity: 20,
+        poison: 0.15,
+        intensity: GAMEMAKER.weatherIntensity,
+        onPoison: t => `${t.name} inhales the toxic fog and is poisoned.`,
+    },
+    {
+        name: 'a wall of blowing grit',
+        cause: 'Flayed by the Gamemakers\' grit storm',
+        damage: 6,
+        fatigue: 18,
+        sanity: 8,
+        thirst: 15,
+        infection: 0.12,
+        intensity: GAMEMAKER.weatherIntensity,
+    },
+    {
+        name: 'a sheet of freezing rain',
+        cause: 'Died of exposure in the Gamemakers\' freezing rain',
+        damage: 4,
+        fatigue: 22,
+        sanity: 12,
+        quench: 20,
+        frostbite: 0.1,
+        intensity: GAMEMAKER.weatherIntensity,
+        onFrostbite: t => `${t.name} cannot get warm again after the freezing rain finds them.`,
+    },
+    {
+        name: 'a dead, airless heat',
+        cause: 'Died of heatstroke in the Gamemakers\' dead air',
+        damage: 5,
+        fatigue: 25,
+        sanity: 15,
+        thirst: 30,
+        intensity: GAMEMAKER.weatherIntensity,
+    },
+    {
+        name: 'a rain of stinging ash',
+        cause: 'Choked on the Gamemakers\' ashfall',
+        damage: 7,
+        fatigue: 12,
+        sanity: 10,
+        burn: 0.08,
+        infection: 0.08,
+        intensity: GAMEMAKER.weatherIntensity,
+        onBurn: t => `${t.name} is pocked with burns where the ash settled on bare skin.`,
+    },
 ];
 
 export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' | 'feast', targetId?: string) {
@@ -20,7 +103,7 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
         if (targetId) {
             const t = ctx.state.tributes.find(tr => tr.id === targetId);
             if (t && t.status === 'alive') {
-                applyDamage(ctx, t, 50, { cause: `Torn apart by Gamemaker-released ${mutt}`, kind: 'gamemaker' });
+                applyDamage(ctx, t, GAMEMAKER.muttTargetedDamage, { cause: `Torn apart by Gamemaker-released ${mutt}`, kind: 'gamemaker' });
                 t.injuries.bleeding = true;
                 addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat * 2);
                 ctx.logEvent(`GAMEMAKER: A pack of ${mutt} is dropped directly onto ${t.name} in ${t.zone}.`, [t.id], { important: true, category: 'gamemaker' });
@@ -31,9 +114,9 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
             getAlive(ctx.state).forEach(t => {
                 // Tributes in dangerous zones are easier prey for released mutts
                 const zone = getZone(ctx.state.arena, t.zone);
-                const hitChance = 0.2 + (zone ? zone.danger * 0.3 : 0.1);
+                const hitChance = GAMEMAKER.muttSweepBaseChance + (zone ? zone.danger * GAMEMAKER.muttSweepDangerWeight : 0.1);
                 if (ctx.rng.chance(hitChance)) {
-                    applyDamage(ctx, t, 20 + ctx.rng.nextInt(0, 15), { cause: `Torn apart by ${mutt}`, kind: 'gamemaker' });
+                    applyDamage(ctx, t, GAMEMAKER.muttSweepBaseDamage + ctx.rng.nextInt(0, GAMEMAKER.muttSweepVariance), { cause: `Torn apart by ${mutt}`, kind: 'gamemaker' });
                     if (ctx.rng.chance(0.3)) t.injuries.bleeding = true;
                     addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
                     ctx.logEvent(`${t.name} is mauled by the ${mutt} prowling through ${t.zone}.`, [t.id], { important: true, category: 'gamemaker' });
@@ -43,24 +126,14 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
         }
     } else if (type === 'weather') {
         const weather = ctx.rng.pick(WEATHER_EFFECTS);
-        ctx.logEvent(`GAMEMAKER: The weather shifts drastically. ${weather.name.charAt(0).toUpperCase() + weather.name.slice(1)} sweeps the arena!`, [], { important: true, category: 'gamemaker' });
+        ctx.logEvent(
+            `GAMEMAKER: The weather shifts drastically. ${weather.name.charAt(0).toUpperCase() + weather.name.slice(1)} sweeps the arena!`,
+            [],
+            { important: true, category: 'gamemaker' }
+        );
         getAlive(ctx.state).forEach(t => {
-            t.vitals.fatigue += weather.fatigue;
-            t.vitals.sanity -= weather.sanity;
-            if (weather.thirst) t.vitals.thirst += weather.thirst;
-            if (weather.quench) t.vitals.thirst = Math.max(0, t.vitals.thirst - 30);
-            if (weather.frostbite && ctx.rng.chance(0.15) && !t.injuries.frostbitten) {
-                t.injuries.frostbitten = true;
-                ctx.logEvent(`${t.name} is caught in the open and suffers frostbite.`, [t.id], { important: true, category: 'gamemaker' });
-            }
-            // Exposure itself is what kills in a Gamemaker weather event.
-            applyDamage(ctx, t, 3, { cause: `Perished in ${weather.name}`, kind: 'gamemaker' });
-            clampTribute(t);
-            if (weather.poison && ctx.rng.chance(0.15) && !t.injuries.poisoned) {
-                t.injuries.poisoned = true;
-                ctx.logEvent(`${t.name} inhales the toxic fog and is poisoned.`, [t.id], { important: true, category: 'gamemaker' });
-            }
-            checkDeath(ctx, t, `Perished in ${weather.name}`);
+            // One exposure system, shared with the arena's own climate.
+            applyExposure(ctx, t, weather);
         });
     } else if (type === 'feast') {
         if (!ctx.state.config.enableFeast) {
@@ -72,7 +145,17 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
             ctx.logEvent('GAMEMAKER: The feast horn can only sound once the Games proper are under way.', [], { category: 'gamemaker' });
             return;
         }
+        // One feast per day, however many times the horn is pressed. Resolving a
+        // feast returns the run to the same day it started on, so an unguarded
+        // trigger lets a caller keyed on (day, phase) call feasts forever — and
+        // a tribute who declines every one of them never dies, so the Games
+        // never end.
+        if (ctx.state.feastDay === ctx.state.day) {
+            ctx.logEvent('GAMEMAKER: The tributes have already been called to the Cornucopia today. The table stays empty.', [], { category: 'gamemaker' });
+            return;
+        }
         ctx.logEvent(`GAMEMAKER: A feast is announced at the Cornucopia!`, [], { important: true, category: 'gamemaker' });
+        ctx.state.feastDay = ctx.state.day;
         ctx.state.phase = 'feast';
     }
 }

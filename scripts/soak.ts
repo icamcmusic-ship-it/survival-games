@@ -16,7 +16,8 @@ import { generateTributes, strengthCapForAge } from '../src/engine/generator';
 import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG, traitsConflict } from '../src/data/constants';
-import { GENERATION, RELATIONSHIPS, ZONES } from '../src/data/balance';
+import { ALLIANCES, GENERATION, RELATIONSHIPS, ZONES } from '../src/data/balance';
+import { carryCapacity } from '../src/engine/items';
 import { oddsScore } from '../src/engine/odds';
 import { GameConfig, GameState, Stance } from '../src/models/types';
 
@@ -48,6 +49,8 @@ let zonesEverDepleted = 0, zonesEverRecovered = 0;
 let maxDepletionSeen = 0;
 let worstThrashRate = 0;
 let vengeanceSworn = 0, groupFights = 0, retreats = 0, griefEvents = 0, depletedForages = 0;
+let ambushes = 0, hiddenMoments = 0, recruitments = 0, overloadedDrops = 0;
+let maxAllianceSeen = 0, organicTrios = 0;
 let oddsMoved = 0, oddsCompared = 0;
 let maxAbsRelationship = 0;
 
@@ -60,6 +63,7 @@ for (let i = 0; i < 240; i++) {
 
   let guard = 3000;
   let state = sim.getState();
+  let gamemakerFired = false;
 
   // Per-run behavioural tracking.
   const stanceSamples = new Map<string, { last: Stance; changes: number; samples: number }>();
@@ -75,6 +79,18 @@ for (let i = 0; i < 240; i++) {
       else {
         prior.samples++;
         if (prior.last !== t.stance) { prior.changes++; prior.last = t.stance; }
+      }
+    });
+    const allianceCounts = new Map<string, number>();
+    state.tributes.forEach(t => {
+      if (t.status !== 'alive' || !t.allianceId) return;
+      allianceCounts.set(t.allianceId, (allianceCounts.get(t.allianceId) ?? 0) + 1);
+    });
+    allianceCounts.forEach((n, id) => {
+      maxAllianceSeen = Math.max(maxAllianceSeen, n);
+      if (n >= 3 && !id.startsWith('career-pack')) organicTrios++;
+      if (n > ALLIANCES.maxSize && !id.startsWith('career-pack')) {
+        note(`alliance ${id} grew to ${n}, past the cap of ${ALLIANCES.maxSize}`);
       }
     });
     Object.entries(state.zoneDepletion ?? {}).forEach(([zone, value]) => {
@@ -100,8 +116,11 @@ for (let i = 0; i < 240; i++) {
     else if (state.phase === 'bloodbath') sim.processBloodbath();
     else if (state.phase === 'epilogue') state.phase = 'ended';
     else {
-      // exercise gamemaker controls mid-run
-      if (gamemaker && state.day === 3 && state.phase === 'day') {
+      // Exercise the gamemaker controls once, mid-run. Keyed on (day, phase)
+      // alone this re-fired every cycle, because resolving a feast returns the
+      // run to the day it started on.
+      if (gamemaker && !gamemakerFired && state.day === 3 && state.phase === 'day') {
+        gamemakerFired = true;
         sim.triggerGamemakerEvent('mutt');
         sim.triggerGamemakerEvent('weather');
         const alive = state.tributes.find(t => t.status === 'alive');
@@ -137,8 +156,14 @@ for (let i = 0; i < 240; i++) {
     if (l.text.includes('undefined') || l.text.includes('NaN')) note(`bad text: ${l.text.slice(0, 90)}`);
     if (l.text.startsWith('VENGEANCE:')) vengeanceSworn++;
     if (l.text.startsWith('GROUP FIGHT:')) groupFights++;
-    if (/breaks off|disengages and runs|back away from each other/.test(l.text)) retreats++;
-    if (/hears the cannon and stops dead|sees .* face in the sky/.test(l.text)) griefEvents++;
+    if (l.text.startsWith('AMBUSH:')) ambushes++;
+    // Prose-matched, so kept deliberately broad: these must survive new
+    // flavour lines being added to the same pools.
+    if (/breaks off|disengages and runs|back away from each other|is gone into the cover|breaks contact|throws everything they are carrying|does not follow far|go opposite ways out of|simply stop, ten feet apart/.test(l.text)) retreats++;
+    if (/hears the cannon and stops dead|face in the sky|says .*'s name out loud|something closes behind their eyes/.test(l.text)) griefEvents++;
+    if (/never knows it|does not move a muscle|until .* has gone|is right there|never once looks up|until the footsteps go away/.test(l.text)) hiddenMoments++;
+    if (/wave .* in\.|worth more inside|nobody asks them to leave|makes their case/.test(l.text)) recruitments++;
+    if (l.text.includes('cannot carry it all') || l.text.includes('leaves') && l.text.includes('in the dirt')) overloadedDrops++;
     if (l.text.includes('already stripped bare')) depletedForages++;
   });
 
@@ -171,6 +196,10 @@ for (let i = 0; i < 240; i++) {
         if (traitsConflict(t.traits[a], t.traits[b])) note(`incompatible traits: ${t.traits[a]} + ${t.traits[b]}`);
       }
     }
+    if (t.inventory.length > carryCapacity(t)) {
+      note(`tribute carrying ${t.inventory.length} items over a capacity of ${carryCapacity(t)}`);
+    }
+    if (t.daysSurvived < 0 || t.daysSurvived > state.day) note(`daysSurvived out of range: ${t.daysSurvived}`);
     if (!t.memory) note('tribute without memory');
     if (t.reputation === undefined) note('tribute without a reputation baseline');
     if (!t.interviewStrategy) note('tribute never got an interview persona');
@@ -272,9 +301,14 @@ for (let i = 0; i < 240; i++) {
   }
 }
 
-// determinism: same seed twice must produce identical output
-function runOnce(seed: string) {
-  const sim = new Simulator(start(seed, 'clockwork', DEFAULT_GAME_CONFIG, false));
+// Determinism: same seed twice must produce identical output.
+//
+// This used to replay only the hand-authored 'clockwork' arena, which is why a
+// sort-with-random-comparator in the *procedural* arena generator survived
+// here undetected for as long as it did. Both paths are checked now, and the
+// generated zone graph is compared directly rather than only the event log.
+function runOnce(seed: string, arenaId: string) {
+  const sim = new Simulator(start(seed, arenaId, DEFAULT_GAME_CONFIG, false));
   let g = 3000; let s = sim.getState();
   while (s.phase !== 'ended' && g-- > 0) {
     if (s.phase === 'setup') sim.processTraining();
@@ -287,7 +321,22 @@ function runOnce(seed: string) {
   }
   return JSON.stringify(s.log.map(l => l.text));
 }
-if (runOnce('DETERMINISM') !== runOnce('DETERMINISM')) note('simulation is not deterministic for a fixed seed');
+if (runOnce('DETERMINISM', 'clockwork') !== runOnce('DETERMINISM', 'clockwork')) {
+  note('simulation is not deterministic for a fixed seed');
+}
+if (runOnce('DETERMINISM', 'procedural') !== runOnce('DETERMINISM', 'procedural')) {
+  note('procedural-arena runs are not deterministic for a fixed seed');
+}
+
+// The zone graph itself, independent of the run: a generator that consumes a
+// variable number of RNG draws produces a different map on a second call.
+for (const seed of ['GRAPH1', 'GRAPH2', 'GRAPH3', 'GRAPH4', 'GRAPH5']) {
+  const shape = (a: ReturnType<typeof generateArena>) =>
+    JSON.stringify({ id: a.id, name: a.name, zones: a.zones.map(z => [z.name, z.terrain, z.danger, z.resources, [...z.adjacent].sort()]) });
+  if (shape(generateArena(seed)) !== shape(generateArena(seed))) {
+    note(`procedural arena graph is not deterministic for seed ${seed}`);
+  }
+}
 
 // A dead system is as much a bug as a broken one: if a mechanic never fires
 // across 240 runs, it is not implemented, it is decorative.
@@ -296,6 +345,11 @@ if (groupFights === 0) note('group combat never triggered across the whole soak'
 if (retreats === 0) note('nobody ever retreated from a fight');
 if (griefEvents === 0) note('no death ever produced grief in another tribute');
 if (depletedForages === 0) note('no zone was ever foraged out from under anyone');
+if (ambushes === 0) note('stealth never produced a single ambush — the attribute has no teeth');
+if (hiddenMoments === 0) note('no tribute ever went unnoticed — stealth does not hide anyone');
+if (recruitments === 0) note('no alliance ever recruited a third member');
+if (organicTrios === 0) note('no alliance outside the Career pack ever exceeded two members');
+if (overloadedDrops === 0) note('carry capacity never bound on anyone — the Backpack has nothing to do');
 if (zonesEverDepleted > 0 && zonesEverRecovered === 0) note('zone resources deplete but never recover');
 if (oddsCompared > 0 && oddsMoved === 0) note('odds never moved during a run — they are still static');
 
@@ -303,6 +357,9 @@ console.log(`runs=${runs} victors=${victors} wipeouts=${wipeouts} avgDays=${(tot
 console.log('phases seen:', [...phasesSeen].sort().join(', '));
 console.log('categories seen:', [...categoriesSeen].sort().join(', '));
 console.log(`behaviour: vengeance=${vengeanceSworn} groupFights=${groupFights} retreats=${retreats} griefMoments=${griefEvents} strippedZones=${depletedForages}`);
+console.log(`stealth: ambushes=${ambushes} unnoticed=${hiddenMoments}`);
+console.log(`alliances: recruitments=${recruitments} organicGroupsOf3Plus=${organicTrios} largestSeen=${maxAllianceSeen}`);
+console.log(`inventory: overloaded drops=${overloadedDrops}`);
 console.log(`zones: runsWithDepletion=${zonesEverDepleted} runsWithRecovery=${zonesEverRecovered} peakDepletion=${maxDepletionSeen.toFixed(2)} (floor ${(1 - ZONES.minYieldFraction).toFixed(2)})`);
 console.log(`stance: worst change rate ${(worstThrashRate * 100).toFixed(0)}% of cycles (threshold 60%)`);
 console.log(`odds: ${oddsMoved}/${oddsCompared} survivors moved off their opening line`);

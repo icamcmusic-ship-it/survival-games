@@ -134,6 +134,10 @@ export interface Tribute {
     interviewStrategy?: string;
     /** Baseline sponsor trust the crowd keeps drifting back toward. */
     reputation: number;
+    /** Days this tribute lasted. Frozen at the day they died. */
+    daysSurvived: number;
+    /** The district's Games history, which decides the quality of their mentor. */
+    mentorLegacy?: string;
 }
 
 export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland';

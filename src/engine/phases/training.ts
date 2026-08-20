@@ -4,6 +4,7 @@ import { Attributes, Tribute } from '../../models/types';
 import { TRAINING_STATIONS, TRAINING_VERDICTS, INTIMIDATION_TEXTS } from '../../data/flavorText';
 import { TRAINING } from '../../data/balance';
 import { strengthCapForAge } from '../generator';
+import { LEGACY_EFFECTS, legacyOf } from '../../data/districts';
 import { adjustRel } from '../relationships';
 import { clampTribute } from '../vitals';
 
@@ -29,6 +30,9 @@ function meritMultiplier(t: Tribute): number {
     // A twelve-year-old does not out-score the Careers on the gauntlet, however
     // fast they are — age is a real ceiling on the elite band.
     m += (t.age - 15) * 0.08;
+    // Coaching is worth something, and the districts with victors have the
+    // coaches. This is the mentor layer showing up where it should.
+    m += LEGACY_EFFECTS[legacyOf(t.district).tier].trainingMerit;
     return Math.max(0.15, m);
 }
 

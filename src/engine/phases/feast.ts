@@ -7,7 +7,7 @@ import { FEAST } from '../../data/balance';
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { FEAST_TEXTS } from '../../data/flavorText';
 import { clampTribute } from '../vitals';
-import { itemPhrase } from '../items';
+import { giveItem, itemPhrase } from '../items';
 import { getRel } from '../relationships';
 import { hasVengeanceAgainst, noteSighting } from '../memory';
 
@@ -106,7 +106,7 @@ export function processFeast(ctx: SimContext) {
         );
         shuffled.splice(1).forEach(t => {
             const item = ctx.rng.pick(ITEMS);
-            t.inventory.push({ ...item });
+            giveItem(t, { ...item });
             t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
             t.vitals.thirst = Math.max(0, t.vitals.thirst - 40);
             clampTribute(t);
@@ -118,7 +118,7 @@ export function processFeast(ctx: SimContext) {
         const winner = shuffled[0];
         const item1 = ctx.rng.pick(ITEMS);
         const item2 = ctx.rng.pick(ITEMS);
-        winner.inventory.push({ ...item1 }, { ...item2 });
+        giveItem(winner, { ...item1 }, { ...item2 });
         winner.health = Math.min(100, winner.health + 50);
         winner.vitals.hunger = 0;
         winner.vitals.thirst = 0;

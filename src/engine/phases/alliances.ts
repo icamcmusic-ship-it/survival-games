@@ -181,6 +181,64 @@ export function processAlliances(ctx: SimContext) {
         }
     }
 
+    // 3b. Recruitment: a standing group can take in a loner they trust.
+    //
+    // Without this, the only alliance larger than two that could ever exist was
+    // the Career pack seeded at the bloodbath — dynamic formation pairs two
+    // alliance-free tributes and nothing ever grew a third member. Groups now
+    // grow the way they should: by absorbing someone they already get on with,
+    // who is standing in the same zone, and who is willing to be absorbed.
+    const groups = new Map<string, Tribute[]>();
+    getAlive(ctx.state).forEach(t => {
+        if (!t.allianceId) return;
+        if (!groups.has(t.allianceId)) groups.set(t.allianceId, []);
+        groups.get(t.allianceId)!.push(t);
+    });
+
+    groups.forEach((members, id) => {
+        if (members.length < 2 || members.length >= ALLIANCES.maxSize) return;
+        // Star-crossed lovers are a pair, not the seed of a gang.
+        if (id.startsWith('lovers-')) return;
+
+        const zone = members[0].zone;
+        const present = members.filter(m => m.zone === zone);
+        if (present.length < 2) return;
+        const candidates = getAlive(ctx.state).filter(o => !o.allianceId && o.zone === zone);
+
+        candidates.forEach(candidate => {
+            if (candidate.allianceId) return;
+            if (members.length >= ALLIANCES.maxSize) return;
+
+            // Both directions have to hold: the group has to want them, and
+            // they have to want the group.
+            const groupOpinion = present.reduce((sum, m) => sum + getRel(m, candidate.id), 0) / present.length;
+            const theirOpinion = present.reduce((sum, m) => sum + getRel(candidate, m.id), 0) / present.length;
+            const distrust = distrustFactor(candidate);
+            const threshold = ALLIANCES.recruitThreshold * distrust;
+            if (groupOpinion < threshold || theirOpinion < threshold) return;
+
+            const affinity = ARCHETYPES[candidate.archetype].allianceAffinity;
+            const chance = Math.max(
+                ALLIANCES.minFormChance,
+                (ALLIANCES.recruitChance + affinity - (members.length - 2) * ALLIANCES.recruitSizePenalty) / distrust
+            );
+            if (!ctx.rng.chance(chance)) return;
+
+            candidate.allianceId = id;
+            members.forEach(m => noteContact(ctx.state, m, candidate));
+            members.push(candidate);
+            ctx.logEvent(
+                fill(ctx.pickText(ALLIANCE_TEXTS.recruit), {
+                    tribute: candidate.name,
+                    group: members.filter(m => m.id !== candidate.id).map(m => m.name).join(' and '),
+                    zone,
+                }),
+                members.map(m => m.id),
+                { important: true, category: 'alliance' }
+            );
+        });
+    });
+
     // 4. Romantic "Star-Crossed Lovers" formation check (District partners of opposite gender)
     for (let dist = 1; dist <= ctx.state.config.districtCount; dist++) {
         const districtTributes = getAlive(ctx.state).filter(t => t.district === dist);

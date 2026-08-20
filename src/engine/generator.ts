@@ -4,6 +4,7 @@ import { TRAITS, BUILDS, DEFAULT_GAME_CONFIG, traitFits } from '../data/constant
 import { ARCHETYPES, archetypeWeightsFor } from '../data/archetypes';
 import { GENERATION } from '../data/balance';
 import { DISTRICT_NAMES } from '../data/names';
+import { LEGACY_EFFECTS, legacyOf } from '../data/districts';
 import { blankMemory } from './memory';
 import { seedBackstoryRelationships } from './relationships';
 
@@ -159,10 +160,15 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
             const build = buildFromStrength(rng, attributes.strength);
 
             // Reputation: the trust level the crowd keeps drifting back toward.
+            // A district's Games record travels with its tributes — the crowd
+            // has been betting on District 2 for decades and has never had a
+            // reason to learn District 9's names.
+            const legacy = legacyOf(district);
             const reputation = GENERATION.baseSponsorTrust
                 + rng.nextInt(-GENERATION.trustSpread, GENERATION.trustSpread)
                 + (age <= 13 ? GENERATION.youthSympathy : 0)
-                + Math.round((attributes.charisma - 5) * 1.5);
+                + Math.round((attributes.charisma - 5) * 1.5)
+                + LEGACY_EFFECTS[legacy.tier].reputation;
 
             tributes.push({
                 id: `d${district}-${gender.toLowerCase()}`,
@@ -189,6 +195,8 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 trainingScore: 0,
                 kills: 0,
                 zone: 'The Cornucopia',
+                daysSurvived: 0,
+                mentorLegacy: rng.pick(legacy.mentors),
                 memory: blankMemory(),
                 stanceHeld: 0,
                 fanFavourite: false,

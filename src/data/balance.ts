@@ -140,6 +140,15 @@ export const COMBAT = {
     poisonTransferChance: 0.5,
     /** Durability burned per round of use. */
     weaponWearPerRound: 6,
+    /**
+     * Divisors turning an attribute into bonus power for each weapon class.
+     * Thrown weapons had no branch at all, so Throwing Knives and the Spear —
+     * the one weapon a tribute can craft mid-run — scaled with nothing.
+     */
+    rangedAgilityDivisor: 3,
+    meleeStrengthDivisor: 3,
+    thrownStrengthDivisor: 5,
+    thrownAgilityDivisor: 5,
 
     /** Retreat check: base chance to disengage, before health/archetype terms. */
     retreatBase: 0.12,
@@ -163,9 +172,89 @@ export const COMBAT = {
     /** Group encounters run for at most this many rounds. */
     maxGroupRounds: 5,
 
+    /** Base odds a tribute breaking off eats a parting shot on the way out. */
+    partingShotChance: 0.3,
+
     /** Relationship deltas produced by fighting. */
     grudgePerFight: 20,
     grudgeOnWound: 8,
+} as const;
+
+/**
+ * Stealth: concealment, awareness, and the ambush that comes out of the gap
+ * between them.
+ *
+ * Stealth was generated with full variance — base roll, district bonus,
+ * archetype bias, a training station — and then read by nothing except the
+ * dodge check on a handful of scripted hazards. It is the cheapest lever in
+ * the game to give teeth to, because every tribute already has a number for it.
+ */
+export const STEALTH = {
+    /** Baseline odds a hidden tribute goes unnoticed before any modifiers. */
+    baseConcealment: 0.15,
+    /** Weight on the concealment roll per point of stealth over awareness. */
+    perPointAdvantage: 0.07,
+    /** Ceiling, so nobody is ever truly invisible. */
+    maxConcealment: 0.75,
+    /** Hiding outright is what stealth is for. */
+    evasiveBonus: 0.2,
+    /** Sweeping a zone for a fight means making noise. */
+    aggressivePenalty: 0.15,
+    /** Terrain that hides a body, and terrain that does not. */
+    coverBonus: 0.12,
+    openPenalty: 0.12,
+    /** Being hurt makes you easier to find. */
+    bleedingPenalty: 0.1,
+    /** An alliance cannot move quietly. */
+    groupPenalty: 0.08,
+
+    /** Awareness: what it takes to notice someone who does not want noticing. */
+    awarenessFromIntelligence: 0.5,
+    eagleEyedBonus: 3,
+    trackerBonus: 2,
+    lightSleeperBonus: 1.5,
+    paranoidBonus: 1.5,
+    /** A tribute at the end of their rope stops watching the treeline. */
+    exhaustedPenalty: 2,
+    lowSanityPenalty: 2,
+
+    /** Ambush: opening a fight from cover. */
+    ambushBase: 0.1,
+    ambushPerPointAdvantage: 0.08,
+    maxAmbushChance: 0.7,
+    /** Power edge the ambusher carries into the opening exchange. */
+    ambushPowerBonus: 6,
+    /** Damage multiplier on the free opening hit. */
+    ambushDamageMultiplier: 1.35,
+    /** Per point of stealth, how much of a parting shot a fleeing tribute slips. */
+    disengagePerPoint: 0.03,
+    /** How much of a zone's felt threat a stealthy tribute discounts. */
+    threatDiscountPerPoint: 0.05,
+    maxThreatDiscount: 0.5,
+    /**
+     * Endgame reveal. Two tributes who are both good at hiding, both Evasive,
+     * and alone in a single un-collapsed zone will otherwise avoid each other
+     * indefinitely — the Games never end. The Gamemakers do not permit that:
+     * once the field is down to this many, cover stops working.
+     */
+    endgameRevealAt: 3,
+    /** Concealment retained per tribute above the reveal threshold. */
+    endgameConcealmentStep: 0.34,
+} as const;
+
+/** What a tribute can physically carry. */
+export const INVENTORY = {
+    /**
+     * Items carried in hands, pockets and a bedroll. Tributes hold well under
+     * one item on average, so this is deliberately tight: a limit that only
+     * binds after a kill or a feast is a limit that makes looting a decision,
+     * and anything looser leaves the Backpack with nothing to do.
+     */
+    baseCapacity: 4,
+    /** A Backpack is the difference between looting a body and looting it all. */
+    backpackCapacity: 3,
+    /** A Backpack also keeps food out of the sun. */
+    backpackSpoilageBonus: 2,
 } as const;
 
 /** Zone economy: foraging strips a zone, and the arena grows it back slowly. */
@@ -267,6 +356,12 @@ export const RELATIONSHIPS = {
     betrayalWitnessPenalty: 35,
     /** A betrayed survivor trusts nobody for a while. */
     betrayedDistrustPenalty: 15,
+    /**
+     * Ceiling on the distrust multiplier. It scales the alliance relationship
+     * threshold, so without a cap a repeatedly-betrayed tribute needs a bond
+     * above the maximum possible value and can never ally again.
+     */
+    maxDistrustFactor: 2.2,
     /** Alliance trust erodes as the field thins and rations run short. */
     trustDecayPerCycle: 1.5,
     lateGameTrustDecay: 4,
@@ -280,6 +375,24 @@ export const ALLIANCES = {
     baseRelThreshold: 40,
     /** Field size above which new alliances still form at all. */
     formationFieldSize: 4,
+    /**
+     * Largest a group can grow. Dynamic formation only ever paired two
+     * alliance-free tributes, so the Career pack was the only group of three
+     * or more that could exist in a run — every organic alliance was a duo,
+     * for the whole game, by construction.
+     */
+    maxSize: 4,
+    /** Base odds a group takes in a loner they get on with. */
+    recruitChance: 0.35,
+    /**
+     * Mutual regard a recruit and the group each need. Deliberately lower than
+     * the pair-formation threshold — joining a standing group is a lower bar
+     * than founding one, and bonds between a loner and a group decay toward
+     * zero, so a +30 gate cleared roughly 0.3% of real candidate pairs.
+     */
+    recruitThreshold: 15,
+    /** Each existing member past the second makes the group warier of outsiders. */
+    recruitSizePenalty: 0.08,
     /** Betrayal odds, before the config multiplier. */
     betrayalBase: 0.05,
     betrayalEndgame: 0.3,
@@ -325,11 +438,33 @@ export const ODDS = {
     allianceBonus: 8,
     woundedPenalty: 12,
     sanityPenalty: 10,
-    /** Survivors get more credit the longer they last. */
+    /**
+     * Survivors get credit for lasting, but only relative to what was expected
+     * of them: the favourite reaching day 6 tells the bookmakers nothing, and
+     * the tribute who scored a 3 in training reaching day 6 tells them a lot.
+     * Without the expectation term the bonus is identical for every living
+     * tribute and cancels out of the normalised percentage entirely.
+     */
     survivalDayWeight: 3,
+    survivalExpectationDamping: 0.7,
     /** The crowd's darling gets a nudge. */
     fanFavouriteBonus: 10,
     minScore: 10,
+} as const;
+
+/** The Gamemakers' direct interventions. */
+export const GAMEMAKER = {
+    /**
+     * Multiplier applied to a manually triggered weather profile. A Gamemaker
+     * storm is the same kind of thing as the arena's standing weather — it is
+     * just turned up, which is what makes it an intervention.
+     */
+    weatherIntensity: 1.6,
+    muttTargetedDamage: 50,
+    muttSweepBaseDamage: 20,
+    muttSweepVariance: 15,
+    muttSweepBaseChance: 0.2,
+    muttSweepDangerWeight: 0.3,
 } as const;
 
 /** Feast attendance. */
