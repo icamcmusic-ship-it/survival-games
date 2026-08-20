@@ -5,7 +5,7 @@ import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { BLOODBATH_TEXTS } from '../../data/flavorText';
-import { itemPhrase } from '../items';
+import { giveItem, itemPhrase } from '../items';
 import { personaThreat } from './alliances';
 import { getRel, setRel } from '../relationships';
 import { noteSighting } from '../memory';
@@ -81,7 +81,7 @@ export function processBloodbath(ctx: SimContext) {
             ctx.logEvent(fill(ctx.pickText(BLOODBATH_TEXTS.flee), { tribute: t.name }), [t.id], { category: 'survival' });
         } else {
             const item = ctx.rng.pick(ITEMS);
-            t.inventory.push({ ...item });
+            giveItem(t, { ...item });
             ctx.logEvent(
                 fill(ctx.pickText(BLOODBATH_TEXTS.fleeWithItem), { tribute: t.name, item: itemPhrase(item) }),
                 [t.id],
@@ -130,7 +130,7 @@ export function processBloodbath(ctx: SimContext) {
         );
         fighters.splice(1).forEach(t => {
             const item = ctx.rng.pick(ITEMS);
-            t.inventory.push({ ...item });
+            giveItem(t, { ...item });
             ctx.logEvent(`${t.name} grabs ${itemPhrase(item)} on the way out.`, [t.id], { category: 'loot' });
         });
     }
@@ -139,7 +139,7 @@ export function processBloodbath(ctx: SimContext) {
         const winner = fighters[0];
         const item1 = ctx.rng.pick(ITEMS);
         const item2 = ctx.rng.pick(ITEMS);
-        winner.inventory.push({ ...item1 }, { ...item2 });
+        giveItem(winner, { ...item1 }, { ...item2 });
         ctx.logEvent(
             fill(ctx.pickText(BLOODBATH_TEXTS.survive), { tribute: winner.name, items: `${item1.name} and ${item2.name}` }),
             [winner.id],

@@ -136,7 +136,12 @@ export function generateArena(seed: string): Arena {
         connect(outer[i], outer[(i + 1) % outer.length]);
     }
     const spokeCount = Math.max(2, Math.floor(outer.length / 2));
-    const spokeTargets = [...outer].sort(() => rng.nextFloat() - 0.5).slice(0, spokeCount);
+    // `sort(() => rng() - 0.5)` here consumed a variable number of RNG draws
+    // depending on the engine's sort implementation, so the same seed built a
+    // different zone graph in different browsers — which quietly broke the
+    // "same seed always replays the same Games" promise that the Share URL
+    // rests on, for procedural arenas specifically.
+    const spokeTargets = rng.shuffle(outer).slice(0, spokeCount);
     spokeTargets.forEach(z => connect(zones[0], z));
     if (outer.length >= 4 && rng.chance(0.6)) {
         const a = rng.pick(outer);

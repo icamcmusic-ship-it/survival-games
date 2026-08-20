@@ -32,8 +32,13 @@ export function oddsScore(t: Tribute): number {
     if (t.allianceId) score += ODDS.allianceBonus;
     if (t.injuries.bleeding || t.injuries.poisoned || t.injuries.infected) score -= ODDS.woundedPenalty;
     if (t.vitals.sanity < 30) score -= ODDS.sanityPenalty;
-    // Every day survived is evidence.
-    score += (t.dayOfDeath === undefined ? 1 : 0) * ODDS.survivalDayWeight;
+    // Every day survived is evidence — but only against expectation. A flat
+    // "still breathing" bonus is identical for every living tribute and
+    // cancels straight out of the normalised percentage, so the term is
+    // weighted by how little was expected of them in the first place.
+    const expectation = Math.min(1, training / 12);
+    score += t.daysSurvived * ODDS.survivalDayWeight
+        * (1 - expectation * ODDS.survivalExpectationDamping);
 
     return Math.max(ODDS.minScore, Math.round(score));
 }

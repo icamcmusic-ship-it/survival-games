@@ -2,6 +2,8 @@
  * Structural check on the hand-authored arenas: every zone reachable, every
  * adjacency symmetric, every arena backed by its own flavour pack.
  */
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { ARENAS } from '../src/data/constants';
 import { ARENA_FLAVOR, GENERIC_ARENA_FLAVOR } from '../src/data/arenaFlavor';
 
@@ -59,7 +61,35 @@ Object.entries(ARENA_FLAVOR).forEach(([id, flavor]) => {
 
 if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has no events');
 
-console.log(`arenas=${ARENAS.length} flavourPacks=${Object.keys(ARENA_FLAVOR).length}`);
+/**
+ * Source guard: no seeded shuffle may go through a random sort comparator.
+ *
+ * `[...arr].sort(() => rng() - 0.5)` is deterministic *within* one JS engine,
+ * so a same-process replay check can never catch it — but it consumes a
+ * different number of RNG draws depending on the engine's sort algorithm, so
+ * the same seed builds a different arena in a different browser. That silently
+ * breaks the "same seed always replays the same Games" promise the Share URL
+ * rests on. `RNG.shuffle()` exists precisely to avoid it; this check is what
+ * stops a new call site from reintroducing it.
+ */
+const RANDOM_SORT = /\.sort\s*\(\s*\(\s*\)\s*=>[^)]*(?:rng|random|Math\.random)/i;
+function walk(dir: string): string[] {
+    return readdirSync(dir).flatMap(entry => {
+        const full = join(dir, entry);
+        if (statSync(full).isDirectory()) return walk(full);
+        return /\.tsx?$/.test(entry) ? [full] : [];
+    });
+}
+walk('src').forEach(file => {
+    readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
+        if (line.trimStart().startsWith('*') || line.trimStart().startsWith('//')) return;
+        if (RANDOM_SORT.test(line)) {
+            problems.push(`${file}:${i + 1} sorts with a random comparator — use RNG.shuffle() instead`);
+        }
+    });
+});
+
+console.log(`arenas=${ARENAS.length} flavourPacks=${Object.keys(ARENA_FLAVOR).length} sourcesScanned=${walk('src').length}`);
 console.log(ARENAS.map(a => `  ${a.id.padEnd(12)} ${a.zones.length} zones  ${a.name}`).join('\n'));
 if (problems.length) {
     console.log('\nPROBLEMS:\n' + problems.map(p => ' - ' + p).join('\n'));

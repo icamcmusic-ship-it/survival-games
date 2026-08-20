@@ -2,8 +2,11 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { COMBAT, MEMORY } from '../data/balance';
+import { COMBAT, MEMORY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
+import { giveItem } from './items';
+import { rollAmbush } from './stealth';
+import { getZone } from './map';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact } from './memory';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 
@@ -67,8 +70,19 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0): nu
     if (weapon) {
         power += weapon.damage ?? weapon.value / 10;
         // Ranged weapons reward agility; melee rewards raw strength
-        if (weapon.weaponClass === 'ranged') power += Math.floor(t.attributes.agility / 3);
-        else if (weapon.weaponClass === 'melee') power += Math.floor(effectiveStrength(t) / 3);
+        // Every weapon class scales with something. 'thrown' had no branch at
+        // all, so Throwing Knives and the Spear — the one weapon a tribute can
+        // craft mid-run — were the only weapons in the game with no stat
+        // scaling behind them, which made crafting a downgrade.
+        if (weapon.weaponClass === 'ranged') {
+            power += Math.floor(t.attributes.agility / COMBAT.rangedAgilityDivisor);
+        } else if (weapon.weaponClass === 'melee') {
+            power += Math.floor(effectiveStrength(t) / COMBAT.meleeStrengthDivisor);
+        } else if (weapon.weaponClass === 'thrown') {
+            // Throwing wants both the arm behind it and the eye in front of it.
+            power += Math.floor(effectiveStrength(t) / COMBAT.thrownStrengthDivisor)
+                + Math.floor(t.attributes.agility / COMBAT.thrownAgilityDivisor);
+        }
     }
 
     // Archetype edge: aggressive fighters commit harder
@@ -122,9 +136,9 @@ function dropBrokenWeapons(t: Tribute) {
 }
 
 /** Applies one landed hit, including venom, wounds and the grudge it earns. */
-function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: number, weapon?: Item) {
-    const raw = COMBAT.baseHitDamage + edge * COMBAT.damagePerPowerPoint + ctx.rng.nextInt(-3, 4);
-    const damage = Math.round(Math.max(COMBAT.minRoundDamage, Math.min(COMBAT.maxRoundDamage, raw)));
+function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: number, weapon?: Item, multiplier = 1) {
+    const raw = (COMBAT.baseHitDamage + edge * COMBAT.damagePerPowerPoint + ctx.rng.nextInt(-3, 4)) * multiplier;
+    const damage = Math.round(Math.max(COMBAT.minRoundDamage, Math.min(COMBAT.maxRoundDamage * multiplier, raw)));
 
     applyDamage(ctx, defender, damage, {
         cause: weapon ? `Killed by ${attacker.name} (${weapon.name})` : `Killed by ${attacker.name}`,
@@ -169,11 +183,43 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
     }
 
     noteContact(ctx.state, t1, t2);
-    ctx.logEvent(
-        fill(ctx.pickText(DUEL_TEXTS.open), { t1: t1.name, t2: t2.name, zone: t1.zone }),
-        [t1.id, t2.id],
-        { category: 'combat' }
-    );
+
+    // The first argument is whoever found the other. If they found them from
+    // cover, the fight opens with a free hit rather than a fair exchange.
+    const zone = getZone(ctx.state.arena, t1.zone);
+    const ambushed = !isBloodbath && rollAmbush(ctx, t1, t2, zone);
+    if (ambushed) {
+        const opener = bestWeapon(t1);
+        const damage = landHit(ctx, t1, t2, STEALTH.ambushPowerBonus, opener, STEALTH.ambushDamageMultiplier);
+        ctx.logEvent(
+            fill(ctx.pickText(DUEL_TEXTS.ambush), { attacker: t1.name, victim: t2.name, zone: t1.zone }),
+            [t1.id, t2.id],
+            { important: true, category: 'combat' }
+        );
+        if (t2.health <= 0) {
+            killTribute(ctx, t2, t1, isBloodbath, opener);
+            [t1, t2].forEach(t => { if (t.status === 'alive') dropBrokenWeapons(t); });
+            return;
+        }
+        // Being jumped is a reason to leave, not to settle in.
+        if (wantsToRetreat(ctx, t2, damage / 10, 1)) {
+            ctx.logEvent(
+                fill(ctx.pickText(DUEL_TEXTS.retreat), { fleer: t2.name, stayer: t1.name, zone: t1.zone }),
+                [t2.id, t1.id],
+                { important: true, category: 'combat' }
+            );
+            adjustRel(t2, t1.id, -COMBAT.grudgePerFight);
+            addZoneThreat(ctx.state, t2, t2.zone, MEMORY.fightThreat);
+            [t1, t2].forEach(dropBrokenWeapons);
+            return;
+        }
+    } else {
+        ctx.logEvent(
+            fill(ctx.pickText(DUEL_TEXTS.open), { t1: t1.name, t2: t2.name, zone: t1.zone }),
+            [t1.id, t2.id],
+            { category: 'combat' }
+        );
+    }
 
     const maxRounds = isBloodbath ? COMBAT.maxRounds + 1 : COMBAT.maxRounds;
     let round = 0;
@@ -225,8 +271,11 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
         if (t1Flees || t2Flees) {
             const fleer = t1Flees ? t1 : t2;
             const stayer = t1Flees ? t2 : t1;
-            // Running turns your back on someone holding a weapon.
-            if (ctx.rng.chance(0.3)) {
+            // Running turns your back on someone holding a weapon — unless you
+            // are good at not being where they swing.
+            const partingChance = Math.max(0.05,
+                COMBAT.partingShotChance - fleer.attributes.stealth * STEALTH.disengagePerPoint);
+            if (ctx.rng.chance(partingChance)) {
                 const parting = bestWeapon(stayer);
                 landHit(ctx, stayer, fleer, 2, parting);
                 if (fleer.health <= 0) {
@@ -450,10 +499,20 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         clampTribute(killer);
 
         if (victim.inventory.length > 0) {
-            const lootNames = victim.inventory.map(i => i.name).join(', ');
-            killer.inventory.push(...victim.inventory);
+            const spoils = victim.inventory;
             victim.inventory = [];
-            ctx.logEvent(`${text} ${killer.name} strips the body: ${lootNames}.`, [killer.id, victim.id], { important: true, category: 'kill' });
+            const dropped = giveItem(killer, ...spoils);
+            const taken = spoils.filter(i => !dropped.includes(i));
+            const lootNames = taken.map(i => i.name).join(', ');
+            if (dropped.length > 0) {
+                ctx.logEvent(
+                    `${text} ${killer.name} takes what they can carry — ${lootNames || 'nothing they can use'} — and leaves ${dropped.map(i => i.name).join(', ')} in the dirt.`,
+                    [killer.id, victim.id],
+                    { important: true, category: 'kill' }
+                );
+            } else {
+                ctx.logEvent(`${text} ${killer.name} strips the body: ${lootNames}.`, [killer.id, victim.id], { important: true, category: 'kill' });
+            }
         } else {
             ctx.logEvent(text, [killer.id, victim.id], { important: true, category: 'kill' });
         }

@@ -3,7 +3,7 @@ import { ITEMS } from '../data/constants';
 import { SPONSORS } from '../data/balance';
 import { SPONSOR_TEXTS } from '../data/flavorText';
 import { clampTribute } from './vitals';
-import { itemPhrase } from './items';
+import { giveItem, itemPhrase } from './items';
 import { ensureMemory } from './memory';
 import { Tribute } from '../models/types';
 
@@ -54,7 +54,7 @@ export function processSponsors(ctx: SimContext) {
         // Clone: pushing the shared ITEMS entry let one tribute's combat
         // durability loss propagate to every future copy of that item.
         const gift = { ...ctx.rng.pick(pool.length > 0 ? pool : ITEMS.filter(i => i.value > 20)) };
-        t.inventory.push(gift);
+        giveItem(t, gift);
         t.excitementRating = Math.max(0, t.excitementRating - SPONSORS.giftExcitementCost);
         ensureMemory(t).giftsReceived += 1;
         clampTribute(t);

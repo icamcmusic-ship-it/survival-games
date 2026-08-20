@@ -194,18 +194,37 @@ export const ENCOUNTER_TEXTS = {
     peaceful: [
         "{t1} and {t2} cross paths in {zone}. They nod at each other and walk away.",
         "{t1} spots {t2} resting in {zone}, but decides to leave them alone.",
-        "{t1} and {t2} share a tense moment of eye contact in {zone} before going their separate ways."
+        "{t1} and {t2} share a tense moment of eye contact in {zone} before going their separate ways.",
+        "{t1} and {t2} see each other across {zone} at the same moment, and both decide today is not the day.",
+        "{t1} raises an empty hand to {t2} in {zone}. {t2} raises one back. Neither moves closer.",
+        "{t1} and {t2} pass on opposite banks in {zone} without a word between them.",
+        "{t1} steps aside in {zone} and lets {t2} go by. Somewhere a Gamemaker sighs."
     ],
     friendly: [
         "{t1} and {t2} agree to a temporary truce and share a moment of peace.",
         "{t1} and {t2} tell stories about their districts to keep their sanity intact.",
-        "{t1} helps {t2} bandage a minor scrape, strengthening their bond."
+        "{t1} helps {t2} bandage a minor scrape, strengthening their bond.",
+        "{t1} and {t2} split a fire in {zone} and argue about whose district has better bread.",
+        "{t1} teaches {t2} a knot their father taught them. For an hour in {zone} they are just two kids.",
+        "{t1} and {t2} count the cannons together in {zone} and get the same number.",
+        "{t1} lets {t2} sleep first in {zone}, and actually keeps watch."
+    ],
+    unnoticed: [
+        '{t2} passes within twenty metres of {t1} in {zone} and never knows it.',
+        '{t1} holds their breath in the cover of {zone} until {t2} has gone.',
+        '{t1} watches {t2} search {zone} from six feet away and does not move a muscle.',
+        '{t2} sweeps {zone} and finds nothing. {t1} is right there.',
+        "{t2} sits down to rest in {zone} with {t1} already inside arm's reach, and never once looks up.",
+        "{t1} times their breathing to {t2}'s footsteps in {zone} until the footsteps go away."
     ],
     shareResources: [
         "{t1} and {t2} share their rations in {zone}.",
         "{t1} trades supplies with {t2} to ensure mutual survival.",
-        "{t1} points {t2} toward a fresh water source they found earlier."
-    ]
+        "{t1} points {t2} toward a fresh water source they found earlier.",
+        "{t1} splits a water ration with {t2} in {zone} without being asked twice.",
+        "{t2} shows {t1} which roots in {zone} are safe, and which ones are not.",
+        "{t1} and {t2} pool what they have in {zone}. It is not much, and it is more than either had.",
+    ],
 };
 
 export const SANITY_TEXTS = {
@@ -213,7 +232,11 @@ export const SANITY_TEXTS = {
         "{tribute} begins to hallucinate, seeing phantom mutts in the shadows of {zone}.",
         "{tribute} hears the voices of fallen tributes whispering in {zone}.",
         "{tribute} starts talking to a tree in {zone}, convinced it's an old friend.",
-        "{tribute} panics and attacks a non-existent threat in {zone}."
+        "{tribute} panics and attacks a non-existent threat in {zone}.",
+        "{tribute} carries on a long, reasonable conversation with somebody who is not in {zone}.",
+        "{tribute} sees the sky over {zone} peel back and the Capitol looking down through it.",
+        "{tribute} is certain the trees in {zone} have moved since yesterday. They count them again.",
+        "{tribute} laughs at something in {zone} for a long time, and then stops very suddenly."
     ],
     dropItem: [
         "{tribute} becomes disoriented and accidentally drops their {item} in {zone}.",
@@ -252,6 +275,8 @@ export const TRAINING_VERDICTS = {
         'The scoreboard flickers up the number and the room moves on.',
         'Nobody in the Capitol will remember this by morning.',
         'A trainer winces and writes something short on their clipboard.',
+        'A Gamemaker checks the time while {tribute} is still going.',
+        '{tribute} finishes, and the gallery has already looked away.',
     ],
     solid: [
         'A respectable number. Enough to be taken seriously, not enough to be feared.',
@@ -259,6 +284,8 @@ export const TRAINING_VERDICTS = {
         'Bookmakers shift their line by a fraction and move on.',
         'Solid work — the kind that keeps a tribute alive through the first week.',
         'A few sponsors circle the name and wait to see more.',
+        'Competent, unspectacular, and enough to stay off everyone\'s list. {tribute} will take it.',
+        'The Gamemakers make a note about {tribute} and move on.',
     ],
     elite: [
         'The Gamemakers stop talking. All of them.',
@@ -266,12 +293,16 @@ export const TRAINING_VERDICTS = {
         'Sponsor terminals light up across the Capitol before the score is even posted.',
         'That number will be on every broadcast in Panem by tonight.',
         'Caesar Flickerman will lead with this. Everyone in the room knows it.',
+        'Two of the Gamemakers lean forward at the same time.',
+        'The room notices {tribute}, and {tribute} notices the room noticing.',
     ],
     legendary: [
         'Nobody has posted a number like that in living memory. The Head Gamemaker stands up.',
         'The scoreboard holds the number an extra beat, as if checking it.',
         'The Capitol crowd outside hears the score and the noise carries into the training centre.',
         'Every alliance in the arena has just been redrawn around one name.',
+        'The Gamemakers stop talking among themselves. That does not happen.',
+        'Nobody in the gallery writes anything down. They just watch {tribute}.',
     ],
 };
 
@@ -286,6 +317,9 @@ export const DEATH_TEXTS = {
         '{tribute} dies in {zone}. ({cause})',
         '{zone} finishes what the arena started: {tribute} is dead. ({cause})',
         'No blade, no tribute, no mercy — {tribute} dies in {zone}. ({cause})',
+        'The cannon over {zone} is for {tribute}. {cause}, and the arena does not pause for it.',
+        '{tribute} does not get up again in {zone}. {cause}.',
+        'They will show {tribute}\'s face in the sky tonight. {cause}, alone in {zone}.',
     ],
 };
 
@@ -295,22 +329,40 @@ export const ALLIANCE_TEXTS = {
         '{t1} and {t2} agree to watch each other\'s backs. Neither says for how long.',
         '{t1} offers {t2} a place at their fire, and {t2} takes it.',
         '{t1} and {t2} formalise an alliance in {zone}.',
+        '{t1} and {t2} do not shake on it. They just start walking in the same direction from {zone}.',
+        '{t1} says the arithmetic is better with two. {t2} does not argue.',
+        '{t1} and {t2} agree on one rule in {zone}: whoever breaks it first says so out loud.',
     ],
     support: [
         '{t1} and {t2} keep watch in shifts in {zone}.',
         '{t1} and {t2} share the last of the water in {zone} without arguing about it.',
         '{t1} patches up {t2} in {zone}, working fast and badly.',
         '{t1} and {t2} sit back to back in {zone} and say nothing for an hour.',
+        '{t1} splints {t2}\'s ankle in {zone} with a strip of pack webbing and a stick.',
+        '{t1} takes the bad watch in {zone} so {t2} can sleep through the cold hours.',
+        '{t1} and {t2} count what is left between them in {zone} and make it stretch another day.',
+        '{t2} talks {t1} down from something in {zone}, quietly, until it passes.',
     ],
     betray: [
         'BETRAYAL: {betrayer} waits until {victim} is asleep, then moves.',
         'BETRAYAL: {betrayer} decides the alliance has served its purpose and turns on {victim}.',
         'BETRAYAL: {betrayer} smiles at {victim}, then draws.',
         'BETRAYAL: {betrayer} breaks the alliance the moment {victim} turns their back.',
+        'BETRAYAL: {betrayer} hands {victim} the last of the water in {zone}, waits for them to drink, and moves.',
+        'BETRAYAL: {betrayer} has been counting down to this since the alliance formed. In {zone}, they finish counting.',
+        'BETRAYAL: {victim} realises what is happening in {zone} about half a second too late.',
+    ],
+    recruit: [
+        '{group} talk it over in {zone} and wave {tribute} in. The circle is bigger tonight.',
+        '{tribute} makes their case to {group} in {zone}, and to their own surprise it works.',
+        '{group} decide {tribute} is worth more inside the group than outside it.',
+        '{tribute} shares what they have with {group} in {zone}, and nobody asks them to leave.',
     ],
     dissolve: [
         'The alliance around {tribute} has come apart. They are alone again.',
         '{tribute} is the last of their alliance left standing.',
+        'Whatever held {tribute}\'s alliance together is gone. So is the alliance.',
+        '{tribute} wakes up in an empty camp. Nobody said goodbye.',
     ],
 };
 
@@ -325,21 +377,29 @@ export const FEAST_TEXTS = {
         "CLAUDIUS TEMPLESMITH: 'Attention, tributes. There will be a feast at the Cornucopia at dawn. Each of you needs something — and we have it.'",
         "CLAUDIUS TEMPLESMITH: 'Congratulations to the remaining tributes. A feast is called at the Cornucopia. Refusing is, of course, your right.'",
         'The Gamemakers sound the feast horn. Whatever a tribute is missing most is now sitting in the open, in the most dangerous place in the arena.',
+        'The Gamemakers announce a feast at the Cornucopia. Everyone knows what a feast is really for.',
+        'A table rises at the Cornucopia with something on it that every tribute needs. That is the entire trap.',
     ],
     decline: [
         '{tribute} weighs the feast against the odds and stays exactly where they are.',
         '{tribute} decides that whatever is on that table is not worth the Cornucopia.',
         '{tribute} hears the feast horn and deliberately walks the other way.',
+        '{tribute} watches the Cornucopia from cover, counts the ways it ends badly, and stays put.',
+        '{tribute} has seen this before. They let the feast happen without them.',
     ],
     attend: [
         '{tribute} breaks cover and runs for the Cornucopia.',
         '{tribute} approaches the feast low and fast, using every scrap of cover.',
         '{tribute} arrives at the feast already knowing it is a trap, and goes anyway.',
+        '{tribute} decides hunger is the more certain death and starts walking to the Cornucopia.',
+        '{tribute} circles the Cornucopia twice before committing to it.',
     ],
     claim: [
         '{tribute} survives the feast and walks away with {items}, restored and dangerous.',
         '{tribute} is the last one standing at the Cornucopia. They take {items} and disappear into the treeline.',
         'The feast belongs to {tribute}. They leave with {items} and a full stomach.',
+        '{tribute} takes {items} off the table and is gone before the others reach the clearing.',
+        'The feast belongs to {tribute}. They leave with {items} and no one willing to follow.',
     ],
 };
 
@@ -350,16 +410,23 @@ export const BLOODBATH_TEXTS = {
         '{tribute} clears the plate and keeps running until the screaming fades.',
         '{tribute} makes it out of the bloodbath with nothing but their life.',
         '{tribute} trips off the pedestal, scrambles up, and gets clear.',
+        '{tribute} is off the plate and into the treeline before the gong finishes sounding.',
+        '{tribute} looks at the Cornucopia once, decides against all of it, and runs.',
+        '{tribute} goes the opposite way to everyone else and does not look back.',
     ],
     fleeWithItem: [
         '{tribute} grabs {item} off the edge of the pile and runs.',
         '{tribute} snatches {item} out of another tribute\'s reach and bolts.',
         '{tribute} takes {item} from the outer ring of the Cornucopia and disappears into cover.',
+        '{tribute} snatches {item} off the outer ring and keeps running.',
+        '{tribute} gets a hand to {item} half a second before someone else does, and takes it into the trees.',
     ],
     survive: [
         '{tribute} holds the Cornucopia when the dust settles, claiming {items}.',
         'The bloodbath ends with {tribute} standing over the supply pile. They take {items}.',
         '{tribute} walks out of the bloodbath with {items} and blood that is not theirs.',
+        '{tribute} is the last one standing in the mouth of the horn. They take {items} and walk out unhurried.',
+        'When the dust settles at the Cornucopia it is {tribute} still upright, holding {items}.',
     ],
 };
 
@@ -368,6 +435,10 @@ export const SPONSOR_TEXTS = [
     "{tribute}'s sponsors come through in {zone}. A parachute delivers {item}.",
     '{tribute} hears the whine of a parachute over {zone}. Inside: {item}.',
     'The Capitol has been watching {tribute}. Their reward, delivered to {zone} by parachute: {item}.',
+    'A parachute drifts into {zone} and {tribute} has it open before it lands. Inside: {item}.',
+    'Somebody in the Capitol has been watching {tribute}. A silver parachute brings {item} down into {zone}.',
+    '{tribute} hears the chime over {zone} and does not believe it until {item} is in their hands.',
+    'The sponsors have seen enough. {item} comes down to {tribute} in {zone}.',
 ];
 
 export const AMBIENT_TEXTS = [
@@ -376,6 +447,11 @@ export const AMBIENT_TEXTS = [
     'The Gamemakers cut the temperature by ten degrees, just to watch what happens.',
     'Capitol betting odds are updated live on every screen in the city.',
     'Somewhere far above, an audience of millions leans in.',
+    'The arena lights come up an hour early. Nobody is told why.',
+    'Somewhere out past the treeline, something very large changes position.',
+    'The Capitol feed cuts to a wide shot and holds it, waiting for something to happen.',
+    'A silence settles over the whole arena at once, the way it does before the Gamemakers do something.',
+    'The odds board in the Capitol flickers and resettles. Someone just moved.',
 ];
 
 /**
@@ -413,19 +489,35 @@ export const DUEL_TEXTS = {
         '{loser} takes the worse of it — {winner} lands clean and keeps coming.',
         '{winner} gets inside {loser}\'s guard and makes them pay for it.',
         '{loser} blocks two and misses the third. {winner} presses.',
+        '{winner} turns {loser} around and puts them on the back foot in one movement.',
+        '{loser} gives ground. {winner} takes every inch of it.',
+        '{winner} lands something that makes {loser} stop making noise.',
+        '{loser} misjudges the reach and wears it across the ribs.',
+    ],
+    ambush: [
+        'AMBUSH: {attacker} comes out of the cover in {zone} before {victim} registers there was cover.',
+        'AMBUSH: {victim} never hears {attacker} at all. The first they know of it is the blade.',
+        'AMBUSH: {attacker} has been lying still in {zone} for an hour waiting for exactly this, and {victim} walks straight into it.',
+        'AMBUSH: {attacker} takes {victim} from behind in {zone}. It is not a fight yet — it is a head start.',
     ],
     stalemate: [
         '{t1} and {t2} circle, breathing hard, and neither finds an opening.',
         'The exchange comes to nothing. {t1} and {t2} reset, watching hands.',
+        'Both of them are too tired to close and too proud to walk. Nothing lands in {zone}.',
+        '{t1} and {t2} feint at each other for a full minute and achieve nothing at all.',
     ],
     retreat: [
         '{fleer} decides this is not the hill and breaks off, leaving {stayer} bleeding in {zone}.',
         '{fleer} disengages and runs. {stayer} does not follow far.',
         '{fleer} throws everything they are carrying at {stayer} and uses the second it buys to get clear.',
+        '{fleer} takes the first gap that opens and is gone into the cover of {zone}.',
+        '{fleer} decides being alive beats being right, and breaks contact with {stayer}.',
     ],
     mutualBreak: [
         '{t1} and {t2} break apart at the same moment, both bleeding, neither willing to finish it.',
         'It ends the way most of them do: {t1} and {t2} back away from each other, wrecked and alive.',
+        '{t1} and {t2} run out of whatever was carrying them and simply stop, ten feet apart, in {zone}.',
+        'Neither of them can finish it. {t1} and {t2} go opposite ways out of {zone}.',
     ],
 };
 
@@ -440,10 +532,14 @@ export const GROUP_COMBAT_TEXTS = {
         '{attackers} converge on {target} together. It is not a fight so much as a decision.',
         '{target} is caught in the open by {attackers} and cannot cover every angle.',
         '{attackers} work {target} from three sides at once.',
+        '{attackers} do not give {target} a direction to face.',
+        '{target} keeps one of them off and the rest of {attackers} make that irrelevant.',
     ],
     scatter: [
         'The brawl in {zone} comes apart. {names} scatter into cover in different directions.',
         'Whatever that was in {zone}, it ends with {names} running the other way.',
+        '{names} lose their nerve at the same moment and the fight in {zone} simply stops.',
+        'Something breaks in the middle of it and {names} are all running.',
     ],
 };
 

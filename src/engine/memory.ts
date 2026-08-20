@@ -140,9 +140,17 @@ export function hasVengeanceAgainst(t: Tribute, targetId: string): boolean {
     return ensureMemory(t).vengeance.includes(targetId);
 }
 
-/** Blanket distrust multiplier: someone burned twice trusts nobody. */
+/**
+ * Blanket distrust multiplier: someone burned twice trusts nobody.
+ *
+ * Capped, because uncapped this compounded into a mathematical wall — the
+ * alliance threshold is multiplied by this factor, so a tribute betrayed three
+ * or four times needed a relationship above the maximum possible value to ever
+ * ally again, which is a bug dressed as characterisation. Deeply burned
+ * tributes should be very hard to recruit, not impossible.
+ */
 export function distrustFactor(t: Tribute): number {
-    return 1 + ensureMemory(t).timesBetrayed * 0.75;
+    return Math.min(RELATIONSHIPS.maxDistrustFactor, 1 + ensureMemory(t).timesBetrayed * 0.75);
 }
 
 /**
