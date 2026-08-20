@@ -4,8 +4,11 @@ import { GameConfig } from '../models/types';
 
 export function ShareButton({ seed, arenaId, gamemakerMode, config }: { seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig }) {
     const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+    // On copy failure the URL is shown in a selectable field so the player can
+    // copy it by hand instead of being told "Copy failed" with nothing to copy.
+    const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
 
-    const handleShare = async () => {
+    const buildUrl = () => {
         const params = new URLSearchParams({
             seed,
             arena: arenaId,
@@ -17,7 +20,11 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config }: { seed: st
             enableFeast: String(config.enableFeast),
             enableSanity: String(config.enableSanity),
         });
-        const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+        return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    };
+
+    const handleShare = async () => {
+        const url = buildUrl();
         try {
             // navigator.clipboard is unavailable over plain HTTP and in some
             // embedded browsers; fall back to a selection copy rather than
@@ -36,16 +43,29 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config }: { seed: st
                 document.body.removeChild(el);
             }
             setStatus('copied');
+            setFallbackUrl(null);
         } catch {
             setStatus('failed');
+            setFallbackUrl(url);
         }
         setTimeout(() => setStatus('idle'), 2000);
     };
 
     return (
-        <button onClick={handleShare} className="btn btn-sm" title="Copy a link that replays this exact run">
-            {status === 'copied' ? <Check className="w-3.5 h-3.5 text-[var(--color-coin-400)]" /> : <Share2 className="w-3.5 h-3.5" />}
-            {status === 'copied' ? 'Copied' : status === 'failed' ? 'Copy failed' : 'Share'}
-        </button>
+        <span className="inline-flex items-center gap-2">
+            <button onClick={handleShare} className="btn btn-sm" title="Copy a link that replays this exact run">
+                {status === 'copied' ? <Check className="w-3.5 h-3.5 text-[var(--color-coin-400)]" /> : <Share2 className="w-3.5 h-3.5" />}
+                {status === 'copied' ? 'Copied' : status === 'failed' ? 'Copy failed' : 'Share'}
+            </button>
+            {fallbackUrl && (
+                <input
+                    className="field text-xs w-52"
+                    readOnly
+                    value={fallbackUrl}
+                    aria-label="Share link — copy manually"
+                    onFocus={e => e.currentTarget.select()}
+                />
+            )}
+        </span>
     );
 }

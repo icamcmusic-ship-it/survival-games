@@ -354,8 +354,14 @@ export function resolveCombat(
                 [t2.id, t1.id],
                 { important: true, category: 'combat' }
             );
+            // Same bookkeeping as the main retreat path, for both sides:
+            // fleeing feeds the rivalry record, and the ambusher holds a
+            // grudge and remembers the zone as contested too.
+            noteFled(t2, t1.id);
             adjustRel(t2, t1.id, -COMBAT.grudgePerFight);
+            adjustRel(t1, t2.id, -COMBAT.grudgePerFight);
             addZoneThreat(ctx.state, t2, t2.zone, MEMORY.fightThreat);
+            addZoneThreat(ctx.state, t1, t1.zone, MEMORY.fightThreat);
             [t1, t2].forEach(dropBrokenWeapons);
             return;
         }
@@ -561,6 +567,11 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         { important: true, category: 'combat' }
     );
 
+    // Side membership as drawn, for the post-fight bookkeeping — breakers are
+    // removed from the live arrays mid-fight but were still on their side.
+    const origPack = new Set(packSide.map(t => t.id));
+    const origOther = new Set(otherSide.map(t => t.id));
+
     let rounds = 0;
     while (rounds < COMBAT.maxGroupRounds) {
         rounds++;
@@ -617,6 +628,27 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             }
         }
 
+        // Focus fire is action economy, not just a power bonus: every
+        // attacker beyond the lead presses the same target this round, each
+        // at a flat penalty. Without this a six-strong pack dealt exactly one
+        // blow per round — the same as a duel, only slightly harder — which
+        // left the Career pack largely decorative.
+        let targetDown = target.status !== 'alive';
+        for (const a of attackers) {
+            if (targetDown || a.id === lead.id || a.status !== 'alive') continue;
+            const supportWeapon = bestWeapon(a);
+            const supportEdge = combatPower(ctx, a, supportWeapon, 0, target)
+                - combatPower(ctx, target, bestWeapon(target), 0, a)
+                - COMBAT.supportAttackPenalty;
+            if (supportEdge <= 0) continue;
+            landHit(ctx, a, target, supportEdge, supportWeapon);
+            if (target.health <= 0) {
+                killTribute(ctx, target, a, false, supportWeapon);
+                targetDown = true;
+            }
+        }
+        if (targetDown) continue;
+
         // Anyone can break off, and being outnumbered is a good reason to.
         // The opponent each combatant weighs is whoever leads the *other* side
         // — not `lead` for everyone, which had the lead computing fear of
@@ -634,7 +666,15 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
                 breaking.map(t => t.id),
                 { important: true, category: 'combat' }
             );
-            break;
+            // One skittish tribute on the periphery used to end the whole
+            // engagement for everyone. Only the breakers leave; the brawl
+            // carries on as long as both sides still have anyone in it.
+            breaking.forEach(t => {
+                const inPack = packSide.indexOf(t);
+                if (inPack >= 0) packSide.splice(inPack, 1);
+                const inOther = otherSide.indexOf(t);
+                if (inOther >= 0) otherSide.splice(inOther, 1);
+            });
         }
     }
 
@@ -645,7 +685,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         // Everyone who swung at you is now someone you would rather not meet.
         fighters.forEach(other => {
             if (other.id === t.id) return;
-            const sameSide = (packSide.includes(t) && packSide.includes(other)) || (otherSide.includes(t) && otherSide.includes(other));
+            const sameSide = (origPack.has(t.id) && origPack.has(other.id)) || (origOther.has(t.id) && origOther.has(other.id));
             if (!sameSide) adjustRel(t, other.id, -COMBAT.grudgePerFight);
             // Standing in the same line as somebody is the clearest way to earn
             // their trust, and it is what romance is actually gated on. If they
@@ -676,10 +716,11 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
         { important: true, category: 'combat' }
     );
 
+    const withdrawn = new Set<string>();
     let rounds = 0;
     while (rounds < COMBAT.maxGroupRounds) {
         rounds++;
-        const standing = fighters.filter(t => t.status === 'alive' && t.zone === zone);
+        const standing = fighters.filter(t => t.status === 'alive' && t.zone === zone && !withdrawn.has(t.id));
         if (standing.length < 2) break;
 
         // Each round, one pairing resolves — weighted toward whoever is most
@@ -720,7 +761,11 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
                 breaking.map(t => t.id),
                 { important: true, category: 'combat' }
             );
-            break;
+            // Only the breakers leave the melee; whoever still wants it keeps
+            // fighting. Ending the whole free-for-all on the first tribute to
+            // flinch let one skittish twelve-year-old call the fight off for
+            // everyone.
+            breaking.forEach(t => withdrawn.add(t.id));
         }
     }
 
@@ -745,6 +790,10 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     // A corpse is not part of an alliance; leaving the id set kept dead
     // tributes in the alliance roster and skewed betrayal targeting.
     const formerAlliance = victim.allianceId;
+    // Captured before the cleanup below: killing your last remaining ally
+    // dissolves the alliance and strips the killer's id, which made the
+    // ally-kill sanity toll unreachable for two-person alliances.
+    const killerWasAllied = !!formerAlliance && killer?.allianceId === formerAlliance;
     delete victim.allianceId;
     if (formerAlliance) {
         const remaining = ctx.state.tributes.filter(t => t.status === 'alive' && t.allianceId === formerAlliance);
@@ -788,7 +837,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
                 );
             }
             // Killing someone you were allied with is its own kind of wound.
-            if (formerAlliance && formerAlliance === killer.allianceId) {
+            if (killerWasAllied) {
                 killer.vitals.sanity -= 12;
             }
             // Vengeance discharged.

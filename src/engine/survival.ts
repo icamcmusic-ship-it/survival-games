@@ -10,6 +10,8 @@ import { clampTribute } from './vitals';
 import { bleedDamage, clearBleeding, tickBleeding } from './wounds';
 import { rememberedThreat } from './memory';
 import { hasCamp } from './fieldcraft';
+import { SURVIVAL_TEXTS } from '../data/flavorText';
+import { fill } from './encounters';
 import { craftOf } from '../data/districts';
 import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
@@ -145,9 +147,7 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
     if (foul && purifier?.purifies) consumeOne(t, i => i === purifier);
     t.vitals.thirst = Math.max(0, t.vitals.thirst - WATER.zoneDrinkRelief);
     ctx.logEvent(
-        foul
-            ? `${t.name} treats water from ${t.zone} before drinking it, and keeps it down.`
-            : `${t.name} drinks their fill from the water in ${t.zone}.`,
+        fill(ctx.pickText(foul ? SURVIVAL_TEXTS.drinkTreated : SURVIVAL_TEXTS.drinkClean), { tribute: t.name, zone: t.zone }),
         [t.id],
         { category: 'survival' }
     );

@@ -80,22 +80,60 @@ function readSavedRun(): SavedRun | null {
     }
 }
 
-function persistRun() {
+/**
+ * The log is ~72% of the save payload and append-only; persisting all of it
+ * meant a synchronous ~290 KB stringify + localStorage write every phase.
+ * A resumed run keeps the recent feed (one screenful) and starts its
+ * chronicle from there — outcomes are unaffected, only scrollback is lost.
+ */
+const PERSISTED_LOG_CAP = 200;
+
+function writeSave() {
     const { gameState, bets, betsResolved, hofSaved, isReplayedRun } = gameStore.getState();
     if (!gameState || gameState.phase === 'ended') {
-        localStorage.removeItem(SAVE_KEY);
+        clearSavedRun();
         return;
     }
     try {
-        const saved: SavedRun = { gameState, bets, betsResolved, hofSaved, isReplayedRun, savedAt: new Date().toISOString() };
+        const trimmed = gameState.log.length > PERSISTED_LOG_CAP
+            ? { ...gameState, log: gameState.log.slice(-PERSISTED_LOG_CAP) }
+            : gameState;
+        const saved: SavedRun = { gameState: trimmed, bets, betsResolved, hofSaved, isReplayedRun, savedAt: new Date().toISOString() };
         localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
     } catch {
         // Storage full or unavailable — the run just won't be resumable.
     }
 }
 
+/**
+ * Autosaving on every phase advance was a synchronous main-thread write every
+ * 60 ms at the fastest speed setting. A trailing debounce loses at most a
+ * couple of seconds of progress on a crash, which a phase-based sim shrugs off.
+ */
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+function persistRun() {
+    if (persistTimer !== null) clearTimeout(persistTimer);
+    persistTimer = setTimeout(() => {
+        persistTimer = null;
+        writeSave();
+    }, 2000);
+}
+
 function clearSavedRun() {
-    localStorage.removeItem(SAVE_KEY);
+    // A debounced write pending from before the clear must not fire after it
+    // and resurrect the save.
+    if (persistTimer !== null) {
+        clearTimeout(persistTimer);
+        persistTimer = null;
+    }
+    // Same failure mode readCoins guards against: localStorage access itself
+    // throws in Safari Private Browsing and sandboxed iframes. This is called
+    // from startGame, so an unguarded throw here blocked starting the game.
+    try {
+        localStorage.removeItem(SAVE_KEY);
+    } catch {
+        // Storage unavailable — nothing to clear anyway.
+    }
 }
 
 function readHallOfFame(): HallOfFameEntry[] {
@@ -158,6 +196,17 @@ export const gameStore = createStore<GameStoreState>({
 
 /** Deep clone so React sees new object identities all the way down the tree. */
 function snapshot(state: GameState): GameState {
+    // structuredClone is 2-3x faster than the JSON round-trip on a ~290 KB
+    // state and this runs on every phase advance.
+    // (try/catch: unlike JSON, structuredClone throws on anything
+    // non-cloneable, and the JSON fallback matches the old behaviour.)
+    if (typeof structuredClone === 'function') {
+        try {
+            return structuredClone(state);
+        } catch {
+            // fall through to the JSON round-trip
+        }
+    }
     return JSON.parse(JSON.stringify(state));
 }
 
@@ -180,6 +229,16 @@ function resolveBets(state: GameState) {
     if (betsResolved) return;
     if (Object.keys(bets).length === 0) {
         gameStore.setState({ betsResolved: true });
+        // A player who went broke sponsoring parachutes rather than wagering
+        // still needs the stipend — the early return used to skip it, which
+        // recreated the exact permanently-broke state it was written to fix.
+        const balance = gameStore.getState().coins;
+        if (balance < BROKE_THRESHOLD) {
+            gameActions.setCoins(balance + STIPEND);
+            gameStore.setState({
+                betWonMessage: `The Capitol extends a ${STIPEND}-coin stipend so you can play the next Games.`,
+            });
+        }
         return;
     }
 

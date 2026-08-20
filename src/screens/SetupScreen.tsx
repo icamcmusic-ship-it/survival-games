@@ -92,7 +92,12 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     };
 
     const trimmedSeed = seed.trim();
-    const start = () => onStart(trimmedSeed || randomSeed(), arenaId, gamemakerMode, config);
+    const start = () => {
+        // Starting a new Games discards the saved run immediately, and the
+        // resume card alone was not a guard on that destructive path.
+        if (savedRun && !window.confirm('A Games is already in progress. Starting a new one abandons that run — continue?')) return;
+        onStart(trimmedSeed || randomSeed(), arenaId, gamemakerMode, config);
+    };
 
     const arenaOptions = [
         ...ARENAS.map(a => ({ id: a.id, name: a.name, description: a.description })),

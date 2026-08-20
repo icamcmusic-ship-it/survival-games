@@ -51,8 +51,13 @@ export function areLovers(a: Tribute, b: Tribute): boolean {
     // pair who merely both happen to be in love with somebody.
     const bondId = `lovers-${a.id}-${b.id}`;
     const reverseId = `lovers-${b.id}-${a.id}`;
-    return a.allianceId === bondId || b.allianceId === bondId
-        || a.allianceId === reverseId || b.allianceId === reverseId;
+    const inBond = (t: Tribute) => t.allianceId === bondId || t.allianceId === reverseId;
+    // Joining a different alliance is walking out on the bond. Without this,
+    // one party holding the id kept the other permanently unable to fight
+    // them — even after being pulled into a Career pack — which is both
+    // one-sided and a stalemate risk in a final two.
+    const defected = (t: Tribute) => !!t.allianceId && !inBond(t);
+    return (inBond(a) || inBond(b)) && !defected(a) && !defected(b);
 }
 
 export function allianceRecords(state: GameState): Record<string, Alliance> {

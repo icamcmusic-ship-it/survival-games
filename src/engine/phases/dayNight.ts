@@ -3,7 +3,7 @@ import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
 import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, OBJECTIVES, SPONSORS } from '../../data/balance';
-import { AMBIENT_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS } from '../../data/flavorText';
+import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
@@ -127,7 +127,15 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         }
 
         move(ctx, t, currentAlive, collapsed, flavor, severed);
-        // Walking into a zone is what springs things left in it.
+    });
+
+    // Walking into a zone is what springs things left in it. This runs as a
+    // second pass because a non-leader alliance member is only relocated when
+    // their leader's iteration comes around — checking traps inside the
+    // movement loop tested whichever zone the array order happened to leave
+    // them in at that moment.
+    currentAlive.forEach(t => {
+        if (t.status !== 'alive') return;
         checkTraps(ctx, t);
     });
 
@@ -452,7 +460,7 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
     if (time === 'day' && nextCount > thisCount) {
         const warned = collapseOrder[nextCount - 1];
         ctx.logEvent(
-            `The Gamemakers announce the border will close around ${warned} by tomorrow. Anyone still there tonight is choosing to be.`,
+            fill(ctx.pickText(BORDER_TEXTS.telegraph), { zone: warned }),
             [],
             { important: true, zone: warned, category: 'arena' }
         );
@@ -486,7 +494,9 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
             kind: 'arena',
         });
         ctx.logEvent(
-            `BORDER COLLAPSE: ${t.name} is caught inside the failing border of ${trappedZone}. They take ${damage} damage clawing their way into ${newSafeZone}.`,
+            fill(ctx.pickText(BORDER_TEXTS.collapse), {
+                tribute: t.name, trapped: trappedZone, damage: String(damage), safe: newSafeZone,
+            }),
             [t.id],
             { important: true, zone: newSafeZone, category: 'hazard' }
         );
@@ -521,9 +531,7 @@ function craft(ctx: SimContext, t: Tribute) {
         const recipe = IMPROVISED_ITEMS.find(i => i.id === (wooded ? 'club' : 'sharpstone'))!;
         giveItem(t, { ...recipe });
         ctx.logEvent(
-            wooded
-                ? `${t.name} breaks a limb off a deadfall in ${t.zone} and works it into a cudgel.`
-                : `${t.name} spends an hour in ${t.zone} knapping a stone into something with an edge.`,
+            fill(ctx.pickText(wooded ? SURVIVAL_TEXTS.craftClub : SURVIVAL_TEXTS.craftStone), { tribute: t.name, zone: t.zone }),
             [t.id],
             { category: 'loot' }
         );

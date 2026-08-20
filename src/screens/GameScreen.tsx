@@ -3,6 +3,7 @@ import { EventCategory, GameState } from '../models/types';
 import { ArenaMap } from '../components/ArenaMap';
 import { TributeModal } from '../components/TributeModal';
 import { EventFeed, FeedLine } from '../components/EventFeed';
+import { ChronicleExport } from '../components/ChronicleExport';
 import { CATEGORY_GROUPS } from '../ui/eventStyles';
 import { tributeOdds } from '../engine/odds';
 import { objectiveLabel } from '../engine/objectives';
@@ -87,6 +88,8 @@ export function GameScreen({
     const [showFilters, setShowFilters] = useState(false);
     // UX: auto-play at 5x/Skip blows straight past major deaths; opt-in brake.
     const [pauseOnDeath, setPauseOnDeath] = useState(storedFilters.current.pauseOnDeath);
+    /** A toast explaining why auto-advance just stopped. */
+    const [pauseNotice, setPauseNotice] = useState(false);
     const bets = useStore(gameStore, s => s.bets);
     // Chronicle search and per-tribute filtering.
     const [searchText, setSearchText] = useState('');
@@ -159,6 +162,9 @@ export function GameScreen({
         lastTickLogCount.current = gameState.log.length;
         if (pauseOnDeath && newLines.some(l => l.category === 'death' || l.category === 'kill')) {
             setSpeed('manual');
+            // Without an explanation the silent drop to manual reads as the
+            // auto-advance breaking, especially to a first-time player.
+            setPauseNotice(true);
             return;
         }
         const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(speed, newCount));
@@ -248,6 +254,7 @@ export function GameScreen({
     // Movement is measured against the previous phase's percentages.
     const prevOddsRef = useRef<Record<string, number>>({});
     const [oddsMovement, setOddsMovement] = useState<Record<string, number>>({});
+    const [oddsExpanded, setOddsExpanded] = useState(false);
 
     const oddsLadder = useMemo(() => {
         const alive = gameState.tributes.filter(t => t.status === 'alive');
@@ -337,12 +344,13 @@ export function GameScreen({
                                     {(['manual', '1x', '5x', 'auto'] as const).map(s => (
                                         <button
                                             key={s}
-                                            onClick={() => setSpeed(s)}
+                                            onClick={() => { setSpeed(s); setPauseNotice(false); }}
                                             aria-pressed={speed === s}
                                             className="seg-item"
                                         >
                                             {s === 'manual' ? <Pause className="w-3 h-3 inline" /> : s === 'auto' ? <Play className="w-3 h-3 inline" /> : null}
-                                            <span className="ml-1">{s === 'manual' ? 'Manual' : s === 'auto' ? 'Skip' : s}</span>
+                                            {/* "1x / 5x / auto" told the player nothing about pace; these read as what they do. */}
+                                            <span className="ml-1">{s === 'manual' ? 'Manual' : s === '1x' ? 'Read' : s === '5x' ? 'Skim' : 'Skip'}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -355,6 +363,12 @@ export function GameScreen({
                                     />
                                     Pause on deaths
                                 </label>
+                                {pauseNotice && (
+                                    <span role="status" aria-live="polite" className="text-[10px] uppercase tracking-wider text-[var(--red)] font-bold">
+                                        A cannon fired — auto-advance paused.
+                                        <button className="underline ml-1.5" onClick={() => setPauseNotice(false)}>Dismiss</button>
+                                    </span>
+                                )}
                             </div>
 
                             <div className="seg">
@@ -424,6 +438,7 @@ export function GameScreen({
                                     )}
                                 </div>
                             </div>
+                            <ChronicleExport gameState={gameState} importantOnly={importantOnly} />
                             <div className="flex flex-wrap gap-2 items-center">
                                 <input
                                     type="search"
@@ -667,7 +682,7 @@ export function GameScreen({
                             </div>
                         )}
                         <div className="space-y-1 max-h-64 overflow-y-auto pr-1.5 custom-scrollbar">
-                            {oddsLadder.slice(0, 10).map(({ tribute, pct, mult }, i) => {
+                            {(oddsExpanded ? oddsLadder : oddsLadder.slice(0, 10)).map(({ tribute, pct, mult }, i) => {
                                 const move = oddsMovement[tribute.id] ?? 0;
                                 const MoveIcon = move > 0 ? TrendingUp : move < 0 ? TrendingDown : Minus;
                                 const moveColor = move > 0 ? 'var(--cat-alliance)' : move < 0 ? 'var(--cat-death)' : 'var(--color-ink-500)';
@@ -691,6 +706,14 @@ export function GameScreen({
                                     </button>
                                 );
                             })}
+                            {oddsLadder.length > 10 && (
+                                <button
+                                    onClick={() => setOddsExpanded(v => !v)}
+                                    className="btn btn-sm btn-ghost w-full justify-center"
+                                >
+                                    {oddsExpanded ? 'Show top 10' : `Show all ${oddsLadder.length}`}
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}

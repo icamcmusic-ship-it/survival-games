@@ -88,7 +88,7 @@ function pickBetrayer(ctx: SimContext, members: Tribute[]): Tribute {
 }
 
 export function processAlliances(ctx: SimContext) {
-    ctx.rng = new RNG(`${ctx.state.seed}-alliances-${ctx.state.day}`);
+    ctx.rng = new RNG(`${ctx.state.seed}-alliances-${ctx.state.day}-${ctx.state.phase}`);
     const alive = getAlive(ctx.state);
     const alliances = new Map<string, Tribute[]>();
 
@@ -239,7 +239,9 @@ export function processAlliances(ctx: SimContext) {
         // Star-crossed lovers are a pair, not the seed of a gang.
         if (id.startsWith('lovers-')) return;
 
-        const zone = members[0].zone;
+        // The group recruits where its leader stands, not wherever array order
+        // happens to put members[0] — the same anti-pattern alliance.ts documents.
+        const zone = pickLeader(members).zone;
         const present = members.filter(m => m.zone === zone);
         if (present.length < 2) return;
         const candidates = getAlive(ctx.state).filter(o => !o.allianceId && o.zone === zone);
@@ -278,7 +280,8 @@ export function processAlliances(ctx: SimContext) {
         });
     });
 
-    // 4. Romance — see `growRomance`.
+    // 4. Contact warmth, then romance — see `applyContactWarmth`/`growRomance`.
+    applyContactWarmth(ctx);
     growRomance(ctx);
     growProtectorBond(ctx);
 
@@ -287,10 +290,10 @@ export function processAlliances(ctx: SimContext) {
     Object.values(ctx.state.alliances ?? {}).forEach(record => {
         const members = membersOf(ctx.state, record.id);
         if (members.length < 2) return;
-        const atCamp = members.filter(m => m.zone === (record.campZone ?? members[0].zone));
+        const atCamp = members.filter(m => m.zone === (record.campZone ?? pickLeader(members).zone));
         if (atCamp.length >= 2) contributeToCache(ctx, record, atCamp);
-        // A group that has moved on adopts wherever it now stands as camp.
-        if (atCamp.length < 2) record.campZone = members[0].zone;
+        // A group that has moved on adopts wherever its leader now stands as camp.
+        if (atCamp.length < 2) record.campZone = pickLeader(members).zone;
     });
 }
 
@@ -316,8 +319,9 @@ function mergeAlliances(ctx: SimContext) {
             const b = groups.get(ids[j])!;
             if (a.length < 2 || b.length < 2) continue;
             if (a.length + b.length > ALLIANCES.maxSize) continue;
-            // Same ground, or there is no conversation to have.
-            if (a[0].zone !== b[0].zone) continue;
+            // Same ground, or there is no conversation to have — judged by the
+            // leaders who would do the negotiating, not by array order.
+            if (pickLeader(a).zone !== pickLeader(b).zone) continue;
 
             // A merger is negotiated by whoever the two groups actually follow,
             // not vetoed by blanket mutual regard: the leaders have to get on,
@@ -360,7 +364,7 @@ function mergeAlliances(ctx: SimContext) {
             groups.delete(keepId === ids[i] ? ids[j] : ids[i]);
 
             ctx.logEvent(
-                `${leadA.name} and ${leadB.name} shake on it in ${a[0].zone}: their groups run as one. ` +
+                `${leadA.name} and ${leadB.name} shake on it in ${leadA.zone}: their groups run as one. ` +
                 `Two small groups are one larger one, which is either much safer or much worse.`,
                 merged.map(m => m.id),
                 { important: true, category: 'alliance' }
@@ -393,6 +397,41 @@ function mergeAlliances(ctx: SimContext) {
  * same-gender pairs are eligible, which both widens the story space and removes
  * the district-partner shortcut that made it so easy to trigger.
  */
+/**
+ * General relationship warmth from spending time together, plus the
+ * sustained-contact streak romance is gated on.
+ *
+ * This used to live inside `growRomance`, which meant a general relationship
+ * inflator was hiding inside the romance function — every pair with recent
+ * contact warmed toward each other every cycle before any romance gate was
+ * even evaluated, and the soak showed relationships pegged at the ±100 clamp.
+ * It is now its own upkeep step so it can be seen and tuned independently.
+ */
+function applyContactWarmth(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    for (let i = 0; i < alive.length; i++) {
+        for (let j = i + 1; j < alive.length; j++) {
+            const t1 = alive[i];
+            const t2 = alive[j];
+            // Contact, not co-location. Standing in the same clearing as
+            // twenty-three other people is not a relationship.
+            const recentContact = cyclesSinceContact(ctx.state, t1, t2.id) <= ROMANCE.contactWindow;
+
+            // The streak lives on t1's memory only; the pair is always
+            // iterated in the same order, so one side is enough.
+            const mem = ensureMemory(t1);
+            mem.contactStreak = mem.contactStreak ?? {};
+            mem.contactStreak[t2.id] = recentContact ? (mem.contactStreak[t2.id] ?? 0) + 1 : 0;
+            if (!recentContact) continue;
+
+            const stoodBy = hasStoodBy(t1, t2.id) || hasStoodBy(t2, t1.id);
+            const growth = stoodBy ? ROMANCE.stoodByGrowth : ROMANCE.contactGrowth;
+            adjustRel(t1, t2.id, growth);
+            adjustRel(t2, t1.id, growth);
+        }
+    }
+}
+
 function growRomance(ctx: SimContext) {
     const alive = getAlive(ctx.state);
     if (ctx.state.day < ROMANCE.minDay) return;
@@ -403,16 +442,15 @@ function growRomance(ctx: SimContext) {
             const t2 = alive[j];
             if (t1.traits.includes('Star-Crossed') || t2.traits.includes('Star-Crossed')) continue;
 
-            // Contact, not co-location. Standing in the same clearing as
-            // twenty-three other people is not a relationship.
             const recentContact = cyclesSinceContact(ctx.state, t1, t2.id) <= ROMANCE.contactWindow;
             if (!recentContact) continue;
 
-            const stoodBy = hasStoodBy(t1, t2.id) || hasStoodBy(t2, t1.id);
-            const growth = stoodBy ? ROMANCE.stoodByGrowth : ROMANCE.contactGrowth;
-            adjustRel(t1, t2.id, growth);
-            adjustRel(t2, t1.id, growth);
+            // Romance needs sustained contact, not a single shared scene —
+            // ROMANCE.sustainedCycles was declared for exactly this and never
+            // read. The streak is maintained by `applyContactWarmth`.
+            if ((ensureMemory(t1).contactStreak?.[t2.id] ?? 0) < ROMANCE.sustainedCycles) continue;
 
+            const stoodBy = hasStoodBy(t1, t2.id) || hasStoodBy(t2, t1.id);
             const mutual = Math.min(getRel(t1, t2.id), getRel(t2, t1.id));
 
             // A PERFORMED bond: Star-Crossed in canon is a strategy before it
@@ -575,8 +613,18 @@ export function interviewChemistry(a: Tribute, b: Tribute): number {
     const y = b.interviewStrategy;
     if (!x || !y) return 0;
 
-    const warm = ['The Star-Crossed Lover', 'The Humble Underdog', 'The Charming Flirt', 'The Quirky Oddball'];
-    const cold = ['The Ruthless Warrior', 'The Arrogant Brute', 'The Mysterious Enigma'];
+    // Every persona personaThreat knows about belongs to one of these camps,
+    // except The Wildcard, which is deliberately neutral — unpredictability
+    // reads as neither warmth nor menace.
+    const warm = [
+        'The Star-Crossed Lover', 'The Humble Underdog', 'The Charming Flirt',
+        'The Quirky Oddball', 'The Grieving Sibling', 'The Reluctant Hero',
+        'The District Loyalist',
+    ];
+    const cold = [
+        'The Ruthless Warrior', 'The Arrogant Brute', 'The Mysterious Enigma',
+        'The Silent Threat', 'The Cold Strategist',
+    ];
 
     let score = 0;
     if (warm.includes(x) && warm.includes(y)) score += 0.12;

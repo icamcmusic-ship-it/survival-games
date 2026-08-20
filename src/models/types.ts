@@ -159,6 +159,13 @@ export interface TributeMemory {
      * on a number ticking up from standing next to someone.
      */
     stoodBy: string[];
+    /**
+     * Tribute id -> consecutive cycles of recent contact, tracked on the
+     * lower-indexed side of each pair. Romance requires a sustained streak
+     * (ROMANCE.sustainedCycles), not one shared scene. Optional so saves from
+     * before it existed still resume.
+     */
+    contactStreak?: Record<string, number>;
 }
 
 /** Where a tribute's most recent wound actually came from. */
@@ -516,6 +523,12 @@ export interface GameState {
     feastsHeld?: number;
     /** Monotonic counter guaranteeing unique event log ids. */
     logCounter?: number;
+    /**
+     * Anti-repeat memory for `pickText`, keyed by each pool's first line.
+     * Serialised with the save so a resumed run picks the same prose the
+     * uninterrupted run would have.
+     */
+    lastPickedText?: Record<string, string>;
     /** Zone name -> fraction of its printed yield currently stripped out (0-1). */
     zoneDepletion?: Record<string, number>;
     /** Zone name -> whatever is currently happening to it beyond depletion. */

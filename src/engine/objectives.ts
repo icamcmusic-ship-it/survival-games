@@ -6,6 +6,8 @@ import { cycleOf, cyclesSinceContact, ensureMemory, rememberedBarren, remembered
 import { getZone, hopsTo, nextHopToward, severedEdgeSet } from './map';
 import { fearOf } from './fear';
 import { getRel } from './relationships';
+import { SURVIVAL_TEXTS } from '../data/flavorText';
+import { fill } from './encounters';
 
 /**
  * Intentions.
@@ -57,7 +59,7 @@ function announce(ctx: SimContext, t: Tribute, objective: Objective) {
             return;
         case 'flee':
             ctx.logEvent(
-                `${t.name} wants to be anywhere but ${objective.from}.`,
+                fill(ctx.pickText(SURVIVAL_TEXTS.flee), { tribute: t.name, zone: objective.from }),
                 [t.id],
                 { category: 'travel' }
             );

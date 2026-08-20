@@ -1096,3 +1096,73 @@ export const DEBT_TEXTS = {
         '"Sleep," {debtor} tells {creditor} in {zone}. "I owe you one." It is not much and it is not nothing.',
     ],
 };
+
+/**
+ * High-frequency survival and arena beats. These each used to be a single
+ * hardcoded sentence at their call site, firing hundreds of times per run —
+ * the heaviest repeat offenders in the whole chronicle. `ctx.pickText` never
+ * got a chance because there was nothing to pick from.
+ */
+export const SURVIVAL_TEXTS = {
+    drinkClean: [
+        '{tribute} drinks their fill from the water in {zone}.',
+        '{tribute} kneels at the water in {zone} and drinks until their stomach aches.',
+        '{tribute} cups water from {zone} with both hands, again and again.',
+        '{tribute} finds the water in {zone} clear enough to trust and drinks deep.',
+        '{tribute} lies flat at the edge of the water in {zone} and drinks like an animal.',
+        '{tribute} refills at the water in {zone}, drinking slowly, watching the treeline the whole time.',
+        '{tribute} takes a long drink in {zone}. For a moment the Games are just water and quiet.',
+        '{tribute} drinks from {zone} in short, careful sips, the way the survival instructor said to.',
+    ],
+    drinkTreated: [
+        '{tribute} treats water from {zone} before drinking it, and keeps it down.',
+        '{tribute} does not like the look of the water in {zone}, purifies it, and drinks anyway.',
+        '{tribute} boils the doubt out of the water in {zone} before letting themselves swallow.',
+        '{tribute} works through the ritual — treat, wait, drink — with the water in {zone}.',
+        'The water in {zone} smells wrong. {tribute} treats it first and gets it down.',
+        '{tribute} makes the foul water of {zone} drinkable, which is not the same as pleasant.',
+    ],
+    craftStone: [
+        '{tribute} spends an hour in {zone} knapping a stone into something with an edge.',
+        '{tribute} sorts through rocks in {zone} until one splits into a usable edge.',
+        '{tribute} grinds a shard of stone against another in {zone} until it will cut.',
+        'Empty-handed in {zone}, {tribute} makes the oldest weapon there is: a sharp rock.',
+        '{tribute} chips at a flint core in {zone}, swearing quietly, until it takes an edge.',
+        '{tribute} comes out of {zone} with bloody knuckles and a stone that will open skin.',
+    ],
+    craftClub: [
+        '{tribute} breaks a limb off a deadfall in {zone} and works it into a cudgel.',
+        '{tribute} hauls a green branch down in {zone} and strips it into a club.',
+        '{tribute} tests fallen wood in {zone} until one piece swings heavy and true.',
+        'In {zone}, {tribute} makes a weapon the way the first tribute ever did: a length of hard wood.',
+        '{tribute} snaps a sapling in {zone} and shaves it down to something that will break bone.',
+        '{tribute} finds a root-club in the deadfall of {zone} and likes the weight of it.',
+    ],
+    flee: [
+        '{tribute} wants to be anywhere but {zone}.',
+        '{tribute} has seen enough of {zone} and moves out fast.',
+        '{tribute} puts {zone} behind them without looking back.',
+        'Whatever {zone} was to {tribute}, it is over. They go.',
+        '{tribute} leaves {zone} at a pace just short of running.',
+        '{tribute} clears out of {zone}, checking over their shoulder the whole way.',
+        'Staying in {zone} stopped being an option for {tribute}. They do not argue with the feeling.',
+    ],
+};
+
+export const BORDER_TEXTS = {
+    telegraph: [
+        'The Gamemakers announce the border will close around {zone} by tomorrow. Anyone still there tonight is choosing to be.',
+        'Klaxons, then the voice from everywhere: {zone} leaves the arena tomorrow. The Capitol likes its warnings public.',
+        'The sky over {zone} flickers with the boundary grid. By tomorrow it will not be part of the Games.',
+        'The announcement is almost polite: {zone} closes tomorrow. The tributes inside it hear it as a countdown.',
+        'The border posts around {zone} begin their slow strobe — the Gamemakers\' way of saying tomorrow this ground is gone.',
+        'A drone circuit traces the edge of {zone} in light. Everyone in the arena understands the message: out, by tomorrow.',
+    ],
+    collapse: [
+        'BORDER COLLAPSE: {tribute} is caught inside the failing border of {trapped}. They take {damage} damage clawing their way into {safe}.',
+        'BORDER COLLAPSE: the wall of light closes over {trapped} with {tribute} still inside. They come out the {safe} side burned for {damage} and lucky.',
+        'BORDER COLLAPSE: {tribute} outruns the failing border of {trapped} by seconds, taking {damage} damage before falling into {safe}.',
+        'BORDER COLLAPSE: {trapped} dies around {tribute} — ground, air, everything. They tear through to {safe} at a cost of {damage}.',
+        'BORDER COLLAPSE: {tribute} gambles on one more minute in {trapped} and loses {damage} of themselves getting out into {safe}.',
+    ],
+};

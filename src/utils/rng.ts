@@ -35,6 +35,10 @@ export class RNG {
         return Math.floor(this.random() * (max - min + 1)) + min;
     }
     pick<T>(arr: T[]): T {
+        // An empty array must not consume a draw: nextInt(0, -1) burned one
+        // and returned undefined, so the stream position depended on data the
+        // call site had already guarded against — a replay-divergence hazard.
+        if (arr.length === 0) return undefined as T;
         return arr[this.nextInt(0, arr.length - 1)];
     }
     chance(probability: number): boolean {

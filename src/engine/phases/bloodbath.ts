@@ -106,6 +106,11 @@ export function processBloodbath(ctx: SimContext) {
     ctx.state.phase = 'bloodbath';
     ctx.rng = new RNG(`${ctx.state.seed}-bloodbath`);
     const alive = getAlive(ctx.state);
+    // Anyone who reaches the gong has survived to day 1. Without this, a
+    // Cornucopia death was recorded as daysSurvived 0 — the day-phase loop
+    // that normally stamps it never runs for them — which fed bad data to
+    // ODDS.survivalDayWeight and the Panem record book.
+    alive.forEach(t => { t.daysSurvived = ctx.state.day; });
 
     ctx.logEvent(
         `The gong sounds. ${alive.length} tributes come off their plates at once.`,
@@ -265,7 +270,7 @@ export function processBloodbath(ctx: SimContext) {
         });
     }
 
-    if (pool.length === 1) {
+    else if (pool.length === 1) {
         const winner = pool[0];
         const item1 = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.hornMouth);
         const item2 = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.hornMouth);

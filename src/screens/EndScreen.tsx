@@ -3,6 +3,7 @@ import { GameState } from '../models/types';
 import { EventFeed } from '../components/EventFeed';
 import { ReplayScrubber } from '../components/ReplayScrubber';
 import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
+import { ChronicleExport } from '../components/ChronicleExport';
 import { Trophy, MapPin, Swords, Skull, RotateCcw } from 'lucide-react';
 import { ACHIEVEMENTS } from '../data/achievements';
 import { RECORD_DEFS } from '../utils/panemStorage';
@@ -131,7 +132,10 @@ export function EndScreen({
                 </div>
             ) : activeTab === 'logs' ? (
                 <div className="panel p-5 space-y-4 animate-fadeIn">
-                    <h3 className="panel-title">Chronicle archive — {gameState.log.length} events</h3>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                        <h3 className="panel-title">Chronicle archive — {gameState.log.length} events</h3>
+                        <ChronicleExport gameState={gameState} />
+                    </div>
                     <div className="max-h-[620px] overflow-y-auto pr-2 custom-scrollbar">
                         <EventFeed logs={gameState.log} />
                     </div>

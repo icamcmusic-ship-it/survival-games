@@ -15,7 +15,6 @@ export const VITALS = {
     fatigueDayDrain: 10,
     /** Negative: a night of rest gives fatigue back. */
     fatigueNightRecovery: -20,
-    baseSanityDrain: 5,
 
     /** Terrain modifiers applied on top of the base drains. */
     waterThirstRelief: 8,
@@ -60,8 +59,6 @@ export const BLEEDING = {
     combatSeverity: 2,
     muttSeverity: 3,
     hazardSeverity: 2,
-    /** Chance a landed mutt strike opens a bleeding wound at all. */
-    muttBleedChance: 0.6,
     /** Per-cycle health cost, indexed by severity (0 is not bleeding). */
     damageBySeverity: [0, 3, 7, 12],
     /** Base odds a wound drops one severity step at the end of a cycle. */
@@ -235,8 +232,6 @@ export const HUNTING = {
     gameFeed: 35,
     /** Multiplier on the chance a hunter actually finds who they are looking for. */
     meetChanceMultiplier: 2.0,
-    /** A hunter who knows where a rival went will follow them out of the zone. */
-    pursuitChance: 0.55,
 
     /** Bloodlust: what a kill does to the next fight. */
     momentumPerKill: 3,
@@ -275,8 +270,6 @@ export const PROFICIENCY = {
     affinityItemBonus: 2.2,
     /** Smaller bonus for a weapon merely of a familiar class. */
     affinityClassBonus: 1.1,
-    /** Awareness added per point of tracking. */
-    trackingAwarenessWeight: 0.4,
 } as const;
 
 /**
@@ -299,8 +292,6 @@ export const FEAR = {
     retreatWeight: 0.35,
     /** Destination score subtracted for a feared rival's last known position. */
     avoidWeight: 2.5,
-    /** Above this, a tribute will not willingly start a fight with them. */
-    avoidEngagementThreshold: 45,
 } as const;
 
 /**
@@ -363,8 +354,6 @@ export const MEDICAL = {
  * day 6, the environment out-killing the tributes — starts here.
  */
 export const BLOODBATH = {
-    /** How far off the horn a plate can be, in abstract units. Low = in the killing zone. */
-    plateSpread: 1,
     /** Baseline willingness to go for the Cornucopia rather than the treeline. */
     fightChanceBase: 0.66,
     /** Added for a Career: the pack came here to do exactly this. */
@@ -535,9 +524,6 @@ export const ENCOUNTERS = {
     groupFightChance: 0.7,
     /** Cap on how many tributes are drawn into a single brawl. */
     maxBrawlSize: 5,
-    muttDamage: 40,
-    muttEvasionAgility: 6,
-    muttEvasionChance: 0.7,
     /** Chance a tribute wanders rather than holding position. */
     wanderChance: 0.5,
     /** Depletion at which a forage attempt reports the ground picked clean. */
@@ -615,6 +601,12 @@ export const COMBAT = {
     focusFireChance: 0.6,
     /** Group encounters run for at most this many rounds. */
     maxGroupRounds: 5,
+    /**
+     * Action economy for numbers: every attacker beyond the lead presses the
+     * same target each round, at this flat power penalty so a six-strong pack
+     * is frightening without instantly deleting anyone it corners.
+     */
+    supportAttackPenalty: 4,
 
     /** Base odds a tribute breaking off eats a parting shot on the way out. */
     partingShotChance: 0.3,
@@ -927,8 +919,6 @@ export const INVENTORY = {
      * and anything looser leaves the Backpack with nothing to do.
      */
     baseCapacity: 4,
-    /** A Backpack is the difference between looting a body and looting it all. */
-    backpackCapacity: 3,
     /** A Backpack also keeps food out of the sun. */
     backpackSpoilageBonus: 2,
 } as const;
@@ -1311,6 +1301,26 @@ export const ODDS = {
     /** The crowd's darling gets a nudge. */
     fanFavouriteBonus: 10,
     minScore: 10,
+    /**
+     * Exponent applied to scores before normalising into win probabilities.
+     * The raw scores only span about a 2x spread while realised win rates
+     * span >20x — at 1 the board barely discriminated (everything priced
+     * 3-6%) and, worse, was monotonically mispriced: high-rated tributes
+     * were systematically underpriced, so betting the favourite every run
+     * multiplied a bankroll 22x over 300 runs. Raising the exponent spreads
+     * the shares toward the measured distribution: at 5, a 400-run probe put
+     * every shown-percentage decile's EV at or below break-even and the
+     * bet-the-favourite strategy lost money.
+     */
+    discrimination: 5,
+    /**
+     * The house's cut, applied to the payout multiplier — not to the shown
+     * percentage. The payout used to be derived straight from the display
+     * number (mult = 100/pct), which set EV by accident. With the margin the
+     * expected value of a fairly-priced wager is deliberately slightly
+     * negative, as any real book prices it.
+     */
+    houseMargin: 0.85,
 } as const;
 
 /** The Gamemakers' direct interventions. */
@@ -1340,9 +1350,6 @@ export const GAMEMAKER = {
      * just turned up, which is what makes it an intervention.
      */
     weatherIntensity: 1.6,
-    muttTargetedDamage: 50,
-    muttSweepBaseDamage: 20,
-    muttSweepVariance: 15,
     muttSweepBaseChance: 0.2,
     muttSweepDangerWeight: 0.3,
 } as const;
@@ -1557,8 +1564,14 @@ export const RESOLVE = {
 export const PARLEY = {
     /** A power ratio below this means a tribute genuinely likes their odds. */
     confidentRatio: 0.8,
-    /** A power ratio above this means they know they are losing. */
-    outmatchedRatio: 1.25,
+    /**
+     * A power ratio above this means they know they are losing. 1.25 left the
+     * pay-your-way-out path effectively dead (≤5 firings across 240 runs, and
+     * whole soaks with zero) — a matchup lopsided enough to read as clearly
+     * outmatched through the perception layer almost never met the other
+     * gates too.
+     */
+    outmatchedRatio: 1.12,
 
     /** Paying to be allowed to leave. */
     tributeChance: 0.6,
