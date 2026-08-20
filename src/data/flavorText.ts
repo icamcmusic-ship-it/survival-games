@@ -353,12 +353,18 @@ export const SANITY_TEXTS = {
     dropItem: [
         "{tribute} becomes disoriented and accidentally drops their {item} in {zone}.",
         "In a fit of paranoia, {tribute} throws away their {item}, thinking it's bugged.",
-        "{tribute} loses track of their {item} while fleeing from imaginary enemies."
+        "{tribute} loses track of their {item} while fleeing from imaginary enemies.",
+        "{tribute} buries their {item} in {zone} for reasons that made perfect sense at the time, and cannot find it afterwards.",
+        "{tribute} becomes convinced their {item} belongs to someone else and leaves it on a rock in {zone}, neatly, like a returned tool.",
+        "{tribute} wakes in {zone} with no memory of the last hour and no {item}."
     ],
     ruinStealth: [
         "{tribute} lets out a blood-curdling scream in {zone}, alerting anyone nearby.",
         "{tribute} starts laughing hysterically, completely ruining their cover in {zone}.",
-        "{tribute} begins singing loudly to drown out the voices, drawing attention to themselves."
+        "{tribute} begins singing loudly to drown out the voices, drawing attention to themselves.",
+        "{tribute} shouts an answer in {zone} to a question nobody asked out loud.",
+        "{tribute} starts an argument with the dark in {zone} and loses it loudly.",
+        "{tribute} calls out a dead tribute's name across {zone}, twice, and the whole sector hears it."
     ]
 };
 
@@ -444,27 +450,40 @@ export const DEATH_TEXTS = {
         'There is no dignifying it: {tribute} is {age}, and {tribute} dies in {zone}. {cause}.',
         '{tribute} does not get up again in {zone}. They are {age}. {cause}.',
         'The Capitol cuts away before the medics reach {zone}. {tribute} was {age}. {cause}.',
+        'In a district square somewhere, a family stops watching. {tribute} was {age}. {cause}, in {zone}.',
+        'The commentators have nothing to say for once. {tribute}, {age} years old, dead in {zone}. {cause}.',
     ],
     environmentalFanFavourite: [
         'Every screen in the Capitol is on {zone} within seconds. {tribute} — everybody\'s {tribute} — is dead. {cause}.',
         'The betting boards freeze mid-payout. {tribute} dies in {zone}, and half of Panem watches it happen live. {cause}.',
         '{tribute} was supposed to be different. {cause}, in {zone}, on schedule with everybody else.',
         'The sponsors who spent all week on {tribute} are still watching when the cannon sounds in {zone}. {cause}.',
+        'The merchandise was printed this morning. {tribute} is dead in {zone} by nightfall. {cause}.',
+        'For a full minute the broadcast does not cut away from {zone}, because nobody in the control room can believe it either. {tribute} is gone. {cause}.',
     ],
     environmentalCareer: [
         '{tribute} — trained for this since childhood — dies in {zone} anyway. {cause}. The academy did not cover this part.',
         'Nobody expected {zone} to be what finally got {tribute}. {cause}.',
         '{tribute} spent years preparing for the wrong Games. {cause}, in {zone}.',
+        'All that training, and the arena kills {tribute} without sending anyone. {cause}, in {zone}.',
+        'The academy will not screen this one for the recruits: {tribute}, dead in {zone}. {cause}.',
+        'The odds board had {tribute} in the final three. The arena had other arithmetic. {cause}, in {zone}.',
     ],
     environmentalWitnessed: [
         '{witness} is standing close enough in {zone} to hear it happen. {tribute} is dead. {cause}.',
         '{witness} watches {tribute} die in {zone} and does not move for a long time afterward. {cause}.',
         '{tribute} dies in front of {witness} in {zone}. {cause}. There is nothing {witness} could have done, and {witness} knows it.',
+        '{witness} reaches {tribute} in {zone} in time for the end and not a second more. {cause}.',
+        '{witness} shouts a warning across {zone} that arrives too late to matter. {tribute} is dead. {cause}.',
+        '{witness} will carry the sound {zone} made out of the arena, if they get out of the arena. {tribute} is dead. {cause}.',
     ],
     environmentalAlone: [
         '{tribute} dies with nobody in {zone} to see it. {cause}. The cameras find the body before anyone else does.',
         'No witness, no ally, no last words — {tribute} dies alone in {zone}. {cause}.',
         '{tribute} goes quietly in {zone}, entirely alone. {cause}. Somewhere, a district is about to find out from the sky.',
+        'The arena keeps {tribute}\'s last hour to itself. Alone, in {zone}. {cause}.',
+        'By the time the hovercraft reaches {zone}, there is no story to reconstruct — just {tribute}, alone. {cause}.',
+        'Nobody in the arena notices the cannon change anything. That is how alone {tribute} was in {zone}. {cause}.',
     ],
 };
 
@@ -502,12 +521,20 @@ export const ALLIANCE_TEXTS = {
         '{tribute} makes their case to {group} in {zone}, and to their own surprise it works.',
         '{group} decide {tribute} is worth more inside the group than outside it.',
         '{tribute} shares what they have with {group} in {zone}, and nobody asks them to leave.',
+        '{group} watch {tribute} handle themselves in {zone} and decide they would rather have that pointed away from them.',
+        '{tribute} walks into the camp of {group} in {zone} with their hands visible, and it goes better than it usually does.',
+        'It is not friendship. {group} need another set of eyes for the watches, and {tribute} has two.',
+        '{group} argue about {tribute} for an hour in {zone}. The side that wins is the side that counted the sentries needed.',
     ],
     dissolve: [
         'The alliance around {tribute} has come apart. They are alone again.',
         '{tribute} is the last of their alliance left standing.',
         'Whatever held {tribute}\'s alliance together is gone. So is the alliance.',
         '{tribute} wakes up in an empty camp. Nobody said goodbye.',
+        'The fire is cold and the packs are gone. {tribute} does the arithmetic alone.',
+        'Nobody says the alliance is over out loud. {tribute} just watches it end.',
+        '{tribute} keeps the watch schedule for a night after everyone is gone, out of habit, and then stops.',
+        'It ends the way these things end: quietly, overnight, and {tribute} is alone in the morning.',
     ],
 };
 
@@ -662,6 +689,12 @@ export const DYNAMIC_AMBIENT_TEXTS = [
     'Somewhere, someone is doing the arithmetic on {alive} tributes and not liking the answer.',
     'Day {day} closes with {alive} left in it. The odds board barely has room to print them all anymore.',
     'The studio cuts to a graphic: {fallen} down, {alive} to go. Nobody needed the graphic.',
+    'In the Capitol, {favourite} merchandise sells out by lunchtime. In the districts, nobody buys anything.',
+    'The betting parlours re-price {favourite} twice before noon on day {day}. Somebody in a velvet booth is very pleased with themselves.',
+    'Day {day}, and the recap editors are already cutting {fallen} obituaries into a montage with string music.',
+    'A Capitol street interview asks a woman in a wig who she wants to win. She says {favourite} and gets the name slightly wrong.',
+    'The mandatory viewing hours stretch on day {day}. In twelve districts, {alive} families are still allowed to hope.',
+    'The panel spends the slow hours of day {day} ranking the remaining {alive} by "star quality". The arena, mercifully, cannot hear them.',
 ];
 
 /**
@@ -673,18 +706,41 @@ export const GRIEF_TEXTS = [
     '{mourner} watches the sky over {zone} and sees {victim}\'s face. They sit down in the dirt and stay there.',
     'The anthem plays. {mourner} counts the faces, finds {victim} among them, and something closes behind their eyes.',
     '{mourner} says {victim}\'s name out loud in {zone}, once, to nobody.',
+    '{mourner} keeps walking through {zone} because stopping means thinking about {victim}, and they cannot afford to think about {victim}.',
+    '{mourner} finds something {victim} would have laughed at in {zone}, and the laugh that does not happen is the worst sound in the arena.',
+    'The sky shows {victim}\'s face and {mourner} looks away from it. Looking away does not work.',
+    '{mourner} makes a small pile of stones in {zone}. It is not much of a grave, but {victim} gets one, which is more than most.',
+    '{mourner} realises in {zone} that they were saving a joke to tell {victim}, and now it belongs to nobody.',
+    '{mourner} sleeps badly in {zone} and wakes up having forgotten. Remembering {victim} again takes about four seconds and all of them are terrible.',
+    '{mourner} hums something from home in {zone}, off-key, until it stops sounding like {victim}\'s song and starts being theirs alone.',
+    '{mourner} carries on down the trail with {victim}\'s name going around in their head like a stone in a boot.',
+    'For one long minute in {zone}, {mourner} lets themselves grieve for {victim} properly. Then they wipe their face and check the treeline.',
+    '{mourner} tells the nearest camera exactly what they think of the Capitol taking {victim}. The broadcast does not air it.',
+    'Something {victim} taught {mourner} saves their life in {zone} not an hour after the cannon. They say thank you to the air.',
 ];
 
 export const VENGEANCE_TEXTS = [
     'VENGEANCE: {mourner} learns it was {killer} who killed {victim}. They stop running and start hunting.',
     'VENGEANCE: {mourner} will not say {victim}\'s name again until {killer} is dead. They mean it.',
     'VENGEANCE: Something in {mourner} snaps clean through. {killer} took {victim}, and nothing else matters now.',
+    'VENGEANCE: {mourner} says it once, quietly, to the sky where {victim}\'s face was: {killer} does not leave this arena.',
+    'VENGEANCE: {mourner} stops being afraid the moment they learn {killer}\'s name. Fear needed room, and grief for {victim} has taken all of it.',
+    'VENGEANCE: {mourner} starts carrying their weapon differently. Anyone watching closely could tell you {killer} is the reason.',
+    'VENGEANCE: The plan {mourner} had — survive, hide, outlast — ends the day {killer} killed {victim}. The new plan is shorter.',
+    'VENGEANCE: {mourner} does not cry over {victim}. They sharpen instead, and think about {killer} with every stroke.',
+    'VENGEANCE: The Capitol cameras find {mourner}\'s face when they learn what {killer} did to {victim}, and the betting on {killer} shifts within the hour.',
+    'VENGEANCE: {mourner} scratches {killer}\'s district number into a tree. It is a promise, and half the arena has seen it by nightfall.',
 ];
 
 export const RELIEF_TEXTS = [
     '{tribute} hears the cannon and lets out a breath they have been holding since the reaping. {victim} was never going to let them live.',
     '{tribute} sees {victim}\'s face in the sky over {zone} and feels nothing at all. That frightens them more than grief would.',
     '{tribute} allows themselves one hard, ugly smile in {zone}. {victim} is off the board.',
+    '{tribute} does the maths again in {zone} with {victim} taken out of it, and for the first time the answer is not hopeless.',
+    '{tribute} sleeps a full night in {zone} for the first time since the gong. {victim} was the reason they had not.',
+    '{tribute} hears the cannon, hopes it was {victim}, and the anthem confirms it. They are not proud of the hope. They keep it anyway.',
+    'The sky says {victim} is gone and {tribute} stops checking over their shoulder every ten steps. The habit takes another day to die.',
+    '{tribute} catches themselves whistling in {zone} and stops, appalled. {victim}\'s face was in the sky not an hour ago.',
 ];
 
 /** Multi-round duels: the exchanges between the opening and the ending. */
@@ -763,6 +819,17 @@ export const GROUP_COMBAT_TEXTS = {
         'GROUP FIGHT: {names} all reach {zone} at once, and the arithmetic goes bad immediately.',
         'GROUP FIGHT: {zone} turns into a scrum — {names}, all of them at once.',
         'GROUP FIGHT: {names} collide in {zone}. Nobody has time to pick a side carefully.',
+        'GROUP FIGHT: It starts with a shout in {zone} and then {names} are all in it.',
+        'GROUP FIGHT: {names} meet in {zone} and every one of them decides the others started it.',
+        'GROUP FIGHT: There is one way out of {zone} and {names} all want it. It goes the way that goes.',
+        'GROUP FIGHT: {names} find each other in {zone} at the worst possible moment for everyone involved.',
+        'GROUP FIGHT: Somebody moves first in {zone} — afterwards, nobody agrees who — and then {names} are all moving.',
+        'GROUP FIGHT: The cover in {zone} was only ever hiding {names} from each other. It stops working all at once.',
+        'GROUP FIGHT: {names} converge on the same cache in {zone}, and the cache stops mattering almost immediately.',
+        'GROUP FIGHT: A twig, a breath, a glint of metal — something gives someone away in {zone}, and {names} all pay for it.',
+        'GROUP FIGHT: {zone} is not big enough for {names}, and all of them reach that conclusion at the same time.',
+        'GROUP FIGHT: The Gamemakers could not have staged it better: {names}, one clearing, no way past each other.',
+        'GROUP FIGHT: {names} all break cover in {zone} at once, and there is a terrible second of everyone realising it.',
     ],
     gangUp: [
         '{attackers} converge on {target} together. It is not a fight so much as a decision.',
@@ -780,6 +847,10 @@ export const GROUP_COMBAT_TEXTS = {
     standDown: [
         '{names} all reach {zone} at once, recognise each other, and stand down.',
         '{names} converge in {zone} expecting a fight and find only allies.',
+        'Weapons come up in {zone} and go down again — {names} know each other.',
+        '{names} nearly kill each other in {zone} before anyone says a name. There is shaky laughter afterwards, of a kind.',
+        'The moment in {zone} stretches, and then {names} lower their weapons more or less together.',
+        'It almost happens in {zone}. Then somebody says the right name, and {names} let each other live.',
     ],
 };
 
@@ -788,6 +859,11 @@ export const INTIMIDATION_TEXTS = [
     '{tribute} posts a {score} and the training floor goes quiet. Every tribute in the room recalculates.',
     'Word of {tribute}\'s {score} is around the Training Centre before dinner. Nobody sleeps well.',
     '{tribute}\'s {score} is the only number anyone repeats that night. It gets larger each time it is told.',
+    'The {score} goes up under {tribute}\'s name and two alliances quietly re-open negotiations.',
+    'A {score}. Half the cast decides to avoid {tribute} entirely; the other half starts planning for them.',
+    '{tribute}\'s {score} makes the evening broadcast twice. In the Training Centre, nobody mentions it to their face.',
+    'After {tribute}\'s {score} posts, the dinner tables go quieter. The arithmetic of the arena has a new largest number.',
+    'Somebody asks {tribute} at breakfast how they got the {score}. {tribute} keeps eating, which is answer enough.',
 ];
 
 /**
