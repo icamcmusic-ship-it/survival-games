@@ -13,6 +13,9 @@ import { traitInfo } from '../data/traitInfo';
 import { MapPin, Users, X, Heart } from 'lucide-react';
 import { craftOf, legacyOf } from '../data/districts';
 import { conditionOf, displayName } from '../engine/items';
+import { sponsorCost, sponsorableItems } from '../engine/playerSponsor';
+import { gameActions, gameStore } from '../store/gameStore';
+import { useStore } from '../store/createStore';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
@@ -50,6 +53,70 @@ function VitalBar({ label, value, invert = false, explain }: { label: string; va
                 <span style={{ width: `${Math.max(0, Math.min(100, value))}%`, background: color }} />
             </div>
         </div>
+    );
+}
+
+
+/**
+ * SIDE-03: the player, as a sponsor.
+ *
+ * The coin wallet had exactly one use — a wager placed before the gong and then
+ * watched. This is the other side of it: the audience doing the one thing the
+ * audience in the source material can actually do. Prices escalate with the day
+ * and with every parachute the tribute has already had, so the third one is a
+ * decision about the whole wallet rather than a shopping trip.
+ */
+function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: GameState }) {
+    const coins = useStore(gameStore, s => s.coins);
+    const [message, setMessage] = React.useState<string | null>(null);
+
+    const inArena = gameState.phase === 'day' || gameState.phase === 'night' || gameState.phase === 'feast';
+    if (tribute.status !== 'alive') return null;
+
+    const offers = sponsorableItems()
+        .map(item => ({ item, cost: sponsorCost(gameState, tribute, item) }))
+        .sort((a, b) => a.cost - b.cost);
+
+    return (
+        <section>
+            <div className="flex items-baseline justify-between gap-2 mb-2">
+                <h4 className="panel-title">Send a parachute</h4>
+                <span className="text-[11px] font-mono text-[var(--color-ink-500)]">{coins} coins</span>
+            </div>
+            {!inArena ? (
+                <p className="text-sm text-[var(--color-ink-500)]">
+                    Nothing can be sent until the tributes are in the arena.
+                </p>
+            ) : (
+                <>
+                    <p className="text-[11px] text-[var(--color-ink-500)] mb-2">
+                        Prices rise with every day of the Games and with every parachute {tribute.name} has
+                        already received — from you, from the crowd, or from their mentor
+                        {tribute.mentorLegacy ? `, ${tribute.mentorLegacy}` : ''}.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto custom-scrollbar">
+                        {offers.map(({ item, cost }) => {
+                            const affordable = coins >= cost;
+                            return (
+                                <button
+                                    key={item.id}
+                                    disabled={!affordable}
+                                    onClick={() => setMessage(gameActions.sponsorTribute(tribute.id, item.id).message)}
+                                    className="panel-flush p-2 flex justify-between items-center gap-2 text-left disabled:opacity-40"
+                                    title={affordable ? `Send ${item.name} to ${tribute.name}` : `You cannot afford this`}
+                                >
+                                    <span className="text-sm text-[var(--ink)] truncate">{item.name}</span>
+                                    <span className="text-[11px] font-mono flex-none" style={{ color: affordable ? 'var(--gold)' : 'var(--color-ink-500)' }}>
+                                        {cost}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </>
+            )}
+            {message && <p className="text-sm mt-2 text-[var(--gold)]">{message}</p>}
+        </section>
     );
 }
 
@@ -452,6 +519,8 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                             ))}
                         </div>
                     </section>
+
+                    <SponsorPanel tribute={tribute} gameState={gameState} />
 
                     <section>
                         <h4 className="panel-title mb-2">Social graph</h4>

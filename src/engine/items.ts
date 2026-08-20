@@ -119,8 +119,9 @@ export function carryCapacity(t: Tribute): number {
 
 /** Ranks what a tribute would rather drop first when their hands are full. */
 function keepValue(t: Tribute, item: Item): number {
-    // The pack itself is never the thing you throw away to make room.
-    if (item.id === 'backpack') return Infinity;
+    // The thing you are carrying it all in is never the thing you throw away
+    // to make room — and dropping it would shrink the room you just made.
+    if (item.capacity !== undefined) return Infinity;
     let value = item.value;
     // A weapon you are actually carrying is worth more than its price tag.
     if (item.type === 'weapon') value += (item.damage ?? 0) * 6;
@@ -146,9 +147,10 @@ export function giveItem(t: Tribute, ...items: Item[]): Item[] {
         if (existing) existing.stack = Math.min(INVENTORY.maxStack, (existing.stack ?? 1) + (item.stack ?? 1));
         else t.inventory.push(item);
     });
-    const capacity = carryCapacity(t);
     const dropped: Item[] = [];
-    while (t.inventory.length > capacity) {
+    // Recomputed every pass: containers carry capacity of their own now, so
+    // dropping the satchel to make room can shrink the room it made.
+    while (t.inventory.length > carryCapacity(t)) {
         let worstIdx = 0;
         let worstValue = Infinity;
         t.inventory.forEach((item, idx) => {
@@ -170,9 +172,10 @@ export function giveItem(t: Tribute, ...items: Item[]): Item[] {
  * shrink and a tribute could walk around permanently over capacity.
  */
 export function enforceCapacity(t: Tribute): Item[] {
-    const capacity = carryCapacity(t);
     const dropped: Item[] = [];
-    while (t.inventory.length > capacity) {
+    // Recomputed every pass: containers carry capacity of their own now, so
+    // dropping the satchel to make room can shrink the room it made.
+    while (t.inventory.length > carryCapacity(t)) {
         let worstIdx = 0;
         let worstValue = Infinity;
         t.inventory.forEach((item, idx) => {

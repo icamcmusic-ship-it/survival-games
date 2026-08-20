@@ -4,6 +4,9 @@ import { generateTributes } from '../engine/generator';
 import { generateArena } from '../engine/arenaGenerator';
 import { Simulator } from '../engine/simulator';
 import { createStore } from './createStore';
+import {
+    SponsorResult, sendPlayerParachute, sponsorCost, sponsorableItems,
+} from '../engine/playerSponsor';
 
 export type ViewName = 'setup' | 'roster' | 'game' | 'hallOfFame';
 
@@ -349,6 +352,36 @@ export const gameActions = {
             commitVictory(state);
         }
         gameActions.syncFromSimulator();
+    },
+
+    /**
+     * SIDE-03: the player spends Capitol Coins on a parachute.
+     *
+     * The wallet used to be a one-way bet placed before the gong. This is the
+     * other half of the economy — the audience doing the one thing the audience
+     * can actually do — and it is the only way the player touches the arena
+     * without Gamemaker mode.
+     */
+    sponsorTribute(tributeId: string, itemId: string): SponsorResult {
+        const { simulator, coins } = gameStore.getState();
+        if (!simulator) return { ok: false, cost: 0, message: 'No Games are running.' };
+
+        const state = simulator.getState();
+        const tribute = state.tributes.find(t => t.id === tributeId);
+        const item = sponsorableItems().find(i => i.id === itemId);
+        if (!tribute || !item) return { ok: false, cost: 0, message: 'That parachute cannot be sent.' };
+
+        const cost = sponsorCost(state, tribute, item);
+        if (coins < cost) {
+            return { ok: false, cost, message: `That parachute costs ${cost} coins. You have ${coins}.` };
+        }
+
+        const result = sendPlayerParachute(state, tributeId, itemId);
+        if (!result.ok) return result;
+
+        gameActions.setCoins(coins - result.cost);
+        gameActions.syncFromSimulator();
+        return result;
     },
 
     triggerGamemakerEvent(type: 'mutt' | 'weather' | 'feast', targetId?: string) {

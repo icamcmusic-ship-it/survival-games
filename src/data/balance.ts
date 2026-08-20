@@ -1139,6 +1139,28 @@ export const RIVALRY = {
 } as const;
 
 /** Sponsor economy. */
+/**
+ * SIDE-03: what the Capitol charges a paying sponsor. See `playerSponsor.ts`.
+ *
+ * Priced to be a real decision rather than a shop: a parachute costs a
+ * meaningful slice of a wager's winnings, and every subsequent one to the same
+ * tribute costs half again as much.
+ */
+export const SPONSOR_MARKET = {
+    /** Coins per point of an item's arena value. */
+    valueMultiplier: 4,
+    /** The Capitol charges more the longer the Games run. */
+    perDay: 0.18,
+    /** Multiplier per parachute this tribute has already received, from any source. */
+    repeatMultiplier: 1.6,
+    /** How sharply crowd favour moves the price. Higher = flatter. */
+    trustDivisor: 90,
+    minCost: 25,
+    /** Knowing somebody out there is paying attention is worth something. */
+    trustGain: 6,
+    sanityGain: 8,
+} as const;
+
 export const SPONSORS = {
     /** Combined excitement + trust needed before a parachute is even considered. */
     giftThreshold: 100,
