@@ -5,7 +5,7 @@ import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
 import { applyExposure } from './exposure';
 import { getZone } from './map';
-import { spoilageBonus } from './items';
+import { consumeOne, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { bleedDamage, clearBleeding, tickBleeding } from './wounds';
 import { rememberedThreat } from './memory';
@@ -119,7 +119,10 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
     if (!zone || (zone.terrain !== 'water' && zone.terrain !== 'wetland')) return;
 
     const foul = climateOf(ctx.state.arena.id)?.foulWater === true;
-    const purifier = t.inventory.find(i => (WATER.purifiers as readonly string[]).includes(i.id));
+    // Purification is a property of the item now, not a hardcoded id list, so
+    // tablets and a fire-and-a-pot both answer the same question.
+    const purifier = t.inventory.find(i =>
+        i.purifies === true || (WATER.purifiers as readonly string[]).includes(i.id));
 
     if (foul && !purifier) {
         // Desperate enough to drink it anyway — the thirst is the more urgent
@@ -138,10 +141,12 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
         return;
     }
 
+    // Tablets are consumed by using them; boiling is not.
+    if (foul && purifier?.purifies) consumeOne(t, i => i === purifier);
     t.vitals.thirst = Math.max(0, t.vitals.thirst - WATER.zoneDrinkRelief);
     ctx.logEvent(
         foul
-            ? `${t.name} boils water from ${t.zone} before drinking it, and keeps it down.`
+            ? `${t.name} treats water from ${t.zone} before drinking it, and keeps it down.`
             : `${t.name} drinks their fill from the water in ${t.zone}.`,
         [t.id],
         { category: 'survival' }
@@ -151,17 +156,14 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
 /** Eating, drinking, and working through whatever medical supplies they have. */
 function consumeSupplies(ctx: SimContext, t: Tribute) {
     if (t.vitals.hunger > VITALS.eatThreshold) {
-        const foodIdx = t.inventory.findIndex(i => i.type === 'food');
-        if (foodIdx >= 0) {
-            const food = t.inventory.splice(foodIdx, 1)[0];
+        const food = consumeOne(t, i => i.type === 'food');
+        if (food) {
             t.vitals.hunger = Math.max(0, t.vitals.hunger - VITALS.foodRelief);
             ctx.logEvent(`${t.name} eats their ${food.name}.`, [t.id], { category: 'survival' });
         }
     }
     if (t.vitals.thirst > VITALS.drinkThreshold) {
-        const waterIdx = t.inventory.findIndex(i => i.type === 'water');
-        if (waterIdx >= 0) {
-            t.inventory.splice(waterIdx, 1);
+        if (consumeOne(t, i => i.type === 'water')) {
             t.vitals.thirst = Math.max(0, t.vitals.thirst - VITALS.waterRelief);
             ctx.logEvent(`${t.name} drains their water ration.`, [t.id], { category: 'survival' });
         } else {
@@ -171,9 +173,7 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
 
     // Antidote cures poison before it becomes lethal.
     if (t.injuries.poisoned) {
-        const antidoteIdx = t.inventory.findIndex(i => i.id === 'antidote');
-        if (antidoteIdx >= 0) {
-            t.inventory.splice(antidoteIdx, 1);
+        if (consumeOne(t, i => i.id === 'antidote')) {
             t.injuries.poisoned = false;
             ctx.logEvent(`${t.name} downs an Antidote Vial just in time, purging the venom from their blood.`, [t.id], { important: true, category: 'survival' });
             earnTrait(ctx, t, 'Venom-Wise');
@@ -223,6 +223,9 @@ function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night'
     if (zone && (zone.terrain === 'forest' || zone.terrain === 'ruins')) amount += RECOVERY.shelteredBonus;
     // A shelter they actually built beats whatever cover the terrain offered.
     if (hasCamp(ctx, t, 'shelter')) amount += CRAFTING.shelterRecoveryBonus;
+    // The most famous parachute in the source material, doing the thing it is
+    // famous for: keeping somebody alive through a night they should not survive.
+    if (hasTool(t, 'warmth')) amount += RECOVERY.sleepingBagBonus;
     // Someone keeping watch is the difference between sleeping and lying awake.
     if (alliesPresent > 0) amount += RECOVERY.allyWatchBonus;
     // Exhaustion eats the whole benefit as it approaches the ceiling.

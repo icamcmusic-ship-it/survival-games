@@ -18,6 +18,12 @@ export interface ArenaEventDef {
     cause: string;
     /** Attribute rolled against to avoid the event entirely. */
     dodgeStat?: keyof Attributes;
+    /**
+     * A second way out, rolled at a penalty when the primary fails. Left unset
+     * on almost every event: heavy physical hazards fall back to strength
+     * automatically. See `rollEscape` in `engine/encounters.ts`.
+     */
+    dodgeAlt?: keyof Attributes;
     /** Flat difficulty of the dodge (higher = harder). Default 6. */
     dodgeDifficulty?: number;
     damage?: number;

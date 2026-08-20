@@ -10,6 +10,8 @@ import { clampTribute } from '../vitals';
 import { giveItem, itemPhrase } from '../items';
 import { getRel } from '../relationships';
 import { hasVengeanceAgainst, noteSighting } from '../memory';
+import { mintItem } from '../items';
+import { QUALITY_BIAS } from '../../data/balance';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -106,7 +108,7 @@ export function processFeast(ctx: SimContext) {
         );
         shuffled.splice(1).forEach(t => {
             const item = ctx.rng.pick(ITEMS);
-            giveItem(t, { ...item });
+            giveItem(t, mintItem(ctx.rng, item, QUALITY_BIAS.feast));
             t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
             t.vitals.thirst = Math.max(0, t.vitals.thirst - 40);
             clampTribute(t);

@@ -12,6 +12,7 @@ import { objectiveLabel } from '../engine/objectives';
 import { traitInfo } from '../data/traitInfo';
 import { MapPin, Users, X, Heart } from 'lucide-react';
 import { craftOf, legacyOf } from '../data/districts';
+import { conditionOf, displayName } from '../engine/items';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
@@ -428,10 +429,22 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                 <span className="text-sm text-[var(--color-ink-400)]">Carrying nothing</span>
                             ) : tribute.inventory.map((item, i) => (
                                 <div key={`${item.id}-${i}`} className="panel-flush p-2 flex justify-between items-center gap-2">
-                                    <span className="text-sm text-[var(--ink)] truncate">{item.name}</span>
+                                    <span className="text-sm text-[var(--ink)] truncate">
+                                        {displayName(item)}
+                                        {item.stack !== undefined && item.stack > 1 && (
+                                            <span className="text-[var(--color-ink-500)]"> ×{item.stack}</span>
+                                        )}
+                                        {item.poison && <span className="ml-1 text-[var(--cat-death)]" title="Coated with poison.">☠</span>}
+                                    </span>
                                     <span className="flex items-center gap-2 flex-none">
                                         {item.durability !== undefined && (
-                                            <span className="text-[10px] font-mono text-[var(--color-ink-500)]">{item.durability} dur</span>
+                                            <span
+                                                className="text-[10px] font-mono"
+                                                style={{ color: conditionOf(item) < 0.35 ? 'var(--red)' : 'var(--color-ink-500)' }}
+                                                title="Condition. A worn weapon hits softer, not just closer to breaking."
+                                            >
+                                                {Math.round(conditionOf(item) * 100)}%
+                                            </span>
                                         )}
                                         <span className="chip">{item.type}</span>
                                     </span>

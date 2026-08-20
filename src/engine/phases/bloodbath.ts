@@ -3,11 +3,11 @@ import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
-import { ALLIANCES, BLOODBATH } from '../../data/balance';
+import { ALLIANCES, BLOODBATH, QUALITY_BIAS } from '../../data/balance';
 import { registerAlliance } from '../alliance';
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { BLOODBATH_TEXTS } from '../../data/flavorText';
-import { giveItem, itemPhrase } from '../items';
+import { giveItem, itemPhrase, mintItem } from '../items';
 import { personaThreat } from './alliances';
 import { getRel, setRel } from '../relationships';
 import { noteSighting } from '../memory';
@@ -148,8 +148,9 @@ export function processBloodbath(ctx: SimContext) {
         if (!ctx.rng.chance(first ? BLOODBATH.armedAtHornChance : BLOODBATH.armedAtHornChance * 0.5)) return;
         // The good steel is stacked at the mouth of the horn; the outer ring is
         // backpacks and whatever was scattered on the grass.
-        const item = first ? ctx.rng.pick(HORN_WEAPONS) : ctx.rng.pick(ITEMS);
-        giveItem(t, { ...item });
+        const base = first ? ctx.rng.pick(HORN_WEAPONS) : ctx.rng.pick(ITEMS);
+        const item = mintItem(ctx.rng, base, first ? QUALITY_BIAS.hornMouth : QUALITY_BIAS.hornScatter);
+        giveItem(t, item);
         ctx.logEvent(
             `${t.name} reaches the ${first ? 'mouth of the horn' : 'scatter around the horn'} and comes up holding ${itemPhrase(item)}.`,
             [t.id],
@@ -184,8 +185,8 @@ export function processBloodbath(ctx: SimContext) {
         if (ctx.rng.chance(0.8)) {
             ctx.logEvent(fill(ctx.pickText(BLOODBATH_TEXTS.flee), { tribute: t.name }), [t.id], { category: 'survival' });
         } else {
-            const item = ctx.rng.pick(ITEMS);
-            giveItem(t, { ...item });
+            const item = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.hornScatter);
+            giveItem(t, item);
             ctx.logEvent(
                 fill(ctx.pickText(BLOODBATH_TEXTS.fleeWithItem), { tribute: t.name, item: itemPhrase(item) }),
                 [t.id],
@@ -258,17 +259,17 @@ export function processBloodbath(ctx: SimContext) {
             { category: 'combat' }
         );
         pool.splice(1).forEach(t => {
-            const item = ctx.rng.pick(ITEMS);
-            giveItem(t, { ...item });
+            const item = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.hornScatter);
+            giveItem(t, item);
             ctx.logEvent(`${t.name} grabs ${itemPhrase(item)} on the way out.`, [t.id], { category: 'loot' });
         });
     }
 
     if (pool.length === 1) {
         const winner = pool[0];
-        const item1 = ctx.rng.pick(ITEMS);
-        const item2 = ctx.rng.pick(ITEMS);
-        giveItem(winner, { ...item1 }, { ...item2 });
+        const item1 = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.hornMouth);
+        const item2 = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.hornMouth);
+        giveItem(winner, item1, item2);
         ctx.logEvent(
             fill(ctx.pickText(BLOODBATH_TEXTS.survive), { tribute: winner.name, items: `${item1.name} and ${item2.name}` }),
             [winner.id],

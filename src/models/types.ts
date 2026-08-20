@@ -63,16 +63,48 @@ export type Objective =
 
 export type WeaponClass = 'melee' | 'ranged' | 'thrown';
 
+/**
+ * How well-made a particular instance of an item is.
+ *
+ * The same base item comes off the Cornucopia in three grades: the sword the
+ * Gamemakers laid at the mouth of the horn is not the sword somebody scavenged
+ * off a body on day five. Quality scales damage, durability and what a sponsor
+ * thinks it is worth, and it shows in the name.
+ */
+export type ItemQuality = 'crude' | 'standard' | 'fine';
+
 export interface Item {
     id: string;
     name: string;
-    type: 'weapon' | 'food' | 'water' | 'medical' | 'utility';
+    type: 'weapon' | 'food' | 'water' | 'medical' | 'utility' | 'armour' | 'tool';
+    /** Current condition. Weapons degrade with use; at 0 they are dropped. */
     durability?: number;
+    /** What `durability` started at, so condition can be read as a fraction. */
+    maxDurability?: number;
     spoilage?: number;
     value: number;
     weaponClass?: WeaponClass;
     damage?: number;
     poison?: boolean;
+    quality?: ItemQuality;
+    /**
+     * Stackable consumables. `undefined` means a single indivisible thing; a
+     * number is how many are left in the stack. Food, water and medical
+     * supplies stack; a sword does not.
+     */
+    stack?: number;
+    /** Fraction of incoming damage this absorbs while carried. Armour and shields. */
+    armour?: number;
+    /** Extra inventory slots. Packs and containers. */
+    capacity?: number;
+    /** Makes foul water safe to drink without a fire. */
+    purifies?: boolean;
+    /** Turns the night from a handicap into ordinary ground. */
+    light?: boolean;
+    /** Sleeping warm: the famous parachute. Improves overnight recovery. */
+    warmth?: boolean;
+    /** Lets a tribute fish still water rather than forage the bank. */
+    fishing?: boolean;
 }
 
 export type Build = 'Frail' | 'Slight' | 'Average' | 'Athletic' | 'Stocky' | 'Muscular';

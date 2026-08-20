@@ -1,5 +1,6 @@
-import { Item, Tribute } from '../models/types';
-import { INVENTORY, PHYSIQUE } from '../data/balance';
+import { Item, ItemQuality, Tribute } from '../models/types';
+import { INVENTORY, PHYSIQUE, QUALITY } from '../data/balance';
+import { RNG } from '../utils/rng';
 import { massOf } from './physique';
 import { traitMod } from '../data/traits';
 
@@ -12,8 +13,85 @@ const PLURAL_ITEM_IDS = new Set(['knife', 'berries', 'matches', 'bow']);
  * "a Foraged Berries".
  */
 export function itemPhrase(item: Item): string {
-    if (PLURAL_ITEM_IDS.has(item.id)) return `some ${item.name}`;
-    return `${/^[aeiou]/i.test(item.name) ? 'an' : 'a'} ${item.name}`;
+    const name = displayName(item);
+    if (PLURAL_ITEM_IDS.has(item.id)) return `some ${name}`;
+    return `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name}`;
+}
+
+/** The name as it should read in the feed, including its grade. */
+export function displayName(item: Item): string {
+    const prefix = item.quality && item.quality !== 'standard' ? QUALITY.prefix[item.quality] : '';
+    return prefix ? `${prefix} ${item.name}` : item.name;
+}
+
+/**
+ * Mints a fresh instance of a base item.
+ *
+ * Every item that entered the world used to be a bare `{ ...ITEMS[n] }`, which
+ * meant every Sword in every run was exactly the same Sword. An instance now
+ * gets a grade rolled for it — scaling damage, durability and what the Capitol
+ * thinks it is worth — and carries the durability it started with, so
+ * condition can be read as a fraction rather than only noticed at zero.
+ *
+ * `bias` shifts the roll: the mouth of the Cornucopia and a sponsor parachute
+ * deal in good equipment, scavenged and improvised gear does not.
+ */
+export function mintItem(rng: RNG, base: Item, bias: number = 0): Item {
+    const item: Item = { ...base };
+    if (item.quality === undefined && (item.type === 'weapon' || item.type === 'armour')) {
+        const roll = rng.nextFloat() + bias;
+        const quality: ItemQuality = roll > QUALITY.fineAbove ? 'fine'
+            : roll < QUALITY.crudeBelow ? 'crude'
+            : 'standard';
+        item.quality = quality;
+        const scale = QUALITY.scale[quality];
+        if (item.damage !== undefined) item.damage = Math.max(1, Math.round(item.damage * scale));
+        if (item.durability !== undefined) item.durability = Math.round(item.durability * scale);
+        if (item.armour !== undefined) item.armour = Math.round(item.armour * scale * 100) / 100;
+        item.value = Math.round(item.value * scale);
+    }
+    if (item.durability !== undefined) item.maxDurability = item.durability;
+    return item;
+}
+
+/**
+ * Condition, 0-1. A weapon used to be at full strength right up to the instant
+ * it snapped; a blade three exchanges from breaking should already be a worse
+ * blade than a fresh one.
+ */
+export function conditionOf(item: Item): number {
+    if (item.durability === undefined) return 1;
+    const max = item.maxDurability ?? item.durability;
+    if (max <= 0) return 1;
+    return Math.max(0, Math.min(1, item.durability / max));
+}
+
+/** Effective damage after condition. Never falls below a floor: a blunt sword is still a bar of steel. */
+export function effectiveDamage(item: Item): number {
+    const base = item.damage ?? 0;
+    return base * (QUALITY.wornDamageFloor + (1 - QUALITY.wornDamageFloor) * conditionOf(item));
+}
+
+/**
+ * Total damage reduction from whatever they are wearing, capped so a tribute
+ * hung with three pieces of armour is still killable.
+ */
+export function armourOf(t: Tribute): number {
+    const total = t.inventory.reduce((sum, i) =>
+        sum + (i.armour ?? 0) * conditionOf(i), 0);
+    return Math.min(QUALITY.maxArmour, total);
+}
+
+/** Wears down whatever took the hit. Armour absorbs damage by being damaged. */
+export function wearArmour(t: Tribute, amount: number) {
+    const worn = t.inventory.filter(i => i.armour !== undefined && (i.durability ?? 0) > 0);
+    if (worn.length === 0) return;
+    const piece = worn[0];
+    piece.durability = Math.max(0, (piece.durability ?? 0) - amount);
+}
+
+export function hasTool(t: Tribute, key: 'purifies' | 'light' | 'warmth' | 'fishing'): boolean {
+    return t.inventory.some(i => i[key] === true);
 }
 
 export function hasBackpack(t: Tribute): boolean {
@@ -33,8 +111,10 @@ export function carryCapacity(t: Tribute): number {
     // out of the Cornucopia as a Muscular eighteen-year-old from District 2.
     // `build` was generated with care and read only by display code.
     const fromBuild = Math.round(massOf(t) * PHYSIQUE.capacityPerMass);
-    return Math.max(2, INVENTORY.baseCapacity + fromBuild + traitMod(t, 'capacity')
-        + (hasBackpack(t) ? INVENTORY.backpackCapacity : 0));
+    // Containers carry their own capacity now, so a satchel is a smaller pack
+    // rather than a second special case.
+    const fromContainers = t.inventory.reduce((sum, i) => sum + (i.capacity ?? 0), 0);
+    return Math.max(2, INVENTORY.baseCapacity + fromBuild + traitMod(t, 'capacity') + fromContainers);
 }
 
 /** Ranks what a tribute would rather drop first when their hands are full. */
@@ -57,7 +137,15 @@ function keepValue(t: Tribute, item: Item): number {
  * are full. Returns the items left behind so the caller can narrate it.
  */
 export function giveItem(t: Tribute, ...items: Item[]): Item[] {
-    t.inventory.push(...items);
+    // Stackable consumables merge rather than each taking a slot — three loaves
+    // of bread is one thing you are carrying, not three.
+    items.forEach(item => {
+        if (item.stack === undefined) { t.inventory.push(item); return; }
+        const existing = t.inventory.find(i =>
+            i.id === item.id && i.stack !== undefined && i.stack < INVENTORY.maxStack);
+        if (existing) existing.stack = Math.min(INVENTORY.maxStack, (existing.stack ?? 1) + (item.stack ?? 1));
+        else t.inventory.push(item);
+    });
     const capacity = carryCapacity(t);
     const dropped: Item[] = [];
     while (t.inventory.length > capacity) {
@@ -99,4 +187,19 @@ export function enforceCapacity(t: Tribute): Item[] {
 /** How many cycles of shelf life a Backpack adds to fresh food. */
 export function spoilageBonus(t: Tribute): number {
     return hasBackpack(t) ? INVENTORY.backpackSpoilageBonus : 0;
+}
+
+/**
+ * Takes one use out of a stack, removing the item only when the stack is empty.
+ * Returns false if they did not have one.
+ */
+export function consumeOne(t: Tribute, predicate: (i: Item) => boolean): Item | undefined {
+    const idx = t.inventory.findIndex(predicate);
+    if (idx < 0) return undefined;
+    const item = t.inventory[idx];
+    if (item.stack !== undefined && item.stack > 1) {
+        item.stack -= 1;
+        return item;
+    }
+    return t.inventory.splice(idx, 1)[0];
 }

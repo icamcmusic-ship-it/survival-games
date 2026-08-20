@@ -2,7 +2,7 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { BLEEDING, COMBAT, FEAR, HUNTING, MEMORY, PROFICIENCY, RIVALRY, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, FEAR, HUNTING, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
@@ -17,14 +17,19 @@ import { reachBonus } from './physique';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
+import { armourOf, effectiveDamage, wearArmour } from './items';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
 
+/** Damage kinds a worn piece of armour can actually do anything about. */
+const ARMOURED_DAMAGE: DamageRecord['kind'][] = ['tribute', 'mutt', 'hazard', 'arena', 'gamemaker'];
+
 function bestWeapon(t: Tribute): Item | undefined {
     const weapons = t.inventory.filter(i => i.type === 'weapon');
     if (weapons.length === 0) return undefined;
-    return weapons.reduce((best, w) => ((w.damage ?? 0) > (best.damage ?? 0) ? w : best));
+    // Condition counts: a battered sword can be the worse choice than a fresh knife.
+    return weapons.reduce((best, w) => (effectiveDamage(w) > effectiveDamage(best) ? w : best));
 }
 
 /**
@@ -43,6 +48,19 @@ export function applyDamage(
     record: Omit<DamageRecord, 'cycle' | 'amount'>,
 ) {
     if (amount <= 0) return;
+
+    // Armour. Only against things that hit you — a padded vest does nothing
+    // about thirst, venom already in the blood, or an infected wound.
+    if (ARMOURED_DAMAGE.includes(record.kind)) {
+        const soak = armourOf(t);
+        if (soak > 0) {
+            const absorbed = amount * soak;
+            amount -= absorbed;
+            wearArmour(t, absorbed * QUALITY.armourWearPerPoint);
+        }
+    }
+    amount = Math.max(1, Math.round(amount));
+
     t.health -= amount;
     t.lastDamage = { ...record, cycle: cycleOf(ctx.state), amount };
     clampTribute(t);
@@ -97,7 +115,7 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     let power = effectiveStrength(t) + t.attributes.agility + ctx.rng.nextInt(0, 5);
 
     if (weapon) {
-        power += weapon.damage ?? weapon.value / 10;
+        power += weapon.damage !== undefined ? effectiveDamage(weapon) : weapon.value / 10;
         // Ranged weapons reward agility; melee rewards raw strength
         // Every weapon class scales with something. 'thrown' had no branch at
         // all, so Throwing Knives and the Spear — the one weapon a tribute can

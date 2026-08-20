@@ -7,6 +7,8 @@ import { giveItem, itemPhrase } from './items';
 import { ensureMemory } from './memory';
 import { mentorGenerosity, processMentorPleas } from './mentors';
 import { Tribute } from '../models/types';
+import { mintItem } from './items';
+import { QUALITY_BIAS } from '../data/balance';
 
 /**
  * Compounding rarity for repeat gifts.
@@ -61,7 +63,7 @@ export function processSponsors(ctx: SimContext) {
         const pool = ITEMS.filter(i => i.value > floor);
         // Clone: pushing the shared ITEMS entry let one tribute's combat
         // durability loss propagate to every future copy of that item.
-        const gift = { ...ctx.rng.pick(pool.length > 0 ? pool : ITEMS.filter(i => i.value > 20)) };
+        const gift = mintItem(ctx.rng, ctx.rng.pick(pool.length > 0 ? pool : ITEMS.filter(i => i.value > 20)), QUALITY_BIAS.parachute);
         giveItem(t, gift);
         t.excitementRating = Math.max(0, t.excitementRating - SPONSORS.giftExcitementCost);
         ensureMemory(t).giftsReceived += 1;

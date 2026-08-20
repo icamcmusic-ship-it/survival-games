@@ -9,6 +9,7 @@ import { openWound } from './wounds';
 import { profOf, trainProficiency } from './proficiency';
 import { awareness } from './stealth';
 import { traitMod } from '../data/traits';
+import { conditionOf, consumeOne } from './items';
 
 /**
  * Fieldcraft: traps, fire, shelter, camouflage and poison.
@@ -305,7 +306,32 @@ export function poisonWeapon(ctx: SimContext, t: Tribute): boolean {
  *
  * Returns true if the turn was spent, so the caller can skip foraging.
  */
+/**
+ * An hour with a whetstone. Condition is a real number now rather than a fuse
+ * that burns to zero, so maintaining a good weapon is a use of a turn — and a
+ * reason to pick a Whetstone up off the ground at all.
+ */
+export function sharpenWeapon(ctx: SimContext, t: Tribute): boolean {
+    const stone = t.inventory.find(i => i.id === 'whetstone');
+    if (!stone) return false;
+    const weapon = t.inventory.find(i =>
+        i.type === 'weapon' && i.weaponClass === 'melee' && conditionOf(i) < CRAFTING.sharpenBelowCondition);
+    if (!weapon || weapon.maxDurability === undefined) return false;
+
+    consumeOne(t, i => i === stone);
+    weapon.durability = Math.min(weapon.maxDurability,
+        (weapon.durability ?? 0) + Math.round(weapon.maxDurability * CRAFTING.sharpenRestore));
+    ctx.logEvent(
+        `${t.name} sits with a whetstone and their ${weapon.name} until the edge comes back.`,
+        [t.id],
+        { category: 'survival' }
+    );
+    return true;
+}
+
 export function attemptFieldcraft(ctx: SimContext, t: Tribute): boolean {
+    if (sharpenWeapon(ctx, t)) return true;
+
     // A blade worth coating is worth coating now: nightlock is rare, spoils the
     // moment somebody eats the pack it is in, and turns a scratch into a death
     // sentence. Anyone holding both halves takes the opportunity.

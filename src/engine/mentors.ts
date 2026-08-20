@@ -6,6 +6,8 @@ import { giveItem, itemPhrase } from './items';
 import { ensureMemory } from './memory';
 import { clampTribute } from './vitals';
 import { Item, Tribute } from '../models/types';
+import { mintItem } from './items';
+import { QUALITY_BIAS } from '../data/balance';
 
 /**
  * Mentors, as a sponsorship mechanic.
@@ -101,16 +103,16 @@ function itemForNeed(ctx: SimContext, t: Tribute, need: Need): Item {
     if (need === 'medical') {
         const wanted = t.injuries.poisoned ? 'antidote' : t.injuries.burned ? 'ointment' : 'medkit';
         const match = ITEMS.find(i => i.id === wanted);
-        if (match) return { ...match };
+        if (match) return mintItem(ctx.rng, match, QUALITY_BIAS.parachute);
     }
     if (need === 'weapon') {
         // A plea buys a serviceable weapon, not the trident — that stays behind
         // the rarity gate where the crowd has to pay for it.
         const pool = ITEMS.filter(i => i.type === 'weapon' && i.value <= 45);
-        return { ...ctx.rng.pick(pool) };
+        return mintItem(ctx.rng, ctx.rng.pick(pool), QUALITY_BIAS.parachute);
     }
     const pool = ITEMS.filter(i => i.type === need);
-    return { ...ctx.rng.pick(pool.length > 0 ? pool : ITEMS.filter(i => i.id === 'water')) };
+    return mintItem(ctx.rng, ctx.rng.pick(pool.length > 0 ? pool : ITEMS.filter(i => i.id === 'water')), QUALITY_BIAS.parachute);
 }
 
 const NEED_PHRASES: Record<Need, string> = {

@@ -167,6 +167,8 @@ export const TRAIT_EFFECTS = {
  * decision, not a default.
  */
 export const RECOVERY = {
+    /** Health an insulated sleeping bag adds to a night of real rest. */
+    sleepingBagBonus: 6,
     /** Health returned by a full night of undisturbed rest. */
     nightHeal: 7,
     /** A tribute holed up in cover mends better than one sleeping in the open. */
@@ -434,7 +436,58 @@ export const VOLUNTEER = {
 } as const;
 
 /** Random encounters, hazards and mutts during a cycle. */
+/**
+ * Item grades and condition. See `mintItem` in `engine/items.ts`.
+ *
+ * SIDE-01: the item table was flat — every Sword in every run was the same
+ * Sword, and a weapon was at full strength right up to the instant it snapped.
+ */
+export const QUALITY = {
+    /** Roll above this for a fine instance, below the other for a crude one. */
+    fineAbove: 0.82,
+    crudeBelow: 0.3,
+    scale: { crude: 0.7, standard: 1, fine: 1.35 } as Record<string, number>,
+    prefix: { crude: 'Crude', fine: 'Fine' } as Record<string, string>,
+    /** Damage a weapon still does at zero condition, as a fraction of its printed damage. */
+    wornDamageFloor: 0.55,
+    /** Ceiling on total damage reduction from worn armour. */
+    maxArmour: 0.35,
+    /** Durability an armour piece loses per point of damage it absorbs. */
+    armourWearPerPoint: 1.5,
+} as const;
+
+/**
+ * Where an item came from, expressed as a shift on the quality roll. The good
+ * steel is stacked at the mouth of the Cornucopia; nobody parachutes a crude
+ * anything; and a field-lashed spear is a field-lashed spear.
+ */
+export const QUALITY_BIAS = {
+    hornMouth: 0.25,
+    hornScatter: 0,
+    feast: 0.15,
+    parachute: 0.3,
+    scavenged: -0.1,
+    improvised: -0.35,
+} as const;
+
 export const ENCOUNTERS = {
+    /** Fallback escape difficulty for an event that does not name its own. */
+    defaultDodgeDifficulty: 6,
+    /**
+     * SIDE-09 — the survival lanes for the two attributes the authored arena
+     * events almost never asked for. See `rollEscape` in `encounters.ts`.
+     */
+    /** Damage at which a hazard is heavy enough that bracing for it means something. */
+    braceDamageThreshold: 18,
+    /** Fraction of a hazard's damage soaked, per point of strength. */
+    bracePerStrength: 0.035,
+    braceMaxSoak: 0.3,
+    /** Added to the escape difficulty for the fallback attribute. */
+    altDodgePenalty: 1,
+    /** An ally in the same zone hauling someone clear. */
+    rescuePerCharisma: 0.035,
+    rescuePerHelperStrength: 0.02,
+    rescueMaxChance: 0.45,
     ambientLineChance: 0.35,
     ambientArenaShare: 0.6,
     baseEventChance: 0.1,
@@ -563,6 +616,9 @@ export const STEALTH = {
 
     /** Awareness: what it takes to notice someone who does not want noticing. */
     awarenessFromIntelligence: 0.5,
+    /** A lantern: you can see, and so can everyone else. */
+    lightAwarenessBonus: 2,
+    lightConcealmentPenalty: 0.12,
     // The per-trait awareness bonuses that used to live here are now rows in
     // `data/traits.ts`, alongside every other effect the same trait has.
     /** A tribute at the end of their rope stops watching the treeline. */
@@ -716,6 +772,10 @@ export const ZONE_EFFECTS = {
 } as const;
 
 export const CRAFTING = {
+    /** A blade below this condition is worth an hour with a whetstone. */
+    sharpenBelowCondition: 0.7,
+    /** Fraction of maximum durability a sharpening restores. */
+    sharpenRestore: 0.35,
     /** Per-cycle odds an empty-handed tribute improvises something to swing. */
     improviseChance: 0.12,
     /** Odds a free turn is spent preparing rather than foraging. */
@@ -792,6 +852,8 @@ export const POISONING = {
 
 /** What a tribute can physically carry. */
 export const INVENTORY = {
+    /** Ceiling on a single stack of a consumable. */
+    maxStack: 4,
     /**
      * Items carried in hands, pockets and a bedroll. Tributes hold well under
      * one item on average, so this is deliberately tight: a limit that only
@@ -807,6 +869,8 @@ export const INVENTORY = {
 
 /** Zone economy: foraging strips a zone, and the arena grows it back slowly. */
 export const ZONES = {
+    /** A fishing net in still water, added to the forage chance. */
+    fishingBonus: 0.25,
     /** Fraction of a zone's remaining yield consumed by one successful forage. */
     depletionPerForage: 0.13,
     /** Smaller drain even when a forage comes up empty — the ground is picked over. */

@@ -28,6 +28,8 @@ import {
 } from '../encounters';
 import { tickPersistentMutts } from '../mutts';
 import { restockCornucopia, rollAmbientZoneEffects, tickZoneEffects } from '../zoneEffects';
+import { mintItem } from '../items';
+import { QUALITY_BIAS } from '../../data/balance';
 
 /**
  * The day/night cycle: the orchestrator, not the implementation.
@@ -299,7 +301,7 @@ function craft(ctx: SimContext, t: Tribute) {
         t.inventory.splice(Math.max(hasRope, hasKnife), 1);
         t.inventory.splice(Math.min(hasRope, hasKnife), 1);
         const spear = ITEMS.find(i => i.id === 'spear')!;
-        giveItem(t, { ...spear });
+        giveItem(t, mintItem(ctx.rng, spear, QUALITY_BIAS.improvised));
         ctx.logEvent(`${t.name} lashes a knife to a shaft with rope and walks away holding a Spear.`, [t.id], { category: 'loot' });
     }
 

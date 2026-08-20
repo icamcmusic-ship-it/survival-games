@@ -2,6 +2,7 @@ import { Terrain, Tribute, Zone } from '../models/types';
 import { CRAFTING, STEALTH } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { traitMod } from '../data/traits';
+import { hasTool } from './items';
 
 /**
  * Concealment and awareness — the two halves of whether one tribute ever finds
@@ -38,6 +39,7 @@ export function concealment(
     if (t.injuries.bleeding) value -= STEALTH.bleedingPenalty;
     // Traits that change how well someone disappears into the ground.
     value += traitMod(t, 'concealment');
+    if (hasTool(t, 'light')) value -= STEALTH.lightConcealmentPenalty;
     // A group leaves a group's worth of tracks.
     value -= Math.min(3, alliesPresent) * STEALTH.groupPenalty;
 
@@ -52,6 +54,10 @@ export function awareness(t: Tribute): number {
     // A hunter is looking; someone hiding in a bush is not.
     if (t.stance === 'Aggressive') value += 1.5;
     if (t.stance === 'Evasive') value -= 1;
+
+    // A light in your hand is the difference between watching the treeline and
+    // guessing at it — and it is the reason everyone else can see you.
+    if (hasTool(t, 'light')) value += STEALTH.lightAwarenessBonus;
 
     if (t.vitals.fatigue > 80) value -= STEALTH.exhaustedPenalty;
     if (t.vitals.sanity < 30) value -= STEALTH.lowSanityPenalty;
