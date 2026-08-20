@@ -4,6 +4,7 @@ import { Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
 import { ALLIANCES } from '../../data/balance';
+import { registerAlliance } from '../alliance';
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { BLOODBATH_TEXTS } from '../../data/flavorText';
 import { giveItem, itemPhrase } from '../items';
@@ -25,10 +26,39 @@ function initializeCareerAlliance(ctx: SimContext) {
     // The pack is subject to the same ALLIANCES.maxSize cap as any other
     // alliance — a career field bigger than that splits into a pack and
     // stragglers rather than one oversized, permanently-outnumbering gang.
-    const careers = allCareers.length > ALLIANCES.maxSize
+    const capped = allCareers.length > ALLIANCES.maxSize
         ? ctx.rng.shuffle(allCareers).slice(0, ALLIANCES.maxSize)
         : allCareers;
-    if (careers.length > 1) {
+
+    // The pack is a marriage of convenience, and it should look like one. Some
+    // years a Career decides their odds are better alone — usually the one who
+    // trusts the others least — and it should be possible, rarely, for the whole
+    // arrangement to fall apart before the bloodbath is over.
+    const optOuts: Tribute[] = [];
+    const ordered = [...capped].sort((a, b) => ARCHETYPES[b.archetype].treachery - ARCHETYPES[a.archetype].treachery);
+    ordered.forEach(t => {
+        if (optOuts.length >= ALLIANCES.careerMaxOptOuts) return;
+        if (capped.length - optOuts.length <= 2) return;
+        if (!ctx.rng.chance(ALLIANCES.careerOptOutChance)) return;
+        optOuts.push(t);
+        ctx.logEvent(
+            `${t.name} of District ${t.district} looks at the pack forming around the Cornucopia and walks the other way. ` +
+            `Some years the academy's arithmetic does not convince everybody.`,
+            [t.id],
+            { important: true, category: 'alliance' }
+        );
+    });
+
+    const careers = capped.filter(t => !optOuts.includes(t));
+
+    if (careers.length > 1 && ctx.rng.chance(ALLIANCES.careerEarlyCollapseChance)) {
+        ctx.logEvent(
+            `The Careers get as far as dividing the Cornucopia between them and no further. ` +
+            `${careers.map(c => c.name).join(', ')} scatter before the bloodbath is even finished — there is no pack this year.`,
+            careers.map(c => c.id),
+            { important: true, category: 'alliance' }
+        );
+    } else if (careers.length > 1) {
         const allianceId = `career-pack-${ctx.state.seed}`;
         careers.forEach(t => {
             t.allianceId = allianceId;
@@ -41,6 +71,7 @@ function initializeCareerAlliance(ctx: SimContext) {
                 }
             });
         });
+        registerAlliance(ctx, allianceId, careers);
         ctx.logEvent(
             `The Careers — ${careers.map(c => `${c.name} (D${c.district})`).join(', ')} — close ranks into a single pack. Everyone else in the arena just became prey.`,
             careers.map(c => c.id),

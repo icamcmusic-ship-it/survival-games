@@ -119,6 +119,14 @@ export interface TributeMemory {
      * and each of them acts on their own number.
      */
     fear: Record<string, number>;
+    /** Tribute id -> the history of this specific feud. See `RivalRecord`. */
+    rivals: Record<string, RivalRecord>;
+    /**
+     * Ids this tribute has taken a real risk for — shared a fight, handed over
+     * supplies they needed, or patched up. Romance is gated on this rather than
+     * on a number ticking up from standing next to someone.
+     */
+    stoodBy: string[];
 }
 
 /** Where a tribute's most recent wound actually came from. */
@@ -196,6 +204,49 @@ export interface Tribute {
     proficiencies?: Partial<Record<Proficiency, number>>;
     /** What they are currently trying to do. See `Objective`. */
     objective?: Objective;
+}
+
+/**
+ * A standing alliance, as an object rather than a shared string.
+ *
+ * An alliance used to be nothing but an id copied onto several tributes. There
+ * was no leader (movement used `members[0]` — i.e. array order), no roles, no
+ * shared supplies, no camp, and no internal politics beyond a scalar trust
+ * decay. That leaves the most socially interesting structure in the game with
+ * nothing to actually happen inside it.
+ */
+export interface Alliance {
+    id: string;
+    /** Chosen on merit (charisma and strength) and open to challenge. */
+    leaderId: string;
+    memberIds: string[];
+    formedCycle: number;
+    /** Ground they return to and defend. */
+    campZone?: string;
+    /** Pooled supplies: a reason to stay, and a thing worth stealing. */
+    sharedCache: Item[];
+    /**
+     * What they agreed out loud. A pact to split at the final eight is a
+     * scheduled, telegraphed betrayal — the audience can see it coming, which
+     * is exactly what makes it land.
+     */
+    pact: 'to-the-end' | 'until-the-final-eight' | 'no-pact';
+}
+
+/**
+ * What happened between one specific pair, across the whole run.
+ *
+ * Grudges were a single decaying scalar, so two tributes who fought three times
+ * had no escalation — the third fight was mechanically identical to the first.
+ */
+export interface RivalRecord {
+    fights: number;
+    /** Wounds this tribute took from them, and dealt to them. */
+    woundsTaken: number;
+    woundsDealt: number;
+    /** Times this tribute broke off rather than finish it. */
+    timesFled: number;
+    lastFightCycle: number;
 }
 
 /** A snare, deadfall or tripline left in a zone, waiting for whoever walks into it. */
@@ -293,6 +344,8 @@ export interface GameState {
     zoneDeaths?: Record<string, number>;
     /** Traps currently set in the arena, by whoever set them. */
     traps?: Trap[];
+    /** Alliance id -> its structure. See `Alliance`. */
+    alliances?: Record<string, Alliance>;
     /**
      * Movement along each edge of the zone graph, keyed by the two zone names
      * sorted and joined with '|'. Decays every cycle, so it reads as "where the

@@ -733,6 +733,11 @@ export const RELATIONSHIPS = {
     griefTowardKillerAllyBonus: 30,
     /** Vengeance is sworn when grief pushes the relationship past this. */
     vengeanceThreshold: -55,
+    /**
+     * ...or, far more often, when the death was personal: an ally, a lover, or
+     * anyone this tribute was this close to. See `propagateDeathFallout`.
+     */
+    vengeanceBond: 40,
     /** Sanity cost scales with how strong the lost bond was. */
     griefSanityMax: 45,
     griefSanityMin: 8,
@@ -758,6 +763,38 @@ export const RELATIONSHIPS = {
     trustDecayPerCycle: 1.5,
     lateGameTrustDecay: 4,
     lateGameAliveCount: 6,
+} as const;
+
+/**
+ * Romance.
+ *
+ * Star-crossed lovers formed in the overwhelming majority of runs, on roughly
+ * day 3. It is supposed to be the rarest and most memorable outcome in the
+ * game. The cause was arithmetic: district partners start around +22, romance
+ * grew +4..10 every cycle merely for standing in the same zone, everybody
+ * starts in the Cornucopia together, and the threshold of 80 therefore fell in
+ * five to eight calls before anything had actually happened between them.
+ *
+ * The fix is to stop paying for proximity and start paying for conduct: they
+ * have to have survived the bloodbath, been in sustained contact, and one of
+ * them has to have taken a real risk for the other. Even then it is a roll, not
+ * a promotion at a number.
+ */
+export const ROMANCE = {
+    /** Nothing before the bloodbath is over and the cast is real. */
+    minDay: 2,
+    /** Bond required before a romance is even considered. */
+    threshold: 92,
+    /** Cycles of recent contact required, tracked as a streak. */
+    sustainedCycles: 3,
+    /** Contact this stale breaks the streak. */
+    contactWindow: 2,
+    /** Odds per cycle once every condition holds. Romance is never automatic. */
+    chancePerCycle: 0.15,
+    /** Growth from an actual shared scene — not merely from co-location. */
+    contactGrowth: 5,
+    /** Standing by someone is worth far more than standing near them. */
+    stoodByGrowth: 14,
 } as const;
 
 /** Alliance formation and dissolution. */
@@ -795,6 +832,76 @@ export const ALLIANCES = {
     betrayalWeaknessWeight: 0.02,
     /** A tribute who has already been betrayed is far likelier to strike first. */
     betrayedFirstStrikeWeight: 6,
+
+    /**
+     * Mergers. Two duos who trust each other should be able to become a four,
+     * which is the missing path that left almost every organic alliance a pair
+     * for the whole run.
+     */
+    mergeChance: 0.35,
+    mergeThreshold: 12,
+
+    /**
+     * The Career pack is a marriage of convenience, and it should look like one.
+     * A small chance somebody never joins at all, and a rare chance the whole
+     * thing comes apart before the bloodbath is even over.
+     */
+    careerOptOutChance: 0.18,
+    careerMaxOptOuts: 2,
+    careerEarlyCollapseChance: 0.06,
+
+    /** Pacts, declared at formation. A scheduled split is a telegraphed betrayal. */
+    pactFinalEightChance: 0.35,
+    pactToTheEndChance: 0.25,
+    /** Field size at which an 'until-the-final-eight' pact comes due. */
+    finalEightSize: 8,
+
+    /** Pooled supplies: what a member will contribute, and what a thief takes. */
+    cacheContributeSurplus: 2,
+    cacheMaxSize: 8,
+} as const;
+
+/**
+ * Betrayal, in more than one flavour.
+ *
+ * The targeting logic was genuinely good — opportunistic, weighted by payday,
+ * grudge and winnability — but the only thing it could ever produce was "attack
+ * them now". Each of these reads differently in the chronicle and differently
+ * again in the epilogue.
+ */
+export const BETRAYAL = {
+    /** Relative weights for what form the betrayal takes. */
+    weights: {
+        knife: 1,
+        steal: 0.8,
+        lure: 0.6,
+        abandon: 0.5,
+        withhold: 0.5,
+    },
+    /** A thief needs something worth taking. */
+    minCacheValueToSteal: 15,
+    /** Leading someone into ground you know is lethal needs you to know it. */
+    lureMinRememberedThreat: 0.8,
+    /** Withholding only means anything if they are actually dying. */
+    withholdMaxHealth: 45,
+} as const;
+
+/**
+ * Rivalries with an arc.
+ *
+ * Two tributes who fight three times over a run had no escalation — the third
+ * fight was mechanically identical to the first. A rematch should feel like a
+ * rematch: the loser has studied them, and neither of them wants to be the one
+ * who runs again.
+ */
+export const RIVALRY = {
+    /** Combat power the previous loser brings to a rematch, per prior fight. */
+    revengeStudyBonus: 1.1,
+    maxStudyBonus: 3.5,
+    /** Retreat chance shed by both sides once a feud is established. */
+    rematchResolve: 0.08,
+    /** Fights after which the pair reads as a genuine feud in the chronicle. */
+    feudAtFights: 2,
 } as const;
 
 /** Sponsor economy. */

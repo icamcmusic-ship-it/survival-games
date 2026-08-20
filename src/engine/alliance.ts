@@ -1,0 +1,199 @@
+import { Alliance, GameState, Item, Tribute } from '../models/types';
+import { ALLIANCES } from '../data/balance';
+import { SimContext } from './context';
+import { cycleOf } from './memory';
+import { getRel } from './relationships';
+
+/**
+ * Alliance structure.
+ *
+ * An alliance used to be a string id copied onto two or more tributes and
+ * nothing else. There was no leader — `move()` used `members[0]`, i.e. whatever
+ * order the array happened to be in — no roles, no shared supplies, no camp, and
+ * no internal politics beyond a scalar trust decay. That is a lot of nothing
+ * inside the most socially interesting structure in the game.
+ *
+ * The record here gives an alliance the things that generate drama on their own:
+ * a leader who can be wrong and can be replaced, a declared pact that creates a
+ * scheduled betrayal everyone can see coming, a camp worth defending, and a
+ * shared cache that gives treachery a payday and raiding a target.
+ */
+
+/**
+ * Whether these two are each other's star-crossed lover.
+ *
+ * This used to be tested inline in five places as "both have the trait and
+ * share a district". Romance is no longer district-partners-only, so that test
+ * would quietly pair up any two lovers who happened to come from the same
+ * district and, worse, fail to protect a genuine cross-district pair from being
+ * matched against each other in a brawl. The bond id is the actual record of
+ * who fell for whom.
+ */
+export function areLovers(a: Tribute, b: Tribute): boolean {
+    if (a.id === b.id) return false;
+    if (!a.traits.includes('Star-Crossed') || !b.traits.includes('Star-Crossed')) return false;
+    // The bond id names both of them, so it survives one of them losing the id
+    // (pulled into another group, or the record pruned) without ever matching a
+    // pair who merely both happen to be in love with somebody.
+    const bondId = `lovers-${a.id}-${b.id}`;
+    const reverseId = `lovers-${b.id}-${a.id}`;
+    return a.allianceId === bondId || b.allianceId === bondId
+        || a.allianceId === reverseId || b.allianceId === reverseId;
+}
+
+export function allianceRecords(state: GameState): Record<string, Alliance> {
+    if (!state.alliances) state.alliances = {};
+    return state.alliances;
+}
+
+export function allianceOf(state: GameState, id: string | undefined): Alliance | undefined {
+    if (!id) return undefined;
+    return allianceRecords(state)[id];
+}
+
+export function membersOf(state: GameState, id: string): Tribute[] {
+    return state.tributes.filter(t => t.status === 'alive' && t.allianceId === id);
+}
+
+/** Who the group would follow: presence and capability, not array order. */
+export function pickLeader(members: Tribute[]): Tribute {
+    return members.reduce((best, m) => {
+        const score = (t: Tribute) =>
+            t.attributes.charisma * 1.6 + t.attributes.strength + t.trainingScore * 0.5 + t.kills * 2;
+        return score(m) > score(best) ? m : best;
+    });
+}
+
+/**
+ * Creates the record for a newly-formed alliance, including whatever they
+ * agreed out loud. The pact is the interesting part: a group that has said
+ * "until the final eight" has committed to a public deadline.
+ */
+export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]): Alliance {
+    const records = allianceRecords(ctx.state);
+    const roll = ctx.rng.nextFloat();
+    const pact: Alliance['pact'] = roll < ALLIANCES.pactFinalEightChance
+        ? 'until-the-final-eight'
+        : roll < ALLIANCES.pactFinalEightChance + ALLIANCES.pactToTheEndChance
+            ? 'to-the-end'
+            : 'no-pact';
+
+    const record: Alliance = {
+        id,
+        leaderId: pickLeader(members).id,
+        memberIds: members.map(m => m.id),
+        formedCycle: cycleOf(ctx.state),
+        campZone: members[0]?.zone,
+        sharedCache: [],
+        pact,
+    };
+    records[id] = record;
+
+    if (pact !== 'no-pact') {
+        ctx.logEvent(
+            pact === 'until-the-final-eight'
+                ? `${members.map(m => m.name).join(' and ')} shake on it: they run together until the final eight, and after that all bets are off.`
+                : `${members.map(m => m.name).join(' and ')} swear to see it through to the end, whatever the end turns out to look like.`,
+            members.map(m => m.id),
+            { important: true, category: 'alliance' }
+        );
+    }
+    return record;
+}
+
+/**
+ * Per-cycle upkeep on the structure itself: prune the dead, re-elect when the
+ * leader is gone or has lost the room, and drop records nobody belongs to.
+ */
+export function reconcileAlliances(ctx: SimContext) {
+    const records = allianceRecords(ctx.state);
+
+    Object.keys(records).forEach(id => {
+        const members = membersOf(ctx.state, id);
+        if (members.length < 2) {
+            // A one-person alliance is not an alliance. This also cleans up the
+            // id left on a lone survivor, which otherwise persisted and showed
+            // up in the UI as a standing pack of one.
+            members.forEach(m => { delete m.allianceId; });
+            delete records[id];
+            return;
+        }
+
+        const record = records[id];
+        record.memberIds = members.map(m => m.id);
+
+        const leader = members.find(m => m.id === record.leaderId);
+        if (!leader) {
+            const replacement = pickLeader(members);
+            record.leaderId = replacement.id;
+            ctx.logEvent(
+                `With the leader gone, ${replacement.name} takes charge of what is left of the group.`,
+                members.map(m => m.id),
+                { category: 'alliance' }
+            );
+            return;
+        }
+
+        // A leadership challenge: someone the group rates more highly, who is
+        // also better at the job. Careers being Careers, this is where the pack
+        // gets its internal conflict.
+        const challenger = pickLeader(members);
+        if (challenger.id !== leader.id) {
+            const backingFor = (t: Tribute) =>
+                members.reduce((sum, m) => sum + (m.id === t.id ? 0 : getRel(m, t.id)), 0);
+            if (backingFor(challenger) > backingFor(leader) + 20 && ctx.rng.chance(0.25)) {
+                record.leaderId = challenger.id;
+                ctx.logEvent(
+                    `${challenger.name} stops deferring to ${leader.name}, and nobody in the group argues. The pack has a new leader.`,
+                    members.map(m => m.id),
+                    { important: true, category: 'alliance' }
+                );
+            }
+        }
+    });
+}
+
+/** The leader of a tribute's alliance, or undefined if they have none. */
+export function leaderFor(state: GameState, t: Tribute): Tribute | undefined {
+    const record = allianceOf(state, t.allianceId);
+    if (!record) return undefined;
+    return state.tributes.find(o => o.id === record.leaderId && o.status === 'alive');
+}
+
+/**
+ * Members hand surplus into the pooled cache when they are standing at camp.
+ *
+ * The cache is deliberately made of things nobody urgently needs right now —
+ * a group does not pool its last canteen — which is what makes stealing it a
+ * calculated theft rather than a murder by other means.
+ */
+export function contributeToCache(ctx: SimContext, record: Alliance, members: Tribute[]) {
+    members.forEach(m => {
+        if (record.sharedCache.length >= ALLIANCES.cacheMaxSize) return;
+        if (m.inventory.length <= ALLIANCES.cacheContributeSurplus) return;
+        const spare = m.inventory.find(i =>
+            (i.type === 'food' && m.vitals.hunger < 40)
+            || (i.type === 'water' && m.vitals.thirst < 40)
+            || (i.type === 'utility' && i.id !== 'backpack'));
+        if (!spare) return;
+        m.inventory.splice(m.inventory.indexOf(spare), 1);
+        record.sharedCache.push(spare);
+        ctx.logEvent(
+            `${m.name} adds their ${spare.name} to the group's stash in ${record.campZone ?? m.zone}.`,
+            [m.id],
+            { category: 'alliance' }
+        );
+    });
+}
+
+export function cacheValue(record: Alliance | undefined): number {
+    if (!record) return 0;
+    return record.sharedCache.reduce((sum, i) => sum + i.value, 0);
+}
+
+/** Empties the cache and returns what was in it, for a thief or a raider. */
+export function emptyCache(record: Alliance): Item[] {
+    const spoils = record.sharedCache;
+    record.sharedCache = [];
+    return spoils;
+}

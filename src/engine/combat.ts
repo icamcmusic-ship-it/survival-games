@@ -2,16 +2,17 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { BLEEDING, COMBAT, FEAR, HUNTING, MEMORY, PROFICIENCY, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, FEAR, HUNTING, MEMORY, PROFICIENCY, RIVALRY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone } from './map';
-import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact } from './memory';
+import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rivalRecord } from './memory';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { openWound } from './wounds';
 import { profOf, trainProficiency, weaponProficiency } from './proficiency';
 import { addFear, fearFraction } from './fear';
+import { areLovers } from './alliance';
 import { reachBonus } from './physique';
 
 const fill = (template: string, vars: Record<string, string>) =>
@@ -71,7 +72,25 @@ export function effectiveStrength(t: Tribute): number {
     return Math.max(1, t.attributes.strength - yearsFromPrime * 0.4);
 }
 
-function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0): number {
+/**
+ * What a previous fight with this specific person is worth.
+ *
+ * A rivalry used to be a decaying scalar, so a third fight between the same two
+ * tributes was mechanically identical to the first. Someone who has lost to a
+ * particular opponent has watched them work: they know the reach, the favoured
+ * side, when the guard drops. That is worth something, and it is worth more the
+ * more times it has happened.
+ */
+function rematchEdge(t: Tribute, opponent?: Tribute): number {
+    if (!opponent) return 0;
+    const record = ensureMemory(t).rivals?.[opponent.id];
+    if (!record || record.fights === 0) return 0;
+    // Only the party who came off worse has anything to learn.
+    if (record.woundsTaken <= record.woundsDealt) return 0;
+    return Math.min(RIVALRY.maxStudyBonus, record.fights * RIVALRY.revengeStudyBonus);
+}
+
+function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opponent?: Tribute): number {
     let power = effectiveStrength(t) + t.attributes.agility + ctx.rng.nextInt(0, 5);
 
     if (weapon) {
@@ -120,6 +139,9 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0): nu
     // is what lets a hunter snowball instead of every fight starting from zero.
     power += (t.momentum ?? 0) * HUNTING.momentumPowerWeight;
 
+    // What they have learned from losing to this person before.
+    power += rematchEdge(t, opponent);
+
     return power;
 }
 
@@ -147,6 +169,11 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     if (opponent) chance += fearFraction(t, opponent.id) * FEAR.retreatWeight;
     // Bloodlust cuts the other way — a fresh kill is hard to walk away from.
     chance -= (t.momentum ?? 0) * HUNTING.momentumRetreatWeight;
+    // Neither party wants to be the one who runs again.
+    if (opponent) {
+        const record = ensureMemory(t).rivals?.[opponent.id];
+        if (record && record.fights >= RIVALRY.feudAtFights) chance -= RIVALRY.rematchResolve;
+    }
 
     return ctx.rng.chance(Math.max(0.02, Math.min(0.9, chance)));
 }
@@ -194,6 +221,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
         );
     }
     wearWeapon(weapon);
+    noteWound(attacker, defender);
     adjustRel(defender, attacker.id, -COMBAT.grudgeOnWound);
     // Losing an exchange to someone is how you learn to be afraid of them
     // specifically — and how the attacker gets better at the weapon they used.
@@ -215,12 +243,22 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
     if (t1.status === 'dead' || t2.status === 'dead') return;
 
     // Star-crossed lovers refuse to fight each other!
-    if (t1.traits.includes('Star-Crossed') && t2.traits.includes('Star-Crossed') && t1.district === t2.district) {
+    if (areLovers(t1, t2)) {
         ctx.logEvent(`${t1.name} and ${t2.name} refuse to fight each other due to their deep bond as star-crossed lovers.`, [t1.id, t2.id], { category: 'romance' });
         return;
     }
 
     noteContact(ctx.state, t1, t2);
+    noteFight(ctx.state, t1, t2);
+    // A feud gets its own opening line once it is genuinely a feud.
+    const priorFights = ensureMemory(t1).rivals?.[t2.id]?.fights ?? 0;
+    if (priorFights > RIVALRY.feudAtFights) {
+        ctx.logEvent(
+            `${t1.name} and ${t2.name} have done this before — ${priorFights - 1} times now. Neither of them needs a reason any more.`,
+            [t1.id, t2.id],
+            { important: true, category: 'combat' }
+        );
+    }
 
     // The first argument is whoever found the other. If they found them from
     // cover, the fight opens with a free hit rather than a fair exchange. A
@@ -269,8 +307,8 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
         round++;
         const w1 = bestWeapon(t1);
         const w2 = bestWeapon(t2);
-        const p1 = combatPower(ctx, t1, w1);
-        const p2 = combatPower(ctx, t2, w2);
+        const p1 = combatPower(ctx, t1, w1, 0, t2);
+        const p2 = combatPower(ctx, t2, w2, 0, t1);
         const edge = p1 - p2;
 
         if (Math.abs(edge) < 1.5) {
@@ -311,6 +349,7 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
         if (t1Flees || t2Flees) {
             const fleer = t1Flees ? t1 : t2;
             const stayer = t1Flees ? t2 : t1;
+            noteFled(fleer, stayer.id);
             // Running turns your back on someone holding a weapon — unless you
             // are good at not being where they swing.
             const partingChance = Math.max(0.05,
@@ -383,7 +422,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     // Star-crossed lovers refuse to fight each other — the trait promises that
     // outright, so a bonded pair can never be assigned to opposite sides.
     const isBonded = (a: Tribute, b: Tribute) =>
-        a.traits.includes('Star-Crossed') && b.traits.includes('Star-Crossed') && a.district === b.district;
+        areLovers(a, b);
     const partnerOf = (a: Tribute) => fighters.find(o => o.id !== a.id && isBonded(a, o));
 
     const packSide: Tribute[] = [];
@@ -394,6 +433,17 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     });
     if (packSide.length === 0) {
         // No pack: split by mutual regard, so friends do not knife each other.
+        //
+        // If nobody in the zone gets on with anybody, there are no sides to draw
+        // and forcing one produced an arbitrary 1-vs-2 decided by array order.
+        // A genuine free-for-all is a real thing that happens at a feast and the
+        // sides model could not represent it at all.
+        const friendly = fighters.some(a => fighters.some(b =>
+            a.id !== b.id && getRel(a, b.id) > 15 && getRel(b, a.id) > 15));
+        if (!friendly) {
+            resolveFreeForAll(ctx, fighters, zone);
+            return;
+        }
         const seed = otherSide.shift()!;
         packSide.push(seed);
         [...otherSide].forEach(f => {
@@ -507,6 +557,81 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             if (other.id === t.id) return;
             const sameSide = (packSide.includes(t) && packSide.includes(other)) || (otherSide.includes(t) && otherSide.includes(other));
             if (!sameSide) adjustRel(t, other.id, -COMBAT.grudgePerFight);
+            // Standing in the same line as somebody is the clearest way to earn
+            // their trust, and it is what romance is actually gated on.
+            else noteStoodBy(t, other.id);
+        });
+        checkDeath(ctx, t);
+    });
+}
+
+/**
+ * Everyone against everyone.
+ *
+ * The sides model assumes a brawl has two of them. When three or more tributes
+ * who all dislike each other meet — which is exactly what a feast produces —
+ * there is no coalition to draw, and pretending otherwise handed one of them a
+ * numbers advantage decided by nothing but array order.
+ */
+function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
+    ctx.logEvent(
+        `${fighters.map(f => f.name).join(', ')} all reach ${zone} at once, and not one of them has a friend in it. ` +
+        `It comes apart into every-tribute-for-themselves.`,
+        fighters.map(f => f.id),
+        { important: true, category: 'combat' }
+    );
+
+    let rounds = 0;
+    while (rounds < COMBAT.maxGroupRounds) {
+        rounds++;
+        const standing = fighters.filter(t => t.status === 'alive' && t.zone === zone);
+        if (standing.length < 2) break;
+
+        // Each round, one pairing resolves — weighted toward whoever is most
+        // dangerous picking whoever is most vulnerable, which is how a
+        // free-for-all actually collapses.
+        const attacker = standing.reduce((best, t) =>
+            combatPower(ctx, t, bestWeapon(t)) > combatPower(ctx, best, bestWeapon(best)) ? t : best);
+        const targets = standing.filter(t => t.id !== attacker.id && !areLovers(attacker, t));
+        if (targets.length === 0) break;
+        const target = targets.reduce((weak, t) => (t.health < weak.health ? t : weak));
+
+        noteFight(ctx.state, attacker, target);
+        const weapon = bestWeapon(attacker);
+        const edge = combatPower(ctx, attacker, weapon, 0, target)
+            - combatPower(ctx, target, bestWeapon(target), 0, attacker);
+        if (edge > 0) {
+            landHit(ctx, attacker, target, edge, weapon);
+            if (target.health <= 0) { killTribute(ctx, target, attacker, false, weapon); continue; }
+        } else {
+            landHit(ctx, target, attacker, -edge, bestWeapon(target));
+            if (attacker.health <= 0) { killTribute(ctx, attacker, target, false, bestWeapon(target)); continue; }
+        }
+
+        const breaking = standing.filter(t =>
+            t.status === 'alive' && wantsToRetreat(ctx, t, 1, rounds, t.id === attacker.id ? target : attacker));
+        if (breaking.length > 0) {
+            breaking.forEach(t => {
+                t.stance = 'Evasive';
+                t.stanceHeld = 0;
+                noteFled(t, t.id === attacker.id ? target.id : attacker.id);
+            });
+            ctx.logEvent(
+                fill(ctx.pickText(GROUP_COMBAT_TEXTS.scatter), { names: breaking.map(t => t.name).join(', '), zone }),
+                breaking.map(t => t.id),
+                { important: true, category: 'combat' }
+            );
+            break;
+        }
+    }
+
+    fighters.forEach(t => {
+        if (t.status !== 'alive') return;
+        addZoneThreat(ctx.state, t, zone, MEMORY.fightThreat);
+        dropBrokenWeapons(t);
+        fighters.forEach(other => {
+            if (other.id === t.id) return;
+            adjustRel(t, other.id, -COMBAT.grudgePerFight);
         });
         checkDeath(ctx, t);
     });

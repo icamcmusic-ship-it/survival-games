@@ -50,7 +50,17 @@ function gatherFacts(ctx: SimContext, winner: Tribute): RunFacts {
     let worst = -20;
     Object.entries(winner.relationships).forEach(([id, value]) => {
         const other = byId.get(id);
-        if (other && value < worst) { worst = value; nemesis = other; }
+        if (!other || value >= worst) return;
+        // A nemesis has to be someone they actually tangled with. Blanket
+        // distrust penalties used to drift a stranger's number low enough to
+        // win this search, so the victor could be handed a "nemesis" they never
+        // met — and, before the fix in applyBetrayalFallout, one who had been
+        // dead since day two.
+        const feud = winner.memory?.rivals?.[id];
+        const met = (feud?.fights ?? 0) > 0 || winner.memory?.vengeance?.includes(id);
+        if (!met) return;
+        worst = value;
+        nemesis = other;
     });
 
     // Vengeance discharged: someone the victor mourned, whose killer the victor killed.
