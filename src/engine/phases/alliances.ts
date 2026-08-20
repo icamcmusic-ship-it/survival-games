@@ -379,7 +379,15 @@ function growRomance(ctx: SimContext) {
             // Somebody has to have risked something. This is the gate that makes
             // it a story rather than an arithmetic outcome.
             if (!stoodBy) continue;
-            if (!ctx.rng.chance(ROMANCE.chancePerCycle)) continue;
+            // Romance happens early or not at all. Without this the roll is a
+            // flat per-cycle chance, so an eligible pair converts with near
+            // certainty given enough cycles — and REPLAY-01 made run length
+            // vary from six days to twenty-one, which turned "how long did the
+            // Games run" into the dominant input on how many runs have lovers
+            // in them. Two people who have been circling each other for a
+            // fortnight are not going to.
+            const lateness = Math.max(0, ctx.state.day - ROMANCE.minDay);
+            if (!ctx.rng.chance(ROMANCE.chancePerCycle * Math.pow(ROMANCE.latenessDecay, lateness))) continue;
 
             declareLovers(ctx, t1, t2);
             return;

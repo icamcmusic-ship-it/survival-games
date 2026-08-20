@@ -435,8 +435,17 @@ export const ESCALATION = {
 export const VOLUNTEER = {
     /** Chance a Career district's reaping is answered by a volunteer. */
     careerChance: 0.88,
-    /** Chance anywhere else. Almost always a sibling, and almost always a disaster. */
-    outlyingChance: 0.06,
+    /**
+     * Chance anywhere else. Almost always a sibling, and almost always a
+     * disaster.
+     *
+     * Deliberately tiny. At 0.06 per tribute this fired in 71% of runs across
+     * eighteen non-Career tributes, which makes the single most memorable
+     * reaping beat in the source material a routine occurrence. At 0.015 it
+     * lands in roughly a quarter of Games, which is what "District 12 has not
+     * had a volunteer in living memory" is supposed to mean.
+     */
+    outlyingChance: 0.015,
     /** A volunteer is of age: the floor their age is raised to. */
     minAge: 16,
     /** Attribute points a trained Career volunteer adds over the reaped tribute. */
@@ -1065,6 +1074,11 @@ export const ROMANCE = {
     contactWindow: 2,
     /** Odds per cycle once every condition holds. Romance is never automatic. */
     chancePerCycle: 0.15,
+    /**
+     * Per-day decay on that chance. Keeps the romance rate a property of the
+     * cast rather than a property of how long the Games happened to run.
+     */
+    latenessDecay: 0.72,
     /** Growth from an actual shared scene — not merely from co-location. */
     contactGrowth: 5,
     /** Standing by someone is worth far more than standing near them. */

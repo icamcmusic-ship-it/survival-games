@@ -198,6 +198,17 @@ await step('hall of fame records the victor', async () => {
   await page.getByRole('heading', { name: /hall of fame/i }).waitFor();
   const count = await page.locator('.panel .display-title').count();
   if (!wipeout && count === 0) throw new Error('a victor was crowned but nothing was recorded');
+
+  // REPLAY-03/04: the record book folds in every finished run, victor or not,
+  // so it must be populated here even when the arena killed everybody.
+  await page.getByRole('heading', { name: /your panem/i }).waitFor();
+  const bookText = await page.locator('.panel', { hasText: 'Your Panem' }).first().innerText();
+  if (/No Games finished yet/i.test(bookText)) {
+    throw new Error('a run finished but the record book is still empty');
+  }
+  if (!/Things these Games can do/i.test(bookText)) {
+    throw new Error('the record book is missing the discovery list');
+  }
   if (count > 0) {
     await page.getByRole('button', { name: /details/i }).first().click();
     await page.waitForTimeout(150);

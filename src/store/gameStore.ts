@@ -5,6 +5,7 @@ import { generateArena } from '../engine/arenaGenerator';
 import { Simulator } from '../engine/simulator';
 import { createStore } from './createStore';
 import { configForProfile, gamesProfileFor } from '../engine/gamesProfile';
+import { PanemRecords, RunOutcome, commitRun, readPanem } from '../utils/panemStorage';
 import {
     SponsorResult, sendPlayerParachute, sponsorCost, sponsorableItems,
 } from '../engine/playerSponsor';
@@ -29,6 +30,10 @@ export interface GameStoreState {
     betsResolved: boolean;
     /** Guards against writing the same victory to the Hall of Fame twice. */
     hofSaved: boolean;
+    /** REPLAY-03: everything that carries between runs. */
+    panem: PanemRecords;
+    /** What the run that just finished unlocked or beat, for the end screen. */
+    lastRunOutcome: RunOutcome | null;
 }
 
 const STARTING_COINS = 1000;
@@ -134,6 +139,8 @@ export const gameStore = createStore<GameStoreState>({
     isReplayedRun: false,
     betsResolved: false,
     hofSaved: false,
+    panem: readPanem(),
+    lastRunOutcome: null,
 });
 
 /** Deep clone so React sees new object identities all the way down the tree. */
@@ -145,7 +152,14 @@ function commitVictory(state: GameState) {
     const { hofSaved } = gameStore.getState();
     if (hofSaved) return;
     saveHallOfFame(state);
-    gameStore.setState({ hofSaved: true });
+    // REPLAY-03/04: the record book and the discovery layer both fold in a
+    // finished run here, behind the same double-commit guard the archive uses.
+    const outcome = commitRun(state);
+    gameStore.setState({
+        hofSaved: true,
+        panem: outcome.records,
+        lastRunOutcome: outcome,
+    });
 }
 
 function resolveBets(state: GameState) {
@@ -286,6 +300,7 @@ export const gameActions = {
             betsResolved: false,
             hofSaved: false,
             isReplayedRun: markReplayed,
+            lastRunOutcome: null,
         });
         persistRun();
     },

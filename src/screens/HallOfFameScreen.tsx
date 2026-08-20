@@ -5,7 +5,9 @@ import { HofFilters, applyHofQuery, isFiltered, EMPTY_HOF_QUERY, HofQuery } from
 import { HofAggregates } from '../components/HofAggregates';
 import { HofTransfer } from '../components/HofTransfer';
 import { Trophy, Trash2, Copy, Check, RotateCcw } from 'lucide-react';
-import { gameActions } from '../store/gameStore';
+import { gameActions, gameStore } from '../store/gameStore';
+import { useStore } from '../store/createStore';
+import { PanemRecordBook } from '../components/PanemRecordBook';
 
 export function HallOfFameScreen() {
     const [entries, setEntries] = useState<HallOfFameEntry[]>([]);
@@ -43,6 +45,9 @@ export function HallOfFameScreen() {
     };
 
     const totalKills = entries.reduce((sum, e) => sum + e.kills, 0);
+    // Read live rather than from the store so the book is correct even when the
+    // screen is opened without a run in progress.
+    const panem = useStore(gameStore, s => s.panem);
 
     return (
         <div className="max-w-4xl mx-auto space-y-7">
@@ -58,6 +63,8 @@ export function HallOfFameScreen() {
                         : `${entries.length} victor${entries.length === 1 ? '' : 's'} · ${totalKills} total eliminations`}
                 </p>
             </div>
+
+            <PanemRecordBook panem={panem} />
 
             {entries.length === 0 ? (
                 <>
