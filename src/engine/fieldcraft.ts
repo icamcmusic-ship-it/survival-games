@@ -4,12 +4,13 @@ import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { cycleOf } from './memory';
 import { getZone } from './map';
+import { hasEffect } from './zoneEffects';
 import { clampTribute } from './vitals';
 import { openWound } from './wounds';
 import { profOf, trainProficiency } from './proficiency';
 import { awareness } from './stealth';
 import { traitMod } from '../data/traits';
-import { conditionOf, consumeOne } from './items';
+import { conditionOf, consumeOne, hasTool } from './items';
 
 /**
  * Fieldcraft: traps, fire, shelter, camouflage and poison.
@@ -184,6 +185,23 @@ export function tickTraps(ctx: SimContext) {
             }
         }
 
+        // A snare in a burning zone is not a snare any more, and one under a
+        // flood has washed out. The zone-effect layer and the trap layer both
+        // existed and knew nothing about each other.
+        const destroyer = (['burning', 'flooded'] as const).find(k => hasEffect(ctx.state, trap.zone, k));
+        if (destroyer) {
+            if (owner.zone === trap.zone) {
+                ctx.logEvent(
+                    destroyer === 'burning'
+                        ? `${owner.name}'s trap in ${trap.zone} is so much ash. Whatever else the fire took, it took that.`
+                        : `The water in ${trap.zone} lifts ${owner.name}'s trap clean off its anchor and carries it away.`,
+                    [owner.id],
+                    { category: 'survival' }
+                );
+            }
+            return;
+        }
+
         if (cycle - trap.setCycle >= TRAPS.lifetime) return;
         surviving.push(trap);
     });
@@ -218,8 +236,27 @@ function buildChance(t: Tribute): number {
  */
 export function lightFire(ctx: SimContext, t: Tribute): boolean {
     if (hasCamp(ctx, t, 'fire')) return false;
-    if (!t.inventory.some(i => i.id === 'matches')) return false;
-    if (!ctx.rng.chance(buildChance(t))) return false;
+
+    // Matches are 1 of 34 loot items with no other ignition source, which
+    // made fire — and everything gated on it (revealFires, fire sanity
+    // recovery, the concealment penalty) unreachable for most runs. A blade
+    // and a whetstone can strike sparks, and anyone can try a bow drill.
+    const hasMatches = t.inventory.some(i => i.id === 'matches');
+    const hasFlintAndSteel = hasTool(t, 'light')
+        || (t.inventory.some(i => i.id === 'whetstone')
+            && t.inventory.some(i => i.type === 'weapon' && i.weaponClass === 'melee'));
+
+    let chance: number;
+    if (hasMatches) {
+        chance = buildChance(t);
+    } else if (hasFlintAndSteel) {
+        chance = buildChance(t) * CRAFTING.fireWhetstoneMultiplier;
+    } else {
+        chance = CRAFTING.fireNoToolBaseChance
+            + t.attributes.intelligence * CRAFTING.fireNoToolPerIntelligence
+            + profOf(t, 'forage') * CRAFTING.fireNoToolPerForageProficiency;
+    }
+    if (!ctx.rng.chance(chance)) return false;
 
     campOf(ctx, t).fire = cycleOf(ctx.state) + CRAFTING.fireCycles;
     t.vitals.sanity = Math.min(100, t.vitals.sanity + CRAFTING.fireSanityRecovery);

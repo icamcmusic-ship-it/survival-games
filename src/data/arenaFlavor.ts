@@ -210,6 +210,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeDifficulty: 7,
                 damage: 35,
                 bleeding: true,
+                zoneWide: true,
             },
             {
                 text: 'Acid fog rolls through {zone}. {tribute} inhales before they can cover their face and their skin begins to blister.',
@@ -228,6 +229,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 damage: 15,
                 fatigue: 20,
                 sanity: 10,
+                zoneWide: true,
             },
             {
                 text: 'A jabberjay flock descends on {zone}, screaming in the voices of {tribute}\'s family until they claw at their own ears.',
@@ -251,6 +253,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'agility',
                 damage: 26,
                 bleeding: true,
+                zoneWide: true,
             },
             {
                 text: 'Jabberjays in {zone} start screaming in the voices of {tribute}\'s family. It goes on for an hour.',
@@ -312,6 +315,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 damage: 20,
                 frostbitten: true,
                 fatigue: 25,
+                zoneWide: true,
             },
             {
                 text: 'The ice under {tribute} gives way in {zone}. They haul themselves out of the black water soaked through and shaking violently.',
@@ -413,6 +417,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'agility',
                 damage: 34,
                 bleeding: true,
+                severesRoute: true,
             },
             {
                 text: 'A live wire drops across the wet floor of {zone}. {tribute} is thrown ten feet and comes to with burned hands.',
@@ -421,6 +426,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'intelligence',
                 damage: 26,
                 burned: true,
+                startsZoneEffect: 'burning',
             },
             {
                 text: 'The sewers under {zone} flood without warning. {tribute} is swept along in filth and surfaces retching.',
@@ -429,6 +435,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'agility',
                 damage: 18,
                 infected: true,
+                startsZoneEffect: 'flooded',
             },
             {
                 text: 'Steel-jawed rats boil out of the walls of {zone} and take {tribute} down before they can climb.',
@@ -520,6 +527,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeDifficulty: 7,
                 damage: 30,
                 burned: true,
+                startsZoneEffect: 'burning',
             },
             {
                 text: 'The ground turns to quicksand under {tribute} in {zone}. They drag themselves out exhausted, having lost an hour and most of their strength.',
@@ -612,6 +620,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 damage: 28,
                 burned: true,
                 thirst: 25,
+                startsZoneEffect: 'burning',
             },
             {
                 text: 'A sandstorm buries {zone}. {tribute} rides it out face-down with grit in every wound.',
@@ -621,6 +630,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 damage: 18,
                 infected: true,
                 fatigue: 25,
+                zoneWide: true,
             },
             {
                 text: 'A mirage draws {tribute} kilometres off course in {zone}. They arrive at nothing, and the walk back nearly finishes them.',
@@ -1022,6 +1032,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeDifficulty: 7,
                 damage: 34,
                 burned: true,
+                startsZoneEffect: 'burning',
             },
             {
                 text: 'The ground of {zone} splits without warning. {tribute} goes into the fissure to the shoulder before they stop themselves.',
@@ -1030,6 +1041,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'agility',
                 damage: 28,
                 bleeding: true,
+                severesRoute: true,
             },
             {
                 text: 'The ashfall thickens over {zone} until {tribute} cannot breathe without tasting the basin. They cough until something tears.',
@@ -1039,6 +1051,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 damage: 16,
                 fatigue: 25,
                 sanity: 10,
+                zoneWide: true,
             },
             {
                 text: 'A vent in {zone} exhales superheated steam directly into {tribute}.',
@@ -1114,6 +1127,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'strength',
                 damage: 32,
                 fatigue: 25,
+                zoneWide: true,
             },
             {
                 text: 'Lightning finds the highest thing in {zone}, and {tribute} is standing next to it.',
@@ -1132,6 +1146,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 damage: 14,
                 fatigue: 30,
                 sanity: 10,
+                startsZoneEffect: 'flooded',
             },
             {
                 text: 'The rain over {zone} eases just long enough for {tribute} to fill everything they own with fresh water.',
@@ -1197,6 +1212,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 damage: 12,
                 sanity: 20,
                 fatigue: 20,
+                zoneWide: true,
             },
             {
                 text: 'The crust gives way under {tribute} in {zone} and drops them into brine to the waist. It burns every cut they have.',
@@ -1205,6 +1221,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'agility',
                 damage: 24,
                 infected: true,
+                severesRoute: true,
             },
             {
                 text: 'A brine squall crosses {zone} and scours {tribute} raw with airborne salt.',
@@ -1285,6 +1302,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 damage: 18,
                 poisoned: true,
                 sanity: 30,
+                zoneWide: true,
             },
             {
                 text: 'The cap {tribute} is standing on in {zone} gives way. They fall through rot to the ground beneath.',
@@ -1373,6 +1391,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeDifficulty: 7,
                 damage: 36,
                 bleeding: true,
+                severesRoute: true,
             },
             {
                 text: 'A thornvine takes {tribute} around the ankle in {zone} and hauls. They cut free leaving a good deal of skin behind.',
@@ -1462,6 +1481,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 damage: 18,
                 bleeding: true,
                 sanity: 22,
+                zoneWide: true,
             },
             {
                 text: 'A flood valve blows in {zone} and the corridor fills to the waist in seconds. {tribute} is slammed into a bulkhead getting out.',
@@ -1470,6 +1490,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'agility',
                 damage: 28,
                 fatigue: 25,
+                startsZoneEffect: 'flooded',
             },
             {
                 text: 'The ceiling of {zone} comes down in a slab. {tribute} is at the edge of it and takes the rubble across the back.',
@@ -1479,6 +1500,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeDifficulty: 7,
                 damage: 34,
                 bleeding: true,
+                severesRoute: true,
             },
             {
                 text: 'A sealed ration store in {zone} still holds. {tribute} eats properly for the first time since the gong.',

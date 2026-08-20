@@ -5,7 +5,7 @@ import { Shuffle, FastForward } from 'lucide-react';
 import { REAPING_CROWDS } from '../data/pregames';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { Explainer } from '../components/Explainer';
-import { GamesProfile, ordinal, profileHeadline } from '../engine/gamesProfile';
+import { GamesProfile, calendarOf, ordinal, profileHeadline } from '../engine/gamesProfile';
 
 export function ReapingScreen({ tributes, arenaName, seed, profile, onReroll, onConfirm }: {
     tributes: Tribute[],
@@ -51,12 +51,29 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, onReroll, on
                     <p className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
                         {profile.temperament.blurb}
                     </p>
-                    <p className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
-                        {profile.wildcard.announcement}
-                    </p>
+                    {profile.castShape && profile.castShape.id !== 'ordinary' && (
+                        <p className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
+                            <strong className="text-[var(--ink)]">The draw is {profile.castShape.name}.</strong>{' '}
+                            {profile.castShape.blurb}
+                        </p>
+                    )}
+                    {/* The whole schedule, not just the headline: a run has 2-4
+                        scheduled beats and the player is entitled to know how
+                        many are coming, if not exactly what they will do. */}
+                    <div className="space-y-1 pt-1">
+                        {calendarOf(profile).map((w, i) => (
+                            <p key={i} className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
+                                <span className="font-mono text-[10px] text-[var(--red)] mr-1.5">
+                                    {w.day === 0 ? 'STANDING' : `DAY ${w.day}`}
+                                </span>
+                                {w.announcement}
+                            </p>
+                        ))}
+                    </div>
                     <p className="text-[11px] text-[var(--color-ink-500)] italic">
-                        Every Games is rolled from the seed — the temperament, the provision and the day it
-                        lands. Two runs on the same seed are the same Games; two runs on different seeds are not.
+                        Every Games is rolled from the seed — the temperament, the shape of the draw, and
+                        each scheduled provision with the day it lands. Two runs on the same seed are the
+                        same Games; two runs on different seeds are not.
                     </p>
                 </div>
             )}

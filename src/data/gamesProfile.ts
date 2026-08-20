@@ -232,3 +232,73 @@ export const WILDCARDS: WildcardDef[] = [
         window: [0, 0], weight: 2,
     },
 ];
+
+/**
+ * REPLAY-09: the shape of the cast itself.
+ *
+ * Every reaping produced the same statistical field — a uniform age roll, the
+ * same archetype odds, the same three Career districts — so the roster screen
+ * never varied even though the seed did. A cast shape is rolled once from the
+ * seed and biases the whole draw, so an unusually young field, an all-volunteer
+ * year, or a reaping stacked with Careers is something a player can actually
+ * encounter and recognise.
+ */
+export type CastShapeId =
+    | 'ordinary' | 'young-field' | 'veteran-field' | 'all-volunteer'
+    | 'career-heavy' | 'outer-districts' | 'bonded-pairs';
+
+export interface CastShape {
+    id: CastShapeId;
+    name: string;
+    /** Read at the reaping, so the player knows what they are looking at. */
+    blurb: string;
+    /** Years shifted onto every age roll, before the band is clamped. */
+    ageShift: number;
+    /** Odds any given tribute volunteered rather than being reaped. */
+    volunteerChance: number;
+    /** Extra weight on the Career archetype outside the Career districts. */
+    careerBias: number;
+    /** Flat bonus to every attribute roll — a field that is simply better. */
+    talentBonus: number;
+    /** District partners start bonded, at this relationship value. */
+    pairBond: number;
+    weight: number;
+}
+
+export const CAST_SHAPES: CastShape[] = [
+    {
+        id: 'ordinary', name: 'an ordinary reaping',
+        blurb: 'Twenty-four names out of twenty-four bowls. Nothing about the draw is remarkable, which is its own kind of cruelty.',
+        ageShift: 0, volunteerChance: 0, careerBias: 0, talentBonus: 0, pairBond: 0, weight: 10,
+    },
+    {
+        id: 'young-field', name: 'an unusually young field',
+        blurb: 'The bowls come up young this year. Half this cast has never been eligible before, and the Capitol is delighted.',
+        ageShift: -2, volunteerChance: 0, careerBias: -0.15, talentBonus: 0, pairBond: 0, weight: 3,
+    },
+    {
+        id: 'veteran-field', name: 'a field of eighteens',
+        blurb: 'Almost every name drawn is in their last year of eligibility. This is the oldest, largest cast in recent memory.',
+        ageShift: 2, volunteerChance: 0.15, careerBias: 0.1, talentBonus: 0.5, pairBond: 0, weight: 3,
+    },
+    {
+        id: 'all-volunteer', name: 'an all-volunteer year',
+        blurb: 'Not one tribute this year was reaped. Every single one of them stepped forward, and nobody in the Capitol is asking why.',
+        ageShift: 1, volunteerChance: 1, careerBias: 0.2, talentBonus: 0.75, pairBond: 0, weight: 2,
+    },
+    {
+        id: 'career-heavy', name: 'a reaping stacked with Careers',
+        blurb: 'The academies have had a good year, and it shows across districts that do not have academies.',
+        ageShift: 1, volunteerChance: 0.4, careerBias: 0.45, talentBonus: 0.4, pairBond: 0, weight: 2,
+    },
+    {
+        id: 'outer-districts', name: 'a year the outer districts fear',
+        blurb: 'The Career districts have drawn poorly and the outer districts have not. The odds board is going to look very strange.',
+        ageShift: 0, volunteerChance: 0, careerBias: -0.3, talentBonus: 0, pairBond: 0, weight: 2,
+    },
+    {
+        id: 'bonded-pairs', name: 'a reaping of bonded pairs',
+        blurb: 'Each district sends two who already know each other, and the Capitol has made very sure everybody understands what that means.',
+        ageShift: 0, volunteerChance: 0, careerBias: 0, talentBonus: 0, pairBond: 70, weight: 2,
+    },
+];

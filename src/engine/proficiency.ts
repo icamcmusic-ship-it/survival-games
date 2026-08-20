@@ -74,7 +74,11 @@ export function profOf(t: Tribute, skill: Proficiency): number {
  */
 export function trainProficiency(t: Tribute, skill: Proficiency): number {
     if (!t.proficiencies) t.proficiencies = {};
-    const next = Math.min(PROFICIENCY.max, profOf(t, skill) + PROFICIENCY.gainPerUse);
+    const current = profOf(t, skill);
+    // Each level already held shrinks the next gain, so the curve flattens
+    // toward the cap instead of specialists slamming into a wall by mid-run.
+    const gain = PROFICIENCY.gainPerUse * Math.pow(1 - PROFICIENCY.diminishingPerLevel, current);
+    const next = Math.min(PROFICIENCY.max, current + gain);
     // Rounded so the value stays legible in a tooltip and in save files.
     t.proficiencies[skill] = Math.round(next * 100) / 100;
     return t.proficiencies[skill]!;

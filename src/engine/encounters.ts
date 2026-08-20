@@ -8,6 +8,9 @@ import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
 import { addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
+import { hasTruce, tryParley } from './parley';
+import { incurDebt } from './debts';
+import { DEBTS } from '../data/balance';
 import { giveItem, hasTool, itemPhrase, mintItem, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { attemptFieldDressing, clearBleeding, openWound, shouldDressWound } from './wounds';
@@ -128,12 +131,19 @@ function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: b
     return false;
 }
 
-/** Applies one arena-specific event to a tribute, honouring their dodge stat. */
-export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
+/**
+ * Applies one arena-specific event to a tribute, honouring their dodge stat.
+ * Shared by the tribute who triggers the event and by anyone else caught in
+ * it when it's `zoneWide` — every field the event carries (damage, injuries,
+ * vitals, item grants) lands on a secondary tribute exactly as it does on the
+ * primary one. `narrate` suppresses the per-tribute log line for secondaries,
+ * who get one grouped line instead — see `applyArenaEvent` below.
+ */
+function applyEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef, narrate: boolean): boolean {
     const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
     const vars = { tribute: t.name, zone: t.zone };
 
-    if (rollEscape(ctx, t, event, isBoon)) return;
+    if (rollEscape(ctx, t, event, isBoon)) return false;
 
     if (event.damage) applyDamage(ctx, t, bracedDamage(t, event), { cause: event.cause, kind: 'hazard' });
     if (event.heal) t.health = Math.min(100, t.health + event.heal);
@@ -156,20 +166,37 @@ export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDe
 
     if (!isBoon) addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
 
-    ctx.logEvent(fill(event.text, vars), [t.id], {
-        important: !isBoon,
-        category: isBoon ? 'survival' : 'hazard',
-    });
+    if (narrate) {
+        ctx.logEvent(fill(event.text, vars), [t.id], {
+            important: !isBoon,
+            category: isBoon ? 'survival' : 'hazard',
+        });
+    }
     if (!isBoon) checkDeath(ctx, t, event.cause);
+    return true;
+}
+
+/** Applies one arena-specific event to a tribute, honouring their dodge stat. */
+export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
+    const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
+    if (!applyEventTo(ctx, t, event, true)) return;
 
     // ARENA-03: hazards used to touch exactly one tribute and nothing else —
     // never a whole zone, never the graph, never anything that outlasted the
     // instant it fired. A flash flood or a rockslide is not a private accident;
-    // everyone standing there lives through the same thing.
+    // everyone standing there lives through the same thing, with the same
+    // effects (not just damage) and a line in the chronicle naming them.
     if (event.zoneWide) {
-        ctx.state.tributes
+        const caught = ctx.state.tributes
             .filter(o => o.status === 'alive' && o.id !== t.id && o.zone === t.zone)
-            .forEach(o => applyArenaEventTo(ctx, o, event));
+            .filter(o => applyEventTo(ctx, o, event, false));
+        if (caught.length > 0) {
+            ctx.logEvent(
+                `${caught.map(o => o.name).join(', ')} ${caught.length > 1 ? 'are' : 'is'} caught in it with ${t.name}.`,
+                [t.id, ...caught.map(o => o.id)],
+                { important: !isBoon, category: isBoon ? 'survival' : 'hazard' }
+            );
+        }
     }
     if (event.startsZoneEffect) startZoneEffect(ctx, t.zone, event.startsZoneEffect);
     if (event.severesRoute) {
@@ -184,25 +211,6 @@ export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDe
     }
 }
 
-/** The same event, applied to a second (or third) tribute caught in the same zone-wide hazard. */
-function applyArenaEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
-    const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
-    const vars = { tribute: t.name, zone: t.zone };
-
-    if (rollEscape(ctx, t, event, isBoon)) return;
-
-    if (event.damage) applyDamage(ctx, t, bracedDamage(t, event), { cause: event.cause, kind: 'hazard' });
-    if (event.bleeding) openWound(t, BLEEDING.hazardSeverity);
-    if (event.poisoned) t.injuries.poisoned = true;
-    if (event.burned) t.injuries.burned = true;
-    if (event.frostbitten) t.injuries.frostbitten = true;
-    if (event.infected) t.injuries.infected = true;
-    if (event.sanity) t.vitals.sanity -= event.sanity;
-    clampTribute(t);
-    if (!isBoon) addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
-    checkDeath(ctx, t, event.cause);
-}
-
 /** Rough terrain a hand-authored event was written for, guessed from its own words. */
 const TERRAIN_KEYWORDS: Array<[Terrain, RegExp]> = [
     ['water', /flood|drown|riptide|whirlpool|surf|tidal|river|current|swim|lake|geothermal vent|steam vent|water tank/i],
@@ -213,11 +221,15 @@ const TERRAIN_KEYWORDS: Array<[Terrain, RegExp]> = [
     ['open', /sandstorm|dust devil|mirage|sun|solar flare|dune|ash storm|lava|magma|volcanic/i],
 ];
 
-/** Best-guess terrain(s) for an event that never had `terrains` set explicitly. */
+/** Best-guess terrain(s) for an event that never had `terrains` set explicitly. Cached per event def — the defs are shared module-level objects, and the regex sweep was previously re-run on every pick. */
+const inferredTerrainsCache = new WeakMap<ArenaEventDef, Terrain[] | undefined>();
 function inferredTerrains(event: ArenaEventDef): Terrain[] | undefined {
+    if (inferredTerrainsCache.has(event)) return inferredTerrainsCache.get(event);
     const haystack = `${event.cause} ${event.text}`;
     const hits = TERRAIN_KEYWORDS.filter(([, pattern]) => pattern.test(haystack)).map(([terrain]) => terrain);
-    return hits.length > 0 ? hits : undefined;
+    const result = hits.length > 0 ? hits : undefined;
+    inferredTerrainsCache.set(event, result);
+    return result;
 }
 
 /**
@@ -271,7 +283,7 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
             clearBleeding(needer);
             needer.health = Math.min(100, needer.health + 15);
             trainProficiency(giver, 'medicine');
-            noteStoodBy(giver, needer.id);
+            incurDebt(needer, giver, DEBTS.patchedUp);
             ctx.logEvent(`${giver.name} presses their ${item.name} into ${needer.name}'s hands and helps patch them up.`, [needer.id, giver.id], { important: true, category: 'alliance' });
             return;
         }
@@ -280,7 +292,7 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
         // gives an alliance a medical reason to exist as well as a tactical one.
         if (needer.injuries.bleeding && attemptFieldDressing(ctx, needer, giver)) {
             adjustMutual(ctx.state, needer, giver, 8);
-            noteStoodBy(giver, needer.id);
+            incurDebt(needer, giver, DEBTS.patchedUp);
             return;
         }
     }
@@ -291,7 +303,7 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
             needer.vitals.thirst = Math.max(0, needer.vitals.thirst - 40);
             // Handing over water you might need yourself is a real risk, and it
             // is what romance is gated on rather than mere proximity.
-            if (giver.vitals.thirst > 30) noteStoodBy(giver, needer.id);
+            if (giver.vitals.thirst > 30) incurDebt(needer, giver, DEBTS.gaveSupplies);
             ctx.logEvent(`${giver.name} hands ${needer.name} their ${item.name} without being asked.`, [needer.id, giver.id], { category: 'alliance' });
             return;
         }
@@ -301,7 +313,7 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
         if (foodIdx >= 0) {
             const item = giver.inventory.splice(foodIdx, 1)[0];
             needer.vitals.hunger = Math.max(0, needer.vitals.hunger - 40);
-            if (giver.vitals.hunger > 30) noteStoodBy(giver, needer.id);
+            if (giver.vitals.hunger > 30) incurDebt(needer, giver, DEBTS.gaveSupplies);
             ctx.logEvent(`${giver.name} hands ${needer.name} their ${item.name} without being asked.`, [needer.id, giver.id], { category: 'alliance' });
         }
     }
@@ -346,8 +358,14 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         t.vitals.hunger = Math.max(0, t.vitals.hunger - 10);
         other.vitals.hunger = Math.max(0, other.vitals.hunger - 10);
         adjustMutual(ctx.state, t, other, 5);
+    } else if (hasTruce(ctx.state, t, other.id)) {
+        // An agreement with a clock on it outranks a bad mood, but not a sworn
+        // debt (handled above) and not the endgame arithmetic (below).
+        tryParley(ctx, t, other);
     } else if (t.stance === 'Aggressive' || other.stance === 'Aggressive' || relationship < -10) {
-        resolveCombat(ctx, t, other);
+        // Even a hostile meeting can end in a negotiation rather than a fight,
+        // if neither of them likes the odds enough to start one.
+        if (!tryParley(ctx, t, other)) resolveCombat(ctx, t, other);
     } else if (isDesperate(ctx, t, other)) {
         ctx.logEvent(
             fill(ctx.pickText(ENCOUNTER_TEXTS.desperation), vars),
@@ -355,6 +373,9 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
             { important: true, category: 'combat' }
         );
         resolveCombat(ctx, t, other);
+    } else if (tryParley(ctx, t, other)) {
+        // Two wary strangers who talked their way out of it — the outcome the
+        // encounter layer had no vocabulary for.
     } else if (ctx.rng.chance(0.5)) {
         ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.peaceful), vars), [t.id, other.id], { category: 'survival' });
     } else {
@@ -399,7 +420,7 @@ function attemptForage(
     trainProficiency(t, 'forage');
     depleteZone(ctx.state, t.zone, ZONES.depletionPerForage);
     ctx.logEvent(
-        fill(ctx.pickText(flavor.actions.forage), { tribute: t.name, zone: t.zone, item: itemPhrase(item) }),
+        fill(ctx.pickText(flavor.actions.forage), { tribute: t.name, zone: t.zone, item: itemPhrase(fresh) }),
         [t.id],
         { category: 'loot' }
     );

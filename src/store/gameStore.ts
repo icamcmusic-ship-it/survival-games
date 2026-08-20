@@ -43,10 +43,16 @@ const STIPEND = 250;
 function readCoins(): number {
     // Note the explicit null check: `Number(null)` is 0, which would silently
     // hand a brand-new player an empty wallet instead of their starting stake.
-    const stored = localStorage.getItem('capitolCoins');
-    if (stored === null) return STARTING_COINS;
-    const raw = Number(stored);
-    return Number.isFinite(raw) && raw >= 0 ? raw : STARTING_COINS;
+    try {
+        const stored = localStorage.getItem('capitolCoins');
+        if (stored === null) return STARTING_COINS;
+        const raw = Number(stored);
+        return Number.isFinite(raw) && raw >= 0 ? raw : STARTING_COINS;
+    } catch {
+        // Safari private mode (and similar) throws on localStorage access
+        // before React ever mounts.
+        return STARTING_COINS;
+    }
 }
 
 const SAVE_KEY = 'survivalGamesSave';
@@ -103,19 +109,22 @@ function readHallOfFame(): HallOfFameEntry[] {
 
 function saveHallOfFame(state: GameState) {
     const winner = state.tributes.find(t => t.status === 'alive');
-    if (!winner) return;
+    // A Games nobody survived used to return here, so the run vanished from the
+    // archive entirely — the rarest outcome in the game was also the only one
+    // with no record of it. A wipeout is archived as its own kind of entry.
     const entry: HallOfFameEntry = {
         id: `${state.seed}-${Date.now().toString(36)}`,
         seed: state.seed,
         arenaName: state.arena.name,
         arenaId: state.arena.id,
-        config: state.config,
-        winnerName: winner.name,
-        winnerDistrict: winner.district,
-        kills: winner.kills,
+        config: state.baseConfig,
+        noVictor: !winner,
+        winnerName: winner?.name ?? 'No victor',
+        winnerDistrict: winner?.district ?? 0,
+        kills: winner?.kills ?? 0,
         date: new Date().toISOString(),
-        winnerTraits: winner.traits,
-        winnerEndHealth: winner.health,
+        winnerTraits: winner?.traits ?? [],
+        winnerEndHealth: winner?.health ?? 0,
         tributeSummaries: state.tributes.map(t => ({
             name: t.name,
             district: t.district,
@@ -126,7 +135,11 @@ function saveHallOfFame(state: GameState) {
         }))
     };
     // Keep the archive bounded — localStorage quota is not infinite.
-    localStorage.setItem('hungerGamesHoF', JSON.stringify([entry, ...readHallOfFame()].slice(0, 50)));
+    try {
+        localStorage.setItem('hungerGamesHoF', JSON.stringify([entry, ...readHallOfFame()].slice(0, 50)));
+    } catch {
+        // Storage full or unavailable — the victory just won't be archived.
+    }
 }
 
 export const gameStore = createStore<GameStoreState>({
@@ -211,7 +224,11 @@ export const gameActions = {
         gameStore.setState(s => {
             const next = typeof coins === 'function' ? coins(s.coins) : coins;
             const safe = Math.max(0, Math.floor(next));
-            localStorage.setItem('capitolCoins', safe.toString());
+            try {
+                localStorage.setItem('capitolCoins', safe.toString());
+            } catch {
+                // Storage full or unavailable — the balance just won't persist.
+            }
             return { coins: safe };
         });
     },
@@ -244,6 +261,9 @@ export const gameActions = {
         const saved = readSavedRun();
         if (!saved) return;
         const { gameState } = saved;
+        // Saves written before baseConfig existed: the executed config is the
+        // best remaining approximation of what the player chose.
+        if (!gameState.baseConfig) gameState.baseConfig = gameState.config;
         gameStore.setState({
             gameState,
             simulator: new Simulator(gameState),
@@ -270,12 +290,13 @@ export const gameActions = {
             ? generateArena(safeSeed)
             : (ARENAS.find(a => a.id === arenaId) || ARENAS[0]);
         const startZone = arena.zones[0].name;
-        const tributes = generateTributes(safeSeed, config, startZone);
 
         // REPLAY-01: this year's Games are rolled from the seed and the
         // player's config is multiplied through them, so a shared seed
-        // reproduces the same Games rather than merely the same cast.
+        // reproduces the same Games rather than merely the same cast. The
+        // profile is rolled before the cast because it decides the cast's shape.
         const gamesProfile = gamesProfileFor(safeSeed);
+        const tributes = generateTributes(safeSeed, config, startZone, gamesProfile.castShape);
 
         const initialState: GameState = {
             seed: safeSeed,
@@ -286,6 +307,7 @@ export const gameActions = {
             log: [],
             gamemakerMode,
             config: configForProfile(config, gamesProfile),
+            baseConfig: config,
             gamesProfile,
             logCounter: 0,
             feastsHeld: 0,
@@ -311,11 +333,14 @@ export const gameActions = {
 
         const baseSeed = gameState.seed.split('~')[0];
         const newSeed = `${baseSeed}~${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-        const tributes = generateTributes(newSeed, gameState.config, gameState.arena.zones[0].name);
-        // A rerolled cast is a rerolled Games: the sub-seed decides both.
+        // A rerolled cast is a rerolled Games: the sub-seed decides both, and
+        // the executed config is re-derived from the player's base config so
+        // the old profile's multipliers don't leak into the new year.
         const gamesProfile = gamesProfileFor(newSeed);
+        const config = configForProfile(gameState.baseConfig, gamesProfile);
+        const tributes = generateTributes(newSeed, config, gameState.arena.zones[0].name, gamesProfile.castShape);
         const newState: GameState = {
-            ...gameState, seed: newSeed, tributes, log: [], logCounter: 0, gamesProfile,
+            ...gameState, seed: newSeed, tributes, log: [], logCounter: 0, gamesProfile, config,
         };
 
         gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });

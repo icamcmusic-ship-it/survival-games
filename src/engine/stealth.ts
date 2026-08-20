@@ -28,6 +28,11 @@ function isDark(ctx: SimContext): boolean {
     return ctx.state.timeOfDay === 'night';
 }
 
+/** Half-light: enough to move by, not enough to hide in. */
+function isTwilight(ctx: SimContext): boolean {
+    return ctx.state.timeOfDay === 'dusk';
+}
+
 /** How well a tribute is hidden in the ground they are standing on, 0-1. */
 export function concealment(
     t: Tribute,
@@ -103,10 +108,12 @@ export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone
     // choices they made on an earlier turn, which is what makes them tactics.
     const cycle = ctx.state.cycle ?? 0;
     const camp = ctx.state.camps?.[hider.id];
-    const hidden0 = concealment(hider, zone, alliesPresent, {
+    let hidden0 = concealment(hider, zone, alliesPresent, {
         fire: camp?.fire !== undefined && cycle < camp.fire,
         camouflage: camp?.camouflage !== undefined && cycle < camp.camouflage,
     }, dark);
+    // Half-light: some of the night's cover, none of its safety.
+    if (isTwilight(ctx) && !hasTool(hider, 'light')) hidden0 += STEALTH.duskConcealment;
     let hidden = Math.min(
         STEALTH.maxConcealment,
         Math.max(0, hidden0 + advantage * STEALTH.perPointAdvantage)
@@ -143,6 +150,10 @@ export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute
     // Night is when an ambush is an ambush. This is the whole reason a hunter
     // waits for dark rather than forcing a fight at noon.
     if (dark && !hasTool(defender, 'light')) chance += STEALTH.nightAmbushBonus;
+    // Dusk is the hunter's window, and the best one they get: their quarry is
+    // on the move and there is still enough light to line them up. Full dark
+    // favours the hider; half-light favours whoever is already watching.
+    if (isTwilight(ctx)) chance += STEALTH.duskAmbushBonus;
 
     if (zone && COVER_TERRAIN.includes(zone.terrain)) chance += STEALTH.coverBonus;
     if (zone && zone.terrain === 'open') chance -= STEALTH.openPenalty;

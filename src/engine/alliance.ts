@@ -1,5 +1,6 @@
 import { Alliance, GameState, Item, Tribute } from '../models/types';
 import { ALLIANCES } from '../data/balance';
+import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext } from './context';
 import { cycleOf } from './memory';
 import { getRel } from './relationships';
@@ -29,6 +30,19 @@ import { getRel } from './relationships';
  * matched against each other in a brawl. The bond id is the actual record of
  * who fell for whom.
  */
+/**
+ * Whether `t` is performing their bond with `otherId` rather than feeling it.
+ *
+ * A performed Star-Crossed bond looks identical to everyone in the arena and to
+ * every sponsor in the Capitol — it earns the same trust and the same
+ * excitement. What it does not earn is loyalty: the betrayal layer reads the
+ * real number, so a performer can and will turn on the person they are
+ * pretending to love.
+ */
+export function isPerforming(t: Tribute, otherId: string): boolean {
+    return t.displayedRegard?.[otherId] !== undefined;
+}
+
 export function areLovers(a: Tribute, b: Tribute): boolean {
     if (a.id === b.id) return false;
     if (!a.traits.includes('Star-Crossed') || !b.traits.includes('Star-Crossed')) return false;
@@ -86,8 +100,10 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         campZone: members[0]?.zone,
         sharedCache: [],
         pact,
+        charter: rollCharter(ctx.rng, members),
     };
     records[id] = record;
+    announceCharter(ctx, record, members);
 
     if (pact !== 'no-pact') {
         ctx.logEvent(
@@ -99,6 +115,31 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         );
     }
     return record;
+}
+
+/**
+ * Merges the absorbed alliance's record into the surviving one instead of
+ * re-registering from scratch — two groups that pooled supplies for six days
+ * keep both caches (capped), keep the older founding date, keep the stricter
+ * pact (without re-announcing one), and re-elect a leader across the whole
+ * merged roster.
+ */
+export function mergeAllianceRecords(ctx: SimContext, keepId: string, absorbedId: string, members: Tribute[]): Alliance {
+    const records = allianceRecords(ctx.state);
+    const keep = records[keepId];
+    const absorbed = records[absorbedId];
+    delete records[absorbedId];
+    if (!keep) return registerAlliance(ctx, keepId, members);
+
+    const strictness: Record<Alliance['pact'], number> = { 'no-pact': 0, 'until-the-final-eight': 1, 'to-the-end': 2 };
+    keep.memberIds = members.map(m => m.id);
+    keep.leaderId = pickLeader(members).id;
+    if (absorbed) {
+        keep.sharedCache = [...keep.sharedCache, ...absorbed.sharedCache].slice(0, ALLIANCES.cacheMaxSize);
+        keep.formedCycle = Math.min(keep.formedCycle, absorbed.formedCycle);
+        if (strictness[absorbed.pact] > strictness[keep.pact]) keep.pact = absorbed.pact;
+    }
+    return keep;
 }
 
 /**

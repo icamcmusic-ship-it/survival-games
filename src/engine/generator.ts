@@ -9,10 +9,15 @@ import { blankMemory } from './memory';
 import { blankProficiencies } from './proficiency';
 import { seedBackstoryRelationships } from './relationships';
 import { addExcitement } from './audience';
+import { CastShape } from '../data/gamesProfile';
 
 /** Weighted draw from the district's archetype table. */
-function pickArchetype(rng: RNG, district: number): ArchetypeId {
-    const weights = archetypeWeightsFor(district);
+function pickArchetype(rng: RNG, district: number, careerBias = 0): ArchetypeId {
+    // The cast shape can push the whole field toward or away from the academy
+    // archetype — that is what makes a "career-heavy" year read differently on
+    // the roster screen from an "outer districts" one.
+    const weights = archetypeWeightsFor(district).map(([id, w]): [ArchetypeId, number] =>
+        id === 'career' ? [id, Math.max(0, w + careerBias)] : [id, w]);
     const total = weights.reduce((sum, [, w]) => sum + w, 0);
     let roll = rng.nextFloat() * total;
     for (const [id, w] of weights) {
@@ -87,8 +92,11 @@ function applyPersonalVariance(rng: RNG, attributes: Attributes) {
  * almost always the same thing: an older sibling stepping in front of a younger
  * one, which the Capitol adores and which rarely ends well.
  */
-function applyVolunteer(rng: RNG, t: Tribute) {
-    const chance = t.isCareer ? VOLUNTEER.careerChance : VOLUNTEER.outlyingChance;
+function applyVolunteer(rng: RNG, t: Tribute, shape?: CastShape) {
+    // An all-volunteer year is exactly that; otherwise the cast shape only
+    // nudges the odds a district's tribute steps forward.
+    const base = t.isCareer ? VOLUNTEER.careerChance : VOLUNTEER.outlyingChance;
+    const chance = Math.min(1, base + (shape?.volunteerChance ?? 0));
     if (!rng.chance(chance)) return;
 
     t.volunteered = true;
@@ -111,7 +119,17 @@ function applyVolunteer(rng: RNG, t: Tribute) {
     t.sponsorTrust = t.reputation;
 }
 
-export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME_CONFIG, startZone: string = 'The Cornucopia'): Tribute[] {
+export function generateTributes(
+    seed: string,
+    config: GameConfig = DEFAULT_GAME_CONFIG,
+    startZone: string = 'The Cornucopia',
+    /**
+     * REPLAY-09: the shape of this year's cast. Omitted by callers that only
+     * want a plain field (and by states saved before cast shapes existed), in
+     * which case the draw behaves exactly as it always did.
+     */
+    shape?: CastShape,
+): Tribute[] {
     const rng = new RNG(seed);
     const tributes: Tribute[] = [];
     const districtCount = Math.min(12, Math.max(1, config.districtCount));
@@ -156,12 +174,21 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 attributes.agility += rng.nextInt(1, 2);
             }
 
-            const age = rng.nextInt(GENERATION.minAge, GENERATION.maxAge);
+            // The cast shape leans on the age roll before it is clamped back
+            // into the eligible band, so a "young field" really is younger
+            // rather than merely being described that way.
+            const age = Math.max(GENERATION.minAge, Math.min(GENERATION.maxAge,
+                rng.nextInt(GENERATION.minAge, GENERATION.maxAge) + (shape?.ageShift ?? 0)));
             applyAgeProfile(attributes, age);
             applyPersonalVariance(rng, attributes);
+            if (shape?.talentBonus) {
+                (Object.keys(attributes) as Array<keyof Attributes>).forEach(k => {
+                    attributes[k] += shape.talentBonus;
+                });
+            }
 
             // Archetype: shapes stats, traits, and in-game behavior
-            const archetype = pickArchetype(rng, district);
+            const archetype = pickArchetype(rng, district, shape?.careerBias ?? 0);
             const archetypeDef = ARCHETYPES[archetype];
             (Object.entries(archetypeDef.statBias) as Array<[keyof Attributes, number]>).forEach(([k, bonus]) => {
                 attributes[k] += bonus;
@@ -250,7 +277,7 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
     }
 
     // The reaping is not just a name out of a bowl.
-    tributes.forEach(t => applyVolunteer(rng, t));
+    tributes.forEach(t => applyVolunteer(rng, t, shape));
 
     // Audience meta: the Capitol has favourites before the gong.
     // Charisma, a good story and a career pedigree all feed the pre-Games buzz.
@@ -272,6 +299,22 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
 
     // Nobody walks in a stranger.
     seedBackstoryRelationships(tributes, rng);
+
+    // A Quell of bonded pairs means the two names out of each district already
+    // know each other, and everybody watching knows what that will cost.
+    if (shape?.pairBond) {
+        for (let district = 1; district <= districtCount; district++) {
+            const pair = tributes.filter(t => t.district === district);
+            if (pair.length !== 2) continue;
+            const [a, b] = pair;
+            a.relationships[b.id] = shape.pairBond;
+            b.relationships[a.id] = shape.pairBond;
+            a.reapingNote = a.reapingNote
+                ?? `Reaped as one half of a bonded pair with ${b.name}. Neither of them chose the other, and it will not matter.`;
+            b.reapingNote = b.reapingNote
+                ?? `Reaped as one half of a bonded pair with ${a.name}. Neither of them chose the other, and it will not matter.`;
+        }
+    }
 
     return tributes;
 }

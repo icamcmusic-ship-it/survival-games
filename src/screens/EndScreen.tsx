@@ -138,6 +138,34 @@ export function EndScreen({
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
+                    {/* The record book only ever reacted to a personal best. Most of
+                        what makes a run memorable is not a record — it is the two or
+                        three unusual things that happened, measured against this
+                        player's own Panem. */}
+                    {outcome && outcome.notables && outcome.notables.length > 0 && (
+                        <div className="md:col-span-2 panel p-5 space-y-2"
+                            style={{ borderColor: 'var(--red)', borderWidth: '3px' }}>
+                            <span className="eyebrow" style={{ color: 'var(--red)' }}>
+                                What made these Games unusual
+                            </span>
+                            {outcome.notables.map((n, i) => (
+                                <p key={i} className="text-sm text-[var(--color-ink-200)] leading-relaxed">{n.text}</p>
+                            ))}
+                        </div>
+                    )}
+
+                    {outcome && outcome.nearMisses && outcome.nearMisses.length > 0 && (
+                        <div className="md:col-span-2 panel p-5 space-y-2">
+                            <span className="eyebrow">So close</span>
+                            {outcome.nearMisses.map(m => (
+                                <div key={m.id} className="panel-flush p-2.5">
+                                    <div className="text-sm font-bold text-[var(--ink)]">{m.name}</div>
+                                    <div className="text-[11px] text-[var(--color-ink-500)]">{m.detail}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     {outcome && (outcome.newAchievements.length > 0 || outcome.brokenRecords.length > 0) && (
                         <div className="md:col-span-2 panel p-5 space-y-3"
                             style={{ borderColor: 'var(--cat-alliance)', borderWidth: '3px' }}>

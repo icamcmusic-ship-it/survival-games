@@ -1,6 +1,6 @@
 import { GameState, Tribute } from '../models/types';
-import { FEAR } from '../data/balance';
-import { ensureMemory } from './memory';
+import { FEAR, MEMORY } from '../data/balance';
+import { cyclesSinceContact, ensureMemory } from './memory';
 import { traitMod } from '../data/traits';
 
 /**
@@ -41,11 +41,13 @@ export function fearInZone(state: GameState, t: Tribute, zoneName: string): numb
     let worst = 0;
     state.tributes.forEach(o => {
         if (o.status !== 'alive' || o.id === t.id) return;
-        // Only what they believe: a tribute they have not seen recently cannot
-        // be placed on the map, so their menace does not colour this zone.
+        // Only what they believe: a tribute's true position is not the test —
+        // dread of a *specific* person requires having actually crossed paths
+        // with them recently, not merely a stale "someone hostile was here"
+        // count for the zone that happens to still be true of whoever is
+        // standing here now.
         if (o.zone !== zoneName) return;
-        const slot = ensureMemory(t).zones[zoneName];
-        if (!slot || slot.rivals <= 0) return;
+        if (cyclesSinceContact(state, t, o.id) > MEMORY.sightingLifetime) return;
         worst = Math.max(worst, fearOf(t, o.id));
     });
     return worst;

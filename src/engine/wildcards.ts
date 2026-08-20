@@ -5,6 +5,12 @@ import { giveItem, itemPhrase, mintItem } from './items';
 import { triggerGamemakerEvent } from './gamemaker';
 import { addExcitement } from './audience';
 import { clampTribute } from './vitals';
+import { RNG } from '../utils/rng';
+import { Wildcard } from '../data/gamesProfile';
+import { calendarOf } from './gamesProfile';
+import { cycleOf, noteSighting, rememberedRivals } from './memory';
+import { fearOf } from './fear';
+import { OBJECTIVES } from '../data/balance';
 
 /**
  * REPLAY-01: the one scheduled disruption a run gets.
@@ -20,15 +26,23 @@ import { clampTribute } from './vitals';
  */
 export function fireScheduledWildcard(ctx: SimContext) {
     const profile = ctx.state.gamesProfile;
-    if (!profile || ctx.state.wildcardFired) return;
-    const { wildcard } = profile;
-    if (wildcard.day === 0 || ctx.state.day < wildcard.day) return;
+    if (!profile) return;
+    const calendar = calendarOf(profile);
+    const fired = ctx.state.firedWildcards ?? (ctx.state.firedWildcards = []);
 
-    ctx.state.wildcardFired = true;
-    if (wildcard.onFire) {
-        ctx.logEvent(wildcard.onFire, [], { important: true, category: 'gamemaker' });
-    }
+    calendar.forEach((wildcard, index) => {
+        if (wildcard.day === 0 || ctx.state.day < wildcard.day) return;
+        if (fired.includes(index)) return;
+        fired.push(index);
+        ctx.rng = new RNG(`${ctx.state.seed}-wildcard-${index}-${ctx.state.day}`);
+        if (wildcard.onFire) {
+            ctx.logEvent(wildcard.onFire, [], { important: true, category: 'gamemaker' });
+        }
+        resolveWildcard(ctx, wildcard);
+    });
+}
 
+function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
     const alive = getAlive(ctx.state);
 
     switch (wildcard.kind) {
@@ -102,7 +116,11 @@ export function fireScheduledWildcard(ctx: SimContext) {
         }
 
         case 'blackout':
-            // One cycle where the arena simply does not get its day back.
+            // Several cycles where the arena simply does not get its day back —
+            // an "extended darkness" that lasted exactly one phase was the
+            // announcement writing a cheque the implementation did not honour.
+            // `processDayNight` reads this and holds the arena in night.
+            ctx.state.blackoutUntilCycle = (ctx.state.cycle ?? 0) + WILDCARD.blackoutCycles;
             ctx.state.timeOfDay = 'night';
             break;
 
@@ -118,15 +136,69 @@ export function fireScheduledWildcard(ctx: SimContext) {
 
         case 'bounty': {
             // The Capitol picks the tribute the crowd is least invested in and
-            // makes them interesting by fiat.
+            // makes them interesting by fiat. An event named "bounty" that
+            // produced one log line and some excitement was not a bounty: it
+            // now actually points the field at one person, by writing a hunt
+            // objective onto everyone with the stomach for it and seeding a
+            // sighting so they can act on it.
             const target = [...alive].sort((a, b) => a.excitementRating - b.excitementRating)[0];
             if (!target) break;
             addExcitement(target, WILDCARD.bountyExcitement);
             target.sponsorTrust = Math.min(100, target.sponsorTrust + WILDCARD.bountyTrust);
             clampTribute(target);
+            ctx.state.bountyTargetId = target.id;
             ctx.logEvent(
                 `The bounty is on ${target.name} of District ${target.district}. Every sponsor in the Capitol is now watching one person, and so is everybody left in the arena.`,
                 [target.id],
+                { important: true, category: 'sponsor' }
+            );
+
+            const hunters = alive.filter(t =>
+                t.id !== target.id
+                && (t.allianceId === undefined || t.allianceId !== target.allianceId)
+                && fearOf(t, target.id) < OBJECTIVES.huntAbandonFear);
+            hunters.forEach(t => {
+                // The Capitol broadcasts where they are: this is public
+                // information, which is the entire point of a bounty.
+                noteSighting(ctx.state, t, target.zone, Math.max(1, rememberedRivals(ctx.state, t, target.zone)), 0);
+                t.objective = {
+                    kind: 'hunt',
+                    targetId: target.id,
+                    expires: cycleOf(ctx.state) + OBJECTIVES.huntCycles,
+                };
+            });
+            if (hunters.length > 0) {
+                ctx.logEvent(
+                    `${hunters.map(h => h.name).join(', ')} all change direction at once. There is only one thing worth walking toward now.`,
+                    hunters.map(h => h.id),
+                    { important: true, category: 'travel' }
+                );
+            }
+            break;
+        }
+
+        case 'crowd-revolt': {
+            // "Viewing figures are down, fix it" was a 1.3x hazard multiplier
+            // and nothing else. A crowd that has lost patience turns on its own
+            // favourites: the tributes the Capitol has been carrying lose their
+            // sponsors, and the ones nobody was watching become the story.
+            const ranked = [...alive].sort((a, b) => b.excitementRating - a.excitementRating);
+            const top = ranked.slice(0, Math.ceil(ranked.length / 3));
+            const bottom = ranked.slice(-Math.ceil(ranked.length / 3));
+            top.forEach(t => {
+                t.sponsorTrust = Math.max(0, t.sponsorTrust - WILDCARD.revoltTrustSwing);
+                t.excitementRating = Math.max(0, t.excitementRating - WILDCARD.revoltTrustSwing);
+                clampTribute(t);
+            });
+            bottom.forEach(t => {
+                t.sponsorTrust = Math.min(100, t.sponsorTrust + WILDCARD.revoltTrustSwing);
+                addExcitement(t, WILDCARD.revoltTrustSwing);
+                clampTribute(t);
+            });
+            ctx.logEvent(
+                `The Capitol turns on its own favourites. ${top.map(t => t.name).join(', ')} find the parachutes have stopped; ` +
+                `${bottom.map(t => t.name).join(', ')} are suddenly the story nobody saw coming.`,
+                [...top, ...bottom].map(t => t.id),
                 { important: true, category: 'sponsor' }
             );
             break;

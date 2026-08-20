@@ -45,6 +45,8 @@ export type TraitMod =
     | 'fearGain'             // multiplier offset on fear picked up
     // stance.ts
     | 'aggressionScore'      // flat, on the stance scoring scale
+    // resolve.ts — the will to keep going, per cycle
+    | 'resolveDrift'         // flat, added to the per-cycle resolve drift
     // fieldcraft.ts / survival foraging
     | 'forage'               // flat, 0-1 chance
     | 'medicine'             // flat, 0-1 chance a field dressing takes
@@ -124,11 +126,11 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     // ---- the mind -----------------------------------------------------
     'Stoic': {
         info: 'Does not come apart. Loses far less sanity to deprivation, darkness and the sky at night.',
-        mods: { sanityDrain: -0.35, sanityRecovery: 4 },
+        mods: { sanityDrain: -0.35, sanityRecovery: 4, resolveDrift: 1 },
     },
     'Fragile': {
         info: 'The arena is louder inside their head than anyone else\'s. Loses sanity faster and recovers it slower.',
-        mods: { sanityDrain: 0.4, sanityRecovery: -3 },
+        mods: { sanityDrain: 0.4, sanityRecovery: -3, resolveDrift: -1 },
     },
     'Cool-Headed': {
         info: 'Registers a threat without becoming afraid of it. Barely accumulates fear of specific tributes.',
@@ -144,7 +146,7 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Grim': {
         info: 'Has buried people before. A death in front of them costs much less than it costs anyone else.',
-        mods: { griefResist: 0.5, sanityDrain: -0.1 },
+        mods: { griefResist: 0.5, sanityDrain: -0.1, resolveDrift: 0.75 },
     },
 
     // ---- moving through the arena -------------------------------------
@@ -244,7 +246,7 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Softhearted': {
         info: 'Cannot finish it. Allies more readily, grieves harder, and a kill sits badly.',
-        mods: { allianceAffinity: 0.2, griefResist: -0.4, killSanity: 0.6 },
+        mods: { allianceAffinity: 0.2, griefResist: -0.4, killSanity: 0.6, resolveDrift: -0.75 },
     },
     'Showman': {
         info: 'Plays to the cameras constantly. Everything they do earns more excitement than it should.',
@@ -297,7 +299,7 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     'Hardened': {
         info: 'Earned surviving a mutt. Whatever the Gamemakers send next, they have already met worse.',
         earned: true,
-        mods: { fearGain: -0.4, sanityDrain: -0.2, combatPower: 1 },
+        mods: { fearGain: -0.4, sanityDrain: -0.2, combatPower: 1, resolveDrift: 1 },
     },
     'Merciful': {
         info: 'Earned by letting someone live who did not have to. The Capitol finds it fascinating; the arena finds it expensive.',

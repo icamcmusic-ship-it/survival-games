@@ -2,6 +2,12 @@ import { SimContext, getAlive } from '../context';
 import { EpilogueQA, EventLog, Tribute } from '../../models/types';
 import { ensureMemory } from '../memory';
 import { getRel } from '../relationships';
+import { RNG } from '../../utils/rng';
+
+/** Picks one variant, seeded so the same run always gives the same interview. */
+function pick(rng: RNG, variants: string[]): string {
+    return rng.pick(variants);
+}
 
 /**
  * The victor's interview, assembled from what actually happened.
@@ -103,6 +109,8 @@ function quoteLine(text: string): string {
 
 export function processEpilogue(ctx: SimContext) {
     ctx.state.phase = 'epilogue';
+    ctx.rng = new RNG(`${ctx.state.seed}-epilogue`);
+    const rng = ctx.rng;
     const alive = getAlive(ctx.state);
     const winner = alive[0];
 
@@ -121,7 +129,12 @@ export function processEpilogue(ctx: SimContext) {
 
     qas.push({
         question: `Caesar Flickerman: 'Ladies and gentlemen, the victor of the ${facts.daysSurvived}-day Games... ${winner.name} of District ${winner.district}! Tell us — what was going through your mind when you first stepped onto that pedestal?'`,
-        answer: `${winner.name}: 'Honestly, Caesar, that first sound of the gong was terrifying. I just knew I had to survive, no matter what it took.'`
+        answer: `${winner.name}: '${pick(rng, [
+            'Honestly, Caesar, that first sound of the gong was terrifying. I just knew I had to survive, no matter what it took.',
+            'I remember thinking there was no version of that pedestal that felt real. Then it stopped feeling like a thought and started being a body running.',
+            'I do not think I decided anything on that pedestal, Caesar. My legs decided for me the second the gong went.',
+            'Everything went very quiet, and then very loud. I have never heard sixty seconds take that long since.',
+        ])}'`
     });
 
     // The specific thing that ended it.
@@ -194,12 +207,20 @@ export function processEpilogue(ctx: SimContext) {
     if (facts.sponsorGifts.length > 0) {
         qas.push({
             question: `Caesar Flickerman: '${facts.sponsorGifts.length} silver parachute${facts.sponsorGifts.length === 1 ? '' : 's'} came down for you. Anything you want to say to the people who sent them?'`,
-            answer: `${winner.name}: 'To everyone in the Capitol who sent something down: you saved my life. That first parachute came when I had nothing left. Thank you.'`
+            answer: `${winner.name}: '${pick(rng, [
+                'To everyone in the Capitol who sent something down: you saved my life. That first parachute came when I had nothing left. Thank you.',
+                'I felt every single one of those, Caesar. Somebody out there was watching closely enough to know exactly what I needed and when. I owe them more than a thank you.',
+                'There were nights I had given up finding anything myself, and then the sky would open. I will not pretend that did not keep me alive.',
+            ])}'`
         });
     } else {
         qas.push({
             question: "Caesar Flickerman: 'Not one parachute the entire Games! You did this with absolutely nothing from us. That is extraordinary self-reliance!'",
-            answer: `${winner.name}: 'I had to learn to forage, find water, and rely on my own two hands. Nobody was coming. That turned out to be useful to know.'`
+            answer: `${winner.name}: '${pick(rng, [
+            'I had to learn to forage, find water, and rely on my own two hands. Nobody was coming. That turned out to be useful to know.',
+            'Nobody sent me anything, Caesar, and somewhere around day three I stopped expecting them to. After that it got easier, oddly.',
+            'I am not sure anyone in the Capitol knew my name until the third day. By then I had already worked out how to feed myself.',
+        ])}'`
         });
     }
 
@@ -207,12 +228,20 @@ export function processEpilogue(ctx: SimContext) {
     if (winner.traits.includes('Bloodthirsty')) {
         qas.push({
             question: "Caesar Flickerman: 'You hunted out there. Some would call it bloodthirsty. Did you enjoy it?'",
-            answer: `${winner.name}: 'It is a game of kill or be killed, Caesar. The Capitol wanted a show, and I gave them exactly that.'`
+            answer: `${winner.name}: '${pick(rng, [
+                'It is a game of kill or be killed, Caesar. The Capitol wanted a show, and I gave them exactly that.',
+                'I stopped apologising for it around the fourth day, Caesar. It was them or me, every single time, and I chose me.',
+                'You call it bloodthirsty. I call it the only rule that arena actually enforced.',
+            ])}'`
         });
     } else if (winner.traits.includes('Pacifist')) {
         qas.push({
             question: "Caesar Flickerman: 'You never wanted this. The whole audience could see it. How do you feel now that it is over?'",
-            answer: `${winner.name}: 'I feel a profound sorrow for everyone who did not make it. I only defended myself when I had to. I dream of a day where we do not have to fight.'`
+            answer: `${winner.name}: '${pick(rng, [
+                'I feel a profound sorrow for everyone who did not make it. I only defended myself when I had to. I dream of a day where we do not have to fight.',
+                'I did not want any of this, Caesar. I want that said plainly, on the broadcast, where it can be heard.',
+                'I am glad to be alive and I am not glad about how. I do not think those two things are supposed to sit together, and they do not.',
+            ])}'`
         });
     } else if (winner.age <= 13) {
         qas.push({
@@ -222,18 +251,31 @@ export function processEpilogue(ctx: SimContext) {
     } else if (winner.isCareer) {
         qas.push({
             question: "Caesar Flickerman: 'You trained for this your whole life. Did the arena live up to it?'",
-            answer: `${winner.name}: 'Training in District ${winner.district} makes you strong, but nothing prepares you for the real thing. I am proud to bring the glory home.'`
+            answer: `${winner.name}: '${pick(rng, [
+                `Training in District ${winner.district} makes you strong, but nothing prepares you for the real thing. I am proud to bring the glory home.`,
+                `Every drill, every hour on the academy floor — none of it tells you what the cannon actually sounds like. I am proud of what I did with it anyway.`,
+                `District ${winner.district} raised me for exactly this, Caesar. I would like to say that made it easy. It did not. It made it survivable.`,
+            ])}'`
         });
     } else {
         qas.push({
             question: "Caesar Flickerman: 'You entered as an underdog and outlasted every one of them. What kept you going in those long nights?'",
-            answer: `${winner.name}: 'I kept thinking about home — District ${winner.district}, and the people in it. Whenever I was close to giving up, their faces pushed me forward.'`
+            answer: `${winner.name}: '${pick(rng, [
+            `I kept thinking about home — District ${winner.district}, and the people in it. Whenever I was close to giving up, their faces pushed me forward.`,
+            `Nobody expected District ${winner.district} to send anyone home this year, Caesar, least of all me. I intend to enjoy proving everyone wrong.`,
+            `I was never supposed to be the one sitting in this chair. I thought about that a lot out there, right up until I stopped being able to afford to.`,
+        ])}'`
         });
     }
 
     qas.push({
         question: "Caesar Flickerman: 'Well, champion, the crown is yours, and the Capitol is celebrating your triumphant return!'",
-        answer: `${winner.name}: 'Thank you, Caesar. Let the people of the Capitol hear: I am going home.'`
+        answer: `${winner.name}: '${pick(rng, [
+            'Thank you, Caesar. Let the people of the Capitol hear: I am going home.',
+            'Thank you, Caesar. I do not think "triumphant" is the word I would use, but I am going home, and that is the one that matters.',
+            'Thank you, Caesar. I have thought about this moment every day I was in there. It does not feel the way I thought it would. I am still going home.',
+            'Thank you, Caesar. I would like District {district} to know I am coming back to them, and I have not forgotten who else is not.',
+        ]).replace('{district}', String(winner.district))}'`
     });
 
     ctx.state.epilogueInterview = qas;

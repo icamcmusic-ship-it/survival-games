@@ -135,6 +135,12 @@ export function tickZoneEffects(ctx: SimContext) {
 
 function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, occupants: Tribute[]) {
     occupants.forEach(t => {
+        // The occupant list is snapshotted once per zone, before any of its
+        // effects tick. A zone can carry several at once (a flood on top of a
+        // fire), so by the time the second one runs the first may have killed
+        // somebody — and damaging the corpse overwrote `lastDamage` after
+        // `checkDeath` had already written the true cause of death.
+        if (t.status !== 'alive') return;
         switch (effect.kind) {
             case 'burning':
                 applyDamage(ctx, t, ZONE_EFFECTS.burningDamage, { cause: `Caught in the fire in ${zoneName}`, kind: 'arena' });

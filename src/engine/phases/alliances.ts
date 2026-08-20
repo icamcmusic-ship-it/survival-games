@@ -1,12 +1,14 @@
 import { SimContext, getAlive } from '../context';
+import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
 import { ALLIANCES, PROTECTOR_BOND, ROMANCE } from '../../data/balance';
 import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact } from '../memory';
-import { allianceOf, areLovers, contributeToCache, membersOf, reconcileAlliances, registerAlliance } from '../alliance';
+import { allianceOf, areLovers, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
+import { betrayalReluctance } from '../debts';
 import { addExcitement } from '../audience';
 import { traitMod } from '../../data/traits';
 
@@ -37,8 +39,11 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
     if (candidates.length === 0) return undefined;
 
     const scored = candidates.map(m => {
-        // Star-crossed lovers are never a target.
-        const bonded = areLovers(betrayer, m);
+        // Star-crossed lovers are never a target — unless the betrayer is the
+        // one performing the romance, in which case the bond is a strategy and
+        // was never going to stop them. That asymmetry is the whole point of a
+        // performed bond existing.
+        const bonded = areLovers(betrayer, m) && !isPerforming(betrayer, m.id);
         if (bonded) return { m, weight: 0 };
 
         let weight = 1;
@@ -51,6 +56,9 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         if (ensureMemory(betrayer).betrayedBy.includes(m.id)) weight *= ALLIANCES.betrayedFirstStrikeWeight;
         // Someone who never stops watching is a much worse mark.
         weight *= Math.max(0.1, 1 - traitMod(m, 'betrayalResist'));
+        // And you do not knife the person who pulled you out of a fire. A debt
+        // was recorded and then never charged for — this is the charge.
+        weight *= betrayalReluctance(betrayer, m.id);
         return { m, weight: Math.max(0, weight) };
     }).filter(s => s.weight > 0);
 
@@ -80,6 +88,7 @@ function pickBetrayer(ctx: SimContext, members: Tribute[]): Tribute {
 }
 
 export function processAlliances(ctx: SimContext) {
+    ctx.rng = new RNG(`${ctx.state.seed}-alliances-${ctx.state.day}`);
     const alive = getAlive(ctx.state);
     const alliances = new Map<string, Tribute[]>();
 
@@ -104,14 +113,13 @@ export function processAlliances(ctx: SimContext) {
         const averageTrust = members.reduce((sum, m) =>
             sum + members.reduce((inner, o) => inner + (o.id === m.id ? 0 : getRel(m, o.id)), 0) / (members.length - 1), 0) / members.length;
         if (averageTrust < -15) {
-            members.forEach(m => {
-                delete m.allianceId;
-                ctx.logEvent(
-                    fill(ctx.pickText(ALLIANCE_TEXTS.dissolve), { tribute: m.name }),
-                    [m.id],
-                    { category: 'alliance' }
-                );
-            });
+            members.forEach(m => { delete m.allianceId; });
+            // One line for the whole collapse, not a near-identical one per member.
+            ctx.logEvent(
+                `The alliance of ${members.map(m => m.name).join(', ')} has come apart. They go their separate ways.`,
+                members.map(m => m.id),
+                { category: 'alliance' }
+            );
             alliances.delete(id);
         }
     });
@@ -311,28 +319,59 @@ function mergeAlliances(ctx: SimContext) {
             // Same ground, or there is no conversation to have.
             if (a[0].zone !== b[0].zone) continue;
 
+            // A merger is negotiated by whoever the two groups actually follow,
+            // not vetoed by blanket mutual regard: the leaders have to get on,
+            // and any member who genuinely loathes the other side walks out
+            // rather than blocking the handshake. That is a better story than
+            // the merge silently failing.
+            const leadA = pickLeader(a);
+            const leadB = pickLeader(b);
             const crossRegard = (x: Tribute[], y: Tribute[]) =>
                 x.reduce((sum, m) => sum + y.reduce((inner, o) => inner + getRel(m, o.id), 0) / y.length, 0) / x.length;
-            if (crossRegard(a, b) < ALLIANCES.mergeThreshold) continue;
-            if (crossRegard(b, a) < ALLIANCES.mergeThreshold) continue;
+            // Two leaders who know and rate each other can shake on it directly;
+            // otherwise the groups need to broadly get on — either basis opens
+            // the negotiation, and dissenters walk instead of vetoing it.
+            const leadersAgree = getRel(leadA, leadB.id) >= ALLIANCES.mergeThreshold
+                && getRel(leadB, leadA.id) >= ALLIANCES.mergeThreshold;
+            const groupsAgree = crossRegard(a, b) >= ALLIANCES.mergeThreshold
+                && crossRegard(b, a) >= ALLIANCES.mergeThreshold;
+            if (!leadersAgree && !groupsAgree) continue;
             if (!ctx.rng.chance(ALLIANCES.mergeChance)) continue;
 
+            const regardFor = (m: Tribute, others: Tribute[]) =>
+                others.reduce((sum, o) => sum + getRel(m, o.id), 0) / others.length;
+            const dissenters = [
+                ...a.filter(m => m.id !== leadA.id && regardFor(m, b) < ALLIANCES.mergeDissentThreshold),
+                ...b.filter(m => m.id !== leadB.id && regardFor(m, a) < ALLIANCES.mergeDissentThreshold),
+            ];
+            dissenters.forEach(m => { delete m.allianceId; });
+
+            const stayA = a.filter(m => !dissenters.includes(m));
+            const stayB = b.filter(m => !dissenters.includes(m));
+            if (stayA.length === 0 || stayB.length === 0) continue;
+
             // The larger group absorbs the smaller; a tie goes to the older pact.
-            const keepId = a.length >= b.length ? ids[i] : ids[j];
-            const merged = [...a, ...b];
+            const keepId = stayA.length >= stayB.length ? ids[i] : ids[j];
+            const merged = [...stayA, ...stayB];
             merged.forEach(m => { m.allianceId = keepId; });
             merged.forEach(m => merged.forEach(o => { if (m.id !== o.id) noteContact(ctx.state, m, o); }));
-            delete (ctx.state.alliances ?? {})[keepId === ids[i] ? ids[j] : ids[i]];
-            registerAlliance(ctx, keepId, merged);
+            mergeAllianceRecords(ctx, keepId, keepId === ids[i] ? ids[j] : ids[i], merged);
             groups.set(keepId, merged);
             groups.delete(keepId === ids[i] ? ids[j] : ids[i]);
 
             ctx.logEvent(
-                `${a.map(m => m.name).join(' and ')} throw in with ${b.map(m => m.name).join(' and ')} in ${a[0].zone}. ` +
+                `${leadA.name} and ${leadB.name} shake on it in ${a[0].zone}: their groups run as one. ` +
                 `Two small groups are one larger one, which is either much safer or much worse.`,
                 merged.map(m => m.id),
                 { important: true, category: 'alliance' }
             );
+            if (dissenters.length > 0) {
+                ctx.logEvent(
+                    `${dissenters.map(m => m.name).join(' and ')} want${dissenters.length === 1 ? 's' : ''} no part of the new arrangement and walk${dissenters.length === 1 ? 's' : ''} away from it.`,
+                    dissenters.map(m => m.id),
+                    { important: true, category: 'alliance' }
+                );
+            }
             return;
         }
     }
@@ -375,6 +414,31 @@ function growRomance(ctx: SimContext) {
             adjustRel(t2, t1.id, growth);
 
             const mutual = Math.min(getRel(t1, t2.id), getRel(t2, t1.id));
+
+            // A PERFORMED bond: Star-Crossed in canon is a strategy before it
+            // is a romance, and the simulation could only model the sincere
+            // version — a bond was mutual, symmetric and true by construction.
+            // One tribute who is genuinely attached, one who has worked out
+            // what the cameras will pay for it, is the far more interesting
+            // shape. The performer gets the sponsor benefit and none of the
+            // mechanical loyalty, and the other party does not know.
+            if (!stoodBy && mutual < ROMANCE.threshold) {
+                const oneSided = Math.max(getRel(t1, t2.id), getRel(t2, t1.id));
+                const lateness = Math.max(0, ctx.state.day - ROMANCE.minDay);
+                const performChance = ROMANCE.performedChance * Math.pow(ROMANCE.latenessDecay, lateness);
+                if (oneSided >= ROMANCE.performedMinRegard && ctx.rng.chance(performChance)) {
+                    const smitten = getRel(t1, t2.id) >= getRel(t2, t1.id) ? t1 : t2;
+                    const performer = smitten === t1 ? t2 : t1;
+                    // Playing it well is a charisma job, and the crowd is the
+                    // only audience that matters.
+                    if (performer.attributes.charisma >= ROMANCE.performerCharisma) {
+                        declareLovers(ctx, smitten, performer, performer);
+                        return;
+                    }
+                }
+                continue;
+            }
+
             if (mutual < ROMANCE.threshold) continue;
             // Somebody has to have risked something. This is the gate that makes
             // it a story rather than an arithmetic outcome.
@@ -438,9 +502,19 @@ function growProtectorBond(ctx: SimContext) {
     }
 }
 
-function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute) {
+function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute, performer?: Tribute) {
     t1.traits.push('Star-Crossed');
     t2.traits.push('Star-Crossed');
+    if (performer) {
+        // What they are showing the cameras, as distinct from what they feel.
+        // The betrayal layer reads `relationships` and is therefore entirely
+        // unmoved by the performance, which is the point.
+        const other = performer === t1 ? t2 : t1;
+        performer.displayedRegard = {
+            ...(performer.displayedRegard ?? {}),
+            [other.id]: ROMANCE.performedDisplayedRegard,
+        };
+    }
 
     // Falling for someone pulls them out of whatever alliance they were already
     // in — that departure needs its own event, not a silent headcount change
@@ -477,6 +551,16 @@ function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute) {
         [t1.id, t2.id],
         { important: true, category: 'romance' }
     );
+    if (performer) {
+        // Deliberately narrated: the audience of the *chronicle* is entitled to
+        // know what the audience in the Capitol does not.
+        const other = performer === t1 ? t2 : t1;
+        ctx.logEvent(
+            `${performer.name} plays it beautifully. ${other.name} is not playing.`,
+            [performer.id, other.id],
+            { important: true, category: 'romance' }
+        );
+    }
 }
 
 /**

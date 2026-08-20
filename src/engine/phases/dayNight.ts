@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, SPONSORS } from '../../data/balance';
+import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, OBJECTIVES, SPONSORS } from '../../data/balance';
 import { AMBIENT_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
@@ -10,7 +10,7 @@ import { processSponsors } from '../sponsors';
 import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
-    addZoneThreat, advanceCycle, decayMemories, decayRelationships, noteSighting,
+    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, noteSighting,
 } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
@@ -28,6 +28,14 @@ import {
 } from '../encounters';
 import { tickPersistentMutts } from '../mutts';
 import { restockCornucopia, rollAmbientZoneEffects, tickZoneEffects } from '../zoneEffects';
+import { runArenaSignature } from '../arenaSignature';
+import { runGamemakerSignature } from '../gamemakerAgency';
+import { tickWeatherFront } from '../weatherFront';
+import { tickZoneControl } from '../zoneControl';
+import { resolveBreakdowns, tickResolve } from '../resolve';
+import { decayTruces } from '../parley';
+import { repayDebts, tickDistrictBonds } from '../debts';
+import { enforceCharters } from '../allianceCharter';
 import { gamemakerProfile } from '../../data/gamemakers';
 import { escalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
@@ -43,9 +51,27 @@ import { QUALITY_BIAS } from '../../data/balance';
  */
 export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     ctx.rng = new RNG(`${ctx.state.seed}-${ctx.state.day}-${time}`);
+    // An extended-darkness wildcard holds the arena in night for several
+    // cycles: the lights do not come up, whatever the schedule says.
+    const blackout = ctx.state.blackoutUntilCycle !== undefined
+        && (ctx.state.cycle ?? 0) < ctx.state.blackoutUntilCycle;
+    if (blackout && time === 'day') {
+        ctx.logEvent(
+            'The arena lights do not come up. Whatever today was going to be, it happens in the dark.',
+            [],
+            { important: true, category: 'gamemaker' }
+        );
+    }
     // REPLAY-07: the arena's clock, so concealment, awareness and ambush can
     // read it without threading `time` through every call site that touches them.
-    ctx.state.timeOfDay = time;
+    // `time` stays the scheduled phase (the anthem is still read at nightfall,
+    // the border still closes on its own clock); `effectiveTime` is how dark it
+    // actually is, which is what fires, nocturnal mutts and stealth care about.
+    const effectiveTime = blackout ? 'night' : time;
+    // Movement in the night phase happens at dusk: there is still enough light
+    // to travel by, which is exactly why it is the most dangerous hour to be
+    // moving in. `resolveEncounters` below runs in full dark.
+    ctx.state.timeOfDay = effectiveTime === 'night' ? 'dusk' : 'day';
     advanceCycle(ctx.state);
     const alive = getAlive(ctx.state);
     // Counted once per day, so it freezes at whatever the tribute reached.
@@ -105,22 +131,39 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         checkTraps(ctx, t);
     });
 
+    // Dusk is over: everything from here resolves in full dark.
+    ctx.state.timeOfDay = effectiveTime;
+
     // A fire is warmth, hot food, and after dark it is the only thing in the
     // arena visible from a zone away. This is the trade the source material is
     // built on, and it only pays off at night.
-    if (time === 'night') revealFires(ctx);
+    if (effectiveTime === 'night') revealFires(ctx);
 
     // 4. Hazards, mutts and everyone who runs into everyone else.
-    resolveEncounters(ctx, currentAlive, acted, isEscalated, flavor, time);
+    resolveEncounters(ctx, currentAlive, acted, isEscalated, flavor, effectiveTime);
     // A mutt that has found someone keeps looking for them for a few more
     // cycles, independent of the ordinary per-cycle mutt roll.
     tickPersistentMutts(ctx);
+
+    // 4a. Whether anyone has stopped wanting to win. Resolve drifts on what
+    // this cycle actually did to them, then the ones who have run out act on it.
+    tickResolve(ctx);
+    resolveBreakdowns(ctx);
+
+    // 4b. The arena's own rule — the clock, the tide, the blackout schedule.
+    // Runs after movement and encounters so it acts on where tributes actually
+    // ended up, and before upkeep so the effects it starts tick normally.
+    runArenaSignature(ctx);
+    // ...and the Head Gamemaker's, once per run, when the feed needs saving.
+    runGamemakerSignature(ctx);
 
     // 5. Cycle upkeep: the arena restocks, memories fade, bonds cool, the
     // crowd's attention wanders.
     regenerateZones(ctx.state);
     // Fire spreads, floods drown stragglers, and whatever else is happening to
     // the ground itself lands after this cycle's movement has resolved.
+    tickWeatherFront(ctx);
+    tickZoneControl(ctx);
     rollAmbientZoneEffects(ctx);
     tickZoneEffects(ctx);
     restockCornucopia(ctx);
@@ -130,6 +173,12 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayRelationships(ctx.state);
     decayAllianceTrust(ctx.state);
     decayFear(ctx.state);
+    decayTruces(ctx.state);
+    // Obligations come due, district partners grow into each other, and any
+    // group that agreed terms is held to them.
+    repayDebts(ctx);
+    tickDistrictBonds(ctx);
+    enforceCharters(ctx);
     getAlive(ctx.state).forEach(t => {
         // Bloodlust cools. A kill on day 3 should not still be making someone
         // braver on day 8.
@@ -224,7 +273,21 @@ function soundTheAnthem(ctx: SimContext) {
  * has a shape: a wall sweeping in from one edge, or a ring tightening around
  * the centre. Both use the adjacency graph that already exists for pathing.
  */
+// Deterministic per (seed, arena), so the two BFS passes don't need to be
+// recomputed every single cycle just to be thrown away.
+const collapseOrderCache = new Map<string, string[]>();
+
 function buildCollapseOrder(ctx: SimContext): string[] {
+    const cacheKey = `${ctx.state.seed}|${ctx.state.arena.id}`;
+    const cached = collapseOrderCache.get(cacheKey);
+    if (cached) return cached;
+    if (collapseOrderCache.size > 32) collapseOrderCache.clear();
+    const order = computeCollapseOrder(ctx);
+    collapseOrderCache.set(cacheKey, order);
+    return order;
+}
+
+function computeCollapseOrder(ctx: SimContext): string[] {
     const allZoneNames = zoneNames(ctx.state.arena);
     const patternRng = new RNG(`${ctx.state.seed}-collapse-pattern`);
     const pattern = patternRng.pick(['scattered', 'wall', 'ring'] as const);
@@ -404,10 +467,13 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         if (!collapsedList.includes(t.zone)) return;
 
         // The Gamemakers want a victor, not an empty arena: the border herds
-        // the last survivors together rather than finishing them.
+        // the last survivors together rather than finishing them. For
+        // finalists that is literal — the wall bloodies them but never lands
+        // the killing blow itself; 7.75% of runs used to end with no victor,
+        // most of them to this exact damage source.
         const finalists = getAlive(ctx.state).length <= ESCALATION.finalistCount;
         const damage = finalists
-            ? ESCALATION.finalistCollapseDamage
+            ? Math.min(ESCALATION.finalistCollapseDamage, Math.max(0, t.health - 1))
             : ESCALATION.collapseDamageBase + (ctx.state.day - startDay) * ESCALATION.collapseDamagePerDay;
         const safeZones = allZoneNames.filter(z => !collapsedList.includes(z));
         // Nearest reachable safe zone via the adjacency graph, not an
@@ -488,36 +554,45 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         // The group's actual leader, chosen on merit and open to challenge —
         // not `members[0]`, which was whatever order the array happened to be in.
         const leader = leaderFor(ctx.state, t) ?? allianceMembers[0];
-        if (!leader || t.id !== leader.id) return;
-
-        const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed);
-        if (options.length === 0) return;
-
-        // The group follows whatever its leader has decided to do; only when the
-        // leader has no standing intention does the pack drift.
-        if (objectiveHolds(t)) return;
-        const led = objectiveStep(ctx, t, options);
-        if (!led && !ctx.rng.chance(wanderChanceFor(t))) return;
-        const newZone = (led ?? pickDestination(ctx, t, options)).name;
-        if (t.zone === newZone) return;
-
-        // Only members actually standing with the leader travel — anyone
-        // separated by a border collapse or a feast pulls their own weight
-        // back rather than being snapped across the map for free.
-        const present = allianceMembers.filter(m => m.zone === t.zone);
-        const departed = t.zone;
-        present.forEach(m => { m.zone = newZone; });
-        noteTraffic(ctx.state, departed, newZone, present.length);
-        if (t.stance === 'Evasive') {
-            ctx.logEvent(`${present.map(m => m.name).join(', ')} slip out of ${t.zone} without a sound.`, present.map(m => m.id), { zone: newZone, category: 'travel' });
+        if (leader && t.id !== leader.id && t.zone !== leader.zone) {
+            // Separated from the leader — a border collapse, a feast teleport, a
+            // lure betrayal — falls through to solo movement angling back toward
+            // the group, rather than freezing in place for the rest of the run.
+            if (!(t.objective?.kind === 'reach' && t.objective.reason === 'ally' && t.objective.zone === leader.zone)) {
+                t.objective = { kind: 'reach', zone: leader.zone, reason: 'ally', expires: cycleOf(ctx.state) + OBJECTIVES.reachCycles };
+            }
+        } else if (!leader || t.id !== leader.id) {
+            return;
         } else {
-            ctx.logEvent(
-                `The alliance of ${present.map(m => m.name).join(', ')} moves out to ${newZone}.`,
-                present.map(m => m.id),
-                { zone: newZone, category: 'travel' }
-            );
+            const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed);
+            if (options.length === 0) return;
+
+            // The group follows whatever its leader has decided to do; only when the
+            // leader has no standing intention does the pack drift.
+            if (objectiveHolds(t)) return;
+            const led = objectiveStep(ctx, t, options);
+            if (!led && !ctx.rng.chance(wanderChanceFor(t))) return;
+            const newZone = (led ?? pickDestination(ctx, t, options)).name;
+            if (t.zone === newZone) return;
+
+            // Only members actually standing with the leader travel — anyone
+            // separated by a border collapse or a feast pulls their own weight
+            // back rather than being snapped across the map for free.
+            const present = allianceMembers.filter(m => m.zone === t.zone);
+            const departed = t.zone;
+            present.forEach(m => { m.zone = newZone; });
+            noteTraffic(ctx.state, departed, newZone, present.length);
+            if (t.stance === 'Evasive') {
+                ctx.logEvent(`${present.map(m => m.name).join(', ')} slip out of ${t.zone} without a sound.`, present.map(m => m.id), { zone: newZone, category: 'travel' });
+            } else {
+                ctx.logEvent(
+                    `The alliance of ${present.map(m => m.name).join(', ')} moves out to ${newZone}.`,
+                    present.map(m => m.id),
+                    { zone: newZone, category: 'travel' }
+                );
+            }
+            return;
         }
-        return;
     }
 
     const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed);

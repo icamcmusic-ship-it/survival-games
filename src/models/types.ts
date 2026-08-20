@@ -220,6 +220,39 @@ export interface Tribute {
     /** Total stealth lost permanently to sanity breakdowns, capped rather than uncapped-frequency. */
     sanityStealthLoss?: number;
     /**
+     * The will to keep going, 0-100. Distinct from `vitals.sanity`: sanity is
+     * perception coming apart, resolve is whether they still want to win. See
+     * `engine/resolve.ts`.
+     */
+    resolve?: number;
+    /**
+     * Standing non-aggression pacts: other tribute id -> the cycle it expires
+     * on. Negotiated by `engine/parley.ts`; distinct from an alliance, which is
+     * a shared camp and shared supplies rather than an agreement not to fight.
+     */
+    truces?: Record<string, number>;
+    /**
+     * Displayed regard: what a tribute is *performing* toward someone, as
+     * distinct from `relationships`, which is what they actually feel.
+     *
+     * Star-Crossed in canon is a strategy before it is a romance, and the
+     * simulation could only model the sincere version — a bond was mutual,
+     * symmetric and true by construction. A performed bond earns the sponsor
+     * benefit without the mechanical loyalty, and the other party may not know.
+     * Only populated when it differs from the real number.
+     */
+    displayedRegard?: Record<string, number>;
+    /**
+     * Outstanding obligations: other tribute id -> how much is owed them.
+     *
+     * `memory.stoodBy` recorded that somebody took a risk for you, and then
+     * nothing ever charged for it. A debt raises the cost of betraying the
+     * creditor and unlocks a repayment beat. See `engine/debts.ts`.
+     */
+    debts?: Record<string, number>;
+    /** Guards the one-off "both still standing, both from the same district" beat. */
+    districtBondNoted?: boolean;
+    /**
      * How badly they are bleeding right now, 0-3. `injuries.bleeding` stays the
      * boolean "is there an open wound"; this is how fast it is running. A wound
      * clots down through the severities rather than draining a fixed 15 health
@@ -282,7 +315,17 @@ export interface Alliance {
      * is exactly what makes it land.
      */
     pact: 'to-the-end' | 'until-the-final-eight' | 'no-pact';
+    /**
+     * The rules they actually agreed to keep, beyond the pact's expiry date.
+     * Breaking one is fallout short of a full betrayal — an argument, a lost
+     * night's trust — which is the whole middle ground the alliance layer was
+     * missing: the only ways out used to be death, betrayal and pact expiry.
+     */
+    charter?: CharterRule[];
 }
+
+/** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
+export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone';
 
 /**
  * What happened between one specific pair, across the whole run.
@@ -391,7 +434,9 @@ export interface Arena {
     id: string;
     name: string;
     description: string;
+    /** Flavor text only — the game engine resolves mutts through `ARENA_MUTTS` (src/data/mutts.ts) via engine/mutts.ts, not this list. */
     mutts: string[];
+    /** Flavor text only — terrain events are resolved through `arenaFlavor` (src/data/arenaFlavor.ts) via engine/encounters.ts, not this list. */
     events: string[];
     zones: Zone[];
 }
@@ -435,6 +480,7 @@ export interface GameConfig {
 }
 
 import type { GamesProfile } from '../engine/gamesProfile';
+import type { WeatherFront } from '../engine/weatherFront';
 
 export interface GameState {
     seed: string;
@@ -444,11 +490,28 @@ export interface GameState {
     day: number;
     log: EventLog[];
     gamemakerMode: boolean;
+    /** The config actually driving the simulation (base config with the games profile's multipliers applied). */
     config: GameConfig;
+    /** The player's unmultiplied config, as chosen at setup — what gets shared or archived so a replay starts from the same inputs rather than double-applying the profile. */
+    baseConfig: GameConfig;
     collapsedZones?: string[];
     epilogueInterview?: EpilogueQA[];
-    /** Day the next Gamemaker feast is scheduled for (undefined = none scheduled). */
+    /** Day the next Gamemaker feast is scheduled for (undefined = none scheduled). Cleared once the feast resolves. */
     feastDay?: number;
+    /** Indices into `gamesProfile.calendar` that have already resolved. */
+    firedWildcards?: number[];
+    /** The storm currently crossing the arena, if any. See `engine/weatherFront.ts`. */
+    weatherFront?: WeatherFront;
+    /** Alliance id currently holding the Cornucopia. See `engine/zoneControl.ts`. */
+    cornucopiaHolder?: string;
+    /** Cycle that holder's tenure began, or last paid out. */
+    cornucopiaHeldSince?: number;
+    /** Cycle an extended-darkness wildcard releases the arena on. */
+    blackoutUntilCycle?: number;
+    /** Tribute the Capitol has put a bounty on, if any. */
+    bountyTargetId?: string;
+    /** Day the most recent feast actually convened — guards against two feasts landing on the same day. */
+    lastFeastDay?: number;
     /** Feasts already held this run, used to space them out. */
     feastsHeld?: number;
     /** Monotonic counter guaranteeing unique event log ids. */
@@ -476,6 +539,8 @@ export interface GameState {
     preGamesDone?: boolean;
     /** This run's Head Gamemaker. Chosen once, at the reaping. */
     headGamemaker?: string;
+    /** Guards the Head Gamemaker's one signature intervention per run. */
+    gamemakerSignatureFired?: boolean;
     /**
      * REPLAY-01: this year's Games, as announced. Rolled from the seed so a
      * shared seed reproduces the same Games, not merely the same cast.
@@ -491,7 +556,14 @@ export interface GameState {
      * is, and they are read from half a dozen call sites that have no business
      * taking a `time` parameter — so the arena's clock lives on the state.
      */
-    timeOfDay?: 'day' | 'night';
+    /**
+     * How light it is right now. `dusk` is the movement window of the night
+     * phase: tributes travel while there is still enough light to see by, and
+     * the encounters that follow resolve in full dark. That half-step is what
+     * gives a hunter a genuine window — at dusk they can still see, and their
+     * quarry is already on the move.
+     */
+    timeOfDay?: 'day' | 'dusk' | 'night';
     /** Aggregate audience interest in the living field, recomputed each cycle. */
     audienceInterest?: number;
     /** Zone name -> deaths that have happened there, broadcast by the sky each night. */
@@ -554,6 +626,8 @@ export interface HallOfFameEntry {
      */
     arenaId?: string;
     config?: GameConfig;
+    /** True for a Games nobody survived — archived as its own kind of entry. */
+    noVictor?: boolean;
     winnerName: string;
     winnerDistrict: number;
     kills: number;

@@ -35,10 +35,10 @@ function start(seed: string, arenaId: string, config: GameConfig): GameState {
     // config multiplied through this year's announced temperament.
     const gamesProfile = gamesProfileFor(seed);
     const resolved = configForProfile(config, gamesProfile);
-    const tributes = generateTributes(seed, resolved, arena.zones[0].name);
+    const tributes = generateTributes(seed, resolved, arena.zones[0].name, gamesProfile.castShape);
     return {
         seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: false,
-        config: resolved, gamesProfile, logCounter: 0, feastsHeld: 0, cycle: 0,
+        config: resolved, baseConfig: config, gamesProfile, logCounter: 0, feastsHeld: 0, cycle: 0,
     };
 }
 

@@ -4,7 +4,7 @@ import { RELATIONSHIPS, GENERATION } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
 import { clampTribute } from './vitals';
-import { ensureMemory, swearVengeance, noteContact } from './memory';
+import { cyclesSinceContact, ensureMemory, swearVengeance, noteContact } from './memory';
 import { areLovers } from './alliance';
 import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS } from '../data/flavorText';
 import { addExcitement } from './audience';
@@ -231,22 +231,24 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
         adjustRel(w, betrayer.id, -RELATIONSHIPS.betrayalWitnessPenalty);
         const mem = ensureMemory(w);
         if (!mem.betrayedBy.includes(betrayer.id)) mem.betrayedBy.push(betrayer.id);
-        // Watching an ally get knifed poisons the whole group, not just the pair.
-        // Only the living, though: drifting a corpse's number does nothing
-        // mechanically but does leave the profile screen showing a relationship
-        // quietly souring with a dead tribute, and lets the epilogue name
-        // someone the victor barely met as their nemesis.
+        // Watching an ally get knifed poisons the room — but only the part of
+        // the room the witness has actually been in. The old blanket sweep hit
+        // every living tribute (~500 relationship writes per betrayal) and
+        // saturated the whole graph against its clamp; distrust of a stranger
+        // you have never met is not a relationship, it is a mood.
         livingIds(ctx).forEach(id => {
             if (id === betrayer.id || id === w.id) return;
-            adjustRel(w, id, -RELATIONSHIPS.betrayedDistrustPenalty / 2);
+            if (!Number.isFinite(cyclesSinceContact(ctx.state, w, id))) return;
+            adjustRel(w, id, -RELATIONSHIPS.betrayedDistrustPenalty / 3);
         });
     });
 
     // A tribute who has been sold out once stops trusting the room — the people
-    // actually still in it, at any rate.
+    // actually still in it that they have actually dealt with, at any rate.
     livingIds(ctx).forEach(id => {
         if (id === betrayer.id || id === victim.id) return;
-        adjustRel(victim, id, -RELATIONSHIPS.betrayedDistrustPenalty);
+        if (!Number.isFinite(cyclesSinceContact(ctx.state, victim, id))) return;
+        adjustRel(victim, id, -RELATIONSHIPS.betrayedDistrustPenalty / 2);
     });
 }
 

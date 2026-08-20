@@ -56,7 +56,7 @@ const TIER_FLOORS = [20, 35, 50, 65];
  * you wanted. The mentor plea in `mentors.ts` already worked this way for
  * emergencies; this is the same idea for the ordinary stream.
  */
-function needWeight(t: Tribute, item: Item): number {
+export function needWeight(t: Tribute, item: Item): number {
     let weight = 1;
     if (item.type === 'water') weight += t.vitals.thirst / 12;
     if (item.type === 'food') weight += t.vitals.hunger / 14;
@@ -80,7 +80,7 @@ function needWeight(t: Tribute, item: Item): number {
     return Math.max(0.05, weight);
 }
 
-function pickNeededGift(ctx: SimContext, t: Tribute, pool: Item[]): Item {
+export function pickNeededGift(ctx: SimContext, t: Tribute, pool: Item[]): Item {
     const weights = pool.map(i => needWeight(t, i));
     let roll = ctx.rng.nextFloat() * weights.reduce((a, b) => a + b, 0);
     for (let i = 0; i < pool.length; i++) {

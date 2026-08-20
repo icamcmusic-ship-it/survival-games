@@ -256,10 +256,15 @@ export const HUNTING = {
  * out-weighs the first.
  */
 export const PROFICIENCY = {
-    /** Gained per successful use. */
+    /** Gained per successful use, before diminishing returns. */
     gainPerUse: 0.35,
-    /** Nobody becomes a surgeon in eight days. */
-    max: 4,
+    /** Nobody becomes a surgeon in eight days — but the old cap of 4 was hit
+     *  by every specialist by mid-run, flattening late-run differentiation.
+     *  Raised, with each successive point costing more (see `trainProficiency`),
+     *  so the curve binds instead of the wall. */
+    max: 6,
+    /** Gains shrink by this factor per level already held. */
+    diminishingPerLevel: 0.22,
     /** Archetypes start their signature skill slightly ahead. */
     archetypeHeadStart: 1,
     /** Forage chance added per point of forage proficiency. */
@@ -308,8 +313,11 @@ export const FEAR = {
  * closer the end gets, the less anyone can afford to be civil.
  */
 export const DESPERATION = {
-    /** Field size at which the arithmetic starts to press on people. */
-    fieldSize: 8,
+    /** Field size at which the arithmetic starts to press on people. The old
+     *  gate of 8 produced ~11 desperation fights across 240 runs — most
+     *  encounters at that field size are already combat through the stance and
+     *  grudge branches, so the endgame's best beat almost never fired. */
+    fieldSize: 10,
     /** Odds an otherwise-peaceful meeting turns into a fight, at the threshold. */
     baseHostility: 0.25,
     /** Added per tribute below the threshold. */
@@ -613,6 +621,8 @@ export const COMBAT = {
 
     /** Relationship deltas produced by fighting. */
     grudgePerFight: 20,
+    /** Health below which an ally who fought beside you genuinely saved you. */
+    savedHealthThreshold: 35,
     grudgeOnWound: 8,
 } as const;
 
@@ -653,6 +663,10 @@ export const STEALTH = {
      */
     nightConcealment: 0.18,
     nightAwarenessPenalty: 2.5,
+    /** Dusk: the hunter's window. Their quarry is moving and still visible. */
+    duskAmbushBonus: 0.14,
+    /** Half the night's cover, since there is still light to be seen by. */
+    duskConcealment: 0.1,
     nightAmbushBonus: 0.12,
     /** A lantern: you can see, and so can everyone else. */
     lightAwarenessBonus: 2,
@@ -699,6 +713,12 @@ export const MOVEMENT = {
     /** Thirst above which finding water outranks everything else. */
     thirstUrgency: 45,
     waterSeekWeight: 7,
+    /** Hunger above which walking somewhere that still has food becomes a plan. */
+    hungerUrgency: 55,
+    /** A zone this stripped (believed) is not worth foraging in. */
+    forageBarrenThreshold: 0.5,
+    /** A destination zone needs at least this much printed forage to be worth the walk. */
+    forageMinResources: 0.45,
     /** Fatigue above which cover is worth walking to. */
     shelterUrgency: 60,
     shelterSeekWeight: 1.5,
@@ -823,6 +843,14 @@ export const CRAFTING = {
     fireCycles: 2,
     fireConcealmentPenalty: 0.25,
     fireSanityRecovery: 4,
+    /** A whetstone and a blade can strike sparks — a discount off the normal
+     *  build chance rather than requiring matches outright. */
+    fireWhetstoneMultiplier: 0.6,
+    /** Bare-handed: a bow-drill attempt. Rare, and better with intelligence
+     *  and forage proficiency, but never requires an item at all. */
+    fireNoToolBaseChance: 0.06,
+    fireNoToolPerIntelligence: 0.015,
+    fireNoToolPerForageProficiency: 0.03,
     /** Shelter: somewhere to actually sleep. Needs cover to build in. */
     shelterCycles: 3,
     shelterRecoveryBonus: 4,
@@ -953,6 +981,13 @@ export const MEMORY = {
 
 /** Stance selection: thresholds plus the hysteresis that stops thrashing. */
 export const STANCE = {
+    /**
+     * How much of their apparent threat a tribute who played the training floor
+     * quiet keeps hidden. The whole payoff of `trainingStrategy: 'conceal'`:
+     * strangers read them as ~30% less dangerous than they are, until a kill or
+     * a fight gives the game away.
+     */
+    concealDiscount: 0.7,
     /** Minimum cycles a stance is held before it may change again. */
     minHold: 3,
     /** Score margin a challenger stance must beat the current one by. */
@@ -1064,6 +1099,18 @@ export const PROTECTOR_BOND = {
 } as const;
 
 export const ROMANCE = {
+    /** Odds a one-sided attachment gets played for the cameras instead. */
+    performedChance: 0.07,
+    /**
+     * Regard the smitten party needs. Deliberately below `threshold`: a
+     * performed bond does not need the mutual devotion a real one does, only
+     * one person who has fallen far enough to be convincing about it.
+     */
+    performedMinRegard: 75,
+    /** Charisma needed to sell a romance you are not feeling. */
+    performerCharisma: 6,
+    /** What the performer shows, as opposed to what they feel. */
+    performedDisplayedRegard: 75,
     /** Nothing before the bloodbath is over and the cast is real. */
     minDay: 2,
     /** Bond required before a romance is even considered. */
@@ -1098,7 +1145,7 @@ export const ALLIANCES = {
      * or more that could exist in a run — every organic alliance was a duo,
      * for the whole game, by construction.
      */
-    maxSize: 4,
+    maxSize: 6,
     /** Base odds a group takes in a loner they get on with. */
     recruitChance: 0.35,
     /**
@@ -1128,6 +1175,9 @@ export const ALLIANCES = {
      */
     mergeChance: 0.35,
     mergeThreshold: 12,
+    /** A member whose average regard for the other group is below this walks
+     *  out of a negotiated merge rather than blocking it. */
+    mergeDissentThreshold: -10,
 
     /**
      * The Career pack is a marriage of convenience, and it should look like one.
@@ -1277,6 +1327,10 @@ export const WILDCARD = {
     bountyTrust: 25,
     /** How thoroughly a scheduled drought strips the arena's water. */
     droughtDepletion: 0.85,
+    /** Cycles an "extended darkness" actually extends for. */
+    blackoutCycles: 3,
+    /** How far a crowd revolt swings sponsor trust, in both directions. */
+    revoltTrustSwing: 30,
 } as const;
 
 export const GAMEMAKER = {
@@ -1435,4 +1489,195 @@ export const TRAINING = {
     careerRespect: 8,
     /** How much a high scorer's own confidence rises. */
     confidenceSanity: 6,
+} as const;
+
+/**
+ * Resolve: the will to keep going, as distinct from sanity.
+ *
+ * Sanity is perception coming apart. Resolve is intent — whether a tribute
+ * still wants to win. Nothing modelled that, so nobody could ever *choose* to
+ * stop, and the source material's most famous ending was unreachable.
+ *
+ * Deliberately slow: the drift numbers are per cycle and small, because a stat
+ * that swings inside one cycle is a mood rather than an arc.
+ */
+export const RESOLVE = {
+    start: 70,
+    max: 100,
+    /**
+     * Baseline erosion. The arena wears people down by default; the bonuses
+     * below are what holds a tribute up. Positive drift made resolve sit
+     * pinned at its starting value for ~90% of the field, which is a stat that
+     * exists rather than a stat that does anything.
+     */
+    driftPerCycle: -1.5,
+
+    /** Reasons to keep standing. */
+    allyBonus: 2,
+    vengeanceBonus: 1.5,
+    momentumBonus: 2,
+    watchedBonus: 1,
+    watchedExcitement: 45,
+
+    /** Reasons to stop. */
+    griefPenalty: 4,
+    griefWindow: 3,
+    isolationPenalty: 2,
+    woundedPenalty: 2.5,
+    woundedHealth: 40,
+    deprivationPenalty: 2,
+    deprivationThreshold: 70,
+    endgamePenalty: 1.5,
+    endgameFieldSize: 5,
+
+    /** Below this a tribute has stopped playing to win. */
+    brokenThreshold: 20,
+    /** Per-cycle odds a broken tribute actually acts on it. */
+    breakdownChance: 0.35,
+    /** Walking into the open is cathartic: it buys back a little will. */
+    breakdownRebound: 12,
+    /** Sitting down and stopping is not, and compounds instead. */
+    sittingDownPenalty: 4,
+    /** Taking the nightlock needs to be genuinely final, and is still rare. */
+    nightlockThreshold: 14,
+    nightlockChance: 0.3,
+    /** A tribute with nothing left can go looking for it where things grow. */
+    nightlockForageResources: 0.35,
+    nightlockFindChance: 0.4,
+} as const;
+
+/**
+ * Parley: talking instead of fighting.
+ *
+ * Two strangers meeting in a clearing had exactly two possibilities — a fight
+ * or a pleasantry. The far more common real outcome is a negotiation: backing
+ * out of it, paying to leave, or agreeing not to do this today. See
+ * `engine/parley.ts`.
+ */
+export const PARLEY = {
+    /** A power ratio below this means a tribute genuinely likes their odds. */
+    confidentRatio: 0.8,
+    /** A power ratio above this means they know they are losing. */
+    outmatchedRatio: 1.25,
+
+    /** Paying to be allowed to leave. */
+    tributeChance: 0.6,
+    tributeResentment: 12,
+    tributeExcitement: 8,
+    tributeSanityCost: 8,
+
+    /** An explicit, expiring non-aggression pact. */
+    truceChance: 0.4,
+    truceCycles: 4,
+    truceMinRegard: -5,
+    truceRegard: 8,
+
+    /** Both armed, neither willing to move first. */
+    standoffChance: 0.4,
+    standoffPerFear: 0.004,
+    standoffFatigue: 6,
+} as const;
+
+/**
+ * Debts and district bonds.
+ *
+ * `memory.stoodBy` recorded that somebody took a real risk for you and then
+ * nothing ever charged for it — a tribute pulled out of a fire on day two could
+ * knife their rescuer on day three at stranger's odds. And
+ * `RELATIONSHIPS.districtPartnerBase` seeded a district pair as acquaintances
+ * that the arena never escalated, so the strongest story the simulation could
+ * tell had no machinery behind it. See `engine/debts.ts`.
+ */
+export const DEBTS = {
+    max: 3,
+    /** What each kind of help is worth on the ledger. */
+    savedInFight: 2,
+    patchedUp: 1.5,
+    gaveSupplies: 1,
+
+    /** Turning on a creditor: multiplier on betrayal willingness, per point owed. */
+    betrayalResistPerPoint: 0.3,
+    minBetrayalMultiplier: 0.25,
+
+    /** Settling up. */
+    repayThreshold: 1,
+    repayChance: 0.25,
+    repayRegard: 12,
+    repayExcitement: 10,
+    repayRestRelief: 15,
+
+    /** District partners, simply for both still being here. */
+    districtBondPerCycle: 0.6,
+    districtLateBond: 2,
+    districtLateFieldSize: 8,
+    districtMilestoneRegard: 45,
+} as const;
+
+/**
+ * Alliance charters: the rules a group agrees to keep, and the fallout short of
+ * a betrayal when somebody breaks one. See `engine/allianceCharter.ts` — an
+ * alliance previously had only three exits (death, betrayal, pact expiry), so
+ * every disagreement had to escalate to a knife or not exist.
+ */
+export const CHARTER = {
+    /** Odds a group agrees to two clauses rather than one. */
+    twoClauseChance: 0.35,
+    /** Odds a given breach is actually noticed this cycle. */
+    noticeChance: 0.4,
+    /** What every other member's regard drops by when it is. */
+    breachRegardCost: 9,
+    /** Food items held privately that counts as hoarding. */
+    hoardingFood: 2,
+    /** Regard below which two members of the same group are visibly at odds. */
+    hostileRegard: -15,
+} as const;
+
+/**
+ * The Head Gamemaker's one intervention per run. Nine named Gamemakers
+ * previously differed only by two multipliers, which made the whole roster a
+ * tooltip. See `engine/gamemakerAgency.ts`.
+ */
+export const GAMEMAKER_AGENCY = {
+    /** Not while the cast is still enormous — this rescues the middle of a run. */
+    maxFieldSize: 12,
+    earliestDay: 3,
+    /** Audience interest below which the Head Gamemaker feels obliged to act. */
+    boredomThreshold: 45,
+    /** Odds they act anyway, on a day the feed is fine. */
+    unpromptedChance: 0.12,
+    /** Ainsel's grind: everything slightly worse, everywhere. */
+    grindDepletion: 0.2,
+    grindThirst: 12,
+    grindFatigue: 10,
+} as const;
+
+/**
+ * Weather with a position. Climate was static per arena and the only transient
+ * weather hit everywhere at once for exactly one phase, so weather could never
+ * be something you saw coming and got out of the way of. See
+ * `engine/weatherFront.ts`.
+ */
+export const WEATHER_FRONT = {
+    /** Not in the opening days — the bloodbath is busy enough. */
+    earliestDay: 2,
+    /** Per-cycle odds a new front builds when there isn't one. */
+    spawnChance: 0.18,
+    minCycles: 3,
+    maxCycles: 6,
+    /** How many zones back a front remembers, so it does not pace on the spot. */
+    memoryZones: 2,
+} as const;
+
+/**
+ * Holding the Cornucopia. It was special exactly twice — the bloodbath and a
+ * feast — and empty the rest of every run. See `engine/zoneControl.ts`.
+ */
+export const ZONE_CONTROL = {
+    /** Bodies on the ground needed to count as holding it. */
+    minHolders: 2,
+    /** Cycles held before the first payout, and every payout after. */
+    payoutEveryCycles: 2,
+    minItemValue: 20,
+    excitement: 6,
+    supplyRelief: 15,
 } as const;

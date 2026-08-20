@@ -2,7 +2,7 @@ import { GameState, Stance, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { FEAR, STANCE, STEALTH, VITALS } from '../data/balance';
 import { SimContext } from './context';
-import { cyclesSinceContact, ensureMemory } from './memory';
+import { cyclesSinceContact, ensureMemory, rivalRecord } from './memory';
 import { getRel } from './relationships';
 import { fearOf } from './fear';
 import { massOf } from './physique';
@@ -41,6 +41,17 @@ export function assessZone(t: Tribute, occupants: Tribute[], state?: GameState) 
         if (o.isCareer) power += 1.5;
         // Fear is its own multiplier on how dangerous someone looks.
         power += (fearOf(t, o.id) / FEAR.max) * 4;
+        // Deception. `trainingStrategy: 'conceal'` existed and had no in-arena
+        // expression at all — a tribute who spent the whole pre-Games making
+        // themselves look harmless was read exactly like everyone else the
+        // moment the gong went. A concealer is systematically underestimated
+        // until they give the game away: a kill is public (the cannon and the
+        // sky announce it), and anyone who has actually traded blows with them
+        // knows better whatever the training floor said.
+        if (o.trainingStrategy === 'conceal' && o.kills === 0
+            && rivalRecord(t, o.id).fights === 0) {
+            power *= STANCE.concealDiscount;
+        }
         // Observation sharpens the estimate. Someone they fought yesterday is
         // read accurately; someone glimpsed across a clearing is a guess, and
         // the guess regresses toward "average tribute".

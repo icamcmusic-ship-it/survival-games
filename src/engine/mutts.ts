@@ -50,12 +50,12 @@ const MUTTS = {
     facesOfFallenSanityLoss: 30,
 } as const;
 
-function rosterFor(ctx: SimContext): Mutt[] {
+export function rosterFor(ctx: SimContext): Mutt[] {
     return ARENA_MUTTS[ctx.state.arena.id] ?? [];
 }
 
 /** Mutts allowed to appear right now, given terrain and time of day. */
-function eligibleMutts(ctx: SimContext, t: Tribute, time: 'day' | 'night'): Mutt[] {
+export function eligibleMutts(ctx: SimContext, t: Tribute, time: 'day' | 'night'): Mutt[] {
     const zone = getZone(ctx.state.arena, t.zone);
     return rosterFor(ctx).filter(m => {
         if (m.nocturnal && time !== 'night') return false;
@@ -109,8 +109,8 @@ export function resolveMuttAttack(ctx: SimContext, t: Tribute, time: 'day' | 'ni
     engageMutt(ctx, t, mutt);
 }
 
-/** The actual encounter, shared by a fresh sighting and a persistent re-attack. */
-function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
+/** The actual encounter, shared by a fresh sighting, a persistent re-attack, and a Gamemaker release. */
+export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     const packSize = ctx.rng.nextInt(mutt.packSize[0], mutt.packSize[1]);
 
     // Proximity dread lands whether or not the tribute gets touched.

@@ -2,12 +2,13 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { BLEEDING, COMBAT, FEAR, HUNTING, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, FEAR, HUNTING, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone } from './map';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rivalRecord } from './memory';
+import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { openWound } from './wounds';
 import { profOf, trainProficiency, weaponAffinity, weaponProficiency } from './proficiency';
@@ -62,6 +63,10 @@ export function applyDamage(
     record: Omit<DamageRecord, 'cycle' | 'amount'>,
 ) {
     if (amount <= 0) return;
+    // You cannot wound a corpse. Without this, any caller that damages a
+    // tribute killed earlier in the same pass silently overwrites the damage
+    // record their obituary was built from.
+    if (t.status !== 'alive') return;
 
     // Armour. Only against things that hit you — a padded vest does nothing
     // about thirst, venom already in the blood, or an infected wound.
@@ -613,8 +618,15 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         }
 
         // Anyone can break off, and being outnumbered is a good reason to.
+        // The opponent each combatant weighs is whoever leads the *other* side
+        // — not `lead` for everyone, which had the lead computing fear of
+        // themselves.
         const breaking = [...left, ...right].filter(t =>
-            t.status === 'alive' && wantsToRetreat(ctx, t, defenders.includes(t) ? Math.max(1, advantage) : 0, rounds, lead));
+            t.status === 'alive' && wantsToRetreat(
+                ctx, t,
+                defenders.includes(t) ? Math.max(1, advantage) : 0,
+                rounds,
+                attackers.includes(t) ? target : lead));
         if (breaking.length > 0) {
             breaking.forEach(t => { t.stance = 'Evasive'; t.stanceHeld = 0; });
             ctx.logEvent(
@@ -636,8 +648,13 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             const sameSide = (packSide.includes(t) && packSide.includes(other)) || (otherSide.includes(t) && otherSide.includes(other));
             if (!sameSide) adjustRel(t, other.id, -COMBAT.grudgePerFight);
             // Standing in the same line as somebody is the clearest way to earn
-            // their trust, and it is what romance is actually gated on.
-            else noteStoodBy(t, other.id);
+            // their trust, and it is what romance is actually gated on. If they
+            // were in real trouble and you were not, it is also a debt.
+            else if (other.health < COMBAT.savedHealthThreshold && t.health > other.health) {
+                incurDebt(other, t, DEBTS.savedInFight);
+            } else {
+                noteStoodBy(t, other.id);
+            }
         });
         checkDeath(ctx, t);
     });
@@ -692,7 +709,11 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
             breaking.forEach(t => {
                 t.stance = 'Evasive';
                 t.stanceHeld = 0;
-                noteFled(t, t.id === attacker.id ? target.id : attacker.id);
+                // Only the pair who actually traded blows record who they fled
+                // from; a bystander scattering out of the melee was not in a
+                // fight with either of them.
+                if (t.id === attacker.id) noteFled(t, target.id);
+                else if (t.id === target.id) noteFled(t, attacker.id);
             });
             ctx.logEvent(
                 fill(ctx.pickText(GROUP_COMBAT_TEXTS.scatter), { names: breaking.map(t => t.name).join(', '), zone }),
