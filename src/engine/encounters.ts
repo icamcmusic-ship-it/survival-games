@@ -7,7 +7,7 @@ import { SimContext } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
 import { addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy } from './memory';
-import { adjustMutual, getRel } from './relationships';
+import { adjustMutual, adjustRel, getRel } from './relationships';
 import { giveItem, hasTool, itemPhrase, mintItem, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { attemptFieldDressing, clearBleeding, openWound, shouldDressWound } from './wounds';
@@ -115,7 +115,11 @@ function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: b
                     [t.id, helper.id],
                     { important: true, category: 'alliance' }
                 );
-                noteStoodBy(helper, t.id);
+                // Deliberately not `noteStoodBy`: that is the gate romance is
+                // built on, and hauling an ally out of a rockslide is common
+                // enough that counting it there quietly doubled the number of
+                // runs with star-crossed lovers in them.
+                adjustRel(t, helper.id, ENCOUNTERS.rescueGratitude);
                 return true;
             }
         }

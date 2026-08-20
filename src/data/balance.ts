@@ -488,6 +488,8 @@ export const ENCOUNTERS = {
     rescuePerCharisma: 0.035,
     rescuePerHelperStrength: 0.02,
     rescueMaxChance: 0.45,
+    /** What being pulled clear is worth to the person who was pulled. */
+    rescueGratitude: 10,
     ambientLineChance: 0.35,
     ambientArenaShare: 0.6,
     baseEventChance: 0.1,
@@ -1309,8 +1311,14 @@ export const PREGAMES = {
     goodbyeSanity: 5,
     aloneGoodbyeSanity: 8,
     aloneGoodbyeTrust: 5,
-    /** Two days on a train with the only other person from home. */
-    trainPartnerBond: 8,
+    /**
+     * Two days on a train with the only other person from home.
+     *
+     * Kept small on purpose: romance is gated on the district pair, so this is
+     * a direct dial on how many runs produce star-crossed lovers. At 8 it put
+     * the rate at 17%, well past the 10-15% the design wants.
+     */
+    trainPartnerBond: 2,
     /** The parade. `pull` is the stylist's angle; the rest is the tribute. */
     paradeCharismaWeight: 0.35,
     paradeLegacyBonus: 0.5,
