@@ -73,6 +73,16 @@ export const WEAPON_KILL_TEMPLATES: Record<string, string[]> = {
         "{killer} lands a perfect slingshot strike on {victim}'s temple.",
         "{victim} laughs at {killer}'s slingshot — right up until the stone hits."
     ],
+    'club': [
+        "{killer} brings the cudgel down on {victim}'s skull, and once is enough.",
+        "{killer} beats {victim} down with a crude wooden cudgel and does not stop until the cannon.",
+        "{victim} raises an arm against {killer}'s cudgel. It breaks the arm first, then everything else."
+    ],
+    'sharpstone': [
+        "{killer} drives a sharpened stone into {victim}'s throat.",
+        "{killer} opens {victim}'s artery with a flake of sharpened stone.",
+        "{victim} never expects the crude stone edge in {killer}'s fist to cut as deep as it does."
+    ],
     'unarmed': [
         "{killer} strangles {victim} to death.",
         "{killer} beats {victim} to death with their bare hands.",

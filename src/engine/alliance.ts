@@ -102,6 +102,31 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
 }
 
 /**
+ * Merges the absorbed alliance's record into the surviving one instead of
+ * re-registering from scratch — two groups that pooled supplies for six days
+ * keep both caches (capped), keep the older founding date, keep the stricter
+ * pact (without re-announcing one), and re-elect a leader across the whole
+ * merged roster.
+ */
+export function mergeAllianceRecords(ctx: SimContext, keepId: string, absorbedId: string, members: Tribute[]): Alliance {
+    const records = allianceRecords(ctx.state);
+    const keep = records[keepId];
+    const absorbed = records[absorbedId];
+    delete records[absorbedId];
+    if (!keep) return registerAlliance(ctx, keepId, members);
+
+    const strictness: Record<Alliance['pact'], number> = { 'no-pact': 0, 'until-the-final-eight': 1, 'to-the-end': 2 };
+    keep.memberIds = members.map(m => m.id);
+    keep.leaderId = pickLeader(members).id;
+    if (absorbed) {
+        keep.sharedCache = [...keep.sharedCache, ...absorbed.sharedCache].slice(0, ALLIANCES.cacheMaxSize);
+        keep.formedCycle = Math.min(keep.formedCycle, absorbed.formedCycle);
+        if (strictness[absorbed.pact] > strictness[keep.pact]) keep.pact = absorbed.pact;
+    }
+    return keep;
+}
+
+/**
  * Per-cycle upkeep on the structure itself: prune the dead, re-elect when the
  * leader is gone or has lost the room, and drop records nobody belongs to.
  */

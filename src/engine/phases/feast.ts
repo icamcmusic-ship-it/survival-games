@@ -107,12 +107,12 @@ export function processFeast(ctx: SimContext) {
             { important: true, zone: cornucopia, category: 'feast' }
         );
         shuffled.splice(1).forEach(t => {
-            const item = ctx.rng.pick(ITEMS);
-            giveItem(t, mintItem(ctx.rng, item, QUALITY_BIAS.feast));
+            const minted = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.feast);
+            giveItem(t, minted);
             t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
             t.vitals.thirst = Math.max(0, t.vitals.thirst - 40);
             clampTribute(t);
-            ctx.logEvent(`${t.name} leaves the feast with ${itemPhrase(item)} and a full stomach.`, [t.id], { zone: cornucopia, category: 'feast' });
+            ctx.logEvent(`${t.name} leaves the feast with ${itemPhrase(minted)} and a full stomach.`, [t.id], { zone: cornucopia, category: 'feast' });
         });
     }
 

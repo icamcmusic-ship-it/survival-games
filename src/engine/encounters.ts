@@ -404,7 +404,7 @@ function attemptForage(
     trainProficiency(t, 'forage');
     depleteZone(ctx.state, t.zone, ZONES.depletionPerForage);
     ctx.logEvent(
-        fill(ctx.pickText(flavor.actions.forage), { tribute: t.name, zone: t.zone, item: itemPhrase(item) }),
+        fill(ctx.pickText(flavor.actions.forage), { tribute: t.name, zone: t.zone, item: itemPhrase(fresh) }),
         [t.id],
         { category: 'loot' }
     );

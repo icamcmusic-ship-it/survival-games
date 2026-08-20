@@ -6,7 +6,7 @@ import { ALLIANCES, PROTECTOR_BOND, ROMANCE } from '../../data/balance';
 import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact } from '../memory';
-import { allianceOf, areLovers, contributeToCache, membersOf, reconcileAlliances, registerAlliance } from '../alliance';
+import { allianceOf, areLovers, contributeToCache, membersOf, mergeAllianceRecords, reconcileAlliances, registerAlliance } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
 import { addExcitement } from '../audience';
 import { traitMod } from '../../data/traits';
@@ -324,8 +324,7 @@ function mergeAlliances(ctx: SimContext) {
             const merged = [...a, ...b];
             merged.forEach(m => { m.allianceId = keepId; });
             merged.forEach(m => merged.forEach(o => { if (m.id !== o.id) noteContact(ctx.state, m, o); }));
-            delete (ctx.state.alliances ?? {})[keepId === ids[i] ? ids[j] : ids[i]];
-            registerAlliance(ctx, keepId, merged);
+            mergeAllianceRecords(ctx, keepId, keepId === ids[i] ? ids[j] : ids[i], merged);
             groups.set(keepId, merged);
             groups.delete(keepId === ids[i] ? ids[j] : ids[i]);
 

@@ -1,8 +1,8 @@
 import { Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { MOVEMENT, OBJECTIVES } from '../data/balance';
+import { MEMORY, MOVEMENT, OBJECTIVES } from '../data/balance';
 import { SimContext } from './context';
-import { cycleOf, ensureMemory, rememberedRivals, rememberedThreat } from './memory';
+import { cycleOf, cyclesSinceContact, ensureMemory, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet } from './map';
 import { fearOf } from './fear';
 import { getRel } from './relationships';
@@ -153,10 +153,15 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
     if (t.stance === 'Aggressive') {
         // Only somebody they have actually seen recently — a hunter with no
         // sighting is not tracking anyone, they are just walking around angry.
+        // `rememberedRivals(state, t, o.zone) > 0` alone only confirms that
+        // *someone* hostile was in that zone; picking `o` by their live
+        // position on top of that would name the specific person the hunter
+        // was never actually shown. `cyclesSinceContact` is identity-scoped.
         const target = state.tributes.find(o =>
             o.status === 'alive' && o.id !== t.id
             && (o.allianceId === undefined || o.allianceId !== t.allianceId)
             && rememberedRivals(state, t, o.zone) > 0
+            && cyclesSinceContact(state, t, o.id) <= MEMORY.sightingLifetime
             && fearOf(t, o.id) < OBJECTIVES.huntAbandonFear);
         if (target) {
             return { kind: 'hunt', targetId: target.id, expires: expiry(OBJECTIVES.huntCycles) };
@@ -274,7 +279,11 @@ export function objectiveZone(ctx: SimContext, t: Tribute): string | undefined {
         }
         case 'protect': {
             const ward = state.tributes.find(o => o.id === objective.wardId && o.status === 'alive');
-            return ward?.zone;
+            if (!ward) return undefined;
+            // Same rule as 'hunt' above: a recent sighting, not a live position —
+            // a protector cannot rush to a ward's side sight-unseen.
+            if (ward.zone !== t.zone && cyclesSinceContact(state, t, ward.id) > MEMORY.sightingLifetime) return undefined;
+            return ward.zone;
         }
         default:
             return undefined;
