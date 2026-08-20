@@ -10,6 +10,8 @@ import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Pla
 import { ESCALATION } from '../data/balance';
 import { Explainer } from '../components/Explainer';
 import { ordinal } from '../engine/gamesProfile';
+import { gameStore } from '../store/gameStore';
+import { useStore } from '../store/createStore';
 
 type Speed = 'manual' | '1x' | '5x' | 'auto';
 
@@ -56,6 +58,12 @@ export function GameScreen({
     const [mobilePane, setMobilePane] = useState<'chronicle' | 'map' | 'tributes'>('chronicle');
     const [mutedGroups, setMutedGroups] = useState<Set<string>>(new Set());
     const [showFilters, setShowFilters] = useState(false);
+    // UX: auto-play at 5x/Max blows straight past major deaths; opt-in brake.
+    const [pauseOnDeath, setPauseOnDeath] = useState(false);
+    const bets = useStore(gameStore, s => s.bets);
+    // Chronicle search and per-tribute filtering.
+    const [searchText, setSearchText] = useState('');
+    const [filterTributeId, setFilterTributeId] = useState<string | null>(null);
     const nextPhaseRef = useRef(onNextPhase);
     nextPhaseRef.current = onNextPhase;
 
@@ -106,11 +114,16 @@ export function GameScreen({
     const lastTickLogCount = useRef(gameState.log.length);
     useEffect(() => {
         if (speed === 'manual' || isOver) return;
-        const linesThisPhase = Math.max(0, gameState.log.length - lastTickLogCount.current);
+        const newCount = Math.max(0, gameState.log.length - lastTickLogCount.current);
+        const newLines = newCount > 0 ? gameState.log.slice(-newCount) : [];
         lastTickLogCount.current = gameState.log.length;
-        const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(speed, linesThisPhase));
+        if (pauseOnDeath && newLines.some(l => l.category === 'death' || l.category === 'kill')) {
+            setSpeed('manual');
+            return;
+        }
+        const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(speed, newCount));
         return () => clearTimeout(timer);
-    }, [speed, isOver, gameState.phase, gameState.day, gameState.log.length]);
+    }, [speed, isOver, pauseOnDeath, gameState.phase, gameState.day, gameState.log.length, gameState.log]);
 
     // Keyboard shortcuts: space advances, F toggles filters, M/C swap panes, Esc clears.
     useEffect(() => {
@@ -138,12 +151,42 @@ export function GameScreen({
         return () => window.removeEventListener('keydown', onKey);
     }, [onNextPhase, isOver, selectedTributeId]);
 
-    const filteredLogs = useMemo(() => gameState.log.filter(log => {
-        if (importantOnly && !log.important) return false;
-        if (selectedZone && log.zone !== selectedZone) return false;
-        if (mutedCategories.has(log.category)) return false;
-        return true;
-    }), [gameState.log, importantOnly, selectedZone, mutedCategories]);
+    const filteredLogs = useMemo(() => {
+        const needle = searchText.trim().toLowerCase();
+        return gameState.log.filter(log => {
+            if (importantOnly && !log.important) return false;
+            if (selectedZone && log.zone !== selectedZone) return false;
+            if (mutedCategories.has(log.category)) return false;
+            if (filterTributeId && !log.tributesInvolved.includes(filterTributeId)) return false;
+            if (needle && !log.text.toLowerCase().includes(needle)) return false;
+            return true;
+        });
+    }, [gameState.log, importantOnly, selectedZone, mutedCategories, filterTributeId, searchText]);
+
+    /** UX: the chronicle is the artefact people share — offer it as markdown. */
+    const exportChronicle = (copy: boolean) => {
+        const lines: string[] = [`# ${gameState.arena.name} — seed ${gameState.seed}`, ''];
+        let lastDay = -1;
+        filteredLogs.forEach(l => {
+            if (l.day !== lastDay) {
+                lastDay = l.day;
+                lines.push('', l.day === 0 ? `## Before the Games` : `## Day ${l.day}`, '');
+            }
+            lines.push(`- ${l.important ? '**' : ''}${l.text}${l.important ? '**' : ''}`);
+        });
+        const text = lines.join('\n');
+        if (copy && navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(text);
+        } else {
+            const blob = new Blob([text], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chronicle-${gameState.seed}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    };
 
     const sortedSidebarTributes = useMemo(() => [...gameState.tributes].sort((a, b) => {
         if (a.status !== b.status) return a.status === 'alive' ? -1 : 1;
@@ -253,6 +296,15 @@ export function GameScreen({
                                         </button>
                                     ))}
                                 </div>
+                                <label className="flex items-center gap-1.5 cursor-pointer text-[10px] uppercase tracking-wider text-[var(--color-ink-500)]" title="Drop back to manual whenever a death lands, so auto-play cannot blow past the big moments">
+                                    <input
+                                        type="checkbox"
+                                        checked={pauseOnDeath}
+                                        onChange={e => setPauseOnDeath(e.target.checked)}
+                                        className="accent-[var(--red)]"
+                                    />
+                                    Pause on deaths
+                                </label>
                             </div>
 
                             <div className="seg">
@@ -266,7 +318,7 @@ export function GameScreen({
 
                             <button onClick={() => setShowFilters(v => !v)} aria-pressed={showFilters} className="seg-item" title="Toggle filters (F)">
                                 <Filter className="w-3 h-3 inline mr-1" /> Filters
-                                {(mutedGroups.size > 0 || importantOnly) && <span className="ml-1 text-[var(--red)]">•</span>}
+                                {(mutedGroups.size > 0 || importantOnly || searchText || filterTributeId) && <span className="ml-1 text-[var(--red)]">•</span>}
                             </button>
 
                             <span className="ml-auto text-[10px] uppercase tracking-widest text-[var(--color-ink-600)] hidden md:inline">
@@ -307,15 +359,37 @@ export function GameScreen({
                                             </button>
                                         );
                                     })}
-                                    {(mutedGroups.size > 0 || importantOnly) && (
+                                    {(mutedGroups.size > 0 || importantOnly || !!searchText || !!filterTributeId) && (
                                         <button
-                                            onClick={() => { setMutedGroups(new Set()); setImportantOnly(false); }}
+                                            onClick={() => { setMutedGroups(new Set()); setImportantOnly(false); setSearchText(''); setFilterTributeId(null); }}
                                             className="chip chip-accent"
                                         >
                                             Reset filters
                                         </button>
                                     )}
                                 </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2 items-center">
+                                <input
+                                    type="search"
+                                    value={searchText}
+                                    onChange={e => setSearchText(e.target.value)}
+                                    placeholder="Search the chronicle…"
+                                    className="field text-xs flex-1 min-w-[140px]"
+                                />
+                                <select
+                                    value={filterTributeId ?? ''}
+                                    onChange={e => setFilterTributeId(e.target.value || null)}
+                                    className="field text-xs w-auto"
+                                    title="Show only events involving one tribute"
+                                >
+                                    <option value="">All tributes</option>
+                                    {sortedSidebarTributes.map(t => (
+                                        <option key={t.id} value={t.id}>{t.name} (D{t.district}){t.status === 'dead' ? ' †' : ''}</option>
+                                    ))}
+                                </select>
+                                <button onClick={() => exportChronicle(true)} className="btn btn-sm" title="Copy the filtered chronicle as markdown">Copy MD</button>
+                                <button onClick={() => exportChronicle(false)} className="btn btn-sm" title="Download the filtered chronicle as a markdown file">Download</button>
                             </div>
                             <div className="text-[10px] text-[var(--color-ink-500)]">
                                 Showing {filteredLogs.length} of {gameState.log.length} logged events.
@@ -342,7 +416,7 @@ export function GameScreen({
                                 </div>
                                 <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
                                     {filteredLogs.length === 0 ? (
-                                        <div className="empty-state">Nothing has happened in this sector yet.</div>
+                                        <div className="empty-state">{gameState.log.some(l => l.zone === selectedZone) ? 'Events in this sector are hidden by your current filters.' : 'Nothing has happened in this sector yet.'}</div>
                                     ) : (
                                         [...filteredLogs].reverse().map(l => <FeedLine key={l.id} log={l} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} />)
                                     )}
@@ -367,6 +441,23 @@ export function GameScreen({
                             >
                                 ↑ Jump to newest
                             </button>
+                        )}
+                        {gameState.day >= 2 && (
+                            <div className="flex flex-wrap gap-1 items-center">
+                                <span className="eyebrow mr-1">Jump to</span>
+                                {Array.from(new Set(filteredLogs.map(l => l.day))).sort((a, b) => a - b).map(d => (
+                                    <button
+                                        key={d}
+                                        className="chip"
+                                        onClick={() => {
+                                            const el = chronicleRef.current?.querySelector(`[data-day="${d}"]`);
+                                            el?.scrollIntoView({ block: 'start' });
+                                        }}
+                                    >
+                                        {d === 0 ? 'Pre' : `D${d}`}
+                                    </button>
+                                ))}
+                            </div>
                         )}
                         <div
                             ref={chronicleRef}
@@ -464,6 +555,27 @@ export function GameScreen({
                         <p className="text-[10px] text-[var(--color-ink-500)] mb-3">
                             Survival chance and movement since the last phase.
                         </p>
+                        {Object.keys(bets).length > 0 && (
+                            <div className="panel-flush p-2 mb-2 space-y-0.5">
+                                {Object.entries(bets).map(([id, bet]) => {
+                                    const t = gameState.tributes.find(o => o.id === id);
+                                    if (!t) return null;
+                                    const live = oddsLadder.find(o => o.tribute.id === id);
+                                    return (
+                                        <div key={id} className={`text-[10px] font-mono flex justify-between gap-2 ${t.status === 'dead' ? 'line-through text-[var(--color-ink-500)]' : 'text-[var(--color-ink-200)]'}`}>
+                                            <span className="truncate">You hold {bet.stake} on {t.name} @ {bet.mult.toFixed(1)}×</span>
+                                            <span className="flex-none">
+                                                {t.status === 'dead'
+                                                    ? 'lost'
+                                                    : live
+                                                        ? `now ${live.mult.toFixed(1)}×`
+                                                        : ''}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                         <div className="space-y-1 max-h-64 overflow-y-auto pr-1.5 custom-scrollbar">
                             {oddsLadder.slice(0, 10).map(({ tribute, pct, mult }, i) => {
                                 const move = oddsMovement[tribute.id] ?? 0;
@@ -477,7 +589,10 @@ export function GameScreen({
                                         title={`${tribute.name} — ${pct}% survival chance, ${mult.toFixed(1)}× payout`}
                                     >
                                         <span className="font-mono text-[10px] text-[var(--color-ink-500)] w-4 flex-none">{i + 1}</span>
-                                        <span className="text-xs font-bold text-[var(--color-ink-100)] truncate flex-1 min-w-0">{tribute.name}</span>
+                                        <span className="text-xs font-bold text-[var(--color-ink-100)] truncate flex-1 min-w-0">
+                                            {tribute.name}
+                                            {bets[tribute.id] && <span className="ml-1 text-[var(--red)]" title={`Your wager: ${bets[tribute.id].stake} coins at ${bets[tribute.id].mult.toFixed(1)}×`}>●</span>}
+                                        </span>
                                         <span className="font-mono text-[11px] font-bold text-[var(--ink)] flex-none">{pct}%</span>
                                         <span className="flex items-center gap-0.5 font-mono text-[10px] flex-none w-10 justify-end" style={{ color: moveColor }}>
                                             <MoveIcon className="w-3 h-3" />
@@ -528,7 +643,12 @@ export function GameScreen({
                 )}
 
                 <div className="panel p-4">
-                    <h3 className="panel-title mb-3">Tributes</h3>
+                    <h3 className="panel-title mb-1">Tributes</h3>
+                    {!isOver && (
+                        <p className="text-[10px] text-[var(--color-ink-500)] mb-3">
+                            Open any living tribute to send a sponsor parachute — Capitol Coins buy water, medicine and steel mid-run.
+                        </p>
+                    )}
                     <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1.5 custom-scrollbar">
                         {sortedSidebarTributes.map(t => {
                             const accent = t.status === 'alive' ? allianceAccent(t.allianceId) : undefined;
@@ -556,6 +676,15 @@ export function GameScreen({
                                                 {!dead && t.allianceId && (
                                                     <span className="chip" style={accent ? { color: accent, borderColor: accent } : undefined}>
                                                         <Users className="w-2.5 h-2.5" /> Pack
+                                                    </span>
+                                                )}
+                                                {!dead && !isOver && (t.injuries.bleeding || t.vitals.thirst > 70 || !t.inventory.some(i => i.type === 'weapon')) && (
+                                                    <span
+                                                        className="chip"
+                                                        style={{ color: 'var(--red)', borderColor: 'var(--red)' }}
+                                                        title={`${t.name} ${t.injuries.bleeding ? 'is bleeding' : t.vitals.thirst > 70 ? 'is badly dehydrated' : 'is unarmed'} — a sponsor parachute would fix this. Open their profile to send one.`}
+                                                    >
+                                                        🪂 Needs aid
                                                     </span>
                                                 )}
                                             </div>

@@ -233,7 +233,7 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute }: {
                     ? cast.filter(t => t.status === 'dead' && t.dayOfDeath === dayOfSection)
                     : [];
                 return (
-                <section key={key} className="space-y-2.5">
+                <section key={key} data-day={dayOfSection} className="space-y-2.5">
                     <h3 className="panel-title border-b border-[var(--color-ink-800)] pb-1.5 flex items-center justify-between">
                         <span>{key}</span>
                         <span className="text-[var(--color-ink-600)]">{entries.length} entries</span>
