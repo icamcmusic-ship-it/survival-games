@@ -122,7 +122,6 @@ export class Simulator {
 
         this.state.phase = 'feast';
         this.state.feastDay = this.state.day;
-        this.ctx.rng = rng;
         this.ctx.logEvent(rng.pick(FEAST_TEXTS.announce), [], { important: true, category: 'feast' });
     }
 

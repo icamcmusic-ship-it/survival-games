@@ -33,24 +33,29 @@ export default function App() {
     const urlArena = params.get('arena');
     const urlGamemaker = params.get('gamemaker') === 'true';
     if (urlSeed && urlArena) {
-      const numParam = (key: string, fallback: number) => {
+      const numParam = (key: string, fallback: number, min: number, max: number) => {
         const raw = params.get(key);
         const n = raw === null ? NaN : Number(raw);
-        return Number.isFinite(n) ? n : fallback;
+        if (!Number.isFinite(n)) return fallback;
+        return Math.min(max, Math.max(min, n));
       };
       const boolParam = (key: string, fallback: boolean) => {
         const raw = params.get(key);
         return raw === null ? fallback : raw === 'true';
       };
+      // Ranges mirror the setup screen's sliders — a shared link is untrusted
+      // input and must not be able to exceed what the UI itself allows.
       const config = {
-        districtCount: numParam('districtCount', DEFAULT_GAME_CONFIG.districtCount),
-        hazardRate: numParam('hazardRate', DEFAULT_GAME_CONFIG.hazardRate),
-        betrayalRate: numParam('betrayalRate', DEFAULT_GAME_CONFIG.betrayalRate),
-        sponsorGenerosity: numParam('sponsorGenerosity', DEFAULT_GAME_CONFIG.sponsorGenerosity),
+        districtCount: Math.round(numParam('districtCount', DEFAULT_GAME_CONFIG.districtCount, 2, 12)),
+        hazardRate: numParam('hazardRate', DEFAULT_GAME_CONFIG.hazardRate, 0.25, 2.5),
+        betrayalRate: numParam('betrayalRate', DEFAULT_GAME_CONFIG.betrayalRate, 0, 3),
+        sponsorGenerosity: numParam('sponsorGenerosity', DEFAULT_GAME_CONFIG.sponsorGenerosity, 0, 3),
         enableFeast: boolParam('enableFeast', DEFAULT_GAME_CONFIG.enableFeast),
         enableSanity: boolParam('enableSanity', DEFAULT_GAME_CONFIG.enableSanity),
       };
       gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true);
+      // Consume the replay params so a later refresh doesn't relaunch it.
+      window.history.replaceState(null, '', window.location.pathname);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -78,7 +83,7 @@ export default function App() {
             )}
             <span className="chip chip-gold" title="Capitol Coins available for wagers">{coins} ⨷</span>
             {gameState && (
-              <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.config} />
+              <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.baseConfig} />
             )}
             {navItems.filter(i => i.show).map(item => (
               <button

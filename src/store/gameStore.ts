@@ -43,10 +43,16 @@ const STIPEND = 250;
 function readCoins(): number {
     // Note the explicit null check: `Number(null)` is 0, which would silently
     // hand a brand-new player an empty wallet instead of their starting stake.
-    const stored = localStorage.getItem('capitolCoins');
-    if (stored === null) return STARTING_COINS;
-    const raw = Number(stored);
-    return Number.isFinite(raw) && raw >= 0 ? raw : STARTING_COINS;
+    try {
+        const stored = localStorage.getItem('capitolCoins');
+        if (stored === null) return STARTING_COINS;
+        const raw = Number(stored);
+        return Number.isFinite(raw) && raw >= 0 ? raw : STARTING_COINS;
+    } catch {
+        // Safari private mode (and similar) throws on localStorage access
+        // before React ever mounts.
+        return STARTING_COINS;
+    }
 }
 
 const SAVE_KEY = 'survivalGamesSave';
@@ -109,7 +115,7 @@ function saveHallOfFame(state: GameState) {
         seed: state.seed,
         arenaName: state.arena.name,
         arenaId: state.arena.id,
-        config: state.config,
+        config: state.baseConfig,
         winnerName: winner.name,
         winnerDistrict: winner.district,
         kills: winner.kills,
@@ -126,7 +132,11 @@ function saveHallOfFame(state: GameState) {
         }))
     };
     // Keep the archive bounded — localStorage quota is not infinite.
-    localStorage.setItem('hungerGamesHoF', JSON.stringify([entry, ...readHallOfFame()].slice(0, 50)));
+    try {
+        localStorage.setItem('hungerGamesHoF', JSON.stringify([entry, ...readHallOfFame()].slice(0, 50)));
+    } catch {
+        // Storage full or unavailable — the victory just won't be archived.
+    }
 }
 
 export const gameStore = createStore<GameStoreState>({
@@ -211,7 +221,11 @@ export const gameActions = {
         gameStore.setState(s => {
             const next = typeof coins === 'function' ? coins(s.coins) : coins;
             const safe = Math.max(0, Math.floor(next));
-            localStorage.setItem('capitolCoins', safe.toString());
+            try {
+                localStorage.setItem('capitolCoins', safe.toString());
+            } catch {
+                // Storage full or unavailable — the balance just won't persist.
+            }
             return { coins: safe };
         });
     },
@@ -286,6 +300,7 @@ export const gameActions = {
             log: [],
             gamemakerMode,
             config: configForProfile(config, gamesProfile),
+            baseConfig: config,
             gamesProfile,
             logCounter: 0,
             feastsHeld: 0,

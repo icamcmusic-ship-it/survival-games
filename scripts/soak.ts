@@ -20,6 +20,7 @@ import { ALLIANCES, FEAR, GENERATION, HUNTING, PROFICIENCY, RELATIONSHIPS, ZONES
 import { carryCapacity } from '../src/engine/items';
 import { oddsScore } from '../src/engine/odds';
 import { GameConfig, GameState, Stance } from '../src/models/types';
+import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 
 const problems: string[] = [];
 const note = (m: string) => { if (!problems.includes(m)) problems.push(m); };
@@ -35,7 +36,7 @@ const configs: GameConfig[] = [
 function start(seed: string, arenaId: string, config: GameConfig, gamemaker: boolean): GameState {
   const arena = arenaId.startsWith('procedural') ? generateArena(seed) : ARENAS.find(a => a.id === arenaId)!;
   const tributes = generateTributes(seed, config, arena.zones[0].name);
-  return { seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: gamemaker, config, logCounter: 0, feastsHeld: 0, cycle: 0 };
+  return { seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: gamemaker, config, baseConfig: config, logCounter: 0, feastsHeld: 0, cycle: 0 };
 }
 
 const trainingHistogram: Record<number, number> = {};
@@ -431,6 +432,32 @@ if (runOnce('DETERMINISM', 'clockwork') !== runOnce('DETERMINISM', 'clockwork'))
 }
 if (runOnce('DETERMINISM', 'procedural') !== runOnce('DETERMINISM', 'procedural')) {
   note('procedural-arena runs are not deterministic for a fixed seed');
+}
+
+// P0-1: a shared link carries the player's *base* config (GameState.baseConfig),
+// not the games-profile-multiplied config actually executed. Reproduce what
+// startGame/App.tsx's URL round-trip does — take the base config, re-derive
+// the profile from the (same) seed, and re-multiply — and check that running
+// it a second time from those same base inputs reproduces an identical log,
+// rather than applying the temperament multiplier twice.
+function runFromBaseConfig(seed: string, arenaId: string, base: GameConfig) {
+  const profile = gamesProfileFor(seed);
+  const resolved = configForProfile(base, profile);
+  const sim = new Simulator(start(seed, arenaId, resolved, false));
+  let g = 3000; let s = sim.getState();
+  while (s.phase !== 'ended' && g-- > 0) {
+    if (s.phase === 'setup') sim.processTraining();
+    else if (s.phase === 'training') sim.processInterviews();
+    else if (s.phase === 'interviews') sim.startGames();
+    else if (s.phase === 'bloodbath') sim.processBloodbath();
+    else if (s.phase === 'epilogue') s.phase = 'ended';
+    else if (!sim.processTurn()) break;
+    s = sim.getState();
+  }
+  return JSON.stringify(s.log.map(l => l.text));
+}
+if (runFromBaseConfig('SHARELINK', 'clockwork', DEFAULT_GAME_CONFIG) !== runFromBaseConfig('SHARELINK', 'clockwork', DEFAULT_GAME_CONFIG)) {
+  note('a shared-link round-trip (base config -> re-derived profile) does not reproduce an identical run');
 }
 
 // The zone graph itself, independent of the run: a generator that consumes a

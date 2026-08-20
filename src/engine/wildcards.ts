@@ -5,6 +5,7 @@ import { giveItem, itemPhrase, mintItem } from './items';
 import { triggerGamemakerEvent } from './gamemaker';
 import { addExcitement } from './audience';
 import { clampTribute } from './vitals';
+import { RNG } from '../utils/rng';
 
 /**
  * REPLAY-01: the one scheduled disruption a run gets.
@@ -24,6 +25,7 @@ export function fireScheduledWildcard(ctx: SimContext) {
     const { wildcard } = profile;
     if (wildcard.day === 0 || ctx.state.day < wildcard.day) return;
 
+    ctx.rng = new RNG(`${ctx.state.seed}-wildcard-${ctx.state.day}`);
     ctx.state.wildcardFired = true;
     if (wildcard.onFire) {
         ctx.logEvent(wildcard.onFire, [], { important: true, category: 'gamemaker' });

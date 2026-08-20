@@ -1,4 +1,5 @@
 import { SimContext, getAlive } from '../context';
+import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
 import { ALLIANCES, PROTECTOR_BOND, ROMANCE } from '../../data/balance';
@@ -80,6 +81,7 @@ function pickBetrayer(ctx: SimContext, members: Tribute[]): Tribute {
 }
 
 export function processAlliances(ctx: SimContext) {
+    ctx.rng = new RNG(`${ctx.state.seed}-alliances-${ctx.state.day}`);
     const alive = getAlive(ctx.state);
     const alliances = new Map<string, Tribute[]>();
 

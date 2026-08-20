@@ -1,10 +1,8 @@
 import { SimContext, getAlive } from './context';
-import { applyDamage, checkDeath } from './combat';
 import { ExposureProfile, applyExposure } from './exposure';
 import { getZone } from './map';
-import { addZoneThreat } from './memory';
-import { BLEEDING, GAMEMAKER, MEMORY } from '../data/balance';
-import { openWound } from './wounds';
+import { GAMEMAKER } from '../data/balance';
+import { eligibleMutts, engageMutt, rosterFor } from './mutts';
 
 /**
  * Gamemaker weather, expressed as exposure profiles.
@@ -100,29 +98,36 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
     if (!ctx.state.gamemakerMode) return;
 
     if (type === 'mutt') {
-        const mutt = ctx.rng.pick(ctx.state.arena.mutts);
+        // Route through the full per-arena mutt roster (engine/mutts.ts) rather
+        // than the vestigial Arena.mutts display strings — a Gamemaker-released
+        // mutt gets the same pack size, speed-based evasion, terrain gating and
+        // persistent tracking as one the day/night cycle rolls up naturally.
+        const time = ctx.state.timeOfDay ?? 'day';
+        const muttFor = (t: { zone: string }) => {
+            const eligible = eligibleMutts(ctx, t as never, time);
+            const pool = eligible.length > 0 ? eligible : rosterFor(ctx);
+            return pool.length > 0 ? ctx.rng.pick(pool) : undefined;
+        };
+
         if (targetId) {
             const t = ctx.state.tributes.find(tr => tr.id === targetId);
             if (t && t.status === 'alive') {
-                applyDamage(ctx, t, GAMEMAKER.muttTargetedDamage, { cause: `Torn apart by Gamemaker-released ${mutt}`, kind: 'gamemaker' });
-                openWound(t, BLEEDING.muttSeverity);
-                addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat * 2);
-                ctx.logEvent(`GAMEMAKER: A pack of ${mutt} is dropped directly onto ${t.name} in ${t.zone}.`, [t.id], { important: true, category: 'gamemaker' });
-                checkDeath(ctx, t, `Torn apart by Gamemaker-released ${mutt}`);
+                const mutt = muttFor(t);
+                if (mutt) {
+                    ctx.logEvent(`GAMEMAKER: A pack of ${mutt.name} is dropped directly onto ${t.name} in ${t.zone}.`, [t.id], { important: true, category: 'gamemaker' });
+                    engageMutt(ctx, t, mutt);
+                }
             }
         } else {
-            ctx.logEvent(`GAMEMAKER: ${mutt} are released into the arena!`, [], { important: true, category: 'gamemaker' });
+            const announceMutt = rosterFor(ctx).length > 0 ? ctx.rng.pick(rosterFor(ctx)).name : 'mutts';
+            ctx.logEvent(`GAMEMAKER: ${announceMutt} are released into the arena!`, [], { important: true, category: 'gamemaker' });
             getAlive(ctx.state).forEach(t => {
                 // Tributes in dangerous zones are easier prey for released mutts
                 const zone = getZone(ctx.state.arena, t.zone);
                 const hitChance = GAMEMAKER.muttSweepBaseChance + (zone ? zone.danger * GAMEMAKER.muttSweepDangerWeight : 0.1);
-                if (ctx.rng.chance(hitChance)) {
-                    applyDamage(ctx, t, GAMEMAKER.muttSweepBaseDamage + ctx.rng.nextInt(0, GAMEMAKER.muttSweepVariance), { cause: `Torn apart by ${mutt}`, kind: 'gamemaker' });
-                    if (ctx.rng.chance(0.3)) openWound(t, BLEEDING.combatSeverity);
-                    addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
-                    ctx.logEvent(`${t.name} is mauled by the ${mutt} prowling through ${t.zone}.`, [t.id], { important: true, category: 'gamemaker' });
-                    checkDeath(ctx, t, `Torn apart by ${mutt}`);
-                }
+                if (!ctx.rng.chance(hitChance)) return;
+                const mutt = muttFor(t);
+                if (mutt) engageMutt(ctx, t, mutt);
             });
         }
     } else if (type === 'weather') {

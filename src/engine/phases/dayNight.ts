@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, SPONSORS } from '../../data/balance';
+import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, OBJECTIVES, SPONSORS } from '../../data/balance';
 import { AMBIENT_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
@@ -10,7 +10,7 @@ import { processSponsors } from '../sponsors';
 import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
-    addZoneThreat, advanceCycle, decayMemories, decayRelationships, noteSighting,
+    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, noteSighting,
 } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
@@ -488,36 +488,45 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         // The group's actual leader, chosen on merit and open to challenge —
         // not `members[0]`, which was whatever order the array happened to be in.
         const leader = leaderFor(ctx.state, t) ?? allianceMembers[0];
-        if (!leader || t.id !== leader.id) return;
-
-        const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed);
-        if (options.length === 0) return;
-
-        // The group follows whatever its leader has decided to do; only when the
-        // leader has no standing intention does the pack drift.
-        if (objectiveHolds(t)) return;
-        const led = objectiveStep(ctx, t, options);
-        if (!led && !ctx.rng.chance(wanderChanceFor(t))) return;
-        const newZone = (led ?? pickDestination(ctx, t, options)).name;
-        if (t.zone === newZone) return;
-
-        // Only members actually standing with the leader travel — anyone
-        // separated by a border collapse or a feast pulls their own weight
-        // back rather than being snapped across the map for free.
-        const present = allianceMembers.filter(m => m.zone === t.zone);
-        const departed = t.zone;
-        present.forEach(m => { m.zone = newZone; });
-        noteTraffic(ctx.state, departed, newZone, present.length);
-        if (t.stance === 'Evasive') {
-            ctx.logEvent(`${present.map(m => m.name).join(', ')} slip out of ${t.zone} without a sound.`, present.map(m => m.id), { zone: newZone, category: 'travel' });
+        if (leader && t.id !== leader.id && t.zone !== leader.zone) {
+            // Separated from the leader — a border collapse, a feast teleport, a
+            // lure betrayal — falls through to solo movement angling back toward
+            // the group, rather than freezing in place for the rest of the run.
+            if (!(t.objective?.kind === 'reach' && t.objective.reason === 'ally' && t.objective.zone === leader.zone)) {
+                t.objective = { kind: 'reach', zone: leader.zone, reason: 'ally', expires: cycleOf(ctx.state) + OBJECTIVES.reachCycles };
+            }
+        } else if (!leader || t.id !== leader.id) {
+            return;
         } else {
-            ctx.logEvent(
-                `The alliance of ${present.map(m => m.name).join(', ')} moves out to ${newZone}.`,
-                present.map(m => m.id),
-                { zone: newZone, category: 'travel' }
-            );
+            const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed);
+            if (options.length === 0) return;
+
+            // The group follows whatever its leader has decided to do; only when the
+            // leader has no standing intention does the pack drift.
+            if (objectiveHolds(t)) return;
+            const led = objectiveStep(ctx, t, options);
+            if (!led && !ctx.rng.chance(wanderChanceFor(t))) return;
+            const newZone = (led ?? pickDestination(ctx, t, options)).name;
+            if (t.zone === newZone) return;
+
+            // Only members actually standing with the leader travel — anyone
+            // separated by a border collapse or a feast pulls their own weight
+            // back rather than being snapped across the map for free.
+            const present = allianceMembers.filter(m => m.zone === t.zone);
+            const departed = t.zone;
+            present.forEach(m => { m.zone = newZone; });
+            noteTraffic(ctx.state, departed, newZone, present.length);
+            if (t.stance === 'Evasive') {
+                ctx.logEvent(`${present.map(m => m.name).join(', ')} slip out of ${t.zone} without a sound.`, present.map(m => m.id), { zone: newZone, category: 'travel' });
+            } else {
+                ctx.logEvent(
+                    `The alliance of ${present.map(m => m.name).join(', ')} moves out to ${newZone}.`,
+                    present.map(m => m.id),
+                    { zone: newZone, category: 'travel' }
+                );
+            }
+            return;
         }
-        return;
     }
 
     const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed);

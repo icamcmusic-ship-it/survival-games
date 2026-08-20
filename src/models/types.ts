@@ -391,7 +391,9 @@ export interface Arena {
     id: string;
     name: string;
     description: string;
+    /** Flavor text only — the game engine resolves mutts through `ARENA_MUTTS` (src/data/mutts.ts) via engine/mutts.ts, not this list. */
     mutts: string[];
+    /** Flavor text only — terrain events are resolved through `arenaFlavor` (src/data/arenaFlavor.ts) via engine/encounters.ts, not this list. */
     events: string[];
     zones: Zone[];
 }
@@ -444,7 +446,10 @@ export interface GameState {
     day: number;
     log: EventLog[];
     gamemakerMode: boolean;
+    /** The config actually driving the simulation (base config with the games profile's multipliers applied). */
     config: GameConfig;
+    /** The player's unmultiplied config, as chosen at setup — what gets shared or archived so a replay starts from the same inputs rather than double-applying the profile. */
+    baseConfig: GameConfig;
     collapsedZones?: string[];
     epilogueInterview?: EpilogueQA[];
     /** Day the next Gamemaker feast is scheduled for (undefined = none scheduled). */
