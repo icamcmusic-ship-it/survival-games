@@ -1627,3 +1627,22 @@ export const CHARTER = {
     /** Regard below which two members of the same group are visibly at odds. */
     hostileRegard: -15,
 } as const;
+
+/**
+ * The Head Gamemaker's one intervention per run. Nine named Gamemakers
+ * previously differed only by two multipliers, which made the whole roster a
+ * tooltip. See `engine/gamemakerAgency.ts`.
+ */
+export const GAMEMAKER_AGENCY = {
+    /** Not while the cast is still enormous — this rescues the middle of a run. */
+    maxFieldSize: 12,
+    earliestDay: 3,
+    /** Audience interest below which the Head Gamemaker feels obliged to act. */
+    boredomThreshold: 45,
+    /** Odds they act anyway, on a day the feed is fine. */
+    unpromptedChance: 0.12,
+    /** Ainsel's grind: everything slightly worse, everywhere. */
+    grindDepletion: 0.2,
+    grindThirst: 12,
+    grindFatigue: 10,
+} as const;

@@ -29,6 +29,7 @@ import {
 import { tickPersistentMutts } from '../mutts';
 import { restockCornucopia, rollAmbientZoneEffects, tickZoneEffects } from '../zoneEffects';
 import { runArenaSignature } from '../arenaSignature';
+import { runGamemakerSignature } from '../gamemakerAgency';
 import { resolveBreakdowns, tickResolve } from '../resolve';
 import { decayTruces } from '../parley';
 import { repayDebts, tickDistrictBonds } from '../debts';
@@ -145,6 +146,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // Runs after movement and encounters so it acts on where tributes actually
     // ended up, and before upkeep so the effects it starts tick normally.
     runArenaSignature(ctx);
+    // ...and the Head Gamemaker's, once per run, when the feed needs saving.
+    runGamemakerSignature(ctx);
 
     // 5. Cycle upkeep: the arena restocks, memories fade, bonds cool, the
     // crowd's attention wanders.

@@ -10,6 +10,8 @@ import { adjustRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { legacyOf } from '../../data/districts';
 import { HEAD_GAMEMAKERS } from '../../data/gamemakers';
+import { readPanem } from '../../utils/panemStorage';
+import { ordinal } from '../gamesProfile';
 
 /**
  * Everything between the bowl and the training floor.
@@ -47,6 +49,20 @@ export function processPreGames(ctx: SimContext) {
     const headGamemaker = ctx.rng.pick(HEAD_GAMEMAKERS);
     ctx.state.headGamemaker = headGamemaker.name;
     ctx.logEvent(headGamemaker.openingLine, [], { important: true, category: 'gamemaker' });
+    // REPLAY-10: they have a record in this player's Panem, and the broadcast
+    // brings it up — which is what makes the country continuous between runs
+    // rather than a series of unrelated Games.
+    const record = readPanem().gamemakerRecords?.[headGamemaker.name];
+    if (record && record.games > 0) {
+        const avgDays = (record.totalDays / record.games).toFixed(1);
+        ctx.logEvent(
+            `This is ${headGamemaker.name}'s ${ordinal(record.games + 1)} Games. `
+            + `Of the previous ${record.games}, ${record.victors} produced a victor, `
+            + `and they ran ${avgDays} days on average.`,
+            [],
+            { category: 'gamemaker' }
+        );
+    }
 
     // ---- 1. The square ----
     districts.forEach(district => {

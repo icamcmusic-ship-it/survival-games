@@ -109,19 +109,22 @@ function readHallOfFame(): HallOfFameEntry[] {
 
 function saveHallOfFame(state: GameState) {
     const winner = state.tributes.find(t => t.status === 'alive');
-    if (!winner) return;
+    // A Games nobody survived used to return here, so the run vanished from the
+    // archive entirely — the rarest outcome in the game was also the only one
+    // with no record of it. A wipeout is archived as its own kind of entry.
     const entry: HallOfFameEntry = {
         id: `${state.seed}-${Date.now().toString(36)}`,
         seed: state.seed,
         arenaName: state.arena.name,
         arenaId: state.arena.id,
         config: state.baseConfig,
-        winnerName: winner.name,
-        winnerDistrict: winner.district,
-        kills: winner.kills,
+        noVictor: !winner,
+        winnerName: winner?.name ?? 'No victor',
+        winnerDistrict: winner?.district ?? 0,
+        kills: winner?.kills ?? 0,
         date: new Date().toISOString(),
-        winnerTraits: winner.traits,
-        winnerEndHealth: winner.health,
+        winnerTraits: winner?.traits ?? [],
+        winnerEndHealth: winner?.health ?? 0,
         tributeSummaries: state.tributes.map(t => ({
             name: t.name,
             district: t.district,

@@ -532,6 +532,8 @@ export interface GameState {
     preGamesDone?: boolean;
     /** This run's Head Gamemaker. Chosen once, at the reaping. */
     headGamemaker?: string;
+    /** Guards the Head Gamemaker's one signature intervention per run. */
+    gamemakerSignatureFired?: boolean;
     /**
      * REPLAY-01: this year's Games, as announced. Rolled from the seed so a
      * shared seed reproduces the same Games, not merely the same cast.
@@ -610,6 +612,8 @@ export interface HallOfFameEntry {
      */
     arenaId?: string;
     config?: GameConfig;
+    /** True for a Games nobody survived — archived as its own kind of entry. */
+    noVictor?: boolean;
     winnerName: string;
     winnerDistrict: number;
     kills: number;

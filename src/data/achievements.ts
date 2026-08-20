@@ -23,6 +23,21 @@ export interface Achievement {
     hint: string;
     /** True if this finished run earned it. */
     test: (state: GameState, victor: Tribute | undefined) => boolean;
+    /**
+     * How close this run came, when it did not earn it — "2 kills from
+     * Bloodbath". Achievements were only ever surfaced on the end screen as a
+     * binary, so a run that came within one of something told the player
+     * nothing at all. Optional: some achievements are not a matter of degree.
+     */
+    nearMiss?: (state: GameState, victor: Tribute | undefined) => string | undefined;
+}
+
+/** An achievement this run came close to, for the end screen. */
+export interface NearMiss {
+    id: string;
+    name: string;
+    /** Already phrased: "one kill short", "survived to day 9 of 12". */
+    detail: string;
 }
 
 const alive = (state: GameState) => state.tributes.filter(t => t.status === 'alive');
@@ -39,12 +54,18 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Bloodless Crown',
         hint: 'Crown a victor who never killed anybody.',
         test: (_s, v) => !!v && v.kills === 0,
+        nearMiss: (_s, v) => (v && v.kills > 0 && v.kills <= 2)
+            ? `${v.name} won with ${v.kills} kill${v.kills === 1 ? '' : 's'} — ${v.kills} short of a bloodless crown`
+            : undefined,
     },
     {
         id: 'youngest-victor',
         name: 'The Youngest',
         hint: 'Crown a victor aged fourteen or under.',
         test: (_s, v) => !!v && v.age <= 14,
+        nearMiss: (_s, v) => (v && v.age > 14 && v.age <= 16)
+            ? `${v.name} was ${v.age} — ${v.age - 14} year${v.age - 14 === 1 ? '' : 's'} over`
+            : undefined,
     },
     {
         id: 'career-crown',
@@ -57,6 +78,13 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'From the Seam',
         hint: 'Crown a victor from District 10, 11 or 12.',
         test: (_s, v) => !!v && v.district >= 10,
+        nearMiss: state => {
+            const outer = state.tributes.filter(t => t.district >= 10);
+            const best = outer.sort((a, b) => (b.dayOfDeath ?? 99) - (a.dayOfDeath ?? 99))[0];
+            return best && best.status === 'dead'
+                ? `${best.name} of District ${best.district} made it to day ${best.dayOfDeath}`
+                : undefined;
+        },
     },
     {
         id: 'volunteer-crown',
@@ -158,12 +186,18 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Long Games',
         hint: 'See a Games run past day twelve.',
         test: state => state.day > 12,
+        nearMiss: state => state.day >= 10 && state.day <= 12
+            ? `these Games ran ${state.day} days — ${13 - state.day} short`
+            : undefined,
     },
     {
         id: 'short-games',
         name: 'Over By Friday',
         hint: 'See a Games finish on day six or earlier.',
         test: state => state.day <= 6,
+        nearMiss: state => state.day > 6 && state.day <= 8
+            ? `these Games ran ${state.day} days — ${state.day - 6} over`
+            : undefined,
     },
     {
         id: 'bloodbath-massacre',
@@ -172,6 +206,13 @@ export const ACHIEVEMENTS: Achievement[] = [
         test: state => {
             const day1 = dead(state).filter(t => t.dayOfDeath === 1).length;
             return day1 >= state.tributes.length / 2;
+        },
+        nearMiss: state => {
+            const day1 = dead(state).filter(t => t.dayOfDeath === 1).length;
+            const needed = Math.ceil(state.tributes.length / 2);
+            return day1 > 0 && needed - day1 <= 3 && day1 < needed
+                ? `the bloodbath took ${day1} — ${needed - day1} short of half the field`
+                : undefined;
         },
     },
     {
@@ -188,12 +229,18 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Barely a Scratch',
         hint: 'Crown a victor who finishes above 80 health.',
         test: (_s, v) => !!v && v.health > 80,
+        nearMiss: (_s, v) => (v && v.health > 65 && v.health <= 80)
+            ? `${v.name} finished on ${v.health} health — ${81 - v.health} short`
+            : undefined,
     },
     {
         id: 'last-legs',
         name: 'On Their Last Legs',
         hint: 'Crown a victor who finishes below 15 health.',
         test: (_s, v) => !!v && v.health < 15,
+        nearMiss: (_s, v) => (v && v.health >= 15 && v.health <= 30)
+            ? `${v.name} finished on ${v.health} health — ${v.health - 14} above the line`
+            : undefined,
     },
     {
         id: 'no-victor',
@@ -210,6 +257,13 @@ export const ACHIEVEMENTS: Achievement[] = [
         // enough (1 in 9,600 tributes) that an achievement keyed on it would
         // never be seen, which is the opposite of what this list is for.
         test: state => state.tributes.some(t => t.trainingScore >= 11),
+        nearMiss: state => {
+            const best = Math.max(0, ...state.tributes.map(t => t.trainingScore));
+            const holder = state.tributes.find(t => t.trainingScore === best);
+            return best === 10 && holder
+                ? `${holder.name} posted a 10 — one short of an eleven`
+                : undefined;
+        },
     },
     {
         id: 'hidden-hand',
@@ -220,6 +274,27 @@ export const ACHIEVEMENTS: Achievement[] = [
 ];
 
 /** Which achievements this finished run earned. */
+/**
+ * Achievements this run did not earn but came measurably close to. Only
+ * reported for achievements the player has never unlocked — telling somebody
+ * they nearly did a thing they have already done is noise.
+ */
+export function evaluateNearMisses(state: GameState, unlocked: string[]): NearMiss[] {
+    const victor = state.tributes.find(t => t.status === 'alive');
+    const misses: NearMiss[] = [];
+    ACHIEVEMENTS.forEach(a => {
+        if (unlocked.includes(a.id) || !a.nearMiss) return;
+        try {
+            if (a.test(state, victor)) return;
+            const detail = a.nearMiss(state, victor);
+            if (detail) misses.push({ id: a.id, name: a.name, detail });
+        } catch {
+            // A malformed or older save must never break the end screen.
+        }
+    });
+    return misses.slice(0, 3);
+}
+
 export function evaluateAchievements(state: GameState): string[] {
     const victor = state.tributes.find(t => t.status === 'alive');
     return ACHIEVEMENTS.filter(a => {

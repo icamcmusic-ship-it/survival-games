@@ -114,10 +114,16 @@ export function HallOfFameScreen() {
                                     <div key={entry.id} className="panel p-5 space-y-4 animate-riseIn">
                                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                             <div className="min-w-0">
-                                                <h3 className="display-title text-2xl">{entry.winnerName}</h3>
+                                                <h3 className="display-title text-2xl">
+                                                    {entry.noVictor ? 'No victor' : entry.winnerName}
+                                                </h3>
                                                 <div className="text-[var(--color-ink-400)] text-sm mt-1">
-                                                    District {entry.winnerDistrict} · victor of the{' '}
-                                                    <span className="text-[var(--red)] font-semibold">{entry.arenaName}</span>
+                                                    {entry.noVictor ? (
+                                                        <>The <span className="text-[var(--red)] font-semibold">{entry.arenaName}</span> kept everybody</>
+                                                    ) : (
+                                                        <>District {entry.winnerDistrict} · victor of the{' '}
+                                                        <span className="text-[var(--red)] font-semibold">{entry.arenaName}</span></>
+                                                    )}
                                                 </div>
                                                 {entry.winnerTraits && entry.winnerTraits.length > 0 && (
                                                     <div className="flex flex-wrap gap-1 mt-2">

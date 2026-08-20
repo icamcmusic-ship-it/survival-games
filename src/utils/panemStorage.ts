@@ -1,5 +1,6 @@
 import { GameState, Tribute } from '../models/types';
-import { evaluateAchievements } from '../data/achievements';
+import { NearMiss, evaluateAchievements, evaluateNearMisses } from '../data/achievements';
+import { Notable, runNotables } from './notables';
 
 /**
  * REPLAY-03: the thing that persists between runs.
@@ -39,9 +40,29 @@ export interface PanemRecords {
     unlocked: string[];
     /** One entry per tracked record, keyed by record id. */
     bests: Record<string, RecordHolder>;
+    /**
+     * REPLAY-10: Head Gamemakers who persist across runs and accumulate a
+     * reputation. Panem was a trophy case — nothing a player did in run 1
+     * changed run 2. A Head Gamemaker who ran your last three Games, and whose
+     * record you can see, makes the country feel continuous for almost no
+     * content. Keyed by name.
+     */
+    gamemakerRecords?: Record<string, GamemakerRecord>;
 }
 
-export const EMPTY_PANEM: PanemRecords = { runs: 0, victors: 0, unlocked: [], bests: {} };
+/** One Head Gamemaker's running record across this player's Panem. */
+export interface GamemakerRecord {
+    /** Games they have run. */
+    games: number;
+    /** Of those, how many produced a victor. */
+    victors: number;
+    /** Total days across all their Games — the crowd notices a slow one. */
+    totalDays: number;
+    /** Total tributes killed across all their Games. */
+    deaths: number;
+}
+
+export const EMPTY_PANEM: PanemRecords = { runs: 0, victors: 0, unlocked: [], bests: {}, gamemakerRecords: {} };
 
 /**
  * The record book. Each entry says what it measures and which direction is
@@ -153,6 +174,14 @@ export interface RunOutcome {
     /** Record ids this run beat. */
     brokenRecords: string[];
     records: PanemRecords;
+    /**
+     * The two or three statistically unusual things about this run, phrased for
+     * the end screen. The record book only ever reacted to a personal best;
+     * most of what makes a run memorable is not a record. See `utils/notables.ts`.
+     */
+    notables: Notable[];
+    /** Achievements the run came close to but did not earn. See `data/achievements.ts`. */
+    nearMisses: NearMiss[];
 }
 
 /**
@@ -165,6 +194,19 @@ export function commitRun(state: GameState): RunOutcome {
 
     records.runs += 1;
     if (victor) records.victors += 1;
+
+    // The Head Gamemaker who ran these Games carries the result forward.
+    const gmName = state.headGamemaker;
+    if (gmName) {
+        records.gamemakerRecords = records.gamemakerRecords ?? {};
+        const gm = records.gamemakerRecords[gmName]
+            ?? { games: 0, victors: 0, totalDays: 0, deaths: 0 };
+        gm.games += 1;
+        if (victor) gm.victors += 1;
+        gm.totalDays += state.day;
+        gm.deaths += state.tributes.filter(t => t.status === 'dead').length;
+        records.gamemakerRecords[gmName] = gm;
+    }
 
     const earned = evaluateAchievements(state);
     const newAchievements = earned.filter(id => !records.unlocked.includes(id));
@@ -192,7 +234,13 @@ export function commitRun(state: GameState): RunOutcome {
     });
 
     writePanem(records);
-    return { newAchievements, brokenRecords, records };
+    return {
+        newAchievements,
+        brokenRecords,
+        records,
+        notables: runNotables(state, records),
+        nearMisses: evaluateNearMisses(state, records.unlocked),
+    };
 }
 
 export function clearPanem(): void {
