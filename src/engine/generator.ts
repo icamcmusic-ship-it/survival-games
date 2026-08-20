@@ -2,9 +2,9 @@ import { RNG } from '../utils/rng';
 import { Tribute, Attributes, Build, GameConfig, ArchetypeId, Gender } from '../models/types';
 import { TRAITS, BUILDS, DEFAULT_GAME_CONFIG, traitFits } from '../data/constants';
 import { ARCHETYPES, archetypeWeightsFor } from '../data/archetypes';
-import { GENERATION } from '../data/balance';
+import { GENERATION, VOLUNTEER } from '../data/balance';
 import { DISTRICT_NAMES } from '../data/names';
-import { LEGACY_EFFECTS, legacyOf } from '../data/districts';
+import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { blankMemory } from './memory';
 import { blankProficiencies } from './proficiency';
 import { seedBackstoryRelationships } from './relationships';
@@ -74,6 +74,40 @@ function applyPersonalVariance(rng: RNG, attributes: Attributes) {
     for (let i = 0; i < GENERATION.dumpCount && keys.length - 1 - i >= GENERATION.spikeCount; i++) {
         attributes[keys[keys.length - 1 - i]] -= GENERATION.dumpSize;
     }
+}
+
+/**
+ * The reaping's second half: who answers the name.
+ *
+ * A Career district's escort barely finishes reading the card before somebody
+ * volunteers, and that somebody is of age, trained, and has been waiting years
+ * for this — so the volunteer replaces the reaped tribute's profile rather than
+ * merely flagging it. Everywhere else volunteering is vanishingly rare and
+ * almost always the same thing: an older sibling stepping in front of a younger
+ * one, which the Capitol adores and which rarely ends well.
+ */
+function applyVolunteer(rng: RNG, t: Tribute) {
+    const chance = t.isCareer ? VOLUNTEER.careerChance : VOLUNTEER.outlyingChance;
+    if (!rng.chance(chance)) return;
+
+    t.volunteered = true;
+    // Nobody volunteers at twelve. Age up first, then let the age cap on raw
+    // strength be recomputed against the new age.
+    if (t.age < VOLUNTEER.minAge) t.age = rng.nextInt(VOLUNTEER.minAge, GENERATION.maxAge);
+
+    if (t.isCareer) {
+        t.attributes.strength = Math.min(10, t.attributes.strength + VOLUNTEER.careerStrengthBonus);
+        t.attributes.agility = Math.min(10, t.attributes.agility + VOLUNTEER.careerAgilityBonus);
+        t.reputation = Math.min(95, t.reputation + VOLUNTEER.careerTrust);
+        t.excitementRating += VOLUNTEER.careerExcitement;
+        t.reapingNote = `Volunteered before the escort had finished reading the card — ${craftOf(t.district).blurb}, and eighteen years of waiting for their turn.`;
+    } else {
+        t.reputation = Math.min(95, t.reputation + VOLUNTEER.sacrificeTrust);
+        t.excitementRating += VOLUNTEER.sacrificeExcitement;
+        t.reapingNote = `Volunteered for a sibling. District ${t.district} has not had a volunteer in living memory, and the crowd did not applaud — they touched three fingers to their lips instead.`;
+    }
+    t.attributes.strength = Math.min(t.attributes.strength, strengthCapForAge(t.age));
+    t.sponsorTrust = t.reputation;
 }
 
 export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME_CONFIG, startZone: string = 'The Cornucopia'): Tribute[] {
@@ -199,15 +233,23 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 daysSurvived: 0,
                 mentorLegacy: rng.pick(legacy.mentors),
                 memory: blankMemory(),
-                proficiencies: blankProficiencies(archetype),
+                proficiencies: blankProficiencies(archetype, district),
                 bleedSeverity: 0,
                 momentum: 0,
                 objective: { kind: 'survive' },
+                // Where the plate lands. The ring is drawn at random and the
+                // bloodbath is largely decided by it: a tribute who comes off
+                // their plate inside the horn's shadow is in the killing zone
+                // whether or not they wanted to be.
+                platePosition: Math.round(rng.nextFloat() * 100) / 100,
                 stanceHeld: 0,
                 fanFavourite: false,
             });
         }
     }
+
+    // The reaping is not just a name out of a bowl.
+    tributes.forEach(t => applyVolunteer(rng, t));
 
     // Audience meta: the Capitol has favourites before the gong.
     // Charisma, a good story and a career pedigree all feed the pre-Games buzz.

@@ -204,6 +204,17 @@ export interface Tribute {
     proficiencies?: Partial<Record<Proficiency, number>>;
     /** What they are currently trying to do. See `Objective`. */
     objective?: Objective;
+    /**
+     * How far their launch plate landed from the mouth of the Cornucopia, 0-1.
+     * 0 is close enough to touch the horn; 1 is the far edge of the ring.
+     * Decided at the reaping so it can be shown on the tribute sheet, and read
+     * only by the bloodbath.
+     */
+    platePosition?: number;
+    /** They put their hand up rather than being drawn out of the bowl. */
+    volunteered?: boolean;
+    /** The reaping-day line: how they came to be standing on that plate. */
+    reapingNote?: string;
 }
 
 /**
@@ -413,6 +424,14 @@ export interface GameState {
     severedEdges?: string[];
     /** Monotonic day/night cycle counter, used for memory and decay timings. */
     cycle?: number;
+    /**
+     * The day the Gamemakers started closing the arena. Undefined until they
+     * do. Set by boredom or by the calendar, whichever comes first — collapse
+     * progress counts from here rather than from a fixed day.
+     */
+    escalationDay?: number;
+    /** Aggregate audience interest in the living field, recomputed each cycle. */
+    audienceInterest?: number;
     /** Zone name -> deaths that have happened there, broadcast by the sky each night. */
     zoneDeaths?: Record<string, number>;
     /** Traps currently set in the arena, by whoever set them. */

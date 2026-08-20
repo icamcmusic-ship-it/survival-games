@@ -88,6 +88,11 @@ const sampleBoard = (tributes: Tribute[]) => {
     });
 };
 
+// CANON-01. The bloodbath is the single most recognisable event in the source
+// material, and roughly half the field dies in it.
+let bloodbathDeaths = 0;
+let bloodbathFields = 0;
+
 for (let i = 0; i < RUNS; i++) {
     const seed = `METRIC${i}`;
     const sim = new Simulator(start(seed, arenaIds[i % arenaIds.length], configs[i % configs.length]));
@@ -98,7 +103,12 @@ for (let i = 0; i < RUNS; i++) {
         if (state.phase === 'setup') sim.processTraining();
         else if (state.phase === 'training') sim.processInterviews();
         else if (state.phase === 'interviews') sim.startGames();
-        else if (state.phase === 'bloodbath') sim.processBloodbath();
+        else if (state.phase === 'bloodbath') {
+            const fieldSize = state.tributes.length;
+            sim.processBloodbath();
+            bloodbathFields += fieldSize;
+            bloodbathDeaths += sim.getState().tributes.filter(t => t.status === 'dead').length;
+        }
         else if (state.phase === 'epilogue') { state.phase = 'ended'; }
         else if (!sim.processTurn()) break;
         state = sim.getState();
@@ -175,6 +185,20 @@ interface Indicator {
 const asPct = (v: number) => `${(v * 100).toFixed(1)}%`;
 
 const indicators: Indicator[] = [
+    {
+        // CANON-01. Half the field dies at the Cornucopia in the first ten
+        // minutes. The old scramble managed 0.84 deaths out of 24 — and every
+        // downstream problem started there, because the tributes with nothing
+        // to offer a fight survived it to die of thirst on day six instead.
+        label: 'share of the field lost in the bloodbath',
+        value: bloodbathDeaths / Math.max(1, bloodbathFields),
+        guard: v => v >= 0.25 && v <= 0.62,
+        guardText: '25%-62%',
+        goal: '33%-50%',
+        goalMet: v => v >= 0.33 && v <= 0.50,
+        baseline: '3.5%',
+        fmt: asPct,
+    },
     {
         // DESIGN-01. Bleeding should be what softens a tribute up for the fight
         // that kills them, not the thing that kills them alone in a field having

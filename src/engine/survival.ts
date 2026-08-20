@@ -10,6 +10,7 @@ import { clampTribute } from './vitals';
 import { bleedDamage, clearBleeding, tickBleeding } from './wounds';
 import { rememberedThreat } from './memory';
 import { hasCamp } from './fieldcraft';
+import { craftOf } from '../data/districts';
 
 /**
  * Staying alive between encounters: spoilage, hunger, thirst, exposure, wounds
@@ -51,6 +52,11 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
         if (climate.drains.thirstMultiplier) thirst *= climate.drains.thirstMultiplier;
         if (climate.drains.fatigue) fatigue += climate.drains.fatigue;
     }
+
+    // Some districts have been hungry before. District 12 rations better than
+    // District 1 does, and that is the whole of what mining and the Seam buy.
+    const resilience = craftOf(t.district).hungerResilience;
+    if (resilience) hunger *= resilience;
 
     if (t.traits.includes('Hydrophilic')) thirst -= TRAIT_EFFECTS.hydrophilicThirstRelief;
     if (t.traits.includes('Insomniac') && time === 'night') fatigue += TRAIT_EFFECTS.insomniacNightFatigue;

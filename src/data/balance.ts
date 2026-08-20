@@ -257,6 +257,10 @@ export const PROFICIENCY = {
     forageWeight: 0.05,
     /** Combat power added per point of the relevant weapon proficiency. */
     combatWeight: 0.7,
+    /** Power bonus for a weapon this tribute's district actually raises children on. */
+    affinityItemBonus: 2.2,
+    /** Smaller bonus for a weapon merely of a familiar class. */
+    affinityClassBonus: 1.1,
     /** Awareness added per point of tracking. */
     trackingAwarenessWeight: 0.4,
 } as const;
@@ -332,8 +336,60 @@ export const MEDICAL = {
 } as const;
 
 /** The shrinking arena, from day 5 onward. */
+/**
+ * The bloodbath, as its own set of numbers.
+ *
+ * These used to be literals scattered through `processBloodbath`, tuned for a
+ * scrum that killed 0.84 tributes out of 24. In the source material roughly
+ * half the field dies at the Cornucopia in the first ten minutes, and every
+ * downstream problem — a field of non-combatants surviving to die of thirst on
+ * day 6, the environment out-killing the tributes — starts here.
+ */
+export const BLOODBATH = {
+    /** How far off the horn a plate can be, in abstract units. Low = in the killing zone. */
+    plateSpread: 1,
+    /** Baseline willingness to go for the Cornucopia rather than the treeline. */
+    fightChanceBase: 0.66,
+    /** Added for a Career: the pack came here to do exactly this. */
+    fightChanceCareer: 0.4,
+    /** Weight on how close their plate landed to the horn. Proximity is opportunity. */
+    fightChanceProximity: 0.35,
+    /** Weight on agility: getting there first is most of getting there. */
+    fightChanceAgility: 0.03,
+    /** Rounds of the opening scrum in which nobody is thinking clearly enough to run. */
+    noRetreatRounds: 3,
+    /** Chance a surviving fighter is pulled back into the scrum rather than breaking out. */
+    reengageChance: 0.85,
+    /** Chance a knot at the mouth of the horn resolves as a group fight, not a duel. */
+    groupFightChance: 0.5,
+    /** Chance a surviving participant of a group fight stays in the scrum. */
+    groupReengageChance: 0.75,
+    /** Damage multiplier on hits landed inside the killing zone. */
+    killingZoneDamage: 1.7,
+    /** Chance a tribute who reached the horn first comes away armed. */
+    armedAtHornChance: 0.85,
+    /**
+     * Turning your back on the Cornucopia is not the same as escaping it. A
+     * tribute who ran from a plate near the horn spends several seconds inside
+     * the reach of people who came here to kill, and canon's bloodbath is full
+     * of tributes cut down with their backs turned. Scaled by how close their
+     * plate was.
+     */
+    runDownChance: 0.5,
+} as const;
+
 export const ESCALATION = {
     startDay: 5,
+    /**
+     * Canon's Gamemakers do not escalate on a timetable; they escalate because
+     * the audience is bored. Aggregate excitement across the living field is
+     * the boredom meter, and the arena starts closing the moment it drops
+     * below this — which can be well before `startDay` in a quiet year, and
+     * never later, because `startDay` remains a hard backstop.
+     */
+    boredomThreshold: 22,
+    /** Nothing closes in before this, however dull the Games are. */
+    boredomEarliestDay: 3,
     collapseDamageBase: 20,
     collapseDamagePerDay: 10,
     /** The Gamemakers want a victor: the border stops short of the last two. */
@@ -341,6 +397,35 @@ export const ESCALATION = {
     finalistCount: 2,
     hazardMultiplierPerDay: 0.3,
     hazardCeiling: 0.35,
+} as const;
+
+/**
+ * Volunteering, which the simulation had no concept of at all.
+ *
+ * "I volunteer as tribute" is the opening beat of the source material and the
+ * whole reason Career districts are dangerous: their tributes are not children
+ * picked out of a bowl, they are the ones who put their hand up. A volunteer
+ * is older, trained, and chose this — so they replace the reaped name with a
+ * better one. The rare non-Career volunteer is the opposite: somebody stepping
+ * in front of a sibling, which is worth its own line even though it usually
+ * gets them killed.
+ */
+export const VOLUNTEER = {
+    /** Chance a Career district's reaping is answered by a volunteer. */
+    careerChance: 0.88,
+    /** Chance anywhere else. Almost always a sibling, and almost always a disaster. */
+    outlyingChance: 0.06,
+    /** A volunteer is of age: the floor their age is raised to. */
+    minAge: 16,
+    /** Attribute points a trained Career volunteer adds over the reaped tribute. */
+    careerStrengthBonus: 1,
+    careerAgilityBonus: 1,
+    /** The crowd notices someone who wanted this. */
+    careerTrust: 6,
+    careerExcitement: 8,
+    /** Stepping in for a sibling buys sympathy the Capitol cannot resist. */
+    sacrificeTrust: 10,
+    sacrificeExcitement: 14,
 } as const;
 
 /** Random encounters, hazards and mutts during a cycle. */
@@ -369,6 +454,12 @@ export const ENCOUNTERS = {
 export const COMBAT = {
     /** Hard ceiling on exchanges in a single encounter. */
     maxRounds: 4,
+    /**
+     * Extra exchanges in the bloodbath. Nowhere else in the arena are two
+     * people fighting with no line of retreat and a dozen others in arm's
+     * reach; a scrum at the horn runs until somebody is on the ground.
+     */
+    bloodbathExtraRounds: 3,
     /** Damage a clean hit lands before modifiers. */
     baseHitDamage: 14,
     /** Extra damage per point of power advantage in the round. */

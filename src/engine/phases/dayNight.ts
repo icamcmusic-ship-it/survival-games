@@ -52,7 +52,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         ctx.logEvent(ctx.pickText(pool), [], { category: 'arena' });
     }
 
-    // 0. The arena shrinks from day 5 onward.
+    // 0. The audience decides how much arena the tributes get to keep.
+    updateAudienceInterest(ctx, time);
     const isEscalated = collapseBorders(ctx, time);
     const collapsed = ctx.state.collapsedZones || [];
     const severed = severedEdgeSet(ctx.state);
@@ -190,6 +191,44 @@ function buildCollapseOrder(ctx: SimContext): string[] {
     return [...allZoneNames].sort((a, b) => (distances.get(b) ?? 0) - (distances.get(a) ?? 0));
 }
 
+/**
+ * The boredom meter.
+ *
+ * Canon's Gamemakers do not escalate on a schedule; they escalate because the
+ * feed has gone quiet and the Capitol has started changing channels. Fire,
+ * mutts and a closing border are all the same instrument: herd them together
+ * and give the audience something. `excitementRating` was already tracked per
+ * tribute and read only by the sponsor system — aggregated across the living
+ * field it is exactly the metric the Gamemakers are watching.
+ *
+ * Once escalation starts it never un-starts: a border does not reopen because
+ * two tributes finally had a fight.
+ */
+function updateAudienceInterest(ctx: SimContext, time: 'day' | 'night') {
+    const alive = getAlive(ctx.state);
+    const interest = alive.length === 0
+        ? 0
+        : alive.reduce((sum, t) => sum + t.excitementRating, 0) / alive.length;
+    ctx.state.audienceInterest = Math.round(interest);
+
+    if (ctx.state.escalationDay !== undefined) return;
+
+    const bored = ctx.state.day >= ESCALATION.boredomEarliestDay && interest < ESCALATION.boredomThreshold;
+    const scheduled = ctx.state.day >= ESCALATION.startDay;
+    if (!bored && !scheduled) return;
+
+    ctx.state.escalationDay = ctx.state.day;
+    if (time === 'day' || !scheduled) {
+        ctx.logEvent(
+            bored && !scheduled
+                ? `The feed has been quiet for too long. Somewhere above the arena a Gamemaker decides the audience has waited long enough, and the border starts to move — three days early.`
+                : `The Gamemakers begin closing the arena on schedule. There is less world tonight than there was this morning.`,
+            [],
+            { important: true, category: 'gamemaker' }
+        );
+    }
+}
+
 /** Hazard escalation and safe-zone shrinking. Returns whether it is active. */
 function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
     const collapseOrder = buildCollapseOrder(ctx);
@@ -199,7 +238,11 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
     // border actually closes, and a hazard nobody could see coming is a cheap
     // kind of tension. Only announced once per day (the day phase), or a run
     // with both a day and a night cycle would hear the same warning twice.
-    const countFor = (day: number) => Math.max(0, Math.min(collapseOrder.length - 1, day - (ESCALATION.startDay - 1)));
+    // Progress counts from the day the Gamemakers actually started, not from a
+    // fixed date — a boredom-triggered collapse on day 3 must not arrive on day
+    // 5 already three zones deep.
+    const startDay = ctx.state.escalationDay ?? ESCALATION.startDay;
+    const countFor = (day: number) => Math.max(0, Math.min(collapseOrder.length - 1, day - (startDay - 1)));
     const nextCount = countFor(ctx.state.day + 1);
     const thisCount = countFor(ctx.state.day);
     if (time === 'day' && nextCount > thisCount) {
@@ -211,7 +254,7 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         );
     }
 
-    if (ctx.state.day < ESCALATION.startDay) return false;
+    if (ctx.state.escalationDay === undefined) return false;
 
     const collapsedList = collapseOrder.slice(0, thisCount);
     ctx.state.collapsedZones = collapsedList;
@@ -224,7 +267,7 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         const finalists = getAlive(ctx.state).length <= ESCALATION.finalistCount;
         const damage = finalists
             ? ESCALATION.finalistCollapseDamage
-            : ESCALATION.collapseDamageBase + (ctx.state.day - ESCALATION.startDay) * ESCALATION.collapseDamagePerDay;
+            : ESCALATION.collapseDamageBase + (ctx.state.day - startDay) * ESCALATION.collapseDamagePerDay;
         const safeZones = allZoneNames.filter(z => !collapsedList.includes(z));
         // Nearest reachable safe zone via the adjacency graph, not an
         // arbitrary index — a tribute should not teleport across the arena.
@@ -393,7 +436,8 @@ function resolveEncounters(
         let eventChance = ENCOUNTERS.baseEventChance * zoneDanger;
         let muttChance = ENCOUNTERS.baseMuttChance * zoneDanger;
         if (isEscalated) {
-            const multiplier = 1 + (ctx.state.day - ESCALATION.startDay) * ESCALATION.hazardMultiplierPerDay;
+            const escalatedSince = ctx.state.escalationDay ?? ESCALATION.startDay;
+            const multiplier = 1 + (ctx.state.day - escalatedSince) * ESCALATION.hazardMultiplierPerDay;
             eventChance = Math.min(ESCALATION.hazardCeiling, eventChance * multiplier);
             muttChance = Math.min(ESCALATION.hazardCeiling, muttChance * multiplier);
         }

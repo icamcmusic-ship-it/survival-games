@@ -11,6 +11,7 @@ import { Explainer } from './Explainer';
 import { objectiveLabel } from '../engine/objectives';
 import { traitInfo } from '../data/traitInfo';
 import { MapPin, Users, X, Heart } from 'lucide-react';
+import { craftOf, legacyOf } from '../data/districts';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
@@ -160,6 +161,27 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                 </span>
                             </Explainer>
                             {tribute.isCareer && <span className="chip chip-gold">Career</span>}
+                            {tribute.volunteered && (
+                                <Explainer
+                                    align="left"
+                                    label={<span className="chip chip-gold">Volunteer</span>}
+                                    title="Volunteered"
+                                >
+                                    {tribute.reapingNote}
+                                </Explainer>
+                            )}
+                            <Explainer
+                                align="left"
+                                label={<span className="chip">{legacyOf(tribute.district).industry}</span>}
+                                title={`District ${tribute.district}: ${legacyOf(tribute.district).industry}`}
+                            >
+                                {craftOf(tribute.district).blurb}.
+                                <span className="block mt-1.5">
+                                    Twelve years of a district's trade is not decoration: it seeds the skills this
+                                    tribute walks in with, and it decides which weapons feel like something they
+                                    have held before.
+                                </span>
+                            </Explainer>
                             {tribute.fanFavourite && <span className="chip chip-gold" title="The Capitol had a favourite before the gong ever sounded.">Fan favourite</span>}
                             {tribute.interviewStrategy && <span className="chip" title="The persona they sold on Caesar's couch.">{tribute.interviewStrategy}</span>}
                             <Explainer

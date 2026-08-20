@@ -3,7 +3,7 @@ import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
-import { ALLIANCES } from '../../data/balance';
+import { ALLIANCES, BLOODBATH } from '../../data/balance';
 import { registerAlliance } from '../alliance';
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { BLOODBATH_TEXTS } from '../../data/flavorText';
@@ -80,6 +80,28 @@ function initializeCareerAlliance(ctx: SimContext) {
     }
 }
 
+/**
+ * The scramble: sixty seconds on the plates, and then the run.
+ *
+ * Who reaches the mouth of the horn is not a coin flip. It is where the plate
+ * landed, how fast they are, and whether they came here intending to do this.
+ * Everything about the bloodbath's lethality follows from that ordering — the
+ * tributes in the killing zone are in a knot of armed people with nowhere to
+ * back up to, and the ones who turned for the treeline are simply not part of
+ * it.
+ */
+function scrambleOrder(ctx: SimContext, tributes: Tribute[]): Tribute[] {
+    return [...tributes].sort((a, b) => reachScore(ctx, b) - reachScore(ctx, a));
+}
+
+function reachScore(ctx: SimContext, t: Tribute): number {
+    const proximity = 1 - (t.platePosition ?? 0.5);
+    return proximity * 10 + t.attributes.agility + ctx.rng.nextFloat() * 3;
+}
+
+/** Weapons only. What is actually laid out at the mouth of the horn. */
+const HORN_WEAPONS = ITEMS.filter(i => i.type === 'weapon');
+
 export function processBloodbath(ctx: SimContext) {
     ctx.state.phase = 'bloodbath';
     ctx.rng = new RNG(`${ctx.state.seed}-bloodbath`);
@@ -91,30 +113,74 @@ export function processBloodbath(ctx: SimContext) {
         { important: true, category: 'system' }
     );
 
-    const shuffled = ctx.rng.shuffle(alive);
-
+    // 1. Who runs at the horn and who runs away from it.
     const runners: Tribute[] = [];
     const fighters: Tribute[] = [];
 
-    shuffled.forEach(t => {
-        let fightChance = 0.3;
-        if (t.isCareer) fightChance += 0.4;
-        if (t.attributes.strength > 7) fightChance += 0.2;
+    ctx.rng.shuffle(alive).forEach(t => {
+        const proximity = 1 - (t.platePosition ?? 0.5);
+        let fightChance = BLOODBATH.fightChanceBase;
+        if (t.isCareer) fightChance += BLOODBATH.fightChanceCareer;
+        // A plate in the horn's shadow is an invitation, and a plate on the far
+        // edge of the ring is permission to leave.
+        fightChance += (proximity - 0.5) * 2 * BLOODBATH.fightChanceProximity;
+        fightChance += (t.attributes.agility - 5) * BLOODBATH.fightChanceAgility;
+        if (t.attributes.strength > 7) fightChance += 0.15;
         if (t.traits.includes('Bloodthirsty')) fightChance += 0.3;
-        if (t.traits.includes('Pacifist')) fightChance -= 0.3;
+        if (t.traits.includes('Pacifist')) fightChance -= 0.35;
         fightChance += ARCHETYPES[t.archetype].aggression - ARCHETYPES[t.archetype].caution * 0.5;
         // The persona sold on the interview couch is a promise the crowd — and
         // everyone else on the plates — remembers.
         fightChance += personaThreat(t) * 0.6;
 
-        if (ctx.rng.chance(fightChance)) {
-            fighters.push(t);
-        } else {
-            runners.push(t);
-        }
+        if (ctx.rng.chance(fightChance)) fighters.push(t);
+        else runners.push(t);
+    });
+
+    // 2. The race itself. Arrival order decides who is inside the horn when the
+    //    knot closes, and the front of the pack is the part that gets armed.
+    const arrivals = scrambleOrder(ctx, fighters);
+    const killingZone = new Set(arrivals.slice(0, Math.max(2, Math.ceil(arrivals.length * 0.6))).map(t => t.id));
+
+    arrivals.forEach((t, index) => {
+        const first = index < Math.ceil(arrivals.length / 2);
+        if (t.inventory.some(i => i.type === 'weapon')) return;
+        if (!ctx.rng.chance(first ? BLOODBATH.armedAtHornChance : BLOODBATH.armedAtHornChance * 0.5)) return;
+        // The good steel is stacked at the mouth of the horn; the outer ring is
+        // backpacks and whatever was scattered on the grass.
+        const item = first ? ctx.rng.pick(HORN_WEAPONS) : ctx.rng.pick(ITEMS);
+        giveItem(t, { ...item });
+        ctx.logEvent(
+            `${t.name} reaches the ${first ? 'mouth of the horn' : 'scatter around the horn'} and comes up holding ${itemPhrase(item)}.`,
+            [t.id],
+            { category: 'loot' }
+        );
+    });
+
+    // 2b. The tributes who turned and ran are not automatically clear of it.
+    //     A plate near the mouth of the horn means several seconds inside the
+    //     reach of people who came to the Cornucopia to kill, and the bloodbath
+    //     of the source material is full of tributes cut down from behind.
+    const hunters = arrivals.filter(t => t.status === 'alive' && t.inventory.some(i => i.type === 'weapon'));
+    runners.forEach(t => {
+        if (t.status !== 'alive' || hunters.length === 0) return;
+        const proximity = 1 - (t.platePosition ?? 0.5);
+        const caught = BLOODBATH.runDownChance * proximity * Math.max(0.3, 1 - t.attributes.agility / 12);
+        if (!ctx.rng.chance(caught)) return;
+        const hunter = ctx.rng.pick(hunters.filter(h => h.status === 'alive' && h.id !== t.id));
+        if (!hunter) return;
+        ctx.logEvent(
+            `${t.name} turns for the treeline and does not get there. ${hunter.name} runs them down before they clear the ring of plates.`,
+            [hunter.id, t.id],
+            { important: true, category: 'combat' }
+        );
+        // Being caught from behind is an ambush by any definition, and nobody
+        // is thinking clearly enough to break off in the first seconds.
+        resolveCombat(ctx, hunter, t, true, true, BLOODBATH.noRetreatRounds, BLOODBATH.killingZoneDamage);
     });
 
     runners.forEach(t => {
+        if (t.status !== 'alive') return;
         if (ctx.rng.chance(0.8)) {
             ctx.logEvent(fill(ctx.pickText(BLOODBATH_TEXTS.flee), { tribute: t.name }), [t.id], { category: 'survival' });
         } else {
@@ -135,46 +201,71 @@ export function processBloodbath(ctx: SimContext) {
         noteSighting(ctx.state, t, cornucopia, Math.max(0, fighters.length - 1), 0);
     });
 
-    // Bounded brawl: two tributes who never manage to kill each other (a draw
-    // every round, or star-crossed lovers who refuse to fight) used to spin
-    // this loop forever and hang the whole simulation.
-    let rounds = fighters.length * 6 + 12;
-    while (fighters.length > 1 && rounds-- > 0) {
-        // A knot of three at the mouth of the horn is not three tidy duels.
-        if (fighters.length >= 3 && ctx.rng.chance(0.35)) {
-            const party = fighters.splice(0, 3);
+    // 3. The scrum. The pool is the arrival order, so the tributes who got there
+    //    first meet each other rather than being paired off at random.
+    const pool = arrivals.filter(t => t.status === 'alive');
+    const zoneMultiplier = (t: Tribute) => (killingZone.has(t.id) ? BLOODBATH.killingZoneDamage : 1);
+
+    let rounds = pool.length * 6 + 12;
+    while (pool.length > 1 && rounds-- > 0) {
+        // The pack does not queue up for duels. If enough of them are still in
+        // the scrum they pick one target and go through them together, which is
+        // the entire reason a Career pack is frightening.
+        const packed = pool.filter(t => t.isCareer && t.allianceId);
+        if (packed.length >= 2 && pool.length > packed.length && ctx.rng.chance(0.6)) {
+            const prey = pool.filter(t => !packed.includes(t));
+            const target = prey[pickOpponentIndex(ctx, packed[0], prey)];
+            const party = [...packed.slice(0, 3), target];
+            party.forEach(t => {
+                const idx = pool.indexOf(t);
+                if (idx >= 0) pool.splice(idx, 1);
+            });
             resolveGroupCombat(ctx, party);
-            party.forEach(t => { if (t.status === 'alive' && ctx.rng.chance(0.5)) fighters.push(t); });
+            party.forEach(t => {
+                if (t.status === 'alive' && ctx.rng.chance(BLOODBATH.groupReengageChance)) pool.push(t);
+            });
             continue;
         }
 
-        const t1 = fighters.splice(ctx.rng.nextInt(0, fighters.length - 1), 1)[0];
+        // A knot of three at the mouth of the horn is not three tidy duels.
+        if (pool.length >= 3 && ctx.rng.chance(BLOODBATH.groupFightChance)) {
+            const party = pool.splice(0, 3);
+            resolveGroupCombat(ctx, party);
+            party.forEach(t => {
+                if (t.status === 'alive' && ctx.rng.chance(BLOODBATH.groupReengageChance)) pool.push(t);
+            });
+            continue;
+        }
+
+        const t1 = pool.splice(0, 1)[0];
         // Targeting is not blind: a tribute goes for whoever they already have
         // reason to hate, or whoever promised the crowd a bloodbath.
-        const t2 = fighters.splice(pickOpponentIndex(ctx, t1, fighters), 1)[0];
+        const t2 = pool.splice(pickOpponentIndex(ctx, t1, pool), 1)[0];
 
-        resolveCombat(ctx, t1, t2, true);
-        // A draw usually means they break off rather than immediately
-        // re-engaging the same opponent.
-        if (t1.status === 'alive' && ctx.rng.chance(0.55)) fighters.push(t1);
-        if (t2.status === 'alive' && ctx.rng.chance(0.55)) fighters.push(t2);
+        resolveCombat(
+            ctx, t1, t2, true, false,
+            BLOODBATH.noRetreatRounds,
+            Math.max(zoneMultiplier(t1), zoneMultiplier(t2)),
+        );
+        if (t1.status === 'alive' && ctx.rng.chance(BLOODBATH.reengageChance)) pool.push(t1);
+        if (t2.status === 'alive' && ctx.rng.chance(BLOODBATH.reengageChance)) pool.push(t2);
     }
 
-    if (fighters.length > 1) {
+    if (pool.length > 1) {
         ctx.logEvent(
-            `The survivors at the Cornucopia — ${fighters.map(f => f.name).join(', ')} — break off and scatter rather than finish it here.`,
-            fighters.map(f => f.id),
+            `The survivors at the Cornucopia — ${pool.map(f => f.name).join(', ')} — break off and scatter rather than finish it here.`,
+            pool.map(f => f.id),
             { category: 'combat' }
         );
-        fighters.splice(1).forEach(t => {
+        pool.splice(1).forEach(t => {
             const item = ctx.rng.pick(ITEMS);
             giveItem(t, { ...item });
             ctx.logEvent(`${t.name} grabs ${itemPhrase(item)} on the way out.`, [t.id], { category: 'loot' });
         });
     }
 
-    if (fighters.length === 1) {
-        const winner = fighters[0];
+    if (pool.length === 1) {
+        const winner = pool[0];
         const item1 = ctx.rng.pick(ITEMS);
         const item2 = ctx.rng.pick(ITEMS);
         giveItem(winner, { ...item1 }, { ...item2 });

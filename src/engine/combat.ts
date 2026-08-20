@@ -10,7 +10,7 @@ import { getZone } from './map';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rivalRecord } from './memory';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { openWound } from './wounds';
-import { profOf, trainProficiency, weaponProficiency } from './proficiency';
+import { profOf, trainProficiency, weaponAffinity, weaponProficiency } from './proficiency';
 import { addFear, fearFraction } from './fear';
 import { areLovers } from './alliance';
 import { reachBonus } from './physique';
@@ -114,6 +114,10 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         }
         // Practice with the class of weapon actually in their hands.
         power += profOf(t, weaponProficiency(weapon.weaponClass)) * PROFICIENCY.combatWeight;
+        // And familiarity with this *particular* weapon, from home rather than
+        // from the training centre. A trident is a fishing tool to District 4
+        // and an awkward three-pronged spear to everybody else.
+        power += weaponAffinity(t, weapon);
     } else {
         // Bare hands are a grapple, and a grapple is decided by mass and reach.
         power += reachBonus(t);
@@ -239,7 +243,22 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
  * fight someone walked away from on purpose, which meant no fleeing, no
  * wearing an opponent down over two encounters, and no tension in a rematch.
  */
-export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBloodbath: boolean = false, isBetrayal: boolean = false) {
+export function resolveCombat(
+    ctx: SimContext,
+    t1: Tribute,
+    t2: Tribute,
+    isBloodbath: boolean = false,
+    isBetrayal: boolean = false,
+    /**
+     * Rounds at the start of the fight in which neither side will break off.
+     * The opening seconds of the bloodbath are not a decision anybody makes:
+     * the gong goes and people commit. Everywhere else this stays 0 and the
+     * per-round retreat check runs as it always has.
+     */
+    noRetreatRounds: number = 0,
+    /** Multiplier on damage landed, for fights inside the killing zone. */
+    damageMultiplier: number = 1,
+) {
     if (t1.status === 'dead' || t2.status === 'dead') return;
 
     // Star-crossed lovers refuse to fight each other!
@@ -280,7 +299,7 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
             return;
         }
         // Being jumped is a reason to leave, not to settle in.
-        if (wantsToRetreat(ctx, t2, damage / 10, 1, t1)) {
+        if (noRetreatRounds < 1 && wantsToRetreat(ctx, t2, damage / 10, 1, t1)) {
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.retreat), { fleer: t2.name, stayer: t1.name, zone: t1.zone }),
                 [t2.id, t1.id],
@@ -299,7 +318,7 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
         );
     }
 
-    const maxRounds = isBloodbath ? COMBAT.maxRounds + 1 : COMBAT.maxRounds;
+    const maxRounds = isBloodbath ? COMBAT.maxRounds + COMBAT.bloodbathExtraRounds : COMBAT.maxRounds;
     let round = 0;
     let ended = false;
 
@@ -321,7 +340,7 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
             const winner = edge > 0 ? t1 : t2;
             const loser = edge > 0 ? t2 : t1;
             const weapon = edge > 0 ? w1 : w2;
-            landHit(ctx, winner, loser, Math.abs(edge), weapon);
+            landHit(ctx, winner, loser, Math.abs(edge), weapon, damageMultiplier);
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.exchange), { winner: winner.name, loser: loser.name, zone: winner.zone }),
                 [winner.id, loser.id],
@@ -334,7 +353,9 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
             }
         }
 
-        // Retreat check, every round, for both sides.
+        // Retreat check, every round, for both sides — once anyone is capable
+        // of making a decision again.
+        if (round <= noRetreatRounds) continue;
         const t1Flees = wantsToRetreat(ctx, t1, -edge, round, t2);
         const t2Flees = wantsToRetreat(ctx, t2, edge, round, t1);
         if (t1Flees && t2Flees) {

@@ -1,5 +1,6 @@
-import { ArchetypeId, Proficiency, Tribute } from '../models/types';
+import { ArchetypeId, Item, Proficiency, Tribute } from '../models/types';
 import { PROFICIENCY } from '../data/balance';
+import { craftOf } from '../data/districts';
 
 /**
  * Skills that improve with use.
@@ -26,8 +27,40 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     underdog: 'forage',
 };
 
-export function blankProficiencies(archetype: ArchetypeId): Partial<Record<Proficiency, number>> {
-    return { [ARCHETYPE_SPECIALITY[archetype]]: PROFICIENCY.archetypeHeadStart };
+/**
+ * What a tribute walks in already knowing: their archetype's speciality, plus
+ * whatever twelve years of their district's trade taught them. The two stack,
+ * capped at the same ceiling as earned skill, so a District 4 survivalist is
+ * genuinely the best forager on the plates without being off the scale.
+ */
+export function blankProficiencies(archetype: ArchetypeId, district?: number): Partial<Record<Proficiency, number>> {
+    const start: Partial<Record<Proficiency, number>> = {
+        [ARCHETYPE_SPECIALITY[archetype]]: PROFICIENCY.archetypeHeadStart,
+    };
+    if (district !== undefined) {
+        Object.entries(craftOf(district).proficiencies).forEach(([skill, value]) => {
+            const key = skill as Proficiency;
+            start[key] = Math.min(PROFICIENCY.max, (start[key] ?? 0) + (value ?? 0));
+        });
+    }
+    return start;
+}
+
+/**
+ * Weapon familiarity, by district of origin.
+ *
+ * `WEAPON_KILL_TEMPLATES` writes a bespoke death for the trident and the arena
+ * then handed it to whoever happened to grab it. A tribute who grew up with a
+ * gaff in their hands fights better with a trident than with a mace; a tribute
+ * from the Seam is better with a knife than with either. Returns a flat power
+ * bonus — familiarity, not mastery, which is what proficiency is for.
+ */
+export function weaponAffinity(t: Tribute, weapon?: Item): number {
+    if (!weapon) return 0;
+    const craft = craftOf(t.district);
+    if (craft.affinityItems.includes(weapon.id)) return PROFICIENCY.affinityItemBonus;
+    if (weapon.weaponClass && craft.affinityClasses.includes(weapon.weaponClass)) return PROFICIENCY.affinityClassBonus;
+    return 0;
 }
 
 /** Current level, tolerating states saved before proficiencies existed. */
