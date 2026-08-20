@@ -1,5 +1,6 @@
 import React from 'react';
 import { Tribute } from '../models/types';
+import { heightLabel } from '../engine/physique';
 import { Shuffle, FastForward } from 'lucide-react';
 
 export function ReapingScreen({ tributes, arenaName, seed, onReroll, onConfirm }: {
@@ -53,7 +54,7 @@ export function ReapingScreen({ tributes, arenaName, seed, onReroll, onConfirm }
                                 </div>
                                 <div className="text-right text-[11px] text-[var(--color-ink-500)] font-mono font-semibold leading-relaxed flex-none">
                                     <div>Age {t.age}</div>
-                                    <div>{t.heightCm} cm</div>
+                                    <div>{heightLabel(t.heightCm)}</div>
                                     <div>{t.build}</div>
                                 </div>
                             </div>

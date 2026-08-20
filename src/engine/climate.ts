@@ -16,6 +16,11 @@ export interface ClimateProfile {
         thirstMultiplier?: number;
         fatigue?: number;
     };
+    /**
+     * Open water here is not safe to drink untreated. The Toxic Swamps' entire
+     * premise is undrinkable water and nothing in the simulation expressed it.
+     */
+    foulWater?: boolean;
 }
 
 const FROZEN: ClimateProfile = {
@@ -49,6 +54,7 @@ const TOXIC: ClimateProfile = {
         poison: CLIMATE.toxicPoisonChance,
         onPoison: t => `${t.name} drinks tainted swamp water and the toxins take hold.`,
     }),
+    foulWater: true,
 };
 
 const ASHEN: ClimateProfile = {

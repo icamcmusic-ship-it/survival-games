@@ -30,6 +30,16 @@ export interface Injuries {
     frostbitten: boolean;
 }
 
+/**
+ * Skills a tribute actually gets better at by doing.
+ *
+ * Attributes are fixed at the reaping; these are not. A tribute who forages
+ * successfully all week is genuinely better at it by day 8, which is what makes
+ * a survivalist visibly become a survivalist over a run instead of merely
+ * being labelled one.
+ */
+export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking';
+
 export type WeaponClass = 'melee' | 'ranged' | 'thrown';
 
 export interface Item {
@@ -80,6 +90,14 @@ export interface TributeMemory {
     mourned: string[];
     /** Sponsor gifts already delivered, for compounding rarity. */
     giftsReceived: number;
+    /**
+     * Tribute id -> how frightened this tribute is of that specific person
+     * (0-100). Raised by losing an exchange to them, watching them kill, or
+     * their training score. Fear is personal: the whole cast can be terrified
+     * of the boy from District 2 while nobody gives the girl from 11 a thought,
+     * and each of them acts on their own number.
+     */
+    fear: Record<string, number>;
 }
 
 /** Where a tribute's most recent wound actually came from. */
@@ -140,6 +158,21 @@ export interface Tribute {
     mentorLegacy?: string;
     /** Total stealth lost permanently to sanity breakdowns, capped rather than uncapped-frequency. */
     sanityStealthLoss?: number;
+    /**
+     * How badly they are bleeding right now, 0-3. `injuries.bleeding` stays the
+     * boolean "is there an open wound"; this is how fast it is running. A wound
+     * clots down through the severities rather than draining a fixed 15 health
+     * per cycle until something else intervenes.
+     */
+    bleedSeverity?: number;
+    /**
+     * Bloodlust. A kill leaves a tribute keyed up: briefly stronger in a fight
+     * and far less willing to break off. Decays every cycle, so it rewards
+     * pressing an advantage rather than permanently buffing whoever scored first.
+     */
+    momentum?: number;
+    /** Skills that improve with successful use. See `Proficiency`. */
+    proficiencies?: Partial<Record<Proficiency, number>>;
 }
 
 export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland';

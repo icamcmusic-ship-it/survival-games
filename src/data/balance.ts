@@ -39,9 +39,79 @@ export const VITALS = {
     breakdownChance: 0.4,
 } as const;
 
+/**
+ * Bleeding, with agency.
+ *
+ * A flat 15 damage per cycle forever, curable only by one of two loot items,
+ * made an untreated scratch the single deadliest thing in the arena: a
+ * full-health tribute bled out in seven cycles having never seen another
+ * person. Real wounds clot. So do these — down through the severities, faster
+ * for a tribute who is clever enough and strong enough to do something about
+ * it, and faster still if anyone actually dresses the wound.
+ *
+ * The intent is not to make bleeding harmless. It should be what softens a
+ * tribute up for the fight that kills them, which means it needs to hurt now
+ * and stop hurting later.
+ */
+export const BLEEDING = {
+    /** Severity a fresh wound opens at, by source. */
+    combatSeverity: 2,
+    muttSeverity: 3,
+    hazardSeverity: 2,
+    /** Chance a landed mutt strike opens a bleeding wound at all. */
+    muttBleedChance: 0.6,
+    /** Per-cycle health cost, indexed by severity (0 is not bleeding). */
+    damageBySeverity: [0, 3, 7, 12],
+    /** Base odds a wound drops one severity step at the end of a cycle. */
+    baseClotChance: 0.4,
+    /** Clotting rewards a clear head and a strong frame. */
+    clotPerIntelligence: 0.025,
+    clotPerStrength: 0.02,
+    /** Moving around and fighting keeps a wound open. */
+    aggressiveClotPenalty: 0.12,
+    /** Exhaustion and starvation stop a body doing its own repairs. */
+    exhaustedClotPenalty: 0.1,
+
+    /**
+     * Field dressing: the action any tribute can take on a wound, with or
+     * without supplies. Costs the turn, rolls against intelligence and the
+     * medicine proficiency, and improves a lot if they are holding something
+     * to bind with.
+     */
+    dressBaseChance: 0.3,
+    dressPerIntelligence: 0.035,
+    dressPerMedicine: 0.12,
+    /** Rope, wire or a spare pack to tear into strips. */
+    dressBindingBonus: 0.2,
+    /** Severity steps a successful dressing removes. */
+    dressSeverityDrop: 2,
+    /** An ally with free hands is far better at this than you are on your own. */
+    allyDressBonus: 0.2,
+} as const;
+
+/**
+ * Drinking from the arena itself.
+ *
+ * Thirst drains 15 a cycle and the only relief was a Water Canteen out of the
+ * loot table, so a tribute could die of dehydration standing in a river. The
+ * terrain relief that did exist (8/cycle) did not even cover the drain. Open
+ * water is now genuinely drinkable — which finally gives the Toxic Swamps'
+ * premise something to bite on, because there the water is exactly what kills
+ * you unless you can boil it.
+ */
+export const WATER = {
+    /** Thirst removed by drinking straight from a stream or a pool. */
+    zoneDrinkRelief: 55,
+    /** Odds foul water poisons a tribute who drinks it untreated. */
+    foulPoisonChance: 0.35,
+    /** Anything that can boil or treat a canteen of bad water. */
+    purifiers: ['matches', 'medkit', 'antidote'] as const,
+} as const;
+
 /** Per-cycle health cost of each untreated injury. */
 export const INJURY_DAMAGE = {
-    bleeding: 15,
+    /** Fallback for saves written before `bleedSeverity` existed. */
+    bleeding: 9,
     infected: 10,
     poisoned: 12,
     burned: 4,
@@ -78,6 +148,179 @@ export const TRAIT_EFFECTS = {
     youngHungerPenalty: 2,
     youngFatiguePenalty: 3,
     youngAge: 13,
+} as const;
+
+/**
+ * Natural recovery.
+ *
+ * Before this there were exactly four things in the entire simulation that
+ * raised a tribute's health: two loot items, a scripted arena boon, and the
+ * feast. Health was a strictly monotonic decline punctuated by luck, which
+ * removes the whole "hole up and recover" arc the source material runs on and
+ * leaves the Defensive stance with nothing to do but forage.
+ *
+ * Recovery is deliberately conditional: a night, off your feet, not bleeding,
+ * fed and watered and not wrecked with exhaustion. Meeting all of that is a
+ * decision, not a default.
+ */
+export const RECOVERY = {
+    /** Health returned by a full night of undisturbed rest. */
+    nightHeal: 7,
+    /** A tribute holed up in cover mends better than one sleeping in the open. */
+    shelteredBonus: 3,
+    /** Above these, the body is spending everything it has just running. */
+    maxHunger: 45,
+    maxThirst: 45,
+    /** Recovery scales down to nothing as fatigue approaches this. */
+    fatigueCeiling: 80,
+    /** Only a tribute who spent the night not looking for a fight heals. */
+    restfulStances: ['Defensive', 'Evasive'] as const,
+    /** An ally keeping watch means you actually sleep. */
+    allyWatchBonus: 3,
+} as const;
+
+/**
+ * Sanity as a pressure gauge rather than a countdown.
+ *
+ * A flat 5/cycle drain with four rare recovery paths meant everyone still alive
+ * by cycle 14 was below the breakdown threshold and losing turns to it — the
+ * stat measured elapsed time, not psychological state. Drain now responds to
+ * what is actually happening to them, and rest, safety, food and company push
+ * back the other way.
+ */
+export const SANITY = {
+    /** Baseline pressure before anything specific to this tribute. */
+    baseDrain: 4,
+    /** Night is worse than day, and being alone at night is worse again. */
+    nightDrain: 2,
+    isolationDrain: 2,
+    /** Hunger and thirst gnaw at the mind before they kill the body. */
+    deprivationThreshold: 60,
+    deprivationDrain: 3,
+    /** Standing somewhere they remember people dying. */
+    threatDrainPerPoint: 1.6,
+    maxThreatDrain: 5,
+
+    /** Rest recovers, and company recovers more. */
+    restRecovery: 5,
+    allyPresentRecovery: 4,
+    /** A well-fed, unhurt tribute in a place they have no bad memory of. */
+    safetyRecovery: 3,
+    /** Fatigue above this cancels any rest recovery. */
+    restFatigueCeiling: 70,
+} as const;
+
+/**
+ * Hunting: what the Aggressive stance actually does.
+ *
+ * Aggression was priced out of the game — a hunting tribute could not forage,
+ * took the same status damage as everyone else, and still only had a 40% chance
+ * of interacting with someone standing in the same zone. It was a strictly
+ * dominated choice, which is why only 12% of stance samples were Aggressive.
+ */
+export const HUNTING = {
+    /** Chance a directed sweep of the zone turns up small game to eat. */
+    gameChance: 0.4,
+    trackingBonus: 0.06,
+    /** Hunger removed by a rabbit on a stick. */
+    gameFeed: 35,
+    /** Multiplier on the chance a hunter actually finds who they are looking for. */
+    meetChanceMultiplier: 2.0,
+    /** A hunter who knows where a rival went will follow them out of the zone. */
+    pursuitChance: 0.55,
+
+    /** Bloodlust: what a kill does to the next fight. */
+    momentumPerKill: 3,
+    momentumMax: 6,
+    momentumDecayPerCycle: 1,
+    /** Combat power per point of momentum. */
+    momentumPowerWeight: 0.8,
+    /** Retreat chance shed per point of momentum. */
+    momentumRetreatWeight: 0.04,
+} as const;
+
+/**
+ * Proficiencies: skills that improve with successful use.
+ *
+ * Deliberately shallow — a few points of swing over a full run — because the
+ * point is visible specialisation, not a second attribute system that
+ * out-weighs the first.
+ */
+export const PROFICIENCY = {
+    /** Gained per successful use. */
+    gainPerUse: 0.35,
+    /** Nobody becomes a surgeon in eight days. */
+    max: 4,
+    /** Archetypes start their signature skill slightly ahead. */
+    archetypeHeadStart: 1,
+    /** Forage chance added per point of forage proficiency. */
+    forageWeight: 0.05,
+    /** Combat power added per point of the relevant weapon proficiency. */
+    combatWeight: 0.7,
+    /** Awareness added per point of tracking. */
+    trackingAwarenessWeight: 0.4,
+} as const;
+
+/**
+ * Fear: how frightened a tribute is of one specific other tribute.
+ *
+ * Psychology touched exactly one decision before this — the generic retreat
+ * roll — so a tribute who had watched someone butcher their ally walked into
+ * that person's zone as happily as anyone else's.
+ */
+export const FEAR = {
+    max: 100,
+    /** Watching someone kill, and losing an exchange to them. */
+    witnessedKill: 30,
+    lostExchange: 14,
+    /** A legendary training score frightens people before the gong.  */
+    perTrainingPointOverEight: 6,
+    /** Per-cycle fade — terror is not permanent, but it is sticky. */
+    decayPerCycle: 0.9,
+    /** Retreat chance added at maximum fear. */
+    retreatWeight: 0.35,
+    /** Destination score subtracted for a feared rival's last known position. */
+    avoidWeight: 2.5,
+    /** Above this, a tribute will not willingly start a fight with them. */
+    avoidEngagementThreshold: 45,
+} as const;
+
+/**
+ * Desperation: what the shrinking field does to two strangers meeting.
+ *
+ * Encounters resolved on stance and relationship alone, which meant two
+ * unacquainted, non-aggressive tributes shared berries on day 7 with four
+ * people left alive — as though either of them could go home without the other
+ * dying. Only one tribute leaves the arena, and everyone in it knows that; the
+ * closer the end gets, the less anyone can afford to be civil.
+ */
+export const DESPERATION = {
+    /** Field size at which the arithmetic starts to press on people. */
+    fieldSize: 8,
+    /** Odds an otherwise-peaceful meeting turns into a fight, at the threshold. */
+    baseHostility: 0.25,
+    /** Added per tribute below the threshold. */
+    perTributeBelow: 0.13,
+    /** A bond this strong still holds when the numbers get ugly. */
+    sparedBond: 30,
+} as const;
+
+/**
+ * Physique. Age already mattered in combat; height and build were display-only
+ * strings. Reach decides who lands first, mass decides who gets moved.
+ */
+export const PHYSIQUE = {
+    /** Height that counts as neutral reach; taller gains, shorter loses. */
+    neutralHeightCm: 165,
+    /** Melee power per cm of reach advantage over the neutral height. */
+    reachPerCm: 0.06,
+    maxReachBonus: 2.5,
+    /** Mass rating per build, used for knockdowns, grappling and cold. */
+    massByBuild: { Frail: -2, Slight: -1, Average: 0, Athletic: 1, Stocky: 2, Muscular: 2.5 },
+    /** Carry slots added per point of mass — a Frail twelve-year-old carries less. */
+    capacityPerMass: 0.5,
+    /** Cold resistance per point of mass. */
+    frostbiteResistPerMass: 0.04,
 } as const;
 
 /** When a tribute reaches for the medical kit, and what it buys them. */
@@ -244,6 +487,29 @@ export const STEALTH = {
     endgameConcealmentStep: 0.34,
 } as const;
 
+/**
+ * Need-driven movement.
+ *
+ * Destination scoring read terrain, danger and memory but never the tribute's
+ * own body, so someone at 90 thirst wandered by forage score alone and died two
+ * zones from open water. These are the standing intentions a tribute actually
+ * carries between cycles: find water, find somewhere to sleep.
+ */
+export const MOVEMENT = {
+    /** Thirst above which finding water outranks everything else. */
+    thirstUrgency: 45,
+    waterSeekWeight: 7,
+    /** Fatigue above which cover is worth walking to. */
+    shelterUrgency: 60,
+    shelterSeekWeight: 1.5,
+} as const;
+
+/** Field-expedient making. */
+export const CRAFTING = {
+    /** Per-cycle odds an empty-handed tribute improvises something to swing. */
+    improviseChance: 0.12,
+} as const;
+
 /** What a tribute can physically carry. */
 export const INVENTORY = {
     /**
@@ -314,6 +580,14 @@ export const STANCE = {
     /** Threat ratio (their power vs mine) above which the zone reads as hostile. */
     outmatchedRatio: 1.25,
     dominantRatio: 0.8,
+    /** Hunger above which hunting is worth it for the food alone. */
+    huntingHunger: 55,
+    /**
+     * Once the field is this small, hiding stops being a strategy: somebody has
+     * to force the issue and the Gamemakers will make sure somebody does.
+     */
+    endgameFieldSize: 5,
+    endgameAggression: 1.4,
 } as const;
 
 /** Relationship graph: bounds, decay, and the deltas life in the arena applies. */

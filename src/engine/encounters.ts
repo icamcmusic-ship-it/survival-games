@@ -1,6 +1,6 @@
 import { Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { ENCOUNTERS, MEMORY, TRAIT_EFFECTS, VITALS, ZONES } from '../data/balance';
+import { BLEEDING, DESPERATION, ENCOUNTERS, HUNTING, MEMORY, PROFICIENCY, TRAIT_EFFECTS, VITALS, ZONES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaEventDef, arenaFlavor } from '../data/arenaFlavor';
 import { SimContext } from './context';
@@ -10,6 +10,8 @@ import { addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting } from '.
 import { adjustMutual, getRel } from './relationships';
 import { giveItem, itemPhrase, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
+import { attemptFieldDressing, clearBleeding, openWound, shouldDressWound } from './wounds';
+import { profOf, trainProficiency } from './proficiency';
 
 export function fill(template: string, vars: Record<string, string>): string {
     return Object.entries(vars).reduce(
@@ -34,7 +36,7 @@ export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDe
 
     if (event.damage) applyDamage(ctx, t, event.damage, { cause: event.cause, kind: 'hazard' });
     if (event.heal) t.health = Math.min(100, t.health + event.heal);
-    if (event.bleeding) t.injuries.bleeding = true;
+    if (event.bleeding) openWound(t, BLEEDING.hazardSeverity);
     if (event.poisoned) t.injuries.poisoned = true;
     if (event.burned) t.injuries.burned = true;
     if (event.frostbitten) t.injuries.frostbitten = true;
@@ -68,7 +70,9 @@ export function resolveMuttAttack(ctx: SimContext, t: Tribute) {
         return;
     }
     applyDamage(ctx, t, ENCOUNTERS.muttDamage, { cause: `Torn apart by ${mutt}`, kind: 'mutt' });
-    t.injuries.bleeding = true;
+    // Not every mauling opens an artery. An unconditional bleed on every mutt
+    // attack was one of the two taps filling the game's deadliest status effect.
+    if (ctx.rng.chance(BLEEDING.muttBleedChance)) openWound(t, BLEEDING.muttSeverity);
     addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat * 2);
     ctx.logEvent(`${t.name} is set upon by ${mutt} in ${t.zone} and barely breaks free.`, [t.id], { important: true, category: 'mutt' });
     checkDeath(ctx, t, `Torn apart by ${mutt}`);
@@ -85,11 +89,19 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
         const medIdx = giver.inventory.findIndex(i => i.type === 'medical');
         if (medIdx >= 0) {
             const item = giver.inventory.splice(medIdx, 1)[0];
-            needer.injuries.bleeding = false;
             needer.injuries.infected = false;
             needer.injuries.burned = false;
+            clearBleeding(needer);
             needer.health = Math.min(100, needer.health + 15);
+            trainProficiency(giver, 'medicine');
             ctx.logEvent(`${giver.name} presses their ${item.name} into ${needer.name}'s hands and helps patch them up.`, [needer.id, giver.id], { important: true, category: 'alliance' });
+            return;
+        }
+        // No supplies is not the same as no help. An ally with free hands and a
+        // clear view of the wound is the best field dressing available, and it
+        // gives an alliance a medical reason to exist as well as a tactical one.
+        if (needer.injuries.bleeding && attemptFieldDressing(ctx, needer, giver)) {
+            adjustMutual(ctx.state, needer, giver, 8);
             return;
         }
     }
@@ -110,6 +122,21 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
             ctx.logEvent(`${giver.name} hands ${needer.name} their ${item.name} without being asked.`, [needer.id, giver.id], { category: 'alliance' });
         }
     }
+}
+
+/**
+ * Whether the arithmetic of the arena has finally caught up with two people who
+ * have no particular quarrel. Only one tribute goes home; a genuine bond can
+ * still hold, but indifference cannot.
+ */
+function isDesperate(ctx: SimContext, t: Tribute, other: Tribute): boolean {
+    const alive = ctx.state.tributes.filter(o => o.status === 'alive').length;
+    if (alive > DESPERATION.fieldSize) return false;
+    const mutual = Math.min(getRel(t, other.id), getRel(other, t.id));
+    if (mutual >= DESPERATION.sparedBond) return false;
+    const chance = DESPERATION.baseHostility
+        + Math.max(0, DESPERATION.fieldSize - alive) * DESPERATION.perTributeBelow;
+    return ctx.rng.chance(Math.min(0.95, chance));
 }
 
 /** A pair who happen to be standing in the same zone with time on their hands. */
@@ -137,6 +164,13 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         other.vitals.hunger = Math.max(0, other.vitals.hunger - 10);
         adjustMutual(ctx.state, t, other, 5);
     } else if (t.stance === 'Aggressive' || other.stance === 'Aggressive' || relationship < -10) {
+        resolveCombat(ctx, t, other);
+    } else if (isDesperate(ctx, t, other)) {
+        ctx.logEvent(
+            fill(ctx.pickText(ENCOUNTER_TEXTS.desperation), vars),
+            [t.id, other.id],
+            { important: true, category: 'combat' }
+        );
         resolveCombat(ctx, t, other);
     } else if (ctx.rng.chance(0.5)) {
         ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.peaceful), vars), [t.id, other.id], { category: 'survival' });
@@ -170,6 +204,7 @@ function attemptForage(
     const fresh = { ...item };
     if (fresh.type === 'food' && fresh.spoilage !== undefined) fresh.spoilage += spoilageBonus(t);
     const dropped = giveItem(t, fresh);
+    trainProficiency(t, 'forage');
     depleteZone(ctx.state, t.zone, ZONES.depletionPerForage);
     ctx.logEvent(
         fill(ctx.pickText(flavor.actions.forage), { tribute: t.name, zone: t.zone, item: itemPhrase(item) }),
@@ -186,13 +221,46 @@ function attemptForage(
     return true;
 }
 
+/**
+ * The Aggressive turn: a directed sweep of the zone rather than a flavour line.
+ *
+ * Hunting used to be strictly dominated — you could not forage, you took the
+ * same status damage as everyone else, and a rival standing in your zone still
+ * only had a 40% chance of turning into an encounter. It was a stance that cost
+ * you food and bought you nothing, which is why almost nobody picked it.
+ */
+function huntAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeof arenaFlavor>) {
+    const gameChance = HUNTING.gameChance + profOf(t, 'tracking') * HUNTING.trackingBonus;
+    if (ctx.rng.chance(gameChance)) {
+        t.vitals.hunger = Math.max(0, t.vitals.hunger - HUNTING.gameFeed);
+        trainProficiency(t, 'tracking');
+        clampTribute(t);
+        ctx.logEvent(
+            `${t.name} runs down something small in ${t.zone} and eats it where it fell.`,
+            [t.id],
+            { category: 'survival' }
+        );
+        return;
+    }
+    ctx.logEvent(fill(ctx.pickText(flavor.actions.hunt), { tribute: t.name, zone: t.zone }), [t.id], { category: 'survival' });
+}
+
 export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeof arenaFlavor>) {
     const zone = getZone(ctx.state.arena, t.zone);
     const available = effectiveResources(ctx.state, zone);
     const baseForageChance = ZONES.baseForageChance
         + available * ZONES.yieldForageWeight
         + (t.archetype === 'survivalist' ? ZONES.survivalistForageBonus : 0)
-        + (t.traits.includes('Tracker') ? TRAIT_EFFECTS.trackerForageBonus : 0);
+        + (t.traits.includes('Tracker') ? TRAIT_EFFECTS.trackerForageBonus : 0)
+        + profOf(t, 'forage') * PROFICIENCY.forageWeight;
+
+    // A wound that is actually running is the most urgent thing in their life,
+    // whatever stance they are in. This is the move the simulation was missing:
+    // it needs no item and it is available to everyone.
+    if (shouldDressWound(t)) {
+        attemptFieldDressing(ctx, t);
+        return;
+    }
 
     if (t.stance === 'Evasive') {
         // Hiding does not mean starving — there is still a stream in whatever
@@ -227,7 +295,7 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         noteSighting(ctx.state, t, t.zone, 0, depletionOf(ctx.state, t.zone));
         return;
     }
-    ctx.logEvent(fill(ctx.pickText(flavor.actions.hunt), { tribute: t.name, zone: t.zone }), [t.id], { category: 'survival' });
+    huntAction(ctx, t, flavor);
 }
 
 /** A tribute whose mind has come apart loses the turn to it. */

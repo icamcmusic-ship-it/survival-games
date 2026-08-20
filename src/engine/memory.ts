@@ -20,6 +20,7 @@ export function blankMemory(): TributeMemory {
         lastContact: {},
         mourned: [],
         giftsReceived: 0,
+        fear: {},
     };
 }
 
@@ -31,6 +32,7 @@ export function ensureMemory(t: Tribute): TributeMemory {
     if (!t.memory.betrayedBy) t.memory.betrayedBy = [];
     if (!t.memory.lastContact) t.memory.lastContact = {};
     if (!t.memory.mourned) t.memory.mourned = [];
+    if (!t.memory.fear) t.memory.fear = {};
     if (t.memory.timesBetrayed === undefined) t.memory.timesBetrayed = 0;
     if (t.memory.giftsReceived === undefined) t.memory.giftsReceived = 0;
     return t.memory;

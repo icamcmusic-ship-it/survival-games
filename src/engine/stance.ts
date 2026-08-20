@@ -1,16 +1,59 @@
-import { Stance, Tribute } from '../models/types';
+import { GameState, Stance, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { STANCE, STEALTH, VITALS } from '../data/balance';
+import { FEAR, STANCE, STEALTH, VITALS } from '../data/balance';
 import { SimContext } from './context';
-import { ensureMemory } from './memory';
+import { cyclesSinceContact, ensureMemory } from './memory';
 import { getRel } from './relationships';
+import { fearOf } from './fear';
+import { massOf } from './physique';
+
+/** What a tribute can actually see of someone without knowing their sheet. */
+function visiblePower(o: Tribute): number {
+    // Frame, whether they are visibly holding something, and whether they are
+    // visibly hurt. Not strength, not agility — those are numbers nobody in the
+    // arena has access to.
+    return 5
+        + massOf(o) * 1.2
+        + (o.inventory.some(i => i.type === 'weapon') ? 4 : 0)
+        + o.health / 25
+        - (o.injuries.bleeding ? 1.5 : 0)
+        - (o.injuries.legs ? 1 : 0);
+}
 
 /**
  * Threat assessment: who else is standing here, and can I take them?
+ *
+ * Crucially, this is an *estimate*. The old version read `strength`, `agility`,
+ * `health` and the full inventory straight off the live object, so every
+ * tribute knew a total stranger's exact sheet on sight. Now they read what a
+ * person can actually read — frame, visible weapon, visible wounds — corrected
+ * by what they personally remember: a Career's reputation precedes them, and a
+ * quiet survivalist gets underestimated, which is the whole point of both.
+ *
  * Returns the ratio of hostile power to the tribute's own, allies included.
  */
-export function assessZone(t: Tribute, occupants: Tribute[]) {
-    const power = (o: Tribute) => o.attributes.strength + o.attributes.agility
+export function assessZone(t: Tribute, occupants: Tribute[], state?: GameState) {
+    const estimate = (o: Tribute) => {
+        let power = visiblePower(o);
+        // Reputation: a big training score is public, broadcast before the gong.
+        if (o.trainingScore > 0) power += (o.trainingScore - 5) * 0.5;
+        if (o.isCareer) power += 1.5;
+        // Fear is its own multiplier on how dangerous someone looks.
+        power += (fearOf(t, o.id) / FEAR.max) * 4;
+        // Observation sharpens the estimate. Someone they fought yesterday is
+        // read accurately; someone glimpsed across a clearing is a guess, and
+        // the guess regresses toward "average tribute".
+        if (state) {
+            const staleness = cyclesSinceContact(state, t, o.id);
+            if (staleness > 2) {
+                const confidence = Math.max(0.35, 1 - Math.min(4, staleness) * 0.15);
+                power = power * confidence + 8 * (1 - confidence);
+            }
+        }
+        return power;
+    };
+    // A tribute knows their own capabilities exactly.
+    const ownPower = (o: Tribute) => o.attributes.strength + o.attributes.agility
         + (o.inventory.some(i => i.type === 'weapon') ? 4 : 0) + o.health / 25;
 
     let hostile = 0;
@@ -19,11 +62,12 @@ export function assessZone(t: Tribute, occupants: Tribute[]) {
         if (o.id === t.id) return;
         const allied = t.allianceId !== undefined && t.allianceId === o.allianceId;
         const friend = allied || getRel(t, o.id) > 25;
-        if (friend) friendly += power(o);
-        else hostile += power(o);
+        // You know what your own allies can do; strangers you have to guess at.
+        if (friend) friendly += allied ? ownPower(o) : estimate(o);
+        else hostile += estimate(o);
     });
 
-    const own = power(t) + friendly;
+    const own = ownPower(t) + friendly;
     // Someone who can move through a zone unseen is genuinely less cornered by
     // the people standing in it.
     const discount = 1 - Math.min(STEALTH.maxThreatDiscount, t.attributes.stealth * STEALTH.threatDiscountPerPoint);
@@ -41,7 +85,7 @@ export function assessZone(t: Tribute, occupants: Tribute[]) {
 export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) {
     const arch = ARCHETYPES[t.archetype];
     const hasWeapon = t.inventory.some(i => i.type === 'weapon');
-    const { ratio } = assessZone(t, occupants);
+    const { ratio } = assessZone(t, occupants, ctx.state);
     const wounded = t.injuries.bleeding || t.injuries.infected || t.injuries.poisoned;
 
     const scores: Record<Stance, number> = { Aggressive: 0, Defensive: 1, Evasive: 0 };
@@ -54,6 +98,14 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     if (t.traits.includes('Pacifist')) scores.Aggressive -= 1.5;
     if (ensureMemory(t).vengeance.length > 0) scores.Aggressive += 1.5;
     if (ratio > 0 && ratio < STANCE.dominantRatio) scores.Aggressive += 1.2;
+    // Bloodlust: a tribute who has just killed goes looking for the next one.
+    scores.Aggressive += (t.momentum ?? 0) * 0.35;
+    // Hunger is a reason to hunt, now that hunting actually feeds you.
+    if (t.vitals.hunger > STANCE.huntingHunger) scores.Aggressive += 0.8;
+    // The field narrowing is itself a reason to force the issue — somebody has
+    // to, and the Gamemakers are going to make sure somebody does.
+    const aliveCount = ctx.state.tributes.filter(o => o.status === 'alive').length;
+    if (aliveCount <= STANCE.endgameFieldSize) scores.Aggressive += STANCE.endgameAggression;
 
     scores.Evasive += arch.caution * 3;
     scores.Evasive += (STANCE.evasiveHealth - t.health) / 25;

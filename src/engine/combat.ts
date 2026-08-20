@@ -2,13 +2,17 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { COMBAT, MEMORY, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, FEAR, HUNTING, MEMORY, PROFICIENCY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone } from './map';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact } from './memory';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
+import { openWound } from './wounds';
+import { profOf, trainProficiency, weaponProficiency } from './proficiency';
+import { addFear, fearFraction } from './fear';
+import { reachBonus } from './physique';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -81,11 +85,19 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0): nu
             power += Math.floor(t.attributes.agility / COMBAT.rangedAgilityDivisor);
         } else if (weapon.weaponClass === 'melee') {
             power += Math.floor(effectiveStrength(t) / COMBAT.meleeStrengthDivisor);
+            // Reach: a long-armed tribute lands first in a melee. `heightCm` was
+            // generated with care and then read only by display code.
+            power += reachBonus(t);
         } else if (weapon.weaponClass === 'thrown') {
             // Throwing wants both the arm behind it and the eye in front of it.
             power += Math.floor(effectiveStrength(t) / COMBAT.thrownStrengthDivisor)
                 + Math.floor(t.attributes.agility / COMBAT.thrownAgilityDivisor);
         }
+        // Practice with the class of weapon actually in their hands.
+        power += profOf(t, weaponProficiency(weapon.weaponClass)) * PROFICIENCY.combatWeight;
+    } else {
+        // Bare hands are a grapple, and a grapple is decided by mass and reach.
+        power += reachBonus(t);
     }
 
     // Archetype edge: aggressive fighters commit harder
@@ -104,11 +116,15 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0): nu
     // Numbers advantage: the whole point of a pack.
     power += Math.min(COMBAT.outnumberMaxBonus, allies * COMBAT.outnumberPowerPerAlly);
 
+    // Bloodlust. A tribute who has just killed is keyed up and dangerous — this
+    // is what lets a hunter snowball instead of every fight starting from zero.
+    power += (t.momentum ?? 0) * HUNTING.momentumPowerWeight;
+
     return power;
 }
 
 /** Per-round retreat check. Nobody has to fight to the death. */
-function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, roundsFought: number): boolean {
+function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, roundsFought: number, opponent?: Tribute): boolean {
     const arch = ARCHETYPES[t.archetype];
     const healthFraction = t.health / 100;
     if (healthFraction <= COMBAT.routHealthFraction) return true;
@@ -126,6 +142,11 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     if (t.isCareer) chance -= 0.1;
     if (t.stance === 'Aggressive') chance -= 0.12;
     if (t.stance === 'Evasive') chance += 0.15;
+    // Who they are fighting, not just how badly it is going: a tribute who has
+    // watched this particular person kill wants out long before the numbers say so.
+    if (opponent) chance += fearFraction(t, opponent.id) * FEAR.retreatWeight;
+    // Bloodlust cuts the other way — a fresh kill is hard to walk away from.
+    chance -= (t.momentum ?? 0) * HUNTING.momentumRetreatWeight;
 
     return ctx.rng.chance(Math.max(0.02, Math.min(0.9, chance)));
 }
@@ -149,7 +170,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
         kind: 'tribute',
     });
 
-    if (ctx.rng.chance(COMBAT.bleedChance)) defender.injuries.bleeding = true;
+    if (ctx.rng.chance(COMBAT.bleedChance)) openWound(defender, BLEEDING.combatSeverity);
     if (ctx.rng.chance(COMBAT.woundChance)) {
         const site = ctx.rng.pick(['head', 'torso', 'arms', 'legs'] as const);
         defender.injuries[site] = true;
@@ -174,6 +195,10 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     }
     wearWeapon(weapon);
     adjustRel(defender, attacker.id, -COMBAT.grudgeOnWound);
+    // Losing an exchange to someone is how you learn to be afraid of them
+    // specifically — and how the attacker gets better at the weapon they used.
+    addFear(defender, attacker.id, FEAR.lostExchange);
+    if (weapon) trainProficiency(attacker, weaponProficiency(weapon.weaponClass));
     clampTribute(defender);
     return damage;
 }
@@ -217,7 +242,7 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
             return;
         }
         // Being jumped is a reason to leave, not to settle in.
-        if (wantsToRetreat(ctx, t2, damage / 10, 1)) {
+        if (wantsToRetreat(ctx, t2, damage / 10, 1, t1)) {
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.retreat), { fleer: t2.name, stayer: t1.name, zone: t1.zone }),
                 [t2.id, t1.id],
@@ -272,8 +297,8 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
         }
 
         // Retreat check, every round, for both sides.
-        const t1Flees = wantsToRetreat(ctx, t1, -edge, round);
-        const t2Flees = wantsToRetreat(ctx, t2, edge, round);
+        const t1Flees = wantsToRetreat(ctx, t1, -edge, round, t2);
+        const t2Flees = wantsToRetreat(ctx, t2, edge, round, t1);
         if (t1Flees && t2Flees) {
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.mutualBreak), { t1: t1.name, t2: t2.name, zone: t1.zone }),
@@ -461,7 +486,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
 
         // Anyone can break off, and being outnumbered is a good reason to.
         const breaking = [...left, ...right].filter(t =>
-            t.status === 'alive' && wantsToRetreat(ctx, t, defenders.includes(t) ? Math.max(1, advantage) : 0, rounds));
+            t.status === 'alive' && wantsToRetreat(ctx, t, defenders.includes(t) ? Math.max(1, advantage) : 0, rounds, lead));
         if (breaking.length > 0) {
             breaking.forEach(t => { t.stance = 'Evasive'; t.stanceHeld = 0; });
             ctx.logEvent(
@@ -522,6 +547,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         // feel it, carry loot, or wear out gear.
         if (killerAlive) {
             killer.excitementRating += 20;
+            // Bloodlust: briefly stronger and far less willing to break off.
+            killer.momentum = Math.min(HUNTING.momentumMax, (killer.momentum ?? 0) + HUNTING.momentumPerKill);
 
             // Trauma Triggers
             if (killer.traits.includes('Pacifist')) {
@@ -580,6 +607,16 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             .split('{zone}').join(victim.zone)
             .split('{cause}').join(victim.causeOfDeath);
         ctx.logEvent(text, [victim.id], { important: true, category: 'death' });
+    }
+
+    // Watching someone kill is the single most frightening thing that can
+    // happen to a tribute, and it attaches to that person, not to the zone.
+    if (killer) {
+        ctx.state.tributes.forEach(witness => {
+            if (witness.status !== 'alive' || witness.id === killer.id || witness.id === victim.id) return;
+            if (witness.zone !== victim.zone) return;
+            addFear(witness, killer.id, FEAR.witnessedKill);
+        });
     }
 
     // Everything a cannon does to everyone still breathing.
