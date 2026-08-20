@@ -7,7 +7,7 @@ import { AMBIENT_TEXTS, ENCOUNTER_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, decayMemories, decayRelationships, noteSighting,
@@ -24,8 +24,10 @@ import { updateStance } from '../stance';
 import { processSpoilage, processVitals } from '../survival';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
-    resolveMuttAttack, resolvePairEncounter,
+    pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
 } from '../encounters';
+import { tickPersistentMutts } from '../mutts';
+import { restockCornucopia, rollAmbientZoneEffects, tickZoneEffects } from '../zoneEffects';
 
 /**
  * The day/night cycle: the orchestrator, not the implementation.
@@ -42,7 +44,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // Counted once per day, so it freezes at whatever the tribute reached.
     if (time === 'day') alive.forEach(t => { t.daysSurvived = ctx.state.day; });
 
-    const flavor = arenaFlavor(ctx.state.arena.id);
+    const flavor = arenaFlavor(ctx.state.arena.id, ctx.state.arena);
 
     // Occasional scene-setting line so the feed reads like a broadcast, not a spreadsheet.
     if (ctx.rng.chance(ENCOUNTERS.ambientLineChance)) {
@@ -51,8 +53,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     }
 
     // 0. The arena shrinks from day 5 onward.
-    const isEscalated = collapseBorders(ctx);
+    const isEscalated = collapseBorders(ctx, time);
     const collapsed = ctx.state.collapsedZones || [];
+    const severed = severedEdgeSet(ctx.state);
 
     // 1-2. Spoilage, then vitals, exposure, wounds and supplies.
     processSpoilage(ctx);
@@ -82,17 +85,25 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             return;
         }
 
-        move(ctx, t, currentAlive, collapsed, flavor);
+        move(ctx, t, currentAlive, collapsed, flavor, severed);
         // Walking into a zone is what springs things left in it.
         checkTraps(ctx, t);
     });
 
     // 4. Hazards, mutts and everyone who runs into everyone else.
-    resolveEncounters(ctx, currentAlive, acted, isEscalated, flavor);
+    resolveEncounters(ctx, currentAlive, acted, isEscalated, flavor, time);
+    // A mutt that has found someone keeps looking for them for a few more
+    // cycles, independent of the ordinary per-cycle mutt roll.
+    tickPersistentMutts(ctx);
 
     // 5. Cycle upkeep: the arena restocks, memories fade, bonds cool, the
     // crowd's attention wanders.
     regenerateZones(ctx.state);
+    // Fire spreads, floods drown stragglers, and whatever else is happening to
+    // the ground itself lands after this cycle's movement has resolved.
+    rollAmbientZoneEffects(ctx);
+    tickZoneEffects(ctx);
+    restockCornucopia(ctx);
     tickTraps(ctx);
     decayTraffic(ctx.state);
     decayMemories(ctx.state);
@@ -125,17 +136,84 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     processSponsors(ctx);
 }
 
+/**
+ * The order zones fail in, for one run.
+ *
+ * The old version was a plain shuffle: random per seed, but the same shape
+ * every time — zones peeled off with no relationship to the map, which reads
+ * as arbitrary rather than as a border actually closing in. Real collapse
+ * has a shape: a wall sweeping in from one edge, or a ring tightening around
+ * the centre. Both use the adjacency graph that already exists for pathing.
+ */
+function buildCollapseOrder(ctx: SimContext): string[] {
+    const allZoneNames = zoneNames(ctx.state.arena);
+    const patternRng = new RNG(`${ctx.state.seed}-collapse-pattern`);
+    const pattern = patternRng.pick(['scattered', 'wall', 'ring'] as const);
+
+    if (pattern === 'scattered') {
+        // Deterministic per-seed but not the same order every run.
+        return new RNG(`${ctx.state.seed}-collapse`).shuffle(allZoneNames);
+    }
+
+    // Both remaining patterns are a BFS ordering over the graph, so they need a
+    // reference point: an edge zone for the wall, the Cornucopia for the ring.
+    const bfsDistances = (fromName: string): Map<string, number> => {
+        const dist = new Map<string, number>([[fromName, 0]]);
+        let frontier = [fromName];
+        while (frontier.length > 0) {
+            const next: string[] = [];
+            frontier.forEach(name => {
+                const zone = getZone(ctx.state.arena, name);
+                zone?.adjacent.forEach(n => {
+                    if (dist.has(n)) return;
+                    dist.set(n, dist.get(name)! + 1);
+                    next.push(n);
+                });
+            });
+            frontier = next;
+        }
+        return dist;
+    };
+
+    if (pattern === 'wall') {
+        // The edge furthest from the Cornucopia by hops — a genuine perimeter,
+        // not just a randomly chosen zone. The wall then sweeps in from there.
+        const fromCornucopia = bfsDistances(allZoneNames[0]);
+        const origin = [...fromCornucopia.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? allZoneNames[0];
+        const distances = bfsDistances(origin);
+        return [...allZoneNames].sort((a, b) => (distances.get(a) ?? 0) - (distances.get(b) ?? 0));
+    }
+
+    // Ring: the perimeter goes first and the safe ground shrinks toward the
+    // Cornucopia, which is the shape most people mean by "shrinking circle".
+    const distances = bfsDistances(allZoneNames[0]);
+    return [...allZoneNames].sort((a, b) => (distances.get(b) ?? 0) - (distances.get(a) ?? 0));
+}
+
 /** Hazard escalation and safe-zone shrinking. Returns whether it is active. */
-function collapseBorders(ctx: SimContext): boolean {
+function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
+    const collapseOrder = buildCollapseOrder(ctx);
+    const allZoneNames = zoneNames(ctx.state.arena);
+
+    // Telegraphed one full day ahead — canon gives tributes warning before the
+    // border actually closes, and a hazard nobody could see coming is a cheap
+    // kind of tension. Only announced once per day (the day phase), or a run
+    // with both a day and a night cycle would hear the same warning twice.
+    const countFor = (day: number) => Math.max(0, Math.min(collapseOrder.length - 1, day - (ESCALATION.startDay - 1)));
+    const nextCount = countFor(ctx.state.day + 1);
+    const thisCount = countFor(ctx.state.day);
+    if (time === 'day' && nextCount > thisCount) {
+        const warned = collapseOrder[nextCount - 1];
+        ctx.logEvent(
+            `The Gamemakers announce the border will close around ${warned} by tomorrow. Anyone still there tonight is choosing to be.`,
+            [],
+            { important: true, zone: warned, category: 'arena' }
+        );
+    }
+
     if (ctx.state.day < ESCALATION.startDay) return false;
 
-    const allZoneNames = zoneNames(ctx.state.arena);
-    // Deterministic per-seed but not the same reverse-declaration-order every
-    // run — otherwise every endgame in every run of an arena collapses toward
-    // the same zone (always the Cornucopia) in the same order.
-    const collapseOrder = new RNG(`${ctx.state.seed}-collapse`).shuffle(allZoneNames);
-    const collapseCount = Math.min(collapseOrder.length - 1, ctx.state.day - (ESCALATION.startDay - 1));
-    const collapsedList = collapseOrder.slice(0, collapseCount);
+    const collapsedList = collapseOrder.slice(0, thisCount);
     ctx.state.collapsedZones = collapsedList;
 
     getAlive(ctx.state).forEach(t => {
@@ -220,7 +298,7 @@ function wanderChanceFor(t: Tribute): number {
     return t.stance === 'Evasive' ? ENCOUNTERS.wanderChance * 0.4 : ENCOUNTERS.wanderChance;
 }
 
-function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>) {
+function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>, severed: Set<string>) {
     if (t.allianceId) {
         const allianceMembers = currentAlive.filter(m => m.allianceId === t.allianceId && m.status === 'alive');
         // The group's actual leader, chosen on merit and open to challenge —
@@ -228,7 +306,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         const leader = leaderFor(ctx.state, t) ?? allianceMembers[0];
         if (!leader || t.id !== leader.id) return;
 
-        const options = reachableZones(ctx.state.arena, t.zone, collapsed);
+        const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed);
         if (options.length === 0) return;
 
         // The group follows whatever its leader has decided to do; only when the
@@ -258,7 +336,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         return;
     }
 
-    const options = reachableZones(ctx.state.arena, t.zone, collapsed);
+    const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed);
     if (options.length === 0) return;
 
     // A tribute who has decided to be somewhere goes there, by the shortest
@@ -303,6 +381,7 @@ function resolveEncounters(
     acted: Set<string>,
     isEscalated: boolean,
     flavor: ReturnType<typeof arenaFlavor>,
+    time: 'day' | 'night',
 ) {
     const shuffled = ctx.rng.shuffle(currentAlive);
 
@@ -322,13 +401,13 @@ function resolveEncounters(
         muttChance = Math.min(ENCOUNTERS.hazardCeiling, muttChance * ctx.state.config.hazardRate);
 
         if (ctx.rng.chance(eventChance)) {
-            applyArenaEvent(ctx, t, ctx.rng.pick(flavor.events));
+            applyArenaEvent(ctx, t, pickTerrainEvent(ctx, flavor.events, zone?.terrain));
             acted.add(t.id);
             return;
         }
 
         if (ctx.rng.chance(muttChance)) {
-            resolveMuttAttack(ctx, t);
+            resolveMuttAttack(ctx, t, time);
             acted.add(t.id);
             return;
         }

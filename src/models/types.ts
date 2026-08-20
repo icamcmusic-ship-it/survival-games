@@ -249,6 +249,25 @@ export interface RivalRecord {
     lastFightCycle: number;
 }
 
+/**
+ * A zone in a state other than its printed one.
+ *
+ * `Zone.danger` and `.resources` were immutable printed numbers forever — only
+ * `zoneDepletion`, a parallel record, ever changed. Terrain never changed: a
+ * flooded zone stayed forest. This is the layer that lets the arena itself do
+ * something over the course of a run — burn, flood, freeze, fog over — the way
+ * `zoneDepletion` already lets it get quietly stripped.
+ */
+export type ZoneEffectKind = 'burning' | 'flooded' | 'frozen' | 'contaminated' | 'fogbound' | 'stripped';
+
+export interface ZoneEffect {
+    kind: ZoneEffectKind;
+    /** Cycle it lifts on its own, absent anything putting it out early. */
+    expiresCycle: number;
+    /** 'burning' only: the cycle it is next eligible to spread to a neighbour. */
+    nextSpreadCycle?: number;
+}
+
 /** A snare, deadfall or tripline left in a zone, waiting for whoever walks into it. */
 export interface Trap {
     id: string;
@@ -263,6 +282,51 @@ export interface Trap {
 }
 
 export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland';
+
+/**
+ * A mutt archetype, not a mutt instance.
+ *
+ * The old model was a flavour string picked at random and fed a flat 40
+ * damage, a fixed evasion threshold and an unconditional bleed — Tick-Tock
+ * Monkeys and Acid Fog were mechanically identical. This gives every named
+ * mutt its own kit: how hard it hits, how fast it is against a tribute's
+ * agility, how many of it show up, what it actually inflicts, and where and
+ * when it can appear at all.
+ */
+export interface Mutt {
+    id: string;
+    name: string;
+    /** [min, max] mutts in a pack, inclusive. */
+    packSize: [number, number];
+    damage: number;
+    /** Rolled against the tribute's agility for evasion — not a fixed threshold. */
+    speed: number;
+    /** Injuries this mutt can leave beyond the standard bleed-on-hit. */
+    inflicts?: Partial<Injuries>;
+    /** Terrain this mutt can appear/attack in. Undefined = anywhere. */
+    terrainPreference?: Terrain[];
+    /** Only active at night. */
+    nocturnal?: boolean;
+    /** Once it finds a tribute, keeps tracking them for a few cycles. See `ActiveMutt`. */
+    persistent?: boolean;
+    /** Flat sanity cost from the encounter alone, evaded or not. */
+    fearAura?: number;
+}
+
+/**
+ * A `persistent` mutt that has found someone and is still hunting them.
+ *
+ * Lives on `GameState.activeMutts`. `tickPersistentMutts` (src/engine/mutts.ts)
+ * both creates and consumes these — see that file's header comment for exactly
+ * when it needs to be called.
+ */
+export interface ActiveMutt {
+    muttId: string;
+    targetId: string;
+    arenaId: string;
+    /** Cycle index after which this pursuit lapses. */
+    expiresCycle: number;
+}
 
 export interface Zone {
     name: string;
@@ -338,6 +402,15 @@ export interface GameState {
     logCounter?: number;
     /** Zone name -> fraction of its printed yield currently stripped out (0-1). */
     zoneDepletion?: Record<string, number>;
+    /** Zone name -> whatever is currently happening to it beyond depletion. */
+    zoneEffects?: Record<string, ZoneEffect[]>;
+    /**
+     * Adjacency edges cut by the arena itself — a collapsed bridge, a fire that
+     * burned through a crossing. Stored as `map.edgeKey()` strings. The printed
+     * `Zone.adjacent` graph is shared/regenerated data and is never mutated;
+     * this is the run-local exception list layered on top of it.
+     */
+    severedEdges?: string[];
     /** Monotonic day/night cycle counter, used for memory and decay timings. */
     cycle?: number;
     /** Zone name -> deaths that have happened there, broadcast by the sky each night. */
@@ -354,6 +427,8 @@ export interface GameState {
     zoneTraffic?: Record<string, number>;
     /** Tribute id -> cycle their fire/shelter/camouflage lapses. */
     camps?: Record<string, { fire?: number; shelter?: number; camouflage?: number }>;
+    /** Persistent mutts currently hunting a specific tribute. See `ActiveMutt`. */
+    activeMutts?: ActiveMutt[];
 }
 
 export interface EventLog {

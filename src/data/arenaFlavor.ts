@@ -1,4 +1,5 @@
-import { Attributes } from '../models/types';
+import { Arena, Attributes, Terrain, ZoneEffectKind } from '../models/types';
+import { proceduralArenaFlavor } from './proceduralFlavor';
 
 /**
  * Arena-specific colour: every arena gets its own hazards, its own idle
@@ -35,6 +36,21 @@ export interface ArenaEventDef {
     feed?: number;
     /** Item id granted by the event, if any. */
     grantItem?: string;
+    /**
+     * Which terrains this can plausibly happen on. Undefined means "anywhere",
+     * which is what every hand-authored event defaulted to before this field
+     * existed — a tribute standing on Glacier Peak could trigger "Thin Ice
+     * Collapse" on solid rock a thousand feet up. Left optional rather than
+     * back-filled across every event by hand; `encounters.ts` falls back to a
+     * keyword guess from `cause`/`text` for events that don't set it.
+     */
+    terrains?: Terrain[];
+    /** Hits everyone standing in the zone, not just the tribute who triggered it. */
+    zoneWide?: boolean;
+    /** Leaves the zone itself in this state for a while — see `ZoneEffect`. */
+    startsZoneEffect?: ZoneEffectKind;
+    /** Severs one of the zone's adjacency edges — a bridge going out. */
+    severesRoute?: boolean;
 }
 
 export interface ArenaActions {
@@ -1448,6 +1464,12 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     },
 };
 
-export function arenaFlavor(arenaId: string): ArenaFlavor {
+export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {
+    // A procedural arena has no hand-authored entry here — it used to fall
+    // back to one of four fixed pre-written packs, so every rainforest arena
+    // read as the same rainforest regardless of the zones it actually rolled.
+    // `proceduralArenaFlavor` composes flavour from the tags the generated
+    // arena's zones actually carry.
+    if (arena && arenaId.startsWith('procedural-')) return proceduralArenaFlavor(arena);
     return ARENA_FLAVOR[arenaId] ?? GENERIC_ARENA_FLAVOR;
 }
