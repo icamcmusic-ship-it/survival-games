@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { GameState } from '../models/types';
 import { EventFeed } from '../components/EventFeed';
+import { ReplayScrubber } from '../components/ReplayScrubber';
+import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { Trophy, MapPin, Swords, Skull, RotateCcw } from 'lucide-react';
 
 function cleanCause(cause: string): string {
@@ -30,7 +32,16 @@ export function EndScreen({
     coins: number,
     betWonMessage: string | null
 }) {
-    const [activeTab, setActiveTab] = useState<'stats' | 'logs'>('stats');
+    const [activeTab, setActiveTab] = useState<'stats' | 'replay' | 'logs'>('stats');
+
+    // The day counter can tick one past the last day anything actually happened
+    // (the loop increments, then the win check ends the run), so bound the
+    // scrubber by the chronicle instead — otherwise it opens on an empty day.
+    const finalDay = useMemo(
+        () => gameState.log.reduce((max, entry) => Math.max(max, entry.day), 0) || gameState.day,
+        [gameState.log, gameState.day]
+    );
+    const [replayDay, setReplayDay] = useState(finalDay);
 
     const winner = gameState.tributes.find(t => t.status === 'alive');
     const dead = gameState.tributes.filter(t => t.status === 'dead');
@@ -87,6 +98,7 @@ export function EndScreen({
                 <div className="flex flex-wrap justify-center gap-2 pt-5">
                     <div className="seg" style={{ background: 'var(--paper-panel)' }}>
                         <button onClick={() => setActiveTab('stats')} aria-pressed={activeTab === 'stats'} className="seg-item">Debrief</button>
+                        <button onClick={() => setActiveTab('replay')} aria-pressed={activeTab === 'replay'} className="seg-item">Replay</button>
                         <button onClick={() => setActiveTab('logs')} aria-pressed={activeTab === 'logs'} className="seg-item">Full chronicle</button>
                     </div>
                     <button onClick={onRestart} className="btn btn-primary btn-sm">
@@ -95,7 +107,23 @@ export function EndScreen({
                 </div>
             </div>
 
-            {activeTab === 'logs' ? (
+            {activeTab === 'replay' ? (
+                <div className="space-y-4 animate-fadeIn">
+                    <ReplayFallenStrip
+                        tributes={gameState.tributes}
+                        finalDay={finalDay}
+                        selectedDay={replayDay}
+                        onSelectDay={setReplayDay}
+                    />
+                    <ReplayScrubber
+                        tributes={gameState.tributes}
+                        log={gameState.log}
+                        finalDay={finalDay}
+                        day={replayDay}
+                        onDayChange={setReplayDay}
+                    />
+                </div>
+            ) : activeTab === 'logs' ? (
                 <div className="panel p-5 space-y-4 animate-fadeIn">
                     <h3 className="panel-title">Chronicle archive — {gameState.log.length} events</h3>
                     <div className="max-h-[620px] overflow-y-auto pr-2 custom-scrollbar">

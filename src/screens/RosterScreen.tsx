@@ -1,6 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Tribute, Phase } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
+import { Explainer } from '../components/Explainer';
+import { heightLabel } from '../engine/physique';
+import { traitInfo } from '../data/traitInfo';
+import {
+    attributeBand, canSeeArchetype, canSeeAttributeBands, canSeeExactAttributes,
+    canSeeTraits, disclosureFor, sealedReason,
+} from '../ui/disclosure';
 import { Stat } from '../components/Stat';
 import { tributeOdds } from '../engine/odds';
 import { Bet } from '../store/gameStore';
@@ -26,6 +33,9 @@ export function RosterScreen({
     setCoins: (coins: number | ((prev: number) => number)) => void
 }) {
     const bettingOpen = phase === 'setup';
+    // UX-16: the audience learns things when the Capitol broadcasts them, not
+    // all at once the moment the reaping ends.
+    const disclosure = disclosureFor(phase);
     const buttonText = bettingOpen ? 'Begin training' : 'Return to arena';
 
     const [query, setQuery] = useState('');
@@ -44,8 +54,10 @@ export function RosterScreen({
                 t.name.toLowerCase().includes(needle) ||
                 `district ${t.district}`.includes(needle) ||
                 `d${t.district}` === needle ||
-                ARCHETYPES[t.archetype].name.toLowerCase().includes(needle) ||
-                t.traits.some(tr => tr.toLowerCase().includes(needle)))
+                // Searching must not leak what the card is deliberately hiding:
+                // matching on a sealed trait would let a player enumerate them.
+                (canSeeArchetype(disclosure) && ARCHETYPES[t.archetype].name.toLowerCase().includes(needle)) ||
+                (canSeeTraits(disclosure) && t.traits.some(tr => tr.toLowerCase().includes(needle))))
             : tributes;
 
         return [...filtered].sort((a, b) => {
@@ -60,7 +72,7 @@ export function RosterScreen({
                     return a.district - b.district || a.gender.localeCompare(b.gender);
             }
         });
-    }, [tributes, query, sortKey, oddsById]);
+    }, [tributes, query, sortKey, oddsById, disclosure]);
 
     const totalStaked = Object.values(bets).reduce((a, b) => a + b.stake, 0);
 
@@ -165,9 +177,24 @@ export function RosterScreen({
                                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                                             <span className="chip">District {t.district}</span>
                                             {t.isCareer && <span className="chip chip-gold">Career</span>}
-                                            <span className="chip chip-accent" title={ARCHETYPES[t.archetype].description}>
-                                                {ARCHETYPES[t.archetype].name}
+                                            <span className="chip" title={`${t.gender}, age ${t.age}, ${heightLabel(t.heightCm)}, ${t.build} build`}>
+                                                {t.gender} · {t.age} · {heightLabel(t.heightCm)} · {t.build}
                                             </span>
+                                            {canSeeArchetype(disclosure) ? (
+                                                <Explainer
+                                                    align="left"
+                                                    label={<span className="chip chip-accent">{ARCHETYPES[t.archetype].name}</span>}
+                                                    title={`${ARCHETYPES[t.archetype].name} archetype`}
+                                                >
+                                                    {ARCHETYPES[t.archetype].description}
+                                                    <span className="block mt-1.5 font-mono text-[10px] text-[var(--color-ink-500)]">
+                                                        Aggression {ARCHETYPES[t.archetype].aggression >= 0 ? '+' : ''}{ARCHETYPES[t.archetype].aggression.toFixed(2)} ·
+                                                        Caution {ARCHETYPES[t.archetype].caution >= 0 ? '+' : ''}{ARCHETYPES[t.archetype].caution.toFixed(2)}
+                                                    </span>
+                                                </Explainer>
+                                            ) : (
+                                                <span className="chip opacity-50" title={sealedReason(disclosure)}>⧗ Unassessed</span>
+                                            )}
                                         </div>
                                     </div>
                                     {t.trainingScore > 0 && (
@@ -187,16 +214,68 @@ export function RosterScreen({
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-1.5 text-sm">
-                                    <Stat icon={<Swords className="w-3.5 h-3.5 text-[var(--cat-death)]" />} label="STR" value={t.attributes.strength} />
-                                    <Stat icon={<Zap className="w-3.5 h-3.5 text-[var(--cat-training)]" />} label="AGI" value={t.attributes.agility} />
-                                    <Stat icon={<Brain className="w-3.5 h-3.5 text-[var(--cat-loot)]" />} label="INT" value={t.attributes.intelligence} />
-                                    <Stat icon={<Eye className="w-3.5 h-3.5 text-[var(--cat-sanity)]" />} label="STL" value={t.attributes.stealth} />
-                                    <Stat icon={<User className="w-3.5 h-3.5 text-[var(--cat-romance)]" />} label="CHA" value={t.attributes.charisma} />
-                                </div>
+                                {canSeeExactAttributes(disclosure) ? (
+                                    <div className="grid grid-cols-2 gap-1.5 text-sm">
+                                        <Stat icon={<Swords className="w-3.5 h-3.5 text-[var(--cat-death)]" />} label="STR" value={t.attributes.strength} />
+                                        <Stat icon={<Zap className="w-3.5 h-3.5 text-[var(--cat-training)]" />} label="AGI" value={t.attributes.agility} />
+                                        <Stat icon={<Brain className="w-3.5 h-3.5 text-[var(--cat-loot)]" />} label="INT" value={t.attributes.intelligence} />
+                                        <Stat icon={<Eye className="w-3.5 h-3.5 text-[var(--cat-sanity)]" />} label="STL" value={t.attributes.stealth} />
+                                        <Stat icon={<User className="w-3.5 h-3.5 text-[var(--cat-romance)]" />} label="CHA" value={t.attributes.charisma} />
+                                    </div>
+                                ) : canSeeAttributeBands(disclosure) ? (
+                                    <div className="space-y-1">
+                                        {([
+                                            ['Strength', t.attributes.strength],
+                                            ['Agility', t.attributes.agility],
+                                            ['Cunning', t.attributes.intelligence],
+                                            ['Stealth', t.attributes.stealth],
+                                        ] as Array<[string, number]>).map(([label, value]) => {
+                                            const band = attributeBand(value);
+                                            return (
+                                                <div key={label} className="flex items-center gap-2 text-xs">
+                                                    <span className="text-[var(--color-ink-500)] w-16 flex-none">{label}</span>
+                                                    <span className="flex gap-0.5 flex-1" aria-hidden="true">
+                                                        {[1, 2, 3, 4, 5].map(i => (
+                                                            <span
+                                                                key={i}
+                                                                className="h-2 flex-1 border border-[var(--line)]"
+                                                                style={{ background: i <= band.filled ? 'var(--ink)' : 'transparent' }}
+                                                            />
+                                                        ))}
+                                                    </span>
+                                                    <span className="font-mono text-[10px] text-[var(--color-ink-400)] w-20 text-right flex-none">
+                                                        {band.label}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                        <p className="text-[10px] text-[var(--color-ink-500)] pt-0.5">
+                                            The Gamemakers publish an assessment, not a sheet.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="panel-flush p-3 text-center">
+                                        <div className="eyebrow text-[var(--color-ink-500)]">⧗ Not yet assessed</div>
+                                        <p className="text-[10px] text-[var(--color-ink-500)] mt-1">
+                                            Only the public record is available before training: district, gender,
+                                            age, height and build.
+                                        </p>
+                                    </div>
+                                )}
 
                                 <div className="flex flex-wrap gap-1">
-                                    {t.traits.map(trait => <span key={trait} className="chip">{trait}</span>)}
+                                    {canSeeTraits(disclosure)
+                                        ? t.traits.map(trait => (
+                                            <Explainer
+                                                key={trait}
+                                                align="left"
+                                                label={<span className="chip">{trait}</span>}
+                                                title={trait}
+                                            >
+                                                {traitInfo(trait)}
+                                            </Explainer>
+                                        ))
+                                        : <span className="chip opacity-50" title={sealedReason(disclosure)}>⧗ Traits sealed</span>}
                                 </div>
 
                                 {bettingOpen && (

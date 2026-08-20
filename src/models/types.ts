@@ -293,6 +293,12 @@ export interface GameState {
     zoneDeaths?: Record<string, number>;
     /** Traps currently set in the arena, by whoever set them. */
     traps?: Trap[];
+    /**
+     * Movement along each edge of the zone graph, keyed by the two zone names
+     * sorted and joined with '|'. Decays every cycle, so it reads as "where the
+     * traffic is right now" rather than a cumulative total.
+     */
+    zoneTraffic?: Record<string, number>;
     /** Tribute id -> cycle their fire/shelter/camouflage lapses. */
     camps?: Record<string, { fire?: number; shelter?: number; camouflage?: number }>;
 }

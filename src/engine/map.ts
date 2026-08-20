@@ -88,6 +88,29 @@ export function nextHopToward(
     return undefined;
 }
 
+/** Stable key for an undirected edge between two zones. */
+export function edgeKey(a: string, b: string): string {
+    return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+/** Records a tribute walking from one zone to another, for the map's traffic view. */
+export function noteTraffic(state: GameState, from: string, to: string, count = 1) {
+    if (from === to) return;
+    state.zoneTraffic = state.zoneTraffic || {};
+    const key = edgeKey(from, to);
+    state.zoneTraffic[key] = (state.zoneTraffic[key] ?? 0) + count;
+}
+
+/** Traffic fades, so the map shows this cycle's movement rather than the run's. */
+export function decayTraffic(state: GameState) {
+    if (!state.zoneTraffic) return;
+    Object.keys(state.zoneTraffic).forEach(key => {
+        const next = state.zoneTraffic![key] * 0.55;
+        if (next < 0.1) delete state.zoneTraffic![key];
+        else state.zoneTraffic![key] = Math.round(next * 100) / 100;
+    });
+}
+
 /**
  * Zone economy.
  *

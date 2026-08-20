@@ -6,6 +6,10 @@ import { fearOf } from '../engine/fear';
 import { heightLabel } from '../engine/physique';
 import { PROFICIENCY } from '../data/balance';
 import { bleedSeverity } from '../engine/wounds';
+import { RelationshipGraph } from './RelationshipGraph';
+import { Explainer } from './Explainer';
+import { objectiveLabel } from '../engine/objectives';
+import { traitInfo } from '../data/traitInfo';
 import { MapPin, Users, X, Heart } from 'lucide-react';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
@@ -19,7 +23,7 @@ const BLEED_LABELS: Record<number, string> = {
 
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 
-function VitalBar({ label, value, invert = false }: { label: string; value: number; invert?: boolean }) {
+function VitalBar({ label, value, invert = false, explain }: { label: string; value: number; invert?: boolean; explain?: React.ReactNode }) {
     // For hunger/thirst/fatigue a high number is bad (severity = value). For
     // health/sanity/sponsor trust a high number is good, so severity runs the
     // other way — this was backwards before, which painted a tribute at full
@@ -29,7 +33,9 @@ function VitalBar({ label, value, invert = false }: { label: string; value: numb
     return (
         <div className="panel-flush p-2.5 space-y-1.5">
             <div className="flex justify-between items-baseline">
-                <span className="eyebrow">{label}</span>
+                {explain
+                    ? <Explainer align="left" label={<span className="eyebrow">{label}</span>} title={label}>{explain}</Explainer>
+                    : <span className="eyebrow">{label}</span>}
                 <span className="font-mono text-[var(--ink)] text-sm">{value}%</span>
             </div>
             <div className="meter">
@@ -120,15 +126,68 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                         <h3 className="display-title text-2xl">{tribute.name}</h3>
                         <div className="flex flex-wrap gap-1.5 mt-2">
                             <span className="chip">District {tribute.district}</span>
-                            <span className="chip chip-accent" title={archetype.description}>{archetype.name}</span>
+                            <Explainer
+                                align="left"
+                                label={<span className="chip chip-accent">{archetype.name}</span>}
+                                title={`${archetype.name} archetype`}
+                            >
+                                {archetype.description}
+                                <span className="block mt-1.5 font-mono text-[10px] text-[var(--color-ink-500)]">
+                                    Aggression {archetype.aggression >= 0 ? '+' : ''}{archetype.aggression.toFixed(2)} ·
+                                    Caution {archetype.caution >= 0 ? '+' : ''}{archetype.caution.toFixed(2)} ·
+                                    Loyalty {archetype.allianceAffinity.toFixed(2)} ·
+                                    Treachery {archetype.treachery.toFixed(2)}
+                                </span>
+                                <span className="block mt-1.5">
+                                    These weights bias every stance choice, alliance decision and retreat roll they make.
+                                </span>
+                            </Explainer>
                             {tribute.isCareer && <span className="chip chip-gold">Career</span>}
                             {tribute.fanFavourite && <span className="chip chip-gold" title="The Capitol had a favourite before the gong ever sounded.">Fan favourite</span>}
                             {tribute.interviewStrategy && <span className="chip" title="The persona they sold on Caesar's couch.">{tribute.interviewStrategy}</span>}
-                            <span className="chip">{tribute.stance}</span>
-                            {tribute.trainingScore > 0 && <span className="chip">Training {tribute.trainingScore}</span>}
+                            <Explainer
+                                align="left"
+                                label={<span className="chip">{tribute.stance}</span>}
+                                title="Stance"
+                            >
+                                Stance is not chosen by you or by them — it is scored every cycle from health,
+                                whether they are armed, how badly they are hurt, their archetype, and a threat
+                                assessment of everyone standing in the same sector. A challenger stance has to
+                                clearly beat the incumbent to take over, so it will not flip back and forth.
+                                <span className="block mt-1.5">
+                                    <strong>Aggressive</strong> sweeps the sector for a fight and hunts.{' '}
+                                    <strong>Defensive</strong> forages and rests.{' '}
+                                    <strong>Evasive</strong> hides, and heals if left alone.
+                                </span>
+                            </Explainer>
+                            {tribute.trainingScore > 0 && (
+                                <Explainer
+                                    align="left"
+                                    label={<span className="chip">Training {tribute.trainingScore}</span>}
+                                    title="Training score"
+                                >
+                                    Scores of 1-8 are earned on merit from the training stations. Every point above 8
+                                    is a separate, much rarer roll, which is why a 10 is genuinely frightening.
+                                    A score of 9 or more intimidates the rest of the cast: it costs them sanity,
+                                    sours them on this tribute, and leaves a lasting fear of them specifically.
+                                </Explainer>
+                            )}
                         </div>
                         <div className="flex flex-wrap gap-3 mt-2.5 text-sm text-[var(--color-ink-400)]">
                             <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {tribute.zone}</span>
+                            {tribute.status === 'alive' && (
+                                <Explainer
+                                    align="left"
+                                    label={<span className="text-[var(--red)] font-semibold">{objectiveLabel(gameState, tribute)}</span>}
+                                    title="Current intention"
+                                >
+                                    Tributes hold an objective across cycles rather than re-deciding every turn.
+                                    It is chosen from what they need, who they are, and what they remember —
+                                    and it is only re-evaluated when it expires or stops making sense
+                                    (their quarry dies, they arrive, the ground goes out of bounds).
+                                    Movement then routes toward it along the sector graph.
+                                </Explainer>
+                            )}
                             <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5 text-[var(--cat-death)]" /> {tribute.kills} kills</span>
                             {tribute.allianceId && (
                                 <span className="flex items-center gap-1 text-[var(--cat-alliance)]"><Users className="w-3.5 h-3.5" /> In an alliance</span>
@@ -154,11 +213,37 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                         <h4 className="panel-title mb-2">Condition</h4>
                         <div className="grid grid-cols-2 gap-2">
                             <VitalBar label="Health" value={tribute.health} invert />
-                            <VitalBar label="Sanity" value={tribute.vitals.sanity} invert />
+                            <VitalBar
+                                label="Sanity"
+                                value={tribute.vitals.sanity}
+                                invert
+                                explain={
+                                    <>
+                                        A pressure gauge, not a countdown. It drains faster when they are alone, at
+                                        night, hungry, or standing somewhere they remember people dying — and it
+                                        recovers with rest, food, safety and company. Below 30 they may lose a turn
+                                        to a breakdown.
+                                    </>
+                                }
+                            />
                             <VitalBar label="Hunger" value={tribute.vitals.hunger} />
                             <VitalBar label="Thirst" value={tribute.vitals.thirst} />
                             <VitalBar label="Fatigue" value={tribute.vitals.fatigue} />
-                            <VitalBar label="Sponsor trust" value={tribute.sponsorTrust} invert />
+                            <VitalBar
+                                label="Sponsor trust"
+                                value={tribute.sponsorTrust}
+                                invert
+                                explain={
+                                    <>
+                                        How willing the Capitol's backers are to spend on this tribute. It starts from
+                                        their district's Games record and their charisma, and it drifts back toward
+                                        that baseline every cycle — so a single good day does not buy a parachute for
+                                        the rest of the run. Trust plus excitement must clear a threshold before a
+                                        gift is even considered, and each gift a tribute receives makes the next one
+                                        markedly rarer.
+                                    </>
+                                }
+                            />
                         </div>
                     </section>
 
@@ -167,7 +252,16 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                         <div className="flex flex-wrap gap-1">
                             {tribute.traits.length === 0
                                 ? <span className="text-sm text-[var(--color-ink-400)]">None recorded</span>
-                                : tribute.traits.map(t => <span key={t} className="chip">{t}</span>)}
+                                : tribute.traits.map(t => (
+                                    <Explainer
+                                        key={t}
+                                        align="left"
+                                        label={<span className="chip">{t}</span>}
+                                        title={t}
+                                    >
+                                        {traitInfo(t)}
+                                    </Explainer>
+                                ))}
                         </div>
                     </section>
 
@@ -242,6 +336,11 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                 </div>
                             ))}
                         </div>
+                    </section>
+
+                    <section>
+                        <h4 className="panel-title mb-2">Social graph</h4>
+                        <RelationshipGraph tribute={tribute} gameState={gameState} />
                     </section>
 
                     <section>

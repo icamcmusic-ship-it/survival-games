@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GameState, Tribute } from '../models/types';
 import { effectiveResources } from '../engine/map';
+import { ArenaGraph } from './ArenaGraph';
 
 const TERRAIN_ICONS: Record<string, string> = {
     open: '🏳️', forest: '🌲', water: '🌊', highland: '⛰️', ruins: '🏚️', wetland: '🥀'
@@ -17,16 +18,43 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
 }) {
     const zones = gameState.arena.zones;
     const collapsed = gameState.collapsedZones || [];
+    // The graph is the honest view — it is the structure the simulation actually
+    // moves over — but the card grid remains for reading the numbers at a glance.
+    const [view, setView] = useState<'graph' | 'grid'>('graph');
 
     return (
         <div className="space-y-3 text-left">
             <div className="flex justify-between items-center gap-3 flex-wrap">
                 <span className="panel-title">Arena sectors</span>
-                <span className="text-[10px] text-[var(--color-ink-500)]">
-                    Click a sector to isolate its log{collapsed.length > 0 && ` · ${collapsed.length} sector${collapsed.length === 1 ? '' : 's'} collapsed`}
-                </span>
+                <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-[10px] text-[var(--color-ink-500)]">
+                        Click a sector to isolate its log{collapsed.length > 0 && ` · ${collapsed.length} sector${collapsed.length === 1 ? '' : 's'} collapsed`}
+                    </span>
+                    <div className="seg">
+                        <button onClick={() => setView('graph')} aria-pressed={view === 'graph'} className="seg-item">Map</button>
+                        <button onClick={() => setView('grid')} aria-pressed={view === 'grid'} className="seg-item">Detail</button>
+                    </div>
+                </div>
             </div>
 
+            {view === 'graph' && (
+                <div className="panel-flush p-2">
+                    <ArenaGraph
+                        gameState={gameState}
+                        selectedZone={selectedZone}
+                        onSelectZone={onSelectZone}
+                        tributes={tributes}
+                    />
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 px-2 pb-1 text-[10px] text-[var(--color-ink-500)] font-mono uppercase tracking-wider">
+                        <span>Lines · routes between sectors</span>
+                        <span style={{ color: 'var(--red)' }}>Thick/red · traffic this cycle</span>
+                        <span style={{ color: 'var(--cat-loot)' }}>Ring · forage remaining</span>
+                        <span>Dashed · out of bounds</span>
+                    </div>
+                </div>
+            )}
+
+            {view === 'grid' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                 {zones.map(zone => {
                     const isCollapsed = collapsed.includes(zone.name);
@@ -104,6 +132,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                     );
                 })}
             </div>
+            )}
         </div>
     );
 }

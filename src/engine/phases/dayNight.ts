@@ -7,7 +7,7 @@ import { AMBIENT_TEXTS, ENCOUNTER_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, decayMemories, decayRelationships, noteSighting,
@@ -93,6 +93,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // crowd's attention wanders.
     regenerateZones(ctx.state);
     tickTraps(ctx);
+    decayTraffic(ctx.state);
     decayMemories(ctx.state);
     decayRelationships(ctx.state);
     decayAllianceTrust(ctx.state);
@@ -239,7 +240,9 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         // separated by a border collapse or a feast pulls their own weight
         // back rather than being snapped across the map for free.
         const present = allianceMembers.filter(m => m.zone === t.zone);
+        const departed = t.zone;
         present.forEach(m => { m.zone = newZone; });
+        noteTraffic(ctx.state, departed, newZone, present.length);
         if (t.stance === 'Evasive') {
             ctx.logEvent(`${present.map(m => m.name).join(', ')} slip out of ${t.zone} without a sound.`, present.map(m => m.id), { zone: newZone, category: 'travel' });
         } else {
@@ -263,6 +266,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     if (step && step.name !== t.zone) {
         const from = t.zone;
         t.zone = step.name;
+        noteTraffic(ctx.state, from, step.name);
         ctx.logEvent(
             `${t.name} leaves ${from} for ${step.name} — ${objectiveLabel(ctx.state, t).toLowerCase()}.`,
             [t.id],
@@ -277,6 +281,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
 
     const oldZone = t.zone;
     t.zone = newZone;
+    noteTraffic(ctx.state, oldZone, newZone);
     if (t.stance === 'Evasive') {
         ctx.logEvent(`${t.name} slips out of ${oldZone} without a sound.`, [t.id], { zone: newZone, category: 'travel' });
     } else {

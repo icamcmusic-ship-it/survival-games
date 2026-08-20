@@ -5,6 +5,7 @@ import { TributeModal } from '../components/TributeModal';
 import { EventFeed, FeedLine } from '../components/EventFeed';
 import { CATEGORY_GROUPS } from '../ui/eventStyles';
 import { tributeOdds } from '../engine/odds';
+import { objectiveLabel } from '../engine/objectives';
 import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 type Speed = 'manual' | '1x' | '5x' | 'auto';
@@ -340,7 +341,7 @@ export function GameScreen({
                                     {filteredLogs.length === 0 ? (
                                         <div className="empty-state">Nothing has happened in this sector yet.</div>
                                     ) : (
-                                        [...filteredLogs].reverse().map(l => <FeedLine key={l.id} log={l} />)
+                                        [...filteredLogs].reverse().map(l => <FeedLine key={l.id} log={l} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} />)
                                     )}
                                 </div>
                             </div>
@@ -370,7 +371,7 @@ export function GameScreen({
                             className="max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar"
                         >
                             {filteredLogs.length > 0 ? (
-                                <EventFeed logs={filteredLogs} />
+                                <EventFeed logs={filteredLogs} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} />
                             ) : (
                                 <div className="empty-state">
                                     {gameState.log.length === 0
@@ -491,7 +492,12 @@ export function GameScreen({
                                                 <span className={`font-bold text-sm truncate ${dead ? 'line-through text-[var(--color-ink-500)]' : 'text-[var(--color-ink-100)]'}`}>
                                                     {t.name}
                                                 </span>
-                                                <span className="chip">D{t.district}</span>
+                                                <span
+                                                    className="chip"
+                                                    title={`District ${t.district} · ${t.gender} · age ${t.age}`}
+                                                >
+                                                    D{t.district}·{t.gender === 'Male' ? 'M' : 'F'}
+                                                </span>
                                                 {!dead && t.allianceId && (
                                                     <span className="chip" style={accent ? { color: accent, borderColor: accent } : undefined}>
                                                         <Users className="w-2.5 h-2.5" /> Pack
@@ -506,6 +512,9 @@ export function GameScreen({
                                                         <span className="flex items-center gap-1"><Heart className="w-3 h-3 text-[var(--cat-death)]" /> {t.health}</span>
                                                         <span className="flex items-center gap-1"><Swords className="w-3 h-3" /> {t.kills}</span>
                                                         <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3 text-[var(--cat-travel)]" /> {t.zone}</span>
+                                                        {/* What they are actually trying to do, so the sidebar
+                                                            explains the movement instead of just reporting it. */}
+                                                        <span className="w-full truncate text-[var(--red)]">{objectiveLabel(gameState, t)}</span>
                                                     </>
                                                 )}
                                             </div>
