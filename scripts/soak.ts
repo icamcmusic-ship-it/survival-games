@@ -240,7 +240,7 @@ for (let i = 0; i < 240; i++) {
     if (/coats their .* with it/.test(l.text)) weaponsPoisoned++;
     // --- Relationships and alliances. ---
     if (/empties the group's stash|and watches them go|keeps their hand over the pocket|hears it, and keeps walking/.test(l.text)) exoticBetrayals++;
-    if (/their groups run as one/.test(l.text)) merges++;
+    if (/run as one/.test(l.text)) merges++;
     if (/takes charge of what is left|stops deferring to/.test(l.text)) leadershipChanges++;
     if (/run together until the final eight|swear to see it through/.test(l.text)) pactsDeclared++;
     if (/agreed this was where it ended/.test(l.text)) pactsHonoured++;

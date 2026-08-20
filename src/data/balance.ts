@@ -1189,7 +1189,7 @@ export const ROMANCE = {
      * effectively unreachable. Loosened with performedMinRegard and
      * performerCharisma so it lands a few times per soak.
      */
-    performedChance: 0.09,
+    performedChance: 0.14,
     /**
      * Regard the smitten party needs. Deliberately below `threshold`: a
      * performed bond does not need the mutual devotion a real one does, only
@@ -1209,7 +1209,7 @@ export const ROMANCE = {
     /** Contact this stale breaks the streak. */
     contactWindow: 2,
     /** Odds per cycle once every condition holds. Romance is never automatic. */
-    chancePerCycle: 0.12,
+    chancePerCycle: 0.1,
     /**
      * Per-day decay on that chance. Keeps the romance rate a property of the
      * cast rather than a property of how long the Games happened to run.
@@ -1264,7 +1264,7 @@ export const ALLIANCES = {
      */
     /** §6.1: 0.35/12 produced ~9 merges per 240 runs. */
     mergeChance: 0.5,
-    mergeThreshold: 8,
+    mergeThreshold: 5,
     /** A member whose average regard for the other group is below this walks
      *  out of a negotiated merge rather than blocking it. */
     mergeDissentThreshold: -10,

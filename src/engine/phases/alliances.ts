@@ -193,8 +193,12 @@ export function processAlliances(ctx: SimContext) {
                 const t2 = stillAlive[j];
 
                 if (!t1.allianceId && !t2.allianceId) {
-                    // §4.3: joining someone is a trust decision, not a regard one.
-                    const rel = Math.min(trustOf(t1, t2), trustOf(t2, t1));
+                    // §4.3: joining someone is a trust decision, not a regard
+                    // one. The mean, not the min: requiring the *lower* side to
+                    // clear the bar collapsed formation entirely (the firing
+                    // floors caught it) — a wary party joining a warm one is a
+                    // real alliance, and the wariness is what betrayal feeds on.
+                    const rel = (trustOf(t1, t2) + trustOf(t2, t1)) / 2;
                     // Archetype chemistry: affinity of both parties plus pair compatibility
                     const affinity = (ARCHETYPES[t1.archetype].allianceAffinity + ARCHETYPES[t2.archetype].allianceAffinity) / 2
                 + (traitMod(t1, 'allianceAffinity') + traitMod(t2, 'allianceAffinity')) / 2;
