@@ -1,8 +1,8 @@
 import { SimContext, getAlive } from '../context';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { ALLIANCES, ROMANCE } from '../../data/balance';
-import { ALLIANCE_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
+import { ALLIANCES, PROTECTOR_BOND, ROMANCE } from '../../data/balance';
+import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact } from '../memory';
 import { allianceOf, areLovers, contributeToCache, membersOf, reconcileAlliances, registerAlliance } from '../alliance';
@@ -272,6 +272,7 @@ export function processAlliances(ctx: SimContext) {
 
     // 4. Romance — see `growRomance`.
     growRomance(ctx);
+    growProtectorBond(ctx);
 
     // 5. Structure upkeep: prune the dead, re-elect leaders, pool supplies.
     reconcileAlliances(ctx);
@@ -386,6 +387,49 @@ function growRomance(ctx: SimContext) {
     }
 }
 
+/**
+ * CONTENT-06: the protective, non-romantic bond — the sibling-like pair, or
+ * the older tribute who has quietly adopted a much younger one. Uses the same
+ * "somebody has to have risked something" gate as romance, but keyed on a
+ * genuine age gap instead of romance eligibility, and it never touches
+ * `allianceId`: this is a relationship, not a merger.
+ */
+function growProtectorBond(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    if (ctx.state.day < ROMANCE.minDay) return;
+
+    for (const older of alive) {
+        for (const younger of alive) {
+            if (older.id === younger.id) continue;
+            if (older.age - younger.age < PROTECTOR_BOND.minAgeGap) continue;
+            if (areLovers(older, younger)) continue;
+            if (older.protectorBonds?.includes(younger.id)) continue;
+
+            const recentContact = cyclesSinceContact(ctx.state, older, younger.id) <= ROMANCE.contactWindow;
+            if (!recentContact) continue;
+            if (!hasStoodBy(older, younger.id)) continue;
+            if (getRel(older, younger.id) < PROTECTOR_BOND.threshold) continue;
+            if (!ctx.rng.chance(PROTECTOR_BOND.chancePerCycle)) continue;
+
+            older.protectorBonds = [...(older.protectorBonds ?? []), younger.id];
+            (younger.protectorBonds = younger.protectorBonds ?? []).push(older.id);
+            adjustRel(older, younger.id, 15);
+            adjustRel(younger, older.id, 15);
+            older.sponsorTrust = Math.min(100, older.sponsorTrust + 15);
+            younger.sponsorTrust = Math.min(100, younger.sponsorTrust + 20);
+            addExcitement(older, 20);
+            addExcitement(younger, 25);
+
+            ctx.logEvent(
+                fill(ctx.pickText(PROTECTOR_BOND_TEXTS), { older: older.name, younger: younger.name }),
+                [older.id, younger.id],
+                { important: true, category: 'romance' }
+            );
+            return;
+        }
+    }
+}
+
 function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute) {
     t1.traits.push('Star-Crossed');
     t2.traits.push('Star-Crossed');
@@ -460,6 +504,12 @@ export function personaThreat(t: Tribute): number {
         case 'The Star-Crossed Lover': return -0.1;
         case 'The Humble Underdog': return -0.15;
         case 'The Quirky Oddball': return -0.05;
+        case 'The Silent Threat': return 0.25;
+        case 'The Cold Strategist': return 0.2;
+        case 'The Grieving Sibling': return -0.15;
+        case 'The Reluctant Hero': return -0.1;
+        case 'The District Loyalist': return -0.05;
+        case 'The Wildcard': return 0.05;
         default: return 0;
     }
 }

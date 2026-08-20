@@ -491,7 +491,9 @@ export const ENCOUNTERS = {
     /** What being pulled clear is worth to the person who was pulled. */
     rescueGratitude: 10,
     ambientLineChance: 0.35,
-    ambientArenaShare: 0.6,
+    ambientArenaShare: 0.55,
+    /** Share of ambient lines that read the run's own state instead of being pure scenery. */
+    dynamicAmbientShare: 0.25,
     baseEventChance: 0.1,
     baseMuttChance: 0.1,
     hazardCeiling: 0.9,
@@ -537,6 +539,8 @@ export const COMBAT = {
     killSanityBreakdown: 25,
     /** A fleeing opponent this far gone was spared, not merely escaped. */
     mercyHealth: 25,
+    /** Below this, a landed hit reads as finishing the fight rather than opening it. */
+    finishingHealthThreshold: 30,
     /** Power a Vengeful tribute brings against the specific person they hate. */
     vengefulEdge: 3,
     /** Chance a round inflicts a localised wound on the loser. */
@@ -918,7 +922,7 @@ export const MEMORY = {
 /** Stance selection: thresholds plus the hysteresis that stops thrashing. */
 export const STANCE = {
     /** Minimum cycles a stance is held before it may change again. */
-    minHold: 2,
+    minHold: 3,
     /** Score margin a challenger stance must beat the current one by. */
     switchMargin: 0.8,
     /** Health fractions that pull a tribute toward each stance. */
@@ -1016,6 +1020,17 @@ export const RELATIONSHIPS = {
  * them has to have taken a real risk for the other. Even then it is a roll, not
  * a promotion at a number.
  */
+/**
+ * CONTENT-06: the protective bond. See `growProtectorBond` in `phases/alliances.ts`.
+ */
+export const PROTECTOR_BOND = {
+    /** Years apart before this reads as protective rather than merely allied. */
+    minAgeGap: 4,
+    /** Bond required, on the same relationship scale romance uses. */
+    threshold: 70,
+    chancePerCycle: 0.18,
+} as const;
+
 export const ROMANCE = {
     /** Nothing before the bloodbath is over and the cast is real. */
     minDay: 2,

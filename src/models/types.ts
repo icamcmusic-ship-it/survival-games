@@ -236,6 +236,8 @@ export interface Tribute {
     proficiencies?: Partial<Record<Proficiency, number>>;
     /** What they are currently trying to do. See `Objective`. */
     objective?: Objective;
+    /** Ids of tributes this one has formed a protective bond with. See `growProtectorBond`. */
+    protectorBonds?: string[];
     /**
      * How far their launch plate landed from the mouth of the Cornucopia, 0-1.
      * 0 is close enough to touch the horn; 1 is the far edge of the ring.
@@ -470,6 +472,8 @@ export interface GameState {
     escalationDay?: number;
     /** Guard so the pre-Games ceremonies are narrated exactly once. */
     preGamesDone?: boolean;
+    /** This run's Head Gamemaker. Chosen once, at the reaping. */
+    headGamemaker?: string;
     /** Aggregate audience interest in the living field, recomputed each cycle. */
     audienceInterest?: number;
     /** Zone name -> deaths that have happened there, broadcast by the sky each night. */

@@ -65,6 +65,35 @@ function angleWeights(t: Tribute): Array<[typeof INTERVIEW_SCENARIOS[number], nu
                 weight += t.attributes.intelligence * 0.12;
                 if (t.traits.includes('Showman')) weight += 1.5;
                 break;
+            case 'The Silent Threat':
+                weight += t.attributes.stealth * 0.15 + t.attributes.strength * 0.08;
+                if (t.trainingStrategy === 'conceal') weight += 1;
+                if (t.attributes.charisma <= 4) weight += 0.8;
+                break;
+            case 'The Grieving Sibling':
+                if (t.traits.includes('Softhearted') || t.traits.includes('Grim')) weight += 1.3;
+                if (t.age <= 15) weight += 0.6;
+                if (t.traits.includes('Ruthless')) weight -= 1;
+                break;
+            case 'The Cold Strategist':
+                weight += t.attributes.intelligence * 0.2;
+                if (t.archetype === 'strategist') weight += 1.5;
+                if (t.traits.includes('Strategist')) weight += 1;
+                break;
+            case 'The Reluctant Hero':
+                if (t.traits.includes('Pacifist')) weight += 1.5;
+                if (!t.isCareer && !t.volunteered) weight += 0.6;
+                if (t.isCareer) weight -= 0.8;
+                break;
+            case 'The District Loyalist':
+                if (t.volunteered && !t.isCareer) weight += 1.8;
+                weight += t.reputation < 40 ? 0.8 : 0;
+                if (t.isCareer) weight += 0.4;
+                break;
+            case 'The Wildcard':
+                if (t.archetype === 'wildcard' || t.archetype === 'trickster') weight += 1.5;
+                weight += Math.abs(t.attributes.charisma - 5) * 0.1;
+                break;
         }
         return [scenario, Math.max(0.15, weight)] as [typeof INTERVIEW_SCENARIOS[number], number];
     });
@@ -103,7 +132,8 @@ export function processInterviews(ctx: SimContext) {
 
         ctx.logEvent(
             `[${scenario.strategy}] ` + ctx.pickText(opened ? scenario.success : scenario.failure)
-                .split('{tribute}').join(t.name),
+                .split('{tribute}').join(t.name)
+                .split('{district}').join(String(t.district)),
             [t.id],
             { important: opened, category: 'interview' }
         );
@@ -120,9 +150,15 @@ export function processInterviews(ctx: SimContext) {
 
         let persona = scenario.strategy;
         if (followUp) {
-            ctx.logEvent(followUp.question, [t.id], { category: 'interview' });
             ctx.logEvent(
-                ctx.pickText(held ? followUp.held : followUp.broke).split('{tribute}').join(t.name),
+                followUp.question.split('{district}').join(String(t.district)),
+                [t.id],
+                { category: 'interview' }
+            );
+            ctx.logEvent(
+                ctx.pickText(held ? followUp.held : followUp.broke)
+                    .split('{tribute}').join(t.name)
+                    .split('{district}').join(String(t.district)),
                 [t.id],
                 { important: held, category: 'interview' }
             );
@@ -167,8 +203,11 @@ export function processInterviews(ctx: SimContext) {
     // promising a short Games has made a first impression on twenty-three
     // people, and it is not a warm one.
     cast.forEach(t => {
-        const hostile = t.interviewStrategy === 'The Ruthless Warrior' || t.interviewStrategy === 'The Arrogant Brute';
-        const warm = t.interviewStrategy === 'The Star-Crossed Lover' || t.interviewStrategy === 'The Humble Underdog';
+        const hostile = t.interviewStrategy === 'The Ruthless Warrior' || t.interviewStrategy === 'The Arrogant Brute'
+            || t.interviewStrategy === 'The Silent Threat' || t.interviewStrategy === 'The Cold Strategist';
+        const warm = t.interviewStrategy === 'The Star-Crossed Lover' || t.interviewStrategy === 'The Humble Underdog'
+            || t.interviewStrategy === 'The Grieving Sibling' || t.interviewStrategy === 'The Reluctant Hero'
+            || t.interviewStrategy === 'The District Loyalist';
         if (!hostile && !warm) return;
         cast.forEach(other => {
             if (other.id === t.id) return;
@@ -177,7 +216,8 @@ export function processInterviews(ctx: SimContext) {
         });
     });
 
-    const boldest = cast.filter(t => t.interviewStrategy === 'The Ruthless Warrior' || t.interviewStrategy === 'The Arrogant Brute');
+    const boldest = cast.filter(t => t.interviewStrategy === 'The Ruthless Warrior' || t.interviewStrategy === 'The Arrogant Brute'
+        || t.interviewStrategy === 'The Silent Threat' || t.interviewStrategy === 'The Cold Strategist');
     if (boldest.length > 0) {
         ctx.logEvent(
             `The Capitol replays the threats all night. ${boldest.map(t => t.name).join(', ')} will walk into that arena with a target already painted on.`,

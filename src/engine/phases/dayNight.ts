@@ -3,7 +3,7 @@ import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
 import { CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, SPONSORS } from '../../data/balance';
-import { AMBIENT_TEXTS, ENCOUNTER_TEXTS } from '../../data/flavorText';
+import { AMBIENT_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
@@ -28,6 +28,7 @@ import {
 } from '../encounters';
 import { tickPersistentMutts } from '../mutts';
 import { restockCornucopia, rollAmbientZoneEffects, tickZoneEffects } from '../zoneEffects';
+import { gamemakerProfile } from '../../data/gamemakers';
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 
@@ -50,8 +51,15 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
     // Occasional scene-setting line so the feed reads like a broadcast, not a spreadsheet.
     if (ctx.rng.chance(ENCOUNTERS.ambientLineChance)) {
-        const pool = ctx.rng.chance(ENCOUNTERS.ambientArenaShare) ? flavor.ambient : AMBIENT_TEXTS;
-        ctx.logEvent(ctx.pickText(pool), [], { category: 'arena' });
+        // CONTENT-03: a slice of these read the run's actual state — who's
+        // still alive, who the Capitol is watching — instead of being pure
+        // scenery, so the broadcast tracks the story it is telling.
+        if (ctx.rng.chance(ENCOUNTERS.dynamicAmbientShare)) {
+            ctx.logEvent(dynamicAmbientLine(ctx), [], { category: 'arena' });
+        } else {
+            const pool = ctx.rng.chance(ENCOUNTERS.ambientArenaShare) ? flavor.ambient : AMBIENT_TEXTS;
+            ctx.logEvent(ctx.pickText(pool), [], { category: 'arena' });
+        }
     }
 
     // 0. The audience decides how much arena the tributes get to keep.
@@ -215,7 +223,12 @@ function updateAudienceInterest(ctx: SimContext, time: 'day' | 'night') {
 
     if (ctx.state.escalationDay !== undefined) return;
 
-    const bored = ctx.state.day >= ESCALATION.boredomEarliestDay && interest < ESCALATION.boredomThreshold;
+    // CONTENT-10: the Head Gamemaker's patience is part of the number, not just
+    // the crowd's. A patient Gamemaker (Plutarch, Larkspur) tolerates a quieter
+    // Games than an impatient one (Ivo) will stand for.
+    const gm = gamemakerProfile(ctx.state.headGamemaker);
+    const threshold = ESCALATION.boredomThreshold * gm.boredomMultiplier;
+    const bored = ctx.state.day >= ESCALATION.boredomEarliestDay && interest < threshold;
     const scheduled = ctx.state.day >= ESCALATION.startDay;
     if (!bored && !scheduled) return;
 
@@ -229,6 +242,18 @@ function updateAudienceInterest(ctx: SimContext, time: 'day' | 'night') {
             { important: true, category: 'gamemaker' }
         );
     }
+}
+
+/** Fills in a state-aware ambient line: who's alive, who's fallen, who the Capitol favours. */
+function dynamicAmbientLine(ctx: SimContext): string {
+    const alive = getAlive(ctx.state);
+    const fallen = ctx.state.tributes.length - alive.length;
+    const favourite = [...alive].sort((a, b) => b.sponsorTrust - a.sponsorTrust)[0];
+    return ctx.pickText(DYNAMIC_AMBIENT_TEXTS)
+        .split('{alive}').join(String(alive.length))
+        .split('{fallen}').join(String(fallen))
+        .split('{day}').join(String(ctx.state.day))
+        .split('{favourite}').join(favourite ? `${favourite.name} of District ${favourite.district}` : 'nobody in particular');
 }
 
 /** Hazard escalation and safe-zone shrinking. Returns whether it is active. */
@@ -439,7 +464,8 @@ function resolveEncounters(
         let muttChance = ENCOUNTERS.baseMuttChance * zoneDanger;
         if (isEscalated) {
             const escalatedSince = ctx.state.escalationDay ?? ESCALATION.startDay;
-            const multiplier = 1 + (ctx.state.day - escalatedSince) * ESCALATION.hazardMultiplierPerDay;
+            const gm = gamemakerProfile(ctx.state.headGamemaker);
+            const multiplier = (1 + (ctx.state.day - escalatedSince) * ESCALATION.hazardMultiplierPerDay) * gm.hazardMultiplier;
             eventChance = Math.min(ESCALATION.hazardCeiling, eventChance * multiplier);
             muttChance = Math.min(ESCALATION.hazardCeiling, muttChance * multiplier);
         }

@@ -79,26 +79,65 @@ const GENERIC_ACTIONS: ArenaActions = {
         '{tribute} combs {zone} and turns up {item}.',
         '{tribute} works a hunch in {zone} and recovers {item}.',
         '{tribute} digs through the scrub of {zone} and pockets {item}.',
+        '{tribute} checks a spot in {zone} they remembered from a day ago and finds {item} still there.',
+        '{tribute} works {zone} systematically, corner to corner, and comes away with {item}.',
+        '{tribute} gets lucky in {zone} and turns up {item} on the first pass.',
+        '{tribute} spends longer than they meant to in {zone} and leaves with {item} to show for it.',
+        '{tribute} follows a hunch off the obvious path through {zone} and it pays off: {item}.',
+        '{tribute} works {zone} on hands and knees and comes up with {item}.',
+        '{tribute} checks the ground in {zone} the way someone taught them once, and finds {item}.',
+        '{tribute} takes the long way through {zone} and it turns up {item} nobody else would have found.',
+        '{tribute} risks a longer look at {zone} than feels safe, and it turns up {item}.',
     ],
     rest: [
         '{tribute} makes camp in {zone} and lets their muscles unknot.',
         '{tribute} rations out a quiet hour in {zone}, listening for footsteps.',
         '{tribute} sharpens what gear they have and waits out the hour in {zone}.',
+        '{tribute} sits with their back against something solid in {zone} and just breathes for a while.',
+        '{tribute} takes stock of what they are carrying in {zone} and repacks it more carefully.',
+        '{tribute} lets the hour pass in {zone} without doing much of anything, which is its own kind of victory.',
+        '{tribute} checks their own injuries in {zone}, methodically, and does what they can about them.',
+        '{tribute} watches the light change over {zone} and tries not to think about the day count.',
+        '{tribute} goes still in {zone} and lets their heart rate come back down.',
+        '{tribute} spends the hour in {zone} rehearsing what they will do if someone finds them.',
+        '{tribute} eats slowly in {zone}, making it last longer than it needs to.',
+        '{tribute} rests in {zone} with one eye open the entire time.',
     ],
     hide: [
         '{tribute} folds themselves into the cover of {zone} and stops moving.',
         '{tribute} goes to ground in {zone}, breathing through their sleeve.',
         '{tribute} holds absolutely still in {zone} until the danger passes.',
+        '{tribute} presses into the deepest cover {zone} has and waits it out.',
+        '{tribute} counts their own heartbeats in {zone} to keep from moving.',
+        '{tribute} goes quiet in {zone} and lets the world walk past.',
+        '{tribute} finds the one spot in {zone} nobody would think to check, and takes it.',
+        '{tribute} stays low in {zone}, tracking every sound without moving toward any of them.',
+        '{tribute} waits out the hour in {zone}, motionless, letting the arena decide it is empty.',
+        '{tribute} tucks into {zone} and does not so much as shift their weight for an hour.',
     ],
     hunt: [
         '{tribute} sweeps {zone} looking for a fight and finds only wind.',
         '{tribute} circles {zone} with a weapon drawn, hunting for prey.',
         '{tribute} sets an ambush in {zone}, but nobody walks into it.',
+        '{tribute} works the edges of {zone}, patient, and comes up with nothing.',
+        '{tribute} tracks a set of prints through {zone} until they vanish on harder ground.',
+        '{tribute} stalks {zone} for the better part of an hour and finds it empty.',
+        '{tribute} reads the traffic through {zone} and decides it is not worth the wait today.',
+        '{tribute} takes up a position overlooking {zone} and watches nothing happen.',
+        '{tribute} hunts {zone} the way they were taught, and the arena simply does not cooperate.',
+        '{tribute} moves through {zone} loud on purpose, daring somebody to notice. Nobody does.',
     ],
     travel: [
         '{tribute} moves out toward {zone}.',
         '{tribute} picks a new line and crosses into {zone}.',
         '{tribute} breaks camp and heads for {zone}.',
+        '{tribute} covers ground quickly, putting {zone} behind them before the light changes.',
+        '{tribute} takes the harder path into {zone} on purpose, because the easy one is too obvious.',
+        '{tribute} moves toward {zone} at a pace that will not exhaust them before they get there.',
+        '{tribute} crosses into {zone} without incident, which is its own small relief.',
+        '{tribute} picks their way carefully toward {zone}, watching the ground as much as the treeline.',
+        '{tribute} makes for {zone} with everything they own on their back.',
+        '{tribute} leaves the last place behind and does not look back on the way to {zone}.',
     ],
 };
 
@@ -1470,12 +1509,152 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     },
 };
 
+
+/**
+ * CONTENT-01: events every arena gets, on top of its own authored roster.
+ *
+ * The arena-specific pools ran ~9 events each, thin enough that a full run
+ * visibly repeats them, and skewed hard toward punishment. This pool is
+ * terrain-general rather than arena-specific — it does not know it is in the
+ * Frozen Wasteland or the Toxic Swamps — but it doubles what every arena has
+ * to draw from, and about a third of it is a real boon rather than a hazard.
+ *
+ * Magnitudes are kept modest on purpose: a heal or a hit large enough to swing
+ * a tribute across a stance threshold on its own turns this pool into a
+ * second, uncoordinated stance system fighting the real one.
+ */
+const UNIVERSAL_EVENTS: ArenaEventDef[] = [
+    {
+        text: '{tribute} finds a small cache the Gamemakers clearly meant for someone else in {zone} — a little food, a little water, half-buried and untouched.',
+        escapeText: '',
+        cause: '',
+        heal: 5,
+        feed: 18,
+        quench: 15,
+    },
+    {
+        text: '{tribute} stumbles onto a pocket of untouched forage in {zone} that nobody else has found yet.',
+        escapeText: '',
+        cause: '',
+        feed: 20,
+        quench: 10,
+    },
+    {
+        text: 'A parachute nobody claimed drifts down into {zone} and {tribute} is the only one there to take it.',
+        escapeText: '',
+        cause: '',
+        grantItem: 'water',
+    },
+    {
+        text: '{tribute} finds a sheltered pocket in {zone} and gets a decent hour of rest in.',
+        escapeText: '',
+        cause: '',
+        heal: 6,
+        fatigue: -12,
+    },
+    {
+        text: '{tribute} catches sight of the arena from higher ground in {zone} and, for a moment, knows exactly where everyone dangerous probably is.',
+        escapeText: '',
+        cause: '',
+        sanity: -2,
+    },
+    {
+        text: 'A sinkhole opens without warning under {tribute} in {zone}.',
+        escapeText: '{tribute} feels the ground give in {zone} and throws themselves clear before it opens fully.',
+        cause: 'Fell into a collapsing sinkhole',
+        dodgeStat: 'agility',
+        damage: 16,
+        bleeding: true,
+        terrains: ['open', 'wetland', 'ruins'],
+    },
+    {
+        text: 'A swarm of stinging insects finds {tribute} in {zone} and will not be outrun easily.',
+        escapeText: '{tribute} gets downwind of the swarm in {zone} before it finds them properly.',
+        cause: 'Stung to death by a swarm',
+        dodgeStat: 'agility',
+        dodgeAlt: 'intelligence',
+        damage: 10,
+        infected: true,
+        terrains: ['forest', 'wetland', 'open'],
+    },
+    {
+        text: 'The ground gives way to old, buried wire in {zone} and {tribute} is caught in it before they see it.',
+        escapeText: '{tribute} spots the wire snarled through {zone} and steps wide of it.',
+        cause: 'Caught in buried wire',
+        dodgeStat: 'intelligence',
+        damage: 8,
+        bleeding: true,
+        terrains: ['ruins', 'open'],
+    },
+    {
+        text: 'Something large moves through {zone} at speed and is gone before {tribute} can be sure what it was. Whatever it was, it was not interested — this time.',
+        escapeText: '',
+        cause: '',
+        sanity: -4,
+    },
+    {
+        text: '{tribute} finds solid tracks through {zone} and makes better time than the terrain should allow.',
+        escapeText: '',
+        cause: '',
+        fatigue: -8,
+    },
+    {
+        text: 'A gust catches {tribute} exposed on high ground in {zone} and very nearly takes them off it.',
+        escapeText: '{tribute} gets low in {zone} before the gust hits properly.',
+        cause: 'Fell from high ground',
+        dodgeStat: 'agility',
+        dodgeAlt: 'strength',
+        damage: 14,
+        bleeding: true,
+        terrains: ['highland'],
+    },
+    {
+        text: 'A rockslide catches {tribute} crossing {zone} at exactly the wrong moment.',
+        escapeText: '{tribute} hears the slope shift in {zone} and clears it in time.',
+        cause: 'Buried in a rockslide',
+        dodgeStat: 'agility',
+        damage: 18,
+        bleeding: true,
+        terrains: ['highland', 'ruins'],
+    },
+    {
+        text: '{tribute} finds a patch of wild edibles in {zone} that even the survivalist archetype would call a good day.',
+        escapeText: '',
+        cause: '',
+        feed: 14,
+    },
+    {
+        text: 'A trapdoor of loose brush gives way under {tribute} in {zone}, dropping them hard.',
+        escapeText: '{tribute} tests the ground in {zone} before trusting their full weight to it.',
+        cause: 'Fell through concealed ground',
+        dodgeStat: 'intelligence',
+        dodgeAlt: 'agility',
+        damage: 12,
+        bleeding: true,
+        terrains: ['forest', 'wetland', 'ruins'],
+    },
+    {
+        text: 'The temperature drops hard and fast around {tribute} in {zone}, with no warning at all.',
+        escapeText: '{tribute} finds cover in {zone} before the cold really sets in.',
+        cause: 'Caught in a sudden freeze',
+        dodgeStat: 'intelligence',
+        frostbitten: true,
+        fatigue: 10,
+        terrains: ['highland', 'open'],
+    },
+];
+
 export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {
     // A procedural arena has no hand-authored entry here — it used to fall
     // back to one of four fixed pre-written packs, so every rainforest arena
     // read as the same rainforest regardless of the zones it actually rolled.
     // `proceduralArenaFlavor` composes flavour from the tags the generated
     // arena's zones actually carry.
-    if (arena && arenaId.startsWith('procedural-')) return proceduralArenaFlavor(arena);
-    return ARENA_FLAVOR[arenaId] ?? GENERIC_ARENA_FLAVOR;
+    if (arena && arenaId.startsWith('procedural-')) return withUniversalEvents(proceduralArenaFlavor(arena));
+    return withUniversalEvents(ARENA_FLAVOR[arenaId] ?? GENERIC_ARENA_FLAVOR);
+}
+
+/** Merges the shared event pool into an arena's authored one. Never mutates the source. */
+function withUniversalEvents(flavor: ArenaFlavor): ArenaFlavor {
+    return { ...flavor, events: [...flavor.events, ...UNIVERSAL_EVENTS] };
 }

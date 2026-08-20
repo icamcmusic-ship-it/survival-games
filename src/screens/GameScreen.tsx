@@ -403,6 +403,11 @@ export function GameScreen({
                             <div className="eyebrow mt-1">Fallen</div>
                         </div>
                     </div>
+                    {gameState.headGamemaker && (
+                        <p className="text-[11px] text-[var(--color-ink-500)] mt-2" title="Chosen at the reaping. Their patience and their hazard appetite shape the whole run.">
+                            Head Gamemaker: <span className="text-[var(--ink)] font-semibold">{gameState.headGamemaker}</span>
+                        </p>
+                    )}
                     {gameState.audienceInterest !== undefined && (
                         <Explainer
                             align="left"

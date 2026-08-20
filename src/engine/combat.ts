@@ -17,10 +17,24 @@ import { reachBonus } from './physique';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
+import { PREGAMES } from '../data/balance';
 import { armourOf, effectiveDamage, wearArmour } from './items';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
+
+/**
+ * CONTENT-05: which pool of environmental death prose fits this particular
+ * death. Priority order matters — a fan-favourite twelve-year-old dying alone
+ * is a child death first, everything else is colour on top of it.
+ */
+function pickEnvironmentalDeathPool(victim: Tribute, witness: Tribute | undefined) {
+    if (victim.age <= PREGAMES.childAge) return DEATH_TEXTS.environmentalChild;
+    if (victim.fanFavourite) return DEATH_TEXTS.environmentalFanFavourite;
+    if (witness) return DEATH_TEXTS.environmentalWitnessed;
+    if (victim.isCareer) return DEATH_TEXTS.environmentalCareer;
+    return DEATH_TEXTS.environmentalAlone;
+}
 
 /** Damage kinds a worn piece of armour can actually do anything about. */
 const ARMOURED_DAMAGE: DamageRecord['kind'][] = ['tribute', 'mutt', 'hazard', 'arena', 'gamemaker'];
@@ -371,8 +385,15 @@ export function resolveCombat(
             const loser = edge > 0 ? t2 : t1;
             const weapon = edge > 0 ? w1 : w2;
             landHit(ctx, winner, loser, Math.abs(edge), weapon, damageMultiplier);
+            // CONTENT-04: situational exchange lines. A hit on someone already
+            // barely standing reads differently than an opening blow, and a
+            // rematch between two people who have done this before should say so.
+            const rematchLine = ensureMemory(winner).rivals?.[loser.id]?.fights ?? 0;
+            const pool = loser.health <= COMBAT.finishingHealthThreshold ? DUEL_TEXTS.exchangeFinishing
+                : rematchLine >= RIVALRY.feudAtFights ? DUEL_TEXTS.exchangeRematch
+                : DUEL_TEXTS.exchange;
             ctx.logEvent(
-                fill(ctx.pickText(DUEL_TEXTS.exchange), { winner: winner.name, loser: loser.name, zone: winner.zone }),
+                fill(ctx.pickText(pool), { winner: winner.name, loser: loser.name, zone: winner.zone }),
                 [winner.id, loser.id],
                 { category: 'combat' }
             );
@@ -794,12 +815,17 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         }
     } else {
         victim.causeOfDeath = cause || victim.lastDamage?.cause || 'Died to environment';
-        const template = ctx.rng.pick(DEATH_TEXTS.environmental);
+        const witness = ctx.state.tributes.find(o =>
+            o.status === 'alive' && o.id !== victim.id && o.zone === victim.zone);
+        const pool = pickEnvironmentalDeathPool(victim, witness);
+        const template = ctx.pickText(pool);
         const text = template
             .split('{tribute}').join(victim.name)
             .split('{zone}').join(victim.zone)
-            .split('{cause}').join(victim.causeOfDeath);
-        ctx.logEvent(text, [victim.id], { important: true, category: 'death' });
+            .split('{cause}').join(victim.causeOfDeath)
+            .split('{age}').join(String(victim.age))
+            .split('{witness}').join(witness?.name ?? 'someone nearby');
+        ctx.logEvent(text, witness ? [victim.id, witness.id] : [victim.id], { important: true, category: 'death' });
     }
 
     // Watching someone kill is the single most frightening thing that can

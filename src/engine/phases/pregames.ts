@@ -9,6 +9,7 @@ import { addExcitement } from '../audience';
 import { adjustRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { legacyOf } from '../../data/districts';
+import { HEAD_GAMEMAKERS } from '../../data/gamemakers';
 
 /**
  * Everything between the bowl and the training floor.
@@ -41,6 +42,11 @@ export function processPreGames(ctx: SimContext) {
 
     const cast = getAlive(ctx.state);
     const districts = [...new Set(cast.map(t => t.district))].sort((a, b) => a - b);
+
+    // ---- 0. The Head Gamemaker ----
+    const headGamemaker = ctx.rng.pick(HEAD_GAMEMAKERS);
+    ctx.state.headGamemaker = headGamemaker.name;
+    ctx.logEvent(headGamemaker.openingLine, [], { important: true, category: 'gamemaker' });
 
     // ---- 1. The square ----
     districts.forEach(district => {
