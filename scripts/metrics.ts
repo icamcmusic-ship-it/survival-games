@@ -17,6 +17,7 @@ import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig, GameState, Stance, Tribute } from '../src/models/types';
+import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 
 const RUNS = 400;
 
@@ -30,8 +31,15 @@ const configs: GameConfig[] = [
 
 function start(seed: string, arenaId: string, config: GameConfig): GameState {
     const arena = arenaId.startsWith('procedural') ? generateArena(seed) : ARENAS.find(a => a.id === arenaId)!;
-    const tributes = generateTributes(seed, config, arena.zones[0].name);
-    return { seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: false, config, logCounter: 0, feastsHeld: 0, cycle: 0 };
+    // REPLAY-01: measure the game the player actually gets, which is their
+    // config multiplied through this year's announced temperament.
+    const gamesProfile = gamesProfileFor(seed);
+    const resolved = configForProfile(config, gamesProfile);
+    const tributes = generateTributes(seed, resolved, arena.zones[0].name);
+    return {
+        seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: false,
+        config: resolved, gamesProfile, logCounter: 0, feastsHeld: 0, cycle: 0,
+    };
 }
 
 /**
@@ -58,6 +66,7 @@ const deathsByCause: Record<string, number> = {};
 let deaths = 0;
 let victors = 0, victorKills = 0, victorZeroKills = 0, victorHealth = 0;
 let runs = 0, totalDays = 0;
+const runLengths: number[] = [];
 
 // Sampled once per cycle across every living tribute.
 let aliveSamples = 0, armedSamples = 0;
@@ -150,6 +159,7 @@ for (let i = 0; i < RUNS; i++) {
 
     runs++;
     totalDays += state.day;
+    runLengths.push(state.day);
     state.tributes.forEach(t => {
         if (t.status === 'dead') {
             deaths++;
@@ -196,7 +206,29 @@ interface Indicator {
 
 const asPct = (v: number) => `${(v * 100).toFixed(1)}%`;
 
+/** Standard deviation of run length, in days. */
+const runLengthSpread = (() => {
+    if (runLengths.length === 0) return 0;
+    const mean = runLengths.reduce((a, b) => a + b, 0) / runLengths.length;
+    return Math.sqrt(runLengths.reduce((a, d) => a + (d - mean) ** 2, 0) / runLengths.length);
+})();
+
 const indicators: Indicator[] = [
+    {
+        // REPLAY-01. Every run used to have the same shape: mean 8.0 days in a
+        // tight 5-14 band, same escalation schedule, same sponsor climate. A
+        // simulation sold on replayability cannot have one shape, so the spread
+        // of run lengths is the cheapest honest proxy for whether the Games
+        // actually differ from each other.
+        label: 'run length spread (days, sd)',
+        value: runLengthSpread,
+        guard: v => v >= 1.4,
+        guardText: '>= 1.4',
+        goal: '>= 2.0',
+        goalMet: v => v >= 2.0,
+        baseline: '1.1',
+        fmt: v => v.toFixed(2),
+    },
     {
         // SIDE-04. In the source material a 9 or a 10 marks you as a Career or
         // a genuine threat and the rest of the board sits in the middle. The

@@ -226,6 +226,12 @@ function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night'
     // The most famous parachute in the source material, doing the thing it is
     // famous for: keeping somebody alive through a night they should not survive.
     if (hasTool(t, 'warmth')) amount += RECOVERY.sleepingBagBonus;
+    // REPLAY-07 gave the night real teeth — a concealment bonus for whoever is
+    // hunting and an ambush bonus on top of it. This is the other half of that
+    // trade, without which the night is a flat tax on everybody: a tribute who
+    // deliberately goes to ground in the dark actually sleeps, because the dark
+    // is doing the hiding for them.
+    if (t.stance === 'Evasive' || hasCamp(ctx, t, 'camouflage')) amount += RECOVERY.darkAndHiddenBonus;
     // Someone keeping watch is the difference between sleeping and lying awake.
     if (alliesPresent > 0) amount += RECOVERY.allyWatchBonus;
     // Exhaustion eats the whole benefit as it approaches the ceiling.

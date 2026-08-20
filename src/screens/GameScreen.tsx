@@ -9,6 +9,7 @@ import { objectiveLabel } from '../engine/objectives';
 import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { ESCALATION } from '../data/balance';
 import { Explainer } from '../components/Explainer';
+import { ordinal } from '../engine/gamesProfile';
 
 type Speed = 'manual' | '1x' | '5x' | 'auto';
 
@@ -403,6 +404,22 @@ export function GameScreen({
                             <div className="eyebrow mt-1">Fallen</div>
                         </div>
                     </div>
+                    {gameState.gamesProfile && (
+                        <p className="text-[11px] text-[var(--color-ink-500)] mt-3" title={gameState.gamesProfile.temperament.blurb}>
+                            <span className="text-[var(--ink)] font-semibold">
+                                {ordinal(gameState.gamesProfile.gamesNumber)} Games
+                            </span>
+                            {' — '}{gameState.gamesProfile.temperament.name}
+                            {gameState.gamesProfile.wildcard.kind !== 'nothing' && (
+                                <span title={gameState.gamesProfile.wildcard.announcement}>
+                                    , with {gameState.gamesProfile.wildcard.name}
+                                    {gameState.gamesProfile.wildcard.day > 0
+                                        ? ` on day ${gameState.gamesProfile.wildcard.day}`
+                                        : ''}
+                                </span>
+                            )}
+                        </p>
+                    )}
                     {gameState.headGamemaker && (
                         <p className="text-[11px] text-[var(--color-ink-500)] mt-2" title="Chosen at the reaping. Their patience and their hazard appetite shape the whole run.">
                             Head Gamemaker: <span className="text-[var(--ink)] font-semibold">{gameState.headGamemaker}</span>

@@ -10,6 +10,7 @@ import { processFeast } from './phases/feast';
 import { processDayNight } from './phases/dayNight';
 import { processEpilogue } from './phases/epilogue';
 import { triggerGamemakerEvent as triggerGamemakerEventPhase } from './gamemaker';
+import { fireScheduledWildcard } from './wildcards';
 import { FEAST_TEXTS } from '../data/flavorText';
 
 const MAX_FEASTS = 2;
@@ -69,6 +70,12 @@ export class Simulator {
         }
 
         processAlliances(this.ctx);
+
+        // REPLAY-01: this year's one scheduled disruption. Fired here rather
+        // than inside the day phase because some wildcards change which phase
+        // today is — an early feast replaces the day, and the phase dispatch
+        // below has to see that.
+        if (this.state.phase === 'day') fireScheduledWildcard(this.ctx);
 
         if (this.state.phase === 'day') {
             processDayNight(this.ctx, 'day');

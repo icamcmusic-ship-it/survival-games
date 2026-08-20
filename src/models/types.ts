@@ -434,6 +434,8 @@ export interface GameConfig {
     enableSanity: boolean;
 }
 
+import type { GamesProfile } from '../engine/gamesProfile';
+
 export interface GameState {
     seed: string;
     arena: Arena;
@@ -474,6 +476,22 @@ export interface GameState {
     preGamesDone?: boolean;
     /** This run's Head Gamemaker. Chosen once, at the reaping. */
     headGamemaker?: string;
+    /**
+     * REPLAY-01: this year's Games, as announced. Rolled from the seed so a
+     * shared seed reproduces the same Games, not merely the same cast.
+     */
+    gamesProfile?: GamesProfile;
+    /** Guard so a scheduled wildcard fires exactly once. */
+    wildcardFired?: boolean;
+    /**
+     * Which half of the cycle is currently resolving.
+     *
+     * REPLAY-07: a night used to differ from a day by a fatigue modifier and
+     * one forest bonus. Concealment, awareness and ambush all care what time it
+     * is, and they are read from half a dozen call sites that have no business
+     * taking a `time` parameter — so the arena's clock lives on the state.
+     */
+    timeOfDay?: 'day' | 'night';
     /** Aggregate audience interest in the living field, recomputed each cycle. */
     audienceInterest?: number;
     /** Zone name -> deaths that have happened there, broadcast by the sky each night. */

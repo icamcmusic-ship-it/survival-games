@@ -167,6 +167,8 @@ export const TRAIT_EFFECTS = {
  * decision, not a default.
  */
 export const RECOVERY = {
+    /** Health a tribute recovers for spending the dark genuinely hidden. */
+    darkAndHiddenBonus: 5,
     /** Health an insulated sleeping bag adds to a night of real rest. */
     sleepingBagBonus: 6,
     /** Health returned by a full night of undisturbed rest. */
@@ -383,6 +385,19 @@ export const BLOODBATH = {
      * plate was.
      */
     runDownChance: 0.5,
+} as const;
+
+/**
+ * REPLAY-07: the anthem, as a nightly beat with weight rather than a UI card.
+ */
+export const ANTHEM = {
+    /** Excitement the whole field loses on a day that produced no cannon. */
+    quietDayExcitementCost: 6,
+    /** Relationship at which a name in the sky is a personal loss. */
+    grievableBond: 25,
+    sanityPerNamedLoss: 6,
+    /** Chance a personal loss gets its own line rather than being silent arithmetic. */
+    reactionChance: 0.5,
 } as const;
 
 export const ESCALATION = {
@@ -622,6 +637,14 @@ export const STEALTH = {
 
     /** Awareness: what it takes to notice someone who does not want noticing. */
     awarenessFromIntelligence: 0.5,
+    /**
+     * REPLAY-07: what the dark is worth. Deliberately the largest situational
+     * modifier in the system — a night should feel like a different game, not
+     * like a day with a fatigue penalty.
+     */
+    nightConcealment: 0.18,
+    nightAwarenessPenalty: 2.5,
+    nightAmbushBonus: 0.12,
     /** A lantern: you can see, and so can everyone else. */
     lightAwarenessBonus: 2,
     lightConcealmentPenalty: 0.12,
@@ -1227,6 +1250,21 @@ export const ODDS = {
 } as const;
 
 /** The Gamemakers' direct interventions. */
+/** REPLAY-01: the scheduled wildcard. See `engine/wildcards.ts`. */
+export const WILDCARD = {
+    /** Floor on what an unaddressed supply drop is worth picking up. */
+    dropMinValue: 15,
+    /** Excitement the crowd has banked while sponsorship was frozen. */
+    freezeLiftExcitement: 25,
+    /** Sanity cost of watching the arena's own machinery fail. */
+    malfunctionSanity: 12,
+    /** What a bounty is worth to the tribute it lands on. */
+    bountyExcitement: 60,
+    bountyTrust: 25,
+    /** How thoroughly a scheduled drought strips the arena's water. */
+    droughtDepletion: 0.85,
+} as const;
+
 export const GAMEMAKER = {
     /**
      * Multiplier applied to a manually triggered weather profile. A Gamemaker

@@ -5,11 +5,13 @@ import { Shuffle, FastForward } from 'lucide-react';
 import { REAPING_CROWDS } from '../data/pregames';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { Explainer } from '../components/Explainer';
+import { GamesProfile, ordinal, profileHeadline } from '../engine/gamesProfile';
 
-export function ReapingScreen({ tributes, arenaName, seed, onReroll, onConfirm }: {
+export function ReapingScreen({ tributes, arenaName, seed, profile, onReroll, onConfirm }: {
     tributes: Tribute[],
     arenaName: string,
     seed: string,
+    profile?: GamesProfile,
     onReroll: () => void,
     onConfirm: () => void,
 }) {
@@ -25,7 +27,9 @@ export function ReapingScreen({ tributes, arenaName, seed, onReroll, onConfirm }
         <div className="max-w-4xl mx-auto space-y-7">
             <div className="masthead dot-texture">
                 <span className="masthead-ghost" aria-hidden="true">02</span>
-                <span className="masthead-eyebrow">02 — {arenaName} · seed {seed}</span>
+                <span className="masthead-eyebrow">
+                    02 — {profile ? `${ordinal(profile.gamesNumber)} Games · ` : ''}{arenaName} · seed {seed}
+                </span>
                 <h2 className="masthead-title text-5xl md:text-6xl">The Reaping</h2>
                 <p className="masthead-sub text-sm">
                     {tributes.length} names have been drawn across {byDistrict.size} squares, and{' '}
@@ -37,6 +41,25 @@ export function ReapingScreen({ tributes, arenaName, seed, onReroll, onConfirm }
                     have to show you in the arena.
                 </p>
             </div>
+
+            {profile && (
+                <div className="panel p-4 space-y-2 animate-riseIn">
+                    <div className="eyebrow" style={{ color: 'var(--red)' }}>Capitol announcement</div>
+                    <p className="text-sm text-[var(--ink)] font-semibold">
+                        {profileHeadline(profile)}
+                    </p>
+                    <p className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
+                        {profile.temperament.blurb}
+                    </p>
+                    <p className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
+                        {profile.wildcard.announcement}
+                    </p>
+                    <p className="text-[11px] text-[var(--color-ink-500)] italic">
+                        Every Games is rolled from the seed — the temperament, the provision and the day it
+                        lands. Two runs on the same seed are the same Games; two runs on different seeds are not.
+                    </p>
+                </div>
+            )}
 
             <div className="flex justify-center gap-2">
                 <button onClick={onReroll} className="btn" title="Draw a different cast from a new sub-seed">

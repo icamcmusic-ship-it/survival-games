@@ -4,6 +4,7 @@ import { generateTributes } from '../engine/generator';
 import { generateArena } from '../engine/arenaGenerator';
 import { Simulator } from '../engine/simulator';
 import { createStore } from './createStore';
+import { configForProfile, gamesProfileFor } from '../engine/gamesProfile';
 import {
     SponsorResult, sendPlayerParachute, sponsorCost, sponsorableItems,
 } from '../engine/playerSponsor';
@@ -257,6 +258,11 @@ export const gameActions = {
         const startZone = arena.zones[0].name;
         const tributes = generateTributes(safeSeed, config, startZone);
 
+        // REPLAY-01: this year's Games are rolled from the seed and the
+        // player's config is multiplied through them, so a shared seed
+        // reproduces the same Games rather than merely the same cast.
+        const gamesProfile = gamesProfileFor(safeSeed);
+
         const initialState: GameState = {
             seed: safeSeed,
             arena,
@@ -265,7 +271,8 @@ export const gameActions = {
             day: 0,
             log: [],
             gamemakerMode,
-            config,
+            config: configForProfile(config, gamesProfile),
+            gamesProfile,
             logCounter: 0,
             feastsHeld: 0,
         };
@@ -290,7 +297,11 @@ export const gameActions = {
         const baseSeed = gameState.seed.split('~')[0];
         const newSeed = `${baseSeed}~${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
         const tributes = generateTributes(newSeed, gameState.config, gameState.arena.zones[0].name);
-        const newState: GameState = { ...gameState, seed: newSeed, tributes, log: [], logCounter: 0 };
+        // A rerolled cast is a rerolled Games: the sub-seed decides both.
+        const gamesProfile = gamesProfileFor(newSeed);
+        const newState: GameState = {
+            ...gameState, seed: newSeed, tributes, log: [], logCounter: 0, gamesProfile,
+        };
 
         gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });
         persistRun();
