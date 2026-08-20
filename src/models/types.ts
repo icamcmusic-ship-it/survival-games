@@ -220,6 +220,18 @@ export interface Tribute {
     /** Total stealth lost permanently to sanity breakdowns, capped rather than uncapped-frequency. */
     sanityStealthLoss?: number;
     /**
+     * The will to keep going, 0-100. Distinct from `vitals.sanity`: sanity is
+     * perception coming apart, resolve is whether they still want to win. See
+     * `engine/resolve.ts`.
+     */
+    resolve?: number;
+    /**
+     * Standing non-aggression pacts: other tribute id -> the cycle it expires
+     * on. Negotiated by `engine/parley.ts`; distinct from an alliance, which is
+     * a shared camp and shared supplies rather than an agreement not to fight.
+     */
+    truces?: Record<string, number>;
+    /**
      * How badly they are bleeding right now, 0-3. `injuries.bleeding` stays the
      * boolean "is there an open wound"; this is how fast it is running. A wound
      * clots down through the severities rather than draining a fixed 15 health

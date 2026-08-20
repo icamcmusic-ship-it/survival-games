@@ -67,6 +67,10 @@ let firesLit = 0, sheltersBuilt = 0, camouflaged = 0, weaponsPoisoned = 0;
 let zoneFiresStarted = 0, zoneFiresSpread = 0, zoneFloods = 0, zoneFreezes = 0;
 let zoneContaminations = 0, zoneFogs = 0, zoneStripped = 0, zoneSevered = 0;
 let borderTelegraphs = 0, cornucopiaRestocks = 0, muttEncounters = 0;
+// Newer systems: each needs evidence it actually fired across the sweep.
+let standoffs = 0, tributesPaid = 0, trucesStruck = 0;
+let resolveBreakdowns = 0, nightlockDeaths = 0;
+let signatureBeats = 0, calendarBeats = 0;
 let maxAbsRelationship = 0;
 
 for (let i = 0; i < 240; i++) {
@@ -155,6 +159,7 @@ for (let i = 0; i < 240; i++) {
   totalDays += state.day;
   totalLogs += state.log.length;
   if ((state.feastsHeld ?? 0) > 0) feastRuns++;
+  calendarBeats += (state.firedWildcards ?? []).length;
 
   const alive = state.tributes.filter(t => t.status === 'alive');
   if (alive.length > 1) note(`run ${seed} ended with ${alive.length} survivors`);
@@ -195,6 +200,12 @@ for (let i = 0; i < 240; i++) {
     if (/gets a fire going/.test(l.text)) firesLit++;
     if (/lashes together a shelter/.test(l.text)) sheltersBuilt++;
     if (/works mud and leaf litter/.test(l.text)) camouflaged++;
+    if (/^STANDOFF:|back out of the clearing|both decide, separately|stop pretending either of them will|neither turns their back|It is arithmetic\./.test(l.text)) standoffs++;
+    if (/is allowed to walk away|works out the price on their own|to get out of .* alive|before .* has finished closing|A toll, in everything but name/.test(l.text)) tributesPaid++;
+    if (/^TRUCE:/.test(l.text)) trucesStruck++;
+    if (/stops taking cover in|stops making plans/.test(l.text)) resolveBreakdowns++;
+    if (/takes out the nightlock/.test(l.text)) nightlockDeaths++;
+    if (/^THE CLOCK:|^THE VAULT GOES DARK:|^THE TIDE TURNS:|^STRUCTURAL FAILURE:|^THE SUN STALLS:|^THE COLD COMES DOWN:|^THE BOG EXHALES:|^THE FALL THICKENS:|^THE MIRROR:|^THE BLOOM:|A crossing parts two hundred metres up/.test(l.text)) signatureBeats++;
     if (/coats their .* with it/.test(l.text)) weaponsPoisoned++;
     // --- Relationships and alliances. ---
     if (/empties the group's stash|and watches them go|keeps their hand over the pocket|hears it, and keeps walking/.test(l.text)) exoticBetrayals++;
@@ -500,6 +511,12 @@ if (trapsTriggered === 0) note('no trap was ever spotted or sprung — traps are
 if (firesLit === 0) note('nobody ever lit a fire');
 if (sheltersBuilt === 0) note('nobody ever built a shelter');
 if (camouflaged === 0) note('nobody ever used camouflage');
+if (standoffs === 0) note('two armed strangers never once backed out of a fight');
+if (trucesStruck === 0) note('no truce was ever negotiated');
+if (tributesPaid === 0) note('nobody ever paid their way out of a fight');
+if (resolveBreakdowns === 0) note('no tribute ever ran out of the will to keep going');
+if (signatureBeats === 0) note('no arena signature mechanic ever fired');
+if (calendarBeats === 0) note('no scheduled calendar beat ever fired');
 if (weaponsPoisoned === 0) note('nobody ever poisoned a weapon');
 if (exoticBetrayals === 0) note('every betrayal was a knife — the other forms never fire');
 if (merges === 0) note('two alliances never merged');
@@ -532,6 +549,9 @@ console.log(`psychology: fear entries=${fearFelt} peakProficiency=${bestProficie
 console.log(`intentions: objectives formed=${objectivesFormed}`);
 console.log(`social: exoticBetrayals=${exoticBetrayals} merges=${merges} leaderChanges=${leadershipChanges} feuds=${feuds} freeForAlls=${freeForAlls}`);
 console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDefections=${careerDefections} cacheContributions=${cacheContributions}`);
+console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} truces=${trucesStruck}`);
+console.log(`resolve: breakdowns=${resolveBreakdowns} nightlock=${nightlockDeaths}`);
+console.log(`schedule: signatureBeats=${signatureBeats} calendarBeats=${calendarBeats}`);
 console.log(`fieldcraft: trapsSet=${trapsSet} trapsTriggered=${trapsTriggered} fires=${firesLit} shelters=${sheltersBuilt} camouflage=${camouflaged} poisonedWeapons=${weaponsPoisoned}`);
 console.log(`arena: zoneFires=${zoneFiresStarted} (spread ${zoneFiresSpread}) floods=${zoneFloods} freezes=${zoneFreezes} contaminations=${zoneContaminations} fogs=${zoneFogs} stripped=${zoneStripped} severed=${zoneSevered}`);
 console.log(`arena: borderTelegraphs=${borderTelegraphs} cornucopiaRestocks=${cornucopiaRestocks} muttEncounters=${muttEncounters}`);

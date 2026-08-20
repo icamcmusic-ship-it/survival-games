@@ -975,6 +975,13 @@ export const MEMORY = {
 
 /** Stance selection: thresholds plus the hysteresis that stops thrashing. */
 export const STANCE = {
+    /**
+     * How much of their apparent threat a tribute who played the training floor
+     * quiet keeps hidden. The whole payoff of `trainingStrategy: 'conceal'`:
+     * strangers read them as ~30% less dangerous than they are, until a kill or
+     * a fight gives the game away.
+     */
+    concealDiscount: 0.7,
     /** Minimum cycles a stance is held before it may change again. */
     minHold: 3,
     /** Score margin a challenger stance must beat the current one by. */
@@ -1464,4 +1471,91 @@ export const TRAINING = {
     careerRespect: 8,
     /** How much a high scorer's own confidence rises. */
     confidenceSanity: 6,
+} as const;
+
+/**
+ * Resolve: the will to keep going, as distinct from sanity.
+ *
+ * Sanity is perception coming apart. Resolve is intent — whether a tribute
+ * still wants to win. Nothing modelled that, so nobody could ever *choose* to
+ * stop, and the source material's most famous ending was unreachable.
+ *
+ * Deliberately slow: the drift numbers are per cycle and small, because a stat
+ * that swings inside one cycle is a mood rather than an arc.
+ */
+export const RESOLVE = {
+    start: 70,
+    max: 100,
+    /**
+     * Baseline erosion. The arena wears people down by default; the bonuses
+     * below are what holds a tribute up. Positive drift made resolve sit
+     * pinned at its starting value for ~90% of the field, which is a stat that
+     * exists rather than a stat that does anything.
+     */
+    driftPerCycle: -1.5,
+
+    /** Reasons to keep standing. */
+    allyBonus: 2,
+    vengeanceBonus: 1.5,
+    momentumBonus: 2,
+    watchedBonus: 1,
+    watchedExcitement: 45,
+
+    /** Reasons to stop. */
+    griefPenalty: 4,
+    griefWindow: 3,
+    isolationPenalty: 2,
+    woundedPenalty: 2.5,
+    woundedHealth: 40,
+    deprivationPenalty: 2,
+    deprivationThreshold: 70,
+    endgamePenalty: 1.5,
+    endgameFieldSize: 5,
+
+    /** Below this a tribute has stopped playing to win. */
+    brokenThreshold: 20,
+    /** Per-cycle odds a broken tribute actually acts on it. */
+    breakdownChance: 0.35,
+    /** Walking into the open is cathartic: it buys back a little will. */
+    breakdownRebound: 12,
+    /** Sitting down and stopping is not, and compounds instead. */
+    sittingDownPenalty: 4,
+    /** Taking the nightlock needs to be genuinely final, and is still rare. */
+    nightlockThreshold: 14,
+    nightlockChance: 0.3,
+    /** A tribute with nothing left can go looking for it where things grow. */
+    nightlockForageResources: 0.35,
+    nightlockFindChance: 0.4,
+} as const;
+
+/**
+ * Parley: talking instead of fighting.
+ *
+ * Two strangers meeting in a clearing had exactly two possibilities — a fight
+ * or a pleasantry. The far more common real outcome is a negotiation: backing
+ * out of it, paying to leave, or agreeing not to do this today. See
+ * `engine/parley.ts`.
+ */
+export const PARLEY = {
+    /** A power ratio below this means a tribute genuinely likes their odds. */
+    confidentRatio: 0.8,
+    /** A power ratio above this means they know they are losing. */
+    outmatchedRatio: 1.25,
+
+    /** Paying to be allowed to leave. */
+    tributeChance: 0.6,
+    tributeResentment: 12,
+    tributeExcitement: 8,
+    tributeSanityCost: 8,
+
+    /** An explicit, expiring non-aggression pact. */
+    truceChance: 0.4,
+    truceCycles: 4,
+    truceMinRegard: -5,
+    truceRegard: 8,
+
+    /** Both armed, neither willing to move first. */
+    standoffChance: 0.4,
+    standoffPerFear: 0.004,
+    standoffFatigue: 6,
 } as const;

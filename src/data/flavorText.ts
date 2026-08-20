@@ -1048,3 +1048,36 @@ export const INTERVIEW_CLOSERS = {
         "Caesar says {tribute}'s name warmly, twice, which is what he does when there is nothing else to say.",
     ],
 };
+
+/**
+ * Parley: the outcomes that are neither a fight nor a friendship. See
+ * `engine/parley.ts` — a standoff, a payment, or an agreement with a clock on it.
+ */
+export const PARLEY_TEXTS = {
+    standoff: [
+        '{t1} and {t2} see each other at the same instant in {zone}. Weapons come up. Nobody closes. They back out of the clearing the way they came in, watching each other the whole way.',
+        'STANDOFF: {t1} and {t2} hold twenty feet apart in {zone} for a very long minute, and then both decide, separately, that today is not the day.',
+        '{t1} and {t2} circle each other in {zone} without ever committing. Two people who have both done the arithmetic and both got the same answer.',
+        'Neither {t1} nor {t2} wants to be the one who moves first in {zone}. Eventually they stop pretending either of them will.',
+        '{t1} raises a hand — not a weapon, a hand — and {t2} lets them walk. It is not mercy. It is arithmetic.',
+        'STANDOFF: {zone} holds two armed tributes and no fight. {t1} and {t2} leave by different routes and neither turns their back.',
+    ],
+    tribute: [
+        '{weak} hands {strong} {item} in {zone} and is allowed to walk away. Everybody watching understands exactly what just happened.',
+        '{strong} does not have to say anything in {zone}. {weak} works out the price on their own and pays it: {item}, handed over, no argument.',
+        'It costs {weak} {item} to get out of {zone} alive. {strong} takes it without a word and lets them go.',
+        '{weak} offers {item} before {strong} has finished closing the distance in {zone}. The Capitol finds this very entertaining.',
+        'A toll, in everything but name: {weak} gives up {item} in {zone}, and {strong} steps aside.',
+    ],
+    truce: [
+        'TRUCE: {t1} and {t2} agree, out loud and in {zone}, not to do this. Neither of them says for how long, and both of them are counting.',
+        'TRUCE: {t1} makes the offer in {zone} and {t2} takes it. Not allies. Just two people who would both rather it were somebody else.',
+        'TRUCE: whatever {t1} and {t2} say to each other in {zone}, they both lower their weapons at the end of it.',
+        'TRUCE: {t1} and {t2} shake on nothing in {zone} — no alliance, no camp, no shared food. Only an agreement that today is not the day.',
+    ],
+    truceHeld: [
+        '{t1} and {t2} pass each other in {zone} and neither reaches for anything. The agreement is holding.',
+        '{t1} and {t2} nod once in {zone} and keep walking. Whatever they agreed, it is still worth more than the fight.',
+        'There is a truce between {t1} and {t2}, and in {zone} it holds for one more day.',
+    ],
+};

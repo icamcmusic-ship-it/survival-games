@@ -8,6 +8,7 @@ import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
 import { addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
+import { hasTruce, tryParley } from './parley';
 import { giveItem, hasTool, itemPhrase, mintItem, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { attemptFieldDressing, clearBleeding, openWound, shouldDressWound } from './wounds';
@@ -355,8 +356,14 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         t.vitals.hunger = Math.max(0, t.vitals.hunger - 10);
         other.vitals.hunger = Math.max(0, other.vitals.hunger - 10);
         adjustMutual(ctx.state, t, other, 5);
+    } else if (hasTruce(ctx.state, t, other.id)) {
+        // An agreement with a clock on it outranks a bad mood, but not a sworn
+        // debt (handled above) and not the endgame arithmetic (below).
+        tryParley(ctx, t, other);
     } else if (t.stance === 'Aggressive' || other.stance === 'Aggressive' || relationship < -10) {
-        resolveCombat(ctx, t, other);
+        // Even a hostile meeting can end in a negotiation rather than a fight,
+        // if neither of them likes the odds enough to start one.
+        if (!tryParley(ctx, t, other)) resolveCombat(ctx, t, other);
     } else if (isDesperate(ctx, t, other)) {
         ctx.logEvent(
             fill(ctx.pickText(ENCOUNTER_TEXTS.desperation), vars),
@@ -364,6 +371,9 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
             { important: true, category: 'combat' }
         );
         resolveCombat(ctx, t, other);
+    } else if (tryParley(ctx, t, other)) {
+        // Two wary strangers who talked their way out of it — the outcome the
+        // encounter layer had no vocabulary for.
     } else if (ctx.rng.chance(0.5)) {
         ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.peaceful), vars), [t.id, other.id], { category: 'survival' });
     } else {

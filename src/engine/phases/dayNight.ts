@@ -29,6 +29,8 @@ import {
 import { tickPersistentMutts } from '../mutts';
 import { restockCornucopia, rollAmbientZoneEffects, tickZoneEffects } from '../zoneEffects';
 import { runArenaSignature } from '../arenaSignature';
+import { resolveBreakdowns, tickResolve } from '../resolve';
+import { decayTruces } from '../parley';
 import { gamemakerProfile } from '../../data/gamemakers';
 import { escalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
@@ -132,6 +134,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // cycles, independent of the ordinary per-cycle mutt roll.
     tickPersistentMutts(ctx);
 
+    // 4a. Whether anyone has stopped wanting to win. Resolve drifts on what
+    // this cycle actually did to them, then the ones who have run out act on it.
+    tickResolve(ctx);
+    resolveBreakdowns(ctx);
+
     // 4b. The arena's own rule — the clock, the tide, the blackout schedule.
     // Runs after movement and encounters so it acts on where tributes actually
     // ended up, and before upkeep so the effects it starts tick normally.
@@ -151,6 +158,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayRelationships(ctx.state);
     decayAllianceTrust(ctx.state);
     decayFear(ctx.state);
+    decayTruces(ctx.state);
     getAlive(ctx.state).forEach(t => {
         // Bloodlust cools. A kill on day 3 should not still be making someone
         // braver on day 8.
