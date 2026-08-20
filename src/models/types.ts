@@ -281,6 +281,9 @@ export interface Tribute {
     rattled?: number;
     /** §3.1: attribute points earned in the arena, per attribute, capped by DRIFT.maxGain. */
     attributeDrift?: { agility?: number; stealth?: number };
+    /** §5.3: a slow traversal in progress — a crossing or a climb. The tribute
+     *  stays in their origin zone until `remaining` cycles have been spent. */
+    transit?: { to: string; remaining: number };
     /** Skills that improve with successful use. See `Proficiency`. */
     proficiencies?: Partial<Record<Proficiency, number>>;
     /** What they are currently trying to do. See `Objective`. */
@@ -321,6 +324,12 @@ export interface Alliance {
     leaderId: string;
     memberIds: string[];
     formedCycle: number;
+    /**
+     * §4.5: what the broadcast calls them. An alliance with a name is a brand
+     * the crowd tracks — 'the Career pack' was the only group that ever had
+     * one, and only informally.
+     */
+    name?: string;
     /** Ground they return to and defend. */
     campZone?: string;
     /** Pooled supplies: a reason to stay, and a thing worth stealing. */
@@ -547,6 +556,8 @@ export interface GameState {
     bountyTargetId?: string;
     /** §7.1: set when the Games end with two victors. See engine/victory.ts. */
     victorIds?: string[];
+    /** §9.4: remaining purse per sponsor bloc, seeded lazily from generosity. */
+    sponsorBlocBudgets?: Record<string, number>;
     /** Day the most recent feast actually convened — guards against two feasts landing on the same day. */
     lastFeastDay?: number;
     /** Feasts already held this run, used to space them out. */

@@ -12,7 +12,7 @@ import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { openWound } from './wounds';
 import { profOf, trainProficiency, weaponAffinity, weaponProficiency } from './proficiency';
-import { addFear, fearFraction } from './fear';
+import { addFear, fearFraction, reduceFear } from './fear';
 import { areLovers } from './alliance';
 import { reachBonus } from './physique';
 import { addExcitement } from './audience';
@@ -286,6 +286,9 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     // Losing an exchange to someone is how you learn to be afraid of them
     // specifically — and how the attacker gets better at the weapon they used.
     addFear(defender, attacker.id, FEAR.lostExchange);
+    // §3.2: and landing one on somebody you had only heard stories about is
+    // how you learn the stories were bigger than the person.
+    reduceFear(attacker, defender.id, FEAR.realityCorrection);
     if (weapon) trainProficiency(attacker, weaponProficiency(weapon.weaponClass));
     clampTribute(defender);
     return damage;

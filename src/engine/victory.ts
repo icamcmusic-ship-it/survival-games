@@ -78,6 +78,18 @@ export function checkDualVictory(ctx: SimContext): [Tribute, Tribute] | undefine
 
 function crown(ctx: SimContext, a: Tribute, b: Tribute): [Tribute, Tribute] {
     ctx.state.victorIds = [a.id, b.id];
+    // The run ends here, so the alliance-phase reconciliation that would
+    // normally repair records next cycle never runs again. A pair whose
+    // third member (or leader) died in the final fight would otherwise leave
+    // a record led by a corpse. Fixed silently — no one elects a leader on
+    // the victory podium.
+    Object.values(ctx.state.alliances ?? {}).forEach(record => {
+        const living = ctx.state.tributes.filter(t => t.status === 'alive' && t.allianceId === record.id);
+        record.memberIds = living.map(t => t.id);
+        if (living.length >= 2 && !living.some(t => t.id === record.leaderId)) {
+            record.leaderId = living[0].id;
+        }
+    });
     return [a, b];
 }
 

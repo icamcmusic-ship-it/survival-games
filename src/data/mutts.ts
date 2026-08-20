@@ -242,6 +242,19 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
         },
     ],
 
+    warren: [
+        {
+            id: 'the-warden', name: 'The Warden',
+            // §8.3: one arena, one mutt — a single persistent horror instead of
+            // a roster. It never stops looking, and it owns the dark.
+            packSize: [1, 1], damage: 24, speed: 6,
+            fearAura: 10,
+            nocturnal: false,
+            persistent: true,
+            inflicts: { bleeding: true },
+        },
+    ],
+
     // Procedural biomes (src/engine/arenaGenerator.ts BIOMES ids).
     rainforest: [
         {

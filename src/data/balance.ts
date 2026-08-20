@@ -307,6 +307,16 @@ export const FEAR = {
     retreatWeight: 0.35,
     /** Destination score subtracted for a feared rival's last known position. */
     avoidWeight: 2.5,
+    /**
+     * §3.2: beliefs with error. A cannon one zone over is information a
+     * tribute acts on — and information they can get wrong. A near-miss
+     * observer gains fear of the killer at this reduced rate...
+     */
+    distantKill: 12,
+    /** ...and this often pins it on the wrong person entirely. */
+    misattributionChance: 0.3,
+    /** Landing a clean hit on someone you feared corrects the belief. */
+    realityCorrection: 8,
 } as const;
 
 /**
@@ -778,6 +788,8 @@ export const STEALTH = {
  * carries between cycles: find water, find somewhere to sleep.
  */
 export const MOVEMENT = {
+    /** §5.3: extra fatigue for completing a two-cycle crossing or climb. */
+    crossingFatigue: 8,
     /** Thirst above which finding water outranks everything else. */
     thirstUrgency: 45,
     waterSeekWeight: 7,
@@ -1077,6 +1089,11 @@ export const STANCE = {
 
 /** Relationship graph: bounds, decay, and the deltas life in the arena applies. */
 export const RELATIONSHIPS = {
+    /** §4.3: trust corrections applied on top of regard. See `trustOf`. */
+    trustStoodByBonus: 15,
+    trustBetrayedPenalty: 40,
+    trustSuspicionWeight: 0.4,
+    trustCreditorBonus: 10,
     min: -100,
     max: 100,
     /** Per-cycle pull toward zero for pairs with no contact. */

@@ -4,7 +4,7 @@ import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { getZone, severEdge, edgeKey } from './map';
 import { addZoneThreat, noteSighting } from './memory';
-import { startZoneEffect, hasEffect } from './zoneEffects';
+import { startZoneEffect, hasEffect, severRandomEdge } from './zoneEffects';
 import { openWound } from './wounds';
 import { clampTribute } from './vitals';
 import { BLEEDING, ESCALATION, MEMORY } from '../data/balance';
@@ -411,9 +411,39 @@ function sporefieldsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
 
 type Signature = (ctx: SimContext, cycle: number, rng: RNG) => void;
 
+/**
+ * §8.3: the Warren's rule — the tunnels move. Every fourth cycle a passage
+ * chokes shut somewhere; every eighth, the mountain settles and the old ways
+ * are open again. The map is a rumour down here.
+ */
+function warrenSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    if (cycle % 8 === 0 && (ctx.state.severedEdges?.length ?? 0) > 0) {
+        ctx.state.severedEdges = [];
+        ctx.logEvent(
+            'THE SHIFTING: the mountain settles with a sound like a held breath released. Every choked passage in the Warren stands open again — for now.',
+            [],
+            { important: true, category: 'arena' }
+        );
+        return;
+    }
+    if (cycle % 4 !== 0) return;
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return;
+    const zone = rng.pick(zones);
+    const cut = severRandomEdge(ctx, zone);
+    if (cut) {
+        ctx.logEvent(
+            `THE SHIFTING: dust runs, timbers groan, and the passage between ${zone} and ${cut} chokes shut. The Warren has redrawn itself.`,
+            [],
+            { important: true, category: 'arena' }
+        );
+    }
+}
+
 const SIGNATURES: Record<string, Signature> = {
     clockwork: clockworkSignature,
     vault: vaultSignature,
+    warren: warrenSignature,
     tempest: tempestSignature,
     canopy: canopySignature,
     solar: solarSignature,
@@ -434,6 +464,7 @@ export function hasSignature(arenaId: string): boolean {
 export const SIGNATURE_BLURBS: Record<string, string> = {
     clockwork: 'The clock: one sector is struck every cycle, in strict rotation, telegraphed a cycle ahead.',
     vault: 'The schedule: every third cycle every light in the complex fails at once.',
+    warren: 'The shifting: every fourth cycle a passage chokes shut; every eighth the mountain settles and reopens them all.',
     tempest: 'The tide: one sector floods every night, usually whichever one holds the most tributes.',
     canopy: 'The spans: a crossing parts every other cycle, permanently, and the map loses a route.',
     solar: 'Stalled noon: every day the sun holds still and open ground burns anyone standing on it.',

@@ -1,4 +1,5 @@
-import { Arena, GameState, Zone, ZoneFeatures } from '../models/types';
+import { Arena, GameState, Tribute, Zone, ZoneFeatures } from '../models/types';
+import { traitMod } from '../data/traits';
 import { ZONES } from '../data/balance';
 
 export function zoneNames(arena: Arena): string[] {
@@ -7,6 +8,24 @@ export function zoneNames(arena: Arena): string[] {
 
 export function getZone(arena: Arena, name: string): Zone | undefined {
     return arena.zones.find(z => z.name === name);
+}
+
+/**
+ * §5.3: distances are no longer uniform. Every edge used to be one hop, so a
+ * river crossing cost the same cycle a stroll did and a ten-zone arena was
+ * traversable in a handful of cycles. Entering water, wetland or highland is
+ * a two-cycle traversal — unless the tribute has the terrain in their blood
+ * (the district terrain affinities, `traitMod` 'water'/'highland'), in which
+ * case the crossing is ordinary ground to them.
+ */
+export function travelCost(t: Tribute, dest: Zone): number {
+    if (dest.terrain === 'water' || dest.terrain === 'wetland') {
+        return traitMod(t, 'water') > 0 ? 1 : 2;
+    }
+    if (dest.terrain === 'highland') {
+        return traitMod(t, 'highland') > 0 ? 1 : 2;
+    }
+    return 1;
 }
 
 /** Deterministic per-name hash in [0, 1), so derived features are stable per zone. */

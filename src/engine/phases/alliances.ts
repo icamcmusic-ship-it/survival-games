@@ -4,7 +4,7 @@ import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
 import { ALLIANCES, PROTECTOR_BOND, ROMANCE, SUSPICION } from '../../data/balance';
 import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
-import { adjustRel, getRel } from '../relationships';
+import { adjustRel, getRel, trustOf } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, suspicionOf } from '../memory';
 import { allianceOf, areLovers, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
@@ -193,7 +193,8 @@ export function processAlliances(ctx: SimContext) {
                 const t2 = stillAlive[j];
 
                 if (!t1.allianceId && !t2.allianceId) {
-                    const rel = getRel(t1, t2.id);
+                    // §4.3: joining someone is a trust decision, not a regard one.
+                    const rel = Math.min(trustOf(t1, t2), trustOf(t2, t1));
                     // Archetype chemistry: affinity of both parties plus pair compatibility
                     const affinity = (ARCHETYPES[t1.archetype].allianceAffinity + ARCHETYPES[t2.archetype].allianceAffinity) / 2
                 + (traitMod(t1, 'allianceAffinity') + traitMod(t2, 'allianceAffinity')) / 2;
@@ -291,8 +292,9 @@ export function processAlliances(ctx: SimContext) {
 
             // Both directions have to hold: the group has to want them, and
             // they have to want the group.
-            const groupOpinion = present.reduce((sum, m) => sum + getRel(m, candidate.id), 0) / present.length;
-            const theirOpinion = present.reduce((sum, m) => sum + getRel(candidate, m.id), 0) / present.length;
+            // §4.3: recruitment is trust in both directions.
+            const groupOpinion = present.reduce((sum, m) => sum + trustOf(m, candidate), 0) / present.length;
+            const theirOpinion = present.reduce((sum, m) => sum + trustOf(candidate, m), 0) / present.length;
             const distrust = distrustFactor(candidate);
             const threshold = ALLIANCES.recruitThreshold * distrust;
             if (groupOpinion < threshold || theirOpinion < threshold) return;
@@ -370,12 +372,14 @@ function mergeAlliances(ctx: SimContext) {
             const leadA = pickLeader(a);
             const leadB = pickLeader(b);
             const crossRegard = (x: Tribute[], y: Tribute[]) =>
-                x.reduce((sum, m) => sum + y.reduce((inner, o) => inner + getRel(m, o.id), 0) / y.length, 0) / x.length;
+                x.reduce((sum, m) => sum + y.reduce((inner, o) => inner + trustOf(m, o), 0) / y.length, 0) / x.length;
             // Two leaders who know and rate each other can shake on it directly;
             // otherwise the groups need to broadly get on — either basis opens
             // the negotiation, and dissenters walk instead of vetoing it.
-            const leadersAgree = getRel(leadA, leadB.id) >= ALLIANCES.mergeThreshold
-                && getRel(leadB, leadA.id) >= ALLIANCES.mergeThreshold;
+            // §4.3: a merger is negotiated on trust — two leaders who respect
+            // each other as fighters but not as sleeping company do not merge.
+            const leadersAgree = trustOf(leadA, leadB) >= ALLIANCES.mergeThreshold
+                && trustOf(leadB, leadA) >= ALLIANCES.mergeThreshold;
             const groupsAgree = crossRegard(a, b) >= ALLIANCES.mergeThreshold
                 && crossRegard(b, a) >= ALLIANCES.mergeThreshold;
             if (!leadersAgree && !groupsAgree) continue;
@@ -403,7 +407,7 @@ function mergeAlliances(ctx: SimContext) {
             groups.delete(keepId === ids[i] ? ids[j] : ids[i]);
 
             ctx.logEvent(
-                `${leadA.name} and ${leadB.name} shake on it in ${leadA.zone}: their groups run as one. ` +
+                `${leadA.name} and ${leadB.name} shake on it in ${leadA.zone}: ${allianceOf(ctx.state, ids[i])?.name ?? 'their group'} and ${allianceOf(ctx.state, ids[j])?.name ?? 'the other'} run as one. ` +
                 `Two small groups are one larger one, which is either much safer or much worse.`,
                 merged.map(m => m.id),
                 { important: true, category: 'alliance' }

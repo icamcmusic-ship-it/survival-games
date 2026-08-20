@@ -1,6 +1,8 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
-import { HUNTING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
+import { FEAR as FEAR_KNOBS, HUNTING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
 import { traitMod } from '../data/traits';
+import { addFear } from './fear';
+import { getZone } from './map';
 import { SimContext } from './context';
 
 /**
@@ -111,6 +113,7 @@ export function broadcastDeath(ctx: SimContext, victim: Tribute, killer?: Tribut
     state.zoneDeaths = state.zoneDeaths || {};
     state.zoneDeaths[zone] = (state.zoneDeaths[zone] || 0) + 1;
 
+    const killZone = getZone(state.arena, zone);
     state.tributes.forEach(other => {
         if (other.status !== 'alive' || other.id === victim.id) return;
         const witnessed = other.zone === zone;
@@ -118,6 +121,25 @@ export function broadcastDeath(ctx: SimContext, victim: Tribute, killer?: Tribut
         if (witnessed && killer && killer.id !== other.id) {
             // Seeing who did it is worth far more than hearing the cannon.
             noteSighting(state, other, zone, Math.max(1, rememberedRivals(state, other, zone)), rememberedBarren(state, other, zone));
+        }
+        // §3.2: a cannon one zone over is a belief, not an observation. The
+        // near-miss observer learns to fear a killer they did not see — and a
+        // share of the time they pin it on the wrong person entirely: whoever
+        // they last crossed paths with, or already dreaded. Nothing writes a
+        // false impression like a half-heard death. Direct contact (a landed
+        // hit — see reduceFear) is what corrects it.
+        if (!witnessed && killer && killer.id !== other.id
+            && killZone?.adjacent.includes(other.zone)
+            && ctx.rng !== undefined) {
+            if (ctx.rng.chance(FEAR_KNOBS.misattributionChance)) {
+                const suspects = state.tributes.filter(o =>
+                    o.status === 'alive' && o.id !== other.id && o.id !== killer.id && o.id !== victim.id
+                    && cyclesSinceContact(state, other, o.id) <= MEMORY.sightingLifetime * 2);
+                const suspect = suspects.length > 0 ? ctx.rng.pick(suspects) : undefined;
+                if (suspect) addFear(other, suspect.id, FEAR_KNOBS.distantKill);
+            } else {
+                addFear(other, killer.id, FEAR_KNOBS.distantKill);
+            }
         }
     });
 }

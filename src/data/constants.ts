@@ -223,6 +223,23 @@ export const ARENAS: Arena[] = [
             { name: 'The Commissary', terrain: 'open', danger: 0.45, resources: 0.6, adjacent: ['Dormitory Block', 'The Seed Vault'] },
             { name: 'The Sump', terrain: 'water', danger: 0.7, resources: 0.35, adjacent: ['The Cistern', 'The Turbine Hall'] },
         ]
+    },
+    {
+        // §8.3: deliberately a different shape — six zones, no water terrain
+        // at all, one mutt. Claustrophobia as a design, not a smaller copy.
+        id: 'warren',
+        name: 'The Warren',
+        description: 'A mine that was old before Panem was young: six chambers of tunnel and dust, no open sky, and no standing water anywhere. Everything a tribute drinks down here, somebody carried in. And something else lives in the dark.',
+        mutts: ['The Warden'],
+        events: ['Tunnel Collapse', 'Bad Air', 'The Shifting'],
+        zones: [
+            { name: 'The Cornucopia (The Hub)', terrain: 'open', danger: 0.6, resources: 0.45, adjacent: ['The Choke', 'The Root Gardens', 'The Dust Flats'] },
+            { name: 'The Choke', terrain: 'ruins', danger: 0.8, resources: 0.2, adjacent: ['The Cornucopia (The Hub)', 'The Old Workings', 'The Collapsed Galleries'] },
+            { name: 'The Root Gardens', terrain: 'forest', danger: 0.3, resources: 0.8, adjacent: ['The Cornucopia (The Hub)', 'The Collapsed Galleries'] },
+            { name: 'The Dust Flats', terrain: 'open', danger: 0.45, resources: 0.3, adjacent: ['The Cornucopia (The Hub)', 'The Old Workings'] },
+            { name: 'The Old Workings', terrain: 'highland', danger: 0.7, resources: 0.35, adjacent: ['The Choke', 'The Dust Flats'] },
+            { name: 'The Collapsed Galleries', terrain: 'ruins', danger: 0.65, resources: 0.5, adjacent: ['The Choke', 'The Root Gardens'] },
+        ]
     }
 ];
 
