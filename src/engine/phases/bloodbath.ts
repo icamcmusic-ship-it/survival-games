@@ -3,6 +3,7 @@ import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
+import { ALLIANCES } from '../../data/balance';
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { BLOODBATH_TEXTS } from '../../data/flavorText';
 import { giveItem, itemPhrase } from '../items';
@@ -20,7 +21,13 @@ export function startGames(ctx: SimContext) {
 }
 
 function initializeCareerAlliance(ctx: SimContext) {
-    const careers = getAlive(ctx.state).filter(t => t.isCareer);
+    const allCareers = getAlive(ctx.state).filter(t => t.isCareer);
+    // The pack is subject to the same ALLIANCES.maxSize cap as any other
+    // alliance — a career field bigger than that splits into a pack and
+    // stragglers rather than one oversized, permanently-outnumbering gang.
+    const careers = allCareers.length > ALLIANCES.maxSize
+        ? ctx.rng.shuffle(allCareers).slice(0, ALLIANCES.maxSize)
+        : allCareers;
     if (careers.length > 1) {
         const allianceId = `career-pack-${ctx.state.seed}`;
         careers.forEach(t => {

@@ -19,6 +19,28 @@ export function reachableZones(arena: Arena, from: string, collapsed: string[]):
     return neighbors.length > 0 ? neighbors : active.filter(z => z.name !== from);
 }
 
+/** Breadth-first search over the adjacency graph for the closest zone matching `safeNames`. */
+export function nearestSafeZone(arena: Arena, from: string, safeNames: string[]): string {
+    if (safeNames.includes(from)) return from;
+    const visited = new Set<string>([from]);
+    let frontier = [from];
+    while (frontier.length > 0) {
+        const next: string[] = [];
+        for (const name of frontier) {
+            const zone = getZone(arena, name);
+            if (!zone) continue;
+            for (const neighbor of zone.adjacent) {
+                if (visited.has(neighbor)) continue;
+                if (safeNames.includes(neighbor)) return neighbor;
+                visited.add(neighbor);
+                next.push(neighbor);
+            }
+        }
+        frontier = next;
+    }
+    return safeNames[0] ?? from;
+}
+
 /**
  * Zone economy.
  *

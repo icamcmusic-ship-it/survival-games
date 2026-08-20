@@ -134,7 +134,7 @@ export function processAlliances(ctx: SimContext) {
                 applyBetrayalFallout(ctx, betrayer, victim, members);
                 delete betrayer.allianceId; // Betrayer leaves
                 noteContact(ctx.state, betrayer, victim);
-                resolveCombat(ctx, betrayer, victim);
+                resolveCombat(ctx, betrayer, victim, false, true);
             }
         }
     });
@@ -259,6 +259,20 @@ export function processAlliances(ctx: SimContext) {
             if (currentRel >= 80 && !t1.traits.includes('Star-Crossed')) {
                 t1.traits.push('Star-Crossed');
                 t2.traits.push('Star-Crossed');
+
+                // Falling for a district partner pulls them out of whatever
+                // alliance they were already in — that departure needs its own
+                // event, not a silent headcount change for the group left behind.
+                [t1, t2].forEach(t => {
+                    if (t.allianceId && !t.allianceId.startsWith('lovers-')) {
+                        ctx.logEvent(
+                            fill(ctx.pickText(ALLIANCE_TEXTS.dissolve), { tribute: t.name }),
+                            [t.id],
+                            { category: 'alliance' }
+                        );
+                        delete t.allianceId;
+                    }
+                });
 
                 const bondId = `lovers-${dist}-${ctx.state.seed}`;
                 t1.allianceId = bondId;

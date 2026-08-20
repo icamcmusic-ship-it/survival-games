@@ -138,6 +138,8 @@ export interface Tribute {
     daysSurvived: number;
     /** The district's Games history, which decides the quality of their mentor. */
     mentorLegacy?: string;
+    /** Total stealth lost permanently to sanity breakdowns, capped rather than uncapped-frequency. */
+    sanityStealthLoss?: number;
 }
 
 export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland';

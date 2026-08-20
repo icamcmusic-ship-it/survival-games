@@ -44,8 +44,11 @@ export function applyDamage(
 export function checkDeath(ctx: SimContext, t: Tribute, fallbackCause?: string) {
     if (t.health > 0 || t.status !== 'alive') return;
     const record = t.lastDamage;
+    // Aliveness decides whether the killer gets credit for the kill, not
+    // whether they get credit for the wound — a mutual kill still has a true
+    // obituary even though the killer dropped in the same exchange.
     const killer = record?.sourceId
-        ? ctx.state.tributes.find(o => o.id === record.sourceId && o.status === 'alive')
+        ? ctx.state.tributes.find(o => o.id === record.sourceId)
         : undefined;
     if (killer) {
         killTribute(ctx, t, killer, false, undefined, record?.cause);
@@ -151,6 +154,16 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
         const site = ctx.rng.pick(['head', 'torso', 'arms', 'legs'] as const);
         defender.injuries[site] = true;
     }
+    // A Pyromaniac fights dirty with whatever burns — every landed hit has a
+    // real chance to leave the defender scorched, not just bruised.
+    if (attacker.traits.includes('Pyromaniac') && !defender.injuries.burned && ctx.rng.chance(COMBAT.pyromaniacBurnChance)) {
+        defender.injuries.burned = true;
+        ctx.logEvent(
+            `${attacker.name}'s strike leaves ${defender.name} scorched — Pyromaniacs make sure something is always burning.`,
+            [defender.id, attacker.id],
+            { category: 'injury' }
+        );
+    }
     if (weapon?.poison && ctx.rng.chance(COMBAT.poisonTransferChance) && !defender.injuries.poisoned) {
         defender.injuries.poisoned = true;
         ctx.logEvent(
@@ -173,7 +186,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
  * fight someone walked away from on purpose, which meant no fleeing, no
  * wearing an opponent down over two encounters, and no tension in a rematch.
  */
-export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBloodbath: boolean = false) {
+export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBloodbath: boolean = false, isBetrayal: boolean = false) {
     if (t1.status === 'dead' || t2.status === 'dead') return;
 
     // Star-crossed lovers refuse to fight each other!
@@ -185,9 +198,11 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
     noteContact(ctx.state, t1, t2);
 
     // The first argument is whoever found the other. If they found them from
-    // cover, the fight opens with a free hit rather than a fair exchange.
+    // cover, the fight opens with a free hit rather than a fair exchange. A
+    // betrayal is always an ambush — the knife was never a fair fight in the
+    // first place, whether or not the roll would have landed one.
     const zone = getZone(ctx.state.arena, t1.zone);
-    const ambushed = !isBloodbath && rollAmbush(ctx, t1, t2, zone);
+    const ambushed = !isBloodbath && (isBetrayal || rollAmbush(ctx, t1, t2, zone));
     if (ambushed) {
         const opener = bestWeapon(t1);
         const damage = landHit(ctx, t1, t2, STEALTH.ambushPowerBonus, opener, STEALTH.ambushDamageMultiplier);
@@ -327,11 +342,6 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     }
 
     const zone = fighters[0].zone;
-    ctx.logEvent(
-        fill(ctx.pickText(GROUP_COMBAT_TEXTS.open), { names: fighters.map(f => f.name).join(', '), zone }),
-        fighters.map(f => f.id),
-        { important: true, category: 'combat' }
-    );
 
     // Sides: the largest alliance present anchors one side, everyone hostile to
     // it forms the other. Loners with no stake pick whoever they hate less.
@@ -344,6 +354,12 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     allianceCounts.forEach((count, id) => {
         if (count > anchorSize) { anchorSize = count; anchorId = id; }
     });
+
+    // Star-crossed lovers refuse to fight each other — the trait promises that
+    // outright, so a bonded pair can never be assigned to opposite sides.
+    const isBonded = (a: Tribute, b: Tribute) =>
+        a.traits.includes('Star-Crossed') && b.traits.includes('Star-Crossed') && a.district === b.district;
+    const partnerOf = (a: Tribute) => fighters.find(o => o.id !== a.id && isBonded(a, o));
 
     const packSide: Tribute[] = [];
     const otherSide: Tribute[] = [];
@@ -362,7 +378,30 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             }
         });
     }
-    if (otherSide.length === 0) return; // Everyone present is on the same side.
+    // Reunite any bonded pair that ended up split across sides.
+    packSide.forEach(f => {
+        const partner = partnerOf(f);
+        if (partner && otherSide.includes(partner)) {
+            otherSide.splice(otherSide.indexOf(partner), 1);
+            packSide.push(partner);
+        }
+    });
+    if (otherSide.length === 0) {
+        // Everyone present is on the same side — no fight, but the reader
+        // still gets a line explaining why the near-miss came to nothing.
+        ctx.logEvent(
+            fill(ctx.pickText(GROUP_COMBAT_TEXTS.standDown), { names: fighters.map(f => f.name).join(', '), zone }),
+            fighters.map(f => f.id),
+            { category: 'combat' }
+        );
+        return;
+    }
+
+    ctx.logEvent(
+        fill(ctx.pickText(GROUP_COMBAT_TEXTS.open), { names: fighters.map(f => f.name).join(', '), zone }),
+        fighters.map(f => f.id),
+        { important: true, category: 'combat' }
+    );
 
     let rounds = 0;
     while (rounds < COMBAT.maxGroupRounds) {
@@ -372,7 +411,12 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         if (left.length === 0 || right.length === 0) break;
 
         const attackers = ctx.rng.chance(left.length / (left.length + right.length)) ? left : right;
-        const defenders = attackers === left ? right : left;
+        const rawDefenders = attackers === left ? right : left;
+        // Sides are reunited up front, but a bonded partner can still be
+        // pulled onto the opposing side later by a death or a retreat — this
+        // is the last line keeping the pair from being matched against each other.
+        const defenders = rawDefenders.filter(d => !attackers.some(a => isBonded(a, d)));
+        if (defenders.length === 0) break;
         const advantage = attackers.length - defenders.length;
 
         // Focus fire: the weakest defender, or a vengeance target if anyone has one.
@@ -453,36 +497,16 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     // tributes in the alliance roster and skewed betrayal targeting.
     const formerAlliance = victim.allianceId;
     delete victim.allianceId;
+    if (formerAlliance) {
+        const remaining = ctx.state.tributes.filter(t => t.status === 'alive' && t.allianceId === formerAlliance);
+        if (remaining.length < 2) remaining.forEach(m => delete m.allianceId);
+    }
 
     if (killer) {
-        killer.kills += 1;
-        killer.excitementRating += 20;
+        const killerAlive = killer.status === 'alive';
+        if (killerAlive) killer.kills += 1;
         victim.causeOfDeath = cause
             || (weapon ? `Killed by ${killer.name} (${weapon.name})` : `Killed by ${killer.name}`);
-
-        // Trauma Triggers
-        if (killer.traits.includes('Pacifist')) {
-            killer.vitals.sanity -= 40;
-            ctx.logEvent(`${killer.name} stares at what they have done and cannot stop shaking. This is not who they were.`, [killer.id], { category: 'sanity' });
-        } else if (!killer.isCareer) {
-            killer.vitals.sanity -= 10;
-        }
-        // Killing someone you were allied with is its own kind of wound.
-        if (formerAlliance && formerAlliance === killer.allianceId) {
-            killer.vitals.sanity -= 12;
-        }
-        // Vengeance discharged.
-        const mem = ensureMemory(killer);
-        if (mem.vengeance.includes(victim.id)) {
-            mem.vengeance = mem.vengeance.filter(id => id !== victim.id);
-            killer.vitals.sanity += 20;
-            killer.excitementRating += 30;
-            ctx.logEvent(
-                `${killer.name} settles the debt. ${victim.name} is dead, and whatever was driving ${killer.name} goes quiet.`,
-                [killer.id, victim.id],
-                { important: true, category: 'kill' }
-            );
-        }
 
         const weaponType = weapon ? weapon.id : 'unarmed';
         const templates = WEAPON_KILL_TEMPLATES[weaponType] || WEAPON_KILL_TEMPLATES['unarmed'];
@@ -494,24 +518,56 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             .split('{killer}').join(killer.name)
             .split('{victim}').join(victim.name);
 
-        if (weapon && weapon.durability !== undefined) weapon.durability -= 10;
+        // Everything below only matters for a killer who is still around to
+        // feel it, carry loot, or wear out gear.
+        if (killerAlive) {
+            killer.excitementRating += 20;
 
-        clampTribute(killer);
-
-        if (victim.inventory.length > 0) {
-            const spoils = victim.inventory;
-            victim.inventory = [];
-            const dropped = giveItem(killer, ...spoils);
-            const taken = spoils.filter(i => !dropped.includes(i));
-            const lootNames = taken.map(i => i.name).join(', ');
-            if (dropped.length > 0) {
+            // Trauma Triggers
+            if (killer.traits.includes('Pacifist')) {
+                killer.vitals.sanity -= 40;
+                ctx.logEvent(`${killer.name} stares at what they have done and cannot stop shaking. This is not who they were.`, [killer.id], { category: 'sanity' });
+            } else if (!killer.isCareer) {
+                killer.vitals.sanity -= 10;
+            }
+            // Killing someone you were allied with is its own kind of wound.
+            if (formerAlliance && formerAlliance === killer.allianceId) {
+                killer.vitals.sanity -= 12;
+            }
+            // Vengeance discharged.
+            const mem = ensureMemory(killer);
+            if (mem.vengeance.includes(victim.id)) {
+                mem.vengeance = mem.vengeance.filter(id => id !== victim.id);
+                killer.vitals.sanity += 20;
+                killer.excitementRating += 30;
                 ctx.logEvent(
-                    `${text} ${killer.name} takes what they can carry — ${lootNames || 'nothing they can use'} — and leaves ${dropped.map(i => i.name).join(', ')} in the dirt.`,
+                    `${killer.name} settles the debt. ${victim.name} is dead, and whatever was driving ${killer.name} goes quiet.`,
                     [killer.id, victim.id],
                     { important: true, category: 'kill' }
                 );
+            }
+
+            if (weapon && weapon.durability !== undefined) weapon.durability -= 10;
+
+            clampTribute(killer);
+
+            if (victim.inventory.length > 0) {
+                const spoils = victim.inventory;
+                victim.inventory = [];
+                const dropped = giveItem(killer, ...spoils);
+                const taken = spoils.filter(i => !dropped.includes(i));
+                const lootNames = taken.map(i => i.name).join(', ');
+                if (dropped.length > 0) {
+                    ctx.logEvent(
+                        `${text} ${killer.name} takes what they can carry — ${lootNames || 'nothing they can use'} — and leaves ${dropped.map(i => i.name).join(', ')} in the dirt.`,
+                        [killer.id, victim.id],
+                        { important: true, category: 'kill' }
+                    );
+                } else {
+                    ctx.logEvent(`${text} ${killer.name} strips the body: ${lootNames}.`, [killer.id, victim.id], { important: true, category: 'kill' });
+                }
             } else {
-                ctx.logEvent(`${text} ${killer.name} strips the body: ${lootNames}.`, [killer.id, victim.id], { important: true, category: 'kill' });
+                ctx.logEvent(text, [killer.id, victim.id], { important: true, category: 'kill' });
             }
         } else {
             ctx.logEvent(text, [killer.id, victim.id], { important: true, category: 'kill' });
