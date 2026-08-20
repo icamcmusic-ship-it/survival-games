@@ -621,6 +621,8 @@ export const COMBAT = {
 
     /** Relationship deltas produced by fighting. */
     grudgePerFight: 20,
+    /** Health below which an ally who fought beside you genuinely saved you. */
+    savedHealthThreshold: 35,
     grudgeOnWound: 8,
 } as const;
 
@@ -1093,6 +1095,18 @@ export const PROTECTOR_BOND = {
 } as const;
 
 export const ROMANCE = {
+    /** Odds a one-sided attachment gets played for the cameras instead. */
+    performedChance: 0.5,
+    /**
+     * Regard the smitten party needs. Deliberately below `threshold`: a
+     * performed bond does not need the mutual devotion a real one does, only
+     * one person who has fallen far enough to be convincing about it.
+     */
+    performedMinRegard: 70,
+    /** Charisma needed to sell a romance you are not feeling. */
+    performerCharisma: 6,
+    /** What the performer shows, as opposed to what they feel. */
+    performedDisplayedRegard: 75,
     /** Nothing before the bloodbath is over and the cast is real. */
     minDay: 2,
     /** Bond required before a romance is even considered. */
@@ -1558,4 +1572,58 @@ export const PARLEY = {
     standoffChance: 0.4,
     standoffPerFear: 0.004,
     standoffFatigue: 6,
+} as const;
+
+/**
+ * Debts and district bonds.
+ *
+ * `memory.stoodBy` recorded that somebody took a real risk for you and then
+ * nothing ever charged for it — a tribute pulled out of a fire on day two could
+ * knife their rescuer on day three at stranger's odds. And
+ * `RELATIONSHIPS.districtPartnerBase` seeded a district pair as acquaintances
+ * that the arena never escalated, so the strongest story the simulation could
+ * tell had no machinery behind it. See `engine/debts.ts`.
+ */
+export const DEBTS = {
+    max: 3,
+    /** What each kind of help is worth on the ledger. */
+    savedInFight: 2,
+    patchedUp: 1.5,
+    gaveSupplies: 1,
+
+    /** Turning on a creditor: multiplier on betrayal willingness, per point owed. */
+    betrayalResistPerPoint: 0.3,
+    minBetrayalMultiplier: 0.25,
+
+    /** Settling up. */
+    repayThreshold: 1,
+    repayChance: 0.25,
+    repayRegard: 12,
+    repayExcitement: 10,
+    repayRestRelief: 15,
+
+    /** District partners, simply for both still being here. */
+    districtBondPerCycle: 0.6,
+    districtLateBond: 2,
+    districtLateFieldSize: 8,
+    districtMilestoneRegard: 45,
+} as const;
+
+/**
+ * Alliance charters: the rules a group agrees to keep, and the fallout short of
+ * a betrayal when somebody breaks one. See `engine/allianceCharter.ts` — an
+ * alliance previously had only three exits (death, betrayal, pact expiry), so
+ * every disagreement had to escalate to a knife or not exist.
+ */
+export const CHARTER = {
+    /** Odds a group agrees to two clauses rather than one. */
+    twoClauseChance: 0.35,
+    /** Odds a given breach is actually noticed this cycle. */
+    noticeChance: 0.4,
+    /** What every other member's regard drops by when it is. */
+    breachRegardCost: 9,
+    /** Food items held privately that counts as hoarding. */
+    hoardingFood: 2,
+    /** Regard below which two members of the same group are visibly at odds. */
+    hostileRegard: -15,
 } as const;

@@ -6,8 +6,9 @@ import { ALLIANCES, PROTECTOR_BOND, ROMANCE } from '../../data/balance';
 import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact } from '../memory';
-import { allianceOf, areLovers, contributeToCache, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance } from '../alliance';
+import { allianceOf, areLovers, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
+import { betrayalReluctance } from '../debts';
 import { addExcitement } from '../audience';
 import { traitMod } from '../../data/traits';
 
@@ -38,8 +39,11 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
     if (candidates.length === 0) return undefined;
 
     const scored = candidates.map(m => {
-        // Star-crossed lovers are never a target.
-        const bonded = areLovers(betrayer, m);
+        // Star-crossed lovers are never a target — unless the betrayer is the
+        // one performing the romance, in which case the bond is a strategy and
+        // was never going to stop them. That asymmetry is the whole point of a
+        // performed bond existing.
+        const bonded = areLovers(betrayer, m) && !isPerforming(betrayer, m.id);
         if (bonded) return { m, weight: 0 };
 
         let weight = 1;
@@ -52,6 +56,9 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         if (ensureMemory(betrayer).betrayedBy.includes(m.id)) weight *= ALLIANCES.betrayedFirstStrikeWeight;
         // Someone who never stops watching is a much worse mark.
         weight *= Math.max(0.1, 1 - traitMod(m, 'betrayalResist'));
+        // And you do not knife the person who pulled you out of a fire. A debt
+        // was recorded and then never charged for — this is the charge.
+        weight *= betrayalReluctance(betrayer, m.id);
         return { m, weight: Math.max(0, weight) };
     }).filter(s => s.weight > 0);
 
@@ -407,6 +414,29 @@ function growRomance(ctx: SimContext) {
             adjustRel(t2, t1.id, growth);
 
             const mutual = Math.min(getRel(t1, t2.id), getRel(t2, t1.id));
+
+            // A PERFORMED bond: Star-Crossed in canon is a strategy before it
+            // is a romance, and the simulation could only model the sincere
+            // version — a bond was mutual, symmetric and true by construction.
+            // One tribute who is genuinely attached, one who has worked out
+            // what the cameras will pay for it, is the far more interesting
+            // shape. The performer gets the sponsor benefit and none of the
+            // mechanical loyalty, and the other party does not know.
+            if (!stoodBy && mutual < ROMANCE.threshold) {
+                const oneSided = Math.max(getRel(t1, t2.id), getRel(t2, t1.id));
+                if (oneSided >= ROMANCE.performedMinRegard && ctx.rng.chance(ROMANCE.performedChance)) {
+                    const smitten = getRel(t1, t2.id) >= getRel(t2, t1.id) ? t1 : t2;
+                    const performer = smitten === t1 ? t2 : t1;
+                    // Playing it well is a charisma job, and the crowd is the
+                    // only audience that matters.
+                    if (performer.attributes.charisma >= ROMANCE.performerCharisma) {
+                        declareLovers(ctx, smitten, performer, performer);
+                        return;
+                    }
+                }
+                continue;
+            }
+
             if (mutual < ROMANCE.threshold) continue;
             // Somebody has to have risked something. This is the gate that makes
             // it a story rather than an arithmetic outcome.
@@ -470,9 +500,19 @@ function growProtectorBond(ctx: SimContext) {
     }
 }
 
-function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute) {
+function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute, performer?: Tribute) {
     t1.traits.push('Star-Crossed');
     t2.traits.push('Star-Crossed');
+    if (performer) {
+        // What they are showing the cameras, as distinct from what they feel.
+        // The betrayal layer reads `relationships` and is therefore entirely
+        // unmoved by the performance, which is the point.
+        const other = performer === t1 ? t2 : t1;
+        performer.displayedRegard = {
+            ...(performer.displayedRegard ?? {}),
+            [other.id]: ROMANCE.performedDisplayedRegard,
+        };
+    }
 
     // Falling for someone pulls them out of whatever alliance they were already
     // in — that departure needs its own event, not a silent headcount change
@@ -509,6 +549,16 @@ function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute) {
         [t1.id, t2.id],
         { important: true, category: 'romance' }
     );
+    if (performer) {
+        // Deliberately narrated: the audience of the *chronicle* is entitled to
+        // know what the audience in the Capitol does not.
+        const other = performer === t1 ? t2 : t1;
+        ctx.logEvent(
+            `${performer.name} plays it beautifully. ${other.name} is not playing.`,
+            [performer.id, other.id],
+            { important: true, category: 'romance' }
+        );
+    }
 }
 
 /**

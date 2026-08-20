@@ -1081,3 +1081,18 @@ export const PARLEY_TEXTS = {
         'There is a truce between {t1} and {t2}, and in {zone} it holds for one more day.',
     ],
 };
+
+/** Settling up. See `engine/debts.ts` — somebody paying somebody back. */
+export const DEBT_TEXTS = {
+    repayItem: [
+        '{debtor} puts the {item} into {creditor}\'s hands in {zone} without being asked. Neither of them mentions why.',
+        '"You kept me alive," {debtor} says in {zone}, and gives {creditor} the {item}. That is the whole conversation.',
+        '{debtor} has been carrying the {item} for {creditor} since {zone} stopped being dangerous. They hand it over now.',
+        '{debtor} settles up in {zone}: the {item}, pressed on {creditor} until they take it.',
+    ],
+    repayWatch: [
+        '{debtor} has nothing to give {creditor} in {zone} but the watch, so they take it, all of it, and let {creditor} sleep.',
+        '{debtor} owes {creditor} more than they own. In {zone} they pay what they can: {creditor} gets a full night for the first time since the gong.',
+        '"Sleep," {debtor} tells {creditor} in {zone}. "I owe you one." It is not much and it is not nothing.',
+    ],
+};

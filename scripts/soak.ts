@@ -70,6 +70,7 @@ let borderTelegraphs = 0, cornucopiaRestocks = 0, muttEncounters = 0;
 // Newer systems: each needs evidence it actually fired across the sweep.
 let standoffs = 0, tributesPaid = 0, trucesStruck = 0;
 let resolveBreakdowns = 0, nightlockDeaths = 0;
+let debtsRepaid = 0, charterBreaches = 0, performedBonds = 0, districtBonds = 0;
 let signatureBeats = 0, calendarBeats = 0;
 let maxAbsRelationship = 0;
 
@@ -205,6 +206,10 @@ for (let i = 0; i < 240; i++) {
     if (/^TRUCE:/.test(l.text)) trucesStruck++;
     if (/stops taking cover in|stops making plans/.test(l.text)) resolveBreakdowns++;
     if (/takes out the nightlock/.test(l.text)) nightlockDeaths++;
+    if (/without being asked. Neither of them mentions why|That is the whole conversation|settles up in|so they take it, all of it|pay what they can|I owe you one/.test(l.text)) debtsRepaid++;
+    if (/while the pile stayed empty|It gets loud between|come back to an empty one|which is the one thing this group agreed/.test(l.text)) charterBreaches++;
+    if (/plays it beautifully/.test(l.text)) performedBonds++;
+    if (/Nobody in the Capitol is saying out loud what that is going to mean/.test(l.text)) districtBonds++;
     if (/^THE CLOCK:|^THE VAULT GOES DARK:|^THE TIDE TURNS:|^STRUCTURAL FAILURE:|^THE SUN STALLS:|^THE COLD COMES DOWN:|^THE BOG EXHALES:|^THE FALL THICKENS:|^THE MIRROR:|^THE BLOOM:|A crossing parts two hundred metres up/.test(l.text)) signatureBeats++;
     if (/coats their .* with it/.test(l.text)) weaponsPoisoned++;
     // --- Relationships and alliances. ---
@@ -516,6 +521,9 @@ if (trucesStruck === 0) note('no truce was ever negotiated');
 if (tributesPaid === 0) note('nobody ever paid their way out of a fight');
 if (resolveBreakdowns === 0) note('no tribute ever ran out of the will to keep going');
 if (signatureBeats === 0) note('no arena signature mechanic ever fired');
+if (debtsRepaid === 0) note('no debt was ever repaid');
+if (charterBreaches === 0) note('no alliance charter was ever broken');
+if (districtBonds === 0) note('no district pair ever reached the late game together');
 if (calendarBeats === 0) note('no scheduled calendar beat ever fired');
 if (weaponsPoisoned === 0) note('nobody ever poisoned a weapon');
 if (exoticBetrayals === 0) note('every betrayal was a knife — the other forms never fire');
@@ -550,6 +558,7 @@ console.log(`intentions: objectives formed=${objectivesFormed}`);
 console.log(`social: exoticBetrayals=${exoticBetrayals} merges=${merges} leaderChanges=${leadershipChanges} feuds=${feuds} freeForAlls=${freeForAlls}`);
 console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDefections=${careerDefections} cacheContributions=${cacheContributions}`);
 console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} truces=${trucesStruck}`);
+console.log(`bonds: debtsRepaid=${debtsRepaid} charterBreaches=${charterBreaches} performed=${performedBonds} districtPairs=${districtBonds}`);
 console.log(`resolve: breakdowns=${resolveBreakdowns} nightlock=${nightlockDeaths}`);
 console.log(`schedule: signatureBeats=${signatureBeats} calendarBeats=${calendarBeats}`);
 console.log(`fieldcraft: trapsSet=${trapsSet} trapsTriggered=${trapsTriggered} fires=${firesLit} shelters=${sheltersBuilt} camouflage=${camouflaged} poisonedWeapons=${weaponsPoisoned}`);

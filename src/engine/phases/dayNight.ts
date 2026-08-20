@@ -31,6 +31,8 @@ import { restockCornucopia, rollAmbientZoneEffects, tickZoneEffects } from '../z
 import { runArenaSignature } from '../arenaSignature';
 import { resolveBreakdowns, tickResolve } from '../resolve';
 import { decayTruces } from '../parley';
+import { repayDebts, tickDistrictBonds } from '../debts';
+import { enforceCharters } from '../allianceCharter';
 import { gamemakerProfile } from '../../data/gamemakers';
 import { escalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
@@ -159,6 +161,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayAllianceTrust(ctx.state);
     decayFear(ctx.state);
     decayTruces(ctx.state);
+    // Obligations come due, district partners grow into each other, and any
+    // group that agreed terms is held to them.
+    repayDebts(ctx);
+    tickDistrictBonds(ctx);
+    enforceCharters(ctx);
     getAlive(ctx.state).forEach(t => {
         // Bloodlust cools. A kill on day 3 should not still be making someone
         // braver on day 8.

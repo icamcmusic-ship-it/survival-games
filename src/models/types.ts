@@ -232,6 +232,27 @@ export interface Tribute {
      */
     truces?: Record<string, number>;
     /**
+     * Displayed regard: what a tribute is *performing* toward someone, as
+     * distinct from `relationships`, which is what they actually feel.
+     *
+     * Star-Crossed in canon is a strategy before it is a romance, and the
+     * simulation could only model the sincere version — a bond was mutual,
+     * symmetric and true by construction. A performed bond earns the sponsor
+     * benefit without the mechanical loyalty, and the other party may not know.
+     * Only populated when it differs from the real number.
+     */
+    displayedRegard?: Record<string, number>;
+    /**
+     * Outstanding obligations: other tribute id -> how much is owed them.
+     *
+     * `memory.stoodBy` recorded that somebody took a risk for you, and then
+     * nothing ever charged for it. A debt raises the cost of betraying the
+     * creditor and unlocks a repayment beat. See `engine/debts.ts`.
+     */
+    debts?: Record<string, number>;
+    /** Guards the one-off "both still standing, both from the same district" beat. */
+    districtBondNoted?: boolean;
+    /**
      * How badly they are bleeding right now, 0-3. `injuries.bleeding` stays the
      * boolean "is there an open wound"; this is how fast it is running. A wound
      * clots down through the severities rather than draining a fixed 15 health
@@ -294,7 +315,17 @@ export interface Alliance {
      * is exactly what makes it land.
      */
     pact: 'to-the-end' | 'until-the-final-eight' | 'no-pact';
+    /**
+     * The rules they actually agreed to keep, beyond the pact's expiry date.
+     * Breaking one is fallout short of a full betrayal — an argument, a lost
+     * night's trust — which is the whole middle ground the alliance layer was
+     * missing: the only ways out used to be death, betrayal and pact expiry.
+     */
+    charter?: CharterRule[];
 }
+
+/** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
+export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone';
 
 /**
  * What happened between one specific pair, across the whole run.

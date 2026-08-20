@@ -1,5 +1,6 @@
 import { Alliance, GameState, Item, Tribute } from '../models/types';
 import { ALLIANCES } from '../data/balance';
+import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext } from './context';
 import { cycleOf } from './memory';
 import { getRel } from './relationships';
@@ -29,6 +30,19 @@ import { getRel } from './relationships';
  * matched against each other in a brawl. The bond id is the actual record of
  * who fell for whom.
  */
+/**
+ * Whether `t` is performing their bond with `otherId` rather than feeling it.
+ *
+ * A performed Star-Crossed bond looks identical to everyone in the arena and to
+ * every sponsor in the Capitol — it earns the same trust and the same
+ * excitement. What it does not earn is loyalty: the betrayal layer reads the
+ * real number, so a performer can and will turn on the person they are
+ * pretending to love.
+ */
+export function isPerforming(t: Tribute, otherId: string): boolean {
+    return t.displayedRegard?.[otherId] !== undefined;
+}
+
 export function areLovers(a: Tribute, b: Tribute): boolean {
     if (a.id === b.id) return false;
     if (!a.traits.includes('Star-Crossed') || !b.traits.includes('Star-Crossed')) return false;
@@ -86,8 +100,10 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         campZone: members[0]?.zone,
         sharedCache: [],
         pact,
+        charter: rollCharter(ctx.rng, members),
     };
     records[id] = record;
+    announceCharter(ctx, record, members);
 
     if (pact !== 'no-pact') {
         ctx.logEvent(

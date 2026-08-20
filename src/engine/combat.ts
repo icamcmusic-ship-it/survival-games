@@ -2,12 +2,13 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { BLEEDING, COMBAT, FEAR, HUNTING, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, FEAR, HUNTING, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone } from './map';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rivalRecord } from './memory';
+import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { openWound } from './wounds';
 import { profOf, trainProficiency, weaponAffinity, weaponProficiency } from './proficiency';
@@ -647,8 +648,13 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             const sameSide = (packSide.includes(t) && packSide.includes(other)) || (otherSide.includes(t) && otherSide.includes(other));
             if (!sameSide) adjustRel(t, other.id, -COMBAT.grudgePerFight);
             // Standing in the same line as somebody is the clearest way to earn
-            // their trust, and it is what romance is actually gated on.
-            else noteStoodBy(t, other.id);
+            // their trust, and it is what romance is actually gated on. If they
+            // were in real trouble and you were not, it is also a debt.
+            else if (other.health < COMBAT.savedHealthThreshold && t.health > other.health) {
+                incurDebt(other, t, DEBTS.savedInFight);
+            } else {
+                noteStoodBy(t, other.id);
+            }
         });
         checkDeath(ctx, t);
     });
