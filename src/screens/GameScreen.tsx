@@ -4,11 +4,30 @@ import { ArenaMap } from '../components/ArenaMap';
 import { TributeModal } from '../components/TributeModal';
 import { EventFeed, FeedLine } from '../components/EventFeed';
 import { CATEGORY_GROUPS } from '../ui/eventStyles';
-import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause } from 'lucide-react';
+import { tributeOdds } from '../engine/odds';
+import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 type Speed = 'manual' | '1x' | '5x' | 'auto';
 
 const SPEED_DELAY: Record<Exclude<Speed, 'manual'>, number> = { '1x': 1200, '5x': 350, auto: 60 };
+
+/**
+ * UX-14: pacing follows drama, not the phase counter.
+ *
+ * A quiet night and a twelve-death feast used to take the same wall-clock time
+ * because the timer only knew "one phase per tick". The delay now scales with
+ * how many lines the phase just produced, so a busy cycle lingers long enough
+ * to read. Max speed stays flat — its whole point is to get to the end.
+ */
+const MAX_PACING_MULTIPLIER = 3;
+const LINES_PER_MULTIPLIER_STEP = 6;
+
+function pacedDelay(speed: Exclude<Speed, 'manual'>, linesThisPhase: number): number {
+    const base = SPEED_DELAY[speed];
+    if (speed === 'auto') return base;
+    const multiplier = Math.min(MAX_PACING_MULTIPLIER, 1 + linesThisPhase / LINES_PER_MULTIPLIER_STEP);
+    return Math.round(base * multiplier);
+}
 
 export function GameScreen({
     gameState,
@@ -27,10 +46,39 @@ export function GameScreen({
     const [muttTargetId, setMuttTargetId] = useState('');
     const [tacticalTab, setTacticalTab] = useState<'chronicle' | 'map'>('chronicle');
     const [selectedZone, setSelectedZone] = useState<string | null>(null);
+    // Below `lg` the two columns stack, which buried the tribute list under a
+    // full-height feed. On small screens one pane shows at a time, chosen from a
+    // bottom tab bar (UX-12); at `lg` and up both columns render as before.
+    const [mobilePane, setMobilePane] = useState<'chronicle' | 'map' | 'tributes'>('chronicle');
     const [mutedGroups, setMutedGroups] = useState<Set<string>>(new Set());
     const [showFilters, setShowFilters] = useState(false);
     const nextPhaseRef = useRef(onNextPhase);
     nextPhaseRef.current = onNextPhase;
+
+    // Chronicle scroll tracking (UX-04): entries render newest-first, so "new"
+    // means "at the top." Auto-follow the top while the reader is already
+    // there; once they've scrolled down to read older material, stop yanking
+    // their position and surface a pill instead.
+    const chronicleRef = useRef<HTMLDivElement>(null);
+    const [scrolledAway, setScrolledAway] = useState(false);
+    const prevLogCountRef = useRef(gameState.log.length);
+
+    useEffect(() => {
+        const el = chronicleRef.current;
+        if (!el) return;
+        const grew = gameState.log.length > prevLogCountRef.current;
+        prevLogCountRef.current = gameState.log.length;
+        if (grew && el.scrollTop <= 24) {
+            el.scrollTop = 0;
+        } else if (grew && el.scrollTop > 24) {
+            setScrolledAway(true);
+        }
+    }, [gameState.log.length]);
+
+    const jumpToLatest = () => {
+        if (chronicleRef.current) chronicleRef.current.scrollTop = 0;
+        setScrolledAway(false);
+    };
 
     const aliveCount = gameState.tributes.filter(t => t.status === 'alive').length;
     const deadCount = gameState.tributes.length - aliveCount;
@@ -50,10 +98,13 @@ export function GameScreen({
         return muted;
     }, [mutedGroups]);
 
-    // Auto-advance
+    // Auto-advance, paced by how much the phase just produced.
+    const lastTickLogCount = useRef(gameState.log.length);
     useEffect(() => {
         if (speed === 'manual' || isOver) return;
-        const timer = setTimeout(() => nextPhaseRef.current(), SPEED_DELAY[speed]);
+        const linesThisPhase = Math.max(0, gameState.log.length - lastTickLogCount.current);
+        lastTickLogCount.current = gameState.log.length;
+        const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(speed, linesThisPhase));
         return () => clearTimeout(timer);
     }, [speed, isOver, gameState.phase, gameState.day, gameState.log.length]);
 
@@ -69,7 +120,11 @@ export function GameScreen({
             } else if (e.key.toLowerCase() === 'f') {
                 setShowFilters(v => !v);
             } else if (e.key.toLowerCase() === 'm') {
-                setTacticalTab(t => (t === 'map' ? 'chronicle' : 'map'));
+                setTacticalTab(t => {
+                    const next = t === 'map' ? 'chronicle' : 'map';
+                    setMobilePane(next);
+                    return next;
+                });
             } else if (e.key === 'Escape') {
                 setSelectedTributeId(null);
                 setSelectedZone(null);
@@ -99,6 +154,33 @@ export function GameScreen({
         return a.gender.localeCompare(b.gender);
     }), [gameState.tributes]);
 
+    // UX-08: the odds board runs live during the Games, not just before the gong.
+    // Movement is measured against the previous phase's percentages.
+    const prevOddsRef = useRef<Record<string, number>>({});
+    const [oddsMovement, setOddsMovement] = useState<Record<string, number>>({});
+
+    const oddsLadder = useMemo(() => {
+        const alive = gameState.tributes.filter(t => t.status === 'alive');
+        return alive
+            .map(t => ({ tribute: t, ...tributeOdds(t, gameState.tributes) }))
+            .sort((a, b) => b.pct - a.pct);
+    }, [gameState.tributes]);
+
+    useEffect(() => {
+        const current: Record<string, number> = {};
+        oddsLadder.forEach(({ tribute, pct }) => { current[tribute.id] = pct; });
+        const movement: Record<string, number> = {};
+        Object.keys(current).forEach(id => {
+            const before = prevOddsRef.current[id];
+            movement[id] = before === undefined ? 0 : current[id] - before;
+        });
+        setOddsMovement(movement);
+        prevOddsRef.current = current;
+        // Recomputed once per phase boundary, not on every render, so the arrows
+        // describe the cycle just played rather than flickering to zero.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameState.phase, gameState.day]);
+
     const allianceAccent = (allianceId?: string) => {
         if (!allianceId) return undefined;
         // Reuses the category palette so alliance colours read as part of the
@@ -123,9 +205,14 @@ export function GameScreen({
             ? gameState.phase.toUpperCase()
             : `Day ${gameState.day} — ${gameState.phase.toUpperCase()}`;
 
+    const selectMobilePane = (pane: 'chronicle' | 'map' | 'tributes') => {
+        setMobilePane(pane);
+        if (pane === 'chronicle' || pane === 'map') setTacticalTab(pane);
+    };
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-24 lg:pb-0">
+            <div className={`lg:col-span-2 space-y-5 ${mobilePane === 'tributes' ? 'hidden lg:block' : ''}`}>
                 {/* ---------- control deck ---------- */}
                 <div className="panel p-5 space-y-4">
                     <div className="flex flex-wrap justify-between items-start gap-4 pb-3 border-b border-[var(--color-ink-800)]">
@@ -165,10 +252,10 @@ export function GameScreen({
                             </div>
 
                             <div className="seg">
-                                <button onClick={() => setTacticalTab('chronicle')} aria-pressed={tacticalTab === 'chronicle'} className="seg-item">
+                                <button onClick={() => selectMobilePane('chronicle')} aria-pressed={tacticalTab === 'chronicle'} className="seg-item">
                                     Chronicle
                                 </button>
-                                <button onClick={() => setTacticalTab('map')} aria-pressed={tacticalTab === 'map'} className="seg-item">
+                                <button onClick={() => selectMobilePane('map')} aria-pressed={tacticalTab === 'map'} className="seg-item">
                                     Arena Map
                                 </button>
                             </div>
@@ -262,28 +349,45 @@ export function GameScreen({
                         )}
                     </div>
                 ) : (
-                    <div className="panel p-5 space-y-4">
+                    <div className="panel p-5 space-y-4 relative">
                         {selectedZone && (
                             <div className="flex justify-between items-center panel-flush px-3 py-2 text-xs text-[var(--red)]">
                                 <span>Filtered to sector <strong>{selectedZone}</strong></span>
                                 <button onClick={() => setSelectedZone(null)} className="btn btn-sm btn-ghost">Clear</button>
                             </div>
                         )}
-                        {filteredLogs.length > 0 ? (
-                            <EventFeed logs={filteredLogs} />
-                        ) : (
-                            <div className="empty-state">
-                                {gameState.log.length === 0
-                                    ? 'Nothing has happened yet. Hit Proceed to begin.'
-                                    : 'Every logged event is hidden by your current filters.'}
-                            </div>
+                        {scrolledAway && (
+                            <button
+                                onClick={jumpToLatest}
+                                className="chip chip-accent absolute top-3 right-5 z-10 shadow-[var(--shadow-ink-sm)]"
+                            >
+                                ↑ Jump to newest
+                            </button>
                         )}
+                        <div
+                            ref={chronicleRef}
+                            onScroll={(e) => setScrolledAway(e.currentTarget.scrollTop > 24)}
+                            className="max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar"
+                        >
+                            {filteredLogs.length > 0 ? (
+                                <EventFeed logs={filteredLogs} />
+                            ) : (
+                                <div className="empty-state">
+                                    {gameState.log.length === 0
+                                        ? 'Nothing has happened yet. Hit Proceed to begin.'
+                                        : 'Every logged event is hidden by your current filters.'}
+                                </div>
+                            )}
+                        </div>
+                        <div aria-live="polite" className="sr-only">
+                            {filteredLogs.length > 0 ? filteredLogs[filteredLogs.length - 1].text : ''}
+                        </div>
                     </div>
                 )}
             </div>
 
             {/* ---------- sidebar ---------- */}
-            <div className="space-y-5">
+            <div className={`space-y-5 ${mobilePane === 'tributes' ? '' : 'hidden lg:block'}`}>
                 <div className="panel p-4">
                     <h3 className="panel-title mb-3">Status</h3>
                     <div className="grid grid-cols-2 gap-3">
@@ -297,6 +401,38 @@ export function GameScreen({
                         </div>
                     </div>
                 </div>
+
+                {!isOver && oddsLadder.length > 1 && (
+                    <div className="panel p-4">
+                        <h3 className="panel-title mb-1">Live odds</h3>
+                        <p className="text-[10px] text-[var(--color-ink-500)] mb-3">
+                            Survival chance and movement since the last phase.
+                        </p>
+                        <div className="space-y-1 max-h-64 overflow-y-auto pr-1.5 custom-scrollbar">
+                            {oddsLadder.slice(0, 10).map(({ tribute, pct, mult }, i) => {
+                                const move = oddsMovement[tribute.id] ?? 0;
+                                const MoveIcon = move > 0 ? TrendingUp : move < 0 ? TrendingDown : Minus;
+                                const moveColor = move > 0 ? 'var(--cat-alliance)' : move < 0 ? 'var(--cat-death)' : 'var(--color-ink-500)';
+                                return (
+                                    <button
+                                        key={tribute.id}
+                                        onClick={() => setSelectedTributeId(tribute.id)}
+                                        className="w-full text-left flex items-center gap-2 px-1.5 py-1 hover:bg-[var(--paper-flush)] transition-colors"
+                                        title={`${tribute.name} — ${pct}% survival chance, ${mult.toFixed(1)}× payout`}
+                                    >
+                                        <span className="font-mono text-[10px] text-[var(--color-ink-500)] w-4 flex-none">{i + 1}</span>
+                                        <span className="text-xs font-bold text-[var(--color-ink-100)] truncate flex-1 min-w-0">{tribute.name}</span>
+                                        <span className="font-mono text-[11px] font-bold text-[var(--ink)] flex-none">{pct}%</span>
+                                        <span className="flex items-center gap-0.5 font-mono text-[10px] flex-none w-10 justify-end" style={{ color: moveColor }}>
+                                            <MoveIcon className="w-3 h-3" />
+                                            {move !== 0 && (move > 0 ? `+${move}` : move)}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {gameState.gamemakerMode && !isOver && (
                     <div className="panel p-4 space-y-3" style={{ borderColor: 'var(--red)', borderWidth: '3px' }}>
@@ -393,6 +529,29 @@ export function GameScreen({
                     </div>
                 </div>
             </div>
+
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[var(--ink)] border-t-[3px] border-[var(--red)] flex items-stretch">
+                {([
+                    { id: 'chronicle', label: 'Chronicle' },
+                    { id: 'map', label: 'Map' },
+                    { id: 'tributes', label: `Tributes ${aliveCount}` },
+                ] as const).map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => selectMobilePane(tab.id)}
+                        aria-pressed={mobilePane === tab.id}
+                        className="flex-1 py-3 text-[10px] font-extrabold uppercase tracking-[0.1em]"
+                        style={{ fontFamily: 'var(--font-mono)', color: mobilePane === tab.id ? 'var(--red)' : '#a89a86' }}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+                {!isOver && (
+                    <button onClick={onNextPhase} className="flex-none px-5 bg-[var(--red)] text-white text-[10px] font-extrabold uppercase tracking-[0.1em]" style={{ fontFamily: 'var(--font-mono)' }}>
+                        Proceed
+                    </button>
+                )}
+            </nav>
 
             {selectedTribute && (
                 <TributeModal tribute={selectedTribute} gameState={gameState} onClose={() => setSelectedTributeId(null)} />

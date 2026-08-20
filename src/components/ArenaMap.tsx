@@ -1,5 +1,6 @@
 import React from 'react';
 import { GameState, Tribute } from '../models/types';
+import { effectiveResources } from '../engine/map';
 
 const TERRAIN_ICONS: Record<string, string> = {
     open: '🏳️', forest: '🌲', water: '🌊', highland: '⛰️', ruins: '🏚️', wetland: '🥀'
@@ -31,12 +32,13 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                     const isCollapsed = collapsed.includes(zone.name);
                     const occupants = tributes.filter(t => t.status === 'alive' && t.zone === zone.name);
                     const isSelected = selectedZone === zone.name;
+                    const stock = effectiveResources(gameState, zone);
 
                     return (
                         <button
                             key={zone.name}
                             onClick={() => onSelectZone(isSelected ? null : zone.name)}
-                            title={`${zone.name} — ${zone.terrain}, ${dangerLabel(zone.danger)}, ${Math.round(zone.resources * 100)}% resources`}
+                            title={`${zone.name} — ${zone.terrain}, ${dangerLabel(zone.danger)}, ${Math.round(stock * 100)}% stock (${Math.round(zone.resources * 100)}% potential)`}
                             className={`panel-flush p-3.5 text-left transition-all flex flex-col justify-between gap-3 min-h-[136px] hover:border-[var(--color-ink-600)] ${
                                 isSelected ? 'ring-2 ring-[var(--red)] border-[var(--red)]' : ''
                             } ${isCollapsed ? 'opacity-60' : ''}`}
@@ -57,8 +59,9 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                     <span style={{ color: dangerColor(zone.danger) }}>⚠ {dangerLabel(zone.danger)}</span>
                                     <span className="text-[var(--color-ink-500)]">{zone.terrain}</span>
                                 </div>
-                                <div className="meter">
-                                    <span style={{ width: `${zone.resources * 100}%`, background: 'var(--cat-loot)' }} />
+                                <div className="meter" title={`Current stock ${Math.round(stock * 100)}% · potential ${Math.round(zone.resources * 100)}%`}>
+                                    <span style={{ width: `${stock * 100}%`, background: 'var(--cat-loot)' }} />
+                                    <span className="meter-ghost" style={{ width: `${zone.resources * 100}%` }} />
                                 </div>
                             </div>
 
@@ -71,16 +74,26 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                     <span className="text-[10px] text-[var(--color-ink-600)] font-mono">No tributes present</span>
                                 ) : (
                                     <div className="flex flex-wrap gap-1 items-center">
-                                        {occupants.slice(0, 12).map(t => (
-                                            <span
-                                                key={t.id}
-                                                title={`${t.name} (District ${t.district}) — ${t.health}% health`}
-                                                className="w-2 h-2 rounded-full inline-block"
-                                                style={{
-                                                    background: t.health >= 70 ? 'var(--cat-alliance)' : t.health >= 35 ? 'var(--cat-training)' : 'var(--cat-death)',
-                                                }}
-                                            />
-                                        ))}
+                                        {occupants.slice(0, 12).map(t => {
+                                            // Colour alone can't carry condition (UX-13), so each
+                                            // marker also names its band with a glyph and shows the
+                                            // district number at a readable size.
+                                            const band = t.health >= 70 ? 'healthy' : t.health >= 35 ? 'wounded' : 'critical';
+                                            const glyph = band === 'healthy' ? '●' : band === 'wounded' ? '◐' : '○';
+                                            const color = band === 'healthy'
+                                                ? 'var(--cat-alliance)'
+                                                : band === 'wounded' ? 'var(--cat-training)' : 'var(--cat-death)';
+                                            return (
+                                                <span
+                                                    key={t.id}
+                                                    title={`${t.name} (District ${t.district}) — ${t.health}% health, ${band}`}
+                                                    className="inline-flex items-center gap-0.5 font-mono text-[10px] leading-none px-1 py-0.5 border"
+                                                    style={{ color, borderColor: color }}
+                                                >
+                                                    <span aria-hidden="true">{glyph}</span>D{t.district}
+                                                </span>
+                                            );
+                                        })}
                                         {occupants.length > 12 && (
                                             <span className="text-[10px] text-[var(--color-ink-500)] font-mono">+{occupants.length - 12}</span>
                                         )}
