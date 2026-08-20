@@ -9,7 +9,7 @@ import { openWound } from './wounds';
 import { profOf, trainProficiency } from './proficiency';
 import { awareness } from './stealth';
 import { traitMod } from '../data/traits';
-import { conditionOf, consumeOne } from './items';
+import { conditionOf, consumeOne, hasTool } from './items';
 
 /**
  * Fieldcraft: traps, fire, shelter, camouflage and poison.
@@ -218,8 +218,27 @@ function buildChance(t: Tribute): number {
  */
 export function lightFire(ctx: SimContext, t: Tribute): boolean {
     if (hasCamp(ctx, t, 'fire')) return false;
-    if (!t.inventory.some(i => i.id === 'matches')) return false;
-    if (!ctx.rng.chance(buildChance(t))) return false;
+
+    // Matches are 1 of 34 loot items with no other ignition source, which
+    // made fire — and everything gated on it (revealFires, fire sanity
+    // recovery, the concealment penalty) unreachable for most runs. A blade
+    // and a whetstone can strike sparks, and anyone can try a bow drill.
+    const hasMatches = t.inventory.some(i => i.id === 'matches');
+    const hasFlintAndSteel = hasTool(t, 'light')
+        || (t.inventory.some(i => i.id === 'whetstone')
+            && t.inventory.some(i => i.type === 'weapon' && i.weaponClass === 'melee'));
+
+    let chance: number;
+    if (hasMatches) {
+        chance = buildChance(t);
+    } else if (hasFlintAndSteel) {
+        chance = buildChance(t) * CRAFTING.fireWhetstoneMultiplier;
+    } else {
+        chance = CRAFTING.fireNoToolBaseChance
+            + t.attributes.intelligence * CRAFTING.fireNoToolPerIntelligence
+            + profOf(t, 'forage') * CRAFTING.fireNoToolPerForageProficiency;
+    }
+    if (!ctx.rng.chance(chance)) return false;
 
     campOf(ctx, t).fire = cycleOf(ctx.state) + CRAFTING.fireCycles;
     t.vitals.sanity = Math.min(100, t.vitals.sanity + CRAFTING.fireSanityRecovery);

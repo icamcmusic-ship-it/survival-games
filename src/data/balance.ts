@@ -823,6 +823,14 @@ export const CRAFTING = {
     fireCycles: 2,
     fireConcealmentPenalty: 0.25,
     fireSanityRecovery: 4,
+    /** A whetstone and a blade can strike sparks — a discount off the normal
+     *  build chance rather than requiring matches outright. */
+    fireWhetstoneMultiplier: 0.6,
+    /** Bare-handed: a bow-drill attempt. Rare, and better with intelligence
+     *  and forage proficiency, but never requires an item at all. */
+    fireNoToolBaseChance: 0.06,
+    fireNoToolPerIntelligence: 0.015,
+    fireNoToolPerForageProficiency: 0.03,
     /** Shelter: somewhere to actually sleep. Needs cover to build in. */
     shelterCycles: 3,
     shelterRecoveryBonus: 4,

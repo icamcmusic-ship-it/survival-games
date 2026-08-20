@@ -128,12 +128,19 @@ function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: b
     return false;
 }
 
-/** Applies one arena-specific event to a tribute, honouring their dodge stat. */
-export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
+/**
+ * Applies one arena-specific event to a tribute, honouring their dodge stat.
+ * Shared by the tribute who triggers the event and by anyone else caught in
+ * it when it's `zoneWide` — every field the event carries (damage, injuries,
+ * vitals, item grants) lands on a secondary tribute exactly as it does on the
+ * primary one. `narrate` suppresses the per-tribute log line for secondaries,
+ * who get one grouped line instead — see `applyArenaEvent` below.
+ */
+function applyEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef, narrate: boolean): boolean {
     const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
     const vars = { tribute: t.name, zone: t.zone };
 
-    if (rollEscape(ctx, t, event, isBoon)) return;
+    if (rollEscape(ctx, t, event, isBoon)) return false;
 
     if (event.damage) applyDamage(ctx, t, bracedDamage(t, event), { cause: event.cause, kind: 'hazard' });
     if (event.heal) t.health = Math.min(100, t.health + event.heal);
@@ -156,20 +163,37 @@ export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDe
 
     if (!isBoon) addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
 
-    ctx.logEvent(fill(event.text, vars), [t.id], {
-        important: !isBoon,
-        category: isBoon ? 'survival' : 'hazard',
-    });
+    if (narrate) {
+        ctx.logEvent(fill(event.text, vars), [t.id], {
+            important: !isBoon,
+            category: isBoon ? 'survival' : 'hazard',
+        });
+    }
     if (!isBoon) checkDeath(ctx, t, event.cause);
+    return true;
+}
+
+/** Applies one arena-specific event to a tribute, honouring their dodge stat. */
+export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
+    const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
+    if (!applyEventTo(ctx, t, event, true)) return;
 
     // ARENA-03: hazards used to touch exactly one tribute and nothing else —
     // never a whole zone, never the graph, never anything that outlasted the
     // instant it fired. A flash flood or a rockslide is not a private accident;
-    // everyone standing there lives through the same thing.
+    // everyone standing there lives through the same thing, with the same
+    // effects (not just damage) and a line in the chronicle naming them.
     if (event.zoneWide) {
-        ctx.state.tributes
+        const caught = ctx.state.tributes
             .filter(o => o.status === 'alive' && o.id !== t.id && o.zone === t.zone)
-            .forEach(o => applyArenaEventTo(ctx, o, event));
+            .filter(o => applyEventTo(ctx, o, event, false));
+        if (caught.length > 0) {
+            ctx.logEvent(
+                `${caught.map(o => o.name).join(', ')} ${caught.length > 1 ? 'are' : 'is'} caught in it with ${t.name}.`,
+                [t.id, ...caught.map(o => o.id)],
+                { important: !isBoon, category: isBoon ? 'survival' : 'hazard' }
+            );
+        }
     }
     if (event.startsZoneEffect) startZoneEffect(ctx, t.zone, event.startsZoneEffect);
     if (event.severesRoute) {
@@ -182,25 +206,6 @@ export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDe
             );
         }
     }
-}
-
-/** The same event, applied to a second (or third) tribute caught in the same zone-wide hazard. */
-function applyArenaEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
-    const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
-    const vars = { tribute: t.name, zone: t.zone };
-
-    if (rollEscape(ctx, t, event, isBoon)) return;
-
-    if (event.damage) applyDamage(ctx, t, bracedDamage(t, event), { cause: event.cause, kind: 'hazard' });
-    if (event.bleeding) openWound(t, BLEEDING.hazardSeverity);
-    if (event.poisoned) t.injuries.poisoned = true;
-    if (event.burned) t.injuries.burned = true;
-    if (event.frostbitten) t.injuries.frostbitten = true;
-    if (event.infected) t.injuries.infected = true;
-    if (event.sanity) t.vitals.sanity -= event.sanity;
-    clampTribute(t);
-    if (!isBoon) addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
-    checkDeath(ctx, t, event.cause);
 }
 
 /** Rough terrain a hand-authored event was written for, guessed from its own words. */
