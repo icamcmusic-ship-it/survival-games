@@ -4,7 +4,10 @@ import { readHallOfFame, writeHallOfFame, clearHallOfFame } from '../utils/hofSt
 import { HofFilters, applyHofQuery, isFiltered, EMPTY_HOF_QUERY, HofQuery } from '../components/HofFilters';
 import { HofAggregates } from '../components/HofAggregates';
 import { HofTransfer } from '../components/HofTransfer';
-import { Trophy, Trash2, Copy, Check } from 'lucide-react';
+import { Trophy, Trash2, Copy, Check, RotateCcw } from 'lucide-react';
+import { gameActions, gameStore } from '../store/gameStore';
+import { useStore } from '../store/createStore';
+import { PanemRecordBook } from '../components/PanemRecordBook';
 
 export function HallOfFameScreen() {
     const [entries, setEntries] = useState<HallOfFameEntry[]>([]);
@@ -42,6 +45,9 @@ export function HallOfFameScreen() {
     };
 
     const totalKills = entries.reduce((sum, e) => sum + e.kills, 0);
+    // Read live rather than from the store so the book is correct even when the
+    // screen is opened without a run in progress.
+    const panem = useStore(gameStore, s => s.panem);
 
     return (
         <div className="max-w-4xl mx-auto space-y-7">
@@ -57,6 +63,8 @@ export function HallOfFameScreen() {
                         : `${entries.length} victor${entries.length === 1 ? '' : 's'} · ${totalKills} total eliminations`}
                 </p>
             </div>
+
+            <PanemRecordBook panem={panem} />
 
             {entries.length === 0 ? (
                 <>
@@ -148,11 +156,20 @@ export function HallOfFameScreen() {
 
                                         {expanded && (
                                             <div className="pt-4 border-t border-[var(--color-ink-800)] space-y-4 animate-fadeIn">
-                                                <button onClick={() => copySeed(entry.seed)} className="btn btn-sm">
-                                                    {copiedSeed === entry.seed
-                                                        ? <><Check className="w-3.5 h-3.5 text-[var(--color-coin-400)]" /> Seed copied</>
-                                                        : <><Copy className="w-3.5 h-3.5" /> Copy seed ({entry.seed})</>}
-                                                </button>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button onClick={() => copySeed(entry.seed)} className="btn btn-sm">
+                                                        {copiedSeed === entry.seed
+                                                            ? <><Check className="w-3.5 h-3.5 text-[var(--color-coin-400)]" /> Seed copied</>
+                                                            : <><Copy className="w-3.5 h-3.5" /> Copy seed ({entry.seed})</>}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => gameActions.replayHallOfFameEntry(entry)}
+                                                        className="btn btn-sm btn-primary"
+                                                        title={`Run the ${entry.arenaName} Games again on seed ${entry.seed}`}
+                                                    >
+                                                        <RotateCcw className="w-3.5 h-3.5" /> Run these Games again
+                                                    </button>
+                                                </div>
 
                                                 {summaries.length > 0 && (
                                                     <div className="panel-flush p-4 space-y-2.5">

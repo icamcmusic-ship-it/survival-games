@@ -1,20 +1,22 @@
 import { Terrain, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { BLEEDING, CRAFTING, DESPERATION, ENCOUNTERS, HUNTING, MEMORY, PROFICIENCY, TRAIT_EFFECTS, VITALS, ZONES } from '../data/balance';
+import { BLEEDING, CRAFTING, DESPERATION, ENCOUNTERS, HUNTING, MEMORY, PROFICIENCY, VITALS, ZONES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaEventDef, arenaFlavor } from '../data/arenaFlavor';
 import { SimContext } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
 import { addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy } from './memory';
-import { adjustMutual, getRel } from './relationships';
-import { giveItem, itemPhrase, spoilageBonus } from './items';
+import { adjustMutual, adjustRel, getRel } from './relationships';
+import { giveItem, hasTool, itemPhrase, mintItem, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { attemptFieldDressing, clearBleeding, openWound, shouldDressWound } from './wounds';
 import { profOf, trainProficiency } from './proficiency';
 import { attemptFieldcraft } from './fieldcraft';
 import { resolveMuttAttack as resolveMuttAttackImpl } from './mutts';
 import { severRandomEdge, startZoneEffect } from './zoneEffects';
+import { traitMod } from '../data/traits';
+import { QUALITY_BIAS } from '../data/balance';
 
 export function fill(template: string, vars: Record<string, string>): string {
     return Object.entries(vars).reduce(
@@ -23,21 +25,117 @@ export function fill(template: string, vars: Record<string, string>): string {
     );
 }
 
+
+/**
+ * Escaping an arena hazard — the whole of it, in one place, for both the
+ * tribute the event fired on and anyone else caught in a zone-wide one.
+ *
+ * SIDE-09: across the hundred authored arena events the dodge stats were
+ * intelligence 34, agility 29, stealth 15, strength 5, charisma 1. Two of the
+ * five attributes were very nearly irrelevant to surviving the arena itself,
+ * which quietly made them dump stats: a tribute could be strong and beloved
+ * and still be exactly as likely to drown as anyone else.
+ *
+ * Rather than rewrite a hundred pieces of authored copy — the primary stat on
+ * each event is usually the right one, and "you read the chimes correctly" is
+ * not a strength check — the two missing attributes get structural lanes that
+ * apply across every event:
+ *
+ *  - **Strength is the brace.** Anything that hits hard or tries to take hold
+ *    of the body can be endured rather than avoided. A failed dodge on a heavy
+ *    physical hazard gets a second roll against strength, and strength shaves
+ *    damage off whatever still lands.
+ *  - **Charisma is the hand.** Somebody in the zone who likes you can pull you
+ *    out. That is only available to a tribute who has people, which is exactly
+ *    what charisma buys.
+ */
+
+/** Whether a hazard is the kind of thing a strong tribute can simply take. */
+function bracingHelps(event: ArenaEventDef): boolean {
+    return (event.damage ?? 0) >= ENCOUNTERS.braceDamageThreshold
+        || event.frostbitten === true || event.infected === true
+        || event.poisoned === true || event.burned === true;
+}
+
+/** Damage actually taken after bracing for it. */
+function bracedDamage(t: Tribute, event: ArenaEventDef): number {
+    const raw = event.damage ?? 0;
+    if (raw <= 0 || !bracingHelps(event)) return raw;
+    const soak = Math.min(ENCOUNTERS.braceMaxSoak, t.attributes.strength * ENCOUNTERS.bracePerStrength);
+    return Math.max(1, Math.round(raw * (1 - soak)));
+}
+
+/**
+ * The full escape check. Returns true if the tribute got clear, having already
+ * logged whichever way they managed it.
+ */
+function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: boolean): boolean {
+    const vars = { tribute: t.name, zone: t.zone };
+    const log = (text: string) =>
+        ctx.logEvent(fill(text, vars), [t.id], { category: isBoon ? 'survival' : 'hazard' });
+
+    const difficulty = event.dodgeDifficulty ?? ENCOUNTERS.defaultDodgeDifficulty;
+    const penalty = t.injuries.legs ? 2 : 0;
+
+    if (event.dodgeStat) {
+        const roll = t.attributes[event.dodgeStat] + ctx.rng.nextInt(0, 4) - penalty;
+        if (roll > difficulty) {
+            log(event.escapeText);
+            return true;
+        }
+    }
+
+    // The brace. Harder than getting out of the way, because it is not getting
+    // out of the way — it is being built to survive not getting out of the way.
+    const alt = event.dodgeAlt ?? (bracingHelps(event) ? 'strength' : undefined);
+    if (alt && alt !== event.dodgeStat) {
+        const roll = t.attributes[alt] + ctx.rng.nextInt(0, 4) - penalty;
+        if (roll > difficulty + ENCOUNTERS.altDodgePenalty) {
+            log(alt === 'strength'
+                ? `{tribute} takes the worst of it in {zone} and is still standing when it passes.`
+                : event.escapeText);
+            return true;
+        }
+    }
+
+    // The hand. Only a tribute who has people gets this, and only from people
+    // who are actually standing there.
+    if (!isBoon) {
+        const helpers = ctx.state.tributes.filter(o =>
+            o.status === 'alive' && o.id !== t.id && o.zone === t.zone
+            && (o.allianceId !== undefined && o.allianceId === t.allianceId));
+        if (helpers.length > 0) {
+            const helper = helpers[0];
+            const chance = Math.min(ENCOUNTERS.rescueMaxChance,
+                t.attributes.charisma * ENCOUNTERS.rescuePerCharisma
+                + helper.attributes.strength * ENCOUNTERS.rescuePerHelperStrength);
+            if (ctx.rng.chance(chance)) {
+                ctx.logEvent(
+                    `${helper.name} has a fistful of ${t.name}'s jacket before ${t.name} knows what is happening, and hauls them clear of it in ${t.zone}.`,
+                    [t.id, helper.id],
+                    { important: true, category: 'alliance' }
+                );
+                // Deliberately not `noteStoodBy`: that is the gate romance is
+                // built on, and hauling an ally out of a rockslide is common
+                // enough that counting it there quietly doubled the number of
+                // runs with star-crossed lovers in them.
+                adjustRel(t, helper.id, ENCOUNTERS.rescueGratitude);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 /** Applies one arena-specific event to a tribute, honouring their dodge stat. */
 export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
     const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
     const vars = { tribute: t.name, zone: t.zone };
 
-    if (event.dodgeStat) {
-        const difficulty = event.dodgeDifficulty ?? 6;
-        const roll = t.attributes[event.dodgeStat] + ctx.rng.nextInt(0, 4) - (t.injuries.legs ? 2 : 0);
-        if (roll > difficulty) {
-            ctx.logEvent(fill(event.escapeText, vars), [t.id], { category: isBoon ? 'survival' : 'hazard' });
-            return;
-        }
-    }
+    if (rollEscape(ctx, t, event, isBoon)) return;
 
-    if (event.damage) applyDamage(ctx, t, event.damage, { cause: event.cause, kind: 'hazard' });
+    if (event.damage) applyDamage(ctx, t, bracedDamage(t, event), { cause: event.cause, kind: 'hazard' });
     if (event.heal) t.health = Math.min(100, t.health + event.heal);
     if (event.bleeding) openWound(t, BLEEDING.hazardSeverity);
     if (event.poisoned) t.injuries.poisoned = true;
@@ -52,7 +150,7 @@ export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDe
     if (event.feed) t.vitals.hunger = Math.max(0, t.vitals.hunger - event.feed);
     if (event.grantItem) {
         const item = ITEMS.find(i => i.id === event.grantItem);
-        if (item) giveItem(t, { ...item });
+        if (item) giveItem(t, mintItem(ctx.rng, item, QUALITY_BIAS.scavenged));
     }
     clampTribute(t);
 
@@ -91,16 +189,9 @@ function applyArenaEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
     const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
     const vars = { tribute: t.name, zone: t.zone };
 
-    if (event.dodgeStat) {
-        const difficulty = event.dodgeDifficulty ?? 6;
-        const roll = t.attributes[event.dodgeStat] + ctx.rng.nextInt(0, 4) - (t.injuries.legs ? 2 : 0);
-        if (roll > difficulty) {
-            ctx.logEvent(fill(event.escapeText, vars), [t.id], { category: isBoon ? 'survival' : 'hazard' });
-            return;
-        }
-    }
+    if (rollEscape(ctx, t, event, isBoon)) return;
 
-    if (event.damage) applyDamage(ctx, t, event.damage, { cause: event.cause, kind: 'hazard' });
+    if (event.damage) applyDamage(ctx, t, bracedDamage(t, event), { cause: event.cause, kind: 'hazard' });
     if (event.bleeding) openWound(t, BLEEDING.hazardSeverity);
     if (event.poisoned) t.injuries.poisoned = true;
     if (event.burned) t.injuries.burned = true;
@@ -293,12 +384,16 @@ function attemptForage(
     }
     // Foraging mostly turns up food and water, but the woods also hold things
     // that are only useful to someone who does not intend to eat them.
+    // A scavenger turns up things nobody left on purpose: a dropped pack, a
+    // coil of wire in the ruins, matches in a dead tribute's coat.
     const pool = ctx.rng.chance(ZONES.nightlockChance)
         ? ITEMS.filter(i => i.id === 'nightlock')
-        : ITEMS.filter(i => i.type === 'food' || i.type === 'water');
+        : ctx.rng.chance(traitMod(t, 'scavenge'))
+            ? ITEMS.filter(i => i.type === 'utility' && i.id !== 'nightlock')
+            : ITEMS.filter(i => i.type === 'food' || i.type === 'water');
     const item = ctx.rng.pick(pool);
     // Clone before touching spoilage: `item` is the shared ITEMS entry.
-    const fresh = { ...item };
+    const fresh = mintItem(ctx.rng, item, QUALITY_BIAS.scavenged);
     if (fresh.type === 'food' && fresh.spoilage !== undefined) fresh.spoilage += spoilageBonus(t);
     const dropped = giveItem(t, fresh);
     trainProficiency(t, 'forage');
@@ -345,10 +440,14 @@ function huntAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeof arena
 export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeof arenaFlavor>) {
     const zone = getZone(ctx.state.arena, t.zone);
     const available = effectiveResources(ctx.state, zone);
+    // A net in still water is not foraging, it is fishing, and it works.
+    const fishing = hasTool(t, 'fishing')
+        && (zone?.terrain === 'water' || zone?.terrain === 'wetland');
     const baseForageChance = ZONES.baseForageChance
+        + (fishing ? ZONES.fishingBonus : 0)
         + available * ZONES.yieldForageWeight
         + (t.archetype === 'survivalist' ? ZONES.survivalistForageBonus : 0)
-        + (t.traits.includes('Tracker') ? TRAIT_EFFECTS.trackerForageBonus : 0)
+        + traitMod(t, 'forage')
         + profOf(t, 'forage') * PROFICIENCY.forageWeight;
 
     // A wound that is actually running is the most urgent thing in their life,

@@ -2,7 +2,7 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { BLEEDING, COMBAT, FEAR, HUNTING, MEMORY, PROFICIENCY, RIVALRY, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, FEAR, HUNTING, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
@@ -10,18 +10,40 @@ import { getZone } from './map';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rivalRecord } from './memory';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { openWound } from './wounds';
-import { profOf, trainProficiency, weaponProficiency } from './proficiency';
+import { profOf, trainProficiency, weaponAffinity, weaponProficiency } from './proficiency';
 import { addFear, fearFraction } from './fear';
 import { areLovers } from './alliance';
 import { reachBonus } from './physique';
+import { addExcitement } from './audience';
+import { traitMod } from '../data/traits';
+import { earnTrait } from './earnedTraits';
+import { PREGAMES } from '../data/balance';
+import { armourOf, effectiveDamage, wearArmour } from './items';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
 
+/**
+ * CONTENT-05: which pool of environmental death prose fits this particular
+ * death. Priority order matters — a fan-favourite twelve-year-old dying alone
+ * is a child death first, everything else is colour on top of it.
+ */
+function pickEnvironmentalDeathPool(victim: Tribute, witness: Tribute | undefined) {
+    if (victim.age <= PREGAMES.childAge) return DEATH_TEXTS.environmentalChild;
+    if (victim.fanFavourite) return DEATH_TEXTS.environmentalFanFavourite;
+    if (witness) return DEATH_TEXTS.environmentalWitnessed;
+    if (victim.isCareer) return DEATH_TEXTS.environmentalCareer;
+    return DEATH_TEXTS.environmentalAlone;
+}
+
+/** Damage kinds a worn piece of armour can actually do anything about. */
+const ARMOURED_DAMAGE: DamageRecord['kind'][] = ['tribute', 'mutt', 'hazard', 'arena', 'gamemaker'];
+
 function bestWeapon(t: Tribute): Item | undefined {
     const weapons = t.inventory.filter(i => i.type === 'weapon');
     if (weapons.length === 0) return undefined;
-    return weapons.reduce((best, w) => ((w.damage ?? 0) > (best.damage ?? 0) ? w : best));
+    // Condition counts: a battered sword can be the worse choice than a fresh knife.
+    return weapons.reduce((best, w) => (effectiveDamage(w) > effectiveDamage(best) ? w : best));
 }
 
 /**
@@ -40,6 +62,19 @@ export function applyDamage(
     record: Omit<DamageRecord, 'cycle' | 'amount'>,
 ) {
     if (amount <= 0) return;
+
+    // Armour. Only against things that hit you — a padded vest does nothing
+    // about thirst, venom already in the blood, or an infected wound.
+    if (ARMOURED_DAMAGE.includes(record.kind)) {
+        const soak = armourOf(t);
+        if (soak > 0) {
+            const absorbed = amount * soak;
+            amount -= absorbed;
+            wearArmour(t, absorbed * QUALITY.armourWearPerPoint);
+        }
+    }
+    amount = Math.max(1, Math.round(amount));
+
     t.health -= amount;
     t.lastDamage = { ...record, cycle: cycleOf(ctx.state), amount };
     clampTribute(t);
@@ -94,30 +129,37 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     let power = effectiveStrength(t) + t.attributes.agility + ctx.rng.nextInt(0, 5);
 
     if (weapon) {
-        power += weapon.damage ?? weapon.value / 10;
+        power += weapon.damage !== undefined ? effectiveDamage(weapon) : weapon.value / 10;
         // Ranged weapons reward agility; melee rewards raw strength
         // Every weapon class scales with something. 'thrown' had no branch at
         // all, so Throwing Knives and the Spear — the one weapon a tribute can
         // craft mid-run — were the only weapons in the game with no stat
         // scaling behind them, which made crafting a downgrade.
         if (weapon.weaponClass === 'ranged') {
-            power += Math.floor(t.attributes.agility / COMBAT.rangedAgilityDivisor);
+            power += Math.floor(t.attributes.agility / COMBAT.rangedAgilityDivisor) + traitMod(t, 'rangedPower');
         } else if (weapon.weaponClass === 'melee') {
-            power += Math.floor(effectiveStrength(t) / COMBAT.meleeStrengthDivisor);
+            power += Math.floor(effectiveStrength(t) / COMBAT.meleeStrengthDivisor) + traitMod(t, 'meleePower');
             // Reach: a long-armed tribute lands first in a melee. `heightCm` was
             // generated with care and then read only by display code.
             power += reachBonus(t);
         } else if (weapon.weaponClass === 'thrown') {
             // Throwing wants both the arm behind it and the eye in front of it.
             power += Math.floor(effectiveStrength(t) / COMBAT.thrownStrengthDivisor)
-                + Math.floor(t.attributes.agility / COMBAT.thrownAgilityDivisor);
+                + Math.floor(t.attributes.agility / COMBAT.thrownAgilityDivisor)
+                + traitMod(t, 'rangedPower') * 0.5 + traitMod(t, 'meleePower') * 0.5;
         }
         // Practice with the class of weapon actually in their hands.
         power += profOf(t, weaponProficiency(weapon.weaponClass)) * PROFICIENCY.combatWeight;
+        // And familiarity with this *particular* weapon, from home rather than
+        // from the training centre. A trident is a fishing tool to District 4
+        // and an awkward three-pronged spear to everybody else.
+        power += weaponAffinity(t, weapon);
     } else {
-        // Bare hands are a grapple, and a grapple is decided by mass and reach.
-        power += reachBonus(t);
+        // Bare hands are a grapple, and a grapple is decided by mass, reach and
+        // whether they have ever done this before.
+        power += reachBonus(t) + traitMod(t, 'unarmedPower');
     }
+    power += traitMod(t, 'combatPower');
 
     // Archetype edge: aggressive fighters commit harder
     power += ARCHETYPES[t.archetype].aggression * 4;
@@ -142,6 +184,13 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     // What they have learned from losing to this person before.
     power += rematchEdge(t, opponent);
 
+    // Vengeful is not a general combat bonus — it is a bonus against the
+    // specific person they cannot let go of.
+    if (opponent && t.traits.includes('Vengeful')
+        && (hasVengeanceAgainst(t, opponent.id) || getRel(t, opponent.id) <= -35)) {
+        power += COMBAT.vengefulEdge;
+    }
+
     return power;
 }
 
@@ -159,8 +208,7 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
         + roundsFought * 0.05;
 
     if (opponentEdge > 0) chance += COMBAT.retreatLosingBonus;
-    if (t.traits.includes('Pacifist')) chance += 0.25;
-    if (t.traits.includes('Bloodthirsty')) chance -= 0.25;
+    chance += traitMod(t, 'retreat');
     if (t.isCareer) chance -= 0.1;
     if (t.stance === 'Aggressive') chance -= 0.12;
     if (t.stance === 'Evasive') chance += 0.15;
@@ -239,7 +287,22 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
  * fight someone walked away from on purpose, which meant no fleeing, no
  * wearing an opponent down over two encounters, and no tension in a rematch.
  */
-export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBloodbath: boolean = false, isBetrayal: boolean = false) {
+export function resolveCombat(
+    ctx: SimContext,
+    t1: Tribute,
+    t2: Tribute,
+    isBloodbath: boolean = false,
+    isBetrayal: boolean = false,
+    /**
+     * Rounds at the start of the fight in which neither side will break off.
+     * The opening seconds of the bloodbath are not a decision anybody makes:
+     * the gong goes and people commit. Everywhere else this stays 0 and the
+     * per-round retreat check runs as it always has.
+     */
+    noRetreatRounds: number = 0,
+    /** Multiplier on damage landed, for fights inside the killing zone. */
+    damageMultiplier: number = 1,
+) {
     if (t1.status === 'dead' || t2.status === 'dead') return;
 
     // Star-crossed lovers refuse to fight each other!
@@ -280,7 +343,7 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
             return;
         }
         // Being jumped is a reason to leave, not to settle in.
-        if (wantsToRetreat(ctx, t2, damage / 10, 1, t1)) {
+        if (noRetreatRounds < 1 && wantsToRetreat(ctx, t2, damage / 10, 1, t1)) {
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.retreat), { fleer: t2.name, stayer: t1.name, zone: t1.zone }),
                 [t2.id, t1.id],
@@ -299,7 +362,7 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
         );
     }
 
-    const maxRounds = isBloodbath ? COMBAT.maxRounds + 1 : COMBAT.maxRounds;
+    const maxRounds = isBloodbath ? COMBAT.maxRounds + COMBAT.bloodbathExtraRounds : COMBAT.maxRounds;
     let round = 0;
     let ended = false;
 
@@ -321,9 +384,16 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
             const winner = edge > 0 ? t1 : t2;
             const loser = edge > 0 ? t2 : t1;
             const weapon = edge > 0 ? w1 : w2;
-            landHit(ctx, winner, loser, Math.abs(edge), weapon);
+            landHit(ctx, winner, loser, Math.abs(edge), weapon, damageMultiplier);
+            // CONTENT-04: situational exchange lines. A hit on someone already
+            // barely standing reads differently than an opening blow, and a
+            // rematch between two people who have done this before should say so.
+            const rematchLine = ensureMemory(winner).rivals?.[loser.id]?.fights ?? 0;
+            const pool = loser.health <= COMBAT.finishingHealthThreshold ? DUEL_TEXTS.exchangeFinishing
+                : rematchLine >= RIVALRY.feudAtFights ? DUEL_TEXTS.exchangeRematch
+                : DUEL_TEXTS.exchange;
             ctx.logEvent(
-                fill(ctx.pickText(DUEL_TEXTS.exchange), { winner: winner.name, loser: loser.name, zone: winner.zone }),
+                fill(ctx.pickText(pool), { winner: winner.name, loser: loser.name, zone: winner.zone }),
                 [winner.id, loser.id],
                 { category: 'combat' }
             );
@@ -334,7 +404,9 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
             }
         }
 
-        // Retreat check, every round, for both sides.
+        // Retreat check, every round, for both sides — once anyone is capable
+        // of making a decision again.
+        if (round <= noRetreatRounds) continue;
         const t1Flees = wantsToRetreat(ctx, t1, -edge, round, t2);
         const t2Flees = wantsToRetreat(ctx, t2, edge, round, t1);
         if (t1Flees && t2Flees) {
@@ -368,6 +440,12 @@ export function resolveCombat(ctx: SimContext, t1: Tribute, t2: Tribute, isBlood
                 [fleer.id, stayer.id],
                 { important: true, category: 'combat' }
             );
+            // Letting a beaten opponent walk is a choice, and the arena
+            // remembers people who make it.
+            if (fleer.health <= COMBAT.mercyHealth && !isBloodbath) {
+                earnTrait(ctx, stayer, 'Merciful');
+                addExcitement(stayer, 20);
+            }
             ended = true;
             break;
         }
@@ -671,16 +749,22 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         // Everything below only matters for a killer who is still around to
         // feel it, carry loot, or wear out gear.
         if (killerAlive) {
-            killer.excitementRating += 20;
+            addExcitement(killer, 20);
             // Bloodlust: briefly stronger and far less willing to break off.
             killer.momentum = Math.min(HUNTING.momentumMax, (killer.momentum ?? 0) + HUNTING.momentumPerKill);
 
-            // Trauma Triggers
-            if (killer.traits.includes('Pacifist')) {
-                killer.vitals.sanity -= 40;
-                ctx.logEvent(`${killer.name} stares at what they have done and cannot stop shaking. This is not who they were.`, [killer.id], { category: 'sanity' });
-            } else if (!killer.isCareer) {
-                killer.vitals.sanity -= 10;
+            // What it costs them. `killSanity` is a multiplier offset on the
+            // base toll, so Ruthless barely notices, a Pacifist comes apart,
+            // and everything between is a row in the trait table.
+            const baseToll = killer.isCareer ? COMBAT.careerKillSanity : COMBAT.killSanity;
+            const toll = Math.max(0, baseToll * Math.max(0, 1 + traitMod(killer, 'killSanity')));
+            killer.vitals.sanity -= toll;
+            if (toll >= COMBAT.killSanityBreakdown) {
+                ctx.logEvent(
+                    `${killer.name} stares at what they have done and cannot stop shaking. This is not who they were.`,
+                    [killer.id],
+                    { category: 'sanity' }
+                );
             }
             // Killing someone you were allied with is its own kind of wound.
             if (formerAlliance && formerAlliance === killer.allianceId) {
@@ -691,13 +775,18 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             if (mem.vengeance.includes(victim.id)) {
                 mem.vengeance = mem.vengeance.filter(id => id !== victim.id);
                 killer.vitals.sanity += 20;
-                killer.excitementRating += 30;
+                addExcitement(killer, 30);
                 ctx.logEvent(
                     `${killer.name} settles the debt. ${victim.name} is dead, and whatever was driving ${killer.name} goes quiet.`,
                     [killer.id, victim.id],
                     { important: true, category: 'kill' }
                 );
             }
+
+            // The arc: the first one changes you, and enough of them changes
+            // how the rest of the arena talks about you.
+            if (killer.kills === 1) earnTrait(ctx, killer, 'Bloodied');
+            if (killer.kills >= HUNTING.fearedAtKills) earnTrait(ctx, killer, 'Feared');
 
             if (weapon && weapon.durability !== undefined) weapon.durability -= 10;
 
@@ -726,12 +815,17 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         }
     } else {
         victim.causeOfDeath = cause || victim.lastDamage?.cause || 'Died to environment';
-        const template = ctx.rng.pick(DEATH_TEXTS.environmental);
+        const witness = ctx.state.tributes.find(o =>
+            o.status === 'alive' && o.id !== victim.id && o.zone === victim.zone);
+        const pool = pickEnvironmentalDeathPool(victim, witness);
+        const template = ctx.pickText(pool);
         const text = template
             .split('{tribute}').join(victim.name)
             .split('{zone}').join(victim.zone)
-            .split('{cause}').join(victim.causeOfDeath);
-        ctx.logEvent(text, [victim.id], { important: true, category: 'death' });
+            .split('{cause}').join(victim.causeOfDeath)
+            .split('{age}').join(String(victim.age))
+            .split('{witness}').join(witness?.name ?? 'someone nearby');
+        ctx.logEvent(text, witness ? [victim.id, witness.id] : [victim.id], { important: true, category: 'death' });
     }
 
     // Watching someone kill is the single most frightening thing that can

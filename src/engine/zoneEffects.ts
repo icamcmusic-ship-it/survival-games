@@ -1,5 +1,5 @@
 import { GameState, Terrain, Tribute, ZoneEffect, ZoneEffectKind } from '../models/types';
-import { ESCALATION, ZONE_EFFECTS } from '../data/balance';
+import { ZONE_EFFECTS } from '../data/balance';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { cycleOf } from './memory';
@@ -236,7 +236,9 @@ export function severRandomEdge(ctx: SimContext, zoneName: string): string | und
  */
 export function rollAmbientZoneEffects(ctx: SimContext) {
     const state = ctx.state;
-    if (ZONE_EFFECTS.ambientEscalatedOnly && state.day < ESCALATION.startDay) return;
+    // Escalation is now audience-driven, so gate on whether the Gamemakers have
+    // actually started rather than on the calendar.
+    if (ZONE_EFFECTS.ambientEscalatedOnly && state.escalationDay === undefined) return;
 
     const collapsed = state.collapsedZones ?? [];
     const active = state.arena.zones.filter(z => !collapsed.includes(z.name));

@@ -17,6 +17,7 @@ import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig, GameState, Stance, Tribute } from '../src/models/types';
+import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 
 const RUNS = 400;
 
@@ -30,8 +31,15 @@ const configs: GameConfig[] = [
 
 function start(seed: string, arenaId: string, config: GameConfig): GameState {
     const arena = arenaId.startsWith('procedural') ? generateArena(seed) : ARENAS.find(a => a.id === arenaId)!;
-    const tributes = generateTributes(seed, config, arena.zones[0].name);
-    return { seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: false, config, logCounter: 0, feastsHeld: 0, cycle: 0 };
+    // REPLAY-01: measure the game the player actually gets, which is their
+    // config multiplied through this year's announced temperament.
+    const gamesProfile = gamesProfileFor(seed);
+    const resolved = configForProfile(config, gamesProfile);
+    const tributes = generateTributes(seed, resolved, arena.zones[0].name);
+    return {
+        seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: false,
+        config: resolved, gamesProfile, logCounter: 0, feastsHeld: 0, cycle: 0,
+    };
 }
 
 /**
@@ -58,6 +66,7 @@ const deathsByCause: Record<string, number> = {};
 let deaths = 0;
 let victors = 0, victorKills = 0, victorZeroKills = 0, victorHealth = 0;
 let runs = 0, totalDays = 0;
+const runLengths: number[] = [];
 
 // Sampled once per cycle across every living tribute.
 let aliveSamples = 0, armedSamples = 0;
@@ -88,6 +97,16 @@ const sampleBoard = (tributes: Tribute[]) => {
     });
 };
 
+// CANON-01. The bloodbath is the single most recognisable event in the source
+// material, and roughly half the field dies in it.
+let bloodbathDeaths = 0;
+let bloodbathFields = 0;
+// SIDE-04. The training board, against the shape the source material describes.
+let scored = 0;
+let scoredElite = 0;
+let careerScores = 0;
+let careerCount = 0;
+
 for (let i = 0; i < RUNS; i++) {
     const seed = `METRIC${i}`;
     const sim = new Simulator(start(seed, arenaIds[i % arenaIds.length], configs[i % configs.length]));
@@ -95,10 +114,22 @@ for (let i = 0; i < RUNS; i++) {
     let state = sim.getState();
 
     while (state.phase !== 'ended' && guard-- > 0) {
-        if (state.phase === 'setup') sim.processTraining();
+        if (state.phase === 'setup') {
+            sim.processTraining();
+            sim.getState().tributes.forEach(t => {
+                scored++;
+                if (t.trainingScore >= 9) scoredElite++;
+                if (t.isCareer) { careerScores += t.trainingScore; careerCount++; }
+            });
+        }
         else if (state.phase === 'training') sim.processInterviews();
         else if (state.phase === 'interviews') sim.startGames();
-        else if (state.phase === 'bloodbath') sim.processBloodbath();
+        else if (state.phase === 'bloodbath') {
+            const fieldSize = state.tributes.length;
+            sim.processBloodbath();
+            bloodbathFields += fieldSize;
+            bloodbathDeaths += sim.getState().tributes.filter(t => t.status === 'dead').length;
+        }
         else if (state.phase === 'epilogue') { state.phase = 'ended'; }
         else if (!sim.processTurn()) break;
         state = sim.getState();
@@ -128,6 +159,7 @@ for (let i = 0; i < RUNS; i++) {
 
     runs++;
     totalDays += state.day;
+    runLengths.push(state.day);
     state.tributes.forEach(t => {
         if (t.status === 'dead') {
             deaths++;
@@ -174,7 +206,67 @@ interface Indicator {
 
 const asPct = (v: number) => `${(v * 100).toFixed(1)}%`;
 
+/** Standard deviation of run length, in days. */
+const runLengthSpread = (() => {
+    if (runLengths.length === 0) return 0;
+    const mean = runLengths.reduce((a, b) => a + b, 0) / runLengths.length;
+    return Math.sqrt(runLengths.reduce((a, d) => a + (d - mean) ** 2, 0) / runLengths.length);
+})();
+
 const indicators: Indicator[] = [
+    {
+        // REPLAY-01. Every run used to have the same shape: mean 8.0 days in a
+        // tight 5-14 band, same escalation schedule, same sponsor climate. A
+        // simulation sold on replayability cannot have one shape, so the spread
+        // of run lengths is the cheapest honest proxy for whether the Games
+        // actually differ from each other.
+        label: 'run length spread (days, sd)',
+        value: runLengthSpread,
+        guard: v => v >= 1.4,
+        guardText: '>= 1.4',
+        goal: '>= 2.0',
+        goalMet: v => v >= 2.0,
+        baseline: '1.1',
+        fmt: v => v.toFixed(2),
+    },
+    {
+        // SIDE-04. In the source material a 9 or a 10 marks you as a Career or
+        // a genuine threat and the rest of the board sits in the middle. The
+        // old one-line roll put a fifth of every field at 8 and above.
+        label: 'training scores of 9 or better',
+        value: scoredElite / Math.max(1, scored),
+        guard: v => v >= 0.07 && v <= 0.24,
+        guardText: '7%-24%',
+        goal: '12%-18%',
+        goalMet: v => v >= 0.12 && v <= 0.18,
+        baseline: '9.1%',
+        fmt: asPct,
+    },
+    {
+        // The Careers should reliably be the top of the board without owning
+        // all of it — the whole point of the training broadcast is that the
+        // field learns who to be afraid of.
+        label: 'average Career training score',
+        value: careerScores / Math.max(1, careerCount),
+        guard: v => v >= 6.8 && v <= 9,
+        guardText: '6.8-9.0',
+        baseline: '6.4',
+        fmt: v => v.toFixed(2),
+    },
+    {
+        // CANON-01. Half the field dies at the Cornucopia in the first ten
+        // minutes. The old scramble managed 0.84 deaths out of 24 — and every
+        // downstream problem started there, because the tributes with nothing
+        // to offer a fight survived it to die of thirst on day six instead.
+        label: 'share of the field lost in the bloodbath',
+        value: bloodbathDeaths / Math.max(1, bloodbathFields),
+        guard: v => v >= 0.25 && v <= 0.62,
+        guardText: '25%-62%',
+        goal: '33%-50%',
+        goalMet: v => v >= 0.33 && v <= 0.50,
+        baseline: '3.5%',
+        fmt: asPct,
+    },
     {
         // DESIGN-01. Bleeding should be what softens a tribute up for the fight
         // that kills them, not the thing that kills them alone in a field having

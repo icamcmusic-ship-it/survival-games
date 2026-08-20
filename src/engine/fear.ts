@@ -1,6 +1,7 @@
 import { GameState, Tribute } from '../models/types';
 import { FEAR } from '../data/balance';
 import { ensureMemory } from './memory';
+import { traitMod } from '../data/traits';
 
 /**
  * Fear.
@@ -22,6 +23,9 @@ export function fearOf(t: Tribute, otherId: string): number {
 
 export function addFear(t: Tribute, otherId: string, amount: number) {
     if (t.id === otherId) return;
+    // Temperament decides how much of a frightening thing actually sticks.
+    amount *= Math.max(0, 1 + traitMod(t, 'fearGain'));
+    if (amount <= 0) return;
     const mem = ensureMemory(t);
     if (!mem.fear) mem.fear = {};
     mem.fear[otherId] = Math.min(FEAR.max, Math.round((mem.fear[otherId] ?? 0) + amount));

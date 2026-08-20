@@ -2,6 +2,7 @@ import { Tribute } from '../models/types';
 import { BLEEDING, VITALS } from '../data/balance';
 import { SimContext } from './context';
 import { profOf, trainProficiency } from './proficiency';
+import { traitMod } from '../data/traits';
 
 /**
  * Bleeding, and what a tribute can do about it.
@@ -43,7 +44,10 @@ export function clearBleeding(t: Tribute) {
 
 /** Per-cycle health cost of whatever is currently open. */
 export function bleedDamage(t: Tribute): number {
-    return BLEEDING.damageBySeverity[bleedSeverity(t)] ?? 0;
+    const raw = BLEEDING.damageBySeverity[bleedSeverity(t)] ?? 0;
+    // Some people clot. Hardy is the difference between a wound that kills you
+    // and a wound you walk four days with.
+    return Math.max(0, raw * Math.max(0, 1 - traitMod(t, 'bleedResist')));
 }
 
 /** Odds the body closes one severity step by itself this cycle. */
@@ -57,6 +61,7 @@ function clotChance(t: Tribute): number {
     if (t.vitals.fatigue > 80 || t.vitals.hunger > VITALS.starvingThreshold) {
         chance -= BLEEDING.exhaustedClotPenalty;
     }
+    chance += traitMod(t, 'bleedResist') * 0.4;
     return Math.max(0.05, Math.min(0.85, chance));
 }
 
@@ -95,6 +100,7 @@ function dressChance(medic: Tribute, isAlly: boolean): number {
     if (hasBinding(medic)) chance += BLEEDING.dressBindingBonus;
     // Someone else's steady hands beat your own on a wound you cannot see.
     if (isAlly) chance += BLEEDING.allyDressBonus;
+    chance += traitMod(medic, 'medicine');
     return Math.max(0.05, Math.min(0.95, chance));
 }
 

@@ -7,6 +7,9 @@ import { CATEGORY_GROUPS } from '../ui/eventStyles';
 import { tributeOdds } from '../engine/odds';
 import { objectiveLabel } from '../engine/objectives';
 import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ESCALATION } from '../data/balance';
+import { Explainer } from '../components/Explainer';
+import { ordinal } from '../engine/gamesProfile';
 
 type Speed = 'manual' | '1x' | '5x' | 'auto';
 
@@ -401,6 +404,58 @@ export function GameScreen({
                             <div className="eyebrow mt-1">Fallen</div>
                         </div>
                     </div>
+                    {gameState.gamesProfile && (
+                        <p className="text-[11px] text-[var(--color-ink-500)] mt-3" title={gameState.gamesProfile.temperament.blurb}>
+                            <span className="text-[var(--ink)] font-semibold">
+                                {ordinal(gameState.gamesProfile.gamesNumber)} Games
+                            </span>
+                            {' — '}{gameState.gamesProfile.temperament.name}
+                            {gameState.gamesProfile.wildcard.kind !== 'nothing' && (
+                                <span title={gameState.gamesProfile.wildcard.announcement}>
+                                    , with {gameState.gamesProfile.wildcard.name}
+                                    {gameState.gamesProfile.wildcard.day > 0
+                                        ? ` on day ${gameState.gamesProfile.wildcard.day}`
+                                        : ''}
+                                </span>
+                            )}
+                        </p>
+                    )}
+                    {gameState.headGamemaker && (
+                        <p className="text-[11px] text-[var(--color-ink-500)] mt-2" title="Chosen at the reaping. Their patience and their hazard appetite shape the whole run.">
+                            Head Gamemaker: <span className="text-[var(--ink)] font-semibold">{gameState.headGamemaker}</span>
+                        </p>
+                    )}
+                    {gameState.audienceInterest !== undefined && (
+                        <Explainer
+                            align="left"
+                            label={
+                                <div className="stat-tile mt-3 w-full text-left">
+                                    <div className="flex items-baseline justify-between gap-2">
+                                        <span className="eyebrow">Audience interest</span>
+                                        <span
+                                            className="text-lg font-black"
+                                            style={{ color: gameState.audienceInterest < ESCALATION.boredomThreshold ? 'var(--red)' : 'var(--ink)' }}
+                                        >
+                                            {gameState.audienceInterest}
+                                        </span>
+                                    </div>
+                                    <div className="text-[10px] text-[var(--color-ink-500)] mt-1">
+                                        {gameState.escalationDay !== undefined
+                                            ? `Arena closing since day ${gameState.escalationDay}`
+                                            : gameState.audienceInterest < ESCALATION.boredomThreshold
+                                                ? 'The Capitol is losing patience'
+                                                : 'The Capitol is entertained'}
+                                    </div>
+                                </div>
+                            }
+                            title="Audience interest"
+                        >
+                            The average excitement the living field is generating. The Gamemakers are not working
+                            to a timetable — they escalate because the feed has gone quiet. If this falls below{' '}
+                            {ESCALATION.boredomThreshold} the border starts closing early, herding whoever is left
+                            toward each other with fire, mutts and a shrinking arena.
+                        </Explainer>
+                    )}
                 </div>
 
                 {!isOver && oddsLadder.length > 1 && (

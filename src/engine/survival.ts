@@ -5,11 +5,15 @@ import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
 import { applyExposure } from './exposure';
 import { getZone } from './map';
-import { spoilageBonus } from './items';
+import { consumeOne, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { bleedDamage, clearBleeding, tickBleeding } from './wounds';
 import { rememberedThreat } from './memory';
 import { hasCamp } from './fieldcraft';
+import { craftOf } from '../data/districts';
+import { traitMod } from '../data/traits';
+import { addExcitement } from './audience';
+import { earnTrait } from './earnedTraits';
 
 /**
  * Staying alive between encounters: spoilage, hunger, thirst, exposure, wounds
@@ -52,9 +56,15 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
         if (climate.drains.fatigue) fatigue += climate.drains.fatigue;
     }
 
-    if (t.traits.includes('Hydrophilic')) thirst -= TRAIT_EFFECTS.hydrophilicThirstRelief;
-    if (t.traits.includes('Insomniac') && time === 'night') fatigue += TRAIT_EFFECTS.insomniacNightFatigue;
-    if (t.traits.includes('Iron Stomach')) hunger -= TRAIT_EFFECTS.ironStomachHungerRelief;
+    // Some districts have been hungry before. District 12 rations better than
+    // District 1 does, and that is the whole of what mining and the Seam buy.
+    const resilience = craftOf(t.district).hungerResilience;
+    if (resilience) hunger *= resilience;
+
+    // Traits, as one table read rather than a growing chain of includes().
+    hunger += traitMod(t, 'hungerDrain');
+    thirst += traitMod(t, 'thirstDrain');
+    fatigue += time === 'night' ? traitMod(t, 'fatigueNight') : traitMod(t, 'fatigueDay');
     // Younger tributes burn through rations faster and sleep worse.
     if (t.age <= TRAIT_EFFECTS.youngAge) {
         hunger += TRAIT_EFFECTS.youngHungerPenalty;
@@ -68,6 +78,8 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
 function applyStatusDamage(ctx: SimContext, t: Tribute) {
     if (t.vitals.hunger > VITALS.starvingThreshold) {
         applyDamage(ctx, t, VITALS.starvingDamage, { cause: 'Died of starvation', kind: 'status' });
+        // Going properly hungry and coming out the other side teaches a thing.
+        if (t.status === 'alive' && ctx.rng.chance(VITALS.starvedTraitChance)) earnTrait(ctx, t, 'Starved');
     }
     if (t.vitals.thirst > VITALS.dehydratedThreshold) {
         applyDamage(ctx, t, VITALS.dehydratedDamage, { cause: 'Died of dehydration', kind: 'status' });
@@ -107,7 +119,10 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
     if (!zone || (zone.terrain !== 'water' && zone.terrain !== 'wetland')) return;
 
     const foul = climateOf(ctx.state.arena.id)?.foulWater === true;
-    const purifier = t.inventory.find(i => (WATER.purifiers as readonly string[]).includes(i.id));
+    // Purification is a property of the item now, not a hardcoded id list, so
+    // tablets and a fire-and-a-pot both answer the same question.
+    const purifier = t.inventory.find(i =>
+        i.purifies === true || (WATER.purifiers as readonly string[]).includes(i.id));
 
     if (foul && !purifier) {
         // Desperate enough to drink it anyway — the thirst is the more urgent
@@ -126,10 +141,12 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
         return;
     }
 
+    // Tablets are consumed by using them; boiling is not.
+    if (foul && purifier?.purifies) consumeOne(t, i => i === purifier);
     t.vitals.thirst = Math.max(0, t.vitals.thirst - WATER.zoneDrinkRelief);
     ctx.logEvent(
         foul
-            ? `${t.name} boils water from ${t.zone} before drinking it, and keeps it down.`
+            ? `${t.name} treats water from ${t.zone} before drinking it, and keeps it down.`
             : `${t.name} drinks their fill from the water in ${t.zone}.`,
         [t.id],
         { category: 'survival' }
@@ -139,17 +156,14 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
 /** Eating, drinking, and working through whatever medical supplies they have. */
 function consumeSupplies(ctx: SimContext, t: Tribute) {
     if (t.vitals.hunger > VITALS.eatThreshold) {
-        const foodIdx = t.inventory.findIndex(i => i.type === 'food');
-        if (foodIdx >= 0) {
-            const food = t.inventory.splice(foodIdx, 1)[0];
+        const food = consumeOne(t, i => i.type === 'food');
+        if (food) {
             t.vitals.hunger = Math.max(0, t.vitals.hunger - VITALS.foodRelief);
             ctx.logEvent(`${t.name} eats their ${food.name}.`, [t.id], { category: 'survival' });
         }
     }
     if (t.vitals.thirst > VITALS.drinkThreshold) {
-        const waterIdx = t.inventory.findIndex(i => i.type === 'water');
-        if (waterIdx >= 0) {
-            t.inventory.splice(waterIdx, 1);
+        if (consumeOne(t, i => i.type === 'water')) {
             t.vitals.thirst = Math.max(0, t.vitals.thirst - VITALS.waterRelief);
             ctx.logEvent(`${t.name} drains their water ration.`, [t.id], { category: 'survival' });
         } else {
@@ -159,11 +173,10 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
 
     // Antidote cures poison before it becomes lethal.
     if (t.injuries.poisoned) {
-        const antidoteIdx = t.inventory.findIndex(i => i.id === 'antidote');
-        if (antidoteIdx >= 0) {
-            t.inventory.splice(antidoteIdx, 1);
+        if (consumeOne(t, i => i.id === 'antidote')) {
             t.injuries.poisoned = false;
             ctx.logEvent(`${t.name} downs an Antidote Vial just in time, purging the venom from their blood.`, [t.id], { important: true, category: 'survival' });
+            earnTrait(ctx, t, 'Venom-Wise');
         }
     }
 
@@ -205,11 +218,20 @@ function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night'
     if (t.injuries.bleeding || t.injuries.infected || t.injuries.poisoned) return;
     if (t.vitals.hunger > RECOVERY.maxHunger || t.vitals.thirst > RECOVERY.maxThirst) return;
 
-    let amount = RECOVERY.nightHeal;
+    let amount = RECOVERY.nightHeal + Math.max(0, traitMod(t, 'sanityRecovery') / 2);
     const zone = getZone(ctx.state.arena, t.zone);
     if (zone && (zone.terrain === 'forest' || zone.terrain === 'ruins')) amount += RECOVERY.shelteredBonus;
     // A shelter they actually built beats whatever cover the terrain offered.
     if (hasCamp(ctx, t, 'shelter')) amount += CRAFTING.shelterRecoveryBonus;
+    // The most famous parachute in the source material, doing the thing it is
+    // famous for: keeping somebody alive through a night they should not survive.
+    if (hasTool(t, 'warmth')) amount += RECOVERY.sleepingBagBonus;
+    // REPLAY-07 gave the night real teeth — a concealment bonus for whoever is
+    // hunting and an ambush bonus on top of it. This is the other half of that
+    // trade, without which the night is a flat tax on everybody: a tribute who
+    // deliberately goes to ground in the dark actually sleeps, because the dark
+    // is doing the hiding for them.
+    if (t.stance === 'Evasive' || hasCamp(ctx, t, 'camouflage')) amount += RECOVERY.darkAndHiddenBonus;
     // Someone keeping watch is the difference between sleeping and lying awake.
     if (alliesPresent > 0) amount += RECOVERY.allyWatchBonus;
     // Exhaustion eats the whole benefit as it approaches the ceiling.
@@ -261,6 +283,10 @@ function applySanityPressure(ctx: SimContext, t: Tribute, time: 'day' | 'night',
         recovery += SANITY.safetyRecovery;
     }
 
+    // Temperament: who falls apart under this and who does not.
+    drain *= Math.max(0.1, 1 + traitMod(t, 'sanityDrain'));
+    if (recovery > 0) recovery += traitMod(t, 'sanityRecovery');
+
     t.vitals.sanity += recovery - drain;
 }
 
@@ -281,9 +307,13 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         if (exposure) applyExposure(ctx, t, exposure);
         if (t.status !== 'alive') return;
 
+        // Standing with the Capitol drifts by temperament as well as by events.
+        const standing = traitMod(t, 'sponsorTrust');
+        if (standing !== 0) t.sponsorTrust = Math.max(0, Math.min(100, t.sponsorTrust + standing));
+
         if (t.traits.includes('Star-Crossed')) {
             t.sponsorTrust = Math.min(100, t.sponsorTrust + TRAIT_EFFECTS.starCrossedTrustPerCycle);
-            t.excitementRating += TRAIT_EFFECTS.starCrossedExcitementPerCycle;
+            addExcitement(t, TRAIT_EFFECTS.starCrossedExcitementPerCycle);
         }
 
         t.vitals.hunger += Math.max(0, drains.hunger);

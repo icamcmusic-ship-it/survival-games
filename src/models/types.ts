@@ -63,16 +63,48 @@ export type Objective =
 
 export type WeaponClass = 'melee' | 'ranged' | 'thrown';
 
+/**
+ * How well-made a particular instance of an item is.
+ *
+ * The same base item comes off the Cornucopia in three grades: the sword the
+ * Gamemakers laid at the mouth of the horn is not the sword somebody scavenged
+ * off a body on day five. Quality scales damage, durability and what a sponsor
+ * thinks it is worth, and it shows in the name.
+ */
+export type ItemQuality = 'crude' | 'standard' | 'fine';
+
 export interface Item {
     id: string;
     name: string;
-    type: 'weapon' | 'food' | 'water' | 'medical' | 'utility';
+    type: 'weapon' | 'food' | 'water' | 'medical' | 'utility' | 'armour' | 'tool';
+    /** Current condition. Weapons degrade with use; at 0 they are dropped. */
     durability?: number;
+    /** What `durability` started at, so condition can be read as a fraction. */
+    maxDurability?: number;
     spoilage?: number;
     value: number;
     weaponClass?: WeaponClass;
     damage?: number;
     poison?: boolean;
+    quality?: ItemQuality;
+    /**
+     * Stackable consumables. `undefined` means a single indivisible thing; a
+     * number is how many are left in the stack. Food, water and medical
+     * supplies stack; a sword does not.
+     */
+    stack?: number;
+    /** Fraction of incoming damage this absorbs while carried. Armour and shields. */
+    armour?: number;
+    /** Extra inventory slots. Packs and containers. */
+    capacity?: number;
+    /** Makes foul water safe to drink without a fire. */
+    purifies?: boolean;
+    /** Turns the night from a handicap into ordinary ground. */
+    light?: boolean;
+    /** Sleeping warm: the famous parachute. Improves overnight recovery. */
+    warmth?: boolean;
+    /** Lets a tribute fish still water rather than forage the bank. */
+    fishing?: boolean;
 }
 
 export type Build = 'Frail' | 'Slight' | 'Average' | 'Athletic' | 'Stocky' | 'Muscular';
@@ -204,6 +236,25 @@ export interface Tribute {
     proficiencies?: Partial<Record<Proficiency, number>>;
     /** What they are currently trying to do. See `Objective`. */
     objective?: Objective;
+    /** Ids of tributes this one has formed a protective bond with. See `growProtectorBond`. */
+    protectorBonds?: string[];
+    /**
+     * How far their launch plate landed from the mouth of the Cornucopia, 0-1.
+     * 0 is close enough to touch the horn; 1 is the far edge of the ring.
+     * Decided at the reaping so it can be shown on the tribute sheet, and read
+     * only by the bloodbath.
+     */
+    platePosition?: number;
+    /** Who dressed them for the Capitol. Set at the Remake Center. */
+    stylist?: string;
+    /** The angle the stylist took for the chariot parade. */
+    chariotAngle?: string;
+    /** How they played the training floor: showcase, conceal, or neither. */
+    trainingStrategy?: 'showcase' | 'conceal' | 'balanced';
+    /** They put their hand up rather than being drawn out of the bowl. */
+    volunteered?: boolean;
+    /** The reaping-day line: how they came to be standing on that plate. */
+    reapingNote?: string;
 }
 
 /**
@@ -383,6 +434,8 @@ export interface GameConfig {
     enableSanity: boolean;
 }
 
+import type { GamesProfile } from '../engine/gamesProfile';
+
 export interface GameState {
     seed: string;
     arena: Arena;
@@ -413,6 +466,34 @@ export interface GameState {
     severedEdges?: string[];
     /** Monotonic day/night cycle counter, used for memory and decay timings. */
     cycle?: number;
+    /**
+     * The day the Gamemakers started closing the arena. Undefined until they
+     * do. Set by boredom or by the calendar, whichever comes first — collapse
+     * progress counts from here rather than from a fixed day.
+     */
+    escalationDay?: number;
+    /** Guard so the pre-Games ceremonies are narrated exactly once. */
+    preGamesDone?: boolean;
+    /** This run's Head Gamemaker. Chosen once, at the reaping. */
+    headGamemaker?: string;
+    /**
+     * REPLAY-01: this year's Games, as announced. Rolled from the seed so a
+     * shared seed reproduces the same Games, not merely the same cast.
+     */
+    gamesProfile?: GamesProfile;
+    /** Guard so a scheduled wildcard fires exactly once. */
+    wildcardFired?: boolean;
+    /**
+     * Which half of the cycle is currently resolving.
+     *
+     * REPLAY-07: a night used to differ from a day by a fatigue modifier and
+     * one forest bonus. Concealment, awareness and ambush all care what time it
+     * is, and they are read from half a dozen call sites that have no business
+     * taking a `time` parameter — so the arena's clock lives on the state.
+     */
+    timeOfDay?: 'day' | 'night';
+    /** Aggregate audience interest in the living field, recomputed each cycle. */
+    audienceInterest?: number;
     /** Zone name -> deaths that have happened there, broadcast by the sky each night. */
     zoneDeaths?: Record<string, number>;
     /** Traps currently set in the arena, by whoever set them. */
@@ -466,6 +547,13 @@ export interface HallOfFameEntry {
     id: string;
     seed: string;
     arenaName: string;
+    /**
+     * The arena and settings the run actually used, so an archived victory can
+     * be relaunched rather than merely copied as a seed. Optional: entries
+     * archived before this existed only carry the arena's display name.
+     */
+    arenaId?: string;
+    config?: GameConfig;
     winnerName: string;
     winnerDistrict: number;
     kills: number;

@@ -2,12 +2,12 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, SPONSORS } from '../../data/balance';
-import { AMBIENT_TEXTS, ENCOUNTER_TEXTS } from '../../data/flavorText';
+import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, SPONSORS } from '../../data/balance';
+import { AMBIENT_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, decayMemories, decayRelationships, noteSighting,
@@ -17,7 +17,7 @@ import { clampTribute } from '../vitals';
 import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
-import { checkTraps, tickTraps } from '../fieldcraft';
+import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { leaderFor } from '../alliance';
 import { decayFear } from '../fear';
 import { updateStance } from '../stance';
@@ -28,6 +28,10 @@ import {
 } from '../encounters';
 import { tickPersistentMutts } from '../mutts';
 import { restockCornucopia, rollAmbientZoneEffects, tickZoneEffects } from '../zoneEffects';
+import { gamemakerProfile } from '../../data/gamemakers';
+import { escalationShift, wildcardIs } from '../gamesProfile';
+import { mintItem } from '../items';
+import { QUALITY_BIAS } from '../../data/balance';
 
 /**
  * The day/night cycle: the orchestrator, not the implementation.
@@ -39,6 +43,9 @@ import { restockCornucopia, rollAmbientZoneEffects, tickZoneEffects } from '../z
  */
 export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     ctx.rng = new RNG(`${ctx.state.seed}-${ctx.state.day}-${time}`);
+    // REPLAY-07: the arena's clock, so concealment, awareness and ambush can
+    // read it without threading `time` through every call site that touches them.
+    ctx.state.timeOfDay = time;
     advanceCycle(ctx.state);
     const alive = getAlive(ctx.state);
     // Counted once per day, so it freezes at whatever the tribute reached.
@@ -48,11 +55,19 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
     // Occasional scene-setting line so the feed reads like a broadcast, not a spreadsheet.
     if (ctx.rng.chance(ENCOUNTERS.ambientLineChance)) {
-        const pool = ctx.rng.chance(ENCOUNTERS.ambientArenaShare) ? flavor.ambient : AMBIENT_TEXTS;
-        ctx.logEvent(ctx.pickText(pool), [], { category: 'arena' });
+        // CONTENT-03: a slice of these read the run's actual state — who's
+        // still alive, who the Capitol is watching — instead of being pure
+        // scenery, so the broadcast tracks the story it is telling.
+        if (ctx.rng.chance(ENCOUNTERS.dynamicAmbientShare)) {
+            ctx.logEvent(dynamicAmbientLine(ctx), [], { category: 'arena' });
+        } else {
+            const pool = ctx.rng.chance(ENCOUNTERS.ambientArenaShare) ? flavor.ambient : AMBIENT_TEXTS;
+            ctx.logEvent(ctx.pickText(pool), [], { category: 'arena' });
+        }
     }
 
-    // 0. The arena shrinks from day 5 onward.
+    // 0. The audience decides how much arena the tributes get to keep.
+    updateAudienceInterest(ctx, time);
     const isEscalated = collapseBorders(ctx, time);
     const collapsed = ctx.state.collapsedZones || [];
     const severed = severedEdgeSet(ctx.state);
@@ -89,6 +104,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         // Walking into a zone is what springs things left in it.
         checkTraps(ctx, t);
     });
+
+    // A fire is warmth, hot food, and after dark it is the only thing in the
+    // arena visible from a zone away. This is the trade the source material is
+    // built on, and it only pays off at night.
+    if (time === 'night') revealFires(ctx);
 
     // 4. Hazards, mutts and everyone who runs into everyone else.
     resolveEncounters(ctx, currentAlive, acted, isEscalated, flavor, time);
@@ -134,6 +154,65 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     });
 
     processSponsors(ctx);
+
+    // The anthem closes the night. Every tribute learns exactly who died today,
+    // wherever they were standing when it happened — which is the single most
+    // recognisable rhythm the source material has, and the moment a tribute
+    // finds out whether the person they were travelling with is still alive.
+    if (time === 'night') soundTheAnthem(ctx);
+}
+
+/**
+ * The faces in the sky.
+ *
+ * `broadcastDeath` already told every living tribute that *a* death happened
+ * and roughly where. The anthem is the other half: the Capitol names them,
+ * publicly, once a day. Anyone who was hoping an ally was still out there
+ * finds out here, and a tribute who has outlived everyone they knew has that
+ * confirmed to them in the most Capitol way possible.
+ */
+function soundTheAnthem(ctx: SimContext) {
+    // A silent-arena year: no anthem, no faces, and nobody finds out who is
+    // left except by walking into them.
+    if (wildcardIs(ctx.state, 'silent-arena')) return;
+
+    const fallenToday = ctx.state.tributes.filter(t =>
+        t.status === 'dead' && t.dayOfDeath === ctx.state.day);
+    const alive = getAlive(ctx.state);
+    if (alive.length === 0) return;
+
+    if (fallenToday.length === 0) {
+        ctx.logEvent(
+            `The anthem plays over ${ctx.state.arena.name} and the sky stays empty. Nobody died today, and the Capitol makes no attempt to hide its disappointment.`,
+            [],
+            { important: true, category: 'system' }
+        );
+        // A day with no cannon is a day the audience did not get what it came
+        // for, and the Gamemakers are the ones who answer for that.
+        alive.forEach(t => { t.excitementRating = Math.max(0, t.excitementRating - ANTHEM.quietDayExcitementCost); });
+        return;
+    }
+
+    ctx.logEvent(
+        `The anthem plays. ${fallenToday.map(t => `${t.name} of District ${t.district}`).join(', ')} — ${fallenToday.length} face${fallenToday.length === 1 ? '' : 's'} in the sky, and ${alive.length} still counting.`,
+        fallenToday.map(t => t.id),
+        { important: true, category: 'death' }
+    );
+
+    // Watching a name you were counting on appear in the sky.
+    alive.forEach(t => {
+        const lost = fallenToday.filter(f => getRel(t, f.id) >= ANTHEM.grievableBond);
+        if (lost.length === 0) return;
+        t.vitals.sanity = Math.max(0, t.vitals.sanity - ANTHEM.sanityPerNamedLoss * lost.length);
+        if (ctx.rng.chance(ANTHEM.reactionChance)) {
+            ctx.logEvent(
+                `${t.name} watches ${lost.map(l => l.name).join(' and ')} go up over ${t.zone} and does not move until the sky is dark again.`,
+                [t.id, ...lost.map(l => l.id)],
+                { category: 'sanity' }
+            );
+        }
+        clampTribute(t);
+    });
 }
 
 /**
@@ -190,6 +269,107 @@ function buildCollapseOrder(ctx: SimContext): string[] {
     return [...allZoneNames].sort((a, b) => (distances.get(b) ?? 0) - (distances.get(a) ?? 0));
 }
 
+/**
+ * The boredom meter.
+ *
+ * Canon's Gamemakers do not escalate on a schedule; they escalate because the
+ * feed has gone quiet and the Capitol has started changing channels. Fire,
+ * mutts and a closing border are all the same instrument: herd them together
+ * and give the audience something. `excitementRating` was already tracked per
+ * tribute and read only by the sponsor system — aggregated across the living
+ * field it is exactly the metric the Gamemakers are watching.
+ *
+ * Once escalation starts it never un-starts: a border does not reopen because
+ * two tributes finally had a fight.
+ */
+function updateAudienceInterest(ctx: SimContext, time: 'day' | 'night') {
+    const alive = getAlive(ctx.state);
+    const interest = alive.length === 0
+        ? 0
+        : alive.reduce((sum, t) => sum + t.excitementRating, 0) / alive.length;
+    ctx.state.audienceInterest = Math.round(interest);
+
+    if (ctx.state.escalationDay !== undefined) return;
+
+    // CONTENT-10: the Head Gamemaker's patience is part of the number, not just
+    // the crowd's. A patient Gamemaker (Plutarch, Larkspur) tolerates a quieter
+    // Games than an impatient one (Ivo) will stand for.
+    const gm = gamemakerProfile(ctx.state.headGamemaker);
+    const threshold = ESCALATION.boredomThreshold * gm.boredomMultiplier;
+    // REPLAY-01: a lavish or slow Games buys the tributes more arena for
+    // longer; a compressed one takes it away early.
+    const shift = escalationShift(ctx.state);
+    const bored = ctx.state.day >= ESCALATION.boredomEarliestDay + Math.max(0, shift)
+        && interest < threshold;
+    const scheduled = ctx.state.day >= ESCALATION.startDay + shift;
+    if (!bored && !scheduled) return;
+
+    ctx.state.escalationDay = ctx.state.day;
+    if (time === 'day' || !scheduled) {
+        ctx.logEvent(
+            bored && !scheduled
+                ? `The feed has been quiet for too long. Somewhere above the arena a Gamemaker decides the audience has waited long enough, and the border starts to move — three days early.`
+                : `The Gamemakers begin closing the arena on schedule. There is less world tonight than there was this morning.`,
+            [],
+            { important: true, category: 'gamemaker' }
+        );
+    }
+}
+
+/**
+ * REPLAY-07: campfires, after dark.
+ *
+ * `lightFire` already charged a concealment penalty for a fire, but only
+ * against people already standing in the same zone — which made it a small
+ * local tax rather than the decision the source material treats it as. At
+ * night a fire is the brightest thing in the arena, and anyone in an adjacent
+ * zone can see exactly where it is. That is a real sighting in their memory,
+ * and a hunter will act on it.
+ */
+function revealFires(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    const severed = severedEdgeSet(ctx.state);
+
+    alive.forEach(t => {
+        if (!hasCamp(ctx, t, 'fire')) return;
+        const zone = getZone(ctx.state.arena, t.zone);
+        if (!zone) return;
+
+        const watchers = alive.filter(o =>
+            o.id !== t.id
+            && o.allianceId !== t.allianceId
+            && zone.adjacent.includes(o.zone)
+            && !severed.has(edgeKey(t.zone, o.zone)));
+        if (watchers.length === 0) return;
+
+        watchers.forEach(o => {
+            // They know where it is, not who is sitting at it — which is
+            // exactly the right amount of information for a hunter to act on.
+            noteSighting(ctx.state, o, t.zone, 1, depletionOf(ctx.state, t.zone));
+        });
+
+        ctx.logEvent(
+            watchers.length === 1
+                ? `${watchers[0].name} sees firelight from ${t.zone} across the dark, and does not look away from it for a long moment.`
+                : `${t.name}'s fire is visible from every ridge around ${t.zone}. ${watchers.map(w => w.name).join(', ')} all see it.`,
+            [t.id, ...watchers.map(w => w.id)],
+            { important: true, zone: t.zone, category: 'survival' }
+        );
+    });
+}
+
+/** Fills in a state-aware ambient line: who's alive, who's fallen, who the Capitol favours. */
+function dynamicAmbientLine(ctx: SimContext): string {
+    const alive = getAlive(ctx.state);
+    const fallen = ctx.state.tributes.length - alive.length;
+    const favourite = [...alive].sort((a, b) => b.sponsorTrust - a.sponsorTrust)[0];
+    return ctx.pickText(DYNAMIC_AMBIENT_TEXTS)
+        .split('{alive}').join(String(alive.length))
+        .split('{fallen}').join(String(fallen))
+        .split('{day}').join(String(ctx.state.day))
+        .split('{favourite}').join(favourite ? `${favourite.name} of District ${favourite.district}` : 'nobody in particular');
+}
+
 /** Hazard escalation and safe-zone shrinking. Returns whether it is active. */
 function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
     const collapseOrder = buildCollapseOrder(ctx);
@@ -199,7 +379,11 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
     // border actually closes, and a hazard nobody could see coming is a cheap
     // kind of tension. Only announced once per day (the day phase), or a run
     // with both a day and a night cycle would hear the same warning twice.
-    const countFor = (day: number) => Math.max(0, Math.min(collapseOrder.length - 1, day - (ESCALATION.startDay - 1)));
+    // Progress counts from the day the Gamemakers actually started, not from a
+    // fixed date — a boredom-triggered collapse on day 3 must not arrive on day
+    // 5 already three zones deep.
+    const startDay = ctx.state.escalationDay ?? ESCALATION.startDay;
+    const countFor = (day: number) => Math.max(0, Math.min(collapseOrder.length - 1, day - (startDay - 1)));
     const nextCount = countFor(ctx.state.day + 1);
     const thisCount = countFor(ctx.state.day);
     if (time === 'day' && nextCount > thisCount) {
@@ -211,7 +395,7 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         );
     }
 
-    if (ctx.state.day < ESCALATION.startDay) return false;
+    if (ctx.state.escalationDay === undefined) return false;
 
     const collapsedList = collapseOrder.slice(0, thisCount);
     ctx.state.collapsedZones = collapsedList;
@@ -224,7 +408,7 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         const finalists = getAlive(ctx.state).length <= ESCALATION.finalistCount;
         const damage = finalists
             ? ESCALATION.finalistCollapseDamage
-            : ESCALATION.collapseDamageBase + (ctx.state.day - ESCALATION.startDay) * ESCALATION.collapseDamagePerDay;
+            : ESCALATION.collapseDamageBase + (ctx.state.day - startDay) * ESCALATION.collapseDamagePerDay;
         const safeZones = allZoneNames.filter(z => !collapsedList.includes(z));
         // Nearest reachable safe zone via the adjacency graph, not an
         // arbitrary index — a tribute should not teleport across the arena.
@@ -256,7 +440,7 @@ function craft(ctx: SimContext, t: Tribute) {
         t.inventory.splice(Math.max(hasRope, hasKnife), 1);
         t.inventory.splice(Math.min(hasRope, hasKnife), 1);
         const spear = ITEMS.find(i => i.id === 'spear')!;
-        giveItem(t, { ...spear });
+        giveItem(t, mintItem(ctx.rng, spear, QUALITY_BIAS.improvised));
         ctx.logEvent(`${t.name} lashes a knife to a shaft with rope and walks away holding a Spear.`, [t.id], { category: 'loot' });
     }
 
@@ -393,7 +577,9 @@ function resolveEncounters(
         let eventChance = ENCOUNTERS.baseEventChance * zoneDanger;
         let muttChance = ENCOUNTERS.baseMuttChance * zoneDanger;
         if (isEscalated) {
-            const multiplier = 1 + (ctx.state.day - ESCALATION.startDay) * ESCALATION.hazardMultiplierPerDay;
+            const escalatedSince = ctx.state.escalationDay ?? ESCALATION.startDay;
+            const gm = gamemakerProfile(ctx.state.headGamemaker);
+            const multiplier = (1 + (ctx.state.day - escalatedSince) * ESCALATION.hazardMultiplierPerDay) * gm.hazardMultiplier;
             eventChance = Math.min(ESCALATION.hazardCeiling, eventChance * multiplier);
             muttChance = Math.min(ESCALATION.hazardCeiling, muttChance * multiplier);
         }

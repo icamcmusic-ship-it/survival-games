@@ -4,6 +4,11 @@ import { generateTributes } from '../engine/generator';
 import { generateArena } from '../engine/arenaGenerator';
 import { Simulator } from '../engine/simulator';
 import { createStore } from './createStore';
+import { configForProfile, gamesProfileFor } from '../engine/gamesProfile';
+import { PanemRecords, RunOutcome, commitRun, readPanem } from '../utils/panemStorage';
+import {
+    SponsorResult, sendPlayerParachute, sponsorCost, sponsorableItems,
+} from '../engine/playerSponsor';
 
 export type ViewName = 'setup' | 'roster' | 'game' | 'hallOfFame';
 
@@ -25,6 +30,10 @@ export interface GameStoreState {
     betsResolved: boolean;
     /** Guards against writing the same victory to the Hall of Fame twice. */
     hofSaved: boolean;
+    /** REPLAY-03: everything that carries between runs. */
+    panem: PanemRecords;
+    /** What the run that just finished unlocked or beat, for the end screen. */
+    lastRunOutcome: RunOutcome | null;
 }
 
 const STARTING_COINS = 1000;
@@ -99,6 +108,8 @@ function saveHallOfFame(state: GameState) {
         id: `${state.seed}-${Date.now().toString(36)}`,
         seed: state.seed,
         arenaName: state.arena.name,
+        arenaId: state.arena.id,
+        config: state.config,
         winnerName: winner.name,
         winnerDistrict: winner.district,
         kills: winner.kills,
@@ -128,6 +139,8 @@ export const gameStore = createStore<GameStoreState>({
     isReplayedRun: false,
     betsResolved: false,
     hofSaved: false,
+    panem: readPanem(),
+    lastRunOutcome: null,
 });
 
 /** Deep clone so React sees new object identities all the way down the tree. */
@@ -139,7 +152,14 @@ function commitVictory(state: GameState) {
     const { hofSaved } = gameStore.getState();
     if (hofSaved) return;
     saveHallOfFame(state);
-    gameStore.setState({ hofSaved: true });
+    // REPLAY-03/04: the record book and the discovery layer both fold in a
+    // finished run here, behind the same double-commit guard the archive uses.
+    const outcome = commitRun(state);
+    gameStore.setState({
+        hofSaved: true,
+        panem: outcome.records,
+        lastRunOutcome: outcome,
+    });
 }
 
 function resolveBets(state: GameState) {
@@ -205,6 +225,21 @@ export const gameActions = {
         gameStore.setState({ bets: {} });
     },
 
+    /**
+     * SIDE-07: relaunch an archived victory.
+     *
+     * The Hall of Fame could copy a seed to the clipboard and nothing else —
+     * the player then had to walk back to setup and paste it, and guess which
+     * arena and which settings had produced it. An entry now carries both, so
+     * "run it again" is a button.
+     */
+    replayHallOfFameEntry(entry: HallOfFameEntry) {
+        const arenaId = entry.arenaId
+            ?? ARENAS.find(a => a.name === entry.arenaName)?.id
+            ?? 'procedural';
+        gameActions.startGame(entry.seed, arenaId, false, entry.config ?? DEFAULT_GAME_CONFIG, true);
+    },
+
     resumeSavedRun() {
         const saved = readSavedRun();
         if (!saved) return;
@@ -237,6 +272,11 @@ export const gameActions = {
         const startZone = arena.zones[0].name;
         const tributes = generateTributes(safeSeed, config, startZone);
 
+        // REPLAY-01: this year's Games are rolled from the seed and the
+        // player's config is multiplied through them, so a shared seed
+        // reproduces the same Games rather than merely the same cast.
+        const gamesProfile = gamesProfileFor(safeSeed);
+
         const initialState: GameState = {
             seed: safeSeed,
             arena,
@@ -245,7 +285,8 @@ export const gameActions = {
             day: 0,
             log: [],
             gamemakerMode,
-            config,
+            config: configForProfile(config, gamesProfile),
+            gamesProfile,
             logCounter: 0,
             feastsHeld: 0,
         };
@@ -259,6 +300,7 @@ export const gameActions = {
             betsResolved: false,
             hofSaved: false,
             isReplayedRun: markReplayed,
+            lastRunOutcome: null,
         });
         persistRun();
     },
@@ -270,7 +312,11 @@ export const gameActions = {
         const baseSeed = gameState.seed.split('~')[0];
         const newSeed = `${baseSeed}~${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
         const tributes = generateTributes(newSeed, gameState.config, gameState.arena.zones[0].name);
-        const newState: GameState = { ...gameState, seed: newSeed, tributes, log: [], logCounter: 0 };
+        // A rerolled cast is a rerolled Games: the sub-seed decides both.
+        const gamesProfile = gamesProfileFor(newSeed);
+        const newState: GameState = {
+            ...gameState, seed: newSeed, tributes, log: [], logCounter: 0, gamesProfile,
+        };
 
         gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });
         persistRun();
@@ -349,6 +395,36 @@ export const gameActions = {
             commitVictory(state);
         }
         gameActions.syncFromSimulator();
+    },
+
+    /**
+     * SIDE-03: the player spends Capitol Coins on a parachute.
+     *
+     * The wallet used to be a one-way bet placed before the gong. This is the
+     * other half of the economy — the audience doing the one thing the audience
+     * can actually do — and it is the only way the player touches the arena
+     * without Gamemaker mode.
+     */
+    sponsorTribute(tributeId: string, itemId: string): SponsorResult {
+        const { simulator, coins } = gameStore.getState();
+        if (!simulator) return { ok: false, cost: 0, message: 'No Games are running.' };
+
+        const state = simulator.getState();
+        const tribute = state.tributes.find(t => t.id === tributeId);
+        const item = sponsorableItems().find(i => i.id === itemId);
+        if (!tribute || !item) return { ok: false, cost: 0, message: 'That parachute cannot be sent.' };
+
+        const cost = sponsorCost(state, tribute, item);
+        if (coins < cost) {
+            return { ok: false, cost, message: `That parachute costs ${cost} coins. You have ${coins}.` };
+        }
+
+        const result = sendPlayerParachute(state, tributeId, itemId);
+        if (!result.ok) return result;
+
+        gameActions.setCoins(coins - result.cost);
+        gameActions.syncFromSimulator();
+        return result;
     },
 
     triggerGamemakerEvent(type: 'mutt' | 'weather' | 'feast', targetId?: string) {

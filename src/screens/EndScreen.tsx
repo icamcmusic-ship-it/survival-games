@@ -4,6 +4,10 @@ import { EventFeed } from '../components/EventFeed';
 import { ReplayScrubber } from '../components/ReplayScrubber';
 import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { Trophy, MapPin, Swords, Skull, RotateCcw } from 'lucide-react';
+import { ACHIEVEMENTS } from '../data/achievements';
+import { RECORD_DEFS } from '../utils/panemStorage';
+import { gameStore } from '../store/gameStore';
+import { useStore } from '../store/createStore';
 
 function cleanCause(cause: string): string {
     const c = cause.toLowerCase();
@@ -33,6 +37,8 @@ export function EndScreen({
     betWonMessage: string | null
 }) {
     const [activeTab, setActiveTab] = useState<'stats' | 'replay' | 'logs'>('stats');
+    // REPLAY-03/04: what this run showed the player that no previous run did.
+    const outcome = useStore(gameStore, s => s.lastRunOutcome);
 
     // The day counter can tick one past the last day anything actually happened
     // (the loop increments, then the win check ends the run), so bound the
@@ -132,6 +138,40 @@ export function EndScreen({
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
+                    {outcome && (outcome.newAchievements.length > 0 || outcome.brokenRecords.length > 0) && (
+                        <div className="md:col-span-2 panel p-5 space-y-3"
+                            style={{ borderColor: 'var(--cat-alliance)', borderWidth: '3px' }}>
+                            <span className="eyebrow" style={{ color: 'var(--cat-alliance)' }}>
+                                First time you have seen this
+                            </span>
+                            {outcome.newAchievements.map(id => {
+                                const found = ACHIEVEMENTS.find(a => a.id === id);
+                                if (!found) return null;
+                                return (
+                                    <div key={id} className="panel-flush p-2.5">
+                                        <div className="text-sm font-bold text-[var(--ink)]">{found.name}</div>
+                                        <div className="text-[11px] text-[var(--color-ink-500)]">{found.hint}</div>
+                                    </div>
+                                );
+                            })}
+                            {outcome.brokenRecords.map(id => {
+                                const def = RECORD_DEFS.find(r => r.id === id);
+                                const held = outcome.records.bests[id];
+                                if (!def || !held) return null;
+                                return (
+                                    <div key={id} className="panel-flush p-2.5">
+                                        <div className="text-sm font-bold text-[var(--ink)]">
+                                            New record — {def.label}
+                                        </div>
+                                        <div className="text-[11px] text-[var(--color-ink-500)]">
+                                            {held.name} (D{held.district}) · {def.format(held.value)}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
                     {betWonMessage && (
                         <div className="md:col-span-2 panel p-5 flex flex-wrap justify-between items-center gap-4"
                             style={{ borderColor: 'var(--color-coin-400)', borderWidth: '3px' }}>

@@ -1,6 +1,8 @@
 import { Terrain, Tribute, Zone } from '../models/types';
 import { CRAFTING, STEALTH } from '../data/balance';
 import { SimContext, getAlive } from './context';
+import { traitMod } from '../data/traits';
+import { hasTool } from './items';
 
 /**
  * Concealment and awareness — the two halves of whether one tribute ever finds
@@ -13,14 +15,31 @@ import { SimContext, getAlive } from './context';
 
 const COVER_TERRAIN: Terrain[] = ['forest', 'ruins', 'wetland'];
 
+/**
+ * Whether it is currently dark, and whether this particular tribute cares.
+ *
+ * REPLAY-07: the night was mechanically almost identical to the day. It is now
+ * the single biggest situational modifier in the concealment system — but not
+ * for everyone. A lantern buys back the sight and costs the cover; the
+ * Night-Sighted trait buys back the sight and keeps the cover, which is most of
+ * what that trait is for.
+ */
+function isDark(ctx: SimContext): boolean {
+    return ctx.state.timeOfDay === 'night';
+}
+
 /** How well a tribute is hidden in the ground they are standing on, 0-1. */
 export function concealment(
     t: Tribute,
     zone: Zone | undefined,
     alliesPresent: number,
     camp?: { fire?: boolean; camouflage?: boolean },
+    dark = false,
 ): number {
     let value = STEALTH.baseConcealment;
+
+    // The dark hides everybody, unless they are carrying the reason it doesn't.
+    if (dark && !hasTool(t, 'light')) value += STEALTH.nightConcealment;
 
     if (t.stance === 'Evasive') value += STEALTH.evasiveBonus;
     if (t.stance === 'Aggressive') value -= STEALTH.aggressivePenalty;
@@ -35,6 +54,9 @@ export function concealment(
     }
 
     if (t.injuries.bleeding) value -= STEALTH.bleedingPenalty;
+    // Traits that change how well someone disappears into the ground.
+    value += traitMod(t, 'concealment');
+    if (hasTool(t, 'light')) value -= STEALTH.lightConcealmentPenalty;
     // A group leaves a group's worth of tracks.
     value -= Math.min(3, alliesPresent) * STEALTH.groupPenalty;
 
@@ -42,16 +64,23 @@ export function concealment(
 }
 
 /** How good a tribute is at spotting someone who does not want to be spotted. */
-export function awareness(t: Tribute): number {
+export function awareness(t: Tribute, dark = false): number {
     let value = t.attributes.intelligence * STEALTH.awarenessFromIntelligence;
 
-    if (t.traits.includes('Eagle-Eyed')) value += STEALTH.eagleEyedBonus;
-    if (t.traits.includes('Tracker')) value += STEALTH.trackerBonus;
-    if (t.traits.includes('Light Sleeper')) value += STEALTH.lightSleeperBonus;
-    if (t.traits.includes('Paranoid')) value += STEALTH.paranoidBonus;
+    // You cannot watch a treeline you cannot see. A light or the right eyes
+    // give it back; the trait's own awareness bonus stacks on top.
+    if (dark && !hasTool(t, 'light') && !t.traits.includes('Night-Sighted')) {
+        value -= STEALTH.nightAwarenessPenalty;
+    }
+
+    value += traitMod(t, 'awareness');
     // A hunter is looking; someone hiding in a bush is not.
     if (t.stance === 'Aggressive') value += 1.5;
     if (t.stance === 'Evasive') value -= 1;
+
+    // A light in your hand is the difference between watching the treeline and
+    // guessing at it — and it is the reason everyone else can see you.
+    if (hasTool(t, 'light')) value += STEALTH.lightAwarenessBonus;
 
     if (t.vitals.fatigue > 80) value -= STEALTH.exhaustedPenalty;
     if (t.vitals.sanity < 30) value -= STEALTH.lowSanityPenalty;
@@ -68,7 +97,8 @@ export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone
     // Allies are not hiding from each other.
     if (hider.allianceId !== undefined && hider.allianceId === seeker.allianceId) return true;
 
-    const advantage = hider.attributes.stealth - awareness(seeker);
+    const dark = isDark(ctx);
+    const advantage = hider.attributes.stealth - awareness(seeker, dark);
     // A fire gives a hider away and camouflage hides them further; both are
     // choices they made on an earlier turn, which is what makes them tactics.
     const cycle = ctx.state.cycle ?? 0;
@@ -76,7 +106,7 @@ export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone
     const hidden0 = concealment(hider, zone, alliesPresent, {
         fire: camp?.fire !== undefined && cycle < camp.fire,
         camouflage: camp?.camouflage !== undefined && cycle < camp.camouflage,
-    });
+    }, dark);
     let hidden = Math.min(
         STEALTH.maxConcealment,
         Math.max(0, hidden0 + advantage * STEALTH.perPointAdvantage)
@@ -106,14 +136,18 @@ export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute
     // You cannot ambush someone who is already fighting you, or an ally.
     if (attacker.allianceId !== undefined && attacker.allianceId === defender.allianceId) return false;
 
-    const advantage = attacker.attributes.stealth - awareness(defender);
+    const dark = isDark(ctx);
+    const advantage = attacker.attributes.stealth - awareness(defender, dark);
     let chance = STEALTH.ambushBase + advantage * STEALTH.ambushPerPointAdvantage;
+
+    // Night is when an ambush is an ambush. This is the whole reason a hunter
+    // waits for dark rather than forcing a fight at noon.
+    if (dark && !hasTool(defender, 'light')) chance += STEALTH.nightAmbushBonus;
 
     if (zone && COVER_TERRAIN.includes(zone.terrain)) chance += STEALTH.coverBonus;
     if (zone && zone.terrain === 'open') chance -= STEALTH.openPenalty;
     if (attacker.archetype === 'trickster') chance += 0.12;
-    if (attacker.traits.includes('Nimble')) chance += 0.06;
-    if (attacker.traits.includes('Clumsy')) chance -= 0.12;
+    chance += traitMod(attacker, 'ambush');
     if (defender.stance === 'Aggressive') chance -= 0.1;
 
     return ctx.rng.chance(Math.max(0, Math.min(STEALTH.maxAmbushChance, chance)));

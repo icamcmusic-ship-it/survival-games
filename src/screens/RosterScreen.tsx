@@ -177,6 +177,15 @@ export function RosterScreen({
                                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                                             <span className="chip">District {t.district}</span>
                                             {t.isCareer && <span className="chip chip-gold">Career</span>}
+                                            {t.volunteered && (
+                                                <Explainer
+                                                    align="left"
+                                                    label={<span className="chip chip-gold">Volunteer</span>}
+                                                    title="Volunteered"
+                                                >
+                                                    {t.reapingNote}
+                                                </Explainer>
+                                            )}
                                             <span className="chip" title={`${t.gender}, age ${t.age}, ${heightLabel(t.heightCm)}, ${t.build} build`}>
                                                 {t.gender} · {t.age} · {heightLabel(t.heightCm)} · {t.build}
                                             </span>

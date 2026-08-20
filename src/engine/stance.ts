@@ -6,6 +6,7 @@ import { cyclesSinceContact, ensureMemory } from './memory';
 import { getRel } from './relationships';
 import { fearOf } from './fear';
 import { massOf } from './physique';
+import { traitMod } from '../data/traits';
 
 /** What a tribute can actually see of someone without knowing their sheet. */
 function visiblePower(o: Tribute): number {
@@ -94,8 +95,7 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     scores.Aggressive += hasWeapon ? 1.2 : -1.2;
     scores.Aggressive += (t.health - STANCE.aggressiveHealth) / 30;
     if (t.isCareer) scores.Aggressive += 0.8;
-    if (t.traits.includes('Bloodthirsty')) scores.Aggressive += 1;
-    if (t.traits.includes('Pacifist')) scores.Aggressive -= 1.5;
+    scores.Aggressive += traitMod(t, 'aggressionScore');
     if (ensureMemory(t).vengeance.length > 0) scores.Aggressive += 1.5;
     if (ratio > 0 && ratio < STANCE.dominantRatio) scores.Aggressive += 1.2;
     // Bloodlust: a tribute who has just killed goes looking for the next one.

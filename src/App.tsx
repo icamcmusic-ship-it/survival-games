@@ -105,6 +105,7 @@ export default function App() {
             tributes={gameState.tributes}
             arenaName={gameState.arena.name}
             seed={gameState.seed}
+            profile={gameState.gamesProfile}
             onReroll={gameActions.rerollCast}
             onConfirm={gameActions.confirmReaping}
           />

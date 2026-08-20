@@ -1,12 +1,14 @@
 import { SimContext, getAlive } from '../context';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { ALLIANCES, ROMANCE } from '../../data/balance';
-import { ALLIANCE_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
+import { ALLIANCES, PROTECTOR_BOND, ROMANCE } from '../../data/balance';
+import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact } from '../memory';
 import { allianceOf, areLovers, contributeToCache, membersOf, reconcileAlliances, registerAlliance } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
+import { addExcitement } from '../audience';
+import { traitMod } from '../../data/traits';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -47,6 +49,8 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         weight *= Math.max(0.05, 1 - Math.max(0, getRel(betrayer, m.id)) / 110);
         // Someone who already burned you goes to the top of the list.
         if (ensureMemory(betrayer).betrayedBy.includes(m.id)) weight *= ALLIANCES.betrayedFirstStrikeWeight;
+        // Someone who never stops watching is a much worse mark.
+        weight *= Math.max(0.1, 1 - traitMod(m, 'betrayalResist'));
         return { m, weight: Math.max(0, weight) };
     }).filter(s => s.weight > 0);
 
@@ -63,8 +67,8 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
 function pickBetrayer(ctx: SimContext, members: Tribute[]): Tribute {
     const scored = members.map(m => ({
         m,
-        weight: Math.max(0.2, (1 + ARCHETYPES[m.archetype].treachery * 10) * distrustFactor(m)
-            * (m.traits.includes('Paranoid') ? 1.6 : 1)
+        weight: Math.max(0.2, (1 + (ARCHETYPES[m.archetype].treachery + traitMod(m, 'treachery')) * 10)
+            * distrustFactor(m)
             * (m.vitals.sanity < 40 ? 1.4 : 1)),
     }));
     let roll = ctx.rng.nextFloat() * scored.reduce((sum, s) => sum + s.weight, 0);
@@ -145,7 +149,8 @@ export function processAlliances(ctx: SimContext) {
                 if (!t1.allianceId && !t2.allianceId) {
                     const rel = getRel(t1, t2.id);
                     // Archetype chemistry: affinity of both parties plus pair compatibility
-                    const affinity = (ARCHETYPES[t1.archetype].allianceAffinity + ARCHETYPES[t2.archetype].allianceAffinity) / 2;
+                    const affinity = (ARCHETYPES[t1.archetype].allianceAffinity + ARCHETYPES[t2.archetype].allianceAffinity) / 2
+                + (traitMod(t1, 'allianceAffinity') + traitMod(t2, 'allianceAffinity')) / 2;
                     const compat = archetypeCompatibility(t1.archetype, t2.archetype);
                     // The persona each sold on the interview couch matters here.
                     const persona = interviewChemistry(t1, t2);
@@ -243,7 +248,7 @@ export function processAlliances(ctx: SimContext) {
             const threshold = ALLIANCES.recruitThreshold * distrust;
             if (groupOpinion < threshold || theirOpinion < threshold) return;
 
-            const affinity = ARCHETYPES[candidate.archetype].allianceAffinity;
+            const affinity = ARCHETYPES[candidate.archetype].allianceAffinity + traitMod(candidate, 'allianceAffinity');
             const chance = Math.max(
                 ALLIANCES.minFormChance,
                 (ALLIANCES.recruitChance + affinity - (members.length - 2) * ALLIANCES.recruitSizePenalty) / distrust
@@ -267,6 +272,7 @@ export function processAlliances(ctx: SimContext) {
 
     // 4. Romance — see `growRomance`.
     growRomance(ctx);
+    growProtectorBond(ctx);
 
     // 5. Structure upkeep: prune the dead, re-elect leaders, pool supplies.
     reconcileAlliances(ctx);
@@ -373,9 +379,60 @@ function growRomance(ctx: SimContext) {
             // Somebody has to have risked something. This is the gate that makes
             // it a story rather than an arithmetic outcome.
             if (!stoodBy) continue;
-            if (!ctx.rng.chance(ROMANCE.chancePerCycle)) continue;
+            // Romance happens early or not at all. Without this the roll is a
+            // flat per-cycle chance, so an eligible pair converts with near
+            // certainty given enough cycles — and REPLAY-01 made run length
+            // vary from six days to twenty-one, which turned "how long did the
+            // Games run" into the dominant input on how many runs have lovers
+            // in them. Two people who have been circling each other for a
+            // fortnight are not going to.
+            const lateness = Math.max(0, ctx.state.day - ROMANCE.minDay);
+            if (!ctx.rng.chance(ROMANCE.chancePerCycle * Math.pow(ROMANCE.latenessDecay, lateness))) continue;
 
             declareLovers(ctx, t1, t2);
+            return;
+        }
+    }
+}
+
+/**
+ * CONTENT-06: the protective, non-romantic bond — the sibling-like pair, or
+ * the older tribute who has quietly adopted a much younger one. Uses the same
+ * "somebody has to have risked something" gate as romance, but keyed on a
+ * genuine age gap instead of romance eligibility, and it never touches
+ * `allianceId`: this is a relationship, not a merger.
+ */
+function growProtectorBond(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    if (ctx.state.day < ROMANCE.minDay) return;
+
+    for (const older of alive) {
+        for (const younger of alive) {
+            if (older.id === younger.id) continue;
+            if (older.age - younger.age < PROTECTOR_BOND.minAgeGap) continue;
+            if (areLovers(older, younger)) continue;
+            if (older.protectorBonds?.includes(younger.id)) continue;
+
+            const recentContact = cyclesSinceContact(ctx.state, older, younger.id) <= ROMANCE.contactWindow;
+            if (!recentContact) continue;
+            if (!hasStoodBy(older, younger.id)) continue;
+            if (getRel(older, younger.id) < PROTECTOR_BOND.threshold) continue;
+            if (!ctx.rng.chance(PROTECTOR_BOND.chancePerCycle)) continue;
+
+            older.protectorBonds = [...(older.protectorBonds ?? []), younger.id];
+            (younger.protectorBonds = younger.protectorBonds ?? []).push(older.id);
+            adjustRel(older, younger.id, 15);
+            adjustRel(younger, older.id, 15);
+            older.sponsorTrust = Math.min(100, older.sponsorTrust + 15);
+            younger.sponsorTrust = Math.min(100, younger.sponsorTrust + 20);
+            addExcitement(older, 20);
+            addExcitement(younger, 25);
+
+            ctx.logEvent(
+                fill(ctx.pickText(PROTECTOR_BOND_TEXTS), { older: older.name, younger: younger.name }),
+                [older.id, younger.id],
+                { important: true, category: 'romance' }
+            );
             return;
         }
     }
@@ -408,8 +465,8 @@ function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute) {
     t2.sponsorTrust = Math.min(100, t2.sponsorTrust + 40);
     t1.reputation = Math.min(95, t1.reputation + 20);
     t2.reputation = Math.min(95, t2.reputation + 20);
-    t1.excitementRating += 50;
-    t2.excitementRating += 50;
+    addExcitement(t1, 50);
+    addExcitement(t2, 50);
 
     ctx.logEvent(
         fill(ctx.pickText(ROMANCE_TEXTS), {
@@ -455,6 +512,12 @@ export function personaThreat(t: Tribute): number {
         case 'The Star-Crossed Lover': return -0.1;
         case 'The Humble Underdog': return -0.15;
         case 'The Quirky Oddball': return -0.05;
+        case 'The Silent Threat': return 0.25;
+        case 'The Cold Strategist': return 0.2;
+        case 'The Grieving Sibling': return -0.15;
+        case 'The Reluctant Hero': return -0.1;
+        case 'The District Loyalist': return -0.05;
+        case 'The Wildcard': return 0.05;
         default: return 0;
     }
 }

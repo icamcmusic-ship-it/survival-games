@@ -4,6 +4,7 @@ import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { clampTribute } from './vitals';
 import { massOf } from './physique';
+import { traitMod } from '../data/traits';
 
 /**
  * One exposure system, used by both the arena's own climate and the
@@ -54,15 +55,21 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     const scale = profile.intensity ?? 1;
     const amount = (value: number | undefined) => Math.round((value ?? 0) * scale);
 
-    if (profile.fatigue) t.vitals.fatigue += amount(profile.fatigue);
+    // Heat resistance takes the edge off anything that works by exhausting you.
+    const heatScale = profile.thirst ? Math.max(0, 1 - traitMod(t, 'heatResist')) : 1;
+    if (profile.fatigue) t.vitals.fatigue += Math.round(amount(profile.fatigue) * heatScale);
     if (profile.sanity) t.vitals.sanity -= amount(profile.sanity);
-    if (profile.thirst) t.vitals.thirst += amount(profile.thirst);
+    if (profile.thirst) t.vitals.thirst += Math.round(amount(profile.thirst) * heatScale);
     if (profile.hunger) t.vitals.hunger += amount(profile.hunger);
     if (profile.quench) t.vitals.thirst = Math.max(0, t.vitals.thirst - amount(profile.quench));
 
     // Mass is insulation: a Stocky tribute holds heat a Frail one cannot.
+    // Resistances: mass is insulation, and so is having grown up in it.
+    const resist = (key: 'poisonResist' | 'burnResist' | 'coldResist' | 'heatResist') =>
+        Math.max(0, 1 - traitMod(t, key));
     const frostbiteChance = profile.frostbite
-        ? profile.frostbite * scale * Math.max(0.4, 1 - massOf(t) * PHYSIQUE.frostbiteResistPerMass)
+        ? profile.frostbite * scale * resist('coldResist')
+            * Math.max(0.4, 1 - massOf(t) * PHYSIQUE.frostbiteResistPerMass)
         : 0;
     if (frostbiteChance > 0 && !t.injuries.frostbitten && ctx.rng.chance(frostbiteChance)) {
         t.injuries.frostbitten = true;
@@ -72,7 +79,7 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
             { important: true, category: 'injury' }
         );
     }
-    if (profile.burn && !t.injuries.burned && ctx.rng.chance(profile.burn * scale)) {
+    if (profile.burn && !t.injuries.burned && ctx.rng.chance(profile.burn * scale * resist('burnResist'))) {
         t.injuries.burned = true;
         ctx.logEvent(
             profile.onBurn?.(t) ?? `${t.name} blisters badly in ${profile.name}.`,
@@ -80,7 +87,7 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
             { category: 'injury' }
         );
     }
-    if (profile.poison && !t.injuries.poisoned && ctx.rng.chance(profile.poison * scale)) {
+    if (profile.poison && !t.injuries.poisoned && ctx.rng.chance(profile.poison * scale * resist('poisonResist'))) {
         t.injuries.poisoned = true;
         ctx.logEvent(
             profile.onPoison?.(t) ?? `${t.name} takes in a lungful of ${profile.name} and the toxins take hold.`,

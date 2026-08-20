@@ -11,6 +11,11 @@ import { Explainer } from './Explainer';
 import { objectiveLabel } from '../engine/objectives';
 import { traitInfo } from '../data/traitInfo';
 import { MapPin, Users, X, Heart } from 'lucide-react';
+import { craftOf, legacyOf } from '../data/districts';
+import { conditionOf, displayName } from '../engine/items';
+import { sponsorCost, sponsorableItems } from '../engine/playerSponsor';
+import { gameActions, gameStore } from '../store/gameStore';
+import { useStore } from '../store/createStore';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
@@ -48,6 +53,70 @@ function VitalBar({ label, value, invert = false, explain }: { label: string; va
                 <span style={{ width: `${Math.max(0, Math.min(100, value))}%`, background: color }} />
             </div>
         </div>
+    );
+}
+
+
+/**
+ * SIDE-03: the player, as a sponsor.
+ *
+ * The coin wallet had exactly one use — a wager placed before the gong and then
+ * watched. This is the other side of it: the audience doing the one thing the
+ * audience in the source material can actually do. Prices escalate with the day
+ * and with every parachute the tribute has already had, so the third one is a
+ * decision about the whole wallet rather than a shopping trip.
+ */
+function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: GameState }) {
+    const coins = useStore(gameStore, s => s.coins);
+    const [message, setMessage] = React.useState<string | null>(null);
+
+    const inArena = gameState.phase === 'day' || gameState.phase === 'night' || gameState.phase === 'feast';
+    if (tribute.status !== 'alive') return null;
+
+    const offers = sponsorableItems()
+        .map(item => ({ item, cost: sponsorCost(gameState, tribute, item) }))
+        .sort((a, b) => a.cost - b.cost);
+
+    return (
+        <section>
+            <div className="flex items-baseline justify-between gap-2 mb-2">
+                <h4 className="panel-title">Send a parachute</h4>
+                <span className="text-[11px] font-mono text-[var(--color-ink-500)]">{coins} coins</span>
+            </div>
+            {!inArena ? (
+                <p className="text-sm text-[var(--color-ink-500)]">
+                    Nothing can be sent until the tributes are in the arena.
+                </p>
+            ) : (
+                <>
+                    <p className="text-[11px] text-[var(--color-ink-500)] mb-2">
+                        Prices rise with every day of the Games and with every parachute {tribute.name} has
+                        already received — from you, from the crowd, or from their mentor
+                        {tribute.mentorLegacy ? `, ${tribute.mentorLegacy}` : ''}.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto custom-scrollbar">
+                        {offers.map(({ item, cost }) => {
+                            const affordable = coins >= cost;
+                            return (
+                                <button
+                                    key={item.id}
+                                    disabled={!affordable}
+                                    onClick={() => setMessage(gameActions.sponsorTribute(tribute.id, item.id).message)}
+                                    className="panel-flush p-2 flex justify-between items-center gap-2 text-left disabled:opacity-40"
+                                    title={affordable ? `Send ${item.name} to ${tribute.name}` : `You cannot afford this`}
+                                >
+                                    <span className="text-sm text-[var(--ink)] truncate">{item.name}</span>
+                                    <span className="text-[11px] font-mono flex-none" style={{ color: affordable ? 'var(--gold)' : 'var(--color-ink-500)' }}>
+                                        {cost}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </>
+            )}
+            {message && <p className="text-sm mt-2 text-[var(--gold)]">{message}</p>}
+        </section>
     );
 }
 
@@ -160,8 +229,52 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                 </span>
                             </Explainer>
                             {tribute.isCareer && <span className="chip chip-gold">Career</span>}
+                            {tribute.volunteered && (
+                                <Explainer
+                                    align="left"
+                                    label={<span className="chip chip-gold">Volunteer</span>}
+                                    title="Volunteered"
+                                >
+                                    {tribute.reapingNote}
+                                </Explainer>
+                            )}
+                            <Explainer
+                                align="left"
+                                label={<span className="chip">{legacyOf(tribute.district).industry}</span>}
+                                title={`District ${tribute.district}: ${legacyOf(tribute.district).industry}`}
+                            >
+                                {craftOf(tribute.district).blurb}.
+                                <span className="block mt-1.5">
+                                    Twelve years of a district's trade is not decoration: it seeds the skills this
+                                    tribute walks in with, and it decides which weapons feel like something they
+                                    have held before.
+                                </span>
+                            </Explainer>
                             {tribute.fanFavourite && <span className="chip chip-gold" title="The Capitol had a favourite before the gong ever sounded.">Fan favourite</span>}
-                            {tribute.interviewStrategy && <span className="chip" title="The persona they sold on Caesar's couch.">{tribute.interviewStrategy}</span>}
+                            {tribute.interviewStrategy && <span className="chip" title="The persona they held on Caesar's couch — which may not be the one they walked out with.">{tribute.interviewStrategy}</span>}
+                            {tribute.trainingStrategy && tribute.trainingStrategy !== 'balanced' && (
+                                <Explainer
+                                    align="left"
+                                    label={<span className="chip">{tribute.trainingStrategy === 'conceal' ? 'Hid their hand' : 'Played to the gallery'}</span>}
+                                    title="Training strategy"
+                                >
+                                    {tribute.trainingStrategy === 'conceal'
+                                        ? 'They spent three days on the training floor doing nothing they could not have done at home. It costs them sponsors and a low score, and it keeps them off everybody else\'s list.'
+                                        : 'They worked the floor where the gallery could see them. It buys sponsor trust and a higher score, and it paints a target.'}
+                                </Explainer>
+                            )}
+                            {tribute.stylist && (
+                                <Explainer
+                                    align="left"
+                                    label={<span className="chip">{tribute.stylist}</span>}
+                                    title="Stylist"
+                                >
+                                    {tribute.stylist} dressed them for the chariot parade
+                                    {tribute.chariotAngle ? ` — ${tribute.chariotAngle}` : ''}. What the Capitol
+                                    saw on the City Circle is most of what it thinks about them now, and sponsor
+                                    trust is read by the parachute stream all run.
+                                </Explainer>
+                            )}
                             <Explainer
                                 align="left"
                                 label={<span className="chip">{tribute.stance}</span>}
@@ -406,10 +519,22 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                 <span className="text-sm text-[var(--color-ink-400)]">Carrying nothing</span>
                             ) : tribute.inventory.map((item, i) => (
                                 <div key={`${item.id}-${i}`} className="panel-flush p-2 flex justify-between items-center gap-2">
-                                    <span className="text-sm text-[var(--ink)] truncate">{item.name}</span>
+                                    <span className="text-sm text-[var(--ink)] truncate">
+                                        {displayName(item)}
+                                        {item.stack !== undefined && item.stack > 1 && (
+                                            <span className="text-[var(--color-ink-500)]"> ×{item.stack}</span>
+                                        )}
+                                        {item.poison && <span className="ml-1 text-[var(--cat-death)]" title="Coated with poison.">☠</span>}
+                                    </span>
                                     <span className="flex items-center gap-2 flex-none">
                                         {item.durability !== undefined && (
-                                            <span className="text-[10px] font-mono text-[var(--color-ink-500)]">{item.durability} dur</span>
+                                            <span
+                                                className="text-[10px] font-mono"
+                                                style={{ color: conditionOf(item) < 0.35 ? 'var(--red)' : 'var(--color-ink-500)' }}
+                                                title="Condition. A worn weapon hits softer, not just closer to breaking."
+                                            >
+                                                {Math.round(conditionOf(item) * 100)}%
+                                            </span>
                                         )}
                                         <span className="chip">{item.type}</span>
                                     </span>
@@ -417,6 +542,8 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                             ))}
                         </div>
                     </section>
+
+                    <SponsorPanel tribute={tribute} gameState={gameState} />
 
                     <section>
                         <h4 className="panel-title mb-2">Social graph</h4>

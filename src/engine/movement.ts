@@ -5,6 +5,7 @@ import { SimContext } from './context';
 import { effectiveResources } from './map';
 import { ensureMemory, hasVengeanceAgainst, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { fearInZone } from './fear';
+import { traitMod } from '../data/traits';
 
 /**
  * Destination scoring.
@@ -75,6 +76,11 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
             const hunting = t.stance === 'Aggressive' || ensureMemory(t).vengeance.length > 0;
             if (!hunting) score -= dreaded * FEAR.avoidWeight * (1 + arch.caution);
         }
+
+        // Ground a tribute is personally good at. A Climber goes up, a Swimmer
+        // crosses, and a Night-Sighted tribute is not pinned down after dark.
+        if (z.terrain === 'highland') score += traitMod(t, 'highland');
+        if (z.terrain === 'water' || z.terrain === 'wetland') score += traitMod(t, 'water');
 
         if (t.stance === 'Evasive') score -= z.danger * 2;
         return { z, score: Math.max(0.1, score) };

@@ -1,4 +1,5 @@
 import { Arena, Item, GameConfig, Build } from '../models/types';
+import { ROLLABLE_TRAITS } from './traits';
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
     districtCount: 12,
@@ -174,11 +175,12 @@ export const ARENAS: Arena[] = [
     }
 ];
 
-export const TRAITS = [
-    'Hydrophilic', 'Insomniac', 'Paranoid', 'Charismatic', 'Clumsy',
-    'Eagle-Eyed', 'Iron Stomach', 'Light Sleeper', 'Bloodthirsty', 'Pacifist',
-    'Pyromaniac', 'Nimble', 'Brute', 'Strategist', 'Tracker'
-];
+/**
+ * The reaping's trait pool. The definitions — and every effect — live in
+ * `data/traits.ts`; this is the subset a tribute can be born with, which
+ * excludes the traits that have to be earned in the arena.
+ */
+export const TRAITS = ROLLABLE_TRAITS;
 
 /**
  * Traits that cannot sit on the same tribute.
@@ -192,13 +194,40 @@ export const INCOMPATIBLE_TRAITS: Array<[string, string]> = [
     ['Pacifist', 'Bloodthirsty'],
     ['Pacifist', 'Brute'],
     ['Pacifist', 'Pyromaniac'],
+    ['Pacifist', 'Ruthless'],
+    ['Pacifist', 'Butcher'],
+    ['Pacifist', 'Wrestler'],
     ['Clumsy', 'Nimble'],
     ['Clumsy', 'Eagle-Eyed'],
+    ['Clumsy', 'Climber'],
+    ['Clumsy', 'Fleet'],
+    ['Clumsy', 'Marksman'],
     ['Insomniac', 'Light Sleeper'],
     ['Brute', 'Nimble'],
+    ['Brute', 'Fleet'],
     ['Charismatic', 'Paranoid'],
+    ['Charismatic', 'Unremarkable'],
     ['Strategist', 'Clumsy'],
     ['Iron Stomach', 'Hydrophilic'],
+    // Added with the expanded pool: a trait table is only worth having if it
+    // cannot produce a Stoic Fragile Loyal Treacherous tribute.
+    ['Stoic', 'Fragile'],
+    ['Cool-Headed', 'Skittish'],
+    ['Loyal', 'Treacherous'],
+    ['Ruthless', 'Softhearted'],
+    ['Ruthless', 'Merciful'],
+    ['Bloodthirsty', 'Softhearted'],
+    ['Grim', 'Softhearted'],
+    ['Grim', 'Fragile'],
+    ['Pyromaniac', 'Fire-Shy'],
+    ['Sun-Hardened', 'Fire-Shy'],
+    ['Frost-Born', 'Sun-Hardened'],
+    ['Showman', 'Unremarkable'],
+    ['Silver-Tongued', 'Unremarkable'],
+    ['Chameleon', 'Clumsy'],
+    ['Hardy', 'Fragile'],
+    ['Marksman', 'Wrestler'],
+    ['Swimmer', 'Climber'],
 ];
 
 export function traitsConflict(a: string, b: string): boolean {
@@ -224,12 +253,12 @@ export const ITEMS: Item[] = [
     { id: 'blowgun', name: 'Blowgun with Darts', type: 'weapon', value: 35, durability: 40, weaponClass: 'ranged', damage: 2, poison: true },
     { id: 'garrote', name: 'Wire Garrote', type: 'weapon', value: 25, durability: 30, weaponClass: 'melee', damage: 3 },
     { id: 'slingshot', name: 'Slingshot', type: 'weapon', value: 20, durability: 60, weaponClass: 'ranged', damage: 2 },
-    { id: 'water', name: 'Water Bottle', type: 'water', value: 20 },
-    { id: 'bread', name: 'Loaf of Bread', type: 'food', value: 15, spoilage: 3 },
-    { id: 'berries', name: 'Foraged Berries', type: 'food', value: 5, spoilage: 1 },
-    { id: 'dried-meat', name: 'Dried Meat', type: 'food', value: 20, spoilage: 6 },
+    { id: 'water', name: 'Water Bottle', type: 'water', value: 20 , stack: 2 },
+    { id: 'bread', name: 'Loaf of Bread', type: 'food', value: 15, spoilage: 3 , stack: 2 },
+    { id: 'berries', name: 'Foraged Berries', type: 'food', value: 5, spoilage: 1 , stack: 2 },
+    { id: 'dried-meat', name: 'Dried Meat', type: 'food', value: 20, spoilage: 6 , stack: 2 },
     { id: 'medkit', name: 'First Aid Kit', type: 'medical', value: 80 },
-    { id: 'ointment', name: 'Burn Ointment', type: 'medical', value: 40 },
+    { id: 'ointment', name: 'Burn Ointment', type: 'medical', value: 40 , stack: 2 },
     { id: 'antidote', name: 'Antidote Vial', type: 'medical', value: 60 },
     { id: 'rope', name: 'Rope', type: 'utility', value: 10 },
     { id: 'wire', name: 'Wire', type: 'utility', value: 15 },
@@ -238,7 +267,21 @@ export const ITEMS: Item[] = [
     // out of their own pack the way `consumeSupplies` eats anything of type 'food'.
     { id: 'nightlock', name: 'Nightlock Berries', type: 'utility', value: 12 },
     { id: 'matches', name: 'Matches', type: 'utility', value: 25 },
-    { id: 'backpack', name: 'Backpack', type: 'utility', value: 30 },
+    { id: 'backpack', name: 'Backpack', type: 'utility', value: 30, capacity: 2 },
+
+    // SIDE-01. The table was 23 items, 12 of them weapons that differed only in
+    // damage, durability and class — no armour, no containers, no tools, no
+    // light, no purification, and no sleeping bag, which is the most famous
+    // parachute in the source material.
+    { id: 'vest', name: 'Padded Vest', type: 'armour', value: 45, armour: 0.15, durability: 60, maxDurability: 60 },
+    { id: 'bracers', name: 'Leather Bracers', type: 'armour', value: 30, armour: 0.08, durability: 70, maxDurability: 70 },
+    { id: 'shield', name: 'Buckler', type: 'armour', value: 40, armour: 0.12, durability: 50, maxDurability: 50 },
+    { id: 'sleeping-bag', name: 'Insulated Sleeping Bag', type: 'utility', value: 70, warmth: true },
+    { id: 'lantern', name: 'Shielded Lantern', type: 'tool', value: 35, light: true },
+    { id: 'tablets', name: 'Purification Tablets', type: 'medical', value: 50, purifies: true, stack: 3 },
+    { id: 'net', name: 'Fishing Net', type: 'tool', value: 30, fishing: true },
+    { id: 'satchel', name: 'Canvas Satchel', type: 'utility', value: 20, capacity: 1 },
+    { id: 'whetstone', name: 'Whetstone', type: 'tool', value: 25, stack: 3 },
 ];
 
 /**

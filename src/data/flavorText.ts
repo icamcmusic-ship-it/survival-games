@@ -187,6 +187,96 @@ export const INTERVIEW_SCENARIOS = [
         ],
         charismaBuff: 1,
         trustMultiplier: 1.2
+    },
+    {
+        strategy: "The Silent Threat",
+        success: [
+            "{tribute} answers most questions in three words or fewer. By the fourth one the room has stopped expecting more, and started paying closer attention.",
+            "{tribute} lets Caesar do most of the talking and simply watches the audience while he does. It is more unsettling than anything they could have said.",
+            "{tribute} says almost nothing for three minutes, and every second of it reads as a decision rather than a failure to perform.",
+        ],
+        failure: [
+            "{tribute} tries to be quietly menacing and just comes across as somebody with nothing to say.",
+            "The silence stretches too long and Caesar has to fill it himself, which nobody in the room mistakes for mystery.",
+            "{tribute}'s short answers land as sullen rather than dangerous, and sullen does not sell.",
+        ],
+        charismaBuff: 0,
+        trustMultiplier: 1.15
+    },
+    {
+        strategy: "The Grieving Sibling",
+        success: [
+            "{tribute} talks about who they left behind — plainly, without performing it — and the room goes very still.",
+            "{tribute} says one name, explains who it belongs to, and does not elaborate. Nobody asks them to.",
+            "{tribute} admits they are terrified of what this does to the people at home, and the honesty lands harder than bravado would have.",
+        ],
+        failure: [
+            "{tribute} breaks down mid-answer and cannot recover the thread. Caesar is kind about it, which somehow makes it worse.",
+            "The grief reads as unrehearsed in the wrong way — raw instead of affecting — and the room does not know where to look.",
+            "{tribute} tries to compose themselves and the pause runs long enough that the moment curdles into something else.",
+        ],
+        charismaBuff: 0,
+        trustMultiplier: 1.35
+    },
+    {
+        strategy: "The Cold Strategist",
+        success: [
+            "{tribute} answers every question like a problem with a solution already attached. The Capitol finds it clinical and cannot look away.",
+            "{tribute} lays out, in order, exactly what they intend to do and why. It is unnervingly organised.",
+            "{tribute} treats the interview itself as a tactical problem and solves it in front of everyone, which is its own kind of performance.",
+        ],
+        failure: [
+            "{tribute} comes across as a spreadsheet with a pulse, and the room's attention drifts within a minute.",
+            "The calculation shows too plainly and the audience decides they are watching someone who does not actually feel anything, which reads badly.",
+            "{tribute}'s plan sounds thin the moment it is said out loud, and everyone in the room can hear the gaps.",
+        ],
+        charismaBuff: 0,
+        trustMultiplier: 1.1
+    },
+    {
+        strategy: "The Reluctant Hero",
+        success: [
+            "{tribute} makes it clear they did not want any of this, and that they intend to do what is necessary anyway. The room respects it more than bravado.",
+            "{tribute} says plainly that they are frightened and are going to try regardless, and the audience decides that is the bravest thing anyone has said all night.",
+            "{tribute} refuses to pretend this is an honour, and refuses to fall apart about it either. It is a difficult tone to hold, and they hold it.",
+        ],
+        failure: [
+            "The reluctance reads as self-pity instead of honesty, and the room's sympathy curdles fast.",
+            "{tribute} cannot find the line between frightened and pathetic, and lands on the wrong side of it.",
+            "{tribute} says all the right things and none of them land, because nobody in the room believes they mean it.",
+        ],
+        charismaBuff: 1,
+        trustMultiplier: 1.25
+    },
+    {
+        strategy: "The District Loyalist",
+        success: [
+            "{tribute} spends the whole three minutes talking about District {district} — its people, its work, what it deserves — and barely mentions themselves at all.",
+            "{tribute} wears something small from home and explains exactly what it means. The gesture costs nothing and the district will remember it forever.",
+            "{tribute} promises, simply, to make their district proud, and says it like someone who has actually thought about what that means.",
+        ],
+        failure: [
+            "The district pride reads as rehearsed, a line delivered rather than meant, and the room can tell the difference.",
+            "{tribute} talks about home so long that Caesar has to steer the segment back on track, and the audience loses the thread.",
+            "{tribute}'s devotion to their district comes across as provincial rather than admirable to a Capitol audience that does not know the place.",
+        ],
+        charismaBuff: 0,
+        trustMultiplier: 1.2
+    },
+    {
+        strategy: "The Wildcard",
+        success: [
+            "{tribute} contradicts themselves twice in three minutes and somehow makes both versions convincing. Nobody can predict what they will say next, and that is the entire appeal.",
+            "{tribute} answers the question Caesar meant to ask next, before he asks it, and the room decides they are either very sharp or very lucky.",
+            "{tribute} changes the subject entirely, twice, and both detours are more interesting than the original question.",
+        ],
+        failure: [
+            "The unpredictability just reads as unfocused, and the segment goes nowhere in particular.",
+            "{tribute} contradicts themselves and it is not charming, just confusing, and Caesar has to work to recover the thread.",
+            "{tribute} swings for something clever and the room is a half-second too slow to follow, which kills it.",
+        ],
+        charismaBuff: 1,
+        trustMultiplier: 1.15
     }
 ];
 
@@ -333,6 +423,39 @@ export const DEATH_TEXTS = {
         '{tribute} does not get up again in {zone}. {cause}.',
         'They will show {tribute}\'s face in the sky tonight. {cause}, alone in {zone}.',
     ],
+    /**
+     * CONTENT-05: the same six sentences used to cover a twelve-year-old dying
+     * of exposure, a Career bleeding out, and a fan favourite drowning. Keyed
+     * pools, chosen by who the tribute actually was — see `pickDeathPool` in
+     * `engine/combat.ts`.
+     */
+    environmentalChild: [
+        '{tribute} dies alone in {zone}, {age} years old. {cause}. The anthem tonight will run long.',
+        'There is no dignifying it: {tribute} is {age}, and {tribute} dies in {zone}. {cause}.',
+        '{tribute} does not get up again in {zone}. They are {age}. {cause}.',
+        'The Capitol cuts away before the medics reach {zone}. {tribute} was {age}. {cause}.',
+    ],
+    environmentalFanFavourite: [
+        'Every screen in the Capitol is on {zone} within seconds. {tribute} — everybody\'s {tribute} — is dead. {cause}.',
+        'The betting boards freeze mid-payout. {tribute} dies in {zone}, and half of Panem watches it happen live. {cause}.',
+        '{tribute} was supposed to be different. {cause}, in {zone}, on schedule with everybody else.',
+        'The sponsors who spent all week on {tribute} are still watching when the cannon sounds in {zone}. {cause}.',
+    ],
+    environmentalCareer: [
+        '{tribute} — trained for this since childhood — dies in {zone} anyway. {cause}. The academy did not cover this part.',
+        'Nobody expected {zone} to be what finally got {tribute}. {cause}.',
+        '{tribute} spent years preparing for the wrong Games. {cause}, in {zone}.',
+    ],
+    environmentalWitnessed: [
+        '{witness} is standing close enough in {zone} to hear it happen. {tribute} is dead. {cause}.',
+        '{witness} watches {tribute} die in {zone} and does not move for a long time afterward. {cause}.',
+        '{tribute} dies in front of {witness} in {zone}. {cause}. There is nothing {witness} could have done, and {witness} knows it.',
+    ],
+    environmentalAlone: [
+        '{tribute} dies with nobody in {zone} to see it. {cause}. The cameras find the body before anyone else does.',
+        'No witness, no ally, no last words — {tribute} dies alone in {zone}. {cause}.',
+        '{tribute} goes quietly in {zone}, entirely alone. {cause}. Somewhere, a district is about to find out from the sky.',
+    ],
 };
 
 export const ALLIANCE_TEXTS = {
@@ -383,6 +506,20 @@ export const ROMANCE_TEXTS = [
     'ROMANCE: {t1} and {t2} of District {district} are inseparable now. Caesar Flickerman devotes an entire segment to them.',
     'ROMANCE: Something has shifted between {t1} and {t2} of District {district}. The audience can see it, and so can everyone else in the arena.',
 ];
+
+/**
+ * CONTENT-06: a bond that is not romance. {older} has taken {younger} under
+ * something like a wing — protective rather than romantic, and it does not
+ * require either of them to be single, or of an age where romance would even
+ * make sense. See `growProtectorBond` in `phases/alliances.ts`.
+ */
+export const PROTECTOR_BOND_TEXTS = [
+    'BOND: {older} has started putting themselves between {younger} and anything dangerous, without ever quite saying why.',
+    'BOND: Something has settled between {older} and {younger} — not an alliance exactly. More like {older} has decided {younger} is theirs to look after.',
+    'BOND: {younger} has stopped flinching when {older} moves fast nearby. That took a while to earn.',
+    'BOND: The Capitol is calling it the closest thing this arena has to family. {older} would probably just call it {younger}\'s good luck.',
+];
+
 
 export const FEAST_TEXTS = {
     announce: [
@@ -486,6 +623,35 @@ export const AMBIENT_TEXTS = [
     'The Capitol feed cuts to a wide shot and holds it, waiting for something to happen.',
     'A silence settles over the whole arena at once, the way it does before the Gamemakers do something.',
     'The odds board in the Capitol flickers and resettles. Someone just moved.',
+    // CONTENT-03: the studio, the crowd, and the machinery behind the broadcast.
+    'A commentator\'s voice, half-heard from a Capitol screen a thousand miles away, calls the play-by-play nobody in the arena can hear.',
+    'The arena cameras rack focus on nothing in particular and hold there, the way they do when a producer wants tension instead of an event.',
+    'A Capitol bar goes suddenly quiet as every screen in it cuts to the same shot.',
+    'Somewhere, a sponsor stares at their balance and decides against spending it just yet.',
+    'The studio audience applauds a highlight reel of the day\'s best moments. Half of them are already dead.',
+    'A Gamemaker\'s voice, caught on an open mic for half a second, says a number and then goes quiet.',
+    'The broadcast crosses to a panel of former victors, all of whom have opinions about how slow this year is.',
+    'A child in the Capitol asks their parent who is winning. The parent does not have a good answer.',
+    'The feed lingers on an empty stretch of arena for a beat too long, as if daring something to happen in it.',
+    'Somewhere in the control room, a hand hovers over a switch and does not press it. Not yet.',
+    'The scoreboard in the town square of a distant district updates itself, and a crowd gathers to read it.',
+    'A stylist watches their own work walk across the screen and holds their breath the way they did at the parade.',
+    'The Capitol logo fades in over a wide shot of the arena, the way it does before something changes.',
+    'A mentor, somewhere off-camera, mutters something the microphones almost catch.',
+];
+
+/**
+ * CONTENT-03: ambient lines that read the run's actual state rather than
+ * being purely decorative. Templated with `{alive}`, `{fallen}`, `{day}` and
+ * `{favourite}` — filled in by `dynamicAmbientLine` in `engine/phases/dayNight.ts`.
+ */
+export const DYNAMIC_AMBIENT_TEXTS = [
+    '{alive} tributes are still breathing on day {day}. The Capitol has opinions about the pace.',
+    'Day {day}. {fallen} tributes down, {alive} left, and the studio panel is already arguing about who wins.',
+    'The commentary track spends a full minute on {favourite} without anyone asking it to.',
+    'Somewhere, someone is doing the arithmetic on {alive} tributes and not liking the answer.',
+    'Day {day} closes with {alive} left in it. The odds board barely has room to print them all anymore.',
+    'The studio cuts to a graphic: {fallen} down, {alive} to go. Nobody needed the graphic.',
 ];
 
 /**
@@ -517,6 +683,10 @@ export const DUEL_TEXTS = {
         '{t1} and {t2} come together in {zone} and there is no talking.',
         '{t1} closes on {t2} in {zone}. Neither of them backs up.',
         'It starts badly and fast: {t1} and {t2}, alone in {zone}.',
+        '{t1} and {t2} both reach for whatever they are carrying at the same moment in {zone}.',
+        'There is a second where {t1} and {t2} could both still walk away from {zone}. It passes.',
+        'Whatever {t1} and {t2} might have said to each other in {zone}, neither of them says it.',
+        '{t1} plants their feet in {zone} and waits for {t2} to close the distance.',
     ],
     exchange: [
         '{winner} opens {loser} up and drives them back a step.',
@@ -527,18 +697,37 @@ export const DUEL_TEXTS = {
         '{loser} gives ground. {winner} takes every inch of it.',
         '{winner} lands something that makes {loser} stop making noise.',
         '{loser} misjudges the reach and wears it across the ribs.',
+        '{winner} reads the next move before {loser} makes it.',
+        '{loser} tries to close the distance and {winner} makes them regret it.',
+        '{winner} finds a gap {loser} did not know they were leaving open.',
+        '{loser} is a half-second slow and {winner} makes the whole fight out of it.',
+    ],
+    exchangeFinishing: [
+        '{loser} is barely upright. {winner} does not slow down.',
+        '{loser} has nothing left to block with. {winner} finishes what they started.',
+        'There is no fight left in {loser}, only {winner} still swinging.',
+        '{winner} presses the advantage all the way through. {loser} cannot answer it.',
+    ],
+    exchangeRematch: [
+        '{winner} has seen this exact move from {loser} before, and this time they are ready for it.',
+        '{loser} tries the same opening that worked last time. {winner} remembers, and it does not work twice.',
+        'They have done this before, and it shows. {winner} is not guessing anymore.',
     ],
     ambush: [
         'AMBUSH: {attacker} comes out of the cover in {zone} before {victim} registers there was cover.',
         'AMBUSH: {victim} never hears {attacker} at all. The first they know of it is the blade.',
         'AMBUSH: {attacker} has been lying still in {zone} for an hour waiting for exactly this, and {victim} walks straight into it.',
         'AMBUSH: {attacker} takes {victim} from behind in {zone}. It is not a fight yet — it is a head start.',
+        'AMBUSH: {victim} is watching the wrong direction. {attacker} makes sure it stays that way.',
+        'AMBUSH: {attacker} closes the last ten feet in total silence, and {victim} finds out about it the hard way.',
     ],
     stalemate: [
         '{t1} and {t2} circle, breathing hard, and neither finds an opening.',
         'The exchange comes to nothing. {t1} and {t2} reset, watching hands.',
         'Both of them are too tired to close and too proud to walk. Nothing lands in {zone}.',
         '{t1} and {t2} feint at each other for a full minute and achieve nothing at all.',
+        'Neither {t1} nor {t2} commits to the opening they both see. It closes again.',
+        '{t1} and {t2} trade nothing but distance in {zone} for a long, tense minute.',
     ],
     retreat: [
         '{fleer} decides this is not the hill and breaks off, leaving {stayer} bleeding in {zone}.',
@@ -546,12 +735,15 @@ export const DUEL_TEXTS = {
         '{fleer} throws everything they are carrying at {stayer} and uses the second it buys to get clear.',
         '{fleer} takes the first gap that opens and is gone into the cover of {zone}.',
         '{fleer} decides being alive beats being right, and breaks contact with {stayer}.',
+        '{fleer} breaks and runs, and {stayer} lets them go rather than chase into unknown ground.',
+        '{fleer} is done. Whatever this was worth, it was not worth the rest of it.',
     ],
     mutualBreak: [
         '{t1} and {t2} break apart at the same moment, both bleeding, neither willing to finish it.',
         'It ends the way most of them do: {t1} and {t2} back away from each other, wrecked and alive.',
         '{t1} and {t2} run out of whatever was carrying them and simply stop, ten feet apart, in {zone}.',
         'Neither of them can finish it. {t1} and {t2} go opposite ways out of {zone}.',
+        '{t1} and {t2} have both had enough at the same instant, and the fight simply ends.',
     ],
 };
 
@@ -587,3 +779,186 @@ export const INTIMIDATION_TEXTS = [
     'Word of {tribute}\'s {score} is around the Training Centre before dinner. Nobody sleeps well.',
     '{tribute}\'s {score} is the only number anyone repeats that night. It gets larger each time it is told.',
 ];
+
+/**
+ * SIDE-05: the interview as three beats rather than one roll.
+ *
+ * Caesar's job on that couch is to find the thing the tribute did not intend to
+ * say. The follow-up is where the persona is actually decided — a tribute walks
+ * out with the angle they rehearsed only if they hold it under one question.
+ */
+export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]; broke: string[] }> = {
+    'The Star-Crossed Lover': {
+        question: "Caesar leans in: 'And if it comes down to the two of you out there?'",
+        held: [
+            "{tribute} does not blink. 'Then I hope they're the one who comes home.' The room makes a sound it has not made in years.",
+            "'It won't,' {tribute} says, and says nothing else. Caesar lets it stand.",
+        ],
+        broke: [
+            "{tribute} opens their mouth and nothing comes out. The silence goes on a beat too long, and the audience watches the story come apart.",
+            "'I — I'd do what I had to.' The front row shifts in its seats. That is not the answer anybody wanted.",
+        ],
+    },
+    'The Ruthless Warrior': {
+        question: "Caesar smiles: 'Big words. Who in that arena actually worries you?'",
+        held: [
+            "'Nobody.' {tribute} lets it sit there, and the Careers in the wings stop finding it funny.",
+            "{tribute} names three tributes, in order, and explains what they will do about each. Nobody laughs.",
+        ],
+        broke: [
+            "{tribute} names a Career and then, hearing it out loud, tries to take it back. The damage is done both ways.",
+            "'I'm not — I mean, I'm not worried.' The 'I'm not' arrives half a second too late.",
+        ],
+    },
+    'The Humble Underdog': {
+        question: "Caesar, gently: 'What would you say to your district right now?'",
+        held: [
+            "{tribute} thanks their district by name, and then their mentor, and then somebody nobody has heard of. It costs nothing and buys everything.",
+            "'That I'm going to try.' It is not a promise, and everyone in the room understands why they did not make one.",
+        ],
+        broke: [
+            "{tribute} freezes at the question and manages 'thank you' twice. The applause is kind, which is worse.",
+            "{tribute} recites something obviously written for them, and the Capitol can hear the punctuation.",
+        ],
+    },
+    'The Mysterious Enigma': {
+        question: "Caesar tilts his head: 'You have told us nothing at all. Is that the plan?'",
+        held: [
+            "{tribute} smiles once and says nothing. The bookmakers move the line on a smile.",
+            "'You'll see it when everyone else does.' Caesar throws up his hands and the crowd howls.",
+        ],
+        broke: [
+            "Pressed, {tribute} fills the silence — and fills it, and keeps filling it. The mystery evaporates on live television.",
+            "{tribute} explains the strategy. Out loud. On camera. To everyone.",
+        ],
+    },
+    'The Charming Flirt': {
+        question: "Caesar grins: 'Half the Capitol is already in love. What do you want from them?'",
+        held: [
+            "'Everything,' {tribute} says, to the cameras rather than to Caesar, and the switchboard lights up.",
+            "{tribute} answers with a question of their own and lets Caesar flounder for once. The crowd is delighted.",
+        ],
+        broke: [
+            "{tribute} pushes it one line too far and the laughter turns into the other kind of laughter.",
+            "The charm slips for a second and something much more frightened shows underneath it.",
+        ],
+    },
+    'The Arrogant Brute': {
+        question: "Caesar, evenly: 'Some would call that arrogance.'",
+        held: [
+            "'Some would be right.' {tribute} does not smile, and neither does anybody else.",
+            "{tribute} shrugs so completely that the question stops existing.",
+        ],
+        broke: [
+            "{tribute} takes offence at the word and spends thirty seconds proving it fits.",
+            "The comeback lands badly, and for the rest of the segment {tribute} is a large person in a chair.",
+        ],
+    },
+    'The Quirky Oddball': {
+        question: "Caesar, delighted: 'I have no idea what you are going to say next. Do you?'",
+        held: [
+            "{tribute} says something that makes no sense whatsoever and brings the house down.",
+            "{tribute} answers a question Caesar did not ask, perfectly, and the Capitol decides it adores them.",
+        ],
+        broke: [
+            "The joke does not land. {tribute} tries it again, slower. It lands worse.",
+            "{tribute} misjudges the room by a wide margin and finishes the answer into complete silence.",
+        ],
+    },
+    'The Silent Threat': {
+        question: "Caesar, leaning forward: 'You have said almost nothing. Is there anything you want to say?'",
+        held: [
+            "{tribute} looks at the camera for a long moment and says only, 'You'll see.' The room does not breathe for a second.",
+            "{tribute} shakes their head once, and the refusal to elaborate is more menacing than any threat could have been.",
+        ],
+        broke: [
+            "Pressed, {tribute} finally talks — too much, too fast, and the mystery collapses in real time.",
+            "{tribute} tries to hold the silence and it curdles into something that just looks like nerves.",
+        ],
+    },
+    'The Grieving Sibling': {
+        question: "Caesar, gently: 'Tell me about them.'",
+        held: [
+            "{tribute} does, briefly, steadily, and stops before it becomes too much. The room is with them the entire time.",
+            "{tribute} says the name once more, clearly, so it is on the record. Caesar does not push further.",
+        ],
+        broke: [
+            "{tribute} cannot get through it and the segment has to be cut short. The sympathy is real and it is not the same as trust.",
+            "{tribute} says too much, too raw, and the room's discomfort outweighs its sympathy.",
+        ],
+    },
+    'The Cold Strategist': {
+        question: "Caesar: 'And if the plan falls apart on day one?'",
+        held: [
+            "'Then I have a second plan,' {tribute} says, without missing a beat, and the room believes them.",
+            "{tribute} outlines a contingency in under ten seconds. It is unnervingly thorough.",
+        ],
+        broke: [
+            "{tribute} has no answer ready, and the gap where a contingency should be is very visible.",
+            "'It won't,' {tribute} says, with a confidence the room does not share.",
+        ],
+    },
+    'The Reluctant Hero': {
+        question: "Caesar, quietly: 'Are you afraid?'",
+        held: [
+            "'Yes,' {tribute} says, simply, and does not look away from the camera when they say it.",
+            "{tribute} admits it without apologising for it, and the room respects the difference.",
+        ],
+        broke: [
+            "{tribute} tries to deny it and the denial does not land — everyone in the room can see it is not true.",
+            "The admission turns into something closer to panic, live, on camera, and Caesar has to move the segment along.",
+        ],
+    },
+    'The District Loyalist': {
+        question: "Caesar: 'What do you want District {district} to know?'",
+        held: [
+            "{tribute} says it directly to the camera, by name, and means every word of it.",
+            "{tribute} thanks somebody specific back home, and the specificity is what makes it land.",
+        ],
+        broke: [
+            "The message comes out generic — the kind of thing anyone could say about any district — and the room can tell.",
+            "{tribute} gets lost partway through and the message never actually arrives.",
+        ],
+    },
+    'The Wildcard': {
+        question: "Caesar, half-laughing: 'I genuinely don't know what you're going to say.'",
+        held: [
+            "Neither does {tribute}, and what comes out is somehow exactly right anyway.",
+            "{tribute} answers with something nobody expected and the room decides they like being surprised.",
+        ],
+        broke: [
+            "The unpredictability finally lands on something that just does not work, and there is nowhere to go but forward.",
+            "{tribute} swings and misses, visibly, and the room's patience for the bit runs out.",
+        ],
+    },
+};
+
+/** Where a persona goes when the tribute cannot hold it under one question. */
+export const PERSONA_DRIFT: Record<string, string> = {
+    'The Star-Crossed Lover': 'The Humble Underdog',
+    'The Ruthless Warrior': 'The Arrogant Brute',
+    'The Humble Underdog': 'The Mysterious Enigma',
+    'The Mysterious Enigma': 'The Quirky Oddball',
+    'The Charming Flirt': 'The Quirky Oddball',
+    'The Arrogant Brute': 'The Humble Underdog',
+    'The Quirky Oddball': 'The Mysterious Enigma',
+    'The Silent Threat': 'The Mysterious Enigma',
+    'The Grieving Sibling': 'The Humble Underdog',
+    'The Cold Strategist': 'The Ruthless Warrior',
+    'The Reluctant Hero': 'The Humble Underdog',
+    'The District Loyalist': 'The Humble Underdog',
+    'The Wildcard': 'The Quirky Oddball',
+};
+
+export const INTERVIEW_CLOSERS = {
+    strong: [
+        "Caesar takes {tribute}'s hand and holds it up. 'District {district}, remember that face.' The applause runs past the buzzer.",
+        "{tribute} stands, turns to the cameras rather than the crowd, and lets the silence do the last of the work.",
+        "'Sixty seconds,' Caesar says, 'and I already want to bet on you.' The Capitol agrees loudly enough to hear in the training centre.",
+    ],
+    weak: [
+        "The buzzer catches {tribute} mid-sentence. Caesar covers it professionally and moves on.",
+        "{tribute} leaves the couch to the applause the Capitol gives everybody, which is the least useful sound in Panem.",
+        "Caesar says {tribute}'s name warmly, twice, which is what he does when there is nothing else to say.",
+    ],
+};

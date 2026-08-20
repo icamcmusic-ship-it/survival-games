@@ -23,6 +23,8 @@ export const VITALS = {
     forestNightShelter: 5,
 
     /** Above these values the vital starts costing health every cycle. */
+    /** Chance a cycle of genuine starvation teaches the Starved trait. */
+    starvedTraitChance: 0.25,
     starvingThreshold: 80,
     dehydratedThreshold: 80,
     starvingDamage: 5,
@@ -137,13 +139,14 @@ export const CLIMATE = {
 } as const;
 
 /** What each trait is worth, in the units the vitals loop works in. */
+/**
+ * What is left here after `data/traits.ts` took over the trait table: the two
+ * bespoke effects that are not simple modifiers (Star-Crossed's per-cycle
+ * audience drip) and the age profile, which is not a trait at all.
+ */
 export const TRAIT_EFFECTS = {
-    hydrophilicThirstRelief: 5,
-    insomniacNightFatigue: 10,
-    ironStomachHungerRelief: 5,
     starCrossedTrustPerCycle: 5,
     starCrossedExcitementPerCycle: 10,
-    trackerForageBonus: 0.08,
     /** The youngest tributes burn rations faster and sleep worse. */
     youngHungerPenalty: 2,
     youngFatiguePenalty: 3,
@@ -164,6 +167,10 @@ export const TRAIT_EFFECTS = {
  * decision, not a default.
  */
 export const RECOVERY = {
+    /** Health a tribute recovers for spending the dark genuinely hidden. */
+    darkAndHiddenBonus: 5,
+    /** Health an insulated sleeping bag adds to a night of real rest. */
+    sleepingBagBonus: 6,
     /** Health returned by a full night of undisturbed rest. */
     nightHeal: 7,
     /** A tribute holed up in cover mends better than one sleeping in the open. */
@@ -219,6 +226,8 @@ export const SANITY = {
  * dominated choice, which is why only 12% of stance samples were Aggressive.
  */
 export const HUNTING = {
+    /** Kills after which the whole arena knows the name. */
+    fearedAtKills: 3,
     /** Chance a directed sweep of the zone turns up small game to eat. */
     gameChance: 0.4,
     trackingBonus: 0.06,
@@ -257,6 +266,10 @@ export const PROFICIENCY = {
     forageWeight: 0.05,
     /** Combat power added per point of the relevant weapon proficiency. */
     combatWeight: 0.7,
+    /** Power bonus for a weapon this tribute's district actually raises children on. */
+    affinityItemBonus: 2.2,
+    /** Smaller bonus for a weapon merely of a familiar class. */
+    affinityClassBonus: 1.1,
     /** Awareness added per point of tracking. */
     trackingAwarenessWeight: 0.4,
 } as const;
@@ -332,8 +345,73 @@ export const MEDICAL = {
 } as const;
 
 /** The shrinking arena, from day 5 onward. */
+/**
+ * The bloodbath, as its own set of numbers.
+ *
+ * These used to be literals scattered through `processBloodbath`, tuned for a
+ * scrum that killed 0.84 tributes out of 24. In the source material roughly
+ * half the field dies at the Cornucopia in the first ten minutes, and every
+ * downstream problem — a field of non-combatants surviving to die of thirst on
+ * day 6, the environment out-killing the tributes — starts here.
+ */
+export const BLOODBATH = {
+    /** How far off the horn a plate can be, in abstract units. Low = in the killing zone. */
+    plateSpread: 1,
+    /** Baseline willingness to go for the Cornucopia rather than the treeline. */
+    fightChanceBase: 0.66,
+    /** Added for a Career: the pack came here to do exactly this. */
+    fightChanceCareer: 0.4,
+    /** Weight on how close their plate landed to the horn. Proximity is opportunity. */
+    fightChanceProximity: 0.35,
+    /** Weight on agility: getting there first is most of getting there. */
+    fightChanceAgility: 0.03,
+    /** Rounds of the opening scrum in which nobody is thinking clearly enough to run. */
+    noRetreatRounds: 3,
+    /** Chance a surviving fighter is pulled back into the scrum rather than breaking out. */
+    reengageChance: 0.85,
+    /** Chance a knot at the mouth of the horn resolves as a group fight, not a duel. */
+    groupFightChance: 0.5,
+    /** Chance a surviving participant of a group fight stays in the scrum. */
+    groupReengageChance: 0.75,
+    /** Damage multiplier on hits landed inside the killing zone. */
+    killingZoneDamage: 1.7,
+    /** Chance a tribute who reached the horn first comes away armed. */
+    armedAtHornChance: 0.85,
+    /**
+     * Turning your back on the Cornucopia is not the same as escaping it. A
+     * tribute who ran from a plate near the horn spends several seconds inside
+     * the reach of people who came here to kill, and canon's bloodbath is full
+     * of tributes cut down with their backs turned. Scaled by how close their
+     * plate was.
+     */
+    runDownChance: 0.5,
+} as const;
+
+/**
+ * REPLAY-07: the anthem, as a nightly beat with weight rather than a UI card.
+ */
+export const ANTHEM = {
+    /** Excitement the whole field loses on a day that produced no cannon. */
+    quietDayExcitementCost: 6,
+    /** Relationship at which a name in the sky is a personal loss. */
+    grievableBond: 25,
+    sanityPerNamedLoss: 6,
+    /** Chance a personal loss gets its own line rather than being silent arithmetic. */
+    reactionChance: 0.5,
+} as const;
+
 export const ESCALATION = {
     startDay: 5,
+    /**
+     * Canon's Gamemakers do not escalate on a timetable; they escalate because
+     * the audience is bored. Aggregate excitement across the living field is
+     * the boredom meter, and the arena starts closing the moment it drops
+     * below this — which can be well before `startDay` in a quiet year, and
+     * never later, because `startDay` remains a hard backstop.
+     */
+    boredomThreshold: 22,
+    /** Nothing closes in before this, however dull the Games are. */
+    boredomEarliestDay: 3,
     collapseDamageBase: 20,
     collapseDamagePerDay: 10,
     /** The Gamemakers want a victor: the border stops short of the last two. */
@@ -343,10 +421,103 @@ export const ESCALATION = {
     hazardCeiling: 0.35,
 } as const;
 
+/**
+ * Volunteering, which the simulation had no concept of at all.
+ *
+ * "I volunteer as tribute" is the opening beat of the source material and the
+ * whole reason Career districts are dangerous: their tributes are not children
+ * picked out of a bowl, they are the ones who put their hand up. A volunteer
+ * is older, trained, and chose this — so they replace the reaped name with a
+ * better one. The rare non-Career volunteer is the opposite: somebody stepping
+ * in front of a sibling, which is worth its own line even though it usually
+ * gets them killed.
+ */
+export const VOLUNTEER = {
+    /** Chance a Career district's reaping is answered by a volunteer. */
+    careerChance: 0.88,
+    /**
+     * Chance anywhere else. Almost always a sibling, and almost always a
+     * disaster.
+     *
+     * Deliberately tiny. At 0.06 per tribute this fired in 71% of runs across
+     * eighteen non-Career tributes, which makes the single most memorable
+     * reaping beat in the source material a routine occurrence. At 0.015 it
+     * lands in roughly a quarter of Games, which is what "District 12 has not
+     * had a volunteer in living memory" is supposed to mean.
+     */
+    outlyingChance: 0.015,
+    /** A volunteer is of age: the floor their age is raised to. */
+    minAge: 16,
+    /** Attribute points a trained Career volunteer adds over the reaped tribute. */
+    careerStrengthBonus: 1,
+    careerAgilityBonus: 1,
+    /** The crowd notices someone who wanted this. */
+    careerTrust: 6,
+    careerExcitement: 8,
+    /** Stepping in for a sibling buys sympathy the Capitol cannot resist. */
+    sacrificeTrust: 10,
+    sacrificeExcitement: 14,
+} as const;
+
 /** Random encounters, hazards and mutts during a cycle. */
+/**
+ * Item grades and condition. See `mintItem` in `engine/items.ts`.
+ *
+ * SIDE-01: the item table was flat — every Sword in every run was the same
+ * Sword, and a weapon was at full strength right up to the instant it snapped.
+ */
+export const QUALITY = {
+    /** Roll above this for a fine instance, below the other for a crude one. */
+    fineAbove: 0.82,
+    crudeBelow: 0.3,
+    scale: { crude: 0.7, standard: 1, fine: 1.35 } as Record<string, number>,
+    prefix: { crude: 'Crude', fine: 'Fine' } as Record<string, string>,
+    /** Damage a weapon still does at zero condition, as a fraction of its printed damage. */
+    wornDamageFloor: 0.55,
+    /** Ceiling on total damage reduction from worn armour. */
+    maxArmour: 0.35,
+    /** Durability an armour piece loses per point of damage it absorbs. */
+    armourWearPerPoint: 1.5,
+} as const;
+
+/**
+ * Where an item came from, expressed as a shift on the quality roll. The good
+ * steel is stacked at the mouth of the Cornucopia; nobody parachutes a crude
+ * anything; and a field-lashed spear is a field-lashed spear.
+ */
+export const QUALITY_BIAS = {
+    hornMouth: 0.25,
+    hornScatter: 0,
+    feast: 0.15,
+    parachute: 0.3,
+    scavenged: -0.1,
+    improvised: -0.35,
+} as const;
+
 export const ENCOUNTERS = {
+    /** Fallback escape difficulty for an event that does not name its own. */
+    defaultDodgeDifficulty: 6,
+    /**
+     * SIDE-09 — the survival lanes for the two attributes the authored arena
+     * events almost never asked for. See `rollEscape` in `encounters.ts`.
+     */
+    /** Damage at which a hazard is heavy enough that bracing for it means something. */
+    braceDamageThreshold: 18,
+    /** Fraction of a hazard's damage soaked, per point of strength. */
+    bracePerStrength: 0.035,
+    braceMaxSoak: 0.3,
+    /** Added to the escape difficulty for the fallback attribute. */
+    altDodgePenalty: 1,
+    /** An ally in the same zone hauling someone clear. */
+    rescuePerCharisma: 0.035,
+    rescuePerHelperStrength: 0.02,
+    rescueMaxChance: 0.45,
+    /** What being pulled clear is worth to the person who was pulled. */
+    rescueGratitude: 10,
     ambientLineChance: 0.35,
-    ambientArenaShare: 0.6,
+    ambientArenaShare: 0.55,
+    /** Share of ambient lines that read the run's own state instead of being pure scenery. */
+    dynamicAmbientShare: 0.25,
     baseEventChance: 0.1,
     baseMuttChance: 0.1,
     hazardCeiling: 0.9,
@@ -369,6 +540,12 @@ export const ENCOUNTERS = {
 export const COMBAT = {
     /** Hard ceiling on exchanges in a single encounter. */
     maxRounds: 4,
+    /**
+     * Extra exchanges in the bloodbath. Nowhere else in the arena are two
+     * people fighting with no line of retreat and a dozen others in arm's
+     * reach; a scrum at the horn runs until somebody is on the ground.
+     */
+    bloodbathExtraRounds: 3,
     /** Damage a clean hit lands before modifiers. */
     baseHitDamage: 14,
     /** Extra damage per point of power advantage in the round. */
@@ -376,6 +553,20 @@ export const COMBAT = {
     /** Damage floor and ceiling for any one exchange. */
     minRoundDamage: 5,
     maxRoundDamage: 42,
+    /**
+     * What a kill costs the killer, in sanity, before their traits scale it.
+     * A Career has been prepared for this since they were ten; nobody else has.
+     */
+    killSanity: 14,
+    careerKillSanity: 4,
+    /** A toll this size is a visible breakdown, not a bad night. */
+    killSanityBreakdown: 25,
+    /** A fleeing opponent this far gone was spared, not merely escaped. */
+    mercyHealth: 25,
+    /** Below this, a landed hit reads as finishing the fight rather than opening it. */
+    finishingHealthThreshold: 30,
+    /** Power a Vengeful tribute brings against the specific person they hate. */
+    vengefulEdge: 3,
     /** Chance a round inflicts a localised wound on the loser. */
     woundChance: 0.28,
     bleedChance: 0.34,
@@ -455,10 +646,19 @@ export const STEALTH = {
 
     /** Awareness: what it takes to notice someone who does not want noticing. */
     awarenessFromIntelligence: 0.5,
-    eagleEyedBonus: 3,
-    trackerBonus: 2,
-    lightSleeperBonus: 1.5,
-    paranoidBonus: 1.5,
+    /**
+     * REPLAY-07: what the dark is worth. Deliberately the largest situational
+     * modifier in the system — a night should feel like a different game, not
+     * like a day with a fatigue penalty.
+     */
+    nightConcealment: 0.18,
+    nightAwarenessPenalty: 2.5,
+    nightAmbushBonus: 0.12,
+    /** A lantern: you can see, and so can everyone else. */
+    lightAwarenessBonus: 2,
+    lightConcealmentPenalty: 0.12,
+    // The per-trait awareness bonuses that used to live here are now rows in
+    // `data/traits.ts`, alongside every other effect the same trait has.
     /** A tribute at the end of their rope stops watching the treeline. */
     exhaustedPenalty: 2,
     lowSanityPenalty: 2,
@@ -610,6 +810,10 @@ export const ZONE_EFFECTS = {
 } as const;
 
 export const CRAFTING = {
+    /** A blade below this condition is worth an hour with a whetstone. */
+    sharpenBelowCondition: 0.7,
+    /** Fraction of maximum durability a sharpening restores. */
+    sharpenRestore: 0.35,
     /** Per-cycle odds an empty-handed tribute improvises something to swing. */
     improviseChance: 0.12,
     /** Odds a free turn is spent preparing rather than foraging. */
@@ -686,6 +890,8 @@ export const POISONING = {
 
 /** What a tribute can physically carry. */
 export const INVENTORY = {
+    /** Ceiling on a single stack of a consumable. */
+    maxStack: 4,
     /**
      * Items carried in hands, pockets and a bedroll. Tributes hold well under
      * one item on average, so this is deliberately tight: a limit that only
@@ -701,6 +907,8 @@ export const INVENTORY = {
 
 /** Zone economy: foraging strips a zone, and the arena grows it back slowly. */
 export const ZONES = {
+    /** A fishing net in still water, added to the forage chance. */
+    fishingBonus: 0.25,
     /** Fraction of a zone's remaining yield consumed by one successful forage. */
     depletionPerForage: 0.13,
     /** Smaller drain even when a forage comes up empty — the ground is picked over. */
@@ -746,7 +954,7 @@ export const MEMORY = {
 /** Stance selection: thresholds plus the hysteresis that stops thrashing. */
 export const STANCE = {
     /** Minimum cycles a stance is held before it may change again. */
-    minHold: 2,
+    minHold: 3,
     /** Score margin a challenger stance must beat the current one by. */
     switchMargin: 0.8,
     /** Health fractions that pull a tribute toward each stance. */
@@ -844,6 +1052,17 @@ export const RELATIONSHIPS = {
  * them has to have taken a real risk for the other. Even then it is a roll, not
  * a promotion at a number.
  */
+/**
+ * CONTENT-06: the protective bond. See `growProtectorBond` in `phases/alliances.ts`.
+ */
+export const PROTECTOR_BOND = {
+    /** Years apart before this reads as protective rather than merely allied. */
+    minAgeGap: 4,
+    /** Bond required, on the same relationship scale romance uses. */
+    threshold: 70,
+    chancePerCycle: 0.18,
+} as const;
+
 export const ROMANCE = {
     /** Nothing before the bloodbath is over and the cast is real. */
     minDay: 2,
@@ -855,6 +1074,11 @@ export const ROMANCE = {
     contactWindow: 2,
     /** Odds per cycle once every condition holds. Romance is never automatic. */
     chancePerCycle: 0.15,
+    /**
+     * Per-day decay on that chance. Keeps the romance rate a property of the
+     * cast rather than a property of how long the Games happened to run.
+     */
+    latenessDecay: 0.72,
     /** Growth from an actual shared scene — not merely from co-location. */
     contactGrowth: 5,
     /** Standing by someone is worth far more than standing near them. */
@@ -969,6 +1193,28 @@ export const RIVALRY = {
 } as const;
 
 /** Sponsor economy. */
+/**
+ * SIDE-03: what the Capitol charges a paying sponsor. See `playerSponsor.ts`.
+ *
+ * Priced to be a real decision rather than a shop: a parachute costs a
+ * meaningful slice of a wager's winnings, and every subsequent one to the same
+ * tribute costs half again as much.
+ */
+export const SPONSOR_MARKET = {
+    /** Coins per point of an item's arena value. */
+    valueMultiplier: 4,
+    /** The Capitol charges more the longer the Games run. */
+    perDay: 0.18,
+    /** Multiplier per parachute this tribute has already received, from any source. */
+    repeatMultiplier: 1.6,
+    /** How sharply crowd favour moves the price. Higher = flatter. */
+    trustDivisor: 90,
+    minCost: 25,
+    /** Knowing somebody out there is paying attention is worth something. */
+    trustGain: 6,
+    sanityGain: 8,
+} as const;
+
 export const SPONSORS = {
     /** Combined excitement + trust needed before a parachute is even considered. */
     giftThreshold: 100,
@@ -991,6 +1237,8 @@ export const SPONSORS = {
 
 /** Live betting odds. */
 export const ODDS = {
+    /** Points on the betting line per point of a trait's `odds` modifier. */
+    traitWeight: 8,
     base: 40,
     strengthWeight: 2,
     agilityWeight: 2,
@@ -1016,6 +1264,21 @@ export const ODDS = {
 } as const;
 
 /** The Gamemakers' direct interventions. */
+/** REPLAY-01: the scheduled wildcard. See `engine/wildcards.ts`. */
+export const WILDCARD = {
+    /** Floor on what an unaddressed supply drop is worth picking up. */
+    dropMinValue: 15,
+    /** Excitement the crowd has banked while sponsorship was frozen. */
+    freezeLiftExcitement: 25,
+    /** Sanity cost of watching the arena's own machinery fail. */
+    malfunctionSanity: 12,
+    /** What a bounty is worth to the tribute it lands on. */
+    bountyExcitement: 60,
+    bountyTrust: 25,
+    /** How thoroughly a scheduled drought strips the arena's water. */
+    droughtDepletion: 0.85,
+} as const;
+
 export const GAMEMAKER = {
     /**
      * Multiplier applied to a manually triggered weather profile. A Gamemaker
@@ -1078,7 +1341,90 @@ export const GENERATION = {
 } as const;
 
 /** Training visibility: what the rest of the cast makes of a big score. */
+/**
+ * SIDE-05: the interview, as three beats. See `phases/interviews.ts`.
+ *
+ * The whole segment used to be one charisma roll against 5, which made the
+ * persona — the most consequential value the pre-Games produces — a coin flip.
+ */
+export const INTERVIEWS = {
+    /** Poise needed to land the opening angle at all. */
+    openingThreshold: 5,
+    /** Holding the angle under Caesar's follow-up. */
+    holdBase: 0.25,
+    holdPerCharisma: 0.06,
+    holdOpenedBonus: 0.12,
+    openedExcitement: 20,
+    fumbledTrust: 10,
+    heldTrust: 8,
+    heldExcitement: 12,
+    brokeTrust: 6,
+} as const;
+
+/**
+ * SIDE-06: the pre-Games ceremonies. See `phases/pregames.ts`.
+ *
+ * Everything here feeds `sponsorTrust`, `reputation` and `excitementRating`,
+ * which are read by the sponsor stream, the odds board and — since CANON-07 —
+ * by the Gamemakers deciding when to start closing the arena. The pageantry is
+ * not decoration; it is where the audience is won.
+ */
+export const PREGAMES = {
+    /** Age at which a reaping is a national incident rather than a formality. */
+    childAge: 13,
+    childReactionExcitement: 12,
+    volunteerExcitement: 10,
+    /** Three minutes with your family, or three minutes without them. */
+    goodbyeSanity: 5,
+    aloneGoodbyeSanity: 8,
+    aloneGoodbyeTrust: 5,
+    /**
+     * Two days on a train with the only other person from home.
+     *
+     * Kept small on purpose: romance is gated on the district pair, so this is
+     * a direct dial on how many runs produce star-crossed lovers. At 8 it put
+     * the rate at 17%, well past the 10-15% the design wants.
+     */
+    trainPartnerBond: 2,
+    /** The parade. `pull` is the stylist's angle; the rest is the tribute. */
+    paradeCharismaWeight: 0.35,
+    paradeLegacyBonus: 0.5,
+    paradeTrustPerPull: 4,
+    paradeReputationPerPull: 3,
+    paradeExcitementPerPull: 7,
+} as const;
+
 export const TRAINING = {
+    /**
+     * SIDE-04. Training used to be one line: +1 to a random attribute and a
+     * score from total stats. No station choice, no private session, no
+     * strategy, and the number appeared the instant it was rolled.
+     */
+    /** Days on the training floor before the private sessions. */
+    days: 3,
+    /** Attribute points a day at a station is worth, before aptitude. */
+    stationAttributeGain: 0.5,
+    /** Proficiency a day at a station is worth. */
+    stationProficiencyGain: 0.4,
+    /** Chance a tribute deliberately hides what they can do. */
+    concealChance: 0.22,
+    /** Chance they play to the gallery instead. */
+    showcaseChance: 0.3,
+    /** Score swing for each strategy in the private session. */
+    concealPenalty: 2,
+    showcaseBonus: 1,
+    /** Sponsor trust a showcase buys, and the price of hiding. */
+    showcaseTrust: 6,
+    concealTrust: -4,
+    /**
+     * The private session is not a fair examination — the Gamemakers have been
+     * watching tributes all day and are bored by the end of it. A tribute who
+     * does something genuinely unexpected while the gallery is distracted can
+     * land far above their merit, which is the single most famous training
+     * score in the source material.
+     */
+    stuntChance: 0.08,
+    stuntBonus: 3,
     /** Score at or above which the field takes notice. */
     intimidationScore: 9,
     /** Sanity shaved off everyone else by a legendary score. */
