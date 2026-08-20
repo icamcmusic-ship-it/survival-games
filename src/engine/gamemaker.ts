@@ -102,7 +102,8 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
         // than the vestigial Arena.mutts display strings — a Gamemaker-released
         // mutt gets the same pack size, speed-based evasion, terrain gating and
         // persistent tracking as one the day/night cycle rolls up naturally.
-        const time = ctx.state.timeOfDay ?? 'day';
+        // Dusk counts as night for the mutts that only come out in it.
+        const time = ctx.state.timeOfDay === 'day' ? 'day' : 'night';
         const muttFor = (t: { zone: string }) => {
             const eligible = eligibleMutts(ctx, t as never, time);
             const pool = eligible.length > 0 ? eligible : rosterFor(ctx);

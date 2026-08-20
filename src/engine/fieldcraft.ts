@@ -4,6 +4,7 @@ import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { cycleOf } from './memory';
 import { getZone } from './map';
+import { hasEffect } from './zoneEffects';
 import { clampTribute } from './vitals';
 import { openWound } from './wounds';
 import { profOf, trainProficiency } from './proficiency';
@@ -182,6 +183,23 @@ export function tickTraps(ctx: SimContext) {
                 );
                 return;
             }
+        }
+
+        // A snare in a burning zone is not a snare any more, and one under a
+        // flood has washed out. The zone-effect layer and the trap layer both
+        // existed and knew nothing about each other.
+        const destroyer = (['burning', 'flooded'] as const).find(k => hasEffect(ctx.state, trap.zone, k));
+        if (destroyer) {
+            if (owner.zone === trap.zone) {
+                ctx.logEvent(
+                    destroyer === 'burning'
+                        ? `${owner.name}'s trap in ${trap.zone} is so much ash. Whatever else the fire took, it took that.`
+                        : `The water in ${trap.zone} lifts ${owner.name}'s trap clean off its anchor and carries it away.`,
+                    [owner.id],
+                    { category: 'survival' }
+                );
+            }
+            return;
         }
 
         if (cycle - trap.setCycle >= TRAPS.lifetime) return;

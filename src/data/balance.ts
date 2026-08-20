@@ -663,6 +663,10 @@ export const STEALTH = {
      */
     nightConcealment: 0.18,
     nightAwarenessPenalty: 2.5,
+    /** Dusk: the hunter's window. Their quarry is moving and still visible. */
+    duskAmbushBonus: 0.14,
+    /** Half the night's cover, since there is still light to be seen by. */
+    duskConcealment: 0.1,
     nightAmbushBonus: 0.12,
     /** A lantern: you can see, and so can everyone else. */
     lightAwarenessBonus: 2,
@@ -1645,4 +1649,35 @@ export const GAMEMAKER_AGENCY = {
     grindDepletion: 0.2,
     grindThirst: 12,
     grindFatigue: 10,
+} as const;
+
+/**
+ * Weather with a position. Climate was static per arena and the only transient
+ * weather hit everywhere at once for exactly one phase, so weather could never
+ * be something you saw coming and got out of the way of. See
+ * `engine/weatherFront.ts`.
+ */
+export const WEATHER_FRONT = {
+    /** Not in the opening days — the bloodbath is busy enough. */
+    earliestDay: 2,
+    /** Per-cycle odds a new front builds when there isn't one. */
+    spawnChance: 0.18,
+    minCycles: 3,
+    maxCycles: 6,
+    /** How many zones back a front remembers, so it does not pace on the spot. */
+    memoryZones: 2,
+} as const;
+
+/**
+ * Holding the Cornucopia. It was special exactly twice — the bloodbath and a
+ * feast — and empty the rest of every run. See `engine/zoneControl.ts`.
+ */
+export const ZONE_CONTROL = {
+    /** Bodies on the ground needed to count as holding it. */
+    minHolders: 2,
+    /** Cycles held before the first payout, and every payout after. */
+    payoutEveryCycles: 2,
+    minItemValue: 20,
+    excitement: 6,
+    supplyRelief: 15,
 } as const;

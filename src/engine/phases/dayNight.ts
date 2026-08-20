@@ -30,6 +30,8 @@ import { tickPersistentMutts } from '../mutts';
 import { restockCornucopia, rollAmbientZoneEffects, tickZoneEffects } from '../zoneEffects';
 import { runArenaSignature } from '../arenaSignature';
 import { runGamemakerSignature } from '../gamemakerAgency';
+import { tickWeatherFront } from '../weatherFront';
+import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
 import { decayTruces } from '../parley';
 import { repayDebts, tickDistrictBonds } from '../debts';
@@ -66,7 +68,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // the border still closes on its own clock); `effectiveTime` is how dark it
     // actually is, which is what fires, nocturnal mutts and stealth care about.
     const effectiveTime = blackout ? 'night' : time;
-    ctx.state.timeOfDay = effectiveTime;
+    // Movement in the night phase happens at dusk: there is still enough light
+    // to travel by, which is exactly why it is the most dangerous hour to be
+    // moving in. `resolveEncounters` below runs in full dark.
+    ctx.state.timeOfDay = effectiveTime === 'night' ? 'dusk' : 'day';
     advanceCycle(ctx.state);
     const alive = getAlive(ctx.state);
     // Counted once per day, so it freezes at whatever the tribute reached.
@@ -126,6 +131,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         checkTraps(ctx, t);
     });
 
+    // Dusk is over: everything from here resolves in full dark.
+    ctx.state.timeOfDay = effectiveTime;
+
     // A fire is warmth, hot food, and after dark it is the only thing in the
     // arena visible from a zone away. This is the trade the source material is
     // built on, and it only pays off at night.
@@ -154,6 +162,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     regenerateZones(ctx.state);
     // Fire spreads, floods drown stragglers, and whatever else is happening to
     // the ground itself lands after this cycle's movement has resolved.
+    tickWeatherFront(ctx);
+    tickZoneControl(ctx);
     rollAmbientZoneEffects(ctx);
     tickZoneEffects(ctx);
     restockCornucopia(ctx);

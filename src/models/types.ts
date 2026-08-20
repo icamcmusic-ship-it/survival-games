@@ -480,6 +480,7 @@ export interface GameConfig {
 }
 
 import type { GamesProfile } from '../engine/gamesProfile';
+import type { WeatherFront } from '../engine/weatherFront';
 
 export interface GameState {
     seed: string;
@@ -499,6 +500,12 @@ export interface GameState {
     feastDay?: number;
     /** Indices into `gamesProfile.calendar` that have already resolved. */
     firedWildcards?: number[];
+    /** The storm currently crossing the arena, if any. See `engine/weatherFront.ts`. */
+    weatherFront?: WeatherFront;
+    /** Alliance id currently holding the Cornucopia. See `engine/zoneControl.ts`. */
+    cornucopiaHolder?: string;
+    /** Cycle that holder's tenure began, or last paid out. */
+    cornucopiaHeldSince?: number;
     /** Cycle an extended-darkness wildcard releases the arena on. */
     blackoutUntilCycle?: number;
     /** Tribute the Capitol has put a bounty on, if any. */
@@ -549,7 +556,14 @@ export interface GameState {
      * is, and they are read from half a dozen call sites that have no business
      * taking a `time` parameter — so the arena's clock lives on the state.
      */
-    timeOfDay?: 'day' | 'night';
+    /**
+     * How light it is right now. `dusk` is the movement window of the night
+     * phase: tributes travel while there is still enough light to see by, and
+     * the encounters that follow resolve in full dark. That half-step is what
+     * gives a hunter a genuine window — at dusk they can still see, and their
+     * quarry is already on the move.
+     */
+    timeOfDay?: 'day' | 'dusk' | 'night';
     /** Aggregate audience interest in the living field, recomputed each cycle. */
     audienceInterest?: number;
     /** Zone name -> deaths that have happened there, broadcast by the sky each night. */
