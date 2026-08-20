@@ -125,6 +125,8 @@ await step('filters panel mutes categories', async () => {
 
 await step('arena map tab + sector selection', async () => {
   await page.getByRole('button', { name: /arena map/i }).click();
+  // The map opens on the graph view; the per-sector buttons live behind Detail.
+  await page.getByRole('button', { name: /^detail$/i }).first().click();
   await page.locator('button:has-text("Active"), button:has-text("Collapsed")').first().click();
   await page.waitForTimeout(150);
   await page.getByRole('button', { name: /^clear$/i }).first().click();

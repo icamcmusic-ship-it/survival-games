@@ -251,7 +251,30 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                 </span>
                             </Explainer>
                             {tribute.fanFavourite && <span className="chip chip-gold" title="The Capitol had a favourite before the gong ever sounded.">Fan favourite</span>}
-                            {tribute.interviewStrategy && <span className="chip" title="The persona they sold on Caesar's couch.">{tribute.interviewStrategy}</span>}
+                            {tribute.interviewStrategy && <span className="chip" title="The persona they held on Caesar's couch — which may not be the one they walked out with.">{tribute.interviewStrategy}</span>}
+                            {tribute.trainingStrategy && tribute.trainingStrategy !== 'balanced' && (
+                                <Explainer
+                                    align="left"
+                                    label={<span className="chip">{tribute.trainingStrategy === 'conceal' ? 'Hid their hand' : 'Played to the gallery'}</span>}
+                                    title="Training strategy"
+                                >
+                                    {tribute.trainingStrategy === 'conceal'
+                                        ? 'They spent three days on the training floor doing nothing they could not have done at home. It costs them sponsors and a low score, and it keeps them off everybody else\'s list.'
+                                        : 'They worked the floor where the gallery could see them. It buys sponsor trust and a higher score, and it paints a target.'}
+                                </Explainer>
+                            )}
+                            {tribute.stylist && (
+                                <Explainer
+                                    align="left"
+                                    label={<span className="chip">{tribute.stylist}</span>}
+                                    title="Stylist"
+                                >
+                                    {tribute.stylist} dressed them for the chariot parade
+                                    {tribute.chariotAngle ? ` — ${tribute.chariotAngle}` : ''}. What the Capitol
+                                    saw on the City Circle is most of what it thinks about them now, and sponsor
+                                    trust is read by the parachute stream all run.
+                                </Explainer>
+                            )}
                             <Explainer
                                 align="left"
                                 label={<span className="chip">{tribute.stance}</span>}

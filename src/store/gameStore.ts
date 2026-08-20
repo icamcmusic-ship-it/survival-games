@@ -102,6 +102,8 @@ function saveHallOfFame(state: GameState) {
         id: `${state.seed}-${Date.now().toString(36)}`,
         seed: state.seed,
         arenaName: state.arena.name,
+        arenaId: state.arena.id,
+        config: state.config,
         winnerName: winner.name,
         winnerDistrict: winner.district,
         kills: winner.kills,
@@ -206,6 +208,21 @@ export const gameActions = {
         if (betsResolved || staked === 0) return;
         gameActions.setCoins(coins + staked);
         gameStore.setState({ bets: {} });
+    },
+
+    /**
+     * SIDE-07: relaunch an archived victory.
+     *
+     * The Hall of Fame could copy a seed to the clipboard and nothing else —
+     * the player then had to walk back to setup and paste it, and guess which
+     * arena and which settings had produced it. An entry now carries both, so
+     * "run it again" is a button.
+     */
+    replayHallOfFameEntry(entry: HallOfFameEntry) {
+        const arenaId = entry.arenaId
+            ?? ARENAS.find(a => a.name === entry.arenaName)?.id
+            ?? 'procedural';
+        gameActions.startGame(entry.seed, arenaId, false, entry.config ?? DEFAULT_GAME_CONFIG, true);
     },
 
     resumeSavedRun() {

@@ -1292,6 +1292,33 @@ export const INTERVIEWS = {
     brokeTrust: 6,
 } as const;
 
+/**
+ * SIDE-06: the pre-Games ceremonies. See `phases/pregames.ts`.
+ *
+ * Everything here feeds `sponsorTrust`, `reputation` and `excitementRating`,
+ * which are read by the sponsor stream, the odds board and — since CANON-07 —
+ * by the Gamemakers deciding when to start closing the arena. The pageantry is
+ * not decoration; it is where the audience is won.
+ */
+export const PREGAMES = {
+    /** Age at which a reaping is a national incident rather than a formality. */
+    childAge: 13,
+    childReactionExcitement: 12,
+    volunteerExcitement: 10,
+    /** Three minutes with your family, or three minutes without them. */
+    goodbyeSanity: 5,
+    aloneGoodbyeSanity: 8,
+    aloneGoodbyeTrust: 5,
+    /** Two days on a train with the only other person from home. */
+    trainPartnerBond: 8,
+    /** The parade. `pull` is the stylist's angle; the rest is the tribute. */
+    paradeCharismaWeight: 0.35,
+    paradeLegacyBonus: 0.5,
+    paradeTrustPerPull: 4,
+    paradeReputationPerPull: 3,
+    paradeExcitementPerPull: 7,
+} as const;
+
 export const TRAINING = {
     /**
      * SIDE-04. Training used to be one line: +1 to a random attribute and a

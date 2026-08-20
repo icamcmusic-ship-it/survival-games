@@ -2,6 +2,7 @@ import { GameState } from '../models/types';
 import { RNG } from '../utils/rng';
 import { SimContext, createContext, getAlive } from './context';
 import { processTraining } from './phases/training';
+import { processPreGames } from './phases/pregames';
 import { processInterviews } from './phases/interviews';
 import { startGames, processBloodbath } from './phases/bloodbath';
 import { processAlliances } from './phases/alliances';
@@ -31,7 +32,14 @@ export class Simulator {
         return this.state.phase === 'ended';
     }
 
+    /**
+     * The reaping square, the goodbyes, the train, the Remake Center and the
+     * chariots. Runs once, immediately before the training floor, so a run
+     * started from any entry point still gets its pre-Games — and so the
+     * audience numbers the whole simulation reads are earned rather than rolled.
+     */
     public processTraining() {
+        processPreGames(this.ctx);
         processTraining(this.ctx);
     }
 

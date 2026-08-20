@@ -243,6 +243,10 @@ export interface Tribute {
      * only by the bloodbath.
      */
     platePosition?: number;
+    /** Who dressed them for the Capitol. Set at the Remake Center. */
+    stylist?: string;
+    /** The angle the stylist took for the chariot parade. */
+    chariotAngle?: string;
     /** How they played the training floor: showcase, conceal, or neither. */
     trainingStrategy?: 'showcase' | 'conceal' | 'balanced';
     /** They put their hand up rather than being drawn out of the bowl. */
@@ -464,6 +468,8 @@ export interface GameState {
      * progress counts from here rather than from a fixed day.
      */
     escalationDay?: number;
+    /** Guard so the pre-Games ceremonies are narrated exactly once. */
+    preGamesDone?: boolean;
     /** Aggregate audience interest in the living field, recomputed each cycle. */
     audienceInterest?: number;
     /** Zone name -> deaths that have happened there, broadcast by the sky each night. */
@@ -519,6 +525,13 @@ export interface HallOfFameEntry {
     id: string;
     seed: string;
     arenaName: string;
+    /**
+     * The arena and settings the run actually used, so an archived victory can
+     * be relaunched rather than merely copied as a seed. Optional: entries
+     * archived before this existed only carry the arena's display name.
+     */
+    arenaId?: string;
+    config?: GameConfig;
     winnerName: string;
     winnerDistrict: number;
     kills: number;
