@@ -3,7 +3,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { MOVEMENT, OBJECTIVES } from '../data/balance';
 import { SimContext } from './context';
 import { cycleOf, ensureMemory, rememberedRivals, rememberedThreat } from './memory';
-import { getZone, nextHopToward } from './map';
+import { getZone, hopsTo, nextHopToward, severedEdgeSet } from './map';
 import { fearOf } from './fear';
 import { getRel } from './relationships';
 
@@ -208,14 +208,16 @@ function nearestZoneMatching(
     if (matches.some(z => z.name === t.zone)) return t.zone;
 
     const collapsed = ctx.state.collapsedZones ?? [];
-    // Prefer whichever match is actually routable and least dreaded, so a
-    // tribute does not set off for a lake through a zone they watched two
-    // people die in.
+    const severed = severedEdgeSet(ctx.state);
+    // Actually nearest by hop count first, and least dreaded as the tiebreak —
+    // not threat alone, which used to send a thirsty tribute past a close lake
+    // to reach a calmer one three zones further out.
     const routable = matches
-        .map(z => ({ z, hop: nextHopToward(ctx.state.arena, t.zone, z.name, collapsed) }))
-        .filter(m => m.hop !== undefined)
+        .map(z => ({ z, hops: hopsTo(ctx.state.arena, t.zone, z.name, collapsed, severed) }))
+        .filter((m): m is { z: Zone; hops: number } => m.hops !== undefined)
         .sort((a, b) =>
-            rememberedThreat(ctx.state, t, a.z.name) - rememberedThreat(ctx.state, t, b.z.name));
+            a.hops - b.hops
+            || rememberedThreat(ctx.state, t, a.z.name) - rememberedThreat(ctx.state, t, b.z.name));
     return routable[0]?.z.name;
 }
 
@@ -305,7 +307,7 @@ export function objectiveStep(ctx: SimContext, t: Tribute, options: Zone[]): Zon
 
     const target = objectiveZone(ctx, t);
     if (!target || target === t.zone) return undefined;
-    const hop = nextHopToward(ctx.state.arena, t.zone, target, collapsed);
+    const hop = nextHopToward(ctx.state.arena, t.zone, target, collapsed, severedEdgeSet(ctx.state));
     if (!hop) return undefined;
     return options.find(z => z.name === hop);
 }

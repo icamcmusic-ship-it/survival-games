@@ -10,14 +10,15 @@ export function getZone(arena: Arena, name: string): Zone | undefined {
 }
 
 // Zones reachable in one move from `from`, excluding collapsed ones.
-// Falls back to any active zone if the tribute is stranded (e.g. their zone collapsed).
+// Empty when every neighbour is collapsed or severed — a tribute walled into
+// a dead end holds position (and takes the border-collapse pressure that is
+// already meant to punish that) rather than teleporting across the arena.
 export function reachableZones(arena: Arena, from: string, collapsed: string[], severed?: Set<string>): Zone[] {
     const active = arena.zones.filter(z => !collapsed.includes(z.name));
     const current = getZone(arena, from);
     if (!current) return active;
-    const neighbors = active.filter(z =>
+    return active.filter(z =>
         current.adjacent.includes(z.name) && !(severed && severed.has(edgeKey(from, z.name))));
-    return neighbors.length > 0 ? neighbors : active.filter(z => z.name !== from);
 }
 
 /** Builds the severed-edge set once per cycle, for callers that need to pass it repeatedly. */
@@ -74,15 +75,17 @@ export function nextHopToward(
     from: string,
     target: string,
     collapsed: string[],
+    severed?: Set<string>,
 ): string | undefined {
     if (from === target) return undefined;
     const blocked = new Set(collapsed);
+    const cut = (a: string, b: string) => !!severed && severed.has(edgeKey(a, b));
     // Breadth-first from the destination outwards, so the first time the search
     // touches one of `from`'s neighbours we have a shortest route and that
     // neighbour is the step to take.
     const origin = getZone(arena, from);
     if (!origin) return undefined;
-    const firstHops = new Set(origin.adjacent.filter(n => !blocked.has(n)));
+    const firstHops = new Set(origin.adjacent.filter(n => !blocked.has(n) && !cut(from, n)));
     if (firstHops.has(target)) return target;
 
     const visited = new Set<string>([target]);
@@ -93,8 +96,34 @@ export function nextHopToward(
             const zone = getZone(arena, name);
             if (!zone) continue;
             for (const neighbor of zone.adjacent) {
-                if (visited.has(neighbor) || blocked.has(neighbor)) continue;
+                if (visited.has(neighbor) || blocked.has(neighbor) || cut(name, neighbor)) continue;
                 if (firstHops.has(neighbor)) return neighbor;
+                visited.add(neighbor);
+                next.push(neighbor);
+            }
+        }
+        frontier = next;
+    }
+    return undefined;
+}
+
+/** Shortest number of hops from `from` to `target` over the adjacency graph, or undefined if unreachable. */
+export function hopsTo(arena: Arena, from: string, target: string, collapsed: string[], severed?: Set<string>): number | undefined {
+    if (from === target) return 0;
+    const blocked = new Set(collapsed);
+    const cut = (a: string, b: string) => !!severed && severed.has(edgeKey(a, b));
+    const visited = new Set<string>([from]);
+    let frontier = [from];
+    let hops = 0;
+    while (frontier.length > 0) {
+        hops++;
+        const next: string[] = [];
+        for (const name of frontier) {
+            const zone = getZone(arena, name);
+            if (!zone) continue;
+            for (const neighbor of zone.adjacent) {
+                if (visited.has(neighbor) || blocked.has(neighbor) || cut(name, neighbor)) continue;
+                if (neighbor === target) return hops;
                 visited.add(neighbor);
                 next.push(neighbor);
             }
