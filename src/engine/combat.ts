@@ -613,8 +613,15 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         }
 
         // Anyone can break off, and being outnumbered is a good reason to.
+        // The opponent each combatant weighs is whoever leads the *other* side
+        // — not `lead` for everyone, which had the lead computing fear of
+        // themselves.
         const breaking = [...left, ...right].filter(t =>
-            t.status === 'alive' && wantsToRetreat(ctx, t, defenders.includes(t) ? Math.max(1, advantage) : 0, rounds, lead));
+            t.status === 'alive' && wantsToRetreat(
+                ctx, t,
+                defenders.includes(t) ? Math.max(1, advantage) : 0,
+                rounds,
+                attackers.includes(t) ? target : lead));
         if (breaking.length > 0) {
             breaking.forEach(t => { t.stance = 'Evasive'; t.stanceHeld = 0; });
             ctx.logEvent(
@@ -692,7 +699,11 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
             breaking.forEach(t => {
                 t.stance = 'Evasive';
                 t.stanceHeld = 0;
-                noteFled(t, t.id === attacker.id ? target.id : attacker.id);
+                // Only the pair who actually traded blows record who they fled
+                // from; a bystander scattering out of the melee was not in a
+                // fight with either of them.
+                if (t.id === attacker.id) noteFled(t, target.id);
+                else if (t.id === target.id) noteFled(t, attacker.id);
             });
             ctx.logEvent(
                 fill(ctx.pickText(GROUP_COMBAT_TEXTS.scatter), { names: breaking.map(t => t.name).join(', '), zone }),

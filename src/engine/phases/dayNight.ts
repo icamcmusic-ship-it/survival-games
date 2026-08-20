@@ -224,7 +224,21 @@ function soundTheAnthem(ctx: SimContext) {
  * has a shape: a wall sweeping in from one edge, or a ring tightening around
  * the centre. Both use the adjacency graph that already exists for pathing.
  */
+// Deterministic per (seed, arena), so the two BFS passes don't need to be
+// recomputed every single cycle just to be thrown away.
+const collapseOrderCache = new Map<string, string[]>();
+
 function buildCollapseOrder(ctx: SimContext): string[] {
+    const cacheKey = `${ctx.state.seed}|${ctx.state.arena.id}`;
+    const cached = collapseOrderCache.get(cacheKey);
+    if (cached) return cached;
+    if (collapseOrderCache.size > 32) collapseOrderCache.clear();
+    const order = computeCollapseOrder(ctx);
+    collapseOrderCache.set(cacheKey, order);
+    return order;
+}
+
+function computeCollapseOrder(ctx: SimContext): string[] {
     const allZoneNames = zoneNames(ctx.state.arena);
     const patternRng = new RNG(`${ctx.state.seed}-collapse-pattern`);
     const pattern = patternRng.pick(['scattered', 'wall', 'ring'] as const);

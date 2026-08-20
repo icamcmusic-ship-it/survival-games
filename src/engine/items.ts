@@ -82,12 +82,14 @@ export function armourOf(t: Tribute): number {
     return Math.min(QUALITY.maxArmour, total);
 }
 
-/** Wears down whatever took the hit. Armour absorbs damage by being damaged. */
+/** Wears down whatever took the hit. Armour absorbs damage by being damaged — spread across every worn piece, so three pieces wear out together rather than the first being destroyed while the rest stay pristine. */
 export function wearArmour(t: Tribute, amount: number) {
     const worn = t.inventory.filter(i => i.armour !== undefined && (i.durability ?? 0) > 0);
     if (worn.length === 0) return;
-    const piece = worn[0];
-    piece.durability = Math.max(0, (piece.durability ?? 0) - amount);
+    const share = amount / worn.length;
+    worn.forEach(piece => {
+        piece.durability = Math.max(0, (piece.durability ?? 0) - share);
+    });
 }
 
 export function hasTool(t: Tribute, key: 'purifies' | 'light' | 'warmth' | 'fishing'): boolean {
@@ -147,19 +149,7 @@ export function giveItem(t: Tribute, ...items: Item[]): Item[] {
         if (existing) existing.stack = Math.min(INVENTORY.maxStack, (existing.stack ?? 1) + (item.stack ?? 1));
         else t.inventory.push(item);
     });
-    const dropped: Item[] = [];
-    // Recomputed every pass: containers carry capacity of their own now, so
-    // dropping the satchel to make room can shrink the room it made.
-    while (t.inventory.length > carryCapacity(t)) {
-        let worstIdx = 0;
-        let worstValue = Infinity;
-        t.inventory.forEach((item, idx) => {
-            const value = keepValue(t, item);
-            if (value < worstValue) { worstValue = value; worstIdx = idx; }
-        });
-        dropped.push(...t.inventory.splice(worstIdx, 1));
-    }
-    return dropped;
+    return enforceCapacity(t);
 }
 
 /**

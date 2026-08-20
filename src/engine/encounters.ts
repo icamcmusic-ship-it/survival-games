@@ -218,11 +218,15 @@ const TERRAIN_KEYWORDS: Array<[Terrain, RegExp]> = [
     ['open', /sandstorm|dust devil|mirage|sun|solar flare|dune|ash storm|lava|magma|volcanic/i],
 ];
 
-/** Best-guess terrain(s) for an event that never had `terrains` set explicitly. */
+/** Best-guess terrain(s) for an event that never had `terrains` set explicitly. Cached per event def — the defs are shared module-level objects, and the regex sweep was previously re-run on every pick. */
+const inferredTerrainsCache = new WeakMap<ArenaEventDef, Terrain[] | undefined>();
 function inferredTerrains(event: ArenaEventDef): Terrain[] | undefined {
+    if (inferredTerrainsCache.has(event)) return inferredTerrainsCache.get(event);
     const haystack = `${event.cause} ${event.text}`;
     const hits = TERRAIN_KEYWORDS.filter(([, pattern]) => pattern.test(haystack)).map(([terrain]) => terrain);
-    return hits.length > 0 ? hits : undefined;
+    const result = hits.length > 0 ? hits : undefined;
+    inferredTerrainsCache.set(event, result);
+    return result;
 }
 
 /**

@@ -258,6 +258,9 @@ export const gameActions = {
         const saved = readSavedRun();
         if (!saved) return;
         const { gameState } = saved;
+        // Saves written before baseConfig existed: the executed config is the
+        // best remaining approximation of what the player chose.
+        if (!gameState.baseConfig) gameState.baseConfig = gameState.config;
         gameStore.setState({
             gameState,
             simulator: new Simulator(gameState),
@@ -326,11 +329,14 @@ export const gameActions = {
 
         const baseSeed = gameState.seed.split('~')[0];
         const newSeed = `${baseSeed}~${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-        const tributes = generateTributes(newSeed, gameState.config, gameState.arena.zones[0].name);
-        // A rerolled cast is a rerolled Games: the sub-seed decides both.
+        // A rerolled cast is a rerolled Games: the sub-seed decides both, and
+        // the executed config is re-derived from the player's base config so
+        // the old profile's multipliers don't leak into the new year.
         const gamesProfile = gamesProfileFor(newSeed);
+        const config = configForProfile(gameState.baseConfig, gamesProfile);
+        const tributes = generateTributes(newSeed, config, gameState.arena.zones[0].name);
         const newState: GameState = {
-            ...gameState, seed: newSeed, tributes, log: [], logCounter: 0, gamesProfile,
+            ...gameState, seed: newSeed, tributes, log: [], logCounter: 0, gamesProfile, config,
         };
 
         gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });

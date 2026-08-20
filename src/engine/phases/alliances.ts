@@ -106,14 +106,13 @@ export function processAlliances(ctx: SimContext) {
         const averageTrust = members.reduce((sum, m) =>
             sum + members.reduce((inner, o) => inner + (o.id === m.id ? 0 : getRel(m, o.id)), 0) / (members.length - 1), 0) / members.length;
         if (averageTrust < -15) {
-            members.forEach(m => {
-                delete m.allianceId;
-                ctx.logEvent(
-                    fill(ctx.pickText(ALLIANCE_TEXTS.dissolve), { tribute: m.name }),
-                    [m.id],
-                    { category: 'alliance' }
-                );
-            });
+            members.forEach(m => { delete m.allianceId; });
+            // One line for the whole collapse, not a near-identical one per member.
+            ctx.logEvent(
+                `The alliance of ${members.map(m => m.name).join(', ')} has come apart. They go their separate ways.`,
+                members.map(m => m.id),
+                { category: 'alliance' }
+            );
             alliances.delete(id);
         }
     });
