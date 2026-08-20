@@ -424,7 +424,9 @@ function growRomance(ctx: SimContext) {
             // mechanical loyalty, and the other party does not know.
             if (!stoodBy && mutual < ROMANCE.threshold) {
                 const oneSided = Math.max(getRel(t1, t2.id), getRel(t2, t1.id));
-                if (oneSided >= ROMANCE.performedMinRegard && ctx.rng.chance(ROMANCE.performedChance)) {
+                const lateness = Math.max(0, ctx.state.day - ROMANCE.minDay);
+                const performChance = ROMANCE.performedChance * Math.pow(ROMANCE.latenessDecay, lateness);
+                if (oneSided >= ROMANCE.performedMinRegard && ctx.rng.chance(performChance)) {
                     const smitten = getRel(t1, t2.id) >= getRel(t2, t1.id) ? t1 : t2;
                     const performer = smitten === t1 ? t2 : t1;
                     // Playing it well is a charisma job, and the crowd is the

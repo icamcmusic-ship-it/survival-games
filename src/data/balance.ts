@@ -1100,13 +1100,13 @@ export const PROTECTOR_BOND = {
 
 export const ROMANCE = {
     /** Odds a one-sided attachment gets played for the cameras instead. */
-    performedChance: 0.5,
+    performedChance: 0.07,
     /**
      * Regard the smitten party needs. Deliberately below `threshold`: a
      * performed bond does not need the mutual devotion a real one does, only
      * one person who has fallen far enough to be convincing about it.
      */
-    performedMinRegard: 70,
+    performedMinRegard: 75,
     /** Charisma needed to sell a romance you are not feeling. */
     performerCharisma: 6,
     /** What the performer shows, as opposed to what they feel. */
