@@ -23,8 +23,9 @@ export function ReapingScreen({ tributes, arenaName, seed, onReroll, onConfirm }
                 <span className="masthead-eyebrow">02 — {arenaName} · seed {seed}</span>
                 <h2 className="masthead-title text-5xl md:text-6xl">The Reaping</h2>
                 <p className="masthead-sub text-sm">
-                    {tributes.length} names have been drawn. Only age, height and build are public — everything
-                    else they will have to show you in the arena.
+                    {tributes.length} names have been drawn. Only the public record is released today — district,
+                    gender, age, height and build. The Gamemakers publish training scores next; Caesar draws out
+                    the rest on the interview couch; everything else they will have to show you in the arena.
                 </p>
             </div>
 

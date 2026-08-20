@@ -233,6 +233,10 @@ export const ITEMS: Item[] = [
     { id: 'antidote', name: 'Antidote Vial', type: 'medical', value: 60 },
     { id: 'rope', name: 'Rope', type: 'utility', value: 10 },
     { id: 'wire', name: 'Wire', type: 'utility', value: 15 },
+    // Deliberately a utility, not a food: nightlock exists to be rendered down
+    // and painted onto a blade, and a tribute must never absent-mindedly eat it
+    // out of their own pack the way `consumeSupplies` eats anything of type 'food'.
+    { id: 'nightlock', name: 'Nightlock Berries', type: 'utility', value: 12 },
     { id: 'matches', name: 'Matches', type: 'utility', value: 25 },
     { id: 'backpack', name: 'Backpack', type: 'utility', value: 30 },
 ];

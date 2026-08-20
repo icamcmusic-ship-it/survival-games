@@ -1,6 +1,6 @@
 import { Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { BLEEDING, DESPERATION, ENCOUNTERS, HUNTING, MEMORY, PROFICIENCY, TRAIT_EFFECTS, VITALS, ZONES } from '../data/balance';
+import { BLEEDING, CRAFTING, DESPERATION, ENCOUNTERS, HUNTING, MEMORY, PROFICIENCY, TRAIT_EFFECTS, VITALS, ZONES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaEventDef, arenaFlavor } from '../data/arenaFlavor';
 import { SimContext } from './context';
@@ -12,6 +12,7 @@ import { giveItem, itemPhrase, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { attemptFieldDressing, clearBleeding, openWound, shouldDressWound } from './wounds';
 import { profOf, trainProficiency } from './proficiency';
+import { attemptFieldcraft } from './fieldcraft';
 
 export function fill(template: string, vars: Record<string, string>): string {
     return Object.entries(vars).reduce(
@@ -199,7 +200,12 @@ function attemptForage(
         depleteZone(ctx.state, t.zone, ZONES.depletionPerAttempt);
         return false;
     }
-    const item = ctx.rng.pick(ITEMS.filter(i => i.type === 'food' || i.type === 'water'));
+    // Foraging mostly turns up food and water, but the woods also hold things
+    // that are only useful to someone who does not intend to eat them.
+    const pool = ctx.rng.chance(ZONES.nightlockChance)
+        ? ITEMS.filter(i => i.id === 'nightlock')
+        : ITEMS.filter(i => i.type === 'food' || i.type === 'water');
+    const item = ctx.rng.pick(pool);
     // Clone before touching spoilage: `item` is the shared ITEMS entry.
     const fresh = { ...item };
     if (fresh.type === 'food' && fresh.spoilage !== undefined) fresh.spoilage += spoilageBonus(t);
@@ -259,6 +265,15 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
     // it needs no item and it is available to everyone.
     if (shouldDressWound(t)) {
         attemptFieldDressing(ctx, t);
+        return;
+    }
+
+    // Preparation is a use of a turn. A tribute who is not bleeding, not being
+    // hunted and not starving sometimes spends the hour on a snare, a fire or a
+    // shelter instead of picking berries — which is the whole difference
+    // between surviving the arena and working it.
+    if (t.vitals.hunger < VITALS.eatThreshold && ctx.rng.chance(CRAFTING.fieldcraftChance)
+        && attemptFieldcraft(ctx, t)) {
         return;
     }
 

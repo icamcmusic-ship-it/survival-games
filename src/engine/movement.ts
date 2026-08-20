@@ -1,42 +1,10 @@
 import { Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { FEAR, HUNTING, MEMORY, MOVEMENT } from '../data/balance';
+import { FEAR, MEMORY, MOVEMENT } from '../data/balance';
 import { SimContext } from './context';
 import { effectiveResources } from './map';
 import { ensureMemory, hasVengeanceAgainst, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { fearInZone } from './fear';
-
-/**
- * A hunter going somewhere on purpose.
- *
- * `pickDestination` is a weighted lottery, which is the right model for a
- * tribute wandering in search of water and cover. It is the wrong model for one
- * who knows where somebody is: an Aggressive tribute with a fresh sighting of a
- * rival next door should walk into that zone, not roll dice weighted slightly
- * toward it. Returns undefined when there is nothing to chase.
- */
-export function pursuitTarget(ctx: SimContext, t: Tribute, options: Zone[]): Zone | undefined {
-    const state = ctx.state;
-    const mem = ensureMemory(t);
-    const hunting = t.stance === 'Aggressive' || mem.vengeance.length > 0;
-    if (!hunting) return undefined;
-    if (!ctx.rng.chance(HUNTING.pursuitChance)) return undefined;
-
-    // A sworn debt outranks a target of opportunity.
-    const sworn = options.find(z => state.tributes.some(o =>
-        o.status === 'alive' && hasVengeanceAgainst(t, o.id) && o.zone === z.name
-        && rememberedRivals(state, t, z.name) > 0));
-    if (sworn) return sworn;
-
-    // Otherwise the adjacent zone they most recently saw somebody in.
-    let best: Zone | undefined;
-    let bestRivals = 0;
-    options.forEach(z => {
-        const rivals = rememberedRivals(state, t, z.name);
-        if (rivals > bestRivals) { bestRivals = rivals; best = z; }
-    });
-    return best;
-}
 
 /**
  * Destination scoring.

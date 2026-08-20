@@ -1,5 +1,5 @@
 import { Tribute } from '../models/types';
-import { INJURY_DAMAGE, MEDICAL, RECOVERY, SANITY, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { CRAFTING, INJURY_DAMAGE, MEDICAL, RECOVERY, SANITY, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -9,6 +9,7 @@ import { spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { bleedDamage, clearBleeding, tickBleeding } from './wounds';
 import { rememberedThreat } from './memory';
+import { hasCamp } from './fieldcraft';
 
 /**
  * Staying alive between encounters: spoilage, hunger, thirst, exposure, wounds
@@ -207,6 +208,8 @@ function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night'
     let amount = RECOVERY.nightHeal;
     const zone = getZone(ctx.state.arena, t.zone);
     if (zone && (zone.terrain === 'forest' || zone.terrain === 'ruins')) amount += RECOVERY.shelteredBonus;
+    // A shelter they actually built beats whatever cover the terrain offered.
+    if (hasCamp(ctx, t, 'shelter')) amount += CRAFTING.shelterRecoveryBonus;
     // Someone keeping watch is the difference between sleeping and lying awake.
     if (alliesPresent > 0) amount += RECOVERY.allyWatchBonus;
     // Exhaustion eats the whole benefit as it approaches the ceiling.

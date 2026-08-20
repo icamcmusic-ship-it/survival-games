@@ -1,5 +1,5 @@
 import { Terrain, Tribute, Zone } from '../models/types';
-import { STEALTH } from '../data/balance';
+import { CRAFTING, STEALTH } from '../data/balance';
 import { SimContext, getAlive } from './context';
 
 /**
@@ -14,11 +14,20 @@ import { SimContext, getAlive } from './context';
 const COVER_TERRAIN: Terrain[] = ['forest', 'ruins', 'wetland'];
 
 /** How well a tribute is hidden in the ground they are standing on, 0-1. */
-export function concealment(t: Tribute, zone: Zone | undefined, alliesPresent: number): number {
+export function concealment(
+    t: Tribute,
+    zone: Zone | undefined,
+    alliesPresent: number,
+    camp?: { fire?: boolean; camouflage?: boolean },
+): number {
     let value = STEALTH.baseConcealment;
 
     if (t.stance === 'Evasive') value += STEALTH.evasiveBonus;
     if (t.stance === 'Aggressive') value -= STEALTH.aggressivePenalty;
+
+    // A fire is warmth, hot food and a beacon. Camouflage is the reverse trade.
+    if (camp?.fire) value -= CRAFTING.fireConcealmentPenalty;
+    if (camp?.camouflage) value += CRAFTING.camouflageConcealment;
 
     if (zone) {
         if (COVER_TERRAIN.includes(zone.terrain)) value += STEALTH.coverBonus;
@@ -60,9 +69,17 @@ export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone
     if (hider.allianceId !== undefined && hider.allianceId === seeker.allianceId) return true;
 
     const advantage = hider.attributes.stealth - awareness(seeker);
+    // A fire gives a hider away and camouflage hides them further; both are
+    // choices they made on an earlier turn, which is what makes them tactics.
+    const cycle = ctx.state.cycle ?? 0;
+    const camp = ctx.state.camps?.[hider.id];
+    const hidden0 = concealment(hider, zone, alliesPresent, {
+        fire: camp?.fire !== undefined && cycle < camp.fire,
+        camouflage: camp?.camouflage !== undefined && cycle < camp.camouflage,
+    });
     let hidden = Math.min(
         STEALTH.maxConcealment,
-        Math.max(0, concealment(hider, zone, alliesPresent) + advantage * STEALTH.perPointAdvantage)
+        Math.max(0, hidden0 + advantage * STEALTH.perPointAdvantage)
     );
 
     // The Gamemakers close the arena down rather than let the last few tributes
