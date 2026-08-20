@@ -17,6 +17,12 @@ const PROFICIENCY_LABELS: Record<string, string> = {
 };
 
 /** A wound's rate, not merely its existence. */
+const PACT_LABELS: Record<string, string> = {
+    'to-the-end': 'To the end',
+    'until-the-final-eight': 'Until the final eight',
+    'no-pact': 'Nothing agreed',
+};
+
 const BLEED_LABELS: Record<number, string> = {
     1: 'bleeding (slight)', 2: 'bleeding (steady)', 3: 'bleeding (severe)',
 };
@@ -105,6 +111,17 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
         .map(o => ({ other: o, value: fearOf(tribute, o.id) }))
         .filter(f => f.other.id !== tribute.id && f.value > 0)
         .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+    const alliance = tribute.allianceId ? gameState.alliances?.[tribute.allianceId] : undefined;
+    const allyNames = gameState.tributes
+        .filter(o => o.status === 'alive' && o.id !== tribute.id && o.allianceId === tribute.allianceId)
+        .map(o => o.name);
+    const leaderName = gameState.tributes.find(o => o.id === alliance?.leaderId)?.name ?? '—';
+    // Only pairs who have actually fought more than once read as a feud.
+    const feuds = Object.entries(tribute.memory?.rivals ?? {})
+        .map(([id, record]) => ({ other: gameState.tributes.find(t => t.id === id)!, record }))
+        .filter(f => !!f.other && f.record.fights >= 2)
+        .sort((a, b) => b.record.fights - a.record.fights)
         .slice(0, 5);
     const knownZones = Object.entries(tribute.memory?.zones ?? {})
         .map(([name, slot]) => ({ name, ...slot }))
@@ -300,6 +317,69 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                             </div>
                         )}
                     </section>
+
+                    {alliance && allyNames.length > 0 && (
+                        <section>
+                            <h4 className="panel-title mb-2">Their alliance</h4>
+                            <div className="panel-flush p-3 space-y-1.5 text-sm">
+                                <div className="flex justify-between gap-2">
+                                    <span className="text-[var(--color-ink-500)]">Leader</span>
+                                    <span className="text-[var(--color-ink-200)] font-bold">
+                                        {leaderName}{leaderName === tribute.name ? ' (them)' : ''}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between gap-2">
+                                    <span className="text-[var(--color-ink-500)]">Standing with</span>
+                                    <span className="text-[var(--color-ink-200)] text-right">{allyNames.join(', ')}</span>
+                                </div>
+                                <div className="flex justify-between gap-2">
+                                    <span className="text-[var(--color-ink-500)]">Pact</span>
+                                    <Explainer
+                                        label={<span className="text-[var(--color-ink-200)] font-bold">{PACT_LABELS[alliance.pact]}</span>}
+                                        title="Alliance pact"
+                                    >
+                                        What the group agreed out loud when it formed. A pact to split at the final
+                                        eight is a scheduled betrayal — everyone can see it coming, which is what
+                                        makes it land when it arrives.
+                                    </Explainer>
+                                </div>
+                                {alliance.campZone && (
+                                    <div className="flex justify-between gap-2">
+                                        <span className="text-[var(--color-ink-500)]">Camp</span>
+                                        <span className="text-[var(--color-ink-200)]">{alliance.campZone}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between gap-2">
+                                    <span className="text-[var(--color-ink-500)]">Shared stash</span>
+                                    <span className="text-[var(--color-ink-200)] text-right">
+                                        {alliance.sharedCache.length === 0
+                                            ? 'Empty'
+                                            : alliance.sharedCache.map(i => i.name).join(', ')}
+                                    </span>
+                                </div>
+                            </div>
+                        </section>
+                    )}
+
+                    {feuds.length > 0 && (
+                        <section>
+                            <h4 className="panel-title mb-2">Feuds</h4>
+                            <div className="space-y-1">
+                                {feuds.map(({ other, record }) => (
+                                    <div key={other.id} className="flex justify-between items-center text-sm gap-2">
+                                        <span className={`truncate ${other.status === 'dead' ? 'text-[var(--color-ink-500)] line-through' : 'text-[var(--color-ink-200)]'}`}>
+                                            {other.name}
+                                        </span>
+                                        <span className="font-mono text-[10px] flex-none text-[var(--color-ink-400)]">
+                                            {record.fights} fight{record.fights === 1 ? '' : 's'} ·
+                                            {' '}{record.woundsDealt}–{record.woundsTaken} wounds
+                                            {record.timesFled > 0 && ` · fled ${record.timesFled}×`}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
 
                     {feared.length > 0 && (
                         <section>

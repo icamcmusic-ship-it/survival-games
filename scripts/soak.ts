@@ -55,6 +55,9 @@ let oddsMoved = 0, oddsCompared = 0;
 let clots = 0, fieldDressings = 0, restRecoveries = 0, huntOrCraft = 0;
 let zoneDrinks = 0, pursuits = 0, desperationFights = 0, fearFelt = 0;
 let bestProficiencySeen = 0;
+// Relationships and alliances.
+let exoticBetrayals = 0, merges = 0, leadershipChanges = 0, pactsDeclared = 0, pactsHonoured = 0;
+let feuds = 0, freeForAlls = 0, careerDefections = 0, cacheContributions = 0;
 // Intentions and fieldcraft.
 let objectivesFormed = 0, trapsSet = 0, trapsTriggered = 0;
 let firesLit = 0, sheltersBuilt = 0, camouflaged = 0, weaponsPoisoned = 0;
@@ -187,7 +190,34 @@ for (let i = 0; i < 240; i++) {
     if (/lashes together a shelter/.test(l.text)) sheltersBuilt++;
     if (/works mud and leaf litter/.test(l.text)) camouflaged++;
     if (/coats their .* with it/.test(l.text)) weaponsPoisoned++;
+    // --- Relationships and alliances. ---
+    if (/empties the group's stash|and watches them go|keeps their hand over the pocket|hears it, and keeps walking/.test(l.text)) exoticBetrayals++;
+    if (/throw in with/.test(l.text)) merges++;
+    if (/takes charge of what is left|stops deferring to/.test(l.text)) leadershipChanges++;
+    if (/run together until the final eight|swear to see it through/.test(l.text)) pactsDeclared++;
+    if (/agreed this was where it ended/.test(l.text)) pactsHonoured++;
+    if (/have done this before/.test(l.text)) feuds++;
+    if (/not one of them has a friend in it/.test(l.text)) freeForAlls++;
+    if (/walks the other way|there is no pack this year/.test(l.text)) careerDefections++;
+    if (/adds their .* to the group's stash/.test(l.text)) cacheContributions++;
   });
+
+  // --- Structure invariants: an alliance record must match reality. ---
+  Object.values(state.alliances ?? {}).forEach(record => {
+    const living = state.tributes.filter(t => t.status === 'alive' && t.allianceId === record.id);
+    if (living.length === 1) note(`alliance ${record.id} left with a single member in ${seed}`);
+    if (living.length > ALLIANCES.maxSize) note(`alliance ${record.id} over the size cap in ${seed}`);
+    if (living.length >= 2 && !living.some(t => t.id === record.leaderId)) {
+      note(`alliance ${record.id} led by a tribute who is not in it, in ${seed}`);
+    }
+  });
+  // A lone tribute must never still be carrying an alliance id.
+  const idCounts = new Map<string, number>();
+  state.tributes.forEach(t => {
+    if (t.status !== 'alive' || !t.allianceId) return;
+    idCounts.set(t.allianceId, (idCounts.get(t.allianceId) ?? 0) + 1);
+  });
+  idCounts.forEach((n, id) => { if (n === 1) note(`solo tribute still carrying alliance id ${id} in ${seed}`); });
 
   // --- Traps must never outlive their bounds or belong to nobody. ---
   (state.traps ?? []).forEach(trap => {
@@ -427,6 +457,15 @@ if (firesLit === 0) note('nobody ever lit a fire');
 if (sheltersBuilt === 0) note('nobody ever built a shelter');
 if (camouflaged === 0) note('nobody ever used camouflage');
 if (weaponsPoisoned === 0) note('nobody ever poisoned a weapon');
+if (exoticBetrayals === 0) note('every betrayal was a knife — the other forms never fire');
+if (merges === 0) note('two alliances never merged');
+if (leadershipChanges === 0) note('an alliance never changed leader');
+if (pactsDeclared === 0) note('no alliance ever declared a pact');
+if (pactsHonoured === 0) note('a final-eight pact never came due');
+if (feuds === 0) note('no pair ever built a running feud');
+if (freeForAlls === 0) note('a brawl never collapsed into a free-for-all');
+if (careerDefections === 0) note('the Career pack always formed exactly as scripted');
+if (cacheContributions === 0) note('nobody ever pooled supplies — the shared cache is decorative');
 
 console.log(`runs=${runs} victors=${victors} wipeouts=${wipeouts} avgDays=${(totalDays/runs).toFixed(1)} avgLogs=${(totalLogs/runs).toFixed(0)} runsWithFeast=${feastRuns}`);
 console.log('phases seen:', [...phasesSeen].sort().join(', '));
@@ -437,6 +476,8 @@ console.log(`wounds: clots=${clots} fieldDressings=${fieldDressings} restRecover
 console.log(`agency: hunts/crafts=${huntOrCraft} zoneDrinks=${zoneDrinks} pursuits=${pursuits} desperationFights=${desperationFights}`);
 console.log(`psychology: fear entries=${fearFelt} peakProficiency=${bestProficiencySeen.toFixed(2)} (cap ${PROFICIENCY.max})`);
 console.log(`intentions: objectives formed=${objectivesFormed}`);
+console.log(`social: exoticBetrayals=${exoticBetrayals} merges=${merges} leaderChanges=${leadershipChanges} feuds=${feuds} freeForAlls=${freeForAlls}`);
+console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDefections=${careerDefections} cacheContributions=${cacheContributions}`);
 console.log(`fieldcraft: trapsSet=${trapsSet} trapsTriggered=${trapsTriggered} fires=${firesLit} shelters=${sheltersBuilt} camouflage=${camouflaged} poisonedWeapons=${weaponsPoisoned}`);
 console.log(`alliances: recruitments=${recruitments} organicGroupsOf3Plus=${organicTrios} largestSeen=${maxAllianceSeen}`);
 console.log(`inventory: overloaded drops=${overloadedDrops}`);

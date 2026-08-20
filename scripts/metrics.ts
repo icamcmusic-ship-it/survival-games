@@ -65,6 +65,11 @@ const stanceSamples: Record<Stance, number> = { Aggressive: 0, Defensive: 0, Eva
 let bleedingSamples = 0;
 // Proficiency growth: is anyone actually getting better at anything?
 let profSamples = 0, profTotal = 0, profMax = 0;
+// Social systems: the ones the design review measured directly.
+let runsWithLovers = 0, loverDaySum = 0, loverRuns = 0;
+let vengeanceSworn = 0, betrayals = 0;
+const allianceSizeHistogram: Record<number, number> = {};
+let organicTrios = 0;
 
 const sampleBoard = (tributes: Tribute[]) => {
     tributes.forEach(t => {
@@ -97,8 +102,29 @@ for (let i = 0; i < RUNS; i++) {
         else if (state.phase === 'epilogue') { state.phase = 'ended'; }
         else if (!sim.processTurn()) break;
         state = sim.getState();
-        if (state.phase === 'day' || state.phase === 'night') sampleBoard(state.tributes);
+        if (state.phase === 'day' || state.phase === 'night') {
+            sampleBoard(state.tributes);
+            const counts = new Map<string, number>();
+            state.tributes.forEach(t => {
+                if (t.status !== 'alive' || !t.allianceId) return;
+                counts.set(t.allianceId, (counts.get(t.allianceId) ?? 0) + 1);
+            });
+            counts.forEach((n, id) => {
+                allianceSizeHistogram[n] = (allianceSizeHistogram[n] ?? 0) + 1;
+                if (n >= 3 && !id.startsWith('career-pack') && !id.startsWith('lovers-')) organicTrios++;
+            });
+        }
     }
+
+    // Star-crossed lovers: the review measured this forming in 92.5% of runs on
+    // an average of day 3, when it should be the rarest thing in the game.
+    const loversLine = state.log.find(l => l.category === 'romance' && /star-crossed|lovers/i.test(l.text));
+    if (state.tributes.some(t => t.traits.includes('Star-Crossed'))) {
+        runsWithLovers++;
+        if (loversLine) { loverDaySum += loversLine.day; loverRuns++; }
+    }
+    vengeanceSworn += state.log.filter(l => l.text.startsWith('VENGEANCE:')).length;
+    betrayals += state.log.filter(l => l.category === 'betrayal').length;
 
     runs++;
     totalDays += state.day;
@@ -216,6 +242,41 @@ const indicators: Indicator[] = [
         fmt: v => v.toFixed(1),
     },
     {
+        // REL-01. This should be the rarest and most memorable outcome in the
+        // game; it was firing in the large majority of runs by roughly day 3,
+        // before either tribute had done anything for the other.
+        label: 'runs with star-crossed lovers',
+        value: runsWithLovers / runs,
+        guard: v => v >= 0.05 && v <= 0.22,
+        guardText: '5%-22%',
+        goal: '10%-15%',
+        goalMet: v => v >= 0.10 && v <= 0.15,
+        baseline: '75.8%',
+        fmt: asPct,
+    },
+    {
+        // REL-02. The epilogue's best beat — "you went after X for what happened
+        // to Y" — fired in well under 1% of runs.
+        label: 'vengeance sworn per run',
+        value: vengeanceSworn / runs,
+        guard: v => v >= 0.75,
+        guardText: '>= 0.75',
+        baseline: '0.19',
+        fmt: v => v.toFixed(2),
+    },
+    {
+        // REL-03. Alliances were duos because nothing could ever grow one.
+        label: 'alliance samples of 3 or more',
+        value: (Object.entries(allianceSizeHistogram)
+            .filter(([k]) => Number(k) >= 3)
+            .reduce((sum, [, v]) => sum + v, 0))
+            / Math.max(1, Object.values(allianceSizeHistogram).reduce((a, b) => a + b, 0)),
+        guard: v => v >= 0.30,
+        guardText: '>= 30%',
+        baseline: '28.7%',
+        fmt: asPct,
+    },
+    {
         // Bleeding must not be *solved*, only survivable — if nobody is ever
         // bleeding, the whole wound system has been tuned into irrelevance.
         label: 'tributes bleeding at any moment',
@@ -245,6 +306,16 @@ console.log(`  stance             Defensive ${pct(stanceSamples.Defensive, alive
 if (profSamples > 0) {
     console.log(`  best proficiency   avg ${(profTotal / profSamples).toFixed(2)}, peak ${profMax.toFixed(2)}`);
 }
+
+console.log('\nsocial systems:');
+console.log(`  runs with star-crossed lovers  ${pct(runsWithLovers, runs)}${loverRuns > 0 ? `, avg day ${(loverDaySum / loverRuns).toFixed(1)}` : ''}`);
+console.log(`  vengeance sworn per run        ${(vengeanceSworn / runs).toFixed(2)}`);
+console.log(`  betrayals per run              ${(betrayals / runs).toFixed(2)}`);
+console.log(`  organic groups of 3+ per run   ${(organicTrios / runs).toFixed(2)} (sampled per cycle)`);
+console.log('  alliance size distribution:');
+Object.keys(allianceSizeHistogram).map(Number).sort((a, b) => a - b).forEach(k => {
+    console.log(`    size ${k}: ${allianceSizeHistogram[k]}`);
+});
 
 console.log('\nindicators (guard = regression bound, goal = design intent):');
 let failed = 0;

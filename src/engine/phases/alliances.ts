@@ -1,11 +1,12 @@
 import { SimContext, getAlive } from '../context';
 import { Tribute } from '../../models/types';
-import { resolveCombat } from '../combat';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { ALLIANCES } from '../../data/balance';
+import { ALLIANCES, ROMANCE } from '../../data/balance';
 import { ALLIANCE_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
-import { adjustRel, applyBetrayalFallout, getRel } from '../relationships';
-import { distrustFactor, ensureMemory, noteContact } from '../memory';
+import { adjustRel, getRel } from '../relationships';
+import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact } from '../memory';
+import { allianceOf, areLovers, contributeToCache, membersOf, reconcileAlliances, registerAlliance } from '../alliance';
+import { resolveBetrayal } from '../betrayal';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -35,7 +36,7 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
 
     const scored = candidates.map(m => {
         // Star-crossed lovers are never a target.
-        const bonded = betrayer.traits.includes('Star-Crossed') && m.traits.includes('Star-Crossed') && betrayer.district === m.district;
+        const bonded = areLovers(betrayer, m);
         if (bonded) return { m, weight: 0 };
 
         let weight = 1;
@@ -124,17 +125,9 @@ export function processAlliances(ctx: SimContext) {
             const victim = pickBetrayalTarget(ctx, betrayer, members);
 
             if (victim) {
-                ctx.logEvent(
-                    fill(ctx.pickText(ALLIANCE_TEXTS.betray), { betrayer: betrayer.name, victim: victim.name, zone: betrayer.zone }),
-                    [betrayer.id, victim.id],
-                    { important: true, category: 'betrayal' }
-                );
-                // The knife lands on the relationship graph whether or not the
-                // fight that follows resolves in a kill.
-                applyBetrayalFallout(ctx, betrayer, victim, members);
-                delete betrayer.allianceId; // Betrayer leaves
-                noteContact(ctx.state, betrayer, victim);
-                resolveCombat(ctx, betrayer, victim, false, true);
+                // Which shape the betrayal takes is chosen from what is actually
+                // available to this pair right now — see `engine/betrayal.ts`.
+                resolveBetrayal(ctx, betrayer, victim, members);
             }
         }
     });
@@ -170,6 +163,7 @@ export function processAlliances(ctx: SimContext) {
                         t1.allianceId = newId;
                         t2.allianceId = newId;
                         noteContact(ctx.state, t1, t2);
+                        registerAlliance(ctx, newId, [t1, t2]);
                         ctx.logEvent(
                             fill(ctx.pickText(ALLIANCE_TEXTS.form), { t1: t1.name, t2: t2.name, zone: t1.zone }),
                             [t1.id, t2.id],
@@ -181,7 +175,39 @@ export function processAlliances(ctx: SimContext) {
         }
     }
 
-    // 3b. Recruitment: a standing group can take in a loner they trust.
+    // 3a. Pacts coming due. A group that agreed to split at the final eight
+    // has a public deadline, and the audience has been watching it approach.
+    const remaining = getAlive(ctx.state).length;
+    if (remaining <= ALLIANCES.finalEightSize) {
+        const byId = new Map<string, Tribute[]>();
+        getAlive(ctx.state).forEach(t => {
+            if (!t.allianceId) return;
+            if (!byId.has(t.allianceId)) byId.set(t.allianceId, []);
+            byId.get(t.allianceId)!.push(t);
+        });
+        byId.forEach((members, id) => {
+            const record = allianceOf(ctx.state, id);
+            if (!record || record.pact !== 'until-the-final-eight' || members.length < 2) return;
+            record.pact = 'no-pact';
+            ctx.logEvent(
+                `The field is down to ${remaining}. ${members.map(m => m.name).join(' and ')} agreed this was where it ended, ` +
+                `and none of them pretends otherwise. The alliance dissolves exactly as promised.`,
+                members.map(m => m.id),
+                { important: true, category: 'alliance' }
+            );
+            members.forEach(m => { delete m.allianceId; });
+        });
+    }
+
+    // 3b. Mergers: two duos who trust each other become a four.
+    //
+    // This is the path that was missing entirely. Dynamic formation only ever
+    // paired two alliance-free tributes, and recruitment only ever added one
+    // loner at a time, so almost every organic alliance stayed a pair for the
+    // whole run no matter how well two of them got on.
+    mergeAlliances(ctx);
+
+    // 3c. Recruitment: a standing group can take in a loner they trust.
     //
     // Without this, the only alliance larger than two that could ever exist was
     // the Career pack seeded at the bloodbath — dynamic formation pairs two
@@ -239,60 +265,161 @@ export function processAlliances(ctx: SimContext) {
         });
     });
 
-    // 4. Romantic "Star-Crossed Lovers" formation check (District partners of opposite gender)
-    for (let dist = 1; dist <= ctx.state.config.districtCount; dist++) {
-        const districtTributes = getAlive(ctx.state).filter(t => t.district === dist);
-        if (districtTributes.length === 2 && districtTributes[0].gender !== districtTributes[1].gender) {
-            const t1 = districtTributes[0];
-            const t2 = districtTributes[1];
-            let currentRel = getRel(t1, t2.id);
+    // 4. Romance — see `growRomance`.
+    growRomance(ctx);
 
-            // Romance grows if they reside in the same zone or support each other
-            if (t1.zone === t2.zone) {
-                const growth = ctx.rng.nextInt(4, 10);
-                adjustRel(t1, t2.id, growth);
-                adjustRel(t2, t1.id, growth);
-                noteContact(ctx.state, t1, t2);
-                currentRel = getRel(t1, t2.id);
-            }
+    // 5. Structure upkeep: prune the dead, re-elect leaders, pool supplies.
+    reconcileAlliances(ctx);
+    Object.values(ctx.state.alliances ?? {}).forEach(record => {
+        const members = membersOf(ctx.state, record.id);
+        if (members.length < 2) return;
+        const atCamp = members.filter(m => m.zone === (record.campZone ?? members[0].zone));
+        if (atCamp.length >= 2) contributeToCache(ctx, record, atCamp);
+        // A group that has moved on adopts wherever it now stands as camp.
+        if (atCamp.length < 2) record.campZone = members[0].zone;
+    });
+}
 
-            if (currentRel >= 80 && !t1.traits.includes('Star-Crossed')) {
-                t1.traits.push('Star-Crossed');
-                t2.traits.push('Star-Crossed');
+/**
+ * Two standing groups who trust each other joining forces.
+ *
+ * Requires them to be in the same place and to actually get on across the
+ * boundary — a merger is not two leaders shaking hands over the heads of people
+ * who hate each other.
+ */
+function mergeAlliances(ctx: SimContext) {
+    const groups = new Map<string, Tribute[]>();
+    getAlive(ctx.state).forEach(t => {
+        if (!t.allianceId || t.allianceId.startsWith('lovers-')) return;
+        if (!groups.has(t.allianceId)) groups.set(t.allianceId, []);
+        groups.get(t.allianceId)!.push(t);
+    });
 
-                // Falling for a district partner pulls them out of whatever
-                // alliance they were already in — that departure needs its own
-                // event, not a silent headcount change for the group left behind.
-                [t1, t2].forEach(t => {
-                    if (t.allianceId && !t.allianceId.startsWith('lovers-')) {
-                        ctx.logEvent(
-                            fill(ctx.pickText(ALLIANCE_TEXTS.dissolve), { tribute: t.name }),
-                            [t.id],
-                            { category: 'alliance' }
-                        );
-                        delete t.allianceId;
-                    }
-                });
+    const ids = [...groups.keys()];
+    for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+            const a = groups.get(ids[i])!;
+            const b = groups.get(ids[j])!;
+            if (a.length < 2 || b.length < 2) continue;
+            if (a.length + b.length > ALLIANCES.maxSize) continue;
+            // Same ground, or there is no conversation to have.
+            if (a[0].zone !== b[0].zone) continue;
 
-                const bondId = `lovers-${dist}-${ctx.state.seed}`;
-                t1.allianceId = bondId;
-                t2.allianceId = bondId;
+            const crossRegard = (x: Tribute[], y: Tribute[]) =>
+                x.reduce((sum, m) => sum + y.reduce((inner, o) => inner + getRel(m, o.id), 0) / y.length, 0) / x.length;
+            if (crossRegard(a, b) < ALLIANCES.mergeThreshold) continue;
+            if (crossRegard(b, a) < ALLIANCES.mergeThreshold) continue;
+            if (!ctx.rng.chance(ALLIANCES.mergeChance)) continue;
 
-                t1.sponsorTrust = Math.min(100, t1.sponsorTrust + 40);
-                t2.sponsorTrust = Math.min(100, t2.sponsorTrust + 40);
-                t1.reputation = Math.min(95, t1.reputation + 20);
-                t2.reputation = Math.min(95, t2.reputation + 20);
-                t1.excitementRating += 50;
-                t2.excitementRating += 50;
+            // The larger group absorbs the smaller; a tie goes to the older pact.
+            const keepId = a.length >= b.length ? ids[i] : ids[j];
+            const merged = [...a, ...b];
+            merged.forEach(m => { m.allianceId = keepId; });
+            merged.forEach(m => merged.forEach(o => { if (m.id !== o.id) noteContact(ctx.state, m, o); }));
+            delete (ctx.state.alliances ?? {})[keepId === ids[i] ? ids[j] : ids[i]];
+            registerAlliance(ctx, keepId, merged);
+            groups.set(keepId, merged);
+            groups.delete(keepId === ids[i] ? ids[j] : ids[i]);
 
-                ctx.logEvent(
-                    fill(ctx.pickText(ROMANCE_TEXTS), { t1: t1.name, t2: t2.name, district: String(dist) }),
-                    [t1.id, t2.id],
-                    { important: true, category: 'romance' }
-                );
-            }
+            ctx.logEvent(
+                `${a.map(m => m.name).join(' and ')} throw in with ${b.map(m => m.name).join(' and ')} in ${a[0].zone}. ` +
+                `Two small groups are one larger one, which is either much safer or much worse.`,
+                merged.map(m => m.id),
+                { important: true, category: 'alliance' }
+            );
+            return;
         }
     }
+}
+
+/**
+ * Romance, earned rather than accumulated.
+ *
+ * The old rule promoted any opposite-gender district pair to star-crossed
+ * lovers the moment their relationship crossed 80 — and paid them +4..10 per
+ * cycle simply for occupying the same zone, which every tribute does at the
+ * Cornucopia on day one. The result was that the rarest, most memorable outcome
+ * in the game fired in the overwhelming majority of runs, by roughly day three,
+ * before either of them had done anything for the other.
+ *
+ * Now: the bond only grows from actual contact, it grows far faster when one of
+ * them has genuinely stood by the other, and the promotion itself is a roll
+ * behind a set of gates rather than a threshold crossing. Cross-district and
+ * same-gender pairs are eligible, which both widens the story space and removes
+ * the district-partner shortcut that made it so easy to trigger.
+ */
+function growRomance(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    if (ctx.state.day < ROMANCE.minDay) return;
+
+    for (let i = 0; i < alive.length; i++) {
+        for (let j = i + 1; j < alive.length; j++) {
+            const t1 = alive[i];
+            const t2 = alive[j];
+            if (t1.traits.includes('Star-Crossed') || t2.traits.includes('Star-Crossed')) continue;
+
+            // Contact, not co-location. Standing in the same clearing as
+            // twenty-three other people is not a relationship.
+            const recentContact = cyclesSinceContact(ctx.state, t1, t2.id) <= ROMANCE.contactWindow;
+            if (!recentContact) continue;
+
+            const stoodBy = hasStoodBy(t1, t2.id) || hasStoodBy(t2, t1.id);
+            const growth = stoodBy ? ROMANCE.stoodByGrowth : ROMANCE.contactGrowth;
+            adjustRel(t1, t2.id, growth);
+            adjustRel(t2, t1.id, growth);
+
+            const mutual = Math.min(getRel(t1, t2.id), getRel(t2, t1.id));
+            if (mutual < ROMANCE.threshold) continue;
+            // Somebody has to have risked something. This is the gate that makes
+            // it a story rather than an arithmetic outcome.
+            if (!stoodBy) continue;
+            if (!ctx.rng.chance(ROMANCE.chancePerCycle)) continue;
+
+            declareLovers(ctx, t1, t2);
+            return;
+        }
+    }
+}
+
+function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute) {
+    t1.traits.push('Star-Crossed');
+    t2.traits.push('Star-Crossed');
+
+    // Falling for someone pulls them out of whatever alliance they were already
+    // in — that departure needs its own event, not a silent headcount change
+    // for the group left behind.
+    [t1, t2].forEach(t => {
+        if (t.allianceId && !t.allianceId.startsWith('lovers-')) {
+            ctx.logEvent(
+                fill(ctx.pickText(ALLIANCE_TEXTS.dissolve), { tribute: t.name }),
+                [t.id],
+                { category: 'alliance' }
+            );
+            delete t.allianceId;
+        }
+    });
+
+    const bondId = `lovers-${t1.id}-${t2.id}`;
+    t1.allianceId = bondId;
+    t2.allianceId = bondId;
+    registerAlliance(ctx, bondId, [t1, t2]);
+
+    t1.sponsorTrust = Math.min(100, t1.sponsorTrust + 40);
+    t2.sponsorTrust = Math.min(100, t2.sponsorTrust + 40);
+    t1.reputation = Math.min(95, t1.reputation + 20);
+    t2.reputation = Math.min(95, t2.reputation + 20);
+    t1.excitementRating += 50;
+    t2.excitementRating += 50;
+
+    ctx.logEvent(
+        fill(ctx.pickText(ROMANCE_TEXTS), {
+            t1: t1.name,
+            t2: t2.name,
+            district: t1.district === t2.district ? String(t1.district) : `${t1.district} and ${t2.district}`,
+        }),
+        [t1.id, t2.id],
+        { important: true, category: 'romance' }
+    );
 }
 
 /**

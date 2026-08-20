@@ -5,6 +5,7 @@ import { SPONSOR_TEXTS } from '../data/flavorText';
 import { clampTribute } from './vitals';
 import { giveItem, itemPhrase } from './items';
 import { ensureMemory } from './memory';
+import { mentorGenerosity, processMentorPleas } from './mentors';
 import { Tribute } from '../models/types';
 
 /**
@@ -20,7 +21,10 @@ import { Tribute } from '../models/types';
 export function giftChance(t: Tribute, generosity: number): number {
     const prior = ensureMemory(t).giftsReceived;
     const decayed = SPONSORS.baseGiftChance * Math.pow(SPONSORS.repeatDecay, prior);
-    return Math.min(SPONSORS.maxGiftChance, Math.max(SPONSORS.repeatFloor, decayed * generosity));
+    // The mentor is the person who actually places the gift, so their district's
+    // record scales the whole stream rather than being a flat bonus on top of it.
+    const pull = decayed * generosity * mentorGenerosity(t);
+    return Math.min(SPONSORS.maxGiftChance, Math.max(SPONSORS.repeatFloor, pull));
 }
 
 /**
@@ -43,7 +47,11 @@ const TIER_FLOORS = [20, 35, 50, 65];
 
 export function processSponsors(ctx: SimContext) {
     const alive = getAlive(ctx.state);
+    // Pleas resolve first: a tribute their mentor just rescued should not also
+    // draw a crowd parachute in the same cycle.
+    const rescued = processMentorPleas(ctx, alive);
     alive.forEach(t => {
+        if (rescued.has(t.id)) return;
         const sponsorScore = t.excitementRating + t.sponsorTrust;
         if (sponsorScore <= SPONSORS.giftThreshold) return;
         if (!ctx.rng.chance(giftChance(t, ctx.state.config.sponsorGenerosity))) return;

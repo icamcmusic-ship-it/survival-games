@@ -1,4 +1,4 @@
-import { GameState, Tribute, TributeMemory, ZoneMemory } from '../models/types';
+import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
 import { MEMORY, RELATIONSHIPS } from '../data/balance';
 import { SimContext } from './context';
 
@@ -21,6 +21,8 @@ export function blankMemory(): TributeMemory {
         mourned: [],
         giftsReceived: 0,
         fear: {},
+        rivals: {},
+        stoodBy: [],
     };
 }
 
@@ -33,6 +35,8 @@ export function ensureMemory(t: Tribute): TributeMemory {
     if (!t.memory.lastContact) t.memory.lastContact = {};
     if (!t.memory.mourned) t.memory.mourned = [];
     if (!t.memory.fear) t.memory.fear = {};
+    if (!t.memory.rivals) t.memory.rivals = {};
+    if (!t.memory.stoodBy) t.memory.stoodBy = [];
     if (t.memory.timesBetrayed === undefined) t.memory.timesBetrayed = 0;
     if (t.memory.giftsReceived === undefined) t.memory.giftsReceived = 0;
     return t.memory;
@@ -140,6 +144,57 @@ export function swearVengeance(t: Tribute, targetId: string) {
 
 export function hasVengeanceAgainst(t: Tribute, targetId: string): boolean {
     return ensureMemory(t).vengeance.includes(targetId);
+}
+
+/**
+ * The running history of one specific feud.
+ *
+ * A rivalry used to be a decaying scalar, which meant a third fight between the
+ * same two people read exactly like the first. This is what lets a rematch
+ * escalate: the loser has learned something, and neither of them wants to walk
+ * away again.
+ */
+export function rivalRecord(t: Tribute, otherId: string): RivalRecord {
+    const mem = ensureMemory(t);
+    if (!mem.rivals[otherId]) {
+        mem.rivals[otherId] = { fights: 0, woundsTaken: 0, woundsDealt: 0, timesFled: 0, lastFightCycle: -99 };
+    }
+    return mem.rivals[otherId];
+}
+
+/** Records that these two have now fought, from both sides. */
+export function noteFight(state: GameState, a: Tribute, b: Tribute) {
+    const cycle = cycleOf(state);
+    [[a, b], [b, a]].forEach(([x, y]) => {
+        const record = rivalRecord(x, y.id);
+        record.fights += 1;
+        record.lastFightCycle = cycle;
+    });
+}
+
+/** Records that `t` broke off a fight with `otherId`. */
+export function noteFled(t: Tribute, otherId: string) {
+    rivalRecord(t, otherId).timesFled += 1;
+}
+
+/** Records a landed hit, on both sides of the pair. */
+export function noteWound(attacker: Tribute, defender: Tribute) {
+    rivalRecord(attacker, defender.id).woundsDealt += 1;
+    rivalRecord(defender, attacker.id).woundsTaken += 1;
+}
+
+/**
+ * Records that `t` took a real risk for `otherId` — shared a fight, handed over
+ * supplies they needed themselves, or patched them up. This is the gate romance
+ * hangs on, instead of a number ticking up from standing in the same clearing.
+ */
+export function noteStoodBy(t: Tribute, otherId: string) {
+    const mem = ensureMemory(t);
+    if (!mem.stoodBy.includes(otherId)) mem.stoodBy.push(otherId);
+}
+
+export function hasStoodBy(t: Tribute, otherId: string): boolean {
+    return ensureMemory(t).stoodBy.includes(otherId);
 }
 
 /**

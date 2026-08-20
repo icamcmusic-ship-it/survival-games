@@ -18,6 +18,7 @@ import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
 import { checkTraps, tickTraps } from '../fieldcraft';
+import { leaderFor } from '../alliance';
 import { decayFear } from '../fear';
 import { updateStance } from '../stance';
 import { processSpoilage, processVitals } from '../survival';
@@ -222,7 +223,9 @@ function wanderChanceFor(t: Tribute): number {
 function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>) {
     if (t.allianceId) {
         const allianceMembers = currentAlive.filter(m => m.allianceId === t.allianceId && m.status === 'alive');
-        const leader = allianceMembers[0];
+        // The group's actual leader, chosen on merit and open to challenge —
+        // not `members[0]`, which was whatever order the array happened to be in.
+        const leader = leaderFor(ctx.state, t) ?? allianceMembers[0];
         if (!leader || t.id !== leader.id) return;
 
         const options = reachableZones(ctx.state.arena, t.zone, collapsed);

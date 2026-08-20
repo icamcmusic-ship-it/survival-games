@@ -453,6 +453,28 @@ export const SPONSOR_TEXTS = [
     'The sponsors have seen enough. {item} comes down to {tribute} in {zone}.',
 ];
 
+/**
+ * A parachute with a name attached. The crowd sends the ordinary gifts; these
+ * come because one person in the sponsor rooms spent their own standing on it,
+ * and the chronicle should say whose.
+ */
+export const MENTOR_PARACHUTE_TEXTS = [
+    '{mentor} {need}. A parachute drops into {zone} with {item} inside, and everyone in the sponsor rooms knows who paid for it.',
+    'Somewhere above the arena {mentor} calls in a favour for {tribute}. {item}, down into {zone}, exactly what was needed.',
+    '{mentor} {need}. {tribute} finds {item} in the parachute and does not have to guess who sent it.',
+    'A parachute settles beside {tribute} in {zone}. {item} — {mentor} has spent something to put it there.',
+    "{mentor} has been arguing {tribute}'s case all afternoon. In {zone}, a parachute finally answers with {item}.",
+    'The chime over {zone} is {mentor} keeping a promise. Inside the parachute: {item}.',
+    '{mentor} {need}, and has stopped waiting for the crowd. {item} comes down to {tribute} in {zone}.',
+];
+
+/** The mentor tried and the room said no. The audience only ever hears about the ones that land, otherwise. */
+export const MENTOR_PLEA_FAILED_TEXTS = [
+    '{mentor} works the sponsor rooms for {tribute} and comes away with nothing.',
+    'No parachute reaches {zone}. {mentor} has run out of people who owe them anything.',
+    'The cameras catch {mentor} being turned down for {tribute}, twice, by people who used to take their calls.',
+];
+
 export const AMBIENT_TEXTS = [
     'The anthem plays across the arena. Tonight\'s faces burn in the sky.',
     'A hovercraft descends somewhere out of sight and lifts a body away.',

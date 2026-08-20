@@ -5,6 +5,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
 import { clampTribute } from './vitals';
 import { ensureMemory, swearVengeance, noteContact } from './memory';
+import { areLovers } from './alliance';
 import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS } from '../data/flavorText';
 
 /**
@@ -15,6 +16,11 @@ import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS } from '../data/flavorText';
  * relationship map completely untouched. Every write now goes through here,
  * stays inside [-100, 100], and leaves a trace in the tribute's memory.
  */
+
+/** Ids of everyone still breathing — distrust cannot spread to a corpse. */
+function livingIds(ctx: SimContext): string[] {
+    return ctx.state.tributes.filter(t => t.status === 'alive').map(t => t.id);
+}
 
 const clampRel = (v: number) => Math.max(RELATIONSHIPS.min, Math.min(RELATIONSHIPS.max, Math.round(v * 10) / 10));
 
@@ -111,7 +117,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
         if (other.status !== 'alive' || other.id === victim.id) return;
         const bond = getRel(other, victim.id);
         const wereAllied = other.allianceId !== undefined && other.allianceId === victim.allianceId;
-        const isLover = other.traits.includes('Star-Crossed') && victim.traits.includes('Star-Crossed') && other.district === victim.district;
+        const isLover = areLovers(other, victim);
 
         if (bond >= RELATIONSHIPS.grievableBond || wereAllied || isLover) {
             const intensity = isLover ? 1 : Math.min(1, (bond + (wereAllied ? 25 : 0)) / 100);
@@ -130,7 +136,18 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 const hatred = RELATIONSHIPS.griefTowardKiller * intensity
                     + (wereAllied ? RELATIONSHIPS.griefTowardKillerAllyBonus : 0);
                 const now = adjustRel(other, killer.id, -hatred);
-                if (now <= RELATIONSHIPS.vengeanceThreshold) {
+                // Vengeance is sworn on the event, not on the arithmetic.
+                //
+                // Gating it on the relationship dropping past -55 meant it
+                // almost never fired: most tributes sit near zero with most
+                // others, decay pulls everything back toward zero every cycle,
+                // and the grief hit had to cover the whole gap in one go. So
+                // the single best beat in the epilogue — "you went after X for
+                // what happened to Y" — appeared in well under 1% of runs.
+                // Watching your ally or someone you loved die is sufficient on
+                // its own; the relationship hit is the consequence, not the gate.
+                const personal = wereAllied || isLover || bond >= RELATIONSHIPS.vengeanceBond;
+                if (personal || now <= RELATIONSHIPS.vengeanceThreshold) {
                     swearVengeance(other, killer.id);
                     other.stance = 'Aggressive';
                     other.stanceHeld = 0;
@@ -207,15 +224,20 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
         const mem = ensureMemory(w);
         if (!mem.betrayedBy.includes(betrayer.id)) mem.betrayedBy.push(betrayer.id);
         // Watching an ally get knifed poisons the whole group, not just the pair.
-        Object.keys(w.relationships).forEach(id => {
-            if (id === betrayer.id) return;
+        // Only the living, though: drifting a corpse's number does nothing
+        // mechanically but does leave the profile screen showing a relationship
+        // quietly souring with a dead tribute, and lets the epilogue name
+        // someone the victor barely met as their nemesis.
+        livingIds(ctx).forEach(id => {
+            if (id === betrayer.id || id === w.id) return;
             adjustRel(w, id, -RELATIONSHIPS.betrayedDistrustPenalty / 2);
         });
     });
 
-    // A tribute who has been sold out once stops trusting the room.
-    Object.keys(victim.relationships).forEach(id => {
-        if (id === betrayer.id) return;
+    // A tribute who has been sold out once stops trusting the room — the people
+    // actually still in it, at any rate.
+    livingIds(ctx).forEach(id => {
+        if (id === betrayer.id || id === victim.id) return;
         adjustRel(victim, id, -RELATIONSHIPS.betrayedDistrustPenalty);
     });
 }
@@ -234,7 +256,7 @@ export function decayAllianceTrust(state: GameState) {
         alive.forEach(other => {
             if (other.id === t.id || other.allianceId !== t.allianceId) return;
             // Star-crossed lovers are the one bond the endgame cannot erode.
-            const bonded = t.traits.includes('Star-Crossed') && other.traits.includes('Star-Crossed') && t.district === other.district;
+            const bonded = areLovers(t, other);
             if (bonded) return;
             const paranoia = t.traits.includes('Paranoid') ? 1.8 : 1;
             adjustRel(t, other.id, -rate * paranoia);
