@@ -44,9 +44,24 @@ import { QUALITY_BIAS } from '../../data/balance';
  */
 export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     ctx.rng = new RNG(`${ctx.state.seed}-${ctx.state.day}-${time}`);
+    // An extended-darkness wildcard holds the arena in night for several
+    // cycles: the lights do not come up, whatever the schedule says.
+    const blackout = ctx.state.blackoutUntilCycle !== undefined
+        && (ctx.state.cycle ?? 0) < ctx.state.blackoutUntilCycle;
+    if (blackout && time === 'day') {
+        ctx.logEvent(
+            'The arena lights do not come up. Whatever today was going to be, it happens in the dark.',
+            [],
+            { important: true, category: 'gamemaker' }
+        );
+    }
     // REPLAY-07: the arena's clock, so concealment, awareness and ambush can
     // read it without threading `time` through every call site that touches them.
-    ctx.state.timeOfDay = time;
+    // `time` stays the scheduled phase (the anthem is still read at nightfall,
+    // the border still closes on its own clock); `effectiveTime` is how dark it
+    // actually is, which is what fires, nocturnal mutts and stealth care about.
+    const effectiveTime = blackout ? 'night' : time;
+    ctx.state.timeOfDay = effectiveTime;
     advanceCycle(ctx.state);
     const alive = getAlive(ctx.state);
     // Counted once per day, so it freezes at whatever the tribute reached.
@@ -109,10 +124,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // A fire is warmth, hot food, and after dark it is the only thing in the
     // arena visible from a zone away. This is the trade the source material is
     // built on, and it only pays off at night.
-    if (time === 'night') revealFires(ctx);
+    if (effectiveTime === 'night') revealFires(ctx);
 
     // 4. Hazards, mutts and everyone who runs into everyone else.
-    resolveEncounters(ctx, currentAlive, acted, isEscalated, flavor, time);
+    resolveEncounters(ctx, currentAlive, acted, isEscalated, flavor, effectiveTime);
     // A mutt that has found someone keeps looking for them for a few more
     // cycles, independent of the ordinary per-cycle mutt roll.
     tickPersistentMutts(ctx);

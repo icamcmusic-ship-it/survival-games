@@ -62,6 +62,10 @@ export function applyDamage(
     record: Omit<DamageRecord, 'cycle' | 'amount'>,
 ) {
     if (amount <= 0) return;
+    // You cannot wound a corpse. Without this, any caller that damages a
+    // tribute killed earlier in the same pass silently overwrites the damage
+    // record their obituary was built from.
+    if (t.status !== 'alive') return;
 
     // Armour. Only against things that hit you — a padded vest does nothing
     // about thirst, venom already in the blood, or an infected wound.

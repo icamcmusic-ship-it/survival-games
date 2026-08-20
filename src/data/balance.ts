@@ -1302,6 +1302,10 @@ export const WILDCARD = {
     bountyTrust: 25,
     /** How thoroughly a scheduled drought strips the arena's water. */
     droughtDepletion: 0.85,
+    /** Cycles an "extended darkness" actually extends for. */
+    blackoutCycles: 3,
+    /** How far a crowd revolt swings sponsor trust, in both directions. */
+    revoltTrustSwing: 30,
 } as const;
 
 export const GAMEMAKER = {

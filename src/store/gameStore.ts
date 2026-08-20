@@ -287,12 +287,13 @@ export const gameActions = {
             ? generateArena(safeSeed)
             : (ARENAS.find(a => a.id === arenaId) || ARENAS[0]);
         const startZone = arena.zones[0].name;
-        const tributes = generateTributes(safeSeed, config, startZone);
 
         // REPLAY-01: this year's Games are rolled from the seed and the
         // player's config is multiplied through them, so a shared seed
-        // reproduces the same Games rather than merely the same cast.
+        // reproduces the same Games rather than merely the same cast. The
+        // profile is rolled before the cast because it decides the cast's shape.
         const gamesProfile = gamesProfileFor(safeSeed);
+        const tributes = generateTributes(safeSeed, config, startZone, gamesProfile.castShape);
 
         const initialState: GameState = {
             seed: safeSeed,
@@ -334,7 +335,7 @@ export const gameActions = {
         // the old profile's multipliers don't leak into the new year.
         const gamesProfile = gamesProfileFor(newSeed);
         const config = configForProfile(gameState.baseConfig, gamesProfile);
-        const tributes = generateTributes(newSeed, config, gameState.arena.zones[0].name);
+        const tributes = generateTributes(newSeed, config, gameState.arena.zones[0].name, gamesProfile.castShape);
         const newState: GameState = {
             ...gameState, seed: newSeed, tributes, log: [], logCounter: 0, gamesProfile, config,
         };

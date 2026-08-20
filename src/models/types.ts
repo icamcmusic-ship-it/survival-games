@@ -454,6 +454,12 @@ export interface GameState {
     epilogueInterview?: EpilogueQA[];
     /** Day the next Gamemaker feast is scheduled for (undefined = none scheduled). Cleared once the feast resolves. */
     feastDay?: number;
+    /** Indices into `gamesProfile.calendar` that have already resolved. */
+    firedWildcards?: number[];
+    /** Cycle an extended-darkness wildcard releases the arena on. */
+    blackoutUntilCycle?: number;
+    /** Tribute the Capitol has put a bounty on, if any. */
+    bountyTargetId?: string;
     /** Day the most recent feast actually convened — guards against two feasts landing on the same day. */
     lastFeastDay?: number;
     /** Feasts already held this run, used to space them out. */

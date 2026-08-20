@@ -35,8 +35,9 @@ const configs: GameConfig[] = [
 
 function start(seed: string, arenaId: string, config: GameConfig, gamemaker: boolean): GameState {
   const arena = arenaId.startsWith('procedural') ? generateArena(seed) : ARENAS.find(a => a.id === arenaId)!;
-  const tributes = generateTributes(seed, config, arena.zones[0].name);
-  return { seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: gamemaker, config, baseConfig: config, logCounter: 0, feastsHeld: 0, cycle: 0 };
+  const gamesProfile = gamesProfileFor(seed);
+  const tributes = generateTributes(seed, config, arena.zones[0].name, gamesProfile.castShape);
+  return { seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: gamemaker, config, baseConfig: config, gamesProfile, logCounter: 0, feastsHeld: 0, cycle: 0 };
 }
 
 const trainingHistogram: Record<number, number> = {};
