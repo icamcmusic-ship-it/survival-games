@@ -46,6 +46,55 @@ export interface Item {
 
 export type Build = 'Frail' | 'Slight' | 'Average' | 'Athletic' | 'Stocky' | 'Muscular';
 
+/**
+ * What a tribute has personally learned about a place. Nobody in the arena has
+ * a map of everyone else — they have impressions, and those impressions rot.
+ */
+export interface ZoneMemory {
+    /** Cycle index the impression was last refreshed. */
+    seen: number;
+    /** Accumulated dread: deaths witnessed, fights survived, hazards taken. */
+    threat: number;
+    /** Rivals believed to be standing there, as of `seen`. */
+    rivals: number;
+    /** How picked-over the tribute believes the ground is (0-1). */
+    barren: number;
+}
+
+/**
+ * Long-term social memory. `relationships` holds the raw number; this holds the
+ * reasons, which is what betrayal, grief and vengeance actually key off.
+ */
+export interface TributeMemory {
+    /** Zone name -> impression. */
+    zones: Record<string, ZoneMemory>;
+    /** Ids this tribute has sworn to kill, most recent first. */
+    vengeance: string[];
+    /** Ids that have personally betrayed them. */
+    betrayedBy: string[];
+    /** How many times they have been sold out. Drives blanket distrust. */
+    timesBetrayed: number;
+    /** Tribute id -> cycle index of last direct contact, for relationship decay. */
+    lastContact: Record<string, number>;
+    /** Ids whose deaths this tribute grieved, for the epilogue. */
+    mourned: string[];
+    /** Sponsor gifts already delivered, for compounding rarity. */
+    giftsReceived: number;
+}
+
+/** Where a tribute's most recent wound actually came from. */
+export interface DamageRecord {
+    /** Human-readable cause, used verbatim as cause of death. */
+    cause: string;
+    /** Set when another tribute dealt it. */
+    sourceId?: string;
+    /** Broad bucket, for tone and epilogue copy. */
+    kind: 'tribute' | 'mutt' | 'hazard' | 'climate' | 'status' | 'gamemaker' | 'arena';
+    /** Cycle index the wound landed. */
+    cycle: number;
+    amount: number;
+}
+
 export interface Tribute {
     id: string;
     district: number;
@@ -73,6 +122,18 @@ export interface Tribute {
     dayOfDeath?: number;
     zone: string;
     allianceId?: string;
+    /** Everything this tribute has learned since the reaping. */
+    memory: TributeMemory;
+    /** The last thing that hurt them — the real cause of death, not a guess. */
+    lastDamage?: DamageRecord;
+    /** Cycles the current stance has been held, for hysteresis. */
+    stanceHeld: number;
+    /** Pre-Games audience darling. Starts with sponsor trust and draws envy. */
+    fanFavourite: boolean;
+    /** Persona sold on the interview couch — shapes who allies and who targets them. */
+    interviewStrategy?: string;
+    /** Baseline sponsor trust the crowd keeps drifting back toward. */
+    reputation: number;
 }
 
 export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland';
@@ -149,6 +210,12 @@ export interface GameState {
     feastsHeld?: number;
     /** Monotonic counter guaranteeing unique event log ids. */
     logCounter?: number;
+    /** Zone name -> fraction of its printed yield currently stripped out (0-1). */
+    zoneDepletion?: Record<string, number>;
+    /** Monotonic day/night cycle counter, used for memory and decay timings. */
+    cycle?: number;
+    /** Zone name -> deaths that have happened there, broadcast by the sky each night. */
+    zoneDeaths?: Record<string, number>;
 }
 
 export interface EventLog {

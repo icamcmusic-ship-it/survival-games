@@ -32,10 +32,21 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
 
     const archetype = ARCHETYPES[tribute.archetype];
     const injuries = Object.entries(tribute.injuries).filter(([, v]) => v).map(([k]) => k);
+    const sworn = new Set(tribute.memory?.vengeance ?? []);
     const relationships = Object.entries(tribute.relationships)
-        .map(([id, val]) => ({ other: gameState.tributes.find(t => t.id === id), value: val as number }))
+        .map(([id, val]) => ({
+            other: gameState.tributes.find(t => t.id === id),
+            // Decay leaves fractional values in the graph; the reader wants a number.
+            value: Math.round(val as number),
+            sworn: sworn.has(id),
+        }))
         .filter(r => !!r.other)
         .sort((a, b) => b.value - a.value);
+    const knownZones = Object.entries(tribute.memory?.zones ?? {})
+        .map(([name, slot]) => ({ name, ...slot }))
+        .filter(z => z.threat > 0.15 || z.rivals > 0)
+        .sort((a, b) => b.threat - a.threat)
+        .slice(0, 4);
 
     return (
         <div
@@ -53,6 +64,8 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                             <span className="chip">District {tribute.district}</span>
                             <span className="chip chip-accent" title={archetype.description}>{archetype.name}</span>
                             {tribute.isCareer && <span className="chip chip-gold">Career</span>}
+                            {tribute.fanFavourite && <span className="chip chip-gold" title="The Capitol had a favourite before the gong ever sounded.">Fan favourite</span>}
+                            {tribute.interviewStrategy && <span className="chip" title="The persona they sold on Caesar's couch.">{tribute.interviewStrategy}</span>}
                             <span className="chip">{tribute.stance}</span>
                             {tribute.trainingScore > 0 && <span className="chip">Training {tribute.trainingScore}</span>}
                         </div>
@@ -141,12 +154,33 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                     <span
                                         className="font-mono text-xs flex-none"
                                         style={{ color: value > 0 ? 'var(--cat-alliance)' : value < 0 ? 'var(--cat-death)' : 'var(--color-ink-500)' }}
+                                        title={sworn ? `${tribute.name} has sworn to kill ${other!.name}` : undefined}
                                     >
-                                        {value > 0 ? `+${value}` : value}
+                                        {sworn ? '⚔ ' : ''}{value > 0 ? `+${value}` : value}
                                     </span>
                                 </div>
                             ))}
                         </div>
+                    </section>
+
+                    <section>
+                        <h4 className="panel-title mb-2">What they know</h4>
+                        {knownZones.length === 0 ? (
+                            <span className="text-sm text-[var(--color-ink-400)]">Nothing worth remembering yet</span>
+                        ) : (
+                            <div className="space-y-1">
+                                {knownZones.map(z => (
+                                    <div key={z.name} className="flex justify-between items-center text-sm gap-2">
+                                        <span className="truncate text-[var(--color-ink-200)]">{z.name}</span>
+                                        <span className="font-mono text-xs flex-none text-[var(--color-ink-400)]">
+                                            {z.threat > 0.15 && <span style={{ color: 'var(--cat-death)' }}>danger {z.threat.toFixed(1)}</span>}
+                                            {z.threat > 0.15 && z.rivals > 0 && ' · '}
+                                            {z.rivals > 0 && `${z.rivals} seen`}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </section>
                 </div>
             </div>

@@ -189,12 +189,19 @@ await step('debrief tabs work', async () => {
 });
 
 await step('hall of fame records the victor', async () => {
+  // The run uses a random seed, and an arena that kills every last tribute is a
+  // legitimate ending. Assert against the outcome this run actually produced.
+  const wipeout = await page.getByRole('heading', { name: 'No Victor', exact: true }).count() > 0;
   await page.getByRole('button', { name: 'Hall of Fame', exact: true }).click();
   await page.getByRole('heading', { name: /hall of fame/i }).waitFor();
   const count = await page.locator('.panel .display-title').count();
-  if (count === 0) throw new Error('no victors recorded');
-  await page.getByRole('button', { name: /details/i }).first().click();
-  await page.waitForTimeout(150);
+  if (!wipeout && count === 0) throw new Error('a victor was crowned but nothing was recorded');
+  if (count > 0) {
+    await page.getByRole('button', { name: /details/i }).first().click();
+    await page.waitForTimeout(150);
+  } else {
+    console.log('   (note: this run ended in a wipeout, so the Hall of Fame is correctly empty)');
+  }
   await page.screenshot({ path: `${shots}/hof.png` });
 });
 

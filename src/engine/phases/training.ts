@@ -1,7 +1,11 @@
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Attributes, Tribute } from '../../models/types';
-import { TRAINING_STATIONS, TRAINING_VERDICTS } from '../../data/flavorText';
+import { TRAINING_STATIONS, TRAINING_VERDICTS, INTIMIDATION_TEXTS } from '../../data/flavorText';
+import { TRAINING } from '../../data/balance';
+import { strengthCapForAge } from '../generator';
+import { adjustRel } from '../relationships';
+import { clampTribute } from '../vitals';
 
 /**
  * Training scores 1-8 are earned on merit. Every point above 8 is a separate
@@ -22,6 +26,9 @@ function meritMultiplier(t: Tribute): number {
     if (t.traits.includes('Nimble')) m += 0.1;
     if (t.traits.includes('Clumsy')) m -= 0.25;
     if (t.traits.includes('Pacifist')) m -= 0.2;
+    // A twelve-year-old does not out-score the Careers on the gauntlet, however
+    // fast they are — age is a real ceiling on the elite band.
+    m += (t.age - 15) * 0.08;
     return Math.max(0.15, m);
 }
 
@@ -36,7 +43,9 @@ export function processTraining(ctx: SimContext) {
     getAlive(ctx.state).forEach(t => {
         const attrs = ['strength', 'agility', 'intelligence', 'stealth', 'charisma'] as const;
         const boosted = ctx.rng.pick([...attrs]) as keyof Attributes;
-        t.attributes[boosted] = Math.min(10, t.attributes[boosted] + 1);
+        // A week on the gauntlet does not undo the age ceiling on raw strength.
+        const ceiling = boosted === 'strength' ? strengthCapForAge(t.age) : 10;
+        t.attributes[boosted] = Math.min(ceiling, t.attributes[boosted] + 1);
 
         const totalStats = Object.values(t.attributes).reduce((a, b) => a + b, 0);
 
@@ -73,6 +82,36 @@ export function processTraining(ctx: SimContext) {
             [t.id],
             { important: score >= 9, category: 'training' }
         );
+    });
+
+    // Training does not happen in a vacuum. Twenty-three tributes are
+    // on that floor watching, and a 10 changes how every one of them sleeps.
+    const cast = getAlive(ctx.state);
+    cast.forEach(t => {
+        if (t.trainingScore < TRAINING.intimidationScore) return;
+
+        t.vitals.sanity = Math.min(100, t.vitals.sanity + TRAINING.confidenceSanity);
+        ctx.logEvent(
+            ctx.pickText(INTIMIDATION_TEXTS)
+                .split('{tribute}').join(t.name)
+                .split('{score}').join(String(t.trainingScore)),
+            [t.id],
+            { important: true, category: 'training' }
+        );
+
+        const severity = (t.trainingScore - TRAINING.intimidationScore + 1) / 4;
+        cast.forEach(other => {
+            if (other.id === t.id) return;
+            if (other.isCareer || other.traits.includes('Bloodthirsty')) {
+                // Careers do not flinch; they file it under 'rival'.
+                adjustRel(other, t.id, -TRAINING.careerRespect * severity);
+            } else {
+                other.vitals.sanity -= TRAINING.intimidationSanity * severity;
+                adjustRel(other, t.id, -TRAINING.intimidationRelationship * severity);
+            }
+            clampTribute(other);
+        });
+        clampTribute(t);
     });
 
     // The Capitol always crowns a favourite.

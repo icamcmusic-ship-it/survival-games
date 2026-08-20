@@ -1,10 +1,15 @@
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
+import { Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
-import { resolveCombat } from '../combat';
+import { ARCHETYPES } from '../../data/archetypes';
+import { FEAST } from '../../data/balance';
+import { resolveCombat, resolveGroupCombat } from '../combat';
 import { FEAST_TEXTS } from '../../data/flavorText';
 import { clampTribute } from '../vitals';
 import { itemPhrase } from '../items';
+import { getRel } from '../relationships';
+import { hasVengeanceAgainst, noteSighting } from '../memory';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -19,11 +24,13 @@ export function processFeast(ctx: SimContext) {
 
     const decliners = [] as typeof alive;
     alive.forEach(t => {
-        if (ctx.rng.chance(0.6) || t.vitals.hunger > 70 || t.vitals.thirst > 70) {
+        // Desperation still overrides everything — a starving tribute goes.
+        if (t.vitals.hunger > FEAST.desperateHunger || t.vitals.thirst > FEAST.desperateThirst) {
             attendees.push(t);
-        } else {
-            decliners.push(t);
+            return;
         }
+        if (ctx.rng.chance(attendanceChance(t, alive))) attendees.push(t);
+        else decliners.push(t);
     });
 
     // One line per tribute turned the feed into a wall of near-identical
@@ -51,13 +58,38 @@ export function processFeast(ctx: SimContext) {
     }
 
     const shuffled = ctx.rng.shuffle(attendees);
+    // Everyone at the table sees everyone else at the table.
+    attendees.forEach(t => noteSighting(ctx.state, t, cornucopia, attendees.length - 1, 0));
 
     // Bounded, for the same reason as the bloodbath: an unkillable pairing
     // (mutual draws, or star-crossed lovers) must not spin forever.
     let rounds = shuffled.length * 6 + 12;
     while (shuffled.length > 1 && rounds-- > 0) {
+        if (shuffled.length >= 3 && ctx.rng.chance(0.4)) {
+            const party = shuffled.splice(0, 3);
+            resolveGroupCombat(ctx, party);
+            party.forEach(t => { if (t.status === 'alive' && ctx.rng.chance(0.5)) shuffled.push(t); });
+            continue;
+        }
+
         const t1 = shuffled.splice(ctx.rng.nextInt(0, shuffled.length - 1), 1)[0];
         const t2 = shuffled.splice(ctx.rng.nextInt(0, shuffled.length - 1), 1)[0];
+
+        // Allies who both showed up do not fight over the table.
+        const allied = t1.allianceId !== undefined && t1.allianceId === t2.allianceId;
+        if (allied && !hasVengeanceAgainst(t1, t2.id) && !hasVengeanceAgainst(t2, t1.id)) {
+            ctx.logEvent(
+                `${t1.name} and ${t2.name} load up together and cover each other on the way out.`,
+                [t1.id, t2.id],
+                { zone: cornucopia, category: 'alliance' }
+            );
+            [t1, t2].forEach(t => {
+                t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
+                t.vitals.thirst = Math.max(0, t.vitals.thirst - 40);
+                clampTribute(t);
+            });
+            continue;
+        }
 
         resolveCombat(ctx, t1, t2);
         // A draw usually means they break off rather than immediately
@@ -97,4 +129,38 @@ export function processFeast(ctx: SimContext) {
             { important: true, zone: cornucopia, category: 'feast' }
         );
     }
+}
+
+/**
+ * Feast attendance, wired into the relationship graph.
+ *
+ * Attendance used to be a flat coin flip plus a hunger override, structurally
+ * isolated from every social system in the game — so a tribute would stroll
+ * into the Cornucopia alone while their whole alliance sat it out, and a
+ * tribute who had sworn to kill someone would happily skip the one event that
+ * guarantees the target's location.
+ */
+function attendanceChance(t: Tribute, alive: Tribute[]): number {
+    let chance = FEAST.baseAttendChance;
+    const arch = ARCHETYPES[t.archetype];
+
+    chance += arch.aggression * FEAST.aggressionDraw;
+    chance -= arch.caution * FEAST.aggressionDraw;
+    if (t.health < 50) chance -= FEAST.woundedDeterrent;
+    if (t.stance === 'Evasive') chance -= 0.15;
+    if (t.stance === 'Aggressive') chance += 0.15;
+
+    alive.forEach(other => {
+        if (other.id === t.id) return;
+        const rel = getRel(t, other.id);
+        const allied = t.allianceId !== undefined && t.allianceId === other.allianceId;
+        // Trusted allies go together — the table is safer with backup.
+        if (allied || rel > 40) chance += FEAST.allyDrawWeight;
+        // Rivals are a reason to stay in the trees, unless you want them dead.
+        else if (rel < -30) {
+            chance += hasVengeanceAgainst(t, other.id) ? FEAST.rivalDeterWeight : -FEAST.rivalDeterWeight;
+        }
+    });
+
+    return Math.max(0.05, Math.min(0.95, chance));
 }

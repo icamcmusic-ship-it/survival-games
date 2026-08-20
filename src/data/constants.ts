@@ -81,6 +81,96 @@ export const ARENAS: Arena[] = [
             { name: 'Dried Oasis', terrain: 'wetland', danger: 0.3, resources: 0.5, adjacent: ['Endless Dunes', 'Canyon Shadows'] },
             { name: 'Rocky Outcrop', terrain: 'highland', danger: 0.6, resources: 0.3, adjacent: ['The Cornucopia', 'Canyon Shadows'] },
         ]
+    },
+    {
+        id: 'ashfall',
+        name: 'The Ashfall Basin',
+        description: 'A dead volcanic caldera under permanent grey snowfall. The ash coats the lungs, the ground is warm, and nothing green has grown here in a decade.',
+        mutts: ['Cinder Hounds', 'Ash Wraiths', 'Glass-Shard Crows'],
+        events: ['Ashfall Surge', 'Ground Fissure', 'Pyroclastic Gust'],
+        zones: [
+            { name: 'The Cornucopia (Caldera Floor)', terrain: 'open', danger: 0.6, resources: 0.25, adjacent: ['Cinder Fields', 'The Obsidian Maze', 'Sulphur Springs'] },
+            { name: 'Cinder Fields', terrain: 'open', danger: 0.5, resources: 0.15, adjacent: ['The Cornucopia (Caldera Floor)', 'Ashen Woods', 'Sulphur Springs'] },
+            { name: 'Ashen Woods', terrain: 'forest', danger: 0.4, resources: 0.6, adjacent: ['Cinder Fields', 'The Obsidian Maze'] },
+            { name: 'The Obsidian Maze', terrain: 'ruins', danger: 0.75, resources: 0.3, adjacent: ['The Cornucopia (Caldera Floor)', 'Ashen Woods', 'Magma Vents'] },
+            { name: 'Sulphur Springs', terrain: 'water', danger: 0.55, resources: 0.5, adjacent: ['The Cornucopia (Caldera Floor)', 'Cinder Fields', 'Magma Vents'] },
+            { name: 'Magma Vents', terrain: 'highland', danger: 0.9, resources: 0.1, adjacent: ['The Obsidian Maze', 'Sulphur Springs'] },
+        ]
+    },
+    {
+        id: 'tempest',
+        name: 'The Tempest Reach',
+        description: 'A drowned coastline under a storm the Gamemakers refuse to switch off. The tide takes a different zone every night.',
+        mutts: ['Squall Serpents', 'Barnacle Crabs', 'Drowned Gulls'],
+        events: ['Storm Surge', 'Lightning Barrage', 'King Tide'],
+        zones: [
+            { name: 'The Cornucopia (Breakwater)', terrain: 'open', danger: 0.65, resources: 0.3, adjacent: ['Flooded Terraces', 'The Lighthouse', 'Kelp Shallows'] },
+            { name: 'Flooded Terraces', terrain: 'wetland', danger: 0.5, resources: 0.6, adjacent: ['The Cornucopia (Breakwater)', 'Mangrove Sprawl'] },
+            { name: 'The Lighthouse', terrain: 'highland', danger: 0.7, resources: 0.2, adjacent: ['The Cornucopia (Breakwater)', 'Wreck Graveyard'] },
+            { name: 'Kelp Shallows', terrain: 'water', danger: 0.45, resources: 0.65, adjacent: ['The Cornucopia (Breakwater)', 'Mangrove Sprawl', 'Wreck Graveyard'] },
+            { name: 'Mangrove Sprawl', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['Flooded Terraces', 'Kelp Shallows'] },
+            { name: 'Wreck Graveyard', terrain: 'ruins', danger: 0.8, resources: 0.4, adjacent: ['The Lighthouse', 'Kelp Shallows'] },
+        ]
+    },
+    {
+        id: 'saltflats',
+        name: 'The Salt Mirror',
+        description: 'A dried inland sea of blinding white crust. There is nowhere to hide, the glare burns from below as well as above, and every horizon lies.',
+        mutts: ['Brine Wolves', 'Salt Locusts', 'Mirage Stalkers'],
+        events: ['Whiteout Glare', 'Crust Collapse', 'Brine Squall'],
+        zones: [
+            { name: 'The Cornucopia (Salt Pan)', terrain: 'open', danger: 0.6, resources: 0.2, adjacent: ['The Hexagon Flats', 'Brine Pools', 'The Boneyard'] },
+            { name: 'The Hexagon Flats', terrain: 'open', danger: 0.7, resources: 0.05, adjacent: ['The Cornucopia (Salt Pan)', 'Crystal Spires'] },
+            { name: 'Brine Pools', terrain: 'water', danger: 0.5, resources: 0.45, adjacent: ['The Cornucopia (Salt Pan)', 'The Boneyard', 'Crystal Spires'] },
+            { name: 'The Boneyard', terrain: 'ruins', danger: 0.45, resources: 0.35, adjacent: ['The Cornucopia (Salt Pan)', 'Brine Pools', 'Scrub Hollow'] },
+            { name: 'Crystal Spires', terrain: 'highland', danger: 0.8, resources: 0.15, adjacent: ['The Hexagon Flats', 'Brine Pools'] },
+            { name: 'Scrub Hollow', terrain: 'forest', danger: 0.3, resources: 0.6, adjacent: ['The Boneyard'] },
+        ]
+    },
+    {
+        id: 'sporefields',
+        name: 'The Spore Fields',
+        description: 'A fungal forest grown for the occasion. Everything here is edible, and roughly half of it will kill you for trying.',
+        mutts: ['Spore Moths', 'Mycelial Hounds', 'Puffball Swarms'],
+        events: ['Spore Bloom', 'Collapsing Cap', 'Rot Sink'],
+        zones: [
+            { name: 'The Cornucopia (Ring of Caps)', terrain: 'open', danger: 0.55, resources: 0.4, adjacent: ['The Glowcap Wood', 'Rot Hollow', 'Mycelium Steps'] },
+            { name: 'The Glowcap Wood', terrain: 'forest', danger: 0.4, resources: 0.85, adjacent: ['The Cornucopia (Ring of Caps)', 'Spore Marsh'] },
+            { name: 'Rot Hollow', terrain: 'wetland', danger: 0.7, resources: 0.55, adjacent: ['The Cornucopia (Ring of Caps)', 'Spore Marsh', 'The Fruiting Body'] },
+            { name: 'Mycelium Steps', terrain: 'highland', danger: 0.6, resources: 0.3, adjacent: ['The Cornucopia (Ring of Caps)', 'The Fruiting Body'] },
+            { name: 'Spore Marsh', terrain: 'water', danger: 0.65, resources: 0.5, adjacent: ['The Glowcap Wood', 'Rot Hollow'] },
+            { name: 'The Fruiting Body', terrain: 'ruins', danger: 0.85, resources: 0.45, adjacent: ['Rot Hollow', 'Mycelium Steps'] },
+        ]
+    },
+    {
+        id: 'canopy',
+        name: 'The Hanging Gardens',
+        description: 'An arena built upward instead of outward. Every zone is a platform in a two-hundred-metre canopy, and the ground is not survivable.',
+        mutts: ['Silk Spiders', 'Screech Primates', 'Thornvine Constrictors'],
+        events: ['Rope Bridge Failure', 'Canopy Storm', 'Thornvine Snare'],
+        zones: [
+            { name: 'The Cornucopia (Great Bough)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Rope Bridges', 'Orchid Terraces', 'The Undercanopy'] },
+            { name: 'The Rope Bridges', terrain: 'highland', danger: 0.8, resources: 0.15, adjacent: ['The Cornucopia (Great Bough)', 'The Crown', 'Orchid Terraces'] },
+            { name: 'Orchid Terraces', terrain: 'forest', danger: 0.35, resources: 0.8, adjacent: ['The Cornucopia (Great Bough)', 'The Rope Bridges', 'Cistern Hollows'] },
+            { name: 'The Undercanopy', terrain: 'wetland', danger: 0.65, resources: 0.55, adjacent: ['The Cornucopia (Great Bough)', 'Cistern Hollows'] },
+            { name: 'Cistern Hollows', terrain: 'water', danger: 0.4, resources: 0.6, adjacent: ['Orchid Terraces', 'The Undercanopy'] },
+            { name: 'The Crown', terrain: 'highland', danger: 0.85, resources: 0.2, adjacent: ['The Rope Bridges'] },
+        ]
+    },
+    {
+        id: 'vault',
+        name: 'The Vault',
+        description: 'A sealed underground complex with no sky at all. The faces of the fallen are projected onto the ceiling, and the lights go out on a schedule nobody explains.',
+        mutts: ['Pallid Stalkers', 'Rebar Hounds', 'Circuit Wasps'],
+        events: ['Blackout', 'Flood Valve', 'Ceiling Collapse'],
+        zones: [
+            { name: 'The Cornucopia (Atrium)', terrain: 'open', danger: 0.65, resources: 0.3, adjacent: ['Service Tunnels', 'The Hydroponics Bay', 'Reactor Level'] },
+            { name: 'Service Tunnels', terrain: 'ruins', danger: 0.7, resources: 0.25, adjacent: ['The Cornucopia (Atrium)', 'The Cistern', 'Dormitory Block'] },
+            { name: 'The Hydroponics Bay', terrain: 'forest', danger: 0.3, resources: 0.85, adjacent: ['The Cornucopia (Atrium)', 'The Cistern'] },
+            { name: 'Reactor Level', terrain: 'highland', danger: 0.9, resources: 0.2, adjacent: ['The Cornucopia (Atrium)', 'Dormitory Block'] },
+            { name: 'The Cistern', terrain: 'water', danger: 0.5, resources: 0.5, adjacent: ['Service Tunnels', 'The Hydroponics Bay'] },
+            { name: 'Dormitory Block', terrain: 'ruins', danger: 0.4, resources: 0.4, adjacent: ['Service Tunnels', 'Reactor Level'] },
+        ]
     }
 ];
 
@@ -89,6 +179,37 @@ export const TRAITS = [
     'Eagle-Eyed', 'Iron Stomach', 'Light Sleeper', 'Bloodthirsty', 'Pacifist',
     'Pyromaniac', 'Nimble', 'Brute', 'Strategist', 'Tracker'
 ];
+
+/**
+ * Traits that cannot sit on the same tribute.
+ *
+ * Nothing stopped the generator rolling a Pacifist Bloodthirsty Clumsy Nimble
+ * tribute, which reads as a bug in the character sheet even before it produces
+ * contradictory behaviour in the sim — a Pacifist who gets an aggression bonus
+ * and a sanity penalty for the same kill.
+ */
+export const INCOMPATIBLE_TRAITS: Array<[string, string]> = [
+    ['Pacifist', 'Bloodthirsty'],
+    ['Pacifist', 'Brute'],
+    ['Pacifist', 'Pyromaniac'],
+    ['Clumsy', 'Nimble'],
+    ['Clumsy', 'Eagle-Eyed'],
+    ['Insomniac', 'Light Sleeper'],
+    ['Brute', 'Nimble'],
+    ['Charismatic', 'Paranoid'],
+    ['Strategist', 'Clumsy'],
+    ['Iron Stomach', 'Hydrophilic'],
+];
+
+export function traitsConflict(a: string, b: string): boolean {
+    return INCOMPATIBLE_TRAITS.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+}
+
+/** True if `candidate` can join a trait list without contradicting it. */
+export function traitFits(existing: string[], candidate: string): boolean {
+    if (existing.includes(candidate)) return false;
+    return !existing.some(t => traitsConflict(t, candidate));
+}
 
 export const ITEMS: Item[] = [
     { id: 'sword', name: 'Sword', type: 'weapon', value: 50, durability: 100, weaponClass: 'melee', damage: 6 },
