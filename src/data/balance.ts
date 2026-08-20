@@ -545,6 +545,70 @@ export const OBJECTIVES = {
  * verb: the Trickster archetype's `treachery: 0.35` had exactly one expression
  * in the whole simulation.
  */
+/**
+ * Zone effects: the arena in a state other than its printed one.
+ *
+ * `Zone.danger` and `.resources` were immutable printed numbers; only
+ * `zoneDepletion` ever moved. A fire that spreads along the adjacency graph
+ * over a few cycles is the single most evocative arena mechanic available and
+ * the graph already exists — nothing used it for anything but pathing.
+ */
+export const ZONE_EFFECTS = {
+    /** How long each effect lasts before lifting on its own. */
+    burningDuration: 3,
+    floodedDuration: 4,
+    frozenDuration: 3,
+    contaminatedDuration: 4,
+    fogboundDuration: 2,
+    /** A burned-out zone is stripped for a long while — the ground is ash. */
+    strippedDuration: 6,
+    strippedDepletion: 0.85,
+
+    /** Fire: per-cycle damage to anyone still standing in it, and its spread. */
+    burningDamage: 10,
+    burningBurnChance: 0.6,
+    /** Cycles between spread attempts, and the terrain that can catch. */
+    spreadEveryCycles: 1,
+    spreadChance: 0.4,
+    flammableTerrain: ['forest', 'wetland'] as const,
+
+    /** Flooding: drowning risk for anyone who lingers instead of leaving. */
+    floodDamage: 14,
+    floodDrownChance: 0.12,
+
+    /** A localised freeze on top of whatever the arena's own climate is doing. */
+    frozenFatigue: 6,
+    frozenFrostbiteChance: 0.12,
+
+    /** Contamination: a toxin in the ground or the air, zone-scoped. */
+    contaminatedPoisonChance: 0.1,
+    contaminatedSanityLoss: 4,
+
+    /** Fog: awareness is suppressed for everyone in the zone, hiders and
+     *  seekers alike — nobody can see much of anything in it. */
+    fogAwarenessPenalty: 3,
+
+    /** How often the Cornucopia gets a fresh drop, and how much it restocks. */
+    cornucopiaRestockEveryCycles: 5,
+    cornucopiaRestockChance: 0.5,
+    cornucopiaRestockAmount: 0.6,
+
+    /**
+     * Ambient origination: the arena itself starting something, independent of
+     * any one tribute's per-cycle hazard roll. This is what actually lights the
+     * first fire, floods the first zone, freezes the first ridge — without it
+     * the whole zone-effect system only ever fires through a hand-authored
+     * event flag, and none of the existing hazard text sets one.
+     */
+    ambientEscalatedOnly: true,
+    ambientFireChance: 0.03,
+    ambientFloodChance: 0.02,
+    ambientFreezeChance: 0.02,
+    ambientContaminateChance: 0.02,
+    ambientFogChance: 0.03,
+    ambientSeverChance: 0.012,
+} as const;
+
 export const CRAFTING = {
     /** Per-cycle odds an empty-handed tribute improvises something to swing. */
     improviseChance: 0.12,

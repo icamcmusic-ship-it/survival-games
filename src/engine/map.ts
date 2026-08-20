@@ -11,12 +11,28 @@ export function getZone(arena: Arena, name: string): Zone | undefined {
 
 // Zones reachable in one move from `from`, excluding collapsed ones.
 // Falls back to any active zone if the tribute is stranded (e.g. their zone collapsed).
-export function reachableZones(arena: Arena, from: string, collapsed: string[]): Zone[] {
+export function reachableZones(arena: Arena, from: string, collapsed: string[], severed?: Set<string>): Zone[] {
     const active = arena.zones.filter(z => !collapsed.includes(z.name));
     const current = getZone(arena, from);
     if (!current) return active;
-    const neighbors = active.filter(z => current.adjacent.includes(z.name));
+    const neighbors = active.filter(z =>
+        current.adjacent.includes(z.name) && !(severed && severed.has(edgeKey(from, z.name))));
     return neighbors.length > 0 ? neighbors : active.filter(z => z.name !== from);
+}
+
+/** Builds the severed-edge set once per cycle, for callers that need to pass it repeatedly. */
+export function severedEdgeSet(state: GameState): Set<string> {
+    return new Set(state.severedEdges ?? []);
+}
+
+export function severEdge(state: GameState, a: string, b: string) {
+    state.severedEdges = state.severedEdges ?? [];
+    const key = edgeKey(a, b);
+    if (!state.severedEdges.includes(key)) state.severedEdges.push(key);
+}
+
+export function isSevered(state: GameState, a: string, b: string): boolean {
+    return (state.severedEdges ?? []).includes(edgeKey(a, b));
 }
 
 /** Breadth-first search over the adjacency graph for the closest zone matching `safeNames`. */

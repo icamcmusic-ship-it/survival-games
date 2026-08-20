@@ -1,4 +1,4 @@
-import { Tribute } from '../models/types';
+import { Terrain, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
 import { BLEEDING, CRAFTING, DESPERATION, ENCOUNTERS, HUNTING, MEMORY, PROFICIENCY, TRAIT_EFFECTS, VITALS, ZONES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
@@ -13,6 +13,8 @@ import { clampTribute } from './vitals';
 import { attemptFieldDressing, clearBleeding, openWound, shouldDressWound } from './wounds';
 import { profOf, trainProficiency } from './proficiency';
 import { attemptFieldcraft } from './fieldcraft';
+import { resolveMuttAttack as resolveMuttAttackImpl } from './mutts';
+import { severRandomEdge, startZoneEffect } from './zoneEffects';
 
 export function fill(template: string, vars: Record<string, string>): string {
     return Object.entries(vars).reduce(
@@ -61,22 +63,105 @@ export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDe
         category: isBoon ? 'survival' : 'hazard',
     });
     if (!isBoon) checkDeath(ctx, t, event.cause);
+
+    // ARENA-03: hazards used to touch exactly one tribute and nothing else —
+    // never a whole zone, never the graph, never anything that outlasted the
+    // instant it fired. A flash flood or a rockslide is not a private accident;
+    // everyone standing there lives through the same thing.
+    if (event.zoneWide) {
+        ctx.state.tributes
+            .filter(o => o.status === 'alive' && o.id !== t.id && o.zone === t.zone)
+            .forEach(o => applyArenaEventTo(ctx, o, event));
+    }
+    if (event.startsZoneEffect) startZoneEffect(ctx, t.zone, event.startsZoneEffect);
+    if (event.severesRoute) {
+        const cut = severRandomEdge(ctx, t.zone);
+        if (cut) {
+            ctx.logEvent(
+                `The route between ${t.zone} and ${cut} is gone. Whatever crossed it, nothing is crossing it now.`,
+                [],
+                { important: true, zone: t.zone, category: 'hazard' }
+            );
+        }
+    }
 }
 
-/** A mutt pack finds someone. */
-export function resolveMuttAttack(ctx: SimContext, t: Tribute) {
-    const mutt = ctx.rng.pick(ctx.state.arena.mutts);
-    if (t.attributes.agility > ENCOUNTERS.muttEvasionAgility && ctx.rng.chance(ENCOUNTERS.muttEvasionChance)) {
-        ctx.logEvent(`${t.name} outruns a pack of ${mutt} through ${t.zone}.`, [t.id], { category: 'mutt' });
-        return;
+/** The same event, applied to a second (or third) tribute caught in the same zone-wide hazard. */
+function applyArenaEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
+    const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
+    const vars = { tribute: t.name, zone: t.zone };
+
+    if (event.dodgeStat) {
+        const difficulty = event.dodgeDifficulty ?? 6;
+        const roll = t.attributes[event.dodgeStat] + ctx.rng.nextInt(0, 4) - (t.injuries.legs ? 2 : 0);
+        if (roll > difficulty) {
+            ctx.logEvent(fill(event.escapeText, vars), [t.id], { category: isBoon ? 'survival' : 'hazard' });
+            return;
+        }
     }
-    applyDamage(ctx, t, ENCOUNTERS.muttDamage, { cause: `Torn apart by ${mutt}`, kind: 'mutt' });
-    // Not every mauling opens an artery. An unconditional bleed on every mutt
-    // attack was one of the two taps filling the game's deadliest status effect.
-    if (ctx.rng.chance(BLEEDING.muttBleedChance)) openWound(t, BLEEDING.muttSeverity);
-    addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat * 2);
-    ctx.logEvent(`${t.name} is set upon by ${mutt} in ${t.zone} and barely breaks free.`, [t.id], { important: true, category: 'mutt' });
-    checkDeath(ctx, t, `Torn apart by ${mutt}`);
+
+    if (event.damage) applyDamage(ctx, t, event.damage, { cause: event.cause, kind: 'hazard' });
+    if (event.bleeding) openWound(t, BLEEDING.hazardSeverity);
+    if (event.poisoned) t.injuries.poisoned = true;
+    if (event.burned) t.injuries.burned = true;
+    if (event.frostbitten) t.injuries.frostbitten = true;
+    if (event.infected) t.injuries.infected = true;
+    if (event.sanity) t.vitals.sanity -= event.sanity;
+    clampTribute(t);
+    if (!isBoon) addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
+    checkDeath(ctx, t, event.cause);
+}
+
+/** Rough terrain a hand-authored event was written for, guessed from its own words. */
+const TERRAIN_KEYWORDS: Array<[Terrain, RegExp]> = [
+    ['water', /flood|drown|riptide|whirlpool|surf|tidal|river|current|swim|lake|geothermal vent|steam vent|water tank/i],
+    ['highland', /rockfall|rockslide|avalanche|crevasse|cliff|peak|ridge|summit|whiteout|blizzard/i],
+    ['wetland', /swamp|bog|marsh|leech|quicksand|sinkhole|mud|spore/i],
+    ['forest', /canopy|vine|timber|jungle fruit|army ants|insect swarm|falling branch/i],
+    ['ruins', /building collapse|stairwell|sewer|tunnel|wire|tank water|gas explosion|rubble/i],
+    ['open', /sandstorm|dust devil|mirage|sun|solar flare|dune|ash storm|lava|magma|volcanic/i],
+];
+
+/** Best-guess terrain(s) for an event that never had `terrains` set explicitly. */
+function inferredTerrains(event: ArenaEventDef): Terrain[] | undefined {
+    const haystack = `${event.cause} ${event.text}`;
+    const hits = TERRAIN_KEYWORDS.filter(([, pattern]) => pattern.test(haystack)).map(([terrain]) => terrain);
+    return hits.length > 0 ? hits : undefined;
+}
+
+/**
+ * ARENA-10: event selection used to be a uniform draw from the whole arena
+ * event list regardless of which zone the tribute stood in — a tribute on
+ * Glacier Peak could trigger "Thin Ice Collapse" on solid rock. Events tagged
+ * with `terrains` are filtered to zones that actually match; untagged legacy
+ * events fall back to a keyword guess from their own `cause`/`text` rather than
+ * needing every hand-authored event rewritten by hand. An event that matches
+ * nothing (no explicit tag, no keyword hit) is terrain-neutral by default and
+ * stays eligible everywhere, which is the correct behaviour for genuinely
+ * generic hazards like a Gamemaker-triggered storm.
+ */
+export function pickTerrainEvent(ctx: SimContext, events: ArenaEventDef[], terrain: Terrain | undefined): ArenaEventDef {
+    if (!terrain) return ctx.rng.pick(events);
+    const fits = (event: ArenaEventDef) => {
+        const tags = event.terrains ?? inferredTerrains(event);
+        return !tags || tags.includes(terrain);
+    };
+    const matching = events.filter(fits);
+    return ctx.rng.pick(matching.length > 0 ? matching : events);
+}
+
+/**
+ * A mutt pack finds someone.
+ *
+ * ARENA-04: every mutt used to be an interchangeable flavour string, a fixed
+ * evasion threshold and a flat 40 damage — Tick-Tock Monkeys and Acid Fog did
+ * the same thing. Resolution now lives in ./mutts, keyed off a real per-arena
+ * roster (src/data/mutts.ts) with its own speed, pack size, injuries, terrain
+ * and time-of-day gating. `time` is optional so this call site keeps working
+ * unchanged; the lead should thread the real `time` through from dayNight.ts.
+ */
+export function resolveMuttAttack(ctx: SimContext, t: Tribute, time: 'day' | 'night' = 'day') {
+    resolveMuttAttackImpl(ctx, t, time);
 }
 
 /**

@@ -61,6 +61,10 @@ let feuds = 0, freeForAlls = 0, careerDefections = 0, cacheContributions = 0;
 // Intentions and fieldcraft.
 let objectivesFormed = 0, trapsSet = 0, trapsTriggered = 0;
 let firesLit = 0, sheltersBuilt = 0, camouflaged = 0, weaponsPoisoned = 0;
+// Arena: stateful zones, mutts, border variety.
+let zoneFiresStarted = 0, zoneFiresSpread = 0, zoneFloods = 0, zoneFreezes = 0;
+let zoneContaminations = 0, zoneFogs = 0, zoneStripped = 0, zoneSevered = 0;
+let borderTelegraphs = 0, cornucopiaRestocks = 0, muttEncounters = 0;
 let maxAbsRelationship = 0;
 
 for (let i = 0; i < 240; i++) {
@@ -200,6 +204,18 @@ for (let i = 0; i < 240; i++) {
     if (/not one of them has a friend in it/.test(l.text)) freeForAlls++;
     if (/walks the other way|there is no pack this year/.test(l.text)) careerDefections++;
     if (/adds their .* to the group's stash/.test(l.text)) cacheContributions++;
+    // --- Arena: stateful zones, mutts, border variety. ---
+    if (l.text.includes('Fire takes hold')) zoneFiresStarted++;
+    if (l.text.includes('jumps to')) zoneFiresSpread++;
+    if (l.text.includes('goes under')) zoneFloods++;
+    if (l.text.includes('hard freeze locks down')) zoneFreezes++;
+    if (l.text.includes('is wrong') && l.text.includes('lingers')) zoneContaminations++;
+    if (l.text.includes('fog bank rolls into')) zoneFogs++;
+    if (l.text.includes('burned down to ash')) zoneStripped++;
+    if (l.text.includes('route between') || l.text.includes('route gives out')) zoneSevered++;
+    if (l.text.includes('border will close around')) borderTelegraphs++;
+    if (l.text.includes('supply drop lands over the Cornucopia')) cornucopiaRestocks++;
+    if (l.category === 'mutt') muttEncounters++;
   });
 
   // --- Structure invariants: an alliance record must match reality. ---
@@ -466,6 +482,16 @@ if (feuds === 0) note('no pair ever built a running feud');
 if (freeForAlls === 0) note('a brawl never collapsed into a free-for-all');
 if (careerDefections === 0) note('the Career pack always formed exactly as scripted');
 if (cacheContributions === 0) note('nobody ever pooled supplies — the shared cache is decorative');
+if (zoneFiresStarted === 0) note('a zone never caught fire — the burning effect is inert');
+if (zoneFloods === 0) note('a zone never flooded');
+if (zoneFreezes === 0) note('a zone never froze');
+if (zoneContaminations === 0) note('a zone never became contaminated');
+if (zoneFogs === 0) note('a zone never went fogbound');
+if (zoneStripped === 0) note('fire never burned a zone down to stripped ground');
+if (zoneSevered === 0) note('a route was never severed');
+if (borderTelegraphs === 0) note('the border collapse was never telegraphed');
+if (cornucopiaRestocks === 0) note('the Cornucopia never restocked');
+if (muttEncounters === 0) note('no mutt ever attacked anyone across the whole soak');
 
 console.log(`runs=${runs} victors=${victors} wipeouts=${wipeouts} avgDays=${(totalDays/runs).toFixed(1)} avgLogs=${(totalLogs/runs).toFixed(0)} runsWithFeast=${feastRuns}`);
 console.log('phases seen:', [...phasesSeen].sort().join(', '));
@@ -479,6 +505,8 @@ console.log(`intentions: objectives formed=${objectivesFormed}`);
 console.log(`social: exoticBetrayals=${exoticBetrayals} merges=${merges} leaderChanges=${leadershipChanges} feuds=${feuds} freeForAlls=${freeForAlls}`);
 console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDefections=${careerDefections} cacheContributions=${cacheContributions}`);
 console.log(`fieldcraft: trapsSet=${trapsSet} trapsTriggered=${trapsTriggered} fires=${firesLit} shelters=${sheltersBuilt} camouflage=${camouflaged} poisonedWeapons=${weaponsPoisoned}`);
+console.log(`arena: zoneFires=${zoneFiresStarted} (spread ${zoneFiresSpread}) floods=${zoneFloods} freezes=${zoneFreezes} contaminations=${zoneContaminations} fogs=${zoneFogs} stripped=${zoneStripped} severed=${zoneSevered}`);
+console.log(`arena: borderTelegraphs=${borderTelegraphs} cornucopiaRestocks=${cornucopiaRestocks} muttEncounters=${muttEncounters}`);
 console.log(`alliances: recruitments=${recruitments} organicGroupsOf3Plus=${organicTrios} largestSeen=${maxAllianceSeen}`);
 console.log(`inventory: overloaded drops=${overloadedDrops}`);
 console.log(`zones: runsWithDepletion=${zonesEverDepleted} runsWithRecovery=${zonesEverRecovered} peakDepletion=${maxDepletionSeen.toFixed(2)} (floor ${(1 - ZONES.minYieldFraction).toFixed(2)})`);
