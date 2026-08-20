@@ -15,6 +15,30 @@ import { useStore } from '../store/createStore';
 
 type Speed = 'manual' | '1x' | '5x' | 'auto';
 
+/**
+ * Chronicle filter preferences persist, like the setup config already does —
+ * a reader who mutes the ambient chatter every run should not have to do it
+ * again every run.
+ */
+const FILTER_STORAGE_KEY = 'survivalGamesFeedFilters';
+
+interface StoredFilters { mutedGroups: string[]; importantOnly: boolean; pauseOnDeath: boolean }
+
+function readStoredFilters(): StoredFilters {
+    try {
+        const raw = localStorage.getItem(FILTER_STORAGE_KEY);
+        if (!raw) return { mutedGroups: [], importantOnly: false, pauseOnDeath: false };
+        const parsed = JSON.parse(raw);
+        return {
+            mutedGroups: Array.isArray(parsed?.mutedGroups) ? parsed.mutedGroups : [],
+            importantOnly: parsed?.importantOnly === true,
+            pauseOnDeath: parsed?.pauseOnDeath === true,
+        };
+    } catch {
+        return { mutedGroups: [], importantOnly: false, pauseOnDeath: false };
+    }
+}
+
 const SPEED_DELAY: Record<Exclude<Speed, 'manual'>, number> = { '1x': 1200, '5x': 350, auto: 60 };
 
 /**
@@ -46,9 +70,10 @@ export function GameScreen({
     onRunToEnd: () => void,
     onGamemakerEvent: (type: 'mutt' | 'weather' | 'feast', targetId?: string) => void,
 }) {
+    const storedFilters = useRef(readStoredFilters());
     const [selectedTributeId, setSelectedTributeId] = useState<string | null>(null);
     const [speed, setSpeed] = useState<Speed>('manual');
-    const [importantOnly, setImportantOnly] = useState(false);
+    const [importantOnly, setImportantOnly] = useState(storedFilters.current.importantOnly);
     const [muttTargetId, setMuttTargetId] = useState('');
     const [tacticalTab, setTacticalTab] = useState<'chronicle' | 'map'>('chronicle');
     const [selectedZone, setSelectedZone] = useState<string | null>(null);
@@ -56,14 +81,19 @@ export function GameScreen({
     // full-height feed. On small screens one pane shows at a time, chosen from a
     // bottom tab bar (UX-12); at `lg` and up both columns render as before.
     const [mobilePane, setMobilePane] = useState<'chronicle' | 'map' | 'tributes'>('chronicle');
-    const [mutedGroups, setMutedGroups] = useState<Set<string>>(new Set());
+    // Which of the sidebar's modules is showing, below `lg` only.
+    const [sidebarPane, setSidebarPane] = useState<'status' | 'odds' | 'tributes'>('status');
+    const [mutedGroups, setMutedGroups] = useState<Set<string>>(() => new Set(storedFilters.current.mutedGroups));
     const [showFilters, setShowFilters] = useState(false);
-    // UX: auto-play at 5x/Max blows straight past major deaths; opt-in brake.
-    const [pauseOnDeath, setPauseOnDeath] = useState(false);
+    // UX: auto-play at 5x/Skip blows straight past major deaths; opt-in brake.
+    const [pauseOnDeath, setPauseOnDeath] = useState(storedFilters.current.pauseOnDeath);
     const bets = useStore(gameStore, s => s.bets);
     // Chronicle search and per-tribute filtering.
     const [searchText, setSearchText] = useState('');
     const [filterTributeId, setFilterTributeId] = useState<string | null>(null);
+    // Keyboard help was a single hidden line, desktop-only (md:inline), which is
+    // no help at all on the devices that most need it explained.
+    const [showHelp, setShowHelp] = useState(false);
     const nextPhaseRef = useRef(onNextPhase);
     nextPhaseRef.current = onNextPhase;
 
@@ -110,6 +140,16 @@ export function GameScreen({
         return muted;
     }, [mutedGroups]);
 
+    useEffect(() => {
+        try {
+            localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
+                mutedGroups: [...mutedGroups], importantOnly, pauseOnDeath,
+            }));
+        } catch {
+            // Storage unavailable — the preference simply won't be remembered.
+        }
+    }, [mutedGroups, importantOnly, pauseOnDeath]);
+
     // Auto-advance, paced by how much the phase just produced.
     const lastTickLogCount = useRef(gameState.log.length);
     useEffect(() => {
@@ -142,7 +182,10 @@ export function GameScreen({
                     setMobilePane(next);
                     return next;
                 });
+            } else if (e.key === '?') {
+                setShowHelp(v => !v);
             } else if (e.key === 'Escape') {
+                setShowHelp(false);
                 setSelectedTributeId(null);
                 setSelectedZone(null);
             }
@@ -228,17 +271,24 @@ export function GameScreen({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState.phase, gameState.day]);
 
-    const allianceAccent = (allianceId?: string) => {
-        if (!allianceId) return undefined;
-        // Reuses the category palette so alliance colours read as part of the
-        // same system as the chronicle feed, instead of clashing neon accents.
-        const palette = ['#2f7a4f', '#2461a8', '#b3691b', '#5a3f9c', '#b23e78'];
-        let hash = 0;
-        for (let i = 0; i < allianceId.length; i++) {
-            hash = allianceId.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        return palette[Math.abs(hash) % palette.length];
-    };
+    // Reuses the category palette so alliance colours read as part of the same
+    // system as the chronicle feed, instead of clashing neon accents.
+    //
+    // Assigned by position among the alliances actually standing, not hashed
+    // from the id: a hash can and does collide, and two concurrent alliances
+    // rendering in the same colour is worse than either of them being a colour
+    // the player did not expect. Falls back to the hash only past the palette.
+    const allianceColours = useMemo(() => {
+        const palette = ['#2f7a4f', '#2461a8', '#b3691b', '#5a3f9c', '#b23e78', '#1f7a78'];
+        const ids = [...new Set(
+            gameState.tributes.filter(t => t.status === 'alive' && t.allianceId).map(t => t.allianceId!)
+        )].sort();
+        const map: Record<string, string> = {};
+        ids.forEach((id, i) => { map[id] = palette[i % palette.length]; });
+        return map;
+    }, [gameState.tributes]);
+
+    const allianceAccent = (allianceId?: string) => (allianceId ? allianceColours[allianceId] : undefined);
 
     const toggleGroup = (id: string) => setMutedGroups(prev => {
         const next = new Set(prev);
@@ -292,7 +342,7 @@ export function GameScreen({
                                             className="seg-item"
                                         >
                                             {s === 'manual' ? <Pause className="w-3 h-3 inline" /> : s === 'auto' ? <Play className="w-3 h-3 inline" /> : null}
-                                            <span className="ml-1">{s === 'manual' ? 'Manual' : s === 'auto' ? 'Max' : s}</span>
+                                            <span className="ml-1">{s === 'manual' ? 'Manual' : s === 'auto' ? 'Skip' : s}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -321,9 +371,14 @@ export function GameScreen({
                                 {(mutedGroups.size > 0 || importantOnly || searchText || filterTributeId) && <span className="ml-1 text-[var(--red)]">•</span>}
                             </button>
 
-                            <span className="ml-auto text-[10px] uppercase tracking-widest text-[var(--color-ink-600)] hidden md:inline">
-                                Space · advance &nbsp; F · filters &nbsp; M · map
-                            </span>
+                            <button
+                                onClick={() => setShowHelp(true)}
+                                className="seg-item ml-auto"
+                                title="Keyboard shortcuts and what the panels mean (?)"
+                                aria-haspopup="dialog"
+                            >
+                                ? Help
+                            </button>
                         </div>
                     )}
 
@@ -474,8 +529,22 @@ export function GameScreen({
                                 </div>
                             )}
                         </div>
+                        {/* Two live regions rather than one. The polite one carries
+                            the running feed; deaths and phase changes are the events
+                            a screen-reader user actually needs interrupting for, and
+                            they were previously indistinguishable from ambient
+                            scenery in a single stream. */}
                         <div aria-live="polite" className="sr-only">
                             {filteredLogs.length > 0 ? filteredLogs[filteredLogs.length - 1].text : ''}
+                        </div>
+                        <div aria-live="assertive" className="sr-only">
+                            {phaseLabel}
+                            {'. '}
+                            {gameState.log
+                                .filter(l => l.day === gameState.day && (l.category === 'death' || l.category === 'kill'))
+                                .slice(-1)
+                                .map(l => l.text)
+                                .join('')}
                         </div>
                     </div>
                 )}
@@ -483,7 +552,28 @@ export function GameScreen({
 
             {/* ---------- sidebar ---------- */}
             <div className={`space-y-5 ${mobilePane === 'tributes' ? '' : 'hidden lg:block'}`}>
-                <div className="panel p-4">
+                {/* Below `lg` this column carried the odds ladder, the run status,
+                    the Gamemaker controls and the full tribute list stacked into a
+                    single scrolling pane — four unrelated modules behind one tab.
+                    On mobile they are separate; at `lg` and up every panel renders
+                    as before. */}
+                <div className="seg lg:hidden w-full">
+                    {([
+                        { id: 'status', label: 'Status' },
+                        { id: 'odds', label: 'Odds' },
+                        { id: 'tributes', label: 'Tributes' },
+                    ] as const).map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setSidebarPane(tab.id)}
+                            aria-pressed={sidebarPane === tab.id}
+                            className="seg-item flex-1"
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+                <div className={`panel p-4 ${sidebarPane === 'status' ? '' : 'hidden lg:block'}`}>
                     <h3 className="panel-title mb-3">Status</h3>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="stat-tile">
@@ -550,7 +640,7 @@ export function GameScreen({
                 </div>
 
                 {!isOver && oddsLadder.length > 1 && (
-                    <div className="panel p-4">
+                    <div className={`panel p-4 ${sidebarPane === 'odds' ? '' : 'hidden lg:block'}`}>
                         <h3 className="panel-title mb-1">Live odds</h3>
                         <p className="text-[10px] text-[var(--color-ink-500)] mb-3">
                             Survival chance and movement since the last phase.
@@ -606,7 +696,10 @@ export function GameScreen({
                 )}
 
                 {gameState.gamemakerMode && !isOver && (
-                    <div className="panel p-4 space-y-3" style={{ borderColor: 'var(--red)', borderWidth: '3px' }}>
+                    <div
+                        className={`panel p-4 space-y-3 ${sidebarPane === 'status' ? '' : 'hidden lg:block'}`}
+                        style={{ borderColor: 'var(--red)', borderWidth: '3px' }}
+                    >
                         <h3 className="panel-title text-[var(--red)] flex items-center gap-2">
                             <Settings className="w-3.5 h-3.5" /> Gamemaker Controls
                         </h3>
@@ -642,7 +735,7 @@ export function GameScreen({
                     </div>
                 )}
 
-                <div className="panel p-4">
+                <div className={`panel p-4 ${sidebarPane === 'tributes' ? '' : 'hidden lg:block'}`}>
                     <h3 className="panel-title mb-1">Tributes</h3>
                     {!isOver && (
                         <p className="text-[10px] text-[var(--color-ink-500)] mb-3">
@@ -745,6 +838,72 @@ export function GameScreen({
                     </button>
                 )}
             </nav>
+
+            {showHelp && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/70 flex items-start md:items-center justify-center p-4 overflow-y-auto"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="How to read the Games"
+                    onClick={() => setShowHelp(false)}
+                >
+                    <div
+                        className="panel p-6 max-w-2xl w-full space-y-5 my-8"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-start gap-4">
+                            <h2 className="display-title text-2xl">How to read the Games</h2>
+                            <button onClick={() => setShowHelp(false)} className="btn btn-sm btn-ghost">Close (Esc)</button>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <span className="eyebrow">Keyboard</span>
+                            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-[var(--color-ink-200)]">
+                                {[
+                                    ['Space', 'Advance one phase'],
+                                    ['F', 'Show or hide the chronicle filters'],
+                                    ['M', 'Switch between the chronicle and the arena map'],
+                                    ['?', 'Open this panel'],
+                                    ['Esc', 'Close a panel, clear the selected sector'],
+                                ].map(([key, what]) => (
+                                    <React.Fragment key={key}>
+                                        <dt className="font-mono font-bold text-[var(--red)]">{key}</dt>
+                                        <dd>{what}</dd>
+                                    </React.Fragment>
+                                ))}
+                            </dl>
+                        </div>
+
+                        {/* The systems a first-time reader has no way to infer from
+                            the feed alone. Each of these is a real mechanic driving
+                            what they are watching, and none of them were explained. */}
+                        <div className="space-y-1.5">
+                            <span className="eyebrow">What the numbers mean</span>
+                            <dl className="space-y-2 text-xs text-[var(--color-ink-200)]">
+                                {[
+                                    ['Stance', 'Aggressive, Defensive or Evasive — how a tribute is playing right now. It is held for several cycles rather than re-rolled, so a change of stance is a real change of mind.'],
+                                    ['Objective', 'What they are actually trying to do: reach water, hunt somebody, guard an ally, hold ground. It is why they move where they move, and it is shown under each tribute in the sidebar.'],
+                                    ['Sanity', 'How well they are holding together. Low sanity means hallucinations, dropped kit and blown cover.'],
+                                    ['Resolve', 'Whether they still want to win — separate from sanity. Allies, a debt to collect and the crowd’s attention hold it up; grief, isolation and wounds pull it down. At the bottom, tributes stop playing.'],
+                                    ['Proficiency', 'Skills that improve with use — foraging, melee, medicine, tracking. A survivalist visibly becomes one over a run.'],
+                                    ['Quality', 'Items come in crude, standard and fine. It shows in the name and it changes the damage and durability.'],
+                                    ['Alliance colour', 'The stripe down the left of a tribute card. Every standing alliance gets its own colour for as long as it exists.'],
+                                ].map(([term, what]) => (
+                                    <div key={term}>
+                                        <dt className="font-bold text-[var(--ink)] inline">{term}. </dt>
+                                        <dd className="inline">{what}</dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        </div>
+
+                        <p className="text-[11px] text-[var(--color-ink-500)] italic">
+                            Everything in the chronicle is generated from the simulation — no line is written in
+                            advance for a particular run. The same seed and arena always produce the same Games.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {selectedTribute && (
                 <TributeModal tribute={selectedTribute} gameState={gameState} onClose={() => setSelectedTributeId(null)} />
