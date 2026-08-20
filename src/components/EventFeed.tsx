@@ -44,7 +44,7 @@ export function EventFeed({ logs, showTags = true }: { logs: EventLog[]; showTag
                         <span className="text-[var(--color-ink-600)]">{entries.length} entries</span>
                     </h3>
                     <div className="space-y-1.5">
-                        {entries.map(log => (
+                        {[...entries].reverse().map(log => (
                             <FeedLine key={log.id} log={log} showTag={showTags} />
                         ))}
                     </div>

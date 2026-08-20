@@ -75,7 +75,7 @@ function applyPersonalVariance(rng: RNG, attributes: Attributes) {
     }
 }
 
-export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME_CONFIG): Tribute[] {
+export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME_CONFIG, startZone: string = 'The Cornucopia'): Tribute[] {
     const rng = new RNG(seed);
     const tributes: Tribute[] = [];
     const districtCount = Math.min(12, Math.max(1, config.districtCount));
@@ -194,7 +194,7 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 reputation: Math.max(5, Math.min(95, reputation)),
                 trainingScore: 0,
                 kills: 0,
-                zone: 'The Cornucopia',
+                zone: startZone,
                 daysSurvived: 0,
                 mentorLegacy: rng.pick(legacy.mentors),
                 memory: blankMemory(),

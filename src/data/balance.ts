@@ -138,6 +138,8 @@ export const COMBAT = {
     bleedChance: 0.34,
     /** Chance a poisoned weapon transfers venom on a landed hit. */
     poisonTransferChance: 0.5,
+    /** Chance a Pyromaniac's landed hit leaves the defender burned. */
+    pyromaniacBurnChance: 0.2,
     /** Durability burned per round of use. */
     weaponWearPerRound: 6,
     /**
@@ -271,6 +273,10 @@ export const ZONES = {
     baseForageChance: 0.25,
     yieldForageWeight: 0.4,
     survivalistForageBonus: 0.15,
+    /** Aggressive/Evasive tributes can still stumble onto food or water while
+     *  hunting or hiding — just far less reliably than someone actively foraging. */
+    aggressiveForageMultiplier: 0.4,
+    evasiveForageMultiplier: 0.25,
 } as const;
 
 /** What tributes remember, and how fast they forget it. */

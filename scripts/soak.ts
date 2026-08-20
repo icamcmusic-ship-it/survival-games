@@ -34,8 +34,7 @@ const configs: GameConfig[] = [
 
 function start(seed: string, arenaId: string, config: GameConfig, gamemaker: boolean): GameState {
   const arena = arenaId.startsWith('procedural') ? generateArena(seed) : ARENAS.find(a => a.id === arenaId)!;
-  const tributes = generateTributes(seed, config);
-  tributes.forEach(t => { t.zone = arena.zones[0].name; });
+  const tributes = generateTributes(seed, config, arena.zones[0].name);
   return { seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: gamemaker, config, logCounter: 0, feastsHeld: 0, cycle: 0 };
 }
 

@@ -62,6 +62,7 @@ export function GameScreen({
         const onKey = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement | null;
             if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+            if (selectedTributeId) return;
             if (e.key === ' ' && !isOver) {
                 e.preventDefault();
                 onNextPhase();
@@ -76,7 +77,7 @@ export function GameScreen({
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [onNextPhase, isOver]);
+    }, [onNextPhase, isOver, selectedTributeId]);
 
     const filteredLogs = useMemo(() => gameState.log.filter(log => {
         if (importantOnly && !log.important) return false;

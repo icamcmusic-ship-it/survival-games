@@ -71,8 +71,11 @@ export class Simulator {
             this.state.phase = 'day';
             this.maybeAnnounceFeast();
         } else if (this.state.phase === 'feast') {
+            // A feast replaces that day's day-phase rather than adding an
+            // extra one — otherwise two "day" phases play out under the same
+            // day number and the chronicle's day-grouped sections merge.
             processFeast(this.ctx);
-            this.state.phase = 'day';
+            this.state.phase = 'night';
         }
 
         if (getAlive(this.state).length <= 1) {

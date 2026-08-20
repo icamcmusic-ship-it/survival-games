@@ -541,6 +541,10 @@ export const GROUP_COMBAT_TEXTS = {
         '{names} lose their nerve at the same moment and the fight in {zone} simply stops.',
         'Something breaks in the middle of it and {names} are all running.',
     ],
+    standDown: [
+        '{names} all reach {zone} at once, recognise each other, and stand down.',
+        '{names} converge in {zone} expecting a fight and find only allies.',
+    ],
 };
 
 /** Training-floor reactions — the rest of the cast watching a rival score high. */

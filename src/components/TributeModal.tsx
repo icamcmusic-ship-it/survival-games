@@ -1,7 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { GameState, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { MapPin, Users, X, Heart } from 'lucide-react';
+
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 
 function VitalBar({ label, value, invert = false }: { label: string; value: number; invert?: boolean }) {
     // For hunger/thirst/fatigue a high number is bad (severity = value). For
@@ -24,10 +26,38 @@ function VitalBar({ label, value, invert = false }: { label: string; value: numb
 }
 
 export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute, gameState: GameState, onClose: () => void }) {
+    const panelRef = useRef<HTMLDivElement>(null);
+    const previouslyFocused = useRef<HTMLElement | null>(null);
+
     useEffect(() => {
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        previouslyFocused.current = document.activeElement as HTMLElement | null;
+        const panel = panelRef.current;
+        const focusable = panel?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+        (focusable?.[0] ?? panel)?.focus();
+
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+                return;
+            }
+            if (e.key !== 'Tab' || !panel) return;
+            const nodes = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+            if (nodes.length === 0) return;
+            const first = nodes[0];
+            const last = nodes[nodes.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
         window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
+        return () => {
+            window.removeEventListener('keydown', onKey);
+            previouslyFocused.current?.focus();
+        };
     }, [onClose]);
 
     const archetype = ARCHETYPES[tribute.archetype];
@@ -56,7 +86,7 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
             aria-modal="true"
             aria-label={`${tribute.name} profile`}
         >
-            <div className="panel p-6 max-w-lg w-full max-h-[88vh] overflow-y-auto custom-scrollbar animate-riseIn" onClick={e => e.stopPropagation()}>
+            <div ref={panelRef} tabIndex={-1} className="panel p-6 max-w-lg w-full max-h-[88vh] overflow-y-auto custom-scrollbar animate-riseIn" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start mb-5 gap-4">
                     <div className="min-w-0">
                         <h3 className="display-title text-2xl">{tribute.name}</h3>
@@ -146,7 +176,7 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                         <div className="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pr-1">
                             {relationships.length === 0 ? (
                                 <span className="text-sm text-[var(--color-ink-400)]">Has not met anyone yet</span>
-                            ) : relationships.map(({ other, value }) => (
+                            ) : relationships.map(({ other, value, sworn }) => (
                                 <div key={other!.id} className="flex justify-between items-center text-sm gap-2">
                                     <span className={`truncate ${other!.status === 'dead' ? 'text-[var(--color-ink-500)] line-through' : 'text-[var(--color-ink-200)]'}`}>
                                         {other!.name}

@@ -3,6 +3,7 @@ import { Tribute, Phase } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { Stat } from '../components/Stat';
 import { tributeOdds } from '../engine/odds';
+import { Bet } from '../store/gameStore';
 import { Swords, Zap, Brain, Eye, User, FastForward, Search } from 'lucide-react';
 
 type SortKey = 'district' | 'odds' | 'training' | 'name';
@@ -20,9 +21,9 @@ export function RosterScreen({
     phase: Phase,
     onProceed: () => void,
     coins: number,
-    bets: Record<string, number>,
-    setBets: React.Dispatch<React.SetStateAction<Record<string, number>>>,
-    setCoins: (coins: number) => void
+    bets: Record<string, Bet>,
+    setBets: (bets: Record<string, Bet> | ((prev: Record<string, Bet>) => Record<string, Bet>)) => void,
+    setCoins: (coins: number | ((prev: number) => number)) => void
 }) {
     const bettingOpen = phase === 'setup';
     const buttonText = bettingOpen ? 'Begin training' : 'Return to arena';
@@ -61,23 +62,29 @@ export function RosterScreen({
         });
     }, [tributes, query, sortKey, oddsById]);
 
-    const totalStaked = Object.values(bets).reduce((a, b) => a + b, 0);
+    const totalStaked = Object.values(bets).reduce((a, b) => a + b.stake, 0);
 
     const placeBet = (t: Tribute, amount: number) => {
-        if (coins < amount) return;
-        setBets(prev => ({ ...prev, [t.id]: (prev[t.id] || 0) + amount }));
-        setCoins(coins - amount);
+        setCoins(prevCoins => {
+            if (prevCoins < amount) return prevCoins;
+            const { mult } = oddsById.get(t.id)!;
+            setBets(prev => ({
+                ...prev,
+                [t.id]: { stake: (prev[t.id]?.stake ?? 0) + amount, mult },
+            }));
+            return prevCoins - amount;
+        });
     };
 
     const clearBet = (t: Tribute) => {
-        const current = bets[t.id] || 0;
+        const current = bets[t.id]?.stake ?? 0;
         if (!current) return;
         setBets(prev => {
             const copy = { ...prev };
             delete copy[t.id];
             return copy;
         });
-        setCoins(coins + current);
+        setCoins(prevCoins => prevCoins + current);
     };
 
     return (
@@ -147,7 +154,8 @@ export function RosterScreen({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {visible.map(t => {
                         const { pct, mult } = oddsById.get(t.id)!;
-                        const currentBet = bets[t.id] || 0;
+                        const currentBet = bets[t.id]?.stake ?? 0;
+                        const lockedMult = bets[t.id]?.mult ?? mult;
 
                         return (
                             <div key={t.id} className="panel p-4 flex flex-col gap-3.5 animate-riseIn">
@@ -206,7 +214,7 @@ export function RosterScreen({
                                         </div>
                                         {currentBet > 0 && (
                                             <div className="chip chip-coin w-full justify-center py-1.5">
-                                                {currentBet} staked · returns {Math.floor(currentBet * mult)}
+                                                {currentBet} staked · returns {Math.floor(currentBet * lockedMult)}
                                             </div>
                                         )}
                                     </div>

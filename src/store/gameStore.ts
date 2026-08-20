@@ -3,17 +3,22 @@ import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { generateTributes } from '../engine/generator';
 import { generateArena } from '../engine/arenaGenerator';
 import { Simulator } from '../engine/simulator';
-import { tributeOdds } from '../engine/odds';
 import { createStore } from './createStore';
 
 export type ViewName = 'setup' | 'roster' | 'game' | 'hallOfFame';
+
+export interface Bet {
+    stake: number;
+    /** Payout multiplier at the moment the wager was placed — the odds you saw are the odds you took. */
+    mult: number;
+}
 
 export interface GameStoreState {
     gameState: GameState | null;
     simulator: Simulator | null;
     view: ViewName;
     coins: number;
-    bets: Record<string, number>;
+    bets: Record<string, Bet>;
     betWonMessage: string | null;
     isReplayedRun: boolean;
     /** Guards against paying out the same wager twice (e.g. Run to End then Proceed). */
@@ -104,16 +109,15 @@ function resolveBets(state: GameState) {
 
     const winner = state.tributes.find(t => t.status === 'alive');
     if (winner && bets[winner.id]) {
-        const { mult } = tributeOdds(winner, state.tributes);
-        const betAmount = bets[winner.id];
-        const winnings = Math.floor(betAmount * mult);
+        const { stake, mult } = bets[winner.id];
+        const winnings = Math.floor(stake * mult);
         gameActions.setCoins(coins + winnings);
         gameStore.setState({
-            betWonMessage: `${winner.name} of District ${winner.district} came home. Your ${betAmount}-coin wager pays out ${winnings} Capitol Coins at ${mult.toFixed(1)}x.`,
+            betWonMessage: `${winner.name} of District ${winner.district} came home. Your ${stake}-coin wager pays out ${winnings} Capitol Coins at ${mult.toFixed(1)}x.`,
             betsResolved: true,
         });
     } else {
-        const staked = Object.values(bets).reduce((a, b) => a + b, 0);
+        const staked = Object.values(bets).reduce((a, b) => a + b.stake, 0);
         gameStore.setState({
             betWonMessage: `None of your ${staked} coins came back. The Capitol thanks you for your contribution.`,
             betsResolved: true,
@@ -136,20 +140,23 @@ export const gameActions = {
         gameStore.setState({ view });
     },
 
-    setBets(bets: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) {
+    setBets(bets: Record<string, Bet> | ((prev: Record<string, Bet>) => Record<string, Bet>)) {
         gameStore.setState(s => ({ bets: typeof bets === 'function' ? bets(s.bets) : bets }));
     },
 
-    setCoins(coins: number) {
-        const safe = Math.max(0, Math.floor(coins));
-        localStorage.setItem('capitolCoins', safe.toString());
-        gameStore.setState({ coins: safe });
+    setCoins(coins: number | ((prev: number) => number)) {
+        gameStore.setState(s => {
+            const next = typeof coins === 'function' ? coins(s.coins) : coins;
+            const safe = Math.max(0, Math.floor(next));
+            localStorage.setItem('capitolCoins', safe.toString());
+            return { coins: safe };
+        });
     },
 
     /** Hands back any coins staked on a run that never resolved. */
     refundOpenBets() {
         const { bets, betsResolved, coins } = gameStore.getState();
-        const staked = Object.values(bets).reduce((a, b) => a + b, 0);
+        const staked = Object.values(bets).reduce((a, b) => a + b.stake, 0);
         if (betsResolved || staked === 0) return;
         gameActions.setCoins(coins + staked);
         gameStore.setState({ bets: {} });
@@ -163,9 +170,8 @@ export const gameActions = {
         const arena = arenaId.startsWith('procedural')
             ? generateArena(safeSeed)
             : (ARENAS.find(a => a.id === arenaId) || ARENAS[0]);
-        const tributes = generateTributes(safeSeed, config);
         const startZone = arena.zones[0].name;
-        tributes.forEach(t => { t.zone = startZone; });
+        const tributes = generateTributes(safeSeed, config, startZone);
 
         const initialState: GameState = {
             seed: safeSeed,
@@ -198,8 +204,7 @@ export const gameActions = {
 
         const baseSeed = gameState.seed.split('~')[0];
         const newSeed = `${baseSeed}~${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-        const tributes = generateTributes(newSeed, gameState.config);
-        tributes.forEach(t => { t.zone = gameState.arena.zones[0].name; });
+        const tributes = generateTributes(newSeed, gameState.config, gameState.arena.zones[0].name);
         const newState: GameState = { ...gameState, seed: newSeed, tributes, log: [], logCounter: 0 };
 
         gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });

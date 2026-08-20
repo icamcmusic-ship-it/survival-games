@@ -17,7 +17,7 @@
     font-style: normal;
     font-weight: 400;
     font-display: swap;
-    src: url('/survival-games/fonts/Anton-400.woff2') format('woff2');
+    src: url('./fonts/Anton-400.woff2') format('woff2');
 }
 
 @font-face {
@@ -25,7 +25,7 @@
     font-style: normal;
     font-weight: 100 900;
     font-display: swap;
-    src: url('/survival-games/fonts/Inter-variable.woff2') format('woff2');
+    src: url('./fonts/Inter-variable.woff2') format('woff2');
 }
 
 @font-face {
@@ -33,7 +33,7 @@
     font-style: normal;
     font-weight: 100 900;
     font-display: swap;
-    src: url('/survival-games/fonts/JetBrainsMono-variable.woff2') format('woff2');
+    src: url('./fonts/JetBrainsMono-variable.woff2') format('woff2');
 }
 
 @theme {

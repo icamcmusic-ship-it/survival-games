@@ -7,7 +7,7 @@ import { AMBIENT_TEXTS, ENCOUNTER_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone } from '../map';
 import { giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, decayMemories, decayRelationships, noteSighting,
@@ -105,8 +105,12 @@ function collapseBorders(ctx: SimContext): boolean {
     if (ctx.state.day < ESCALATION.startDay) return false;
 
     const allZoneNames = zoneNames(ctx.state.arena);
-    const collapseCount = Math.min(allZoneNames.length - 1, ctx.state.day - (ESCALATION.startDay - 1));
-    const collapsedList = allZoneNames.slice(allZoneNames.length - collapseCount);
+    // Deterministic per-seed but not the same reverse-declaration-order every
+    // run — otherwise every endgame in every run of an arena collapses toward
+    // the same zone (always the Cornucopia) in the same order.
+    const collapseOrder = new RNG(`${ctx.state.seed}-collapse`).shuffle(allZoneNames);
+    const collapseCount = Math.min(collapseOrder.length - 1, ctx.state.day - (ESCALATION.startDay - 1));
+    const collapsedList = collapseOrder.slice(0, collapseCount);
     ctx.state.collapsedZones = collapsedList;
 
     getAlive(ctx.state).forEach(t => {
@@ -119,7 +123,9 @@ function collapseBorders(ctx: SimContext): boolean {
             ? ESCALATION.finalistCollapseDamage
             : ESCALATION.collapseDamageBase + (ctx.state.day - ESCALATION.startDay) * ESCALATION.collapseDamagePerDay;
         const safeZones = allZoneNames.filter(z => !collapsedList.includes(z));
-        const newSafeZone = safeZones[0] || allZoneNames[0];
+        // Nearest reachable safe zone via the adjacency graph, not an
+        // arbitrary index — a tribute should not teleport across the arena.
+        const newSafeZone = nearestSafeZone(ctx.state.arena, t.zone, safeZones);
         const trappedZone = t.zone;
 
         applyDamage(ctx, t, damage, {
@@ -164,37 +170,52 @@ function craft(ctx: SimContext, t: Tribute) {
 }
 
 /** Alliances move as a unit; everyone else moves for themselves. */
+// Hiding is the one stance that should hold position — a reduced chance to
+// slip away quietly, not the guaranteed, silent teleport it used to be.
+function wanderChanceFor(t: Tribute): number {
+    return t.stance === 'Evasive' ? ENCOUNTERS.wanderChance * 0.4 : ENCOUNTERS.wanderChance;
+}
+
 function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>) {
     if (t.allianceId) {
         const allianceMembers = currentAlive.filter(m => m.allianceId === t.allianceId && m.status === 'alive');
         const leader = allianceMembers[0];
         if (!leader || t.id !== leader.id) return;
-        if (t.stance !== 'Evasive' && !ctx.rng.chance(ENCOUNTERS.wanderChance)) return;
+        if (!ctx.rng.chance(wanderChanceFor(t))) return;
 
         const options = reachableZones(ctx.state.arena, t.zone, collapsed);
         if (options.length === 0) return;
         const newZone = pickDestination(ctx, t, options).name;
         if (t.zone === newZone) return;
 
-        allianceMembers.forEach(m => { m.zone = newZone; });
-        if (t.stance !== 'Evasive') {
+        // Only members actually standing with the leader travel — anyone
+        // separated by a border collapse or a feast pulls their own weight
+        // back rather than being snapped across the map for free.
+        const present = allianceMembers.filter(m => m.zone === t.zone);
+        present.forEach(m => { m.zone = newZone; });
+        if (t.stance === 'Evasive') {
+            ctx.logEvent(`${present.map(m => m.name).join(', ')} slip out of ${t.zone} without a sound.`, present.map(m => m.id), { zone: newZone, category: 'travel' });
+        } else {
             ctx.logEvent(
-                `The alliance of ${allianceMembers.map(m => m.name).join(', ')} moves out to ${newZone}.`,
-                allianceMembers.map(m => m.id),
+                `The alliance of ${present.map(m => m.name).join(', ')} moves out to ${newZone}.`,
+                present.map(m => m.id),
                 { zone: newZone, category: 'travel' }
             );
         }
         return;
     }
 
-    if (t.stance !== 'Evasive' && !ctx.rng.chance(ENCOUNTERS.wanderChance)) return;
+    if (!ctx.rng.chance(wanderChanceFor(t))) return;
     const options = reachableZones(ctx.state.arena, t.zone, collapsed);
     if (options.length === 0) return;
     const newZone = pickDestination(ctx, t, options).name;
     if (t.zone === newZone) return;
 
+    const oldZone = t.zone;
     t.zone = newZone;
-    if (t.stance !== 'Evasive') {
+    if (t.stance === 'Evasive') {
+        ctx.logEvent(`${t.name} slips out of ${oldZone} without a sound.`, [t.id], { zone: newZone, category: 'travel' });
+    } else {
         ctx.logEvent(
             fill(ctx.pickText(flavor.actions.travel), { tribute: t.name, zone: newZone }),
             [t.id],

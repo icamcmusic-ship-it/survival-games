@@ -1,11 +1,23 @@
 import React, { useState } from 'react';
 import { Share2, Check } from 'lucide-react';
+import { GameConfig } from '../models/types';
 
-export function ShareButton({ seed, arenaId, gamemakerMode }: { seed: string, arenaId: string, gamemakerMode: boolean }) {
+export function ShareButton({ seed, arenaId, gamemakerMode, config }: { seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig }) {
     const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
 
     const handleShare = async () => {
-        const url = `${window.location.origin}${window.location.pathname}?seed=${encodeURIComponent(seed)}&arena=${encodeURIComponent(arenaId)}&gamemaker=${gamemakerMode}`;
+        const params = new URLSearchParams({
+            seed,
+            arena: arenaId,
+            gamemaker: String(gamemakerMode),
+            districtCount: String(config.districtCount),
+            hazardRate: String(config.hazardRate),
+            betrayalRate: String(config.betrayalRate),
+            sponsorGenerosity: String(config.sponsorGenerosity),
+            enableFeast: String(config.enableFeast),
+            enableSanity: String(config.enableSanity),
+        });
+        const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
         try {
             // navigator.clipboard is unavailable over plain HTTP and in some
             // embedded browsers; fall back to a selection copy rather than

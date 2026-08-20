@@ -1,6 +1,6 @@
 import { Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { ENCOUNTERS, MEMORY, VITALS, ZONES } from '../data/balance';
+import { ENCOUNTERS, MEMORY, TRAIT_EFFECTS, VITALS, ZONES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaEventDef, arenaFlavor } from '../data/arenaFlavor';
 import { SimContext } from './context';
@@ -74,6 +74,44 @@ export function resolveMuttAttack(ctx: SimContext, t: Tribute) {
     checkDeath(ctx, t, `Torn apart by ${mutt}`);
 }
 
+/**
+ * One direction of ally-to-ally aid: `giver` hands `needer` whatever they're
+ * short on, if the giver is carrying it to spare. Called both ways so a
+ * bleeding tribute next to a medkit — or one dying of thirst next to a
+ * spare bottle — actually gets helped, not just the hungry one.
+ */
+function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute) {
+    if (needer.injuries.bleeding || needer.injuries.infected || needer.injuries.burned) {
+        const medIdx = giver.inventory.findIndex(i => i.type === 'medical');
+        if (medIdx >= 0) {
+            const item = giver.inventory.splice(medIdx, 1)[0];
+            needer.injuries.bleeding = false;
+            needer.injuries.infected = false;
+            needer.injuries.burned = false;
+            needer.health = Math.min(100, needer.health + 15);
+            ctx.logEvent(`${giver.name} presses their ${item.name} into ${needer.name}'s hands and helps patch them up.`, [needer.id, giver.id], { important: true, category: 'alliance' });
+            return;
+        }
+    }
+    if (needer.vitals.thirst > 40) {
+        const waterIdx = giver.inventory.findIndex(i => i.type === 'water');
+        if (waterIdx >= 0) {
+            const item = giver.inventory.splice(waterIdx, 1)[0];
+            needer.vitals.thirst = Math.max(0, needer.vitals.thirst - 40);
+            ctx.logEvent(`${giver.name} hands ${needer.name} their ${item.name} without being asked.`, [needer.id, giver.id], { category: 'alliance' });
+            return;
+        }
+    }
+    if (needer.vitals.hunger > 40) {
+        const foodIdx = giver.inventory.findIndex(i => i.type === 'food');
+        if (foodIdx >= 0) {
+            const item = giver.inventory.splice(foodIdx, 1)[0];
+            needer.vitals.hunger = Math.max(0, needer.vitals.hunger - 40);
+            ctx.logEvent(`${giver.name} hands ${needer.name} their ${item.name} without being asked.`, [needer.id, giver.id], { category: 'alliance' });
+        }
+    }
+}
+
 /** A pair who happen to be standing in the same zone with time on their hands. */
 export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute) {
     const inSameAlliance = t.allianceId !== undefined && t.allianceId === other.allianceId;
@@ -88,15 +126,9 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
     }
 
     if (inSameAlliance) {
-        // Share resources within alliance
-        const tHungry = t.vitals.hunger > 40;
-        const oHasFood = other.inventory.some(i => i.type === 'food');
-        if (tHungry && oHasFood) {
-            const foodIdx = other.inventory.findIndex(i => i.type === 'food');
-            const food = other.inventory.splice(foodIdx, 1)[0];
-            t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
-            ctx.logEvent(`${other.name} hands ${t.name} their ${food.name} without being asked.`, [t.id, other.id], { category: 'alliance' });
-        }
+        // Share resources within alliance — in both directions, and not just food.
+        shareAllianceSupplies(ctx, t, other);
+        shareAllianceSupplies(ctx, other, t);
         adjustMutual(ctx.state, t, other, 5);
         ctx.logEvent(fill(ctx.pickText(ALLIANCE_TEXTS.support), vars), [t.id, other.id], { category: 'alliance' });
     } else if (relationship > 20) {
@@ -122,42 +154,60 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
  * Idle turn. Foraging draws a zone down, so a rich forest is a prize two
  * tributes can strip between them rather than an infinite larder.
  */
+/** Attempts to forage in the tribute's current zone; returns whether anything was found. */
+function attemptForage(
+    ctx: SimContext,
+    t: Tribute,
+    flavor: ReturnType<typeof arenaFlavor>,
+    chance: number,
+): boolean {
+    if (!ctx.rng.chance(chance)) {
+        depleteZone(ctx.state, t.zone, ZONES.depletionPerAttempt);
+        return false;
+    }
+    const item = ctx.rng.pick(ITEMS.filter(i => i.type === 'food' || i.type === 'water'));
+    // Clone before touching spoilage: `item` is the shared ITEMS entry.
+    const fresh = { ...item };
+    if (fresh.type === 'food' && fresh.spoilage !== undefined) fresh.spoilage += spoilageBonus(t);
+    const dropped = giveItem(t, fresh);
+    depleteZone(ctx.state, t.zone, ZONES.depletionPerForage);
+    ctx.logEvent(
+        fill(ctx.pickText(flavor.actions.forage), { tribute: t.name, zone: t.zone, item: itemPhrase(item) }),
+        [t.id],
+        { category: 'loot' }
+    );
+    if (dropped.length > 0) {
+        ctx.logEvent(
+            `${t.name} cannot carry it all and leaves ${dropped.map(i => i.name).join(', ')} behind in ${t.zone}.`,
+            [t.id],
+            { category: 'loot' }
+        );
+    }
+    return true;
+}
+
 export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeof arenaFlavor>) {
     const zone = getZone(ctx.state.arena, t.zone);
+    const available = effectiveResources(ctx.state, zone);
+    const baseForageChance = ZONES.baseForageChance
+        + available * ZONES.yieldForageWeight
+        + (t.archetype === 'survivalist' ? ZONES.survivalistForageBonus : 0)
+        + (t.traits.includes('Tracker') ? TRAIT_EFFECTS.trackerForageBonus : 0);
 
     if (t.stance === 'Evasive') {
+        // Hiding does not mean starving — there is still a stream in whatever
+        // zone they went to ground in, just a much smaller chance they risk
+        // reaching for it instead of staying still.
+        if (attemptForage(ctx, t, flavor, baseForageChance * ZONES.evasiveForageMultiplier)) {
+            noteSighting(ctx.state, t, t.zone, 0, depletionOf(ctx.state, t.zone));
+            return;
+        }
         ctx.logEvent(fill(ctx.pickText(flavor.actions.hide), { tribute: t.name, zone: t.zone }), [t.id], { category: 'survival' });
         return;
     }
 
     if (t.stance === 'Defensive') {
-        const available = effectiveResources(ctx.state, zone);
-        const forageChance = ZONES.baseForageChance
-            + available * ZONES.yieldForageWeight
-            + (t.archetype === 'survivalist' ? ZONES.survivalistForageBonus : 0)
-            + (t.traits.includes('Tracker') ? 0.08 : 0);
-
-        if (ctx.rng.chance(forageChance)) {
-            const item = ctx.rng.pick(ITEMS.filter(i => i.type === 'food' || i.type === 'water'));
-            // Clone before touching spoilage: `item` is the shared ITEMS entry.
-            const fresh = { ...item };
-            if (fresh.type === 'food' && fresh.spoilage !== undefined) fresh.spoilage += spoilageBonus(t);
-            const dropped = giveItem(t, fresh);
-            depleteZone(ctx.state, t.zone, ZONES.depletionPerForage);
-            ctx.logEvent(
-                fill(ctx.pickText(flavor.actions.forage), { tribute: t.name, zone: t.zone, item: itemPhrase(item) }),
-                [t.id],
-                { category: 'loot' }
-            );
-            if (dropped.length > 0) {
-                ctx.logEvent(
-                    `${t.name} cannot carry it all and leaves ${dropped.map(i => i.name).join(', ')} behind in ${t.zone}.`,
-                    [t.id],
-                    { category: 'loot' }
-                );
-            }
-        } else {
-            depleteZone(ctx.state, t.zone, ZONES.depletionPerAttempt);
+        if (!attemptForage(ctx, t, flavor, baseForageChance)) {
             const stripped = depletionOf(ctx.state, t.zone) > ENCOUNTERS.strippedZoneNotice;
             ctx.logEvent(
                 stripped
@@ -171,6 +221,12 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         return;
     }
 
+    // Aggressive: hunting still passes a stream or a berry bush in the same
+    // zone, just at a reduced chance since finding food was not the point.
+    if (attemptForage(ctx, t, flavor, baseForageChance * ZONES.aggressiveForageMultiplier)) {
+        noteSighting(ctx.state, t, t.zone, 0, depletionOf(ctx.state, t.zone));
+        return;
+    }
     ctx.logEvent(fill(ctx.pickText(flavor.actions.hunt), { tribute: t.name, zone: t.zone }), [t.id], { category: 'survival' });
 }
 
@@ -182,8 +238,20 @@ export function handleInsanity(ctx: SimContext, t: Tribute) {
         ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.hallucination), vars), [t.id], { important: true, category: 'sanity' });
         t.vitals.sanity -= 5;
     } else if (roll < 0.7) {
-        ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.ruinStealth), vars), [t.id], { important: true, category: 'sanity' });
-        t.attributes.stealth = Math.max(0, t.attributes.stealth - 2);
+        // A generated identity stat should not ratchet toward zero every time
+        // sanity dips below the breakdown threshold — cap the lifetime damage
+        // a breakdown can do to it.
+        const lost = t.sanityStealthLoss ?? 0;
+        const SANITY_STEALTH_LOSS_CAP = 2;
+        const loss = Math.min(2, SANITY_STEALTH_LOSS_CAP - lost);
+        if (loss > 0) {
+            ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.ruinStealth), vars), [t.id], { important: true, category: 'sanity' });
+            t.attributes.stealth = Math.max(0, t.attributes.stealth - loss);
+            t.sanityStealthLoss = lost + loss;
+        } else {
+            ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.hallucination), vars), [t.id], { important: true, category: 'sanity' });
+            t.vitals.sanity -= 5;
+        }
     } else if (t.inventory.length > 0) {
         const itemIdx = ctx.rng.nextInt(0, t.inventory.length - 1);
         const item = t.inventory.splice(itemIdx, 1)[0];

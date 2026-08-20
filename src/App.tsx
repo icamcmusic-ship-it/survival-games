@@ -26,14 +26,31 @@ export default function App() {
   const betWonMessage = useStore(gameStore, s => s.betWonMessage);
   const isReplayedRun = useStore(gameStore, s => s.isReplayedRun);
 
-  // Replay sharing: ?seed=...&arena=... boots straight into that exact run.
+  // Replay sharing: ?seed=...&arena=...&districtCount=... boots straight into that exact run.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlSeed = params.get('seed');
     const urlArena = params.get('arena');
     const urlGamemaker = params.get('gamemaker') === 'true';
     if (urlSeed && urlArena) {
-      gameActions.startGame(urlSeed, urlArena, urlGamemaker, DEFAULT_GAME_CONFIG, true);
+      const numParam = (key: string, fallback: number) => {
+        const raw = params.get(key);
+        const n = raw === null ? NaN : Number(raw);
+        return Number.isFinite(n) ? n : fallback;
+      };
+      const boolParam = (key: string, fallback: boolean) => {
+        const raw = params.get(key);
+        return raw === null ? fallback : raw === 'true';
+      };
+      const config = {
+        districtCount: numParam('districtCount', DEFAULT_GAME_CONFIG.districtCount),
+        hazardRate: numParam('hazardRate', DEFAULT_GAME_CONFIG.hazardRate),
+        betrayalRate: numParam('betrayalRate', DEFAULT_GAME_CONFIG.betrayalRate),
+        sponsorGenerosity: numParam('sponsorGenerosity', DEFAULT_GAME_CONFIG.sponsorGenerosity),
+        enableFeast: boolParam('enableFeast', DEFAULT_GAME_CONFIG.enableFeast),
+        enableSanity: boolParam('enableSanity', DEFAULT_GAME_CONFIG.enableSanity),
+      };
+      gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -60,7 +77,7 @@ export default function App() {
             )}
             <span className="chip chip-gold" title="Capitol Coins available for wagers">{coins} ⨷</span>
             {gameState && (
-              <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} />
+              <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.config} />
             )}
             {navItems.filter(i => i.show).map(item => (
               <button
