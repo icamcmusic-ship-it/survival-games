@@ -2,15 +2,16 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { ALLIANCES, PROTECTOR_BOND, ROMANCE } from '../../data/balance';
+import { ALLIANCES, PROTECTOR_BOND, ROMANCE, SUSPICION } from '../../data/balance';
 import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel } from '../relationships';
-import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact } from '../memory';
+import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, suspicionOf } from '../memory';
 import { allianceOf, areLovers, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
 import { betrayalReluctance } from '../debts';
 import { addExcitement } from '../audience';
 import { traitMod } from '../../data/traits';
+import { wildcardIs } from '../gamesProfile';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -56,6 +57,8 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         if (ensureMemory(betrayer).betrayedBy.includes(m.id)) weight *= ALLIANCES.betrayedFirstStrikeWeight;
         // Someone who never stops watching is a much worse mark.
         weight *= Math.max(0.1, 1 - traitMod(m, 'betrayalResist'));
+        // §4.2: so is someone who is specifically watching *you*.
+        weight *= Math.max(0.1, 1 - (suspicionOf(m, betrayer.id) / SUSPICION.max) * SUSPICION.hardMarkFactor);
         // And you do not knife the person who pulled you out of a fire. A debt
         // was recorded and then never charged for — this is the charge.
         weight *= betrayalReluctance(betrayer, m.id);
@@ -124,6 +127,36 @@ export function processAlliances(ctx: SimContext) {
         }
     });
 
+    // 1c. §4.2: pre-emptive departure. A member whose suspicion of a specific
+    // ally has climbed high enough gets out before the knife does — the
+    // telegraphed version of the betrayal the audience can see building.
+    alliances.forEach((members, id) => {
+        if (members.length < 2 || id.startsWith('lovers-')) return;
+        members.forEach(m => {
+            if (m.status !== 'alive' || m.allianceId !== id) return;
+            const suspect = members.find(o =>
+                o.id !== m.id && o.status === 'alive' && suspicionOf(m, o.id) >= SUSPICION.departThreshold);
+            if (!suspect) return;
+            if (!ctx.rng.chance(SUSPICION.departChance)) {
+                // Not gone yet — but sleeping apart is a beat the audience reads.
+                if (ctx.rng.chance(0.3)) {
+                    ctx.logEvent(
+                        `${m.name} beds down apart from the others and keeps ${suspect.name} in view. Whatever trust there was is being rationed now.`,
+                        [m.id, suspect.id],
+                        { category: 'alliance' }
+                    );
+                }
+                return;
+            }
+            delete m.allianceId;
+            ctx.logEvent(
+                `${m.name} is gone before dawn. No theft, no knife — just a bedroll left cold and ${suspect.name} watched all the way out of sight. Some betrayals you leave before they happen.`,
+                [m.id, suspect.id],
+                { important: true, category: 'alliance' }
+            );
+        });
+    });
+
     // 2. Betrayal Logic
     alliances.forEach((members) => {
         if (members.length < 2) return;
@@ -147,8 +180,13 @@ export function processAlliances(ctx: SimContext) {
     // 3. Dynamic Alliance Formation & Star-Crossed Lovers
     // Re-read the living: betrayals above may have killed someone since the
     // snapshot at the top of this function.
+    // §7.1's sibling rule: the no-alliances rule change was announced by a
+    // wildcard and enforced by nothing. When it stands, no new alliance forms,
+    // no group recruits and no groups merge — what existed before the
+    // announcement is grandfathered in, and lovers keep theirs secret.
+    const alliancesForbidden = wildcardIs(ctx.state, 'rule-change-no-allies');
     const stillAlive = getAlive(ctx.state);
-    if (stillAlive.length > ALLIANCES.formationFieldSize) {
+    if (!alliancesForbidden && stillAlive.length > ALLIANCES.formationFieldSize) {
         for (let i = 0; i < stillAlive.length; i++) {
             for (let j = i + 1; j < stillAlive.length; j++) {
                 const t1 = stillAlive[i];
@@ -218,7 +256,7 @@ export function processAlliances(ctx: SimContext) {
     // paired two alliance-free tributes, and recruitment only ever added one
     // loner at a time, so almost every organic alliance stayed a pair for the
     // whole run no matter how well two of them got on.
-    mergeAlliances(ctx);
+    if (!alliancesForbidden) mergeAlliances(ctx);
 
     // 3c. Recruitment: a standing group can take in a loner they trust.
     //
@@ -235,6 +273,7 @@ export function processAlliances(ctx: SimContext) {
     });
 
     groups.forEach((members, id) => {
+        if (alliancesForbidden) return;
         if (members.length < 2 || members.length >= ALLIANCES.maxSize) return;
         // Star-crossed lovers are a pair, not the seed of a gang.
         if (id.startsWith('lovers-')) return;

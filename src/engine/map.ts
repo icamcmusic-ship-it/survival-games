@@ -1,4 +1,4 @@
-import { Arena, GameState, Zone } from '../models/types';
+import { Arena, GameState, Zone, ZoneFeatures } from '../models/types';
 import { ZONES } from '../data/balance';
 
 export function zoneNames(arena: Arena): string[] {
@@ -7,6 +7,36 @@ export function zoneNames(arena: Arena): string[] {
 
 export function getZone(arena: Arena, name: string): Zone | undefined {
     return arena.zones.find(z => z.name === name);
+}
+
+/** Deterministic per-name hash in [0, 1), so derived features are stable per zone. */
+function nameHash(name: string): number {
+    let h = 2166136261;
+    for (let i = 0; i < name.length; i++) {
+        h ^= name.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return ((h >>> 0) % 1000) / 1000;
+}
+
+const BASE_COVER: Record<Zone['terrain'], number> = {
+    forest: 0.8, wetland: 0.6, ruins: 0.6, highland: 0.35, water: 0.2, open: 0.1,
+};
+
+/**
+ * §5.2: the zone's interior, hand-authored or derived. Derivation is
+ * deterministic — terrain sets the baseline, the name jitters it — so the
+ * same arena always has the same texture without any data edits, and an
+ * arena author can override any zone by setting `features` in its data.
+ */
+export function zoneFeatures(zone: Zone): ZoneFeatures {
+    if (zone.features) return zone.features;
+    const h = nameHash(zone.name);
+    const cover = Math.max(0, Math.min(1, BASE_COVER[zone.terrain] + (h - 0.5) * 0.3));
+    const elevation = zone.terrain === 'highland' || /ridge|cliff|tower|spire|peak|stair|terrace|hill/i.test(zone.name) || h > 0.85;
+    const chokepoint = /pass|bridge|ravine|tunnel|gate|causeway|canal|strait|corridor/i.test(zone.name)
+        || (!elevation && h >= 0.62 && h <= 0.78);
+    return { cover, elevation, chokepoint };
 }
 
 // Zones reachable in one move from `from`, excluding collapsed ones.

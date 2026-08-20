@@ -1,5 +1,6 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
-import { MEMORY, RELATIONSHIPS } from '../data/balance';
+import { HUNTING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
+import { traitMod } from '../data/traits';
 import { SimContext } from './context';
 
 /**
@@ -172,9 +173,39 @@ export function noteFight(state: GameState, a: Tribute, b: Tribute) {
     });
 }
 
-/** Records that `t` broke off a fight with `otherId`. */
+/** §4.2: how much `t` distrusts a specific ally. */
+export function suspicionOf(t: Tribute, otherId: string): number {
+    return ensureMemory(t).suspicion?.[otherId] ?? 0;
+}
+
+export function raiseSuspicion(t: Tribute, otherId: string, amount: number) {
+    const mem = ensureMemory(t);
+    mem.suspicion = mem.suspicion ?? {};
+    // The Paranoid read more into everything they see.
+    const sharpened = amount * (1 + traitMod(t, 'betrayalResist'));
+    mem.suspicion[otherId] = Math.min(SUSPICION.max, (mem.suspicion[otherId] ?? 0) + sharpened);
+}
+
+export function decaySuspicion(state: GameState) {
+    state.tributes.forEach(t => {
+        const sus = t.memory?.suspicion;
+        if (!sus) return;
+        Object.keys(sus).forEach(id => {
+            sus[id] = Math.max(0, sus[id] - SUSPICION.decayPerCycle);
+            if (sus[id] === 0) delete sus[id];
+        });
+    });
+}
+
+/** §3.4: a bad moment leaves a mark that outlasts the moment. */
+export function rattle(t: Tribute, amount: number) {
+    t.rattled = Math.min(HUNTING.rattledMax, (t.rattled ?? 0) + amount);
+}
+
+/** Records that `t` broke off a fight with `otherId` — and shakes them. */
 export function noteFled(t: Tribute, otherId: string) {
     rivalRecord(t, otherId).timesFled += 1;
+    rattle(t, HUNTING.rattledPerFlee);
 }
 
 /** Records a landed hit, on both sides of the pair. */

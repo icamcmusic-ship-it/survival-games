@@ -6,7 +6,7 @@ import { Simulator } from '../engine/simulator';
 import { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
 import { configForProfile, gamesProfileFor } from '../engine/gamesProfile';
-import { PanemRecords, RunOutcome, commitRun, readPanem } from '../utils/panemStorage';
+import { PanemRecords, RunOutcome, commitRun, readPanem, setPatronDistrict } from '../utils/panemStorage';
 import {
     SponsorResult, sendPlayerParachute, sponsorCost, sponsorableItems,
 } from '../engine/playerSponsor';
@@ -40,6 +40,9 @@ export interface GameStoreState {
 const STARTING_COINS = 1000;
 const BROKE_THRESHOLD = 50;
 const STIPEND = 250;
+/** §6.2: cost of becoming (or changing) a district's standing patron. */
+const PATRON_COST = 750;
+const PATRON_TRUST_BONUS = 12;
 
 function readCoins(): number {
     // Note the explicit null check: `Number(null)` is 0, which would silently
@@ -147,7 +150,10 @@ function readHallOfFame(): HallOfFameEntry[] {
 }
 
 function saveHallOfFame(state: GameState) {
-    const winner = state.tributes.find(t => t.status === 'alive');
+    const survivors = state.tributes.filter(t => t.status === 'alive');
+    const winner = survivors[0];
+    // §7.1: a dual victory is archived under both names.
+    const jointName = survivors.length === 2 ? `${survivors[0].name} & ${survivors[1].name}` : undefined;
     // A Games nobody survived used to return here, so the run vanished from the
     // archive entirely — the rarest outcome in the game was also the only one
     // with no record of it. A wipeout is archived as its own kind of entry.
@@ -158,7 +164,7 @@ function saveHallOfFame(state: GameState) {
         arenaId: state.arena.id,
         config: state.baseConfig,
         noVictor: !winner,
-        winnerName: winner?.name ?? 'No victor',
+        winnerName: jointName ?? winner?.name ?? 'No victor',
         winnerDistrict: winner?.district ?? 0,
         kills: winner?.kills ?? 0,
         date: new Date().toISOString(),
@@ -243,13 +249,17 @@ function resolveBets(state: GameState) {
         return;
     }
 
-    const winner = state.tributes.find(t => t.status === 'alive');
-    if (winner && bets[winner.id]) {
-        const { stake, mult } = bets[winner.id];
-        const winnings = Math.floor(stake * mult);
-        gameActions.setCoins(coins + winnings);
+    // §7.1: a dual victory pays a wager on either victor — the book paid out
+    // on "comes home", and both of them did.
+    const winners = state.tributes.filter(t => t.status === 'alive' && bets[t.id]);
+    if (winners.length > 0) {
+        const payouts = winners.map(w => ({ w, winnings: Math.floor(bets[w.id].stake * bets[w.id].mult) }));
+        const total = payouts.reduce((sum, p) => sum + p.winnings, 0);
+        gameActions.setCoins(coins + total);
         gameStore.setState({
-            betWonMessage: `${winner.name} of District ${winner.district} came home. Your ${stake}-coin wager pays out ${winnings} Capitol Coins at ${mult.toFixed(1)}x.`,
+            betWonMessage: payouts
+                .map(({ w, winnings }) => `${w.name} of District ${w.district} came home. Your ${bets[w.id].stake}-coin wager pays out ${winnings} Capitol Coins at ${bets[w.id].mult.toFixed(1)}x.`)
+                .join(' '),
             betsResolved: true,
         });
     } else {
@@ -340,6 +350,17 @@ export const gameActions = {
         clearSavedRun();
     },
 
+    /** §6.2: spend coins to become the standing patron of one district. */
+    patronDistrict(district: number): boolean {
+        const { coins } = gameStore.getState();
+        if (coins < PATRON_COST) return false;
+        gameActions.setCoins(coins - PATRON_COST);
+        gameStore.setState({ panem: setPatronDistrict(district) });
+        return true;
+    },
+
+    patronCost: PATRON_COST,
+
     startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false) {
         // Abandoning a run mid-wager used to silently pocket the player's coins.
         gameActions.refundOpenBets();
@@ -357,6 +378,17 @@ export const gameActions = {
         // profile is rolled before the cast because it decides the cast's shape.
         const gamesProfile = gamesProfileFor(safeSeed);
         const tributes = generateTributes(safeSeed, config, startZone, gamesProfile.castShape);
+
+        // §6.2: standing district patronage — a persistent sink for Capitol
+        // Coins. The patron's tributes arrive with sponsors already warm.
+        const patron = gameStore.getState().panem.patronDistrict;
+        if (patron !== undefined) {
+            tributes.forEach(t => {
+                if (t.district === patron) {
+                    t.sponsorTrust = Math.min(100, t.sponsorTrust + PATRON_TRUST_BONUS);
+                }
+            });
+        }
 
         const initialState: GameState = {
             seed: safeSeed,

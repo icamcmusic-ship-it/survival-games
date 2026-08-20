@@ -166,6 +166,11 @@ export interface TributeMemory {
      * before it existed still resume.
      */
     contactStreak?: Record<string, number>;
+    /**
+     * §4.2: tribute id -> how much this tribute distrusts that specific ally
+     * (0-100). Raised by witnessed betrayals and charter breaches; decays.
+     */
+    suspicion?: Record<string, number>;
 }
 
 /** Where a tribute's most recent wound actually came from. */
@@ -272,6 +277,10 @@ export interface Tribute {
      * pressing an advantage rather than permanently buffing whoever scored first.
      */
     momentum?: number;
+    /** §3.4: short-lived shaken state, symmetric to momentum. Decays per cycle. */
+    rattled?: number;
+    /** §3.1: attribute points earned in the arena, per attribute, capped by DRIFT.maxGain. */
+    attributeDrift?: { agility?: number; stealth?: number };
     /** Skills that improve with successful use. See `Proficiency`. */
     proficiencies?: Partial<Record<Proficiency, number>>;
     /** What they are currently trying to do. See `Objective`. */
@@ -429,12 +438,31 @@ export interface ActiveMutt {
     expiresCycle: number;
 }
 
+/**
+ * §5.2: a zone's interior. Zones had no inside — every tribute in one was at
+ * the same place, so stealth was a single roll and terrain was a binary.
+ * Features give each zone a texture: how much cover it offers, whether it has
+ * high ground to watch approaches from, and whether its ways in and out
+ * bottleneck. Hand-authored data may set them; otherwise they are derived
+ * deterministically from terrain and name (see `zoneFeatures` in engine/map).
+ */
+export interface ZoneFeatures {
+    /** 0-1: how much of the zone offers real concealment. */
+    cover: number;
+    /** High ground: approaches are visible, ambushes harder. */
+    elevation: boolean;
+    /** Bottlenecked ways in and out: ambushes easier, retreat harder. */
+    chokepoint: boolean;
+}
+
 export interface Zone {
     name: string;
     terrain: Terrain;
     danger: number;    // 0-1, multiplier bias for hazard/mutt encounters
     resources: number; // 0-1, forage success bias
     adjacent: string[]; // names of connected zones
+    /** §5.2: optional hand-authored interior; derived from terrain when absent. */
+    features?: ZoneFeatures;
 }
 
 export interface Arena {
@@ -517,6 +545,8 @@ export interface GameState {
     blackoutUntilCycle?: number;
     /** Tribute the Capitol has put a bounty on, if any. */
     bountyTargetId?: string;
+    /** §7.1: set when the Games end with two victors. See engine/victory.ts. */
+    victorIds?: string[];
     /** Day the most recent feast actually convened — guards against two feasts landing on the same day. */
     lastFeastDay?: number;
     /** Feasts already held this run, used to space them out. */

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { GameConfig } from '../models/types';
 import { Play, ChevronDown, ChevronRight, ArrowRight, History } from 'lucide-react';
-import { gameActions, readSavedRun } from '../store/gameStore';
+import { gameActions, gameStore, readSavedRun } from '../store/gameStore';
+import { useStore } from '../store/createStore';
 import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
 import { SIGNATURE_BLURBS } from '../engine/arenaSignature';
 
@@ -81,6 +82,8 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const [gamemakerMode, setGamemakerMode] = useState(false);
     const [config, setConfigState] = useState<GameConfig>(readStoredConfig);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const coins = useStore(gameStore, st => st.coins);
+    const panem = useStore(gameStore, st => st.panem);
     const [savedRun, setSavedRun] = useState(readSavedRun);
 
     const setConfig = (updater: GameConfig | ((c: GameConfig) => GameConfig)) => {
@@ -235,6 +238,37 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         </div>
                         <input type="checkbox" className="sr-only" checked={gamemakerMode} onChange={(e) => setGamemakerMode(e.target.checked)} />
                     </label>
+                </div>
+
+                {/* §6.2: the standing patronage — a persistent sink for Capitol
+                    Coins. Survives across runs via the Panem records. */}
+                <div className="p-5 pt-0">
+                    <div className="panel-flush p-4 space-y-2">
+                        <div className="flex items-baseline justify-between flex-wrap gap-2">
+                            <span className="eyebrow">Patron of a district</span>
+                            <span className="font-mono text-[11px] text-[var(--color-ink-500)]">{coins} coins held</span>
+                        </div>
+                        <p className="text-[11px] text-[var(--color-ink-500)]">
+                            {panem.patronDistrict !== undefined
+                                ? `You are the standing patron of District ${panem.patronDistrict}: its tributes begin every Games with sponsors already warm.`
+                                : `Spend ${gameActions.patronCost} coins to become the standing patron of one district — its tributes begin every future Games with a sponsor-trust head start.`}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(d => (
+                                <button
+                                    key={d}
+                                    className={`chip ${panem.patronDistrict === d ? 'chip-accent' : ''}`}
+                                    disabled={panem.patronDistrict !== d && coins < gameActions.patronCost}
+                                    title={panem.patronDistrict === d
+                                        ? `You are District ${d}'s patron`
+                                        : `Become District ${d}'s patron (${gameActions.patronCost} coins)`}
+                                    onClick={() => { if (panem.patronDistrict !== d) gameActions.patronDistrict(d); }}
+                                >
+                                    D{d}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
                 <div className="p-5 space-y-3">

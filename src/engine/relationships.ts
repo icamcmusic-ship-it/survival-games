@@ -1,10 +1,10 @@
 import { GameState, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
-import { RELATIONSHIPS, GENERATION } from '../data/balance';
+import { RELATIONSHIPS, GENERATION, HUNTING, SUSPICION } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
 import { clampTribute } from './vitals';
-import { cyclesSinceContact, ensureMemory, swearVengeance, noteContact } from './memory';
+import { cyclesSinceContact, ensureMemory, raiseSuspicion, rattle, swearVengeance, noteContact } from './memory';
 import { areLovers } from './alliance';
 import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS } from '../data/flavorText';
 import { addExcitement } from './audience';
@@ -134,6 +134,8 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
             // The crowd rewards visible grief.
             other.sponsorTrust += Math.round(intensity * 6);
             ensureMemory(other).mourned.push(victim.id);
+            // §3.4: grief is also a bad day in the arena, not only a slow gauge.
+            rattle(other, HUNTING.rattledPerGrief);
             clampTribute(other);
 
             if (killer && killer.id !== other.id) {
@@ -231,6 +233,8 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
         adjustRel(w, betrayer.id, -RELATIONSHIPS.betrayalWitnessPenalty);
         const mem = ensureMemory(w);
         if (!mem.betrayedBy.includes(betrayer.id)) mem.betrayedBy.push(betrayer.id);
+        // §4.2: watching someone get knifed makes you watch the knife.
+        raiseSuspicion(w, betrayer.id, SUSPICION.perWitnessedBetrayal);
         // Watching an ally get knifed poisons the room — but only the part of
         // the room the witness has actually been in. The old blanket sweep hit
         // every living tribute (~500 relationship writes per betrayal) and

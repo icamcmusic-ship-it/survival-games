@@ -1,8 +1,9 @@
 import { Item, Tribute, Trap } from '../models/types';
-import { BLEEDING, CRAFTING, POISONING, TRAPS } from '../data/balance';
+import { BLEEDING, CRAFTING, ENDGAME, HUNTING, POISONING, TRAPS } from '../data/balance';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
-import { cycleOf } from './memory';
+import { cycleOf, rattle } from './memory';
+import { endgameEdge } from './objectives';
 import { getZone } from './map';
 import { hasEffect } from './zoneEffects';
 import { clampTribute } from './vitals';
@@ -52,8 +53,13 @@ export function wantsToSetTrap(ctx: SimContext, t: Tribute): boolean {
     // Needs something to build with, or the wit to manage without.
     const hasMaterial = t.inventory.some(i => i.id === 'rope' || i.id === 'wire');
     if (!hasMaterial && t.attributes.intelligence < 6) return false;
-    // A tribute who is bleeding out or being hunted has more urgent problems.
-    if (t.injuries.bleeding || t.stance === 'Aggressive') return false;
+    if (t.injuries.bleeding) return false;
+    // §3.3: a tribute who has concluded they lose a straight fight turns to
+    // the indirect game — the stance gate no longer applies to them.
+    const field = ctx.state.tributes.filter(o => o.status === 'alive').length;
+    const losing = field <= ENDGAME.fieldSize && endgameEdge(ctx.state, t) < ENDGAME.underdogEdge;
+    // Otherwise: a tribute set on hunting has more urgent problems.
+    if (t.stance === 'Aggressive' && !losing) return false;
     return true;
 }
 
@@ -143,6 +149,8 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     const bleedChance = trap.kind === 'snare' ? TRAPS.snareBleedChance : TRAPS.deadfallBleedChance;
     if (ctx.rng.chance(bleedChance)) openWound(t, BLEEDING.combatSeverity);
     if (trap.kind === 'snare' && ctx.rng.chance(TRAPS.snareLegInjuryChance)) t.injuries.legs = true;
+    // §3.4: walking into someone's trap is exactly the kind of moment that rattles.
+    rattle(t, HUNTING.rattledPerTrap);
 
     ctx.logEvent(
         trap.kind === 'snare'

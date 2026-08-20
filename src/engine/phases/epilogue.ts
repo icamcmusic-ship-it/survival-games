@@ -125,6 +125,39 @@ export function processEpilogue(ctx: SimContext) {
         return;
     }
 
+    // §7.1: two victors sit the couch together — a joint interview instead of
+    // the single-victor script, which reads wrong with somebody else alive.
+    if (alive.length === 2) {
+        const [a, b] = alive;
+        const lovers = ctx.state.victorIds !== undefined && a.allianceId?.startsWith('lovers-');
+        qas.push({
+            question: `Caesar Flickerman: 'Ladies and gentlemen — for the first time in living memory, TWO victors! ${a.name} and ${b.name}! Tell us: when did you know you would only leave that arena together?'`,
+            answer: `${a.name}: '${pick(rng, [
+                'There was never a version where one of us walked out alone, Caesar. We just made the arena admit it.',
+                'From the gong. Everything after that was arithmetic.',
+                'When the field got small enough to count, Caesar. You start doing the maths, and every answer with one of us missing was wrong.',
+            ])}'`,
+        });
+        qas.push({
+            question: `Caesar Flickerman: '${b.name} — the whole Capitol watched those final moments. What was going through your mind?'`,
+            answer: `${b.name}: '${pick(rng, lovers ? [
+                'That I meant it, Caesar. Whatever happened next, I meant it.',
+                'Nothing was going through my mind. There was just their hand, and what was in it, and knowing we would not be needing it.',
+                'That the Capitol had a choice to make, and for once it was not ours.',
+            ] : [
+                `That we had done it the hard way, together, and I was not going to apologise for either half of that.`,
+                `Mostly ${a.name}, Caesar. You do not carry someone that far and then start keeping score at the finish line.`,
+                'That the anthem was playing and both of us could hear it. I stopped listening to everything else.',
+            ])}'`,
+        });
+        qas.push({
+            question: `Caesar Flickerman: 'Two crowns, then. Panem, your victors — ${a.name} and ${b.name} of District${a.district === b.district ? ` ${a.district}` : `s ${a.district} and ${b.district}`}!'`,
+            answer: `Official broadcast: 'The ${ctx.state.day}-day Games conclude with two victors — a first the Capitol assures us was always possible.'`,
+        });
+        ctx.state.epilogueInterview = qas;
+        return;
+    }
+
     const facts = gatherFacts(ctx, winner);
 
     qas.push({

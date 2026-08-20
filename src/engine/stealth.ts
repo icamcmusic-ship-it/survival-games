@@ -1,4 +1,5 @@
-import { Terrain, Tribute, Zone } from '../models/types';
+import { Tribute, Zone } from '../models/types';
+import { zoneFeatures } from './map';
 import { CRAFTING, STEALTH } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { traitMod } from '../data/traits';
@@ -13,7 +14,6 @@ import { hasTool } from './items';
  * dangerous when they choose to open a fight.
  */
 
-const COVER_TERRAIN: Terrain[] = ['forest', 'ruins', 'wetland'];
 
 /**
  * Whether it is currently dark, and whether this particular tribute cares.
@@ -54,8 +54,10 @@ export function concealment(
     if (camp?.camouflage) value += CRAFTING.camouflageConcealment;
 
     if (zone) {
-        if (COVER_TERRAIN.includes(zone.terrain)) value += STEALTH.coverBonus;
-        if (zone.terrain === 'open') value -= STEALTH.openPenalty;
+        // §5.2: graded cover from the zone's interior, replacing the old
+        // binary terrain check — a sparse ruin hides less than deep forest.
+        const f = zoneFeatures(zone);
+        value += (f.cover - 0.35) * STEALTH.coverGradeScale;
     }
 
     if (t.injuries.bleeding) value -= STEALTH.bleedingPenalty;
@@ -155,8 +157,14 @@ export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute
     // favours the hider; half-light favours whoever is already watching.
     if (isTwilight(ctx)) chance += STEALTH.duskAmbushBonus;
 
-    if (zone && COVER_TERRAIN.includes(zone.terrain)) chance += STEALTH.coverBonus;
-    if (zone && zone.terrain === 'open') chance -= STEALTH.openPenalty;
+    if (zone) {
+        const f = zoneFeatures(zone);
+        // §5.2: cover conceals the ambusher; high ground shows them coming;
+        // a chokepoint is where you wait for someone.
+        chance += (f.cover - 0.35) * STEALTH.coverGradeScale * 0.8;
+        if (f.elevation) chance -= STEALTH.elevationAmbushPenalty;
+        if (f.chokepoint) chance += STEALTH.chokepointAmbushBonus;
+    }
     if (attacker.archetype === 'trickster') chance += 0.12;
     chance += traitMod(attacker, 'ambush');
     if (defender.stance === 'Aggressive') chance -= 0.1;

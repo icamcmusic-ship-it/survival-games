@@ -1,6 +1,6 @@
-import { Objective, Tribute, Zone } from '../models/types';
+import { GameState, Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { MEMORY, MOVEMENT, OBJECTIVES } from '../data/balance';
+import { ENDGAME, MEMORY, MOVEMENT, OBJECTIVES } from '../data/balance';
 import { SimContext } from './context';
 import { cycleOf, cyclesSinceContact, ensureMemory, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet } from './map';
@@ -108,6 +108,26 @@ export function isObjectiveValid(ctx: SimContext, t: Tribute): boolean {
 }
 
 /** Picks the most pressing thing this tribute could be trying to do right now. */
+/**
+ * §3.3: "am I winning?" — a coarse edge in [-1, 1] against the current field.
+ * Only meaningful once the field is small enough to count; callers gate on
+ * ENDGAME.fieldSize themselves.
+ */
+export function endgameEdge(state: GameState, t: Tribute): number {
+    const field = state.tributes.filter(o => o.status === 'alive' && o.id !== t.id);
+    if (field.length === 0) return 1;
+    const avg = (f: (o: Tribute) => number) => field.reduce((sum, o) => sum + f(o), 0) / field.length;
+    let edge = 0;
+    edge += (t.health - avg(o => o.health)) / 200;
+    edge += (t.kills - avg(o => o.kills)) / 6;
+    edge += (t.inventory.some(i => i.type === 'weapon') ? 0.15 : -0.2);
+    const allies = state.tributes.filter(o =>
+        o.status === 'alive' && o.id !== t.id && o.allianceId !== undefined && o.allianceId === t.allianceId).length;
+    edge += Math.min(0.2, allies * 0.1);
+    edge += (t.inventory.some(i => i.type === 'food') && t.inventory.some(i => i.type === 'water')) ? 0.05 : -0.05;
+    return Math.max(-1, Math.min(1, edge));
+}
+
 function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objective {
     const state = ctx.state;
     const cycle = cycleOf(state);
@@ -186,7 +206,13 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
     if (sworn) {
         return { kind: 'hunt', targetId: sworn.id, expires: expiry(OBJECTIVES.huntCycles) };
     }
-    if (t.stance === 'Aggressive') {
+    // §3.3: in the endgame, a tribute who concludes they win a straight fight
+    // hunts whatever their stance says — waiting is how favourites get
+    // whittled down by attrition they were built to shortcut.
+    const fieldCount = state.tributes.filter(o => o.status === 'alive').length;
+    const countingTheField = fieldCount <= ENDGAME.fieldSize;
+    const edge = countingTheField ? endgameEdge(state, t) : 0;
+    if (t.stance === 'Aggressive' || (countingTheField && edge > ENDGAME.hunterEdge)) {
         // Only somebody they have actually seen recently — a hunter with no
         // sighting is not tracking anyone, they are just walking around angry.
         // `rememberedRivals(state, t, o.zone) > 0` alone only confirms that
@@ -220,10 +246,13 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
 
     // 5. Somebody to keep alive. Protectors are defined by this and had no way
     //    to express it.
-    if (arch.allianceAffinity > 0.15 || t.archetype === 'protector') {
+    if (arch.allianceAffinity > 0.15 || t.archetype === 'protector' || (t.protectorBonds?.length ?? 0) > 0) {
         const ward = state.tributes.find(o =>
             o.status === 'alive' && o.id !== t.id
-            && o.allianceId !== undefined && o.allianceId === t.allianceId
+            // §4.5: a sworn protector bond outranks the alliance test — a
+            // protector does not need a charter to refuse to leave their ward.
+            && ((t.protectorBonds?.includes(o.id))
+                || (o.allianceId !== undefined && o.allianceId === t.allianceId))
             && (o.health < OBJECTIVES.wardHealth || getRel(t, o.id) > OBJECTIVES.wardBond));
         if (ward) {
             return { kind: 'protect', wardId: ward.id, expires: expiry(OBJECTIVES.protectCycles) };

@@ -6,7 +6,7 @@ import { BLEEDING, COMBAT, DEBTS, FEAR, HUNTING, MEMORY, PROFICIENCY, QUALITY, R
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
-import { getZone } from './map';
+import { getZone, zoneFeatures } from './map';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rivalRecord } from './memory';
 import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
@@ -185,6 +185,8 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     // Bloodlust. A tribute who has just killed is keyed up and dangerous — this
     // is what lets a hunter snowball instead of every fight starting from zero.
     power += (t.momentum ?? 0) * HUNTING.momentumPowerWeight;
+    // §3.4: a shaken tribute fights below their numbers.
+    power -= (t.rattled ?? 0) * HUNTING.rattledPowerWeight;
 
     // What they have learned from losing to this person before.
     power += rematchEdge(t, opponent);
@@ -220,8 +222,13 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     // Who they are fighting, not just how badly it is going: a tribute who has
     // watched this particular person kill wants out long before the numbers say so.
     if (opponent) chance += fearFraction(t, opponent.id) * FEAR.retreatWeight;
+    // §5.2: a chokepoint has nowhere to run to — breaking off is harder to
+    // choose when the exit is a bottleneck the opponent can watch.
+    const zoneHere = getZone(ctx.state.arena, t.zone);
+    if (zoneHere && zoneFeatures(zoneHere).chokepoint) chance -= STEALTH.chokepointRetreatPenalty;
     // Bloodlust cuts the other way — a fresh kill is hard to walk away from.
     chance -= (t.momentum ?? 0) * HUNTING.momentumRetreatWeight;
+    chance += (t.rattled ?? 0) * HUNTING.rattledRetreatWeight;
     // Neither party wants to be the one who runs again.
     if (opponent) {
         const record = ensureMemory(t).rivals?.[opponent.id];

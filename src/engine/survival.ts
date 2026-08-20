@@ -1,5 +1,5 @@
 import { Tribute } from '../models/types';
-import { CRAFTING, INJURY_DAMAGE, MEDICAL, RECOVERY, SANITY, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { DRIFT, CRAFTING, INJURY_DAMAGE, MEDICAL, RECOVERY, SANITY, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -82,6 +82,11 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
         applyDamage(ctx, t, VITALS.starvingDamage, { cause: 'Died of starvation', kind: 'status' });
         // Going properly hungry and coming out the other side teaches a thing.
         if (t.status === 'alive' && ctx.rng.chance(VITALS.starvedTraitChance)) earnTrait(ctx, t, 'Starved');
+        // §3.1: starvation wasting. Muscle is the first thing the arena takes.
+        if (t.status === 'alive' && t.attributes.strength > DRIFT.strengthFloor) {
+            t.attributes.strength = Math.max(DRIFT.strengthFloor,
+                Math.round((t.attributes.strength - DRIFT.starvationWasting) * 100) / 100);
+        }
     }
     if (t.vitals.thirst > VITALS.dehydratedThreshold) {
         applyDamage(ctx, t, VITALS.dehydratedDamage, { cause: 'Died of dehydration', kind: 'status' });
@@ -155,6 +160,27 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
 
 /** Eating, drinking, and working through whatever medical supplies they have. */
 function consumeSupplies(ctx: SimContext, t: Tribute) {
+    // §4.5: a protector bond changes behaviour, not just numbers. A protector
+    // standing with a hungrier ward hands the food over before eating.
+    if ((t.protectorBonds?.length ?? 0) > 0 && t.vitals.hunger < 70) {
+        const ward = ctx.state.tributes.find(o =>
+            o.status === 'alive' && o.zone === t.zone
+            && t.protectorBonds!.includes(o.id)
+            && o.vitals.hunger > VITALS.eatThreshold
+            && o.vitals.hunger > t.vitals.hunger + 15
+            && !o.inventory.some(i => i.type === 'food'));
+        if (ward) {
+            const food = consumeOne(t, i => i.type === 'food');
+            if (food) {
+                ward.vitals.hunger = Math.max(0, ward.vitals.hunger - VITALS.foodRelief);
+                ctx.logEvent(
+                    `${t.name} splits their ${food.name} and gives ${ward.name} the larger half without being asked. Neither of them mentions it.`,
+                    [t.id, ward.id],
+                    { category: 'survival' }
+                );
+            }
+        }
+    }
     if (t.vitals.hunger > VITALS.eatThreshold) {
         const food = consumeOne(t, i => i.type === 'food');
         if (food) {

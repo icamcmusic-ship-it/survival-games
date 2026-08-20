@@ -10,7 +10,7 @@ import { processSponsors } from '../sponsors';
 import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
-    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, noteSighting,
+    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting,
 } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
@@ -181,6 +181,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayRelationships(ctx.state);
     decayAllianceTrust(ctx.state);
     decayFear(ctx.state);
+    decaySuspicion(ctx.state);
     decayTruces(ctx.state);
     // Obligations come due, district partners grow into each other, and any
     // group that agreed terms is held to them.
@@ -191,6 +192,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         // Bloodlust cools. A kill on day 3 should not still be making someone
         // braver on day 8.
         if (t.momentum) t.momentum = Math.max(0, t.momentum - HUNTING.momentumDecayPerCycle);
+        if (t.rattled) t.rattled = Math.max(0, t.rattled - HUNTING.rattledDecayPerCycle);
         // Capacity can shrink under a tribute — losing the Backpack is the
         // usual way — and `giveItem` only checks when something is added.
         const spilled = enforceCapacity(t);
