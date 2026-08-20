@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { GameState, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
+import { FeedLine } from './EventFeed';
 import { MapPin, Users, X, Heart } from 'lucide-react';
 
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
@@ -72,6 +73,12 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
         }))
         .filter(r => !!r.other)
         .sort((a, b) => b.value - a.value);
+    // UX-05: every event already records who was in it, so a tribute's whole
+    // story is one filter away.
+    const personalLog = useMemo(
+        () => gameState.log.filter(l => l.tributesInvolved.includes(tribute.id)),
+        [gameState.log, tribute.id]
+    );
     const knownZones = Object.entries(tribute.memory?.zones ?? {})
         .map(([name, slot]) => ({ name, ...slot }))
         .filter(z => z.threat > 0.15 || z.rivals > 0)
@@ -190,6 +197,17 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                     </span>
                                 </div>
                             ))}
+                        </div>
+                    </section>
+
+                    <section>
+                        <h4 className="panel-title mb-2">Their chronicle ({personalLog.length})</h4>
+                        <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                            {personalLog.length === 0 ? (
+                                <span className="text-sm text-[var(--color-ink-400)]">Nothing recorded about them yet</span>
+                            ) : (
+                                [...personalLog].reverse().map(l => <FeedLine key={l.id} log={l} animate={false} />)
+                            )}
                         </div>
                     </section>
 

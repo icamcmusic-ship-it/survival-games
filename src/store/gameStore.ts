@@ -40,6 +40,49 @@ function readCoins(): number {
     return Number.isFinite(raw) && raw >= 0 ? raw : STARTING_COINS;
 }
 
+const SAVE_KEY = 'survivalGamesSave';
+
+export interface SavedRun {
+    gameState: GameState;
+    bets: Record<string, Bet>;
+    betsResolved: boolean;
+    hofSaved: boolean;
+    isReplayedRun: boolean;
+    savedAt: string;
+}
+
+/** UX-01: an in-progress run is autosaved after every phase, so a refresh or a
+ *  closed tab doesn't erase an 8-day chronicle. Finished runs aren't worth
+ *  resuming, so they don't get saved. */
+function readSavedRun(): SavedRun | null {
+    try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && parsed.gameState ? (parsed as SavedRun) : null;
+    } catch {
+        return null;
+    }
+}
+
+function persistRun() {
+    const { gameState, bets, betsResolved, hofSaved, isReplayedRun } = gameStore.getState();
+    if (!gameState || gameState.phase === 'ended') {
+        localStorage.removeItem(SAVE_KEY);
+        return;
+    }
+    try {
+        const saved: SavedRun = { gameState, bets, betsResolved, hofSaved, isReplayedRun, savedAt: new Date().toISOString() };
+        localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
+    } catch {
+        // Storage full or unavailable — the run just won't be resumable.
+    }
+}
+
+function clearSavedRun() {
+    localStorage.removeItem(SAVE_KEY);
+}
+
 function readHallOfFame(): HallOfFameEntry[] {
     try {
         const parsed = JSON.parse(localStorage.getItem('hungerGamesHoF') || '[]');
@@ -162,9 +205,30 @@ export const gameActions = {
         gameStore.setState({ bets: {} });
     },
 
+    resumeSavedRun() {
+        const saved = readSavedRun();
+        if (!saved) return;
+        const { gameState } = saved;
+        gameStore.setState({
+            gameState,
+            simulator: new Simulator(gameState),
+            view: gameState.phase === 'reaping' || gameState.phase === 'setup' ? 'roster' : 'game',
+            bets: saved.bets,
+            betWonMessage: null,
+            betsResolved: saved.betsResolved,
+            hofSaved: saved.hofSaved,
+            isReplayedRun: saved.isReplayedRun,
+        });
+    },
+
+    discardSavedRun() {
+        clearSavedRun();
+    },
+
     startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false) {
         // Abandoning a run mid-wager used to silently pocket the player's coins.
         gameActions.refundOpenBets();
+        clearSavedRun();
 
         const safeSeed = seed.trim() || Math.random().toString(36).substring(2, 8).toUpperCase();
         const arena = arenaId.startsWith('procedural')
@@ -196,6 +260,7 @@ export const gameActions = {
             hofSaved: false,
             isReplayedRun: markReplayed,
         });
+        persistRun();
     },
 
     rerollCast() {
@@ -208,6 +273,7 @@ export const gameActions = {
         const newState: GameState = { ...gameState, seed: newSeed, tributes, log: [], logCounter: 0 };
 
         gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });
+        persistRun();
     },
 
     confirmReaping() {
@@ -216,12 +282,14 @@ export const gameActions = {
 
         const newState: GameState = { ...gameState, phase: 'setup' };
         gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });
+        persistRun();
     },
 
     syncFromSimulator() {
         const { simulator } = gameStore.getState();
         if (!simulator) return;
         gameStore.setState({ gameState: snapshot(simulator.getState()) });
+        persistRun();
     },
 
     nextPhase() {
@@ -291,4 +359,4 @@ export const gameActions = {
     },
 };
 
-export { readHallOfFame };
+export { readHallOfFame, readSavedRun };

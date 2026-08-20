@@ -64,6 +64,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-[var(--color-ink-300)] selection:bg-[var(--red)] selection:text-white">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <header className="sticky top-0 z-20 bg-[var(--ink)] border-b-[3px] border-[var(--red)]">
         <div className="max-w-6xl mx-auto flex justify-between items-center flex-wrap gap-3 px-4 py-3.5">
           <h1 className="text-xl md:text-2xl uppercase tracking-tight flex items-center gap-2 text-white m-0" style={{ fontFamily: 'var(--font-display)' }}>
@@ -94,7 +95,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main id="main-content" tabIndex={-1} className="max-w-6xl mx-auto px-4 py-8">
         {view === 'setup' && (
           <SetupScreen onStart={(seed, arenaId, gamemakerMode, config) => gameActions.startGame(seed, arenaId, gamemakerMode, config)} />
         )}

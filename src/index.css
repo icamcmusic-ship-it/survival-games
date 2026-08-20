@@ -400,6 +400,26 @@ body {
         color: #fff;
     }
 
+    .skip-link {
+        position: absolute;
+        left: 0.5rem;
+        top: -3rem;
+        z-index: 60;
+        padding: 0.5rem 0.9rem;
+        background: var(--red);
+        color: #fff;
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        transition: top 0.15s ease;
+    }
+
+    .skip-link:focus {
+        top: 0.5rem;
+    }
+
     .field {
         width: 100%;
         background: var(--paper-panel);
@@ -413,8 +433,12 @@ body {
     }
 
     .field:focus {
-        outline: none;
         background: #fff;
+    }
+
+    .field:focus-visible {
+        outline: 2px solid var(--red);
+        outline-offset: 1px;
     }
 
     /* ---------- bits ---------- */
@@ -462,6 +486,7 @@ body {
     }
 
     .meter {
+        position: relative;
         height: 7px;
         width: 100%;
         border-radius: 1px;
@@ -473,6 +498,16 @@ body {
     .meter > span {
         display: block;
         height: 100%;
+        transition: width 0.4s ease;
+    }
+
+    /* Printed potential yield, shown as an outline behind the actual stock fill (UX-03). */
+    .meter > span.meter-ghost {
+        position: absolute;
+        inset: 0;
+        height: auto;
+        background: transparent !important;
+        border-right: 2px dashed var(--color-ink-500);
         transition: width 0.4s ease;
     }
 

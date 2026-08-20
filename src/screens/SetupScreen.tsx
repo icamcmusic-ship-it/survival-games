@@ -1,11 +1,53 @@
 import React, { useState } from 'react';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { GameConfig } from '../models/types';
-import { Play, ChevronDown, ChevronRight, ArrowRight } from 'lucide-react';
+import { Play, ChevronDown, ChevronRight, ArrowRight, History } from 'lucide-react';
+import { gameActions, readSavedRun } from '../store/gameStore';
 
 function randomSeed() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
+
+const CONFIG_STORAGE_KEY = 'survivalGamesLastConfig';
+
+function readStoredConfig(): GameConfig {
+    try {
+        const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
+        if (!raw) return DEFAULT_GAME_CONFIG;
+        const parsed = JSON.parse(raw);
+        return { ...DEFAULT_GAME_CONFIG, ...parsed };
+    } catch {
+        return DEFAULT_GAME_CONFIG;
+    }
+}
+
+function storeConfig(config: GameConfig) {
+    try {
+        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+    } catch {
+        // Storage unavailable — the config simply won't be remembered next visit.
+    }
+}
+
+/** UX-11 named presets: one click sets every slider to a coherent profile. */
+const PRESETS: Array<{ name: string; blurb: string; config: GameConfig }> = [
+    { name: 'Canon', blurb: 'Balanced, book-accurate pacing.', config: DEFAULT_GAME_CONFIG },
+    {
+        name: 'Bloodbath',
+        blurb: 'Frequent hazards, quick betrayals.',
+        config: { districtCount: 12, hazardRate: 2.0, betrayalRate: 2.25, sponsorGenerosity: 0.75, enableFeast: true, enableSanity: true },
+    },
+    {
+        name: 'Slow Burn',
+        blurb: 'Calm arena, loyal alliances, generous sponsors.',
+        config: { districtCount: 12, hazardRate: 0.5, betrayalRate: 0.25, sponsorGenerosity: 2.0, enableFeast: false, enableSanity: true },
+    },
+    {
+        name: 'Chaos',
+        blurb: 'Everything turned up as far as it goes.',
+        config: { districtCount: 12, hazardRate: 2.5, betrayalRate: 3.0, sponsorGenerosity: 3.0, enableFeast: true, enableSanity: true },
+    },
+];
 
 function ConfigSlider({ label, hint, value, min, max, step, format, onChange }: {
     label: string, hint?: string, value: number, min: number, max: number, step: number,
@@ -35,8 +77,17 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const [seed, setSeed] = useState(randomSeed());
     const [arenaId, setArenaId] = useState(ARENAS[0].id);
     const [gamemakerMode, setGamemakerMode] = useState(false);
-    const [config, setConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
+    const [config, setConfigState] = useState<GameConfig>(readStoredConfig);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [savedRun, setSavedRun] = useState(readSavedRun);
+
+    const setConfig = (updater: GameConfig | ((c: GameConfig) => GameConfig)) => {
+        setConfigState(prev => {
+            const next = typeof updater === 'function' ? (updater as (c: GameConfig) => GameConfig)(prev) : updater;
+            storeConfig(next);
+            return next;
+        });
+    };
 
     const trimmedSeed = seed.trim();
     const start = () => onStart(trimmedSeed || randomSeed(), arenaId, gamemakerMode, config);
@@ -54,6 +105,33 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                 <h2 className="masthead-title text-5xl md:text-6xl text-balance">May the odds<br />be ever yours</h2>
                 <p className="masthead-sub text-sm">Set your parameters, then reap twenty-four tributes for the Capitol's Games.</p>
             </div>
+
+            {savedRun && (
+                <div className="panel p-5 flex flex-wrap items-center justify-between gap-4" style={{ borderColor: 'var(--red)', borderWidth: '3px' }}>
+                    <div className="flex items-start gap-3 min-w-0">
+                        <History className="w-5 h-5 text-[var(--red)] flex-none mt-0.5" />
+                        <div className="min-w-0">
+                            <div className="font-black text-[var(--ink)] uppercase text-sm">Resume in-progress run</div>
+                            <div className="text-xs text-[var(--color-ink-500)] mt-0.5">
+                                {savedRun.gameState.arena.name} · seed {savedRun.gameState.seed} ·{' '}
+                                {savedRun.gameState.day === 0 ? savedRun.gameState.phase : `Day ${savedRun.gameState.day} — ${savedRun.gameState.phase}`} ·{' '}
+                                {savedRun.gameState.tributes.filter(t => t.status === 'alive').length} tributes alive
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex gap-2 flex-none">
+                        <button
+                            onClick={() => { gameActions.discardSavedRun(); setSavedRun(null); }}
+                            className="btn btn-sm btn-ghost"
+                        >
+                            Discard
+                        </button>
+                        <button onClick={() => gameActions.resumeSavedRun()} className="btn btn-primary btn-sm">
+                            Resume
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="panel p-0 divide-y-2 divide-[var(--line-soft)]">
                 <div className="p-5 space-y-2">
@@ -136,6 +214,24 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
 
                     {showAdvanced && (
                         <div className="panel-flush p-4 space-y-5 animate-fadeIn">
+                            <div className="space-y-1.5">
+                                <span className="eyebrow">Presets</span>
+                                <div className="flex flex-wrap gap-2">
+                                    {PRESETS.map(p => {
+                                        const active = JSON.stringify(config) === JSON.stringify(p.config);
+                                        return (
+                                            <button
+                                                key={p.name}
+                                                onClick={() => setConfig(p.config)}
+                                                title={p.blurb}
+                                                className={`chip ${active ? 'chip-accent' : ''}`}
+                                            >
+                                                {p.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                             <ConfigSlider
                                 label="Districts"
                                 hint="Two tributes are reaped from every district."
