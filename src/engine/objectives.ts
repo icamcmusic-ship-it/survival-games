@@ -2,7 +2,7 @@ import { Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { MEMORY, MOVEMENT, OBJECTIVES } from '../data/balance';
 import { SimContext } from './context';
-import { cycleOf, cyclesSinceContact, ensureMemory, rememberedRivals, rememberedThreat } from './memory';
+import { cycleOf, cyclesSinceContact, ensureMemory, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet } from './map';
 import { fearOf } from './fear';
 import { getRel } from './relationships';
@@ -132,6 +132,40 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
         }
     }
 
+    // 2b. Hunger. The second-most reliable status killer, and until now the
+    //     one need that produced no intention at all: a starving tribute in a
+    //     stripped zone just kept rolling forage against nothing. If where they
+    //     stand is (believed) barren or was never rich, walk somewhere that
+    //     still has food in it.
+    if (t.vitals.hunger > MOVEMENT.hungerUrgency && !t.inventory.some(i => i.type === 'food')) {
+        const hereZone = getZone(state.arena, t.zone);
+        const hereBarren = rememberedBarren(state, t, t.zone) >= MOVEMENT.forageBarrenThreshold
+            || (hereZone !== undefined && hereZone.resources < MOVEMENT.forageMinResources);
+        if (hereBarren) {
+            const larder = nearestZoneMatching(ctx, t, active, z =>
+                z.resources >= MOVEMENT.forageMinResources
+                && rememberedBarren(state, t, z.name) < MOVEMENT.forageBarrenThreshold);
+            if (larder && larder !== t.zone) {
+                return { kind: 'reach', zone: larder, reason: 'forage', expires: expiry(OBJECTIVES.reachCycles) };
+            }
+        }
+    }
+
+    // 2c. The group. A member split off from their alliance — a border
+    //     collapse, a feast, a fight that scattered — makes getting back to
+    //     them a stated plan, not just a silent pull in the movement layer.
+    if (t.allianceId) {
+        const mates = state.tributes.filter(o =>
+            o.status === 'alive' && o.id !== t.id && o.allianceId === t.allianceId);
+        const together = mates.some(o => o.zone === t.zone);
+        if (mates.length > 0 && !together) {
+            const known = mates.find(o => cyclesSinceContact(state, t, o.id) <= MEMORY.sightingLifetime * 2);
+            if (known && !collapsed.includes(known.zone)) {
+                return { kind: 'reach', zone: known.zone, reason: 'ally', expires: expiry(OBJECTIVES.reachCycles) };
+            }
+        }
+    }
+
     // 3. The feast, once it is called: a scheduled reason for the whole cast to
     //    converge that the movement layer previously knew nothing about.
     if (state.feastDay !== undefined && state.day >= state.feastDay - 1) {
@@ -157,13 +191,27 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
         // *someone* hostile was in that zone; picking `o` by their live
         // position on top of that would name the specific person the hunter
         // was never actually shown. `cyclesSinceContact` is identity-scoped.
-        const target = state.tributes.find(o =>
+        const candidates = state.tributes.filter(o =>
             o.status === 'alive' && o.id !== t.id
             && (o.allianceId === undefined || o.allianceId !== t.allianceId)
             && rememberedRivals(state, t, o.zone) > 0
             && cyclesSinceContact(state, t, o.id) <= MEMORY.sightingLifetime
             && fearOf(t, o.id) < OBJECTIVES.huntAbandonFear);
-        if (target) {
+        if (candidates.length > 0) {
+            // Hunting is opportunism, the same arithmetic pickBetrayalTarget
+            // already does: the wounded loner carrying a medkit outranks the
+            // healthy Career with a trident. Weigh how winnable the fight looks
+            // (from what the hunter last saw, not the live sheet), the loot,
+            // and the grudge — minus how much this person frightens them.
+            const score = (o: Tribute) => {
+                const winnable = (100 - o.health)
+                    + (o.inventory.some(i => i.type === 'weapon') ? 0 : 30)
+                    + (o.allianceId === undefined ? 15 : 0);
+                const loot = o.inventory.reduce((sum, i) => sum + i.value, 0) * 0.3;
+                const grudge = Math.max(0, -getRel(t, o.id)) * 0.5;
+                return winnable + loot + grudge - fearOf(t, o.id);
+            };
+            const target = candidates.reduce((best, o) => (score(o) > score(best) ? o : best));
             return { kind: 'hunt', targetId: target.id, expires: expiry(OBJECTIVES.huntCycles) };
         }
     }

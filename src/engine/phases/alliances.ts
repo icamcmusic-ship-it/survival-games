@@ -6,7 +6,7 @@ import { ALLIANCES, PROTECTOR_BOND, ROMANCE } from '../../data/balance';
 import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact } from '../memory';
-import { allianceOf, areLovers, contributeToCache, membersOf, mergeAllianceRecords, reconcileAlliances, registerAlliance } from '../alliance';
+import { allianceOf, areLovers, contributeToCache, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
 import { addExcitement } from '../audience';
 import { traitMod } from '../../data/traits';
@@ -312,15 +312,40 @@ function mergeAlliances(ctx: SimContext) {
             // Same ground, or there is no conversation to have.
             if (a[0].zone !== b[0].zone) continue;
 
+            // A merger is negotiated by whoever the two groups actually follow,
+            // not vetoed by blanket mutual regard: the leaders have to get on,
+            // and any member who genuinely loathes the other side walks out
+            // rather than blocking the handshake. That is a better story than
+            // the merge silently failing.
+            const leadA = pickLeader(a);
+            const leadB = pickLeader(b);
             const crossRegard = (x: Tribute[], y: Tribute[]) =>
                 x.reduce((sum, m) => sum + y.reduce((inner, o) => inner + getRel(m, o.id), 0) / y.length, 0) / x.length;
-            if (crossRegard(a, b) < ALLIANCES.mergeThreshold) continue;
-            if (crossRegard(b, a) < ALLIANCES.mergeThreshold) continue;
+            // Two leaders who know and rate each other can shake on it directly;
+            // otherwise the groups need to broadly get on — either basis opens
+            // the negotiation, and dissenters walk instead of vetoing it.
+            const leadersAgree = getRel(leadA, leadB.id) >= ALLIANCES.mergeThreshold
+                && getRel(leadB, leadA.id) >= ALLIANCES.mergeThreshold;
+            const groupsAgree = crossRegard(a, b) >= ALLIANCES.mergeThreshold
+                && crossRegard(b, a) >= ALLIANCES.mergeThreshold;
+            if (!leadersAgree && !groupsAgree) continue;
             if (!ctx.rng.chance(ALLIANCES.mergeChance)) continue;
 
+            const regardFor = (m: Tribute, others: Tribute[]) =>
+                others.reduce((sum, o) => sum + getRel(m, o.id), 0) / others.length;
+            const dissenters = [
+                ...a.filter(m => m.id !== leadA.id && regardFor(m, b) < ALLIANCES.mergeDissentThreshold),
+                ...b.filter(m => m.id !== leadB.id && regardFor(m, a) < ALLIANCES.mergeDissentThreshold),
+            ];
+            dissenters.forEach(m => { delete m.allianceId; });
+
+            const stayA = a.filter(m => !dissenters.includes(m));
+            const stayB = b.filter(m => !dissenters.includes(m));
+            if (stayA.length === 0 || stayB.length === 0) continue;
+
             // The larger group absorbs the smaller; a tie goes to the older pact.
-            const keepId = a.length >= b.length ? ids[i] : ids[j];
-            const merged = [...a, ...b];
+            const keepId = stayA.length >= stayB.length ? ids[i] : ids[j];
+            const merged = [...stayA, ...stayB];
             merged.forEach(m => { m.allianceId = keepId; });
             merged.forEach(m => merged.forEach(o => { if (m.id !== o.id) noteContact(ctx.state, m, o); }));
             mergeAllianceRecords(ctx, keepId, keepId === ids[i] ? ids[j] : ids[i], merged);
@@ -328,11 +353,18 @@ function mergeAlliances(ctx: SimContext) {
             groups.delete(keepId === ids[i] ? ids[j] : ids[i]);
 
             ctx.logEvent(
-                `${a.map(m => m.name).join(' and ')} throw in with ${b.map(m => m.name).join(' and ')} in ${a[0].zone}. ` +
+                `${leadA.name} and ${leadB.name} shake on it in ${a[0].zone}: their groups run as one. ` +
                 `Two small groups are one larger one, which is either much safer or much worse.`,
                 merged.map(m => m.id),
                 { important: true, category: 'alliance' }
             );
+            if (dissenters.length > 0) {
+                ctx.logEvent(
+                    `${dissenters.map(m => m.name).join(' and ')} want${dissenters.length === 1 ? 's' : ''} no part of the new arrangement and walk${dissenters.length === 1 ? 's' : ''} away from it.`,
+                    dissenters.map(m => m.id),
+                    { important: true, category: 'alliance' }
+                );
+            }
             return;
         }
     }

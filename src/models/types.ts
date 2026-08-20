@@ -452,8 +452,10 @@ export interface GameState {
     baseConfig: GameConfig;
     collapsedZones?: string[];
     epilogueInterview?: EpilogueQA[];
-    /** Day the next Gamemaker feast is scheduled for (undefined = none scheduled). */
+    /** Day the next Gamemaker feast is scheduled for (undefined = none scheduled). Cleared once the feast resolves. */
     feastDay?: number;
+    /** Day the most recent feast actually convened — guards against two feasts landing on the same day. */
+    lastFeastDay?: number;
     /** Feasts already held this run, used to space them out. */
     feastsHeld?: number;
     /** Monotonic counter guaranteeing unique event log ids. */

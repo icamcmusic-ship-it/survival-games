@@ -256,10 +256,15 @@ export const HUNTING = {
  * out-weighs the first.
  */
 export const PROFICIENCY = {
-    /** Gained per successful use. */
+    /** Gained per successful use, before diminishing returns. */
     gainPerUse: 0.35,
-    /** Nobody becomes a surgeon in eight days. */
-    max: 4,
+    /** Nobody becomes a surgeon in eight days — but the old cap of 4 was hit
+     *  by every specialist by mid-run, flattening late-run differentiation.
+     *  Raised, with each successive point costing more (see `trainProficiency`),
+     *  so the curve binds instead of the wall. */
+    max: 6,
+    /** Gains shrink by this factor per level already held. */
+    diminishingPerLevel: 0.22,
     /** Archetypes start their signature skill slightly ahead. */
     archetypeHeadStart: 1,
     /** Forage chance added per point of forage proficiency. */
@@ -308,8 +313,11 @@ export const FEAR = {
  * closer the end gets, the less anyone can afford to be civil.
  */
 export const DESPERATION = {
-    /** Field size at which the arithmetic starts to press on people. */
-    fieldSize: 8,
+    /** Field size at which the arithmetic starts to press on people. The old
+     *  gate of 8 produced ~11 desperation fights across 240 runs — most
+     *  encounters at that field size are already combat through the stance and
+     *  grudge branches, so the endgame's best beat almost never fired. */
+    fieldSize: 10,
     /** Odds an otherwise-peaceful meeting turns into a fight, at the threshold. */
     baseHostility: 0.25,
     /** Added per tribute below the threshold. */
@@ -699,6 +707,12 @@ export const MOVEMENT = {
     /** Thirst above which finding water outranks everything else. */
     thirstUrgency: 45,
     waterSeekWeight: 7,
+    /** Hunger above which walking somewhere that still has food becomes a plan. */
+    hungerUrgency: 55,
+    /** A zone this stripped (believed) is not worth foraging in. */
+    forageBarrenThreshold: 0.5,
+    /** A destination zone needs at least this much printed forage to be worth the walk. */
+    forageMinResources: 0.45,
     /** Fatigue above which cover is worth walking to. */
     shelterUrgency: 60,
     shelterSeekWeight: 1.5,
@@ -1106,7 +1120,7 @@ export const ALLIANCES = {
      * or more that could exist in a run — every organic alliance was a duo,
      * for the whole game, by construction.
      */
-    maxSize: 4,
+    maxSize: 6,
     /** Base odds a group takes in a loner they get on with. */
     recruitChance: 0.35,
     /**
@@ -1136,6 +1150,9 @@ export const ALLIANCES = {
      */
     mergeChance: 0.35,
     mergeThreshold: 12,
+    /** A member whose average regard for the other group is below this walks
+     *  out of a negotiated merge rather than blocking it. */
+    mergeDissentThreshold: -10,
 
     /**
      * The Career pack is a marriage of convenience, and it should look like one.

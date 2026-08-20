@@ -156,7 +156,7 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
         // trigger lets a caller keyed on (day, phase) call feasts forever — and
         // a tribute who declines every one of them never dies, so the Games
         // never end.
-        if (ctx.state.feastDay === ctx.state.day) {
+        if (ctx.state.feastDay === ctx.state.day || ctx.state.lastFeastDay === ctx.state.day) {
             ctx.logEvent('GAMEMAKER: The tributes have already been called to the Cornucopia today. The table stays empty.', [], { category: 'gamemaker' });
             return;
         }

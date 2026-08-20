@@ -35,7 +35,9 @@ import { traitMod } from '../../data/traits';
 
 /** Training scores 1-8 are earned on merit; every point above 8 is a separate gate. */
 const ELITE_GATE_BASE = 0.3;
-const ELITE_GATE_DECAY = 0.3;
+// 0.3 measured out to one 11 every ~18 Games and a 12 every ~140 — canon's 11
+// is remarkable but happens; 0.42 keeps the exponential shape one notch gentler.
+const ELITE_GATE_DECAY = 0.42;
 const ELITE_GATE_CAP = 0.55;
 
 function meritMultiplier(t: Tribute): number {

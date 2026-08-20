@@ -12,6 +12,8 @@ import { getRel } from '../relationships';
 import { hasVengeanceAgainst, noteSighting } from '../memory';
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
+import { hopsTo, severedEdgeSet } from '../map';
+import { pickNeededGift } from '../sponsors';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -23,9 +25,23 @@ export function processFeast(ctx: SimContext) {
     const cornucopia = ctx.state.arena.zones[0]?.name ?? 'The Cornucopia';
 
     ctx.state.feastsHeld = (ctx.state.feastsHeld ?? 0) + 1;
+    // Consumed: leaving this set kept the 'feast' objective pulling the whole
+    // cast toward the Cornucopia for the rest of the run.
+    ctx.state.feastDay = undefined;
+    ctx.state.lastFeastDay = ctx.state.day;
 
     const decliners = [] as typeof alive;
+    const strandedFar = [] as typeof alive;
+    const collapsed = ctx.state.collapsedZones ?? [];
+    const severed = severedEdgeSet(ctx.state);
     alive.forEach(t => {
+        // The feast was announced a day ago and the journey was real: anyone
+        // still more than two hops out did not make it, whatever they wanted.
+        const hops = hopsTo(ctx.state.arena, t.zone, cornucopia, collapsed, severed);
+        if (hops === undefined || hops > 2) {
+            strandedFar.push(t);
+            return;
+        }
         // Desperation still overrides everything — a starving tribute goes.
         if (t.vitals.hunger > FEAST.desperateHunger || t.vitals.thirst > FEAST.desperateThirst) {
             attendees.push(t);
@@ -51,8 +67,24 @@ export function processFeast(ctx: SimContext) {
     };
 
     announce(decliners, FEAST_TEXTS.decline, names => `${names} weigh the feast against the odds and stay exactly where they are.`);
+    if (strandedFar.length > 0) {
+        ctx.logEvent(
+            `${strandedFar.map(t => t.name).join(', ')} ${strandedFar.length > 1 ? 'are' : 'is'} too far out to reach the Cornucopia before the table is withdrawn.`,
+            strandedFar.map(t => t.id),
+            { category: 'feast' }
+        );
+    }
     attendees.forEach(t => { t.zone = cornucopia; });
     announce(attendees, FEAST_TEXTS.attend, names => `${names} break cover and converge on the Cornucopia.`);
+    if (attendees.length > 0) {
+        // Canon's defining feast image: a table of packs, each marked with a
+        // district number, each holding the one thing its tribute needs.
+        ctx.logEvent(
+            `On the table sit packs marked by district number. Whatever each tribute needs most, the Gamemakers have packed it.`,
+            [],
+            { zone: cornucopia, category: 'feast' }
+        );
+    }
 
     if (attendees.length === 0) {
         ctx.logEvent('Not one tribute comes to the feast. The table sits untouched until the Gamemakers withdraw it.', [], { important: true, category: 'feast' });
@@ -107,20 +139,23 @@ export function processFeast(ctx: SimContext) {
             { important: true, zone: cornucopia, category: 'feast' }
         );
         shuffled.splice(1).forEach(t => {
-            const minted = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.feast);
+            // Their own district pack: the thing they actually need, per the
+            // same need arithmetic the sponsor stream uses.
+            const minted = mintItem(ctx.rng, pickNeededGift(ctx, t, ITEMS), QUALITY_BIAS.feast);
             giveItem(t, minted);
             t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
             t.vitals.thirst = Math.max(0, t.vitals.thirst - 40);
             clampTribute(t);
-            ctx.logEvent(`${t.name} leaves the feast with ${itemPhrase(minted)} and a full stomach.`, [t.id], { zone: cornucopia, category: 'feast' });
+            ctx.logEvent(`${t.name} leaves the feast with the District ${t.district} pack — ${itemPhrase(minted)} — and a full stomach.`, [t.id], { zone: cornucopia, category: 'feast' });
         });
     }
 
     if (shuffled.length === 1) {
         const winner = shuffled[0];
-        const item1 = ctx.rng.pick(ITEMS);
-        const item2 = ctx.rng.pick(ITEMS);
-        giveItem(winner, { ...item1 }, { ...item2 });
+        // Their own pack, plus whichever of the unclaimed ones suits them best.
+        const item1 = mintItem(ctx.rng, pickNeededGift(ctx, winner, ITEMS), QUALITY_BIAS.feast);
+        const item2 = mintItem(ctx.rng, pickNeededGift(ctx, winner, ITEMS), QUALITY_BIAS.feast);
+        giveItem(winner, item1, item2);
         winner.health = Math.min(100, winner.health + 50);
         winner.vitals.hunger = 0;
         winner.vitals.thirst = 0;

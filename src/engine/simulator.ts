@@ -77,6 +77,12 @@ export class Simulator {
         // below has to see that.
         if (this.state.phase === 'day') fireScheduledWildcard(this.ctx);
 
+        // A feast announced yesterday convenes today — the intervening day and
+        // night were the journey, driven by the 'feast' objective.
+        if (this.state.phase === 'day' && this.state.feastDay === this.state.day && this.state.config.enableFeast) {
+            this.state.phase = 'feast';
+        }
+
         if (this.state.phase === 'day') {
             processDayNight(this.ctx, 'day');
             this.state.phase = 'night';
@@ -120,8 +126,10 @@ export class Simulator {
         const rng = new RNG(`${this.state.seed}-feast-call-${this.state.day}`);
         if (!rng.chance(0.6)) return;
 
-        this.state.phase = 'feast';
-        this.state.feastDay = this.state.day;
+        // Announced a full day ahead: canon gives tributes the journey, and the
+        // journey — driven by the 'feast' objective in the movement layer — is
+        // where the tension lives. The feast itself convenes tomorrow.
+        this.state.feastDay = this.state.day + 1;
         this.ctx.logEvent(rng.pick(FEAST_TEXTS.announce), [], { important: true, category: 'feast' });
     }
 

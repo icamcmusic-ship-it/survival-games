@@ -418,10 +418,13 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         if (!collapsedList.includes(t.zone)) return;
 
         // The Gamemakers want a victor, not an empty arena: the border herds
-        // the last survivors together rather than finishing them.
+        // the last survivors together rather than finishing them. For
+        // finalists that is literal — the wall bloodies them but never lands
+        // the killing blow itself; 7.75% of runs used to end with no victor,
+        // most of them to this exact damage source.
         const finalists = getAlive(ctx.state).length <= ESCALATION.finalistCount;
         const damage = finalists
-            ? ESCALATION.finalistCollapseDamage
+            ? Math.min(ESCALATION.finalistCollapseDamage, Math.max(0, t.health - 1))
             : ESCALATION.collapseDamageBase + (ctx.state.day - startDay) * ESCALATION.collapseDamagePerDay;
         const safeZones = allZoneNames.filter(z => !collapsedList.includes(z));
         // Nearest reachable safe zone via the adjacency graph, not an
