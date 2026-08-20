@@ -191,6 +191,18 @@ export const INTERVIEW_SCENARIOS = [
 ];
 
 export const ENCOUNTER_TEXTS = {
+    /**
+     * The moment two people with no quarrel do the arithmetic and realise there
+     * is only one way either of them goes home. Fires only late, when the field
+     * has narrowed enough that indifference stops being an option.
+     */
+    desperation: [
+        "{t1} and {t2} meet in {zone} with nothing between them but the count. There are too few left for either to walk away.",
+        "Neither {t1} nor {t2} wanted this. In {zone}, with the field this thin, wanting has stopped mattering.",
+        "{t1} looks at {t2} across {zone} and does the arithmetic. So does {t2}. Only one of them is going home.",
+        "There is no grudge between {t1} and {t2} — only the number of tributes still breathing, and it is small enough now to decide things.",
+        "{t1} and {t2} have avoided each other all week. In {zone}, with the sky counting down, the week runs out.",
+    ],
     peaceful: [
         "{t1} and {t2} cross paths in {zone}. They nod at each other and walk away.",
         "{t1} spots {t2} resting in {zone}, but decides to leave them alone.",

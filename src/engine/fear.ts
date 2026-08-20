@@ -1,0 +1,62 @@
+import { GameState, Tribute } from '../models/types';
+import { FEAR } from '../data/balance';
+import { ensureMemory } from './memory';
+
+/**
+ * Fear.
+ *
+ * Psychology used to touch exactly one decision in the whole simulation — the
+ * generic per-round retreat roll — so a tribute who had watched someone butcher
+ * their district partner walked into that person's zone as cheerfully as into
+ * anyone else's. Training-score intimidation moved relationships and sanity and
+ * then evaporated.
+ *
+ * Fear is per-target and it persists. It makes the Careers genuinely
+ * frightening — their reputation precedes them — and it gives a tribute a
+ * reason to run that is about a person rather than a health bar.
+ */
+
+export function fearOf(t: Tribute, otherId: string): number {
+    return ensureMemory(t).fear?.[otherId] ?? 0;
+}
+
+export function addFear(t: Tribute, otherId: string, amount: number) {
+    if (t.id === otherId) return;
+    const mem = ensureMemory(t);
+    if (!mem.fear) mem.fear = {};
+    mem.fear[otherId] = Math.min(FEAR.max, Math.round((mem.fear[otherId] ?? 0) + amount));
+}
+
+/** Fear as a 0-1 fraction, which is the form every consumer actually wants. */
+export function fearFraction(t: Tribute, otherId: string): number {
+    return fearOf(t, otherId) / FEAR.max;
+}
+
+/** The most frightening living tribute believed to be in a given zone. */
+export function fearInZone(state: GameState, t: Tribute, zoneName: string): number {
+    let worst = 0;
+    state.tributes.forEach(o => {
+        if (o.status !== 'alive' || o.id === t.id) return;
+        // Only what they believe: a tribute they have not seen recently cannot
+        // be placed on the map, so their menace does not colour this zone.
+        if (o.zone !== zoneName) return;
+        const slot = ensureMemory(t).zones[zoneName];
+        if (!slot || slot.rivals <= 0) return;
+        worst = Math.max(worst, fearOf(t, o.id));
+    });
+    return worst;
+}
+
+/** Terror fades, but slowly — it is one of the stickier things in the arena. */
+export function decayFear(state: GameState) {
+    state.tributes.forEach(t => {
+        if (t.status !== 'alive') return;
+        const mem = ensureMemory(t);
+        if (!mem.fear) return;
+        Object.keys(mem.fear).forEach(id => {
+            const next = mem.fear[id] * FEAR.decayPerCycle;
+            if (next < 1) delete mem.fear[id];
+            else mem.fear[id] = Math.round(next);
+        });
+    });
+}

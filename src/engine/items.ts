@@ -1,5 +1,6 @@
 import { Item, Tribute } from '../models/types';
-import { INVENTORY } from '../data/balance';
+import { INVENTORY, PHYSIQUE } from '../data/balance';
+import { massOf } from './physique';
 
 // Item names that read as plurals and so take "some", not "a"/"an".
 const PLURAL_ITEM_IDS = new Set(['knife', 'berries', 'matches', 'bow']);
@@ -27,7 +28,11 @@ export function hasBackpack(t: Tribute): boolean {
  * gives it a job and makes stripping a body a decision rather than a freebie.
  */
 export function carryCapacity(t: Tribute): number {
-    return INVENTORY.baseCapacity + (hasBackpack(t) ? INVENTORY.backpackCapacity : 0);
+    // A flat 4 for everyone meant a Frail twelve-year-old hauled exactly as much
+    // out of the Cornucopia as a Muscular eighteen-year-old from District 2.
+    // `build` was generated with care and read only by display code.
+    const fromBuild = Math.round(massOf(t) * PHYSIQUE.capacityPerMass);
+    return Math.max(2, INVENTORY.baseCapacity + fromBuild + (hasBackpack(t) ? INVENTORY.backpackCapacity : 0));
 }
 
 /** Ranks what a tribute would rather drop first when their hands are full. */

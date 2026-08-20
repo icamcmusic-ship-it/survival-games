@@ -1,8 +1,8 @@
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
-import { ITEMS } from '../../data/constants';
-import { ENCOUNTERS, ESCALATION, MEMORY, SPONSORS } from '../../data/balance';
+import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
+import { CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, SPONSORS } from '../../data/balance';
 import { AMBIENT_TEXTS, ENCOUNTER_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
@@ -15,7 +15,8 @@ import {
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { isNoticed } from '../stealth';
-import { pickDestination } from '../movement';
+import { pickDestination, pursuitTarget } from '../movement';
+import { decayFear } from '../fear';
 import { updateStance } from '../stance';
 import { processSpoilage, processVitals } from '../survival';
 import {
@@ -87,7 +88,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayMemories(ctx.state);
     decayRelationships(ctx.state);
     decayAllianceTrust(ctx.state);
+    decayFear(ctx.state);
     getAlive(ctx.state).forEach(t => {
+        // Bloodlust cools. A kill on day 3 should not still be making someone
+        // braver on day 8.
+        if (t.momentum) t.momentum = Math.max(0, t.momentum - HUNTING.momentumDecayPerCycle);
         // Excitement is a decaying asset — a tribute cannot coast on a day-1
         // highlight reel while someone else is having a far more eventful day 6.
         t.excitementRating = Math.max(0, Math.round(
@@ -157,6 +162,25 @@ function craft(ctx: SimContext, t: Tribute) {
         ctx.logEvent(`${t.name} lashes a knife to a shaft with rope and walks away holding a Spear.`, [t.id], { category: 'loot' });
     }
 
+    // Anyone holding nothing at all will make something. A tribute with empty
+    // hands is a tribute who will never willingly fight, and only a third of the
+    // cast was ever armed — the Cornucopia and the feast simply do not put
+    // enough steel into circulation to go round.
+    if (!t.inventory.some(i => i.type === 'weapon') && ctx.rng.chance(CRAFTING.improviseChance)) {
+        const zone = getZone(ctx.state.arena, t.zone);
+        // What the ground offers: timber in the woods, stone everywhere else.
+        const wooded = zone?.terrain === 'forest' || zone?.terrain === 'wetland';
+        const recipe = IMPROVISED_ITEMS.find(i => i.id === (wooded ? 'club' : 'sharpstone'))!;
+        giveItem(t, { ...recipe });
+        ctx.logEvent(
+            wooded
+                ? `${t.name} breaks a limb off a deadfall in ${t.zone} and works it into a cudgel.`
+                : `${t.name} spends an hour in ${t.zone} knapping a stone into something with an edge.`,
+            [t.id],
+            { category: 'loot' }
+        );
+    }
+
     // Tricksters can improvise a garrote from wire.
     if (t.archetype === 'trickster') {
         const hasWire = t.inventory.findIndex(i => i.id === 'wire');
@@ -205,9 +229,28 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         return;
     }
 
-    if (!ctx.rng.chance(wanderChanceFor(t))) return;
     const options = reachableZones(ctx.state.arena, t.zone, collapsed);
     if (options.length === 0) return;
+
+    // A hunter who knows where somebody went follows them, and does so whether
+    // or not the wander roll would have moved them at all — going after someone
+    // is a decision, not a wander.
+    const pursued = pursuitTarget(ctx, t, options);
+    if (pursued && pursued.name !== t.zone) {
+        const quarry = ctx.state.tributes.find(o => o.status === 'alive' && o.zone === pursued.name && o.id !== t.id);
+        const from = t.zone;
+        t.zone = pursued.name;
+        ctx.logEvent(
+            quarry
+                ? `${t.name} breaks camp in ${from} and moves on ${pursued.name}, hunting ${quarry.name}.`
+                : `${t.name} follows a trail out of ${from} into ${pursued.name}.`,
+            quarry ? [t.id, quarry.id] : [t.id],
+            { zone: pursued.name, important: !!quarry, category: 'travel' }
+        );
+        return;
+    }
+
+    if (!ctx.rng.chance(wanderChanceFor(t))) return;
     const newZone = pickDestination(ctx, t, options).name;
     if (t.zone === newZone) return;
 
@@ -284,7 +327,14 @@ function resolveEncounters(
             return;
         }
 
-        if (ctx.rng.chance(ENCOUNTERS.meetChance)) {
+        // A tribute who is actively sweeping the zone for someone to fight finds
+        // them far more often than one who happens to be standing in it. Without
+        // this, hunting was a stance with no mechanical expression at all.
+        const meetChance = t.stance === 'Aggressive'
+            ? Math.min(0.95, ENCOUNTERS.meetChance * HUNTING.meetChanceMultiplier)
+            : ENCOUNTERS.meetChance;
+
+        if (ctx.rng.chance(meetChance)) {
             // Three or more free bodies in one zone is a group problem.
             const hostilePresent = others.filter(o => o.allianceId === undefined || o.allianceId !== t.allianceId);
             if (others.length >= 2 && hostilePresent.length >= 1 && ctx.rng.chance(ENCOUNTERS.groupFightChance)) {

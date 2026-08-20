@@ -16,7 +16,7 @@ import { generateTributes, strengthCapForAge } from '../src/engine/generator';
 import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG, traitsConflict } from '../src/data/constants';
-import { ALLIANCES, GENERATION, RELATIONSHIPS, ZONES } from '../src/data/balance';
+import { ALLIANCES, FEAR, GENERATION, HUNTING, PROFICIENCY, RELATIONSHIPS, ZONES } from '../src/data/balance';
 import { carryCapacity } from '../src/engine/items';
 import { oddsScore } from '../src/engine/odds';
 import { GameConfig, GameState, Stance } from '../src/models/types';
@@ -51,6 +51,10 @@ let vengeanceSworn = 0, groupFights = 0, retreats = 0, griefEvents = 0, depleted
 let ambushes = 0, hiddenMoments = 0, recruitments = 0, overloadedDrops = 0;
 let maxAllianceSeen = 0, organicTrios = 0;
 let oddsMoved = 0, oddsCompared = 0;
+// Tribute-logic overhaul: every new system needs evidence it ran.
+let clots = 0, fieldDressings = 0, restRecoveries = 0, huntOrCraft = 0;
+let zoneDrinks = 0, pursuits = 0, desperationFights = 0, fearFelt = 0;
+let bestProficiencySeen = 0;
 let maxAbsRelationship = 0;
 
 for (let i = 0; i < 240; i++) {
@@ -164,6 +168,42 @@ for (let i = 0; i < 240; i++) {
     if (/wave .* in\.|worth more inside|nobody asks them to leave|makes their case/.test(l.text)) recruitments++;
     if (l.text.includes('cannot carry it all') || l.text.includes('leaves') && l.text.includes('in the dirt')) overloadedDrops++;
     if (l.text.includes('already stripped bare')) depletedForages++;
+    // --- Tribute-logic overhaul: each new system must actually fire. ---
+    if (l.text.includes('bleeding has clotted')) clots++;
+    if (/binds their wound tight|rough dressing onto the wound|dressing onto .*'s wound|binds .*'s wound properly/.test(l.text)) fieldDressings++;
+    if (l.text.includes('sleeps properly for the first time')) restRecoveries++;
+    if (/runs down something small|knapping a stone|works it into a cudgel/.test(l.text)) huntOrCraft++;
+    if (/drinks their fill from the water|risks a drink from|boils water from/.test(l.text)) zoneDrinks++;
+    if (l.text.includes('hunting ')) pursuits++;
+    if (/too few left for either|Only one of them is going home|the week runs out|wanting has stopped mattering|small enough now to decide things/.test(l.text)) desperationFights++;
+  });
+
+  // --- Bleeding must be a rate, not a boolean. Any tribute flagged as
+  // bleeding must carry a severity inside the damage table's bounds, or the
+  // wound silently costs zero health per cycle. ---
+  state.tributes.forEach(t => {
+    if (!t.injuries.bleeding) return;
+    const severity = t.bleedSeverity ?? -1;
+    if (severity < 1 || severity > 3) {
+      note(`bleeding tribute with out-of-range severity ${severity} in ${seed}`);
+    }
+  });
+
+  // --- Proficiencies must grow, and must never exceed their cap. ---
+  state.tributes.forEach(t => {
+    Object.entries(t.proficiencies ?? {}).forEach(([skill, level]) => {
+      if ((level ?? 0) > PROFICIENCY.max + 1e-9) {
+        note(`proficiency ${skill} exceeded its cap at ${level} in ${seed}`);
+      }
+      if ((level ?? 0) > bestProficiencySeen) bestProficiencySeen = level ?? 0;
+    });
+    // Fear is bounded and only ever aimed at other people.
+    Object.entries(t.memory?.fear ?? {}).forEach(([id, value]) => {
+      if (id === t.id) note(`tribute afraid of themselves in ${seed}`);
+      if (value < 0 || value > FEAR.max) note(`fear out of bounds at ${value} in ${seed}`);
+      if (value > 0) fearFelt++;
+    });
+    if ((t.momentum ?? 0) > HUNTING.momentumMax) note(`momentum exceeded its cap in ${seed}`);
   });
 
   if (new Set(state.tributes.map(t => t.name)).size !== state.tributes.length) note(`duplicate tribute names in ${seed}`);
@@ -351,12 +391,24 @@ if (organicTrios === 0) note('no alliance outside the Career pack ever exceeded 
 if (overloadedDrops === 0) note('carry capacity never bound on anyone — the Backpack has nothing to do');
 if (zonesEverDepleted > 0 && zonesEverRecovered === 0) note('zone resources deplete but never recover');
 if (oddsCompared > 0 && oddsMoved === 0) note('odds never moved during a run — they are still static');
+if (clots === 0) note('no wound ever clotted — bleeding is still a one-way ratchet');
+if (fieldDressings === 0) note('nobody ever dressed a wound — the field-dressing action is unreachable');
+if (restRecoveries === 0) note('no tribute ever recovered health by resting — healing is still loot-only');
+if (huntOrCraft === 0) note('nobody ever hunted game or improvised a weapon');
+if (zoneDrinks === 0) note('nobody ever drank from the arena — open water is still decorative');
+if (pursuits === 0) note('no hunter ever pursued a rival across zones');
+if (desperationFights === 0) note('the narrowing field never forced a fight between strangers');
+if (fearFelt === 0) note('no tribute was ever afraid of another — fear has no teeth');
+if (bestProficiencySeen === 0) note('no proficiency ever grew — skills do not improve with use');
 
 console.log(`runs=${runs} victors=${victors} wipeouts=${wipeouts} avgDays=${(totalDays/runs).toFixed(1)} avgLogs=${(totalLogs/runs).toFixed(0)} runsWithFeast=${feastRuns}`);
 console.log('phases seen:', [...phasesSeen].sort().join(', '));
 console.log('categories seen:', [...categoriesSeen].sort().join(', '));
 console.log(`behaviour: vengeance=${vengeanceSworn} groupFights=${groupFights} retreats=${retreats} griefMoments=${griefEvents} strippedZones=${depletedForages}`);
 console.log(`stealth: ambushes=${ambushes} unnoticed=${hiddenMoments}`);
+console.log(`wounds: clots=${clots} fieldDressings=${fieldDressings} restRecoveries=${restRecoveries}`);
+console.log(`agency: hunts/crafts=${huntOrCraft} zoneDrinks=${zoneDrinks} pursuits=${pursuits} desperationFights=${desperationFights}`);
+console.log(`psychology: fear entries=${fearFelt} peakProficiency=${bestProficiencySeen.toFixed(2)} (cap ${PROFICIENCY.max})`);
 console.log(`alliances: recruitments=${recruitments} organicGroupsOf3Plus=${organicTrios} largestSeen=${maxAllianceSeen}`);
 console.log(`inventory: overloaded drops=${overloadedDrops}`);
 console.log(`zones: runsWithDepletion=${zonesEverDepleted} runsWithRecovery=${zonesEverRecovered} peakDepletion=${maxDepletionSeen.toFixed(2)} (floor ${(1 - ZONES.minYieldFraction).toFixed(2)})`);

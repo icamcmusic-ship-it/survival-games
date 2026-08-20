@@ -2,7 +2,20 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { GameState, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { FeedLine } from './EventFeed';
+import { fearOf } from '../engine/fear';
+import { heightLabel } from '../engine/physique';
+import { PROFICIENCY } from '../data/balance';
+import { bleedSeverity } from '../engine/wounds';
 import { MapPin, Users, X, Heart } from 'lucide-react';
+
+const PROFICIENCY_LABELS: Record<string, string> = {
+    forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
+};
+
+/** A wound's rate, not merely its existence. */
+const BLEED_LABELS: Record<number, string> = {
+    1: 'bleeding (slight)', 2: 'bleeding (steady)', 3: 'bleeding (severe)',
+};
 
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 
@@ -79,6 +92,14 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
         () => gameState.log.filter(l => l.tributesInvolved.includes(tribute.id)),
         [gameState.log, tribute.id]
     );
+    const proficiencies = Object.entries(tribute.proficiencies ?? {})
+        .filter(([, level]) => (level ?? 0) > 0)
+        .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0)) as Array<[string, number]>;
+    const feared = gameState.tributes
+        .map(o => ({ other: o, value: fearOf(tribute, o.id) }))
+        .filter(f => f.other.id !== tribute.id && f.value > 0)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
     const knownZones = Object.entries(tribute.memory?.zones ?? {})
         .map(([name, slot]) => ({ name, ...slot }))
         .filter(z => z.threat > 0.15 || z.rivals > 0)
@@ -114,7 +135,7 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                             )}
                         </div>
                         <p className="text-xs text-[var(--color-ink-500)] mt-2">
-                            {tribute.age} years old · {tribute.heightCm} cm · {tribute.build} build
+                            {tribute.age} years old · {heightLabel(tribute.heightCm)} · {tribute.build} build
                         </p>
                     </div>
                     <button onClick={onClose} className="btn btn-sm btn-ghost flex-none" aria-label="Close">
@@ -155,9 +176,54 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                         <div className="flex flex-wrap gap-1.5">
                             {injuries.length === 0
                                 ? <span className="text-sm text-[var(--cat-alliance)]">Unharmed</span>
-                                : injuries.map(k => <span key={k} className="chip chip-accent">{k}</span>)}
+                                : injuries.map(k => (
+                                    <span key={k} className="chip chip-accent">
+                                        {/* Bleeding is the one injury with a rate, not just a state —
+                                            a trickle and an artery are very different problems. */}
+                                        {k === 'bleeding' ? `${BLEED_LABELS[bleedSeverity(tribute)] ?? 'bleeding'}` : k}
+                                    </span>
+                                ))}
                         </div>
                     </section>
+
+                    <section>
+                        <h4 className="panel-title mb-2">Proficiencies</h4>
+                        {proficiencies.length === 0 ? (
+                            <span className="text-sm text-[var(--color-ink-400)]">Has not practised anything yet</span>
+                        ) : (
+                            <div className="space-y-1.5">
+                                {proficiencies.map(([skill, level]) => (
+                                    <div key={skill} className="flex items-center gap-2 text-sm">
+                                        <span className="text-[var(--color-ink-200)] w-24 flex-none">{PROFICIENCY_LABELS[skill] ?? skill}</span>
+                                        <div className="meter flex-1">
+                                            <span style={{ width: `${(level / PROFICIENCY.max) * 100}%`, background: 'var(--cat-training)' }} />
+                                        </div>
+                                        <span className="font-mono text-xs text-[var(--color-ink-400)] w-10 text-right flex-none">
+                                            {level.toFixed(1)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    {feared.length > 0 && (
+                        <section>
+                            <h4 className="panel-title mb-2">Who frightens them</h4>
+                            <div className="space-y-1">
+                                {feared.map(({ other, value }) => (
+                                    <div key={other!.id} className="flex justify-between items-center text-sm gap-2">
+                                        <span className={`truncate ${other!.status === 'dead' ? 'text-[var(--color-ink-500)] line-through' : 'text-[var(--color-ink-200)]'}`}>
+                                            {other!.name}
+                                        </span>
+                                        <span className="font-mono text-xs flex-none text-[var(--cat-death)]">
+                                            {value >= 60 ? 'terrified' : value >= 30 ? 'wary' : 'uneasy'} · {value}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
 
                     <section>
                         <h4 className="panel-title mb-2">Inventory ({tribute.inventory.length})</h4>

@@ -6,6 +6,7 @@ import { GENERATION } from '../data/balance';
 import { DISTRICT_NAMES } from '../data/names';
 import { LEGACY_EFFECTS, legacyOf } from '../data/districts';
 import { blankMemory } from './memory';
+import { blankProficiencies } from './proficiency';
 import { seedBackstoryRelationships } from './relationships';
 
 /** Weighted draw from the district's archetype table. */
@@ -198,6 +199,9 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 daysSurvived: 0,
                 mentorLegacy: rng.pick(legacy.mentors),
                 memory: blankMemory(),
+                proficiencies: blankProficiencies(archetype),
+                bleedSeverity: 0,
+                momentum: 0,
                 stanceHeld: 0,
                 fanFavourite: false,
             });

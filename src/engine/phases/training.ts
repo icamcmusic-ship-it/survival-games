@@ -2,7 +2,8 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Attributes, Tribute } from '../../models/types';
 import { TRAINING_STATIONS, TRAINING_VERDICTS, INTIMIDATION_TEXTS } from '../../data/flavorText';
-import { TRAINING } from '../../data/balance';
+import { FEAR, TRAINING } from '../../data/balance';
+import { addFear } from '../fear';
 import { strengthCapForAge } from '../generator';
 import { LEGACY_EFFECTS, legacyOf } from '../../data/districts';
 import { adjustRel } from '../relationships';
@@ -112,6 +113,10 @@ export function processTraining(ctx: SimContext) {
             } else {
                 other.vitals.sanity -= TRAINING.intimidationSanity * severity;
                 adjustRel(other, t.id, -TRAINING.intimidationRelationship * severity);
+                // The intimidation used to evaporate the moment the sanity hit
+                // landed. It should stick to the person: this is how a Career's
+                // reputation follows them into the arena.
+                addFear(other, t.id, (t.trainingScore - 8) * FEAR.perTrainingPointOverEight);
             }
             clampTribute(other);
         });

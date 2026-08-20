@@ -3,7 +3,8 @@ import { applyDamage, checkDeath } from './combat';
 import { ExposureProfile, applyExposure } from './exposure';
 import { getZone } from './map';
 import { addZoneThreat } from './memory';
-import { GAMEMAKER, MEMORY } from '../data/balance';
+import { BLEEDING, GAMEMAKER, MEMORY } from '../data/balance';
+import { openWound } from './wounds';
 
 /**
  * Gamemaker weather, expressed as exposure profiles.
@@ -104,7 +105,7 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
             const t = ctx.state.tributes.find(tr => tr.id === targetId);
             if (t && t.status === 'alive') {
                 applyDamage(ctx, t, GAMEMAKER.muttTargetedDamage, { cause: `Torn apart by Gamemaker-released ${mutt}`, kind: 'gamemaker' });
-                t.injuries.bleeding = true;
+                openWound(t, BLEEDING.muttSeverity);
                 addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat * 2);
                 ctx.logEvent(`GAMEMAKER: A pack of ${mutt} is dropped directly onto ${t.name} in ${t.zone}.`, [t.id], { important: true, category: 'gamemaker' });
                 checkDeath(ctx, t, `Torn apart by Gamemaker-released ${mutt}`);
@@ -117,7 +118,7 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
                 const hitChance = GAMEMAKER.muttSweepBaseChance + (zone ? zone.danger * GAMEMAKER.muttSweepDangerWeight : 0.1);
                 if (ctx.rng.chance(hitChance)) {
                     applyDamage(ctx, t, GAMEMAKER.muttSweepBaseDamage + ctx.rng.nextInt(0, GAMEMAKER.muttSweepVariance), { cause: `Torn apart by ${mutt}`, kind: 'gamemaker' });
-                    if (ctx.rng.chance(0.3)) t.injuries.bleeding = true;
+                    if (ctx.rng.chance(0.3)) openWound(t, BLEEDING.combatSeverity);
                     addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
                     ctx.logEvent(`${t.name} is mauled by the ${mutt} prowling through ${t.zone}.`, [t.id], { important: true, category: 'gamemaker' });
                     checkDeath(ctx, t, `Torn apart by ${mutt}`);

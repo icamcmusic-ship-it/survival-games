@@ -236,3 +236,18 @@ export const ITEMS: Item[] = [
     { id: 'matches', name: 'Matches', type: 'utility', value: 25 },
     { id: 'backpack', name: 'Backpack', type: 'utility', value: 30 },
 ];
+
+/**
+ * Improvised weapons, craftable from the ground and a spare turn.
+ *
+ * Deliberately kept out of `ITEMS` so they never dilute the Cornucopia, the
+ * feast or a sponsor parachute — nobody parachutes a sharpened rock. They exist
+ * because only a third of living tributes were ever carrying a weapon, and an
+ * unarmed tribute takes a 1.2-point penalty to the Aggressive stance score and
+ * so effectively never picks a fight. A cudgel is barely a weapon; it is,
+ * crucially, not nothing.
+ */
+export const IMPROVISED_ITEMS: Item[] = [
+    { id: 'club', name: 'Cudgel', type: 'weapon', value: 8, durability: 35, weaponClass: 'melee', damage: 2 },
+    { id: 'sharpstone', name: 'Sharpened Stone', type: 'weapon', value: 6, durability: 25, weaponClass: 'melee', damage: 1 },
+];

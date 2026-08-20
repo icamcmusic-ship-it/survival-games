@@ -10,6 +10,7 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test:sim": "tsx scripts/soak.ts",
+    "test:metrics": "tsx scripts/metrics.ts",
     "test:arenas": "tsx scripts/validate-arenas.ts",
     "test:ui": "node scripts/ui-test.mjs"
   },

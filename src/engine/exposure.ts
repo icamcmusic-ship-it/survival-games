@@ -1,7 +1,9 @@
 import { Tribute } from '../models/types';
+import { PHYSIQUE } from '../data/balance';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { clampTribute } from './vitals';
+import { massOf } from './physique';
 
 /**
  * One exposure system, used by both the arena's own climate and the
@@ -58,7 +60,11 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     if (profile.hunger) t.vitals.hunger += amount(profile.hunger);
     if (profile.quench) t.vitals.thirst = Math.max(0, t.vitals.thirst - amount(profile.quench));
 
-    if (profile.frostbite && !t.injuries.frostbitten && ctx.rng.chance(profile.frostbite * scale)) {
+    // Mass is insulation: a Stocky tribute holds heat a Frail one cannot.
+    const frostbiteChance = profile.frostbite
+        ? profile.frostbite * scale * Math.max(0.4, 1 - massOf(t) * PHYSIQUE.frostbiteResistPerMass)
+        : 0;
+    if (frostbiteChance > 0 && !t.injuries.frostbitten && ctx.rng.chance(frostbiteChance)) {
         t.injuries.frostbitten = true;
         ctx.logEvent(
             profile.onFrostbite?.(t) ?? `${t.name}'s fingers blacken with frostbite in ${profile.name}.`,
