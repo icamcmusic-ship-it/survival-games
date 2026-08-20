@@ -879,10 +879,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "{tribute} does not blink. 'Then I hope they're the one who comes home.' The room makes a sound it has not made in years.",
             "'It won't,' {tribute} says, and says nothing else. Caesar lets it stand.",
+            "{tribute} looks past Caesar, finds the right camera, and answers to the person on the other side of it instead. The Capitol swoons.",
+            "'Ask me anything else,' {tribute} says softly, and Caesar — who has never in his life let a question go — lets this one go.",
+            "{tribute} answers with the date of a promise the two of them made on the train. No one else knows what it means. That is the point.",
         ],
         broke: [
             "{tribute} opens their mouth and nothing comes out. The silence goes on a beat too long, and the audience watches the story come apart.",
             "'I — I'd do what I had to.' The front row shifts in its seats. That is not the answer anybody wanted.",
+            "{tribute} laughs, one nervous note, at exactly the wrong moment. The romance loses half its buyers in a single second.",
+            "{tribute} looks to the wings for help. The cameras follow the look. There is nobody there.",
+            "'That's — we agreed not to talk about that.' Which is, everyone understands at once, an answer.",
         ],
     },
     'The Ruthless Warrior': {
@@ -890,10 +896,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "'Nobody.' {tribute} lets it sit there, and the Careers in the wings stop finding it funny.",
             "{tribute} names three tributes, in order, and explains what they will do about each. Nobody laughs.",
+            "{tribute} turns the question around: 'Who should?' Caesar consults his cards and finds no one.",
+            "'The arena worries me,' {tribute} says. 'The people in it don't.' The bookmakers write it down verbatim.",
+            "{tribute} lists their training scores from memory — everyone's, not just their own. The point lands.",
         ],
         broke: [
             "{tribute} names a Career and then, hearing it out loud, tries to take it back. The damage is done both ways.",
             "'I'm not — I mean, I'm not worried.' The 'I'm not' arrives half a second too late.",
+            "{tribute} laughs the question off, and the laugh has an edge of something that is not laughter in it.",
+            "{tribute}'s knee has not stopped moving the entire interview, and the camera operators have noticed too.",
+            "'Next question,' {tribute} says, which is a thing you can only say once, and it was the wrong question to spend it on.",
         ],
     },
     'The Humble Underdog': {
@@ -901,10 +913,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "{tribute} thanks their district by name, and then their mentor, and then somebody nobody has heard of. It costs nothing and buys everything.",
             "'That I'm going to try.' It is not a promise, and everyone in the room understands why they did not make one.",
+            "{tribute} talks about what they'll do the morning after they get home, as if it were ordinary, and half the room decides to believe it.",
+            "'They already know,' {tribute} says. 'We said everything before I left.' Caesar lets the quiet do the rest.",
+            "{tribute} apologises for not being more interesting, and the apology is the most endearing thing said all night.",
         ],
         broke: [
             "{tribute} freezes at the question and manages 'thank you' twice. The applause is kind, which is worse.",
             "{tribute} recites something obviously written for them, and the Capitol can hear the punctuation.",
+            "{tribute} starts to answer and then asks Caesar if they can start over. There are no second takes on live television.",
+            "The answer trails off into a shrug. Humility reads as defeat when it stops being a choice.",
+            "{tribute} thanks the Capitol instead of their district, and back home the square goes very quiet.",
         ],
     },
     'The Mysterious Enigma': {
@@ -912,10 +930,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "{tribute} smiles once and says nothing. The bookmakers move the line on a smile.",
             "'You'll see it when everyone else does.' Caesar throws up his hands and the crowd howls.",
+            "Caesar tries three angles. {tribute} deflects all three, pleasantly, like closing doors. The line moves anyway.",
+            "'No,' {tribute} says — to which question, no one is sure, and that is somehow the best answer of the night.",
+            "{tribute} lets a pause run four full seconds and then thanks Caesar for the question without answering it. The sponsors take notes.",
         ],
         broke: [
             "Pressed, {tribute} fills the silence — and fills it, and keeps filling it. The mystery evaporates on live television.",
             "{tribute} explains the strategy. Out loud. On camera. To everyone.",
+            "Needled, {tribute} answers one question honestly, and it is the one question they needed to keep.",
+            "The silence stops reading as mystery and starts reading as having nothing to say. There is no way back from that in ninety seconds.",
+            "Caesar guesses the plan on air, as a joke, and {tribute}'s face confirms it for free.",
         ],
     },
     'The Charming Flirt': {
@@ -923,10 +947,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "'Everything,' {tribute} says, to the cameras rather than to Caesar, and the switchboard lights up.",
             "{tribute} answers with a question of their own and lets Caesar flounder for once. The crowd is delighted.",
+            "{tribute} winks at the cheap seats and the expensive ones both. Everyone is sure it was meant for them.",
+            "'Sponsors,' {tribute} says sweetly, 'I want sponsors.' The honesty is so shameless the room applauds it.",
+            "{tribute} compliments Caesar's suit mid-answer without losing the thread, and the clip runs all night.",
         ],
         broke: [
             "{tribute} pushes it one line too far and the laughter turns into the other kind of laughter.",
             "The charm slips for a second and something much more frightened shows underneath it.",
+            "{tribute} flirts with the wrong patron's box, and half the front row's smiles cool by several degrees.",
+            "The lines are good but they are lines, and tonight the room can hear the rehearsal in them.",
+            "{tribute} forgets a name they were supposed to remember. It was an important name.",
         ],
     },
     'The Arrogant Brute': {
@@ -934,10 +964,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "'Some would be right.' {tribute} does not smile, and neither does anybody else.",
             "{tribute} shrugs so completely that the question stops existing.",
+            "'Arrogance is when you can't back it up.' {tribute} lets the sentence end there.",
+            "{tribute} agrees with the word, spells it, and asks for the next question. It should not work. It works.",
+            "{tribute} looks at the recap screen showing their training score and back at Caesar. That is the entire answer.",
         ],
         broke: [
             "{tribute} takes offence at the word and spends thirty seconds proving it fits.",
             "The comeback lands badly, and for the rest of the segment {tribute} is a large person in a chair.",
+            "{tribute} argues with the premise, then with Caesar, then briefly with the audience. Nobody wins arguments with an audience.",
+            "The boast comes out a size too big even for this room, and the laughter has teeth in it.",
+            "{tribute} repeats the same boast twice, louder the second time, which is the opposite of proof.",
         ],
     },
     'The Quirky Oddball': {
@@ -945,10 +981,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "{tribute} says something that makes no sense whatsoever and brings the house down.",
             "{tribute} answers a question Caesar did not ask, perfectly, and the Capitol decides it adores them.",
+            "{tribute} produces something small from a pocket and gives it to Caesar with great ceremony. It is never explained. It does not need to be.",
+            "{tribute} asks the audience a riddle and refuses to give the answer until after the Games. The bet slips write themselves.",
+            "Halfway through the answer {tribute} switches to addressing the ceiling. Somehow the ceiling deserves it.",
         ],
         broke: [
             "The joke does not land. {tribute} tries it again, slower. It lands worse.",
             "{tribute} misjudges the room by a wide margin and finishes the answer into complete silence.",
+            "The bit needs a partner and Caesar, for once, does not play along. It dies alone out there.",
+            "{tribute} commits to the strange answer past the point the room stops enjoying it, and cannot find the exit.",
+            "What was endearing in the training centre is, under the lights, just odd, and everyone can feel the difference.",
         ],
     },
     'The Silent Threat': {
@@ -956,10 +998,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "{tribute} looks at the camera for a long moment and says only, 'You'll see.' The room does not breathe for a second.",
             "{tribute} shakes their head once, and the refusal to elaborate is more menacing than any threat could have been.",
+            "'No.' A full second. 'Nothing.' Somehow it is the most quotable answer of the night.",
+            "{tribute} looks slowly along the row of rival tributes in the wings, and does not say what they are counting.",
+            "Caesar makes a joke to fill the quiet. {tribute} does not help him with it. The quiet wins.",
         ],
         broke: [
             "Pressed, {tribute} finally talks — too much, too fast, and the mystery collapses in real time.",
             "{tribute} tries to hold the silence and it curdles into something that just looks like nerves.",
+            "Someone in the audience laughs during the pause, and the menace does not survive being laughed at.",
+            "{tribute}'s hands give it away — the stillness everywhere else only makes them louder.",
+            "Held too long, the silence stops being a message and becomes a person who does not know what to say.",
         ],
     },
     'The Grieving Sibling': {
@@ -967,10 +1015,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "{tribute} does, briefly, steadily, and stops before it becomes too much. The room is with them the entire time.",
             "{tribute} says the name once more, clearly, so it is on the record. Caesar does not push further.",
+            "{tribute} tells one small, specific story — a breakfast, an argument, a borrowed coat — and it does what no speech could.",
+            "'They'd hate this suit,' {tribute} says, and the laugh and the ache arrive in the same breath.",
+            "{tribute} promises nothing except to be worth the grief. The room stands.",
         ],
         broke: [
             "{tribute} cannot get through it and the segment has to be cut short. The sympathy is real and it is not the same as trust.",
             "{tribute} says too much, too raw, and the room's discomfort outweighs its sympathy.",
+            "Caesar offers a handkerchief and the gesture becomes the story instead of the person it was for.",
+            "{tribute} goes somewhere in the middle of the answer that the cameras cannot follow, and comes back to a room of strangers.",
+            "The grief is real and the room is hungry for it, and watching {tribute} realise that is the worst moment of the night.",
         ],
     },
     'The Cold Strategist': {
@@ -978,10 +1032,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "'Then I have a second plan,' {tribute} says, without missing a beat, and the room believes them.",
             "{tribute} outlines a contingency in under ten seconds. It is unnervingly thorough.",
+            "'Plans fall apart on day one. That's what day one is for.' The bookmakers adjust in {tribute}'s favour.",
+            "{tribute} declines to share the plan but names, precisely, the three ways it could fail. The precision is the threat.",
+            "{tribute} answers with a question: 'Whose plan do you think survives me?' Nobody offers a candidate.",
         ],
         broke: [
             "{tribute} has no answer ready, and the gap where a contingency should be is very visible.",
             "'It won't,' {tribute} says, with a confidence the room does not share.",
+            "{tribute} explains the plan in enough detail that three other tributes in the wings quietly memorise it.",
+            "Pressed on the contingency, {tribute} restates the original plan slightly slower.",
+            "The word 'probably' gets into the answer and cannot be gotten back out.",
         ],
     },
     'The Reluctant Hero': {
@@ -989,10 +1049,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "'Yes,' {tribute} says, simply, and does not look away from the camera when they say it.",
             "{tribute} admits it without apologising for it, and the room respects the difference.",
+            "'Anyone who isn't is lying to you,' {tribute} adds, and every camera cuts to the Careers to check.",
+            "'Afraid of not coming home,' {tribute} says. 'Not of them.' The distinction lands hard.",
+            "{tribute} names the exact thing they are afraid of, and it is so human the room forgets to applaud until too late.",
         ],
         broke: [
             "{tribute} tries to deny it and the denial does not land — everyone in the room can see it is not true.",
             "The admission turns into something closer to panic, live, on camera, and Caesar has to move the segment along.",
+            "'No,' {tribute} says, and their own voice does not believe them, and everyone hears both things at once.",
+            "{tribute} deflects with a joke about the arena food, and the joke is fine, and the fear is still sitting there when it ends.",
+            "Asked a second time, gently, {tribute} just nods — and cannot stop nodding for a moment too long.",
         ],
     },
     'The District Loyalist': {
@@ -1000,10 +1066,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "{tribute} says it directly to the camera, by name, and means every word of it.",
             "{tribute} thanks somebody specific back home, and the specificity is what makes it land.",
+            "{tribute} describes the exact view from their front step at dusk, and twelve districts see their own.",
+            "'Keep the shift schedule,' {tribute} says. 'I'll be back for mine.' The square back home erupts.",
+            "{tribute} speaks for thirty seconds in the district's own idiom, untranslated, and does not explain it to the Capitol.",
         ],
         broke: [
             "The message comes out generic — the kind of thing anyone could say about any district — and the room can tell.",
             "{tribute} gets lost partway through and the message never actually arrives.",
+            "{tribute} promises the district a victory in a voice that is asking them for one.",
+            "The shout-out goes to the wrong neighbourhood — a small thing anywhere but home.",
+            "{tribute} chokes on the district's name, of all words, and the moment everyone was waiting for passes unfinished.",
         ],
     },
     'The Wildcard': {
@@ -1011,10 +1083,16 @@ export const CAESAR_FOLLOWUPS: Record<string, { question: string; held: string[]
         held: [
             "Neither does {tribute}, and what comes out is somehow exactly right anyway.",
             "{tribute} answers with something nobody expected and the room decides they like being surprised.",
+            "{tribute} gives three different answers to the same question and dares the room to pick one. The room picks all three.",
+            "{tribute} predicts, on air, exactly how Caesar will end the segment. Caesar, cornered, ends it exactly that way.",
+            "Asked the standard question, {tribute} answers the one underneath it, and the interview is suddenly very interesting.",
         ],
         broke: [
             "The unpredictability finally lands on something that just does not work, and there is nowhere to go but forward.",
             "{tribute} swings and misses, visibly, and the room's patience for the bit runs out.",
+            "The chaos stops looking like strategy and starts looking like a tribute who has no plan at all — because tonight, it is.",
+            "{tribute} contradicts something they said thirty seconds earlier and the room catches it in real time.",
+            "The gamble on a strange answer comes up empty, and there is no ordinary answer ready behind it.",
         ],
     },
 };

@@ -218,7 +218,10 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute }: {
     const groups = groupLogs(visibleLogs).reverse();
 
     return (
-        <div className="space-y-6">
+        // §2.3: a continuously-updating feed with auto-advance is exactly the
+        // case screen readers need announced. role="log" implies polite
+        // announcements of additions without re-reading the whole region.
+        <div className="space-y-6" role="log" aria-label="Chronicle of the Games">
             {hiddenCount > 0 && (
                 <button onClick={() => setExpanded(true)} className="btn btn-sm btn-ghost w-full justify-center">
                     Show {hiddenCount} earlier entries

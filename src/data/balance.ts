@@ -1089,16 +1089,22 @@ export const PROTECTOR_BOND = {
 } as const;
 
 export const ROMANCE = {
-    /** Odds a one-sided attachment gets played for the cameras instead. */
-    performedChance: 0.07,
+    /**
+     * Odds a one-sided attachment gets played for the cameras instead.
+     * §6.1: at 0.07 behind five conjunctive gates the performed bond fired
+     * 1-2 times across 240 runs — one of the best ideas in the codebase,
+     * effectively unreachable. Loosened with performedMinRegard and
+     * performerCharisma so it lands a few times per soak.
+     */
+    performedChance: 0.2,
     /**
      * Regard the smitten party needs. Deliberately below `threshold`: a
      * performed bond does not need the mutual devotion a real one does, only
      * one person who has fallen far enough to be convincing about it.
      */
-    performedMinRegard: 75,
+    performedMinRegard: 65,
     /** Charisma needed to sell a romance you are not feeling. */
-    performerCharisma: 6,
+    performerCharisma: 5,
     /** What the performer shows, as opposed to what they feel. */
     performedDisplayedRegard: 75,
     /** Nothing before the bloodbath is over and the cast is real. */
@@ -1163,8 +1169,9 @@ export const ALLIANCES = {
      * which is the missing path that left almost every organic alliance a pair
      * for the whole run.
      */
-    mergeChance: 0.35,
-    mergeThreshold: 12,
+    /** §6.1: 0.35/12 produced ~9 merges per 240 runs. */
+    mergeChance: 0.5,
+    mergeThreshold: 8,
     /** A member whose average regard for the other group is below this walks
      *  out of a negotiated merge rather than blocking it. */
     mergeDissentThreshold: -10,
@@ -1545,12 +1552,14 @@ export const RESOLVE = {
     breakdownRebound: 12,
     /** Sitting down and stopping is not, and compounds instead. */
     sittingDownPenalty: 4,
-    /** Taking the nightlock needs to be genuinely final, and is still rare. */
-    nightlockThreshold: 14,
-    nightlockChance: 0.3,
+    /** Taking the nightlock needs to be genuinely final, and is still rare —
+     *  but 14/0.3 meant 1-4 firings per 240 runs, an ending players would
+     *  never see (§6.1). */
+    nightlockThreshold: 18,
+    nightlockChance: 0.5,
     /** A tribute with nothing left can go looking for it where things grow. */
     nightlockForageResources: 0.35,
-    nightlockFindChance: 0.4,
+    nightlockFindChance: 0.6,
 } as const;
 
 /**

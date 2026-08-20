@@ -3,6 +3,7 @@ import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { generateTributes } from '../engine/generator';
 import { generateArena } from '../engine/arenaGenerator';
 import { Simulator } from '../engine/simulator';
+import { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
 import { configForProfile, gamesProfileFor } from '../engine/gamesProfile';
 import { PanemRecords, RunOutcome, commitRun, readPanem } from '../utils/panemStorage';
@@ -511,7 +512,7 @@ export const gameActions = {
         return result;
     },
 
-    triggerGamemakerEvent(type: 'mutt' | 'weather' | 'feast', targetId?: string) {
+    triggerGamemakerEvent(type: GamemakerEventType, targetId?: string) {
         const { simulator } = gameStore.getState();
         if (!simulator) return;
         simulator.triggerGamemakerEvent(type, targetId);

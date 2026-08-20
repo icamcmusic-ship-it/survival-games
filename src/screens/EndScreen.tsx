@@ -152,8 +152,8 @@ export function EndScreen({
                             <span className="eyebrow" style={{ color: 'var(--red)' }}>
                                 What made these Games unusual
                             </span>
-                            {outcome.notables.map((n, i) => (
-                                <p key={i} className="text-sm text-[var(--color-ink-200)] leading-relaxed">{n.text}</p>
+                            {outcome.notables.map(n => (
+                                <p key={n.text} className="text-sm text-[var(--color-ink-200)] leading-relaxed">{n.text}</p>
                             ))}
                         </div>
                     )}

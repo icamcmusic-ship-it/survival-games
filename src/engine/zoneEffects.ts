@@ -314,7 +314,15 @@ export function restockCornucopia(ctx: SimContext) {
     const cycle = cycleOf(ctx.state);
     if (cycle % ZONE_EFFECTS.cornucopiaRestockEveryCycles !== 0) return;
     if (!ctx.rng.chance(ZONE_EFFECTS.cornucopiaRestockChance)) return;
+    dropSupplies(ctx);
+}
 
+/**
+ * The restock itself, without the schedule gating — so a Gamemaker-mode
+ * player can order a drop directly (§6.4) through the same mechanism the
+ * arena's own cadence uses.
+ */
+export function dropSupplies(ctx: SimContext) {
     const cornucopia = ctx.state.arena.zones.find(z => /cornucopia/i.test(z.name));
     if (!cornucopia) return;
     const state = ctx.state;

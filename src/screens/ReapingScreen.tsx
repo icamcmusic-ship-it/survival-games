@@ -61,8 +61,8 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, onReroll, on
                         scheduled beats and the player is entitled to know how
                         many are coming, if not exactly what they will do. */}
                     <div className="space-y-1 pt-1">
-                        {calendarOf(profile).map((w, i) => (
-                            <p key={i} className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
+                        {calendarOf(profile).map(w => (
+                            <p key={`${w.day}-${w.kind}`} className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
                                 <span className="font-mono text-[10px] text-[var(--red)] mr-1.5">
                                     {w.day === 0 ? 'STANDING' : `DAY ${w.day}`}
                                 </span>

@@ -9,7 +9,7 @@ import { processAlliances } from './phases/alliances';
 import { processFeast } from './phases/feast';
 import { processDayNight } from './phases/dayNight';
 import { processEpilogue } from './phases/epilogue';
-import { triggerGamemakerEvent as triggerGamemakerEventPhase } from './gamemaker';
+import { GamemakerEventType, triggerGamemakerEvent as triggerGamemakerEventPhase } from './gamemaker';
 import { fireScheduledWildcard } from './wildcards';
 import { FEAST_TEXTS } from '../data/flavorText';
 
@@ -136,7 +136,7 @@ export class Simulator {
         this.ctx.logEvent(rng.pick(FEAST_TEXTS.announce), [], { important: true, category: 'feast' });
     }
 
-    public triggerGamemakerEvent(type: 'mutt' | 'weather' | 'feast', targetId?: string) {
+    public triggerGamemakerEvent(type: GamemakerEventType, targetId?: string) {
         triggerGamemakerEventPhase(this.ctx, type, targetId);
         if (getAlive(this.state).length <= 1 && this.state.phase !== 'ended' && this.state.phase !== 'epilogue') {
             this.state.phase = 'epilogue';

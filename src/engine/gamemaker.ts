@@ -1,8 +1,11 @@
 import { SimContext, getAlive } from './context';
 import { ExposureProfile, applyExposure } from './exposure';
 import { getZone } from './map';
-import { GAMEMAKER } from '../data/balance';
+import { GAMEMAKER, OBJECTIVES } from '../data/balance';
 import { eligibleMutts, engageMutt, rosterFor } from './mutts';
+import { ZoneEffectKind } from '../models/types';
+import { dropSupplies, severRandomEdge, startZoneEffect } from './zoneEffects';
+import { cycleOf, noteSighting } from './memory';
 
 /**
  * Gamemaker weather, expressed as exposure profiles.
@@ -94,7 +97,11 @@ const WEATHER_EFFECTS: ExposureProfile[] = [
     },
 ];
 
-export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' | 'feast', targetId?: string) {
+export type GamemakerEventType =
+    | 'mutt' | 'weather' | 'feast'
+    | 'burn' | 'flood' | 'fog' | 'sever' | 'bounty' | 'drop';
+
+export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType, targetId?: string) {
     if (!ctx.state.gamemakerMode) return;
 
     if (type === 'mutt') {
@@ -164,5 +171,58 @@ export function triggerGamemakerEvent(ctx: SimContext, type: 'mutt' | 'weather' 
         ctx.logEvent(`GAMEMAKER: A feast is announced at the Cornucopia!`, [], { important: true, category: 'gamemaker' });
         ctx.state.feastDay = ctx.state.day;
         ctx.state.phase = 'feast';
+    } else if (type === 'burn' || type === 'flood' || type === 'fog') {
+        // §6.4: the engine already had ZoneEffectKind, severed edges, bounties
+        // and supply drops — the player-facing control surface just never
+        // exposed them. For zone actions `targetId` is a zone name.
+        const kind: ZoneEffectKind = type === 'burn' ? 'burning' : type === 'flood' ? 'flooded' : 'fogbound';
+        const zone = pickTargetZone(ctx, targetId);
+        if (!zone) return;
+        ctx.logEvent(`GAMEMAKER: The arena is turned against ${zone}.`, [], { important: true, zone, category: 'gamemaker' });
+        startZoneEffect(ctx, zone, kind);
+    } else if (type === 'sever') {
+        const zone = pickTargetZone(ctx, targetId);
+        if (!zone) return;
+        const cut = severRandomEdge(ctx, zone);
+        ctx.logEvent(
+            cut
+                ? `GAMEMAKER: The route between ${zone} and ${cut} is destroyed. The map every tribute carries in their head is now wrong.`
+                : `GAMEMAKER: The engineers report no route out of ${zone} left to cut.`,
+            [],
+            { important: !!cut, zone, category: 'gamemaker' }
+        );
+    } else if (type === 'bounty') {
+        if (ctx.state.bountyTargetId) {
+            ctx.logEvent('GAMEMAKER: A bounty already stands. The Capitol only points at one tribute at a time.', [], { category: 'gamemaker' });
+            return;
+        }
+        const alive = getAlive(ctx.state);
+        const target = targetId
+            ? alive.find(t => t.id === targetId)
+            : [...alive].sort((a, b) => a.excitementRating - b.excitementRating)[0];
+        if (!target) return;
+        ctx.state.bountyTargetId = target.id;
+        ctx.logEvent(
+            `GAMEMAKER: A bounty is placed on ${target.name} of District ${target.district}. Everyone left in the arena now has one very good reason to change direction.`,
+            [target.id],
+            { important: true, category: 'gamemaker' }
+        );
+        alive.forEach(t => {
+            if (t.id === target.id) return;
+            if (t.allianceId !== undefined && t.allianceId === target.allianceId) return;
+            // The Capitol broadcasts where they are — a bounty is public.
+            noteSighting(ctx.state, t, target.zone, 1, 0);
+            t.objective = { kind: 'hunt', targetId: target.id, expires: cycleOf(ctx.state) + OBJECTIVES.huntCycles };
+        });
+    } else if (type === 'drop') {
+        dropSupplies(ctx);
     }
+}
+
+/** Resolves a zone action's target: the named zone if it stands, else a random standing zone. */
+function pickTargetZone(ctx: SimContext, targetId?: string): string | undefined {
+    const collapsed = new Set(ctx.state.collapsedZones ?? []);
+    const standing = ctx.state.arena.zones.filter(z => !collapsed.has(z.name));
+    if (targetId && standing.some(z => z.name === targetId)) return targetId;
+    return standing.length > 0 ? ctx.rng.pick(standing).name : undefined;
 }

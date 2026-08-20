@@ -9,9 +9,14 @@ import { tributeOdds } from '../engine/odds';
 import { objectiveLabel } from '../engine/objectives';
 import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { ESCALATION } from '../data/balance';
+import { evaluateInRunNearMisses } from '../data/achievements';
+import { GamemakerEventType } from '../engine/gamemaker';
 import { Explainer } from '../components/Explainer';
 import { ordinal } from '../engine/gamesProfile';
-import { gameStore } from '../store/gameStore';
+import { gameActions, gameStore } from '../store/gameStore';
+
+/** §6.4: Gamemaker arena controls priced in the sponsorship economy's coins. */
+const GM_COSTS = { burn: 150, flood: 150, fog: 120, sever: 100, drop: 200, bounty: 300 } as const;
 import { useStore } from '../store/createStore';
 
 type Speed = 'manual' | '1x' | '5x' | 'auto';
@@ -69,13 +74,20 @@ export function GameScreen({
     gameState: GameState,
     onNextPhase: () => void,
     onRunToEnd: () => void,
-    onGamemakerEvent: (type: 'mutt' | 'weather' | 'feast', targetId?: string) => void,
+    onGamemakerEvent: (type: GamemakerEventType, targetId?: string) => void,
 }) {
     const storedFilters = useRef(readStoredFilters());
     const [selectedTributeId, setSelectedTributeId] = useState<string | null>(null);
     const [speed, setSpeed] = useState<Speed>('manual');
     const [importantOnly, setImportantOnly] = useState(storedFilters.current.importantOnly);
     const [muttTargetId, setMuttTargetId] = useState('');
+    const [gmZone, setGmZone] = useState('');
+    const coins = useStore(gameStore, s => s.coins);
+    const spendGamemaker = (type: GamemakerEventType, cost: number, targetId?: string) => {
+        if (coins < cost) return;
+        gameActions.setCoins(c => c - cost);
+        onGamemakerEvent(type, targetId);
+    };
     const [tacticalTab, setTacticalTab] = useState<'chronicle' | 'map'>('chronicle');
     const [selectedZone, setSelectedZone] = useState<string | null>(null);
     // Below `lg` the two columns stack, which buried the tribute list under a
@@ -91,6 +103,12 @@ export function GameScreen({
     /** A toast explaining why auto-advance just stopped. */
     const [pauseNotice, setPauseNotice] = useState(false);
     const bets = useStore(gameStore, s => s.bets);
+    // §6.5: achievements the run is close to, shown while they still matter.
+    const panem = useStore(gameStore, s => s.panem);
+    const nearMisses = useMemo(
+        () => evaluateInRunNearMisses(gameState, panem?.unlocked ?? []),
+        [gameState, panem]
+    );
     // Chronicle search and per-tribute filtering.
     const [searchText, setSearchText] = useState('');
     const [filterTributeId, setFilterTributeId] = useState<string | null>(null);
@@ -616,6 +634,16 @@ export function GameScreen({
                             )}
                         </p>
                     )}
+                    {nearMisses.length > 0 && (
+                        <div className="mt-3 space-y-1" title="Achievements this run is close to earning">
+                            {nearMisses.map(m => (
+                                <p key={m.id} className="text-[11px] text-[var(--color-ink-500)]">
+                                    <span className="text-[var(--ink)] font-semibold">{m.name}</span>
+                                    {' — '}{m.detail}
+                                </p>
+                            ))}
+                        </div>
+                    )}
                     {gameState.headGamemaker && (
                         <p className="text-[11px] text-[var(--color-ink-500)] mt-2" title="Chosen at the reaping. Their patience and their hazard appetite shape the whole run.">
                             Head Gamemaker: <span className="text-[var(--ink)] font-semibold">{gameState.headGamemaker}</span>
@@ -755,6 +783,67 @@ export function GameScreen({
                         >
                             Announce Feast
                         </button>
+
+                        {/* §6.4: the engine already supported zone effects, severed
+                            routes, bounties and supply drops — this exposes them,
+                            each priced in the same Capitol Coins sponsorship spends,
+                            which turns Gamemaker mode into resource management. */}
+                        <div className="border-t border-[var(--color-ink-800)] pt-3 space-y-2">
+                            <div className="flex items-baseline justify-between">
+                                <span className="eyebrow">Arena controls</span>
+                                <span className="font-mono text-[11px] text-[var(--color-ink-500)]">{coins} coins</span>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="eyebrow" htmlFor="gm-zone">Target zone</label>
+                                <select
+                                    id="gm-zone"
+                                    value={gmZone}
+                                    onChange={e => setGmZone(e.target.value)}
+                                    className="field text-xs"
+                                >
+                                    <option value="">Random zone</option>
+                                    {gameState.arena.zones
+                                        .filter(z => !(gameState.collapsedZones ?? []).includes(z.name))
+                                        .map(z => <option key={z.name} value={z.name}>{z.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                {([
+                                    ['burn', 'Ignite', GM_COSTS.burn, 'Set the zone burning — and fire spreads'],
+                                    ['flood', 'Flood', GM_COSTS.flood, 'Put the zone under water'],
+                                    ['fog', 'Fog', GM_COSTS.fog, 'Blind everyone in the zone'],
+                                    ['sever', 'Cut route', GM_COSTS.sever, 'Destroy one path out of the zone'],
+                                ] as const).map(([type, label, cost, tip]) => (
+                                    <button
+                                        key={type}
+                                        onClick={() => spendGamemaker(type, cost, gmZone || undefined)}
+                                        className="btn btn-sm w-full"
+                                        disabled={coins < cost}
+                                        title={`${tip} (${cost} coins)`}
+                                    >
+                                        {label} <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{cost}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            <button
+                                onClick={() => spendGamemaker('drop', GM_COSTS.drop)}
+                                className="btn btn-sm w-full"
+                                disabled={coins < GM_COSTS.drop}
+                                title={`Restock the Cornucopia with a supply drop (${GM_COSTS.drop} coins)`}
+                            >
+                                Supply drop <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GM_COSTS.drop}</span>
+                            </button>
+                            <button
+                                onClick={() => spendGamemaker('bounty', GM_COSTS.bounty, muttTargetId || undefined)}
+                                className="btn btn-sm w-full"
+                                disabled={coins < GM_COSTS.bounty || !!gameState.bountyTargetId}
+                                title={gameState.bountyTargetId
+                                    ? 'A bounty already stands'
+                                    : `Place a bounty on the selected tribute — or the dullest one — and point the whole field at them (${GM_COSTS.bounty} coins)`}
+                            >
+                                Place bounty <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GM_COSTS.bounty}</span>
+                            </button>
+                        </div>
                     </div>
                 )}
 

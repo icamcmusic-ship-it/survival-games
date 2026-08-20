@@ -168,6 +168,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'A bell tolls once from the centre of the island. Somewhere, a sector has just turned lethal.',
             'The tide draws back further than it should, exposing machinery beneath the sand.',
             'Lightning strikes the same dead tree for the twelfth hour in a row, exactly on schedule.',
+            'Gears the size of houses grind somewhere beneath the sand, counting toward something.',
+            'For one full minute every mechanism on the island stops at once. The silence is worse than the ticking.',
+            'The minute hand of a buried clock face breaks the surface of the lagoon, sweeps past, and submerges again.',
+            'Steam vents from a seam in the beach in perfect four-second intervals. The arena is breathing on schedule.',
         ],
         actions: {
             forage: [
@@ -282,6 +286,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'A sheet of ice the size of a district calves off the glacier and grinds into the lake.',
             'The temperature drops another ten degrees. The Gamemakers are done being patient.',
             'The aurora over the Wasteland flares Capitol gold. Somewhere, a camera pushes in.',
+            'Trees crack like gunshots in the deep cold, one ridge over, then closer.',
+            'The snow squeaks underfoot at a pitch that means the temperature has passed something important.',
+            'A frozen waterfall groans and shifts. It has been about to fall for days.',
+            'Breath hangs in the air long after each tribute has moved on — a trail of ghosts marking every path taken.',
         ],
         actions: {
             forage: [
@@ -385,6 +393,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Every streetlight in the dead city flickers on at once, then dies.',
             'Rats pour out of a storm drain in a single black wave and vanish.',
             'The Gamemakers cut the water table. Every fountain in the city goes dry at the same moment.',
+            'A traffic signal three blocks away cycles green, amber, red, for nobody.',
+            'Wind funnels down an avenue and every empty window whistles a different note.',
+            'A billboard peels away from its frame and sails four storeys down into the street.',
+            'Deep under the grid a train that has not run in years moves through a tunnel. Everyone hears it. Nobody says so.',
         ],
         actions: {
             forage: [
@@ -486,6 +498,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Something enormous moves under the water and never surfaces.',
             'The Gamemakers seed the swamp with spores. The air begins to glitter.',
             'Every insect in the swamp goes silent at once. Nothing good follows that.',
+            'Bubbles rise in a slow line across the black water, tracing something long that is walking the bottom.',
+            'A tree slides into the bog without a sound, upright, like something pulled it by the roots.',
+            'The haze thickens until the sun is just a paler patch of green.',
+            'Frogs start up in one corner of the swamp and stop in another, passing a message the tributes cannot read.',
         ],
         actions: {
             forage: [
@@ -587,6 +603,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'A dust devil the height of a Capitol tower crosses the dunes and dissolves.',
             'The horizon shimmers with a city that does not exist.',
             'Night falls in minutes and the sand goes from blistering to freezing.',
+            'The dunes sing — a low hum off the slip faces that goes on for an hour.',
+            'Bones surface at the foot of a dune, bleached past knowing what they were.',
+            'The wind erases every footprint in the arena in the space of ten minutes.',
+            'Far off, a column of sand stands upright and does not disperse. The tributes give it a wide berth on instinct.',
         ],
         actions: {
             forage: [
@@ -999,6 +1019,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'The caldera floor shudders once, settles, and goes quiet again.',
             'Ash builds on the shoulders of everything standing still long enough.',
             'The sun comes up brown through the ashfall and never quite finishes the job.',
+            'A fumarole opens at the edge of a zone with a sound like a struck bell.',
+            'The ash records everything: prints, drag marks, where somebody knelt. The whole arena is a ledger.',
+            'Heat lightning flickers inside the ash cloud, lighting it from within like a lamp.',
+            'Somewhere upslope, rock cracks in the heat — one report, then its echo, then nothing.',
         ],
         actions: {
             forage: [
@@ -1095,6 +1119,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Lightning walks the water offshore, striking the same stretch again and again.',
             'The tide comes in fast enough to hear. Somewhere out there it takes a zone with it.',
             'Rain drives sideways across the whole arena and the cameras give up entirely.',
+            'Between squalls comes a stillness so total that every tribute stops to distrust it.',
+            'The sea throws something man-sized onto the shingle and takes it back with the next wave.',
+            'Salt spray reaches zones that have no view of the water. Nowhere in the Reach is dry.',
+            'Thunder arrives before its lightning. The storm has stopped following the rules.',
         ],
         actions: {
             forage: [
@@ -1179,6 +1207,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Heat shimmer turns the far side of the flats into open water. It has fooled better tributes than these.',
             'The crust ticks and pops all afternoon as it expands.',
             'A wind crosses the Mirror and lifts a haze of salt that stings every open wound in the arena.',
+            'The flats double the sky: two suns, two horizons, and tributes walking on both of them.',
+            'A pressure ridge buckles somewhere out on the crust with a crack that carries for miles.',
+            'By noon every distant tribute is a black flame wavering above the white. Counting them is guesswork.',
+            'The salt creeps: overnight it has grown a fine crystal fur on everything left standing still.',
         ],
         actions: {
             forage: [
@@ -1269,6 +1301,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Something releases across the whole arena at once and the air goes gold with it.',
             'The ground gives slightly underfoot everywhere. All of it is alive.',
             'A low, wet sound moves through the mycelium and stops.',
+            'A ring of caps has grown overnight around one tribute\'s camp, evenly spaced, facing inward.',
+            'Spore-light pulses through the ground in slow waves, passing under the tributes\' feet and moving on.',
+            'A stand of stalks leans toward the passing tributes as they go, and rights itself after.',
+            'Something in the Fields has learned to mimic a cannon. It is not quite right, and that is worse.',
         ],
         actions: {
             forage: [
@@ -1354,6 +1390,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'A rope bridge somewhere in the arena parts on its own. Nobody was on it. This time.',
             'Mist sits in the canopy until midday and hides everything below the third branch.',
             'Something moves along the underside of a bough, and every tribute in earshot goes still.',
+            'A flowering vine has closed over a gap that was a path yesterday. The Gardens are editing themselves.',
+            'Petals fall for an hour from somewhere too high to see. Nobody trusts them enough to look up long.',
+            'A dropped waterskin falls through the canopy for a very long time. Everyone near enough counts the seconds.',
+            'Birdsong starts at dusk from a part of the Gardens where no tribute has ever seen a bird.',
         ],
         actions: {
             forage: [
@@ -1444,6 +1484,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Somewhere below, a pump cycles on, runs for four minutes, and stops.',
             'The lights step down one bank at a time. Nobody has explained the schedule.',
             'Every sound in the Vault arrives twice — once directly, once off the far wall.',
+            'A ventilation fan somewhere changes pitch, and the air in three zones starts moving the other way.',
+            'A hairline crack crosses the ceiling projection, and for a moment something true shows through the sky.',
+            'Condensation gathers on the ceiling over the warm zones and falls as slow, oily rain.',
+            'The Vault\'s lights dim to emergency red for thirty seconds. No explanation is offered, which is the message.',
         ],
         actions: {
             forage: [
