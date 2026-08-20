@@ -8,6 +8,7 @@ import { addZoneThreat, noteContact, rememberedThreat, swearVengeance } from './
 import { giveItem } from './items';
 import { reachableZones } from './map';
 import { adjustRel, applyBetrayalFallout } from './relationships';
+import { addExcitement } from './audience';
 
 /**
  * Betrayal, in more than one shape.
@@ -127,7 +128,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             const med = betrayer.inventory.find(i => i.type === 'medical')!;
             adjustRel(victim, betrayer.id, -RELATIONSHIPS.betrayalDirectPenalty / 2);
             swearVengeance(victim, betrayer.id);
-            betrayer.excitementRating += 15;
+            addExcitement(betrayer, 15);
             ctx.logEvent(
                 `${victim.name} asks ${betrayer.name} for the ${med.name}. ${betrayer.name} says they used it days ago, ` +
                 `and keeps their hand over the pocket it is in.`,

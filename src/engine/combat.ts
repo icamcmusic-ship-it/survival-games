@@ -14,6 +14,9 @@ import { profOf, trainProficiency, weaponAffinity, weaponProficiency } from './p
 import { addFear, fearFraction } from './fear';
 import { areLovers } from './alliance';
 import { reachBonus } from './physique';
+import { addExcitement } from './audience';
+import { traitMod } from '../data/traits';
+import { earnTrait } from './earnedTraits';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -101,16 +104,17 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         // craft mid-run — were the only weapons in the game with no stat
         // scaling behind them, which made crafting a downgrade.
         if (weapon.weaponClass === 'ranged') {
-            power += Math.floor(t.attributes.agility / COMBAT.rangedAgilityDivisor);
+            power += Math.floor(t.attributes.agility / COMBAT.rangedAgilityDivisor) + traitMod(t, 'rangedPower');
         } else if (weapon.weaponClass === 'melee') {
-            power += Math.floor(effectiveStrength(t) / COMBAT.meleeStrengthDivisor);
+            power += Math.floor(effectiveStrength(t) / COMBAT.meleeStrengthDivisor) + traitMod(t, 'meleePower');
             // Reach: a long-armed tribute lands first in a melee. `heightCm` was
             // generated with care and then read only by display code.
             power += reachBonus(t);
         } else if (weapon.weaponClass === 'thrown') {
             // Throwing wants both the arm behind it and the eye in front of it.
             power += Math.floor(effectiveStrength(t) / COMBAT.thrownStrengthDivisor)
-                + Math.floor(t.attributes.agility / COMBAT.thrownAgilityDivisor);
+                + Math.floor(t.attributes.agility / COMBAT.thrownAgilityDivisor)
+                + traitMod(t, 'rangedPower') * 0.5 + traitMod(t, 'meleePower') * 0.5;
         }
         // Practice with the class of weapon actually in their hands.
         power += profOf(t, weaponProficiency(weapon.weaponClass)) * PROFICIENCY.combatWeight;
@@ -119,9 +123,11 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         // and an awkward three-pronged spear to everybody else.
         power += weaponAffinity(t, weapon);
     } else {
-        // Bare hands are a grapple, and a grapple is decided by mass and reach.
-        power += reachBonus(t);
+        // Bare hands are a grapple, and a grapple is decided by mass, reach and
+        // whether they have ever done this before.
+        power += reachBonus(t) + traitMod(t, 'unarmedPower');
     }
+    power += traitMod(t, 'combatPower');
 
     // Archetype edge: aggressive fighters commit harder
     power += ARCHETYPES[t.archetype].aggression * 4;
@@ -146,6 +152,13 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     // What they have learned from losing to this person before.
     power += rematchEdge(t, opponent);
 
+    // Vengeful is not a general combat bonus — it is a bonus against the
+    // specific person they cannot let go of.
+    if (opponent && t.traits.includes('Vengeful')
+        && (hasVengeanceAgainst(t, opponent.id) || getRel(t, opponent.id) <= -35)) {
+        power += COMBAT.vengefulEdge;
+    }
+
     return power;
 }
 
@@ -163,8 +176,7 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
         + roundsFought * 0.05;
 
     if (opponentEdge > 0) chance += COMBAT.retreatLosingBonus;
-    if (t.traits.includes('Pacifist')) chance += 0.25;
-    if (t.traits.includes('Bloodthirsty')) chance -= 0.25;
+    chance += traitMod(t, 'retreat');
     if (t.isCareer) chance -= 0.1;
     if (t.stance === 'Aggressive') chance -= 0.12;
     if (t.stance === 'Evasive') chance += 0.15;
@@ -389,6 +401,12 @@ export function resolveCombat(
                 [fleer.id, stayer.id],
                 { important: true, category: 'combat' }
             );
+            // Letting a beaten opponent walk is a choice, and the arena
+            // remembers people who make it.
+            if (fleer.health <= COMBAT.mercyHealth && !isBloodbath) {
+                earnTrait(ctx, stayer, 'Merciful');
+                addExcitement(stayer, 20);
+            }
             ended = true;
             break;
         }
@@ -692,16 +710,22 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         // Everything below only matters for a killer who is still around to
         // feel it, carry loot, or wear out gear.
         if (killerAlive) {
-            killer.excitementRating += 20;
+            addExcitement(killer, 20);
             // Bloodlust: briefly stronger and far less willing to break off.
             killer.momentum = Math.min(HUNTING.momentumMax, (killer.momentum ?? 0) + HUNTING.momentumPerKill);
 
-            // Trauma Triggers
-            if (killer.traits.includes('Pacifist')) {
-                killer.vitals.sanity -= 40;
-                ctx.logEvent(`${killer.name} stares at what they have done and cannot stop shaking. This is not who they were.`, [killer.id], { category: 'sanity' });
-            } else if (!killer.isCareer) {
-                killer.vitals.sanity -= 10;
+            // What it costs them. `killSanity` is a multiplier offset on the
+            // base toll, so Ruthless barely notices, a Pacifist comes apart,
+            // and everything between is a row in the trait table.
+            const baseToll = killer.isCareer ? COMBAT.careerKillSanity : COMBAT.killSanity;
+            const toll = Math.max(0, baseToll * Math.max(0, 1 + traitMod(killer, 'killSanity')));
+            killer.vitals.sanity -= toll;
+            if (toll >= COMBAT.killSanityBreakdown) {
+                ctx.logEvent(
+                    `${killer.name} stares at what they have done and cannot stop shaking. This is not who they were.`,
+                    [killer.id],
+                    { category: 'sanity' }
+                );
             }
             // Killing someone you were allied with is its own kind of wound.
             if (formerAlliance && formerAlliance === killer.allianceId) {
@@ -712,13 +736,18 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             if (mem.vengeance.includes(victim.id)) {
                 mem.vengeance = mem.vengeance.filter(id => id !== victim.id);
                 killer.vitals.sanity += 20;
-                killer.excitementRating += 30;
+                addExcitement(killer, 30);
                 ctx.logEvent(
                     `${killer.name} settles the debt. ${victim.name} is dead, and whatever was driving ${killer.name} goes quiet.`,
                     [killer.id, victim.id],
                     { important: true, category: 'kill' }
                 );
             }
+
+            // The arc: the first one changes you, and enough of them changes
+            // how the rest of the arena talks about you.
+            if (killer.kills === 1) earnTrait(ctx, killer, 'Bloodied');
+            if (killer.kills >= HUNTING.fearedAtKills) earnTrait(ctx, killer, 'Feared');
 
             if (weapon && weapon.durability !== undefined) weapon.durability -= 10;
 

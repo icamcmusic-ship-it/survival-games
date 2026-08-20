@@ -8,6 +8,7 @@ import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { blankMemory } from './memory';
 import { blankProficiencies } from './proficiency';
 import { seedBackstoryRelationships } from './relationships';
+import { addExcitement } from './audience';
 
 /** Weighted draw from the district's archetype table. */
 function pickArchetype(rng: RNG, district: number): ArchetypeId {
@@ -99,11 +100,11 @@ function applyVolunteer(rng: RNG, t: Tribute) {
         t.attributes.strength = Math.min(10, t.attributes.strength + VOLUNTEER.careerStrengthBonus);
         t.attributes.agility = Math.min(10, t.attributes.agility + VOLUNTEER.careerAgilityBonus);
         t.reputation = Math.min(95, t.reputation + VOLUNTEER.careerTrust);
-        t.excitementRating += VOLUNTEER.careerExcitement;
+        addExcitement(t, VOLUNTEER.careerExcitement);
         t.reapingNote = `Volunteered before the escort had finished reading the card — ${craftOf(t.district).blurb}, and eighteen years of waiting for their turn.`;
     } else {
         t.reputation = Math.min(95, t.reputation + VOLUNTEER.sacrificeTrust);
-        t.excitementRating += VOLUNTEER.sacrificeExcitement;
+        addExcitement(t, VOLUNTEER.sacrificeExcitement);
         t.reapingNote = `Volunteered for a sibling. District ${t.district} has not had a volunteer in living memory, and the crowd did not applaud — they touched three fingers to their lips instead.`;
     }
     t.attributes.strength = Math.min(t.attributes.strength, strengthCapForAge(t.age));
@@ -266,7 +267,7 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
         t.fanFavourite = true;
         t.reputation = Math.min(95, t.reputation + GENERATION.fanFavouriteTrust);
         t.sponsorTrust = t.reputation;
-        t.excitementRating += GENERATION.fanFavouriteExcitement;
+        addExcitement(t, GENERATION.fanFavouriteExcitement);
     });
 
     // Nobody walks in a stranger.

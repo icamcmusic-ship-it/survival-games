@@ -7,6 +7,9 @@ import { clampTribute } from './vitals';
 import { ensureMemory, swearVengeance, noteContact } from './memory';
 import { areLovers } from './alliance';
 import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS } from '../data/flavorText';
+import { addExcitement } from './audience';
+import { traitMod } from '../data/traits';
+import { earnTrait } from './earnedTraits';
 
 /**
  * The social graph, and everything that writes to it.
@@ -125,8 +128,9 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 ? RELATIONSHIPS.griefSanityMax + 15
                 : RELATIONSHIPS.griefSanityMin + intensity * (RELATIONSHIPS.griefSanityMax - RELATIONSHIPS.griefSanityMin);
 
-            other.vitals.sanity -= sanityHit;
-            other.excitementRating += Math.round(10 + intensity * 25);
+            // Some people have buried someone before, and some people have not.
+            other.vitals.sanity -= sanityHit * Math.max(0, 1 - traitMod(other, 'griefResist'));
+            addExcitement(other, Math.round(10 + intensity * 25));
             // The crowd rewards visible grief.
             other.sponsorTrust += Math.round(intensity * 6);
             ensureMemory(other).mourned.push(victim.id);
@@ -159,6 +163,9 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 }
             }
 
+            // Watching someone you were actually close to die does not wash off.
+            if ((isLover || wereAllied) && intensity > 0.5) earnTrait(ctx, other, 'Haunted');
+
             if (isLover) {
                 ctx.logEvent(
                     `TRAGEDY: ${other.name} hears the cannon and knows. Their star-crossed lover ${victim.name} is gone, and something in them goes with it.`,
@@ -188,7 +195,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
     // Sponsor reaction: putting down a crowd favourite is not a free action.
     if (killer && (victim.fanFavourite || victim.sponsorTrust > 75)) {
         killer.sponsorTrust -= 12;
-        killer.excitementRating += 25;
+        addExcitement(killer, 25);
         clampTribute(killer);
         ctx.logEvent(
             `The Capitol audience goes quiet. ${victim.name} was a favourite, and ${killer.name} just took them off the board.`,
@@ -212,7 +219,8 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
     swearVengeance(victim, betrayer.id);
 
     victim.vitals.sanity -= 15;
-    betrayer.excitementRating += 30;
+    earnTrait(ctx, victim, 'Marked');
+    addExcitement(betrayer, 30);
     // The Capitol loves the drama and distrusts the man.
     betrayer.sponsorTrust -= 8;
     clampTribute(victim);

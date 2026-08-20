@@ -1,6 +1,7 @@
 import { Item, Tribute } from '../models/types';
 import { INVENTORY, PHYSIQUE } from '../data/balance';
 import { massOf } from './physique';
+import { traitMod } from '../data/traits';
 
 // Item names that read as plurals and so take "some", not "a"/"an".
 const PLURAL_ITEM_IDS = new Set(['knife', 'berries', 'matches', 'bow']);
@@ -32,7 +33,8 @@ export function carryCapacity(t: Tribute): number {
     // out of the Cornucopia as a Muscular eighteen-year-old from District 2.
     // `build` was generated with care and read only by display code.
     const fromBuild = Math.round(massOf(t) * PHYSIQUE.capacityPerMass);
-    return Math.max(2, INVENTORY.baseCapacity + fromBuild + (hasBackpack(t) ? INVENTORY.backpackCapacity : 0));
+    return Math.max(2, INVENTORY.baseCapacity + fromBuild + traitMod(t, 'capacity')
+        + (hasBackpack(t) ? INVENTORY.backpackCapacity : 0));
 }
 
 /** Ranks what a tribute would rather drop first when their hands are full. */

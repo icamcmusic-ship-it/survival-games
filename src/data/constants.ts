@@ -1,4 +1,5 @@
 import { Arena, Item, GameConfig, Build } from '../models/types';
+import { ROLLABLE_TRAITS } from './traits';
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
     districtCount: 12,
@@ -174,11 +175,12 @@ export const ARENAS: Arena[] = [
     }
 ];
 
-export const TRAITS = [
-    'Hydrophilic', 'Insomniac', 'Paranoid', 'Charismatic', 'Clumsy',
-    'Eagle-Eyed', 'Iron Stomach', 'Light Sleeper', 'Bloodthirsty', 'Pacifist',
-    'Pyromaniac', 'Nimble', 'Brute', 'Strategist', 'Tracker'
-];
+/**
+ * The reaping's trait pool. The definitions — and every effect — live in
+ * `data/traits.ts`; this is the subset a tribute can be born with, which
+ * excludes the traits that have to be earned in the arena.
+ */
+export const TRAITS = ROLLABLE_TRAITS;
 
 /**
  * Traits that cannot sit on the same tribute.
@@ -192,13 +194,40 @@ export const INCOMPATIBLE_TRAITS: Array<[string, string]> = [
     ['Pacifist', 'Bloodthirsty'],
     ['Pacifist', 'Brute'],
     ['Pacifist', 'Pyromaniac'],
+    ['Pacifist', 'Ruthless'],
+    ['Pacifist', 'Butcher'],
+    ['Pacifist', 'Wrestler'],
     ['Clumsy', 'Nimble'],
     ['Clumsy', 'Eagle-Eyed'],
+    ['Clumsy', 'Climber'],
+    ['Clumsy', 'Fleet'],
+    ['Clumsy', 'Marksman'],
     ['Insomniac', 'Light Sleeper'],
     ['Brute', 'Nimble'],
+    ['Brute', 'Fleet'],
     ['Charismatic', 'Paranoid'],
+    ['Charismatic', 'Unremarkable'],
     ['Strategist', 'Clumsy'],
     ['Iron Stomach', 'Hydrophilic'],
+    // Added with the expanded pool: a trait table is only worth having if it
+    // cannot produce a Stoic Fragile Loyal Treacherous tribute.
+    ['Stoic', 'Fragile'],
+    ['Cool-Headed', 'Skittish'],
+    ['Loyal', 'Treacherous'],
+    ['Ruthless', 'Softhearted'],
+    ['Ruthless', 'Merciful'],
+    ['Bloodthirsty', 'Softhearted'],
+    ['Grim', 'Softhearted'],
+    ['Grim', 'Fragile'],
+    ['Pyromaniac', 'Fire-Shy'],
+    ['Sun-Hardened', 'Fire-Shy'],
+    ['Frost-Born', 'Sun-Hardened'],
+    ['Showman', 'Unremarkable'],
+    ['Silver-Tongued', 'Unremarkable'],
+    ['Chameleon', 'Clumsy'],
+    ['Hardy', 'Fragile'],
+    ['Marksman', 'Wrestler'],
+    ['Swimmer', 'Climber'],
 ];
 
 export function traitsConflict(a: string, b: string): boolean {

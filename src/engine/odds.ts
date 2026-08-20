@@ -1,5 +1,6 @@
 import { Tribute } from '../models/types';
 import { ODDS } from '../data/balance';
+import { traitMod } from '../data/traits';
 
 /**
  * Betting odds, live.
@@ -20,10 +21,10 @@ export function oddsScore(t: Tribute): number {
         + t.attributes.agility * ODDS.agilityWeight
         + training * ODDS.trainingWeight;
 
-    if (t.traits.includes('Brute')) score += 15;
-    if (t.traits.includes('Bloodthirsty')) score += 15;
-    if (t.traits.includes('Pacifist')) score -= 10;
-    if (t.traits.includes('Strategist')) score += 12;
+    // How the field and the bookmakers read them, from the trait table rather
+    // than from four hard-coded names.
+    score += traitMod(t, 'odds') * ODDS.traitWeight;
+    score += traitMod(t, 'combatPower') * 4;
     if (t.fanFavourite) score += ODDS.fanFavouriteBonus;
 
     // Live form.

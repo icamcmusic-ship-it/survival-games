@@ -23,6 +23,8 @@ export const VITALS = {
     forestNightShelter: 5,
 
     /** Above these values the vital starts costing health every cycle. */
+    /** Chance a cycle of genuine starvation teaches the Starved trait. */
+    starvedTraitChance: 0.25,
     starvingThreshold: 80,
     dehydratedThreshold: 80,
     starvingDamage: 5,
@@ -137,13 +139,14 @@ export const CLIMATE = {
 } as const;
 
 /** What each trait is worth, in the units the vitals loop works in. */
+/**
+ * What is left here after `data/traits.ts` took over the trait table: the two
+ * bespoke effects that are not simple modifiers (Star-Crossed's per-cycle
+ * audience drip) and the age profile, which is not a trait at all.
+ */
 export const TRAIT_EFFECTS = {
-    hydrophilicThirstRelief: 5,
-    insomniacNightFatigue: 10,
-    ironStomachHungerRelief: 5,
     starCrossedTrustPerCycle: 5,
     starCrossedExcitementPerCycle: 10,
-    trackerForageBonus: 0.08,
     /** The youngest tributes burn rations faster and sleep worse. */
     youngHungerPenalty: 2,
     youngFatiguePenalty: 3,
@@ -219,6 +222,8 @@ export const SANITY = {
  * dominated choice, which is why only 12% of stance samples were Aggressive.
  */
 export const HUNTING = {
+    /** Kills after which the whole arena knows the name. */
+    fearedAtKills: 3,
     /** Chance a directed sweep of the zone turns up small game to eat. */
     gameChance: 0.4,
     trackingBonus: 0.06,
@@ -467,6 +472,18 @@ export const COMBAT = {
     /** Damage floor and ceiling for any one exchange. */
     minRoundDamage: 5,
     maxRoundDamage: 42,
+    /**
+     * What a kill costs the killer, in sanity, before their traits scale it.
+     * A Career has been prepared for this since they were ten; nobody else has.
+     */
+    killSanity: 14,
+    careerKillSanity: 4,
+    /** A toll this size is a visible breakdown, not a bad night. */
+    killSanityBreakdown: 25,
+    /** A fleeing opponent this far gone was spared, not merely escaped. */
+    mercyHealth: 25,
+    /** Power a Vengeful tribute brings against the specific person they hate. */
+    vengefulEdge: 3,
     /** Chance a round inflicts a localised wound on the loser. */
     woundChance: 0.28,
     bleedChance: 0.34,
@@ -546,10 +563,8 @@ export const STEALTH = {
 
     /** Awareness: what it takes to notice someone who does not want noticing. */
     awarenessFromIntelligence: 0.5,
-    eagleEyedBonus: 3,
-    trackerBonus: 2,
-    lightSleeperBonus: 1.5,
-    paranoidBonus: 1.5,
+    // The per-trait awareness bonuses that used to live here are now rows in
+    // `data/traits.ts`, alongside every other effect the same trait has.
     /** A tribute at the end of their rope stops watching the treeline. */
     exhaustedPenalty: 2,
     lowSanityPenalty: 2,
@@ -1082,6 +1097,8 @@ export const SPONSORS = {
 
 /** Live betting odds. */
 export const ODDS = {
+    /** Points on the betting line per point of a trait's `odds` modifier. */
+    traitWeight: 8,
     base: 40,
     strengthWeight: 2,
     agilityWeight: 2,

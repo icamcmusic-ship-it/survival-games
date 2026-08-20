@@ -3,6 +3,7 @@ import { RNG } from '../../utils/rng';
 import { INTERVIEW_SCENARIOS } from '../../data/flavorText';
 import { clampTribute } from '../vitals';
 import { adjustRel } from '../relationships';
+import { addExcitement } from '../audience';
 
 export function processInterviews(ctx: SimContext) {
     ctx.state.phase = 'interviews';
@@ -23,7 +24,7 @@ export function processInterviews(ctx: SimContext) {
             t.attributes.charisma = Math.min(10, t.attributes.charisma + scenario.charismaBuff);
             t.sponsorTrust = Math.min(100, Math.floor(t.sponsorTrust * scenario.trustMultiplier));
             t.reputation = Math.min(95, Math.round(t.reputation + (scenario.trustMultiplier - 1) * 30));
-            t.excitementRating += 20;
+            addExcitement(t, 20);
             ctx.logEvent(`[${scenario.strategy}] ` + ctx.pickText(scenario.success).split('{tribute}').join(t.name), [t.id], { important: true, category: 'interview' });
         } else {
             t.sponsorTrust = Math.max(0, t.sponsorTrust - 10);

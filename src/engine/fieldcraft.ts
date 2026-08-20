@@ -8,6 +8,7 @@ import { clampTribute } from './vitals';
 import { openWound } from './wounds';
 import { profOf, trainProficiency } from './proficiency';
 import { awareness } from './stealth';
+import { traitMod } from '../data/traits';
 
 /**
  * Fieldcraft: traps, fire, shelter, camouflage and poison.
@@ -65,6 +66,7 @@ export function setTrap(ctx: SimContext, t: Tribute) {
         + t.attributes.intelligence * TRAPS.buildPerIntelligence
         + profOf(t, 'tracking') * TRAPS.buildPerTracking;
     if (t.archetype === 'trickster') chance += TRAPS.trickeryBonus;
+    chance += traitMod(t, 'trapSkill');
 
     if (!ctx.rng.chance(Math.min(0.95, chance))) {
         ctx.logEvent(
@@ -203,7 +205,9 @@ export function hasCamp(ctx: SimContext, t: Tribute, key: CampKey): boolean {
 }
 
 function buildChance(t: Tribute): number {
-    return Math.min(0.95, CRAFTING.buildBaseChance + t.attributes.intelligence * CRAFTING.buildPerIntelligence);
+    return Math.min(0.95, Math.max(0.05,
+        CRAFTING.buildBaseChance + t.attributes.intelligence * CRAFTING.buildPerIntelligence
+        + traitMod(t, 'campSkill')));
 }
 
 /**

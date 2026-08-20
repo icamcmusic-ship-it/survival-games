@@ -11,6 +11,9 @@ import { bleedDamage, clearBleeding, tickBleeding } from './wounds';
 import { rememberedThreat } from './memory';
 import { hasCamp } from './fieldcraft';
 import { craftOf } from '../data/districts';
+import { traitMod } from '../data/traits';
+import { addExcitement } from './audience';
+import { earnTrait } from './earnedTraits';
 
 /**
  * Staying alive between encounters: spoilage, hunger, thirst, exposure, wounds
@@ -58,9 +61,10 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     const resilience = craftOf(t.district).hungerResilience;
     if (resilience) hunger *= resilience;
 
-    if (t.traits.includes('Hydrophilic')) thirst -= TRAIT_EFFECTS.hydrophilicThirstRelief;
-    if (t.traits.includes('Insomniac') && time === 'night') fatigue += TRAIT_EFFECTS.insomniacNightFatigue;
-    if (t.traits.includes('Iron Stomach')) hunger -= TRAIT_EFFECTS.ironStomachHungerRelief;
+    // Traits, as one table read rather than a growing chain of includes().
+    hunger += traitMod(t, 'hungerDrain');
+    thirst += traitMod(t, 'thirstDrain');
+    fatigue += time === 'night' ? traitMod(t, 'fatigueNight') : traitMod(t, 'fatigueDay');
     // Younger tributes burn through rations faster and sleep worse.
     if (t.age <= TRAIT_EFFECTS.youngAge) {
         hunger += TRAIT_EFFECTS.youngHungerPenalty;
@@ -74,6 +78,8 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
 function applyStatusDamage(ctx: SimContext, t: Tribute) {
     if (t.vitals.hunger > VITALS.starvingThreshold) {
         applyDamage(ctx, t, VITALS.starvingDamage, { cause: 'Died of starvation', kind: 'status' });
+        // Going properly hungry and coming out the other side teaches a thing.
+        if (t.status === 'alive' && ctx.rng.chance(VITALS.starvedTraitChance)) earnTrait(ctx, t, 'Starved');
     }
     if (t.vitals.thirst > VITALS.dehydratedThreshold) {
         applyDamage(ctx, t, VITALS.dehydratedDamage, { cause: 'Died of dehydration', kind: 'status' });
@@ -170,6 +176,7 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
             t.inventory.splice(antidoteIdx, 1);
             t.injuries.poisoned = false;
             ctx.logEvent(`${t.name} downs an Antidote Vial just in time, purging the venom from their blood.`, [t.id], { important: true, category: 'survival' });
+            earnTrait(ctx, t, 'Venom-Wise');
         }
     }
 
@@ -211,7 +218,7 @@ function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night'
     if (t.injuries.bleeding || t.injuries.infected || t.injuries.poisoned) return;
     if (t.vitals.hunger > RECOVERY.maxHunger || t.vitals.thirst > RECOVERY.maxThirst) return;
 
-    let amount = RECOVERY.nightHeal;
+    let amount = RECOVERY.nightHeal + Math.max(0, traitMod(t, 'sanityRecovery') / 2);
     const zone = getZone(ctx.state.arena, t.zone);
     if (zone && (zone.terrain === 'forest' || zone.terrain === 'ruins')) amount += RECOVERY.shelteredBonus;
     // A shelter they actually built beats whatever cover the terrain offered.
@@ -267,6 +274,10 @@ function applySanityPressure(ctx: SimContext, t: Tribute, time: 'day' | 'night',
         recovery += SANITY.safetyRecovery;
     }
 
+    // Temperament: who falls apart under this and who does not.
+    drain *= Math.max(0.1, 1 + traitMod(t, 'sanityDrain'));
+    if (recovery > 0) recovery += traitMod(t, 'sanityRecovery');
+
     t.vitals.sanity += recovery - drain;
 }
 
@@ -287,9 +298,13 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         if (exposure) applyExposure(ctx, t, exposure);
         if (t.status !== 'alive') return;
 
+        // Standing with the Capitol drifts by temperament as well as by events.
+        const standing = traitMod(t, 'sponsorTrust');
+        if (standing !== 0) t.sponsorTrust = Math.max(0, Math.min(100, t.sponsorTrust + standing));
+
         if (t.traits.includes('Star-Crossed')) {
             t.sponsorTrust = Math.min(100, t.sponsorTrust + TRAIT_EFFECTS.starCrossedTrustPerCycle);
-            t.excitementRating += TRAIT_EFFECTS.starCrossedExcitementPerCycle;
+            addExcitement(t, TRAIT_EFFECTS.starCrossedExcitementPerCycle);
         }
 
         t.vitals.hunger += Math.max(0, drains.hunger);

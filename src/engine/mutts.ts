@@ -8,6 +8,7 @@ import { addZoneThreat, ensureMemory, cycleOf } from './memory';
 import { openWound } from './wounds';
 import { clampTribute } from './vitals';
 import { trainProficiency } from './proficiency';
+import { earnTrait } from './earnedTraits';
 
 /**
  * Mutt resolution (ARENA-04): every mutt used to be a name string, a fixed
@@ -156,6 +157,8 @@ function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     );
     clampTribute(t);
     checkDeath(ctx, t, `Torn apart by ${mutt.name}`);
+    // Surviving the Gamemakers' own animals recalibrates what frightens you.
+    if (t.status === 'alive') earnTrait(ctx, t, 'Hardened');
 
     if (mutt.persistent && t.status === 'alive') {
         const state = ctx.state;

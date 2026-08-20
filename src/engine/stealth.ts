@@ -1,6 +1,7 @@
 import { Terrain, Tribute, Zone } from '../models/types';
 import { CRAFTING, STEALTH } from '../data/balance';
 import { SimContext, getAlive } from './context';
+import { traitMod } from '../data/traits';
 
 /**
  * Concealment and awareness — the two halves of whether one tribute ever finds
@@ -35,6 +36,8 @@ export function concealment(
     }
 
     if (t.injuries.bleeding) value -= STEALTH.bleedingPenalty;
+    // Traits that change how well someone disappears into the ground.
+    value += traitMod(t, 'concealment');
     // A group leaves a group's worth of tracks.
     value -= Math.min(3, alliesPresent) * STEALTH.groupPenalty;
 
@@ -45,10 +48,7 @@ export function concealment(
 export function awareness(t: Tribute): number {
     let value = t.attributes.intelligence * STEALTH.awarenessFromIntelligence;
 
-    if (t.traits.includes('Eagle-Eyed')) value += STEALTH.eagleEyedBonus;
-    if (t.traits.includes('Tracker')) value += STEALTH.trackerBonus;
-    if (t.traits.includes('Light Sleeper')) value += STEALTH.lightSleeperBonus;
-    if (t.traits.includes('Paranoid')) value += STEALTH.paranoidBonus;
+    value += traitMod(t, 'awareness');
     // A hunter is looking; someone hiding in a bush is not.
     if (t.stance === 'Aggressive') value += 1.5;
     if (t.stance === 'Evasive') value -= 1;
@@ -112,8 +112,7 @@ export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute
     if (zone && COVER_TERRAIN.includes(zone.terrain)) chance += STEALTH.coverBonus;
     if (zone && zone.terrain === 'open') chance -= STEALTH.openPenalty;
     if (attacker.archetype === 'trickster') chance += 0.12;
-    if (attacker.traits.includes('Nimble')) chance += 0.06;
-    if (attacker.traits.includes('Clumsy')) chance -= 0.12;
+    chance += traitMod(attacker, 'ambush');
     if (defender.stance === 'Aggressive') chance -= 0.1;
 
     return ctx.rng.chance(Math.max(0, Math.min(STEALTH.maxAmbushChance, chance)));

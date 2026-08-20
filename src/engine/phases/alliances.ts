@@ -7,6 +7,8 @@ import { adjustRel, getRel } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact } from '../memory';
 import { allianceOf, areLovers, contributeToCache, membersOf, reconcileAlliances, registerAlliance } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
+import { addExcitement } from '../audience';
+import { traitMod } from '../../data/traits';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -47,6 +49,8 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         weight *= Math.max(0.05, 1 - Math.max(0, getRel(betrayer, m.id)) / 110);
         // Someone who already burned you goes to the top of the list.
         if (ensureMemory(betrayer).betrayedBy.includes(m.id)) weight *= ALLIANCES.betrayedFirstStrikeWeight;
+        // Someone who never stops watching is a much worse mark.
+        weight *= Math.max(0.1, 1 - traitMod(m, 'betrayalResist'));
         return { m, weight: Math.max(0, weight) };
     }).filter(s => s.weight > 0);
 
@@ -63,8 +67,8 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
 function pickBetrayer(ctx: SimContext, members: Tribute[]): Tribute {
     const scored = members.map(m => ({
         m,
-        weight: Math.max(0.2, (1 + ARCHETYPES[m.archetype].treachery * 10) * distrustFactor(m)
-            * (m.traits.includes('Paranoid') ? 1.6 : 1)
+        weight: Math.max(0.2, (1 + (ARCHETYPES[m.archetype].treachery + traitMod(m, 'treachery')) * 10)
+            * distrustFactor(m)
             * (m.vitals.sanity < 40 ? 1.4 : 1)),
     }));
     let roll = ctx.rng.nextFloat() * scored.reduce((sum, s) => sum + s.weight, 0);
@@ -145,7 +149,8 @@ export function processAlliances(ctx: SimContext) {
                 if (!t1.allianceId && !t2.allianceId) {
                     const rel = getRel(t1, t2.id);
                     // Archetype chemistry: affinity of both parties plus pair compatibility
-                    const affinity = (ARCHETYPES[t1.archetype].allianceAffinity + ARCHETYPES[t2.archetype].allianceAffinity) / 2;
+                    const affinity = (ARCHETYPES[t1.archetype].allianceAffinity + ARCHETYPES[t2.archetype].allianceAffinity) / 2
+                + (traitMod(t1, 'allianceAffinity') + traitMod(t2, 'allianceAffinity')) / 2;
                     const compat = archetypeCompatibility(t1.archetype, t2.archetype);
                     // The persona each sold on the interview couch matters here.
                     const persona = interviewChemistry(t1, t2);
@@ -243,7 +248,7 @@ export function processAlliances(ctx: SimContext) {
             const threshold = ALLIANCES.recruitThreshold * distrust;
             if (groupOpinion < threshold || theirOpinion < threshold) return;
 
-            const affinity = ARCHETYPES[candidate.archetype].allianceAffinity;
+            const affinity = ARCHETYPES[candidate.archetype].allianceAffinity + traitMod(candidate, 'allianceAffinity');
             const chance = Math.max(
                 ALLIANCES.minFormChance,
                 (ALLIANCES.recruitChance + affinity - (members.length - 2) * ALLIANCES.recruitSizePenalty) / distrust
@@ -408,8 +413,8 @@ function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute) {
     t2.sponsorTrust = Math.min(100, t2.sponsorTrust + 40);
     t1.reputation = Math.min(95, t1.reputation + 20);
     t2.reputation = Math.min(95, t2.reputation + 20);
-    t1.excitementRating += 50;
-    t2.excitementRating += 50;
+    addExcitement(t1, 50);
+    addExcitement(t2, 50);
 
     ctx.logEvent(
         fill(ctx.pickText(ROMANCE_TEXTS), {

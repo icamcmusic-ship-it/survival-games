@@ -1,6 +1,6 @@
 import { Terrain, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { BLEEDING, CRAFTING, DESPERATION, ENCOUNTERS, HUNTING, MEMORY, PROFICIENCY, TRAIT_EFFECTS, VITALS, ZONES } from '../data/balance';
+import { BLEEDING, CRAFTING, DESPERATION, ENCOUNTERS, HUNTING, MEMORY, PROFICIENCY, VITALS, ZONES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaEventDef, arenaFlavor } from '../data/arenaFlavor';
 import { SimContext } from './context';
@@ -15,6 +15,7 @@ import { profOf, trainProficiency } from './proficiency';
 import { attemptFieldcraft } from './fieldcraft';
 import { resolveMuttAttack as resolveMuttAttackImpl } from './mutts';
 import { severRandomEdge, startZoneEffect } from './zoneEffects';
+import { traitMod } from '../data/traits';
 
 export function fill(template: string, vars: Record<string, string>): string {
     return Object.entries(vars).reduce(
@@ -293,9 +294,13 @@ function attemptForage(
     }
     // Foraging mostly turns up food and water, but the woods also hold things
     // that are only useful to someone who does not intend to eat them.
+    // A scavenger turns up things nobody left on purpose: a dropped pack, a
+    // coil of wire in the ruins, matches in a dead tribute's coat.
     const pool = ctx.rng.chance(ZONES.nightlockChance)
         ? ITEMS.filter(i => i.id === 'nightlock')
-        : ITEMS.filter(i => i.type === 'food' || i.type === 'water');
+        : ctx.rng.chance(traitMod(t, 'scavenge'))
+            ? ITEMS.filter(i => i.type === 'utility' && i.id !== 'nightlock')
+            : ITEMS.filter(i => i.type === 'food' || i.type === 'water');
     const item = ctx.rng.pick(pool);
     // Clone before touching spoilage: `item` is the shared ITEMS entry.
     const fresh = { ...item };
@@ -348,7 +353,7 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
     const baseForageChance = ZONES.baseForageChance
         + available * ZONES.yieldForageWeight
         + (t.archetype === 'survivalist' ? ZONES.survivalistForageBonus : 0)
-        + (t.traits.includes('Tracker') ? TRAIT_EFFECTS.trackerForageBonus : 0)
+        + traitMod(t, 'forage')
         + profOf(t, 'forage') * PROFICIENCY.forageWeight;
 
     // A wound that is actually running is the most urgent thing in their life,

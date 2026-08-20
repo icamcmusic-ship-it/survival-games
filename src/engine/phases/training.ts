@@ -8,6 +8,7 @@ import { strengthCapForAge } from '../generator';
 import { LEGACY_EFFECTS, legacyOf } from '../../data/districts';
 import { adjustRel } from '../relationships';
 import { clampTribute } from '../vitals';
+import { addExcitement } from '../audience';
 
 /**
  * Training scores 1-8 are earned on merit. Every point above 8 is a separate
@@ -71,7 +72,7 @@ export function processTraining(ctx: SimContext) {
         }
 
         t.trainingScore = score;
-        t.excitementRating += score * 5;
+        addExcitement(t, score * 5);
         if (score >= 10) t.sponsorTrust = Math.min(100, t.sponsorTrust + 15);
         else if (score >= 9) t.sponsorTrust = Math.min(100, t.sponsorTrust + 8);
 
