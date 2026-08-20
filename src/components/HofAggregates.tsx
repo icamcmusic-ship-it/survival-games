@@ -59,6 +59,14 @@ export function HofAggregates({ entries }: Props) {
             }
         }
 
+        // §6.3: the archive's most lethal victor, by kills in their run.
+        let mostLethal: { name: string; district: number; kills: number } | null = null;
+        for (const entry of entries) {
+            if (entry.kills > 0 && (!mostLethal || entry.kills > mostLethal.kills)) {
+                mostLethal = { name: entry.winnerName, district: entry.winnerDistrict, kills: entry.kills };
+            }
+        }
+
         const arenaAverages = Array.from(arenaHealth, ([name, bucket]) => ({ name, avg: bucket.total / bucket.runs }));
         arenaAverages.sort((a, b) => b.avg - a.avg || a.name.localeCompare(b.name));
         const luckiestArena = arenaAverages[0] ?? null;
@@ -70,7 +78,11 @@ export function HofAggregates({ entries }: Props) {
             avgKills: entries.length > 0 ? totalKills / entries.length : 0,
             topCause: topOf(causes),
             topDistrict: topOf(districtWins),
-            luckiestArena
+            luckiestArena,
+            mostLethal,
+            districtTable: [...districtWins.entries()]
+                .map(([label, wins]) => ({ label, wins }))
+                .sort((a, b) => b.wins - a.wins || a.label.localeCompare(b.label)),
         };
     }, [entries]);
 
@@ -101,7 +113,7 @@ export function HofAggregates({ entries }: Props) {
                 </div>
             </div>
 
-            <dl className="grid md:grid-cols-3 gap-2.5">
+            <dl className="grid md:grid-cols-2 lg:grid-cols-4 gap-2.5">
                 <div className="panel-flush p-3">
                     <dt className="eyebrow">Most common cause of death</dt>
                     <dd className="mt-1 text-[var(--color-ink-100)] font-bold">
@@ -125,6 +137,17 @@ export function HofAggregates({ entries }: Props) {
                     )}
                 </div>
                 <div className="panel-flush p-3">
+                    <dt className="eyebrow">Most lethal victor</dt>
+                    <dd className="mt-1 text-[var(--color-ink-100)] font-bold">
+                        {stats.mostLethal ? stats.mostLethal.name : '—'}
+                    </dd>
+                    {stats.mostLethal && (
+                        <div className="text-xs text-[var(--color-ink-500)] mt-0.5 font-mono">
+                            District {stats.mostLethal.district} · {stats.mostLethal.kills} kills in one Games
+                        </div>
+                    )}
+                </div>
+                <div className="panel-flush p-3">
                     <dt className="eyebrow">Luckiest arena</dt>
                     <dd className="mt-1 text-[var(--color-ink-100)] font-bold">
                         {stats.luckiestArena ? stats.luckiestArena.name : 'Not recorded'}
@@ -136,6 +159,19 @@ export function HofAggregates({ entries }: Props) {
                     )}
                 </div>
             </dl>
+
+            {stats.districtTable.length > 1 && (
+                <div>
+                    <div className="eyebrow mb-1.5">District win table</div>
+                    <div className="flex flex-wrap gap-1.5">
+                        {stats.districtTable.map(d => (
+                            <span key={d.label} className="chip font-mono text-[10px]">
+                                {d.label}: {d.wins}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
         </section>
     );
 }

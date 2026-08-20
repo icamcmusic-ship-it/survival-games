@@ -3,6 +3,7 @@ import { GameState } from '../models/types';
 import { EventFeed } from '../components/EventFeed';
 import { ReplayScrubber } from '../components/ReplayScrubber';
 import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
+import { ChronicleExport } from '../components/ChronicleExport';
 import { Trophy, MapPin, Swords, Skull, RotateCcw } from 'lucide-react';
 import { ACHIEVEMENTS } from '../data/achievements';
 import { RECORD_DEFS } from '../utils/panemStorage';
@@ -49,7 +50,9 @@ export function EndScreen({
     );
     const [replayDay, setReplayDay] = useState(finalDay);
 
-    const winner = gameState.tributes.find(t => t.status === 'alive');
+    // §7.1: a run can now end with two victors.
+    const victors = gameState.tributes.filter(t => t.status === 'alive');
+    const winner = victors[0];
     const dead = gameState.tributes.filter(t => t.status === 'dead');
 
     const killLeaderboard = useMemo(
@@ -131,7 +134,10 @@ export function EndScreen({
                 </div>
             ) : activeTab === 'logs' ? (
                 <div className="panel p-5 space-y-4 animate-fadeIn">
-                    <h3 className="panel-title">Chronicle archive — {gameState.log.length} events</h3>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                        <h3 className="panel-title">Chronicle archive — {gameState.log.length} events</h3>
+                        <ChronicleExport gameState={gameState} />
+                    </div>
                     <div className="max-h-[620px] overflow-y-auto pr-2 custom-scrollbar">
                         <EventFeed logs={gameState.log} />
                     </div>
@@ -148,8 +154,8 @@ export function EndScreen({
                             <span className="eyebrow" style={{ color: 'var(--red)' }}>
                                 What made these Games unusual
                             </span>
-                            {outcome.notables.map((n, i) => (
-                                <p key={i} className="text-sm text-[var(--color-ink-200)] leading-relaxed">{n.text}</p>
+                            {outcome.notables.map(n => (
+                                <p key={n.text} className="text-sm text-[var(--color-ink-200)] leading-relaxed">{n.text}</p>
                             ))}
                         </div>
                     )}
@@ -214,27 +220,31 @@ export function EndScreen({
                         </div>
                     )}
 
-                    {winner ? (
-                        <div className="md:col-span-2 panel p-6 flex flex-col md:flex-row justify-between items-center gap-6"
+                    {victors.length > 0 ? (
+                        <div className="md:col-span-2 panel p-6 space-y-5"
                             style={{ borderColor: 'var(--gold)', borderWidth: '3px' }}>
-                            <div className="space-y-2">
-                                <span className="eyebrow text-[var(--color-gold-400)] flex items-center gap-1.5">
-                                    <Trophy className="w-4 h-4" /> Crowned victor
-                                </span>
-                                <h3 className="display-title text-4xl">{winner.name}</h3>
-                                <p className="text-[var(--color-ink-400)] text-sm">
-                                    District {winner.district} · walked out with{' '}
-                                    <span className="text-[var(--cat-alliance)] font-bold">{winner.health}% health</span>
-                                    {winner.trainingScore > 0 && <> · training score {winner.trainingScore}</>}
-                                </p>
-                                <div className="flex flex-wrap gap-1 pt-1">
-                                    {winner.traits.map(t => <span key={t} className="chip">{t}</span>)}
+                            <span className="eyebrow text-[var(--color-gold-400)] flex items-center gap-1.5">
+                                <Trophy className="w-4 h-4" /> {victors.length === 2 ? 'Two crowns — a first in living memory' : 'Crowned victor'}
+                            </span>
+                            {victors.map(v => (
+                                <div key={v.id} className="flex flex-col md:flex-row justify-between items-center gap-6">
+                                    <div className="space-y-2">
+                                        <h3 className="display-title text-4xl">{v.name}</h3>
+                                        <p className="text-[var(--color-ink-400)] text-sm">
+                                            District {v.district} · walked out with{' '}
+                                            <span className="text-[var(--cat-alliance)] font-bold">{v.health}% health</span>
+                                            {v.trainingScore > 0 && <> · training score {v.trainingScore}</>}
+                                        </p>
+                                        <div className="flex flex-wrap gap-1 pt-1">
+                                            {v.traits.map(t => <span key={t} className="chip">{t}</span>)}
+                                        </div>
+                                    </div>
+                                    <div className="stat-tile min-w-[140px]">
+                                        <div className="eyebrow">Eliminations</div>
+                                        <div className="text-5xl font-black text-[var(--ink)] font-mono mt-1">{v.kills}</div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="stat-tile min-w-[140px]">
-                                <div className="eyebrow">Eliminations</div>
-                                <div className="text-5xl font-black text-[var(--ink)] font-mono mt-1">{winner.kills}</div>
-                            </div>
+                            ))}
                         </div>
                     ) : (
                         <div className="md:col-span-2 panel p-6 text-center space-y-2">

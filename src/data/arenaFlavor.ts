@@ -168,6 +168,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'A bell tolls once from the centre of the island. Somewhere, a sector has just turned lethal.',
             'The tide draws back further than it should, exposing machinery beneath the sand.',
             'Lightning strikes the same dead tree for the twelfth hour in a row, exactly on schedule.',
+            'Gears the size of houses grind somewhere beneath the sand, counting toward something.',
+            'For one full minute every mechanism on the island stops at once. The silence is worse than the ticking.',
+            'The minute hand of a buried clock face breaks the surface of the lagoon, sweeps past, and submerges again.',
+            'Steam vents from a seam in the beach in perfect four-second intervals. The arena is breathing on schedule.',
         ],
         actions: {
             forage: [
@@ -282,6 +286,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'A sheet of ice the size of a district calves off the glacier and grinds into the lake.',
             'The temperature drops another ten degrees. The Gamemakers are done being patient.',
             'The aurora over the Wasteland flares Capitol gold. Somewhere, a camera pushes in.',
+            'Trees crack like gunshots in the deep cold, one ridge over, then closer.',
+            'The snow squeaks underfoot at a pitch that means the temperature has passed something important.',
+            'A frozen waterfall groans and shifts. It has been about to fall for days.',
+            'Breath hangs in the air long after each tribute has moved on — a trail of ghosts marking every path taken.',
         ],
         actions: {
             forage: [
@@ -385,6 +393,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Every streetlight in the dead city flickers on at once, then dies.',
             'Rats pour out of a storm drain in a single black wave and vanish.',
             'The Gamemakers cut the water table. Every fountain in the city goes dry at the same moment.',
+            'A traffic signal three blocks away cycles green, amber, red, for nobody.',
+            'Wind funnels down an avenue and every empty window whistles a different note.',
+            'A billboard peels away from its frame and sails four storeys down into the street.',
+            'Deep under the grid a train that has not run in years moves through a tunnel. Everyone hears it. Nobody says so.',
         ],
         actions: {
             forage: [
@@ -486,6 +498,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Something enormous moves under the water and never surfaces.',
             'The Gamemakers seed the swamp with spores. The air begins to glitter.',
             'Every insect in the swamp goes silent at once. Nothing good follows that.',
+            'Bubbles rise in a slow line across the black water, tracing something long that is walking the bottom.',
+            'A tree slides into the bog without a sound, upright, like something pulled it by the roots.',
+            'The haze thickens until the sun is just a paler patch of green.',
+            'Frogs start up in one corner of the swamp and stop in another, passing a message the tributes cannot read.',
         ],
         actions: {
             forage: [
@@ -587,6 +603,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'A dust devil the height of a Capitol tower crosses the dunes and dissolves.',
             'The horizon shimmers with a city that does not exist.',
             'Night falls in minutes and the sand goes from blistering to freezing.',
+            'The dunes sing — a low hum off the slip faces that goes on for an hour.',
+            'Bones surface at the foot of a dune, bleached past knowing what they were.',
+            'The wind erases every footprint in the arena in the space of ten minutes.',
+            'Far off, a column of sand stands upright and does not disperse. The tributes give it a wide berth on instinct.',
         ],
         actions: {
             forage: [
@@ -999,6 +1019,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'The caldera floor shudders once, settles, and goes quiet again.',
             'Ash builds on the shoulders of everything standing still long enough.',
             'The sun comes up brown through the ashfall and never quite finishes the job.',
+            'A fumarole opens at the edge of a zone with a sound like a struck bell.',
+            'The ash records everything: prints, drag marks, where somebody knelt. The whole arena is a ledger.',
+            'Heat lightning flickers inside the ash cloud, lighting it from within like a lamp.',
+            'Somewhere upslope, rock cracks in the heat — one report, then its echo, then nothing.',
         ],
         actions: {
             forage: [
@@ -1095,6 +1119,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Lightning walks the water offshore, striking the same stretch again and again.',
             'The tide comes in fast enough to hear. Somewhere out there it takes a zone with it.',
             'Rain drives sideways across the whole arena and the cameras give up entirely.',
+            'Between squalls comes a stillness so total that every tribute stops to distrust it.',
+            'The sea throws something man-sized onto the shingle and takes it back with the next wave.',
+            'Salt spray reaches zones that have no view of the water. Nowhere in the Reach is dry.',
+            'Thunder arrives before its lightning. The storm has stopped following the rules.',
         ],
         actions: {
             forage: [
@@ -1179,6 +1207,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Heat shimmer turns the far side of the flats into open water. It has fooled better tributes than these.',
             'The crust ticks and pops all afternoon as it expands.',
             'A wind crosses the Mirror and lifts a haze of salt that stings every open wound in the arena.',
+            'The flats double the sky: two suns, two horizons, and tributes walking on both of them.',
+            'A pressure ridge buckles somewhere out on the crust with a crack that carries for miles.',
+            'By noon every distant tribute is a black flame wavering above the white. Counting them is guesswork.',
+            'The salt creeps: overnight it has grown a fine crystal fur on everything left standing still.',
         ],
         actions: {
             forage: [
@@ -1269,6 +1301,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Something releases across the whole arena at once and the air goes gold with it.',
             'The ground gives slightly underfoot everywhere. All of it is alive.',
             'A low, wet sound moves through the mycelium and stops.',
+            'A ring of caps has grown overnight around one tribute\'s camp, evenly spaced, facing inward.',
+            'Spore-light pulses through the ground in slow waves, passing under the tributes\' feet and moving on.',
+            'A stand of stalks leans toward the passing tributes as they go, and rights itself after.',
+            'Something in the Fields has learned to mimic a cannon. It is not quite right, and that is worse.',
         ],
         actions: {
             forage: [
@@ -1354,6 +1390,10 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'A rope bridge somewhere in the arena parts on its own. Nobody was on it. This time.',
             'Mist sits in the canopy until midday and hides everything below the third branch.',
             'Something moves along the underside of a bough, and every tribute in earshot goes still.',
+            'A flowering vine has closed over a gap that was a path yesterday. The Gardens are editing themselves.',
+            'Petals fall for an hour from somewhere too high to see. Nobody trusts them enough to look up long.',
+            'A dropped waterskin falls through the canopy for a very long time. Everyone near enough counts the seconds.',
+            'Birdsong starts at dusk from a part of the Gardens where no tribute has ever seen a bird.',
         ],
         actions: {
             forage: [
@@ -1438,12 +1478,160 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
         ],
     },
 
+    warren: {
+        ambient: [
+            'The Warren does not echo. The dust eats every sound a few metres out, and each tribute moves inside a small private silence.',
+            'Timbers older than the Capitol creak somewhere down-tunnel, take their time about it, and stop.',
+            'The air tastes of iron and old smoke. It has tasted of iron and old smoke for a hundred years.',
+            'A tribute\'s light catches pick-marks on the wall — initials, dates, a tally. People worked their lives out down here.',
+            'Something far below shifts its weight, and every hanging lamp in the arena sways once, together.',
+            'The Gamemakers\' cameras down here are small and red-eyed in the dark, and everyone has learned where not to look.',
+            'A draught moves through the tunnels from nowhere toward nowhere. Following it has occurred to everyone.',
+            'Dust sifts from the ceiling in a fine, unhurried curtain. Nobody who hears the mountain settle above them sleeps well after.',
+        ],
+        actions: {
+            forage: [
+                '{tribute} pries open a miner\'s cache in {zone} and comes away with {item}.',
+                '{tribute} harvests the pale fungus racks of {zone} and finds {item} half-buried beneath them.',
+                '{tribute} sifts the tailings in {zone} and turns up {item}.',
+            ],
+            rest: [
+                '{tribute} wedges into a worked-out seam in {zone} and sleeps like the dead they are trying not to join.',
+                '{tribute} kills their lamp in {zone} and rests in a dark so complete it has texture.',
+                '{tribute} sleeps sitting up against a support timber in {zone}, one hand on it, feeling for a warning.',
+            ],
+            hide: [
+                '{tribute} slides into an ore chute above {zone} and lets the dust settle over them.',
+                '{tribute} becomes one more shadow among the machinery of {zone}.',
+                '{tribute} folds into a blast recess in {zone} and breathes through their sleeve.',
+            ],
+            hunt: [
+                '{tribute} follows fresh bootprints through the dust of {zone}. Down here, everybody signs their name with their feet.',
+                '{tribute} moves through {zone} dark, navigating by the memory of it.',
+                '{tribute} waits at a tunnel mouth in {zone}. In the Warren every road is a choke point eventually.',
+            ],
+            travel: [
+                '{tribute} follows the old rail line through into {zone}.',
+                '{tribute} ducks through a crawl-space and comes out into {zone}, filthy and listening.',
+                '{tribute} climbs a worked seam up into {zone}.',
+            ],
+        },
+        events: [
+            {
+                text: 'The ceiling of {zone} lets go behind {tribute} with a roar. The tunnel they came in by does not exist any more.',
+                escapeText: '{tribute} sprints clear as the roof of {zone} comes down, coughing dust and still counting their own limbs.',
+                cause: 'Buried in a tunnel collapse',
+                dodgeStat: 'agility',
+                damage: 26,
+                fatigue: 15,
+                sanity: 15,
+            },
+            {
+                text: 'The air in {zone} goes bad without warning — thin, sweet, wrong. {tribute} is on their knees before they understand why.',
+                escapeText: '{tribute} tastes the sweetness in the air of {zone} and backs out with their sleeve over their mouth.',
+                cause: 'Suffocated in bad air',
+                dodgeStat: 'intelligence',
+                damage: 16,
+                fatigue: 20,
+                sanity: 10,
+                zoneWide: true,
+            },
+            {
+                text: 'An old charge nobody ever fired takes {tribute}\'s footstep in {zone} as an instruction.',
+                escapeText: '{tribute} sees the wire in the dust of {zone} a bootlength before it matters.',
+                cause: 'Set off a hundred-year-old charge',
+                dodgeStat: 'agility',
+                damage: 30,
+                bleeding: true,
+            },
+            {
+                text: 'A winch drum in {zone} lets its cable run, and a tonne of rusted iron comes down the shaft at {tribute}.',
+                escapeText: '{tribute} hears the cable sing in {zone} and is somewhere else when the load arrives.',
+                cause: 'Crushed under mine machinery',
+                dodgeStat: 'agility',
+                damage: 24,
+            },
+            {
+                text: '{tribute} puts a foot through rotten boarding in {zone} and drops into a winze. The climb out takes everything.',
+                escapeText: '{tribute} feels the boarding in {zone} flex and steps back off it.',
+                cause: 'Fell down an open winze',
+                dodgeStat: 'agility',
+                damage: 18,
+                fatigue: 25,
+            },
+            {
+                text: 'The dust of {zone} gets into {tribute} and will not come out — every breath a smaller room than the last.',
+                escapeText: '{tribute} ties a wet cloth over their face before the dust of {zone} can settle in.',
+                cause: 'Choked on mine dust',
+                dodgeStat: 'intelligence',
+                damage: 10,
+                fatigue: 15,
+                infected: true,
+            },
+            {
+                text: 'Somewhere in {zone} a support gives one loud crack. Nothing falls. {tribute} spends the whole night waiting for the rest of the sentence.',
+                escapeText: '{tribute} reads the cracked timber in {zone} and calmly relocates their whole life elsewhere.',
+                cause: 'Crushed by a failing support',
+                dodgeStat: 'intelligence',
+                damage: 8,
+                sanity: 18,
+            },
+            {
+                text: 'A flooded sump hides under the dust of {zone}. {tribute} is chest-deep in hundred-year-old water before they can shout.',
+                escapeText: '{tribute} probes the dust of {zone} ahead of themselves and walks around the drowned place.',
+                cause: 'Drowned in a hidden sump',
+                dodgeStat: 'agility',
+                damage: 14,
+                fatigue: 20,
+                infected: true,
+            },
+            {
+                text: 'The lamps of {zone} gutter and fail together around {tribute}, and the dark that comes back is older than the mine.',
+                escapeText: '{tribute} has flint out and a flame up before the dark of {zone} finishes arriving.',
+                cause: 'Lost in the dark',
+                dodgeStat: 'intelligence',
+                damage: 8,
+                sanity: 20,
+                zoneWide: true,
+            },
+            {
+                text: 'Rats — ordinary, honest rats, thousands of them — move through {zone} in a single decided direction. {tribute} is standing in it.',
+                escapeText: '{tribute} climbs the machinery of {zone} and lets the river of rats pass underneath.',
+                cause: 'Overrun by the swarm',
+                dodgeStat: 'agility',
+                damage: 12,
+                bleeding: true,
+                sanity: 10,
+            },
+            {
+                text: 'Heat comes up through the floor of {zone} at {tribute} from something far below that has been burning for decades.',
+                escapeText: '{tribute} feels {zone}\'s floor warm through their boots and keeps moving.',
+                cause: 'Cooked by the deep fire',
+                dodgeStat: 'intelligence',
+                damage: 15,
+                burned: true,
+                thirst: 15,
+            },
+            {
+                text: 'A scream reaches {tribute} through the tunnels of {zone} — distance and direction unknowable, the Warren\'s acoustics keeping its counsel. It does not come again.',
+                escapeText: '{tribute} refuses to follow the scream through {zone}, and is right not to.',
+                cause: 'Followed a scream into the dark',
+                dodgeStat: 'intelligence',
+                damage: 6,
+                sanity: 16,
+            },
+        ],
+    },
     vault: {
         ambient: [
             'The Vault has no sky. The faces of the fallen are projected onto the ceiling instead, and they stay there.',
             'Somewhere below, a pump cycles on, runs for four minutes, and stops.',
             'The lights step down one bank at a time. Nobody has explained the schedule.',
             'Every sound in the Vault arrives twice — once directly, once off the far wall.',
+            'A ventilation fan somewhere changes pitch, and the air in three zones starts moving the other way.',
+            'A hairline crack crosses the ceiling projection, and for a moment something true shows through the sky.',
+            'Condensation gathers on the ceiling over the warm zones and falls as slow, oily rain.',
+            'The Vault\'s lights dim to emergency red for thirty seconds. No explanation is offered, which is the message.',
         ],
         actions: {
             forage: [

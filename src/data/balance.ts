@@ -15,7 +15,6 @@ export const VITALS = {
     fatigueDayDrain: 10,
     /** Negative: a night of rest gives fatigue back. */
     fatigueNightRecovery: -20,
-    baseSanityDrain: 5,
 
     /** Terrain modifiers applied on top of the base drains. */
     waterThirstRelief: 8,
@@ -60,8 +59,6 @@ export const BLEEDING = {
     combatSeverity: 2,
     muttSeverity: 3,
     hazardSeverity: 2,
-    /** Chance a landed mutt strike opens a bleeding wound at all. */
-    muttBleedChance: 0.6,
     /** Per-cycle health cost, indexed by severity (0 is not bleeding). */
     damageBySeverity: [0, 3, 7, 12],
     /** Base odds a wound drops one severity step at the end of a cycle. */
@@ -112,8 +109,6 @@ export const WATER = {
 
 /** Per-cycle health cost of each untreated injury. */
 export const INJURY_DAMAGE = {
-    /** Fallback for saves written before `bleedSeverity` existed. */
-    bleeding: 9,
     infected: 10,
     poisoned: 12,
     burned: 4,
@@ -235,8 +230,6 @@ export const HUNTING = {
     gameFeed: 35,
     /** Multiplier on the chance a hunter actually finds who they are looking for. */
     meetChanceMultiplier: 2.0,
-    /** A hunter who knows where a rival went will follow them out of the zone. */
-    pursuitChance: 0.55,
 
     /** Bloodlust: what a kill does to the next fight. */
     momentumPerKill: 3,
@@ -246,6 +239,23 @@ export const HUNTING = {
     momentumPowerWeight: 0.8,
     /** Retreat chance shed per point of momentum. */
     momentumRetreatWeight: 0.04,
+    /**
+     * §3.4: the counterpart mood. Momentum only pointed one way — a tribute
+     * who was ambushed, lost their weapon and watched an ally die was
+     * mechanically identical to one who had a quiet day. Rattled is the
+     * symmetric short-lived state: worse in a fight, far more likely to
+     * break off. Raised by fleeing a fight, walking into a trap, and grief;
+     * decays alongside momentum.
+     */
+    rattledMax: 6,
+    rattledDecayPerCycle: 1,
+    rattledPerFlee: 2,
+    rattledPerTrap: 2,
+    rattledPerGrief: 3,
+    /** Combat power lost per point of rattled. */
+    rattledPowerWeight: 0.7,
+    /** Retreat chance added per point of rattled. */
+    rattledRetreatWeight: 0.05,
 } as const;
 
 /**
@@ -275,8 +285,6 @@ export const PROFICIENCY = {
     affinityItemBonus: 2.2,
     /** Smaller bonus for a weapon merely of a familiar class. */
     affinityClassBonus: 1.1,
-    /** Awareness added per point of tracking. */
-    trackingAwarenessWeight: 0.4,
 } as const;
 
 /**
@@ -299,8 +307,16 @@ export const FEAR = {
     retreatWeight: 0.35,
     /** Destination score subtracted for a feared rival's last known position. */
     avoidWeight: 2.5,
-    /** Above this, a tribute will not willingly start a fight with them. */
-    avoidEngagementThreshold: 45,
+    /**
+     * §3.2: beliefs with error. A cannon one zone over is information a
+     * tribute acts on — and information they can get wrong. A near-miss
+     * observer gains fear of the killer at this reduced rate...
+     */
+    distantKill: 12,
+    /** ...and this often pins it on the wrong person entirely. */
+    misattributionChance: 0.3,
+    /** Landing a clean hit on someone you feared corrects the belief. */
+    realityCorrection: 8,
 } as const;
 
 /**
@@ -312,6 +328,61 @@ export const FEAR = {
  * dying. Only one tribute leaves the arena, and everyone in it knows that; the
  * closer the end gets, the less anyone can afford to be civil.
  */
+/**
+ * §3.3: the endgame self-assessment. Once the field is countable, a tribute
+ * asks "do I win a straight fight?" — relative health, kills, arms, allies —
+ * and lets the answer steer intention: winners hunt, losers turn to traps
+ * and evasion instead of blundering into fights they have already lost.
+ */
+/**
+ * §3.1: attribute drift. Attributes were frozen at the reaping, so a
+ * tribute's physical trajectory was monotonically downward with no
+ * counterweight. Starvation now wastes strength (the Starved trait already
+ * recognised the fiction; this makes it mechanical), and sustained use of a
+ * body-led skill earns back fractional agility/stealth.
+ */
+/**
+ * §4.2: suspicion. Betrayal was instantaneous — nothing telegraphed it and no
+ * tribute could suspect it. Suspicion is per-pair dread of a specific ally,
+ * raised by watching them knife someone and by charter breaches, sharpened by
+ * paranoia, decaying with quiet days. High suspicion causes pre-emptive
+ * departure — sleeping apart, slipping away before dawn — and makes the
+ * suspicious a harder mark for the betrayal they saw coming.
+ */
+export const SUSPICION = {
+    max: 100,
+    perWitnessedBetrayal: 35,
+    perCharterBreach: 15,
+    decayPerCycle: 2,
+    /** At or above this, an ally considers getting out first. */
+    departThreshold: 60,
+    departChance: 0.35,
+    /** How much being watched costs a betrayer's target weighting, at full suspicion. */
+    hardMarkFactor: 0.5,
+} as const;
+
+export const DRIFT = {
+    /** Strength lost per cycle spent past the starving threshold. */
+    starvationWasting: 0.08,
+    /** No wasting below this floor — the arena starves you, it does not delete you. */
+    strengthFloor: 2,
+    /** Fractional agility per whole level of melee/ranged proficiency gained. */
+    agilityPerCombatLevel: 0.15,
+    /** Fractional stealth per whole level of tracking proficiency gained. */
+    stealthPerTrackingLevel: 0.15,
+    /** Drift ceiling: earned points never exceed this above the printed stat. */
+    maxGain: 1,
+} as const;
+
+export const ENDGAME = {
+    /** Field size at which tributes start counting. */
+    fieldSize: 8,
+    /** Assessment above this: hunt even outside an Aggressive stance. */
+    hunterEdge: 0.25,
+    /** Assessment below this: prefer traps, evasion, alliance-seeking. */
+    underdogEdge: -0.25,
+} as const;
+
 export const DESPERATION = {
     /** Field size at which the arithmetic starts to press on people. The old
      *  gate of 8 produced ~11 desperation fights across 240 runs — most
@@ -363,8 +434,6 @@ export const MEDICAL = {
  * day 6, the environment out-killing the tributes — starts here.
  */
 export const BLOODBATH = {
-    /** How far off the horn a plate can be, in abstract units. Low = in the killing zone. */
-    plateSpread: 1,
     /** Baseline willingness to go for the Cornucopia rather than the treeline. */
     fightChanceBase: 0.66,
     /** Added for a Career: the pack came here to do exactly this. */
@@ -535,9 +604,6 @@ export const ENCOUNTERS = {
     groupFightChance: 0.7,
     /** Cap on how many tributes are drawn into a single brawl. */
     maxBrawlSize: 5,
-    muttDamage: 40,
-    muttEvasionAgility: 6,
-    muttEvasionChance: 0.7,
     /** Chance a tribute wanders rather than holding position. */
     wanderChance: 0.5,
     /** Depletion at which a forage attempt reports the ground picked clean. */
@@ -615,6 +681,12 @@ export const COMBAT = {
     focusFireChance: 0.6,
     /** Group encounters run for at most this many rounds. */
     maxGroupRounds: 5,
+    /**
+     * Action economy for numbers: every attacker beyond the lead presses the
+     * same target each round, at this flat power penalty so a six-strong pack
+     * is frightening without instantly deleting anyone it corners.
+     */
+    supportAttackPenalty: 4,
 
     /** Base odds a tribute breaking off eats a parting shot on the way out. */
     partingShotChance: 0.3,
@@ -636,6 +708,14 @@ export const COMBAT = {
  * the game to give teeth to, because every tribute already has a number for it.
  */
 export const STEALTH = {
+    /** §5.2: concealment/ambush per unit of zone cover above the 0.35 baseline. */
+    coverGradeScale: 0.5,
+    /** §5.2: ambush chance lost against a zone with commanding high ground. */
+    elevationAmbushPenalty: 0.1,
+    /** §5.2: ambush chance gained where the ways in and out bottleneck. */
+    chokepointAmbushBonus: 0.12,
+    /** §5.2: extra reluctance-to-flee where the exits bottleneck. */
+    chokepointRetreatPenalty: 0.1,
     /** Baseline odds a hidden tribute goes unnoticed before any modifiers. */
     baseConcealment: 0.15,
     /** Weight on the concealment roll per point of stealth over awareness. */
@@ -647,8 +727,6 @@ export const STEALTH = {
     /** Sweeping a zone for a fight means making noise. */
     aggressivePenalty: 0.15,
     /** Terrain that hides a body, and terrain that does not. */
-    coverBonus: 0.12,
-    openPenalty: 0.12,
     /** Being hurt makes you easier to find. */
     bleedingPenalty: 0.1,
     /** An alliance cannot move quietly. */
@@ -710,6 +788,8 @@ export const STEALTH = {
  * carries between cycles: find water, find somewhere to sleep.
  */
 export const MOVEMENT = {
+    /** §5.3: extra fatigue for completing a two-cycle crossing or climb. */
+    crossingFatigue: 8,
     /** Thirst above which finding water outranks everything else. */
     thirstUrgency: 45,
     waterSeekWeight: 7,
@@ -927,8 +1007,6 @@ export const INVENTORY = {
      * and anything looser leaves the Backpack with nothing to do.
      */
     baseCapacity: 4,
-    /** A Backpack is the difference between looting a body and looting it all. */
-    backpackCapacity: 3,
     /** A Backpack also keeps food out of the sun. */
     backpackSpoilageBonus: 2,
 } as const;
@@ -1011,6 +1089,11 @@ export const STANCE = {
 
 /** Relationship graph: bounds, decay, and the deltas life in the arena applies. */
 export const RELATIONSHIPS = {
+    /** §4.3: trust corrections applied on top of regard. See `trustOf`. */
+    trustStoodByBonus: 15,
+    trustBetrayedPenalty: 40,
+    trustSuspicionWeight: 0.4,
+    trustCreditorBonus: 10,
     min: -100,
     max: 100,
     /** Per-cycle pull toward zero for pairs with no contact. */
@@ -1099,16 +1182,22 @@ export const PROTECTOR_BOND = {
 } as const;
 
 export const ROMANCE = {
-    /** Odds a one-sided attachment gets played for the cameras instead. */
-    performedChance: 0.07,
+    /**
+     * Odds a one-sided attachment gets played for the cameras instead.
+     * §6.1: at 0.07 behind five conjunctive gates the performed bond fired
+     * 1-2 times across 240 runs — one of the best ideas in the codebase,
+     * effectively unreachable. Loosened with performedMinRegard and
+     * performerCharisma so it lands a few times per soak.
+     */
+    performedChance: 0.14,
     /**
      * Regard the smitten party needs. Deliberately below `threshold`: a
      * performed bond does not need the mutual devotion a real one does, only
      * one person who has fallen far enough to be convincing about it.
      */
-    performedMinRegard: 75,
+    performedMinRegard: 70,
     /** Charisma needed to sell a romance you are not feeling. */
-    performerCharisma: 6,
+    performerCharisma: 5,
     /** What the performer shows, as opposed to what they feel. */
     performedDisplayedRegard: 75,
     /** Nothing before the bloodbath is over and the cast is real. */
@@ -1120,7 +1209,7 @@ export const ROMANCE = {
     /** Contact this stale breaks the streak. */
     contactWindow: 2,
     /** Odds per cycle once every condition holds. Romance is never automatic. */
-    chancePerCycle: 0.15,
+    chancePerCycle: 0.1,
     /**
      * Per-day decay on that chance. Keeps the romance rate a property of the
      * cast rather than a property of how long the Games happened to run.
@@ -1173,8 +1262,9 @@ export const ALLIANCES = {
      * which is the missing path that left almost every organic alliance a pair
      * for the whole run.
      */
-    mergeChance: 0.35,
-    mergeThreshold: 12,
+    /** §6.1: 0.35/12 produced ~9 merges per 240 runs. */
+    mergeChance: 0.5,
+    mergeThreshold: 5,
     /** A member whose average regard for the other group is below this walks
      *  out of a negotiated merge rather than blocking it. */
     mergeDissentThreshold: -10,
@@ -1311,6 +1401,26 @@ export const ODDS = {
     /** The crowd's darling gets a nudge. */
     fanFavouriteBonus: 10,
     minScore: 10,
+    /**
+     * Exponent applied to scores before normalising into win probabilities.
+     * The raw scores only span about a 2x spread while realised win rates
+     * span >20x — at 1 the board barely discriminated (everything priced
+     * 3-6%) and, worse, was monotonically mispriced: high-rated tributes
+     * were systematically underpriced, so betting the favourite every run
+     * multiplied a bankroll 22x over 300 runs. Raising the exponent spreads
+     * the shares toward the measured distribution: at 5, a 400-run probe put
+     * every shown-percentage decile's EV at or below break-even and the
+     * bet-the-favourite strategy lost money.
+     */
+    discrimination: 5,
+    /**
+     * The house's cut, applied to the payout multiplier — not to the shown
+     * percentage. The payout used to be derived straight from the display
+     * number (mult = 100/pct), which set EV by accident. With the margin the
+     * expected value of a fairly-priced wager is deliberately slightly
+     * negative, as any real book prices it.
+     */
+    houseMargin: 0.85,
 } as const;
 
 /** The Gamemakers' direct interventions. */
@@ -1340,9 +1450,6 @@ export const GAMEMAKER = {
      * just turned up, which is what makes it an intervention.
      */
     weatherIntensity: 1.6,
-    muttTargetedDamage: 50,
-    muttSweepBaseDamage: 20,
-    muttSweepVariance: 15,
     muttSweepBaseChance: 0.2,
     muttSweepDangerWeight: 0.3,
 } as const;
@@ -1538,12 +1645,14 @@ export const RESOLVE = {
     breakdownRebound: 12,
     /** Sitting down and stopping is not, and compounds instead. */
     sittingDownPenalty: 4,
-    /** Taking the nightlock needs to be genuinely final, and is still rare. */
-    nightlockThreshold: 14,
-    nightlockChance: 0.3,
+    /** Taking the nightlock needs to be genuinely final, and is still rare —
+     *  but 14/0.3 meant 1-4 firings per 240 runs, an ending players would
+     *  never see (§6.1). */
+    nightlockThreshold: 18,
+    nightlockChance: 0.5,
     /** A tribute with nothing left can go looking for it where things grow. */
     nightlockForageResources: 0.35,
-    nightlockFindChance: 0.4,
+    nightlockFindChance: 0.6,
 } as const;
 
 /**
@@ -1557,8 +1666,14 @@ export const RESOLVE = {
 export const PARLEY = {
     /** A power ratio below this means a tribute genuinely likes their odds. */
     confidentRatio: 0.8,
-    /** A power ratio above this means they know they are losing. */
-    outmatchedRatio: 1.25,
+    /**
+     * A power ratio above this means they know they are losing. 1.25 left the
+     * pay-your-way-out path effectively dead (≤5 firings across 240 runs, and
+     * whole soaks with zero) — a matchup lopsided enough to read as clearly
+     * outmatched through the perception layer almost never met the other
+     * gates too.
+     */
+    outmatchedRatio: 1.12,
 
     /** Paying to be allowed to leave. */
     tributeChance: 0.6,

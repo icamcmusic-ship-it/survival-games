@@ -1,5 +1,5 @@
 import { ArchetypeId, Item, Proficiency, Tribute } from '../models/types';
-import { PROFICIENCY } from '../data/balance';
+import { DRIFT, PROFICIENCY } from '../data/balance';
 import { craftOf } from '../data/districts';
 
 /**
@@ -81,6 +81,22 @@ export function trainProficiency(t: Tribute, skill: Proficiency): number {
     const next = Math.min(PROFICIENCY.max, current + gain);
     // Rounded so the value stays legible in a tooltip and in save files.
     t.proficiencies[skill] = Math.round(next * 100) / 100;
+    // §3.1: crossing a whole level of a body-led skill earns back a fraction
+    // of the matching attribute — the counterweight to injury and starvation.
+    if (Math.floor(next) > Math.floor(current)) {
+        t.attributeDrift = t.attributeDrift ?? {};
+        // Capped both by DRIFT.maxGain and by the attribute scale itself (10).
+        const drift = (attr: 'agility' | 'stealth', per: number) => {
+            const held = t.attributeDrift![attr] ?? 0;
+            if (held >= DRIFT.maxGain) return;
+            const inc = Math.min(per, DRIFT.maxGain - held, 10 - t.attributes[attr]);
+            if (inc <= 0) return;
+            t.attributeDrift![attr] = Math.round((held + inc) * 100) / 100;
+            t.attributes[attr] = Math.round((t.attributes[attr] + inc) * 100) / 100;
+        };
+        if (skill === 'melee' || skill === 'ranged') drift('agility', DRIFT.agilityPerCombatLevel);
+        else if (skill === 'tracking') drift('stealth', DRIFT.stealthPerTrackingLevel);
+    }
     return t.proficiencies[skill]!;
 }
 

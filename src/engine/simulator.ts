@@ -9,7 +9,8 @@ import { processAlliances } from './phases/alliances';
 import { processFeast } from './phases/feast';
 import { processDayNight } from './phases/dayNight';
 import { processEpilogue } from './phases/epilogue';
-import { triggerGamemakerEvent as triggerGamemakerEventPhase } from './gamemaker';
+import { GamemakerEventType, triggerGamemakerEvent as triggerGamemakerEventPhase } from './gamemaker';
+import { checkDualVictory } from './victory';
 import { fireScheduledWildcard } from './wildcards';
 import { FEAST_TEXTS } from '../data/flavorText';
 
@@ -99,11 +100,22 @@ export class Simulator {
             this.state.phase = 'night';
         }
 
-        if (getAlive(this.state).length <= 1) {
+        this.maybeEndGames();
+        return true;
+    }
+
+    /**
+     * One survivor ends the Games as it always did; §7.1 lets the right final
+     * two end them together — a standing "two may win" rule, a district-pairs
+     * Quarter Quell, or the lovers' nightlock standoff.
+     */
+    private maybeEndGames() {
+        if (this.state.phase === 'ended' || this.state.phase === 'epilogue') return;
+        const alive = getAlive(this.state).length;
+        if (alive <= 1 || (alive === 2 && checkDualVictory(this.ctx))) {
             this.state.phase = 'epilogue';
             this.processEpilogue();
         }
-        return true;
     }
 
     /**
@@ -136,12 +148,9 @@ export class Simulator {
         this.ctx.logEvent(rng.pick(FEAST_TEXTS.announce), [], { important: true, category: 'feast' });
     }
 
-    public triggerGamemakerEvent(type: 'mutt' | 'weather' | 'feast', targetId?: string) {
+    public triggerGamemakerEvent(type: GamemakerEventType, targetId?: string) {
         triggerGamemakerEventPhase(this.ctx, type, targetId);
-        if (getAlive(this.state).length <= 1 && this.state.phase !== 'ended' && this.state.phase !== 'epilogue') {
-            this.state.phase = 'epilogue';
-            this.processEpilogue();
-        }
+        this.maybeEndGames();
     }
 
     public processEpilogue() {

@@ -2,15 +2,16 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { ALLIANCES, PROTECTOR_BOND, ROMANCE } from '../../data/balance';
+import { ALLIANCES, PROTECTOR_BOND, ROMANCE, SUSPICION } from '../../data/balance';
 import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
-import { adjustRel, getRel } from '../relationships';
-import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact } from '../memory';
+import { adjustRel, getRel, trustOf } from '../relationships';
+import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, suspicionOf } from '../memory';
 import { allianceOf, areLovers, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
 import { betrayalReluctance } from '../debts';
 import { addExcitement } from '../audience';
 import { traitMod } from '../../data/traits';
+import { wildcardIs } from '../gamesProfile';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -56,6 +57,8 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         if (ensureMemory(betrayer).betrayedBy.includes(m.id)) weight *= ALLIANCES.betrayedFirstStrikeWeight;
         // Someone who never stops watching is a much worse mark.
         weight *= Math.max(0.1, 1 - traitMod(m, 'betrayalResist'));
+        // §4.2: so is someone who is specifically watching *you*.
+        weight *= Math.max(0.1, 1 - (suspicionOf(m, betrayer.id) / SUSPICION.max) * SUSPICION.hardMarkFactor);
         // And you do not knife the person who pulled you out of a fire. A debt
         // was recorded and then never charged for — this is the charge.
         weight *= betrayalReluctance(betrayer, m.id);
@@ -88,7 +91,7 @@ function pickBetrayer(ctx: SimContext, members: Tribute[]): Tribute {
 }
 
 export function processAlliances(ctx: SimContext) {
-    ctx.rng = new RNG(`${ctx.state.seed}-alliances-${ctx.state.day}`);
+    ctx.rng = new RNG(`${ctx.state.seed}-alliances-${ctx.state.day}-${ctx.state.phase}`);
     const alive = getAlive(ctx.state);
     const alliances = new Map<string, Tribute[]>();
 
@@ -124,6 +127,36 @@ export function processAlliances(ctx: SimContext) {
         }
     });
 
+    // 1c. §4.2: pre-emptive departure. A member whose suspicion of a specific
+    // ally has climbed high enough gets out before the knife does — the
+    // telegraphed version of the betrayal the audience can see building.
+    alliances.forEach((members, id) => {
+        if (members.length < 2 || id.startsWith('lovers-')) return;
+        members.forEach(m => {
+            if (m.status !== 'alive' || m.allianceId !== id) return;
+            const suspect = members.find(o =>
+                o.id !== m.id && o.status === 'alive' && suspicionOf(m, o.id) >= SUSPICION.departThreshold);
+            if (!suspect) return;
+            if (!ctx.rng.chance(SUSPICION.departChance)) {
+                // Not gone yet — but sleeping apart is a beat the audience reads.
+                if (ctx.rng.chance(0.3)) {
+                    ctx.logEvent(
+                        `${m.name} beds down apart from the others and keeps ${suspect.name} in view. Whatever trust there was is being rationed now.`,
+                        [m.id, suspect.id],
+                        { category: 'alliance' }
+                    );
+                }
+                return;
+            }
+            delete m.allianceId;
+            ctx.logEvent(
+                `${m.name} is gone before dawn. No theft, no knife — just a bedroll left cold and ${suspect.name} watched all the way out of sight. Some betrayals you leave before they happen.`,
+                [m.id, suspect.id],
+                { important: true, category: 'alliance' }
+            );
+        });
+    });
+
     // 2. Betrayal Logic
     alliances.forEach((members) => {
         if (members.length < 2) return;
@@ -147,15 +180,25 @@ export function processAlliances(ctx: SimContext) {
     // 3. Dynamic Alliance Formation & Star-Crossed Lovers
     // Re-read the living: betrayals above may have killed someone since the
     // snapshot at the top of this function.
+    // §7.1's sibling rule: the no-alliances rule change was announced by a
+    // wildcard and enforced by nothing. When it stands, no new alliance forms,
+    // no group recruits and no groups merge — what existed before the
+    // announcement is grandfathered in, and lovers keep theirs secret.
+    const alliancesForbidden = wildcardIs(ctx.state, 'rule-change-no-allies');
     const stillAlive = getAlive(ctx.state);
-    if (stillAlive.length > ALLIANCES.formationFieldSize) {
+    if (!alliancesForbidden && stillAlive.length > ALLIANCES.formationFieldSize) {
         for (let i = 0; i < stillAlive.length; i++) {
             for (let j = i + 1; j < stillAlive.length; j++) {
                 const t1 = stillAlive[i];
                 const t2 = stillAlive[j];
 
                 if (!t1.allianceId && !t2.allianceId) {
-                    const rel = getRel(t1, t2.id);
+                    // §4.3: joining someone is a trust decision, not a regard
+                    // one. The mean, not the min: requiring the *lower* side to
+                    // clear the bar collapsed formation entirely (the firing
+                    // floors caught it) — a wary party joining a warm one is a
+                    // real alliance, and the wariness is what betrayal feeds on.
+                    const rel = (trustOf(t1, t2) + trustOf(t2, t1)) / 2;
                     // Archetype chemistry: affinity of both parties plus pair compatibility
                     const affinity = (ARCHETYPES[t1.archetype].allianceAffinity + ARCHETYPES[t2.archetype].allianceAffinity) / 2
                 + (traitMod(t1, 'allianceAffinity') + traitMod(t2, 'allianceAffinity')) / 2;
@@ -218,7 +261,7 @@ export function processAlliances(ctx: SimContext) {
     // paired two alliance-free tributes, and recruitment only ever added one
     // loner at a time, so almost every organic alliance stayed a pair for the
     // whole run no matter how well two of them got on.
-    mergeAlliances(ctx);
+    if (!alliancesForbidden) mergeAlliances(ctx);
 
     // 3c. Recruitment: a standing group can take in a loner they trust.
     //
@@ -235,11 +278,14 @@ export function processAlliances(ctx: SimContext) {
     });
 
     groups.forEach((members, id) => {
+        if (alliancesForbidden) return;
         if (members.length < 2 || members.length >= ALLIANCES.maxSize) return;
         // Star-crossed lovers are a pair, not the seed of a gang.
         if (id.startsWith('lovers-')) return;
 
-        const zone = members[0].zone;
+        // The group recruits where its leader stands, not wherever array order
+        // happens to put members[0] — the same anti-pattern alliance.ts documents.
+        const zone = pickLeader(members).zone;
         const present = members.filter(m => m.zone === zone);
         if (present.length < 2) return;
         const candidates = getAlive(ctx.state).filter(o => !o.allianceId && o.zone === zone);
@@ -250,8 +296,9 @@ export function processAlliances(ctx: SimContext) {
 
             // Both directions have to hold: the group has to want them, and
             // they have to want the group.
-            const groupOpinion = present.reduce((sum, m) => sum + getRel(m, candidate.id), 0) / present.length;
-            const theirOpinion = present.reduce((sum, m) => sum + getRel(candidate, m.id), 0) / present.length;
+            // §4.3: recruitment is trust in both directions.
+            const groupOpinion = present.reduce((sum, m) => sum + trustOf(m, candidate), 0) / present.length;
+            const theirOpinion = present.reduce((sum, m) => sum + trustOf(candidate, m), 0) / present.length;
             const distrust = distrustFactor(candidate);
             const threshold = ALLIANCES.recruitThreshold * distrust;
             if (groupOpinion < threshold || theirOpinion < threshold) return;
@@ -278,7 +325,8 @@ export function processAlliances(ctx: SimContext) {
         });
     });
 
-    // 4. Romance — see `growRomance`.
+    // 4. Contact warmth, then romance — see `applyContactWarmth`/`growRomance`.
+    applyContactWarmth(ctx);
     growRomance(ctx);
     growProtectorBond(ctx);
 
@@ -287,10 +335,10 @@ export function processAlliances(ctx: SimContext) {
     Object.values(ctx.state.alliances ?? {}).forEach(record => {
         const members = membersOf(ctx.state, record.id);
         if (members.length < 2) return;
-        const atCamp = members.filter(m => m.zone === (record.campZone ?? members[0].zone));
+        const atCamp = members.filter(m => m.zone === (record.campZone ?? pickLeader(members).zone));
         if (atCamp.length >= 2) contributeToCache(ctx, record, atCamp);
-        // A group that has moved on adopts wherever it now stands as camp.
-        if (atCamp.length < 2) record.campZone = members[0].zone;
+        // A group that has moved on adopts wherever its leader now stands as camp.
+        if (atCamp.length < 2) record.campZone = pickLeader(members).zone;
     });
 }
 
@@ -316,8 +364,9 @@ function mergeAlliances(ctx: SimContext) {
             const b = groups.get(ids[j])!;
             if (a.length < 2 || b.length < 2) continue;
             if (a.length + b.length > ALLIANCES.maxSize) continue;
-            // Same ground, or there is no conversation to have.
-            if (a[0].zone !== b[0].zone) continue;
+            // Same ground, or there is no conversation to have — judged by the
+            // leaders who would do the negotiating, not by array order.
+            if (pickLeader(a).zone !== pickLeader(b).zone) continue;
 
             // A merger is negotiated by whoever the two groups actually follow,
             // not vetoed by blanket mutual regard: the leaders have to get on,
@@ -327,12 +376,14 @@ function mergeAlliances(ctx: SimContext) {
             const leadA = pickLeader(a);
             const leadB = pickLeader(b);
             const crossRegard = (x: Tribute[], y: Tribute[]) =>
-                x.reduce((sum, m) => sum + y.reduce((inner, o) => inner + getRel(m, o.id), 0) / y.length, 0) / x.length;
+                x.reduce((sum, m) => sum + y.reduce((inner, o) => inner + trustOf(m, o), 0) / y.length, 0) / x.length;
             // Two leaders who know and rate each other can shake on it directly;
             // otherwise the groups need to broadly get on — either basis opens
             // the negotiation, and dissenters walk instead of vetoing it.
-            const leadersAgree = getRel(leadA, leadB.id) >= ALLIANCES.mergeThreshold
-                && getRel(leadB, leadA.id) >= ALLIANCES.mergeThreshold;
+            // §4.3: a merger is negotiated on trust — two leaders who respect
+            // each other as fighters but not as sleeping company do not merge.
+            const leadersAgree = trustOf(leadA, leadB) >= ALLIANCES.mergeThreshold
+                && trustOf(leadB, leadA) >= ALLIANCES.mergeThreshold;
             const groupsAgree = crossRegard(a, b) >= ALLIANCES.mergeThreshold
                 && crossRegard(b, a) >= ALLIANCES.mergeThreshold;
             if (!leadersAgree && !groupsAgree) continue;
@@ -360,7 +411,7 @@ function mergeAlliances(ctx: SimContext) {
             groups.delete(keepId === ids[i] ? ids[j] : ids[i]);
 
             ctx.logEvent(
-                `${leadA.name} and ${leadB.name} shake on it in ${a[0].zone}: their groups run as one. ` +
+                `${leadA.name} and ${leadB.name} shake on it in ${leadA.zone}: ${allianceOf(ctx.state, ids[i])?.name ?? 'their group'} and ${allianceOf(ctx.state, ids[j])?.name ?? 'the other'} run as one. ` +
                 `Two small groups are one larger one, which is either much safer or much worse.`,
                 merged.map(m => m.id),
                 { important: true, category: 'alliance' }
@@ -393,6 +444,41 @@ function mergeAlliances(ctx: SimContext) {
  * same-gender pairs are eligible, which both widens the story space and removes
  * the district-partner shortcut that made it so easy to trigger.
  */
+/**
+ * General relationship warmth from spending time together, plus the
+ * sustained-contact streak romance is gated on.
+ *
+ * This used to live inside `growRomance`, which meant a general relationship
+ * inflator was hiding inside the romance function — every pair with recent
+ * contact warmed toward each other every cycle before any romance gate was
+ * even evaluated, and the soak showed relationships pegged at the ±100 clamp.
+ * It is now its own upkeep step so it can be seen and tuned independently.
+ */
+function applyContactWarmth(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    for (let i = 0; i < alive.length; i++) {
+        for (let j = i + 1; j < alive.length; j++) {
+            const t1 = alive[i];
+            const t2 = alive[j];
+            // Contact, not co-location. Standing in the same clearing as
+            // twenty-three other people is not a relationship.
+            const recentContact = cyclesSinceContact(ctx.state, t1, t2.id) <= ROMANCE.contactWindow;
+
+            // The streak lives on t1's memory only; the pair is always
+            // iterated in the same order, so one side is enough.
+            const mem = ensureMemory(t1);
+            mem.contactStreak = mem.contactStreak ?? {};
+            mem.contactStreak[t2.id] = recentContact ? (mem.contactStreak[t2.id] ?? 0) + 1 : 0;
+            if (!recentContact) continue;
+
+            const stoodBy = hasStoodBy(t1, t2.id) || hasStoodBy(t2, t1.id);
+            const growth = stoodBy ? ROMANCE.stoodByGrowth : ROMANCE.contactGrowth;
+            adjustRel(t1, t2.id, growth);
+            adjustRel(t2, t1.id, growth);
+        }
+    }
+}
+
 function growRomance(ctx: SimContext) {
     const alive = getAlive(ctx.state);
     if (ctx.state.day < ROMANCE.minDay) return;
@@ -403,16 +489,15 @@ function growRomance(ctx: SimContext) {
             const t2 = alive[j];
             if (t1.traits.includes('Star-Crossed') || t2.traits.includes('Star-Crossed')) continue;
 
-            // Contact, not co-location. Standing in the same clearing as
-            // twenty-three other people is not a relationship.
             const recentContact = cyclesSinceContact(ctx.state, t1, t2.id) <= ROMANCE.contactWindow;
             if (!recentContact) continue;
 
-            const stoodBy = hasStoodBy(t1, t2.id) || hasStoodBy(t2, t1.id);
-            const growth = stoodBy ? ROMANCE.stoodByGrowth : ROMANCE.contactGrowth;
-            adjustRel(t1, t2.id, growth);
-            adjustRel(t2, t1.id, growth);
+            // Romance needs sustained contact, not a single shared scene —
+            // ROMANCE.sustainedCycles was declared for exactly this and never
+            // read. The streak is maintained by `applyContactWarmth`.
+            if ((ensureMemory(t1).contactStreak?.[t2.id] ?? 0) < ROMANCE.sustainedCycles) continue;
 
+            const stoodBy = hasStoodBy(t1, t2.id) || hasStoodBy(t2, t1.id);
             const mutual = Math.min(getRel(t1, t2.id), getRel(t2, t1.id));
 
             // A PERFORMED bond: Star-Crossed in canon is a strategy before it
@@ -575,8 +660,18 @@ export function interviewChemistry(a: Tribute, b: Tribute): number {
     const y = b.interviewStrategy;
     if (!x || !y) return 0;
 
-    const warm = ['The Star-Crossed Lover', 'The Humble Underdog', 'The Charming Flirt', 'The Quirky Oddball'];
-    const cold = ['The Ruthless Warrior', 'The Arrogant Brute', 'The Mysterious Enigma'];
+    // Every persona personaThreat knows about belongs to one of these camps,
+    // except The Wildcard, which is deliberately neutral — unpredictability
+    // reads as neither warmth nor menace.
+    const warm = [
+        'The Star-Crossed Lover', 'The Humble Underdog', 'The Charming Flirt',
+        'The Quirky Oddball', 'The Grieving Sibling', 'The Reluctant Hero',
+        'The District Loyalist',
+    ];
+    const cold = [
+        'The Ruthless Warrior', 'The Arrogant Brute', 'The Mysterious Enigma',
+        'The Silent Threat', 'The Cold Strategist',
+    ];
 
     let score = 0;
     if (warm.includes(x) && warm.includes(y)) score += 0.12;

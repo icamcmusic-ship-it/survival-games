@@ -51,8 +51,13 @@ export function areLovers(a: Tribute, b: Tribute): boolean {
     // pair who merely both happen to be in love with somebody.
     const bondId = `lovers-${a.id}-${b.id}`;
     const reverseId = `lovers-${b.id}-${a.id}`;
-    return a.allianceId === bondId || b.allianceId === bondId
-        || a.allianceId === reverseId || b.allianceId === reverseId;
+    const inBond = (t: Tribute) => t.allianceId === bondId || t.allianceId === reverseId;
+    // Joining a different alliance is walking out on the bond. Without this,
+    // one party holding the id kept the other permanently unable to fight
+    // them — even after being pulled into a Career pack — which is both
+    // one-sided and a stalemate risk in a final two.
+    const defected = (t: Tribute) => !!t.allianceId && !inBond(t);
+    return (inBond(a) || inBond(b)) && !defected(a) && !defected(b);
 }
 
 export function allianceRecords(state: GameState): Record<string, Alliance> {
@@ -83,6 +88,22 @@ export function pickLeader(members: Tribute[]): Tribute {
  * agreed out loud. The pact is the interesting part: a group that has said
  * "until the final eight" has committed to a public deadline.
  */
+/**
+ * §4.5: names the group for the broadcast. The Capitol brands everything it
+ * televises; an alliance the commentators can refer to by name is one the
+ * audience follows week to week.
+ */
+function brandFor(ctx: SimContext, id: string, leader: Tribute, members: Tribute[]): string {
+    if (id.startsWith('career-pack')) return 'the Career pack';
+    const districts = [...new Set(members.map(m => m.district))].sort((a, b) => a - b);
+    const patterns = [
+        `the ${leader.name.split(' ')[0]} crew`,
+        districts.length === 1 ? `the District ${districts[0]} bloc` : `the ${districts.map(d => `${d}`).join('-')} compact`,
+        `${leader.name.split(' ')[0]}'s ${members.length > 2 ? 'company' : 'pair'}`,
+    ];
+    return ctx.rng.pick(patterns);
+}
+
 export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]): Alliance {
     const records = allianceRecords(ctx.state);
     const roll = ctx.rng.nextFloat();
@@ -92,9 +113,11 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
             ? 'to-the-end'
             : 'no-pact';
 
+    const leader = pickLeader(members);
     const record: Alliance = {
         id,
-        leaderId: pickLeader(members).id,
+        name: brandFor(ctx, id, leader, members),
+        leaderId: leader.id,
         memberIds: members.map(m => m.id),
         formedCycle: cycleOf(ctx.state),
         campZone: members[0]?.zone,

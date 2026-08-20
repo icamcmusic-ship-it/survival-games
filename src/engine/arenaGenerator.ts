@@ -224,14 +224,14 @@ const MODIFIERS_BY_TAG: Record<string, string[]> = {
 const GENERIC_MODIFIERS = ['Iron-Jawed', 'Blood-Eyed', 'Night-Bred', 'Hollow-Eyed'];
 const CREATURE_BASES = ['Harpies', 'Wraiths', 'Hounds', 'Stalkers', 'Serpents', 'Mutts', 'Ravagers', 'Screechers', 'Crawlers', 'Reapers'];
 
-function generateMuttNames(rng: RNG, activeTags: string[]): string[] {
+function generateMuttNames(rng: RNG, activeTags: string[], count: number): string[] {
     const pools = activeTags.length
         ? activeTags.flatMap(t => MODIFIERS_BY_TAG[t] || [])
         : [];
     const modifierPool = (pools.length ? pools : GENERIC_MODIFIERS).concat(GENERIC_MODIFIERS);
     const names = new Set<string>();
     let attempts = 30;
-    while (names.size < 3 && attempts-- > 0) {
+    while (names.size < count && attempts-- > 0) {
         const name = `${rng.pick(modifierPool)} ${rng.pick(CREATURE_BASES)}`;
         names.add(name);
     }
@@ -241,10 +241,15 @@ function generateMuttNames(rng: RNG, activeTags: string[]): string[] {
 export function generateArena(seed: string): Arena {
     const rng = new RNG(`${seed}-arena`);
     const biome = rng.pick(BIOMES);
-    // Matched to the hand-authored arenas (10-11 zones). Five zones for
-    // twenty-four tributes put ~4 people in every sector at the gong; a tribute
-    // could never genuinely disappear, which is most of what an arena is for.
-    const zoneCount = rng.nextInt(9, 12);
+    // §8.3: the shape varies. Every hand-authored arena is 10-11 zones with 3
+    // mutts, which reads to the player as sameness. The Gamemakers now build
+    // claustrophobic 7-zone pressure cookers and 16-zone sprawls too — a
+    // different game each, not just different scenery. (Below 6, a tribute
+    // can never genuinely disappear, which is most of what an arena is for.)
+    const shapeRoll = rng.nextFloat();
+    const zoneCount = shapeRoll < 0.2 ? rng.nextInt(6, 8)
+        : shapeRoll < 0.85 ? rng.nextInt(9, 12)
+        : rng.nextInt(13, 16);
     const topology = rng.pick(TOPOLOGIES);
 
     // The Cornucopia is always the hub
@@ -280,7 +285,10 @@ export function generateArena(seed: string): Arena {
     guaranteeConnectivity(zones);
 
     const activeTags = Array.from(new Set(zones.map(z => z.terrain as string)));
-    const mutts = generateMuttNames(rng, activeTags);
+    // §8.3: mutt count varies too — one arena with a single persistent horror
+    // reads very differently from one with five kinds of teeth.
+    const muttCount = rng.nextInt(1, 5);
+    const mutts = generateMuttNames(rng, activeTags, muttCount);
 
     // `events` here is just the arena's own signature-event *name* list
     // (shown in arena summaries) — the actual event bodies/text come from

@@ -18,7 +18,7 @@ import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG, traitsConflict } from '../src/data/constants';
 import { ALLIANCES, FEAR, GENERATION, HUNTING, PROFICIENCY, RELATIONSHIPS, ZONES } from '../src/data/balance';
 import { carryCapacity } from '../src/engine/items';
-import { oddsScore } from '../src/engine/odds';
+import { oddsScore, tributeOdds } from '../src/engine/odds';
 import { GameConfig, GameState, Stance } from '../src/models/types';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 
@@ -48,11 +48,17 @@ const categoriesSeen = new Set<string>();
 // Aggregate observations for the behavioural invariants.
 let zonesEverDepleted = 0, zonesEverRecovered = 0;
 let maxDepletionSeen = 0;
+const depletionValues: number[] = [];
 let worstThrashRate = 0;
 let vengeanceSworn = 0, groupFights = 0, retreats = 0, griefEvents = 0, depletedForages = 0;
 let ambushes = 0, hiddenMoments = 0, recruitments = 0, overloadedDrops = 0;
 let maxAllianceSeen = 0, organicTrios = 0;
 let oddsMoved = 0, oddsCompared = 0;
+// §1.1/§10.3: board calibration. Sum of shown percentages for eventual
+// victors vs the field average — if the board discriminates, victors must
+// have been priced meaningfully above the mean when bets closed.
+let victorPctSum = 0, victorPctCount = 0, fieldPctSum = 0, fieldPctCount = 0;
+let dualVictories = 0;
 // Tribute-logic overhaul: every new system needs evidence it ran.
 let clots = 0, fieldDressings = 0, restRecoveries = 0, huntOrCraft = 0;
 let zoneDrinks = 0, pursuits = 0, desperationFights = 0, fearFelt = 0;
@@ -92,6 +98,7 @@ for (let i = 0; i < 240; i++) {
   const depletionSamples = new Map<string, number>();
   let sawRecovery = false;
   const startingOdds = new Map<string, number>();
+  const gongPct = new Map<string, number>();
 
   const sample = () => {
     state.tributes.forEach(t => {
@@ -117,6 +124,7 @@ for (let i = 0; i < 240; i++) {
     });
     Object.entries(state.zoneDepletion ?? {}).forEach(([zone, value]) => {
       maxDepletionSeen = Math.max(maxDepletionSeen, value);
+      if (value > 0) depletionValues.push(value);
       if (value > 1 - ZONES.minYieldFraction + 1e-6) note(`zone depleted past the floor: ${zone} at ${value}`);
       if (value < 0) note(`negative zone depletion: ${zone}`);
       const prev = depletionSamples.get(zone);
@@ -133,6 +141,7 @@ for (let i = 0; i < 240; i++) {
     }
     else if (state.phase === 'interviews') {
       state.tributes.forEach(t => startingOdds.set(t.id, oddsScore(t)));
+      state.tributes.forEach(t => gongPct.set(t.id, tributeOdds(t, state.tributes).pct));
       sim.startGames();
     }
     else if (state.phase === 'bloodbath') sim.processBloodbath();
@@ -165,8 +174,18 @@ for (let i = 0; i < 240; i++) {
   calendarBeats += (state.firedWildcards ?? []).length;
 
   const alive = state.tributes.filter(t => t.status === 'alive');
-  if (alive.length > 1) note(`run ${seed} ended with ${alive.length} survivors`);
-  if (alive.length === 1) victors++; else wipeouts++;
+  // §7.1: two survivors is legal exactly when the run recorded a dual victory.
+  const isDual = state.victorIds?.length === 2 && alive.length === 2;
+  if (alive.length > 1 && !isDual) note(`run ${seed} ended with ${alive.length} survivors and no dual-victory record`);
+  if (isDual) dualVictories++;
+  if (alive.length >= 1) victors++; else wipeouts++;
+
+  // §1.1: the board's read on the eventual victor(s), at the moment bets closed.
+  alive.forEach(w => {
+    const pct = gongPct.get(w.id);
+    if (pct !== undefined) { victorPctSum += pct; victorPctCount++; }
+  });
+  gongPct.forEach(pct => { fieldPctSum += pct; fieldPctCount++; });
 
   // invariants
   const ids = new Set<string>();
@@ -221,7 +240,7 @@ for (let i = 0; i < 240; i++) {
     if (/coats their .* with it/.test(l.text)) weaponsPoisoned++;
     // --- Relationships and alliances. ---
     if (/empties the group's stash|and watches them go|keeps their hand over the pocket|hears it, and keeps walking/.test(l.text)) exoticBetrayals++;
-    if (/their groups run as one/.test(l.text)) merges++;
+    if (/run as one/.test(l.text)) merges++;
     if (/takes charge of what is left|stops deferring to/.test(l.text)) leadershipChanges++;
     if (/run together until the final eight|swear to see it through/.test(l.text)) pactsDeclared++;
     if (/agreed this was where it ended/.test(l.text)) pactsHonoured++;
@@ -556,6 +575,26 @@ if (borderTelegraphs === 0) note('the border collapse was never telegraphed');
 if (cornucopiaRestocks === 0) note('the Cornucopia never restocked');
 if (muttEncounters === 0) note('no mutt ever attacked anyone across the whole soak');
 
+// §6.1/§10.3: the firing-rate floor, as an assertion instead of a printed
+// line. Zero-checks above catch a mechanic that is dead; this catches one
+// that is merely unreachable — authored content a player will essentially
+// never see. The floors are aggregate counts against the 240-run sweep,
+// set at roughly half the measured post-tuning baselines so ordinary drift
+// passes and a regression to the pre-tuning rates fails.
+const firingFloors: Array<[string, number, number]> = [
+    ['performed (insincere) bonds', performedBonds, 4],
+    ['nightlock deaths', nightlockDeaths, 2],
+    ['alliance merges', merges, 5],
+    ['desperation fights', desperationFights, 10],
+    ['poisoned weapons', weaponsPoisoned, 10],
+    ['tributes paying their way out of a parley', tributesPaid, 1],
+    ['traps destroyed', trapsDestroyed, 3],
+    ['zones stripped bare', zoneStripped, 3],
+];
+firingFloors.forEach(([label, count, floor]) => {
+    if (count < floor) note(`firing-rate floor: ${label} fired ${count} times (floor ${floor} per ${runs} runs)`);
+});
+
 console.log(`runs=${runs} victors=${victors} wipeouts=${wipeouts} avgDays=${(totalDays/runs).toFixed(1)} avgLogs=${(totalLogs/runs).toFixed(0)} runsWithFeast=${feastRuns}`);
 console.log('phases seen:', [...phasesSeen].sort().join(', '));
 console.log('categories seen:', [...categoriesSeen].sort().join(', '));
@@ -578,9 +617,27 @@ console.log(`arena: zoneFires=${zoneFiresStarted} (spread ${zoneFiresSpread}) fl
 console.log(`arena: borderTelegraphs=${borderTelegraphs} cornucopiaRestocks=${cornucopiaRestocks} muttEncounters=${muttEncounters}`);
 console.log(`alliances: recruitments=${recruitments} organicGroupsOf3Plus=${organicTrios} largestSeen=${maxAllianceSeen}`);
 console.log(`inventory: overloaded drops=${overloadedDrops}`);
+// §5.4: the peak sat exactly on the clamp, which says nothing about how
+// often zones actually strip. The distribution does.
+if (depletionValues.length > 0) {
+  const sorted = [...depletionValues].sort((x, y) => x - y);
+  const q = (p: number) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
+  const atFloor = depletionValues.filter(v => v >= (1 - ZONES.minYieldFraction) - 1e-6).length;
+  console.log(`depletion distribution: n=${sorted.length} p50=${q(0.5).toFixed(2)} p90=${q(0.9).toFixed(2)} atFloor=${(atFloor / sorted.length * 100).toFixed(1)}%`);
+}
 console.log(`zones: runsWithDepletion=${zonesEverDepleted} runsWithRecovery=${zonesEverRecovered} peakDepletion=${maxDepletionSeen.toFixed(2)} (floor ${(1 - ZONES.minYieldFraction).toFixed(2)})`);
 console.log(`stance: worst change rate ${(worstThrashRate * 100).toFixed(0)}% of cycles (threshold 60%)`);
 console.log(`odds: ${oddsMoved}/${oddsCompared} survivors moved off their opening line`);
+const victorMeanPct = victorPctCount > 0 ? victorPctSum / victorPctCount : 0;
+const fieldMeanPct = fieldPctCount > 0 ? fieldPctSum / fieldPctCount : 0;
+const calibrationRatio = fieldMeanPct > 0 ? victorMeanPct / fieldMeanPct : 0;
+console.log(`odds calibration: victors priced at ${victorMeanPct.toFixed(1)}% vs field mean ${fieldMeanPct.toFixed(1)}% (ratio ${calibrationRatio.toFixed(2)})`);
+console.log(`dual victories: ${dualVictories}`);
+// §1.1/§10.3: this is the assertion that would have caught the exploitable
+// board. A board that discriminates prices eventual victors well above the
+// field mean at bet time; the pre-fix board managed ~1.1x.
+if (calibrationRatio < 1.5) note(`odds board barely discriminates: victors priced at only ${calibrationRatio.toFixed(2)}x the field mean at bet time`);
+if (dualVictories === 0) note('no run ever ended with two victors — the §7.1 endgame never fired');
 console.log(`relationships: peak magnitude ${maxAbsRelationship} (bound ${RELATIONSHIPS.max})`);
 const totalScores = Object.values(trainingHistogram).reduce((a, b) => a + b, 0);
 console.log('training score distribution:');

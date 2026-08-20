@@ -295,6 +295,28 @@ export function evaluateNearMisses(state: GameState, unlocked: string[]): NearMi
     return misses.slice(0, 3);
 }
 
+/**
+ * §6.5: achievements were invisible during play — 25 of them with a NearMiss
+ * evaluator, surfaced only after the run ended. This runs the same evaluators
+ * mid-run (victor deliberately undefined: mid-run there is no victor, and
+ * every victor-dependent nearMiss already guards on it) so the sidebar can
+ * show "two districts from a clean sweep" while it still matters.
+ */
+export function evaluateInRunNearMisses(state: GameState, unlocked: string[]): NearMiss[] {
+    if (state.phase === 'ended') return [];
+    const misses: NearMiss[] = [];
+    ACHIEVEMENTS.forEach(a => {
+        if (unlocked.includes(a.id) || !a.nearMiss) return;
+        try {
+            const detail = a.nearMiss(state, undefined);
+            if (detail) misses.push({ id: a.id, name: a.name, detail });
+        } catch {
+            // Mid-run state a nearMiss did not anticipate must never break the UI.
+        }
+    });
+    return misses.slice(0, 2);
+}
+
 export function evaluateAchievements(state: GameState): string[] {
     const victor = state.tributes.find(t => t.status === 'alive');
     return ACHIEVEMENTS.filter(a => {

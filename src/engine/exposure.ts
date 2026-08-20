@@ -1,5 +1,6 @@
 import { Tribute } from '../models/types';
-import { PHYSIQUE } from '../data/balance';
+import { CRAFTING, PHYSIQUE } from '../data/balance';
+import { hasCamp } from './fieldcraft';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { clampTribute } from './vitals';
@@ -52,7 +53,12 @@ export interface ExposureProfile {
 export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProfile): boolean {
     if (profile.wardedBy && t.inventory.some(i => i.id === profile.wardedBy)) return false;
 
-    const scale = profile.intensity ?? 1;
+    // A built shelter is protection from the weather, not just a better
+    // night's sleep — without this, CRAFTING.shelterExposureReduction was a
+    // declared knob that nothing read, and building a shelter in the Frozen
+    // Wasteland did nothing about the thing actually killing you.
+    const shelterScale = hasCamp(ctx, t, 'shelter') ? 1 - CRAFTING.shelterExposureReduction : 1;
+    const scale = (profile.intensity ?? 1) * shelterScale;
     const amount = (value: number | undefined) => Math.round((value ?? 0) * scale);
 
     // Heat resistance takes the edge off anything that works by exhausting you.

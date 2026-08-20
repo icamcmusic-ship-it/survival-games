@@ -2,6 +2,7 @@ import { SimContext, getAlive } from './context';
 import { ITEMS } from '../data/constants';
 import { SPONSORS } from '../data/balance';
 import { SPONSOR_TEXTS } from '../data/flavorText';
+import { drawFromBloc } from './sponsorBlocs';
 import { clampTribute } from './vitals';
 import { giveItem, itemPhrase } from './items';
 import { ensureMemory } from './memory';
@@ -108,6 +109,10 @@ export function processSponsors(ctx: SimContext) {
         // durability loss propagate to every future copy of that item.
         const candidates = pool.length > 0 ? pool : ITEMS.filter(i => i.value > 20);
         const gift = mintItem(ctx.rng, pickNeededGift(ctx, t, candidates), QUALITY_BIAS.parachute);
+        // §9.4: somebody specific pays for this. When every purse that would
+        // back this tribute is empty, the parachute does not come.
+        const bloc = drawFromBloc(ctx, t, gift.value);
+        if (!bloc) return;
         giveItem(t, gift);
         t.excitementRating = Math.max(0, t.excitementRating - SPONSORS.giftExcitementCost);
         ensureMemory(t).giftsReceived += 1;
@@ -119,8 +124,8 @@ export function processSponsors(ctx: SimContext) {
             .split('{zone}').join(t.zone);
         ctx.logEvent(
             tier >= 2
-                ? `${text} The Capitol does not send these lightly — this is the ${ordinal(ensureMemory(t).giftsReceived)} parachute for ${t.name}.`
-                : text,
+                ? `${text} The Capitol does not send these lightly — this is the ${ordinal(ensureMemory(t).giftsReceived)} parachute for ${t.name}. ${bloc.seal}`
+                : `${text} ${bloc.seal}`,
             [t.id],
             { important: true, category: 'sponsor' }
         );

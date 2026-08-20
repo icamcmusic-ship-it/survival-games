@@ -150,7 +150,7 @@ export function processFeast(ctx: SimContext) {
         });
     }
 
-    if (shuffled.length === 1) {
+    else if (shuffled.length === 1) {
         const winner = shuffled[0];
         // Their own pack, plus whichever of the unclaimed ones suits them best.
         const item1 = mintItem(ctx.rng, pickNeededGift(ctx, winner, ITEMS), QUALITY_BIAS.feast);

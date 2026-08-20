@@ -38,6 +38,12 @@ export interface PanemRecords {
     victors: number;
     /** Achievement ids the player has now seen happen. */
     unlocked: string[];
+    /**
+     * §6.2: a persistent coin sink. The player can spend Capitol Coins to
+     * become the standing patron of one district; its tributes start every
+     * future run with a sponsor-trust head start.
+     */
+    patronDistrict?: number;
     /** One entry per tracked record, keyed by record id. */
     bests: Record<string, RecordHolder>;
     /**
@@ -241,6 +247,14 @@ export function commitRun(state: GameState): RunOutcome {
         notables: runNotables(state, records),
         nearMisses: evaluateNearMisses(state, records.unlocked),
     };
+}
+
+/** §6.2: records (and persists) the player's standing district patronage. */
+export function setPatronDistrict(district: number | undefined): PanemRecords {
+    const records = readPanem();
+    records.patronDistrict = district;
+    writePanem(records);
+    return records;
 }
 
 export function clearPanem(): void {

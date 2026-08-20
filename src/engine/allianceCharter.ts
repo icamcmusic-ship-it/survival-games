@@ -1,5 +1,6 @@
 import { Alliance, CharterRule, Tribute } from '../models/types';
-import { CHARTER } from '../data/balance';
+import { raiseSuspicion } from './memory';
+import { SUSPICION, CHARTER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { allianceOf } from './alliance';
 import { adjustRel, getRel } from './relationships';
@@ -83,6 +84,8 @@ export function enforceCharters(ctx: SimContext) {
             members.forEach(m => {
                 if (m.id === offender.id) return;
                 adjustRel(m, offender.id, -CHARTER.breachRegardCost);
+                // §4.2: a breach is exactly the kind of small tell suspicion feeds on.
+                raiseSuspicion(m, offender.id, SUSPICION.perCharterBreach);
             });
             ctx.logEvent(
                 breachLine(rule, offender, members),

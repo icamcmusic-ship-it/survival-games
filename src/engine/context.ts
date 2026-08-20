@@ -18,18 +18,24 @@ export function getAlive(state: GameState): Tribute[] {
 }
 
 export function createContext(state: GameState, rng: RNG): SimContext {
-    const lastPicked = new WeakMap<string[], string>();
-
     const ctx: SimContext = {
         state,
         rng,
         pickText(pool) {
             if (pool.length === 0) return '';
             if (pool.length === 1) return pool[0];
-            const previous = lastPicked.get(pool);
-            const options = previous ? pool.filter(p => p !== previous) : pool;
+            // The anti-repeat memory lives on the state, not in a
+            // context-local WeakMap: a save/resume constructs a fresh
+            // Simulator, and a context-local map reset there — the resumed
+            // run produced the same outcomes with different wording, quietly
+            // breaking the "same seed replays the same Games" promise. The
+            // pool's first line is a stable identity for a static template
+            // array.
+            const memory = state.lastPickedText ?? (state.lastPickedText = {});
+            const previous = memory[pool[0]];
+            const options = previous !== undefined ? pool.filter(p => p !== previous) : pool;
             const chosen = ctx.rng.pick(options.length > 0 ? options : pool);
-            lastPicked.set(pool, chosen);
+            memory[pool[0]] = chosen;
             return chosen;
         },
         logEvent(text, tributesInvolved, options, zone) {

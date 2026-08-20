@@ -1,10 +1,10 @@
 import { GameState, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
-import { RELATIONSHIPS, GENERATION } from '../data/balance';
+import { RELATIONSHIPS, GENERATION, HUNTING, SUSPICION } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
 import { clampTribute } from './vitals';
-import { cyclesSinceContact, ensureMemory, swearVengeance, noteContact } from './memory';
+import { cyclesSinceContact, ensureMemory, hasStoodBy, raiseSuspicion, rattle, swearVengeance, noteContact } from './memory';
 import { areLovers } from './alliance';
 import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS } from '../data/flavorText';
 import { addExcitement } from './audience';
@@ -35,6 +35,31 @@ export function adjustRel(a: Tribute, bId: string, delta: number): number {
     const next = clampRel(getRel(a, bId) + delta);
     a.relationships[bId] = next;
     return next;
+}
+
+/**
+ * §4.3: trust, distinct from regard.
+ *
+ * `relationships[id]` is one scalar doing the work of trust, affection,
+ * respect, fear and obligation — two Careers who rate each other as fighters
+ * but would never sleep unguarded near each other were unrepresentable.
+ * Rather than splitting the stored graph (every write already funnels through
+ * this module, but so does every save ever written), trust is *derived*:
+ * regard corrected by the concrete history the memory layer already keeps.
+ * Someone who stood by you is trusted above their regard; someone you watched
+ * knife an ally, or who owes you nothing and reads as treacherous, below it.
+ * Alliance formation, recruitment and mergers read trust; targeting, grief
+ * and the audience read regard.
+ */
+export function trustOf(a: Tribute, b: Tribute): number {
+    let trust = getRel(a, b.id);
+    if (hasStoodBy(a, b.id)) trust += RELATIONSHIPS.trustStoodByBonus;
+    const mem = a.memory;
+    if (mem?.betrayedBy?.includes(b.id)) trust -= RELATIONSHIPS.trustBetrayedPenalty;
+    trust -= (mem?.suspicion?.[b.id] ?? 0) * RELATIONSHIPS.trustSuspicionWeight;
+    // A creditor is safe company: they have already proven what they'll risk.
+    if ((b.debts?.[a.id] ?? 0) > 0) trust += RELATIONSHIPS.trustCreditorBonus;
+    return Math.max(RELATIONSHIPS.min, Math.min(RELATIONSHIPS.max, trust));
 }
 
 /** Most interactions move both sides of the pair. */
@@ -134,6 +159,8 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
             // The crowd rewards visible grief.
             other.sponsorTrust += Math.round(intensity * 6);
             ensureMemory(other).mourned.push(victim.id);
+            // §3.4: grief is also a bad day in the arena, not only a slow gauge.
+            rattle(other, HUNTING.rattledPerGrief);
             clampTribute(other);
 
             if (killer && killer.id !== other.id) {
@@ -231,6 +258,8 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
         adjustRel(w, betrayer.id, -RELATIONSHIPS.betrayalWitnessPenalty);
         const mem = ensureMemory(w);
         if (!mem.betrayedBy.includes(betrayer.id)) mem.betrayedBy.push(betrayer.id);
+        // §4.2: watching someone get knifed makes you watch the knife.
+        raiseSuspicion(w, betrayer.id, SUSPICION.perWitnessedBetrayal);
         // Watching an ally get knifed poisons the room — but only the part of
         // the room the witness has actually been in. The old blanket sweep hit
         // every living tribute (~500 relationship writes per betrayal) and

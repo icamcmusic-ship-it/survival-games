@@ -216,9 +216,37 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute }: {
     const visibleLogs = expanded ? logs : logs.slice(Math.max(0, logs.length - VISIBLE_CAP));
     const hiddenCount = logs.length - visibleLogs.length;
     const groups = groupLogs(visibleLogs).reverse();
+    // Distinct days currently visible, newest first, for the jump rail.
+    const days = useMemo(
+        () => [...new Set(groups.map(([, entries]) => entries[0]?.day ?? 0))],
+        // groups derives from visibleLogs; keying on it keeps this cheap.
+        [visibleLogs]  // eslint-disable-line react-hooks/exhaustive-deps
+    );
 
     return (
-        <div className="space-y-6">
+        // §2.3: a continuously-updating feed with auto-advance is exactly the
+        // case screen readers need announced. role="log" implies polite
+        // announcements of additions without re-reading the whole region.
+        <div className="space-y-6" role="log" aria-label="Chronicle of the Games">
+            {/* §2.2: with ~900 entries across 8+ days there was no way to jump
+                to a day — only scroll or search. */}
+            {days.length > 2 && (
+                <nav aria-label="Jump to day" className="sticky top-0 z-10 flex flex-wrap gap-1 py-1.5 -my-1.5"
+                    style={{ background: 'var(--paper, var(--color-paper, transparent))' }}>
+                    {days.map(d => (
+                        <button
+                            key={d}
+                            className="btn btn-sm btn-ghost font-mono text-[10px]"
+                            onClick={() => {
+                                const nodes = document.querySelectorAll(`[data-day="${d}"]`);
+                                nodes[nodes.length - 1]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }}
+                        >
+                            {d === 0 ? 'Start' : `D${d}`}
+                        </button>
+                    ))}
+                </nav>
+            )}
             {hiddenCount > 0 && (
                 <button onClick={() => setExpanded(true)} className="btn btn-sm btn-ghost w-full justify-center">
                     Show {hiddenCount} earlier entries

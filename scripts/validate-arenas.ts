@@ -42,7 +42,10 @@ ARENAS.forEach(arena => {
     }
 
     if (!ARENA_FLAVOR[arena.id]) problems.push(`${arena.id}: no arena flavour pack (falls back to generic)`);
-    if (arena.mutts.length < 3) problems.push(`${arena.id}: fewer than 3 mutts`);
+    // §8.3: mutt count varies by design — one arena with a single persistent
+    // horror is a different game from one with five kinds of teeth. An arena
+    // does still need at least one.
+    if (arena.mutts.length < 1) problems.push(`${arena.id}: no mutts at all`);
     if (arena.events.length < 3) problems.push(`${arena.id}: fewer than 3 signature events`);
 });
 

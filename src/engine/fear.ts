@@ -31,6 +31,17 @@ export function addFear(t: Tribute, otherId: string, amount: number) {
     mem.fear[otherId] = Math.min(FEAR.max, Math.round((mem.fear[otherId] ?? 0) + amount));
 }
 
+/**
+ * §3.2: reality correcting a belief. Fear is partly rumour — a misheard
+ * cannon, a training score, a story — and landing a clean hit on the person
+ * is the moment the rumour is tested against the fact of them.
+ */
+export function reduceFear(t: Tribute, otherId: string, amount: number) {
+    const mem = ensureMemory(t);
+    if (!mem.fear?.[otherId]) return;
+    mem.fear[otherId] = Math.max(0, mem.fear[otherId] - amount);
+}
+
 /** Fear as a 0-1 fraction, which is the form every consumer actually wants. */
 export function fearFraction(t: Tribute, otherId: string): number {
     return fearOf(t, otherId) / FEAR.max;

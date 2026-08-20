@@ -2,15 +2,15 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, OBJECTIVES, SPONSORS } from '../../data/balance';
-import { AMBIENT_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS } from '../../data/flavorText';
+import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, SPONSORS } from '../../data/balance';
+import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
-    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, noteSighting,
+    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting,
 } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
@@ -127,7 +127,15 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         }
 
         move(ctx, t, currentAlive, collapsed, flavor, severed);
-        // Walking into a zone is what springs things left in it.
+    });
+
+    // Walking into a zone is what springs things left in it. This runs as a
+    // second pass because a non-leader alliance member is only relocated when
+    // their leader's iteration comes around — checking traps inside the
+    // movement loop tested whichever zone the array order happened to leave
+    // them in at that moment.
+    currentAlive.forEach(t => {
+        if (t.status !== 'alive') return;
         checkTraps(ctx, t);
     });
 
@@ -173,6 +181,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayRelationships(ctx.state);
     decayAllianceTrust(ctx.state);
     decayFear(ctx.state);
+    decaySuspicion(ctx.state);
     decayTruces(ctx.state);
     // Obligations come due, district partners grow into each other, and any
     // group that agreed terms is held to them.
@@ -183,6 +192,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         // Bloodlust cools. A kill on day 3 should not still be making someone
         // braver on day 8.
         if (t.momentum) t.momentum = Math.max(0, t.momentum - HUNTING.momentumDecayPerCycle);
+        if (t.rattled) t.rattled = Math.max(0, t.rattled - HUNTING.rattledDecayPerCycle);
         // Capacity can shrink under a tribute — losing the Backpack is the
         // usual way — and `giveItem` only checks when something is added.
         const spilled = enforceCapacity(t);
@@ -426,6 +436,19 @@ function dynamicAmbientLine(ctx: SimContext): string {
     const alive = getAlive(ctx.state);
     const fallen = ctx.state.tributes.length - alive.length;
     const favourite = [...alive].sort((a, b) => b.sponsorTrust - a.sponsorTrust)[0];
+    // §4.5: the broadcast tracks the groups by name. When a branded alliance
+    // is standing, some ambient lines are about them rather than individuals.
+    const brands = Object.values(ctx.state.alliances ?? {})
+        .filter(r => r.name && ctx.state.tributes.filter(t => t.status === 'alive' && t.allianceId === r.id).length >= 2);
+    if (brands.length > 0 && ctx.rng.chance(0.25)) {
+        const r = ctx.rng.pick(brands);
+        const size = ctx.state.tributes.filter(t => t.status === 'alive' && t.allianceId === r.id).length;
+        return ctx.pickText([
+            `The Capitol's commentators keep cutting back to ${r.name} — ${size} of them still standing, and the betting shops treat them as a single line item.`,
+            `Graphics on the evening broadcast chart ${r.name}'s territory in red. The audience has picked a group to follow, which is not the same as picking a side.`,
+            `A recap segment runs on ${r.name}: how it formed, who leads it, and — because this is the Capitol — sweepstakes odds on who breaks it first.`,
+        ]);
+    }
     return ctx.pickText(DYNAMIC_AMBIENT_TEXTS)
         .split('{alive}').join(String(alive.length))
         .split('{fallen}').join(String(fallen))
@@ -452,7 +475,7 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
     if (time === 'day' && nextCount > thisCount) {
         const warned = collapseOrder[nextCount - 1];
         ctx.logEvent(
-            `The Gamemakers announce the border will close around ${warned} by tomorrow. Anyone still there tonight is choosing to be.`,
+            fill(ctx.pickText(BORDER_TEXTS.telegraph), { zone: warned }),
             [],
             { important: true, zone: warned, category: 'arena' }
         );
@@ -486,7 +509,9 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
             kind: 'arena',
         });
         ctx.logEvent(
-            `BORDER COLLAPSE: ${t.name} is caught inside the failing border of ${trappedZone}. They take ${damage} damage clawing their way into ${newSafeZone}.`,
+            fill(ctx.pickText(BORDER_TEXTS.collapse), {
+                tribute: t.name, trapped: trappedZone, damage: String(damage), safe: newSafeZone,
+            }),
             [t.id],
             { important: true, zone: newSafeZone, category: 'hazard' }
         );
@@ -521,9 +546,7 @@ function craft(ctx: SimContext, t: Tribute) {
         const recipe = IMPROVISED_ITEMS.find(i => i.id === (wooded ? 'club' : 'sharpstone'))!;
         giveItem(t, { ...recipe });
         ctx.logEvent(
-            wooded
-                ? `${t.name} breaks a limb off a deadfall in ${t.zone} and works it into a cudgel.`
-                : `${t.name} spends an hour in ${t.zone} knapping a stone into something with an edge.`,
+            fill(ctx.pickText(wooded ? SURVIVAL_TEXTS.craftClub : SURVIVAL_TEXTS.craftStone), { tribute: t.name, zone: t.zone }),
             [t.id],
             { category: 'loot' }
         );
@@ -548,7 +571,49 @@ function wanderChanceFor(t: Tribute): number {
     return t.stance === 'Evasive' ? ENCOUNTERS.wanderChance * 0.4 : ENCOUNTERS.wanderChance;
 }
 
+/**
+ * §5.3: routes a decided move through its traversal cost. A one-cost move
+ * happens now (returns true); a costlier one begins a transit and the
+ * tribute holds their ground this cycle (returns false).
+ */
+function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
+    const dest = getZone(ctx.state.arena, destName);
+    const cost = dest ? travelCost(t, dest) : 1;
+    if (cost <= 1) return true;
+    t.transit = { to: destName, remaining: cost - 1 };
+    ctx.logEvent(
+        dest?.terrain === 'highland'
+            ? `${t.name} starts the long climb toward ${destName}. It will not be done by nightfall.`
+            : `${t.name} wades into the crossing toward ${destName}. This is going to take everything the day has left.`,
+        [t.id],
+        { category: 'travel' }
+    );
+    return false;
+}
+
 function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>, severed: Set<string>) {
+    // §5.3: a traversal already underway finishes before anything else. A
+    // crossing abandoned because the destination collapsed is just a wasted
+    // cycle — which is the point of travel having a cost.
+    if (t.transit) {
+        if (collapsed.includes(t.transit.to)) {
+            ctx.logEvent(`${t.name} turns back mid-crossing — there is no ${t.transit.to} to arrive in any more.`, [t.id], { category: 'travel' });
+            delete t.transit;
+        } else {
+            t.transit.remaining -= 1;
+            if (t.transit.remaining <= 0) {
+                const from = t.zone;
+                const dest = t.transit.to;
+                delete t.transit;
+                t.zone = dest;
+                noteTraffic(ctx.state, from, dest);
+                t.vitals.fatigue = Math.min(100, t.vitals.fatigue + MOVEMENT.crossingFatigue);
+                ctx.logEvent(`${t.name} finishes the hard crossing from ${from} and comes ashore in ${dest}, spent.`, [t.id], { zone: dest, category: 'travel' });
+            }
+            return;
+        }
+    }
+
     if (t.allianceId) {
         const allianceMembers = currentAlive.filter(m => m.allianceId === t.allianceId && m.status === 'alive');
         // The group's actual leader, chosen on merit and open to challenge —
@@ -579,6 +644,11 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             // separated by a border collapse or a feast pulls their own weight
             // back rather than being snapped across the map for free.
             const present = allianceMembers.filter(m => m.zone === t.zone);
+            // §5.3: the group pays the leader's traversal cost together.
+            if (!beginMove(ctx, t, newZone)) {
+                present.forEach(m => { if (m.id !== t.id) m.transit = { ...t.transit! }; });
+                return;
+            }
             const departed = t.zone;
             present.forEach(m => { m.zone = newZone; });
             noteTraffic(ctx.state, departed, newZone, present.length);
@@ -604,6 +674,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     if (objectiveHolds(t)) return;
     const step = objectiveStep(ctx, t, options);
     if (step && step.name !== t.zone) {
+        if (!beginMove(ctx, t, step.name)) return;
         const from = t.zone;
         t.zone = step.name;
         noteTraffic(ctx.state, from, step.name);
@@ -618,6 +689,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     if (!ctx.rng.chance(wanderChanceFor(t))) return;
     const newZone = pickDestination(ctx, t, options).name;
     if (t.zone === newZone) return;
+    if (!beginMove(ctx, t, newZone)) return;
 
     const oldZone = t.zone;
     t.zone = newZone;

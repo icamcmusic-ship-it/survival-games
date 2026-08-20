@@ -55,9 +55,17 @@ export function tributeOdds(t: Tribute, field: Tribute[]): TributeOdds {
     // Only the living compete for the crown; a dead field member is not a rival.
     const contenders = field.filter(o => o.status === 'alive');
     const pool = contenders.length > 0 ? contenders : field;
-    const total = pool.reduce((sum, other) => sum + oddsScore(other), 0);
-    const own = oddsScore(t);
+    // Scores are raised to ODDS.discrimination before normalising: the raw
+    // heuristic only spreads ~2x across a cast while realised win rates
+    // spread >20x, so a linear share compressed every tribute into a 3-6%
+    // band and left the favourites systematically underpriced.
+    const share = (o: Tribute) => Math.pow(oddsScore(o), ODDS.discrimination);
+    const total = pool.reduce((sum, other) => sum + share(other), 0);
+    const own = share(t);
     const pct = total > 0 ? Math.max(1, Math.round((own / total) * 100)) : 4;
-    const mult = Math.max(1.1, Math.min(25.0, 100 / pct));
+    // The payout carries an explicit house margin rather than being derived
+    // straight from the display number — EV is set on purpose, not by
+    // accident of the rounding.
+    const mult = Math.max(1.1, Math.min(25.0, ODDS.houseMargin * 100 / pct));
     return { pct, mult };
 }

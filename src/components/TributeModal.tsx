@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GameState, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { FeedLine } from './EventFeed';
@@ -16,6 +16,7 @@ import { conditionOf, displayName } from '../engine/items';
 import { sponsorCost, sponsorableItems } from '../engine/playerSponsor';
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
+import { copyTributeStory, downloadTributeStory } from '../utils/tributeStory';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
@@ -155,6 +156,7 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
         };
     }, [onClose]);
 
+    const [storyCopied, setStoryCopied] = useState<'idle' | 'ok' | 'fail'>('idle');
     const archetype = ARCHETYPES[tribute.archetype];
     const injuries = Object.entries(tribute.injuries).filter(([, v]) => v).map(([k]) => k);
     const sworn = new Set(tribute.memory?.vengeance ?? []);
@@ -573,7 +575,31 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                     </section>
 
                     <section>
-                        <h4 className="panel-title mb-2">Their chronicle ({personalLog.length})</h4>
+                        <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                            <h4 className="panel-title">Their chronicle ({personalLog.length})</h4>
+                            {/* §9.3: their whole story — fears, debts, feuds, what
+                                ended them — as one shareable Markdown narrative. */}
+                            <span className="flex gap-1.5">
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-ghost"
+                                    onClick={async () => {
+                                        const ok = await copyTributeStory(gameState, tribute);
+                                        setStoryCopied(ok ? 'ok' : 'fail');
+                                        setTimeout(() => setStoryCopied('idle'), 2500);
+                                    }}
+                                >
+                                    {storyCopied === 'ok' ? 'Story copied' : storyCopied === 'fail' ? 'Copy failed' : 'Copy their story'}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-ghost"
+                                    onClick={() => downloadTributeStory(gameState, tribute)}
+                                >
+                                    Download
+                                </button>
+                            </span>
+                        </div>
                         <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar pr-1">
                             {personalLog.length === 0 ? (
                                 <span className="text-sm text-[var(--color-ink-400)]">Nothing recorded about them yet</span>
