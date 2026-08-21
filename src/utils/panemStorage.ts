@@ -1,5 +1,5 @@
 import { GameState, Tribute } from '../models/types';
-import { CareerTotals, evaluateAchievements, evaluateMetaAchievements, evaluateNearMisses, NearMiss } from '../data/achievements';
+import { ACHIEVEMENTS, CareerTotals, META_ACHIEVEMENTS, evaluateAchievements, evaluateMetaAchievements, evaluateNearMisses, NearMiss } from '../data/achievements';
 import { Notable, runNotables } from './notables';
 import {
     STORAGE_KEYS, StorageSpec, asNum, asObjMap, asRecord, asStrArray, readStored, removeStored,
@@ -379,3 +379,49 @@ export function setPatronDistrict(district: number | undefined): PanemRecords {
 export function clearPanem(): void {
     removeStored(PANEM_SPEC);
 }
+
+/**
+ * §10.2: what this player has never seen.
+ *
+ * The audit's own framing: a dozen implemented systems fire in under 20% of
+ * runs, so the *felt* variety is far below the actual variety in the code.
+ * Surfacing the gap turns that from a content problem into a discovery
+ * feature — "you have never seen a District 10 victor" is both true and an
+ * invitation, and it costs nothing but a read of records already kept.
+ */
+export interface UnseenNote {
+    id: string;
+    text: string;
+}
+
+export function unseenHighlights(records: PanemRecords, limit = 3): UnseenNote[] {
+    // Nothing to be missing from an empty archive.
+    if (records.runs < UNSEEN_MIN_RUNS) return [];
+    const notes: UnseenNote[] = [];
+    const crowns = records.districtCrowns ?? {};
+    const unlocked = new Set(records.unlocked);
+
+    const districts = Array.from({ length: 12 }, (_, i) => i + 1);
+    const uncrowned = districts.filter(d => !crowns[d]?.first?.name);
+    if (uncrowned.length > 0 && uncrowned.length <= 11) {
+        const d = uncrowned[0];
+        notes.push({
+            id: `district-${d}`,
+            text: uncrowned.length === 1
+                ? `District ${d} is the only one that has never sent a victor home for you.`
+                : `You have never crowned a victor from District ${d}${uncrowned.length > 2 ? ` — or from ${uncrowned.length - 1} of the others` : ''}.`,
+        });
+    }
+
+    // Achievements are already phrased as things the simulation can do, so
+    // the locked ones are a ready-made list of unseen outcomes.
+    [...ACHIEVEMENTS, ...META_ACHIEVEMENTS]
+        .filter(a => !unlocked.has(a.id))
+        .slice(0, limit)
+        .forEach(a => notes.push({ id: a.id, text: a.hint }));
+
+    return notes.slice(0, limit);
+}
+
+/** Runs finished before the discovery layer has anything useful to say. */
+const UNSEEN_MIN_RUNS = 3;

@@ -33,6 +33,7 @@ export const STORAGE_KEYS = {
     panem: 'survivalGamesPanem',
     feedFilters: 'survivalGamesFeedFilters',
     lastConfig: 'survivalGamesLastConfig',
+    customContent: 'survivalGamesCustomContent',
 } as const;
 
 /**

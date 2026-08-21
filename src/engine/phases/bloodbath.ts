@@ -3,7 +3,7 @@ import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
-import { ALLIANCES, BLOODBATH, QUALITY_BIAS } from '../../data/balance';
+import { ALLIANCES, BLOODBATH, MODIFIERS, QUALITY_BIAS } from '../../data/balance';
 import { registerAlliance } from '../alliance';
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { BLOODBATH_TEXTS } from '../../data/flavorText';
@@ -11,6 +11,7 @@ import { giveItem, itemPhrase, mintItem } from '../items';
 import { personaThreat } from './alliances';
 import { getRel, setRel } from '../relationships';
 import { noteSighting } from '../memory';
+import { hasModifier } from '../gamesProfile';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -18,7 +19,53 @@ const fill = (template: string, vars: Record<string, string>) =>
 export function startGames(ctx: SimContext) {
     ctx.state.phase = 'bloodbath';
     ctx.state.day = 1;
+    applyArenaModifiers(ctx);
     initializeCareerAlliance(ctx);
+}
+
+/**
+ * §10.2: the format changes that are properties of the *arena* rather than of
+ * the config. Applied once, at the gong.
+ *
+ * Everything here is run-local. `ARENAS` and a generated arena are shared and
+ * reused across runs, so a half-size year closes zones through
+ * `collapsedZones` and a well-stocked one goes through a state-level yield
+ * multiplier — mutating `zone.resources` would poison every later run in the
+ * same session.
+ */
+function applyArenaModifiers(ctx: SimContext) {
+    const state = ctx.state;
+
+    if (hasModifier(state, 'half-arena')) {
+        // Closed from the outside in: the Cornucopia and its neighbours are
+        // always the ground that survives, so the arena stays connected.
+        const horn = state.arena.zones[0];
+        const ordered = [...state.arena.zones]
+            .filter(z => z.name !== horn.name && !horn.adjacent.includes(z.name));
+        const closing = ordered.slice(0, Math.floor(state.arena.zones.length * MODIFIERS.halfArenaClosedShare));
+        if (closing.length > 0) {
+            state.collapsedZones = [...new Set([...(state.collapsedZones ?? []), ...closing.map(z => z.name)])];
+            ctx.logEvent(
+                `The arena the tributes walk into is a fraction of the one the Capitol advertised. `
+                + `${closing.map(z => z.name).join(', ')} are already gone — walled off before the gong.`,
+                [],
+                { important: true, category: 'arena' }
+            );
+        }
+    }
+
+    if (hasModifier(state, 'rich-arena')) {
+        state.yieldMultiplier = MODIFIERS.richArenaYield;
+    }
+
+    if (hasModifier(state, 'no-cornucopia')) {
+        state.emptyCornucopia = true;
+        ctx.logEvent(
+            'The horn at the centre of the arena is empty. Not stripped — never filled. Whatever these tributes fight over today, it is not supplies.',
+            [],
+            { important: true, category: 'arena' }
+        );
+    }
 }
 
 function initializeCareerAlliance(ctx: SimContext) {
@@ -149,6 +196,9 @@ export function processBloodbath(ctx: SimContext) {
 
     arrivals.forEach((t, index) => {
         const first = index < Math.ceil(arrivals.length / 2);
+        // §10.2: an empty horn means the bloodbath is over ground and each
+        // other, with nothing at the middle of it to take.
+        if (ctx.state.emptyCornucopia) return;
         if (t.inventory.some(i => i.type === 'weapon')) return;
         if (!ctx.rng.chance(first ? BLOODBATH.armedAtHornChance : BLOODBATH.armedAtHornChance * 0.5)) return;
         // The good steel is stacked at the mouth of the horn; the outer ring is
@@ -187,7 +237,7 @@ export function processBloodbath(ctx: SimContext) {
 
     runners.forEach(t => {
         if (t.status !== 'alive') return;
-        if (ctx.rng.chance(0.8)) {
+        if (ctx.state.emptyCornucopia || ctx.rng.chance(0.8)) {
             ctx.logEvent(fill(ctx.pickText(BLOODBATH_TEXTS.flee), { tribute: t.name }), [t.id], { category: 'survival' });
         } else {
             const item = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.hornScatter);

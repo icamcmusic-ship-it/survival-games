@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { GameConfig } from '../models/types';
 import { Play, ChevronDown, ChevronRight, ArrowRight, History } from 'lucide-react';
+import { ContentImport } from '../components/ContentImport';
 import { gameActions, gameStore, readSavedRun } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
@@ -228,7 +229,8 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
 
                 {/* §6.2: the standing patronage — a persistent sink for Capitol
                     Coins. Survives across runs via the Panem records. */}
-                <div className="p-5 pt-0">
+                <div className="p-5 pt-0 space-y-4">
+                    <ContentImport />
                     <div className="panel-flush p-4 space-y-2">
                         <div className="flex items-baseline justify-between flex-wrap gap-2">
                             <span className="eyebrow">Patron of a district</span>

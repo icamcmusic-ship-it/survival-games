@@ -273,7 +273,8 @@ export function effectiveResources(state: GameState, zone: Zone | undefined): nu
     const scarred = (state.scarredZones ?? []).includes(zone.name)
         ? 1 - TERRAIN_MEMORY.scarYieldLoss
         : 1;
-    return zone.resources * Math.max(ZONES.minYieldFraction, remaining) * scarred;
+    return zone.resources * Math.max(ZONES.minYieldFraction, remaining) * scarred
+        * (state.yieldMultiplier ?? 1);
 }
 
 export function depleteZone(state: GameState, zoneName: string, amount: number) {

@@ -695,6 +695,21 @@ export interface GameState {
      */
     scarredZones?: string[];
     /**
+     * §10.2: run-local yield multiplier from the format modifiers. `ARENAS`
+     * and generated arenas are shared and reused, so a well-stocked year
+     * cannot simply raise `zone.resources`.
+     */
+    yieldMultiplier?: number;
+    /** §10.2: the horn was never filled this year. */
+    emptyCornucopia?: boolean;
+    /**
+     * §10.2: how these Games actually ended, beyond who was left standing.
+     * The simulation could produce last-one-standing, a dual victory, or a
+     * wipeout, and nothing else — so the ending was the one part of a run that
+     * never surprised anybody twice.
+     */
+    endingKind?: 'standard' | 'refused' | 'overruled' | 'hollow' | 'dual' | 'wipeout';
+    /**
      * Adjacency edges cut by the arena itself — a collapsed bridge, a fire that
      * burned through a crossing. Stored as `map.edgeKey()` strings. The printed
      * `Zone.adjacent` graph is shared/regenerated data and is never mutated;

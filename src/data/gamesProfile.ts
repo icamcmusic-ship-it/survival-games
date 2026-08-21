@@ -134,6 +134,14 @@ export interface WildcardDef {
     window: [number, number];
     /** Relative draw weight. `nothing` is common on purpose. */
     weight: number;
+    /**
+     * §10.2: how rare this is meant to feel. Weight alone flattened the pool
+     * — a player who had watched twenty runs had seen essentially all of it,
+     * because nothing was rare enough to still be a surprise on run thirty.
+     * `legendary` beats are drawn at a fraction of their weight and are the
+     * ones worth telling somebody about.
+     */
+    rarity?: 'common' | 'uncommon' | 'legendary';
 }
 
 export const WILDCARDS: WildcardDef[] = [
@@ -192,29 +200,29 @@ export const WILDCARDS: WildcardDef[] = [
         kind: 'gamemaker-malfunction', name: 'a Gamemaker malfunction',
         announcement: 'The arena systems have been flagged as unstable. The Capitol insists this is nothing.',
         onFire: 'Something in the arena machinery fails audibly, and for a few hours nobody in the control room is sure what the arena is going to do.',
-        window: [4, 7], weight: 2,
+        window: [4, 7], weight: 2, rarity: 'uncommon',
     },
     {
         kind: 'career-collapse', name: 'a fractured Career pack',
         announcement: 'Something happened between the Career districts at the Remake Center, and nobody is saying what.',
         onFire: 'Whatever was holding the Career pack together stops holding.',
-        window: [2, 4], weight: 2,
+        window: [2, 4], weight: 2, rarity: 'uncommon',
     },
     {
         kind: 'rule-change-allies', name: 'a rule change: two may win',
         announcement: 'A rule change has been announced: two tributes may be crowned, if both are still standing at the end.',
-        window: [0, 0], weight: 2,
+        window: [0, 0], weight: 2, rarity: 'uncommon',
     },
     {
         kind: 'rule-change-no-allies', name: 'a rule change: no alliances',
         announcement: 'A rule change has been announced: alliances are forbidden this year. Enforcement is described as "automatic".',
-        window: [0, 0], weight: 1,
+        window: [0, 0], weight: 1, rarity: 'uncommon',
     },
     {
         kind: 'blackout', name: 'an extended night',
         announcement: 'The Gamemakers have scheduled an extended darkness. The arena lights will simply not come up.',
         onFire: 'The arena lights do not come up. Whatever else happens today, it happens in the dark.',
-        window: [3, 6], weight: 2,
+        window: [3, 6], weight: 2, rarity: 'uncommon',
     },
     {
         kind: 'drought', name: 'a scheduled drought',
@@ -226,27 +234,27 @@ export const WILDCARDS: WildcardDef[] = [
         kind: 'bounty', name: 'a bounty',
         announcement: 'A bounty has been placed on a tribute, to be announced once the Games are under way.',
         onFire: 'The Capitol names a tribute and attaches a number to them. Every sponsor in the city is now watching one person.',
-        window: [3, 6], weight: 2,
+        window: [3, 6], weight: 2, rarity: 'uncommon',
     },
     {
         kind: 'quarter-quell-pairs', name: 'a Quarter Quell: district pairs',
         announcement: 'QUARTER QUELL: as a reminder that the districts stand together or not at all, tributes will be reaped in bonded pairs.',
-        window: [0, 0], weight: 1,
+        window: [0, 0], weight: 1, rarity: 'legendary',
     },
     {
         kind: 'quarter-quell-doubled', name: 'a Quarter Quell: a harder arena',
         announcement: 'QUARTER QUELL: as a reminder that the Capitol\'s reach exceeds the districts\' grasp, this arena has been built without mercy.',
-        window: [0, 0], weight: 1,
+        window: [0, 0], weight: 1, rarity: 'legendary',
     },
     {
         kind: 'silent-arena', name: 'a silent arena',
         announcement: 'There will be no anthem and no faces in the sky this year. Tributes will learn who is left the hard way.',
-        window: [0, 0], weight: 1,
+        window: [0, 0], weight: 1, rarity: 'legendary',
     },
     {
         kind: 'crowd-revolt', name: 'an audience that has lost patience',
         announcement: 'Capitol viewing figures are down. The Gamemakers have been told, in writing, to fix it.',
-        window: [0, 0], weight: 2,
+        window: [0, 0], weight: 2, rarity: 'legendary',
     },
 ];
 

@@ -7,6 +7,7 @@ import { clampTribute } from './vitals';
 import { giveItem, itemPhrase } from './items';
 import { ensureMemory } from './memory';
 import { mentorGenerosity, processMentorPleas } from './mentors';
+import { hasModifier } from './gamesProfile';
 import { Item, Tribute } from '../models/types';
 import { mintItem } from './items';
 import { QUALITY_BIAS } from '../data/balance';
@@ -95,7 +96,8 @@ export function processSponsors(ctx: SimContext) {
     const alive = getAlive(ctx.state);
     // Pleas resolve first: a tribute their mentor just rescued should not also
     // draw a crowd parachute in the same cycle.
-    const rescued = processMentorPleas(ctx, alive);
+    // §10.2: in a year without mentors nobody is arguing anybody's case.
+    const rescued = hasModifier(ctx.state, 'no-mentors') ? new Set<string>() : processMentorPleas(ctx, alive);
     alive.forEach(t => {
         if (rescued.has(t.id)) return;
         const sponsorScore = t.excitementRating + t.sponsorTrust;

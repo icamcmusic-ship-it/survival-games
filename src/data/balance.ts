@@ -2625,3 +2625,48 @@ export const TRAVEL = {
     /** Load fraction (see INVENTORY.encumbrance*) above which a crossing drags. */
     encumbranceCost: 0.75,
 } as const;
+
+/** §10.2: how often the Capitol changes the format, and what each change is worth. */
+export const MODIFIERS = {
+    /** Nested rolls: three, else two, else one, else a conventional year. */
+    threeChance: 0.06,
+    twoChance: 0.22,
+    oneChance: 0.55,
+
+    /** Config multipliers for the modifiers that are pure dial changes. */
+    noMentorsGenerosity: 0.45,
+    richGenerosity: 1.35,
+    doubledMuttHazard: 1.5,
+    halfArenaHazard: 1.2,
+
+    /** Zones a half-size arena closes before the gong, as a fraction. */
+    halfArenaClosedShare: 0.4,
+    /** Extra printed yield in a well-stocked arena. */
+    richArenaYield: 1.4,
+    /** Days the border comes forward under a compressed schedule. */
+    suddenDeathShift: -4,
+} as const;
+
+/** §10.2: what each rarity tier multiplies a wildcard's draw weight by. */
+export const RARITY_WEIGHT = {
+    common: 1,
+    uncommon: 0.6,
+    legendary: 0.25,
+} as const;
+
+/**
+ * §10.2: the endings the simulation can reach beyond "the last one standing".
+ * Each is gated on what actually happened to the victor, then rolled — so an
+ * unusual ending is earned twice, once by the run and once by the dice.
+ */
+export const ENDINGS = {
+    /** A victor who killed nobody and buried someone may refuse the crown. */
+    refusedChance: 0.35,
+    /** A victor the arena nearly finished may be lifted out on the Capitol's terms. */
+    overruledMaxHealth: 20,
+    overruledChance: 0.25,
+    /** A victor whose will or mind is gone comes home in name only. */
+    hollowMaxResolve: 30,
+    hollowMaxSanity: 35,
+    hollowChance: 0.4,
+} as const;

@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, EXHAUSTION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, PROFICIENCY, SPONSORS } from '../../data/balance';
+import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, EXHAUSTION, HUNTING, MEMORY, MODIFIERS, MOVEMENT, OBJECTIVES, PROFICIENCY, SPONSORS } from '../../data/balance';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
@@ -41,7 +41,8 @@ import { decayPackTruces, resolvePackEncounters } from '../packParley';
 import { repayDebts, tickDistrictBonds } from '../debts';
 import { enforceCharters } from '../allianceCharter';
 import { gamemakerProfile } from '../../data/gamemakers';
-import { escalationShift, wildcardIs } from '../gamesProfile';
+import { readCustomContent } from '../../utils/customContent';
+import { escalationShift, hasModifier, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 
@@ -91,8 +92,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         if (ctx.rng.chance(ENCOUNTERS.dynamicAmbientShare)) {
             ctx.logEvent(dynamicAmbientLine(ctx), [], { category: 'arena' });
         } else {
-            const pool = ctx.rng.chance(ENCOUNTERS.ambientArenaShare) ? flavor.ambient : AMBIENT_TEXTS;
-            ctx.logEvent(ctx.pickText(pool), [], { category: 'arena' });
+            const custom = readCustomContent().ambient;
+            const pool = ctx.rng.chance(ENCOUNTERS.ambientArenaShare) ? flavor.ambient : [...AMBIENT_TEXTS, ...custom];
+            ctx.logEvent(ctx.pickText(pool).split('{zone}').join(ctx.state.arena.zones[0].name), [], { category: 'arena' });
         }
     }
 
@@ -260,7 +262,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 function soundTheAnthem(ctx: SimContext) {
     // A silent-arena year: no anthem, no faces, and nobody finds out who is
     // left except by walking into them.
-    if (wildcardIs(ctx.state, 'silent-arena')) return;
+    if (wildcardIs(ctx.state, 'silent-arena') || hasModifier(ctx.state, 'no-anthem')) return;
 
     const fallenToday = ctx.state.tributes.filter(t =>
         t.status === 'dead' && t.dayOfDeath === ctx.state.day);
@@ -396,7 +398,11 @@ function updateAudienceInterest(ctx: SimContext, time: 'day' | 'night') {
     const threshold = ESCALATION.boredomThreshold * gm.boredomMultiplier;
     // REPLAY-01: a lavish or slow Games buys the tributes more arena for
     // longer; a compressed one takes it away early.
-    const shift = escalationShift(ctx.state);
+    // §10.2: an unbounded year never closes the arena at all, and a
+    // compressed one starts closing it on the first night.
+    if (hasModifier(ctx.state, 'open-borders')) return;
+    const shift = escalationShift(ctx.state)
+        + (hasModifier(ctx.state, 'sudden-death') ? MODIFIERS.suddenDeathShift : 0);
     const bored = ctx.state.day >= ESCALATION.boredomEarliestDay + Math.max(0, shift)
         && interest < threshold;
     const scheduled = ctx.state.day >= ESCALATION.startDay + shift;
