@@ -2453,3 +2453,17 @@ export const ZONE_CONTROL = {
     excitement: 6,
     supplyRelief: 15,
 } as const;
+
+/**
+ * U-7: Gamemaker-mode arena interventions, priced in the sponsorship
+ * economy's Capitol Coins. Lived as a bare const in GameScreen.tsx — an
+ * economy-balance table in a view file, invisible to test:knobs.
+ */
+export const GAMEMAKER_COSTS = {
+    burn: 150,
+    flood: 150,
+    fog: 120,
+    sever: 100,
+    drop: 200,
+    bounty: 300,
+} as const;

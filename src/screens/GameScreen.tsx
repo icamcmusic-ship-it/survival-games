@@ -8,7 +8,7 @@ import { CATEGORY_GROUPS } from '../ui/eventStyles';
 import { tributeOdds } from '../engine/odds';
 import { objectiveLabel } from '../engine/objectives';
 import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { ESCALATION } from '../data/balance';
+import { ESCALATION, GAMEMAKER_COSTS } from '../data/balance';
 import { evaluateInRunNearMisses } from '../data/achievements';
 import { GamemakerEventType } from '../engine/gamemaker';
 import { Explainer } from '../components/Explainer';
@@ -16,8 +16,8 @@ import { ordinal } from '../engine/gamesProfile';
 import { gameActions, gameStore } from '../store/gameStore';
 import { readFilters, writeFilters } from '../utils/prefsStorage';
 
-/** §6.4: Gamemaker arena controls priced in the sponsorship economy's coins. */
-const GM_COSTS = { burn: 150, flood: 150, fog: 120, sever: 100, drop: 200, bounty: 300 } as const;
+/** §6.4/U-7: Gamemaker costs live in data/balance.ts with every other dial. */
+const GM_COSTS = GAMEMAKER_COSTS;
 import { useStore } from '../store/createStore';
 
 type Speed = 'manual' | '1x' | '5x' | 'auto';
@@ -99,6 +99,10 @@ export function GameScreen({
     // Chronicle search and per-tribute filtering.
     const [searchText, setSearchText] = useState('');
     const [filterTributeId, setFilterTributeId] = useState<string | null>(null);
+    // U-2: structured filters — a second tribute (OR semantics, so "every
+    // kill involving Cato or Clove" is expressible) and a specific day.
+    const [filterTributeId2, setFilterTributeId2] = useState<string | null>(null);
+    const [filterDay, setFilterDay] = useState<number | null>(null);
     // Keyboard help was a single hidden line, desktop-only (md:inline), which is
     // no help at all on the devices that most need it explained.
     const [showHelp, setShowHelp] = useState(false);
@@ -313,11 +317,15 @@ export function GameScreen({
             if (importantOnly && !log.important) return false;
             if (selectedZone && log.zone !== selectedZone) return false;
             if (mutedCategories.has(log.category)) return false;
-            if (filterTributeId && !log.tributesInvolved.includes(filterTributeId)) return false;
+            // Two tribute filters combine as OR: "everything involving A or B".
+            if ((filterTributeId || filterTributeId2)
+                && !(filterTributeId && log.tributesInvolved.includes(filterTributeId))
+                && !(filterTributeId2 && log.tributesInvolved.includes(filterTributeId2))) return false;
+            if (filterDay !== null && log.day !== filterDay) return false;
             if (needle && !log.text.toLowerCase().includes(needle)) return false;
             return true;
         });
-    }, [gameState.log, importantOnly, selectedZone, mutedCategories, filterTributeId, searchText]);
+    }, [gameState.log, importantOnly, selectedZone, mutedCategories, filterTributeId, filterTributeId2, filterDay, searchText]);
 
     /**
      * PERF: the sector log is newest-first and capped, like the main chronicle.
@@ -472,6 +480,15 @@ export function GameScreen({
                                         >
                                             <div>Simulating — {runProgress.day === 0 ? runProgress.phase : `Day ${runProgress.day} · ${runProgress.phase}`}</div>
                                             <div>{runProgress.tributesAlive} alive · {runProgress.logLines} lines</div>
+                                            {runProgress.wagered?.length > 0 && (
+                                                <div aria-live="polite">
+                                                    {runProgress.wagered.map(w => (
+                                                        <span key={w.name} className={`mr-2 ${w.alive ? '' : 'line-through opacity-60'}`}>
+                                                            {w.alive ? '● ' : '† '}{w.name} (D{w.district})
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         <button onClick={() => gameActions.cancelRunToEnd()} className="btn" title="Stop the fast-forward and keep what has happened so far">
                                             Cancel
@@ -538,7 +555,7 @@ export function GameScreen({
 
                             <button onClick={() => setShowFilters(v => !v)} aria-pressed={showFilters} className="seg-item" title="Toggle filters (F)">
                                 <Filter className="w-3 h-3 inline mr-1" /> Filters
-                                {(mutedGroups.size > 0 || importantOnly || searchText || filterTributeId) && <span className="ml-1 text-[var(--red)]">•</span>}
+                                {(mutedGroups.size > 0 || importantOnly || searchText || filterTributeId || filterTributeId2 || filterDay !== null) && <span className="ml-1 text-[var(--red)]">•</span>}
                             </button>
 
                             <button
@@ -586,9 +603,9 @@ export function GameScreen({
                                             </button>
                                         );
                                     })}
-                                    {(mutedGroups.size > 0 || importantOnly || !!searchText || !!filterTributeId) && (
+                                    {(mutedGroups.size > 0 || importantOnly || !!searchText || !!filterTributeId || !!filterTributeId2 || filterDay !== null) && (
                                         <button
-                                            onClick={() => { setMutedGroups(new Set()); setImportantOnly(false); setSearchText(''); setFilterTributeId(null); }}
+                                            onClick={() => { setMutedGroups(new Set()); setImportantOnly(false); setSearchText(''); setFilterTributeId(null); setFilterTributeId2(null); setFilterDay(null); }}
                                             className="chip chip-accent"
                                         >
                                             Reset filters
@@ -614,6 +631,30 @@ export function GameScreen({
                                     <option value="">All tributes</option>
                                     {sortedSidebarTributes.map(t => (
                                         <option key={t.id} value={t.id}>{t.name} (D{t.district}){t.status === 'dead' ? ' †' : ''}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={filterTributeId2 ?? ''}
+                                    onChange={e => setFilterTributeId2(e.target.value || null)}
+                                    className="field text-xs w-auto"
+                                    title="Or a second tribute — events involving either are shown"
+                                    aria-label="Or a second tribute — events involving either are shown"
+                                >
+                                    <option value="">…or anyone</option>
+                                    {sortedSidebarTributes.map(t => (
+                                        <option key={t.id} value={t.id}>{t.name} (D{t.district}){t.status === 'dead' ? ' †' : ''}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={filterDay === null ? '' : String(filterDay)}
+                                    onChange={e => setFilterDay(e.target.value === '' ? null : Number(e.target.value))}
+                                    className="field text-xs w-auto"
+                                    title="Show only one day's events"
+                                    aria-label="Show only one day's events"
+                                >
+                                    <option value="">All days</option>
+                                    {[...new Set(gameState.log.map(l => l.day))].sort((a, b) => a - b).map(d => (
+                                        <option key={d} value={d}>{d === 0 ? 'Before the Games' : `Day ${d}`}</option>
                                     ))}
                                 </select>
                                 <button onClick={() => exportChronicle(true)} className="btn btn-sm" title="Copy the filtered chronicle as markdown">Copy MD</button>
@@ -950,7 +991,10 @@ export function GameScreen({
                                         onClick={() => spendGamemaker(type, cost, gmZone || undefined)}
                                         className="btn btn-sm w-full"
                                         disabled={coins < cost}
-                                        title={`${tip} (${cost} coins)`}
+                                        aria-disabled={coins < cost}
+                                        title={coins < cost
+                                            ? `${tip} — costs ${cost} coins and you have ${coins}. You need ${cost - coins} more.`
+                                            : `${tip} (${cost} coins)`}
                                     >
                                         {label} <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{cost}</span>
                                     </button>
@@ -960,7 +1004,10 @@ export function GameScreen({
                                 onClick={() => spendGamemaker('drop', GM_COSTS.drop)}
                                 className="btn btn-sm w-full"
                                 disabled={coins < GM_COSTS.drop}
-                                title={`Restock the Cornucopia with a supply drop (${GM_COSTS.drop} coins)`}
+                                aria-disabled={coins < GM_COSTS.drop}
+                                title={coins < GM_COSTS.drop
+                                    ? `A supply drop costs ${GM_COSTS.drop} coins and you have ${coins}. You need ${GM_COSTS.drop - coins} more.`
+                                    : `Restock the Cornucopia with a supply drop (${GM_COSTS.drop} coins)`}
                             >
                                 Supply drop <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GM_COSTS.drop}</span>
                             </button>
@@ -968,9 +1015,12 @@ export function GameScreen({
                                 onClick={() => spendGamemaker('bounty', GM_COSTS.bounty, muttTargetId || undefined)}
                                 className="btn btn-sm w-full"
                                 disabled={coins < GM_COSTS.bounty || !!gameState.bountyTargetId}
+                                aria-disabled={coins < GM_COSTS.bounty || !!gameState.bountyTargetId}
                                 title={gameState.bountyTargetId
                                     ? 'A bounty already stands'
-                                    : `Place a bounty on the selected tribute — or the dullest one — and point the whole field at them (${GM_COSTS.bounty} coins)`}
+                                    : coins < GM_COSTS.bounty
+                                        ? `A bounty costs ${GM_COSTS.bounty} coins and you have ${coins}. You need ${GM_COSTS.bounty - coins} more.`
+                                        : `Place a bounty on the selected tribute — or the dullest one — and point the whole field at them (${GM_COSTS.bounty} coins)`}
                             >
                                 Place bounty <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GM_COSTS.bounty}</span>
                             </button>
@@ -1177,7 +1227,23 @@ export function GameScreen({
             )}
 
             {selectedTribute && (
-                <TributeModal tribute={selectedTribute} gameState={gameState} onClose={() => setSelectedTributeId(null)} />
+                <TributeModal
+                    tribute={selectedTribute}
+                    gameState={gameState}
+                    onClose={() => setSelectedTributeId(null)}
+                    onShowInChronicle={() => {
+                        // U-3: "what happened to X?" — filter the chronicle to
+                        // them. Entries render newest-first, so their death (or
+                        // latest moment) sits right at the top.
+                        setFilterTributeId(selectedTribute.id);
+                        setFilterTributeId2(null);
+                        setFilterDay(null);
+                        setSearchText('');
+                        setTacticalTab('chronicle');
+                        setMobilePane('chronicle');
+                        setSelectedTributeId(null);
+                    }}
+                />
             )}
         </div>
     );

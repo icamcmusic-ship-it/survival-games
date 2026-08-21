@@ -85,6 +85,12 @@ export interface RunProgress {
     turns: number;
     logLines: number;
     tributesAlive: number;
+    /**
+     * U-4: the stakes, not just the counters. The tributes the player has
+     * wagered on, and whether each is still breathing — losing your bet
+     * during a skip should not be silent until the end screen.
+     */
+    wagered: Array<{ name: string; district: number; alive: boolean }>;
 }
 
 const BROKE_THRESHOLD = 50;
@@ -558,6 +564,7 @@ export const gameActions = {
         const stale = () => run.cancelled || gameStore.getState().simulator !== simulator;
 
         const publishProgress = (state: GameState, turns: number) => {
+            const bets = gameStore.getState().bets;
             gameStore.setState({
                 runProgress: {
                     day: state.day,
@@ -565,6 +572,9 @@ export const gameActions = {
                     turns,
                     logLines: state.log.length,
                     tributesAlive: state.tributes.filter(t => t.status === 'alive').length,
+                    wagered: state.tributes
+                        .filter(t => bets[t.id])
+                        .map(t => ({ name: t.name, district: t.district, alive: t.status === 'alive' })),
                 },
             });
         };

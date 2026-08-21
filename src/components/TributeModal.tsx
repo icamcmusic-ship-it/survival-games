@@ -123,7 +123,13 @@ function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: Gam
     );
 }
 
-export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute, gameState: GameState, onClose: () => void }) {
+export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }: {
+    tribute: Tribute;
+    gameState: GameState;
+    onClose: () => void;
+    /** U-3: jump the chronicle to this tribute's story (their death sits on top). */
+    onShowInChronicle?: () => void;
+}) {
     const panelRef = useRef<HTMLDivElement>(null);
     const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -394,6 +400,16 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                 {tribute.status === 'dead' && (
                     <div className="panel-flush p-3 mb-5 text-sm text-[var(--cat-death)]">
                         Died on day {tribute.dayOfDeath ?? '—'} · {tribute.causeOfDeath ?? 'Eliminated'}
+                        {onShowInChronicle && (
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-ghost ml-2"
+                                onClick={onShowInChronicle}
+                                title="Filter the chronicle to this tribute — their final moment is at the top"
+                            >
+                                Show in chronicle
+                            </button>
+                        )}
                     </div>
                 )}
 

@@ -79,7 +79,7 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                 viewBox={`0 0 ${VIEW} ${VIEW}`}
                 className="w-full h-auto"
                 role="img"
-                aria-label={`Relationship map for ${tribute.name}. ${links.length} recorded bonds.`}
+                aria-label={`Relationship map for ${tribute.name}: ${links.map(l => `${l.other.name} ${bondLabel(l.value)} (${l.value > 0 ? '+' : ''}${l.value})`).join('; ')}.`}
             >
                 {/* Alliance hull: a ring binding everyone currently in the pack with
                     the subject, so a group reads as a group and not as N separate lines. */}
