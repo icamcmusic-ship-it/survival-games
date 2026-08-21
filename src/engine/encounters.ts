@@ -6,7 +6,7 @@ import { ArenaEventDef, arenaFlavor } from '../data/arenaFlavor';
 import { SimContext } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
-import { addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy } from './memory';
+import { addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy, raiseSuspicion } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { hasTruce, tryParley } from './parley';
 import { areLovers } from './alliance';
@@ -110,6 +110,20 @@ function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: b
             && (o.allianceId !== undefined && o.allianceId === t.allianceId));
         if (helpers.length > 0) {
             const helper = helpers[0];
+            // R-4: the absence of aid is as socially informative as aid. An
+            // ally who holds you in low regard may simply not reach — and you
+            // see it, which is worth resentment and a watched back, not a
+            // shrug. Refusal is a decision, so it is logged like one.
+            if (getRel(helper, t.id) < DEBTS.refusalRegardThreshold && ctx.rng.chance(DEBTS.refusalChance)) {
+                adjustRel(t, helper.id, -DEBTS.refusalResentment);
+                raiseSuspicion(t, helper.id, DEBTS.refusalSuspicion);
+                ctx.logEvent(
+                    `${helper.name} is close enough to reach ${t.name} in ${t.zone}, and doesn't. ${t.name} sees exactly how close, and files it away.`,
+                    [t.id, helper.id],
+                    { category: 'alliance' }
+                );
+                return false;
+            }
             const chance = Math.min(ENCOUNTERS.rescueMaxChance,
                 t.attributes.charisma * ENCOUNTERS.rescuePerCharisma
                 + helper.attributes.strength * ENCOUNTERS.rescuePerHelperStrength);

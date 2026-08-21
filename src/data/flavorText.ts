@@ -1253,6 +1253,31 @@ export const PARLEY_TEXTS = {
         '"{told}," {weak} says in {zone}, and then says why. {strong} steps aside. Information is the only currency either of them has left.',
         '{weak} gives up the one thing they own in {zone}: knowing better than to go back to {told}. {strong} takes it.',
     ],
+    /**
+     * §4.1: a truce that reaches its expiry has to resolve on-screen. 80 of 84
+     * negotiated truces used to simply evaporate from a Record with no line at
+     * all — an entire negotiation subsystem whose overwhelmingly common outcome
+     * was nothing observable. Silence was the bug.
+     */
+    truceRenewed: [
+        '{t1} and {t2} find each other before the agreement runs out, and neither reaches for a weapon. The truce holds another stretch, because it has been working.',
+        'The pact between {t1} and {t2} was due to lapse today. A look across open ground is the whole renegotiation: same terms, both still in.',
+        'Against every instinct the arena has taught them, {t1} and {t2} renew the agreement. The commentators cannot decide if it is wisdom or weakness.',
+        '{t1} owes {t2} nothing but a promise, and keeps it anyway. The truce rolls over, and the betting shops adjust.',
+    ],
+    truceLapsed: [
+        'The truce between {t1} and {t2} runs out quietly. They part the way they met: armed, watchful, and alive because of a promise both of them kept.',
+        'No handshake ends it. The agreement between {t1} and {t2} simply expires, and from tomorrow they are strangers with weapons again.',
+        'Whatever {t1} and {t2} agreed, the clock on it has run out. Neither renews it. Neither breaks it. The arena takes note.',
+        '{t1} and {t2} let the pact lapse. Each of them files away everything they learned about the other while it held.',
+        'The truce is over. {t1} and {t2} both kept their word to the end of it, which in this arena counts as a kind of victory.',
+    ],
+    truceTurned: [
+        'The truce between {t1} and {t2} expires in {zone}, and {t1} was counting the hours. The moment it lapses, the hunt is on.',
+        '{t1} honoured the agreement to the letter — to the last minute of it. Now, in {zone}, {t2} discovers what the letter was worth.',
+        'The pact runs out in {zone} and {t1} turns on {t2} before the echo of it fades. Technically, no promise was broken. Nobody in the Capitol is discussing the technicality.',
+        '{t1} kept the truce like a blade kept sheathed. It expires in {zone}, and {t2} is still standing close enough to regret it.',
+    ],
 };
 
 /** Settling up. See `engine/debts.ts` — somebody paying somebody back. */

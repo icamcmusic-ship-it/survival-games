@@ -398,6 +398,13 @@ export const SUSPICION = {
     departChance: 0.35,
     /** How much being watched costs a betrayer's target weighting, at full suspicion. */
     hardMarkFactor: 0.5,
+    /**
+     * §4.2 R-3: suspicion rises from more than witnessed betrayals. An ally
+     * whose kill count keeps climbing is an ally the rest of the group starts
+     * watching — the cannon and the anthem make kills public knowledge.
+     */
+    allyKillCountWary: 2,
+    perAllyKill: 8,
 } as const;
 
 export const DRIFT = {
@@ -986,8 +993,14 @@ export const ZONE_EFFECTS = {
     burningBurnChance: 0.6,
     /** Cycles between spread attempts, and the terrain that can catch. */
     spreadEveryCycles: 1,
-    spreadChance: 0.4,
-    flammableTerrain: ['forest', 'wetland'] as const,
+    /**
+     * §5.1 A-1: a spreading wildfire is the most cinematic thing this system
+     * can do and it happened in 5% of Games — spread reached a neighbour 12
+     * times in 240 runs. Chance up, and open ground (dry grass, scrub, dunes)
+     * burns too.
+     */
+    spreadChance: 0.55,
+    flammableTerrain: ['forest', 'wetland', 'open'] as const,
 
     /** Flooding: drowning risk for anyone who lingers instead of leaving. */
     floodDamage: 14,
@@ -1018,8 +1031,8 @@ export const ZONE_EFFECTS = {
      * event flag, and none of the existing hazard text sets one.
      */
     ambientEscalatedOnly: true,
-    ambientFireChance: 0.03,
-    ambientFloodChance: 0.02,
+    ambientFireChance: 0.045,
+    ambientFloodChance: 0.03,
     ambientFreezeChance: 0.02,
     ambientContaminateChance: 0.02,
     ambientFogChance: 0.03,
@@ -2226,6 +2239,20 @@ export const PARLEY = {
     truceBreakReputationCost: 10,
     truceBreakExcitement: 25,
 
+    /**
+     * §4.1: expiry is a decision point, not a garbage-collection pass. 80 of
+     * 84 negotiated truces used to evaporate silently; every truce now
+     * resolves on-screen as one of renew / lapse / turn-on-them.
+     */
+    /** Odds the pair rolls the agreement over, given real mutual regard. */
+    truceRenewChance: 0.35,
+    truceRenewMinRegard: 10,
+    /** Base odds the lapse becomes a hunt; treachery is added on top. */
+    truceTurnChance: 0.12,
+    truceTurnTreacheryWeight: 0.5,
+    /** Cycles the striker commits to hunting the person they let walk. */
+    truceTurnHuntCycles: 3,
+
     /** Both armed, neither willing to move first. */
     standoffChance: 0.4,
     standoffPerFear: 0.004,
@@ -2259,6 +2286,17 @@ export const DEBTS = {
     repayRegard: 12,
     repayExcitement: 10,
     repayRestRelief: 15,
+
+    /**
+     * §4.2 R-4: debts flowed one way — help was recorded, refusal never was.
+     * An ally close enough to haul you clear who chooses not to reach is as
+     * socially informative as one who does, and the victim sees it.
+     */
+    /** Regard below which an ally may simply not reach for you. */
+    refusalRegardThreshold: 0,
+    refusalChance: 0.25,
+    refusalResentment: 12,
+    refusalSuspicion: 12,
 
     /** District partners, simply for both still being here. */
     districtBondPerCycle: 0.6,

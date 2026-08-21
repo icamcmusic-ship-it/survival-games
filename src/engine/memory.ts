@@ -116,6 +116,15 @@ export function broadcastDeath(ctx: SimContext, victim: Tribute, killer?: Tribut
     const killZone = getZone(state.arena, zone);
     state.tributes.forEach(other => {
         if (other.status !== 'alive' || other.id === victim.id) return;
+        // §4.2 R-3: kills are public knowledge — the cannon now, the face in
+        // the sky tonight. An ally whose count keeps climbing gets watched by
+        // their own group, which is one of the cracks a Career pack breaks
+        // along.
+        if (killer && killer.id !== other.id
+            && other.allianceId !== undefined && other.allianceId === killer.allianceId
+            && killer.kills >= SUSPICION.allyKillCountWary) {
+            raiseSuspicion(other, killer.id, SUSPICION.perAllyKill);
+        }
         const witnessed = other.zone === zone;
         addZoneThreat(state, other, zone, witnessed ? MEMORY.deathThreat : MEMORY.cannonThreat);
         if (witnessed && killer && killer.id !== other.id) {

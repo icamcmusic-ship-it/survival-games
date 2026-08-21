@@ -33,7 +33,7 @@ import { runGamemakerSignature } from '../gamemakerAgency';
 import { tickWeatherFront } from '../weatherFront';
 import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
-import { decayTruces } from '../parley';
+import { resolveTruces } from '../parley';
 import { repayDebts, tickDistrictBonds } from '../debts';
 import { enforceCharters } from '../allianceCharter';
 import { gamemakerProfile } from '../../data/gamemakers';
@@ -187,7 +187,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayAllianceTrust(ctx.state);
     decayFear(ctx.state);
     decaySuspicion(ctx.state);
-    decayTruces(ctx.state);
+    resolveTruces(ctx);
     // Obligations come due, district partners grow into each other, and any
     // group that agreed terms is held to them.
     repayDebts(ctx);
