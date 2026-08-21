@@ -1296,8 +1296,15 @@ export const ROMANCE = {
     sustainedCycles: 3,
     /** Contact this stale breaks the streak. */
     contactWindow: 2,
-    /** Odds per cycle once every condition holds. Romance is never automatic. */
-    chancePerCycle: 0.1,
+    /**
+     * Odds per cycle once every condition holds. Romance is never automatic.
+     * Retuned 0.1 -> 0.04 at integration: removing the one-per-cycle romance
+     * throttle and loosening the performed-bond gates each passed the 5%-22%
+     * lover-runs guard alone, and stacked to 23.3% together. 0.04 lands the
+     * combined system at ~15%, the top of the 10%-15% design goal, with the
+     * performed-bond firing floor still comfortably clear.
+     */
+    chancePerCycle: 0.04,
     /**
      * Per-day decay on that chance. Keeps the romance rate a property of the
      * cast rather than a property of how long the Games happened to run.
