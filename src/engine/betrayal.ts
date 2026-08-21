@@ -1,12 +1,12 @@
 import { Tribute } from '../models/types';
 import { ALLIANCE_TEXTS } from '../data/flavorText';
-import { BETRAYAL, MEMORY, RELATIONSHIPS } from '../data/balance';
+import { BETRAYAL, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
 import { SimContext } from './context';
 import { resolveCombat } from './combat';
 import { allianceOf, cacheValue, emptyCache } from './alliance';
-import { addZoneThreat, noteContact, rememberedThreat, swearVengeance } from './memory';
+import { addZoneThreat, noteContact, raiseSuspicion, rememberedThreat, suspicionOf } from './memory';
 import { giveItem } from './items';
-import { reachableZones } from './map';
+import { reachableZones, severedEdgeSet } from './map';
 import { adjustRel, applyBetrayalFallout } from './relationships';
 import { addExcitement } from './audience';
 
@@ -38,14 +38,18 @@ function availableKinds(ctx: SimContext, betrayer: Tribute, victim: Tribute): Be
 
     // Leading someone somewhere lethal requires the betrayer to actually know
     // the place is lethal — which is exactly what zone memory already tracks.
-    const options = reachableZones(ctx.state.arena, betrayer.zone, ctx.state.collapsedZones ?? []);
+    const options = reachableZones(ctx.state.arena, betrayer.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state));
     if (options.some(z => rememberedThreat(ctx.state, betrayer, z.name) >= BETRAYAL.lureMinRememberedThreat)) {
         kinds.push('lure');
     }
 
     if (victim.health < BETRAYAL.withholdMaxHealth
         && (victim.injuries.bleeding || victim.injuries.infected || victim.injuries.poisoned)
-        && betrayer.inventory.some(i => i.type === 'medical')) {
+        && betrayer.inventory.some(i => i.type === 'medical')
+        // You only ask the person you still believe. Once suspicion has taken
+        // hold, the ask never happens — which is also what stops the same pair
+        // replaying this beat every cycle.
+        && suspicionOf(victim, betrayer.id) < SUSPICION.departThreshold) {
         kinds.push('withhold');
     }
 
@@ -102,7 +106,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
         case 'lure': {
             // Sending someone somewhere you know people have died. No blood on
             // the betrayer's hands, which is the point of doing it this way.
-            const options = reachableZones(ctx.state.arena, betrayer.zone, ctx.state.collapsedZones ?? []);
+            const options = reachableZones(ctx.state.arena, betrayer.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state));
             const deathTrap = options
                 .filter(z => rememberedThreat(ctx.state, betrayer, z.name) >= BETRAYAL.lureMinRememberedThreat)
                 .sort((a, b) => rememberedThreat(ctx.state, betrayer, b.name) - rememberedThreat(ctx.state, betrayer, a.name))[0];
@@ -124,10 +128,13 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
 
         case 'withhold': {
             // The betrayal of omission. The victim may never find out, so the
-            // relationship hit is smaller — but they are still bleeding.
+            // relationship hit is smaller — but they are still bleeding. No
+            // vengeance sworn, no fallout ledger: the victim has nothing but a
+            // refusal and a feeling, so what they get is suspicion — the thing
+            // §4.2 exists to track — not certainty.
             const med = betrayer.inventory.find(i => i.type === 'medical')!;
             adjustRel(victim, betrayer.id, -RELATIONSHIPS.betrayalDirectPenalty / 2);
-            swearVengeance(victim, betrayer.id);
+            raiseSuspicion(victim, betrayer.id, SUSPICION.perWitnessedBetrayal);
             addExcitement(betrayer, 15);
             ctx.logEvent(
                 `${victim.name} asks ${betrayer.name} for the ${med.name}. ${betrayer.name} says they used it days ago, ` +
@@ -142,7 +149,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             // Walking away from someone who needed you there.
             applyBetrayalFallout(ctx, betrayer, victim, members);
             delete betrayer.allianceId;
-            const away = reachableZones(ctx.state.arena, betrayer.zone, ctx.state.collapsedZones ?? [])
+            const away = reachableZones(ctx.state.arena, betrayer.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state))
                 .filter(z => z.name !== betrayer.zone);
             if (away.length > 0) betrayer.zone = ctx.rng.pick(away).name;
             ctx.logEvent(

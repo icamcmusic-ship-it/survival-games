@@ -1,4 +1,4 @@
-import { EventLog, GameState } from '../models/types';
+import { GameState } from '../models/types';
 
 /**
  * SIDE-level export: a run produces ~900 lines of genuinely readable prose and

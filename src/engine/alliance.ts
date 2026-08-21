@@ -106,24 +106,33 @@ function brandFor(ctx: SimContext, id: string, leader: Tribute, members: Tribute
 
 export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]): Alliance {
     const records = allianceRecords(ctx.state);
+    // Star-crossed lovers get the record — a camp, a leader for movement — but
+    // none of the machinery of a gang: no rolled pact, no charter terms, no
+    // broadcast brand. The rest of the codebase already skips `lovers-` ids for
+    // recruitment and pact expiry; falling in love should not read like a
+    // Career pack signing articles.
+    const isLoversBond = id.startsWith('lovers-');
     const roll = ctx.rng.nextFloat();
-    const pact: Alliance['pact'] = roll < ALLIANCES.pactFinalEightChance
-        ? 'until-the-final-eight'
-        : roll < ALLIANCES.pactFinalEightChance + ALLIANCES.pactToTheEndChance
-            ? 'to-the-end'
-            : 'no-pact';
+    const pact: Alliance['pact'] = isLoversBond ? 'no-pact'
+        : roll < ALLIANCES.pactFinalEightChance
+            ? 'until-the-final-eight'
+            : roll < ALLIANCES.pactFinalEightChance + ALLIANCES.pactToTheEndChance
+                ? 'to-the-end'
+                : 'no-pact';
 
     const leader = pickLeader(members);
     const record: Alliance = {
         id,
-        name: brandFor(ctx, id, leader, members),
+        name: isLoversBond ? 'the star-crossed pair' : brandFor(ctx, id, leader, members),
         leaderId: leader.id,
         memberIds: members.map(m => m.id),
         formedCycle: cycleOf(ctx.state),
-        campZone: members[0]?.zone,
+        // The leader's zone, not whatever order the array happened to be in —
+        // the exact anti-pattern this module's header calls out.
+        campZone: leader.zone,
         sharedCache: [],
         pact,
-        charter: rollCharter(ctx.rng, members),
+        charter: isLoversBond ? [] : rollCharter(ctx.rng, members),
     };
     records[id] = record;
     announceCharter(ctx, record, members);

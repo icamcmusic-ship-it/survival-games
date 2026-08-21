@@ -1187,15 +1187,17 @@ export const ROMANCE = {
      * §6.1: at 0.07 behind five conjunctive gates the performed bond fired
      * 1-2 times across 240 runs — one of the best ideas in the codebase,
      * effectively unreachable. Loosened with performedMinRegard and
-     * performerCharisma so it lands a few times per soak.
+     * performerCharisma so it lands a few times per soak. Loosened again when
+     * alliance formation gained its same-zone gate: fewer organic alliances
+     * means less sustained contact for the streak to build on.
      */
-    performedChance: 0.14,
+    performedChance: 0.2,
     /**
      * Regard the smitten party needs. Deliberately below `threshold`: a
      * performed bond does not need the mutual devotion a real one does, only
      * one person who has fallen far enough to be convincing about it.
      */
-    performedMinRegard: 70,
+    performedMinRegard: 62,
     /** Charisma needed to sell a romance you are not feeling. */
     performerCharisma: 5,
     /** What the performer shows, as opposed to what they feel. */
