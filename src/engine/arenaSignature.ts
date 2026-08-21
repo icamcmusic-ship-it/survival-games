@@ -5,7 +5,7 @@ import { applyDamage, checkDeath } from './combat';
 import { getZone, severEdge, edgeKey } from './map';
 import { addZoneThreat, noteSighting } from './memory';
 import { startZoneEffect, hasEffect, severRandomEdge } from './zoneEffects';
-import { openWound } from './wounds';
+import { injure, openWound } from './wounds';
 import { clampTribute } from './vitals';
 import { BLEEDING, ESCALATION, MEMORY, SIGNATURE_RULES } from '../data/balance';
 
@@ -77,7 +77,7 @@ function clockworkSignature(ctx: SimContext, cycle: number, rng: RNG) {
             return;
         }
         applyDamage(ctx, t, horror.damage, { cause: `Caught by the clock in ${striking}`, kind: 'arena' });
-        if (horror.poison) t.injuries.poisoned = true;
+        if (horror.poison) injure(t, 'poisoned');
         addZoneThreat(ctx.state, t, striking, MEMORY.hazardThreat * 2);
         clampTribute(t);
         checkDeath(ctx, t, `Caught by the clock in ${striking}`);
@@ -208,7 +208,7 @@ function solarSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         t.vitals.thirst += 22;
         t.vitals.fatigue += 12;
         if (rng.chance(0.25)) {
-            t.injuries.burned = true;
+            injure(t, 'burned');
             applyDamage(ctx, t, 8, { cause: 'Burned alive under a stalled sun', kind: 'arena' });
         }
         clampTribute(t);
@@ -238,7 +238,7 @@ function frozenSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         if (warm) return;
         applyDamage(ctx, t, 10, { cause: 'Froze to death in the open', kind: 'arena' });
         t.vitals.fatigue += 18;
-        if (rng.chance(0.3)) t.injuries.frostbitten = true;
+        if (rng.chance(0.3)) injure(t, 'frostbitten');
         clampTribute(t);
         checkDeath(ctx, t, 'Froze to death in the open');
     });
@@ -307,7 +307,7 @@ function toxicSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         const covered = t.inventory.some(i => i.purifies) || rng.chance(t.attributes.intelligence * 0.05);
         if (covered) return;
         t.vitals.sanity -= 22;
-        t.injuries.poisoned = true;
+        injure(t, 'poisoned');
         applyDamage(ctx, t, 6, { cause: `Breathed the swamp gas in ${target}`, kind: 'arena' });
         clampTribute(t);
         checkDeath(ctx, t, `Breathed the swamp gas in ${target}`);
@@ -334,7 +334,7 @@ function ashfallSignature(ctx: SimContext, cycle: number, rng: RNG) {
         t.vitals.thirst += 8;
         if (!filtered && rng.chance(0.2)) {
             applyDamage(ctx, t, 7, { cause: 'Choked on volcanic ash', kind: 'arena' });
-            t.injuries.infected = true;
+            injure(t, 'infected');
         }
         clampTribute(t);
         checkDeath(ctx, t, 'Choked on volcanic ash');
@@ -399,7 +399,7 @@ function sporefieldsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
             t.health = Math.min(100, t.health + 6);
             ctx.logEvent(`${t.name} eats well in ${target}, and picks right.`, [t.id], { zone: target, category: 'survival' });
         } else {
-            t.injuries.poisoned = true;
+            injure(t, 'poisoned');
             t.vitals.sanity -= 18;
             applyDamage(ctx, t, 14, { cause: `Poisoned by the bloom in ${target}`, kind: 'arena' });
             ctx.logEvent(`${t.name} eats well in ${target}, and picks wrong.`, [t.id], { important: true, zone: target, category: 'hazard' });
@@ -524,7 +524,7 @@ function reefSignature(ctx: SimContext, _cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} picks a line across the dead coral heads of ${target} and never touches the bloom.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        t.injuries.poisoned = true;
+        injure(t, 'poisoned');
         t.vitals.sanity -= SIGNATURE_RULES.reefSanityLoss;
         applyDamage(ctx, t, 12, { cause: `Stung down by the bloom in ${target}`, kind: 'arena' });
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
@@ -615,7 +615,7 @@ function ashwasteSignature(ctx: SimContext, cycle: number, rng: RNG) {
         t.vitals.fatigue += SIGNATURE_RULES.ashwasteWadeFatigue;
         const zone = getZone(ctx.state.arena, t.zone);
         if (zone?.terrain === 'highland' && rng.chance(SIGNATURE_RULES.ashwasteBurnChance)) {
-            t.injuries.burned = true;
+            injure(t, 'burned');
             applyDamage(ctx, t, 12, { cause: 'Scorched by the caldera gust', kind: 'arena' });
         }
         clampTribute(t);
@@ -686,7 +686,7 @@ function glacierSignature(ctx: SimContext, cycle: number, rng: RNG) {
             return;
         }
         applyDamage(ctx, t, 22, { cause: `Buried in the calving at ${target}`, kind: 'arena' });
-        t.injuries.frostbitten = true;
+        injure(t, 'frostbitten');
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
         checkDeath(ctx, t, `Buried in the calving at ${target}`);
@@ -728,7 +728,7 @@ function floeSignature(ctx: SimContext, cycle: number, rng: RNG) {
     tributesIn(ctx, zone).forEach(t => {
         if (!rng.chance(SIGNATURE_RULES.floeDunkChance)) return;
         applyDamage(ctx, t, 14, { cause: 'Went into the black water when the plates parted', kind: 'arena' });
-        t.injuries.frostbitten = true;
+        injure(t, 'frostbitten');
         t.vitals.fatigue += SIGNATURE_RULES.floeDunkFatigue;
         clampTribute(t);
         checkDeath(ctx, t, 'Went into the black water when the plates parted');
@@ -759,7 +759,7 @@ function alpineSignature(ctx: SimContext, cycle: number, rng: RNG) {
             return;
         }
         applyDamage(ctx, t, 26, { cause: `Buried by the avalanche in ${target}`, kind: 'arena' });
-        t.injuries.frostbitten = true;
+        injure(t, 'frostbitten');
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
         checkDeath(ctx, t, `Buried by the avalanche in ${target}`);

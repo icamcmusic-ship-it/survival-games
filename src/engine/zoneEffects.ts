@@ -1,4 +1,5 @@
 import { GameState, Terrain, Tribute, ZoneEffect, ZoneEffectKind } from '../models/types';
+import { injure } from './wounds';
 import { ZONE_EFFECTS } from '../data/balance';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
@@ -145,7 +146,7 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
             case 'burning':
                 applyDamage(ctx, t, ZONE_EFFECTS.burningDamage, { cause: `Caught in the fire in ${zoneName}`, kind: 'arena' });
                 if (ctx.rng.chance(ZONE_EFFECTS.burningBurnChance) && !t.injuries.burned) {
-                    t.injuries.burned = true;
+                    injure(t, 'burned');
                     ctx.logEvent(`${t.name} does not get clear of the fire in ${zoneName} fast enough.`, [t.id], { important: true, category: 'hazard' });
                 }
                 clampTribute(t);
@@ -164,7 +165,7 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
             case 'frozen':
                 t.vitals.fatigue += ZONE_EFFECTS.frozenFatigue;
                 if (!t.injuries.frostbitten && ctx.rng.chance(ZONE_EFFECTS.frozenFrostbiteChance)) {
-                    t.injuries.frostbitten = true;
+                    injure(t, 'frostbitten');
                     ctx.logEvent(`${t.name}'s fingers go white in the hard freeze over ${zoneName}.`, [t.id], { important: true, category: 'injury' });
                 }
                 clampTribute(t);
@@ -172,7 +173,7 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
 
             case 'contaminated':
                 if (!t.injuries.poisoned && ctx.rng.chance(ZONE_EFFECTS.contaminatedPoisonChance)) {
-                    t.injuries.poisoned = true;
+                    injure(t, 'poisoned');
                     ctx.logEvent(`${t.name} has been breathing whatever is wrong with ${zoneName} for too long.`, [t.id], { important: true, category: 'injury' });
                 }
                 t.vitals.sanity -= ZONE_EFFECTS.contaminatedSanityLoss;

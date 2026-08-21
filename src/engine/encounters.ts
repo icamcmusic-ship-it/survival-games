@@ -3,6 +3,7 @@ import { ITEMS } from '../data/constants';
 import { BLEEDING, CRAFTING, DESPERATION, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, PROFICIENCY, VITALS, ZONES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaEventDef, arenaFlavor } from '../data/arenaFlavor';
+import { QUIRKS } from '../data/quirks';
 import { SimContext } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
@@ -14,7 +15,7 @@ import { incurDebt } from './debts';
 import { DEBTS } from '../data/balance';
 import { giveItem, hasTool, itemPhrase, mintItem, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
-import { attemptFieldDressing, clearBleeding, openWound, shouldDressWound } from './wounds';
+import { attemptFieldDressing, clearBleeding, healInjury, injure, injuryGrade, openWound, shouldDressWound } from './wounds';
 import { profOf, trainProficiency } from './proficiency';
 import { attemptFieldcraft } from './fieldcraft';
 import { resolveMuttAttack as resolveMuttAttackImpl } from './mutts';
@@ -79,7 +80,8 @@ function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: b
         ctx.logEvent(fill(text, vars), [t.id], { category: isBoon ? 'survival' : 'hazard' });
 
     const difficulty = event.dodgeDifficulty ?? ENCOUNTERS.defaultDodgeDifficulty;
-    const penalty = t.injuries.legs ? 2 : 0;
+    // T-5: how well you get out of the way depends on how bad the leg is.
+    const penalty = injuryGrade(t, 'legs') * ENCOUNTERS.legsDodgePenaltyPerGrade;
 
     if (event.dodgeStat) {
         const roll = t.attributes[event.dodgeStat] + ctx.rng.nextInt(0, 4) - penalty;
@@ -163,10 +165,10 @@ function applyEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef, narrate
     if (event.damage) applyDamage(ctx, t, bracedDamage(t, event), { cause: event.cause, kind: 'hazard' });
     if (event.heal) t.health = Math.min(100, t.health + event.heal);
     if (event.bleeding) openWound(t, BLEEDING.hazardSeverity);
-    if (event.poisoned) t.injuries.poisoned = true;
-    if (event.burned) t.injuries.burned = true;
-    if (event.frostbitten) t.injuries.frostbitten = true;
-    if (event.infected) t.injuries.infected = true;
+    if (event.poisoned) injure(t, 'poisoned');
+    if (event.burned) injure(t, 'burned');
+    if (event.frostbitten) injure(t, 'frostbitten');
+    if (event.infected) injure(t, 'infected');
     if (event.sanity) t.vitals.sanity -= event.sanity;
     if (event.thirst) t.vitals.thirst += event.thirst;
     if (event.hunger) t.vitals.hunger += event.hunger;
@@ -293,8 +295,8 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
         const medIdx = giver.inventory.findIndex(i => i.type === 'medical');
         if (medIdx >= 0) {
             const item = giver.inventory.splice(medIdx, 1)[0];
-            needer.injuries.infected = false;
-            needer.injuries.burned = false;
+            healInjury(needer, 'infected');
+            healInjury(needer, 'burned');
             clearBleeding(needer);
             needer.health = Math.min(100, needer.health + 15);
             trainProficiency(giver, 'medicine');
@@ -528,6 +530,19 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
     if (shouldDressWound(t)) {
         attemptFieldDressing(ctx, t);
         return;
+    }
+
+    // T-7: a quiet cycle is when the cameras find the habit. Colour only —
+    // the turn still proceeds to whatever they were going to do.
+    if (t.quirks?.length && ctx.rng.chance(ZONES.quirkLineChance)) {
+        const quirk = QUIRKS.find(q => q.label === ctx.rng.pick(t.quirks!));
+        if (quirk) {
+            ctx.logEvent(
+                quirk.line.split('{name}').join(t.name).split('{zone}').join(t.zone),
+                [t.id],
+                { category: 'survival' }
+            );
+        }
     }
 
     // Preparation is a use of a turn. A tribute who is not bleeding, not being

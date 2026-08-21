@@ -1,5 +1,5 @@
 import { Build, Tribute } from '../models/types';
-import { PHYSIQUE } from '../data/balance';
+import { PHYSIQUE, GENERATION } from '../data/balance';
 
 /**
  * Bodies.
@@ -26,4 +26,9 @@ export function reachBonus(t: Tribute): number {
 export function heightLabel(heightCm: number): string {
     const totalInches = Math.round(heightCm / 2.54);
     return `${Math.floor(totalInches / 12)}'${totalInches % 12}"`;
+}
+
+/** The most raw strength a tribute of this age can possibly have. */
+export function strengthCapForAge(age: number): number {
+    return Math.min(10, GENERATION.strengthCapAtMinAge + (age - GENERATION.minAge) * GENERATION.strengthCapPerYear);
 }

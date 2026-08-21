@@ -505,6 +505,11 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                     </Explainer>
                                 ))}
                         </div>
+                        {(tribute.quirks?.length ?? 0) > 0 && (
+                            <p className="text-sm text-[var(--color-ink-400)] mt-2 italic">
+                                The cameras have noticed: {tribute.quirks!.join('; ')}.
+                            </p>
+                        )}
                     </section>
 
                     <section>

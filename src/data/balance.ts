@@ -57,6 +57,8 @@ export const VITALS = {
 export const BLEEDING = {
     /** Severity a fresh wound opens at, by source. */
     combatSeverity: 2,
+    /** T-5: extra status-damage multiplier per injury grade above 1 (all sites). */
+    gradeDamageStep: 0.3,
     muttSeverity: 3,
     hazardSeverity: 2,
     /** Per-cycle health cost, indexed by severity (0 is not bleeding). */
@@ -420,6 +422,10 @@ export const DRIFT = {
     agilityPerCombatLevel: 0.15,
     /** Fractional stealth per whole level of tracking proficiency gained. */
     stealthPerTrackingLevel: 0.15,
+    /** T-1: fighting builds the frame doing it. */
+    strengthPerMeleeLevel: 0.1,
+    /** T-1: fieldcraft (medicine, forage) sharpens judgement. */
+    intelligencePerFieldcraftLevel: 0.1,
     /** Drift ceiling: earned points never exceed this above the printed stat. */
     maxGain: 1,
 } as const;
@@ -633,6 +639,8 @@ export const QUALITY_BIAS = {
 } as const;
 
 export const ENCOUNTERS = {
+    /** T-5: dodge penalty per grade of leg injury (was a flat 2 boolean). */
+    legsDodgePenaltyPerGrade: 1.25,
     /** Fallback escape difficulty for an event that does not name its own. */
     defaultDodgeDifficulty: 6,
     /**
@@ -690,6 +698,8 @@ export const COMBAT = {
     /** Extra damage per point of power advantage in the round. */
     damagePerPowerPoint: 2.2,
     /** Damage floor and ceiling for any one exchange. */
+    /** T-5: combat-power penalty per grade of arm/leg injury (was a flat 2). */
+    limbPowerPenaltyPerGrade: 1.25,
     minRoundDamage: 5,
     maxRoundDamage: 42,
     /**
@@ -1176,6 +1186,8 @@ export const ZONES = {
     minYieldFraction: 0.1,
     /** Base forage odds before zone yield and archetype are added. */
     baseForageChance: 0.25,
+    /** T-7: odds a quiet cycle surfaces one of a tribute's quirks as colour. */
+    quirkLineChance: 0.06,
     yieldForageWeight: 0.4,
     survivalistForageBonus: 0.15,
     /** Aggressive/Evasive tributes can still stumble onto food or water while
@@ -1759,6 +1771,8 @@ export const GENERATION = {
     fanFavouriteCount: 2,
     fanFavouriteTrust: 22,
     fanFavouriteExcitement: 25,
+    /** T-7: odds a tribute carries a second quirk. */
+    secondQuirkChance: 0.35,
     /** Baseline sponsor trust before reputation modifiers. */
     baseSponsorTrust: 50,
     trustSpread: 12,
@@ -2169,6 +2183,13 @@ export const TRAINING_FLOOR = {
 export const RESOLVE = {
     start: 70,
     max: 100,
+    /**
+     * T-6: a breakdown needed more than one shape. Odds of the two new
+     * expressions — walking into the border once the arena is closing, and
+     * putting the weapons down in front of a hostile.
+     */
+    borderWalkChance: 0.12,
+    surrenderChance: 0.3,
     /**
      * Baseline erosion. The arena wears people down by default; the bonuses
      * below are what holds a tribute up. Positive drift made resolve sit

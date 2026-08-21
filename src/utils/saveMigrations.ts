@@ -235,16 +235,19 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         momentum: asNum(r.momentum, 0),
         rattled: asNum(r.rattled, 0),
         tesserae: asNum(r.tesserae, 0),
-        attributeDrift: {
-            agility: typeof drift.agility === 'number' ? drift.agility : undefined,
-            stealth: typeof drift.stealth === 'number' ? drift.stealth : undefined,
-        },
+        attributeDrift: Object.fromEntries(
+            (['strength', 'agility', 'intelligence', 'charisma', 'stealth'] as const)
+                .filter(k => typeof drift[k] === 'number')
+                .map(k => [k, drift[k] as number])
+        ),
         transit: transit && typeof transit.to === 'string'
             ? { to: transit.to, remaining: asNum(transit.remaining, 1) }
             : undefined,
         proficiencies: asObjMap<number>(r.proficiencies),
         objective: normalizeObjective(r.objective),
         protectorBonds: asStrArray(r.protectorBonds),
+        quirks: asStrArray(r.quirks),
+        injurySeverity: asObjMap<number>(r.injurySeverity),
         platePosition: clamp(asNum(r.platePosition, 0.5), 0, 1),
     };
 }

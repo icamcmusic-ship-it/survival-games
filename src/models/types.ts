@@ -30,6 +30,9 @@ export interface Injuries {
     frostbitten: boolean;
 }
 
+/** One place a tribute can be hurt. See `Tribute.injurySeverity`. */
+export type InjurySite = keyof Injuries;
+
 /**
  * Skills a tribute actually gets better at by doing.
  *
@@ -272,6 +275,16 @@ export interface Tribute {
      */
     bleedSeverity?: number;
     /**
+     * T-5: graded severity per injury site, 0-3, generalising the
+     * `bleedSeverity` pattern to every other injury. The `Injuries` booleans
+     * stay the "is there an injury here" flags every existing read site
+     * understands; this is how bad each one is. A broken leg and a bruised
+     * leg are no longer both `legs: true` — grades scale the combat and
+     * escape penalties and the per-cycle status damage, and a repeat insult
+     * to the same site worsens it rather than being absorbed silently.
+     */
+    injurySeverity?: Partial<Record<InjurySite, number>>;
+    /**
      * Bloodlust. A kill leaves a tribute keyed up: briefly stronger in a fight
      * and far less willing to break off. Decays every cycle, so it rewards
      * pressing an advantage rather than permanently buffing whoever scored first.
@@ -279,8 +292,13 @@ export interface Tribute {
     momentum?: number;
     /** §3.4: short-lived shaken state, symmetric to momentum. Decays per cycle. */
     rattled?: number;
-    /** §3.1: attribute points earned in the arena, per attribute, capped by DRIFT.maxGain. */
-    attributeDrift?: { agility?: number; stealth?: number };
+    /**
+     * §3.1: attribute points earned in the arena, per attribute, capped by
+     * DRIFT.maxGain. T-1: widened from agility/stealth only — repeated
+     * fighting builds strength and practised fieldcraft sharpens judgement,
+     * so a survivalist can genuinely become a fighter over a run.
+     */
+    attributeDrift?: Partial<Record<keyof Attributes, number>>;
     /** §5.3: a slow traversal in progress — a crossing or a climb. The tribute
      *  stays in their origin zone until `remaining` cycles have been spent. */
     transit?: { to: string; remaining: number };
@@ -314,6 +332,12 @@ export interface Tribute {
      * respects that (see `survival.ts`), and the reaping note says so.
      */
     tesserae?: number;
+    /**
+     * T-7: non-mechanical idiosyncrasies (labels into `data/quirks.ts`).
+     * Two tributes with identical traits stop being behaviourally identical
+     * on camera: quirks show on the sheet and surface from quiet cycles.
+     */
+    quirks?: string[];
 }
 
 /**

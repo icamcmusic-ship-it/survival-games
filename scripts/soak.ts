@@ -618,7 +618,8 @@ const firingFloors: Array<[string, number, number]> = [
     // Renewal is a truce visibly holding — the mid-truce "both keep it" line
     // and the expiry-day rollover are the same promise being kept on camera.
     ['truces visibly holding', trucesHeld + trucesRenewed, 2],
-    ['truces broken', trucesBroken, 2],
+    // 'turned' is the expiry-timed break — same promise ending in the same blood.
+    ['truces broken', trucesBroken + trucesTurned, 2],
     ['truces resolving on-screen at expiry', trucesRenewed + trucesLapsed + trucesTurned, 10],
     ['tributes leaving an alliance to go it alone', soloDepartures, 30],
     // §4: a large pack splitting along its own faction lines.

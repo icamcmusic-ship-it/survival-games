@@ -1,4 +1,4 @@
-import { Tribute } from '../models/types';
+import { InjurySite, Tribute } from '../models/types';
 import { BLEEDING, VITALS } from '../data/balance';
 import { SimContext } from './context';
 import { profOf, trainProficiency } from './proficiency';
@@ -18,6 +18,43 @@ import { traitMod } from '../data/traits';
  * turn actually dressing it — or if an ally does it for them, which finally
  * gives an alliance a medical reason to exist as well as a tactical one.
  */
+
+/**
+ * T-5: the graded-injury layer, generalising `bleedSeverity` to every site.
+ * The booleans stay the flags every read site understands; the grade is how
+ * bad it is. `injure` on an already-hurt site worsens it a step — a second
+ * frost, a second dose of venom, a second blow to the same arm.
+ */
+const MAX_INJURY_GRADE = 3;
+
+export function injure(t: Tribute, site: Exclude<InjurySite, 'bleeding'>, severity = 1) {
+    const current = injuryGrade(t, site);
+    t.injuries[site] = true;
+    t.injurySeverity = t.injurySeverity ?? {};
+    t.injurySeverity[site] = Math.min(MAX_INJURY_GRADE, Math.max(current + 1, severity));
+}
+
+/** 0 when the site is sound; 1-3 when it is not. Tolerates pre-grade saves. */
+export function injuryGrade(t: Tribute, site: InjurySite): number {
+    if (site === 'bleeding') return bleedSeverity(t);
+    if (!t.injuries[site]) return 0;
+    return Math.max(1, Math.min(MAX_INJURY_GRADE, t.injurySeverity?.[site] ?? 1));
+}
+
+/** Heals a site by `steps` grades; the boolean clears when the grade hits 0. */
+export function healInjury(t: Tribute, site: Exclude<InjurySite, 'bleeding'>, steps = MAX_INJURY_GRADE) {
+    const next = Math.max(0, injuryGrade(t, site) - steps);
+    if (t.injurySeverity) t.injurySeverity[site] = next;
+    if (next <= 0) {
+        t.injuries[site] = false;
+        if (t.injurySeverity) delete t.injurySeverity[site];
+    }
+}
+
+/** Multiplier a site's grade puts on its per-cycle status damage. */
+export function gradeDamageScale(t: Tribute, site: InjurySite): number {
+    return 1 + (injuryGrade(t, site) - 1) * BLEEDING.gradeDamageStep;
+}
 
 /** How badly `t` is bleeding right now. */
 export function bleedSeverity(t: Tribute): number {

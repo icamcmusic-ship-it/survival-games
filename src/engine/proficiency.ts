@@ -1,6 +1,7 @@
 import { ArchetypeId, Item, Proficiency, Tribute } from '../models/types';
 import { DRIFT, PROFICIENCY } from '../data/balance';
 import { craftOf } from '../data/districts';
+import { strengthCapForAge } from './physique';
 
 /**
  * Skills that improve with use.
@@ -86,16 +87,24 @@ export function trainProficiency(t: Tribute, skill: Proficiency): number {
     if (Math.floor(next) > Math.floor(current)) {
         t.attributeDrift = t.attributeDrift ?? {};
         // Capped both by DRIFT.maxGain and by the attribute scale itself (10).
-        const drift = (attr: 'agility' | 'stealth', per: number) => {
+        const drift = (attr: keyof Tribute['attributes'], per: number) => {
             const held = t.attributeDrift![attr] ?? 0;
             if (held >= DRIFT.maxGain) return;
-            const inc = Math.min(per, DRIFT.maxGain - held, 10 - t.attributes[attr]);
+            // Strength drift also respects the age ceiling — a fourteen-year-old
+            // does not train past a fourteen-year-old's frame.
+            const ceiling = attr === 'strength' ? Math.min(10, strengthCapForAge(t.age)) : 10;
+            const inc = Math.min(per, DRIFT.maxGain - held, ceiling - t.attributes[attr]);
             if (inc <= 0) return;
             t.attributeDrift![attr] = Math.round((held + inc) * 100) / 100;
             t.attributes[attr] = Math.round((t.attributes[attr] + inc) * 100) / 100;
         };
         if (skill === 'melee' || skill === 'ranged') drift('agility', DRIFT.agilityPerCombatLevel);
         else if (skill === 'tracking') drift('stealth', DRIFT.stealthPerTrackingLevel);
+        // T-1: the arena plausibly changes everything. Fighting hand-to-hand
+        // builds the arm behind the blade; working wounds and reading ground
+        // sharpens judgement.
+        if (skill === 'melee') drift('strength', DRIFT.strengthPerMeleeLevel);
+        if (skill === 'medicine' || skill === 'forage') drift('intelligence', DRIFT.intelligencePerFieldcraftLevel);
     }
     return t.proficiencies[skill]!;
 }

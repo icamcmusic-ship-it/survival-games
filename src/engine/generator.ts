@@ -6,10 +6,12 @@ import { GENERATION, TESSERAE, VOLUNTEER } from '../data/balance';
 import { DISTRICT_NAMES } from '../data/names';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { blankMemory } from './memory';
+import { strengthCapForAge } from './physique';
 import { blankProficiencies } from './proficiency';
 import { seedBackstoryRelationships } from './relationships';
 import { addExcitement } from './audience';
 import { CastShape } from '../data/gamesProfile';
+import { QUIRKS } from '../data/quirks';
 
 /** Weighted draw from the district's archetype table. */
 function pickArchetype(rng: RNG, district: number, careerBias = 0): ArchetypeId {
@@ -56,10 +58,7 @@ function drawReapingAge(rng: RNG, district: number): number {
     return GENERATION.maxAge;
 }
 
-/** The most raw strength a tribute of this age can possibly have. */
-export function strengthCapForAge(age: number): number {
-    return Math.min(10, GENERATION.strengthCapAtMinAge + (age - GENERATION.minAge) * GENERATION.strengthCapPerYear);
-}
+export { strengthCapForAge } from './physique';
 
 function buildFromStrength(rng: RNG, strength: number): Build {
     // Roughly correlate build with strength while keeping some randomness.
@@ -329,6 +328,10 @@ export function generateTributes(
                 stanceHeld: 0,
                 fanFavourite: false,
                 tesserae,
+                // T-7: one or two habits the cameras will find. Drawn without
+                // replacement so a pair never shares a quirk within one cast.
+                quirks: [rng.pick(QUIRKS).label, ...(rng.chance(GENERATION.secondQuirkChance) ? [rng.pick(QUIRKS).label] : [])]
+                    .filter((q, i, arr) => arr.indexOf(q) === i),
                 reapingNote: tesserae >= TESSERAE.notedAt
                     ? `Their name was in the bowl ${age - GENERATION.minAge + 1 + tesserae} times — ${tesserae} of those slips bought grain, one winter at a time. Everyone in the square knew whose names the bowl was heavy with.`
                     : undefined,

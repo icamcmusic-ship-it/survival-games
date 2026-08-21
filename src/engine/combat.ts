@@ -10,7 +10,7 @@ import { getZone, zoneFeatures } from './map';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound } from './memory';
 import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
-import { openWound } from './wounds';
+import { injure, injuryGrade, openWound } from './wounds';
 import { profOf, trainProficiency, weaponAffinity, weaponProficiency } from './proficiency';
 import { addFear, fearFraction, reduceFear } from './fear';
 import { areLovers } from './alliance';
@@ -239,8 +239,9 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     power += ARCHETYPES[t.archetype].aggression * 4;
 
     // Injury and status penalties
-    if (t.injuries.arms) power -= 2;
-    if (t.injuries.legs) power -= 2;
+    // T-5: a shattered arm is not a bruised one — penalties scale with grade.
+    power -= injuryGrade(t, 'arms') * COMBAT.limbPowerPenaltyPerGrade;
+    power -= injuryGrade(t, 'legs') * COMBAT.limbPowerPenaltyPerGrade;
     if (t.injuries.poisoned) power -= 3;
     if (t.injuries.burned) power -= 1;
     if (t.injuries.frostbitten) power -= 2;
@@ -343,12 +344,12 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     if (ctx.rng.chance(COMBAT.bleedChance)) openWound(defender, BLEEDING.combatSeverity);
     if (ctx.rng.chance(COMBAT.woundChance)) {
         const site = ctx.rng.pick(['head', 'torso', 'arms', 'legs'] as const);
-        defender.injuries[site] = true;
+        injure(defender, site);
     }
     // A Pyromaniac fights dirty with whatever burns — every landed hit has a
     // real chance to leave the defender scorched, not just bruised.
     if (attacker.traits.includes('Pyromaniac') && !defender.injuries.burned && ctx.rng.chance(COMBAT.pyromaniacBurnChance)) {
-        defender.injuries.burned = true;
+        injure(defender, 'burned');
         ctx.logEvent(
             `${attacker.name}'s strike leaves ${defender.name} scorched — Pyromaniacs make sure something is always burning.`,
             [defender.id, attacker.id],
@@ -356,7 +357,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
         );
     }
     if (weapon?.poison && ctx.rng.chance(COMBAT.poisonTransferChance) && !defender.injuries.poisoned) {
-        defender.injuries.poisoned = true;
+        injure(defender, 'poisoned');
         ctx.logEvent(
             `${defender.name} is grazed by ${attacker.name}'s poisoned dart and feels the venom spreading.`,
             [defender.id, attacker.id],
