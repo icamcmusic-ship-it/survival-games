@@ -115,11 +115,38 @@ await step('proceed advances phases', async () => {
   }
 });
 
+await step('U-1: the board can be stepped back', async () => {
+  const back = page.getByRole('button', { name: /^Back$/ });
+  if (await back.count() === 0) throw new Error('no step-back control');
+  const before = await page.locator('[role="log"] .feed-item, [role="log"] .panel-flush').count();
+  await back.click();
+  await page.waitForTimeout(250);
+  const after = await page.locator('[role="log"] .feed-item, [role="log"] .panel-flush').count();
+  if (after > before) throw new Error(`stepping back grew the chronicle (${before} -> ${after})`);
+  // Put the run back where the rest of the suite expects it: the later steps
+  // drive the in-arena controls, which only render once the Games are under
+  // way, and a rewind that stayed rewound would strand them.
+  await page.getByRole('button', { name: /Proceed/ }).click();
+  await page.waitForTimeout(250);
+});
+
 await step('filters panel mutes categories', async () => {
   await page.getByRole('button', { name: /filters/i }).click();
   await page.getByText(/headline events only/i).click();
   await page.getByRole('button', { name: /violence/i }).click();
   await page.getByRole('button', { name: /reset filters/i }).click();
+  await page.getByRole('button', { name: /filters/i }).click();
+});
+
+await step('chronicle density switches', async () => {
+  // The previous step closes the panel behind itself; reopen it.
+  await page.getByRole('button', { name: /filters/i }).click();
+  const compact = page.getByRole('button', { name: /^Compact$/ });
+  if (await compact.count() === 0) throw new Error('no density control');
+  await compact.click();
+  await page.waitForTimeout(150);
+  if (await page.locator('.feed-compact').count() === 0) throw new Error('compact density did not apply');
+  await page.getByRole('button', { name: /^Normal$/ }).click();
   await page.getByRole('button', { name: /filters/i }).click();
 });
 

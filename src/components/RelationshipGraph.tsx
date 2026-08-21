@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { GameState, Tribute } from '../models/types';
+import { tributeColor } from '../ui/tributeColor';
 
 /**
  * The social graph, drawn.
@@ -142,7 +143,8 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                                 x={link.x} y={link.y + 26}
                                 textAnchor="middle"
                                 style={{ fontFamily: 'var(--font-mono)', fontSize: 8, fontWeight: 700 }}
-                                fill="var(--color-ink-500)"
+                                // §2.2: same identity colour as the feed and the map.
+                                fill={tributeColor(link.other.district, link.other.gender)}
                             >
                                 {link.other.name.length > 10 ? `${link.other.name.slice(0, 9)}…` : link.other.name}
                             </text>

@@ -555,6 +555,49 @@ body {
         background: #fff;
     }
 
+    /* §2.2: chronicle density. A 494-line run at one fixed line height is a
+       wall of text; a reader skimming for the shape of a day and a reader
+       settling in to read it want different things from the same feed. */
+    .feed-compact .feed-item {
+        padding: 0.3rem 0.6rem 0.3rem 0.7rem;
+        font-size: 0.8rem;
+        line-height: 1.3;
+    }
+
+    .feed-compact .feed-tag {
+        font-size: 0.55rem;
+        padding: 0 0.25rem;
+    }
+
+    .feed-prose .feed-item {
+        padding: 0.85rem 1.1rem 0.85rem 1.2rem;
+        font-size: 0.95rem;
+        line-height: 1.7;
+        border-left-width: 3px;
+    }
+
+    /* At prose density the category chips are noise — the colour stripe still
+       carries the category, and the point of this density is to read. */
+    .feed-prose .feed-tag {
+        display: none;
+    }
+
+    /* §2.2: a per-tribute colour, carried across the feed, the map, the odds
+       board and the relationship graph so a name is recognisable at a glance
+       rather than being one more piece of text to parse. */
+    .tribute-chip {
+        border-bottom: 2px solid var(--tribute, var(--color-ink-500));
+    }
+
+    /* §2.2: the day divider stays put while its day scrolls under it, so a
+       reader deep in day 6 can always see which day they are in. */
+    .day-divider {
+        position: sticky;
+        top: 2.1rem;
+        z-index: 5;
+        background: var(--paper-panel);
+    }
+
     .feed-item.is-important {
         background: color-mix(in srgb, var(--cat) 10%, var(--paper-panel));
         border-color: var(--cat);

@@ -43,9 +43,20 @@ export interface StoredFilters {
     mutedGroups: string[];
     importantOnly: boolean;
     pauseOnDeath: boolean;
+    /** §2.2: how much room each chronicle entry gets. */
+    density: 'compact' | 'comfortable' | 'prose';
+    /** §2.2: opt-in audio cues — the cannon, the anthem, a parachute. */
+    sound: boolean;
 }
 
-export const DEFAULT_FILTERS: StoredFilters = { mutedGroups: [], importantOnly: false, pauseOnDeath: false };
+export const DEFAULT_FILTERS: StoredFilters = {
+    mutedGroups: [], importantOnly: false, pauseOnDeath: false,
+    density: 'comfortable',
+    // Off by default: audio that starts itself is the single most hostile
+    // thing a page can do, and the whole point of these cues is atmosphere
+    // somebody chose.
+    sound: false,
+};
 
 export const FILTERS_SPEC: StorageSpec<StoredFilters> = {
     key: STORAGE_KEYS.feedFilters,
@@ -57,6 +68,8 @@ export const FILTERS_SPEC: StorageSpec<StoredFilters> = {
             mutedGroups: asStrArray(r.mutedGroups),
             importantOnly: asBool(r.importantOnly, false),
             pauseOnDeath: asBool(r.pauseOnDeath, false),
+            density: r.density === 'compact' || r.density === 'prose' ? r.density : 'comfortable',
+            sound: asBool(r.sound, false),
         };
     },
 };

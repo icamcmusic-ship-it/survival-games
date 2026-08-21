@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { EventCategory, GameState } from '../models/types';
 import { ArenaMap } from '../components/ArenaMap';
 import { TributeModal } from '../components/TributeModal';
-import { EventFeed, FeedLine, VISIBLE_CAP } from '../components/EventFeed';
+import { EventFeed, FeedDensity, FeedLine, VISIBLE_CAP } from '../components/EventFeed';
+import { playCue, setSoundEnabled } from '../ui/sound';
+import { tributeColorVar } from '../ui/tributeColor';
 import { ChronicleExport } from '../components/ChronicleExport';
 import { CATEGORY_GROUPS } from '../ui/eventStyles';
 import { tributeOdds } from '../engine/odds';
@@ -88,6 +90,19 @@ export function GameScreen({
     const [showFilters, setShowFilters] = useState(false);
     // UX: auto-play at 5x/Skip blows straight past major deaths; opt-in brake.
     const [pauseOnDeath, setPauseOnDeath] = useState(storedFilters.current.pauseOnDeath);
+    /**
+     * §2.2: a chronicle line named in the URL (`#/game?line=<id>`), so a
+     * player can share the exact moment rather than the whole run and a seed.
+     * Read once at mount: the hash is a link somebody followed, not a live
+     * control, and re-reading it would fight the router.
+     */
+    const [deepLinkedLine] = useState<string | undefined>(() => {
+        const query = window.location.hash.split('?')[1];
+        return query ? new URLSearchParams(query).get('line') ?? undefined : undefined;
+    });
+    // §2.2: chronicle density and the opt-in audio cues, both persisted.
+    const [density, setDensity] = useState<FeedDensity>(storedFilters.current.density);
+    const [sound, setSound] = useState(storedFilters.current.sound);
     /** A toast explaining why auto-advance just stopped. */
     const [pauseNotice, setPauseNotice] = useState(false);
     const bets = useStore(gameStore, s => s.bets);
@@ -157,8 +172,12 @@ export function GameScreen({
 
     useEffect(() => {
         // Storage failures are absorbed — the preference simply won't be remembered.
-        writeFilters({ mutedGroups: [...mutedGroups], importantOnly, pauseOnDeath });
-    }, [mutedGroups, importantOnly, pauseOnDeath]);
+        writeFilters({ mutedGroups: [...mutedGroups], importantOnly, pauseOnDeath, density, sound });
+    }, [mutedGroups, importantOnly, pauseOnDeath, density, sound]);
+
+    // §2.2: the audio module mirrors the preference rather than reading
+    // storage itself, so turning it off releases the AudioContext.
+    useEffect(() => { setSoundEnabled(sound); }, [sound]);
 
     // Auto-advance, paced by how much the phase just produced.
     const lastTickLogCount = useRef(gameState.log.length);
@@ -179,6 +198,26 @@ export function GameScreen({
         const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(speed, newCount));
         return () => clearTimeout(timer);
     }, [speed, isOver, pauseOnDeath, runProgress, gameState.phase, gameState.day, gameState.log.length, gameState.log]);
+
+    /**
+     * §2.2: the three audio cues, fired off whatever arrived in the chronicle
+     * since the last render. Kept separate from the auto-advance effect above
+     * because that one returns early in manual mode, and a cannon should
+     * sound whether the player is skimming or stepping through by hand.
+     */
+    const lastCueLogCount = useRef(gameState.log.length);
+    useEffect(() => {
+        const fresh = gameState.log.length - lastCueLogCount.current;
+        lastCueLogCount.current = gameState.log.length;
+        if (!sound || fresh <= 0) return;
+        const lines = gameState.log.slice(-fresh);
+        // One cue per batch, in order of what matters most — a death outranks
+        // the anthem, which outranks a parachute. A skip that lands twenty
+        // lines at once is one sound, not twenty.
+        if (lines.some(l => l.category === 'death' || l.category === 'kill')) playCue('cannon');
+        else if (lines.some(l => l.text.includes('anthem'))) playCue('anthem');
+        else if (lines.some(l => l.category === 'sponsor')) playCue('parachute');
+    }, [gameState.log, sound]);
 
     /**
      * §2.3: the keyboard path covered five keys — advance, filters, map, help,
@@ -667,6 +706,44 @@ export function GameScreen({
                                     )}
                                 </div>
                             </div>
+                            {/* §2.2: a 494-line run at one fixed line height is a
+                                wall; skimming for a day's shape and settling in
+                                to read it want different things. */}
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="eyebrow">Density</span>
+                                    <div className="seg">
+                                        {(['compact', 'comfortable', 'prose'] as const).map(d => (
+                                            <button
+                                                key={d}
+                                                onClick={() => setDensity(d)}
+                                                aria-pressed={density === d}
+                                                className="seg-item"
+                                                title={d === 'compact'
+                                                    ? 'Tight rows, for skimming a whole run'
+                                                    : d === 'prose'
+                                                        ? 'Room to read, with the category chips hidden'
+                                                        : 'The standard chronicle'}
+                                            >
+                                                {d === 'comfortable' ? 'Normal' : d === 'compact' ? 'Compact' : 'Prose'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={sound}
+                                        onChange={e => setSound(e.target.checked)}
+                                        className="w-4 h-4 accent-[var(--color-blood-500)] cursor-pointer"
+                                    />
+                                    <span className="eyebrow">Sound cues</span>
+                                    <Explainer align="left" label={<span className="text-[10px] text-[var(--color-ink-500)]">?</span>} title="Sound cues">
+                                        Three short sounds, off by default: a cannon when somebody dies, a sting when
+                                        the anthem plays, a chime when a parachute comes down. Nothing else makes a noise.
+                                    </Explainer>
+                                </label>
+                            </div>
                             <ChronicleExport gameState={gameState} importantOnly={importantOnly} />
                             <div className="flex flex-wrap gap-2 items-center">
                                 <input
@@ -796,7 +873,13 @@ export function GameScreen({
                             className="max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar"
                         >
                             {filteredLogs.length > 0 ? (
-                                <EventFeed logs={filteredLogs} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} />
+                                <EventFeed
+                                    logs={filteredLogs}
+                                    cast={gameState.tributes}
+                                    onSelectTribute={setSelectedTributeId}
+                                    density={density}
+                                    highlightId={deepLinkedLine}
+                                />
                             ) : (
                                 <div className="empty-state">
                                     {gameState.log.length === 0
@@ -1136,7 +1219,11 @@ export function GameScreen({
                                                     {t.name}
                                                 </span>
                                                 <span
-                                                    className="chip"
+                                                    // §2.2: the same colour this
+                                                    // tribute wears in the feed,
+                                                    // on the map and in the graph.
+                                                    className="chip tribute-chip"
+                                                    style={tributeColorVar(t.district, t.gender)}
                                                     title={`District ${t.district} · ${t.gender} · age ${t.age}`}
                                                 >
                                                     D{t.district}·{t.gender === 'Male' ? 'M' : 'F'}
@@ -1292,6 +1379,10 @@ export function GameScreen({
                                     ['Proficiency', 'Skills that improve with use — foraging, melee, medicine, tracking. A survivalist visibly becomes one over a run.'],
                                     ['Quality', 'Items come in crude, standard and fine. It shows in the name and it changes the damage and durability.'],
                                     ['Alliance colour', 'The stripe down the left of a tribute card. Every standing alliance gets its own colour for as long as it exists.'],
+                                    ['Tribute colour', 'Every tribute carries one colour across the chronicle, the map, the sidebar and the relationship graph. The two from a district share a hue, so a pair reads as a pair.'],
+                                    ['Notoriety', 'What the whole arena knows about you, as distinct from what the Capitol thinks. Kills and betrayals are announced by cannon and anthem, so past a point everyone left is afraid of you whether or not they have met you.'],
+                                    ['Exhaustion', 'Nights without real sleep, compounding. Two of them and awareness starts to go; four and the body takes the sleep it was not given, in the open, mid-afternoon.'],
+                                    ['Roles', 'Groups of three or more assign a scout, a quartermaster and a medic on merit. Each is a real bonus the group loses when that particular person dies.'],
                                 ].map(([term, what]) => (
                                     <div key={term}>
                                         <dt className="font-bold text-[var(--ink)] inline">{term}. </dt>
