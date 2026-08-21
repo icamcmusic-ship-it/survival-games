@@ -468,6 +468,26 @@ const indicators: Indicator[] = [
         fmt: v => `${v}/12`,
     },
     {
+        // §5. The two most iconic threats in the source material — Gamemaker
+        // mutts and the arena's own hazards — were mechanically present and
+        // statistically decorative: 2.3% of deaths combined, off more than a
+        // thousand mutt encounters per 240 runs, almost all of which resolved
+        // as a scare and a wound.
+        //
+        // Deliberately a band rather than a floor. Too low and the arena is
+        // scenery; too high and the Games stop being about the tributes, which
+        // is the actual subject. The upper bound is as much the point as the
+        // lower one.
+        label: 'deaths from mutts and hazards',
+        value: ((deathsByCause['mutts'] ?? 0) + (deathsByCause['arena/hazard'] ?? 0)) / Math.max(1, deaths),
+        guard: v => v >= 0.05 && v <= 0.18,
+        guardText: '5%-18%',
+        goal: '>= 7%',
+        goalMet: v => v >= 0.07,
+        baseline: '2.3%',
+        fmt: asPct,
+    },
+    {
         // §7. Careers are meant to be favourites, not the answer.
         //
         // Baseline correction: the audit that prompted this work reported

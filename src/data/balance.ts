@@ -871,6 +871,62 @@ export const OBJECTIVES = {
  * over a few cycles is the single most evocative arena mechanic available and
  * the graph already exists — nothing used it for anything but pathing.
  */
+/**
+ * Mutts.
+ *
+ * These lived as a module-local `const MUTTS` inside `engine/mutts.ts` with a
+ * comment noting they were "documented the way balance.ts documents its own" —
+ * which is exactly the drift the README's "every tunable number the engine
+ * reads" claim is supposed to prevent. Moved here so they are tunable where
+ * everything else is.
+ *
+ * §5: the lethality problem. Mutts caused 2.0% of measured deaths across
+ * ~1,400 encounters per 240 runs — the overwhelming majority resolved as a
+ * wound and a scare. Gamemaker mutts are one of the two most iconic threats in
+ * the source material and they were mechanically decorative. The fix is not to
+ * make every bite fatal: it is to make a *pack* genuinely dangerous (the
+ * falloff and cap were throttling exactly the thing that should frighten
+ * people) and to let the Gamemakers put real teeth on them once the audience
+ * is owed a finish.
+ */
+export const MUTTS = {
+    /** Evasion roll: tribute agility + spread vs mutt speed. Wider spread than
+     *  the old fixed threshold, so a slow tribute can still get lucky. */
+    evasionRollSpread: 4,
+    /** Extra hits beyond the first do less each time, so a pack raises danger
+     *  without one-shotting a whole tribute in a single roll. */
+    packDamageFalloff: 0.7,
+    /** A pack can never deal more than this multiple of the lead mutt's base
+     *  damage in one encounter, however many extra mutts connect. */
+    packDamageCap: 3.4,
+    /**
+     * Flat multiplier on every mutt's printed damage. A single dial beats
+     * editing 46 roster entries, and keeps each mutt's *relative* danger — the
+     * careful part of that data — exactly as authored.
+     */
+    damageScale: 1.55,
+    /**
+     * Escalation teeth. Once the Gamemakers have started closing the arena,
+     * what they release is not what they released on day two. Scales with days
+     * since escalation began, capped so a long run does not produce mutts that
+     * delete a healthy tribute outright.
+     */
+    escalationDamagePerDay: 0.12,
+    escalationDamageCap: 0.6,
+    /** How many cycles a persistent mutt keeps hunting once it finds someone. */
+    persistentDuration: 3,
+    /** Chance a persistent mutt's tracked target gets caught again on a given tick. */
+    persistentReattackChance: 0.55,
+    /**
+     * "Wearing the faces of the fallen" — canon's most disturbing mutt beat.
+     * Kept rare and gated on there actually being a death someone in the zone
+     * mourned; this is not a roll on every mutt attack, it is a distinct
+     * horror event layered on top of one.
+     */
+    facesOfFallenChance: 0.08,
+    facesOfFallenSanityLoss: 30,
+} as const;
+
 export const ZONE_EFFECTS = {
     /** How long each effect lasts before lifting on its own. */
     burningDuration: 3,
