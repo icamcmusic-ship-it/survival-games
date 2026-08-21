@@ -75,7 +75,7 @@ let zoneContaminations = 0, zoneFogs = 0, zoneStripped = 0, zoneSevered = 0;
 let borderTelegraphs = 0, cornucopiaRestocks = 0, muttEncounters = 0;
 // Newer systems: each needs evidence it actually fired across the sweep.
 let standoffs = 0, tributesPaid = 0, tributesPaidInformation = 0, trucesStruck = 0;
-let trucesBroken = 0, soloDepartures = 0, trucesHeld = 0;
+let trucesBroken = 0, soloDepartures = 0, trucesHeld = 0, schisms = 0;
 let resolveBreakdowns = 0, nightlockDeaths = 0;
 let debtsRepaid = 0, charterBreaches = 0, performedBonds = 0, districtBonds = 0;
 let weatherFronts = 0, trapsDestroyed = 0, gamemakerSignatures = 0;
@@ -232,6 +232,7 @@ for (let i = 0; i < 240; i++) {
     if (/The agreement is holding|still worth more than the fight|it holds for one more day|Nothing is what they agreed on|That is what the word was for|and neither of them says what|It looks like courtesy|and neither of them moves/.test(l.text)) trucesHeld++;
     if (/there was never any agreement at all|decides the arithmetic has changed|has just stopped honouring it|Arguing would take longer|replays the handshake twice|is finished with it now/.test(l.text)) trucesBroken++;
     if (/would rather stop pretending otherwise/.test(l.text)) soloDepartures++;
+    if (/it is two camps/.test(l.text)) schisms++;
     if (/stops taking cover in|stops making plans/.test(l.text)) resolveBreakdowns++;
     if (/takes out the nightlock/.test(l.text)) nightlockDeaths++;
     if (/without being asked. Neither of them mentions why|That is the whole conversation|settles up in|so they take it, all of it|pay what they can|I owe you one/.test(l.text)) debtsRepaid++;
@@ -610,6 +611,8 @@ const firingFloors: Array<[string, number, number]> = [
     ['truces visibly holding', trucesHeld, 2],
     ['truces broken', trucesBroken, 2],
     ['tributes leaving an alliance to go it alone', soloDepartures, 30],
+    // §4: a large pack splitting along its own faction lines.
+    ['alliances splitting into factions', schisms, 3],
     ['traps destroyed', trapsDestroyed, 3],
     ['zones stripped bare', zoneStripped, 3],
 ];
@@ -628,7 +631,7 @@ console.log(`psychology: fear entries=${fearFelt} peakProficiency=${bestProficie
 console.log(`intentions: objectives formed=${objectivesFormed}`);
 console.log(`social: exoticBetrayals=${exoticBetrayals} merges=${merges} leaderChanges=${leadershipChanges} feuds=${feuds} freeForAlls=${freeForAlls}`);
 console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDefections=${careerDefections} cacheContributions=${cacheContributions}`);
-console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} paidInInformation=${tributesPaidInformation} truces=${trucesStruck} trucesHeld=${trucesHeld} trucesBroken=${trucesBroken} soloDepartures=${soloDepartures}`);
+console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} paidInInformation=${tributesPaidInformation} truces=${trucesStruck} trucesHeld=${trucesHeld} trucesBroken=${trucesBroken} soloDepartures=${soloDepartures} schisms=${schisms}`);
 console.log(`bonds: debtsRepaid=${debtsRepaid} charterBreaches=${charterBreaches} performed=${performedBonds} districtPairs=${districtBonds}`);
 console.log(`resolve: breakdowns=${resolveBreakdowns} nightlock=${nightlockDeaths}`);
 console.log(`arena2: weatherFronts=${weatherFronts} trapsDestroyed=${trapsDestroyed} gmSignatures=${gamemakerSignatures}`);

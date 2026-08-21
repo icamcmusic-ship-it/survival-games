@@ -1321,6 +1321,48 @@ export const ALLIANCES = {
      * for the whole game, by construction.
      */
     maxSize: 6,
+    /**
+     * Average regard below which a group simply stops being one. Was an
+     * undeclared `-15` sitting in `phases/alliances.ts` — the same balance
+     * drift the README's "every tunable number the engine reads" claim is
+     * meant to prevent.
+     */
+    rotDissolveTrust: -15,
+
+    /**
+     * Factions inside a large group.
+     *
+     * §4: alliance size was capped and nothing distinguished a six-person
+     * pack's internal politics from a pair's beyond leader-challenge maths.
+     * A big group had no way to be a *coalition* — it was either intact or
+     * evaporated, and the interesting middle (the pack that splits along the
+     * lines everyone could already see) could not happen at all.
+     *
+     * A schism is checked before the rot-dissolve above, so a group that has
+     * two coherent halves splits into two standing alliances rather than
+     * scattering into loners. The split follows the regard graph, so it lands
+     * where the audience has been watching it build.
+     */
+    schismMinSize: 4,
+    /** Each side of the split has to be a viable group on its own. */
+    schismMinFaction: 2,
+    /**
+     * Average cross-faction regard at or below this means two camps rather
+     * than one group.
+     *
+     * Deliberately *not* a hostility threshold. Set to -5 initially, this
+     * never fired once across 240 runs, and the reason is structural: people
+     * in an alliance like each other — that is why they are in it — so a group
+     * whose halves genuinely resent each other has already crossed
+     * `rotDissolveTrust` and dissolved. A schism is not a group that hates
+     * itself; it is a group where one half is much closer to each other than
+     * to anyone else, and the shared bond has gone lukewarm. That is the real
+     * shape of a pack splitting, and it is reachable.
+     */
+    schismCrossRegard: 25,
+    /** Within a faction, regard has to be genuinely better than across it, by this much. */
+    schismCohesionGap: 12,
+    schismChance: 0.4,
     /** Base odds a group takes in a loner they get on with. */
     recruitChance: 0.35,
     /**
