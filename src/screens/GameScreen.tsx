@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { EventCategory, GameState } from '../models/types';
 import { ArenaMap } from '../components/ArenaMap';
 import { TributeModal } from '../components/TributeModal';
-import { EventFeed, FeedLine } from '../components/EventFeed';
+import { EventFeed, FeedLine, VISIBLE_CAP } from '../components/EventFeed';
 import { ChronicleExport } from '../components/ChronicleExport';
 import { CATEGORY_GROUPS } from '../ui/eventStyles';
 import { tributeOdds } from '../engine/odds';
@@ -83,6 +83,9 @@ export function GameScreen({
     const [muttTargetId, setMuttTargetId] = useState('');
     const [gmZone, setGmZone] = useState('');
     const coins = useStore(gameStore, s => s.coins);
+    // Non-null only while Run to End is fast-forwarding; drives the progress
+    // readout and swaps the button for a working Cancel.
+    const runProgress = useStore(gameStore, s => s.runProgress);
     const spendGamemaker = (type: GamemakerEventType, cost: number, targetId?: string) => {
         if (coins < cost) return;
         gameActions.setCoins(c => c - cost);
@@ -174,7 +177,9 @@ export function GameScreen({
     // Auto-advance, paced by how much the phase just produced.
     const lastTickLogCount = useRef(gameState.log.length);
     useEffect(() => {
-        if (speed === 'manual' || isOver) return;
+        // A fast-forward is already stepping the simulator; auto-advance must
+        // not interleave with it.
+        if (speed === 'manual' || isOver || runProgress) return;
         const newCount = Math.max(0, gameState.log.length - lastTickLogCount.current);
         const newLines = newCount > 0 ? gameState.log.slice(-newCount) : [];
         lastTickLogCount.current = gameState.log.length;
@@ -187,7 +192,7 @@ export function GameScreen({
         }
         const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(speed, newCount));
         return () => clearTimeout(timer);
-    }, [speed, isOver, pauseOnDeath, gameState.phase, gameState.day, gameState.log.length, gameState.log]);
+    }, [speed, isOver, pauseOnDeath, runProgress, gameState.phase, gameState.day, gameState.log.length, gameState.log]);
 
     // Keyboard shortcuts: space advances, F toggles filters, M/C swap panes, Esc clears.
     useEffect(() => {
@@ -195,7 +200,7 @@ export function GameScreen({
             const target = e.target as HTMLElement | null;
             if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
             if (selectedTributeId) return;
-            if (e.key === ' ' && !isOver) {
+            if (e.key === ' ' && !isOver && !runningRef.current) {
                 e.preventDefault();
                 onNextPhase();
             } else if (e.key.toLowerCase() === 'f') {
@@ -218,6 +223,12 @@ export function GameScreen({
         return () => window.removeEventListener('keydown', onKey);
     }, [onNextPhase, isOver, selectedTributeId]);
 
+    // A run left fast-forwarding when this screen goes away would otherwise
+    // keep stepping a simulator nobody is watching.
+    const runningRef = useRef(false);
+    runningRef.current = !!runProgress;
+    useEffect(() => () => gameActions.cancelRunToEnd(), []);
+
     const filteredLogs = useMemo(() => {
         const needle = searchText.trim().toLowerCase();
         return gameState.log.filter(log => {
@@ -229,6 +240,19 @@ export function GameScreen({
             return true;
         });
     }, [gameState.log, importantOnly, selectedZone, mutedCategories, filterTributeId, searchText]);
+
+    /**
+     * PERF: the sector log is newest-first and capped, like the main chronicle.
+     *
+     * It used to do `[...filteredLogs].reverse().map(...)` inline in JSX — a
+     * full copy and reverse of an unbounded array on every render, i.e. on
+     * every tick of auto-play. Now it slices the tail first (so the copy is
+     * bounded by `VISIBLE_CAP`, matching `EventFeed`) and memoises the result.
+     */
+    const sectorLogRows = useMemo(
+        () => filteredLogs.slice(Math.max(0, filteredLogs.length - VISIBLE_CAP)).reverse(),
+        [filteredLogs],
+    );
 
     /** UX: the chronicle is the artefact people share — offer it as markdown. */
     const exportChronicle = (copy: boolean) => {
@@ -344,10 +368,26 @@ export function GameScreen({
                         </div>
                         {!isOver && (
                             <div className="flex items-center gap-2">
-                                <button onClick={onRunToEnd} className="btn" title="Simulate the entire run at once">
-                                    Run to End
-                                </button>
-                                <button onClick={onNextPhase} className="btn btn-primary" title="Advance one phase (Space)">
+                                {runProgress ? (
+                                    <>
+                                        <div
+                                            className="text-[10px] uppercase tracking-wider text-[var(--color-ink-500)] font-mono text-right leading-tight"
+                                            role="status"
+                                            aria-live="polite"
+                                        >
+                                            <div>Simulating — {runProgress.day === 0 ? runProgress.phase : `Day ${runProgress.day} · ${runProgress.phase}`}</div>
+                                            <div>{runProgress.tributesAlive} alive · {runProgress.logLines} lines</div>
+                                        </div>
+                                        <button onClick={() => gameActions.cancelRunToEnd()} className="btn" title="Stop the fast-forward and keep what has happened so far">
+                                            Cancel
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button onClick={onRunToEnd} className="btn" title="Simulate the entire run at once">
+                                        Run to End
+                                    </button>
+                                )}
+                                <button onClick={onNextPhase} className="btn btn-primary" disabled={!!runProgress} title="Advance one phase (Space)">
                                     Proceed <FastForward className="w-4 h-4" />
                                 </button>
                             </div>
@@ -506,7 +546,14 @@ export function GameScreen({
                                     {filteredLogs.length === 0 ? (
                                         <div className="empty-state">{gameState.log.some(l => l.zone === selectedZone) ? 'Events in this sector are hidden by your current filters.' : 'Nothing has happened in this sector yet.'}</div>
                                     ) : (
-                                        [...filteredLogs].reverse().map(l => <FeedLine key={l.id} log={l} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} />)
+                                        <>
+                                            {sectorLogRows.map(l => <FeedLine key={l.id} log={l} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} />)}
+                                            {filteredLogs.length > sectorLogRows.length && (
+                                                <div className="text-[10px] text-[var(--color-ink-500)] pt-1">
+                                                    Showing the most recent {sectorLogRows.length} of {filteredLogs.length} matching events — open the Chronicle tab for the full record.
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </div>

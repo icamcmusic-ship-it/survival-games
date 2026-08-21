@@ -1,15 +1,48 @@
 import { GameState, GameConfig, HallOfFameEntry } from '../models/types';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
-import { generateTributes } from '../engine/generator';
-import { generateArena } from '../engine/arenaGenerator';
-import { Simulator } from '../engine/simulator';
-import { GamemakerEventType } from '../engine/gamemaker';
+import type { Simulator } from '../engine/simulator';
+import type { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
-import { configForProfile, gamesProfileFor } from '../engine/gamesProfile';
 import { PanemRecords, RunOutcome, commitRun, readPanem, setPatronDistrict } from '../utils/panemStorage';
-import {
-    SponsorResult, sendPlayerParachute, sponsorCost, sponsorableItems,
-} from '../engine/playerSponsor';
+import type { SponsorResult } from '../engine/playerSponsor';
+
+/**
+ * PERF: the engine is loaded on demand.
+ *
+ * `engine/engineBundle` pulls in the simulator and the big flavour/balance
+ * tables — ~500 kB of the old single chunk — none of which the setup screen
+ * needs. Every path that can start a run (fresh start, seeded replay from a
+ * share link, Hall-of-Fame relaunch, resuming a save) awaits `loadEngine()`
+ * first, so the boundary can only ever be crossed with the module present.
+ *
+ * Once resolved the module is cached in `engine`, so the synchronous callers
+ * that only ever run *during* a Games (reroll, phase advance, sponsoring) can
+ * keep reading it directly.
+ */
+type EngineModule = typeof import('../engine/engineBundle');
+let engine: EngineModule | null = null;
+let enginePromise: Promise<EngineModule> | null = null;
+
+function loadEngine(): Promise<EngineModule> {
+    if (engine) return Promise.resolve(engine);
+    if (!enginePromise) {
+        enginePromise = import('../engine/engineBundle').then(mod => {
+            engine = mod;
+            return mod;
+        }).catch(err => {
+            // Let a later attempt retry rather than caching the failure forever.
+            enginePromise = null;
+            throw err;
+        });
+    }
+    return enginePromise;
+}
+
+/** Kicks off the engine fetch without waiting for it — used to warm the chunk
+ *  while the player is still reading the setup screen. */
+export function prefetchEngine() {
+    void loadEngine().catch(() => { /* the real load path reports failures */ });
+}
 
 export type ViewName = 'setup' | 'roster' | 'game' | 'hallOfFame';
 
@@ -35,6 +68,17 @@ export interface GameStoreState {
     panem: PanemRecords;
     /** What the run that just finished unlocked or beat, for the end screen. */
     lastRunOutcome: RunOutcome | null;
+    /** Non-null while `runToEnd()` is fast-forwarding, for the progress readout. */
+    runProgress: RunProgress | null;
+}
+
+/** Live counters for the Run-to-End progress readout. */
+export interface RunProgress {
+    day: number;
+    phase: GameState['phase'];
+    turns: number;
+    logLines: number;
+    tributesAlive: number;
 }
 
 const STARTING_COINS = 1000;
@@ -85,12 +129,23 @@ function readSavedRun(): SavedRun | null {
 }
 
 /**
- * The log is ~72% of the save payload and append-only; persisting all of it
- * meant a synchronous ~290 KB stringify + localStorage write every phase.
- * A resumed run keeps the recent feed (one screenful) and starts its
- * chronicle from there — outcomes are unaffected, only scrollback is lost.
+ * The chronicle is the run's whole point, so the save keeps all of it.
+ *
+ * It used to be truncated to the last 200 lines, which meant every
+ * refresh-and-resume silently threw away the opening days of the narrative.
+ * The full log is written instead; only if localStorage actually refuses the
+ * payload do we fall back through progressively shorter tails, so a save near
+ * the ~5 MB origin quota degrades instead of failing outright.
  */
-const PERSISTED_LOG_CAP = 200;
+const LOG_TAIL_FALLBACKS = [4000, 2000, 800, 200];
+
+function isQuotaError(err: unknown): boolean {
+    return err instanceof DOMException
+        && (err.name === 'QuotaExceededError'
+            || err.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+            // Legacy WebKit reports the quota code without the modern name.
+            || err.code === 22);
+}
 
 function writeSave() {
     const { gameState, bets, betsResolved, hofSaved, isReplayedRun } = gameStore.getState();
@@ -98,15 +153,33 @@ function writeSave() {
         clearSavedRun();
         return;
     }
-    try {
-        const trimmed = gameState.log.length > PERSISTED_LOG_CAP
-            ? { ...gameState, log: gameState.log.slice(-PERSISTED_LOG_CAP) }
-            : gameState;
-        const saved: SavedRun = { gameState: trimmed, bets, betsResolved, hofSaved, isReplayedRun, savedAt: new Date().toISOString() };
+    const savedAt = new Date().toISOString();
+    const attempt = (log: GameState['log']) => {
+        const saved: SavedRun = {
+            gameState: log === gameState.log ? gameState : { ...gameState, log },
+            bets, betsResolved, hofSaved, isReplayedRun, savedAt,
+        };
         localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
-    } catch {
-        // Storage full or unavailable — the run just won't be resumable.
+    };
+
+    try {
+        attempt(gameState.log);
+        return;
+    } catch (err) {
+        if (!isQuotaError(err)) return; // Storage unavailable entirely (private mode, etc.).
     }
+
+    for (const cap of LOG_TAIL_FALLBACKS) {
+        if (gameState.log.length <= cap) continue;
+        try {
+            attempt(gameState.log.slice(-cap));
+            return;
+        } catch (err) {
+            if (!isQuotaError(err)) return;
+        }
+    }
+    // Even the shortest tail won't fit — leave whatever save already exists
+    // rather than clobbering it with a failed write.
 }
 
 /**
@@ -199,6 +272,7 @@ export const gameStore = createStore<GameStoreState>({
     hofSaved: false,
     panem: readPanem(),
     lastRunOutcome: null,
+    runProgress: null,
 });
 
 /** Deep clone so React sees new object identities all the way down the tree. */
@@ -281,8 +355,50 @@ function resolveBets(state: GameState) {
     }
 }
 
+/**
+ * Run-to-End fast-forward, chunked.
+ *
+ * `RUN_BATCH_SIZE` turns run back-to-back, then the loop hands the thread back
+ * so React can paint the progress readout and the Cancel button stays live.
+ * 20 is small enough that the longest single batch is a few milliseconds and
+ * large enough that the yields don't dominate the run.
+ */
+const RUN_BATCH_SIZE = 20;
+
+interface ActiveRun {
+    cancelled: boolean;
+    simulator: Simulator;
+}
+
+/** At most one fast-forward may be in flight; this is the token for it. */
+let activeRun: ActiveRun | null = null;
+
+/**
+ * Yields to the event loop. `setTimeout(0)` (rather than a microtask) is
+ * deliberate: a microtask would drain before paint and reproduce the freeze.
+ */
+function yieldToBrowser(): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+/**
+ * Stops any in-flight fast-forward. Also called whenever a run is replaced or
+ * abandoned, so navigating away can't leave a zombie loop stepping a simulator
+ * nothing is looking at any more.
+ */
+function cancelRunToEnd() {
+    if (!activeRun) return;
+    activeRun.cancelled = true;
+    // Released immediately so the player can start another run at once; the
+    // abandoned loop's `finally` sees the token has moved on and stands down.
+    activeRun = null;
+    gameStore.setState({ runProgress: null });
+}
+
 export const gameActions = {
     setView(view: ViewName) {
+        // Leaving the game view abandons any fast-forward in progress.
+        if (view !== 'game') cancelRunToEnd();
         gameStore.setState({ view });
     },
 
@@ -320,16 +436,20 @@ export const gameActions = {
      * arena and which settings had produced it. An entry now carries both, so
      * "run it again" is a button.
      */
-    replayHallOfFameEntry(entry: HallOfFameEntry) {
+    replayHallOfFameEntry(entry: HallOfFameEntry): Promise<void> {
         const arenaId = entry.arenaId
             ?? ARENAS.find(a => a.name === entry.arenaName)?.id
             ?? 'procedural';
-        gameActions.startGame(entry.seed, arenaId, false, entry.config ?? DEFAULT_GAME_CONFIG, true);
+        return gameActions.startGame(entry.seed, arenaId, false, entry.config ?? DEFAULT_GAME_CONFIG, true);
     },
 
-    resumeSavedRun() {
+    async resumeSavedRun() {
         const saved = readSavedRun();
         if (!saved) return;
+        cancelRunToEnd();
+        // Resuming is a cold-load entry into the simulation, so it has to cross
+        // the lazy engine boundary too.
+        const { Simulator } = await loadEngine();
         const { gameState } = saved;
         // Saves written before baseConfig existed: the executed config is the
         // best remaining approximation of what the player chose.
@@ -361,10 +481,13 @@ export const gameActions = {
 
     patronCost: PATRON_COST,
 
-    startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false) {
+    async startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false) {
         // Abandoning a run mid-wager used to silently pocket the player's coins.
         gameActions.refundOpenBets();
+        cancelRunToEnd();
         clearSavedRun();
+
+        const { Simulator, generateArena, generateTributes, gamesProfileFor, configForProfile } = await loadEngine();
 
         const safeSeed = seed.trim() || Math.random().toString(36).substring(2, 8).toUpperCase();
         const arena = arenaId.startsWith('procedural')
@@ -421,7 +544,8 @@ export const gameActions = {
 
     rerollCast() {
         const { gameState } = gameStore.getState();
-        if (!gameState || gameState.phase !== 'reaping') return;
+        if (!gameState || gameState.phase !== 'reaping' || !engine) return;
+        const { Simulator, generateTributes, gamesProfileFor, configForProfile } = engine;
 
         const baseSeed = gameState.seed.split('~')[0];
         const newSeed = `${baseSeed}~${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
@@ -441,10 +565,10 @@ export const gameActions = {
 
     confirmReaping() {
         const { gameState } = gameStore.getState();
-        if (!gameState || gameState.phase !== 'reaping') return;
+        if (!gameState || gameState.phase !== 'reaping' || !engine) return;
 
         const newState: GameState = { ...gameState, phase: 'setup' };
-        gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });
+        gameStore.setState({ gameState: newState, simulator: new engine.Simulator(newState) });
         persistRun();
     },
 
@@ -481,38 +605,99 @@ export const gameActions = {
         gameActions.syncFromSimulator();
     },
 
-    /** Fast-forwards the whole run in one tick, with the same bookkeeping as manual play. */
-    runToEnd() {
+    /**
+     * Fast-forwards the whole run, yielding to the browser between batches.
+     *
+     * This used to be one synchronous `while` loop, which froze the tab for the
+     * length of the run with no progress and no way out. The step sequence is
+     * byte-for-byte the same — only the awaits between batches are new, and
+     * nothing in the yield touches the simulator or the RNG — so the same seed
+     * still produces exactly the same Games.
+     */
+    async runToEnd() {
         const { simulator } = gameStore.getState();
-        if (!simulator) return;
+        // Re-entrancy guard: a second click (or a click on a run already being
+        // cancelled) must not start a second loop over the same simulator.
+        if (!simulator || activeRun) return;
 
-        let state = simulator.getState();
-        // Ceiling well above any realistic run; the phase guards below are what
-        // actually terminate the loop.
-        let guard = 2000;
-        while (state.phase !== 'ended' && guard-- > 0) {
-            if (state.phase === 'setup') {
-                simulator.processTraining();
-            } else if (state.phase === 'training') {
-                simulator.processInterviews();
-            } else if (state.phase === 'interviews') {
-                simulator.startGames();
-            } else if (state.phase === 'bloodbath') {
-                simulator.processBloodbath();
-            } else if (state.phase === 'epilogue') {
-                state.phase = 'ended';
-            } else if (!simulator.processTurn()) {
-                break;
+        const run: ActiveRun = { cancelled: false, simulator };
+        activeRun = run;
+
+        /** Aborts if cancelled, or if the run underneath us was swapped out. */
+        const stale = () => run.cancelled || gameStore.getState().simulator !== simulator;
+
+        const publishProgress = (state: GameState, turns: number) => {
+            gameStore.setState({
+                runProgress: {
+                    day: state.day,
+                    phase: state.phase,
+                    turns,
+                    logLines: state.log.length,
+                    tributesAlive: state.tributes.filter(t => t.status === 'alive').length,
+                },
+            });
+        };
+
+        try {
+            let state = simulator.getState();
+            let turns = 0;
+            publishProgress(state, turns);
+            await yieldToBrowser();
+            if (stale()) return;
+
+            // Ceiling well above any realistic run; the phase guards below are
+            // what actually terminate the loop.
+            let guard = 2000;
+            while (state.phase !== 'ended' && guard-- > 0) {
+                // Checked before every step, not just at batch boundaries, so a
+                // cancelled loop cannot land another turn after the player has
+                // already started a new one.
+                if (stale()) return;
+                if (state.phase === 'setup') {
+                    simulator.processTraining();
+                } else if (state.phase === 'training') {
+                    simulator.processInterviews();
+                } else if (state.phase === 'interviews') {
+                    simulator.startGames();
+                } else if (state.phase === 'bloodbath') {
+                    simulator.processBloodbath();
+                } else if (state.phase === 'epilogue') {
+                    state.phase = 'ended';
+                } else if (!simulator.processTurn()) {
+                    break;
+                }
+                state = simulator.getState();
+                turns++;
+
+                if (turns % RUN_BATCH_SIZE === 0) {
+                    publishProgress(state, turns);
+                    await yieldToBrowser();
+                    if (stale()) return;
+                }
             }
-            state = simulator.getState();
-        }
 
-        if (state.phase === 'ended') {
-            resolveBets(state);
-            commitVictory(state);
+            if (state.phase === 'ended') {
+                resolveBets(state);
+                commitVictory(state);
+            }
+        } finally {
+            // `cancelRunToEnd` may already have released the token to let a new
+            // run start; only the loop that still owns it clears the readout.
+            if (activeRun === run) {
+                activeRun = null;
+                gameStore.setState({ runProgress: null });
+            }
+            // Whether it finished or was cancelled, show the player where the
+            // simulation actually got to — unless the run was replaced, in
+            // which case the new one owns the state.
+            if (gameStore.getState().simulator === simulator) gameActions.syncFromSimulator();
         }
-        gameActions.syncFromSimulator();
     },
+
+    /** Stops an in-flight `runToEnd()` at the next batch boundary. */
+    cancelRunToEnd,
+
+    isRunningToEnd: () => activeRun !== null,
 
     /**
      * SIDE-03: the player spends Capitol Coins on a parachute.
@@ -524,7 +709,8 @@ export const gameActions = {
      */
     sponsorTribute(tributeId: string, itemId: string): SponsorResult {
         const { simulator, coins } = gameStore.getState();
-        if (!simulator) return { ok: false, cost: 0, message: 'No Games are running.' };
+        if (!simulator || !engine) return { ok: false, cost: 0, message: 'No Games are running.' };
+        const { sponsorableItems, sponsorCost, sendPlayerParachute } = engine;
 
         const state = simulator.getState();
         const tribute = state.tributes.find(t => t.id === tributeId);

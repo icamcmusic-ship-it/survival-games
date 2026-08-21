@@ -3,7 +3,7 @@ import { EventLog, Tribute } from '../models/types';
 import { categoryMeta } from '../ui/eventStyles';
 
 /** Cap on rendered rows before older entries collapse behind a "show earlier" control (UX-04). */
-const VISIBLE_CAP = 200;
+export const VISIBLE_CAP = 200;
 
 /**
  * A cannon-worthy death, given the weight of one.

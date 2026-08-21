@@ -3,17 +3,30 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Swords } from 'lucide-react';
 import { ShareButton } from './components/ShareButton';
 import { SetupScreen } from './screens/SetupScreen';
-import { ReapingScreen } from './screens/ReapingScreen';
-import { RosterScreen } from './screens/RosterScreen';
-import { GameScreen } from './screens/GameScreen';
-import { EndScreen } from './screens/EndScreen';
-import { HallOfFameScreen } from './screens/HallOfFameScreen';
-import { VictorInterviewScreen } from './screens/VictorInterviewScreen';
-import { gameActions, gameStore, ViewName } from './store/gameStore';
+import { gameActions, gameStore, prefetchEngine, ViewName } from './store/gameStore';
+
+/**
+ * PERF: only the shell and the setup screen are in the initial chunk.
+ *
+ * Every screen below depends on the simulation engine and its big flavour and
+ * balance tables; none of them can be on screen until a run exists, so they are
+ * split out and fetched at the moment the player actually needs them.
+ */
+const ReapingScreen = lazy(() => import('./screens/ReapingScreen').then(m => ({ default: m.ReapingScreen })));
+const RosterScreen = lazy(() => import('./screens/RosterScreen').then(m => ({ default: m.RosterScreen })));
+const GameScreen = lazy(() => import('./screens/GameScreen').then(m => ({ default: m.GameScreen })));
+const EndScreen = lazy(() => import('./screens/EndScreen').then(m => ({ default: m.EndScreen })));
+const HallOfFameScreen = lazy(() => import('./screens/HallOfFameScreen').then(m => ({ default: m.HallOfFameScreen })));
+const VictorInterviewScreen = lazy(() => import('./screens/VictorInterviewScreen').then(m => ({ default: m.VictorInterviewScreen })));
+
+/** Shown for the moment a split screen chunk is in flight. */
+function ScreenFallback() {
+  return <div className="empty-state" role="status" aria-live="polite">Loading the arena…</div>;
+}
 import { useStore } from './store/createStore';
 import { DEFAULT_GAME_CONFIG } from './data/constants';
 
@@ -53,11 +66,19 @@ export default function App() {
         enableFeast: boolParam('enableFeast', DEFAULT_GAME_CONFIG.enableFeast),
         enableSanity: boolParam('enableSanity', DEFAULT_GAME_CONFIG.enableSanity),
       };
-      gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true);
+      void gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true);
       // Consume the replay params so a later refresh doesn't relaunch it.
       window.history.replaceState(null, '', window.location.pathname);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Warm the engine chunk once the shell is up, so pressing Start doesn't pay
+  // the download. Deliberately after first paint, and failures are ignored —
+  // every entry into the simulation awaits the same cached promise anyway.
+  useEffect(() => {
+    const id = setTimeout(prefetchEngine, 1500);
+    return () => clearTimeout(id);
   }, []);
 
   const navItems: Array<{ id: ViewName; label: string; show: boolean }> = [
@@ -101,8 +122,9 @@ export default function App() {
       </header>
 
       <main id="main-content" tabIndex={-1} className="max-w-6xl mx-auto px-4 py-8">
+        <Suspense fallback={<ScreenFallback />}>
         {view === 'setup' && (
-          <SetupScreen onStart={(seed, arenaId, gamemakerMode, config) => gameActions.startGame(seed, arenaId, gamemakerMode, config)} />
+          <SetupScreen onStart={(seed, arenaId, gamemakerMode, config) => { void gameActions.startGame(seed, arenaId, gamemakerMode, config); }} />
         )}
 
         {view === 'roster' && gameState && gameState.phase === 'reaping' && (
@@ -152,6 +174,7 @@ export default function App() {
         )}
 
         {view === 'hallOfFame' && <HallOfFameScreen />}
+        </Suspense>
       </main>
 
       <footer className="max-w-6xl mx-auto px-4 pb-10 text-center">
