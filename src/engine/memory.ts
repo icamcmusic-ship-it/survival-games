@@ -1,8 +1,8 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
-import { FEAR, HUNTING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
+import { ARMAMENT_MEMORY, FEAR, HUNTING, MEMORY, MOVEMENT, RELATIONSHIPS, SUSPICION } from '../data/balance';
 import { traitMod } from '../data/traits';
 import { addFear } from './fear';
-import { getZone } from './map';
+import { edgeKey, getZone, severedEdgeSet } from './map';
 import { SimContext } from './context';
 
 /**
@@ -158,6 +158,9 @@ export function noteContact(state: GameState, a: Tribute, b: Tribute) {
     const cycle = cycleOf(state);
     ensureMemory(a).lastContact[b.id] = cycle;
     ensureMemory(b).lastContact[a.id] = cycle;
+    // T-3: a meeting is also a look at what the other one is holding.
+    noteArmament(state, a, b);
+    noteArmament(state, b, a);
 }
 
 /** Cycles since these two last shared a scene, or Infinity if never. */
@@ -202,6 +205,36 @@ export function noteFight(state: GameState, a: Tribute, b: Tribute) {
         record.fights += 1;
         record.lastFightCycle = cycle;
     });
+    noteArmament(state, a, b);
+    noteArmament(state, b, a);
+}
+
+/**
+ * T-3: `observer` sees what `seen` is holding.
+ *
+ * Nobody recorded the other half of an encounter — that one has a bow, that
+ * one had nothing in their hands — so a ranged tribute could not deliberately
+ * keep distance and an unarmed one could not deliberately close. Recorded on
+ * any real meeting, stale after `ARMAMENT_MEMORY.lifetime` cycles, and read
+ * by `assessZone`.
+ */
+export function noteArmament(state: GameState, observer: Tribute, seen: Tribute) {
+    const weapon = seen.inventory.find(i => i.type === 'weapon');
+    const record = rivalRecord(observer, seen.id);
+    record.knownArmament = weapon ? (weapon.weaponClass ?? 'melee') : 'none';
+    record.armamentCycle = cycleOf(state);
+}
+
+/** What `observer` believes `otherId` is carrying, or undefined if the impression has rotted. */
+export function knownArmamentOf(
+    state: { cycle?: number },
+    observer: Tribute,
+    otherId: string,
+): RivalRecord['knownArmament'] | undefined {
+    const record = observer.memory?.rivals?.[otherId];
+    if (!record?.knownArmament || record.armamentCycle === undefined) return undefined;
+    if ((state.cycle ?? 0) - record.armamentCycle > ARMAMENT_MEMORY.lifetime) return undefined;
+    return record.knownArmament;
 }
 
 /** §4.2: how much `t` distrusts a specific ally. */
@@ -305,5 +338,33 @@ export function decayRelationships(state: GameState) {
             const next = value > 0 ? Math.max(0, value - rate) : Math.min(0, value + rate);
             t.relationships[otherId] = Math.round(next * 10) / 10;
         });
+    });
+}
+
+/**
+ * A-3: sound carries.
+ *
+ * A fight is the loudest thing in an arena and it was inaudible one zone
+ * away — only the cannon travelled, and only because `broadcastDeath` said
+ * so. Anyone adjacent to a brawl learns that something happened over there,
+ * which is a real reason to go and look or to go the other way.
+ */
+export function propagateFightSound(ctx: SimContext, zoneName: string) {
+    const here = getZone(ctx.state.arena, zoneName);
+    if (!here) return;
+    const severed = severedEdgeSet(ctx.state);
+    ctx.state.tributes.forEach(listener => {
+        if (listener.status !== 'alive') return;
+        if (listener.zone === zoneName) return;
+        if (!here.adjacent.includes(listener.zone)) return;
+        if (severed.has(edgeKey(zoneName, listener.zone))) return;
+        addZoneThreat(ctx.state, listener, zoneName, MEMORY.heardFightThreat);
+        if (ctx.rng.chance(MOVEMENT.fightHeardLineChance)) {
+            ctx.logEvent(
+                `${listener.name} hears it start in ${zoneName} — shouting, then metal, then nothing — and does not go and look.`,
+                [listener.id],
+                { zone: listener.zone, category: 'combat' }
+            );
+        }
     });
 }

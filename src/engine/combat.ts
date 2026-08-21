@@ -7,7 +7,7 @@ import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone, zoneFeatures } from './map';
-import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound } from './memory';
+import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, propagateFightSound } from './memory';
 import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { injure, injuryGrade, openWound } from './wounds';
@@ -19,6 +19,9 @@ import { reachBonus } from './physique';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
+import { addNotoriety } from './notoriety';
+import { commentateDeath } from './broadcast';
+import { NOTORIETY } from '../data/balance';
 import { PREGAMES } from '../data/balance';
 import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
 
@@ -412,6 +415,9 @@ export function resolveCombat(
 
     noteContact(ctx.state, t1, t2);
     noteFight(ctx.state, t1, t2);
+    // A-3: the bloodbath is one long noise nobody can localise; every other
+    // fight is audible from the sector next door.
+    if (!isBloodbath) propagateFightSound(ctx, t1.zone);
     // A feud gets its own opening line once it is genuinely a feud.
     const priorFights = ensureMemory(t1).rivals?.[t2.id]?.fights ?? 0;
     if (priorFights > RIVALRY.feudAtFights) {
@@ -589,6 +595,8 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     }
 
     const zone = fighters[0].zone;
+    // A-3: a brawl is the loudest thing in the arena, and it carries.
+    propagateFightSound(ctx, zone);
 
     // Sides: the largest alliance present anchors one side, everyone hostile to
     // it forms the other. Loners with no stake pick whoever they hate less.
@@ -985,6 +993,9 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
 
             // The arc: the first one changes you, and enough of them changes
             // how the rest of the arena talks about you.
+            // R-5: the cannon and the sky are a broadcast. Everybody learns
+            // this happened, whether or not anybody was standing there.
+            addNotoriety(ctx, killer, NOTORIETY.perKill);
             if (killer.kills === 1) earnTrait(ctx, killer, 'Bloodied');
             if (killer.kills >= HUNTING.fearedAtKills) earnTrait(ctx, killer, 'Feared');
 
@@ -1037,6 +1048,9 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             addFear(witness, killer.id, FEAR.witnessedKill);
         });
     }
+
+    // §8.3: the desk, and the country watching it.
+    commentateDeath(ctx, victim, victim.age <= PREGAMES.childAge);
 
     // Everything a cannon does to everyone still breathing.
     broadcastDeath(ctx, victim, killer);

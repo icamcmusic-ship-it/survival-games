@@ -101,6 +101,8 @@ export const BLEEDING = {
  * you unless you can boil it.
  */
 export const WATER = {
+    /** A-3: zone water availability below which there is nothing to drink. */
+    drinkableThreshold: 0.45,
     /** Thirst removed by drinking straight from a stream or a pool. */
     zoneDrinkRelief: 55,
     /** Odds foul water poisons a tribute who drinks it untreated. */
@@ -307,6 +309,12 @@ export const HUNTING = {
  * out-weighs the first.
  */
 export const PROFICIENCY = {
+    /** T-2: weight of the stealth skill on concealment. */
+    concealWeight: 0.06,
+    /** T-2: crafting's pull on improvising a weapon out of the ground. */
+    craftChanceWeight: 0.06,
+    /** T-2: swimming levels needed before a crossing stops costing extra. */
+    swimmingCrossingRelief: 2,
     /** Gained per successful use, before diminishing returns. */
     gainPerUse: 0.35,
     /** Nobody becomes a surgeon in eight days — but the old cap of 4 was hit
@@ -549,7 +557,14 @@ export const ESCALATION = {
     collapseDamagePerDay: 10,
     /** The Gamemakers want a victor: the border stops short of the last two. */
     finalistCollapseDamage: 10,
-    finalistCount: 2,
+    /**
+     * The field size the forced finale engages at. Raised from 2 alongside
+     * the §10.2 modifier layer: a format with no feast, no horn or no border
+     * can leave three tributes circling an arena with nothing left to make
+     * them meet, and a Games that ends because the last rival starved is
+     * exactly the bloodless outcome the metrics goal is trying to reduce.
+     */
+    finalistCount: 3,
     /**
      * The forced finale. Finalist protection (see `applyDamage`) means the
      * arena can no longer finish the last two by attrition — which also means
@@ -560,7 +575,7 @@ export const ESCALATION = {
      * cycles at finalist count without a resolution, both are herded to the
      * horn every cycle until it ends.
      */
-    finaleAfterFinalistCycles: 6,
+    finaleAfterFinalistCycles: 4,
     hazardMultiplierPerDay: 0.3,
     hazardCeiling: 0.35,
 } as const;
@@ -870,6 +885,11 @@ export const STEALTH = {
  * carries between cycles: find water, find somewhere to sleep.
  */
 export const MOVEMENT = {
+    /** A-3: odds a high-ground watcher makes out *who* is moving next door. */
+    highGroundIdentifyChance: 0.3,
+    /** A-3: odds an adjacent listener's reaction to a fight gets a line. */
+    fightHeardLineChance: 0.15,
+
     /** §5.3: extra fatigue for completing a two-cycle crossing or climb. */
     crossingFatigue: 8,
     /** Thirst above which finding water outranks everything else. */
@@ -1174,6 +1194,15 @@ export const INVENTORY = {
 
 /** Zone economy: foraging strips a zone, and the arena grows it back slowly. */
 export const ZONES = {
+    /**
+     * A-2: procedural arena size bands. The shape of the map is a bigger
+     * replayability lever than its theme — a 7-zone pressure cooker and a
+     * 16-zone sprawl are different games — and these were bare literals in
+     * `arenaGenerator`.
+     */
+    tightArenaShare: 0.2,
+    sprawlingArenaShare: 0.85,
+
     /** A fishing net in still water, added to the forage chance. */
     fishingBonus: 0.25,
     /** Fraction of a zone's remaining yield consumed by one successful forage. */
@@ -1188,6 +1217,8 @@ export const ZONES = {
     baseForageChance: 0.25,
     /** T-7: odds a quiet cycle surfaces one of a tribute's quirks as colour. */
     quirkLineChance: 0.06,
+    /** §8.3: odds a tribute's home dialect surfaces on a quiet cycle. */
+    idiomLineChance: 0.04,
     yieldForageWeight: 0.4,
     survivalistForageBonus: 0.15,
     /** Aggressive/Evasive tributes can still stumble onto food or water while
@@ -1200,6 +1231,9 @@ export const ZONES = {
 
 /** What tributes remember, and how fast they forget it. */
 export const MEMORY = {
+    /** A-3: dread added by a fight heard one zone away. */
+    heardFightThreat: 0.8,
+
     /** Threat impression added to a zone by a death witnessed there. */
     deathThreat: 1.0,
     /** Threat added by a death only heard as a cannon (location known from the sky). */
@@ -1247,17 +1281,84 @@ export const STANCE = {
      * to force the issue and the Gamemakers will make sure somebody does.
      */
     endgameFieldSize: 5,
-    endgameAggression: 1.4,
+    // Raised alongside the §10.2 modifier layer: an unbounded or attrition
+    // year removes the border pressure that used to force the last few
+    // together, and a finale nobody is willing to start is exactly the
+    // bloodless-victor outcome the metrics goal is trying to reduce.
+    endgameAggression: 1.7,
     /** §3.2: momentum's pull toward Aggressive (was an undeclared 0.35). */
     momentumAggressionWeight: 0.25,
     /** §3.2: the reasons Defensive exists — a ward, claimed ground, a built camp. */
     protectDefensive: 1.2,
     holdDefensive: 1.0,
     campDefensive: 0.6,
+
+    /**
+     * The stance score sheet itself.
+     *
+     * These were the fifteen literals in `updateStance` — the single most
+     * behaviour-defining function in the engine, and the one place where
+     * "what is this cast like" is actually decided. The audit's advice was to
+     * burn the undeclared-knob baseline down by narrative impact rather than
+     * by file order, and nothing in the baseline scored higher than this.
+     */
+    /** How hard an archetype's own disposition pulls its matching stance. */
+    archetypeWeight: 3,
+    /** Holding a weapon, either way. */
+    armedAggression: 1.2,
+    unarmedEvasion: 0.6,
+    /** Something to avenge. */
+    vengeanceAggression: 1.5,
+    /** They like the odds in this zone right now. */
+    dominantAggression: 1.2,
+    /** Hungry enough that hunting pays for itself. */
+    hungryAggression: 0.8,
+    /** Outmatched where they stand. */
+    outmatchedEvasion: 1.6,
+    /** Visibly wounded. */
+    woundedEvasion: 1,
+    /** Coming apart, with sanity enabled. */
+    breakingEvasion: 0.8,
+    /** A cautious archetype below its comfort threshold. */
+    cautiousEvasion: 1,
+    cautiousArchetypeThreshold: 0.2,
+    /** Per point of stealth over average — small, or the whole cast hides. */
+    stealthEvasionPerPoint: 0.06,
+    /** Defensive baseline, and the bonus for having a group at all. */
+    defensiveBase: 0.5,
+    alliedDefensive: 0.5,
+    /** Health divisors: distance from the aggressive/evasive thresholds. */
+    aggressiveHealthDivisor: 30,
+    evasiveHealthDivisor: 25,
 } as const;
 
 /** Relationship graph: bounds, decay, and the deltas life in the arena applies. */
 export const RELATIONSHIPS = {
+    /**
+     * §1.1: the second file in the undeclared-knob burn-down, after `STANCE`.
+     * These are the numbers that decide what a betrayal, a death and a bond
+     * are actually worth — the social layer's own score sheet.
+     */
+    /** What a betrayal costs the betrayer with the Capitol, and the victim in composure. */
+    betrayalTrustCost: 8,
+    betrayalSanityCost: 15,
+    /** Killing somebody you were allied with. */
+    allyKillTrustCost: 12,
+    /** Visible grief plays well: sponsor trust gained at full bond intensity. */
+    griefTrustAtFullIntensity: 6,
+    /** Bond intensity that earns a grief line, and that marks a tribute Haunted. */
+    griefLineIntensity: 0.45,
+    hauntedIntensity: 0.5,
+    /** Odds a rival's death gets a relief line rather than passing silently. */
+    reliefLineChance: 0.4,
+    /** Sponsor trust above which a victim's betrayal is a Capitol scandal. */
+    scandalTrust: 75,
+    /** Backstory seeding: archetype thresholds that shape who starts warm. */
+    backstoryTreacheryThreshold: 0.2,
+    backstoryCautionThreshold: 0.2,
+    /** A protector bond needs a genuinely older tribute and a genuinely young one. */
+    protectorAffinityThreshold: 0.15,
+    protectorWardAge: 13,
     /** §4.3: trust corrections applied on top of regard. See `trustOf`. */
     trustStoodByBonus: 15,
     trustBetrayedPenalty: 40,
@@ -2278,8 +2379,17 @@ export const PARLEY = {
      * ratio gate. Someone with empty hands still has something to trade:
      * where they last saw people, and where the water is.
      */
-    /** On `ZoneMemory.threat`'s own 0-6 scale, not a percentage. */
-    tollInfoMinThreat: 1.5,
+    /**
+     * On `ZoneMemory.threat`'s own 0-6 scale, not a percentage. Eased from
+     * 1.5 alongside R-2: pack-level pacts now resolve some meetings as group
+     * discipline before they ever reach the individual parley, which thinned
+     * the candidate pool this branch draws from.
+     */
+    tollInfoMinThreat: 1.0,
+    /** Item value above which the weaker party would sooner give directions. */
+    tollInfoRatherThanValue: 55,
+    /** Share of otherwise-payable shakedowns settled in directions instead. */
+    tollInfoPreferredShare: 0.3,
     tollInfoResentment: 8,
     tollInfoSanityCost: 5,
 
@@ -2468,4 +2578,213 @@ export const GAMEMAKER_COSTS = {
     sever: 100,
     drop: 200,
     bounty: 300,
+    // S-5: the interventions that move the audience and the map rather than
+    // the health bars. Cheaper, because they are what the job mostly is.
+    spotlight: 90,
+    announce: 60,
+    reopen: 120,
+} as const;
+
+/**
+ * T-4: exhaustion, as distinct from fatigue.
+ *
+ * `fatigue` is a vital the night quietly refunded, so a tribute on day 9 was
+ * mechanically a tribute on day 2 with worse numbers. Sleeplessness is the
+ * lever that actually makes the back half of a run feel different: keep moving
+ * through the dark and awareness goes first, then whole turns.
+ */
+export const EXHAUSTION = {
+    /** Nights without real rest before awareness starts to go. */
+    degradedAfter: 2,
+    /** Awareness lost per sleepless cycle past `degradedAfter`. */
+    awarenessPerCycle: 0.6,
+    maxAwarenessPenalty: 3,
+    /** Sleepless cycles past which a tribute can lose a turn outright. */
+    microsleepAfter: 4,
+    /** Odds of a microsleep per cycle once past the threshold, per cycle over. */
+    microsleepChancePerCycle: 0.06,
+    maxMicrosleepChance: 0.35,
+    /** Fatigue and sanity a microsleep refunds — it is sleep, just not chosen. */
+    microsleepFatigueRelief: 12,
+    microsleepSanityCost: 4,
+    /** Sleepless cycles cleared by one genuine night's rest. */
+    restRecovery: 2,
+} as const;
+
+/**
+ * T-3: what a tribute knows about somebody else's kit, and what that is worth
+ * to their read of a fight. Small on purpose — this is an impression, not a
+ * scouting report.
+ */
+export const ARMAMENT_MEMORY = {
+    /** Cycles before an impression of what they were carrying goes stale. */
+    lifetime: 8,
+    /** Threat multiplier when the rival was last seen empty-handed. */
+    knownUnarmedRatio: 0.82,
+    /** Threat multiplier when they were carrying something with reach. */
+    knownArmedRatio: 1.15,
+} as const;
+
+/**
+ * R-6: grief had exactly one shape — a sanity hit scaled by bond, plus
+ * vengeance. Real grief in an arena has at least three, and which one a
+ * tribute falls into says more about them than the size of the number does.
+ */
+export const GRIEF = {
+    /** Bond intensity below which grief is felt but does not reshape behaviour. */
+    shapeMinIntensity: 0.35,
+    /** Recklessness: they stop being careful. Aggressive, and it sticks. */
+    recklessChance: 0.3,
+    recklessMomentum: 2,
+    /** Withdrawal: forced Evasive, and they will not take an ally for a while. */
+    withdrawalChance: 0.3,
+    withdrawalCycles: 4,
+    /**
+     * Transference: they attach to whoever most resembles what they lost —
+     * same district, or the youngest tribute left — and start protecting them.
+     */
+    transferenceChance: 0.22,
+    transferenceRegard: 18,
+} as const;
+
+/**
+ * R-5: notoriety — reputation *among the tributes*, as distinct from
+ * `reputation` (which is the sponsor baseline). Kills are public via the
+ * anthem, so "everyone knows what she did at the feast" is a thing the arena
+ * can know collectively rather than N separate fear entries.
+ */
+export const NOTORIETY = {
+    perKill: 14,
+    perBetrayal: 20,
+    /** Notoriety at or above this makes a tribute a name everybody knows. */
+    knownThreshold: 36,
+    /** Fear every tribute carries toward a notorious one, at full notoriety. */
+    ambientFearAtMax: 14,
+    max: 100,
+    /** Sponsors like a monster, up to a point. */
+    excitementPerPoint: 0.15,
+} as const;
+
+/**
+ * R-1/R-2: what a group is beyond a leader and a member list, and what two
+ * groups do when they meet.
+ */
+export const ALLIANCE_ROLES = {
+    /** Members needed before roles are worth assigning at all. */
+    minSize: 3,
+    /** Quartermaster: fraction of cache waste avoided (better rationing). */
+    quartermasterSpoilageRelief: 0.5,
+    /** Scout: awareness bonus for the whole group in their zone. */
+    scoutAwarenessBonus: 1.2,
+    /** Medic: bonus on any field dressing performed inside the group. */
+    medicDressBonus: 0.15,
+} as const;
+
+export const PACK_PARLEY = {
+    /** Odds two groups meeting in one zone talk instead of resolving by force. */
+    chance: 0.3,
+    /** Regard needed between the two leaders for terms to be reachable at all. */
+    minLeaderRegard: -20,
+    /** How long a pack-to-pack non-aggression pact holds, in cycles. */
+    truceCycles: 3,
+    /** Regard the standoff itself is worth to both sides. */
+    standoffRegard: 4,
+    /** Odds a pack parley ends in a merge offer rather than terms. */
+    mergeChance: 0.2,
+} as const;
+
+/**
+ * A-4/A-5: the arena's long memory, and what the weather and a full pack do
+ * to a day's travel.
+ */
+export const TERRAIN_MEMORY = {
+    /** Fraction of a scarred zone's printed yield that never comes back. */
+    scarYieldLoss: 0.45,
+    /** A burnt-out zone offers this much less to sleep under, permanently. */
+    scarShelterLoss: 0.5,
+} as const;
+
+export const TRAVEL = {
+    /** Extra cycles crossing into a zone the weather front is sitting on. */
+    weatherFrontCost: 1,
+    /** Load fraction (see INVENTORY.encumbrance*) above which a crossing drags. */
+    encumbranceCost: 0.75,
+} as const;
+
+/** §10.2: how often the Capitol changes the format, and what each change is worth. */
+export const MODIFIERS = {
+    /** Nested rolls: three, else two, else one, else a conventional year. */
+    threeChance: 0.06,
+    twoChance: 0.22,
+    oneChance: 0.55,
+
+    /** Config multipliers for the modifiers that are pure dial changes. */
+    noMentorsGenerosity: 0.45,
+    richGenerosity: 1.35,
+    doubledMuttHazard: 1.5,
+    halfArenaHazard: 1.2,
+
+    /** Zones a half-size arena closes before the gong, as a fraction. */
+    halfArenaClosedShare: 0.4,
+    /** Extra printed yield in a well-stocked arena. */
+    richArenaYield: 1.4,
+    /** Days the border comes forward under a compressed schedule. */
+    suddenDeathShift: -4,
+    /** And under a no-feast year, which has lost its convergence event. */
+    noFeastShift: -2,
+} as const;
+
+/** §10.2: what each rarity tier multiplies a wildcard's draw weight by. */
+export const RARITY_WEIGHT = {
+    common: 1,
+    uncommon: 0.6,
+    legendary: 0.25,
+} as const;
+
+/**
+ * §10.2: the endings the simulation can reach beyond "the last one standing".
+ * Each is gated on what actually happened to the victor, then rolled — so an
+ * unusual ending is earned twice, once by the run and once by the dice.
+ */
+export const ENDINGS = {
+    /** A victor who killed nobody and buried someone may refuse the crown. */
+    refusedChance: 0.35,
+    /** A victor the arena nearly finished may be lifted out on the Capitol's terms. */
+    overruledMaxHealth: 20,
+    overruledChance: 0.25,
+    /** A victor whose will or mind is gone comes home in name only. */
+    hollowMaxResolve: 30,
+    hollowMaxSanity: 35,
+    hollowChance: 0.4,
+} as const;
+
+/**
+ * S-5: what the three non-destructive Gamemaker interventions are worth.
+ * Deliberately modest — these move the audience and the map, not the health
+ * bars, and the Gamemaker economy already prices them in Capitol Coins.
+ */
+export const GAMEMAKER_ACTIONS = {
+    spotlightExcitement: 35,
+    spotlightTrust: 12,
+    /** The voice from the sky buys back the audience's patience. */
+    announceInterest: 20,
+    /** And costs everybody a little composure. */
+    announceSanity: 4,
+} as const;
+
+/**
+ * §8.3: how often the broadcast cuts to the desk. Deliberately low — Caesar
+ * filling every cycle would drown the chronicle he is supposed to frame.
+ */
+export const BROADCAST = {
+    /** Days that still count as the opening of the Games. */
+    openingDays: 2,
+    /** Field sizes the desk always remarks on, once each. */
+    finalEightAt: 8,
+    finalThreeAt: 3,
+    quietDayChance: 0.25,
+    nightfallChance: 0.15,
+    afterDeathChance: 0.3,
+    /** And how often the country's own reaction gets a line. */
+    crowdChance: 0.25,
 } as const;

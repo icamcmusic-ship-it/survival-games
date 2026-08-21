@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { tributeColor } from '../ui/tributeColor';
 import { GameState, Tribute } from '../models/types';
 import { effectiveResources } from '../engine/map';
 import { ArenaGraph } from './ArenaGraph';
@@ -120,7 +121,11 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                                     key={t.id}
                                                     title={`${t.name} (District ${t.district}) — ${t.health}% health, ${band}`}
                                                     className="inline-flex items-center gap-0.5 font-mono text-[10px] leading-none px-1 py-0.5 border"
-                                                    style={{ color, borderColor: color }}
+                                                    // §2.2: the border stays the
+                                                    // health band (that is what
+                                                    // the map is for); the text
+                                                    // carries who they are.
+                                                    style={{ color: tributeColor(t.district, t.gender), borderColor: color }}
                                                 >
                                                     <span aria-hidden="true">{glyph}</span>D{t.district}
                                                 </span>

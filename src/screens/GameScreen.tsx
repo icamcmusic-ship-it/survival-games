@@ -2,12 +2,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { EventCategory, GameState } from '../models/types';
 import { ArenaMap } from '../components/ArenaMap';
 import { TributeModal } from '../components/TributeModal';
-import { EventFeed, FeedLine, VISIBLE_CAP } from '../components/EventFeed';
+import { EventFeed, FeedDensity, FeedLine, VISIBLE_CAP } from '../components/EventFeed';
+import { playCue, setSoundEnabled } from '../ui/sound';
+import { tributeColorVar } from '../ui/tributeColor';
 import { ChronicleExport } from '../components/ChronicleExport';
 import { CATEGORY_GROUPS } from '../ui/eventStyles';
 import { tributeOdds } from '../engine/odds';
 import { objectiveLabel } from '../engine/objectives';
-import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus, Undo2 } from 'lucide-react';
 import { ESCALATION, GAMEMAKER_COSTS } from '../data/balance';
 import { evaluateInRunNearMisses } from '../data/achievements';
 import { GamemakerEventType } from '../engine/gamemaker';
@@ -68,6 +70,9 @@ export function GameScreen({
     // Non-null only while Run to End is fast-forwarding; drives the progress
     // readout and swaps the button for a working Cancel.
     const runProgress = useStore(gameStore, s => s.runProgress);
+    // U-1: restore points behind the play head, for the step-back control.
+    const rewindPoints = useStore(gameStore, s => s.rewindPoints);
+    const [showRewind, setShowRewind] = useState(false);
     const spendGamemaker = (type: GamemakerEventType, cost: number, targetId?: string) => {
         if (coins < cost) return;
         gameActions.setCoins(c => c - cost);
@@ -85,6 +90,19 @@ export function GameScreen({
     const [showFilters, setShowFilters] = useState(false);
     // UX: auto-play at 5x/Skip blows straight past major deaths; opt-in brake.
     const [pauseOnDeath, setPauseOnDeath] = useState(storedFilters.current.pauseOnDeath);
+    /**
+     * §2.2: a chronicle line named in the URL (`#/game?line=<id>`), so a
+     * player can share the exact moment rather than the whole run and a seed.
+     * Read once at mount: the hash is a link somebody followed, not a live
+     * control, and re-reading it would fight the router.
+     */
+    const [deepLinkedLine] = useState<string | undefined>(() => {
+        const query = window.location.hash.split('?')[1];
+        return query ? new URLSearchParams(query).get('line') ?? undefined : undefined;
+    });
+    // §2.2: chronicle density and the opt-in audio cues, both persisted.
+    const [density, setDensity] = useState<FeedDensity>(storedFilters.current.density);
+    const [sound, setSound] = useState(storedFilters.current.sound);
     /** A toast explaining why auto-advance just stopped. */
     const [pauseNotice, setPauseNotice] = useState(false);
     const bets = useStore(gameStore, s => s.bets);
@@ -154,8 +172,12 @@ export function GameScreen({
 
     useEffect(() => {
         // Storage failures are absorbed — the preference simply won't be remembered.
-        writeFilters({ mutedGroups: [...mutedGroups], importantOnly, pauseOnDeath });
-    }, [mutedGroups, importantOnly, pauseOnDeath]);
+        writeFilters({ mutedGroups: [...mutedGroups], importantOnly, pauseOnDeath, density, sound });
+    }, [mutedGroups, importantOnly, pauseOnDeath, density, sound]);
+
+    // §2.2: the audio module mirrors the preference rather than reading
+    // storage itself, so turning it off releases the AudioContext.
+    useEffect(() => { setSoundEnabled(sound); }, [sound]);
 
     // Auto-advance, paced by how much the phase just produced.
     const lastTickLogCount = useRef(gameState.log.length);
@@ -176,6 +198,26 @@ export function GameScreen({
         const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(speed, newCount));
         return () => clearTimeout(timer);
     }, [speed, isOver, pauseOnDeath, runProgress, gameState.phase, gameState.day, gameState.log.length, gameState.log]);
+
+    /**
+     * §2.2: the three audio cues, fired off whatever arrived in the chronicle
+     * since the last render. Kept separate from the auto-advance effect above
+     * because that one returns early in manual mode, and a cannon should
+     * sound whether the player is skimming or stepping through by hand.
+     */
+    const lastCueLogCount = useRef(gameState.log.length);
+    useEffect(() => {
+        const fresh = gameState.log.length - lastCueLogCount.current;
+        lastCueLogCount.current = gameState.log.length;
+        if (!sound || fresh <= 0) return;
+        const lines = gameState.log.slice(-fresh);
+        // One cue per batch, in order of what matters most — a death outranks
+        // the anthem, which outranks a parachute. A skip that lands twenty
+        // lines at once is one sound, not twenty.
+        if (lines.some(l => l.category === 'death' || l.category === 'kill')) playCue('cannon');
+        else if (lines.some(l => l.text.includes('anthem'))) playCue('anthem');
+        else if (lines.some(l => l.category === 'sponsor')) playCue('parachute');
+    }, [gameState.log, sound]);
 
     /**
      * §2.3: the keyboard path covered five keys — advance, filters, map, help,
@@ -239,6 +281,16 @@ export function GameScreen({
             if (key === ' ' && !isOver && !runningRef.current) {
                 e.preventDefault();
                 onNextPhase();
+            } else if (key === 'Backspace' && !isOver && !runningRef.current) {
+                // U-1: step the board back one position.
+                e.preventDefault();
+                const points = gameStore.getState().rewindPoints;
+                if (points.length === 0) {
+                    announceShortcut('Nothing to step back to');
+                } else {
+                    announceShortcut(`Stepped back to ${points[points.length - 1].label}`);
+                    gameActions.stepBack();
+                }
             } else if (lower === 'f') {
                 setShowFilters(v => !v);
             } else if (lower === 'm') {
@@ -497,6 +549,49 @@ export function GameScreen({
                                         Run to End
                                     </button>
                                 )}
+                                {/* U-1: the board could not be put back — an
+                                    unattended skip past a moment you wanted to
+                                    read was unrecoverable. */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => gameActions.stepBack()}
+                                        className="btn"
+                                        disabled={!!runProgress || rewindPoints.length === 0}
+                                        aria-disabled={!!runProgress || rewindPoints.length === 0}
+                                        title={rewindPoints.length === 0
+                                            ? 'Nothing to step back to yet'
+                                            : `Step back to ${rewindPoints[rewindPoints.length - 1].label} (Backspace)`}
+                                    >
+                                        <Undo2 className="w-4 h-4" /> Back
+                                    </button>
+                                    {rewindPoints.length > 1 && (
+                                        <button
+                                            onClick={() => setShowRewind(v => !v)}
+                                            className="btn btn-sm btn-ghost ml-1"
+                                            aria-expanded={showRewind}
+                                            title="Rewind further back"
+                                        >
+                                            ⌄
+                                        </button>
+                                    )}
+                                    {showRewind && (
+                                        <div className="absolute right-0 top-full mt-1 z-20 panel p-2 space-y-1 max-h-64 overflow-y-auto custom-scrollbar min-w-[190px]">
+                                            {[...rewindPoints].reverse().map(p => (
+                                                <button
+                                                    key={p.index}
+                                                    onClick={() => { gameActions.rewindTo(p.index); setShowRewind(false); }}
+                                                    className="btn btn-sm btn-ghost w-full justify-between"
+                                                    title={`Rewind to ${p.label} — discards ${gameState.log.length - p.logLength} chronicle entries`}
+                                                >
+                                                    <span>{p.label}</span>
+                                                    <span className="font-mono text-[10px] text-[var(--color-ink-500)]">
+                                                        −{gameState.log.length - p.logLength}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                                 <button onClick={onNextPhase} className="btn btn-primary" disabled={!!runProgress} title="Advance one phase (Space)">
                                     Proceed <FastForward className="w-4 h-4" />
                                 </button>
@@ -610,6 +705,44 @@ export function GameScreen({
                                         </button>
                                     )}
                                 </div>
+                            </div>
+                            {/* §2.2: a 494-line run at one fixed line height is a
+                                wall; skimming for a day's shape and settling in
+                                to read it want different things. */}
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="eyebrow">Density</span>
+                                    <div className="seg">
+                                        {(['compact', 'comfortable', 'prose'] as const).map(d => (
+                                            <button
+                                                key={d}
+                                                onClick={() => setDensity(d)}
+                                                aria-pressed={density === d}
+                                                className="seg-item"
+                                                title={d === 'compact'
+                                                    ? 'Tight rows, for skimming a whole run'
+                                                    : d === 'prose'
+                                                        ? 'Room to read, with the category chips hidden'
+                                                        : 'The standard chronicle'}
+                                            >
+                                                {d === 'comfortable' ? 'Normal' : d === 'compact' ? 'Compact' : 'Prose'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={sound}
+                                        onChange={e => setSound(e.target.checked)}
+                                        className="w-4 h-4 accent-[var(--color-blood-500)] cursor-pointer"
+                                    />
+                                    <span className="eyebrow">Sound cues</span>
+                                    <Explainer align="left" label={<span className="text-[10px] text-[var(--color-ink-500)]">?</span>} title="Sound cues">
+                                        Three short sounds, off by default: a cannon when somebody dies, a sting when
+                                        the anthem plays, a chime when a parachute comes down. Nothing else makes a noise.
+                                    </Explainer>
+                                </label>
                             </div>
                             <ChronicleExport gameState={gameState} importantOnly={importantOnly} />
                             <div className="flex flex-wrap gap-2 items-center">
@@ -740,7 +873,13 @@ export function GameScreen({
                             className="max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar"
                         >
                             {filteredLogs.length > 0 ? (
-                                <EventFeed logs={filteredLogs} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} />
+                                <EventFeed
+                                    logs={filteredLogs}
+                                    cast={gameState.tributes}
+                                    onSelectTribute={setSelectedTributeId}
+                                    density={density}
+                                    highlightId={deepLinkedLine}
+                                />
                             ) : (
                                 <div className="empty-state">
                                     {gameState.log.length === 0
@@ -983,6 +1122,12 @@ export function GameScreen({
                                     ['flood', 'Flood', GAMEMAKER_COSTS.flood, 'Put the zone under water'],
                                     ['fog', 'Fog', GAMEMAKER_COSTS.fog, 'Blind everyone in the zone'],
                                     ['sever', 'Cut route', GAMEMAKER_COSTS.sever, 'Destroy one path out of the zone'],
+                                    // S-5: the non-destructive half of the job.
+                                    // (Mutts and the feast horn already have
+                                    // their own free controls further down the
+                                    // panel; duplicating them here priced
+                                    // would give the same act two costs.)
+                                    ['reopen', 'Reopen route', GAMEMAKER_COSTS.reopen, 'Restore a route the arena has closed'],
                                 ] as const).map(([type, label, cost, tip]) => (
                                     <button
                                         key={type}
@@ -1008,6 +1153,28 @@ export function GameScreen({
                                     : `Restock the Cornucopia with a supply drop (${GAMEMAKER_COSTS.drop} coins)`}
                             >
                                 Supply drop <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.drop}</span>
+                            </button>
+                            <button
+                                onClick={() => spendGamemaker('spotlight', GAMEMAKER_COSTS.spotlight, muttTargetId || undefined)}
+                                className="btn btn-sm w-full"
+                                disabled={coins < GAMEMAKER_COSTS.spotlight}
+                                aria-disabled={coins < GAMEMAKER_COSTS.spotlight}
+                                title={coins < GAMEMAKER_COSTS.spotlight
+                                    ? `A spotlight costs ${GAMEMAKER_COSTS.spotlight} coins and you have ${coins}. You need ${GAMEMAKER_COSTS.spotlight - coins} more.`
+                                    : `Point every camera in the Capitol at the selected tribute — excitement and sponsor trust follow (${GAMEMAKER_COSTS.spotlight} coins)`}
+                            >
+                                Spotlight <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.spotlight}</span>
+                            </button>
+                            <button
+                                onClick={() => spendGamemaker('announce', GAMEMAKER_COSTS.announce)}
+                                className="btn btn-sm w-full"
+                                disabled={coins < GAMEMAKER_COSTS.announce}
+                                aria-disabled={coins < GAMEMAKER_COSTS.announce}
+                                title={coins < GAMEMAKER_COSTS.announce
+                                    ? `An announcement costs ${GAMEMAKER_COSTS.announce} coins and you have ${coins}. You need ${GAMEMAKER_COSTS.announce - coins} more.`
+                                    : `Speak to the arena from the sky — it buys back the audience's patience and unsettles everyone in it (${GAMEMAKER_COSTS.announce} coins)`}
+                            >
+                                Announcement <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.announce}</span>
                             </button>
                             <button
                                 onClick={() => spendGamemaker('bounty', GAMEMAKER_COSTS.bounty, muttTargetId || undefined)}
@@ -1052,7 +1219,11 @@ export function GameScreen({
                                                     {t.name}
                                                 </span>
                                                 <span
-                                                    className="chip"
+                                                    // §2.2: the same colour this
+                                                    // tribute wears in the feed,
+                                                    // on the map and in the graph.
+                                                    className="chip tribute-chip"
+                                                    style={tributeColorVar(t.district, t.gender)}
                                                     title={`District ${t.district} · ${t.gender} · age ${t.age}`}
                                                 >
                                                     D{t.district}·{t.gender === 'Male' ? 'M' : 'F'}
@@ -1166,6 +1337,7 @@ export function GameScreen({
                                 {[
                                     ['Space', 'Advance one phase'],
                                     ['P', 'Start or stop auto-advance'],
+                                    ['Backspace', 'Step the board back one phase — the whole board, not just the feed'],
                                     ['F', 'Show or hide the chronicle filters'],
                                     ['M', 'Switch between the chronicle and the arena map'],
                                     ['Z / Shift+Z', 'Cycle the sector filter forward or back — past the last sector clears it'],
@@ -1207,6 +1379,10 @@ export function GameScreen({
                                     ['Proficiency', 'Skills that improve with use — foraging, melee, medicine, tracking. A survivalist visibly becomes one over a run.'],
                                     ['Quality', 'Items come in crude, standard and fine. It shows in the name and it changes the damage and durability.'],
                                     ['Alliance colour', 'The stripe down the left of a tribute card. Every standing alliance gets its own colour for as long as it exists.'],
+                                    ['Tribute colour', 'Every tribute carries one colour across the chronicle, the map, the sidebar and the relationship graph. The two from a district share a hue, so a pair reads as a pair.'],
+                                    ['Notoriety', 'What the whole arena knows about you, as distinct from what the Capitol thinks. Kills and betrayals are announced by cannon and anthem, so past a point everyone left is afraid of you whether or not they have met you.'],
+                                    ['Exhaustion', 'Nights without real sleep, compounding. Two of them and awareness starts to go; four and the body takes the sleep it was not given, in the open, mid-afternoon.'],
+                                    ['Roles', 'Groups of three or more assign a scout, a quartermaster and a medic on merit. Each is a real bonus the group loses when that particular person dies.'],
                                 ].map(([term, what]) => (
                                     <div key={term}>
                                         <dt className="font-bold text-[var(--ink)] inline">{term}. </dt>

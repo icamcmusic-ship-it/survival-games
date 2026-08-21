@@ -12,6 +12,7 @@ import { seedBackstoryRelationships } from './relationships';
 import { addExcitement } from './audience';
 import { CastShape } from '../data/gamesProfile';
 import { QUIRKS } from '../data/quirks';
+import { readCustomContent } from '../utils/customContent';
 
 /** Weighted draw from the district's archetype table. */
 function pickArchetype(rng: RNG, district: number, careerBias = 0): ArchetypeId {
@@ -160,13 +161,18 @@ export function generateTributes(
 ): Tribute[] {
     const rng = new RNG(seed);
     const tributes: Tribute[] = [];
+    const quirkLabels = [...QUIRKS.map(q => q.label), ...readCustomContent().quirks];
     const districtCount = Math.min(12, Math.max(1, config.districtCount));
 
     // Names must be unique across the whole cast — two tributes called "Amber"
     // made the chronicle feed and the kill log ambiguous.
     const usedNames = new Set<string>();
+    // §10.2: player-authored names ride alongside the built-in district pools.
+    // Appended rather than substituted, so an import can only ever widen the
+    // draw — and an empty or malformed pack degrades to the stock game.
+    const custom = readCustomContent().names;
     const drawName = (district: number, gender: Gender): string => {
-        const pool = DISTRICT_NAMES[district][gender];
+        const pool = [...DISTRICT_NAMES[district][gender], ...custom];
         const available = pool.filter(n => !usedNames.has(n));
         const name = available.length > 0 ? rng.pick(available) : `${rng.pick(pool)} ${['II', 'III', 'IV', 'V'][rng.nextInt(0, 3)]}`;
         usedNames.add(name);
@@ -330,7 +336,7 @@ export function generateTributes(
                 tesserae,
                 // T-7: one or two habits the cameras will find. Drawn without
                 // replacement so a pair never shares a quirk within one cast.
-                quirks: [rng.pick(QUIRKS).label, ...(rng.chance(GENERATION.secondQuirkChance) ? [rng.pick(QUIRKS).label] : [])]
+                quirks: [rng.pick(quirkLabels), ...(rng.chance(GENERATION.secondQuirkChance) ? [rng.pick(quirkLabels)] : [])]
                     .filter((q, i, arr) => arr.indexOf(q) === i),
                 reapingNote: tesserae >= TESSERAE.notedAt
                     ? `Their name was in the bowl ${age - GENERATION.minAge + 1 + tesserae} times — ${tesserae} of those slips bought grain, one winter at a time. Everyone in the square knew whose names the bowl was heavy with.`

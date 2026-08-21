@@ -6,7 +6,7 @@ import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { ChronicleExport } from '../components/ChronicleExport';
 import { Trophy, MapPin, Swords, Skull, RotateCcw } from 'lucide-react';
 import { META_ACHIEVEMENTS, ACHIEVEMENTS } from '../data/achievements';
-import { RECORD_DEFS } from '../utils/panemStorage';
+import { RECORD_DEFS, unseenHighlights } from '../utils/panemStorage';
 import { gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 
@@ -40,6 +40,8 @@ export function EndScreen({
     const [activeTab, setActiveTab] = useState<'stats' | 'replay' | 'logs'>('stats');
     // REPLAY-03/04: what this run showed the player that no previous run did.
     const outcome = useStore(gameStore, s => s.lastRunOutcome);
+    const panemRecords = useStore(gameStore, s => s.panem);
+    const unseen = useMemo(() => unseenHighlights(panemRecords), [panemRecords]);
 
     // The day counter can tick one past the last day anything actually happened
     // (the loop increments, then the win check ends the run), so bound the
@@ -167,6 +169,21 @@ export function EndScreen({
                                 <div key={m.id} className="panel-flush p-2.5">
                                     <div className="text-sm font-bold text-[var(--ink)]">{m.name}</div>
                                     <div className="text-[11px] text-[var(--color-ink-500)]">{m.detail}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* §10.2: the discovery layer. A dozen systems fire in under
+                        20% of runs, so the felt variety sits well below the real
+                        variety — naming what this player has never seen turns
+                        that into an invitation rather than a content problem. */}
+                    {unseen.length > 0 && (
+                        <div className="md:col-span-2 panel p-5 space-y-2">
+                            <span className="eyebrow">You have never seen</span>
+                            {unseen.map(note => (
+                                <div key={note.id} className="panel-flush p-2.5">
+                                    <div className="text-[13px] text-[var(--color-ink-200)]">{note.text}</div>
                                 </div>
                             ))}
                         </div>

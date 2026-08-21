@@ -1,10 +1,10 @@
 import { Tribute } from '../models/types';
-import { DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { TERRAIN_MEMORY, ALLIANCE_ROLES, DRIFT, CRAFTING, EXHAUSTION, INJURY_DAMAGE, INVENTORY, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
 import { applyExposure } from './exposure';
-import { getZone } from './map';
+import { getZone, zoneFeatures } from './map';
 import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding } from './wounds';
@@ -13,6 +13,7 @@ import { hasCamp } from './fieldcraft';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
 import { fill } from './encounters';
 import { craftOf } from '../data/districts';
+import { groupHasRole } from './alliance';
 import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
 import { earnTrait } from './earnedTraits';
@@ -25,7 +26,11 @@ import { earnTrait } from './earnedTraits';
 /** Food rots. A Backpack keeps it out of the sun a little longer. */
 export function processSpoilage(ctx: SimContext) {
     getAlive(ctx.state).forEach(t => {
-        const shelf = spoilageBonus(t) > 0 ? 0.5 : 1;
+        // R-1: a quartermaster standing with the group makes the rations last.
+        const rationed = groupHasRole(ctx.state, t, 'quartermaster')
+            ? 1 - ALLIANCE_ROLES.quartermasterSpoilageRelief
+            : 1;
+        const shelf = (spoilageBonus(t) > 0 ? 0.5 : 1) * rationed;
         t.inventory = t.inventory.filter(item => {
             if (item.type === 'food' && item.spoilage !== undefined) {
                 item.spoilage -= shelf;
@@ -168,7 +173,13 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
  */
 function drinkFromZone(ctx: SimContext, t: Tribute) {
     const zone = getZone(ctx.state.arena, t.zone);
-    if (!zone || (zone.terrain !== 'water' && zone.terrain !== 'wetland')) return;
+    if (!zone) return;
+    // A-3: water is a property of the zone's interior, not of its terrain
+    // label. A forest with a spring line in it has water; a scrap yard does
+    // not; a rain-cistern in the ruins does. Terrain still sets the baseline
+    // — see `zoneFeatures` — so the old water/wetland behaviour is preserved
+    // and everything in between is finally expressible.
+    if (zoneFeatures(zone).water < WATER.drinkableThreshold) return;
 
     const foul = climateOf(ctx.state.arena.id)?.foulWater === true;
     // Purification is a property of the item now, not a hardcoded id list, so
@@ -284,14 +295,37 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
  * watered and not wrecked with exhaustion.
  */
 function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night', alliesPresent: number) {
-    if (time !== 'night' || t.health >= 100) return;
+    if (time !== 'night') return;
+    // T-4: whether they actually slept is decided here, and it matters even
+    // when there is no health left to mend — which is why the sleepless
+    // bookkeeping runs before the `health >= 100` early return the healing
+    // itself needs.
+    const slept = (RECOVERY.restfulStances as readonly string[]).includes(t.stance)
+        && !t.injuries.bleeding
+        && t.vitals.hunger <= RECOVERY.maxHunger
+        && t.vitals.thirst <= RECOVERY.maxThirst;
+    if (slept) {
+        t.sleeplessCycles = Math.max(0, (t.sleeplessCycles ?? 0) - EXHAUSTION.restRecovery);
+    } else {
+        t.sleeplessCycles = (t.sleeplessCycles ?? 0) + 1;
+    }
+
+    if (t.health >= 100) return;
     if (!(RECOVERY.restfulStances as readonly string[]).includes(t.stance)) return;
     if (t.injuries.bleeding || t.injuries.infected || t.injuries.poisoned) return;
     if (t.vitals.hunger > RECOVERY.maxHunger || t.vitals.thirst > RECOVERY.maxThirst) return;
 
     let amount = RECOVERY.nightHeal + Math.max(0, traitMod(t, 'sanityRecovery') / 2);
     const zone = getZone(ctx.state.arena, t.zone);
-    if (zone && (zone.terrain === 'forest' || zone.terrain === 'ruins')) amount += RECOVERY.shelteredBonus;
+    // A-3: how much the ground itself offers to sleep under, graded rather
+    // than a two-terrain check — and a burnt-out sector offers less of it
+    // than it did before it burned (A-4).
+    if (zone) {
+        const scarred = (ctx.state.scarredZones ?? []).includes(zone.name)
+            ? 1 - TERRAIN_MEMORY.scarShelterLoss
+            : 1;
+        amount += RECOVERY.shelteredBonus * zoneFeatures(zone).shelter * scarred;
+    }
     // A shelter they actually built beats whatever cover the terrain offered.
     if (hasCamp(ctx, t, 'shelter')) amount += CRAFTING.shelterRecoveryBonus;
     // The most famous parachute in the source material, doing the thing it is

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { EventLog, Tribute } from '../models/types';
 import { categoryMeta } from '../ui/eventStyles';
+import { tributeColorVar } from '../ui/tributeColor';
 
 /** Cap on rendered rows before older entries collapse behind a "show earlier" control (UX-04). */
 export const VISIBLE_CAP = 200;
@@ -60,6 +61,26 @@ function DeathCard({ log, tribute, animate, cast, onSelectTribute }: {
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
+ * §2.2: puts a link to one chronicle line on the clipboard.
+ *
+ * The existing share button copies the seed, which reproduces the whole run
+ * and leaves the reader to find the moment. This addresses the other half:
+ * the URL names the entry, and `EventFeed` scrolls to it (expanding past the
+ * visible cap first) when somebody follows it.
+ */
+async function copyLineLink(id: string, onCopied: (id: string | null) => void) {
+    const base = `${window.location.origin}${window.location.pathname}`;
+    try {
+        await navigator.clipboard.writeText(`${base}#/game?line=${encodeURIComponent(id)}`);
+        onCopied(id);
+        setTimeout(() => onCopied(null), 2000);
+    } catch {
+        // Clipboard permission refused: nothing useful to say, and a failed
+        // copy must not take the chronicle down with it.
+    }
+}
+
+/**
  * Marks up the tribute names inside a log line.
  *
  * A reader could not tell District 4's girl from District 9's boy anywhere in
@@ -94,7 +115,10 @@ function withTributeLinks(
                 type="button"
                 onClick={() => onSelect?.(person.id)}
                 title={`${person.name} — District ${person.district}, ${person.gender}, age ${person.age}${person.status === 'dead' ? ' (deceased)' : ''}`}
-                className="font-bold underline decoration-dotted underline-offset-2 hover:text-[var(--red)] focus-visible:outline focus-visible:outline-1"
+                // §2.2: the colour is the same one this tribute wears on the
+                // map, the odds board and the relationship graph.
+                style={tributeColorVar(person.district, person.gender)}
+                className="tribute-chip font-bold underline decoration-dotted underline-offset-2 hover:text-[var(--red)] focus-visible:outline focus-visible:outline-1"
             >
                 {part}
                 <span className="font-mono text-[9px] font-black text-[var(--color-ink-500)] ml-0.5 align-super">
@@ -191,13 +215,20 @@ function AnthemCard({ day, fallen }: { day: number; fallen: Tribute[] }) {
     );
 }
 
-export function EventFeed({ logs, showTags = true, cast, onSelectTribute }: {
+export type FeedDensity = 'compact' | 'comfortable' | 'prose';
+
+export function EventFeed({ logs, showTags = true, cast, onSelectTribute, density = 'comfortable', highlightId }: {
     logs: EventLog[];
     showTags?: boolean;
     cast?: Tribute[];
     onSelectTribute?: (id: string) => void;
+    /** §2.2: how much room each entry gets. See `.feed-compact` / `.feed-prose`. */
+    density?: FeedDensity;
+    /** §2.2: a line deep-linked from a shared URL, scrolled to and marked. */
+    highlightId?: string;
 }) {
     const [expanded, setExpanded] = useState(false);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
     // Only entries that are genuinely new since the last render get the rise-in
     // animation — otherwise every re-render (e.g. an unrelated store update)
     // replays the animation across the whole list and the feed flickers.
@@ -213,6 +244,19 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute }: {
         logs.forEach(log => seenIds.current.add(log.id));
     }, [logs]);
 
+    // §2.2: a shared link naming one chronicle line lands on that line.
+    useEffect(() => {
+        if (!highlightId) return;
+        const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        // The entry may be behind the visible cap; expanding first is what
+        // makes a link to an early moment in a long run actually resolve.
+        if (!logs.slice(-VISIBLE_CAP).some(l => l.id === highlightId)) setExpanded(true);
+        requestAnimationFrame(() => {
+            document.getElementById(`line-${highlightId}`)
+                ?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+        });
+    }, [highlightId, logs]);
+
     const visibleLogs = expanded ? logs : logs.slice(Math.max(0, logs.length - VISIBLE_CAP));
     const hiddenCount = logs.length - visibleLogs.length;
     const groups = groupLogs(visibleLogs).reverse();
@@ -227,7 +271,11 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute }: {
         // §2.3: a continuously-updating feed with auto-advance is exactly the
         // case screen readers need announced. role="log" implies polite
         // announcements of additions without re-reading the whole region.
-        <div className="space-y-6" role="log" aria-label="Chronicle of the Games">
+        <div
+            className={`space-y-6 ${density === 'compact' ? 'feed-compact' : density === 'prose' ? 'feed-prose' : ''}`}
+            role="log"
+            aria-label="Chronicle of the Games"
+        >
             {/* §2.2: with ~900 entries across 8+ days there was no way to jump
                 to a day — only scroll or search. */}
             {days.length > 2 && (
@@ -266,14 +314,36 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute }: {
                     : [];
                 return (
                 <section key={key} data-day={dayOfSection} className="space-y-2.5">
-                    <h3 className="panel-title border-b border-[var(--color-ink-800)] pb-1.5 flex items-center justify-between">
+                    <h3 className="day-divider panel-title border-b border-[var(--color-ink-800)] pb-1.5 flex items-center justify-between">
                         <span>{key}</span>
                         <span className="text-[var(--color-ink-600)]">{entries.length} entries</span>
                     </h3>
                     {fallenToday.length > 0 && <AnthemCard day={dayOfSection} fallen={fallenToday} />}
                     <div className="space-y-1.5">
                         {[...entries].reverse().map(log => (
-                            <FeedLine key={log.id} log={log} showTag={showTags} animate={newIds.has(log.id)} cast={cast} onSelectTribute={onSelectTribute} />
+                            <div
+                                key={log.id}
+                                id={`line-${log.id}`}
+                                className="group relative"
+                                style={log.id === highlightId
+                                    ? { outline: '2px solid var(--red)', outlineOffset: '2px' }
+                                    : undefined}
+                            >
+                                <FeedLine log={log} showTag={showTags} animate={newIds.has(log.id)} cast={cast} onSelectTribute={onSelectTribute} />
+                                {/* §2.2: share the moment, not just the seed.
+                                    Hidden until the row is hovered or the
+                                    button itself is focused, so the feed does
+                                    not grow 500 buttons of visual noise. */}
+                                <button
+                                    type="button"
+                                    onClick={() => copyLineLink(log.id, setCopiedId)}
+                                    aria-label="Copy a link to this moment"
+                                    title={copiedId === log.id ? 'Link copied' : 'Copy a link to this moment'}
+                                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 btn btn-sm btn-ghost text-[10px] font-mono"
+                                >
+                                    {copiedId === log.id ? 'copied' : 'link'}
+                                </button>
+                            </div>
                         ))}
                     </div>
                 </section>

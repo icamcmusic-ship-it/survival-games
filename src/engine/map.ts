@@ -1,7 +1,9 @@
 import { Arena, GameState, Tribute, Zone, ZoneFeatures } from '../models/types';
 import { traitMod } from '../data/traits';
-import { ZONES } from '../data/balance';
+import { PROFICIENCY, TERRAIN_MEMORY, TRAVEL, ZONES } from '../data/balance';
 import { injuryGrade } from './wounds';
+import { profOf } from './proficiency';
+import { encumbranceOf } from './items';
 
 export function zoneNames(arena: Arena): string[] {
     return arena.zones.map(z => z.name);
@@ -19,18 +21,29 @@ export function getZone(arena: Arena, name: string): Zone | undefined {
  * (the district terrain affinities, `traitMod` 'water'/'highland'), in which
  * case the crossing is ordinary ground to them.
  */
-export function travelCost(t: Tribute, dest: Zone): number {
+export function travelCost(t: Tribute, dest: Zone, state?: GameState): number {
     // T-5/A-5: a badly injured leg finally slows a tribute down — a grade-2+
     // leg turns any crossing into a slow one. `injuries.legs` was a boolean
     // with no travel consequence at all.
     const limping = injuryGrade(t, 'legs') >= 2 ? 1 : 0;
+    // A-5: nothing but terrain and traits moved this number. Crossing into
+    // whatever the weather front is currently sitting on is a different
+    // proposition from crossing on a still day, and so is doing it under a
+    // pack loaded out of the Cornucopia.
+    const storm = state?.weatherFront?.zone === dest.name ? TRAVEL.weatherFrontCost : 0;
+    const laden = encumbranceOf(t) >= TRAVEL.encumbranceCost ? 1 : 0;
+    const extra = limping + storm + laden;
     if (dest.terrain === 'water' || dest.terrain === 'wetland') {
-        return (traitMod(t, 'water') > 0 ? 1 : 2) + limping;
+        // T-2: crossings charged a cycle with no way to ever get better at
+        // them. Enough practice in the water and a crossing is just ground.
+        const swims = traitMod(t, 'water') > 0
+            || profOf(t, 'swimming') >= PROFICIENCY.swimmingCrossingRelief;
+        return (swims ? 1 : 2) + extra;
     }
     if (dest.terrain === 'highland') {
-        return (traitMod(t, 'highland') > 0 ? 1 : 2) + limping;
+        return (traitMod(t, 'highland') > 0 ? 1 : 2) + extra;
     }
-    return 1 + limping;
+    return 1 + extra;
 }
 
 /** Deterministic per-name hash in [0, 1), so derived features are stable per zone. */
@@ -47,20 +60,48 @@ const BASE_COVER: Record<Zone['terrain'], number> = {
     forest: 0.8, wetland: 0.6, ruins: 0.6, highland: 0.35, water: 0.2, open: 0.1,
 };
 
+/** A-3: how much drinkable water the ground holds, before the name jitters it. */
+const BASE_WATER: Record<Zone['terrain'], number> = {
+    water: 1, wetland: 0.8, forest: 0.4, highland: 0.3, ruins: 0.15, open: 0.05,
+};
+
+/** A-3: what the ground offers to sleep under. */
+const BASE_SHELTER: Record<Zone['terrain'], number> = {
+    ruins: 0.8, forest: 0.65, highland: 0.4, wetland: 0.25, open: 0.1, water: 0.05,
+};
+
 /**
  * §5.2: the zone's interior, hand-authored or derived. Derivation is
  * deterministic — terrain sets the baseline, the name jitters it — so the
  * same arena always has the same texture without any data edits, and an
  * arena author can override any zone by setting `features` in its data.
  */
-export function zoneFeatures(zone: Zone): ZoneFeatures {
-    if (zone.features) return zone.features;
+export function zoneFeatures(zone: Zone): Required<ZoneFeatures> {
     const h = nameHash(zone.name);
     const cover = Math.max(0, Math.min(1, BASE_COVER[zone.terrain] + (h - 0.5) * 0.3));
     const elevation = zone.terrain === 'highland' || /ridge|cliff|tower|spire|peak|stair|terrace|hill/i.test(zone.name) || h > 0.85;
     const chokepoint = /pass|bridge|ravine|tunnel|gate|causeway|canal|strait|corridor/i.test(zone.name)
         || (!elevation && h >= 0.62 && h <= 0.78);
-    return { cover, elevation, chokepoint };
+    // A-3: derived on the same deterministic basis as cover — terrain sets the
+    // baseline and the name jitters it, so a zone called "the Dry Wash" holds
+    // less than one called "the Spring Line" without any data edits.
+    const named = (re: RegExp, boost: number) => (re.test(zone.name) ? boost : 0);
+    const water = Math.max(0, Math.min(1, BASE_WATER[zone.terrain] + (h - 0.5) * 0.25
+        + named(/spring|creek|brook|river|lake|pool|falls|cistern|well|rain/i, 0.4)
+        - named(/dry|dust|ash|salt|scorch|waste|kiln/i, 0.3)));
+    const shelter = Math.max(0, Math.min(1, BASE_SHELTER[zone.terrain] + (h - 0.5) * 0.25
+        + named(/hollow|cave|vault|shed|hut|ruin|tunnel|arcade|hangar|lodge/i, 0.3)
+        - named(/expos|open|plain|flat|plateau|shelf/i, 0.2)));
+    // Authored data wins per-field rather than wholesale: an arena author who
+    // set `cover` and `elevation` on a zone still gets water and shelter
+    // derived for them.
+    return {
+        cover: zone.features?.cover ?? cover,
+        elevation: zone.features?.elevation ?? elevation,
+        chokepoint: zone.features?.chokepoint ?? chokepoint,
+        water: zone.features?.water ?? water,
+        shelter: zone.features?.shelter ?? shelter,
+    };
 }
 
 // Zones reachable in one move from `from`, excluding collapsed ones.
@@ -228,7 +269,12 @@ export function depletionOf(state: GameState, zoneName: string): number {
 export function effectiveResources(state: GameState, zone: Zone | undefined): number {
     if (!zone) return 0;
     const remaining = 1 - depletionOf(state, zone.name);
-    return zone.resources * Math.max(ZONES.minYieldFraction, remaining);
+    // A-4: a burnt sector never fully comes back within one Games.
+    const scarred = (state.scarredZones ?? []).includes(zone.name)
+        ? 1 - TERRAIN_MEMORY.scarYieldLoss
+        : 1;
+    return zone.resources * Math.max(ZONES.minYieldFraction, remaining) * scarred
+        * (state.yieldMultiplier ?? 1);
 }
 
 export function depleteZone(state: GameState, zoneName: string, amount: number) {

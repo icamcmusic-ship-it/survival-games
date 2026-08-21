@@ -1,7 +1,7 @@
 import { SimContext, getAlive } from './context';
 import { Tribute } from '../models/types';
 import { areLovers } from './alliance';
-import { wildcardIs } from './gamesProfile';
+import { hasModifier, wildcardIs } from './gamesProfile';
 
 /**
  * §7.1: the dual-victor endgame.
@@ -31,7 +31,7 @@ export function checkDualVictory(ctx: SimContext): [Tribute, Tribute] | undefine
 
     const allied = (a.allianceId !== undefined && a.allianceId === b.allianceId) || areLovers(a, b);
 
-    if (wildcardIs(ctx.state, 'rule-change-allies') && allied) {
+    if ((wildcardIs(ctx.state, 'rule-change-allies') || hasModifier(ctx.state, 'twin-victors')) && allied) {
         ctx.logEvent(
             `The cannon does not fire. The anthem does. Under this year's rule change, ${a.name} and ${b.name} `
             + `are both still standing — and two may win. The Games are over.`,

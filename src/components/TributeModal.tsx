@@ -11,6 +11,7 @@ import { bleedSeverity } from '../engine/wounds';
 import { RelationshipGraph } from './RelationshipGraph';
 import { Explainer } from './Explainer';
 import { objectiveLabel } from '../engine/objectives';
+import { tributeOdds } from '../engine/odds';
 import { traitInfo } from '../data/traitInfo';
 import { MapPin, Users, X, Heart } from 'lucide-react';
 import { craftOf, legacyOf } from '../data/districts';
@@ -21,7 +22,9 @@ import { useStore } from '../store/createStore';
 import { copyTributeStory, downloadTributeStory } from '../utils/tributeStory';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
-    forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
+    forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', thrown: 'Throwing',
+    medicine: 'Medicine', tracking: 'Tracking', stealth: 'Concealment',
+    crafting: 'Crafting', swimming: 'Swimming',
 };
 
 /** A wound's rate, not merely its existence. */
@@ -69,6 +72,63 @@ function VitalBar({ label, value, invert = false, explain }: { label: string; va
  * and with every parachute the tribute has already had, so the third one is a
  * decision about the whole wallet rather than a shopping trip.
  */
+/**
+ * S-2: the book, open mid-run.
+ *
+ * Wagering was pre-Games only — the player's stake was locked before the gong
+ * and nothing they saw in the arena could be acted on. The odds board is
+ * already recomputed live and genuinely moves, so this is the missing half of
+ * that: back the tribute who has just come off a kill, at the price the board
+ * is quoting because of it.
+ */
+function LiveBetPanel({ tribute, gameState }: { tribute: Tribute; gameState: GameState }) {
+    const coins = useStore(gameStore, s => s.coins);
+    const bets = useStore(gameStore, s => s.bets);
+    const [message, setMessage] = React.useState<string | null>(null);
+
+    const inArena = gameState.phase === 'bloodbath' || gameState.phase === 'day'
+        || gameState.phase === 'night' || gameState.phase === 'feast';
+    if (tribute.status !== 'alive' || !inArena) return null;
+
+    const live = tributeOdds(tribute, gameState.tributes);
+    const held = bets[tribute.id];
+    const stakes = [25, 50, 100];
+
+    return (
+        <section>
+            <div className="flex items-baseline justify-between gap-2 mb-2">
+                <h4 className="panel-title">Back them, live</h4>
+                <span className="text-[11px] font-mono text-[var(--color-ink-500)]">
+                    {live.pct}% · {live.mult.toFixed(1)}x
+                </span>
+            </div>
+            <p className="text-[11px] text-[var(--color-ink-500)] mb-2">
+                The board reprices every cycle. {held
+                    ? `You are already in for ${held.stake} on ${tribute.name} at ${held.mult.toFixed(1)}x; another wager blends into that price.`
+                    : 'Whatever you take now is locked at today\'s line, whatever happens to it afterwards.'}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+                {stakes.map(stake => (
+                    <button
+                        key={stake}
+                        type="button"
+                        disabled={coins < stake}
+                        aria-disabled={coins < stake}
+                        className="btn btn-sm"
+                        title={coins < stake
+                            ? `You have ${coins} coins.`
+                            : `Stake ${stake} on ${tribute.name} at ${live.mult.toFixed(1)}x`}
+                        onClick={() => setMessage(gameActions.placeLiveBet(tribute.id, stake).message)}
+                    >
+                        {stake}
+                    </button>
+                ))}
+            </div>
+            {message && <p className="text-sm mt-2 text-[var(--gold)]" role="status">{message}</p>}
+        </section>
+    );
+}
+
 function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: GameState }) {
     const coins = useStore(gameStore, s => s.coins);
     const [message, setMessage] = React.useState<string | null>(null);
@@ -796,6 +856,8 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                     </section>
 
                     <SponsorPanel tribute={tribute} gameState={gameState} />
+
+                    <LiveBetPanel tribute={tribute} gameState={gameState} />
 
                     <section>
                         <h4 className="panel-title mb-2">Social graph</h4>

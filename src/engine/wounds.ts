@@ -1,8 +1,9 @@
-import { InjurySite, Tribute } from '../models/types';
-import { BLEEDING, VITALS } from '../data/balance';
+import { GameState, InjurySite, Tribute } from '../models/types';
+import { ALLIANCE_ROLES, BLEEDING, VITALS } from '../data/balance';
 import { SimContext } from './context';
 import { profOf, trainProficiency } from './proficiency';
 import { traitMod } from '../data/traits';
+import { roleOf } from './alliance';
 
 /**
  * Bleeding, and what a tribute can do about it.
@@ -130,10 +131,12 @@ function hasBinding(t: Tribute): boolean {
     return t.inventory.some(i => i.id === 'rope' || i.id === 'wire' || i.id === 'backpack' || i.type === 'medical');
 }
 
-function dressChance(medic: Tribute, isAlly: boolean): number {
+function dressChance(medic: Tribute, isAlly: boolean, state?: GameState): number {
     let chance = BLEEDING.dressBaseChance
         + medic.attributes.intelligence * BLEEDING.dressPerIntelligence
-        + profOf(medic, 'medicine') * BLEEDING.dressPerMedicine;
+        + profOf(medic, 'medicine') * BLEEDING.dressPerMedicine
+        // R-1: the group's medic is better at this because it is their job.
+        + (state && roleOf(state, medic) === 'medic' ? ALLIANCE_ROLES.medicDressBonus : 0);
     if (hasBinding(medic)) chance += BLEEDING.dressBindingBonus;
     // Someone else's steady hands beat your own on a wound you cannot see.
     if (isAlly) chance += BLEEDING.allyDressBonus;
@@ -151,7 +154,7 @@ export function attemptFieldDressing(ctx: SimContext, patient: Tribute, medic: T
     if (severity <= 0) return false;
 
     const isAlly = medic.id !== patient.id;
-    if (!ctx.rng.chance(dressChance(medic, isAlly))) {
+    if (!ctx.rng.chance(dressChance(medic, isAlly, ctx.state))) {
         ctx.logEvent(
             isAlly
                 ? `${medic.name} works at ${patient.name}'s wound and cannot get it to close.`

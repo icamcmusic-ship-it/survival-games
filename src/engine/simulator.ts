@@ -14,6 +14,7 @@ import { GamemakerEventType, triggerGamemakerEvent as triggerGamemakerEventPhase
 import { checkDualVictory } from './victory';
 import { fireScheduledWildcard } from './wildcards';
 import { FEAST_TEXTS } from '../data/flavorText';
+import { commentateFeast } from './broadcast';
 
 const MAX_FEASTS = 2;
 

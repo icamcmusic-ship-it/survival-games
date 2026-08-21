@@ -178,7 +178,19 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
         const weaker = tOutmatched ? t : other;
         const stronger = tOutmatched ? other : t;
         const payment = tributePayment(weaker);
-        if (!payment && ctx.rng.chance(PARLEY.tributeChance)) {
+        // What they pay with is a decision, not a fallback.
+        //
+        // This branch used to be reachable only with genuinely empty hands,
+        // which made it hostage to the loot table: §8.3's named food and water
+        // alone dropped its firing rate below the soak's floor, because more
+        // tributes were carrying *something*. Two ways in now — nothing spare
+        // at all, or a spare too precious to hand over (nobody trades a medkit
+        // when directions will do) — plus a share of the time somebody simply
+        // prefers to talk.
+        const wouldRatherTalk = !payment
+            || payment.value >= PARLEY.tollInfoRatherThanValue
+            || ctx.rng.chance(PARLEY.tollInfoPreferredShare);
+        if (wouldRatherTalk && ctx.rng.chance(PARLEY.tributeChance)) {
             // Nothing spare to hand over. Someone with empty hands is exactly
             // the tribute most likely to be shaken down, and they still have
             // the only thing everyone in an arena wants: where the bodies

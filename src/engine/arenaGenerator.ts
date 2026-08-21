@@ -1,5 +1,6 @@
 import { Arena, Terrain, Zone } from '../models/types';
 import { RNG } from '../utils/rng';
+import { ZONES } from '../data/balance';
 import { PROCEDURAL_EVENTS, FlavorTag } from '../data/proceduralFlavor';
 
 interface Biome {
@@ -257,8 +258,8 @@ export function generateArena(seed: string): Arena {
     // different game each, not just different scenery. (Below 6, a tribute
     // can never genuinely disappear, which is most of what an arena is for.)
     const shapeRoll = rng.nextFloat();
-    const zoneCount = shapeRoll < 0.2 ? rng.nextInt(6, 8)
-        : shapeRoll < 0.85 ? rng.nextInt(9, 12)
+    const zoneCount = shapeRoll < ZONES.tightArenaShare ? rng.nextInt(6, 8)
+        : shapeRoll < ZONES.sprawlingArenaShare ? rng.nextInt(9, 12)
         : rng.nextInt(13, 16);
     const topology = rng.pick(TOPOLOGIES);
 

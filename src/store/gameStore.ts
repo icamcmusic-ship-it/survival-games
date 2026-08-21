@@ -76,6 +76,24 @@ export interface GameStoreState {
     lastRunOutcome: RunOutcome | null;
     /** Non-null while `runToEnd()` is fast-forwarding, for the progress readout. */
     runProgress: RunProgress | null;
+    /**
+     * U-1: restore points behind the current position, newest last. Only the
+     * labels are held in the store (so a rewind menu can render); the states
+     * themselves live in `history` below, outside React.
+     */
+    rewindPoints: RewindPoint[];
+}
+
+/** One labelled position the run can be put back to. See `recordRewindPoint`. */
+export interface RewindPoint {
+    /** Index into the private `history` array. */
+    index: number;
+    day: number;
+    phase: GameState['phase'];
+    /** "Day 4 · night", for the menu. */
+    label: string;
+    /** Log length at that moment — how much narrative a rewind here discards. */
+    logLength: number;
 }
 
 /** Live counters for the Run-to-End progress readout. */
@@ -91,6 +109,72 @@ export interface RunProgress {
      * during a skip should not be silent until the end screen.
      */
     wagered: Array<{ name: string; district: number; alive: boolean }>;
+}
+
+/**
+ * U-1: in-run rewind.
+ *
+ * The chronicle could be scrolled but the *board* could not: an unattended
+ * skip that blew past the moment you wanted to read was unrecoverable, and the
+ * ReplayScrubber only exists on the End screen. This keeps a bounded stack of
+ * restore points behind the play head.
+ *
+ * Snapshots deliberately exclude the log. The log is append-only within a run,
+ * so the log at an earlier point is a *prefix* of the current one: storing a
+ * length instead of a copy takes the per-entry cost from ~300 kB (and rising
+ * with the run) to ~60 kB and flat. Rewinding truncates the live log back to
+ * that prefix, which is also what makes the discarded future unreachable —
+ * any restore point recorded past that length is dropped with it.
+ *
+ * Re-simulating from the seed was the other option and is what the audit
+ * suggested. It is cheap for a pure run and wrong for this one: Gamemaker
+ * interventions and player parachutes are out-of-band mutations that no
+ * replay from (seed, config) reproduces, so a re-simulated rewind would
+ * silently erase the player's own actions. Snapshots restore what actually
+ * happened.
+ */
+interface HistoryEntry {
+    /** Everything except the log, deep-cloned. */
+    state: Omit<GameState, 'log'>;
+    logLength: number;
+}
+
+/** Deep enough to undo a distracted 5x skip; bounded so memory stays flat. */
+const HISTORY_CAP = 40;
+let history: HistoryEntry[] = [];
+
+function clearHistory() {
+    history = [];
+    gameStore.setState({ rewindPoints: [] });
+}
+
+function rewindPointsFor(): RewindPoint[] {
+    return history.map((entry, index) => ({
+        index,
+        day: entry.state.day,
+        phase: entry.state.phase,
+        label: entry.state.day === 0
+            ? entry.state.phase.charAt(0).toUpperCase() + entry.state.phase.slice(1)
+            : `Day ${entry.state.day} · ${entry.state.phase}`,
+        logLength: entry.logLength,
+    }));
+}
+
+/**
+ * Records where the run is *before* something advances or changes it. Called
+ * from every mutation path, so a rewind lands on a real board position
+ * whatever produced it — a phase advance, a fast-forward step, a parachute or
+ * a Gamemaker intervention.
+ */
+function recordRewindPoint(state: GameState, publish = true) {
+    if (state.phase === 'ended') return;
+    const { log, ...rest } = state;
+    history.push({ state: snapshotState({ ...rest, log: [] } as GameState), logLength: log.length });
+    if (history.length > HISTORY_CAP) history.splice(0, history.length - HISTORY_CAP);
+    // A fast-forward records hundreds of positions; publishing each one would
+    // re-render the whole tree per turn, which is the freeze `runToEnd` was
+    // chunked to avoid. It publishes once, when it stops.
+    if (publish) gameStore.setState({ rewindPoints: rewindPointsFor() });
 }
 
 const BROKE_THRESHOLD = 50;
@@ -226,6 +310,7 @@ export const gameStore = createStore<GameStoreState>({
     panem: readPanem(),
     lastRunOutcome: null,
     runProgress: null,
+    rewindPoints: [],
 });
 
 /** Deep clone so React sees new object identities all the way down the tree. */
@@ -336,6 +421,51 @@ function cancelRunToEnd() {
 }
 
 export const gameActions = {
+    /**
+     * U-1: put the run back to a recorded position.
+     *
+     * The log is truncated to that moment's prefix and every restore point
+     * past it is discarded, so the abandoned future cannot be re-entered.
+     * `betsResolved`/`hofSaved` are deliberately left alone: a run that
+     * already paid out and filed its records must not do either twice just
+     * because the player stepped back over the ending.
+     */
+    rewindTo(index: number) {
+        const { simulator, gameState } = gameStore.getState();
+        if (!simulator || !gameState || activeRun) return;
+        const entry = history[index];
+        if (!entry) return;
+        if (!engine) return;
+
+        const restored: GameState = {
+            ...snapshotState(entry.state as GameState),
+            log: gameState.log.slice(0, entry.logLength),
+        };
+        history = history.slice(0, index);
+        gameStore.setState({
+            gameState: restored,
+            simulator: new engine.Simulator(restored),
+            rewindPoints: rewindPointsFor(),
+            // The readout belongs to a fast-forward that is no longer running.
+            runProgress: null,
+        });
+        persistRun();
+    },
+
+    /** One phase back — the common case, and the one bound to a key. */
+    stepBack() {
+        gameActions.rewindTo(history.length - 1);
+    },
+
+    /**
+     * Back to the first recorded position on `day`, for "rewind to the start
+     * of day 4" — coarse, and the audit's point is that coarse is enough.
+     */
+    rewindToDay(day: number) {
+        const index = history.findIndex(e => e.state.day === day);
+        if (index >= 0) gameActions.rewindTo(index);
+    },
+
     setView(view: ViewName) {
         // Leaving the game view abandons any fast-forward in progress.
         if (view !== 'game') cancelRunToEnd();
@@ -384,6 +514,9 @@ export const gameActions = {
         const saved = readSavedRun();
         if (!saved) return;
         cancelRunToEnd();
+        // A resumed run starts with no rewind depth: the restore points lived
+        // in memory, not in the save, and inventing them would be a lie.
+        clearHistory();
         // Resuming is a cold-load entry into the simulation, so it has to cross
         // the lazy engine boundary too.
         const { Simulator } = await loadEngine();
@@ -423,6 +556,7 @@ export const gameActions = {
         gameActions.refundOpenBets();
         cancelRunToEnd();
         clearSavedRun();
+        clearHistory();
 
         const { Simulator, generateArena, generateTributes, gamesProfileFor, configForProfile } = await loadEngine();
 
@@ -496,6 +630,7 @@ export const gameActions = {
             ...gameState, seed: newSeed, tributes, log: [], logCounter: 0, gamesProfile, config,
         };
 
+        clearHistory();
         gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });
         persistRun();
     },
@@ -521,6 +656,8 @@ export const gameActions = {
         if (!simulator) return;
 
         const state = simulator.getState();
+        // U-1: where the board stood before this advance.
+        recordRewindPoint(state);
         if (state.phase === 'setup') {
             simulator.processTraining();
         } else if (state.phase === 'training') {
@@ -582,6 +719,7 @@ export const gameActions = {
         try {
             let state = simulator.getState();
             let turns = 0;
+            let lastRecordedDay = -1;
             publishProgress(state, turns);
             await yieldToBrowser();
             if (stale()) return;
@@ -594,6 +732,13 @@ export const gameActions = {
                 // cancelled loop cannot land another turn after the player has
                 // already started a new one.
                 if (stale()) return;
+                // Day granularity during a skip: a restore point per turn
+                // would be hundreds of clones, and "back to the start of day
+                // 4" is the resolution a fast-forward actually needs.
+                if (state.day !== lastRecordedDay) {
+                    lastRecordedDay = state.day;
+                    recordRewindPoint(state, false);
+                }
                 if (state.phase === 'setup') {
                     simulator.processTraining();
                 } else if (state.phase === 'training') {
@@ -626,7 +771,7 @@ export const gameActions = {
             // run start; only the loop that still owns it clears the readout.
             if (activeRun === run) {
                 activeRun = null;
-                gameStore.setState({ runProgress: null });
+                gameStore.setState({ runProgress: null, rewindPoints: rewindPointsFor() });
             }
             // Whether it finished or was cancelled, show the player where the
             // simulation actually got to — unless the run was replaced, in
@@ -663,6 +808,7 @@ export const gameActions = {
             return { ok: false, cost, message: `That parachute costs ${cost} coins. You have ${coins}.` };
         }
 
+        recordRewindPoint(state);
         const result = sendPlayerParachute(state, tributeId, itemId);
         if (!result.ok) return result;
 
@@ -671,9 +817,62 @@ export const gameActions = {
         return result;
     },
 
+    /**
+     * S-2: a wager placed after the gong, at the line the board is showing
+     * right now.
+     *
+     * Betting was pre-Games only, which left the whole middle of a run with no
+     * stakes for the player — and the odds board is recomputed live and
+     * genuinely moves (the soak shows nearly every survivor drifting off their
+     * opening line), so the price is real rather than decorative. A second
+     * wager on the same tribute blends into the first at a stake-weighted
+     * multiplier, which is what actually happens when you back something twice
+     * at two prices.
+     */
+    placeLiveBet(tributeId: string, stake: number): { ok: boolean; message: string } {
+        const { simulator, coins, bets, betsResolved } = gameStore.getState();
+        if (!simulator || !engine) return { ok: false, message: 'No Games are running.' };
+        if (betsResolved) return { ok: false, message: 'The book on these Games is already settled.' };
+
+        const state = simulator.getState();
+        const inArena = state.phase === 'bloodbath' || state.phase === 'day'
+            || state.phase === 'night' || state.phase === 'feast';
+        if (!inArena) return { ok: false, message: 'The book is only open once the tributes are in the arena.' };
+
+        const tribute = state.tributes.find(t => t.id === tributeId);
+        if (!tribute || tribute.status !== 'alive') {
+            return { ok: false, message: 'You cannot back a tribute who is already gone.' };
+        }
+        const amount = Math.max(1, Math.floor(stake));
+        if (coins < amount) return { ok: false, message: `That wager costs ${amount} coins. You have ${coins}.` };
+
+        const { mult } = engine.tributeOdds(tribute, state.tributes);
+        const held = bets[tributeId];
+        const blended = held
+            ? (held.stake * held.mult + amount * mult) / (held.stake + amount)
+            : mult;
+
+        gameActions.setCoins(coins - amount);
+        gameActions.setBets(prev => ({
+            ...prev,
+            [tributeId]: {
+                stake: (prev[tributeId]?.stake ?? 0) + amount,
+                mult: Math.round(blended * 100) / 100,
+            },
+        }));
+        persistRun();
+        return {
+            ok: true,
+            message: held
+                ? `${amount} more on ${tribute.name} at ${mult.toFixed(1)}x — your book on them now runs at ${blended.toFixed(1)}x.`
+                : `${amount} coins on ${tribute.name} at ${mult.toFixed(1)}x, live from the arena.`,
+        };
+    },
+
     triggerGamemakerEvent(type: GamemakerEventType, targetId?: string) {
         const { simulator } = gameStore.getState();
         if (!simulator) return;
+        recordRewindPoint(simulator.getState());
         simulator.triggerGamemakerEvent(type, targetId);
         gameActions.syncFromSimulator();
     },

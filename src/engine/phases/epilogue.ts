@@ -1,7 +1,8 @@
 import { SimContext, getAlive } from '../context';
-import { EpilogueQA, EventLog, Tribute } from '../../models/types';
+import { EpilogueQA, EventLog, GameState, Tribute } from '../../models/types';
 import { ensureMemory } from '../memory';
 import { getRel } from '../relationships';
+import { ENDINGS } from '../../data/balance';
 import { RNG } from '../../utils/rng';
 
 /** Picks one variant, seeded so the same run always gives the same interview. */
@@ -301,6 +302,14 @@ export function processEpilogue(ctx: SimContext) {
         });
     }
 
+    // §10.2: how it ends, beyond who is left standing.
+    const ending = rollEnding(ctx, winner);
+    if (ending !== 'standard') {
+        qas.push(endingBeat(ctx, winner, ending));
+        ctx.state.epilogueInterview = qas;
+        return;
+    }
+
     qas.push({
         question: "Caesar Flickerman: 'Well, champion, the crown is yours, and the Capitol is celebrating your triumphant return!'",
         answer: `${winner.name}: '${pick(rng, [
@@ -312,4 +321,90 @@ export function processEpilogue(ctx: SimContext) {
     });
 
     ctx.state.epilogueInterview = qas;
+}
+
+/**
+ * §10.2: which ending this run gets.
+ *
+ * Three outcomes existed — last one standing, two victors, nobody — so the
+ * final beat of a run was the one part a player had genuinely seen before by
+ * the third Games. These three are drawn from what actually happened rather
+ * than rolled flat: a victor who killed nobody and lost everyone has earned
+ * the refusal; one the Gamemakers had to keep alive has earned the
+ * overruling; one who arrives home wrecked has earned an epilogue that reads
+ * as a loss.
+ */
+function rollEnding(ctx: SimContext, winner: Tribute): NonNullable<GameState['endingKind']> {
+    const mourned = ensureMemory(winner).mourned.length;
+    const resolve = winner.resolve ?? 70;
+
+    // Refusal: they will not take the crown from the people who did this.
+    if (winner.kills === 0 && mourned > 0 && ctx.rng.chance(ENDINGS.refusedChance)) {
+        ctx.state.endingKind = 'refused';
+        return 'refused';
+    }
+    // Overruled: the Gamemakers decide the show needed a different shape.
+    if (winner.health <= ENDINGS.overruledMaxHealth && ctx.rng.chance(ENDINGS.overruledChance)) {
+        ctx.state.endingKind = 'overruled';
+        return 'overruled';
+    }
+    // Hollow: they won, and the epilogue reads as a loss anyway.
+    if ((resolve <= ENDINGS.hollowMaxResolve || winner.vitals.sanity <= ENDINGS.hollowMaxSanity)
+        && ctx.rng.chance(ENDINGS.hollowChance)) {
+        ctx.state.endingKind = 'hollow';
+        return 'hollow';
+    }
+    ctx.state.endingKind = 'standard';
+    return 'standard';
+}
+
+function endingBeat(ctx: SimContext, winner: Tribute, kind: NonNullable<GameState['endingKind']>): EpilogueQA {
+    const rng = ctx.rng;
+    if (kind === 'refused') {
+        ctx.logEvent(
+            `${winner.name} is brought out to be crowned and will not stand for it. `
+            + `The broadcast cuts to the anthem eleven seconds early, and everyone watching noticed.`,
+            [winner.id],
+            { important: true, category: 'system' }
+        );
+        return {
+            question: "Caesar Flickerman: 'Champion — the crown. The Capitol is waiting.'",
+            answer: `${winner.name}: '${pick(rng, [
+                'You can put it on the chair, Caesar. I am not going to argue with you about it in front of everybody. I am just not going to wear it.',
+                'I did not win anything. I was the last one left. Those are different sentences and I would like the Capitol to hear both of them.',
+                'Twenty-three people are not coming home, Caesar, and you would like me to smile in a hat. No. Thank you, but no.',
+            ])}'`,
+        };
+    }
+    if (kind === 'overruled') {
+        ctx.logEvent(
+            `The hovercraft is in the air before the cannon finishes. Whatever the arena was going to do to ${winner.name}, `
+            + `the Gamemakers have decided it will not be doing it on camera — the Games are declared over on their terms, not the arena's.`,
+            [winner.id],
+            { important: true, category: 'gamemaker' }
+        );
+        return {
+            question: "Caesar Flickerman: 'They lifted you out with the arena still closing. How does it feel to be — forgive me — the Gamemakers' decision?'",
+            answer: `${winner.name}: '${pick(rng, [
+                'It feels like being told the ending, Caesar. I was there. I would have liked to find out for myself.',
+                'They needed a victor by the evening broadcast and I was the one still upright. That is the whole of it.',
+                'I was thirty seconds from finding out what I was, and somebody in a control room decided the Capitol did not need to see it.',
+            ])}'`,
+        };
+    }
+    ctx.logEvent(
+        `${winner.name} comes home. The train, the cameras, the crowd on the platform, all of it exactly as it is supposed to be — `
+        + `and anyone who has watched a victor come home before can see that this one did not entirely.`,
+        [winner.id],
+        { important: true, category: 'system' }
+    );
+    return {
+        question: "Caesar Flickerman: 'Champion — the Capitol is celebrating. What are you looking forward to most?'",
+        answer: `${winner.name}: '${pick(rng, [
+            'Quiet, Caesar. I keep saying quiet and people keep laughing, and I keep meaning it.',
+            'I do not know. I had a list. I have been trying to remember what was on it since the hovercraft.',
+            'Sleeping, mostly. Though I have been told that part does not go the way you expect either.',
+            'Ask me next year, Caesar. I do not think I am back yet.',
+        ])}'`,
+    };
 }

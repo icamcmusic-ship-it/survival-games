@@ -2,15 +2,15 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, SPONSORS } from '../../data/balance';
+import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, EXHAUSTION, HUNTING, MEMORY, MODIFIERS, MOVEMENT, OBJECTIVES, PROFICIENCY, SPONSORS } from '../../data/balance';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost } from '../map';
+import { zoneNames, getZone, zoneFeatures, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
-    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting,
+    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteArmament, noteSighting,
 } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
@@ -21,6 +21,8 @@ import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { areLovers, leaderFor } from '../alliance';
 import { decayFear } from '../fear';
 import { updateStance } from '../stance';
+import { traitMod } from '../../data/traits';
+import { profOf, trainProficiency } from '../proficiency';
 import { processSpoilage, processVitals } from '../survival';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
@@ -34,10 +36,14 @@ import { tickWeatherFront } from '../weatherFront';
 import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
 import { resolveTruces } from '../parley';
+import { spreadNotoriety } from '../notoriety';
+import { commentate } from '../broadcast';
+import { decayPackTruces, resolvePackEncounters } from '../packParley';
 import { repayDebts, tickDistrictBonds } from '../debts';
 import { enforceCharters } from '../allianceCharter';
 import { gamemakerProfile } from '../../data/gamemakers';
-import { escalationShift, wildcardIs } from '../gamesProfile';
+import { readCustomContent } from '../../utils/customContent';
+import { escalationShift, hasModifier, modifierEscalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 
@@ -74,6 +80,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     ctx.state.timeOfDay = effectiveTime === 'night' ? 'dusk' : 'day';
     advanceCycle(ctx.state);
     const alive = getAlive(ctx.state);
+    const aliveAtCycleStart = alive.length;
     // Counted once per day, so it freezes at whatever the tribute reached.
     if (time === 'day') alive.forEach(t => { t.daysSurvived = ctx.state.day; });
 
@@ -87,8 +94,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         if (ctx.rng.chance(ENCOUNTERS.dynamicAmbientShare)) {
             ctx.logEvent(dynamicAmbientLine(ctx), [], { category: 'arena' });
         } else {
-            const pool = ctx.rng.chance(ENCOUNTERS.ambientArenaShare) ? flavor.ambient : AMBIENT_TEXTS;
-            ctx.logEvent(ctx.pickText(pool), [], { category: 'arena' });
+            const custom = readCustomContent().ambient;
+            const pool = ctx.rng.chance(ENCOUNTERS.ambientArenaShare) ? flavor.ambient : [...AMBIENT_TEXTS, ...custom];
+            ctx.logEvent(ctx.pickText(pool).split('{zone}').join(ctx.state.arena.zones[0].name), [], { category: 'arena' });
         }
     }
 
@@ -131,6 +139,15 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             return;
         }
 
+        // T-4: past a few nights without sleep the body takes what it was not
+        // given. A microsleep costs the turn — they are standing in the open
+        // with their eyes shut — and refunds some of the fatigue, which is
+        // exactly the trade a tribute who kept moving did not want to make.
+        if (rollMicrosleep(ctx, t)) {
+            acted.add(t.id);
+            return;
+        }
+
         move(ctx, t, currentAlive, collapsed, flavor, severed, crossed);
     });
 
@@ -144,6 +161,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         checkTraps(ctx, t);
     });
 
+    // R-2: two groups in one zone negotiate as groups before the encounter
+    // layer resolves them as a pile of individuals.
+    resolvePackEncounters(ctx);
+    decayPackTruces(ctx.state);
+
     // Dusk is over: everything from here resolves in full dark.
     ctx.state.timeOfDay = effectiveTime;
 
@@ -151,6 +173,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // arena visible from a zone away. This is the trade the source material is
     // built on, and it only pays off at night.
     if (effectiveTime === 'night') revealFires(ctx);
+    // A-3: and by day, whoever is standing on the high ground is watching.
+    surveyFromHighGround(ctx);
 
     // 4. Hazards, mutts and everyone who runs into everyone else.
     resolveEncounters(ctx, currentAlive, acted, isEscalated, flavor, effectiveTime);
@@ -188,6 +212,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayFear(ctx.state);
     decaySuspicion(ctx.state);
     resolveTruces(ctx);
+    // R-5: the field catching up with what the sky told it.
+    spreadNotoriety(ctx);
     // Obligations come due, district partners grow into each other, and any
     // group that agreed terms is held to them.
     repayDebts(ctx);
@@ -224,6 +250,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // recognisable rhythm the source material has, and the moment a tribute
     // finds out whether the person they were travelling with is still alive.
     if (time === 'night') soundTheAnthem(ctx);
+    // §8.3: the desk, after the cycle's events have actually resolved — so a
+    // "quiet day" line only ever follows a day that was quiet.
+    commentate(ctx, time, getAlive(ctx.state).length - aliveAtCycleStart);
 }
 
 /**
@@ -238,7 +267,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 function soundTheAnthem(ctx: SimContext) {
     // A silent-arena year: no anthem, no faces, and nobody finds out who is
     // left except by walking into them.
-    if (wildcardIs(ctx.state, 'silent-arena')) return;
+    if (wildcardIs(ctx.state, 'silent-arena') || hasModifier(ctx.state, 'no-anthem')) return;
 
     const fallenToday = ctx.state.tributes.filter(t =>
         t.status === 'dead' && t.dayOfDeath === ctx.state.day);
@@ -374,7 +403,10 @@ function updateAudienceInterest(ctx: SimContext, time: 'day' | 'night') {
     const threshold = ESCALATION.boredomThreshold * gm.boredomMultiplier;
     // REPLAY-01: a lavish or slow Games buys the tributes more arena for
     // longer; a compressed one takes it away early.
-    const shift = escalationShift(ctx.state);
+    // §10.2: an unbounded year never closes the arena at all, and a
+    // compressed one starts closing it on the first night.
+    if (hasModifier(ctx.state, 'open-borders')) return;
+    const shift = escalationShift(ctx.state) + modifierEscalationShift(ctx.state);
     const bored = ctx.state.day >= ESCALATION.boredomEarliestDay + Math.max(0, shift)
         && interest < threshold;
     const scheduled = ctx.state.day >= ESCALATION.startDay + shift;
@@ -463,6 +495,78 @@ function forceFinale(ctx: SimContext) {
     // the finalists on paper and let them wander past each other for three
     // hundred days.
     ctx.state.finaleZone = horn;
+}
+
+/**
+ * T-4: the body cashing in on sleeplessness whether or not it is a good moment.
+ * Returns true when the tribute loses the turn to it.
+ */
+function rollMicrosleep(ctx: SimContext, t: Tribute): boolean {
+    const over = (t.sleeplessCycles ?? 0) - EXHAUSTION.microsleepAfter;
+    if (over <= 0) return false;
+    // Insomniac cannot sleep at night, so it is exactly this tribute who ends
+    // up sleeping standing up at noon — the trait compounding into something
+    // beyond its fatigue penalty.
+    const insomniac = traitMod(t, 'fatigueNight') > 0 ? 1.5 : 1;
+    const chance = Math.min(
+        EXHAUSTION.maxMicrosleepChance,
+        over * EXHAUSTION.microsleepChancePerCycle * insomniac,
+    );
+    if (!ctx.rng.chance(chance)) return false;
+
+    t.vitals.fatigue = Math.max(0, t.vitals.fatigue - EXHAUSTION.microsleepFatigueRelief);
+    t.vitals.sanity -= EXHAUSTION.microsleepSanityCost;
+    t.sleeplessCycles = Math.max(0, (t.sleeplessCycles ?? 0) - 1);
+    clampTribute(t);
+    ctx.logEvent(
+        ctx.pickText(SURVIVAL_TEXTS.microsleep)
+            .split('{tribute}').join(t.name)
+            .split('{zone}').join(t.zone),
+        [t.id],
+        { category: 'survival' }
+    );
+    return true;
+}
+
+/**
+ * A-3: line of sight from high ground.
+ *
+ * `revealFires` proved the pattern — an observation in one zone writing an
+ * impression into somebody's memory in another — but nothing else in the
+ * arena used it, so standing on a ridge was worth an ambush modifier and
+ * nothing else. A tribute on elevation can see who is moving in the sectors
+ * next to them, which is exactly what high ground is for.
+ */
+function surveyFromHighGround(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    const severed = severedEdgeSet(ctx.state);
+
+    alive.forEach(watcher => {
+        const here = getZone(ctx.state.arena, watcher.zone);
+        if (!here || !zoneFeatures(here).elevation) return;
+        // In the dark you see a fire and nothing else; `revealFires` covers that.
+        if (ctx.state.timeOfDay === 'night') return;
+
+        here.adjacent.forEach(neighbourName => {
+            if (severed.has(edgeKey(watcher.zone, neighbourName))) return;
+            const seen = alive.filter(o =>
+                o.id !== watcher.id && o.zone === neighbourName
+                && (o.allianceId === undefined || o.allianceId !== watcher.allianceId));
+            if (seen.length === 0) return;
+            noteSighting(ctx.state, watcher, neighbourName, seen.length, depletionOf(ctx.state, neighbourName));
+            // Seen from a distance is not the same as met: they learn where
+            // people are, not who, unless the RNG says the light was good.
+            if (ctx.rng.chance(MOVEMENT.highGroundIdentifyChance)) {
+                const subject = ctx.rng.pick(seen);
+                noteArmament(ctx.state, watcher, subject);
+                ctx.logEvent(
+                    `${watcher.name} watches ${subject.name} cross ${neighbourName} from the high ground in ${watcher.zone}, and is not seen doing it.`,
+                    [watcher.id, subject.id],
+                    { category: 'travel' }
+                );
+            }
+        });
+    });
 }
 
 /**
@@ -609,6 +713,7 @@ function craft(ctx: SimContext, t: Tribute) {
         t.inventory.splice(Math.min(hasRope, hasKnife), 1);
         const spear = ITEMS.find(i => i.id === 'spear')!;
         giveItem(t, mintItem(ctx.rng, spear, QUALITY_BIAS.improvised));
+        trainProficiency(t, 'crafting');
         ctx.logEvent(`${t.name} lashes a knife to a shaft with rope and walks away holding a Spear.`, [t.id], { category: 'loot' });
     }
 
@@ -616,7 +721,10 @@ function craft(ctx: SimContext, t: Tribute) {
     // hands is a tribute who will never willingly fight, and only a third of the
     // cast was ever armed — the Cornucopia and the feast simply do not put
     // enough steel into circulation to go round.
-    if (!t.inventory.some(i => i.type === 'weapon') && ctx.rng.chance(CRAFTING.improviseChance)) {
+    // T-2: the improvised-weapon tree had no skill behind it. Someone who has
+    // already made a club out of a branch is quicker to see the next one.
+    const improviseChance = CRAFTING.improviseChance + profOf(t, 'crafting') * PROFICIENCY.craftChanceWeight;
+    if (!t.inventory.some(i => i.type === 'weapon') && ctx.rng.chance(improviseChance)) {
         const ropeIdx = t.inventory.findIndex(i => i.id === 'rope');
         if (ropeIdx >= 0) {
             // Rope is worth more as reach than as rope to somebody holding
@@ -690,13 +798,17 @@ function wanderChanceFor(t: Tribute): number {
  */
 function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
     const dest = getZone(ctx.state.arena, destName);
-    const cost = dest ? travelCost(t, dest) : 1;
+    const cost = dest ? travelCost(t, dest, ctx.state) : 1;
     if (cost <= 1) return true;
     t.transit = { to: destName, remaining: cost - 1 };
+    // T-2: the crossing itself is the lesson.
+    if (dest && (dest.terrain === 'water' || dest.terrain === 'wetland')) trainProficiency(t, 'swimming');
     ctx.logEvent(
-        dest?.terrain === 'highland'
-            ? `${t.name} starts the long climb toward ${destName}. It will not be done by nightfall.`
-            : `${t.name} wades into the crossing toward ${destName}. This is going to take everything the day has left.`,
+        ctx.state.weatherFront?.zone === destName
+            ? `${t.name} sets off toward ${destName} into the weather rather than wait it out. Every step of it is going to be paid for.`
+            : dest?.terrain === 'highland'
+                ? `${t.name} starts the long climb toward ${destName}. It will not be done by nightfall.`
+                : `${t.name} wades into the crossing toward ${destName}. This is going to take everything the day has left.`,
         [t.id],
         { category: 'travel' }
     );

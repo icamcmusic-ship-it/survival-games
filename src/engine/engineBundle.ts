@@ -15,3 +15,5 @@ export { generateTributes } from './generator';
 export { generateArena } from './arenaGenerator';
 export { configForProfile, gamesProfileFor } from './gamesProfile';
 export { sendPlayerParachute, sponsorCost, sponsorableItems } from './playerSponsor';
+// S-2: the live line, for wagers placed after the gong.
+export { tributeOdds } from './odds';

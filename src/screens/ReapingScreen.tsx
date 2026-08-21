@@ -6,6 +6,7 @@ import { REAPING_CROWDS } from '../data/pregames';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { Explainer } from '../components/Explainer';
 import { GamesProfile, calendarOf, ordinal, profileHeadline } from '../engine/gamesProfile';
+import { modifierById } from '../data/modifiers';
 
 export function ReapingScreen({ tributes, arenaName, seed, profile, onReroll, onConfirm }: {
     tributes: Tribute[],
@@ -57,6 +58,20 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, onReroll, on
                             {profile.castShape.blurb}
                         </p>
                     )}
+                    {/* §10.2: this year's format changes, which are standing
+                        rules rather than scheduled beats — the player should
+                        know before the gong that there is no feast coming. */}
+                    {(profile.modifiers ?? []).map(id => {
+                        const mod = modifierById(id);
+                        if (!mod) return null;
+                        return (
+                            <p key={id} className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
+                                <span className="font-mono text-[10px] text-[var(--red)] mr-1.5">FORMAT</span>
+                                <strong className="text-[var(--ink)]">This is {mod.name}.</strong>{' '}
+                                {mod.blurb}
+                            </p>
+                        );
+                    })}
                     {/* The whole schedule, not just the headline: a run has 2-4
                         scheduled beats and the player is entitled to know how
                         many are coming, if not exactly what they will do. */}

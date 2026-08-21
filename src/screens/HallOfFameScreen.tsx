@@ -3,6 +3,7 @@ import { HallOfFameEntry } from '../models/types';
 import { readHallOfFame, writeHallOfFame, clearHallOfFame } from '../utils/hofStorage';
 import { HofFilters, applyHofQuery, isFiltered, EMPTY_HOF_QUERY, HofQuery } from '../components/HofFilters';
 import { HofAggregates } from '../components/HofAggregates';
+import { HofCompare } from '../components/HofCompare';
 import { HofTransfer } from '../components/HofTransfer';
 import { Trophy, Trash2, Copy, Check, RotateCcw } from 'lucide-react';
 import { gameActions, gameStore } from '../store/gameStore';
@@ -76,6 +77,7 @@ export function HallOfFameScreen() {
             ) : (
                 <>
                     <HofAggregates entries={entries} />
+                    <HofCompare entries={entries} />
                     <HofFilters entries={entries} query={query} onChange={setQuery} resultCount={visible.length} />
                     <HofTransfer entries={entries} onImported={applyImport} />
 

@@ -4,6 +4,8 @@ import {
     CAST_SHAPES, CastShape, CastShapeId, GAMES_TEMPERAMENTS, GamesTemperament,
     Wildcard, WildcardDef, WILDCARDS, WildcardKind,
 } from '../data/gamesProfile';
+import { GAMES_MODIFIERS, ModifierId } from '../data/modifiers';
+import { MODIFIERS, RARITY_WEIGHT } from '../data/balance';
 
 /**
  * REPLAY-01: rolling a run's identity, once, from its seed.
@@ -37,6 +39,47 @@ export interface GamesProfile {
     calendar: Wildcard[];
     /** REPLAY-09: what kind of cast the bowls produced this year. */
     castShape: CastShape;
+    /**
+     * §10.2: standing format changes, 1-3 per run, orthogonal to everything
+     * above. Optional so profiles rolled before modifiers existed still load.
+     */
+    modifiers?: ModifierId[];
+}
+
+/**
+ * §10.2: this year's format changes.
+ *
+ * Drawn by weight, respecting each modifier's exclusions, and deliberately
+ * allowed to come out empty — a conventional year is itself one of the
+ * outcomes, and it has to stay common enough that an unconventional one reads
+ * as unusual.
+ */
+function rollModifiers(rng: RNG): ModifierId[] {
+    // Most years get one; a minority get two or three, which is where the
+    // genuinely strange combinations live.
+    const count = rng.chance(MODIFIERS.threeChance) ? 3
+        : rng.chance(MODIFIERS.twoChance) ? 2
+            : rng.chance(MODIFIERS.oneChance) ? 1
+                : 0;
+    const chosen: ModifierId[] = [];
+    const barred = new Set<ModifierId>();
+
+    for (let i = 0; i < count; i++) {
+        const pool = GAMES_MODIFIERS.filter(m => !chosen.includes(m.id) && !barred.has(m.id));
+        if (pool.length === 0) break;
+        const total = pool.reduce((sum, m) => sum + m.weight, 0);
+        let roll = rng.nextFloat() * total;
+        let picked = pool[pool.length - 1];
+        for (const m of pool) {
+            roll -= m.weight;
+            if (roll <= 0) { picked = m; break; }
+        }
+        chosen.push(picked.id);
+        picked.excludes?.forEach(id => barred.add(id));
+        // Exclusion is symmetric: whatever bars this one, this one bars back.
+        GAMES_MODIFIERS.filter(m => m.excludes?.includes(picked.id)).forEach(m => barred.add(m.id));
+    }
+    return chosen;
 }
 
 /** Weighted draw over the cast shapes, with the Quells overriding the roll. */
@@ -73,11 +116,20 @@ function materialise(def: WildcardDef, rng: RNG, dayOverride?: number): Wildcard
 function drawWildcard(rng: RNG, taken: Set<WildcardKind>): WildcardDef | undefined {
     const pool = WILDCARDS.filter(w => !taken.has(w.kind));
     if (pool.length === 0) return undefined;
-    const total = pool.reduce((sum, w) => sum + w.weight, 0);
+    // §10.2: rarity tiers on top of weight. A flat weighted pool meant a
+    // player who had watched twenty runs had seen effectively everything the
+    // schedule could do; the rare beats need to stay rare enough that meeting
+    // one is still worth telling somebody about.
+    const rarityFactor = (rarity: WildcardDef['rarity']) =>
+        rarity === 'legendary' ? RARITY_WEIGHT.legendary
+            : rarity === 'uncommon' ? RARITY_WEIGHT.uncommon
+                : RARITY_WEIGHT.common;
+    const effective = (w: WildcardDef) => w.weight * rarityFactor(w.rarity);
+    const total = pool.reduce((sum, w) => sum + effective(w), 0);
     let roll = rng.nextFloat() * total;
     let chosen = pool[pool.length - 1];
     for (const w of pool) {
-        roll -= w.weight;
+        roll -= effective(w);
         if (roll <= 0) { chosen = w; break; }
     }
     return chosen;
@@ -121,6 +173,8 @@ function rollCalendar(rng: RNG): Wildcard[] {
 export function gamesProfileFor(seed: string): GamesProfile {
     const rng = new RNG(`${seed}-games-profile`);
     const calendar = rollCalendar(rng);
+    const modifiers = rollModifiers(rng);
+    const castShape = rollCastShape(rng, calendar);
     return {
         // A Games number the player can refer to. Anchored well past the 75th so
         // a Quarter Quell wildcard is never contradicted by the arithmetic.
@@ -130,7 +184,13 @@ export function gamesProfileFor(seed: string): GamesProfile {
         // announcement than a standing condition, so it wins the billing.
         wildcard: calendar.find(w => w.day > 0) ?? calendar[0],
         calendar,
-        castShape: rollCastShape(rng, calendar),
+        // §10.2: an all-volunteer year is a property of the reaping, so it
+        // is folded into the cast shape rather than checked at a dozen call
+        // sites. Cloned — CAST_SHAPES is a shared table.
+        castShape: modifiers.includes('all-volunteer')
+            ? { ...castShape, volunteerChance: 1 }
+            : castShape,
+        modifiers,
     };
 }
 
@@ -160,6 +220,19 @@ export function configForProfile(base: GameConfig, profile: GamesProfile): GameC
         }
     }
 
+    // §10.2: format changes sit on top of everything the calendar did.
+    for (const id of profile.modifiers ?? []) {
+        switch (id) {
+            case 'no-sponsors': sponsorGenerosity = 0; break;
+            case 'no-mentors': sponsorGenerosity *= MODIFIERS.noMentorsGenerosity; break;
+            case 'rich-arena': sponsorGenerosity *= MODIFIERS.richGenerosity; break;
+            case 'no-feast': enableFeast = false; break;
+            case 'doubled-mutts': hazardRate *= MODIFIERS.doubledMuttHazard; break;
+            case 'half-arena': hazardRate *= MODIFIERS.halfArenaHazard; break;
+            default: break;
+        }
+    }
+
     return { ...base, sponsorGenerosity, hazardRate, betrayalRate, enableFeast };
 }
 
@@ -168,11 +241,30 @@ export function calendarOf(profile: GamesProfile): Wildcard[] {
     return profile.calendar ?? (profile.wildcard ? [profile.wildcard] : []);
 }
 
+/** §10.2: whether this year's format carries a given modifier. */
+export function hasModifier(state: GameState, id: ModifierId): boolean {
+    return (state.gamesProfile?.modifiers ?? []).includes(id);
+}
+
 /** Standing conditions other systems ask about directly. */
 export function wildcardIs(state: GameState, kind: WildcardKind): boolean {
     const profile = state.gamesProfile;
     if (!profile) return false;
     return calendarOf(profile).some(w => w.kind === kind);
+}
+
+/**
+ * §10.2: format changes that move the collapse schedule.
+ *
+ * A year with no feast has had its main convergence event removed, so the
+ * Gamemakers close the arena earlier to compensate — otherwise "no feast"
+ * quietly reads as "no ending", which is what it measured as.
+ */
+export function modifierEscalationShift(state: GameState): number {
+    let shift = 0;
+    if (hasModifier(state, 'no-feast')) shift += MODIFIERS.noFeastShift;
+    if (hasModifier(state, 'sudden-death')) shift += MODIFIERS.suddenDeathShift;
+    return shift;
 }
 
 /** How much earlier or later this year's border starts closing. */

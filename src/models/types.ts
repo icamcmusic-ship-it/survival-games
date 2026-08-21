@@ -1,7 +1,18 @@
 export type Gender = 'Male' | 'Female';
 export type Stance = 'Aggressive' | 'Defensive' | 'Evasive';
 
-export type ArchetypeId = 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog';
+/**
+ * §8.2: seven archetypes across a 24-tribute cast meant roughly three and a
+ * half duplicates of each per Games, and the archetype drives aggression,
+ * caution, treachery and alliance affinity — so the field read as a handful of
+ * repeated behaviours wearing different names. These four fill the gaps the
+ * original seven left: the one who wants to be watched, the one who will not
+ * raise a hand, the one who was already surviving before the reaping, and the
+ * one who has decided the Capitol is the enemy.
+ */
+export type ArchetypeId =
+    | 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog'
+    | 'showman' | 'pacifist' | 'scavenger' | 'zealot';
 
 export interface Attributes {
     strength: number;
@@ -41,7 +52,16 @@ export type InjurySite = keyof Injuries;
  * a survivalist visibly become a survivalist over a run instead of merely
  * being labelled one.
  */
-export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking';
+/**
+ * T-2: five skills covered foraging, two weapon classes, medicine and
+ * tracking — so the `thrown` weapon class trained and read from `ranged`
+ * despite `combatPower` giving it its own branch, the improvised-weapon tree
+ * had no skill behind it at all, hiding was pure attribute, and `travelCost`
+ * charged for water crossings with no way to ever get better at them.
+ */
+export type Proficiency =
+    | 'forage' | 'melee' | 'ranged' | 'thrown'
+    | 'medicine' | 'tracking' | 'stealth' | 'crafting' | 'swimming';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage';
@@ -306,6 +326,26 @@ export interface Tribute {
     proficiencies?: Partial<Record<Proficiency, number>>;
     /** What they are currently trying to do. See `Objective`. */
     objective?: Objective;
+    /**
+     * T-4: consecutive night phases without real sleep.
+     *
+     * Fatigue was a number the night quietly refunded; there was no
+     * *exhaustion*, so days 6-10 felt like days 1-3. A tribute who keeps
+     * moving through the dark accumulates sleepless cycles, and past
+     * `EXHAUSTION.microsleepAfter` starts losing awareness, then whole turns.
+     */
+    sleeplessCycles?: number;
+    /**
+     * R-5: how well the *arena* knows what this tribute has done, 0-100.
+     * Distinct from `reputation`, which is the Capitol's opinion and the
+     * sponsor baseline. Kills and betrayals are public — the cannon, the
+     * anthem, the sky — so notoriety is the aggregate the fear system never
+     * had: "everyone knows what she did at the feast", rather than N separate
+     * per-observer fear entries.
+     */
+    notoriety?: number;
+    /** R-6: cycle a grief withdrawal lifts on. They will not ally before it. */
+    withdrawnUntil?: number;
     /** Ids of tributes this one has formed a protective bond with. See `growProtectorBond`. */
     protectorBonds?: string[];
     /**
@@ -378,7 +418,20 @@ export interface Alliance {
      * missing: the only ways out used to be death, betrayal and pact expiry.
      */
     charter?: CharterRule[];
+    /** R-1: tribute id -> the job they hold in this group. */
+    roles?: Partial<Record<AllianceRole, string>>;
+    /** R-2: other alliance id -> cycle a pack-to-pack pact expires on. */
+    packTruces?: Record<string, number>;
 }
+
+/**
+ * R-1: a job inside a group, beyond leading it.
+ *
+ * Alliances of five and six formed and then had nothing to do internally that
+ * a pair did not also do. A role is a reason for a particular person to be in
+ * a particular group, and a thing the group loses when they die.
+ */
+export type AllianceRole = 'scout' | 'quartermaster' | 'medic';
 
 /** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
 export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone';
@@ -397,6 +450,17 @@ export interface RivalRecord {
     /** Times this tribute broke off rather than finish it. */
     timesFled: number;
     lastFightCycle: number;
+    /**
+     * T-3: what this rival was last seen holding. Nothing modelled tributes
+     * learning about each other's *kit* — `fights`, `woundsTaken` and `fear`
+     * recorded how a meeting went but never what the other one had in their
+     * hands, so a ranged tribute could not deliberately keep distance from a
+     * swordsman and an unarmed one could not deliberately close on an archer.
+     * Read by `assessZone`, so it colours the whole threat estimate.
+     */
+    knownArmament?: 'none' | 'melee' | 'ranged' | 'thrown';
+    /** Cycle `knownArmament` was observed — impressions of kit go stale too. */
+    armamentCycle?: number;
 }
 
 /**
@@ -493,6 +557,21 @@ export interface ZoneFeatures {
     elevation: boolean;
     /** Bottlenecked ways in and out: ambushes easier, retreat harder. */
     chokepoint: boolean;
+    /**
+     * A-3: 0-1, standing water a tribute can actually drink from.
+     *
+     * Thirst is a top-three killer and water was found through the generic
+     * forage roll, so whether a zone had any was invisible: a river sector and
+     * a scrap-metal yard were the same lookup. Derived from terrain when
+     * unauthored, like `cover` — optional so hand-authored data can override
+     * only the features it actually has an opinion about.
+     */
+    water?: number;
+    /**
+     * A-3: 0-1, how much the ground itself offers to sleep under. Distinct
+     * from cover, which is about not being seen rather than not being rained on.
+     */
+    shelter?: number;
 }
 
 export interface Zone {
@@ -618,6 +697,29 @@ export interface GameState {
     zoneDepletion?: Record<string, number>;
     /** Zone name -> whatever is currently happening to it beyond depletion. */
     zoneEffects?: Record<string, ZoneEffect[]>;
+    /**
+     * A-4: zones the arena has permanently marked. Every `ZoneEffect` expires
+     * and even `stripped` grows back, so nothing the arena did to itself
+     * lasted — a zone that burned on day three read identically to one that
+     * never had by day six. A scar is one flag and it is what makes a map
+     * remember its own Games.
+     */
+    scarredZones?: string[];
+    /**
+     * §10.2: run-local yield multiplier from the format modifiers. `ARENAS`
+     * and generated arenas are shared and reused, so a well-stocked year
+     * cannot simply raise `zone.resources`.
+     */
+    yieldMultiplier?: number;
+    /** §10.2: the horn was never filled this year. */
+    emptyCornucopia?: boolean;
+    /**
+     * §10.2: how these Games actually ended, beyond who was left standing.
+     * The simulation could produce last-one-standing, a dual victory, or a
+     * wipeout, and nothing else — so the ending was the one part of a run that
+     * never surprised anybody twice.
+     */
+    endingKind?: 'standard' | 'refused' | 'overruled' | 'hollow' | 'dual' | 'wipeout';
     /**
      * Adjacency edges cut by the arena itself — a collapsed bridge, a fire that
      * burned through a crossing. Stored as `map.edgeKey()` strings. The printed

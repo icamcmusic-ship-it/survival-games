@@ -26,6 +26,10 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     trickster: 'tracking',
     wildcard: 'ranged',
     underdog: 'forage',
+    showman: 'thrown',
+    pacifist: 'medicine',
+    scavenger: 'forage',
+    zealot: 'melee',
 };
 
 /**
@@ -109,7 +113,15 @@ export function trainProficiency(t: Tribute, skill: Proficiency): number {
     return t.proficiencies[skill]!;
 }
 
-/** The weapon skill a given weapon class trains and benefits from. */
+/**
+ * The weapon skill a given weapon class trains and benefits from.
+ *
+ * T-2: `thrown` used to fold into `ranged`, which was inconsistent with
+ * `combatPower` — that already gave thrown its own branch scaling off both
+ * strength and agility. A spear and a bow are not the same skill.
+ */
 export function weaponProficiency(weaponClass: string | undefined): Proficiency {
-    return weaponClass === 'ranged' || weaponClass === 'thrown' ? 'ranged' : 'melee';
+    if (weaponClass === 'ranged') return 'ranged';
+    if (weaponClass === 'thrown') return 'thrown';
+    return 'melee';
 }

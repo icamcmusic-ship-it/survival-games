@@ -88,6 +88,50 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         treachery: 0.2,
         caution: -0.1,
     },
+    showman: {
+        id: 'showman',
+        name: 'Showman',
+        description: 'Plays to the cameras before anything else. Sponsors love them; the arena is unmoved.',
+        statBias: { charisma: 2, agility: 1 },
+        preferredTraits: ['Showman', 'Charismatic', 'Silver-Tongued'],
+        aggression: 0.05,
+        allianceAffinity: 0.3,
+        treachery: 0.1,
+        caution: 0.0,
+    },
+    pacifist: {
+        id: 'pacifist',
+        name: 'Pacifist',
+        description: 'Will not raise a hand, and has to survive an arena built on the assumption that everyone will.',
+        statBias: { intelligence: 1, stealth: 1, charisma: 1 },
+        preferredTraits: ['Pacifist', 'Herbalist', 'Softhearted'],
+        aggression: -0.35,
+        allianceAffinity: 0.25,
+        treachery: -0.35,
+        caution: 0.35,
+    },
+    scavenger: {
+        id: 'scavenger',
+        name: 'Scavenger',
+        description: 'Was already living on what other people left. The arena is a harder version of a familiar problem.',
+        statBias: { stealth: 1, agility: 1 },
+        preferredTraits: ['Scavenger', 'Iron Stomach', 'Hoarder'],
+        aggression: -0.1,
+        allianceAffinity: -0.05,
+        treachery: 0.1,
+        caution: 0.2,
+    },
+    zealot: {
+        id: 'zealot',
+        name: 'Zealot',
+        description: 'Has decided the Capitol is the enemy, and behaves as though the other tributes are not the point.',
+        statBias: { strength: 1, intelligence: 1 },
+        preferredTraits: ['Vengeful', 'Ruthless'],
+        aggression: 0.15,
+        allianceAffinity: 0.15,
+        treachery: -0.2,
+        caution: -0.15,
+    },
     underdog: {
         id: 'underdog',
         name: 'Underdog',
@@ -118,22 +162,32 @@ const BASE_WEIGHTS: ArchetypeWeights = {
     trickster: 1,
     wildcard: 1,
     underdog: 1,
+    // §8.2: the four newer archetypes sit slightly below the originals in the
+    // baseline. They are meant to be the ones a player notices when they turn
+    // up, not four more even slices of the same pie.
+    showman: 0.7,
+    // Kept the rarest of the four: a tribute who will not raise a hand is a
+    // strong story and a direct push on the "victors with zero kills"
+    // indicator, which the design goal wants *lower*, not higher.
+    pacifist: 0.35,
+    scavenger: 0.8,
+    zealot: 0.6,
 };
 
 /** Career districts train for it; everyone else is shaped by their industry. */
 export const DISTRICT_ARCHETYPE_WEIGHTS: Record<number, ArchetypeWeights> = {
-    1:  { career: 7, trickster: 1.5, strategist: 1 },
-    2:  { career: 8, protector: 1.5, wildcard: 1 },
-    3:  { strategist: 4, trickster: 2, underdog: 1.5 },
-    4:  { career: 6, survivalist: 2, protector: 1.5 },
-    5:  { strategist: 2.5, trickster: 2, wildcard: 1.5 },
-    6:  { wildcard: 2.5, underdog: 2, trickster: 1.5 },
-    7:  { protector: 2.5, survivalist: 2, wildcard: 1.5 },
-    8:  { underdog: 2.5, trickster: 2, protector: 1.5 },
-    9:  { survivalist: 2.5, underdog: 2, protector: 1.5 },
-    10: { protector: 2.5, survivalist: 2, wildcard: 1.5 },
-    11: { survivalist: 3.5, underdog: 2.5, protector: 1.5 },
-    12: { survivalist: 3, underdog: 3, trickster: 1.5 },
+    1:  { career: 7, trickster: 1.5, strategist: 1, showman: 2 },
+    2:  { career: 8, protector: 1.5, wildcard: 1, zealot: 1 },
+    3:  { strategist: 4, trickster: 2, underdog: 1.5, scavenger: 1 },
+    4:  { career: 6, survivalist: 2, protector: 1.5, showman: 1.5 },
+    5:  { strategist: 2.5, trickster: 2, wildcard: 1.5, scavenger: 1 },
+    6:  { wildcard: 2.5, underdog: 2, trickster: 1.5, scavenger: 2 },
+    7:  { protector: 2.5, survivalist: 2, wildcard: 1.5, zealot: 1 },
+    8:  { underdog: 2.5, trickster: 2, protector: 1.5, pacifist: 1.5, zealot: 1.5 },
+    9:  { survivalist: 2.5, underdog: 2, protector: 1.5, scavenger: 1.5 },
+    10: { protector: 2.5, survivalist: 2, wildcard: 1.5, scavenger: 1 },
+    11: { survivalist: 3.5, underdog: 2.5, protector: 1.5, pacifist: 1.5 },
+    12: { survivalist: 3, underdog: 3, trickster: 1.5, scavenger: 2, zealot: 1 },
 };
 
 /** Merged weights for a district, with the shared baseline underneath. */
@@ -154,6 +208,16 @@ const COMPATIBLE: Array<[ArchetypeId, ArchetypeId]> = [
     ['survivalist', 'survivalist'],
     ['protector', 'protector'],
     ['strategist', 'protector'],
+    // The newer four, paired with whoever they plausibly need: somebody who
+    // will not fight wants somebody who will, a showman wants an audience and
+    // a foil, a scavenger wants someone who knows the ground, and a zealot
+    // wants anyone who will listen.
+    ['pacifist', 'protector'],
+    ['showman', 'career'],
+    ['showman', 'underdog'],
+    ['scavenger', 'survivalist'],
+    ['zealot', 'underdog'],
+    ['zealot', 'zealot'],
 ];
 
 export function archetypeCompatibility(a: ArchetypeId, b: ArchetypeId): number {
