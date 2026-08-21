@@ -2,7 +2,7 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { BLEEDING, COMBAT, DEBTS, ESCALATION, FEAR, HUNTING, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
@@ -20,7 +20,7 @@ import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
 import { PREGAMES } from '../data/balance';
-import { armourOf, effectiveDamage, wearArmour } from './items';
+import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -247,6 +247,8 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     if (t.vitals.fatigue > 80) power -= 2;
     // A wrecked tribute fights like one.
     power -= (100 - t.health) / 22;
+    // §3.3: a pack laden with the horn's contents is slower where it counts.
+    power -= encumbranceOf(t) * INVENTORY.encumbrancePowerPenaltyMax;
 
     // Numbers advantage: the whole point of a pack.
     power += Math.min(COMBAT.outnumberMaxBonus, allies * COMBAT.outnumberPowerPerAlly);

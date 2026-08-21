@@ -102,18 +102,22 @@ export const DISTRICT_CRAFT: Record<number, DistrictCraft> = {
     // are gone. The comment on `hungerResilience` in `survival.ts` already
     // said "District 12 rations better than District 1 does"; this is the
     // first version where that is literally true.
-    1:  { proficiencies: { melee: TRADE },                        affinityItems: ['sword', 'machete'],   affinityClasses: ['melee'],            hungerResilience: 1.2,  blurb: 'raised on fine steel and the academy floor, and never once hungry' },
-    2:  { proficiencies: { melee: TRADE, tracking: TRADE_MINOR }, affinityItems: ['mace', 'axe', 'sword'], affinityClasses: ['melee'],          hungerResilience: 1.15, blurb: 'quarry work and the academy: heavy weapons, and the arm to use them' },
+    1:  { proficiencies: { melee: TRADE },                        affinityItems: ['sword', 'machete'],   affinityClasses: ['melee'],            hungerResilience: 1.28, blurb: 'raised on fine steel and the academy floor, and never once hungry' },
+    2:  { proficiencies: { melee: TRADE, tracking: TRADE_MINOR }, affinityItems: ['mace', 'axe', 'sword'], affinityClasses: ['melee'],          hungerResilience: 1.22, blurb: 'quarry work and the academy: heavy weapons, and the arm to use them' },
     3:  { proficiencies: { tracking: TRADE, medicine: TRADE_MINOR }, affinityItems: ['wire', 'slingshot'], affinityClasses: [],                 blurb: 'factory-raised: traps, wire, and an eye for how the arena is wired together' },
     // District 4 is a Career district that still works for a living, so it
     // sits between the two: the academy, but also the boats.
-    4:  { proficiencies: { forage: TRADE, melee: TRADE_MINOR },   affinityItems: ['trident', 'spear'],    affinityClasses: ['thrown'],           hungerResilience: 1.05, blurb: 'a childhood on the boats: nets, gaffs, deep water, and the trident' },
+    4:  { proficiencies: { forage: TRADE, melee: TRADE_MINOR },   affinityItems: ['trident', 'spear'],    affinityClasses: ['thrown'],           hungerResilience: 1.08, blurb: 'a childhood on the boats: nets, gaffs, deep water, and the trident' },
     5:  { proficiencies: { tracking: TRADE },                     affinityItems: ['wire'],               affinityClasses: [],                   blurb: 'power-plant shifts: they read machinery the way others read weather' },
     6:  { proficiencies: { tracking: TRADE },                     affinityItems: [],                     affinityClasses: [],                   blurb: 'transport yards: they know how to move and how not to be seen doing it' },
     7:  { proficiencies: { forage: TRADE_MINOR, melee: TRADE },   affinityItems: ['axe', 'machete'],     affinityClasses: ['melee'],            blurb: 'lumber crews: climbing, felling, and an axe that has never been a weapon until now' },
     8:  { proficiencies: { medicine: TRADE },                     affinityItems: ['wire', 'garrote'],    affinityClasses: [],                   blurb: 'textile floors: fast hands, and they can dress a wound properly' },
     9:  { proficiencies: { forage: TRADE },                       affinityItems: ['sickle'],             affinityClasses: [],                   hungerResilience: 0.92, blurb: 'grain country: they know what is edible and what a lean year feels like' },
-    10: { proficiencies: { medicine: TRADE_MINOR, melee: TRADE_MINOR }, affinityItems: ['sickle', 'knife'], affinityClasses: [],                blurb: 'stockyards: unsqueamish, steady with a blade, and used to a struggling animal' },
+    // §3.3: D10 was the weakest row in the table (no resilience, no affinity
+    // class, two minor skills) and won 0.8% of runs — those two facts are the
+    // same fact. Stockyard work is butchery: a real blade trade, the stomach
+    // for close work, and animals do not feed themselves in a lean winter.
+    10: { proficiencies: { medicine: TRADE_MINOR, melee: TRADE },     affinityItems: ['sickle', 'knife', 'machete'], affinityClasses: ['melee'], hungerResilience: 0.95, blurb: 'stockyards: unsqueamish, steady with a blade, and used to a struggling animal' },
     11: { proficiencies: { forage: TRADE, medicine: TRADE_MINOR }, affinityItems: ['sickle', 'slingshot'], affinityClasses: [],                 hungerResilience: 0.9,  blurb: 'orchard work: they know on sight which plants will kill them' },
     12: { proficiencies: { forage: TRADE_MINOR, tracking: TRADE_MINOR }, affinityItems: ['knife'],       affinityClasses: [],                   hungerResilience: 0.82, blurb: 'the Seam: poaching, the mines, and a lifetime of being hungry' },
 };

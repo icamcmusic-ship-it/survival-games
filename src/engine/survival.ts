@@ -1,11 +1,11 @@
 import { Tribute } from '../models/types';
-import { DRIFT, CRAFTING, INJURY_DAMAGE, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
 import { applyExposure } from './exposure';
 import { getZone } from './map';
-import { consumeOne, hasTool, spoilageBonus } from './items';
+import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { bleedDamage, clearBleeding, tickBleeding } from './wounds';
 import { rememberedThreat } from './memory';
@@ -68,6 +68,9 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     if (t.tesserae) {
         hunger *= Math.max(TESSERAE.resilienceFloorFactor, 1 - t.tesserae * TESSERAE.resiliencePerTessera);
     }
+
+    // §3.3: hauling a laden pack all day is work.
+    fatigue += encumbranceOf(t) * INVENTORY.encumbranceFatigueMax;
 
     // Traits, as one table read rather than a growing chain of includes().
     hunger += traitMod(t, 'hungerDrain');

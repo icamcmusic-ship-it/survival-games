@@ -110,7 +110,10 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     if (ensureMemory(t).vengeance.length > 0) scores.Aggressive += 1.5;
     if (ratio > 0 && ratio < STANCE.dominantRatio) scores.Aggressive += 1.2;
     // Bloodlust: a tribute who has just killed goes looking for the next one.
-    scores.Aggressive += (t.momentum ?? 0) * 0.35;
+    // §3.2: weight trimmed from 0.35 — momentum stacking on top of the Career
+    // and endgame bonuses had Aggressive at 43% of all cycles, and the arena
+    // was flattening into a brawl.
+    scores.Aggressive += (t.momentum ?? 0) * STANCE.momentumAggressionWeight;
     // Hunger is a reason to hunt, now that hunting actually feeds you.
     if (t.vitals.hunger > STANCE.huntingHunger) scores.Aggressive += 0.8;
     // The field narrowing is itself a reason to force the issue — somebody has
@@ -131,6 +134,14 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
 
     scores.Defensive += 0.5 - Math.abs(arch.aggression) - Math.abs(arch.caution);
     if (t.allianceId) scores.Defensive += 0.5;
+    // §3.2: Defensive was the least-seen stance despite being the most
+    // tactically interesting. Give it the reasons it actually exists: holding
+    // ground you have claimed, defending a camp you built, standing over a
+    // ward you have sworn to protect.
+    if (t.objective?.kind === 'protect') scores.Defensive += STANCE.protectDefensive;
+    if (t.objective?.kind === 'hold') scores.Defensive += STANCE.holdDefensive;
+    const camp = ctx.state.camps?.[t.id];
+    if (camp && (camp.shelter !== undefined || camp.fire !== undefined)) scores.Defensive += STANCE.campDefensive;
 
     // A genuine emergency overrides the hold: nobody stands their ground bleeding out.
     const emergency = t.health < STANCE.evasiveHealth * 0.6 || ratio > STANCE.outmatchedRatio * 1.6;

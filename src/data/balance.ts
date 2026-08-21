@@ -338,8 +338,12 @@ export const FEAR = {
     /** Watching someone kill, and losing an exchange to them. */
     witnessedKill: 30,
     lostExchange: 14,
-    /** A legendary training score frightens people before the gong.  */
-    perTrainingPointOverEight: 6,
+    /**
+     * A legendary training score frightens people before the gong. Trimmed
+     * from 6 (§3.3): the score already feeds odds, sponsor trust and persona
+     * threat — four compounding advantages from one roll was too many.
+     */
+    perTrainingPointOverEight: 4,
     /** Per-cycle fade — terror is not permanent, but it is sticky. */
     decayPerCycle: 0.9,
     /** Retreat chance added at maximum fear. */
@@ -1139,6 +1143,23 @@ export const INVENTORY = {
     baseCapacity: 4,
     /** A Backpack also keeps food out of the sun. */
     backpackSpoilageBonus: 2,
+
+    /**
+     * §3.3: encumbrance — the fast Career counterweight the balance goals
+     * needed. Careers win the bloodbath, take the Cornucopia, and used to pay
+     * nothing for hauling it: `enforceCapacity` was the only cost of being
+     * over-equipped. A pack laden with the horn's contents is now slower in a
+     * fight, louder in the brush, and wearier at the end of the day — which is
+     * exactly the canon dynamic.
+     */
+    /** Load fraction of carrying capacity below which nothing is felt. */
+    encumbranceFreeFraction: 0.6,
+    /** Combat-power penalty at a completely full pack. */
+    encumbrancePowerPenaltyMax: 3.5,
+    /** Concealment penalty at a completely full pack. */
+    encumbranceStealthPenaltyMax: 1.5,
+    /** Extra fatigue per cycle at a completely full pack. */
+    encumbranceFatigueMax: 5,
 } as const;
 
 /** Zone economy: foraging strips a zone, and the arena grows it back slowly. */
@@ -1215,6 +1236,12 @@ export const STANCE = {
      */
     endgameFieldSize: 5,
     endgameAggression: 1.4,
+    /** §3.2: momentum's pull toward Aggressive (was an undeclared 0.35). */
+    momentumAggressionWeight: 0.25,
+    /** §3.2: the reasons Defensive exists — a ward, claimed ground, a built camp. */
+    protectDefensive: 1.2,
+    holdDefensive: 1.0,
+    campDefensive: 0.6,
 } as const;
 
 /** Relationship graph: bounds, decay, and the deltas life in the arena applies. */
@@ -1436,6 +1463,14 @@ export const ALLIANCES = {
      */
     coupBackingMargin: 20,
     coupChance: 0.25,
+    /**
+     * §3.3: the crown rivalry. The two leading killers in a Career-majority
+     * pack erode each other's regard every cycle — the structural fault line
+     * that makes the pack brittle from inside rather than only from hunger.
+     */
+    crownRivalryMinKills: 2,
+    crownRivalryPerCycle: 3,
+    crownRivalryLineChance: 0.12,
     /** Base odds a group takes in a loner they get on with. */
     recruitChance: 0.35,
     /**
