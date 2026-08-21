@@ -1729,6 +1729,30 @@ export const GENERATION = {
     trustSpread: 12,
 } as const;
 
+/**
+ * §7.1: tesserae — the mechanic that makes the reaping political rather than
+ * random. A child's name goes in once per eligible year by law; a poor child
+ * takes tesserae — extra entries in exchange for grain — every year a family
+ * needs feeding, so the bowl is rigged against the districts that are already
+ * starving. Two effects: the reaping draw skews older (entries compound with
+ * age), and it skews older *faster* in poor districts (tesserae compound too).
+ * A tribute who carries tessera slips has been hungry for years, which in this
+ * engine's inversion is worth something: they know how to ration.
+ */
+export const TESSERAE = {
+    /**
+     * Average tesserae a typical child of this legacy tier takes per eligible
+     * year. Storied districts feed their children; forgotten ones cannot.
+     */
+    ratePerTier: { storied: 0.05, strong: 0.15, modest: 0.45, thin: 0.75, forgotten: 1.1 } as Record<string, number>,
+    /** Hunger-drain multiplier improvement per tessera carried. */
+    resiliencePerTessera: 0.025,
+    /** Floor on what rationing experience can buy. */
+    resilienceFloorFactor: 0.8,
+    /** Tesserae at or above this earn the reaping-day note. */
+    notedAt: 3,
+} as const;
+
 /** Training visibility: what the rest of the cast makes of a big score. */
 /**
  * SIDE-05: the interview, as three beats. See `phases/interviews.ts`.

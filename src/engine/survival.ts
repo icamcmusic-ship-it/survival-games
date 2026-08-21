@@ -1,5 +1,5 @@
 import { Tribute } from '../models/types';
-import { DRIFT, CRAFTING, INJURY_DAMAGE, MEDICAL, RECOVERY, SANITY, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { DRIFT, CRAFTING, INJURY_DAMAGE, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -62,6 +62,12 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     // District 1 does, and that is the whole of what mining and the Seam buy.
     const resilience = craftOf(t.district).hungerResilience;
     if (resilience) hunger *= resilience;
+    // §7.1: a tribute who took tesserae has been rationing for years — the
+    // personal version of the district-level resilience above, and the
+    // mechanical teeth the reaping note promises.
+    if (t.tesserae) {
+        hunger *= Math.max(TESSERAE.resilienceFloorFactor, 1 - t.tesserae * TESSERAE.resiliencePerTessera);
+    }
 
     // Traits, as one table read rather than a growing chain of includes().
     hunger += traitMod(t, 'hungerDrain');

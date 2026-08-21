@@ -2,7 +2,7 @@ import { RNG } from '../utils/rng';
 import { Tribute, Attributes, Build, GameConfig, ArchetypeId, Gender } from '../models/types';
 import { TRAITS, BUILDS, DEFAULT_GAME_CONFIG, traitFits } from '../data/constants';
 import { ARCHETYPES, archetypeWeightsFor } from '../data/archetypes';
-import { GENERATION, VOLUNTEER } from '../data/balance';
+import { GENERATION, TESSERAE, VOLUNTEER } from '../data/balance';
 import { DISTRICT_NAMES } from '../data/names';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { blankMemory } from './memory';
@@ -25,6 +25,35 @@ function pickArchetype(rng: RNG, district: number, careerBias = 0): ArchetypeId 
         if (roll <= 0) return id;
     }
     return weights[weights.length - 1][0];
+}
+
+/**
+ * §7.1: the reaping draw, weighted the way the bowl actually is.
+ *
+ * A flat `nextInt(12, 18)` made every age equally likely, which canon is
+ * explicit it is not: entries compound one per year (an eighteen-year-old has
+ * seven slips to a twelve-year-old's one) *before* tesserae, and tesserae
+ * compound too — a poor child takes extra entries for grain every year the
+ * family needs feeding. So the draw skews older everywhere, and older fastest
+ * exactly where the districts are poorest. This is also a balance lever: the
+ * outer-district cast arrives older and more capable, which is part of the
+ * Career counterweight the win-share goals need.
+ */
+function drawReapingAge(rng: RNG, district: number): number {
+    const rate = TESSERAE.ratePerTier[legacyOf(district).tier] ?? 0.5;
+    const weights: number[] = [];
+    for (let age = GENERATION.minAge; age <= GENERATION.maxAge; age++) {
+        const years = age - GENERATION.minAge + 1;
+        // Statutory slips (one per year) plus tesserae taken every year so
+        // far — a triangular accumulation, so poverty steepens the skew.
+        weights.push(years + rate * (years * (years + 1)) / 2);
+    }
+    let roll = rng.nextFloat() * weights.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < weights.length; i++) {
+        roll -= weights[i];
+        if (roll <= 0) return GENERATION.minAge + i;
+    }
+    return GENERATION.maxAge;
 }
 
 /** The most raw strength a tribute of this age can possibly have. */
@@ -199,7 +228,13 @@ export function generateTributes(
             // into the eligible band, so a "young field" really is younger
             // rather than merely being described that way.
             const age = Math.max(GENERATION.minAge, Math.min(GENERATION.maxAge,
-                rng.nextInt(GENERATION.minAge, GENERATION.maxAge) + (shape?.ageShift ?? 0)));
+                drawReapingAge(rng, district) + (shape?.ageShift ?? 0)));
+
+            // §7.1: how many tessera slips this particular child carries.
+            // Wealthy-tier rates round to zero for almost everyone, which is
+            // the point — nobody in District 1 has ever needed the grain.
+            const tesseraRate = TESSERAE.ratePerTier[legacyOf(district).tier] ?? 0.5;
+            const tesserae = Math.max(0, Math.round(tesseraRate * (age - GENERATION.minAge + 1) + rng.nextInt(-1, 1)));
             applyAgeProfile(attributes, age);
             applyPersonalVariance(rng, attributes);
             if (shape?.talentBonus) {
@@ -293,6 +328,10 @@ export function generateTributes(
                 platePosition: Math.round(rng.nextFloat() * 100) / 100,
                 stanceHeld: 0,
                 fanFavourite: false,
+                tesserae,
+                reapingNote: tesserae >= TESSERAE.notedAt
+                    ? `Their name was in the bowl ${age - GENERATION.minAge + 1 + tesserae} times — ${tesserae} of those slips bought grain, one winter at a time. Everyone in the square knew whose names the bowl was heavy with.`
+                    : undefined,
             });
         }
     }

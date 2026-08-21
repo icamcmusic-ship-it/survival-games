@@ -234,6 +234,7 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         bleedSeverity: clamp(asNum(r.bleedSeverity, r.injuries && asBool((asRecord(r.injuries) ?? {}).bleeding, false) ? 1 : 0), 0, 3),
         momentum: asNum(r.momentum, 0),
         rattled: asNum(r.rattled, 0),
+        tesserae: asNum(r.tesserae, 0),
         attributeDrift: {
             agility: typeof drift.agility === 'number' ? drift.agility : undefined,
             stealth: typeof drift.stealth === 'number' ? drift.stealth : undefined,

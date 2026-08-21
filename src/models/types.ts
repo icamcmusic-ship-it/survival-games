@@ -307,6 +307,13 @@ export interface Tribute {
     volunteered?: boolean;
     /** The reaping-day line: how they came to be standing on that plate. */
     reapingNote?: string;
+    /**
+     * §7.1: tessera claims — extra name-slips taken for grain, one per family
+     * mouth per year. Decided at generation from district poverty and age.
+     * A tribute who carries them has been hungry for years: the hunger drain
+     * respects that (see `survival.ts`), and the reaping note says so.
+     */
+    tesserae?: number;
 }
 
 /**
