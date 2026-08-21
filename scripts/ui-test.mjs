@@ -212,6 +212,24 @@ await step('hall of fame records the victor', async () => {
   if (!/Things these Games can do/i.test(bookText)) {
     throw new Error('the record book is missing the discovery list');
   }
+
+  // REPLAY-12: per-district crowns. The twelve slots are always listed (an empty
+  // one is the goal), and a run that crowned somebody must have filled exactly
+  // the winning district's slot.
+  if (!/District crowns/i.test(bookText)) {
+    throw new Error('the record book is missing the district crown board');
+  }
+  const crowned = (bookText.match(/districts crowned/i) ? bookText.match(/(\d+)\/(\d+) districts crowned/) : null);
+  if (!crowned) throw new Error('the district crown board has no progress count');
+  if (wipeout && crowned[1] !== '0') {
+    throw new Error(`no victor was crowned but the board claims ${crowned[1]} districts`);
+  }
+  if (!wipeout && crowned[1] === '0') {
+    throw new Error('a victor was crowned but no district slot filled in');
+  }
+  if (!/no crown yet/i.test(bookText)) {
+    throw new Error('locked district slots should still be listed as goals');
+  }
   if (count > 0) {
     await page.getByRole('button', { name: /details/i }).first().click();
     await page.waitForTimeout(150);
