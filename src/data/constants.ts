@@ -17,7 +17,7 @@ export const ARENAS: Arena[] = [
         id: 'clockwork',
         name: 'The Clockwork Island',
         description: 'A shifting map layout divided into sectors, each unleashing a different horror at a specific hour.',
-        mutts: ['Tick-Tock Monkeys', 'Lightning Birds', 'Acid Fog'],
+        mutts: ['Tick-Tock Monkeys', 'Lightning Birds', 'Acid Fog', 'Jabberjays', 'Reef Barracuda'],
         events: ['Sector Shift', 'Blood Rain', 'Tidal Wave'],
         zones: [
             { name: 'The Cornucopia', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Sector 1 (Jungle)', 'Sector 2 (Beach)', 'Sector 3 (Cliffs)', 'Sector 4 (Swamp)', 'Sector 12 (Blood Rain)'] },
@@ -37,7 +37,7 @@ export const ARENAS: Arena[] = [
         id: 'frozen',
         name: 'The Frozen Wasteland',
         description: 'Lethal cold and blizzards. Finding shelter and warmth is as important as fighting.',
-        mutts: ['Ice Wolves', 'Snow Camouflage Snakes', 'Frostbite Beetles'],
+        mutts: ['Ice Wolves', 'Snow Camouflage Snakes', 'Frostbite Beetles', 'Snowblind Owls'],
         events: ['Blizzard', 'Avalanche', 'Thin Ice Collapse'],
         zones: [
             { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Frozen Lake', 'Snowy Pine Forest', 'The Windbreak'] },
@@ -56,7 +56,7 @@ export const ARENAS: Arena[] = [
         id: 'concrete',
         name: 'The Concrete Jungle',
         description: 'An abandoned, decaying metropolis. Verticality and structural collapses are constant threats.',
-        mutts: ['Steel-jawed Rats', 'Glass-winged Bats', 'Feral Tracker Jackers'],
+        mutts: ['Steel-jawed Rats', 'Glass-winged Bats', 'Feral Tracker Jackers', 'Sewer Eels'],
         events: ['Building Collapse', 'Sewer Flooding', 'Live Wire Trap'],
         zones: [
             { name: 'The Cornucopia (City Square)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Abandoned Subway', 'Skyscraper Ruins', 'Overgrown Park', 'The Flooded Underpass'] },
@@ -75,7 +75,7 @@ export const ARENAS: Arena[] = [
         id: 'toxic',
         name: 'The Toxic Swamps',
         description: 'Hallucinogenic gas and poison risk. The water is mostly undrinkable without purification.',
-        mutts: ['Venomous Toads', 'Leech Swarms', 'Camouflaged Crocodiles'],
+        mutts: ['Venomous Toads', 'Leech Swarms', 'Camouflaged Crocodiles', 'Bloatflies'],
         events: ['Hallucinogenic Spores', 'Methane Explosion', 'Quicksand Sinkhole'],
         zones: [
             { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Murky Waters', 'Dead Tree Grove', 'The Causeway'] },
@@ -94,7 +94,7 @@ export const ARENAS: Arena[] = [
         id: 'solar',
         name: 'The Solar Desert',
         description: 'Extreme heat, severe water scarcity, and deadly solar flares. Shade is a premium.',
-        mutts: ['Sand Vipers', 'Mirage Scorpions', 'Burrowing Centipedes'],
+        mutts: ['Sand Vipers', 'Mirage Scorpions', 'Burrowing Centipedes', 'Glass Hawks'],
         events: ['Solar Flare', 'Sandstorm', 'Oasis Mirage'],
         zones: [
             { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Endless Dunes', 'Rocky Outcrop', 'The Bone Road'] },
@@ -113,7 +113,7 @@ export const ARENAS: Arena[] = [
         id: 'ashfall',
         name: 'The Ashfall Basin',
         description: 'A dead volcanic caldera under permanent grey snowfall. The ash coats the lungs, the ground is warm, and nothing green has grown here in a decade.',
-        mutts: ['Cinder Hounds', 'Ash Wraiths', 'Glass-Shard Crows'],
+        mutts: ['Cinder Hounds', 'Ash Wraiths', 'Glass-Shard Crows', 'Ember Moths'],
         events: ['Ashfall Surge', 'Ground Fissure', 'Pyroclastic Gust'],
         zones: [
             { name: 'The Cornucopia (Caldera Floor)', terrain: 'open', danger: 0.6, resources: 0.25, adjacent: ['Cinder Fields', 'The Obsidian Maze', 'Sulphur Springs'] },
@@ -132,7 +132,7 @@ export const ARENAS: Arena[] = [
         id: 'tempest',
         name: 'The Tempest Reach',
         description: 'A drowned coastline under a storm the Gamemakers refuse to switch off. The tide takes a different zone every night.',
-        mutts: ['Squall Serpents', 'Barnacle Crabs', 'Drowned Gulls'],
+        mutts: ['Squall Serpents', 'Barnacle Crabs', 'Drowned Gulls', 'Surge Eels'],
         events: ['Storm Surge', 'Lightning Barrage', 'King Tide'],
         zones: [
             { name: 'The Cornucopia (Breakwater)', terrain: 'open', danger: 0.65, resources: 0.3, adjacent: ['Flooded Terraces', 'The Lighthouse', 'Kelp Shallows'] },
@@ -170,7 +170,7 @@ export const ARENAS: Arena[] = [
         id: 'sporefields',
         name: 'The Spore Fields',
         description: 'A fungal forest grown for the occasion. Everything here is edible, and roughly half of it will kill you for trying.',
-        mutts: ['Spore Moths', 'Mycelial Hounds', 'Puffball Swarms'],
+        mutts: ['Spore Moths', 'Mycelial Hounds', 'Puffball Swarms', 'Cordyceps Ticks'],
         events: ['Spore Bloom', 'Collapsing Cap', 'Rot Sink'],
         zones: [
             { name: 'The Cornucopia (Ring of Caps)', terrain: 'open', danger: 0.55, resources: 0.4, adjacent: ['The Glowcap Wood', 'Rot Hollow', 'Mycelium Steps'] },
@@ -189,7 +189,7 @@ export const ARENAS: Arena[] = [
         id: 'canopy',
         name: 'The Hanging Gardens',
         description: 'An arena built upward instead of outward. Every zone is a platform in a two-hundred-metre canopy, and the ground is not survivable.',
-        mutts: ['Silk Spiders', 'Screech Primates', 'Thornvine Constrictors'],
+        mutts: ['Silk Spiders', 'Screech Primates', 'Thornvine Constrictors', 'Needle Hornets', 'Bough Vipers'],
         events: ['Rope Bridge Failure', 'Canopy Storm', 'Thornvine Snare'],
         zones: [
             { name: 'The Cornucopia (Great Bough)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Rope Bridges', 'Orchid Terraces', 'The Undercanopy'] },
@@ -208,7 +208,7 @@ export const ARENAS: Arena[] = [
         id: 'vault',
         name: 'The Vault',
         description: 'A sealed underground complex with no sky at all. The faces of the fallen are projected onto the ceiling, and the lights go out on a schedule nobody explains.',
-        mutts: ['Pallid Stalkers', 'Rebar Hounds', 'Circuit Wasps'],
+        mutts: ['Pallid Stalkers', 'Rebar Hounds', 'Circuit Wasps', 'Sump Eels'],
         events: ['Blackout', 'Flood Valve', 'Ceiling Collapse'],
         zones: [
             { name: 'The Cornucopia (Atrium)', terrain: 'open', danger: 0.65, resources: 0.3, adjacent: ['Service Tunnels', 'The Hydroponics Bay', 'Reactor Level'] },
@@ -226,11 +226,12 @@ export const ARENAS: Arena[] = [
     },
     {
         // §8.3: deliberately a different shape — six zones, no water terrain
-        // at all, one mutt. Claustrophobia as a design, not a smaller copy.
+        // at all, and the smallest bestiary in the game: one apex predator and
+        // the mine's own rats. Claustrophobia as a design, not a smaller copy.
         id: 'warren',
         name: 'The Warren',
         description: 'A mine that was old before Panem was young: six chambers of tunnel and dust, no open sky, and no standing water anywhere. Everything a tribute drinks down here, somebody carried in. And something else lives in the dark.',
-        mutts: ['The Warden'],
+        mutts: ['The Warden', 'Pit Rats'],
         events: ['Tunnel Collapse', 'Bad Air', 'The Shifting'],
         zones: [
             { name: 'The Cornucopia (The Hub)', terrain: 'open', danger: 0.6, resources: 0.45, adjacent: ['The Choke', 'The Root Gardens', 'The Dust Flats'] },

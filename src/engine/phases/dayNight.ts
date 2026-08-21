@@ -105,6 +105,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // 3. Crafting, situational awareness, stance and movement.
     const currentAlive = getAlive(ctx.state);
     const acted = new Set<string>();
+    // Tributes brought ashore this cycle as part of somebody else's group
+    // crossing. Kept separate from `acted` on purpose: they have finished
+    // moving, but they still meet whatever is waiting in the new zone.
+    const crossed = new Set<string>();
     currentAlive.forEach(t => {
         if (t.status !== 'alive') return;
 
@@ -126,7 +130,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             return;
         }
 
-        move(ctx, t, currentAlive, collapsed, flavor, severed);
+        move(ctx, t, currentAlive, collapsed, flavor, severed, crossed);
     });
 
     // Walking into a zone is what springs things left in it. This runs as a
@@ -590,7 +594,12 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
     return false;
 }
 
-function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>, severed: Set<string>) {
+function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>, severed: Set<string>, crossed: Set<string>) {
+    // A group crossing is resolved once, for everyone who lands together —
+    // anyone already brought ashore by an ally's iteration this cycle has
+    // nothing left to do. See the arrival block below.
+    if (crossed.has(t.id)) return;
+
     // §5.3: a traversal already underway finishes before anything else. A
     // crossing abandoned because the destination collapsed is just a wasted
     // cycle — which is the point of travel having a cost.
@@ -599,16 +608,42 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             ctx.logEvent(`${t.name} turns back mid-crossing — there is no ${t.transit.to} to arrive in any more.`, [t.id], { category: 'travel' });
             delete t.transit;
         } else {
-            t.transit.remaining -= 1;
-            if (t.transit.remaining <= 0) {
-                const from = t.zone;
-                const dest = t.transit.to;
-                delete t.transit;
-                t.zone = dest;
-                noteTraffic(ctx.state, from, dest);
-                t.vitals.fatigue = Math.min(100, t.vitals.fatigue + MOVEMENT.crossingFatigue);
-                ctx.logEvent(`${t.name} finishes the hard crossing from ${from} and comes ashore in ${dest}, spent.`, [t.id], { zone: dest, category: 'travel' });
+            const from = t.zone;
+            const dest = t.transit.to;
+            const remaining = t.transit.remaining;
+            if (remaining - 1 > 0) {
+                t.transit.remaining = remaining - 1;
+                return;
             }
+            // Everyone fording it shoulder to shoulder: same alliance, same
+            // bank, same destination, same cycle left to run. `beginMove`
+            // copies the leader's transit onto the group, so a party that set
+            // out together lands together — and the feed says so once, rather
+            // than printing four near-identical lines in a row. Members who
+            // started their crossing on a different cycle do not match, and
+            // still get their own arrival.
+            const party = t.allianceId === undefined ? [t] : currentAlive.filter(m =>
+                m.status === 'alive'
+                && m.allianceId === t.allianceId
+                && m.zone === from
+                && m.transit?.to === dest
+                && m.transit.remaining === remaining);
+            const arriving = party.length > 0 ? party : [t];
+
+            arriving.forEach(m => {
+                delete m.transit;
+                m.zone = dest;
+                m.vitals.fatigue = Math.min(100, m.vitals.fatigue + MOVEMENT.crossingFatigue);
+                crossed.add(m.id);
+            });
+            noteTraffic(ctx.state, from, dest, arriving.length);
+            ctx.logEvent(
+                arriving.length === 1
+                    ? `${t.name} finishes the hard crossing from ${from} and comes ashore in ${dest}, spent.`
+                    : `${arriving.map(m => m.name).join(', ')} finish the hard crossing from ${from} together and come ashore in ${dest}, spent.`,
+                arriving.map(m => m.id),
+                { zone: dest, category: 'travel' }
+            );
             return;
         }
     }

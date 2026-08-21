@@ -5,9 +5,16 @@ import { Mutt } from '../models/types';
  *
  * Design flaw being fixed (ARENA-04): every mutt in every arena used to be a
  * flavour string, mechanically identical to every other one. Each roster
- * below gives its three named mutts a distinct kit — a pack hunter, a solo
+ * below gives its named mutts a distinct kit — a pack hunter, a solo
  * ambusher, and something that isn't really a "creature" at all — so Ice
  * Wolves and Acid Fog stop playing the same encounter with different text.
+ *
+ * Roster size is content too. Every hand-authored arena used to carry exactly
+ * three mutts, which made the bestiary read as one template with the nouns
+ * swapped. Rosters now vary with what the arena is: the Clockwork Island and
+ * the Hanging Gardens are dense with engineered life and carry five; the Salt
+ * Mirror is a dead white plain and carries three; the Warren keeps its apex
+ * alone, with nothing but the mine's own vermin for company.
  *
  * Keyed by the arena id in `ARENAS` (src/data/constants.ts) plus one roster
  * per procedural biome id (src/engine/arenaGenerator.ts).
@@ -33,6 +40,20 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { infected: true },
             fearAura: 6,
         },
+        {
+            id: 'jabberjays', name: 'Jabberjays',
+            // The island's oldest trick: a flock that hurts nothing and takes
+            // apart the voices of your dead in front of you.
+            packSize: [4, 9], damage: 3, speed: 7,
+            fearAura: 12,
+            terrainPreference: ['forest', 'wetland', 'highland'],
+        },
+        {
+            id: 'reef-barracuda', name: 'Reef Barracuda',
+            packSize: [2, 4], damage: 16, speed: 8,
+            inflicts: { bleeding: true },
+            terrainPreference: ['water'],
+        },
     ],
     frozen: [
         {
@@ -53,6 +74,14 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [3, 8], damage: 6, speed: 4,
             inflicts: { frostbitten: true },
             // A swarm: low per-hit damage, but numbers alone push the pack-size roll hard.
+        },
+        {
+            id: 'snowblind-owls', name: 'Snowblind Owls',
+            // Silent, and only after dark: nobody hears the first one.
+            packSize: [1, 3], damage: 13, speed: 10,
+            inflicts: { bleeding: true },
+            nocturnal: true,
+            terrainPreference: ['forest', 'highland', 'open'],
         },
     ],
     concrete: [
@@ -75,6 +104,12 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { poisoned: true },
             fearAura: 10,
         },
+        {
+            id: 'sewer-eels', name: 'Sewer Eels',
+            packSize: [1, 3], damage: 17, speed: 6,
+            inflicts: { infected: true },
+            terrainPreference: ['water'],
+        },
     ],
     toxic: [
         {
@@ -96,6 +131,12 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             terrainPreference: ['water', 'wetland'],
             persistent: true,
         },
+        {
+            id: 'bloatflies', name: 'Bloatflies',
+            // A cloud, not a bite: they cost blood and sleep and nothing else.
+            packSize: [5, 10], damage: 3, speed: 6,
+            terrainPreference: ['wetland', 'water', 'forest', 'ruins'],
+        },
     ],
     solar: [
         {
@@ -114,6 +155,14 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [3, 6], damage: 7, speed: 4,
             inflicts: { bleeding: true },
             terrainPreference: ['open', 'wetland'],
+        },
+        {
+            id: 'glass-hawks', name: 'Glass Hawks',
+            // Works the open ground at noon, when there is nowhere to stand
+            // that is not in full view of the sky.
+            packSize: [1, 2], damage: 19, speed: 9,
+            inflicts: { bleeding: true },
+            terrainPreference: ['open', 'highland'],
         },
     ],
     ashfall: [
@@ -136,6 +185,12 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { bleeding: true },
             terrainPreference: ['open', 'highland', 'ruins'],
         },
+        {
+            id: 'ember-moths', name: 'Ember Moths',
+            packSize: [4, 8], damage: 4, speed: 6,
+            inflicts: { burned: true },
+            nocturnal: true,
+        },
     ],
     tempest: [
         {
@@ -155,6 +210,14 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [2, 5], damage: 6, speed: 10,
             inflicts: { infected: true },
             fearAura: 4,
+        },
+        {
+            id: 'surge-eels', name: 'Surge Eels',
+            // Comes in on the flood and leaves with it: only ever a problem
+            // where the water has already been.
+            packSize: [2, 5], damage: 12, speed: 7,
+            inflicts: { bleeding: true },
+            terrainPreference: ['water', 'wetland'],
         },
     ],
     saltflats: [
@@ -198,6 +261,13 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { infected: true },
             fearAura: 5,
         },
+        {
+            id: 'cordyceps-ticks', name: 'Cordyceps Ticks',
+            // Whatever they carry has never taken in a human host. In numbers
+            // they are still a bad hour.
+            packSize: [5, 10], damage: 3, speed: 3,
+            terrainPreference: ['forest', 'wetland', 'open'],
+        },
     ],
     canopy: [
         {
@@ -217,6 +287,19 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { bleeding: true },
             terrainPreference: ['forest', 'wetland'],
             persistent: true,
+        },
+        {
+            id: 'needle-hornets', name: 'Needle Hornets',
+            packSize: [4, 9], damage: 5, speed: 8,
+            inflicts: { poisoned: true },
+            terrainPreference: ['forest', 'highland', 'open'],
+        },
+        {
+            id: 'bough-vipers', name: 'Bough Vipers',
+            // Lies along the branch a climber is about to put a hand on.
+            packSize: [1, 1], damage: 15, speed: 10,
+            inflicts: { poisoned: true },
+            terrainPreference: ['forest', 'highland', 'ruins'],
         },
     ],
     vault: [
@@ -240,18 +323,32 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [4, 8], damage: 6, speed: 10,
             inflicts: { infected: true },
         },
+        {
+            id: 'sump-eels', name: 'Sump Eels',
+            packSize: [2, 4], damage: 13, speed: 7,
+            inflicts: { infected: true },
+            terrainPreference: ['water'],
+        },
     ],
 
     warren: [
         {
             id: 'the-warden', name: 'The Warden',
-            // §8.3: one arena, one mutt — a single persistent horror instead of
-            // a roster. It never stops looking, and it owns the dark.
+            // §8.3: one arena, one *horror*. The Warden is still the only
+            // thing down here that hunts tributes on purpose — the rats are
+            // only rats — and it never stops looking. It owns the dark.
             packSize: [1, 1], damage: 24, speed: 6,
             fearAura: 10,
             nocturnal: false,
             persistent: true,
             inflicts: { bleeding: true },
+        },
+        {
+            id: 'pit-rats', name: 'Pit Rats',
+            // Not engineered at all — the mine's own vermin, a hundred
+            // generations into the dark. A tax on sleep and stores, not a
+            // threat: nothing about them was designed.
+            packSize: [6, 12], damage: 2, speed: 4,
         },
     ],
 
