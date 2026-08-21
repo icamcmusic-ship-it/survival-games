@@ -75,9 +75,102 @@ const TEMPEST: ClimateProfile = {
     }),
 };
 
+/** The Shattered Archipelago's magnetic fog: it gets into instruments and heads alike. */
+const MAGNETIC_FOG: ClimateProfile = {
+    exposure: () => ({
+        name: 'the magnetic fog',
+        cause: 'Lost to the fog',
+        sanity: CLIMATE.fogSanityChance * CLIMATE.fogSanityLoss,
+        fatigue: CLIMATE.fogFatigue,
+    }),
+};
+
+/**
+ * The Perpetual Eclipse Forest: permanent dusk. There is no clean way to pin
+ * `timeOfDay` at dusk — the day/night loop is the simulation's spine — so the
+ * arena expresses it as a climate (light that never resolves, a slow tax on
+ * the mind), mutts that never stand down, and flavor throughout.
+ */
+const PERPETUAL_DUSK: ClimateProfile = {
+    exposure: () => ({
+        name: 'the unending dusk',
+        cause: 'Unravelled in the half-light',
+        sanity: CLIMATE.duskSanityChance * CLIMATE.duskSanityLoss,
+    }),
+};
+
+/** The Dead Coral Reef: full glare off white coral, and only brine to drink. */
+const DRAINED_REEF: ClimateProfile = {
+    exposure: time => ({
+        name: 'the reef glare',
+        cause: 'Died of heatstroke on the dead reef',
+        burn: time === 'day' ? CLIMATE.solarBurnChance : 0,
+        onBurn: t => `${t.name} burns raw under the glare coming off the bleached coral.`,
+    }),
+    drains: { thirstMultiplier: CLIMATE.furnaceThirstMultiplier },
+    foulWater: true,
+};
+
+/** The Industrial Abattoir: furnace heat in halls that were never meant for rest. */
+const FURNACE_HEAT: ClimateProfile = {
+    exposure: () => ({
+        name: 'the furnace heat',
+        cause: 'Cooked by the factory',
+        fatigue: CLIMATE.furnaceFatigue,
+        burn: CLIMATE.furnaceBurnChance,
+        onBurn: t => `${t.name} takes a scald off a live steam line they never saw.`,
+    }),
+    drains: { thirstMultiplier: CLIMATE.furnaceThirstMultiplier },
+};
+
+/** The Ash Wasteland: the ashfall profile plus the thirst of a hot dead land. */
+const ASH_WASTE: ClimateProfile = {
+    exposure: () => ({
+        name: 'the deep ash',
+        cause: 'Choked on the wasteland',
+        damage: CLIMATE.ashenLungChance * 4,
+        sanity: CLIMATE.ashenLungChance * CLIMATE.ashenSanityLoss,
+    }),
+    drains: { thirstMultiplier: CLIMATE.solarThirstMultiplier },
+};
+
+/** The Vertical Quarry: cold, damp, and the only open water is the dead pit. */
+const QUARRY_DAMP: ClimateProfile = {
+    exposure: () => ({
+        name: 'the pit damp',
+        cause: 'Wasted away in the pit',
+        fatigue: CLIMATE.quarryDampFatigue,
+    }),
+    foulWater: true,
+};
+
+/** The Shattered Ice Floe Sea: the frozen profile over water nobody can drink. */
+const FLOE_SEA: ClimateProfile = {
+    exposure: time => ({
+        name: 'the black sea cold',
+        cause: 'Froze on the pack ice',
+        damage: CLIMATE.frozenChipDamage,
+        fatigue: CLIMATE.frozenFatigue,
+        wardedBy: 'matches',
+        frostbite: time === 'night' ? CLIMATE.frozenFrostbiteChance : 0,
+        onFrostbite: t => `${t.name}'s hands go white and wooden in the sea wind.`,
+    }),
+    foulWater: true,
+};
+
 /** Arena id -> its standing climate. Ids not listed have a temperate arena. */
 const CLIMATES: Record<string, ClimateProfile> = {
     frozen: FROZEN,
+    reef: DRAINED_REEF,
+    glacier: FROZEN,
+    alpine: FROZEN,
+    floe: FLOE_SEA,
+    islands: MAGNETIC_FOG,
+    carnival: MAGNETIC_FOG,
+    eclipse: PERPETUAL_DUSK,
+    abattoir: FURNACE_HEAT,
+    ashwaste: ASH_WASTE,
+    quarry: QUARRY_DAMP,
     'procedural-highlands': FROZEN,
     solar: SOLAR,
     saltflats: SOLAR,

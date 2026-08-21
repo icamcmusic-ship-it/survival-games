@@ -7,7 +7,7 @@ import { addZoneThreat, noteSighting } from './memory';
 import { startZoneEffect, hasEffect, severRandomEdge } from './zoneEffects';
 import { openWound } from './wounds';
 import { clampTribute } from './vitals';
-import { BLEEDING, ESCALATION, MEMORY } from '../data/balance';
+import { BLEEDING, ESCALATION, MEMORY, SIGNATURE_RULES } from '../data/balance';
 
 /**
  * Arena signature mechanics.
@@ -440,7 +440,384 @@ function warrenSignature(ctx: SimContext, cycle: number, rng: RNG) {
     }
 }
 
+/**
+ * The Shattered Archipelago's fog.
+ *
+ * The islands are only a map because the bridges say so. Every other cycle the
+ * magnetic fog rises and takes a crossing with it; every sixth the fog thins
+ * and every span is walkable again. The Warren's shifting, translated to rope.
+ */
+function islandsSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    if (cycle % 6 === 0 && (ctx.state.severedEdges?.length ?? 0) > 0) {
+        ctx.state.severedEdges = [];
+        ctx.logEvent(
+            'THE FOG THINS: for the first time in days the islands can all see each other, and every span and zip-line stands crossable again.',
+            [],
+            { important: true, category: 'arena' }
+        );
+        return;
+    }
+    if (cycle % 2 !== 0) return;
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return;
+    const zone = rng.pick(zones);
+    const cut = severRandomEdge(ctx, zone);
+    if (cut) {
+        ctx.logEvent(
+            `THE FOG RISES: the crossing between ${zone} and ${cut} disappears into the grey, ropes and all. Nobody sane steps onto a span they cannot see the far end of.`,
+            [],
+            { important: true, category: 'arena' }
+        );
+    }
+}
+
+/**
+ * The Perpetual Eclipse Forest's stars.
+ *
+ * Every third cycle the artificial stars rearrange — the only fixed points in
+ * a duskbound sky move — and everyone navigating by them is suddenly wrong.
+ * Fogbound everywhere, and a toll on anyone caught mid-move.
+ */
+function eclipseSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    if (cycle % 3 !== 2) return;
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return;
+
+    ctx.logEvent(
+        'THE STARS SHIFT: every artificial star over the forest slides to a new station at once. Every bearing taken in the last three days is now a lie.',
+        [],
+        { important: true, category: 'arena' }
+    );
+    zones.forEach(z => startZoneEffect(ctx, z, 'fogbound', false));
+    getAlive(ctx.state).forEach(t => {
+        if (!rng.chance(SIGNATURE_RULES.eclipseStumbleChance)) return;
+        applyDamage(ctx, t, 5, { cause: 'Walked off a bearing that no longer existed', kind: 'arena' });
+        t.vitals.sanity -= SIGNATURE_RULES.eclipseSanityLoss;
+        clampTribute(t);
+        checkDeath(ctx, t, 'Walked off a bearing that no longer existed');
+    });
+}
+
+/**
+ * The Dead Coral Reef's bloom.
+ *
+ * The anemones did not die with the ocean. On their rhythm they open all at
+ * once, and any low ground becomes a field of stinging cells.
+ */
+function reefSignature(ctx: SimContext, _cycle: number, rng: RNG) {
+    const zones = activeZones(ctx).filter(n => {
+        const z = getZone(ctx.state.arena, n);
+        return z?.terrain === 'wetland' || z?.terrain === 'open';
+    });
+    if (zones.length === 0 || !rng.chance(SIGNATURE_RULES.reefBloomChance)) return;
+
+    const target = rng.pick(zones);
+    if (hasEffect(ctx.state, target, 'contaminated')) return;
+    ctx.logEvent(
+        `THE BLOOM OPENS: every anemone in ${target} unfurls at once, acres of them, reaching for an ocean that is not coming back. The ground itself is venomous now.`,
+        [],
+        { important: true, zone: target, category: 'arena' }
+    );
+    startZoneEffect(ctx, target, 'contaminated', false);
+    tributesIn(ctx, target).forEach(t => {
+        if (rng.chance(SIGNATURE_RULES.reefDodgeBase + t.attributes.agility * 0.04)) {
+            ctx.logEvent(`${t.name} picks a line across the dead coral heads of ${target} and never touches the bloom.`, [t.id], { zone: target, category: 'arena' });
+            return;
+        }
+        t.injuries.poisoned = true;
+        t.vitals.sanity -= SIGNATURE_RULES.reefSanityLoss;
+        applyDamage(ctx, t, 12, { cause: `Stung down by the bloom in ${target}`, kind: 'arena' });
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Stung down by the bloom in ${target}`);
+    });
+}
+
+/**
+ * The Industrial Abattoir's line.
+ *
+ * The factory still runs a shift. Every cycle the machinery starts in one hall,
+ * in strict rotation through the printed map — learnable, like the Clockwork
+ * Island's dial, because a factory schedule is the most learnable thing there is.
+ */
+function abattoirSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    const all = ctx.state.arena.zones.map(z => z.name);
+    const striking = all[cycle % all.length];
+    const next = all[(cycle + 1) % all.length];
+    if (!activeZones(ctx).includes(striking)) return;
+
+    ctx.logEvent(
+        `THE LINE STARTS: the machinery of ${striking} shudders through a full shift — pistons, belts, hooks, all of it. ${next} is next on the board.`,
+        [],
+        { important: true, zone: striking, category: 'arena' }
+    );
+    tributesIn(ctx, striking).forEach(t => {
+        if (rng.chance(SIGNATURE_RULES.abattoirDodgeBase + t.attributes.agility * 0.04)) {
+            ctx.logEvent(`${t.name} reads the warning shudder in ${striking} and is off the line before it moves.`, [t.id], { zone: striking, category: 'arena' });
+            return;
+        }
+        applyDamage(ctx, t, 24, { cause: `Caught in the machinery of ${striking}`, kind: 'arena' });
+        openWound(t, BLEEDING.hazardSeverity);
+        t.vitals.fatigue += SIGNATURE_RULES.abattoirFatigue;
+        addZoneThreat(ctx.state, t, striking, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Caught in the machinery of ${striking}`);
+    });
+    getAlive(ctx.state).forEach(t => addZoneThreat(ctx.state, t, next, MEMORY.cannonThreat));
+}
+
+/**
+ * The Forgotten Carnival's rides.
+ *
+ * At night, one attraction powers up from nowhere — lights, music, the works —
+ * and everyone in the park knows exactly where everyone standing in it is.
+ */
+function carnivalSignature(ctx: SimContext, _cycle: number, rng: RNG) {
+    if (ctx.state.timeOfDay !== 'night') return;
+    const zones = activeZones(ctx).filter(n => getZone(ctx.state.arena, n)?.terrain === 'ruins');
+    if (zones.length === 0) return;
+
+    const target = rng.pick(zones);
+    const caught = tributesIn(ctx, target);
+    ctx.logEvent(
+        `THE RIDE WAKES: ${target} lights up end to end and the music starts, mid-song, like it never stopped. Every tribute in the arena turns to look.`,
+        [],
+        { important: true, zone: target, category: 'arena' }
+    );
+    caught.forEach(t => {
+        t.vitals.sanity -= SIGNATURE_RULES.carnivalSanityLoss;
+        clampTribute(t);
+    });
+    // The whole park sees where the lights are — and who is standing in them.
+    if (caught.length > 0) {
+        getAlive(ctx.state).forEach(observer => {
+            const rivals = caught.filter(o => o.allianceId !== observer.allianceId && o.id !== observer.id).length;
+            if (rivals > 0 && observer.zone !== target) noteSighting(ctx.state, observer, target, rivals, 0);
+        });
+    }
+}
+
+/**
+ * The Ash Wasteland's throat.
+ *
+ * Every second cycle the caldera clears its throat: a hot gust across the whole
+ * basin, and everyone wading three feet of ash pays for every step. High ground
+ * near the vent burns outright.
+ */
+function ashwasteSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    if (cycle % 2 !== 1) return;
+    ctx.logEvent(
+        'THE MOUNTAIN CLEARS ITS THROAT: a hot pressure-wave rolls off the caldera, and the ash lifts hip-high across the whole basin before it settles again.',
+        [],
+        { important: true, category: 'arena' }
+    );
+    getAlive(ctx.state).forEach(t => {
+        t.vitals.fatigue += SIGNATURE_RULES.ashwasteWadeFatigue;
+        const zone = getZone(ctx.state.arena, t.zone);
+        if (zone?.terrain === 'highland' && rng.chance(SIGNATURE_RULES.ashwasteBurnChance)) {
+            t.injuries.burned = true;
+            applyDamage(ctx, t, 12, { cause: 'Scorched by the caldera gust', kind: 'arena' });
+        }
+        clampTribute(t);
+        checkDeath(ctx, t, 'Scorched by the caldera gust');
+    });
+}
+
+/**
+ * The Vertical Quarry's benches.
+ *
+ * Rock cut into steps stays steps only as long as it feels like it. Every third
+ * cycle a bench lets go, hurts whoever is standing on it, and takes a road with
+ * it permanently — the pit narrows toward its own flooded centre.
+ */
+function quarrySignature(ctx: SimContext, cycle: number, rng: RNG) {
+    if (cycle % 3 !== 1) return;
+    const zones = activeZones(ctx).filter(n => {
+        const z = getZone(ctx.state.arena, n);
+        return z?.terrain === 'highland' || z?.terrain === 'open';
+    });
+    if (zones.length === 0) return;
+
+    const target = rng.pick(zones);
+    ctx.logEvent(
+        `BENCH COLLAPSE: a hundred metres of ${target} shears off the wall and goes down the pit in one long roar. The dust plume climbs past the rim.`,
+        [],
+        { important: true, zone: target, category: 'arena' }
+    );
+    tributesIn(ctx, target).forEach(t => {
+        if (rng.chance(SIGNATURE_RULES.quarryDodgeBase + t.attributes.agility * 0.04)) {
+            ctx.logEvent(`${t.name} feels ${target} tilt underfoot and runs the right way.`, [t.id], { zone: target, category: 'arena' });
+            return;
+        }
+        applyDamage(ctx, t, 24, { cause: `Went down with the bench in ${target}`, kind: 'arena' });
+        openWound(t, BLEEDING.hazardSeverity);
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Went down with the bench in ${target}`);
+    });
+    const zone = getZone(ctx.state.arena, target);
+    const severed = new Set(ctx.state.severedEdges ?? []);
+    const routes = zone?.adjacent.filter(n => !severed.has(edgeKey(target, n))) ?? [];
+    if (routes.length > 1) severEdge(ctx.state, target, rng.pick(routes));
+}
+
+/**
+ * The Glacial Cavern Network's calving.
+ *
+ * The glacier is moving the whole time; every third cycle it moves somewhere
+ * that matters. A gallery drops, the cold pours in behind it, and whoever was
+ * under the ice rolls against the roof.
+ */
+function glacierSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    if (cycle % 3 !== 0) return;
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return;
+
+    const target = rng.pick(zones);
+    ctx.logEvent(
+        `CALVING: the glacier shifts its weight and something the size of a district block comes down across ${target}. The boom arrives through the ice before it arrives through the air.`,
+        [],
+        { important: true, zone: target, category: 'arena' }
+    );
+    startZoneEffect(ctx, target, 'frozen', false);
+    tributesIn(ctx, target).forEach(t => {
+        if (rng.chance(SIGNATURE_RULES.glacierDodgeBase + t.attributes.agility * 0.04)) {
+            ctx.logEvent(`${t.name} reads the crack running overhead in ${target} and is out before the roof follows it.`, [t.id], { zone: target, category: 'arena' });
+            return;
+        }
+        applyDamage(ctx, t, 22, { cause: `Buried in the calving at ${target}`, kind: 'arena' });
+        t.injuries.frostbitten = true;
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Buried in the calving at ${target}`);
+    });
+    const zone = getZone(ctx.state.arena, target);
+    const severed = new Set(ctx.state.severedEdges ?? []);
+    const routes = zone?.adjacent.filter(n => !severed.has(edgeKey(target, n))) ?? [];
+    if (routes.length > 1) severEdge(ctx.state, target, rng.pick(routes));
+}
+
+/**
+ * The Shattered Ice Floe Sea's drift.
+ *
+ * The plates never stop moving. Most nights the drift takes a crossing; every
+ * fourth cycle the pack grinds back together and the map is briefly whole.
+ * Anyone standing where a plate parts rolls against the black water.
+ */
+function floeSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    if (cycle % 4 === 0 && (ctx.state.severedEdges?.length ?? 0) > 0) {
+        ctx.state.severedEdges = [];
+        ctx.logEvent(
+            'THE PACK CLOSES: wind and current shove the plates back together with a grinding that goes on for an hour. Every crossing stands again — until the next drift.',
+            [],
+            { important: true, category: 'arena' }
+        );
+        return;
+    }
+    if (ctx.state.timeOfDay !== 'night' || cycle % 2 !== 1) return;
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return;
+    const zone = rng.pick(zones);
+    const cut = severRandomEdge(ctx, zone);
+    if (!cut) return;
+    ctx.logEvent(
+        `THE DRIFT: black water opens between ${zone} and ${cut}, wide as a river and getting wider. That crossing is gone.`,
+        [],
+        { important: true, zone, category: 'arena' }
+    );
+    tributesIn(ctx, zone).forEach(t => {
+        if (!rng.chance(SIGNATURE_RULES.floeDunkChance)) return;
+        applyDamage(ctx, t, 14, { cause: 'Went into the black water when the plates parted', kind: 'arena' });
+        t.injuries.frostbitten = true;
+        t.vitals.fatigue += SIGNATURE_RULES.floeDunkFatigue;
+        clampTribute(t);
+        checkDeath(ctx, t, 'Went into the black water when the plates parted');
+    });
+}
+
+/**
+ * The Avalanche Peaks' snow.
+ *
+ * The loaded slopes let go every second cycle — off a highland sector, down
+ * into it and whatever sits below it. The pass it buries stays buried.
+ */
+function alpineSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    if (cycle % 2 !== 0) return;
+    const zones = activeZones(ctx).filter(n => getZone(ctx.state.arena, n)?.terrain === 'highland');
+    if (zones.length === 0) return;
+
+    const target = rng.pick(zones);
+    ctx.logEvent(
+        `AVALANCHE: the snowpack above ${target} fractures along its whole width and comes down. The sound reaches every tribute in the arena; the snow reaches ${target}.`,
+        [],
+        { important: true, zone: target, category: 'arena' }
+    );
+    startZoneEffect(ctx, target, 'frozen', false);
+    tributesIn(ctx, target).forEach(t => {
+        if (rng.chance(SIGNATURE_RULES.alpineDodgeBase + t.attributes.agility * 0.04)) {
+            ctx.logEvent(`${t.name} skis the debris of ${target} on their boot soles and stays on top of it.`, [t.id], { zone: target, category: 'arena' });
+            return;
+        }
+        applyDamage(ctx, t, 26, { cause: `Buried by the avalanche in ${target}`, kind: 'arena' });
+        t.injuries.frostbitten = true;
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Buried by the avalanche in ${target}`);
+    });
+    const zone = getZone(ctx.state.arena, target);
+    const severed = new Set(ctx.state.severedEdges ?? []);
+    const routes = zone?.adjacent.filter(n => !severed.has(edgeKey(target, n))) ?? [];
+    if (routes.length > 1) severEdge(ctx.state, target, rng.pick(routes));
+}
+
+/**
+ * The Abandoned Terraced Mines' subsidence.
+ *
+ * The mountain was hollowed before it was carved. Every third cycle a terrace
+ * slips or a cable span parts — same result: someone's road stops existing,
+ * and whoever was on it goes some of the way down with it.
+ */
+function terracesSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    if (cycle % 3 !== 2) return;
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return;
+
+    const target = rng.pick(zones);
+    ctx.logEvent(
+        `TERRACE SLIP: a step of ${target} settles a full metre with a crack like the mountain's spine going, and the terraces below it vanish under rubble and cable.`,
+        [],
+        { important: true, zone: target, category: 'arena' }
+    );
+    tributesIn(ctx, target).forEach(t => {
+        if (rng.chance(SIGNATURE_RULES.terracesDodgeBase + t.attributes.agility * 0.04)) {
+            ctx.logEvent(`${t.name} gets a hand on standing rock as ${target} settles, and keeps it.`, [t.id], { zone: target, category: 'arena' });
+            return;
+        }
+        applyDamage(ctx, t, 20, { cause: `Went down with the terrace in ${target}`, kind: 'arena' });
+        openWound(t, BLEEDING.hazardSeverity);
+        t.vitals.fatigue += SIGNATURE_RULES.terracesFatigue;
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Went down with the terrace in ${target}`);
+    });
+    const zone = getZone(ctx.state.arena, target);
+    const severed = new Set(ctx.state.severedEdges ?? []);
+    const routes = zone?.adjacent.filter(n => !severed.has(edgeKey(target, n))) ?? [];
+    if (routes.length > 1) severEdge(ctx.state, target, rng.pick(routes));
+}
+
 const SIGNATURES: Record<string, Signature> = {
+    islands: islandsSignature,
+    eclipse: eclipseSignature,
+    reef: reefSignature,
+    abattoir: abattoirSignature,
+    carnival: carnivalSignature,
+    ashwaste: ashwasteSignature,
+    quarry: quarrySignature,
+    glacier: glacierSignature,
+    floe: floeSignature,
+    alpine: alpineSignature,
+    terraces: terracesSignature,
     clockwork: clockworkSignature,
     vault: vaultSignature,
     warren: warrenSignature,

@@ -131,6 +131,45 @@ export const CLIMATE = {
     ashenSanityLoss: 8,
     tidalDrenchChance: 0.18,
     stormFatigue: 8,
+    // The magnetic fog (Shattered Archipelago) and the carnival's pine fog:
+    // a low, steady pressure on the head rather than the body.
+    fogSanityChance: 0.15,
+    fogSanityLoss: 8,
+    fogFatigue: 4,
+    // The Perpetual Eclipse Forest: light that never resolves either way.
+    duskSanityChance: 0.12,
+    duskSanityLoss: 6,
+    // The Industrial Abattoir: furnace heat in closed halls.
+    furnaceFatigue: 7,
+    furnaceBurnChance: 0.06,
+    furnaceThirstMultiplier: 1.5,
+    // The Vertical Quarry: cold rock damp that never dries.
+    quarryDampFatigue: 5,
+} as const;
+
+/**
+ * Tunables for the new arena signature rules (see engine/arenaSignature.ts).
+ * The older signatures carry their numbers in the undeclared-knobs baseline;
+ * these landed after that check existed, so they live here from day one.
+ */
+export const SIGNATURE_RULES = {
+    eclipseStumbleChance: 0.25,
+    eclipseSanityLoss: 9,
+    reefBloomChance: 0.4,
+    reefDodgeBase: 0.3,
+    reefSanityLoss: 12,
+    abattoirDodgeBase: 0.3,
+    abattoirFatigue: 15,
+    carnivalSanityLoss: 12,
+    ashwasteWadeFatigue: 10,
+    ashwasteBurnChance: 0.2,
+    quarryDodgeBase: 0.3,
+    glacierDodgeBase: 0.35,
+    floeDunkChance: 0.3,
+    floeDunkFatigue: 20,
+    alpineDodgeBase: 0.3,
+    terracesDodgeBase: 0.35,
+    terracesFatigue: 12,
 } as const;
 
 /** What each trait is worth, in the units the vitals loop works in. */
