@@ -1568,6 +1568,146 @@ export const INTERVIEWS = {
     heldTrust: 8,
     heldExcitement: 12,
     brokeTrust: 6,
+
+    /**
+     * Poise is charisma plus nerve on the night. The jitter is deliberately
+     * wider upward than downward: a nervous tribute rarely does *worse* than
+     * their charisma suggests, but the stage occasionally makes somebody.
+     */
+    poiseJitterMin: -2,
+    poiseJitterMax: 3,
+    /** Being a known face before you sit down is worth a point of poise. */
+    poiseFanFavourite: 1,
+    /** How hard the excitement-flavoured traits (Showman, Grim) push poise. */
+    poiseExcitementWeight: 2,
+
+    /** The hold roll is clamped: nobody is certain, nobody is hopeless. */
+    holdChanceFloor: 0.1,
+    holdChanceCeiling: 0.95,
+
+    /** A landed angle raises charisma, but not past the human ceiling. */
+    charismaCeiling: 10,
+    /** Reputation moves with the sponsor multiplier the angle earned. */
+    reputationPerTrustMultiplier: 30,
+    reputationCeiling: 95,
+    reputationFloor: 5,
+    /** Fumbling the opening costs standing as well as money. */
+    fumbledReputation: 5,
+
+    /**
+     * What the other twenty-three made of it. A tribute who spends three
+     * minutes promising a short Games has made twenty-three first impressions
+     * and only the Careers liked any of them — which is most of why the
+     * bloodbath alliances form the way they do.
+     */
+    hostileDistrust: 10,
+    /** Careers file a threat under 'rival', not under 'enemy'. */
+    hostileCareerRespect: 4,
+    warmRapport: 6,
+} as const;
+
+/**
+ * Which angle a tribute takes on Caesar's couch.
+ *
+ * The persona is not a costume: `interviewChemistry` and `personaThreat` both
+ * read it back, so it needs to come out of who the tribute actually is. These
+ * are the weights in a weighted pick — a tribute can still land somewhere
+ * surprising, they are just unlikely to.
+ *
+ * Read the numbers as multiples of the flat base weight of 1 that every angle
+ * starts from: a `+1.5` roughly triples an angle's odds, a `-1` all but rules
+ * it out. The attribute coefficients are per point on a 1-10 scale, so a
+ * `0.15` is worth up to 1.5 at charisma 10 — the same size as one strong
+ * trait, which is the intended trade.
+ */
+export const INTERVIEW_ANGLES = {
+    /** Floor so no angle is ever strictly impossible for anyone. */
+    minWeight: 0.15,
+
+    starCrossed: {
+        perCharisma: 0.15,
+        softhearted: 1.5,
+        ruthless: -0.8,
+    },
+    ruthlessWarrior: {
+        /** Measured against a middling training score. */
+        trainingPivot: 5,
+        perTrainingPointOverPivot: 0.3,
+        perStrength: 0.12,
+        career: 1.5,
+        bloodthirsty: 1.2,
+        pacifist: -1.5,
+    },
+    humbleUnderdog: {
+        /** Inverted: the further *below* the pivot they scored, the better it plays. */
+        trainingPivot: 7,
+        perTrainingPointUnderPivot: 0.25,
+        /** The youngest tributes do not have to act this one. */
+        youngAge: 14,
+        young: 1,
+        career: -1,
+    },
+    mysteriousEnigma: {
+        perStealth: 0.18,
+        /** Somebody who already hid in training has the story ready-made. */
+        concealed: 1.5,
+        paranoid: 0.6,
+    },
+    charmingFlirt: {
+        perCharisma: 0.3,
+        charismatic: 1.2,
+        unremarkable: -1,
+    },
+    arrogantBrute: {
+        perStrength: 0.2,
+        brute: 1.4,
+        /** Charm undercuts it — a likeable tribute cannot sell menace. */
+        charismaCutoff: 7,
+        charismatic: -0.8,
+    },
+    quirkyOddball: {
+        perIntelligence: 0.12,
+        showman: 1.5,
+    },
+    silentThreat: {
+        perStealth: 0.15,
+        perStrength: 0.08,
+        concealed: 1,
+        /** Being bad at talking is the qualification here, not a handicap. */
+        quietCharisma: 4,
+        quiet: 0.8,
+    },
+    grievingSibling: {
+        mourner: 1.3,
+        youngAge: 15,
+        young: 0.6,
+        ruthless: -1,
+    },
+    coldStrategist: {
+        perIntelligence: 0.2,
+        strategistArchetype: 1.5,
+        strategistTrait: 1,
+    },
+    reluctantHero: {
+        pacifist: 1.5,
+        /** Reaped, not volunteered: the story tells itself. */
+        conscript: 0.6,
+        career: -0.8,
+    },
+    districtLoyalist: {
+        /** A non-Career volunteer did it for somebody, and everyone knows it. */
+        volunteer: 1.8,
+        /** A tribute with nothing else to trade on falls back on home. */
+        lowReputation: 40,
+        lowReputationBonus: 0.8,
+        career: 0.4,
+    },
+    wildcard: {
+        archetype: 1.5,
+        /** Rewards charisma at either extreme; the middle is not a wildcard. */
+        perCharismaDeviation: 0.1,
+        charismaMidpoint: 5,
+    },
 } as const;
 
 /**
@@ -1644,6 +1784,137 @@ export const TRAINING = {
     careerRespect: 8,
     /** How much a high scorer's own confidence rises. */
     confidenceSanity: 6,
+
+    /** Excitement the broadcast itself buys, per point of the score read out. */
+    broadcastExcitementPerPoint: 5,
+    /** Sponsors chase the top of the board before anyone has swung anything. */
+    eliteTrustScore: 10,
+    eliteTrust: 15,
+    strongTrustScore: 9,
+    strongTrust: 8,
+    /**
+     * How fast intimidation scales past the notice threshold. A 9 lands at
+     * quarter weight and a 12 at full: the divisor is the width of the elite
+     * band, so the top of the board hits exactly as hard as the raw numbers
+     * below say it does.
+     */
+    intimidationSeverityBand: 4,
+    /** Verdict copy tiers on the broadcast. */
+    legendaryVerdictScore: 11,
+    eliteVerdictScore: 9,
+    solidVerdictScore: 6,
+    /** A concealer this far down the board has hidden successfully. */
+    hiddenScore: 4,
+} as const;
+
+/**
+ * The private session, from the inside.
+ *
+ * Training scores 1-8 are earned on merit; every point above 8 is a separate
+ * gate, each exponentially harder than the last. That shape is the whole
+ * design: it is why an 11 is a talking point rather than a common outcome,
+ * and why merit shifts the *odds* of the elite band rather than the band
+ * itself. See the training-score distribution band in `scripts/soak.ts`.
+ */
+export const TRAINING_SCORE = {
+    /** Base odds of clearing the first gate (an 8 becoming a 9). */
+    eliteGateBase: 0.3,
+    /**
+     * 0.3 measured out to one 11 every ~18 Games and a 12 every ~140 —
+     * canon's 11 is remarkable but happens; 0.42 keeps the exponential shape
+     * one notch gentler than a straight halving.
+     */
+    eliteGateDecay: 0.42,
+    eliteGateCap: 0.55,
+    /** Points above 8 that are reachable at all: 9 through 12. */
+    eliteGates: 4,
+    /** A tribute who just startled the panel is far likelier to clear a gate. */
+    stuntGateMultiplier: 1.8,
+
+    /** Base band, from what they can do in front of a panel. */
+    statsPerPoint: 5,
+    skillPerPoint: 3,
+    /** Panel mood: the same performance is not scored the same twice. */
+    jitterMin: -1,
+    jitterMax: 1,
+    careerBonus: 1,
+    /** The merit band tops out at 8; everything above it is a gate. */
+    baseFloor: 1,
+    baseCeiling: 8,
+
+    /**
+     * Merit multiplier: what the Gamemakers already believe walking in.
+     * Multiplies the elite-gate odds only, so it can never hand out a score
+     * on its own.
+     */
+    meritCareer: 0.45,
+    meritCareerArchetype: 0.2,
+    meritBrute: 0.15,
+    meritStrategist: 0.15,
+    meritEagleEyed: 0.1,
+    meritNimble: 0.1,
+    meritClumsy: -0.25,
+    meritPacifist: -0.2,
+    /**
+     * A twelve-year-old does not out-score the Careers on the gauntlet,
+     * however fast they are — age is a real ceiling on the elite band.
+     */
+    meritAgePivot: 15,
+    meritPerYear: 0.08,
+    /** Nobody's odds fall to nothing; the panel can always be surprised. */
+    meritFloor: 0.15,
+} as const;
+
+/**
+ * Three days on the floor: what a tribute works on, and who they let watch.
+ *
+ * The gap between "train what you are already good at" and "train what will
+ * actually keep you alive" is most of what separates a Career from everybody
+ * else, so these two weight sets are where that difference is dialled.
+ */
+export const TRAINING_FLOOR = {
+    /** Station pick, as weights over the five attributes. */
+    perAttributePoint: 0.25,
+    /** District trade: a District 7 tribute goes to the heavy blades. */
+    craftAffinity: 1.2,
+    forageCraftAffinity: 1,
+    /** Careers do not spend three days learning which berries are safe. */
+    careerCombat: 1.5,
+    careerSurvival: -0.5,
+    /** Everyone else knows the arena kills more people than the Careers do. */
+    outsiderSurvival: 0.8,
+    /** Repeating a station has diminishing appeal: halved each time. */
+    repeatDecay: 0.5,
+    minWeight: 0.1,
+
+    /**
+     * Aptitude compounds: a day on something you are already good at gets you
+     * further than a day on something you are not. At attribute 1 a day is
+     * worth 65% of the base gain, at 10 it is 110%.
+     */
+    aptitudeBase: 0.6,
+    /** Divisor, not a coefficient: attribute points spread over this range. */
+    aptitudeDivisor: 20,
+    /** Attribute ceiling for anything that is not gated on age. */
+    attributeCeiling: 10,
+    attributeFloor: 1,
+    /**
+     * `trainProficiency` moves a fixed step, so a day's proficiency gain is
+     * spent as a whole number of reps against that step.
+     */
+    proficiencyStep: 0.35,
+
+    /** Strategy pick: how visible to be, before any of it is scored. */
+    careerShowcase: 0.4,
+    careerConceal: -0.18,
+    schemerConceal: 0.25,
+    underdogConceal: 0.15,
+    /** Bright tributes work out on their own that a low number is cover. */
+    cleverIntelligence: 8,
+    cleverConceal: 0.1,
+    showmanShowcase: 0.3,
+    unremarkableConceal: 0.2,
+    fanFavouriteShowcase: 0.15,
 } as const;
 
 /**

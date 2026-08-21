@@ -7,7 +7,7 @@ import {
 import { clampTribute } from '../vitals';
 import { adjustRel } from '../relationships';
 import { addExcitement } from '../audience';
-import { INTERVIEWS } from '../../data/balance';
+import { INTERVIEWS, INTERVIEW_ANGLES } from '../../data/balance';
 import { traitMod } from '../../data/traits';
 
 /**
@@ -31,73 +31,76 @@ function angleWeights(t: Tribute): Array<[typeof INTERVIEW_SCENARIOS[number], nu
         let weight = 1;
         switch (scenario.strategy) {
             case 'The Star-Crossed Lover':
-                weight += t.attributes.charisma * 0.15;
-                if (t.traits.includes('Softhearted')) weight += 1.5;
-                if (t.traits.includes('Ruthless')) weight -= 0.8;
+                weight += t.attributes.charisma * INTERVIEW_ANGLES.starCrossed.perCharisma;
+                if (t.traits.includes('Softhearted')) weight += INTERVIEW_ANGLES.starCrossed.softhearted;
+                if (t.traits.includes('Ruthless')) weight += INTERVIEW_ANGLES.starCrossed.ruthless;
                 break;
             case 'The Ruthless Warrior':
-                weight += (t.trainingScore - 5) * 0.3 + t.attributes.strength * 0.12;
-                if (t.isCareer) weight += 1.5;
-                if (t.traits.includes('Bloodthirsty')) weight += 1.2;
-                if (t.traits.includes('Pacifist')) weight -= 1.5;
+                weight += (t.trainingScore - INTERVIEW_ANGLES.ruthlessWarrior.trainingPivot) * INTERVIEW_ANGLES.ruthlessWarrior.perTrainingPointOverPivot
+                    + t.attributes.strength * INTERVIEW_ANGLES.ruthlessWarrior.perStrength;
+                if (t.isCareer) weight += INTERVIEW_ANGLES.ruthlessWarrior.career;
+                if (t.traits.includes('Bloodthirsty')) weight += INTERVIEW_ANGLES.ruthlessWarrior.bloodthirsty;
+                if (t.traits.includes('Pacifist')) weight += INTERVIEW_ANGLES.ruthlessWarrior.pacifist;
                 break;
             case 'The Humble Underdog':
-                weight += (7 - t.trainingScore) * 0.25;
-                if (t.age <= 14) weight += 1;
-                if (t.isCareer) weight -= 1;
+                weight += (INTERVIEW_ANGLES.humbleUnderdog.trainingPivot - t.trainingScore) * INTERVIEW_ANGLES.humbleUnderdog.perTrainingPointUnderPivot;
+                if (t.age <= INTERVIEW_ANGLES.humbleUnderdog.youngAge) weight += INTERVIEW_ANGLES.humbleUnderdog.young;
+                if (t.isCareer) weight += INTERVIEW_ANGLES.humbleUnderdog.career;
                 break;
             case 'The Mysterious Enigma':
-                weight += t.attributes.stealth * 0.18;
-                if (t.trainingStrategy === 'conceal') weight += 1.5;
-                if (t.traits.includes('Paranoid')) weight += 0.6;
+                weight += t.attributes.stealth * INTERVIEW_ANGLES.mysteriousEnigma.perStealth;
+                if (t.trainingStrategy === 'conceal') weight += INTERVIEW_ANGLES.mysteriousEnigma.concealed;
+                if (t.traits.includes('Paranoid')) weight += INTERVIEW_ANGLES.mysteriousEnigma.paranoid;
                 break;
             case 'The Charming Flirt':
-                weight += t.attributes.charisma * 0.3;
-                if (t.traits.includes('Charismatic')) weight += 1.2;
-                if (t.traits.includes('Unremarkable')) weight -= 1;
+                weight += t.attributes.charisma * INTERVIEW_ANGLES.charmingFlirt.perCharisma;
+                if (t.traits.includes('Charismatic')) weight += INTERVIEW_ANGLES.charmingFlirt.charismatic;
+                if (t.traits.includes('Unremarkable')) weight += INTERVIEW_ANGLES.charmingFlirt.unremarkable;
                 break;
             case 'The Arrogant Brute':
-                weight += t.attributes.strength * 0.2;
-                if (t.traits.includes('Brute')) weight += 1.4;
-                if (t.attributes.charisma >= 7) weight -= 0.8;
+                weight += t.attributes.strength * INTERVIEW_ANGLES.arrogantBrute.perStrength;
+                if (t.traits.includes('Brute')) weight += INTERVIEW_ANGLES.arrogantBrute.brute;
+                if (t.attributes.charisma >= INTERVIEW_ANGLES.arrogantBrute.charismaCutoff) weight += INTERVIEW_ANGLES.arrogantBrute.charismatic;
                 break;
             case 'The Quirky Oddball':
-                weight += t.attributes.intelligence * 0.12;
-                if (t.traits.includes('Showman')) weight += 1.5;
+                weight += t.attributes.intelligence * INTERVIEW_ANGLES.quirkyOddball.perIntelligence;
+                if (t.traits.includes('Showman')) weight += INTERVIEW_ANGLES.quirkyOddball.showman;
                 break;
             case 'The Silent Threat':
-                weight += t.attributes.stealth * 0.15 + t.attributes.strength * 0.08;
-                if (t.trainingStrategy === 'conceal') weight += 1;
-                if (t.attributes.charisma <= 4) weight += 0.8;
+                weight += t.attributes.stealth * INTERVIEW_ANGLES.silentThreat.perStealth
+                    + t.attributes.strength * INTERVIEW_ANGLES.silentThreat.perStrength;
+                if (t.trainingStrategy === 'conceal') weight += INTERVIEW_ANGLES.silentThreat.concealed;
+                if (t.attributes.charisma <= INTERVIEW_ANGLES.silentThreat.quietCharisma) weight += INTERVIEW_ANGLES.silentThreat.quiet;
                 break;
             case 'The Grieving Sibling':
-                if (t.traits.includes('Softhearted') || t.traits.includes('Grim')) weight += 1.3;
-                if (t.age <= 15) weight += 0.6;
-                if (t.traits.includes('Ruthless')) weight -= 1;
+                if (t.traits.includes('Softhearted') || t.traits.includes('Grim')) weight += INTERVIEW_ANGLES.grievingSibling.mourner;
+                if (t.age <= INTERVIEW_ANGLES.grievingSibling.youngAge) weight += INTERVIEW_ANGLES.grievingSibling.young;
+                if (t.traits.includes('Ruthless')) weight += INTERVIEW_ANGLES.grievingSibling.ruthless;
                 break;
             case 'The Cold Strategist':
-                weight += t.attributes.intelligence * 0.2;
-                if (t.archetype === 'strategist') weight += 1.5;
-                if (t.traits.includes('Strategist')) weight += 1;
+                weight += t.attributes.intelligence * INTERVIEW_ANGLES.coldStrategist.perIntelligence;
+                if (t.archetype === 'strategist') weight += INTERVIEW_ANGLES.coldStrategist.strategistArchetype;
+                if (t.traits.includes('Strategist')) weight += INTERVIEW_ANGLES.coldStrategist.strategistTrait;
                 break;
             case 'The Reluctant Hero':
-                if (t.traits.includes('Pacifist')) weight += 1.5;
-                if (!t.isCareer && !t.volunteered) weight += 0.6;
-                if (t.isCareer) weight -= 0.8;
+                if (t.traits.includes('Pacifist')) weight += INTERVIEW_ANGLES.reluctantHero.pacifist;
+                if (!t.isCareer && !t.volunteered) weight += INTERVIEW_ANGLES.reluctantHero.conscript;
+                if (t.isCareer) weight += INTERVIEW_ANGLES.reluctantHero.career;
                 break;
             case 'The District Loyalist':
-                if (t.volunteered && !t.isCareer) weight += 1.8;
-                weight += t.reputation < 40 ? 0.8 : 0;
-                if (t.isCareer) weight += 0.4;
+                if (t.volunteered && !t.isCareer) weight += INTERVIEW_ANGLES.districtLoyalist.volunteer;
+                weight += t.reputation < INTERVIEW_ANGLES.districtLoyalist.lowReputation ? INTERVIEW_ANGLES.districtLoyalist.lowReputationBonus : 0;
+                if (t.isCareer) weight += INTERVIEW_ANGLES.districtLoyalist.career;
                 break;
             case 'The Wildcard':
-                if (t.archetype === 'wildcard' || t.archetype === 'trickster') weight += 1.5;
-                weight += Math.abs(t.attributes.charisma - 5) * 0.1;
+                if (t.archetype === 'wildcard' || t.archetype === 'trickster') weight += INTERVIEW_ANGLES.wildcard.archetype;
+                weight += Math.abs(t.attributes.charisma - INTERVIEW_ANGLES.wildcard.charismaMidpoint) * INTERVIEW_ANGLES.wildcard.perCharismaDeviation;
                 break;
         }
-        return [scenario, Math.max(0.15, weight)] as [typeof INTERVIEW_SCENARIOS[number], number];
+        return [scenario, Math.max(INTERVIEW_ANGLES.minWeight, weight)] as [typeof INTERVIEW_SCENARIOS[number], number];
     });
 }
+
 
 function pickAngle(ctx: SimContext, t: Tribute) {
     const weights = angleWeights(t);
@@ -125,9 +128,10 @@ export function processInterviews(ctx: SimContext) {
     cast.forEach(t => {
         // ---- Beat one: the angle they walked out with ----
         const scenario = pickAngle(ctx, t);
-        const poise = t.attributes.charisma + ctx.rng.nextInt(-2, 3)
-            + (t.fanFavourite ? 1 : 0)
-            + Math.round(traitMod(t, 'excitement') * 2);
+        const poise = t.attributes.charisma
+            + ctx.rng.nextInt(INTERVIEWS.poiseJitterMin, INTERVIEWS.poiseJitterMax)
+            + (t.fanFavourite ? INTERVIEWS.poiseFanFavourite : 0)
+            + Math.round(traitMod(t, 'excitement') * INTERVIEWS.poiseExcitementWeight);
         const opened = poise >= INTERVIEWS.openingThreshold;
 
         ctx.logEvent(
@@ -143,7 +147,7 @@ export function processInterviews(ctx: SimContext) {
         // Holding an angle under pressure is charisma, but it is also whether
         // the angle was true in the first place — a tribute selling something
         // they are not has further to fall.
-        const held = ctx.rng.chance(Math.min(0.95, Math.max(0.1,
+        const held = ctx.rng.chance(Math.min(INTERVIEWS.holdChanceCeiling, Math.max(INTERVIEWS.holdChanceFloor,
             INTERVIEWS.holdBase
             + t.attributes.charisma * INTERVIEWS.holdPerCharisma
             + (opened ? INTERVIEWS.holdOpenedBonus : -INTERVIEWS.holdOpenedBonus))));
@@ -180,13 +184,14 @@ export function processInterviews(ctx: SimContext) {
         );
 
         if (opened) {
-            t.attributes.charisma = Math.min(10, t.attributes.charisma + scenario.charismaBuff);
+            t.attributes.charisma = Math.min(INTERVIEWS.charismaCeiling, t.attributes.charisma + scenario.charismaBuff);
             t.sponsorTrust = Math.min(100, Math.floor(t.sponsorTrust * scenario.trustMultiplier));
-            t.reputation = Math.min(95, Math.round(t.reputation + (scenario.trustMultiplier - 1) * 30));
+            t.reputation = Math.min(INTERVIEWS.reputationCeiling,
+                Math.round(t.reputation + (scenario.trustMultiplier - 1) * INTERVIEWS.reputationPerTrustMultiplier));
             addExcitement(t, INTERVIEWS.openedExcitement);
         } else {
             t.sponsorTrust = Math.max(0, t.sponsorTrust - INTERVIEWS.fumbledTrust);
-            t.reputation = Math.max(5, t.reputation - 5);
+            t.reputation = Math.max(INTERVIEWS.reputationFloor, t.reputation - INTERVIEWS.fumbledReputation);
         }
         // Holding the angle is worth as much as choosing a good one — this is
         // where a quiet tribute with nothing to sell can still win the night.
@@ -211,8 +216,8 @@ export function processInterviews(ctx: SimContext) {
         if (!hostile && !warm) return;
         cast.forEach(other => {
             if (other.id === t.id) return;
-            if (hostile) adjustRel(other, t.id, other.isCareer ? 4 : -10);
-            if (warm) adjustRel(other, t.id, 6);
+            if (hostile) adjustRel(other, t.id, other.isCareer ? INTERVIEWS.hostileCareerRespect : -INTERVIEWS.hostileDistrust);
+            if (warm) adjustRel(other, t.id, INTERVIEWS.warmRapport);
         });
     });
 
