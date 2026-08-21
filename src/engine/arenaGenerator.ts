@@ -10,61 +10,71 @@ interface Biome {
     zoneNames: Record<Terrain, string[]>;
 }
 
+// B3: every biome's zoneNames pool used to be 9-13 names spread across only
+// the terrains listed in `terrains` — several pools (Sulfur Pools, Salt
+// Lagoon, Peat Bog, The Clearing) were written but dead, because their
+// terrain wasn't in that biome's `terrains` array at all, so the generator
+// could never roll it. That left every biome short of the 13-16 zone
+// "sprawl" tier the shape roll below can request (archipelago and volcanic
+// topped out at 10, unable to reach it at all), and a maxed-out arena that
+// exhausted its pool mid-generation just came out smaller and reused the
+// same handful of names on every large roll. Pools are now sized well past
+// 16 per biome, and every terrain with a written pool is actually reachable.
 const BIOMES: Biome[] = [
     {
         id: 'rainforest',
         namePrefix: 'Rainforest',
         description: 'A dense, humid jungle. Food is everywhere — and so are the things that eat it.',
-        terrains: ['forest', 'water', 'wetland', 'highland', 'ruins'],
+        terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins'],
         zoneNames: {
-            open: ['The Clearing'],
-            forest: ['Strangler Canopy', 'Vine Thicket', 'Fern Hollow', 'Kapok Grove'],
-            water: ['Piranha River', 'Waterfall Basin', 'Flooded Grotto'],
-            wetland: ['Leech Marsh', 'Mangrove Maze'],
-            highland: ['Emerald Ridge', 'Temple Steps'],
-            ruins: ['Sunken Temple', 'Overgrown Altar'],
+            open: ['The Clearing', 'Sunlit Break', 'Trampled Clearing', 'Fallen Giant'],
+            forest: ['Strangler Canopy', 'Vine Thicket', 'Fern Hollow', 'Kapok Grove', 'Howler Canopy', 'Root Tangle'],
+            water: ['Piranha River', 'Waterfall Basin', 'Flooded Grotto', 'Blackwater Shallows', 'Rapids Bend'],
+            wetland: ['Leech Marsh', 'Mangrove Maze', 'Sinking Flat', 'Mosquito Bog'],
+            highland: ['Emerald Ridge', 'Temple Steps', 'Moss-Choked Bluff', 'Canopy Walk'],
+            ruins: ['Sunken Temple', 'Overgrown Altar', 'Collapsed Shrine', 'Idol Grove'],
         },
     },
     {
         id: 'volcanic',
         namePrefix: 'Volcanic',
         description: 'Black rock, ash storms, and rivers of magma. Water is scarce, burns are not.',
-        terrains: ['open', 'highland', 'ruins', 'water'],
+        terrains: ['open', 'forest', 'wetland', 'highland', 'ruins', 'water'],
         zoneNames: {
-            open: ['Ash Flats', 'Obsidian Plain'],
-            forest: ['Charred Woods'],
-            water: ['Steam Vents', 'Boiling Spring'],
-            wetland: ['Sulfur Pools'],
-            highland: ['Caldera Rim', 'Lava Tubes', 'Cinder Cone'],
-            ruins: ['Buried Outpost', 'Basalt Columns'],
+            open: ['Ash Flats', 'Obsidian Plain', 'Cinder Wastes', 'Scorched Flat'],
+            forest: ['Charred Woods', 'Blackened Grove', 'Smoldering Thicket'],
+            water: ['Steam Vents', 'Boiling Spring', 'Mineral Pool'],
+            wetland: ['Sulfur Pools', 'Tar Seep', 'Ashen Mudflat'],
+            highland: ['Caldera Rim', 'Lava Tubes', 'Cinder Cone', 'Fumarole Terrace', 'Obsidian Spire'],
+            ruins: ['Buried Outpost', 'Basalt Columns', 'Ash-Choked Vault', 'Slag Foundry'],
         },
     },
     {
         id: 'archipelago',
         namePrefix: 'Archipelago',
         description: 'A chain of storm-lashed islands. Swimming between zones is half the battle.',
-        terrains: ['water', 'open', 'forest', 'highland'],
+        terrains: ['water', 'open', 'forest', 'wetland', 'highland', 'ruins'],
         zoneNames: {
-            open: ['Shipwreck Beach', 'Tidal Flats'],
-            forest: ['Palm Grove', 'Bamboo Isle'],
-            water: ['The Shallows', 'Riptide Channel', 'Coral Reef'],
-            wetland: ['Salt Lagoon'],
-            highland: ['Lighthouse Rock', 'Sea Cliffs'],
-            ruins: ['Drowned Village'],
+            open: ['Shipwreck Beach', 'Tidal Flats', 'Driftwood Cove', 'Sandbar Spit'],
+            forest: ['Palm Grove', 'Bamboo Isle', 'Windbreak Thicket'],
+            water: ['The Shallows', 'Riptide Channel', 'Coral Reef', 'Sunken Reef', 'Whirlpool Strait'],
+            wetland: ['Salt Lagoon', 'Mangrove Shoal', 'Tidepool Flat'],
+            highland: ['Lighthouse Rock', 'Sea Cliffs', 'Watchtower Bluff'],
+            ruins: ['Drowned Village', 'Barnacled Wreck', 'Old Harbor'],
         },
     },
     {
         id: 'highlands',
         namePrefix: 'Highland',
         description: 'Windswept moors and treacherous peaks. The cold and the drops kill as surely as blades.',
-        terrains: ['highland', 'open', 'forest', 'water', 'ruins'],
+        terrains: ['highland', 'open', 'forest', 'water', 'wetland', 'ruins'],
         zoneNames: {
-            open: ['Windswept Moor', 'Heather Field'],
-            forest: ['Stunted Pines', 'Misty Glen'],
-            water: ['Black Loch', 'Mountain Spring'],
-            wetland: ['Peat Bog'],
-            highland: ['Shrouded Summit', 'Scree Slopes', 'Eagle Pass'],
-            ruins: ['Broken Watchtower', 'Standing Stones'],
+            open: ['Windswept Moor', 'Heather Field', 'Frostbitten Plain'],
+            forest: ['Stunted Pines', 'Misty Glen', 'Dead Timber'],
+            water: ['Black Loch', 'Mountain Spring', 'Frozen Tarn'],
+            wetland: ['Peat Bog', 'Sodden Fen'],
+            highland: ['Shrouded Summit', 'Scree Slopes', 'Eagle Pass', 'Wind Gap', 'Frost-Cracked Ridge'],
+            ruins: ['Broken Watchtower', 'Standing Stones', 'Cairn Field', 'Abandoned Croft'],
         },
     },
 ];
@@ -301,7 +311,16 @@ export function generateArena(seed: string): Arena {
         (eligible.length ? eligible : PROCEDURAL_EVENTS).map(e => e.cause.replace(/^(Killed|Drowned|Died|Fell|Poisoned|Burned|Struck|Crushed|Stripped|Suffocated|Bled out to|Froze to death|Lost and frozen in|Lost to|Impaled in|Blinded and battered by)\b\s*(by|in|to|from)?\s*/, '').replace(/^\w/, c => c.toUpperCase()))
     )).slice(0, 5);
 
-    const suffix = rng.pick(['Crucible', 'Gauntlet', 'Expanse', 'Labyrinth', 'Proving Grounds']);
+    // B3: 4 biomes × 5 suffixes gave only 20 distinct arena display names in
+    // total, so returning players saw the same handful of titles over and
+    // over regardless of how different the actual layout was. More than
+    // doubling the suffix pool is a cheap way to widen that without touching
+    // `arena.id` (which flavor packs, climate profiles and mutt lists key on
+    // and must stay exactly `procedural-<biome>`).
+    const suffix = rng.pick([
+        'Crucible', 'Gauntlet', 'Expanse', 'Labyrinth', 'Proving Grounds',
+        'Wilds', 'Reach', 'Maze', 'Killing Ground', 'Hollow', 'Circuit', 'Basin',
+    ]);
     return {
         id: `procedural-${biome.id}`,
         name: `The ${biome.namePrefix} ${suffix}`,
