@@ -1,4 +1,5 @@
 import { HallOfFameEntry, TributeHoFSummary } from '../models/types';
+import { LEGACY_KEYS, STORAGE_KEYS, StorageSpec, readStored, removeStored, writeStored } from './storage';
 
 /**
  * Standalone read/write for the Hall of Fame archive.
@@ -6,41 +7,43 @@ import { HallOfFameEntry, TributeHoFSummary } from '../models/types';
  * gameStore owns writing a *new* victor at the end of a run, but the Hall of Fame
  * screen also needs to import, merge and clear records. Importing gameStore here
  * would drag the whole simulator store (and its subscriptions) into a screen that
- * only ever touches localStorage, so the key and cap are duplicated deliberately —
- * they are the storage contract, not gameStore's private detail.
+ * only ever touches storage, so the spec and cap live here — they are the
+ * storage contract, not gameStore's private detail.
  */
-export const HOF_STORAGE_KEY = 'hungerGamesHoF';
+export const HOF_STORAGE_KEY = STORAGE_KEYS.hallOfFame;
 
 /** The archive evicts oldest-first past this many records; matches gameStore's slice(0, 50). */
 export const HOF_CAP = 50;
 
-export function readHallOfFame(): HallOfFameEntry[] {
-    try {
-        const parsed = JSON.parse(localStorage.getItem(HOF_STORAGE_KEY) || '[]');
-        if (!Array.isArray(parsed)) return [];
+/**
+ * v0 — an unversioned bare array under `hungerGamesHoF`.
+ * v1 — versioned envelope under `survivalGamesHallOfFame`. Same array; the
+ *      rename is handled by `legacyKeys`, and per-record repair by
+ *      `normalizeEntry`, which the archive has always run on read.
+ */
+export const HOF_SPEC: StorageSpec<HallOfFameEntry[]> = {
+    key: STORAGE_KEYS.hallOfFame,
+    version: 1,
+    legacyKeys: LEGACY_KEYS.hallOfFame,
+    migrate: raw => {
+        if (!Array.isArray(raw)) return null;
         // Records written by older builds (or hand-edited by a player) can be missing
         // fields the screen indexes into, so everything read back is normalised once
         // here rather than defended against at every render site.
-        return parsed.map(normalizeEntry).filter((e): e is HallOfFameEntry => e !== null);
-    } catch {
-        return [];
-    }
+        return raw.map(normalizeEntry).filter((e): e is HallOfFameEntry => e !== null).slice(0, HOF_CAP);
+    },
+};
+
+export function readHallOfFame(): HallOfFameEntry[] {
+    return readStored(HOF_SPEC) ?? [];
 }
 
 export function writeHallOfFame(entries: HallOfFameEntry[]): void {
-    try {
-        localStorage.setItem(HOF_STORAGE_KEY, JSON.stringify(entries.slice(0, HOF_CAP)));
-    } catch {
-        /* quota exhausted or storage disabled — the in-memory list is still correct */
-    }
+    writeStored(HOF_SPEC, entries.slice(0, HOF_CAP));
 }
 
 export function clearHallOfFame(): void {
-    try {
-        localStorage.removeItem(HOF_STORAGE_KEY);
-    } catch {
-        /* nothing to do; the caller clears its own state regardless */
-    }
+    removeStored(HOF_SPEC);
 }
 
 function asString(value: unknown, fallback = ''): string {

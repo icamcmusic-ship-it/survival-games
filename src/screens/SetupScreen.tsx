@@ -6,31 +6,14 @@ import { gameActions, gameStore, readSavedRun } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
 import { SIGNATURE_BLURBS } from '../engine/arenaSignature';
+import { readStoredConfig, writeStoredConfig } from '../utils/prefsStorage';
 
 function randomSeed() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-const CONFIG_STORAGE_KEY = 'survivalGamesLastConfig';
-
-function readStoredConfig(): GameConfig {
-    try {
-        const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
-        if (!raw) return DEFAULT_GAME_CONFIG;
-        const parsed = JSON.parse(raw);
-        return { ...DEFAULT_GAME_CONFIG, ...parsed };
-    } catch {
-        return DEFAULT_GAME_CONFIG;
-    }
-}
-
-function storeConfig(config: GameConfig) {
-    try {
-        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
-    } catch {
-        // Storage unavailable — the config simply won't be remembered next visit.
-    }
-}
+/** Versioned read/write lives in `utils/prefsStorage`; this is the local alias. */
+const storeConfig = writeStoredConfig;
 
 /** UX-11 named presets: one click sets every slider to a coherent profile. */
 const PRESETS: Array<{ name: string; blurb: string; config: GameConfig }> = [
