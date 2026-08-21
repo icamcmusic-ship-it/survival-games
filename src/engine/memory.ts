@@ -1,5 +1,5 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
-import { FEAR as FEAR_KNOBS, HUNTING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
+import { FEAR, HUNTING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
 import { traitMod } from '../data/traits';
 import { addFear } from './fear';
 import { getZone } from './map';
@@ -131,14 +131,14 @@ export function broadcastDeath(ctx: SimContext, victim: Tribute, killer?: Tribut
         if (!witnessed && killer && killer.id !== other.id
             && killZone?.adjacent.includes(other.zone)
             && ctx.rng !== undefined) {
-            if (ctx.rng.chance(FEAR_KNOBS.misattributionChance)) {
+            if (ctx.rng.chance(FEAR.misattributionChance)) {
                 const suspects = state.tributes.filter(o =>
                     o.status === 'alive' && o.id !== other.id && o.id !== killer.id && o.id !== victim.id
                     && cyclesSinceContact(state, other, o.id) <= MEMORY.sightingLifetime * 2);
                 const suspect = suspects.length > 0 ? ctx.rng.pick(suspects) : undefined;
-                if (suspect) addFear(other, suspect.id, FEAR_KNOBS.distantKill);
+                if (suspect) addFear(other, suspect.id, FEAR.distantKill);
             } else {
-                addFear(other, killer.id, FEAR_KNOBS.distantKill);
+                addFear(other, killer.id, FEAR.distantKill);
             }
         }
     });

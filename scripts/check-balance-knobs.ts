@@ -57,18 +57,33 @@ const files: string[] = [];
 })(ROOT);
 const corpus = files.map(f => fs.readFileSync(f, 'utf8')).join('\n');
 
+// A file can import a group under an alias (`import { FEAR as FEAR_KNOBS }`),
+// which a literal `GROUP.key` grep can't see — that false positive is exactly
+// what flagged §3.2's FEAR knobs after memory.ts aliased the import. Collect
+// every alias each group is imported under, anywhere in the corpus, and
+// accept a reference through any of them.
+const aliasesOf: Record<string, string[]> = {};
+Object.keys(groups).forEach(group => {
+    const aliasRe = new RegExp(`\\b${group}\\s+as\\s+(\\w+)`, 'g');
+    const found = new Set<string>();
+    let am: RegExpExecArray | null;
+    while ((am = aliasRe.exec(corpus)) !== null) found.add(am[1]);
+    aliasesOf[group] = [group, ...found];
+});
+
 const dead: string[] = [];
 Object.entries(groups).forEach(([group, keys]) => {
-    if (!new RegExp(`\\b${group}\\b`).test(corpus)) {
+    const names = aliasesOf[group];
+    if (!names.some(n => new RegExp(`\\b${n}\\b`).test(corpus))) {
         dead.push(`${group} (entire group unreferenced)`);
         return;
     }
     keys.forEach(key => {
-        if (!new RegExp(`${group}\\s*\\.\\s*${key}\\b`).test(corpus)
+        const referenced = names.some(n =>
+            new RegExp(`${n}\\s*\\.\\s*${key}\\b`).test(corpus)
             // Destructured use: `const { key } = GROUP` or `key } = GROUP`.
-            && !new RegExp(`\\{[^}]*\\b${key}\\b[^}]*\\}\\s*=\\s*${group}\\b`).test(corpus)) {
-            dead.push(`${group}.${key}`);
-        }
+            || new RegExp(`\\{[^}]*\\b${key}\\b[^}]*\\}\\s*=\\s*${n}\\b`).test(corpus));
+        if (!referenced) dead.push(`${group}.${key}`);
     });
 });
 
