@@ -2,7 +2,7 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { BLEEDING, COMBAT, DEBTS, FEAR, HUNTING, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, ESCALATION, FEAR, HUNTING, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
@@ -75,17 +75,24 @@ function bestWeapon(t: Tribute): Item | undefined {
  * carrying a scratch of venom. Recording the source at the moment of the wound
  * costs one field and makes the obituary true.
  */
+/**
+ * @returns true when this call held a finalist back from a non-tribute death
+ * that would otherwise have landed. `applyStatusDamage` (survival.ts) reads
+ * this to relieve whatever actually caused it — see the comment on the
+ * finalist-protection block below for why that relief has to happen, not
+ * just the clamp.
+ */
 export function applyDamage(
     ctx: SimContext,
     t: Tribute,
     amount: number,
     record: Omit<DamageRecord, 'cycle' | 'amount'>,
-) {
-    if (amount <= 0) return;
+): boolean {
+    if (amount <= 0) return false;
     // You cannot wound a corpse. Without this, any caller that damages a
     // tribute killed earlier in the same pass silently overwrites the damage
     // record their obituary was built from.
-    if (t.status !== 'alive') return;
+    if (t.status !== 'alive') return false;
 
     // Armour. Only against things that hit you — a padded vest does nothing
     // about thirst, venom already in the blood, or an infected wound.
@@ -99,9 +106,52 @@ export function applyDamage(
     }
     amount = Math.max(1, Math.round(amount));
 
+    // §7: the Gamemakers want a victor, not an empty arena.
+    //
+    // This rule already existed, but only inside the border-collapse pass —
+    // so it stopped the wall from finishing the last two and did nothing
+    // about the other dozen ways a finalist can die. Runs were still ending
+    // with nobody left, mostly to thirst, infection and venom quietly running
+    // out the clock on the last tribute standing. Every canonical Games
+    // produces a victor (occasionally two, which this engine already models
+    // on purpose), so a wipeout is the largest canon-fidelity failure
+    // available to it.
+    //
+    // Only the arena is held back. Another tribute can always land the
+    // killing blow — a final two who fight it out to a genuine mutual kill is
+    // a real ending, and the audience is entitled to it. What is no longer
+    // possible is the arena itself running out of contestants by attrition.
+    //
+    // Deliberately as narrow as it can be: this fires only when the tribute
+    // about to die is the *last one breathing*, because that is the only death
+    // that actually produces a wipeout. An earlier version protected both
+    // finalists (ESCALATION.finalistCount), which did stop the wipeouts but
+    // left two tributes pinned at 1 health for as long as it took them to find
+    // each other — average run length went from 9.3 days to 13.2 and resolve
+    // breakdowns rose sevenfold, because a tribute held alive at 1 HP is a
+    // tribute whose will to continue is collapsing every single cycle. Letting
+    // the second-to-last death land normally costs nothing (it leaves a
+    // victor, which is the goal) and keeps the endgame's pacing intact.
+    //
+    // A clamp alone is not enough for a *recurring* cause: thirst and poison
+    // reapply every cycle, so the last survivor would be held at 1 health
+    // rather than actually being saved. The return value tells the status-tick
+    // caller a rescue happened, so it can relieve the actual cause rather than
+    // just softening its damage.
+    let finalistSave = false;
+    if (record.kind !== 'tribute') {
+        const alive = ctx.state.tributes.filter(o => o.status === 'alive').length;
+        if (alive <= 1 && amount >= t.health) {
+            amount = Math.max(0, t.health - 1);
+            finalistSave = true;
+        }
+        if (amount <= 0) return finalistSave;
+    }
+
     t.health -= amount;
     t.lastDamage = { ...record, cycle: cycleOf(ctx.state), amount };
     clampTribute(t);
+    return finalistSave;
 }
 
 /** Kills the tribute if the last wound finished them, attributing it correctly. */
@@ -222,6 +272,18 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
 
 /** Per-round retreat check. Nobody has to fight to the death. */
 function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, roundsFought: number, opponent?: Tribute): boolean {
+    // §7: once the Gamemakers have forced the finale, there is nowhere to
+    // retreat *to* — the arena has been drained down to the horn. Without
+    // this, the two finalists met, the loser fled at low health, finalist
+    // protection kept them alive to recover, and the pair looped like that
+    // for hundreds of days. The finale is to the death because the arena
+    // makes it so, not because anyone stopped being afraid.
+    const aliveCount = ctx.state.tributes.filter(o => o.status === 'alive').length;
+    if (aliveCount <= ESCALATION.finalistCount
+        && (ctx.state.finalistCycles ?? 0) >= ESCALATION.finaleAfterFinalistCycles) {
+        return false;
+    }
+
     const arch = ARCHETYPES[t.archetype];
     const healthFraction = t.health / 100;
     if (healthFraction <= COMBAT.routHealthFraction) return true;

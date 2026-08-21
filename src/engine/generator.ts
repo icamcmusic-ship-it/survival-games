@@ -158,10 +158,25 @@ export function generateTributes(
                 stealth: rng.nextInt(3, 7),
             };
 
-            // District bonuses
+            // District bonuses.
+            //
+            // §7: the Career districts used to be the only ones with a
+            // combat-relevant stat bonus at all — D3's and D11/D12's bonuses
+            // land in intelligence and stealth, which matter for the parts of
+            // the game combat power does not read. That, stacked with the
+            // Career districts' own training-floor advantage (see
+            // pickArchetype/trainingScore), left the win column reading almost
+            // entirely as "who rolled melee stats", which is a training
+            // academy simulator wearing a twelve-district reaping's clothes.
+            // Trimmed the Career head start and gave the districts whose
+            // trade is manual labour (5 power plants, 6 transport yards, 8
+            // textile floors, 9 grain country, 10 stockyards) a smaller one of
+            // their own — a fraction of the Career bonus, in the attribute
+            // their actual work would plausibly build, so a hard-labour
+            // district tribute is a survivable fight rather than a bye.
             if (isCareer) {
-                attributes.strength += rng.nextInt(1, 3);
-                attributes.agility += rng.nextInt(1, 3);
+                attributes.strength += rng.nextInt(1, 2);
+                attributes.agility += rng.nextInt(1, 2);
             }
             if (district === 3) {
                 attributes.intelligence += rng.nextInt(2, 4);
@@ -172,6 +187,12 @@ export function generateTributes(
             if (district === 11 || district === 12) {
                 attributes.stealth += rng.nextInt(2, 4);
                 attributes.agility += rng.nextInt(1, 2);
+            }
+            if (district === 5 || district === 9 || district === 10) {
+                attributes.strength += rng.nextInt(0, 2);
+            }
+            if (district === 6 || district === 8) {
+                attributes.agility += rng.nextInt(0, 2);
             }
 
             // The cast shape leans on the age roll before it is clamped back

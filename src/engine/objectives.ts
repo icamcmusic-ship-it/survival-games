@@ -6,6 +6,7 @@ import { cycleOf, cyclesSinceContact, ensureMemory, rememberedBarren, remembered
 import { getZone, hopsTo, nextHopToward, severedEdgeSet } from './map';
 import { fearOf } from './fear';
 import { breakTruce, breaksTruce, hasTruce } from './parley';
+import { areLovers } from './alliance';
 import { getRel } from './relationships';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
 import { fill } from './encounters';
@@ -136,6 +137,21 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
     const collapsed = state.collapsedZones ?? [];
     const active = state.arena.zones.filter(z => !collapsed.includes(z.name));
     const expiry = (cycles: number) => cycle + cycles;
+
+    // 0. The forced finale outranks everything, including fear. The arena has
+    //    been drained down to one place to be, so there is no decision left to
+    //    model — go there, and if the other finalist is already standing in it,
+    //    the intention is them. See `forceFinale` in phases/dayNight.ts.
+    if (state.finaleZone) {
+        const rival = state.tributes.find(o =>
+            o.status === 'alive' && o.id !== t.id && !areLovers(t, o));
+        if (rival && rival.zone === t.zone) {
+            return { kind: 'hunt', targetId: rival.id, expires: expiry(OBJECTIVES.huntCycles) };
+        }
+        if (t.zone !== state.finaleZone) {
+            return { kind: 'reach', zone: state.finaleZone, reason: 'feast', expires: expiry(OBJECTIVES.reachCycles) };
+        }
+    }
 
     // 1. Get out. Standing somewhere they are badly outmatched beats every
     //    other consideration a tribute has.
