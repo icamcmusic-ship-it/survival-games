@@ -74,7 +74,8 @@ let zoneFiresStarted = 0, zoneFiresSpread = 0, zoneFloods = 0, zoneFreezes = 0;
 let zoneContaminations = 0, zoneFogs = 0, zoneStripped = 0, zoneSevered = 0;
 let borderTelegraphs = 0, cornucopiaRestocks = 0, muttEncounters = 0;
 // Newer systems: each needs evidence it actually fired across the sweep.
-let standoffs = 0, tributesPaid = 0, trucesStruck = 0;
+let standoffs = 0, tributesPaid = 0, tributesPaidInformation = 0, trucesStruck = 0;
+let trucesBroken = 0, soloDepartures = 0, trucesHeld = 0;
 let resolveBreakdowns = 0, nightlockDeaths = 0;
 let debtsRepaid = 0, charterBreaches = 0, performedBonds = 0, districtBonds = 0;
 let weatherFronts = 0, trapsDestroyed = 0, gamemakerSignatures = 0;
@@ -223,8 +224,14 @@ for (let i = 0; i < 240; i++) {
     if (/lashes together a shelter/.test(l.text)) sheltersBuilt++;
     if (/works mud and leaf litter/.test(l.text)) camouflaged++;
     if (/^STANDOFF:|back out of the clearing|both decide, separately|stop pretending either of them will|neither turns their back|It is arithmetic\./.test(l.text)) standoffs++;
+    // Both shapes of the toll: an item handed over, and — for the far more
+    // common tribute who is carrying nothing spare — directions paid instead.
     if (/is allowed to walk away|works out the price on their own|to get out of .* alive|before .* has finished closing|A toll, in everything but name/.test(l.text)) tributesPaid++;
+    if (/pay in directions instead|finds nothing worth taking, and asks a question|Empty pockets buy nothing|Information is the only currency|knowing better than to go back to/.test(l.text)) tributesPaidInformation++;
     if (/^TRUCE:/.test(l.text)) trucesStruck++;
+    if (/The agreement is holding|still worth more than the fight|it holds for one more day|Nothing is what they agreed on|That is what the word was for|and neither of them says what|It looks like courtesy|and neither of them moves/.test(l.text)) trucesHeld++;
+    if (/there was never any agreement at all|decides the arithmetic has changed|has just stopped honouring it|Arguing would take longer|replays the handshake twice|is finished with it now/.test(l.text)) trucesBroken++;
+    if (/would rather stop pretending otherwise/.test(l.text)) soloDepartures++;
     if (/stops taking cover in|stops making plans/.test(l.text)) resolveBreakdowns++;
     if (/takes out the nightlock/.test(l.text)) nightlockDeaths++;
     if (/without being asked. Neither of them mentions why|That is the whole conversation|settles up in|so they take it, all of it|pay what they can|I owe you one/.test(l.text)) debtsRepaid++;
@@ -588,6 +595,21 @@ const firingFloors: Array<[string, number, number]> = [
     ['desperation fights', desperationFights, 10],
     ['poisoned weapons', weaponsPoisoned, 10],
     ['tributes paying their way out of a parley', tributesPaid, 1],
+    // Extortion's other half. Most tributes carry nothing spare, so the
+    // information toll is the branch that actually makes the mechanic
+    // reachable — it needs its own floor, or the item path passing alone
+    // would hide it going dead again.
+    ['tributes paying a parley toll in information', tributesPaidInformation, 4],
+    // Both halves of the truce lifecycle. `truceHeld` guards a specific
+    // regression: the branch that narrates a truce holding sat below the
+    // "we get on" branch in `resolvePairEncounter`, and since striking a truce
+    // grants regard, truce partners were always warm enough to be caught by
+    // that branch first — the whole path measured zero firings across the
+    // sweep. A truce nobody can break is a timer rather than a promise, so the
+    // break needs its own floor as well.
+    ['truces visibly holding', trucesHeld, 2],
+    ['truces broken', trucesBroken, 2],
+    ['tributes leaving an alliance to go it alone', soloDepartures, 30],
     ['traps destroyed', trapsDestroyed, 3],
     ['zones stripped bare', zoneStripped, 3],
 ];
@@ -606,7 +628,7 @@ console.log(`psychology: fear entries=${fearFelt} peakProficiency=${bestProficie
 console.log(`intentions: objectives formed=${objectivesFormed}`);
 console.log(`social: exoticBetrayals=${exoticBetrayals} merges=${merges} leaderChanges=${leadershipChanges} feuds=${feuds} freeForAlls=${freeForAlls}`);
 console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDefections=${careerDefections} cacheContributions=${cacheContributions}`);
-console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} truces=${trucesStruck}`);
+console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} paidInInformation=${tributesPaidInformation} truces=${trucesStruck} trucesHeld=${trucesHeld} trucesBroken=${trucesBroken} soloDepartures=${soloDepartures}`);
 console.log(`bonds: debtsRepaid=${debtsRepaid} charterBreaches=${charterBreaches} performed=${performedBonds} districtPairs=${districtBonds}`);
 console.log(`resolve: breakdowns=${resolveBreakdowns} nightlock=${nightlockDeaths}`);
 console.log(`arena2: weatherFronts=${weatherFronts} trapsDestroyed=${trapsDestroyed} gmSignatures=${gamemakerSignatures}`);

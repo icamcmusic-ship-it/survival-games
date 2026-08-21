@@ -14,6 +14,7 @@ import { openWound } from './wounds';
 import { profOf, trainProficiency, weaponAffinity, weaponProficiency } from './proficiency';
 import { addFear, fearFraction, reduceFear } from './fear';
 import { areLovers } from './alliance';
+import { hasTruce } from './parley';
 import { reachBonus } from './physique';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
@@ -39,6 +40,24 @@ function pickEnvironmentalDeathPool(victim: Tribute, witness: Tribute | undefine
 
 /** Damage kinds a worn piece of armour can actually do anything about. */
 const ARMOURED_DAMAGE: DamageRecord['kind'][] = ['tribute', 'mutt', 'hazard', 'arena', 'gamemaker'];
+
+/**
+ * A weighted draw from a list, for the places combat has to make a choice that
+ * leans without being decided. `reduce`-to-the-maximum is the right shape for
+ * "who leads the pack" and the wrong one for "who swings at whom" — the latter
+ * wants a favourite, not a winner.
+ */
+function weightedPick<T>(ctx: SimContext, items: T[], weight: (item: T) => number): T {
+    const weights = items.map(weight);
+    const total = weights.reduce((sum, w) => sum + Math.max(0, w), 0);
+    if (total <= 0) return ctx.rng.pick(items);
+    let roll = ctx.rng.nextFloat() * total;
+    for (let i = 0; i < items.length; i++) {
+        roll -= Math.max(0, weights[i]);
+        if (roll <= 0) return items[i];
+    }
+    return items[items.length - 1];
+}
 
 function bestWeapon(t: Tribute): Item | undefined {
     const weapons = t.inventory.filter(i => i.type === 'weapon');
@@ -519,9 +538,13 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     });
 
     // Star-crossed lovers refuse to fight each other — the trait promises that
-    // outright, so a bonded pair can never be assigned to opposite sides.
+    // outright, so a bonded pair can never be assigned to opposite sides. A
+    // standing truce holds here too: an agreement that only survived chance
+    // meetings and evaporated in a brawl was not much of an agreement. Either
+    // party can still break it, but that happens face to face in `tryParley`,
+    // not as a side-effect of the sides being drawn.
     const isBonded = (a: Tribute, b: Tribute) =>
-        areLovers(a, b);
+        areLovers(a, b) || hasTruce(ctx.state, a, b.id);
     const partnerOf = (a: Tribute) => fighters.find(o => o.id !== a.id && isBonded(a, o));
 
     const packSide: Tribute[] = [];
@@ -736,11 +759,26 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
         // Each round, one pairing resolves — weighted toward whoever is most
         // dangerous picking whoever is most vulnerable, which is how a
         // free-for-all actually collapses.
-        const attacker = standing.reduce((best, t) =>
-            combatPower(ctx, t, bestWeapon(t)) > combatPower(ctx, best, bestWeapon(best)) ? t : best);
-        const targets = standing.filter(t => t.id !== attacker.id && !areLovers(attacker, t));
+        //
+        // Weighted, not decided. This used to be two `reduce`s: the single
+        // highest combat power always swung, always at the single lowest
+        // health, with no roll anywhere — the only combat path in the engine
+        // with no variance in it at all, while the duel and the group brawl
+        // both roll. A feast full of people who all hate each other should not
+        // resolve like a sorting algorithm.
+        const attacker = weightedPick(ctx, standing, t =>
+            Math.max(0.1, combatPower(ctx, t, bestWeapon(t))));
+        // Lovers never turn on each other, and a standing truce holds in the
+        // melee the same way it does anywhere else.
+        const targets = standing.filter(t =>
+            t.id !== attacker.id && !areLovers(attacker, t) && !hasTruce(ctx.state, attacker, t.id));
         if (targets.length === 0) break;
-        const target = targets.reduce((weak, t) => (t.health < weak.health ? t : weak));
+        // The wounded are still likeliest to draw the blow — a hurt tribute is
+        // the obvious opening — but "likeliest" is now a weight rather than a
+        // certainty, and a sworn grudge outranks pure opportunism.
+        const target = weightedPick(ctx, targets, t =>
+            Math.max(1, 100 - t.health)
+            + (hasVengeanceAgainst(attacker, t.id) ? COMBAT.freeForAllVengeanceWeight : 0));
 
         noteFight(ctx.state, attacker, target);
         const weapon = bestWeapon(attacker);

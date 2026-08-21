@@ -65,8 +65,14 @@ export function tickResolve(ctx: SimContext) {
         if (freshLoss) delta -= RESOLVE.griefPenalty;
 
         // Alone, hurt, and nobody has spoken to you in days.
+        //
+        // "Nobody is warm to you", not "everybody dislikes you". Requiring a
+        // non-positive relationship with every living tribute at once meant
+        // one lingering positive residue — a district partner, a decayed
+        // acquaintance — kept the penalty switched off for a tribute who
+        // plainly has no one, so it almost never fired.
         const lonely = allies.length === 0
-            && alive.every(o => o.id === t.id || getRel(t, o.id) <= 0);
+            && !alive.some(o => o.id !== t.id && getRel(t, o.id) >= RESOLVE.isolationWarmthThreshold);
         if (lonely) delta -= RESOLVE.isolationPenalty;
         if (t.health < RESOLVE.woundedHealth) delta -= RESOLVE.woundedPenalty;
         if (t.vitals.hunger > RESOLVE.deprivationThreshold || t.vitals.thirst > RESOLVE.deprivationThreshold) {

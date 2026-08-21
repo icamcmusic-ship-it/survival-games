@@ -1,10 +1,13 @@
 import { Item, Tribute } from '../models/types';
 import { PARLEY } from '../data/balance';
 import { PARLEY_TEXTS } from '../data/flavorText';
+import { ARCHETYPES } from '../data/archetypes';
+import { traitMod } from '../data/traits';
 import { SimContext } from './context';
 import { assessZone } from './stance';
-import { adjustMutual, getRel } from './relationships';
-import { cycleOf, noteStoodBy } from './memory';
+import { adjustMutual, adjustRel, getRel } from './relationships';
+import { addZoneThreat, cycleOf, ensureMemory, noteStoodBy, raiseSuspicion, rememberedThreat, swearVengeance } from './memory';
+import { areLovers } from './alliance';
 import { giveItem, itemPhrase } from './items';
 import { fearOf } from './fear';
 import { clampTribute } from './vitals';
@@ -51,6 +54,67 @@ function declareTruce(ctx: SimContext, a: Tribute, b: Tribute) {
     b.truces = { ...(b.truces ?? {}), [a.id]: until };
 }
 
+/** Tears up a standing truce from both sides, so neither is still honouring it. */
+function clearTruce(a: Tribute, b: Tribute) {
+    if (a.truces) delete a.truces[b.id];
+    if (b.truces) delete b.truces[a.id];
+}
+
+/**
+ * Whether `t` breaks a standing truce with `other` right now.
+ *
+ * Opportunism, on the same shape as betrayal targeting: how treacherous they
+ * are, how winnable this particular fight looks from where they stand, and how
+ * few people are left. Someone who has already been sold out themselves is
+ * markedly less willing to do it to somebody else — the one restraint in here,
+ * and the one that makes a kept truce mean something.
+ */
+export function breaksTruce(ctx: SimContext, t: Tribute, other: Tribute): boolean {
+    // A bond you actually feel is not a truce you are looking to escape.
+    if (areLovers(t, other)) return false;
+    if (t.allianceId !== undefined && t.allianceId === other.allianceId) return false;
+
+    let chance = PARLEY.truceBreakBase
+        + (ARCHETYPES[t.archetype].treachery + traitMod(t, 'treachery')) * PARLEY.truceBreakTreacheryWeight;
+
+    // How this matchup reads to the breaker — through the perception layer, so
+    // a concealed tribute is not obviously easy prey.
+    const ratio = assessZone(other, [other, t], ctx.state).ratio;
+    if (ratio > PARLEY.truceBreakOpportunismRatio) chance += PARLEY.truceBreakOpportunismBonus;
+
+    const alive = ctx.state.tributes.filter(o => o.status === 'alive').length;
+    if (alive <= PARLEY.truceBreakEndgameFieldSize) chance += PARLEY.truceBreakEndgameBonus;
+
+    // Genuine regard is what holds a promise together when nothing else does.
+    chance *= Math.max(0.05, 1 - Math.max(0, getRel(t, other.id)) / 110);
+    if (ensureMemory(t).betrayedBy.length > 0) chance *= PARLEY.truceBreakBetrayedRestraint;
+
+    return ctx.rng.chance(Math.max(0, Math.min(0.75, chance)));
+}
+
+/**
+ * Carries out the break: the agreement is gone, and the arena knows it. The
+ * fight itself is the caller's business — this is only the bookkeeping and the
+ * line the audience reads.
+ */
+export function breakTruce(ctx: SimContext, breaker: Tribute, victim: Tribute) {
+    clearTruce(breaker, victim);
+    adjustRel(victim, breaker.id, -PARLEY.truceBreakRegard);
+    // Going back on your word costs you with the person you did it to, and with
+    // everyone watching from the Capitol who was told there was an agreement.
+    raiseSuspicion(victim, breaker.id, PARLEY.truceBreakSuspicion);
+    swearVengeance(victim, breaker.id);
+    breaker.reputation = Math.max(0, breaker.reputation - PARLEY.truceBreakReputationCost);
+    addExcitement(breaker, PARLEY.truceBreakExcitement);
+    clampTribute(breaker);
+    clampTribute(victim);
+    ctx.logEvent(
+        fill(ctx.pickText(PARLEY_TEXTS.truceBroken), { breaker: breaker.name, victim: victim.name, zone: breaker.zone }),
+        [breaker.id, victim.id],
+        { important: true, category: 'betrayal' }
+    );
+}
+
 /**
  * The most expendable thing a tribute is carrying — what they would hand over.
  * Never their only weapon: paying with that is not buying your life, it is
@@ -70,8 +134,19 @@ function tributePayment(t: Tribute): Item | undefined {
  */
 export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOutcome {
     // A standing truce is itself the outcome: they have already had this
-    // conversation and both are still honouring it.
+    // conversation and both are still honouring it — unless one of them has
+    // decided, right now, that they are not. Either party can be the one who
+    // goes back on it; returning null drops the caller through to combat,
+    // which is exactly what a broken truce should become.
     if (hasTruce(ctx.state, t, other.id)) {
+        if (breaksTruce(ctx, t, other)) {
+            breakTruce(ctx, t, other);
+            return null;
+        }
+        if (breaksTruce(ctx, other, t)) {
+            breakTruce(ctx, other, t);
+            return null;
+        }
         ctx.logEvent(
             fill(ctx.pickText(PARLEY_TEXTS.truceHeld), { t1: t.name, t2: other.name, zone: t.zone }),
             [t.id, other.id],
@@ -103,6 +178,36 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
         const weaker = tOutmatched ? t : other;
         const stronger = tOutmatched ? other : t;
         const payment = tributePayment(weaker);
+        if (!payment && ctx.rng.chance(PARLEY.tributeChance)) {
+            // Nothing spare to hand over. Someone with empty hands is exactly
+            // the tribute most likely to be shaken down, and they still have
+            // the only thing everyone in an arena wants: where the bodies
+            // turned up. Paying in directions is a real transfer — the
+            // stronger party walks away knowing what the weaker one learned
+            // the hard way — and it is why the extortion branch is reachable
+            // at all now that most of its candidates carry nothing.
+            const known = Object.keys(ensureMemory(weaker).zones)
+                .map(zone => ({ zone, threat: rememberedThreat(ctx.state, weaker, zone) }))
+                .filter(z => z.threat >= PARLEY.tollInfoMinThreat)
+                .sort((a, b) => b.threat - a.threat);
+            const worst = known[0];
+            if (worst) {
+                addZoneThreat(ctx.state, stronger, worst.zone, worst.threat);
+                adjustMutual(ctx.state, weaker, stronger, -PARLEY.tollInfoResentment);
+                addExcitement(stronger, PARLEY.tributeExcitement);
+                weaker.vitals.sanity -= PARLEY.tollInfoSanityCost;
+                clampTribute(weaker);
+                clampTribute(stronger);
+                ctx.logEvent(
+                    fill(ctx.pickText(PARLEY_TEXTS.tributeInformation), {
+                        weak: weaker.name, strong: stronger.name, zone: weaker.zone, told: worst.zone,
+                    }),
+                    [weaker.id, stronger.id],
+                    { important: true, category: 'alliance' }
+                );
+                return 'tribute';
+            }
+        }
         if (payment && ctx.rng.chance(PARLEY.tributeChance)) {
             weaker.inventory = weaker.inventory.filter(i => i !== payment);
             giveItem(stronger, payment);

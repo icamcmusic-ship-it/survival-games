@@ -353,15 +353,32 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         shareAllianceSupplies(ctx, other, t);
         adjustMutual(ctx.state, t, other, 5);
         ctx.logEvent(fill(ctx.pickText(ALLIANCE_TEXTS.support), vars), [t.id, other.id], { category: 'alliance' });
+    } else if (hasTruce(ctx.state, t, other.id)) {
+        // An explicit agreement with a clock on it outranks a bad mood *and*
+        // ordinary warmth — it is the more specific thing that is true about
+        // this pair. It sat below the `relationship > 20` branch, and since
+        // striking a truce grants mutual regard and a `stoodBy` credit, truce
+        // partners were reliably warm enough to be captured by that branch
+        // first: the truce branch never once executed across a 240-run soak,
+        // taking every `truceHeld` line and the whole break path with it.
+        //
+        // Sworn vengeance (handled above) still overrides it, and so does the
+        // endgame arithmetic once somebody breaks the truce below.
+        if (!tryParley(ctx, t, other)) {
+            // tryParley returns null here only when one of them has just gone
+            // back on their word. The knife is the point of doing that.
+            resolveCombat(ctx, t, other);
+        } else if (relationship > 20) {
+            // Still on good terms underneath the agreement: they eat together.
+            t.vitals.hunger = Math.max(0, t.vitals.hunger - 10);
+            other.vitals.hunger = Math.max(0, other.vitals.hunger - 10);
+            adjustMutual(ctx.state, t, other, 5);
+        }
     } else if (relationship > 20) {
         ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.shareResources), vars), [t.id, other.id], { category: 'alliance' });
         t.vitals.hunger = Math.max(0, t.vitals.hunger - 10);
         other.vitals.hunger = Math.max(0, other.vitals.hunger - 10);
         adjustMutual(ctx.state, t, other, 5);
-    } else if (hasTruce(ctx.state, t, other.id)) {
-        // An agreement with a clock on it outranks a bad mood, but not a sworn
-        // debt (handled above) and not the endgame arithmetic (below).
-        tryParley(ctx, t, other);
     } else if (t.stance === 'Aggressive' || other.stance === 'Aggressive' || relationship < -10) {
         // Even a hostile meeting can end in a negotiation rather than a fight,
         // if neither of them likes the odds enough to start one.
