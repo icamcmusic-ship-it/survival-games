@@ -3,6 +3,7 @@ import { Bet, SAVED_RUN_SPEC, SavedRun } from '../utils/saveMigrations';
 import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
 import { HOF_CAP, readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
 import { readStored, removeStored, tryWriteStored, writeStored } from '../utils/storage';
+import { snapshotState } from '../utils/snapshot';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import type { Simulator } from '../engine/simulator';
 import type { GamemakerEventType } from '../engine/gamemaker';
@@ -222,20 +223,7 @@ export const gameStore = createStore<GameStoreState>({
 });
 
 /** Deep clone so React sees new object identities all the way down the tree. */
-function snapshot(state: GameState): GameState {
-    // structuredClone is 2-3x faster than the JSON round-trip on a ~290 KB
-    // state and this runs on every phase advance.
-    // (try/catch: unlike JSON, structuredClone throws on anything
-    // non-cloneable, and the JSON fallback matches the old behaviour.)
-    if (typeof structuredClone === 'function') {
-        try {
-            return structuredClone(state);
-        } catch {
-            // fall through to the JSON round-trip
-        }
-    }
-    return JSON.parse(JSON.stringify(state));
-}
+const snapshot = snapshotState;
 
 function commitVictory(state: GameState) {
     const { hofSaved } = gameStore.getState();

@@ -214,7 +214,7 @@ export function reconcileAlliances(ctx: SimContext) {
         if (challenger.id !== leader.id) {
             const backingFor = (t: Tribute) =>
                 members.reduce((sum, m) => sum + (m.id === t.id ? 0 : getRel(m, t.id)), 0);
-            if (backingFor(challenger) > backingFor(leader) + 20 && ctx.rng.chance(0.25)) {
+            if (backingFor(challenger) > backingFor(leader) + ALLIANCES.coupBackingMargin && ctx.rng.chance(ALLIANCES.coupChance)) {
                 record.leaderId = challenger.id;
                 ctx.logEvent(
                     `${challenger.name} stops deferring to ${leader.name}, and nobody in the group argues. The pack has a new leader.`,

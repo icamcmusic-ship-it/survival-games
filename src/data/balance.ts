@@ -643,6 +643,10 @@ export const ENCOUNTERS = {
     rescueGratitude: 10,
     ambientLineChance: 0.35,
     ambientArenaShare: 0.55,
+    /** Odds a dynamic ambient line is about a branded alliance rather than an individual. */
+    brandedAmbientChance: 0.25,
+    /** Odds the "they never noticed each other" near-miss line fires when stealth held. */
+    nearMissLineChance: 0.25,
     /** Share of ambient lines that read the run's own state instead of being pure scenery. */
     dynamicAmbientShare: 0.25,
     baseEventChance: 0.1,
@@ -1411,6 +1415,14 @@ export const ALLIANCES = {
     /** Within a faction, regard has to be genuinely better than across it, by this much. */
     schismCohesionGap: 12,
     schismChance: 0.4,
+    /**
+     * Leadership coup: the two dials that decide whether the pack's internal
+     * drama actually happens. The challenger needs this much more collective
+     * backing than the standing leader, and then the coup still only lands on
+     * this roll. Both used to be literals buried in `reconcileAlliances`.
+     */
+    coupBackingMargin: 20,
+    coupChance: 0.25,
     /** Base odds a group takes in a loner they get on with. */
     recruitChance: 0.35,
     /**

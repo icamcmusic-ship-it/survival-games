@@ -5,7 +5,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ARENAS } from '../src/data/constants';
-import { ARENA_FLAVOR, GENERIC_ARENA_FLAVOR } from '../src/data/arenaFlavor';
+import { ARENA_FLAVOR, GENERIC_ARENA_FLAVOR, PROCEDURAL_FLAVOR_PACKS } from '../src/data/arenaFlavor';
 
 const problems: string[] = [];
 
@@ -49,7 +49,19 @@ ARENAS.forEach(arena => {
     if (arena.events.length < 3) problems.push(`${arena.id}: fewer than 3 signature events`);
 });
 
-Object.entries(ARENA_FLAVOR).forEach(([id, flavor]) => {
+// Both directions, exactly: every ARENA_FLAVOR key names a real hand-authored
+// arena (a typo'd id can no longer hide among procedural tags — those live in
+// PROCEDURAL_FLAVOR_PACKS now), and every procedural pack key is a tag.
+const arenaIds = new Set(ARENAS.map(a => a.id));
+Object.keys(ARENA_FLAVOR).forEach(id => {
+    if (!arenaIds.has(id)) problems.push(`${id}: flavour pack has no matching arena (typo, or belongs in PROCEDURAL_FLAVOR_PACKS)`);
+});
+Object.keys(PROCEDURAL_FLAVOR_PACKS).forEach(id => {
+    if (!id.startsWith('procedural-')) problems.push(`${id}: procedural pack key must start with 'procedural-'`);
+    if (arenaIds.has(id)) problems.push(`${id}: procedural pack shadows a hand-authored arena id`);
+});
+
+Object.entries({ ...ARENA_FLAVOR, ...PROCEDURAL_FLAVOR_PACKS }).forEach(([id, flavor]) => {
     if (flavor.events.length < 3) problems.push(`${id}: flavour pack has fewer than 3 events`);
     if (flavor.ambient.length < 3) problems.push(`${id}: flavour pack has fewer than 3 ambient lines`);
     (['forage', 'rest', 'hide', 'hunt', 'travel'] as const).forEach(k => {

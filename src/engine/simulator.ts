@@ -1,5 +1,6 @@
 import { GameState } from '../models/types';
 import { RNG } from '../utils/rng';
+import { snapshotState } from '../utils/snapshot';
 import { SimContext, createContext, getAlive } from './context';
 import { processTraining } from './phases/training';
 import { processPreGames } from './phases/pregames';
@@ -21,7 +22,10 @@ export class Simulator {
     private ctx: SimContext;
 
     constructor(initialState: GameState) {
-        this.state = JSON.parse(JSON.stringify(initialState));
+        // Shared with the store's per-phase snapshot: structuredClone with a
+        // JSON fallback. This runs on four hot paths (startGame, rerollCast,
+        // confirmReaping, resumeSavedRun), so it gets the fast clone too.
+        this.state = snapshotState(initialState);
         this.ctx = createContext(this.state, new RNG(`${this.state.seed}-${this.state.phase}-${this.state.day}`));
     }
 

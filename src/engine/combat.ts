@@ -165,9 +165,9 @@ export function checkDeath(ctx: SimContext, t: Tribute, fallbackCause?: string) 
         ? ctx.state.tributes.find(o => o.id === record.sourceId)
         : undefined;
     if (killer) {
-        killTribute(ctx, t, killer, false, undefined, record?.cause);
+        killTribute(ctx, t, killer, { cause: record?.cause });
     } else {
-        killTribute(ctx, t, undefined, false, undefined, record?.cause || fallbackCause);
+        killTribute(ctx, t, undefined, { cause: record?.cause || fallbackCause });
     }
 }
 
@@ -434,7 +434,7 @@ export function resolveCombat(
             { important: true, category: 'combat' }
         );
         if (t2.health <= 0) {
-            killTribute(ctx, t2, t1, isBloodbath, opener);
+            killTribute(ctx, t2, t1, { weapon: opener });
             [t1, t2].forEach(t => { if (t.status === 'alive') dropBrokenWeapons(t); });
             return;
         }
@@ -500,7 +500,7 @@ export function resolveCombat(
                 { category: 'combat' }
             );
             if (loser.health <= 0) {
-                killTribute(ctx, loser, winner, isBloodbath, weapon);
+                killTribute(ctx, loser, winner, { weapon });
                 ended = true;
                 break;
             }
@@ -532,7 +532,7 @@ export function resolveCombat(
                 const parting = bestWeapon(stayer);
                 landHit(ctx, stayer, fleer, 2, parting);
                 if (fleer.health <= 0) {
-                    killTribute(ctx, fleer, stayer, isBloodbath, parting);
+                    killTribute(ctx, fleer, stayer, { weapon: parting });
                     ended = true;
                     break;
                 }
@@ -726,14 +726,14 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             landHit(ctx, lead, target, edge, weapon);
             attackers.forEach(a => noteContact(ctx.state, a, target));
             if (target.health <= 0) {
-                killTribute(ctx, target, lead, false, weapon);
+                killTribute(ctx, target, lead, { weapon });
                 continue;
             }
         } else {
             // The outnumbered side lands one anyway — desperation cuts.
             landHit(ctx, target, lead, -edge, bestWeapon(target));
             if (lead.health <= 0) {
-                killTribute(ctx, lead, target, false, bestWeapon(target));
+                killTribute(ctx, lead, target, { weapon: bestWeapon(target) });
                 continue;
             }
         }
@@ -754,7 +754,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             noteGroupFight(a, target);
             landHit(ctx, a, target, supportEdge, supportWeapon);
             if (target.health <= 0) {
-                killTribute(ctx, target, a, false, supportWeapon);
+                killTribute(ctx, target, a, { weapon: supportWeapon });
                 targetDown = true;
             }
         }
@@ -864,10 +864,10 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
             - combatPower(ctx, target, bestWeapon(target), 0, attacker);
         if (edge > 0) {
             landHit(ctx, attacker, target, edge, weapon);
-            if (target.health <= 0) { killTribute(ctx, target, attacker, false, weapon); continue; }
+            if (target.health <= 0) { killTribute(ctx, target, attacker, { weapon }); continue; }
         } else {
             landHit(ctx, target, attacker, -edge, bestWeapon(target));
-            if (attacker.health <= 0) { killTribute(ctx, attacker, target, false, bestWeapon(target)); continue; }
+            if (attacker.health <= 0) { killTribute(ctx, attacker, target, { weapon: bestWeapon(target) }); continue; }
         }
 
         const breaking = standing.filter(t =>
@@ -907,7 +907,8 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
     });
 }
 
-export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, _isBloodbath: boolean = false, weapon?: Item, cause?: string) {
+export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, opts: { weapon?: Item; cause?: string } = {}) {
+    const { weapon, cause } = opts;
     if (victim.status === 'dead') return;
     victim.status = 'dead';
     victim.health = 0;
