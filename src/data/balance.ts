@@ -307,6 +307,12 @@ export const HUNTING = {
  * out-weighs the first.
  */
 export const PROFICIENCY = {
+    /** T-2: weight of the stealth skill on concealment. */
+    concealWeight: 0.06,
+    /** T-2: crafting's pull on improvising a weapon out of the ground. */
+    craftChanceWeight: 0.06,
+    /** T-2: swimming levels needed before a crossing stops costing extra. */
+    swimmingCrossingRelief: 2,
     /** Gained per successful use, before diminishing returns. */
     gainPerUse: 0.35,
     /** Nobody becomes a surgeon in eight days — but the old cap of 4 was hit
@@ -2468,4 +2474,44 @@ export const GAMEMAKER_COSTS = {
     sever: 100,
     drop: 200,
     bounty: 300,
+} as const;
+
+/**
+ * T-4: exhaustion, as distinct from fatigue.
+ *
+ * `fatigue` is a vital the night quietly refunded, so a tribute on day 9 was
+ * mechanically a tribute on day 2 with worse numbers. Sleeplessness is the
+ * lever that actually makes the back half of a run feel different: keep moving
+ * through the dark and awareness goes first, then whole turns.
+ */
+export const EXHAUSTION = {
+    /** Nights without real rest before awareness starts to go. */
+    degradedAfter: 2,
+    /** Awareness lost per sleepless cycle past `degradedAfter`. */
+    awarenessPerCycle: 0.6,
+    maxAwarenessPenalty: 3,
+    /** Sleepless cycles past which a tribute can lose a turn outright. */
+    microsleepAfter: 4,
+    /** Odds of a microsleep per cycle once past the threshold, per cycle over. */
+    microsleepChancePerCycle: 0.06,
+    maxMicrosleepChance: 0.35,
+    /** Fatigue and sanity a microsleep refunds — it is sleep, just not chosen. */
+    microsleepFatigueRelief: 12,
+    microsleepSanityCost: 4,
+    /** Sleepless cycles cleared by one genuine night's rest. */
+    restRecovery: 2,
+} as const;
+
+/**
+ * T-3: what a tribute knows about somebody else's kit, and what that is worth
+ * to their read of a fight. Small on purpose — this is an impression, not a
+ * scouting report.
+ */
+export const ARMAMENT_MEMORY = {
+    /** Cycles before an impression of what they were carrying goes stale. */
+    lifetime: 8,
+    /** Threat multiplier when the rival was last seen empty-handed. */
+    knownUnarmedRatio: 0.82,
+    /** Threat multiplier when they were carrying something with reach. */
+    knownArmedRatio: 1.15,
 } as const;

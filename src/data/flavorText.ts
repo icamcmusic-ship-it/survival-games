@@ -1343,6 +1343,16 @@ export const DEBT_TEXTS = {
  * got a chance because there was nothing to pick from.
  */
 export const SURVIVAL_TEXTS = {
+    /** T-4: exhaustion taking the turn a tribute would not give it. */
+    microsleep: [
+        '{tribute} comes to on their feet in {zone} with no idea how long they have been standing there. Long enough.',
+        'Somewhere in {zone}, {tribute} blinks and loses a piece of the afternoon. The cameras keep rolling through it.',
+        '{tribute} sits down in {zone} for a moment and is gone before their shoulders touch the ground.',
+        'The exhaustion in {zone} finally collects what it is owed: {tribute} sleeps standing, for as long as their knees allow.',
+        '{tribute} catches themselves falling in {zone}. They were asleep before they started to fall.',
+        'For most of an hour {tribute} is not really in {zone} at all. Nothing finds them. It easily could have.',
+    ],
+
     drinkClean: [
         '{tribute} drinks their fill from the water in {zone}.',
         '{tribute} kneels at the water in {zone} and drinks until their stomach aches.',

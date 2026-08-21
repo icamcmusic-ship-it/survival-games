@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, SPONSORS } from '../../data/balance';
+import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, EXHAUSTION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, PROFICIENCY, SPONSORS } from '../../data/balance';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
@@ -21,6 +21,8 @@ import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { areLovers, leaderFor } from '../alliance';
 import { decayFear } from '../fear';
 import { updateStance } from '../stance';
+import { traitMod } from '../../data/traits';
+import { profOf, trainProficiency } from '../proficiency';
 import { processSpoilage, processVitals } from '../survival';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
@@ -127,6 +129,15 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
         if (isBreakingDown(ctx, t)) {
             handleInsanity(ctx, t);
+            acted.add(t.id);
+            return;
+        }
+
+        // T-4: past a few nights without sleep the body takes what it was not
+        // given. A microsleep costs the turn — they are standing in the open
+        // with their eyes shut — and refunds some of the fatigue, which is
+        // exactly the trade a tribute who kept moving did not want to make.
+        if (rollMicrosleep(ctx, t)) {
             acted.add(t.id);
             return;
         }
@@ -466,6 +477,37 @@ function forceFinale(ctx: SimContext) {
 }
 
 /**
+ * T-4: the body cashing in on sleeplessness whether or not it is a good moment.
+ * Returns true when the tribute loses the turn to it.
+ */
+function rollMicrosleep(ctx: SimContext, t: Tribute): boolean {
+    const over = (t.sleeplessCycles ?? 0) - EXHAUSTION.microsleepAfter;
+    if (over <= 0) return false;
+    // Insomniac cannot sleep at night, so it is exactly this tribute who ends
+    // up sleeping standing up at noon — the trait compounding into something
+    // beyond its fatigue penalty.
+    const insomniac = traitMod(t, 'fatigueNight') > 0 ? 1.5 : 1;
+    const chance = Math.min(
+        EXHAUSTION.maxMicrosleepChance,
+        over * EXHAUSTION.microsleepChancePerCycle * insomniac,
+    );
+    if (!ctx.rng.chance(chance)) return false;
+
+    t.vitals.fatigue = Math.max(0, t.vitals.fatigue - EXHAUSTION.microsleepFatigueRelief);
+    t.vitals.sanity -= EXHAUSTION.microsleepSanityCost;
+    t.sleeplessCycles = Math.max(0, (t.sleeplessCycles ?? 0) - 1);
+    clampTribute(t);
+    ctx.logEvent(
+        ctx.pickText(SURVIVAL_TEXTS.microsleep)
+            .split('{tribute}').join(t.name)
+            .split('{zone}').join(t.zone),
+        [t.id],
+        { category: 'survival' }
+    );
+    return true;
+}
+
+/**
  * REPLAY-07: campfires, after dark.
  *
  * `lightFire` already charged a concealment penalty for a fire, but only
@@ -609,6 +651,7 @@ function craft(ctx: SimContext, t: Tribute) {
         t.inventory.splice(Math.min(hasRope, hasKnife), 1);
         const spear = ITEMS.find(i => i.id === 'spear')!;
         giveItem(t, mintItem(ctx.rng, spear, QUALITY_BIAS.improvised));
+        trainProficiency(t, 'crafting');
         ctx.logEvent(`${t.name} lashes a knife to a shaft with rope and walks away holding a Spear.`, [t.id], { category: 'loot' });
     }
 
@@ -616,7 +659,10 @@ function craft(ctx: SimContext, t: Tribute) {
     // hands is a tribute who will never willingly fight, and only a third of the
     // cast was ever armed — the Cornucopia and the feast simply do not put
     // enough steel into circulation to go round.
-    if (!t.inventory.some(i => i.type === 'weapon') && ctx.rng.chance(CRAFTING.improviseChance)) {
+    // T-2: the improvised-weapon tree had no skill behind it. Someone who has
+    // already made a club out of a branch is quicker to see the next one.
+    const improviseChance = CRAFTING.improviseChance + profOf(t, 'crafting') * PROFICIENCY.craftChanceWeight;
+    if (!t.inventory.some(i => i.type === 'weapon') && ctx.rng.chance(improviseChance)) {
         const ropeIdx = t.inventory.findIndex(i => i.id === 'rope');
         if (ropeIdx >= 0) {
             // Rope is worth more as reach than as rope to somebody holding
@@ -693,6 +739,8 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
     const cost = dest ? travelCost(t, dest) : 1;
     if (cost <= 1) return true;
     t.transit = { to: destName, remaining: cost - 1 };
+    // T-2: the crossing itself is the lesson.
+    if (dest && (dest.terrain === 'water' || dest.terrain === 'wetland')) trainProficiency(t, 'swimming');
     ctx.logEvent(
         dest?.terrain === 'highland'
             ? `${t.name} starts the long climb toward ${destName}. It will not be done by nightfall.`

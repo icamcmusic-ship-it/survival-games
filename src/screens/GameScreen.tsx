@@ -7,7 +7,7 @@ import { ChronicleExport } from '../components/ChronicleExport';
 import { CATEGORY_GROUPS } from '../ui/eventStyles';
 import { tributeOdds } from '../engine/odds';
 import { objectiveLabel } from '../engine/objectives';
-import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus, Undo2 } from 'lucide-react';
 import { ESCALATION, GAMEMAKER_COSTS } from '../data/balance';
 import { evaluateInRunNearMisses } from '../data/achievements';
 import { GamemakerEventType } from '../engine/gamemaker';
@@ -68,6 +68,9 @@ export function GameScreen({
     // Non-null only while Run to End is fast-forwarding; drives the progress
     // readout and swaps the button for a working Cancel.
     const runProgress = useStore(gameStore, s => s.runProgress);
+    // U-1: restore points behind the play head, for the step-back control.
+    const rewindPoints = useStore(gameStore, s => s.rewindPoints);
+    const [showRewind, setShowRewind] = useState(false);
     const spendGamemaker = (type: GamemakerEventType, cost: number, targetId?: string) => {
         if (coins < cost) return;
         gameActions.setCoins(c => c - cost);
@@ -239,6 +242,16 @@ export function GameScreen({
             if (key === ' ' && !isOver && !runningRef.current) {
                 e.preventDefault();
                 onNextPhase();
+            } else if (key === 'Backspace' && !isOver && !runningRef.current) {
+                // U-1: step the board back one position.
+                e.preventDefault();
+                const points = gameStore.getState().rewindPoints;
+                if (points.length === 0) {
+                    announceShortcut('Nothing to step back to');
+                } else {
+                    announceShortcut(`Stepped back to ${points[points.length - 1].label}`);
+                    gameActions.stepBack();
+                }
             } else if (lower === 'f') {
                 setShowFilters(v => !v);
             } else if (lower === 'm') {
@@ -497,6 +510,49 @@ export function GameScreen({
                                         Run to End
                                     </button>
                                 )}
+                                {/* U-1: the board could not be put back — an
+                                    unattended skip past a moment you wanted to
+                                    read was unrecoverable. */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => gameActions.stepBack()}
+                                        className="btn"
+                                        disabled={!!runProgress || rewindPoints.length === 0}
+                                        aria-disabled={!!runProgress || rewindPoints.length === 0}
+                                        title={rewindPoints.length === 0
+                                            ? 'Nothing to step back to yet'
+                                            : `Step back to ${rewindPoints[rewindPoints.length - 1].label} (Backspace)`}
+                                    >
+                                        <Undo2 className="w-4 h-4" /> Back
+                                    </button>
+                                    {rewindPoints.length > 1 && (
+                                        <button
+                                            onClick={() => setShowRewind(v => !v)}
+                                            className="btn btn-sm btn-ghost ml-1"
+                                            aria-expanded={showRewind}
+                                            title="Rewind further back"
+                                        >
+                                            ⌄
+                                        </button>
+                                    )}
+                                    {showRewind && (
+                                        <div className="absolute right-0 top-full mt-1 z-20 panel p-2 space-y-1 max-h-64 overflow-y-auto custom-scrollbar min-w-[190px]">
+                                            {[...rewindPoints].reverse().map(p => (
+                                                <button
+                                                    key={p.index}
+                                                    onClick={() => { gameActions.rewindTo(p.index); setShowRewind(false); }}
+                                                    className="btn btn-sm btn-ghost w-full justify-between"
+                                                    title={`Rewind to ${p.label} — discards ${gameState.log.length - p.logLength} chronicle entries`}
+                                                >
+                                                    <span>{p.label}</span>
+                                                    <span className="font-mono text-[10px] text-[var(--color-ink-500)]">
+                                                        −{gameState.log.length - p.logLength}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                                 <button onClick={onNextPhase} className="btn btn-primary" disabled={!!runProgress} title="Advance one phase (Space)">
                                     Proceed <FastForward className="w-4 h-4" />
                                 </button>
@@ -1166,6 +1222,7 @@ export function GameScreen({
                                 {[
                                     ['Space', 'Advance one phase'],
                                     ['P', 'Start or stop auto-advance'],
+                                    ['Backspace', 'Step the board back one phase — the whole board, not just the feed'],
                                     ['F', 'Show or hide the chronicle filters'],
                                     ['M', 'Switch between the chronicle and the arena map'],
                                     ['Z / Shift+Z', 'Cycle the sector filter forward or back — past the last sector clears it'],

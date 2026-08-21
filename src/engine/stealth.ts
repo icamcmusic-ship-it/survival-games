@@ -1,9 +1,10 @@
 import { Tribute, Zone } from '../models/types';
 import { zoneFeatures } from './map';
-import { CRAFTING, INVENTORY, STEALTH } from '../data/balance';
+import { CRAFTING, EXHAUSTION, INVENTORY, PROFICIENCY, STEALTH } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { traitMod } from '../data/traits';
 import { encumbranceOf, hasTool } from './items';
+import { profOf, trainProficiency } from './proficiency';
 
 /**
  * Concealment and awareness — the two halves of whether one tribute ever finds
@@ -63,6 +64,9 @@ export function concealment(
     if (t.injuries.bleeding) value -= STEALTH.bleedingPenalty;
     // §3.3: a full pack is a loud pack.
     value -= encumbranceOf(t) * INVENTORY.encumbranceStealthPenaltyMax;
+    // T-2: hiding is a skill, not only an attribute. Practice at going to
+    // ground compounds with the stealth stat rather than replacing it.
+    value += profOf(t, 'stealth') * PROFICIENCY.concealWeight;
     // Traits that change how well someone disappears into the ground.
     value += traitMod(t, 'concealment');
     if (hasTool(t, 'light')) value -= STEALTH.lightConcealmentPenalty;
@@ -92,6 +96,12 @@ export function awareness(t: Tribute, dark = false): number {
     if (hasTool(t, 'light')) value += STEALTH.lightAwarenessBonus;
 
     if (t.vitals.fatigue > 80) value -= STEALTH.exhaustedPenalty;
+    // T-4: nights without sleep, compounding. This is what makes day 9
+    // different from day 2 for a tribute who has been running the whole time.
+    const sleepless = (t.sleeplessCycles ?? 0) - EXHAUSTION.degradedAfter;
+    if (sleepless > 0) {
+        value -= Math.min(EXHAUSTION.maxAwarenessPenalty, sleepless * EXHAUSTION.awarenessPerCycle);
+    }
     if (t.vitals.sanity < 30) value -= STEALTH.lowSanityPenalty;
 
     return value;
@@ -128,7 +138,10 @@ export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone
     // good stealth in the final zone simply never meet and the Games never end.
     hidden *= endgameVisibility(ctx);
 
-    return !ctx.rng.chance(hidden);
+    const noticed = !ctx.rng.chance(hidden);
+    // T-2: getting away with it is how you get better at it.
+    if (!noticed) trainProficiency(hider, 'stealth');
+    return noticed;
 }
 
 /** Multiplier on concealment as the field narrows: 1 early, 0 at the end. */
@@ -168,8 +181,12 @@ export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute
         if (f.chokepoint) chance += STEALTH.chokepointAmbushBonus;
     }
     if (attacker.archetype === 'trickster') chance += 0.12;
+    // An ambush is the sharp end of the same skill.
+    chance += profOf(attacker, 'stealth') * PROFICIENCY.concealWeight;
     chance += traitMod(attacker, 'ambush');
     if (defender.stance === 'Aggressive') chance -= 0.1;
 
-    return ctx.rng.chance(Math.max(0, Math.min(STEALTH.maxAmbushChance, chance)));
+    const sprung = ctx.rng.chance(Math.max(0, Math.min(STEALTH.maxAmbushChance, chance)));
+    if (sprung) trainProficiency(attacker, 'stealth');
+    return sprung;
 }

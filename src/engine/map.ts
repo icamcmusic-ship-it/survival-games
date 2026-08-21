@@ -1,7 +1,8 @@
 import { Arena, GameState, Tribute, Zone, ZoneFeatures } from '../models/types';
 import { traitMod } from '../data/traits';
-import { ZONES } from '../data/balance';
+import { PROFICIENCY, ZONES } from '../data/balance';
 import { injuryGrade } from './wounds';
+import { profOf } from './proficiency';
 
 export function zoneNames(arena: Arena): string[] {
     return arena.zones.map(z => z.name);
@@ -25,7 +26,11 @@ export function travelCost(t: Tribute, dest: Zone): number {
     // with no travel consequence at all.
     const limping = injuryGrade(t, 'legs') >= 2 ? 1 : 0;
     if (dest.terrain === 'water' || dest.terrain === 'wetland') {
-        return (traitMod(t, 'water') > 0 ? 1 : 2) + limping;
+        // T-2: crossings charged a cycle with no way to ever get better at
+        // them. Enough practice in the water and a crossing is just ground.
+        const swims = traitMod(t, 'water') > 0
+            || profOf(t, 'swimming') >= PROFICIENCY.swimmingCrossingRelief;
+        return (swims ? 1 : 2) + limping;
     }
     if (dest.terrain === 'highland') {
         return (traitMod(t, 'highland') > 0 ? 1 : 2) + limping;

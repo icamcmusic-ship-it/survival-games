@@ -1,5 +1,5 @@
 import { Tribute } from '../models/types';
-import { DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { DRIFT, CRAFTING, EXHAUSTION, INJURY_DAMAGE, INVENTORY, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -284,7 +284,22 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
  * watered and not wrecked with exhaustion.
  */
 function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night', alliesPresent: number) {
-    if (time !== 'night' || t.health >= 100) return;
+    if (time !== 'night') return;
+    // T-4: whether they actually slept is decided here, and it matters even
+    // when there is no health left to mend — which is why the sleepless
+    // bookkeeping runs before the `health >= 100` early return the healing
+    // itself needs.
+    const slept = (RECOVERY.restfulStances as readonly string[]).includes(t.stance)
+        && !t.injuries.bleeding
+        && t.vitals.hunger <= RECOVERY.maxHunger
+        && t.vitals.thirst <= RECOVERY.maxThirst;
+    if (slept) {
+        t.sleeplessCycles = Math.max(0, (t.sleeplessCycles ?? 0) - EXHAUSTION.restRecovery);
+    } else {
+        t.sleeplessCycles = (t.sleeplessCycles ?? 0) + 1;
+    }
+
+    if (t.health >= 100) return;
     if (!(RECOVERY.restfulStances as readonly string[]).includes(t.stance)) return;
     if (t.injuries.bleeding || t.injuries.infected || t.injuries.poisoned) return;
     if (t.vitals.hunger > RECOVERY.maxHunger || t.vitals.thirst > RECOVERY.maxThirst) return;

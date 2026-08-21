@@ -1,8 +1,8 @@
 import { GameState, Stance, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { FEAR, STANCE, STEALTH, VITALS } from '../data/balance';
+import { ARMAMENT_MEMORY, FEAR, STANCE, STEALTH, VITALS } from '../data/balance';
 import { SimContext } from './context';
-import { cyclesSinceContact, ensureMemory, rivalRecord } from './memory';
+import { cyclesSinceContact, ensureMemory, knownArmamentOf, rivalRecord } from './memory';
 import { getRel } from './relationships';
 import { fearOf } from './fear';
 import { massOf } from './physique';
@@ -36,6 +36,17 @@ function visiblePower(o: Tribute): number {
 export function assessZone(t: Tribute, occupants: Tribute[], state?: GameState) {
     const estimate = (o: Tribute) => {
         let power = visiblePower(o);
+        // T-3: what they were last seen carrying. `visiblePower` reads the
+        // live inventory — what is in their hands *now*, which is fair, since
+        // you can see it — but a tribute who watched somebody put three
+        // arrows into a rival two zones ago is reading the memory as well as
+        // the moment, and a concealed bow is exactly the thing that memory
+        // corrects for.
+        if (state) {
+            const known = knownArmamentOf(state, t, o.id);
+            if (known === 'none') power *= ARMAMENT_MEMORY.knownUnarmedRatio;
+            else if (known) power *= ARMAMENT_MEMORY.knownArmedRatio;
+        }
         // Reputation: a big training score is public, broadcast before the gong.
         if (o.trainingScore > 0) power += (o.trainingScore - 5) * 0.5;
         if (o.isCareer) power += 1.5;

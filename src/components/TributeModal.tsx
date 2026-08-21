@@ -21,7 +21,9 @@ import { useStore } from '../store/createStore';
 import { copyTributeStory, downloadTributeStory } from '../utils/tributeStory';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
-    forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
+    forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', thrown: 'Throwing',
+    medicine: 'Medicine', tracking: 'Tracking', stealth: 'Concealment',
+    crafting: 'Crafting', swimming: 'Swimming',
 };
 
 /** A wound's rate, not merely its existence. */

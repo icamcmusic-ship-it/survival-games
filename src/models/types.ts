@@ -41,7 +41,16 @@ export type InjurySite = keyof Injuries;
  * a survivalist visibly become a survivalist over a run instead of merely
  * being labelled one.
  */
-export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking';
+/**
+ * T-2: five skills covered foraging, two weapon classes, medicine and
+ * tracking — so the `thrown` weapon class trained and read from `ranged`
+ * despite `combatPower` giving it its own branch, the improvised-weapon tree
+ * had no skill behind it at all, hiding was pure attribute, and `travelCost`
+ * charged for water crossings with no way to ever get better at them.
+ */
+export type Proficiency =
+    | 'forage' | 'melee' | 'ranged' | 'thrown'
+    | 'medicine' | 'tracking' | 'stealth' | 'crafting' | 'swimming';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage';
@@ -306,6 +315,15 @@ export interface Tribute {
     proficiencies?: Partial<Record<Proficiency, number>>;
     /** What they are currently trying to do. See `Objective`. */
     objective?: Objective;
+    /**
+     * T-4: consecutive night phases without real sleep.
+     *
+     * Fatigue was a number the night quietly refunded; there was no
+     * *exhaustion*, so days 6-10 felt like days 1-3. A tribute who keeps
+     * moving through the dark accumulates sleepless cycles, and past
+     * `EXHAUSTION.microsleepAfter` starts losing awareness, then whole turns.
+     */
+    sleeplessCycles?: number;
     /** Ids of tributes this one has formed a protective bond with. See `growProtectorBond`. */
     protectorBonds?: string[];
     /**
@@ -397,6 +415,17 @@ export interface RivalRecord {
     /** Times this tribute broke off rather than finish it. */
     timesFled: number;
     lastFightCycle: number;
+    /**
+     * T-3: what this rival was last seen holding. Nothing modelled tributes
+     * learning about each other's *kit* — `fights`, `woundsTaken` and `fear`
+     * recorded how a meeting went but never what the other one had in their
+     * hands, so a ranged tribute could not deliberately keep distance from a
+     * swordsman and an unarmed one could not deliberately close on an archer.
+     * Read by `assessZone`, so it colours the whole threat estimate.
+     */
+    knownArmament?: 'none' | 'melee' | 'ranged' | 'thrown';
+    /** Cycle `knownArmament` was observed — impressions of kit go stale too. */
+    armamentCycle?: number;
 }
 
 /**

@@ -247,6 +247,7 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         objective: normalizeObjective(r.objective),
         protectorBonds: asStrArray(r.protectorBonds),
         quirks: asStrArray(r.quirks),
+        sleeplessCycles: asNum(r.sleeplessCycles, 0),
         injurySeverity: asObjMap<number>(r.injurySeverity),
         platePosition: clamp(asNum(r.platePosition, 0.5), 0, 1),
     };
