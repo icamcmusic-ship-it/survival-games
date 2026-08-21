@@ -237,9 +237,13 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute }: {
                         <button
                             key={d}
                             className="btn btn-sm btn-ghost font-mono text-[10px]"
+                            aria-label={d === 0 ? 'Jump to before the Games' : `Jump to day ${d}`}
                             onClick={() => {
                                 const nodes = document.querySelectorAll(`[data-day="${d}"]`);
-                                nodes[nodes.length - 1]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                // A smooth scroll is an animation like any other:
+                                // honour the reduced-motion preference here too.
+                                const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+                                nodes[nodes.length - 1]?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
                             }}
                         >
                             {d === 0 ? 'Start' : `D${d}`}
