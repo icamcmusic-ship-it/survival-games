@@ -1456,3 +1456,247 @@ export const GAMEMAKER_TEXTS = {
         'GAMEMAKER: the sky says there will be an event of interest shortly, does not say what, where or when, and goes quiet. The commentators call it masterful. The tributes call it nothing, out loud.',
     ],
 };
+
+/**
+ * §8.3: Caesar as a running voice rather than a bookend.
+ *
+ * He hosts the interviews and he hosts the debrief, and in between the Games
+ * happen without him — which is the wrong way round. The Capitol audience does
+ * not watch an arena, it watches a broadcast, and the broadcast has a man in it
+ * whose job is to make eleven hours of children starving in a forest feel like
+ * an occasion. These are his desk lines: warm, tireless, professionally kind,
+ * and once in a while letting slip something he covers a beat too late.
+ *
+ * Placeholders, by key. Anything not listed here is not substituted and will
+ * print raw into the feed:
+ *  - `openingDay`, `quietDay`, `nightfall`: `{alive}`, `{day}`
+ *  - `afterDeath`: `{victim}`
+ *  - `finalEight`, `finalThree`, `feastCalled`: none
+ */
+export const CAESAR_COMMENTARY = {
+    /** Day 1-2. The broadcast finding its feet. `{alive}`, `{day}` available. */
+    openingDay: [
+        "CAESAR: 'Good morning, Panem. {alive} of them out there, all of them still learning where the water is. Stay with us.'",
+        "CAESAR: 'Day {day} and already I can tell you this is not a quiet field. Look at them move.'",
+        "CAESAR: 'They always look smaller on the first morning. Give it a day. They grow into it, every year.'",
+        "CAESAR: 'Now, the odds board says one thing and my gut says another, and my gut has been wrong about eleven Games running.'",
+        "CAESAR: 'Somebody in that arena is going to surprise us today. They always do. That is the whole reason we watch.'",
+        "CAESAR: 'Look at that. Look at that. Forty seconds off the plate and already thinking two moves ahead.'",
+        "CAESAR: 'The first day is the one nobody knows how to have. Watch who stops running first — that is your tribute to follow.'",
+        "CAESAR: 'I have been doing this a long time and I still cannot call a Games from the opening morning. Neither can you. Isn't that marvellous.'",
+        "CAESAR: 'Every one of them woke up this morning believing it. That does something to a broadcast, it really does.'",
+    ],
+    /** Nothing is happening and the desk has to fill. `{alive}`, `{day}` available. */
+    quietDay: [
+        "CAESAR: 'Quiet hour in the arena, and a quiet hour is where the good ones do their best work. Somebody out there is building something.'",
+        "CAESAR: 'Now, some of you at home are asking why nobody is fighting. Because they are clever. Patience is a strategy, it is simply a strategy without a highlight reel.'",
+        "CAESAR: '{alive} still with us, and not one of them has moved in twenty minutes. I find that thrilling. I understand if you do not.'",
+        "CAESAR: 'While we wait, let me remind you of the training scores, which — and I say this every year — have never once predicted a winner.'",
+        "CAESAR: 'They are all resting at the same time. That never lasts. Somebody always gets an idea.'",
+        "CAESAR: 'Day {day} is doing what day {day} usually does, which is absolutely nothing until it does everything at once.'",
+        "CAESAR: 'A slow afternoon is the Capitol's way of making tomorrow worth the wait. That is not me speaking for the Gamemakers. That is just true.'",
+        "CAESAR: 'You can hear the arena on days like this. We do not often let you. Listen to that.'",
+        "CAESAR: 'I am told the betting parlours are struggling. Good. A Games you can predict is not a Games, it is a schedule.'",
+    ],
+    /** A cannon has just been announced. `{victim}` available. */
+    afterDeath: [
+        "CAESAR: 'And there it is. {victim}. A cannon for {victim}, and Panem, that one had a real chance.'",
+        "CAESAR: 'Oh. Oh, that is — that is {victim}, and I did not expect that today.' There is a pause before he finds the next sentence.",
+        "CAESAR: '{victim} goes out fighting, which is the way you want to be remembered, and we will remember them.'",
+        "CAESAR: 'A cannon. {victim}. Sixteen years old and braver than the room they interviewed in. We'll have the full tribute after the break.'",
+        "CAESAR: 'That is {victim}, and I will be honest with you — I liked that one.' He smiles. 'They all have something. That one had rather a lot of it.'",
+        "CAESAR: 'The board changes for {victim}. It always changes fast. Take a moment, Panem, and then let us look at what it means for the rest.'",
+        "CAESAR: '{victim} lasted longer than anybody at this desk said they would, and I include myself in that, gladly.'",
+        "CAESAR: 'And we say goodbye to {victim}. Somewhere a district is watching this. We do not forget that here.' A beat. 'Now — the odds.'",
+        "CAESAR: 'One cannon changes the shape of everything. {victim} is gone, and every tribute still out there just became a different tribute.'",
+    ],
+    /** The field narrows to a manageable number. No placeholders. */
+    finalEight: [
+        "CAESAR: 'Final eight, Panem. From here on nobody is anonymous. We know all their names and so do they.'",
+        "CAESAR: 'This is my favourite part of any Games. Eight left, and every single one of them has done something to earn it.'",
+        "CAESAR: 'Eight. Which means the interviews start over — the families, the districts, the whole of it. Have your handkerchiefs ready.'",
+        "CAESAR: 'The alliances do not survive the final eight. They never have. Watch the ones smiling at each other tonight.'",
+        "CAESAR: 'Eight left, and I want you to notice that half of them were not on anybody's card a week ago.'",
+        "CAESAR: 'Nobody gets to the final eight by luck. Not all the way here. Whatever else you say about them, they earned the number.'",
+        "CAESAR: 'From here the arena gets smaller and the days get shorter. That is not a figure of speech.'",
+        "CAESAR: 'Eight. If you have not picked somebody yet, pick now, because after tonight it stops being a choice and starts being a hope.'",
+    ],
+    /** Three left. No placeholders. */
+    finalThree: [
+        "CAESAR: 'Three. Panem, we are down to three, and I do not think anybody at this desk saw this three coming.'",
+        "CAESAR: 'Three left. Two of them are not going home and all three of them know the arithmetic.'",
+        "CAESAR: 'This is where they stop hiding. There is nowhere left that the Gamemakers have not thought of.'",
+        "CAESAR: 'Whatever happens in the next day, remember it. Final threes are the ones people talk about twenty years on.'",
+        "CAESAR: 'I have watched a great many of these and the final three never once looks like the one I predicted. Never once.'",
+        "CAESAR: 'Three, and none of them sleeping. You can see it. They have that look.'",
+        "CAESAR: 'The whole Capitol has stopped working. I am told the shops are shut. Three people in a forest have done that.'",
+        "CAESAR: 'They have all come further than anybody let themselves say out loud on interview night. All three of them.'",
+    ],
+    /** The feast is announced. No placeholders. */
+    feastCalled: [
+        "CAESAR: 'A feast! The Gamemakers have called a feast, and Panem, nobody has ever come out of one of those the way they went in.'",
+        "CAESAR: 'A feast. Which means everybody knows where everybody is going to be, at the same time, with something they all need.'",
+        "CAESAR: 'Now this is television. Every tribute in that arena is doing the same sum right now and half of them are getting it wrong.'",
+        "CAESAR: 'The Cornucopia again. It is always the Cornucopia. They walk out of it on the first day and they walk back into it in the end.'",
+        "CAESAR: 'A feast, and the honest ones will tell you they are going whether it is a trap or not. It is always a trap. They always go.'",
+        "CAESAR: 'The clever move is to stay away. Watch how many of them make the clever move.'",
+        "CAESAR: 'Clear your afternoon. A feast has never once been dull, and I have seen every one of them.'",
+        "CAESAR: 'The Gamemakers set the table and the tributes decide who sits. I could not have written it better, and believe me, I have tried.'",
+    ],
+    /** The anthem, the faces, the end of a day. `{alive}`, `{day}` available. */
+    nightfall: [
+        "CAESAR: 'The anthem, then. Faces in the sky, and {alive} still down there watching them go by.'",
+        "CAESAR: 'Goodnight from the desk, Panem. They do not get to say goodnight to anybody, so we will say it for them.'",
+        "CAESAR: 'The night is the long part. We cut away. They do not.'",
+        "CAESAR: 'That is day {day}. Sleep well, all of you, and we will see what the morning has decided.'",
+        "CAESAR: 'Nobody wins at night. But a great many of them lose at night, so do keep your screens on.'",
+        "CAESAR: 'Look at the sky over that arena. Every one of those faces sat on my couch a week ago. Every single one.' He straightens his tie. 'Right. Tomorrow.'",
+        "CAESAR: 'The temperature is dropping out there and the ones without fire are about to learn what that means.'",
+        "CAESAR: 'Goodnight, Panem. {alive} of them going to sleep tonight in the most watched place in the world, entirely alone.'",
+    ],
+};
+
+/**
+ * §8.3: the audience as a thing the broadcast happens to.
+ *
+ * The Capitol is not a set of odds and a betting board — it is bars, streets,
+ * viewing parties and children with painted faces, and what it does in a given
+ * second is the fastest read on what the arena just did. A death lands
+ * differently depending on whether the room cheers or goes quiet, and the
+ * chronicle should be able to say which. No placeholders except `{tribute}`.
+ */
+export const CROWD_REACTIONS = {
+    cheer: [
+        'A Capitol bar comes off its stools all at once and stays standing for a full minute.',
+        'The noise in the viewing squares carries three streets in every direction.',
+        'Somebody in the Capitol pours champagne over somebody else in the Capitol, and neither of them minds.',
+        'The studio audience is on its feet before the replay has even started, and it does not sit down for the replay either.',
+        'A viewing party in the fashion district loses its composure entirely, which for that district is quite an admission.',
+        'They are chanting {tribute}\'s name in a bar that could not have found their district on a map a week ago.',
+        'The betting parlours erupt, and for once it is not about the money.',
+        'Somewhere in the Capitol a crowd starts applauding and cannot explain to itself why it has not stopped.',
+    ],
+    hush: [
+        'Every screen in a Capitol bar shows the same thing and nobody in it says a word.',
+        'The studio audience makes a sound halfway to a gasp and then thinks better of finishing it.',
+        'A viewing party goes quiet the way a room goes quiet when somebody drops something expensive.',
+        'In the squares, the noise falls away in a ring outward from the nearest screen.',
+        'A thousand people in a Capitol plaza hold still at once, waiting to be told what they just watched.',
+        'The commentary track has nothing prepared for this, and for four seconds the broadcast is only the arena.',
+        'Glasses go down on tables all over the Capitol and stay down.',
+    ],
+    outrage: [
+        'A Capitol bar boos its own screen, which is a thing that happens perhaps twice a Games.',
+        'The studio audience turns on the replay and has to be talked back down between segments.',
+        'Somebody throws something at a viewing screen in a public square and is quietly removed.',
+        'The Capitol decides, all at once and without discussion, that it did not care for that.',
+        'The complaint lines to the broadcast light up, as if there were anyone at the other end who could undo it.',
+        'A viewing party turns ugly about {tribute} and stays ugly long after the feed has moved on.',
+        'For an hour the Capitol talks about nothing else, and none of it is kind.',
+    ],
+    heartbreak: [
+        'A Capitol bar full of people who have never met a tribute cries about one anyway.',
+        'The studio audience makes the small sound it makes when it has decided to be sad about something.',
+        'Somewhere in the Capitol a child asks whether that means the tribute is coming back, and nobody answers.',
+        'They put {tribute}\'s interview footage up on the plaza screens and a crowd stands in the cold to watch it through.',
+        'A viewing party ends early. People collect their coats without much being said.',
+        'The Capitol grieves the way it does everything, loudly and for about a day, and it is not entirely false.',
+        'Flowers appear against the base of a screen in one of the squares by morning.',
+    ],
+};
+
+/**
+ * §8.3: district as a way of speaking, not only a number on a jacket.
+ *
+ * Twelve years of the same work leaves the same marks on the language as it
+ * does on the hands. A District 12 tribute calls a hopeless prospect a dry
+ * seam; a District 8 tribute says a plan is coming apart at the seams and means
+ * something specific by it. Short phrases, so they can be dropped into dialogue
+ * and banter without a line of setup. Industries follow `districts.ts`.
+ */
+export const DISTRICT_IDIOMS: Record<number, string[]> = {
+    // Luxury goods: everything is appraisal, polish and what a thing is worth.
+    1: [
+        'that one is paste, not stone',
+        'polish it and nobody asks what it is underneath',
+        'you do not haggle over your own price',
+        'cut well, set badly',
+    ],
+    // Masonry: load, courses, foundations, and what a wall does when you lean.
+    2: [
+        'built on sand, that plan',
+        'you find the load-bearing one and you take it out',
+        'straight courses, or the whole thing comes down',
+        'that is a crack in the footing, not the render',
+    ],
+    // Technology: circuits, current, tolerances, and things that fail closed.
+    3: [
+        'that circuit is open at both ends',
+        'run it and see what smokes',
+        'they are wired in series, those two — take one, lose both',
+        'no tolerance left in it',
+    ],
+    // Fishing: tides, nets, deep water, and knowing when to cut a line.
+    4: [
+        'wait for the tide, do not swim it',
+        'that is a net with a hole in it',
+        'cut the line before it takes the boat',
+        'they are out past the shelf now',
+    ],
+    // Power: load, current, and the grid going down one station at a time.
+    5: [
+        'that is a short, not a fault',
+        'somebody is drawing more than the line can carry',
+        'the whole grid goes down from one bad relay',
+        'it is running hot',
+    ],
+    // Transport: schedules, routes, couplings, and being long gone.
+    6: [
+        'that one is uncoupled already',
+        'wrong line, wrong direction',
+        'they are running ahead of schedule and it will cost them',
+        'no track laid past here',
+    ],
+    // Lumber: the cut, the lean, and knowing which way a thing falls.
+    7: [
+        'that one is leaning, you just have to be ready when it goes',
+        'you cut on the side you want it to fall',
+        'rotten through, and green on the outside',
+        'timber said too late is no warning at all',
+    ],
+    // Textiles: thread, seams, weave, and everything coming apart.
+    8: [
+        'coming apart at the seams',
+        'one loose thread and the whole bolt runs',
+        'that is a weak weave',
+        'stitch it now or lose the piece',
+    ],
+    // Grain: seasons, lean years, threshing and what is actually in the sack.
+    9: [
+        'all chaff, that talk',
+        'lean year, thin sack',
+        'that field was never going to come in',
+        'you do not eat next season\'s seed',
+    ],
+    // Livestock: herds, culls, penning, and the sound before a stampede.
+    10: [
+        'that herd is about to break',
+        'they will cull the slow ones first',
+        'pen them and they turn on each other',
+        'you can hear it in them before they run',
+    ],
+    // Agriculture: the orchard, the harvest, and what is safe to put in a mouth.
+    11: [
+        'that fruit is bruised right through',
+        'wait for it to ripen or waste it',
+        'the ones that look best are the ones that kill you',
+        'harvest comes whether you are ready or not',
+    ],
+    // Mining: seams, dark, bad air, and the sound a roof makes first.
+    12: [
+        'that is a dry seam',
+        'bad air down that way',
+        'the roof talks before it comes in',
+        'you go down with the people you go down with',
+    ],
+};

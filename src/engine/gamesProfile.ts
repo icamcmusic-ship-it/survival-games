@@ -253,6 +253,20 @@ export function wildcardIs(state: GameState, kind: WildcardKind): boolean {
     return calendarOf(profile).some(w => w.kind === kind);
 }
 
+/**
+ * §10.2: format changes that move the collapse schedule.
+ *
+ * A year with no feast has had its main convergence event removed, so the
+ * Gamemakers close the arena earlier to compensate — otherwise "no feast"
+ * quietly reads as "no ending", which is what it measured as.
+ */
+export function modifierEscalationShift(state: GameState): number {
+    let shift = 0;
+    if (hasModifier(state, 'no-feast')) shift += MODIFIERS.noFeastShift;
+    if (hasModifier(state, 'sudden-death')) shift += MODIFIERS.suddenDeathShift;
+    return shift;
+}
+
 /** How much earlier or later this year's border starts closing. */
 export function escalationShift(state: GameState): number {
     return state.gamesProfile?.temperament.escalationShift ?? 0;

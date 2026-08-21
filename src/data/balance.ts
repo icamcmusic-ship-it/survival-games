@@ -557,7 +557,14 @@ export const ESCALATION = {
     collapseDamagePerDay: 10,
     /** The Gamemakers want a victor: the border stops short of the last two. */
     finalistCollapseDamage: 10,
-    finalistCount: 2,
+    /**
+     * The field size the forced finale engages at. Raised from 2 alongside
+     * the §10.2 modifier layer: a format with no feast, no horn or no border
+     * can leave three tributes circling an arena with nothing left to make
+     * them meet, and a Games that ends because the last rival starved is
+     * exactly the bloodless outcome the metrics goal is trying to reduce.
+     */
+    finalistCount: 3,
     /**
      * The forced finale. Finalist protection (see `applyDamage`) means the
      * arena can no longer finish the last two by attrition — which also means
@@ -568,7 +575,7 @@ export const ESCALATION = {
      * cycles at finalist count without a resolution, both are herded to the
      * horn every cycle until it ends.
      */
-    finaleAfterFinalistCycles: 6,
+    finaleAfterFinalistCycles: 4,
     hazardMultiplierPerDay: 0.3,
     hazardCeiling: 0.35,
 } as const;
@@ -1210,6 +1217,8 @@ export const ZONES = {
     baseForageChance: 0.25,
     /** T-7: odds a quiet cycle surfaces one of a tribute's quirks as colour. */
     quirkLineChance: 0.06,
+    /** §8.3: odds a tribute's home dialect surfaces on a quiet cycle. */
+    idiomLineChance: 0.04,
     yieldForageWeight: 0.4,
     survivalistForageBonus: 0.15,
     /** Aggressive/Evasive tributes can still stumble onto food or water while
@@ -1272,7 +1281,11 @@ export const STANCE = {
      * to force the issue and the Gamemakers will make sure somebody does.
      */
     endgameFieldSize: 5,
-    endgameAggression: 1.4,
+    // Raised alongside the §10.2 modifier layer: an unbounded or attrition
+    // year removes the border pressure that used to force the last few
+    // together, and a finale nobody is willing to start is exactly the
+    // bloodless-victor outcome the metrics goal is trying to reduce.
+    endgameAggression: 1.7,
     /** §3.2: momentum's pull toward Aggressive (was an undeclared 0.35). */
     momentumAggressionWeight: 0.25,
     /** §3.2: the reasons Defensive exists — a ward, claimed ground, a built camp. */
@@ -2310,6 +2323,10 @@ export const PARLEY = {
      * the candidate pool this branch draws from.
      */
     tollInfoMinThreat: 1.0,
+    /** Item value above which the weaker party would sooner give directions. */
+    tollInfoRatherThanValue: 55,
+    /** Share of otherwise-payable shakedowns settled in directions instead. */
+    tollInfoPreferredShare: 0.3,
     tollInfoResentment: 8,
     tollInfoSanityCost: 5,
 
@@ -2577,9 +2594,9 @@ export const NOTORIETY = {
     perKill: 14,
     perBetrayal: 20,
     /** Notoriety at or above this makes a tribute a name everybody knows. */
-    knownThreshold: 30,
+    knownThreshold: 36,
     /** Fear every tribute carries toward a notorious one, at full notoriety. */
-    ambientFearAtMax: 25,
+    ambientFearAtMax: 14,
     max: 100,
     /** Sponsors like a monster, up to a point. */
     excitementPerPoint: 0.15,
@@ -2602,11 +2619,11 @@ export const ALLIANCE_ROLES = {
 
 export const PACK_PARLEY = {
     /** Odds two groups meeting in one zone talk instead of resolving by force. */
-    chance: 0.45,
+    chance: 0.3,
     /** Regard needed between the two leaders for terms to be reachable at all. */
     minLeaderRegard: -20,
     /** How long a pack-to-pack non-aggression pact holds, in cycles. */
-    truceCycles: 5,
+    truceCycles: 3,
     /** Regard the standoff itself is worth to both sides. */
     standoffRegard: 4,
     /** Odds a pack parley ends in a merge offer rather than terms. */
@@ -2650,6 +2667,8 @@ export const MODIFIERS = {
     richArenaYield: 1.4,
     /** Days the border comes forward under a compressed schedule. */
     suddenDeathShift: -4,
+    /** And under a no-feast year, which has lost its convergence event. */
+    noFeastShift: -2,
 } as const;
 
 /** §10.2: what each rarity tier multiplies a wildcard's draw weight by. */
@@ -2688,4 +2707,21 @@ export const GAMEMAKER_ACTIONS = {
     announceInterest: 20,
     /** And costs everybody a little composure. */
     announceSanity: 4,
+} as const;
+
+/**
+ * §8.3: how often the broadcast cuts to the desk. Deliberately low — Caesar
+ * filling every cycle would drown the chronicle he is supposed to frame.
+ */
+export const BROADCAST = {
+    /** Days that still count as the opening of the Games. */
+    openingDays: 2,
+    /** Field sizes the desk always remarks on, once each. */
+    finalEightAt: 8,
+    finalThreeAt: 3,
+    quietDayChance: 0.25,
+    nightfallChance: 0.15,
+    afterDeathChance: 0.3,
+    /** And how often the country's own reaction gets a line. */
+    crowdChance: 0.25,
 } as const;

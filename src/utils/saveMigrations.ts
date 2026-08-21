@@ -50,7 +50,10 @@ export const SAVED_RUN_VERSION = 1;
 const GENDERS: Gender[] = ['Male', 'Female'];
 const STANCES: Stance[] = ['Aggressive', 'Defensive', 'Evasive'];
 const BUILDS: Build[] = ['Frail', 'Slight', 'Average', 'Athletic', 'Stocky', 'Muscular'];
-const ARCHETYPES = ['career', 'strategist', 'survivalist', 'protector', 'trickster', 'wildcard', 'underdog'];
+const ARCHETYPES = [
+    'career', 'strategist', 'survivalist', 'protector', 'trickster', 'wildcard', 'underdog',
+    'showman', 'pacifist', 'scavenger', 'zealot',
+];
 
 function oneOf<T extends string>(value: unknown, allowed: readonly string[], fallback: T): T {
     return typeof value === 'string' && allowed.includes(value) ? (value as T) : fallback;

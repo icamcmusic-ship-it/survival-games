@@ -37,18 +37,18 @@ export const LEGACY_EFFECTS: Record<LegacyTier, {
 };
 
 export const DISTRICT_LEGACY: Record<number, DistrictLegacy> = {
-    1:  { industry: 'Luxury goods',  tier: 'storied',   mentors: ['Gloss Vane', 'Cashmere Roux', 'Aurelia Sant'] },
-    2:  { industry: 'Masonry',       tier: 'storied',   mentors: ['Brutus Kane', 'Lyme Castellan', 'Enobaria Vex'] },
-    3:  { industry: 'Technology',    tier: 'thin',      mentors: ['Beetee Ohm', 'Wiress Kell'] },
-    4:  { industry: 'Fishing',       tier: 'strong',    mentors: ['Mags Undine', 'Finnick Sable', 'Nerida Quay'] },
-    5:  { industry: 'Power',         tier: 'thin',      mentors: ['Volta Reyes', 'Dyno Marsh'] },
-    6:  { industry: 'Transport',     tier: 'forgotten', mentors: ['Axel Ferro', 'Piper Lane'] },
-    7:  { industry: 'Lumber',        tier: 'modest',    mentors: ['Johanna Bray', 'Blight Aspen', 'Cedar Kolb'] },
-    8:  { industry: 'Textiles',      tier: 'thin',      mentors: ['Cecelia Warp', 'Woof Selvedge'] },
-    9:  { industry: 'Grain',         tier: 'forgotten', mentors: ['Chaff Rowen', 'Sheaf Kolby'] },
-    10: { industry: 'Livestock',     tier: 'thin',      mentors: ['Dalton Rein', 'Brandy Colt'] },
-    11: { industry: 'Agriculture',   tier: 'modest',    mentors: ['Seeder Vale', 'Chaff Booker'] },
-    12: { industry: 'Mining',        tier: 'forgotten', mentors: ['Haymitch Abernathy', 'Wickham Ash'] },
+    1:  { industry: 'Luxury goods',  tier: 'storied',   mentors: ['Gloss Vane', 'Cashmere Roux', 'Aurelia Sant', 'Satin Delacroix', 'Argent Pell'] },
+    2:  { industry: 'Masonry',       tier: 'storied',   mentors: ['Brutus Kane', 'Lyme Castellan', 'Enobaria Vex', 'Marbella Crane', 'Titus Quarrick'] },
+    3:  { industry: 'Technology',    tier: 'thin',      mentors: ['Beetee Ohm', 'Wiress Kell', 'Circuita Farr', 'Elektra Voss'] },
+    4:  { industry: 'Fishing',       tier: 'strong',    mentors: ['Mags Undine', 'Finnick Sable', 'Nerida Quay', 'Coral Tessen', 'Marlin Creel'] },
+    5:  { industry: 'Power',         tier: 'thin',      mentors: ['Volta Reyes', 'Dyno Marsh', 'Ampere Sill', 'Turbine Locke'] },
+    6:  { industry: 'Transport',     tier: 'forgotten', mentors: ['Axel Ferro', 'Piper Lane', 'Junction Ames', 'Diesel Wray'] },
+    7:  { industry: 'Lumber',        tier: 'modest',    mentors: ['Johanna Bray', 'Blight Aspen', 'Cedar Kolb', 'Rowan Timber', 'Alder Finch'] },
+    8:  { industry: 'Textiles',      tier: 'thin',      mentors: ['Cecelia Warp', 'Woof Selvedge', 'Damask Threll', 'Bobbin Crewe'] },
+    9:  { industry: 'Grain',         tier: 'forgotten', mentors: ['Chaff Rowen', 'Sheaf Kolby', 'Millet Thresh', 'Barleigh Fenn'] },
+    10: { industry: 'Livestock',     tier: 'thin',      mentors: ['Dalton Rein', 'Brandy Colt', 'Hilda Drover', 'Barrow Steele'] },
+    11: { industry: 'Agriculture',   tier: 'modest',    mentors: ['Seeder Vale', 'Chaff Booker', 'Orla Bramble', 'Cassius Reap'] },
+    12: { industry: 'Mining',        tier: 'forgotten', mentors: ['Haymitch Abernathy', 'Wickham Ash', 'Lucretia Colliers', 'Barrett Seam'] },
 };
 
 export function legacyOf(district: number): DistrictLegacy {

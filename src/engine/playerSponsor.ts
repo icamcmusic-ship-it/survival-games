@@ -24,7 +24,7 @@ import { clampTribute } from './vitals';
 
 /** What the Capitol will put on a parachute for a paying sponsor. */
 export const SPONSORABLE_IDS = [
-    'water', 'bread', 'dried-meat', 'tablets', 'ointment', 'medkit', 'antidote',
+    'water', 'canteen', 'bread', 'district-bread', 'dried-meat', 'hardtack', 'tablets', 'ointment', 'medkit', 'antidote',
     'rope', 'matches', 'backpack', 'sleeping-bag', 'lantern', 'net', 'whetstone',
     'bracers', 'vest', 'knife', 'spear', 'sword', 'bow',
 ] as const;

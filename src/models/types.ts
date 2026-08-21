@@ -1,7 +1,18 @@
 export type Gender = 'Male' | 'Female';
 export type Stance = 'Aggressive' | 'Defensive' | 'Evasive';
 
-export type ArchetypeId = 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog';
+/**
+ * §8.2: seven archetypes across a 24-tribute cast meant roughly three and a
+ * half duplicates of each per Games, and the archetype drives aggression,
+ * caution, treachery and alliance affinity — so the field read as a handful of
+ * repeated behaviours wearing different names. These four fill the gaps the
+ * original seven left: the one who wants to be watched, the one who will not
+ * raise a hand, the one who was already surviving before the reaping, and the
+ * one who has decided the Capitol is the enemy.
+ */
+export type ArchetypeId =
+    | 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog'
+    | 'showman' | 'pacifist' | 'scavenger' | 'zealot';
 
 export interface Attributes {
     strength: number;

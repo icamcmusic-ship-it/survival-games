@@ -26,6 +26,10 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     trickster: 'tracking',
     wildcard: 'ranged',
     underdog: 'forage',
+    showman: 'thrown',
+    pacifist: 'medicine',
+    scavenger: 'forage',
+    zealot: 'melee',
 };
 
 /**

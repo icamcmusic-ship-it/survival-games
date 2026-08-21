@@ -37,12 +37,13 @@ import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
 import { resolveTruces } from '../parley';
 import { spreadNotoriety } from '../notoriety';
+import { commentate } from '../broadcast';
 import { decayPackTruces, resolvePackEncounters } from '../packParley';
 import { repayDebts, tickDistrictBonds } from '../debts';
 import { enforceCharters } from '../allianceCharter';
 import { gamemakerProfile } from '../../data/gamemakers';
 import { readCustomContent } from '../../utils/customContent';
-import { escalationShift, hasModifier, wildcardIs } from '../gamesProfile';
+import { escalationShift, hasModifier, modifierEscalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 
@@ -79,6 +80,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     ctx.state.timeOfDay = effectiveTime === 'night' ? 'dusk' : 'day';
     advanceCycle(ctx.state);
     const alive = getAlive(ctx.state);
+    const aliveAtCycleStart = alive.length;
     // Counted once per day, so it freezes at whatever the tribute reached.
     if (time === 'day') alive.forEach(t => { t.daysSurvived = ctx.state.day; });
 
@@ -248,6 +250,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // recognisable rhythm the source material has, and the moment a tribute
     // finds out whether the person they were travelling with is still alive.
     if (time === 'night') soundTheAnthem(ctx);
+    // §8.3: the desk, after the cycle's events have actually resolved — so a
+    // "quiet day" line only ever follows a day that was quiet.
+    commentate(ctx, time, getAlive(ctx.state).length - aliveAtCycleStart);
 }
 
 /**
@@ -401,8 +406,7 @@ function updateAudienceInterest(ctx: SimContext, time: 'day' | 'night') {
     // §10.2: an unbounded year never closes the arena at all, and a
     // compressed one starts closing it on the first night.
     if (hasModifier(ctx.state, 'open-borders')) return;
-    const shift = escalationShift(ctx.state)
-        + (hasModifier(ctx.state, 'sudden-death') ? MODIFIERS.suddenDeathShift : 0);
+    const shift = escalationShift(ctx.state) + modifierEscalationShift(ctx.state);
     const bored = ctx.state.day >= ESCALATION.boredomEarliestDay + Math.max(0, shift)
         && interest < threshold;
     const scheduled = ctx.state.day >= ESCALATION.startDay + shift;

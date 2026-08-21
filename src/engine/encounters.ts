@@ -1,7 +1,7 @@
 import { Terrain, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
 import { BLEEDING, CRAFTING, DESPERATION, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, PROFICIENCY, VITALS, ZONES } from '../data/balance';
-import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
+import { ALLIANCE_TEXTS, DISTRICT_IDIOMS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaEventDef, arenaFlavor } from '../data/arenaFlavor';
 import { QUIRKS } from '../data/quirks';
 import { SimContext } from './context';
@@ -541,6 +541,21 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
     if (shouldDressWound(t)) {
         attemptFieldDressing(ctx, t);
         return;
+    }
+
+    // §8.3: district dialect. A tribute's home is in how they talk, and the
+    // chronicle had no way to show it — everyone in the arena spoke the same
+    // flat Capitol-transcript English whatever district they were reaped from.
+    if (ctx.rng.chance(ZONES.idiomLineChance)) {
+        const idioms = DISTRICT_IDIOMS[t.district];
+        if (idioms?.length) {
+            ctx.logEvent(
+                `"${ctx.rng.pick(idioms)}," ${t.name} says to nobody in ${t.zone}. `
+                + `They have said it their whole life and it means something slightly different here.`,
+                [t.id],
+                { category: 'survival' }
+            );
+        }
     }
 
     // T-7: a quiet cycle is when the cameras find the habit. Colour only —

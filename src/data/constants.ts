@@ -530,10 +530,22 @@ export const ITEMS: Item[] = [
     { id: 'blowgun', name: 'Blowgun with Darts', type: 'weapon', value: 35, durability: 40, weaponClass: 'ranged', damage: 2, poison: true },
     { id: 'garrote', name: 'Wire Garrote', type: 'weapon', value: 25, durability: 30, weaponClass: 'melee', damage: 3 },
     { id: 'slingshot', name: 'Slingshot', type: 'weapon', value: 20, durability: 60, weaponClass: 'ranged', damage: 2 },
+    // §8.3: food and water as distinct named things. Thirst kills roughly one
+    // tribute in fifteen and "water" was a single item; food was three. These
+    // differ in what they keep, what they are worth, and what a sponsor thinks
+    // of sending one — a canteen is not a stolen mouthful from someone's flask.
     { id: 'water', name: 'Water Bottle', type: 'water', value: 20 , stack: 2 },
+    { id: 'canteen', name: 'Full Canteen', type: 'water', value: 30, stack: 2 },
+    { id: 'flask', name: 'Battered Flask', type: 'water', value: 12, stack: 1 },
+    { id: 'meltwater', name: 'Skin of Meltwater', type: 'water', value: 16, stack: 2 },
     { id: 'bread', name: 'Loaf of Bread', type: 'food', value: 15, spoilage: 3 , stack: 2 },
     { id: 'berries', name: 'Foraged Berries', type: 'food', value: 5, spoilage: 1 , stack: 2 },
     { id: 'dried-meat', name: 'Dried Meat', type: 'food', value: 20, spoilage: 6 , stack: 2 },
+    { id: 'hardtack', name: 'Capitol Hardtack', type: 'food', value: 18, spoilage: 9, stack: 2 },
+    { id: 'district-bread', name: 'District Bread', type: 'food', value: 22, spoilage: 4, stack: 2 },
+    { id: 'root-mash', name: 'Boiled Roots', type: 'food', value: 8, spoilage: 2, stack: 2 },
+    { id: 'smoked-fish', name: 'Smoked Fish', type: 'food', value: 24, spoilage: 5, stack: 2 },
+    { id: 'honeycomb', name: 'Cut Honeycomb', type: 'food', value: 26, spoilage: 7, stack: 1 },
     { id: 'medkit', name: 'First Aid Kit', type: 'medical', value: 80 },
     { id: 'ointment', name: 'Burn Ointment', type: 'medical', value: 40 , stack: 2 },
     { id: 'antidote', name: 'Antidote Vial', type: 'medical', value: 60 },

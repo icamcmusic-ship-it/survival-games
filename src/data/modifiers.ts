@@ -54,8 +54,14 @@ export const GAMES_MODIFIERS: GamesModifier[] = [
     {
         id: 'no-feast',
         name: 'no feast',
-        blurb: 'The Gamemakers have announced there will be no feast. Nobody is being called anywhere; whatever happens has to be walked to.',
-        weight: 10,
+        blurb: 'The Gamemakers have announced there will be no feast — and, in the same breath, that the arena will be closing early instead. Nobody is being called anywhere. Everyone is being pushed.',
+        // The feast is the engine's main forced convergence: measured, a
+        // no-feast year ran at 50% bloodless victors against a field average
+        // of 32%, because nothing was left to make anybody meet. The
+        // Gamemakers still have to end the show, so a year without a feast is
+        // a year the border comes forward — see `escalationShiftFor`.
+        weight: 6,
+        excludes: ['no-cornucopia'],
     },
     {
         id: 'no-anthem',
@@ -85,9 +91,12 @@ export const GAMES_MODIFIERS: GamesModifier[] = [
     {
         id: 'no-cornucopia',
         name: 'an empty Cornucopia',
-        blurb: 'The horn stands at the centre of the arena with nothing in it. The bloodbath this year is over ground, not supplies.',
+        blurb: 'The horn stands at the centre of the arena with nothing in it. The bloodbath this year is over ground, not supplies — and the Capitol has promised the feast will make up for it.',
         weight: 5,
-        excludes: ['rich-arena'],
+        // An empty horn AND no feast is an arena with nothing to converge on
+        // at all, which measured as the least eventful format the pool could
+        // produce. Supplies have to enter the arena somewhere.
+        excludes: ['rich-arena', 'no-feast'],
     },
     {
         id: 'sudden-death',
@@ -105,7 +114,9 @@ export const GAMES_MODIFIERS: GamesModifier[] = [
         id: 'open-borders',
         name: 'an unbounded arena',
         blurb: 'No border will close this year. The Gamemakers have promised the tributes all the room they want and all the time they can stand.',
-        weight: 5,
+        // Rare on purpose: with no border there is no pressure to finish, and
+        // the run tends toward a victor who simply outlasted everyone.
+        weight: 3,
         excludes: ['sudden-death'],
     },
     {

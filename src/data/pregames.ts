@@ -64,6 +64,8 @@ export const REAPING_REACTIONS = {
         'The applause for {tribute} starts before their name is fully read. The betting shops in the Capitol hear it and adjust.',
         '{tribute} finds the nearest camera and holds it for a slow three-count. The sponsors will remember that.',
         '{tribute} pats the escort on the shoulder like a colleague. The escort visibly does not know what to do about it.',
+        '{tribute} does not look at their family once. They have been told not to, and they were told by someone who has done this before.',
+        '{tribute} steps up onto the stage and immediately checks the other name, the way a fighter checks a card. The square notices; the Capitol notices harder.',
     ],
 };
 
@@ -112,6 +114,9 @@ export const TRAIN_SCENES = [
 export const STYLISTS = [
     'Cinna Vela', 'Portia Ashgrove', 'Octavia Lune', 'Flavius Marr', 'Venia Sol',
     'Tigris Snow', 'Lucian Frost', 'Delphine Kray', 'Castor Vine', 'Aurelia Pike',
+    'Fabrizia Plume', 'Cassia Bellwether', 'Percival Gauze', 'Livia Mordant', 'Aureus Trill',
+    'Solene Vitrine', 'Marcellus Drape', 'Oleander Fen', 'Vespera Chine', 'Crispin Volaille',
+    'Junia Lamé', 'Sabellius Ort', 'Thessaly Grave', 'Pomponia Wick',
 ];
 
 export const CHARIOT_ANGLES = [
@@ -131,4 +136,15 @@ export const CHARIOT_ANGLES = [
     { angle: 'barefoot', line: '{stylist} sends {tribute} out plainly dressed and barefoot, the way the district actually works. It is quiet, and it lands harder than the fireworks either side of it.', pull: 1 },
     { angle: 'in glass', line: '{stylist} builds {tribute} a costume of hanging glass that chimes with the chariot. It is beautiful, fragile, and everyone watching understands the metaphor.', pull: 1.5 },
     { angle: 'matched', line: '{stylist} dresses {tribute} and their district partner as two halves of one design, and the pair of them are worth more together than either alone. The sponsors take note.', pull: 2 },
+    { angle: 'in water', line: '{stylist} sheathes {tribute} in something that runs and pools like water and never quite settles. The avenue keeps watching to see where it goes.', pull: 2 },
+    { angle: 'in ash', line: '{stylist} sends {tribute} out grey from head to heel, as though the district had already burned. It is not a costume so much as an argument.', pull: 2 },
+    { angle: 'in white', line: '{stylist} puts {tribute} in unbroken white, and every camera on the avenue understands what white is for. Nobody says the word out loud.', pull: 1.5 },
+    { angle: 'in machinery', line: '{stylist} builds {tribute} a costume of working gears that turn as the chariot turns. The Capitol adores anything that moves by itself.', pull: 1.5 },
+    { angle: 'as a child', line: '{stylist} dresses {tribute} exactly their own age, which nobody has done in years, and the avenue goes strange and quiet in patches.', pull: 2 },
+    { angle: 'in thorns', line: '{stylist} wraps {tribute} in black briar that catches the light and looks like it would cost you a hand. The front rows lean back.', pull: 2 },
+    { angle: 'in the district\'s colours', line: '{stylist} sends {tribute} down in District {district}\'s working colours and nothing else, and the district watching at home sits up. The Capitol shrugs.', pull: 0.5 },
+    { angle: 'overdressed', line: '{stylist} loads {tribute} with so much construction that they can barely stand upright in the chariot. It photographs magnificently and it is agony.', pull: 0.5 },
+    { angle: 'in salvage', line: '{stylist} assembles {tribute}\'s costume out of scrap from District {district} and makes it look like treasure. The critics call it the cleverest thing on the avenue.', pull: 2 },
+    { angle: 'unfinished', line: '{stylist} sends {tribute} out with the costume deliberately half-made, pins and all. Half the Capitol thinks it is a disaster and half of them think it is genius.', pull: 1 },
+    { angle: 'in the dark', line: '{stylist} kills every light on the chariot but one, and {tribute} comes down the avenue as a single moving point. It is the quietest thing all night and nobody looks away.', pull: 2.5 },
 ];

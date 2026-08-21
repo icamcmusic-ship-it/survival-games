@@ -20,6 +20,7 @@ import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
 import { addNotoriety } from './notoriety';
+import { commentateDeath } from './broadcast';
 import { NOTORIETY } from '../data/balance';
 import { PREGAMES } from '../data/balance';
 import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
@@ -1047,6 +1048,9 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             addFear(witness, killer.id, FEAR.witnessedKill);
         });
     }
+
+    // §8.3: the desk, and the country watching it.
+    commentateDeath(ctx, victim, victim.age <= PREGAMES.childAge);
 
     // Everything a cannon does to everyone still breathing.
     broadcastDeath(ctx, victim, killer);
