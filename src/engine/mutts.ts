@@ -1,6 +1,6 @@
 import { Mutt, Tribute } from '../models/types';
 import { ARENA_MUTTS } from '../data/mutts';
-import { BLEEDING, MEMORY } from '../data/balance';
+import { BLEEDING, MEMORY, MUTTS } from '../data/balance';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { getZone } from './map';
@@ -25,30 +25,23 @@ import { earnTrait } from './earnedTraits';
  * call on a cycle with no active mutts.
  */
 
-/** Tunables. Documented the way src/data/balance.ts documents its own. */
-const MUTTS = {
-    /** Evasion roll: tribute agility + spread vs mutt speed. Wider spread than
-     *  the old fixed threshold, so a slow tribute can still get lucky. */
-    evasionRollSpread: 4,
-    /** Extra hits beyond the first do less each time, so a pack raises danger
-     *  without one-shotting a whole tribute in a single roll. */
-    packDamageFalloff: 0.55,
-    /** A pack can never deal more than this multiple of the lead mutt's base
-     *  damage in one encounter, however many extra mutts connect. */
-    packDamageCap: 2.5,
-    /** How many cycles a persistent mutt keeps hunting once it finds someone. */
-    persistentDuration: 3,
-    /** Chance a persistent mutt's tracked target gets caught again on a given tick. */
-    persistentReattackChance: 0.55,
-    /**
-     * "Wearing the faces of the fallen" — canon's most disturbing mutt beat.
-     * Kept rare and gated on there actually being a death someone in the zone
-     * mourned; this is not a roll on every mutt attack, it is a distinct
-     * horror event layered on top of one.
-     */
-    facesOfFallenChance: 0.08,
-    facesOfFallenSanityLoss: 30,
-} as const;
+/**
+ * How hard this mutt bites right now.
+ *
+ * The printed `damage` on each roster entry is its danger *relative* to the
+ * others, which is the carefully-authored part; this applies the global
+ * lethality dial and the Gamemakers' escalation teeth on top, so the roster
+ * data never has to be touched to retune how frightening mutts are overall.
+ */
+function scaledDamage(ctx: SimContext, mutt: Mutt): number {
+    let scale = MUTTS.damageScale;
+    const escalationDay = ctx.state.escalationDay;
+    if (escalationDay !== undefined) {
+        const daysIn = Math.max(0, ctx.state.day - escalationDay);
+        scale += Math.min(MUTTS.escalationDamageCap, daysIn * MUTTS.escalationDamagePerDay);
+    }
+    return mutt.damage * scale;
+}
 
 export function rosterFor(ctx: SimContext): Mutt[] {
     return ARENA_MUTTS[ctx.state.arena.id] ?? [];
@@ -137,9 +130,10 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
 
     // First hit at full damage, each additional connecting mutt adds less,
     // bounded so a big pack raises danger without guaranteeing a kill.
-    let damage = mutt.damage;
-    for (let i = 1; i < hits; i++) damage += mutt.damage * Math.pow(MUTTS.packDamageFalloff, i);
-    damage = Math.min(damage, mutt.damage * MUTTS.packDamageCap);
+    const base = scaledDamage(ctx, mutt);
+    let damage = base;
+    for (let i = 1; i < hits; i++) damage += base * Math.pow(MUTTS.packDamageFalloff, i);
+    damage = Math.min(damage, base * MUTTS.packDamageCap);
 
     applyDamage(ctx, t, Math.round(damage), { cause: `Torn apart by ${mutt.name}`, kind: 'mutt' });
     applyMuttInjuries(t, mutt);
@@ -148,13 +142,23 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
 
     tryFacesOfTheFallen(ctx, t, mutt);
 
-    ctx.logEvent(
-        packSize > 1
-            ? `${t.name} is set upon by a pack of ${mutt.name} in ${t.zone} and barely breaks free.`
-            : `${t.name} is set upon by ${mutt.name} in ${t.zone} and barely breaks free.`,
-        [t.id],
-        { important: true, category: 'mutt' }
-    );
+    // "Barely breaks free" is only true if they did. Now that a pack can
+    // actually finish someone, the encounter needs to be able to say so —
+    // otherwise the feed reported an escape immediately before the cannon.
+    const pack = packSize > 1 ? `a pack of ${mutt.name}` : mutt.name;
+    if (t.health <= 0) {
+        ctx.logEvent(
+            `${mutt.name} catches ${t.name} in ${t.zone}, and there is no breaking free of it this time.`,
+            [t.id],
+            { important: true, category: 'mutt' }
+        );
+    } else {
+        ctx.logEvent(
+            `${t.name} is set upon by ${pack} in ${t.zone} and barely breaks free.`,
+            [t.id],
+            { important: true, category: 'mutt' }
+        );
+    }
     clampTribute(t);
     checkDeath(ctx, t, `Torn apart by ${mutt.name}`);
     // Surviving the Gamemakers' own animals recalibrates what frightens you.
