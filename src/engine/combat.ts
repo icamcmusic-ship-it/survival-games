@@ -7,7 +7,7 @@ import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone, zoneFeatures } from './map';
-import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound } from './memory';
+import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, propagateFightSound } from './memory';
 import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { injure, injuryGrade, openWound } from './wounds';
@@ -414,6 +414,9 @@ export function resolveCombat(
 
     noteContact(ctx.state, t1, t2);
     noteFight(ctx.state, t1, t2);
+    // A-3: the bloodbath is one long noise nobody can localise; every other
+    // fight is audible from the sector next door.
+    if (!isBloodbath) propagateFightSound(ctx, t1.zone);
     // A feud gets its own opening line once it is genuinely a feud.
     const priorFights = ensureMemory(t1).rivals?.[t2.id]?.fights ?? 0;
     if (priorFights > RIVALRY.feudAtFights) {
@@ -591,6 +594,8 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     }
 
     const zone = fighters[0].zone;
+    // A-3: a brawl is the loudest thing in the arena, and it carries.
+    propagateFightSound(ctx, zone);
 
     // Sides: the largest alliance present anchors one side, everyone hostile to
     // it forms the other. Loners with no stake pick whoever they hate less.

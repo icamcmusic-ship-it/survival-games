@@ -1,8 +1,8 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
-import { ARMAMENT_MEMORY, FEAR, HUNTING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
+import { ARMAMENT_MEMORY, FEAR, HUNTING, MEMORY, MOVEMENT, RELATIONSHIPS, SUSPICION } from '../data/balance';
 import { traitMod } from '../data/traits';
 import { addFear } from './fear';
-import { getZone } from './map';
+import { edgeKey, getZone, severedEdgeSet } from './map';
 import { SimContext } from './context';
 
 /**
@@ -338,5 +338,33 @@ export function decayRelationships(state: GameState) {
             const next = value > 0 ? Math.max(0, value - rate) : Math.min(0, value + rate);
             t.relationships[otherId] = Math.round(next * 10) / 10;
         });
+    });
+}
+
+/**
+ * A-3: sound carries.
+ *
+ * A fight is the loudest thing in an arena and it was inaudible one zone
+ * away — only the cannon travelled, and only because `broadcastDeath` said
+ * so. Anyone adjacent to a brawl learns that something happened over there,
+ * which is a real reason to go and look or to go the other way.
+ */
+export function propagateFightSound(ctx: SimContext, zoneName: string) {
+    const here = getZone(ctx.state.arena, zoneName);
+    if (!here) return;
+    const severed = severedEdgeSet(ctx.state);
+    ctx.state.tributes.forEach(listener => {
+        if (listener.status !== 'alive') return;
+        if (listener.zone === zoneName) return;
+        if (!here.adjacent.includes(listener.zone)) return;
+        if (severed.has(edgeKey(zoneName, listener.zone))) return;
+        addZoneThreat(ctx.state, listener, zoneName, MEMORY.heardFightThreat);
+        if (ctx.rng.chance(MOVEMENT.fightHeardLineChance)) {
+            ctx.logEvent(
+                `${listener.name} hears it start in ${zoneName} — shouting, then metal, then nothing — and does not go and look.`,
+                [listener.id],
+                { zone: listener.zone, category: 'combat' }
+            );
+        }
     });
 }

@@ -1,10 +1,10 @@
 import { Tribute } from '../models/types';
-import { ALLIANCE_ROLES, DRIFT, CRAFTING, EXHAUSTION, INJURY_DAMAGE, INVENTORY, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { TERRAIN_MEMORY, ALLIANCE_ROLES, DRIFT, CRAFTING, EXHAUSTION, INJURY_DAMAGE, INVENTORY, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
 import { applyExposure } from './exposure';
-import { getZone } from './map';
+import { getZone, zoneFeatures } from './map';
 import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding } from './wounds';
@@ -173,7 +173,13 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
  */
 function drinkFromZone(ctx: SimContext, t: Tribute) {
     const zone = getZone(ctx.state.arena, t.zone);
-    if (!zone || (zone.terrain !== 'water' && zone.terrain !== 'wetland')) return;
+    if (!zone) return;
+    // A-3: water is a property of the zone's interior, not of its terrain
+    // label. A forest with a spring line in it has water; a scrap yard does
+    // not; a rain-cistern in the ruins does. Terrain still sets the baseline
+    // — see `zoneFeatures` — so the old water/wetland behaviour is preserved
+    // and everything in between is finally expressible.
+    if (zoneFeatures(zone).water < WATER.drinkableThreshold) return;
 
     const foul = climateOf(ctx.state.arena.id)?.foulWater === true;
     // Purification is a property of the item now, not a hardcoded id list, so
@@ -311,7 +317,15 @@ function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night'
 
     let amount = RECOVERY.nightHeal + Math.max(0, traitMod(t, 'sanityRecovery') / 2);
     const zone = getZone(ctx.state.arena, t.zone);
-    if (zone && (zone.terrain === 'forest' || zone.terrain === 'ruins')) amount += RECOVERY.shelteredBonus;
+    // A-3: how much the ground itself offers to sleep under, graded rather
+    // than a two-terrain check — and a burnt-out sector offers less of it
+    // than it did before it burned (A-4).
+    if (zone) {
+        const scarred = (ctx.state.scarredZones ?? []).includes(zone.name)
+            ? 1 - TERRAIN_MEMORY.scarShelterLoss
+            : 1;
+        amount += RECOVERY.shelteredBonus * zoneFeatures(zone).shelter * scarred;
+    }
     // A shelter they actually built beats whatever cover the terrain offered.
     if (hasCamp(ctx, t, 'shelter')) amount += CRAFTING.shelterRecoveryBonus;
     // The most famous parachute in the source material, doing the thing it is

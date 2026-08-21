@@ -124,6 +124,11 @@ export function tickZoneEffects(ctx: SimContext) {
             endZoneEffect(state, zoneName, 'burning');
             depleteZone(state, zoneName, ZONE_EFFECTS.strippedDepletion);
             startZoneEffect(ctx, zoneName, 'stripped');
+            // A-4: the stripped effect lifts and the depletion grows back, so
+            // until now nothing the arena did to itself outlived a few cycles.
+            // Fire is the exception the map should remember: a burnt sector is
+            // permanently poorer ground and permanently worse to sleep in.
+            scarZone(ctx, zoneName);
         }
 
         state.zoneEffects![zoneName] = (state.zoneEffects![zoneName] ?? [])
@@ -338,4 +343,25 @@ export function dropSupplies(ctx: SimContext) {
         [],
         { important: true, zone: cornucopia.name, category: 'arena' }
     );
+}
+
+/**
+ * A-4: marks a zone permanently. A scar is one flag, and it is the difference
+ * between an arena that resets itself every few cycles and one that carries
+ * the record of its own Games to the finale.
+ */
+export function scarZone(ctx: SimContext, zoneName: string) {
+    const state = ctx.state;
+    state.scarredZones = state.scarredZones ?? [];
+    if (state.scarredZones.includes(zoneName)) return;
+    state.scarredZones.push(zoneName);
+    ctx.logEvent(
+        `What is left of ${zoneName} is ash and standing black stems. Nothing is going to grow there before these Games are over.`,
+        [],
+        { zone: zoneName, category: 'arena' }
+    );
+}
+
+export function isScarred(state: { scarredZones?: string[] }, zoneName: string): boolean {
+    return (state.scarredZones ?? []).includes(zoneName);
 }

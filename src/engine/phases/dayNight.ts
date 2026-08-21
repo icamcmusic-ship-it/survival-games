@@ -7,10 +7,10 @@ import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SU
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost } from '../map';
+import { zoneNames, getZone, zoneFeatures, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
-    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting,
+    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteArmament, noteSighting,
 } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
@@ -169,6 +169,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // arena visible from a zone away. This is the trade the source material is
     // built on, and it only pays off at night.
     if (effectiveTime === 'night') revealFires(ctx);
+    // A-3: and by day, whoever is standing on the high ground is watching.
+    surveyFromHighGround(ctx);
 
     // 4. Hazards, mutts and everyone who runs into everyone else.
     resolveEncounters(ctx, currentAlive, acted, isEscalated, flavor, effectiveTime);
@@ -517,6 +519,47 @@ function rollMicrosleep(ctx: SimContext, t: Tribute): boolean {
 }
 
 /**
+ * A-3: line of sight from high ground.
+ *
+ * `revealFires` proved the pattern — an observation in one zone writing an
+ * impression into somebody's memory in another — but nothing else in the
+ * arena used it, so standing on a ridge was worth an ambush modifier and
+ * nothing else. A tribute on elevation can see who is moving in the sectors
+ * next to them, which is exactly what high ground is for.
+ */
+function surveyFromHighGround(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    const severed = severedEdgeSet(ctx.state);
+
+    alive.forEach(watcher => {
+        const here = getZone(ctx.state.arena, watcher.zone);
+        if (!here || !zoneFeatures(here).elevation) return;
+        // In the dark you see a fire and nothing else; `revealFires` covers that.
+        if (ctx.state.timeOfDay === 'night') return;
+
+        here.adjacent.forEach(neighbourName => {
+            if (severed.has(edgeKey(watcher.zone, neighbourName))) return;
+            const seen = alive.filter(o =>
+                o.id !== watcher.id && o.zone === neighbourName
+                && (o.allianceId === undefined || o.allianceId !== watcher.allianceId));
+            if (seen.length === 0) return;
+            noteSighting(ctx.state, watcher, neighbourName, seen.length, depletionOf(ctx.state, neighbourName));
+            // Seen from a distance is not the same as met: they learn where
+            // people are, not who, unless the RNG says the light was good.
+            if (ctx.rng.chance(MOVEMENT.highGroundIdentifyChance)) {
+                const subject = ctx.rng.pick(seen);
+                noteArmament(ctx.state, watcher, subject);
+                ctx.logEvent(
+                    `${watcher.name} watches ${subject.name} cross ${neighbourName} from the high ground in ${watcher.zone}, and is not seen doing it.`,
+                    [watcher.id, subject.id],
+                    { category: 'travel' }
+                );
+            }
+        });
+    });
+}
+
+/**
  * REPLAY-07: campfires, after dark.
  *
  * `lightFire` already charged a concealment penalty for a fire, but only
@@ -745,15 +788,17 @@ function wanderChanceFor(t: Tribute): number {
  */
 function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
     const dest = getZone(ctx.state.arena, destName);
-    const cost = dest ? travelCost(t, dest) : 1;
+    const cost = dest ? travelCost(t, dest, ctx.state) : 1;
     if (cost <= 1) return true;
     t.transit = { to: destName, remaining: cost - 1 };
     // T-2: the crossing itself is the lesson.
     if (dest && (dest.terrain === 'water' || dest.terrain === 'wetland')) trainProficiency(t, 'swimming');
     ctx.logEvent(
-        dest?.terrain === 'highland'
-            ? `${t.name} starts the long climb toward ${destName}. It will not be done by nightfall.`
-            : `${t.name} wades into the crossing toward ${destName}. This is going to take everything the day has left.`,
+        ctx.state.weatherFront?.zone === destName
+            ? `${t.name} sets off toward ${destName} into the weather rather than wait it out. Every step of it is going to be paid for.`
+            : dest?.terrain === 'highland'
+                ? `${t.name} starts the long climb toward ${destName}. It will not be done by nightfall.`
+                : `${t.name} wades into the crossing toward ${destName}. This is going to take everything the day has left.`,
         [t.id],
         { category: 'travel' }
     );

@@ -546,6 +546,21 @@ export interface ZoneFeatures {
     elevation: boolean;
     /** Bottlenecked ways in and out: ambushes easier, retreat harder. */
     chokepoint: boolean;
+    /**
+     * A-3: 0-1, standing water a tribute can actually drink from.
+     *
+     * Thirst is a top-three killer and water was found through the generic
+     * forage roll, so whether a zone had any was invisible: a river sector and
+     * a scrap-metal yard were the same lookup. Derived from terrain when
+     * unauthored, like `cover` — optional so hand-authored data can override
+     * only the features it actually has an opinion about.
+     */
+    water?: number;
+    /**
+     * A-3: 0-1, how much the ground itself offers to sleep under. Distinct
+     * from cover, which is about not being seen rather than not being rained on.
+     */
+    shelter?: number;
 }
 
 export interface Zone {
@@ -671,6 +686,14 @@ export interface GameState {
     zoneDepletion?: Record<string, number>;
     /** Zone name -> whatever is currently happening to it beyond depletion. */
     zoneEffects?: Record<string, ZoneEffect[]>;
+    /**
+     * A-4: zones the arena has permanently marked. Every `ZoneEffect` expires
+     * and even `stripped` grows back, so nothing the arena did to itself
+     * lasted — a zone that burned on day three read identically to one that
+     * never had by day six. A scar is one flag and it is what makes a map
+     * remember its own Games.
+     */
+    scarredZones?: string[];
     /**
      * Adjacency edges cut by the arena itself — a collapsed bridge, a fire that
      * burned through a crossing. Stored as `map.edgeKey()` strings. The printed

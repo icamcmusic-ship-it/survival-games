@@ -101,6 +101,8 @@ export const BLEEDING = {
  * you unless you can boil it.
  */
 export const WATER = {
+    /** A-3: zone water availability below which there is nothing to drink. */
+    drinkableThreshold: 0.45,
     /** Thirst removed by drinking straight from a stream or a pool. */
     zoneDrinkRelief: 55,
     /** Odds foul water poisons a tribute who drinks it untreated. */
@@ -876,6 +878,11 @@ export const STEALTH = {
  * carries between cycles: find water, find somewhere to sleep.
  */
 export const MOVEMENT = {
+    /** A-3: odds a high-ground watcher makes out *who* is moving next door. */
+    highGroundIdentifyChance: 0.3,
+    /** A-3: odds an adjacent listener's reaction to a fight gets a line. */
+    fightHeardLineChance: 0.15,
+
     /** §5.3: extra fatigue for completing a two-cycle crossing or climb. */
     crossingFatigue: 8,
     /** Thirst above which finding water outranks everything else. */
@@ -1180,6 +1187,15 @@ export const INVENTORY = {
 
 /** Zone economy: foraging strips a zone, and the arena grows it back slowly. */
 export const ZONES = {
+    /**
+     * A-2: procedural arena size bands. The shape of the map is a bigger
+     * replayability lever than its theme — a 7-zone pressure cooker and a
+     * 16-zone sprawl are different games — and these were bare literals in
+     * `arenaGenerator`.
+     */
+    tightArenaShare: 0.2,
+    sprawlingArenaShare: 0.85,
+
     /** A fishing net in still water, added to the forage chance. */
     fishingBonus: 0.25,
     /** Fraction of a zone's remaining yield consumed by one successful forage. */
@@ -1206,6 +1222,9 @@ export const ZONES = {
 
 /** What tributes remember, and how fast they forget it. */
 export const MEMORY = {
+    /** A-3: dread added by a fight heard one zone away. */
+    heardFightThreat: 0.8,
+
     /** Threat impression added to a zone by a death witnessed there. */
     deathThreat: 1.0,
     /** Threat added by a death only heard as a cannon (location known from the sky). */
@@ -2290,7 +2309,7 @@ export const PARLEY = {
      * discipline before they ever reach the individual parley, which thinned
      * the candidate pool this branch draws from.
      */
-    tollInfoMinThreat: 1.2,
+    tollInfoMinThreat: 1.0,
     tollInfoResentment: 8,
     tollInfoSanityCost: 5,
 
@@ -2527,6 +2546,8 @@ export const ARMAMENT_MEMORY = {
  * tribute falls into says more about them than the size of the number does.
  */
 export const GRIEF = {
+    /** Bond intensity below which grief is felt but does not reshape behaviour. */
+    shapeMinIntensity: 0.35,
     /** Recklessness: they stop being careful. Aggressive, and it sticks. */
     recklessChance: 0.3,
     recklessMomentum: 2,
@@ -2585,4 +2606,22 @@ export const PACK_PARLEY = {
     standoffRegard: 4,
     /** Odds a pack parley ends in a merge offer rather than terms. */
     mergeChance: 0.2,
+} as const;
+
+/**
+ * A-4/A-5: the arena's long memory, and what the weather and a full pack do
+ * to a day's travel.
+ */
+export const TERRAIN_MEMORY = {
+    /** Fraction of a scarred zone's printed yield that never comes back. */
+    scarYieldLoss: 0.45,
+    /** A burnt-out zone offers this much less to sleep under, permanently. */
+    scarShelterLoss: 0.5,
+} as const;
+
+export const TRAVEL = {
+    /** Extra cycles crossing into a zone the weather front is sitting on. */
+    weatherFrontCost: 1,
+    /** Load fraction (see INVENTORY.encumbrance*) above which a crossing drags. */
+    encumbranceCost: 0.75,
 } as const;

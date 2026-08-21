@@ -331,7 +331,7 @@ export function driftReputation(t: Tribute, rate: number) {
  * reaction rather than three overlapping ones.
  */
 function applyGriefShape(ctx: SimContext, mourner: Tribute, victim: Tribute, intensity: number) {
-    if (intensity < 0.35) return;
+    if (intensity < GRIEF.shapeMinIntensity) return;
     const roll = ctx.rng.nextFloat();
 
     if (roll < GRIEF.recklessChance) {

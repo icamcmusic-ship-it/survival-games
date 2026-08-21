@@ -1,8 +1,6 @@
 {
   "src/engine/alliance.ts :: threshold :: m.vitals.hunger < 40": 1,
   "src/engine/alliance.ts :: threshold :: m.vitals.thirst < 40": 1,
-  "src/engine/arenaGenerator.ts :: threshold :: shapeRoll < 0.2": 1,
-  "src/engine/arenaGenerator.ts :: threshold :: shapeRoll < 0.85": 1,
   "src/engine/arenaSignature.ts :: accumulate :: observer.vitals.sanity -= 6": 1,
   "src/engine/arenaSignature.ts :: accumulate :: observer.vitals.thirst += 10": 1,
   "src/engine/arenaSignature.ts :: accumulate :: t.vitals.fatigue += 12": 1,
