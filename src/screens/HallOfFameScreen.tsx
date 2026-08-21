@@ -169,7 +169,7 @@ export function HallOfFameScreen() {
                                                             : <><Copy className="w-3.5 h-3.5" /> Copy seed ({entry.seed})</>}
                                                     </button>
                                                     <button
-                                                        onClick={() => gameActions.replayHallOfFameEntry(entry)}
+                                                        onClick={() => { void gameActions.replayHallOfFameEntry(entry); }}
                                                         className="btn btn-sm btn-primary"
                                                         title={`Run the ${entry.arenaName} Games again on seed ${entry.seed}`}
                                                     >

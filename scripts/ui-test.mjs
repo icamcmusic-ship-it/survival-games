@@ -171,7 +171,10 @@ await step('keyboard: space advances, m toggles map', async () => {
 
 await step('run to end finishes the games', async () => {
   await page.getByRole('button', { name: /run to end/i }).click();
-  await page.waitForTimeout(600);
+  // The fast-forward is chunked now: it yields between batches and shows a
+  // Cancel button while it runs, so wait for that to go away rather than
+  // guessing at a duration.
+  await page.getByRole('button', { name: /^cancel$/i }).waitFor({ state: 'detached', timeout: 30000 });
 });
 
 await step('victor interview then debrief', async () => {

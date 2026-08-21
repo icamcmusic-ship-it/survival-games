@@ -5,7 +5,10 @@ import { Play, ChevronDown, ChevronRight, ArrowRight, History } from 'lucide-rea
 import { gameActions, gameStore, readSavedRun } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
-import { SIGNATURE_BLURBS } from '../engine/arenaSignature';
+// PERF: imported from the data module directly, not via `engine/arenaSignature`
+// — the setup screen is the app's cold-start path and must not drag the
+// simulation engine (and its ~5k lines of flavour/balance tables) in with it.
+import { SIGNATURE_BLURBS } from '../data/signatureBlurbs';
 
 function randomSeed() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -136,7 +139,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         >
                             Discard
                         </button>
-                        <button onClick={() => gameActions.resumeSavedRun()} className="btn btn-primary btn-sm">
+                        <button onClick={() => { void gameActions.resumeSavedRun(); }} className="btn btn-primary btn-sm">
                             Resume
                         </button>
                     </div>
