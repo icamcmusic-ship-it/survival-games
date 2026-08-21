@@ -5,6 +5,7 @@ import { SimContext } from './context';
 import { cycleOf, cyclesSinceContact, ensureMemory, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet } from './map';
 import { fearOf } from './fear';
+import { breakTruce, breaksTruce, hasTruce } from './parley';
 import { getRel } from './relationships';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
 import { fill } from './encounters';
@@ -219,13 +220,26 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
         // *someone* hostile was in that zone; picking `o` by their live
         // position on top of that would name the specific person the hunter
         // was never actually shown. `cyclesSinceContact` is identity-scoped.
-        const candidates = state.tributes.filter(o =>
+        const visible = state.tributes.filter(o =>
             o.status === 'alive' && o.id !== t.id
             && (o.allianceId === undefined || o.allianceId !== t.allianceId)
             && rememberedRivals(state, t, o.zone) > 0
             && cyclesSinceContact(state, t, o.id) <= MEMORY.sightingLifetime
             && fearOf(t, o.id) < OBJECTIVES.huntAbandonFear);
-        if (candidates.length > 0) {
+        // A standing truce is worth most exactly here — deciding who to go
+        // looking for. It used to be consulted only in `resolvePairEncounter`,
+        // so a truce held during a chance meeting and was silently irrelevant
+        // the moment either party went hunting, which is backwards.
+        //
+        // But a truce is a promise, not a shield: filtering these out entirely
+        // would make it unbreakable, and the one thing `parley.ts` says about a
+        // truce is that it is "the one that can later be broken". So someone
+        // under truce is off the list *unless* they are the best target on it
+        // and the hunter decides, then and there, to go back on their word.
+        // That decision is the break.
+        const candidates = visible.filter(o => !hasTruce(state, t, o.id));
+        const underTruce = visible.filter(o => hasTruce(state, t, o.id));
+        if (candidates.length > 0 || underTruce.length > 0) {
             // Hunting is opportunism, the same arithmetic pickBetrayalTarget
             // already does: the wounded loner carrying a medkit outranks the
             // healthy Career with a trident. Weigh how winnable the fight looks
@@ -239,8 +253,24 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
                 const grudge = Math.max(0, -getRel(t, o.id)) * 0.5;
                 return winnable + loot + grudge - fearOf(t, o.id);
             };
-            const target = candidates.reduce((best, o) => (score(o) > score(best) ? o : best));
-            return { kind: 'hunt', targetId: target.id, expires: expiry(OBJECTIVES.huntCycles) };
+            const best = (pool: Tribute[]) =>
+                pool.reduce((top, o) => (score(o) > score(top) ? o : top));
+            const target = candidates.length > 0 ? best(candidates) : undefined;
+            // Would breaking their word buy them a better mark than anyone they
+            // could hunt honestly? Only then is it even considered, and only
+            // then is the roll made — so a truce is never broken idly, and
+            // never over someone who was not worth it.
+            const tempting = underTruce.length > 0 ? best(underTruce) : undefined;
+            if (tempting && (!target || score(tempting) > score(target))
+                && breaksTruce(ctx, t, tempting)) {
+                breakTruce(ctx, t, tempting);
+                return { kind: 'hunt', targetId: tempting.id, expires: expiry(OBJECTIVES.huntCycles) };
+            }
+            // No honest mark and no truce worth breaking: fall through to the
+            // objectives below rather than forcing a hunt that has no target.
+            if (target) {
+                return { kind: 'hunt', targetId: target.id, expires: expiry(OBJECTIVES.huntCycles) };
+            }
         }
     }
 

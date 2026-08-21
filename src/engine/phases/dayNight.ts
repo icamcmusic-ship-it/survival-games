@@ -787,9 +787,20 @@ function resolveEncounters(
                     return;
                 }
             }
-            resolvePairEncounter(ctx, t, others[0]);
+            // Who they actually run into. A tribute with a standing hunt
+            // objective naming someone in this very zone was resolving against
+            // `others[0]` — whatever array order happened to put first — so a
+            // hunter could walk past their quarry to have a chance encounter
+            // with a bystander. Deciding to hunt someone should mean finding
+            // them when they are standing right there.
+            const objective = t.objective;
+            const quarry = objective?.kind === 'hunt'
+                ? others.find(o => o.id === objective.targetId)
+                : undefined;
+            const met = quarry ?? others[0];
+            resolvePairEncounter(ctx, t, met);
             acted.add(t.id);
-            acted.add(others[0].id);
+            acted.add(met.id);
             return;
         }
 

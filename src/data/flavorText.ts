@@ -1157,6 +1157,35 @@ export const PARLEY_TEXTS = {
         '{t1} and {t2} pass each other in {zone} and neither reaches for anything. The agreement is holding.',
         '{t1} and {t2} nod once in {zone} and keep walking. Whatever they agreed, it is still worth more than the fight.',
         'There is a truce between {t1} and {t2}, and in {zone} it holds for one more day.',
+        '{t1} and {t2} share {zone} for the better part of an hour and say nothing at all. Nothing is what they agreed on.',
+        '{t2} could take {t1} in {zone} and both of them know it. {t2} does not. That is what the word was for.',
+        'The truce between {t1} and {t2} costs them both something in {zone} today, and neither of them says what.',
+        '{t1} steps aside in {zone} to let {t2} through. It looks like courtesy. It is a contract.',
+        '{t1} and {t2} camp within sight of each other in {zone}, and both of them sleep badly, and neither of them moves.',
+    ],
+    /**
+     * Going back on it. The prose has to sell that this was a decision rather
+     * than a lapse — a truce that merely lapsed is what expiry is for.
+     */
+    truceBroken: [
+        '{breaker} waits until {victim} has both hands full in {zone}, and then there was never any agreement at all.',
+        'The truce ends in {zone} the way most of them do: {breaker} decides the arithmetic has changed, and does not mention it to {victim} first.',
+        '{victim} turns their back in {zone} because there was an agreement. {breaker} has just stopped honouring it.',
+        '"We said," {victim} gets out, in {zone}. {breaker} does not argue the point. Arguing would take longer.',
+        '{breaker} breaks their word in {zone}, and the Capitol replays the handshake twice before showing what came after.',
+        'Whatever {breaker} and {victim} agreed in front of the cameras, {breaker} is finished with it now, here, in {zone}.',
+    ],
+    /**
+     * The toll paid by somebody carrying nothing — see PARLEY.tollInfo* in
+     * balance.ts for why this shape of payment has to exist for extortion to
+     * be reachable at all.
+     */
+    tributeInformation: [
+        '{weak} has nothing in {zone} that {strong} wants, so they pay in directions instead: stay out of {told}. {strong} files it away and lets them go.',
+        '{strong} searches {weak} in {zone}, finds nothing worth taking, and asks a question instead. {weak} tells them what happened in {told}.',
+        'Empty pockets buy nothing in {zone}. {weak} buys their way out with {told} — what is in it, and what it cost to find out.',
+        '"{told}," {weak} says in {zone}, and then says why. {strong} steps aside. Information is the only currency either of them has left.',
+        '{weak} gives up the one thing they own in {zone}: knowing better than to go back to {told}. {strong} takes it.',
     ],
 };
 

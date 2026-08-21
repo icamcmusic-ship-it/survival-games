@@ -157,6 +157,46 @@ export function processAlliances(ctx: SimContext) {
         });
     });
 
+    // 1d. Going it alone. Not a grievance — every other way out of an alliance
+    // is one (suspicion, betrayal, romance, a pact coming due), which left no
+    // path at all for a tribute who gets on fine with their group and has
+    // simply decided that only one person goes home. The field has to be small
+    // enough that everyone can see the arithmetic, so this reads as a choice
+    // about the endgame rather than churn.
+    if (alive.length <= ALLIANCES.soloDepartureFieldSize) {
+        alliances.forEach((members, id) => {
+            if (members.length < 2 || id.startsWith('lovers-')) return;
+            members.forEach(m => {
+                if (m.status !== 'alive' || m.allianceId !== id) return;
+                // Nobody walks out on someone they are bonded to.
+                if (members.some(o => o.id !== m.id && areLovers(m, o))) return;
+                if ((m.protectorBonds ?? []).some(wardId => members.some(o => o.id === wardId))) return;
+
+                const independence = -(ARCHETYPES[m.archetype].allianceAffinity + traitMod(m, 'allianceAffinity'));
+                let chance = ALLIANCES.soloDepartureBase
+                    + independence * ALLIANCES.soloDepartureAffinityWeight;
+                // Someone who rates their own chances has least reason to split
+                // a victory they think they can take outright.
+                const strongest = members.every(o =>
+                    o.id === m.id || m.trainingScore >= o.trainingScore);
+                if (strongest) chance += ALLIANCES.soloDepartureConfidenceBonus;
+                if (!ctx.rng.chance(Math.max(0, chance))) return;
+
+                const others = members.filter(o => o.id !== m.id && o.status === 'alive');
+                delete m.allianceId;
+                // Leaving on good terms still costs: they are people you were
+                // sharing food with yesterday.
+                others.forEach(o => adjustRel(o, m.id, -ALLIANCES.soloDepartureRegard));
+                ctx.logEvent(
+                    `${m.name} tells ${others.map(o => o.name).join(' and ')} straight out, in ${m.zone}, that only one of them is going home `
+                    + `and they would rather stop pretending otherwise. Nobody argues, because nobody can.`,
+                    [m.id, ...others.map(o => o.id)],
+                    { important: true, category: 'alliance' }
+                );
+            });
+        });
+    }
+
     // 2. Betrayal Logic
     alliances.forEach((members) => {
         if (members.length < 2) return;
@@ -360,11 +400,17 @@ function mergeAlliances(ctx: SimContext) {
         groups.get(t.allianceId)!.push(t);
     });
 
+    // Bounded per cycle rather than returning on the first success, which made
+    // a third merge-ready pairing wait a cycle for no reason. See
+    // ALLIANCES.maxMergesPerCycle.
+    let merges = 0;
     const ids = [...groups.keys()];
     for (let i = 0; i < ids.length; i++) {
         for (let j = i + 1; j < ids.length; j++) {
             const a = groups.get(ids[i])!;
             const b = groups.get(ids[j])!;
+            // A group absorbed earlier this cycle is no longer its own group.
+            if (!a || !b || !groups.has(ids[i]) || !groups.has(ids[j])) continue;
             if (a.length < 2 || b.length < 2) continue;
             if (a.length + b.length > ALLIANCES.maxSize) continue;
             // Same ground, or there is no conversation to have — judged by the
@@ -426,7 +472,10 @@ function mergeAlliances(ctx: SimContext) {
                     { important: true, category: 'alliance' }
                 );
             }
-            return;
+            if (++merges >= ALLIANCES.maxMergesPerCycle) return;
+            // ids[i] may have just been absorbed; stop working this row and let
+            // the outer loop move on rather than merging a group into itself.
+            break;
         }
     }
 }
@@ -486,6 +535,10 @@ function growRomance(ctx: SimContext) {
     const alive = getAlive(ctx.state);
     if (ctx.state.day < ROMANCE.minDay) return;
 
+    // Bounded rather than one-and-done: see ROMANCE.maxPerCycle. Returning on
+    // the first success meant a second eligible pair in the same cycle was
+    // never even evaluated.
+    let declared = 0;
     for (let i = 0; i < alive.length; i++) {
         for (let j = i + 1; j < alive.length; j++) {
             const t1 = alive[i];
@@ -521,7 +574,8 @@ function growRomance(ctx: SimContext) {
                     // only audience that matters.
                     if (performer.attributes.charisma >= ROMANCE.performerCharisma) {
                         declareLovers(ctx, smitten, performer, performer);
-                        return;
+                        if (++declared >= ROMANCE.maxPerCycle) return;
+                        continue;
                     }
                 }
                 continue;
@@ -542,7 +596,7 @@ function growRomance(ctx: SimContext) {
             if (!ctx.rng.chance(ROMANCE.chancePerCycle * Math.pow(ROMANCE.latenessDecay, lateness))) continue;
 
             declareLovers(ctx, t1, t2);
-            return;
+            if (++declared >= ROMANCE.maxPerCycle) return;
         }
     }
 }
@@ -558,6 +612,9 @@ function growProtectorBond(ctx: SimContext) {
     const alive = getAlive(ctx.state);
     if (ctx.state.day < ROMANCE.minDay) return;
 
+    // Bounded per cycle rather than one-and-done — same reasoning as
+    // `growRomance`: a second eligible pair used not to be evaluated at all.
+    let formed = 0;
     for (const older of alive) {
         for (const younger of alive) {
             if (older.id === younger.id) continue;
@@ -585,7 +642,7 @@ function growProtectorBond(ctx: SimContext) {
                 [older.id, younger.id],
                 { important: true, category: 'romance' }
             );
-            return;
+            if (++formed >= ROMANCE.maxPerCycle) return;
         }
     }
 }

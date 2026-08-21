@@ -687,6 +687,13 @@ export const COMBAT = {
      * is frightening without instantly deleting anyone it corners.
      */
     supportAttackPenalty: 4,
+    /**
+     * In a free-for-all, how much a sworn grudge outweighs pure opportunism
+     * when picking who to swing at. Target selection there is a weighted draw
+     * leaning on who is hurt worst; this is the thumb on the scale for someone
+     * the attacker has a specific reason to want.
+     */
+    freeForAllVengeanceWeight: 60,
 
     /** Base odds a tribute breaking off eats a parting shot on the way out. */
     partingShotChance: 0.3,
@@ -1206,6 +1213,18 @@ export const ROMANCE = {
     minDay: 2,
     /** Bond required before a romance is even considered. */
     threshold: 92,
+    /**
+     * How many pairs may convert in a single cycle.
+     *
+     * `growRomance` and `growProtectorBond` each returned on their first
+     * success, cast-wide — so if two eligible pairs existed in the same cycle,
+     * the second was silently not evaluated at all, and its pair had to stay
+     * eligible until a cycle where nobody beat them to it. That is a throttle
+     * on the rarest events in the game, applied at the worst possible moment.
+     * A small cap keeps a cast from pairing off all at once without discarding
+     * everyone who is not first in the iteration order.
+     */
+    maxPerCycle: 2,
     /** Cycles of recent contact required, tracked as a streak. */
     sustainedCycles: 3,
     /** Contact this stale breaks the streak. */
@@ -1267,6 +1286,33 @@ export const ALLIANCES = {
     /** §6.1: 0.35/12 produced ~9 merges per 240 runs. */
     mergeChance: 0.5,
     mergeThreshold: 5,
+    /**
+     * Mergers resolvable per cycle. `mergeAlliances` returned on its first
+     * success, so a cast with three merge-eligible pairings resolved one per
+     * cycle regardless of how ready the others were.
+     */
+    maxMergesPerCycle: 2,
+
+    /**
+     * Walking away from a group you have no complaint about.
+     *
+     * Every existing exit from an alliance is a grievance: suspicion-driven
+     * pre-emptive departure, betrayal, romance defection, pact expiry. There
+     * was no path for a tribute who trusts their group fine and simply intends
+     * to win alone — which is a real and very canon shape, and the reason a
+     * loner archetype in a comfortable pack had no way to act like a loner.
+     * Gated on the field being small enough that the arithmetic is visible to
+     * everyone, so it reads as a decision about the endgame rather than
+     * random churn.
+     */
+    soloDepartureFieldSize: 8,
+    soloDepartureBase: 0.05,
+    /** How much the tribute's own independence pushes them out the door. */
+    soloDepartureAffinityWeight: 0.35,
+    /** Somebody who thinks they win a straight fight has least reason to share. */
+    soloDepartureConfidenceBonus: 0.1,
+    /** Leaving people who like you costs something on the way out. */
+    soloDepartureRegard: 12,
     /** A member whose average regard for the other group is below this walks
      *  out of a negotiated merge rather than blocking it. */
     mergeDissentThreshold: -10,
@@ -1632,6 +1678,16 @@ export const RESOLVE = {
     griefPenalty: 4,
     griefWindow: 3,
     isolationPenalty: 2,
+    /**
+     * What counts as having nobody. The gate used to require `getRel <= 0`
+     * against every single living tribute simultaneously — with relationship
+     * decay pulling toward zero and backstory seeding leaving small positive
+     * residues, that almost never opened even for a tribute who genuinely has
+     * no one. Isolation is not "everyone dislikes you", it is "nobody is
+     * warm to you", so the bar is a real relationship rather than a positive
+     * residue, and it is measured against people they have actually met.
+     */
+    isolationWarmthThreshold: 15,
     woundedPenalty: 2.5,
     woundedHealth: 40,
     deprivationPenalty: 2,
@@ -1683,11 +1739,48 @@ export const PARLEY = {
     tributeExcitement: 8,
     tributeSanityCost: 8,
 
+    /**
+     * What the outmatched party hands over when they are carrying nothing
+     * spare. `tributePayment` returns undefined for most tributes — they
+     * simply have no loose item — which was the real reason extortion was
+     * measured dead content (2 firings across 240 runs) rather than the
+     * ratio gate. Someone with empty hands still has something to trade:
+     * where they last saw people, and where the water is.
+     */
+    /** On `ZoneMemory.threat`'s own 0-6 scale, not a percentage. */
+    tollInfoMinThreat: 1.5,
+    tollInfoResentment: 8,
+    tollInfoSanityCost: 5,
+
     /** An explicit, expiring non-aggression pact. */
     truceChance: 0.4,
     truceCycles: 4,
     truceMinRegard: -5,
     truceRegard: 8,
+
+    /**
+     * Breaking one.
+     *
+     * `parley.ts` described a truce as "the one that can later be broken" and
+     * then no code path ever broke one — it simply expired. A truce nobody
+     * can betray is a timer, not a promise. Breaking is opportunism, same as
+     * betrayal: treachery, plus how winnable this specific fight looks, plus
+     * the arithmetic of a closing field.
+     */
+    truceBreakBase: 0.12,
+    truceBreakTreacheryWeight: 0.8,
+    /** A field this small makes every standing agreement provisional. */
+    truceBreakEndgameFieldSize: 8,
+    truceBreakEndgameBonus: 0.35,
+    /** How badly the other party has to be losing to tempt a knife. */
+    truceBreakOpportunismRatio: 1.15,
+    truceBreakOpportunismBonus: 0.16,
+    /** A tribute who has already been sold out does not break their word lightly. */
+    truceBreakBetrayedRestraint: 0.5,
+    truceBreakRegard: 45,
+    truceBreakSuspicion: 30,
+    truceBreakReputationCost: 10,
+    truceBreakExcitement: 25,
 
     /** Both armed, neither willing to move first. */
     standoffChance: 0.4,
