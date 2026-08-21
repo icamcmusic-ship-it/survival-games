@@ -562,6 +562,19 @@ export interface GameState {
     lastFeastDay?: number;
     /** Feasts already held this run, used to space them out. */
     feastsHeld?: number;
+    /**
+     * Consecutive cycles the field has sat at finalist count without a victor.
+     * Past ESCALATION.finaleAfterFinalistCycles, the Gamemakers force the
+     * finale at the Cornucopia — see `forceFinale` in dayNight.ts.
+     */
+    finalistCycles?: number;
+    /**
+     * Zone the Gamemakers are driving the finalists to, once the forced finale
+     * is on. Read as the top-priority objective in `chooseObjective` — set
+     * directly on the tributes it would be overwritten by the objective pass
+     * that runs later in the same cycle.
+     */
+    finaleZone?: string;
     /** Monotonic counter guaranteeing unique event log ids. */
     logCounter?: number;
     /**

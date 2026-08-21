@@ -494,6 +494,17 @@ export const ESCALATION = {
     /** The Gamemakers want a victor: the border stops short of the last two. */
     finalistCollapseDamage: 10,
     finalistCount: 2,
+    /**
+     * The forced finale. Finalist protection (see `applyDamage`) means the
+     * arena can no longer finish the last two by attrition — which also means
+     * two evasive finalists who keep missing each other could drag a run out
+     * indefinitely (a 500-day Games surfaced in the soak the cycle after the
+     * protection landed). Canon has the answer: the Gamemakers drive the
+     * finalists to the Cornucopia and make them settle it. After this many
+     * cycles at finalist count without a resolution, both are herded to the
+     * horn every cycle until it ends.
+     */
+    finaleAfterFinalistCycles: 6,
     hazardMultiplierPerDay: 0.3,
     hazardCeiling: 0.35,
 } as const;
@@ -1767,13 +1778,19 @@ export const PARLEY = {
      * betrayal: treachery, plus how winnable this specific fight looks, plus
      * the arithmetic of a closing field.
      */
-    truceBreakBase: 0.12,
+    truceBreakBase: 0.18,
     truceBreakTreacheryWeight: 0.8,
     /** A field this small makes every standing agreement provisional. */
     truceBreakEndgameFieldSize: 8,
     truceBreakEndgameBonus: 0.35,
-    /** How badly the other party has to be losing to tempt a knife. */
-    truceBreakOpportunismRatio: 1.15,
+    /**
+     * How badly the other party has to be losing to tempt a knife. Retuned
+     * down alongside the §7 district rebalance, which deliberately narrowed
+     * the spread of combat power across the cast — "clearly winning" is a
+     * smaller edge than it used to be, so the threshold that reads as an
+     * opening has to move with it.
+     */
+    truceBreakOpportunismRatio: 1.08,
     truceBreakOpportunismBonus: 0.16,
     /** A tribute who has already been sold out does not break their word lightly. */
     truceBreakBetrayedRestraint: 0.5,

@@ -1,6 +1,6 @@
 import { Terrain, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { BLEEDING, CRAFTING, DESPERATION, ENCOUNTERS, HUNTING, MEMORY, PROFICIENCY, VITALS, ZONES } from '../data/balance';
+import { BLEEDING, CRAFTING, DESPERATION, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, PROFICIENCY, VITALS, ZONES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaEventDef, arenaFlavor } from '../data/arenaFlavor';
 import { SimContext } from './context';
@@ -9,6 +9,7 @@ import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
 import { addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { hasTruce, tryParley } from './parley';
+import { areLovers } from './alliance';
 import { incurDebt } from './debts';
 import { DEBTS } from '../data/balance';
 import { giveItem, hasTool, itemPhrase, mintItem, spoilageBonus } from './items';
@@ -343,6 +344,25 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
 
     // A sworn debt overrides everything else in the arena.
     if (hasVengeanceAgainst(t, other.id) || hasVengeanceAgainst(other, t.id)) {
+        resolveCombat(ctx, t, other);
+        return;
+    }
+
+    // §7: the forced finale. Once the Gamemakers have drained the arena down
+    // to the horn (see forceFinale in dayNight.ts), a meeting between the last
+    // two is the finale, whatever they feel about each other — warmth, a
+    // truce, shared supplies, none of it holds when the arena has made itself
+    // this small. Lovers are the one exception: their refusal to fight is the
+    // nightlock standoff, and `checkDualVictory` resolves it.
+    const aliveNow = ctx.state.tributes.filter(o => o.status === 'alive').length;
+    if (aliveNow <= ESCALATION.finalistCount
+        && (ctx.state.finalistCycles ?? 0) >= ESCALATION.finaleAfterFinalistCycles
+        && !areLovers(t, other)) {
+        ctx.logEvent(
+            `${t.name} and ${other.name}, and nowhere left in the arena that is not ${t.zone}. Both of them know what the Gamemakers have arranged.`,
+            [t.id, other.id],
+            { important: true, category: 'combat' }
+        );
         resolveCombat(ctx, t, other);
         return;
     }

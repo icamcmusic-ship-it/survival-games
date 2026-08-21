@@ -18,9 +18,17 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'career',
         name: 'Career',
         description: 'Trained for the Games since childhood. Hunts in packs and dominates the bloodbath.',
-        statBias: { strength: 2, agility: 1 },
+        // §7: this used to stack on top of the Career districts' own raw
+        // attribute head start (generator.ts) rather than substituting for
+        // it, and the `career` archetype itself is what 7-8 out of ~14 total
+        // weight in D1/D2 rolls — so most Career-district tributes were
+        // getting the district bonus, the archetype bonus, weapon affinity,
+        // and the pack numbers bonus all at once. Trimmed here rather than in
+        // the district table, since this is the piece that was genuinely
+        // redundant with it.
+        statBias: { strength: 1, agility: 1 },
         preferredTraits: ['Bloodthirsty', 'Brute'],
-        aggression: 0.35,
+        aggression: 0.25,
         allianceAffinity: 0.2,
         treachery: 0.15,
         caution: -0.2,
