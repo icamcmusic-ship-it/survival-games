@@ -363,6 +363,20 @@ export const ITEMS: Item[] = [
  * crucially, not nothing.
  */
 export const IMPROVISED_ITEMS: Item[] = [
+    // Tier one: what the ground gives an empty-handed tribute, keyed by terrain.
+    // See `craft()` in `phases/dayNight.ts`. Every one of these is worse than
+    // every weapon in `ITEMS`, which is the entire design constraint.
     { id: 'club', name: 'Cudgel', type: 'weapon', value: 8, durability: 35, weaponClass: 'melee', damage: 2 },
     { id: 'sharpstone', name: 'Sharpened Stone', type: 'weapon', value: 6, durability: 25, weaponClass: 'melee', damage: 1 },
+    /** Marshland: a straight shaft and a fire-dried point. Reach, and nothing else. */
+    { id: 'reedspear', name: 'Reed Spear', type: 'weapon', value: 7, durability: 20, weaponClass: 'thrown', damage: 2 },
+    /** Ruins: the one thing a collapsed district is still full of. */
+    { id: 'rebar', name: 'Length of Rebar', type: 'weapon', value: 10, durability: 40, weaponClass: 'melee', damage: 3 },
+
+    // Tier two: costs a real resource rather than a turn. Still improvised,
+    // still crude, but a tribute has given something up to hold it.
+    /** Rope cut down to a pouch and two cords. The only ranged option in the tree. */
+    { id: 'sling', name: 'Leather Sling', type: 'weapon', value: 7, durability: 25, weaponClass: 'ranged', damage: 2 },
+    /** A cudgel and a night at a fire. The upgrade path out of tier one. */
+    { id: 'stake', name: 'Fire-Hardened Stake', type: 'weapon', value: 11, durability: 40, weaponClass: 'melee', damage: 3 },
 ];

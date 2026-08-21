@@ -56,32 +56,68 @@ export const WEAPON_KILL_TEMPLATES: Record<string, string[]> = {
     'sickle': [
         "{killer} hooks {victim}'s ankle with a sickle and drags them down for the kill.",
         "{killer} opens {victim}'s throat with a wicked sickle slash.",
-        "{killer} reaps {victim} like wheat with a curved sickle."
+        "{killer} reaps {victim} like wheat with a curved sickle.",
+        "{killer} catches {victim}'s guard on the hook of the sickle and pulls it aside. What follows takes one movement.",
+        "{victim} learns too late that a sickle does not need to be swung hard, only close."
     ],
     'blowgun': [
         "{killer} sends a poisoned dart into {victim}'s neck from the shadows.",
         "{victim} slaps at what they think is an insect bite — {killer}'s dart has already done its work.",
-        "{killer} watches from the canopy as their venom-tipped dart drops {victim} mid-stride."
+        "{killer} watches from the canopy as their venom-tipped dart drops {victim} mid-stride.",
+        "{victim} makes it another forty metres before the dart {killer} put in their shoulder finishes the argument.",
+        "{killer} does not move at all. {victim} walks into the open, and a dart crosses the distance the hunter never has to."
     ],
     'garrote': [
         "{killer} slips a wire garrote around {victim}'s throat in total silence.",
         "{victim} never hears {killer} approach before the wire tightens.",
-        "{killer} strangles {victim} with a length of razor wire."
+        "{killer} strangles {victim} with a length of razor wire.",
+        "{killer} takes {victim} from behind and holds the wire for a great deal longer than is strictly necessary.",
+        "It is over so quietly that {killer} can hear the wire itself. {victim} makes no sound worth the name."
     ],
     'slingshot': [
         "{killer} cracks {victim}'s skull with a stone from their slingshot.",
         "{killer} lands a perfect slingshot strike on {victim}'s temple.",
-        "{victim} laughs at {killer}'s slingshot — right up until the stone hits."
+        "{victim} laughs at {killer}'s slingshot — right up until the stone hits.",
+        "{killer} puts three stones into {victim} from forty metres, and the third one is the one that counts.",
+        "{victim} goes down looking for the weapon that did it. There is only {killer}, a strip of leather, and the creek bed it came from."
     ],
     'club': [
         "{killer} brings the cudgel down on {victim}'s skull, and once is enough.",
         "{killer} beats {victim} down with a crude wooden cudgel and does not stop until the cannon.",
-        "{victim} raises an arm against {killer}'s cudgel. It breaks the arm first, then everything else."
+        "{victim} raises an arm against {killer}'s cudgel. It breaks the arm first, then everything else.",
+        "{killer} swings the cudgel like a tool rather than a weapon, which is what it is, and {victim} dies of the difference.",
+        "The cudgel {killer} made two days ago in the treeline does for {victim} what better weapons failed to."
     ],
     'sharpstone': [
         "{killer} drives a sharpened stone into {victim}'s throat.",
         "{killer} opens {victim}'s artery with a flake of sharpened stone.",
-        "{victim} never expects the crude stone edge in {killer}'s fist to cut as deep as it does."
+        "{victim} never expects the crude stone edge in {killer}'s fist to cut as deep as it does.",
+        "{killer} loses the stone in {victim} somewhere around the fourth strike and keeps going anyway.",
+        "It takes {killer} longer than a blade would. {victim} is aware of every part of how much longer."
+    ],
+    'reedspear': [
+        "{killer} puts a fire-dried reed shaft through {victim} at eight paces.",
+        "{victim} does not credit the reed spear as a weapon until {killer} throws it.",
+        "{killer} braces the reed spear in the mud and lets {victim}'s own charge finish the job.",
+        "The shaft snaps off in {victim}. {killer} leaves it where it is and walks away with the rest."
+    ],
+    'rebar': [
+        "{killer} runs {victim} through with a length of rusted rebar.",
+        "{killer} swings the rebar two-handed and {victim} does not get a second look at it.",
+        "{victim} is put against a wall by {killer} and pinned there with a steel rod out of the same wall.",
+        "{killer} beats {victim} down with a bar of reinforcing steel, and the ruins do not echo for long."
+    ],
+    'sling': [
+        "{killer} whirls the sling twice and drops {victim} at thirty metres with a river stone.",
+        "{victim} hears the sling before they see {killer}, and hearing it does not help.",
+        "{killer} takes the shot while {victim} is still deciding whether the sound mattered.",
+        "A stone out of a strip of pack leather, thrown by {killer}, is what finally ends {victim}."
+    ],
+    'stake': [
+        "{killer} drives a fire-hardened stake into {victim} and leans on it.",
+        "{victim} blocks the swing and takes the point. {killer} spent a whole night in the fire getting it that sharp.",
+        "{killer} finishes {victim} with a length of wood and two hours of patience.",
+        "The stake goes in blackened and comes out otherwise. {killer} does not look at {victim} afterwards."
     ],
     'unarmed': [
         "{killer} strangles {victim} to death.",
@@ -542,6 +578,13 @@ export const ROMANCE_TEXTS = [
     'ROMANCE: {t1} and {t2} of District {district} stop pretending. The Capitol has its love story, and sponsors are already queuing.',
     'ROMANCE: {t1} and {t2} of District {district} are inseparable now. Caesar Flickerman devotes an entire segment to them.',
     'ROMANCE: Something has shifted between {t1} and {t2} of District {district}. The audience can see it, and so can everyone else in the arena.',
+    'ROMANCE: {t1} says it first and badly, and {t2} of District {district} does not make them say it again. Every screen in the Capitol carries the whole thing.',
+    'ROMANCE: {t1} and {t2} of District {district} stop keeping separate watches. It is the least strategic decision either of them has made, and they make it anyway.',
+    'ROMANCE: The cameras find {t1} and {t2} of District {district} asleep against the same rock and stay on the shot for four minutes. The sponsor lines do not stop ringing.',
+    'ROMANCE: Nobody in the sponsor rooms cares which of {t1} or {t2} of District {district} wins now — only that the other one is there at the end to see it.',
+    'ROMANCE: {t1} and {t2} of District {district} have started finishing each other\'s watches, sentences and rations. The Capitol has a word for this and is using it constantly.',
+    'ROMANCE: Whatever {t1} and {t2} of District {district} agreed on, they agreed on it quietly and neither has looked at the odds since.',
+    'ROMANCE: {t1} and {t2} of District {district} both know exactly how this arithmetic ends. They have decided to be in love for the part before that.',
 ];
 
 /**
@@ -555,6 +598,12 @@ export const PROTECTOR_BOND_TEXTS = [
     'BOND: Something has settled between {older} and {younger} — not an alliance exactly. More like {older} has decided {younger} is theirs to look after.',
     'BOND: {younger} has stopped flinching when {older} moves fast nearby. That took a while to earn.',
     'BOND: The Capitol is calling it the closest thing this arena has to family. {older} would probably just call it {younger}\'s good luck.',
+    'BOND: {older} has taken the bad watch three nights running so {younger} can sleep through the cold hours, and has not mentioned doing it once.',
+    'BOND: {older} eats second now. {younger} has not worked out that this is deliberate, which is how {older} prefers it.',
+    'BOND: {younger} has started walking where {older} walks, stepping where {older} steps. Neither of them agreed to this out loud.',
+    'BOND: Asked by a camera what {younger} is to them, {older} says "mine" and does not elaborate. The broadcast runs it twice.',
+    'BOND: {older} teaches {younger} the same three things over and over — water, cover, when to run — because those are the three that keep working.',
+    'BOND: There is a version of this where {older} leaves {younger} behind and is better off for it. {older} has evidently stopped considering that version.',
 ];
 
 
@@ -647,6 +696,11 @@ export const MENTOR_PLEA_FAILED_TEXTS = [
     '{mentor} works the sponsor rooms for {tribute} and comes away with nothing.',
     'No parachute reaches {zone}. {mentor} has run out of people who owe them anything.',
     'The cameras catch {mentor} being turned down for {tribute}, twice, by people who used to take their calls.',
+    '{mentor} makes the case for {tribute} to a room that has already decided, politely, that {zone} is not worth the money.',
+    'Nothing comes down into {zone}. It is not that {mentor} did not ask; it is that asking has stopped being enough.',
+    '{mentor} names a price for {tribute} and the sponsor rooms name a lower one. Neither side moves, and the parachute is not packed.',
+    'The escort has to steer {mentor} away from a patron\'s box before it becomes a scene. {tribute} goes without.',
+    '{mentor} spends the afternoon on {tribute} and gets three maybes, which in the sponsor rooms is a no said slowly.',
 ];
 
 export const AMBIENT_TEXTS = [
@@ -1119,11 +1173,23 @@ export const INTERVIEW_CLOSERS = {
         "Caesar takes {tribute}'s hand and holds it up. 'District {district}, remember that face.' The applause runs past the buzzer.",
         "{tribute} stands, turns to the cameras rather than the crowd, and lets the silence do the last of the work.",
         "'Sixty seconds,' Caesar says, 'and I already want to bet on you.' The Capitol agrees loudly enough to hear in the training centre.",
+        "The band comes in early and the crowd talks over it. Caesar has to raise his voice to get {tribute}'s name out at all.",
+        "{tribute} is halfway off the couch before the applause starts, which somehow only makes it louder.",
+        "Caesar keeps hold of {tribute}'s hand a beat longer than the format allows. In the wings, three other tributes watch him do it.",
+        "'District {district},' Caesar says, and does not need to finish the sentence. The room finishes it for him.",
+        "{tribute} walks off to a noise the Capitol usually saves for victors. Every mentor in the building notes the hour.",
+        "The segment overruns by forty seconds and nobody in the control room cuts it. That has not happened this week.",
     ],
     weak: [
         "The buzzer catches {tribute} mid-sentence. Caesar covers it professionally and moves on.",
         "{tribute} leaves the couch to the applause the Capitol gives everybody, which is the least useful sound in Panem.",
         "Caesar says {tribute}'s name warmly, twice, which is what he does when there is nothing else to say.",
+        "The band starts up over {tribute}'s last answer. Whatever the end of it was, District {district} will not hear it.",
+        "{tribute} stands, and half the room is already looking at the next name on the card.",
+        "Caesar thanks {tribute} for their time, which is the phrase he uses when the segment has run out of anything else.",
+        "The applause for {tribute} is exactly as long as the applause for everyone, and in this room that is the whole verdict.",
+        "{tribute} makes it to the wings without dropping anything or saying anything. Tonight that is the best that can be said.",
+        "There is a beat after {tribute} sits down where Caesar could rescue it, and he decides not to spend the effort.",
     ],
 };
 
@@ -1244,6 +1310,36 @@ export const SURVIVAL_TEXTS = {
         'In {zone}, {tribute} makes a weapon the way the first tribute ever did: a length of hard wood.',
         '{tribute} snaps a sapling in {zone} and shaves it down to something that will break bone.',
         '{tribute} finds a root-club in the deadfall of {zone} and likes the weight of it.',
+    ],
+    craftReed: [
+        '{tribute} cuts reeds in {zone} until one is straight enough, and dries the point over an hour of patience.',
+        '{tribute} works a reed shaft down in {zone} and fire-dries the tip until it will hold an edge.',
+        'The standing water of {zone} grows nothing useful except this: {tribute} comes out of it with a reed spear.',
+        '{tribute} spends the afternoon in the shallows of {zone} choosing a shaft, and rejects nine before keeping one.',
+        '{tribute} binds a hardened reed point with wet grass in {zone}. It will hold for a while. A while is the plan.',
+        'It is a stick from a marsh, and {tribute} makes it a spear in {zone} because that is what {zone} has.',
+    ],
+    craftRebar: [
+        '{tribute} works a length of reinforcing steel out of a broken wall in {zone} and tests the weight of it.',
+        'The ruins of {zone} are held together with rusted bar. {tribute} takes a metre of it back out.',
+        '{tribute} rocks a rebar stub loose in {zone} until the concrete gives, and walks away with a metre of steel.',
+        '{tribute} finds the one thing {zone} was built with that outlasted {zone}: a rusted bar, and now it is theirs.',
+        '{tribute} grinds one end of a steel bar against the concrete of {zone} until it is closer to a point than not.',
+        'Nothing in {zone} grows and nothing in {zone} is soft. {tribute} arms themselves accordingly.',
+    ],
+    craftSling: [
+        '{tribute} cuts their rope down to a pouch and two cords in {zone}, and spends the rest of the light learning the release.',
+        '{tribute} unpicks a length of rope in {zone} and braids a sling out of it. The stones {zone} provides for free.',
+        'A rope is worth more as a sling, {tribute} decides in {zone}, and cuts it up before they can talk themselves out of it.',
+        '{tribute} whirls the finished sling twice in {zone} and puts a stone through a trunk at thirty paces. It is not much. It has reach.',
+        '{tribute} sacrifices the rope in {zone} for something that lets them hurt somebody from further away than arm\'s length.',
+    ],
+    craftStake: [
+        '{tribute} turns the cudgel over the fire in {zone} for an hour until the point is black and hard.',
+        '{tribute} shaves the end of their club to a point in {zone} and cures it in the coals.',
+        'The fire in {zone} does what {tribute} cannot: it takes a length of wood and makes it a weapon that holds a point.',
+        '{tribute} works the cudgel down to a stake in {zone}, turning it in the flame the way they were shown at the fireside station.',
+        '{tribute} spends a night in {zone} and a good fire on hardening a stick, which is a fair trade for both.',
     ],
     flee: [
         '{tribute} wants to be anywhere but {zone}.',
