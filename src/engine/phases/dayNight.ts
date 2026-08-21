@@ -615,13 +615,48 @@ function craft(ctx: SimContext, t: Tribute) {
     // cast was ever armed — the Cornucopia and the feast simply do not put
     // enough steel into circulation to go round.
     if (!t.inventory.some(i => i.type === 'weapon') && ctx.rng.chance(CRAFTING.improviseChance)) {
-        const zone = getZone(ctx.state.arena, t.zone);
-        // What the ground offers: timber in the woods, stone everywhere else.
-        const wooded = zone?.terrain === 'forest' || zone?.terrain === 'wetland';
-        const recipe = IMPROVISED_ITEMS.find(i => i.id === (wooded ? 'club' : 'sharpstone'))!;
-        giveItem(t, { ...recipe });
+        const ropeIdx = t.inventory.findIndex(i => i.id === 'rope');
+        if (ropeIdx >= 0) {
+            // Rope is worth more as reach than as rope to somebody holding
+            // nothing. The knife-and-rope spear above has first claim on it;
+            // this is what is left when there is no knife to lash to a shaft.
+            t.inventory.splice(ropeIdx, 1);
+            const sling = IMPROVISED_ITEMS.find(i => i.id === 'sling')!;
+            giveItem(t, mintItem(ctx.rng, sling, QUALITY_BIAS.improvised));
+            ctx.logEvent(
+                fill(ctx.pickText(SURVIVAL_TEXTS.craftSling), { tribute: t.name, zone: t.zone }),
+                [t.id],
+                { category: 'loot' }
+            );
+        } else {
+            const zone = getZone(ctx.state.arena, t.zone);
+            // What the ground offers: timber in the woods, reeds in standing
+            // water, salvaged steel in the ruins, stone everywhere else.
+            const [recipeId, pool] =
+                zone?.terrain === 'forest' ? ['club', SURVIVAL_TEXTS.craftClub] as const
+                : zone?.terrain === 'wetland' ? ['reedspear', SURVIVAL_TEXTS.craftReed] as const
+                : zone?.terrain === 'ruins' ? ['rebar', SURVIVAL_TEXTS.craftRebar] as const
+                : ['sharpstone', SURVIVAL_TEXTS.craftStone] as const;
+            const recipe = IMPROVISED_ITEMS.find(i => i.id === recipeId)!;
+            giveItem(t, { ...recipe });
+            ctx.logEvent(
+                fill(ctx.pickText(pool), { tribute: t.name, zone: t.zone }),
+                [t.id],
+                { category: 'loot' }
+            );
+        }
+    }
+
+    // A cudgel and a night at a fire make something with a point on it. The
+    // only upgrade path inside the improvised tree, and it costs a fire —
+    // which is the most visible thing a tribute can own.
+    const clubIdx = t.inventory.findIndex(i => i.id === 'club');
+    if (clubIdx >= 0 && hasCamp(ctx, t, 'fire') && !t.inventory.some(i => i.id === 'stake')) {
+        t.inventory.splice(clubIdx, 1);
+        const stake = IMPROVISED_ITEMS.find(i => i.id === 'stake')!;
+        giveItem(t, mintItem(ctx.rng, stake, QUALITY_BIAS.improvised));
         ctx.logEvent(
-            fill(ctx.pickText(wooded ? SURVIVAL_TEXTS.craftClub : SURVIVAL_TEXTS.craftStone), { tribute: t.name, zone: t.zone }),
+            fill(ctx.pickText(SURVIVAL_TEXTS.craftStake), { tribute: t.name, zone: t.zone }),
             [t.id],
             { category: 'loot' }
         );
