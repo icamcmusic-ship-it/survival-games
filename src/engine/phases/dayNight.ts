@@ -283,17 +283,15 @@ function soundTheAnthem(ctx: SimContext) {
  * has a shape: a wall sweeping in from one edge, or a ring tightening around
  * the centre. Both use the adjacency graph that already exists for pathing.
  */
-// Deterministic per (seed, arena), so the two BFS passes don't need to be
-// recomputed every single cycle just to be thrown away.
-const collapseOrderCache = new Map<string, string[]>();
-
+// Deterministic per (seed, arena) — both fixed for the lifetime of a run —
+// so the two BFS passes only need to run once per `SimContext` rather than
+// every single cycle. Memoised on the context itself (see collapseOrder on
+// SimContext) instead of a module-level cache: that scopes it to exactly one
+// run, with nothing to invalidate and no size cap to tune.
 function buildCollapseOrder(ctx: SimContext): string[] {
-    const cacheKey = `${ctx.state.seed}|${ctx.state.arena.id}`;
-    const cached = collapseOrderCache.get(cacheKey);
-    if (cached) return cached;
-    if (collapseOrderCache.size > 32) collapseOrderCache.clear();
+    if (ctx.collapseOrder) return ctx.collapseOrder;
     const order = computeCollapseOrder(ctx);
-    collapseOrderCache.set(cacheKey, order);
+    ctx.collapseOrder = order;
     return order;
 }
 
