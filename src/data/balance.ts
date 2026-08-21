@@ -1292,10 +1292,73 @@ export const STANCE = {
     protectDefensive: 1.2,
     holdDefensive: 1.0,
     campDefensive: 0.6,
+
+    /**
+     * The stance score sheet itself.
+     *
+     * These were the fifteen literals in `updateStance` — the single most
+     * behaviour-defining function in the engine, and the one place where
+     * "what is this cast like" is actually decided. The audit's advice was to
+     * burn the undeclared-knob baseline down by narrative impact rather than
+     * by file order, and nothing in the baseline scored higher than this.
+     */
+    /** How hard an archetype's own disposition pulls its matching stance. */
+    archetypeWeight: 3,
+    /** Holding a weapon, either way. */
+    armedAggression: 1.2,
+    unarmedEvasion: 0.6,
+    /** Something to avenge. */
+    vengeanceAggression: 1.5,
+    /** They like the odds in this zone right now. */
+    dominantAggression: 1.2,
+    /** Hungry enough that hunting pays for itself. */
+    hungryAggression: 0.8,
+    /** Outmatched where they stand. */
+    outmatchedEvasion: 1.6,
+    /** Visibly wounded. */
+    woundedEvasion: 1,
+    /** Coming apart, with sanity enabled. */
+    breakingEvasion: 0.8,
+    /** A cautious archetype below its comfort threshold. */
+    cautiousEvasion: 1,
+    cautiousArchetypeThreshold: 0.2,
+    /** Per point of stealth over average — small, or the whole cast hides. */
+    stealthEvasionPerPoint: 0.06,
+    /** Defensive baseline, and the bonus for having a group at all. */
+    defensiveBase: 0.5,
+    alliedDefensive: 0.5,
+    /** Health divisors: distance from the aggressive/evasive thresholds. */
+    aggressiveHealthDivisor: 30,
+    evasiveHealthDivisor: 25,
 } as const;
 
 /** Relationship graph: bounds, decay, and the deltas life in the arena applies. */
 export const RELATIONSHIPS = {
+    /**
+     * §1.1: the second file in the undeclared-knob burn-down, after `STANCE`.
+     * These are the numbers that decide what a betrayal, a death and a bond
+     * are actually worth — the social layer's own score sheet.
+     */
+    /** What a betrayal costs the betrayer with the Capitol, and the victim in composure. */
+    betrayalTrustCost: 8,
+    betrayalSanityCost: 15,
+    /** Killing somebody you were allied with. */
+    allyKillTrustCost: 12,
+    /** Visible grief plays well: sponsor trust gained at full bond intensity. */
+    griefTrustAtFullIntensity: 6,
+    /** Bond intensity that earns a grief line, and that marks a tribute Haunted. */
+    griefLineIntensity: 0.45,
+    hauntedIntensity: 0.5,
+    /** Odds a rival's death gets a relief line rather than passing silently. */
+    reliefLineChance: 0.4,
+    /** Sponsor trust above which a victim's betrayal is a Capitol scandal. */
+    scandalTrust: 75,
+    /** Backstory seeding: archetype thresholds that shape who starts warm. */
+    backstoryTreacheryThreshold: 0.2,
+    backstoryCautionThreshold: 0.2,
+    /** A protector bond needs a genuinely older tribute and a genuinely young one. */
+    protectorAffinityThreshold: 0.15,
+    protectorWardAge: 13,
     /** §4.3: trust corrections applied on top of regard. See `trustOf`. */
     trustStoodByBonus: 15,
     trustBetrayedPenalty: 40,

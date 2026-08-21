@@ -53,6 +53,16 @@ await step('empty seed is accepted (falls back to random)', async () => {
   await page.locator('#seed-input').fill('   ');
 });
 
+// §10.2 gave a run's *format* real variance — a blitz temperament plus a
+// compressed schedule can finish a Games in a handful of days — so a suite
+// driving in-arena controls on a random seed became a coin flip on whether
+// the run was still running when it got there. The rest of the flow pins a
+// seed whose Games lasts long enough to drive every control.
+const UI_SEED = 'UITEST';
+await step('pin a seed so the run outlives the walkthrough', async () => {
+  await page.locator('#seed-input').fill(UI_SEED);
+});
+
 await step('procedural arena selectable', async () => {
   await page.getByText(/procedural arena/i).click();
 });
@@ -68,6 +78,21 @@ await step('reroll cast changes names', async () => {
   await page.waitForTimeout(200);
   const after = await page.locator('.panel .font-black').first().textContent();
   if (before === after) console.log('   (note: reroll produced same first name — possible but unlikely)');
+});
+
+// Rerolling draws a fresh sub-seed, and with §10.2 that re-rolls the whole
+// *format* — a blitz year with a compressed schedule can be over before a
+// walkthrough reaches the in-arena controls. Start again from the pinned seed
+// so the rest of the suite drives a run of known length.
+await step('restart from the pinned seed after the reroll', async () => {
+  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.locator('#seed-input').fill(UI_SEED);
+  // A fresh load resets the setup toggles, and the steps below drive the
+  // Gamemaker panel, which only renders in Gamemaker mode.
+  await page.getByText('Gamemaker Mode').click();
+  await page.getByText(/procedural arena/i).click().catch(() => {});
+  await page.getByRole('button', { name: /reap the tributes/i }).click();
+  await page.getByRole('heading', { name: 'The Reaping' }).waitFor();
 });
 
 await step('confirm reaping opens roster + betting', async () => {

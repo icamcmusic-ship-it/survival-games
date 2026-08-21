@@ -113,38 +113,38 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
 
     const scores: Record<Stance, number> = { Aggressive: 0, Defensive: 1, Evasive: 0 };
 
-    scores.Aggressive += arch.aggression * 3;
-    scores.Aggressive += hasWeapon ? 1.2 : -1.2;
-    scores.Aggressive += (t.health - STANCE.aggressiveHealth) / 30;
+    scores.Aggressive += arch.aggression * STANCE.archetypeWeight;
+    scores.Aggressive += hasWeapon ? STANCE.armedAggression : -STANCE.armedAggression;
+    scores.Aggressive += (t.health - STANCE.aggressiveHealth) / STANCE.aggressiveHealthDivisor;
     if (t.isCareer) scores.Aggressive += 0.8;
     scores.Aggressive += traitMod(t, 'aggressionScore');
-    if (ensureMemory(t).vengeance.length > 0) scores.Aggressive += 1.5;
-    if (ratio > 0 && ratio < STANCE.dominantRatio) scores.Aggressive += 1.2;
+    if (ensureMemory(t).vengeance.length > 0) scores.Aggressive += STANCE.vengeanceAggression;
+    if (ratio > 0 && ratio < STANCE.dominantRatio) scores.Aggressive += STANCE.dominantAggression;
     // Bloodlust: a tribute who has just killed goes looking for the next one.
     // §3.2: weight trimmed from 0.35 — momentum stacking on top of the Career
     // and endgame bonuses had Aggressive at 43% of all cycles, and the arena
     // was flattening into a brawl.
     scores.Aggressive += (t.momentum ?? 0) * STANCE.momentumAggressionWeight;
     // Hunger is a reason to hunt, now that hunting actually feeds you.
-    if (t.vitals.hunger > STANCE.huntingHunger) scores.Aggressive += 0.8;
+    if (t.vitals.hunger > STANCE.huntingHunger) scores.Aggressive += STANCE.hungryAggression;
     // The field narrowing is itself a reason to force the issue — somebody has
     // to, and the Gamemakers are going to make sure somebody does.
     const aliveCount = ctx.state.tributes.filter(o => o.status === 'alive').length;
     if (aliveCount <= STANCE.endgameFieldSize) scores.Aggressive += STANCE.endgameAggression;
 
-    scores.Evasive += arch.caution * 3;
-    scores.Evasive += (STANCE.evasiveHealth - t.health) / 25;
-    if (wounded) scores.Evasive += 1;
-    if (!hasWeapon) scores.Evasive += 0.6;
-    if (ratio > STANCE.outmatchedRatio) scores.Evasive += 1.6;
-    if (arch.caution > 0.2 && t.health < STANCE.cautiousEvasiveHealth) scores.Evasive += 1;
-    if (ctx.state.config.enableSanity && t.vitals.sanity < VITALS.breakdownThreshold) scores.Evasive += 0.8;
+    scores.Evasive += arch.caution * STANCE.archetypeWeight;
+    scores.Evasive += (STANCE.evasiveHealth - t.health) / STANCE.evasiveHealthDivisor;
+    if (wounded) scores.Evasive += STANCE.woundedEvasion;
+    if (!hasWeapon) scores.Evasive += STANCE.unarmedEvasion;
+    if (ratio > STANCE.outmatchedRatio) scores.Evasive += STANCE.outmatchedEvasion;
+    if (arch.caution > STANCE.cautiousArchetypeThreshold && t.health < STANCE.cautiousEvasiveHealth) scores.Evasive += STANCE.cautiousEvasion;
+    if (ctx.state.config.enableSanity && t.vitals.sanity < VITALS.breakdownThreshold) scores.Evasive += STANCE.breakingEvasion;
     // Someone who is genuinely good at disappearing reaches for it sooner —
     // but only slightly, or the whole cast goes to ground and nothing happens.
-    scores.Evasive += (t.attributes.stealth - 5) * 0.06;
+    scores.Evasive += (t.attributes.stealth - 5) * STANCE.stealthEvasionPerPoint;
 
-    scores.Defensive += 0.5 - Math.abs(arch.aggression) - Math.abs(arch.caution);
-    if (t.allianceId) scores.Defensive += 0.5;
+    scores.Defensive += STANCE.defensiveBase - Math.abs(arch.aggression) - Math.abs(arch.caution);
+    if (t.allianceId) scores.Defensive += STANCE.alliedDefensive;
     // §3.2: Defensive was the least-seen stance despite being the most
     // tactically interesting. Give it the reasons it actually exists: holding
     // ground you have claimed, defending a camp you built, standing over a
