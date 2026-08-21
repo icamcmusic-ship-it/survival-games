@@ -86,8 +86,9 @@ export function isSevered(state: GameState, a: string, b: string): boolean {
 }
 
 /** Breadth-first search over the adjacency graph for the closest zone matching `safeNames`. */
-export function nearestSafeZone(arena: Arena, from: string, safeNames: string[]): string {
+export function nearestSafeZone(arena: Arena, from: string, safeNames: string[], severed?: Set<string>): string {
     if (safeNames.includes(from)) return from;
+    const cut = (a: string, b: string) => !!severed && severed.has(edgeKey(a, b));
     const visited = new Set<string>([from]);
     let frontier = [from];
     while (frontier.length > 0) {
@@ -96,7 +97,7 @@ export function nearestSafeZone(arena: Arena, from: string, safeNames: string[])
             const zone = getZone(arena, name);
             if (!zone) continue;
             for (const neighbor of zone.adjacent) {
-                if (visited.has(neighbor)) continue;
+                if (visited.has(neighbor) || cut(name, neighbor)) continue;
                 if (safeNames.includes(neighbor)) return neighbor;
                 visited.add(neighbor);
                 next.push(neighbor);

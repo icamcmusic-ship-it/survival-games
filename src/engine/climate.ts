@@ -1,4 +1,3 @@
-import { Tribute } from '../models/types';
 import { CLIMATE } from '../data/balance';
 import { ExposureProfile } from './exposure';
 

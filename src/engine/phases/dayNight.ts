@@ -500,8 +500,9 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
             : ESCALATION.collapseDamageBase + (ctx.state.day - startDay) * ESCALATION.collapseDamagePerDay;
         const safeZones = allZoneNames.filter(z => !collapsedList.includes(z));
         // Nearest reachable safe zone via the adjacency graph, not an
-        // arbitrary index — a tribute should not teleport across the arena.
-        const newSafeZone = nearestSafeZone(ctx.state.arena, t.zone, safeZones);
+        // arbitrary index — a tribute should not teleport across the arena,
+        // and cannot flee across a bridge the arena has already burned.
+        const newSafeZone = nearestSafeZone(ctx.state.arena, t.zone, safeZones, severedEdgeSet(ctx.state));
         const trappedZone = t.zone;
 
         applyDamage(ctx, t, damage, {
@@ -653,7 +654,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             present.forEach(m => { m.zone = newZone; });
             noteTraffic(ctx.state, departed, newZone, present.length);
             if (t.stance === 'Evasive') {
-                ctx.logEvent(`${present.map(m => m.name).join(', ')} slip out of ${t.zone} without a sound.`, present.map(m => m.id), { zone: newZone, category: 'travel' });
+                ctx.logEvent(`${present.map(m => m.name).join(', ')} slip out of ${departed} without a sound.`, present.map(m => m.id), { zone: newZone, category: 'travel' });
             } else {
                 ctx.logEvent(
                     `The alliance of ${present.map(m => m.name).join(', ')} moves out to ${newZone}.`,

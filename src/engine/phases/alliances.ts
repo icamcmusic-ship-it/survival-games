@@ -192,7 +192,10 @@ export function processAlliances(ctx: SimContext) {
                 const t1 = stillAlive[i];
                 const t2 = stillAlive[j];
 
-                if (!t1.allianceId && !t2.allianceId) {
+                // Same ground, like recruitment and mergers: an alliance is
+                // agreed face to face, not between two tributes standing in
+                // different zones who have never actually met.
+                if (!t1.allianceId && !t2.allianceId && t1.zone === t2.zone) {
                     // §4.3: joining someone is a trust decision, not a regard
                     // one. The mean, not the min: requiring the *lower* side to
                     // clear the bar collapsed formation entirely (the firing

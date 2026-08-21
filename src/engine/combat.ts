@@ -7,7 +7,7 @@ import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone, zoneFeatures } from './map';
-import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rivalRecord } from './memory';
+import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound } from './memory';
 import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { openWound } from './wounds';
@@ -582,6 +582,17 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     const origPack = new Set(packSide.map(t => t.id));
     const origOther = new Set(otherSide.map(t => t.id));
 
+    // Rivalry bookkeeping: each pair that actually trades blows in this brawl
+    // records one fight with each other — once per engagement, like a duel,
+    // not once per round.
+    const noted = new Set<string>();
+    const noteGroupFight = (a: Tribute, b: Tribute) => {
+        const key = a.id < b.id ? `${a.id}|${b.id}` : `${b.id}|${a.id}`;
+        if (noted.has(key)) return;
+        noted.add(key);
+        noteFight(ctx.state, a, b);
+    };
+
     let rounds = 0;
     while (rounds < COMBAT.maxGroupRounds) {
         rounds++;
@@ -606,9 +617,13 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
 
         const lead = attackers.reduce((best, a) =>
             (combatPower(ctx, a, bestWeapon(a)) > combatPower(ctx, best, bestWeapon(best)) ? a : best));
+        // A pack fight feeds the same rivalry ledger a duel does — the pair
+        // actually trading blows remember it, which is what rematch study,
+        // feud escalation and the rematch prose are all keyed on.
+        noteGroupFight(lead, target);
         const weapon = bestWeapon(lead);
-        const edge = combatPower(ctx, lead, weapon, Math.max(0, advantage))
-            - combatPower(ctx, target, bestWeapon(target), Math.max(0, -advantage));
+        const edge = combatPower(ctx, lead, weapon, Math.max(0, advantage), target)
+            - combatPower(ctx, target, bestWeapon(target), Math.max(0, -advantage), lead);
 
         if (attackers.length > 1) {
             ctx.logEvent(
@@ -651,6 +666,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
                 - combatPower(ctx, target, bestWeapon(target), 0, a)
                 - COMBAT.supportAttackPenalty;
             if (supportEdge <= 0) continue;
+            noteGroupFight(a, target);
             landHit(ctx, a, target, supportEdge, supportWeapon);
             if (target.health <= 0) {
                 killTribute(ctx, target, a, false, supportWeapon);
