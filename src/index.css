@@ -76,6 +76,10 @@
     --line-soft: #d9c69e;
     --red: #c11624;
     --red-deep: #8f0f1a;
+    /* §2.3: --red is a paper colour. On the near-black masthead it reads at
+       3.2:1, under the 4.5:1 small-text minimum, which is exactly where the
+       "you are here" nav item lives. This is the same red lifted onto ink. */
+    --red-on-ink: #ff6b73;
     --gold: #e3ae27;
     --gold-deep: #d2a124;
     --gold-line: #684c13;
@@ -172,11 +176,32 @@ body {
     50% { opacity: 0.55; }
 }
 
+/* The three named animations were covered; everything else — the meter and
+   sparkline width tweens, the button press nudge, the skip link sliding down,
+   any smooth scroll — ignored the preference entirely. Reduced motion means
+   the whole page, not the parts that happened to use a keyframe. */
 @media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
     .animate-fadeIn,
     .animate-riseIn,
     .animate-pulseSoft {
         animation: none;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .btn:active:not(:disabled) {
+        transform: none;
     }
 }
 
@@ -579,7 +604,23 @@ button:focus-visible,
 [role="button"]:focus-visible,
 a:focus-visible,
 select:focus-visible,
-input[type="checkbox"]:focus-visible {
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible,
+input:focus-visible {
     outline: 2px solid var(--red);
     outline-offset: 2px;
+}
+
+/* Sliders and the skip target were the two gaps left: a range input showed only
+   the browser's own faint ring, and #main-content is focused programmatically
+   by the skip link with nothing to show for it. */
+input[type="range"]:focus-visible {
+    outline: 2px solid var(--red);
+    outline-offset: 4px;
+}
+
+#main-content:focus-visible {
+    outline: 3px dashed var(--red);
+    outline-offset: 6px;
 }

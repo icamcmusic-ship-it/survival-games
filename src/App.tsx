@@ -8,6 +8,7 @@ import { Swords } from 'lucide-react';
 import { ShareButton } from './components/ShareButton';
 import { SetupScreen } from './screens/SetupScreen';
 import { gameActions, gameStore, prefetchEngine, ViewName } from './store/gameStore';
+import { initRouter, pathForView, redirectView, resolveView } from './store/router';
 
 /**
  * PERF: only the shell and the setup screen are in the initial chunk.
@@ -40,7 +41,11 @@ export default function App() {
   const isReplayedRun = useStore(gameStore, s => s.isReplayedRun);
 
   // Replay sharing: ?seed=...&arena=...&districtCount=... boots straight into that exact run.
+  // The router is started from the same effect, and only after this has run:
+  // a replay link decides the screen itself, so the URL is corrected to match
+  // the run it just booted rather than the (empty) route in the address bar.
   useEffect(() => {
+    let bootedFromLink = false;
     const params = new URLSearchParams(window.location.search);
     const urlSeed = params.get('seed');
     const urlArena = params.get('arena');
@@ -67,9 +72,11 @@ export default function App() {
         enableSanity: boolParam('enableSanity', DEFAULT_GAME_CONFIG.enableSanity),
       };
       void gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true);
+      bootedFromLink = true;
       // Consume the replay params so a later refresh doesn't relaunch it.
       window.history.replaceState(null, '', window.location.pathname);
     }
+    return initRouter(!bootedFromLink);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -80,6 +87,14 @@ export default function App() {
     const id = setTimeout(prefetchEngine, 1500);
     return () => clearTimeout(id);
   }, []);
+
+  // A route can also go stale after load — abandoning a run while sitting on
+  // #/arena, say. The router redirects on navigation; this catches the rest,
+  // so a screen that has nothing to render never renders as a blank page.
+  useEffect(() => {
+    const resolved = resolveView(view);
+    if (resolved !== view) redirectView(resolved);
+  }, [view, gameState]);
 
   const navItems: Array<{ id: ViewName; label: string; show: boolean }> = [
     { id: 'setup', label: 'New Game', show: true },
@@ -98,7 +113,7 @@ export default function App() {
             Survival Games
           </h1>
 
-          <nav className="flex gap-1 items-center flex-wrap">
+          <nav aria-label="Primary" className="flex gap-1 items-center flex-wrap">
             {isReplayedRun && gameState && (
               <span className="chip chip-coin hidden sm:inline-flex">Replay · {gameState.seed}</span>
             )}
@@ -106,16 +121,21 @@ export default function App() {
             {gameState && (
               <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.baseConfig} />
             )}
+            {/* Real links now that screens are real routes: the address bar
+                follows them, and middle-click / open-in-new-tab work. The click
+                handler keeps the store in step for the case where the hash is
+                already what it's about to become. */}
             {navItems.filter(i => i.show).map(item => (
-              <button
+              <a
                 key={item.id}
+                href={`#${pathForView(item.id)}`}
                 onClick={() => gameActions.setView(item.id)}
-                aria-pressed={view === item.id}
-                className="px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] transition-colors"
-                style={{ fontFamily: 'var(--font-mono)', color: view === item.id ? 'var(--red)' : '#a89a86' }}
+                aria-current={view === item.id ? 'page' : undefined}
+                className="px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] transition-colors no-underline"
+                style={{ fontFamily: 'var(--font-mono)', color: view === item.id ? 'var(--red-on-ink)' : '#a89a86' }}
               >
                 {item.label}
-              </button>
+              </a>
             ))}
           </nav>
         </div>

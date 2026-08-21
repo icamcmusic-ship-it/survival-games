@@ -154,7 +154,9 @@ await step('gamemaker controls fire', async () => {
 });
 
 await step('speed controls engage and can be stopped', async () => {
-  await page.getByRole('button', { name: /5x/i }).click();
+  // The speed buttons read Manual / Read / Skim / Skip — "5x" is the internal
+  // name, not the label, so this step had been silently failing.
+  await page.getByRole('button', { name: /skim/i }).click();
   await page.waitForTimeout(1200);
   await page.getByRole('button', { name: /manual/i }).click();
 });
@@ -197,7 +199,7 @@ await step('hall of fame records the victor', async () => {
   // The run uses a random seed, and an arena that kills every last tribute is a
   // legitimate ending. Assert against the outcome this run actually produced.
   const wipeout = await page.getByRole('heading', { name: 'No Victor', exact: true }).count() > 0;
-  await page.getByRole('button', { name: 'Hall of Fame', exact: true }).click();
+  await page.getByRole('link', { name: 'Hall of Fame', exact: true }).click();
   await page.getByRole('heading', { name: /hall of fame/i }).waitFor();
   const count = await page.locator('.panel .display-title').count();
   if (!wipeout && count === 0) throw new Error('a victor was crowned but nothing was recorded');
@@ -222,12 +224,101 @@ await step('hall of fame records the victor', async () => {
 });
 
 await step('share button copies link', async () => {
-  await page.getByRole('button', { name: /new game/i }).click();
+  await page.getByRole('link', { name: /new game/i }).click();
 });
 
 await step('replay via URL boots the same run', async () => {
   await page.goto(`${BASE}?seed=REPLAY1&arena=frozen&gamemaker=false`, { waitUntil: 'networkidle' });
   await page.getByRole('heading', { name: 'The Reaping' }).waitFor();
+  // The replay link decides the screen, so the router must adopt it rather
+  // than the other way round — and the params must be consumed, not left to
+  // relaunch the run on the next refresh.
+  const url = new URL(page.url());
+  if (url.search !== '') throw new Error(`replay params not consumed: ${url.search}`);
+  if (url.hash !== '#/roster') throw new Error(`expected #/roster after a replay link, got ${url.hash}`);
+});
+
+await step('URL reflects the screen and back/forward navigate', async () => {
+  await page.getByRole('link', { name: 'Hall of Fame', exact: true }).click();
+  await page.getByRole('heading', { name: /hall of fame/i }).waitFor();
+  if (!page.url().endsWith('#/hall-of-fame')) throw new Error(`expected #/hall-of-fame, got ${page.url()}`);
+  await page.goBack();
+  await page.getByRole('heading', { name: 'The Reaping' }).waitFor();
+  await page.goForward();
+  await page.getByRole('heading', { name: /hall of fame/i }).waitFor();
+});
+
+await step('#/arena during the reaping redirects to the roster', async () => {
+  await page.evaluate(() => { window.location.hash = '/arena'; });
+  await page.waitForTimeout(200);
+  await page.getByRole('heading', { name: 'The Reaping' }).waitFor();
+  if (!page.url().endsWith('#/roster')) throw new Error(`expected a redirect to #/roster, got ${page.url()}`);
+});
+
+await step('deep link to a run-only route with no run falls back to setup', async () => {
+  // about:blank first, so the hash change is a cold load rather than a
+  // same-document fragment navigation.
+  await page.goto('about:blank');
+  await page.goto(`${BASE}#/arena`, { waitUntil: 'networkidle' });
+  await page.getByRole('heading', { name: /may the odds/i }).waitFor();
+  if (!page.url().endsWith('#/')) throw new Error(`expected a redirect to #/, got ${page.url()}`);
+});
+
+await step('deep link to the hall of fame works cold', async () => {
+  await page.goto(`${BASE}#/hall-of-fame`, { waitUntil: 'networkidle' });
+  await page.getByRole('heading', { name: /hall of fame/i }).waitFor();
+});
+
+await step('skip link does not navigate the router away', async () => {
+  await page.goto(`${BASE}#/hall-of-fame`, { waitUntil: 'networkidle' });
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(150);
+  await page.getByRole('heading', { name: /hall of fame/i }).waitFor();
+});
+
+await step('new keyboard shortcuts drive the arena', async () => {
+  await page.goto(`${BASE}?seed=KEYS1&arena=frozen&gamemaker=false`, { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: /confirm tributes/i }).click();
+  await page.getByRole('button', { name: /begin training/i }).click();
+  await page.getByRole('button', { name: /proceed/i }).waitFor();
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(120);
+  }
+  await page.keyboard.press('z');        // cycle sector filter forward
+  await page.waitForTimeout(120);
+  await page.keyboard.press('Shift+Z');  // and back off it
+  await page.keyboard.press('t');        // cycle tribute filter
+  await page.keyboard.press('Shift+T');
+  await page.keyboard.press('[');        // day jump
+  await page.keyboard.press(']');
+  await page.keyboard.press('i');        // headline events only
+  await page.keyboard.press('i');
+  await page.keyboard.press('1');        // mute a category group
+  await page.keyboard.press('1');
+  await page.keyboard.press('0');        // reset every filter
+  await page.keyboard.press('p');        // auto-advance on
+  await page.waitForTimeout(400);
+  await page.keyboard.press('p');        // and off again
+  await page.keyboard.press('?');
+  await page.getByRole('dialog', { name: /how to read the games/i }).waitFor();
+  const help = await page.getByRole('dialog').innerText();
+  for (const key of ['Z / Shift+Z', 'T / Shift+T', '[ / ]', 'Space', 'Esc']) {
+    if (!help.includes(key)) throw new Error(`help panel does not document ${key}`);
+  }
+  await page.keyboard.press('Escape');
+  await page.getByRole('dialog').waitFor({ state: 'detached' });
+});
+
+await step('shortcuts do not hijack typing in the chronicle search', async () => {
+  await page.getByRole('button', { name: /filters/i }).click();
+  const search = page.getByPlaceholder(/search the chronicle/i);
+  await search.fill('');
+  await search.type('fizz');
+  if (await search.inputValue() !== 'fizz') throw new Error('a shortcut swallowed typed input');
+  await search.fill('');
+  await page.getByRole('button', { name: /filters/i }).click();
 });
 
 await step('no horizontal overflow at mobile width', async () => {

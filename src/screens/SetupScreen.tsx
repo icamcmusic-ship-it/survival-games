@@ -244,6 +244,13 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 <button
                                     key={d}
                                     className={`chip ${panem.patronDistrict === d ? 'chip-accent' : ''}`}
+                                    // "D7" is a label to the eye and nothing to a
+                                    // screen reader; aria-pressed carries which one
+                                    // is the standing patronage.
+                                    aria-pressed={panem.patronDistrict === d}
+                                    aria-label={panem.patronDistrict === d
+                                        ? `You are District ${d}'s patron`
+                                        : `Become District ${d}'s patron for ${gameActions.patronCost} coins`}
                                     disabled={panem.patronDistrict !== d && coins < gameActions.patronCost}
                                     title={panem.patronDistrict === d
                                         ? `You are District ${d}'s patron`

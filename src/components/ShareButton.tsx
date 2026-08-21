@@ -53,8 +53,16 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config }: { seed: st
 
     return (
         <span className="inline-flex items-center gap-2">
-            <button onClick={handleShare} className="btn btn-sm" title="Copy a link that replays this exact run">
-                {status === 'copied' ? <Check className="w-3.5 h-3.5 text-[var(--color-coin-400)]" /> : <Share2 className="w-3.5 h-3.5" />}
+            <button
+                onClick={handleShare}
+                className="btn btn-sm"
+                // No aria-label here on purpose: the button's own text is what
+                // changes to "Copied", and a static label would silence that.
+                title={`Copy a link that replays seed ${seed}`}
+            >
+                {status === 'copied'
+                    ? <Check aria-hidden="true" className="w-3.5 h-3.5 text-[var(--color-coin-400)]" />
+                    : <Share2 aria-hidden="true" className="w-3.5 h-3.5" />}
                 {status === 'copied' ? 'Copied' : status === 'failed' ? 'Copy failed' : 'Share'}
             </button>
             {fallbackUrl && (
