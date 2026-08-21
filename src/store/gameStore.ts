@@ -1,4 +1,8 @@
 import { GameState, GameConfig, HallOfFameEntry } from '../models/types';
+import { Bet, SAVED_RUN_SPEC, SavedRun } from '../utils/saveMigrations';
+import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
+import { HOF_CAP, readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
+import { readStored, removeStored, tryWriteStored, writeStored } from '../utils/storage';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import type { Simulator } from '../engine/simulator';
 import type { GamemakerEventType } from '../engine/gamemaker';
@@ -46,11 +50,12 @@ export function prefetchEngine() {
 
 export type ViewName = 'setup' | 'roster' | 'game' | 'hallOfFame';
 
-export interface Bet {
-    stake: number;
-    /** Payout multiplier at the moment the wager was placed — the odds you saw are the odds you took. */
-    mult: number;
-}
+/**
+ * `Bet` and `SavedRun` are declared in `utils/saveMigrations` (with the schema
+ * that repairs them on load) and re-exported here so existing importers of
+ * `gameStore` are unaffected.
+ */
+export type { Bet, SavedRun };
 
 export interface GameStoreState {
     gameState: GameState | null;
@@ -81,51 +86,24 @@ export interface RunProgress {
     tributesAlive: number;
 }
 
-const STARTING_COINS = 1000;
 const BROKE_THRESHOLD = 50;
 const STIPEND = 250;
 /** §6.2: cost of becoming (or changing) a district's standing patron. */
 const PATRON_COST = 750;
 const PATRON_TRUST_BONUS = 12;
 
-function readCoins(): number {
-    // Note the explicit null check: `Number(null)` is 0, which would silently
-    // hand a brand-new player an empty wallet instead of their starting stake.
-    try {
-        const stored = localStorage.getItem('capitolCoins');
-        if (stored === null) return STARTING_COINS;
-        const raw = Number(stored);
-        return Number.isFinite(raw) && raw >= 0 ? raw : STARTING_COINS;
-    } catch {
-        // Safari private mode (and similar) throws on localStorage access
-        // before React ever mounts.
-        return STARTING_COINS;
-    }
-}
-
-const SAVE_KEY = 'survivalGamesSave';
-
-export interface SavedRun {
-    gameState: GameState;
-    bets: Record<string, Bet>;
-    betsResolved: boolean;
-    hofSaved: boolean;
-    isReplayedRun: boolean;
-    savedAt: string;
-}
-
-/** UX-01: an in-progress run is autosaved after every phase, so a refresh or a
- *  closed tab doesn't erase an 8-day chronicle. Finished runs aren't worth
- *  resuming, so they don't get saved. */
+/**
+ * UX-01: an in-progress run is autosaved after every phase, so a refresh or a
+ * closed tab doesn't erase an 8-day chronicle. Finished runs aren't worth
+ * resuming, so they don't get saved.
+ *
+ * The payload carries a schema version and is normalised on read (see
+ * `utils/saveMigrations`), so a save written by an older build — one whose
+ * `Tribute` predates half the fields the current engine reads — resumes with
+ * every field defaulted rather than relying on `??` at each call site.
+ */
 function readSavedRun(): SavedRun | null {
-    try {
-        const raw = localStorage.getItem(SAVE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        return parsed && parsed.gameState ? (parsed as SavedRun) : null;
-    } catch {
-        return null;
-    }
+    return readStored(SAVED_RUN_SPEC);
 }
 
 /**
@@ -139,44 +117,28 @@ function readSavedRun(): SavedRun | null {
  */
 const LOG_TAIL_FALLBACKS = [4000, 2000, 800, 200];
 
-function isQuotaError(err: unknown): boolean {
-    return err instanceof DOMException
-        && (err.name === 'QuotaExceededError'
-            || err.name === 'NS_ERROR_DOM_QUOTA_REACHED'
-            // Legacy WebKit reports the quota code without the modern name.
-            || err.code === 22);
-}
-
 function writeSave() {
     const { gameState, bets, betsResolved, hofSaved, isReplayedRun } = gameStore.getState();
     if (!gameState || gameState.phase === 'ended') {
         clearSavedRun();
         return;
     }
+    // Full log first (the chronicle is the run's whole point), through the
+    // versioned envelope, falling back through shorter tails only on a
+    // genuine quota refusal — `tryWriteStored` reports the difference between
+    // "won't fit" (retry smaller) and "storage unavailable" (stop).
     const savedAt = new Date().toISOString();
-    const attempt = (log: GameState['log']) => {
-        const saved: SavedRun = {
-            gameState: log === gameState.log ? gameState : { ...gameState, log },
-            bets, betsResolved, hofSaved, isReplayedRun, savedAt,
-        };
-        localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
-    };
+    const attempt = (log: GameState['log']) => tryWriteStored(SAVED_RUN_SPEC, {
+        gameState: log === gameState.log ? gameState : { ...gameState, log },
+        bets, betsResolved, hofSaved, isReplayedRun, savedAt,
+    } as SavedRun);
 
-    try {
-        attempt(gameState.log);
-        return;
-    } catch (err) {
-        if (!isQuotaError(err)) return; // Storage unavailable entirely (private mode, etc.).
-    }
+    const first = attempt(gameState.log);
+    if (first !== 'quota') return;
 
     for (const cap of LOG_TAIL_FALLBACKS) {
         if (gameState.log.length <= cap) continue;
-        try {
-            attempt(gameState.log.slice(-cap));
-            return;
-        } catch (err) {
-            if (!isQuotaError(err)) return;
-        }
+        if (attempt(gameState.log.slice(-cap)) !== 'quota') return;
     }
     // Even the shortest tail won't fit — leave whatever save already exists
     // rather than clobbering it with a failed write.
@@ -203,23 +165,10 @@ function clearSavedRun() {
         clearTimeout(persistTimer);
         persistTimer = null;
     }
-    // Same failure mode readCoins guards against: localStorage access itself
-    // throws in Safari Private Browsing and sandboxed iframes. This is called
-    // from startGame, so an unguarded throw here blocked starting the game.
-    try {
-        localStorage.removeItem(SAVE_KEY);
-    } catch {
-        // Storage unavailable — nothing to clear anyway.
-    }
-}
-
-function readHallOfFame(): HallOfFameEntry[] {
-    try {
-        const parsed = JSON.parse(localStorage.getItem('hungerGamesHoF') || '[]');
-        return Array.isArray(parsed) ? parsed : [];
-    } catch {
-        return [];
-    }
+    // localStorage access itself throws in Safari Private Browsing and
+    // sandboxed iframes; removeStored absorbs that. This is called from
+    // startGame, so an unguarded throw here blocked starting the game.
+    removeStored(SAVED_RUN_SPEC);
 }
 
 function saveHallOfFame(state: GameState) {
@@ -252,12 +201,9 @@ function saveHallOfFame(state: GameState) {
             dayOfDeath: t.dayOfDeath
         }))
     };
-    // Keep the archive bounded — localStorage quota is not infinite.
-    try {
-        localStorage.setItem('hungerGamesHoF', JSON.stringify([entry, ...readHallOfFame()].slice(0, 50)));
-    } catch {
-        // Storage full or unavailable — the victory just won't be archived.
-    }
+    // Keep the archive bounded — storage quota is not infinite. writeHallOfFame
+    // applies the cap and swallows a full/unavailable store.
+    writeHallOfFame([entry, ...readHallOfFame()].slice(0, HOF_CAP));
 }
 
 export const gameStore = createStore<GameStoreState>({
@@ -410,11 +356,8 @@ export const gameActions = {
         gameStore.setState(s => {
             const next = typeof coins === 'function' ? coins(s.coins) : coins;
             const safe = Math.max(0, Math.floor(next));
-            try {
-                localStorage.setItem('capitolCoins', safe.toString());
-            } catch {
-                // Storage full or unavailable — the balance just won't persist.
-            }
+            // Swallows a full/unavailable store — the balance just won't persist.
+            writeCoins(safe);
             return { coins: safe };
         });
     },

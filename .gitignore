@@ -1,4 +1,8 @@
-node_modules/
+# No trailing slash: a trailing slash matches a directory only, so a
+# *symlink* named node_modules (which is what a git worktree checkout of
+# this repo can end up with) slipped past and was committed as a blob
+# pointing at an absolute path that exists on exactly one machine.
+node_modules
 build/
 dist/
 coverage/

@@ -131,6 +131,45 @@ export const CLIMATE = {
     ashenSanityLoss: 8,
     tidalDrenchChance: 0.18,
     stormFatigue: 8,
+    // The magnetic fog (Shattered Archipelago) and the carnival's pine fog:
+    // a low, steady pressure on the head rather than the body.
+    fogSanityChance: 0.15,
+    fogSanityLoss: 8,
+    fogFatigue: 4,
+    // The Perpetual Eclipse Forest: light that never resolves either way.
+    duskSanityChance: 0.12,
+    duskSanityLoss: 6,
+    // The Industrial Abattoir: furnace heat in closed halls.
+    furnaceFatigue: 7,
+    furnaceBurnChance: 0.06,
+    furnaceThirstMultiplier: 1.5,
+    // The Vertical Quarry: cold rock damp that never dries.
+    quarryDampFatigue: 5,
+} as const;
+
+/**
+ * Tunables for the new arena signature rules (see engine/arenaSignature.ts).
+ * The older signatures carry their numbers in the undeclared-knobs baseline;
+ * these landed after that check existed, so they live here from day one.
+ */
+export const SIGNATURE_RULES = {
+    eclipseStumbleChance: 0.25,
+    eclipseSanityLoss: 9,
+    reefBloomChance: 0.4,
+    reefDodgeBase: 0.3,
+    reefSanityLoss: 12,
+    abattoirDodgeBase: 0.3,
+    abattoirFatigue: 15,
+    carnivalSanityLoss: 12,
+    ashwasteWadeFatigue: 10,
+    ashwasteBurnChance: 0.2,
+    quarryDodgeBase: 0.3,
+    glacierDodgeBase: 0.35,
+    floeDunkChance: 0.3,
+    floeDunkFatigue: 20,
+    alpineDodgeBase: 0.3,
+    terracesDodgeBase: 0.35,
+    terracesFatigue: 12,
 } as const;
 
 /** What each trait is worth, in the units the vitals loop works in. */
@@ -494,6 +533,17 @@ export const ESCALATION = {
     /** The Gamemakers want a victor: the border stops short of the last two. */
     finalistCollapseDamage: 10,
     finalistCount: 2,
+    /**
+     * The forced finale. Finalist protection (see `applyDamage`) means the
+     * arena can no longer finish the last two by attrition — which also means
+     * two evasive finalists who keep missing each other could drag a run out
+     * indefinitely (a 500-day Games surfaced in the soak the cycle after the
+     * protection landed). Canon has the answer: the Gamemakers drive the
+     * finalists to the Cornucopia and make them settle it. After this many
+     * cycles at finalist count without a resolution, both are herded to the
+     * horn every cycle until it ends.
+     */
+    finaleAfterFinalistCycles: 6,
     hazardMultiplierPerDay: 0.3,
     hazardCeiling: 0.35,
 } as const;
@@ -860,6 +910,62 @@ export const OBJECTIVES = {
  * over a few cycles is the single most evocative arena mechanic available and
  * the graph already exists — nothing used it for anything but pathing.
  */
+/**
+ * Mutts.
+ *
+ * These lived as a module-local `const MUTTS` inside `engine/mutts.ts` with a
+ * comment noting they were "documented the way balance.ts documents its own" —
+ * which is exactly the drift the README's "every tunable number the engine
+ * reads" claim is supposed to prevent. Moved here so they are tunable where
+ * everything else is.
+ *
+ * §5: the lethality problem. Mutts caused 2.0% of measured deaths across
+ * ~1,400 encounters per 240 runs — the overwhelming majority resolved as a
+ * wound and a scare. Gamemaker mutts are one of the two most iconic threats in
+ * the source material and they were mechanically decorative. The fix is not to
+ * make every bite fatal: it is to make a *pack* genuinely dangerous (the
+ * falloff and cap were throttling exactly the thing that should frighten
+ * people) and to let the Gamemakers put real teeth on them once the audience
+ * is owed a finish.
+ */
+export const MUTTS = {
+    /** Evasion roll: tribute agility + spread vs mutt speed. Wider spread than
+     *  the old fixed threshold, so a slow tribute can still get lucky. */
+    evasionRollSpread: 4,
+    /** Extra hits beyond the first do less each time, so a pack raises danger
+     *  without one-shotting a whole tribute in a single roll. */
+    packDamageFalloff: 0.7,
+    /** A pack can never deal more than this multiple of the lead mutt's base
+     *  damage in one encounter, however many extra mutts connect. */
+    packDamageCap: 3.4,
+    /**
+     * Flat multiplier on every mutt's printed damage. A single dial beats
+     * editing 46 roster entries, and keeps each mutt's *relative* danger — the
+     * careful part of that data — exactly as authored.
+     */
+    damageScale: 1.55,
+    /**
+     * Escalation teeth. Once the Gamemakers have started closing the arena,
+     * what they release is not what they released on day two. Scales with days
+     * since escalation began, capped so a long run does not produce mutts that
+     * delete a healthy tribute outright.
+     */
+    escalationDamagePerDay: 0.12,
+    escalationDamageCap: 0.6,
+    /** How many cycles a persistent mutt keeps hunting once it finds someone. */
+    persistentDuration: 3,
+    /** Chance a persistent mutt's tracked target gets caught again on a given tick. */
+    persistentReattackChance: 0.55,
+    /**
+     * "Wearing the faces of the fallen" — canon's most disturbing mutt beat.
+     * Kept rare and gated on there actually being a death someone in the zone
+     * mourned; this is not a roll on every mutt attack, it is a distinct
+     * horror event layered on top of one.
+     */
+    facesOfFallenChance: 0.08,
+    facesOfFallenSanityLoss: 30,
+} as const;
+
 export const ZONE_EFFECTS = {
     /** How long each effect lasts before lifting on its own. */
     burningDuration: 3,
@@ -1229,8 +1335,15 @@ export const ROMANCE = {
     sustainedCycles: 3,
     /** Contact this stale breaks the streak. */
     contactWindow: 2,
-    /** Odds per cycle once every condition holds. Romance is never automatic. */
-    chancePerCycle: 0.1,
+    /**
+     * Odds per cycle once every condition holds. Romance is never automatic.
+     * Retuned 0.1 -> 0.04 at integration: removing the one-per-cycle romance
+     * throttle and loosening the performed-bond gates each passed the 5%-22%
+     * lover-runs guard alone, and stacked to 23.3% together. 0.04 lands the
+     * combined system at ~15%, the top of the 10%-15% design goal, with the
+     * performed-bond firing floor still comfortably clear.
+     */
+    chancePerCycle: 0.04,
     /**
      * Per-day decay on that chance. Keeps the romance rate a property of the
      * cast rather than a property of how long the Games happened to run.
@@ -1256,6 +1369,48 @@ export const ALLIANCES = {
      * for the whole game, by construction.
      */
     maxSize: 6,
+    /**
+     * Average regard below which a group simply stops being one. Was an
+     * undeclared `-15` sitting in `phases/alliances.ts` — the same balance
+     * drift the README's "every tunable number the engine reads" claim is
+     * meant to prevent.
+     */
+    rotDissolveTrust: -15,
+
+    /**
+     * Factions inside a large group.
+     *
+     * §4: alliance size was capped and nothing distinguished a six-person
+     * pack's internal politics from a pair's beyond leader-challenge maths.
+     * A big group had no way to be a *coalition* — it was either intact or
+     * evaporated, and the interesting middle (the pack that splits along the
+     * lines everyone could already see) could not happen at all.
+     *
+     * A schism is checked before the rot-dissolve above, so a group that has
+     * two coherent halves splits into two standing alliances rather than
+     * scattering into loners. The split follows the regard graph, so it lands
+     * where the audience has been watching it build.
+     */
+    schismMinSize: 4,
+    /** Each side of the split has to be a viable group on its own. */
+    schismMinFaction: 2,
+    /**
+     * Average cross-faction regard at or below this means two camps rather
+     * than one group.
+     *
+     * Deliberately *not* a hostility threshold. Set to -5 initially, this
+     * never fired once across 240 runs, and the reason is structural: people
+     * in an alliance like each other — that is why they are in it — so a group
+     * whose halves genuinely resent each other has already crossed
+     * `rotDissolveTrust` and dissolved. A schism is not a group that hates
+     * itself; it is a group where one half is much closer to each other than
+     * to anyone else, and the shared bond has gone lukewarm. That is the real
+     * shape of a pack splitting, and it is reachable.
+     */
+    schismCrossRegard: 25,
+    /** Within a faction, regard has to be genuinely better than across it, by this much. */
+    schismCohesionGap: 12,
+    schismChance: 0.4,
     /** Base odds a group takes in a loner they get on with. */
     recruitChance: 0.35,
     /**
@@ -1568,6 +1723,146 @@ export const INTERVIEWS = {
     heldTrust: 8,
     heldExcitement: 12,
     brokeTrust: 6,
+
+    /**
+     * Poise is charisma plus nerve on the night. The jitter is deliberately
+     * wider upward than downward: a nervous tribute rarely does *worse* than
+     * their charisma suggests, but the stage occasionally makes somebody.
+     */
+    poiseJitterMin: -2,
+    poiseJitterMax: 3,
+    /** Being a known face before you sit down is worth a point of poise. */
+    poiseFanFavourite: 1,
+    /** How hard the excitement-flavoured traits (Showman, Grim) push poise. */
+    poiseExcitementWeight: 2,
+
+    /** The hold roll is clamped: nobody is certain, nobody is hopeless. */
+    holdChanceFloor: 0.1,
+    holdChanceCeiling: 0.95,
+
+    /** A landed angle raises charisma, but not past the human ceiling. */
+    charismaCeiling: 10,
+    /** Reputation moves with the sponsor multiplier the angle earned. */
+    reputationPerTrustMultiplier: 30,
+    reputationCeiling: 95,
+    reputationFloor: 5,
+    /** Fumbling the opening costs standing as well as money. */
+    fumbledReputation: 5,
+
+    /**
+     * What the other twenty-three made of it. A tribute who spends three
+     * minutes promising a short Games has made twenty-three first impressions
+     * and only the Careers liked any of them — which is most of why the
+     * bloodbath alliances form the way they do.
+     */
+    hostileDistrust: 10,
+    /** Careers file a threat under 'rival', not under 'enemy'. */
+    hostileCareerRespect: 4,
+    warmRapport: 6,
+} as const;
+
+/**
+ * Which angle a tribute takes on Caesar's couch.
+ *
+ * The persona is not a costume: `interviewChemistry` and `personaThreat` both
+ * read it back, so it needs to come out of who the tribute actually is. These
+ * are the weights in a weighted pick — a tribute can still land somewhere
+ * surprising, they are just unlikely to.
+ *
+ * Read the numbers as multiples of the flat base weight of 1 that every angle
+ * starts from: a `+1.5` roughly triples an angle's odds, a `-1` all but rules
+ * it out. The attribute coefficients are per point on a 1-10 scale, so a
+ * `0.15` is worth up to 1.5 at charisma 10 — the same size as one strong
+ * trait, which is the intended trade.
+ */
+export const INTERVIEW_ANGLES = {
+    /** Floor so no angle is ever strictly impossible for anyone. */
+    minWeight: 0.15,
+
+    starCrossed: {
+        perCharisma: 0.15,
+        softhearted: 1.5,
+        ruthless: -0.8,
+    },
+    ruthlessWarrior: {
+        /** Measured against a middling training score. */
+        trainingPivot: 5,
+        perTrainingPointOverPivot: 0.3,
+        perStrength: 0.12,
+        career: 1.5,
+        bloodthirsty: 1.2,
+        pacifist: -1.5,
+    },
+    humbleUnderdog: {
+        /** Inverted: the further *below* the pivot they scored, the better it plays. */
+        trainingPivot: 7,
+        perTrainingPointUnderPivot: 0.25,
+        /** The youngest tributes do not have to act this one. */
+        youngAge: 14,
+        young: 1,
+        career: -1,
+    },
+    mysteriousEnigma: {
+        perStealth: 0.18,
+        /** Somebody who already hid in training has the story ready-made. */
+        concealed: 1.5,
+        paranoid: 0.6,
+    },
+    charmingFlirt: {
+        perCharisma: 0.3,
+        charismatic: 1.2,
+        unremarkable: -1,
+    },
+    arrogantBrute: {
+        perStrength: 0.2,
+        brute: 1.4,
+        /** Charm undercuts it — a likeable tribute cannot sell menace. */
+        charismaCutoff: 7,
+        charismatic: -0.8,
+    },
+    quirkyOddball: {
+        perIntelligence: 0.12,
+        showman: 1.5,
+    },
+    silentThreat: {
+        perStealth: 0.15,
+        perStrength: 0.08,
+        concealed: 1,
+        /** Being bad at talking is the qualification here, not a handicap. */
+        quietCharisma: 4,
+        quiet: 0.8,
+    },
+    grievingSibling: {
+        mourner: 1.3,
+        youngAge: 15,
+        young: 0.6,
+        ruthless: -1,
+    },
+    coldStrategist: {
+        perIntelligence: 0.2,
+        strategistArchetype: 1.5,
+        strategistTrait: 1,
+    },
+    reluctantHero: {
+        pacifist: 1.5,
+        /** Reaped, not volunteered: the story tells itself. */
+        conscript: 0.6,
+        career: -0.8,
+    },
+    districtLoyalist: {
+        /** A non-Career volunteer did it for somebody, and everyone knows it. */
+        volunteer: 1.8,
+        /** A tribute with nothing else to trade on falls back on home. */
+        lowReputation: 40,
+        lowReputationBonus: 0.8,
+        career: 0.4,
+    },
+    wildcard: {
+        archetype: 1.5,
+        /** Rewards charisma at either extreme; the middle is not a wildcard. */
+        perCharismaDeviation: 0.1,
+        charismaMidpoint: 5,
+    },
 } as const;
 
 /**
@@ -1644,6 +1939,137 @@ export const TRAINING = {
     careerRespect: 8,
     /** How much a high scorer's own confidence rises. */
     confidenceSanity: 6,
+
+    /** Excitement the broadcast itself buys, per point of the score read out. */
+    broadcastExcitementPerPoint: 5,
+    /** Sponsors chase the top of the board before anyone has swung anything. */
+    eliteTrustScore: 10,
+    eliteTrust: 15,
+    strongTrustScore: 9,
+    strongTrust: 8,
+    /**
+     * How fast intimidation scales past the notice threshold. A 9 lands at
+     * quarter weight and a 12 at full: the divisor is the width of the elite
+     * band, so the top of the board hits exactly as hard as the raw numbers
+     * below say it does.
+     */
+    intimidationSeverityBand: 4,
+    /** Verdict copy tiers on the broadcast. */
+    legendaryVerdictScore: 11,
+    eliteVerdictScore: 9,
+    solidVerdictScore: 6,
+    /** A concealer this far down the board has hidden successfully. */
+    hiddenScore: 4,
+} as const;
+
+/**
+ * The private session, from the inside.
+ *
+ * Training scores 1-8 are earned on merit; every point above 8 is a separate
+ * gate, each exponentially harder than the last. That shape is the whole
+ * design: it is why an 11 is a talking point rather than a common outcome,
+ * and why merit shifts the *odds* of the elite band rather than the band
+ * itself. See the training-score distribution band in `scripts/soak.ts`.
+ */
+export const TRAINING_SCORE = {
+    /** Base odds of clearing the first gate (an 8 becoming a 9). */
+    eliteGateBase: 0.3,
+    /**
+     * 0.3 measured out to one 11 every ~18 Games and a 12 every ~140 —
+     * canon's 11 is remarkable but happens; 0.42 keeps the exponential shape
+     * one notch gentler than a straight halving.
+     */
+    eliteGateDecay: 0.42,
+    eliteGateCap: 0.55,
+    /** Points above 8 that are reachable at all: 9 through 12. */
+    eliteGates: 4,
+    /** A tribute who just startled the panel is far likelier to clear a gate. */
+    stuntGateMultiplier: 1.8,
+
+    /** Base band, from what they can do in front of a panel. */
+    statsPerPoint: 5,
+    skillPerPoint: 3,
+    /** Panel mood: the same performance is not scored the same twice. */
+    jitterMin: -1,
+    jitterMax: 1,
+    careerBonus: 1,
+    /** The merit band tops out at 8; everything above it is a gate. */
+    baseFloor: 1,
+    baseCeiling: 8,
+
+    /**
+     * Merit multiplier: what the Gamemakers already believe walking in.
+     * Multiplies the elite-gate odds only, so it can never hand out a score
+     * on its own.
+     */
+    meritCareer: 0.45,
+    meritCareerArchetype: 0.2,
+    meritBrute: 0.15,
+    meritStrategist: 0.15,
+    meritEagleEyed: 0.1,
+    meritNimble: 0.1,
+    meritClumsy: -0.25,
+    meritPacifist: -0.2,
+    /**
+     * A twelve-year-old does not out-score the Careers on the gauntlet,
+     * however fast they are — age is a real ceiling on the elite band.
+     */
+    meritAgePivot: 15,
+    meritPerYear: 0.08,
+    /** Nobody's odds fall to nothing; the panel can always be surprised. */
+    meritFloor: 0.15,
+} as const;
+
+/**
+ * Three days on the floor: what a tribute works on, and who they let watch.
+ *
+ * The gap between "train what you are already good at" and "train what will
+ * actually keep you alive" is most of what separates a Career from everybody
+ * else, so these two weight sets are where that difference is dialled.
+ */
+export const TRAINING_FLOOR = {
+    /** Station pick, as weights over the five attributes. */
+    perAttributePoint: 0.25,
+    /** District trade: a District 7 tribute goes to the heavy blades. */
+    craftAffinity: 1.2,
+    forageCraftAffinity: 1,
+    /** Careers do not spend three days learning which berries are safe. */
+    careerCombat: 1.5,
+    careerSurvival: -0.5,
+    /** Everyone else knows the arena kills more people than the Careers do. */
+    outsiderSurvival: 0.8,
+    /** Repeating a station has diminishing appeal: halved each time. */
+    repeatDecay: 0.5,
+    minWeight: 0.1,
+
+    /**
+     * Aptitude compounds: a day on something you are already good at gets you
+     * further than a day on something you are not. At attribute 1 a day is
+     * worth 65% of the base gain, at 10 it is 110%.
+     */
+    aptitudeBase: 0.6,
+    /** Divisor, not a coefficient: attribute points spread over this range. */
+    aptitudeDivisor: 20,
+    /** Attribute ceiling for anything that is not gated on age. */
+    attributeCeiling: 10,
+    attributeFloor: 1,
+    /**
+     * `trainProficiency` moves a fixed step, so a day's proficiency gain is
+     * spent as a whole number of reps against that step.
+     */
+    proficiencyStep: 0.35,
+
+    /** Strategy pick: how visible to be, before any of it is scored. */
+    careerShowcase: 0.4,
+    careerConceal: -0.18,
+    schemerConceal: 0.25,
+    underdogConceal: 0.15,
+    /** Bright tributes work out on their own that a low number is cover. */
+    cleverIntelligence: 8,
+    cleverConceal: 0.1,
+    showmanShowcase: 0.3,
+    unremarkableConceal: 0.2,
+    fanFavouriteShowcase: 0.15,
 } as const;
 
 /**
@@ -1767,13 +2193,19 @@ export const PARLEY = {
      * betrayal: treachery, plus how winnable this specific fight looks, plus
      * the arithmetic of a closing field.
      */
-    truceBreakBase: 0.12,
+    truceBreakBase: 0.18,
     truceBreakTreacheryWeight: 0.8,
     /** A field this small makes every standing agreement provisional. */
     truceBreakEndgameFieldSize: 8,
     truceBreakEndgameBonus: 0.35,
-    /** How badly the other party has to be losing to tempt a knife. */
-    truceBreakOpportunismRatio: 1.15,
+    /**
+     * How badly the other party has to be losing to tempt a knife. Retuned
+     * down alongside the §7 district rebalance, which deliberately narrowed
+     * the spread of combat power across the cast — "clearly winning" is a
+     * smaller edge than it used to be, so the threshold that reads as an
+     * opening has to move with it.
+     */
+    truceBreakOpportunismRatio: 1.08,
     truceBreakOpportunismBonus: 0.16,
     /** A tribute who has already been sold out does not break their word lightly. */
     truceBreakBetrayedRestraint: 0.5,

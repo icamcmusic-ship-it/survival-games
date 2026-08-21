@@ -94,10 +94,20 @@ const TRADE = 0.6;
 const TRADE_MINOR = 0.35;
 
 export const DISTRICT_CRAFT: Record<number, DistrictCraft> = {
-    1:  { proficiencies: { melee: TRADE },                        affinityItems: ['sword', 'machete'],   affinityClasses: ['melee'],            blurb: 'raised on fine steel and the academy floor' },
-    2:  { proficiencies: { melee: TRADE, tracking: TRADE_MINOR }, affinityItems: ['mace', 'axe', 'sword'], affinityClasses: ['melee'],          blurb: 'quarry work and the academy: heavy weapons, and the arm to use them' },
+    // §7: the Career districts get `hungerResilience` above 1 — the inverse of
+    // what the outer districts get, and the counterweight their training score
+    // never had. A tribute from the wealthiest district in Panem has never
+    // missed a meal in their life, which is precisely why the Cornucopia
+    // matters so much to them and why the pack falls apart once the supplies
+    // are gone. The comment on `hungerResilience` in `survival.ts` already
+    // said "District 12 rations better than District 1 does"; this is the
+    // first version where that is literally true.
+    1:  { proficiencies: { melee: TRADE },                        affinityItems: ['sword', 'machete'],   affinityClasses: ['melee'],            hungerResilience: 1.2,  blurb: 'raised on fine steel and the academy floor, and never once hungry' },
+    2:  { proficiencies: { melee: TRADE, tracking: TRADE_MINOR }, affinityItems: ['mace', 'axe', 'sword'], affinityClasses: ['melee'],          hungerResilience: 1.15, blurb: 'quarry work and the academy: heavy weapons, and the arm to use them' },
     3:  { proficiencies: { tracking: TRADE, medicine: TRADE_MINOR }, affinityItems: ['wire', 'slingshot'], affinityClasses: [],                 blurb: 'factory-raised: traps, wire, and an eye for how the arena is wired together' },
-    4:  { proficiencies: { forage: TRADE, melee: TRADE_MINOR },   affinityItems: ['trident', 'spear'],    affinityClasses: ['thrown'],           blurb: 'a childhood on the boats: nets, gaffs, deep water, and the trident' },
+    // District 4 is a Career district that still works for a living, so it
+    // sits between the two: the academy, but also the boats.
+    4:  { proficiencies: { forage: TRADE, melee: TRADE_MINOR },   affinityItems: ['trident', 'spear'],    affinityClasses: ['thrown'],           hungerResilience: 1.05, blurb: 'a childhood on the boats: nets, gaffs, deep water, and the trident' },
     5:  { proficiencies: { tracking: TRADE },                     affinityItems: ['wire'],               affinityClasses: [],                   blurb: 'power-plant shifts: they read machinery the way others read weather' },
     6:  { proficiencies: { tracking: TRADE },                     affinityItems: [],                     affinityClasses: [],                   blurb: 'transport yards: they know how to move and how not to be seen doing it' },
     7:  { proficiencies: { forage: TRADE_MINOR, melee: TRADE },   affinityItems: ['axe', 'machete'],     affinityClasses: ['melee'],            blurb: 'lumber crews: climbing, felling, and an axe that has never been a weapon until now' },

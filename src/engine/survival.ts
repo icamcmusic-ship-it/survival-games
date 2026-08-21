@@ -76,10 +76,34 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     return { hunger, thirst, fatigue };
 }
 
+/**
+ * Finalist protection (see the comment in `combat.ts`) holds a fatal status
+ * tick back to 1 HP rather than letting a finalist die of it — but thirst,
+ * poison and the rest reapply every single cycle, so a clamp alone would just
+ * camp them at 1 HP indefinitely instead of actually saving them, which reads
+ * as broken rather than as a near-death survival. When the save fires, this
+ * also relieves whatever specifically caused it, so the same tick does not
+ * simply refire next cycle — the Gamemakers keeping the show's ending alive,
+ * narratively, rather than the arena freezing a health bar.
+ */
+function reliefFor(t: Tribute, cause: 'hunger' | 'thirst' | 'bleeding' | 'infected' | 'poisoned' | 'burned' | 'frostbitten') {
+    switch (cause) {
+        case 'hunger': t.vitals.hunger = Math.min(t.vitals.hunger, VITALS.starvingThreshold - 5); break;
+        case 'thirst': t.vitals.thirst = Math.min(t.vitals.thirst, VITALS.dehydratedThreshold - 5); break;
+        case 'bleeding': clearBleeding(t); break;
+        case 'infected': t.injuries.infected = false; break;
+        case 'poisoned': t.injuries.poisoned = false; break;
+        case 'burned': t.injuries.burned = false; break;
+        case 'frostbitten': t.injuries.frostbitten = false; break;
+    }
+}
+
 /** Untreated wounds and empty canteens, each attributed to what caused them. */
 function applyStatusDamage(ctx: SimContext, t: Tribute) {
     if (t.vitals.hunger > VITALS.starvingThreshold) {
-        applyDamage(ctx, t, VITALS.starvingDamage, { cause: 'Died of starvation', kind: 'status' });
+        if (applyDamage(ctx, t, VITALS.starvingDamage, { cause: 'Died of starvation', kind: 'status' })) {
+            reliefFor(t, 'hunger');
+        }
         // Going properly hungry and coming out the other side teaches a thing.
         if (t.status === 'alive' && ctx.rng.chance(VITALS.starvedTraitChance)) earnTrait(ctx, t, 'Starved');
         // §3.1: starvation wasting. Muscle is the first thing the arena takes.
@@ -89,25 +113,37 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
         }
     }
     if (t.vitals.thirst > VITALS.dehydratedThreshold) {
-        applyDamage(ctx, t, VITALS.dehydratedDamage, { cause: 'Died of dehydration', kind: 'status' });
+        if (applyDamage(ctx, t, VITALS.dehydratedDamage, { cause: 'Died of dehydration', kind: 'status' })) {
+            reliefFor(t, 'thirst');
+        }
     }
     if (t.injuries.bleeding) {
         // Cost scales with how badly the wound is running, and the wound gets a
         // chance to clot down a step at the end of the cycle — see `wounds.ts`.
-        applyDamage(ctx, t, bleedDamage(t), { cause: 'Bled out from untreated wounds', kind: 'status' });
+        if (applyDamage(ctx, t, bleedDamage(t), { cause: 'Bled out from untreated wounds', kind: 'status' })) {
+            reliefFor(t, 'bleeding');
+        }
     }
     if (t.injuries.infected) {
-        applyDamage(ctx, t, INJURY_DAMAGE.infected, { cause: 'Succumbed to an infected wound', kind: 'status' });
+        if (applyDamage(ctx, t, INJURY_DAMAGE.infected, { cause: 'Succumbed to an infected wound', kind: 'status' })) {
+            reliefFor(t, 'infected');
+        }
     }
     if (t.injuries.poisoned) {
-        applyDamage(ctx, t, INJURY_DAMAGE.poisoned, { cause: 'Succumbed to poison', kind: 'status' });
+        if (applyDamage(ctx, t, INJURY_DAMAGE.poisoned, { cause: 'Succumbed to poison', kind: 'status' })) {
+            reliefFor(t, 'poisoned');
+        }
         t.vitals.sanity -= INJURY_DAMAGE.poisonSanity;
     }
     if (t.injuries.burned) {
-        applyDamage(ctx, t, INJURY_DAMAGE.burned, { cause: 'Died of untreated burns', kind: 'status' });
+        if (applyDamage(ctx, t, INJURY_DAMAGE.burned, { cause: 'Died of untreated burns', kind: 'status' })) {
+            reliefFor(t, 'burned');
+        }
     }
     if (t.injuries.frostbitten) {
-        applyDamage(ctx, t, INJURY_DAMAGE.frostbitten, { cause: 'Froze to death', kind: 'status' });
+        if (applyDamage(ctx, t, INJURY_DAMAGE.frostbitten, { cause: 'Froze to death', kind: 'status' })) {
+            reliefFor(t, 'frostbitten');
+        }
     }
     clampTribute(t);
 }

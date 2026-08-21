@@ -110,12 +110,18 @@ export function processAlliances(ctx: SimContext) {
         }
     });
 
+    // 1a-ii. §4: a big group splits along the lines everyone could already
+    // see, rather than either holding together or evaporating. Checked before
+    // the rot-dissolve below, because a pack with two coherent halves should
+    // become two packs, not eight loners.
+    schismAlliances(ctx, alliances);
+
     // 1b. An alliance whose trust has rotted through falls apart on its own.
     alliances.forEach((members, id) => {
         if (members.length < 2) return;
         const averageTrust = members.reduce((sum, m) =>
             sum + members.reduce((inner, o) => inner + (o.id === m.id ? 0 : getRel(m, o.id)), 0) / (members.length - 1), 0) / members.length;
-        if (averageTrust < -15) {
+        if (averageTrust < ALLIANCES.rotDissolveTrust) {
             members.forEach(m => { delete m.allianceId; });
             // One line for the whole collapse, not a near-identical one per member.
             ctx.logEvent(
@@ -382,6 +388,89 @@ export function processAlliances(ctx: SimContext) {
         if (atCamp.length >= 2) contributeToCache(ctx, record, atCamp);
         // A group that has moved on adopts wherever its leader now stands as camp.
         if (atCamp.length < 2) record.campZone = pickLeader(members).zone;
+    });
+}
+
+/**
+ * §4: factions inside a large group, and the split when they stop pretending.
+ *
+ * Alliance size was capped and nothing distinguished a six-person pack's
+ * internal politics from a pair's beyond leader-challenge maths. A large group
+ * was binary — intact, or dissolved into loners — so the most interesting
+ * thing a coalition can do was not representable.
+ *
+ * The split follows the regard graph the social layer already maintains, so it
+ * lands along the lines the audience has watched form. Seeded from the member
+ * who gets on with the rest least well (the malcontent, not an arbitrary
+ * index) and grown by who would rather stand with them than with the others.
+ */
+function findFaction(members: Tribute[]): Tribute[] | undefined {
+    const averageRegardTo = (m: Tribute, others: Tribute[]) => {
+        const rest = others.filter(o => o.id !== m.id);
+        if (rest.length === 0) return 0;
+        return rest.reduce((sum, o) => sum + getRel(m, o.id), 0) / rest.length;
+    };
+
+    // The unhappiest member anchors the splinter.
+    const seed = members.reduce((worst, m) =>
+        (averageRegardTo(m, members) < averageRegardTo(worst, members) ? m : worst));
+
+    const faction = [seed];
+    members.forEach(m => {
+        if (m.id === seed.id) return;
+        // Bonded pairs are never split across a schism.
+        if (faction.some(f => areLovers(f, m))) { faction.push(m); return; }
+        const withSeed = getRel(m, seed.id);
+        const withRest = averageRegardTo(m, members.filter(o => !faction.some(f => f.id === o.id)));
+        if (withSeed > withRest + ALLIANCES.schismCohesionGap) faction.push(m);
+    });
+
+    const remainder = members.filter(m => !faction.some(f => f.id === m.id));
+    if (faction.length < ALLIANCES.schismMinFaction) return undefined;
+    if (remainder.length < ALLIANCES.schismMinFaction) return undefined;
+
+    // Two camps, not one group with a grumbler in it: the split only happens
+    // when the two sides genuinely do not get on across the line.
+    const crossRegard = (x: Tribute[], y: Tribute[]) =>
+        x.reduce((sum, m) => sum + y.reduce((inner, o) => inner + getRel(m, o.id), 0) / y.length, 0) / x.length;
+    if (crossRegard(faction, remainder) > ALLIANCES.schismCrossRegard) return undefined;
+    if (crossRegard(remainder, faction) > ALLIANCES.schismCrossRegard) return undefined;
+
+    return faction;
+}
+
+function schismAlliances(ctx: SimContext, alliances: Map<string, Tribute[]>) {
+    alliances.forEach((members, id) => {
+        if (members.length < ALLIANCES.schismMinSize) return;
+        // A lovers' bond is a pair by definition and has nothing to split.
+        if (id.startsWith('lovers-')) return;
+        if (!ctx.rng.chance(ALLIANCES.schismChance)) return;
+
+        const faction = findFaction(members);
+        if (!faction) return;
+        const remainder = members.filter(m => !faction.some(f => f.id === m.id));
+
+        // The splinter becomes a standing alliance of its own rather than a
+        // handful of loners — that is the whole point of modelling it as a
+        // faction instead of a mass departure.
+        const splinterId = `alliance-${faction[0].id}-splinter`;
+        faction.forEach(m => { m.allianceId = splinterId; });
+        registerAlliance(ctx, splinterId, faction);
+        alliances.set(splinterId, faction);
+        alliances.set(id, remainder);
+
+        // Whatever was left of the shared regard does not survive the split.
+        faction.forEach(f => remainder.forEach(r => {
+            adjustRel(f, r.id, -ALLIANCES.soloDepartureRegard);
+            adjustRel(r, f.id, -ALLIANCES.soloDepartureRegard);
+        }));
+
+        ctx.logEvent(
+            `${faction.map(m => m.name).join(' and ')} stop eating with the others. By morning it is not an argument any more, it is two camps: `
+            + `${remainder.map(m => m.name).join(' and ')} keep the fire, and the rest walk. Nobody pretends the group still exists.`,
+            members.map(m => m.id),
+            { important: true, category: 'alliance' }
+        );
     });
 }
 

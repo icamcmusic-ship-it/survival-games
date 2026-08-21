@@ -34,6 +34,21 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   consumes a different number of RNG draws in another — so a same-process
   replay test can never catch it, and the Share URL silently stops replaying
   the same Games in a different browser.
+- `npm run test:knobs` — fails the build on a knob declared in `data/balance.ts`
+  that nothing in `src/` reads, so a dead dial cannot silently absorb tuning
+  effort.
+- `npm run test:undeclared-knobs` — the inverse: fails on a *new* tunable number
+  typed straight into `src/engine/` instead of into `data/balance.ts`. It looks
+  for the three shapes a knob almost always takes — a literal passed to
+  `chance()`, a literal on the right of `+=`/`-=`, and a literal on one side of
+  a `<`/`>` threshold — and ignores the structural cases (array indices, 0/1/2,
+  `.length` comparisons, the `Math.round(x * 100) / 100` idiom, loop bounds,
+  `slice`/`padStart` arguments). Two escape hatches: annotate a genuine one-off
+  with `// balance-exempt: <why this is not a knob>` on the line or the line
+  above it, and `scripts/undeclared-knobs-baseline.json` freezes the sites that
+  predate the check so it fails only on new drift. Migrate some of them and the
+  check tells you to shrink the baseline with
+  `npx tsx scripts/check-undeclared-knobs.ts --write-baseline`.
 - `npm run test:ui` — Chromium smoke test covering every screen, control and
   keyboard shortcut; fails on any console or page error. Needs `npm run dev`
   running on port 3000.
@@ -80,7 +95,12 @@ running in parallel:
   and regrows, so a resource-rich zone is a prize other tributes can strip.
 - **Balance** (`data/balance.ts`) holds every tunable number the engine reads —
   vitals drains, damage, thresholds, decay rates, gate probabilities — so
-  balancing a run means editing one file.
+  balancing a run means editing one file. Both directions of that claim are
+  enforced in CI: `test:knobs` fails on a declared knob nothing reads, and
+  `test:undeclared-knobs` fails on a new tunable typed into the engine instead.
+  The engine sites that predate the check are inventoried in
+  `scripts/undeclared-knobs-baseline.json` — that file is the honest measure of
+  how far off the claim still is, and it should only ever get shorter.
 - **Districts** (`data/districts.ts`) carry a Games record. A tribute from a
   storied district arrives with a mentor who has stood on the podium and a
   crowd that already expects them to do well; a tribute from a forgotten one

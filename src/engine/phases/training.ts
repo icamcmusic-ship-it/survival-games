@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Attributes, Proficiency, Tribute } from '../../models/types';
 import { TRAINING_STATIONS, TRAINING_VERDICTS, INTIMIDATION_TEXTS } from '../../data/flavorText';
-import { FEAR, TRAINING } from '../../data/balance';
+import { FEAR, TRAINING, TRAINING_FLOOR, TRAINING_SCORE } from '../../data/balance';
 import { addFear } from '../fear';
 import { strengthCapForAge } from '../generator';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../../data/districts';
@@ -33,34 +33,34 @@ import { traitMod } from '../../data/traits';
  *     the cast reacts to them.
  */
 
-/** Training scores 1-8 are earned on merit; every point above 8 is a separate gate. */
-const ELITE_GATE_BASE = 0.3;
-// 0.3 measured out to one 11 every ~18 Games and a 12 every ~140 — canon's 11
-// is remarkable but happens; 0.42 keeps the exponential shape one notch gentler.
-const ELITE_GATE_DECAY = 0.42;
-const ELITE_GATE_CAP = 0.55;
-
+/**
+ * Training scores 1-8 are earned on merit; every point above 8 is a separate
+ * gate. The numbers behind both live in `TRAINING_SCORE` in balance.ts.
+ */
 function meritMultiplier(t: Tribute): number {
     let m = 1;
-    if (t.isCareer) m += 0.45;
-    if (t.archetype === 'career') m += 0.2;
-    if (t.traits.includes('Brute')) m += 0.15;
-    if (t.traits.includes('Strategist')) m += 0.15;
-    if (t.traits.includes('Eagle-Eyed')) m += 0.1;
-    if (t.traits.includes('Nimble')) m += 0.1;
-    if (t.traits.includes('Clumsy')) m -= 0.25;
-    if (t.traits.includes('Pacifist')) m -= 0.2;
+    if (t.isCareer) m += TRAINING_SCORE.meritCareer;
+    if (t.archetype === 'career') m += TRAINING_SCORE.meritCareerArchetype;
+    if (t.traits.includes('Brute')) m += TRAINING_SCORE.meritBrute;
+    if (t.traits.includes('Strategist')) m += TRAINING_SCORE.meritStrategist;
+    if (t.traits.includes('Eagle-Eyed')) m += TRAINING_SCORE.meritEagleEyed;
+    if (t.traits.includes('Nimble')) m += TRAINING_SCORE.meritNimble;
+    if (t.traits.includes('Clumsy')) m += TRAINING_SCORE.meritClumsy;
+    if (t.traits.includes('Pacifist')) m += TRAINING_SCORE.meritPacifist;
     // A twelve-year-old does not out-score the Careers on the gauntlet, however
     // fast they are — age is a real ceiling on the elite band.
-    m += (t.age - 15) * 0.08;
+    m += (t.age - TRAINING_SCORE.meritAgePivot) * TRAINING_SCORE.meritPerYear;
     // Coaching is worth something, and the districts with victors have the
     // coaches. This is the mentor layer showing up where it should.
     m += LEGACY_EFFECTS[legacyOf(t.district).tier].trainingMerit;
-    return Math.max(0.15, m);
+    return Math.max(TRAINING_SCORE.meritFloor, m);
 }
 
 export function eliteGateChance(t: Tribute, pointAboveEight: number): number {
-    return Math.min(ELITE_GATE_CAP, ELITE_GATE_BASE * Math.pow(ELITE_GATE_DECAY, pointAboveEight - 1) * meritMultiplier(t));
+    return Math.min(TRAINING_SCORE.eliteGateCap,
+        TRAINING_SCORE.eliteGateBase
+        * Math.pow(TRAINING_SCORE.eliteGateDecay, pointAboveEight - 1)
+        * meritMultiplier(t));
 }
 
 const ATTRS = ['strength', 'agility', 'intelligence', 'stealth', 'charisma'] as const;
@@ -84,18 +84,18 @@ const STATION_SKILL: Partial<Record<keyof Attributes, Proficiency>> = {
 function pickStation(ctx: SimContext, t: Tribute, alreadyWorked: Array<keyof Attributes>): keyof Attributes {
     const craft = craftOf(t.district);
     const weights = ATTRS.map(attr => {
-        let weight = 1 + t.attributes[attr] * 0.25;
+        let weight = 1 + t.attributes[attr] * TRAINING_FLOOR.perAttributePoint;
         // District trade: a District 7 tribute goes to the heavy blades.
-        if (craft.affinityClasses.includes('melee') && attr === 'strength') weight += 1.2;
-        if (Object.keys(craft.proficiencies).includes('forage') && attr === 'intelligence') weight += 1;
+        if (craft.affinityClasses.includes('melee') && attr === 'strength') weight += TRAINING_FLOOR.craftAffinity;
+        if (Object.keys(craft.proficiencies).includes('forage') && attr === 'intelligence') weight += TRAINING_FLOOR.forageCraftAffinity;
         // Careers do not spend three days learning which berries are safe.
-        if (t.isCareer && (attr === 'strength' || attr === 'agility')) weight += 1.5;
-        if (t.isCareer && attr === 'intelligence') weight -= 0.5;
+        if (t.isCareer && (attr === 'strength' || attr === 'agility')) weight += TRAINING_FLOOR.careerCombat;
+        if (t.isCareer && attr === 'intelligence') weight += TRAINING_FLOOR.careerSurvival;
         // Everyone else knows the arena kills more people than the Careers do.
-        if (!t.isCareer && attr === 'intelligence') weight += 0.8;
+        if (!t.isCareer && attr === 'intelligence') weight += TRAINING_FLOOR.outsiderSurvival;
         // Repeating a station has diminishing appeal.
-        weight *= Math.pow(0.5, alreadyWorked.filter(a => a === attr).length);
-        return Math.max(0.1, weight);
+        weight *= Math.pow(TRAINING_FLOOR.repeatDecay, alreadyWorked.filter(a => a === attr).length);
+        return Math.max(TRAINING_FLOOR.minWeight, weight);
     });
     let roll = ctx.rng.nextFloat() * weights.reduce((a, b) => a + b, 0);
     for (let i = 0; i < ATTRS.length; i++) {
@@ -116,13 +116,13 @@ export type TrainingStrategy = 'showcase' | 'conceal' | 'balanced';
 function pickStrategy(ctx: SimContext, t: Tribute): TrainingStrategy {
     let conceal = TRAINING.concealChance;
     let showcase = TRAINING.showcaseChance;
-    if (t.isCareer) { showcase += 0.4; conceal -= 0.18; }
-    if (t.archetype === 'trickster' || t.archetype === 'strategist') conceal += 0.25;
-    if (t.archetype === 'underdog') conceal += 0.15;
-    if (t.attributes.intelligence >= 8) conceal += 0.1;
-    if (t.traits.includes('Showman')) showcase += 0.3;
-    if (t.traits.includes('Unremarkable')) conceal += 0.2;
-    if (t.fanFavourite) showcase += 0.15;
+    if (t.isCareer) { showcase += TRAINING_FLOOR.careerShowcase; conceal += TRAINING_FLOOR.careerConceal; }
+    if (t.archetype === 'trickster' || t.archetype === 'strategist') conceal += TRAINING_FLOOR.schemerConceal;
+    if (t.archetype === 'underdog') conceal += TRAINING_FLOOR.underdogConceal;
+    if (t.attributes.intelligence >= TRAINING_FLOOR.cleverIntelligence) conceal += TRAINING_FLOOR.cleverConceal;
+    if (t.traits.includes('Showman')) showcase += TRAINING_FLOOR.showmanShowcase;
+    if (t.traits.includes('Unremarkable')) conceal += TRAINING_FLOOR.unremarkableConceal;
+    if (t.fanFavourite) showcase += TRAINING_FLOOR.fanFavouriteShowcase;
 
     const roll = ctx.rng.nextFloat();
     if (roll < Math.max(0, conceal)) return 'conceal';
@@ -154,20 +154,21 @@ export function processTraining(ctx: SimContext) {
         stations.forEach(attr => {
             // Aptitude compounds: a day on something you are already good at
             // gets you further than a day on something you are not.
-            const aptitude = 0.6 + t.attributes[attr] / 20;
-            const ceiling = attr === 'strength' ? strengthCapForAge(t.age) : 10;
+            const aptitude = TRAINING_FLOOR.aptitudeBase + t.attributes[attr] / TRAINING_FLOOR.aptitudeDivisor;
+            const ceiling = attr === 'strength' ? strengthCapForAge(t.age) : TRAINING_FLOOR.attributeCeiling;
             t.attributes[attr] = Math.min(ceiling,
                 t.attributes[attr] + TRAINING.stationAttributeGain * aptitude);
             const skill = STATION_SKILL[attr];
             if (skill) {
-                for (let i = 0; i < Math.round(TRAINING.stationProficiencyGain / 0.35); i++) {
+                for (let i = 0; i < Math.round(TRAINING.stationProficiencyGain / TRAINING_FLOOR.proficiencyStep); i++) {
                     trainProficiency(t, skill);
                 }
             }
         });
 
         (Object.keys(t.attributes) as Array<keyof Attributes>).forEach(k => {
-            t.attributes[k] = Math.max(1, Math.min(10, Math.round(t.attributes[k])));
+            t.attributes[k] = Math.max(TRAINING_FLOOR.attributeFloor,
+                Math.min(TRAINING_FLOOR.attributeCeiling, Math.round(t.attributes[k])));
         });
         t.attributes.strength = Math.min(t.attributes.strength, strengthCapForAge(t.age));
 
@@ -193,8 +194,10 @@ export function processTraining(ctx: SimContext) {
         // block: the middle of the board is a 5 or a 6, an 8 is a good tribute,
         // a 9 or 10 is a Career or a genuine threat, and 11 is a talking point
         // for a decade. See the training-score band in `scripts/soak.ts`.
-        let score = Math.floor(totalStats / 5) + Math.floor(bestSkill / 3) + ctx.rng.nextInt(-1, 1);
-        if (t.isCareer) score += 1;
+        let score = Math.floor(totalStats / TRAINING_SCORE.statsPerPoint)
+            + Math.floor(bestSkill / TRAINING_SCORE.skillPerPoint)
+            + ctx.rng.nextInt(TRAINING_SCORE.jitterMin, TRAINING_SCORE.jitterMax);
+        if (t.isCareer) score += TRAINING_SCORE.careerBonus;
 
         if (t.trainingStrategy === 'showcase') score += TRAINING.showcaseBonus;
         if (t.trainingStrategy === 'conceal') score -= TRAINING.concealPenalty;
@@ -206,12 +209,12 @@ export function processTraining(ctx: SimContext) {
             score += TRAINING.stuntBonus;
             stunts.push(t);
         }
-        score = Math.min(8, Math.max(1, score));
+        score = Math.min(TRAINING_SCORE.baseCeiling, Math.max(TRAINING_SCORE.baseFloor, score));
 
         // Elite band: 9-12, each step exponentially harder than the last.
-        if (score === 8) {
-            for (let extra = 1; extra <= 4; extra++) {
-                if (ctx.rng.chance(eliteGateChance(t, extra) * (stunt ? 1.8 : 1))) score = 8 + extra;
+        if (score === TRAINING_SCORE.baseCeiling) {
+            for (let extra = 1; extra <= TRAINING_SCORE.eliteGates; extra++) {
+                if (ctx.rng.chance(eliteGateChance(t, extra) * (stunt ? TRAINING_SCORE.stuntGateMultiplier : 1))) score = TRAINING_SCORE.baseCeiling + extra;
                 else break;
             }
         }
@@ -235,24 +238,24 @@ export function processTraining(ctx: SimContext) {
     );
 
     cast.forEach(t => {
-        addExcitement(t, t.trainingScore * 5);
+        addExcitement(t, t.trainingScore * TRAINING.broadcastExcitementPerPoint);
         if (t.trainingStrategy === 'showcase') t.sponsorTrust += TRAINING.showcaseTrust;
         if (t.trainingStrategy === 'conceal') t.sponsorTrust += TRAINING.concealTrust;
-        if (t.trainingScore >= 10) t.sponsorTrust += 15;
-        else if (t.trainingScore >= 9) t.sponsorTrust += 8;
+        if (t.trainingScore >= TRAINING.eliteTrustScore) t.sponsorTrust += TRAINING.eliteTrust;
+        else if (t.trainingScore >= TRAINING.strongTrustScore) t.sponsorTrust += TRAINING.strongTrust;
         t.sponsorTrust = Math.max(0, Math.min(100, t.sponsorTrust + traitMod(t, 'sponsorTrust')));
         clampTribute(t);
 
-        const verdictPool = t.trainingScore >= 11 ? TRAINING_VERDICTS.legendary
-            : t.trainingScore >= 9 ? TRAINING_VERDICTS.elite
-            : t.trainingScore >= 6 ? TRAINING_VERDICTS.solid
+        const verdictPool = t.trainingScore >= TRAINING.legendaryVerdictScore ? TRAINING_VERDICTS.legendary
+            : t.trainingScore >= TRAINING.eliteVerdictScore ? TRAINING_VERDICTS.elite
+            : t.trainingScore >= TRAINING.solidVerdictScore ? TRAINING_VERDICTS.solid
             : TRAINING_VERDICTS.poor;
         const verdict = ctx.pickText(verdictPool).replace(/\{tribute\}/g, t.name);
 
         ctx.logEvent(
             `${t.name} of District ${t.district} scores a ${t.trainingScore}. ${verdict}`,
             [t.id],
-            { important: t.trainingScore >= 9, category: 'training' }
+            { important: t.trainingScore >= TRAINING.eliteVerdictScore, category: 'training' }
         );
     });
 
@@ -270,7 +273,7 @@ export function processTraining(ctx: SimContext) {
             { important: true, category: 'training' }
         );
 
-        const severity = (t.trainingScore - TRAINING.intimidationScore + 1) / 4;
+        const severity = (t.trainingScore - TRAINING.intimidationScore + 1) / TRAINING.intimidationSeverityBand;
         cast.forEach(other => {
             if (other.id === t.id) return;
             if (other.isCareer || other.traits.includes('Bloodthirsty')) {
@@ -282,7 +285,7 @@ export function processTraining(ctx: SimContext) {
                 // The intimidation used to evaporate the moment the sanity hit
                 // landed. It should stick to the person: this is how a Career's
                 // reputation follows them into the arena.
-                addFear(other, t.id, (t.trainingScore - 8) * FEAR.perTrainingPointOverEight);
+                addFear(other, t.id, (t.trainingScore - TRAINING_SCORE.baseCeiling) * FEAR.perTrainingPointOverEight);
             }
             clampTribute(other);
         });
@@ -305,7 +308,7 @@ export function processTraining(ctx: SimContext) {
     }
 
     // Somebody hid what they can do, and the arena is about to find out.
-    const hidden = cast.filter(t => t.trainingStrategy === 'conceal' && t.trainingScore <= 4);
+    const hidden = cast.filter(t => t.trainingStrategy === 'conceal' && t.trainingScore <= TRAINING.hiddenScore);
     if (hidden.length > 0) {
         ctx.logEvent(
             `Nobody is talking about ${hidden.map(t => t.name).join(', ')}. That is, in every case, the entire point.`,

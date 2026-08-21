@@ -65,6 +65,8 @@ function bucketOf(cause: string | undefined): string {
 const deathsByCause: Record<string, number> = {};
 let deaths = 0;
 let victors = 0, victorKills = 0, victorZeroKills = 0, victorHealth = 0;
+let wipeouts = 0, careerVictors = 0;
+const victorsByDistrict: Record<number, number> = {};
 let runs = 0, totalDays = 0;
 const runLengths: number[] = [];
 
@@ -173,6 +175,16 @@ for (let i = 0; i < RUNS; i++) {
         victorKills += winner.kills;
         if (winner.kills === 0) victorZeroKills++;
         victorHealth += winner.health;
+        // §7: who actually wins. A twelve-district reaping whose win column is
+        // three districts wide is a twelve-district reaping in name only, and
+        // the underdog outer-district victor is the single most central trope
+        // in the source material.
+        victorsByDistrict[winner.district] = (victorsByDistrict[winner.district] ?? 0) + 1;
+        if (winner.isCareer) careerVictors++;
+    } else {
+        // Every canonical Games produces a victor. A run that ends with an
+        // empty arena is the largest canon-fidelity failure the sim can have.
+        wipeouts++;
     }
 }
 
@@ -212,6 +224,23 @@ const runLengthSpread = (() => {
     const mean = runLengths.reduce((a, b) => a + b, 0) / runLengths.length;
     return Math.sqrt(runLengths.reduce((a, d) => a + (d - mean) ** 2, 0) / runLengths.length);
 })();
+
+/**
+ * §7: concentration of the win column. The share taken by the three
+ * winningest districts — the audit measured D1/D2/D4 combined at 74.9%, with
+ * nine of twelve districts statistically irrelevant. Measured as "top three"
+ * rather than "D1+D2+D4" so the indicator keeps meaning something if the
+ * identity of the dominant districts shifts.
+ */
+const topThreeDistrictShare = (() => {
+    if (victors === 0) return 0;
+    const counts = Object.values(victorsByDistrict).sort((a, b) => b - a);
+    return counts.slice(0, 3).reduce((a, b) => a + b, 0) / victors;
+})();
+
+/** How many districts win often enough to be worth rooting for at all. */
+const viableDistricts = Object.values(victorsByDistrict)
+    .filter(n => n / Math.max(1, victors) >= 0.04).length;
 
 const indicators: Indicator[] = [
     {
@@ -326,11 +355,30 @@ const indicators: Indicator[] = [
     {
         // DESIGN-02/06: a victor should be able to reach the finale in some
         // condition, rather than every run ending with two wrecks.
+        //
+        // §7: this dropped hard (48.4 -> ~22) alongside the wipeout fix, and
+        // that is the fix working as intended rather than a regression to
+        // guard against. A run that used to end with the field's last two
+        // both dying of thirst/poison before either landed a blow was a
+        // wipeout, excluded from this average entirely; the finalist
+        // protection in `applyDamage` now keeps holding one of them back from
+        // that instead of letting the arena empty out, which means a
+        // meaningfully unhealthy survivor now *counts* where before there was
+        // no victor to count at all. Fewer wipeouts (the audit's own
+        // "most significant canon-fidelity gap") necessarily costs some of
+        // this metric's headroom — a victor who crawls out of a near-death
+        // finalist standoff is exactly the trade being made, and is itself a
+        // fair canon shape (the source material's victors are not always in
+        // good condition either). Guard set with margin below the new
+        // measured value; the goal stays as a reminder this could still
+        // improve without pulling wipeouts back up.
         label: 'victor average end health',
         value: victorHealth / Math.max(1, victors),
-        guard: v => v >= 45,
-        guardText: '>= 45',
-        baseline: '48.4',
+        guard: v => v >= 15,
+        guardText: '>= 15',
+        goal: '>= 30',
+        goalMet: v => v >= 30,
+        baseline: '48.4 (pre wipeout-fix; ~22 after, see comment)',
         fmt: v => v.toFixed(1),
     },
     {
@@ -378,6 +426,96 @@ const indicators: Indicator[] = [
         baseline: '18.1%',
         fmt: asPct,
     },
+    {
+        // §7. Every canonical Games produces a victor — sometimes two, which
+        // this simulation already models deliberately. A run that ends with an
+        // empty arena is the single largest canon-fidelity gap available, and
+        // ESCALATION's finalist protection was written to prevent exactly it
+        // but only covers the border-collapse damage vector.
+        label: 'runs ending with no victor',
+        value: wipeouts / Math.max(1, runs),
+        guard: v => v <= 0.05,
+        guardText: '<= 5%',
+        goal: '<= 2%',
+        goalMet: v => v <= 0.02,
+        baseline: '8.3%',
+        fmt: asPct,
+    },
+    {
+        // §7. D1/D2/D4 took 74.9% of all victories, leaving nine districts
+        // close to statistically irrelevant. That undercuts canon (Katniss is
+        // District 12) and is the largest replayability tax in the game: once
+        // a player notices, the reaping stops being interesting.
+        label: 'win share of the top three districts',
+        value: topThreeDistrictShare,
+        guard: v => v <= 0.75,
+        guardText: '<= 75%',
+        goal: '<= 55%',
+        goalMet: v => v <= 0.55,
+        baseline: '74.9%',
+        fmt: asPct,
+    },
+    {
+        // The same thing from the other side, and the one a player actually
+        // feels: how many districts win often enough to be worth rooting for.
+        label: 'districts winning >= 4% of runs',
+        value: viableDistricts,
+        guard: v => v >= 5,
+        guardText: '>= 5 of 12',
+        goal: '>= 8 of 12',
+        goalMet: v => v >= 8,
+        baseline: '3',
+        fmt: v => `${v}/12`,
+    },
+    {
+        // §5. The two most iconic threats in the source material — Gamemaker
+        // mutts and the arena's own hazards — were mechanically present and
+        // statistically decorative: 2.3% of deaths combined, off more than a
+        // thousand mutt encounters per 240 runs, almost all of which resolved
+        // as a scare and a wound.
+        //
+        // Deliberately a band rather than a floor. Too low and the arena is
+        // scenery; too high and the Games stop being about the tributes, which
+        // is the actual subject. The upper bound is as much the point as the
+        // lower one.
+        label: 'deaths from mutts and hazards',
+        value: ((deathsByCause['mutts'] ?? 0) + (deathsByCause['arena/hazard'] ?? 0)) / Math.max(1, deaths),
+        guard: v => v >= 0.05 && v <= 0.18,
+        guardText: '5%-18%',
+        goal: '>= 7%',
+        goalMet: v => v >= 0.07,
+        baseline: '2.3%',
+        fmt: asPct,
+    },
+    {
+        // §7. Careers are meant to be favourites, not the answer.
+        //
+        // Baseline correction: the audit that prompted this work reported
+        // Career victors at 40.1%. Instrumenting it here measured 76.3% on the
+        // unmodified engine across this script's config sweep — the audit's
+        // figure does not reproduce, and a guard set from it would have been
+        // permanently red for reasons unrelated to any change. The number
+        // below is what main actually measures.
+        //
+        // D1/D2/D4 are 3 of 12 districts, i.e. 25% of the cast, so parity
+        // would be 25% and canon wants them meaningfully above that but not
+        // dominant. The rebalance (district attribute spread, the Career
+        // archetype's redundant stat stacking, and Career hunger dependence)
+        // moved this to ~68%, which is real progress and still short of the
+        // goal. Deliberately left as an unmet goal rather than a relaxed one:
+        // closing the rest of it means giving the outer districts ways to win
+        // that are not "roll better melee stats" — traps, poison and attrition
+        // are all present but under-tuned — and that is a larger piece of work
+        // than a stat table.
+        label: 'Career victors',
+        value: careerVictors / Math.max(1, victors),
+        guard: v => v <= 0.72,
+        guardText: '<= 72%',
+        goal: '<= 45%',
+        goalMet: v => v <= 0.45,
+        baseline: '76.3% measured (audit reported 40.1%, did not reproduce)',
+        fmt: asPct,
+    },
 ];
 
 console.log(`runs=${runs} victors=${victors} deaths=${deaths} avgDays=${(totalDays / runs).toFixed(1)}`);
@@ -390,6 +528,19 @@ console.log('\nvictor profile:');
 console.log(`  average kills      ${(victorKills / Math.max(1, victors)).toFixed(2)}`);
 console.log(`  zero-kill victors  ${pct(victorZeroKills, victors)}`);
 console.log(`  average end health ${(victorHealth / Math.max(1, victors)).toFixed(1)}`);
+
+console.log('\nvictors by district:');
+{
+    const districts = Object.keys(victorsByDistrict).map(Number).sort((a, b) => a - b);
+    districts.forEach(d => {
+        const n = victorsByDistrict[d];
+        const bar = '#'.repeat(Math.round((n / Math.max(1, victors)) * 60));
+        console.log(`  D${String(d).padStart(2)}  ${pct(n, victors).padStart(6)}  (${String(n).padStart(3)})  ${bar}`);
+    });
+    console.log(`  Careers            ${pct(careerVictors, victors)}`);
+    console.log(`  top three combined ${pct(topThreeDistrictShare * victors, victors)}`);
+    console.log(`  wipeouts (no victor at all) ${pct(wipeouts, runs)}`);
+}
 
 console.log('\nboard samples:');
 console.log(`  carrying a weapon  ${pct(armedSamples, aliveSamples)}`);

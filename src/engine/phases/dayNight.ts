@@ -18,7 +18,7 @@ import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
-import { leaderFor } from '../alliance';
+import { areLovers, leaderFor } from '../alliance';
 import { decayFear } from '../fear';
 import { updateStance } from '../stance';
 import { processSpoilage, processVitals } from '../survival';
@@ -94,6 +94,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
     // 0. The audience decides how much arena the tributes get to keep.
     updateAudienceInterest(ctx, time);
+    forceFinale(ctx);
     const isEscalated = collapseBorders(ctx, time);
     const collapsed = ctx.state.collapsedZones || [];
     const severed = severedEdgeSet(ctx.state);
@@ -105,6 +106,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // 3. Crafting, situational awareness, stance and movement.
     const currentAlive = getAlive(ctx.state);
     const acted = new Set<string>();
+    // Tributes brought ashore this cycle as part of somebody else's group
+    // crossing. Kept separate from `acted` on purpose: they have finished
+    // moving, but they still meet whatever is waiting in the new zone.
+    const crossed = new Set<string>();
     currentAlive.forEach(t => {
         if (t.status !== 'alive') return;
 
@@ -126,7 +131,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             return;
         }
 
-        move(ctx, t, currentAlive, collapsed, flavor, severed);
+        move(ctx, t, currentAlive, collapsed, flavor, severed, crossed);
     });
 
     // Walking into a zone is what springs things left in it. This runs as a
@@ -388,6 +393,81 @@ function updateAudienceInterest(ctx: SimContext, time: 'day' | 'night') {
 }
 
 /**
+ * §7: the forced finale.
+ *
+ * Finalist protection in `applyDamage` keeps the arena from finishing the last
+ * two by attrition — which leaves one failure mode open: two evasive finalists
+ * who never cross paths. The first soak after the protection landed produced a
+ * 509-day Games between two tributes politely avoiding each other. Canon
+ * closes this exact loop on screen: when the field is down to the end and the
+ * audience is waiting, the Gamemakers drain the arena of everywhere else to be
+ * and drive what is left to the Cornucopia.
+ *
+ * Implemented as objective override rather than teleport: they are herded, not
+ * snapped, so travel, ambush and the encounter layer all still apply on the
+ * way in.
+ */
+function forceFinale(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    if (alive.length > ESCALATION.finalistCount || alive.length < 2) {
+        ctx.state.finalistCycles = 0;
+        delete ctx.state.finaleZone;
+        return;
+    }
+    ctx.state.finalistCycles = (ctx.state.finalistCycles ?? 0) + 1;
+    if (ctx.state.finalistCycles < ESCALATION.finaleAfterFinalistCycles) {
+        delete ctx.state.finaleZone;
+        return;
+    }
+
+    // The horn, unless the border has already taken it — the finale happens
+    // in whatever the arena has left. Herding the last two toward a collapsed
+    // zone gave them an unreachable objective and a run that never ended.
+    const active = ctx.state.arena.zones
+        .map(z => z.name)
+        .filter(name => !(ctx.state.collapsedZones ?? []).includes(name));
+    const horn = active.includes(ctx.state.arena.zones[0].name)
+        ? ctx.state.arena.zones[0].name
+        : active[active.length - 1] ?? ctx.state.arena.zones[0].name;
+    const cycle = cycleOf(ctx.state);
+    if (ctx.state.finalistCycles === ESCALATION.finaleAfterFinalistCycles) {
+        ctx.logEvent(
+            `The arena starts taking everything else away. Water stops running, cover thins, and every route that is not toward ${horn} closes behind whoever walks it. `
+            + `The Gamemakers are done waiting for ${alive.map(t => t.name).join(' and ')} to find each other.`,
+            alive.map(t => t.id),
+            { important: true, category: 'gamemaker' }
+        );
+    }
+    // An allied final two with no rule to save them: the alliance cannot
+    // survive the arithmetic, and the Gamemakers will not wait for it to.
+    // (When a dual-victory route exists — the two-may-win rule change, the
+    // district-pairs Quell, or a lovers' bond — `checkDualVictory` has
+    // already ended the run before this ever fires, and lovers are exempted
+    // here so the nightlock standoff stays reachable. Everyone else gets the
+    // 74th's original terms: the revocation, announced from the sky.)
+    if (alive.length === 2
+        && alive[0].allianceId !== undefined && alive[0].allianceId === alive[1].allianceId
+        && !areLovers(alive[0], alive[1])) {
+        const [a, b] = alive;
+        delete a.allianceId;
+        delete b.allianceId;
+        ctx.logEvent(
+            `The announcement is short: there will be one victor. Whatever ${a.name} and ${b.name} agreed, the Capitol has just revoked it from the sky.`,
+            [a.id, b.id],
+            { important: true, category: 'gamemaker' }
+        );
+    }
+    // Where they are being driven, recorded on the state so `chooseObjective`
+    // can make it the highest-priority intention there is. Setting `objective`
+    // directly here does not survive: `updateObjective` runs later in the same
+    // cycle and replaces it, which is why an earlier version of this herded
+    // the finalists on paper and let them wander past each other for three
+    // hundred days.
+    ctx.state.finaleZone = horn;
+    void cycle;
+}
+
+/**
  * REPLAY-07: campfires, after dark.
  *
  * `lightFire` already charged a concealment penalty for a fire, but only
@@ -539,13 +619,48 @@ function craft(ctx: SimContext, t: Tribute) {
     // cast was ever armed — the Cornucopia and the feast simply do not put
     // enough steel into circulation to go round.
     if (!t.inventory.some(i => i.type === 'weapon') && ctx.rng.chance(CRAFTING.improviseChance)) {
-        const zone = getZone(ctx.state.arena, t.zone);
-        // What the ground offers: timber in the woods, stone everywhere else.
-        const wooded = zone?.terrain === 'forest' || zone?.terrain === 'wetland';
-        const recipe = IMPROVISED_ITEMS.find(i => i.id === (wooded ? 'club' : 'sharpstone'))!;
-        giveItem(t, { ...recipe });
+        const ropeIdx = t.inventory.findIndex(i => i.id === 'rope');
+        if (ropeIdx >= 0) {
+            // Rope is worth more as reach than as rope to somebody holding
+            // nothing. The knife-and-rope spear above has first claim on it;
+            // this is what is left when there is no knife to lash to a shaft.
+            t.inventory.splice(ropeIdx, 1);
+            const sling = IMPROVISED_ITEMS.find(i => i.id === 'sling')!;
+            giveItem(t, mintItem(ctx.rng, sling, QUALITY_BIAS.improvised));
+            ctx.logEvent(
+                fill(ctx.pickText(SURVIVAL_TEXTS.craftSling), { tribute: t.name, zone: t.zone }),
+                [t.id],
+                { category: 'loot' }
+            );
+        } else {
+            const zone = getZone(ctx.state.arena, t.zone);
+            // What the ground offers: timber in the woods, reeds in standing
+            // water, salvaged steel in the ruins, stone everywhere else.
+            const [recipeId, pool] =
+                zone?.terrain === 'forest' ? ['club', SURVIVAL_TEXTS.craftClub] as const
+                : zone?.terrain === 'wetland' ? ['reedspear', SURVIVAL_TEXTS.craftReed] as const
+                : zone?.terrain === 'ruins' ? ['rebar', SURVIVAL_TEXTS.craftRebar] as const
+                : ['sharpstone', SURVIVAL_TEXTS.craftStone] as const;
+            const recipe = IMPROVISED_ITEMS.find(i => i.id === recipeId)!;
+            giveItem(t, { ...recipe });
+            ctx.logEvent(
+                fill(ctx.pickText(pool), { tribute: t.name, zone: t.zone }),
+                [t.id],
+                { category: 'loot' }
+            );
+        }
+    }
+
+    // A cudgel and a night at a fire make something with a point on it. The
+    // only upgrade path inside the improvised tree, and it costs a fire —
+    // which is the most visible thing a tribute can own.
+    const clubIdx = t.inventory.findIndex(i => i.id === 'club');
+    if (clubIdx >= 0 && hasCamp(ctx, t, 'fire') && !t.inventory.some(i => i.id === 'stake')) {
+        t.inventory.splice(clubIdx, 1);
+        const stake = IMPROVISED_ITEMS.find(i => i.id === 'stake')!;
+        giveItem(t, mintItem(ctx.rng, stake, QUALITY_BIAS.improvised));
         ctx.logEvent(
-            fill(ctx.pickText(wooded ? SURVIVAL_TEXTS.craftClub : SURVIVAL_TEXTS.craftStone), { tribute: t.name, zone: t.zone }),
+            fill(ctx.pickText(SURVIVAL_TEXTS.craftStake), { tribute: t.name, zone: t.zone }),
             [t.id],
             { category: 'loot' }
         );
@@ -590,7 +705,12 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
     return false;
 }
 
-function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>, severed: Set<string>) {
+function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>, severed: Set<string>, crossed: Set<string>) {
+    // A group crossing is resolved once, for everyone who lands together —
+    // anyone already brought ashore by an ally's iteration this cycle has
+    // nothing left to do. See the arrival block below.
+    if (crossed.has(t.id)) return;
+
     // §5.3: a traversal already underway finishes before anything else. A
     // crossing abandoned because the destination collapsed is just a wasted
     // cycle — which is the point of travel having a cost.
@@ -599,16 +719,42 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             ctx.logEvent(`${t.name} turns back mid-crossing — there is no ${t.transit.to} to arrive in any more.`, [t.id], { category: 'travel' });
             delete t.transit;
         } else {
-            t.transit.remaining -= 1;
-            if (t.transit.remaining <= 0) {
-                const from = t.zone;
-                const dest = t.transit.to;
-                delete t.transit;
-                t.zone = dest;
-                noteTraffic(ctx.state, from, dest);
-                t.vitals.fatigue = Math.min(100, t.vitals.fatigue + MOVEMENT.crossingFatigue);
-                ctx.logEvent(`${t.name} finishes the hard crossing from ${from} and comes ashore in ${dest}, spent.`, [t.id], { zone: dest, category: 'travel' });
+            const from = t.zone;
+            const dest = t.transit.to;
+            const remaining = t.transit.remaining;
+            if (remaining - 1 > 0) {
+                t.transit.remaining = remaining - 1;
+                return;
             }
+            // Everyone fording it shoulder to shoulder: same alliance, same
+            // bank, same destination, same cycle left to run. `beginMove`
+            // copies the leader's transit onto the group, so a party that set
+            // out together lands together — and the feed says so once, rather
+            // than printing four near-identical lines in a row. Members who
+            // started their crossing on a different cycle do not match, and
+            // still get their own arrival.
+            const party = t.allianceId === undefined ? [t] : currentAlive.filter(m =>
+                m.status === 'alive'
+                && m.allianceId === t.allianceId
+                && m.zone === from
+                && m.transit?.to === dest
+                && m.transit.remaining === remaining);
+            const arriving = party.length > 0 ? party : [t];
+
+            arriving.forEach(m => {
+                delete m.transit;
+                m.zone = dest;
+                m.vitals.fatigue = Math.min(100, m.vitals.fatigue + MOVEMENT.crossingFatigue);
+                crossed.add(m.id);
+            });
+            noteTraffic(ctx.state, from, dest, arriving.length);
+            ctx.logEvent(
+                arriving.length === 1
+                    ? `${t.name} finishes the hard crossing from ${from} and comes ashore in ${dest}, spent.`
+                    : `${arriving.map(m => m.name).join(', ')} finish the hard crossing from ${from} together and come ashore in ${dest}, spent.`,
+                arriving.map(m => m.id),
+                { zone: dest, category: 'travel' }
+            );
             return;
         }
     }
@@ -770,9 +916,15 @@ function resolveEncounters(
         // A tribute who is actively sweeping the zone for someone to fight finds
         // them far more often than one who happens to be standing in it. Without
         // this, hunting was a stance with no mechanical expression at all.
-        const meetChance = t.stance === 'Aggressive'
-            ? Math.min(0.95, ENCOUNTERS.meetChance * HUNTING.meetChanceMultiplier)
-            : ENCOUNTERS.meetChance;
+        // §7: once the finale is forced there is nothing else in the arena to
+        // do and nowhere to do it. Two finalists standing in the same zone
+        // meet, rather than rolling for it and drifting apart again — that
+        // roll is what let a forced finale run for hundreds of days.
+        const meetChance = ctx.state.finaleZone
+            ? 1
+            : t.stance === 'Aggressive'
+                ? Math.min(0.95, ENCOUNTERS.meetChance * HUNTING.meetChanceMultiplier)
+                : ENCOUNTERS.meetChance;
 
         if (ctx.rng.chance(meetChance)) {
             // Three or more free bodies in one zone is a group problem.

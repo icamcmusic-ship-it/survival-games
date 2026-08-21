@@ -14,6 +14,7 @@ import { GamemakerEventType } from '../engine/gamemaker';
 import { Explainer } from '../components/Explainer';
 import { ordinal } from '../engine/gamesProfile';
 import { gameActions, gameStore } from '../store/gameStore';
+import { readFilters, writeFilters } from '../utils/prefsStorage';
 
 /** §6.4: Gamemaker arena controls priced in the sponsorship economy's coins. */
 const GM_COSTS = { burn: 150, flood: 150, fog: 120, sever: 100, drop: 200, bounty: 300 } as const;
@@ -26,24 +27,7 @@ type Speed = 'manual' | '1x' | '5x' | 'auto';
  * a reader who mutes the ambient chatter every run should not have to do it
  * again every run.
  */
-const FILTER_STORAGE_KEY = 'survivalGamesFeedFilters';
-
-interface StoredFilters { mutedGroups: string[]; importantOnly: boolean; pauseOnDeath: boolean }
-
-function readStoredFilters(): StoredFilters {
-    try {
-        const raw = localStorage.getItem(FILTER_STORAGE_KEY);
-        if (!raw) return { mutedGroups: [], importantOnly: false, pauseOnDeath: false };
-        const parsed = JSON.parse(raw);
-        return {
-            mutedGroups: Array.isArray(parsed?.mutedGroups) ? parsed.mutedGroups : [],
-            importantOnly: parsed?.importantOnly === true,
-            pauseOnDeath: parsed?.pauseOnDeath === true,
-        };
-    } catch {
-        return { mutedGroups: [], importantOnly: false, pauseOnDeath: false };
-    }
-}
+const readStoredFilters = readFilters;
 
 const SPEED_DELAY: Record<Exclude<Speed, 'manual'>, number> = { '1x': 1200, '5x': 350, auto: 60 };
 
@@ -126,6 +110,8 @@ export function GameScreen({
     // there; once they've scrolled down to read older material, stop yanking
     // their position and surface a pill instead.
     const chronicleRef = useRef<HTMLDivElement>(null);
+    /** Where the [ / ] day-jump last landed, so repeats step rather than restart. */
+    const currentDayInViewRef = useRef<number | null>(null);
     const [scrolledAway, setScrolledAway] = useState(false);
     const prevLogCountRef = useRef(gameState.log.length);
 
@@ -165,13 +151,8 @@ export function GameScreen({
     }, [mutedGroups]);
 
     useEffect(() => {
-        try {
-            localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
-                mutedGroups: [...mutedGroups], importantOnly, pauseOnDeath,
-            }));
-        } catch {
-            // Storage unavailable — the preference simply won't be remembered.
-        }
+        // Storage failures are absorbed — the preference simply won't be remembered.
+        writeFilters({ mutedGroups: [...mutedGroups], importantOnly, pauseOnDeath });
     }, [mutedGroups, importantOnly, pauseOnDeath]);
 
     // Auto-advance, paced by how much the phase just produced.
@@ -194,34 +175,131 @@ export function GameScreen({
         return () => clearTimeout(timer);
     }, [speed, isOver, pauseOnDeath, runProgress, gameState.phase, gameState.day, gameState.log.length, gameState.log]);
 
-    // Keyboard shortcuts: space advances, F toggles filters, M/C swap panes, Esc clears.
+    /**
+     * §2.3: the keyboard path covered five keys — advance, filters, map, help,
+     * close — while everything the eye can reach (sector filter, tribute
+     * filter, day jump, category mutes, auto-advance) was mouse-only. The set
+     * below covers those, and every key in it is listed in the help panel.
+     *
+     * Rules the whole set obeys: nothing fires while a text field or a select
+     * has focus, nothing fires while the tribute modal is open, and nothing
+     * binds a modifier — Ctrl/Cmd/Alt combinations belong to the browser.
+     */
+    const shortcutHintRef = useRef<HTMLDivElement>(null);
+    const announceShortcut = (message: string) => {
+        // Spoken, not drawn: the visible state (a chip, a highlighted sector)
+        // already shows sighted users what changed.
+        if (shortcutHintRef.current) shortcutHintRef.current.textContent = message;
+    };
+
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement | null;
-            if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+            if (target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)) return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
             if (selectedTributeId) return;
-            if (e.key === ' ' && !isOver && !runningRef.current) {
+
+            // The help panel is modal: only the keys that close it respond.
+            if (showHelp && e.key !== 'Escape' && e.key !== '?') return;
+
+            const zones = gameState.arena.zones.map(z => z.name);
+            const cycle = <T,>(list: T[], current: T | null, step: number): T | null => {
+                if (list.length === 0) return null;
+                if (current === null) return step > 0 ? list[0] : list[list.length - 1];
+                const at = list.indexOf(current);
+                const next = at + step;
+                // Falling off either end clears the filter, so every cycle has
+                // a way back to "everything" without reaching for the mouse.
+                if (at === -1) return list[0];
+                return next < 0 || next >= list.length ? null : list[next];
+            };
+            const days = [...new Set(gameState.log.map(l => l.day))].sort((a, b) => a - b);
+            const jumpDay = (step: number) => {
+                if (days.length === 0) return;
+                setTacticalTab('chronicle');
+                setMobilePane('chronicle');
+                const currentDay = currentDayInViewRef.current ?? days[days.length - 1];
+                const at = days.indexOf(currentDay);
+                const target = days[Math.min(days.length - 1, Math.max(0, (at === -1 ? days.length - 1 : at) + step))];
+                currentDayInViewRef.current = target;
+                requestAnimationFrame(() => {
+                    const el = chronicleRef.current?.querySelector(`[data-day="${target}"]`);
+                    el?.scrollIntoView({ block: 'start' });
+                });
+                announceShortcut(target === 0 ? 'Jumped to before the Games' : `Jumped to day ${target}`);
+            };
+
+            const key = e.key;
+            const lower = key.toLowerCase();
+
+            // Space stays inert while Run to End is fast-forwarding — a
+            // stray advance mid-fast-forward double-steps the simulator.
+            if (key === ' ' && !isOver && !runningRef.current) {
                 e.preventDefault();
                 onNextPhase();
-            } else if (e.key.toLowerCase() === 'f') {
+            } else if (lower === 'f') {
                 setShowFilters(v => !v);
-            } else if (e.key.toLowerCase() === 'm') {
+            } else if (lower === 'm') {
                 setTacticalTab(t => {
                     const next = t === 'map' ? 'chronicle' : 'map';
                     setMobilePane(next);
                     return next;
                 });
-            } else if (e.key === '?') {
+            } else if (key === '?') {
                 setShowHelp(v => !v);
-            } else if (e.key === 'Escape') {
+            } else if (key === 'Escape') {
                 setShowHelp(false);
                 setSelectedTributeId(null);
                 setSelectedZone(null);
+            } else if (lower === 'z') {
+                setSelectedZone(z => {
+                    const next = cycle(zones, z, e.shiftKey ? -1 : 1);
+                    announceShortcut(next ? `Sector filter: ${next}` : 'Sector filter cleared');
+                    return next;
+                });
+            } else if (lower === 't') {
+                const ids = sortedSidebarTributes.map(t => t.id);
+                setFilterTributeId(current => {
+                    const next = cycle(ids, current, e.shiftKey ? -1 : 1);
+                    const name = next ? sortedSidebarTributes.find(t => t.id === next)?.name : null;
+                    announceShortcut(name ? `Tribute filter: ${name}` : 'Tribute filter cleared');
+                    return next;
+                });
+            } else if (key === '[') {
+                jumpDay(-1);
+            } else if (key === ']') {
+                jumpDay(1);
+            } else if (key === 'i') {
+                setImportantOnly(v => {
+                    announceShortcut(v ? 'Showing every event' : 'Showing headline events only');
+                    return !v;
+                });
+            } else if (key === 'p' && !isOver) {
+                setSpeed(s => {
+                    const next = s === 'manual' ? '1x' : 'manual';
+                    announceShortcut(next === 'manual' ? 'Auto-advance paused' : 'Auto-advance running');
+                    setPauseNotice(false);
+                    return next;
+                });
+            } else if (key >= '1' && key <= String(Math.min(9, CATEGORY_GROUPS.length))) {
+                const group = CATEGORY_GROUPS[Number(key) - 1];
+                if (group) {
+                    toggleGroup(group.id);
+                    announceShortcut(`${group.label} events ${mutedGroups.has(group.id) ? 'unmuted' : 'muted'}`);
+                }
+            } else if (key === '0') {
+                setMutedGroups(new Set());
+                setImportantOnly(false);
+                setSearchText('');
+                setFilterTributeId(null);
+                setSelectedZone(null);
+                announceShortcut('All chronicle filters reset');
             }
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [onNextPhase, isOver, selectedTributeId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [onNextPhase, isOver, selectedTributeId, showHelp, gameState, mutedGroups]);
 
     // A run left fast-forwarding when this screen goes away would otherwise
     // keep stepping a simulator nobody is watching.
@@ -351,6 +429,23 @@ export function GameScreen({
             ? gameState.phase.toUpperCase()
             : `Day ${gameState.day} — ${gameState.phase.toUpperCase()}`;
 
+    /** The newest headline line, and nothing else — see the live regions below. */
+    const latestHeadline = useMemo(() => {
+        for (let i = gameState.log.length - 1; i >= 0; i--) {
+            const line = gameState.log[i];
+            if (line.important && line.category !== 'death' && line.category !== 'kill') return line.text;
+        }
+        return '';
+    }, [gameState.log]);
+
+    /** Phase changes and the latest death: the two things worth interrupting for. */
+    const urgentAnnouncement = useMemo(() => {
+        const lastDeath = [...gameState.log]
+            .reverse()
+            .find(l => l.day === gameState.day && (l.category === 'death' || l.category === 'kill'));
+        return `${phaseLabel}.${lastDeath ? ` ${lastDeath.text}` : ''}`;
+    }, [phaseLabel, gameState.log, gameState.day]);
+
     const selectMobilePane = (pane: 'chronicle' | 'map' | 'tributes') => {
         setMobilePane(pane);
         if (pane === 'chronicle' || pane === 'map') setTacticalTab(pane);
@@ -396,7 +491,10 @@ export function GameScreen({
 
                     {!isOver && (
                         <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-                            <div className="flex items-center gap-2">
+                            {/* flex-wrap: the speed segment plus the "pause on
+                                deaths" checkbox is wider than a phone, and the
+                                row used to push the whole page sideways. */}
+                            <div className="flex flex-wrap items-center gap-2">
                                 <span className="eyebrow">Sim speed</span>
                                 <div className="seg">
                                     {(['manual', '1x', '5x', 'auto'] as const).map(s => (
@@ -474,6 +572,8 @@ export function GameScreen({
                                             <button
                                                 key={group.id}
                                                 onClick={() => toggleGroup(group.id)}
+                                                aria-pressed={muted}
+                                                aria-label={`${muted ? 'Unmute' : 'Mute'} ${group.label.toLowerCase()} events (${group.categories.join(', ')})`}
                                                 className={`chip ${muted ? 'opacity-40 line-through' : ''}`}
                                                 title={group.categories.join(', ')}
                                             >
@@ -584,6 +684,7 @@ export function GameScreen({
                                     <button
                                         key={d}
                                         className="chip"
+                                        aria-label={d === 0 ? 'Jump to before the Games' : `Jump to day ${d}`}
                                         onClick={() => {
                                             const el = chronicleRef.current?.querySelector(`[data-day="${d}"]`);
                                             el?.scrollIntoView({ block: 'start' });
@@ -608,23 +709,6 @@ export function GameScreen({
                                         : 'Every logged event is hidden by your current filters.'}
                                 </div>
                             )}
-                        </div>
-                        {/* Two live regions rather than one. The polite one carries
-                            the running feed; deaths and phase changes are the events
-                            a screen-reader user actually needs interrupting for, and
-                            they were previously indistinguishable from ambient
-                            scenery in a single stream. */}
-                        <div aria-live="polite" className="sr-only">
-                            {filteredLogs.length > 0 ? filteredLogs[filteredLogs.length - 1].text : ''}
-                        </div>
-                        <div aria-live="assertive" className="sr-only">
-                            {phaseLabel}
-                            {'. '}
-                            {gameState.log
-                                .filter(l => l.day === gameState.day && (l.category === 'death' || l.category === 'kill'))
-                                .slice(-1)
-                                .map(l => l.text)
-                                .join('')}
                         </div>
                     </div>
                 )}
@@ -975,7 +1059,7 @@ export function GameScreen({
                 </div>
             </div>
 
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[var(--ink)] border-t-[3px] border-[var(--red)] flex items-stretch">
+            <nav aria-label="Arena panes" className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[var(--ink)] border-t-[3px] border-[var(--red)] flex items-stretch">
                 {([
                     { id: 'chronicle', label: 'Chronicle' },
                     { id: 'map', label: 'Map' },
@@ -986,7 +1070,7 @@ export function GameScreen({
                         onClick={() => selectMobilePane(tab.id)}
                         aria-pressed={mobilePane === tab.id}
                         className="flex-1 py-3 text-[10px] font-extrabold uppercase tracking-[0.1em]"
-                        style={{ fontFamily: 'var(--font-mono)', color: mobilePane === tab.id ? 'var(--red)' : '#a89a86' }}
+                        style={{ fontFamily: 'var(--font-mono)', color: mobilePane === tab.id ? 'var(--red-on-ink)' : '#a89a86' }}
                     >
                         {tab.label}
                     </button>
@@ -997,6 +1081,19 @@ export function GameScreen({
                     </button>
                 )}
             </nav>
+
+            {/* Three live regions, and they sit outside the chronicle pane so
+                they keep announcing while the arena map is showing.
+
+                The polite feed used to carry every line the simulation emitted,
+                which at 5x is a wall of ambient scenery nobody can follow — so
+                it now carries only headline events, the same lines the
+                "headline events only" filter keeps. Deaths and phase changes
+                interrupt; the third region speaks the result of a keyboard
+                shortcut, which otherwise has no spoken feedback at all. */}
+            <div aria-live="polite" className="sr-only">{latestHeadline}</div>
+            <div aria-live="assertive" className="sr-only">{urgentAnnouncement}</div>
+            <div ref={shortcutHintRef} role="status" aria-live="polite" className="sr-only" />
 
             {showHelp && (
                 <div
@@ -1020,8 +1117,15 @@ export function GameScreen({
                             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-[var(--color-ink-200)]">
                                 {[
                                     ['Space', 'Advance one phase'],
+                                    ['P', 'Start or stop auto-advance'],
                                     ['F', 'Show or hide the chronicle filters'],
                                     ['M', 'Switch between the chronicle and the arena map'],
+                                    ['Z / Shift+Z', 'Cycle the sector filter forward or back — past the last sector clears it'],
+                                    ['T / Shift+T', 'Cycle the tribute filter forward or back — past the last tribute clears it'],
+                                    ['[ / ]', 'Jump the chronicle to the previous or next day'],
+                                    ['I', 'Headline events only, on or off'],
+                                    ...CATEGORY_GROUPS.slice(0, 9).map((g, i) => [String(i + 1), `Mute or unmute ${g.label.toLowerCase()} events`]),
+                                    ['0', 'Reset every chronicle filter'],
                                     ['?', 'Open this panel'],
                                     ['Esc', 'Close a panel, clear the selected sector'],
                                 ].map(([key, what]) => (
@@ -1031,6 +1135,10 @@ export function GameScreen({
                                     </React.Fragment>
                                 ))}
                             </dl>
+                            <p className="text-[11px] text-[var(--color-ink-500)]">
+                                Shortcuts stand down while you are typing in a search box or a menu, so nothing
+                                is hijacked mid-word.
+                            </p>
                         </div>
 
                         {/* The systems a first-time reader has no way to infer from

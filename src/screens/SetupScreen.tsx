@@ -9,31 +9,14 @@ import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
 // — the setup screen is the app's cold-start path and must not drag the
 // simulation engine (and its ~5k lines of flavour/balance tables) in with it.
 import { SIGNATURE_BLURBS } from '../data/signatureBlurbs';
+import { readStoredConfig, writeStoredConfig } from '../utils/prefsStorage';
 
 function randomSeed() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-const CONFIG_STORAGE_KEY = 'survivalGamesLastConfig';
-
-function readStoredConfig(): GameConfig {
-    try {
-        const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
-        if (!raw) return DEFAULT_GAME_CONFIG;
-        const parsed = JSON.parse(raw);
-        return { ...DEFAULT_GAME_CONFIG, ...parsed };
-    } catch {
-        return DEFAULT_GAME_CONFIG;
-    }
-}
-
-function storeConfig(config: GameConfig) {
-    try {
-        localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
-    } catch {
-        // Storage unavailable — the config simply won't be remembered next visit.
-    }
-}
+/** Versioned read/write lives in `utils/prefsStorage`; this is the local alias. */
+const storeConfig = writeStoredConfig;
 
 /** UX-11 named presets: one click sets every slider to a coherent profile. */
 const PRESETS: Array<{ name: string; blurb: string; config: GameConfig }> = [
@@ -261,6 +244,13 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 <button
                                     key={d}
                                     className={`chip ${panem.patronDistrict === d ? 'chip-accent' : ''}`}
+                                    // "D7" is a label to the eye and nothing to a
+                                    // screen reader; aria-pressed carries which one
+                                    // is the standing patronage.
+                                    aria-pressed={panem.patronDistrict === d}
+                                    aria-label={panem.patronDistrict === d
+                                        ? `You are District ${d}'s patron`
+                                        : `Become District ${d}'s patron for ${gameActions.patronCost} coins`}
                                     disabled={panem.patronDistrict !== d && coins < gameActions.patronCost}
                                     title={panem.patronDistrict === d
                                         ? `You are District ${d}'s patron`
