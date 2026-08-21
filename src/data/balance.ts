@@ -2498,6 +2498,11 @@ export const GAMEMAKER_COSTS = {
     sever: 100,
     drop: 200,
     bounty: 300,
+    // S-5: the interventions that move the audience and the map rather than
+    // the health bars. Cheaper, because they are what the job mostly is.
+    spotlight: 90,
+    announce: 60,
+    reopen: 120,
 } as const;
 
 /**
@@ -2669,4 +2674,18 @@ export const ENDINGS = {
     hollowMaxResolve: 30,
     hollowMaxSanity: 35,
     hollowChance: 0.4,
+} as const;
+
+/**
+ * S-5: what the three non-destructive Gamemaker interventions are worth.
+ * Deliberately modest — these move the audience and the map, not the health
+ * bars, and the Gamemaker economy already prices them in Capitol Coins.
+ */
+export const GAMEMAKER_ACTIONS = {
+    spotlightExcitement: 35,
+    spotlightTrust: 12,
+    /** The voice from the sky buys back the audience's patience. */
+    announceInterest: 20,
+    /** And costs everybody a little composure. */
+    announceSanity: 4,
 } as const;

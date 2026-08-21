@@ -1445,3 +1445,14 @@ export const BORDER_TEXTS = {
         'BORDER COLLAPSE: {tribute} gambles on one more minute in {trapped} and loses {damage} of themselves getting out into {safe}.',
     ],
 };
+
+/** S-5: the voice from the sky, when the Gamemakers want the board moved without touching it. */
+export const GAMEMAKER_TEXTS = {
+    announcement: [
+        'GAMEMAKER: the sky clears its throat. "Attention, tributes. The Gamemakers thank you for your patience and remind you that the arena is not, in fact, infinite." Then nothing. Everyone stands very still for a while afterwards.',
+        'GAMEMAKER: an announcement rolls across the whole arena in a voice designed to be pleasant. It says nothing anybody can act on, which is the point — it is a reminder that the sky can talk whenever it wants to.',
+        'GAMEMAKER: "Congratulations to the remaining tributes." The voice from the sky lists no names and offers no terms. Somewhere a bird that is not a bird repeats the last three words for an hour.',
+        'GAMEMAKER: the Capitol seal booms out over the arena and every tribute in it stops moving. The announcement that follows is entirely procedural. The stopping was the announcement.',
+        'GAMEMAKER: the sky says there will be an event of interest shortly, does not say what, where or when, and goes quiet. The commentators call it masterful. The tributes call it nothing, out loud.',
+    ],
+};

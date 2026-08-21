@@ -1,11 +1,14 @@
 import { SimContext, getAlive } from './context';
 import { ExposureProfile, applyExposure } from './exposure';
 import { getZone } from './map';
-import { GAMEMAKER, OBJECTIVES } from '../data/balance';
+import { GAMEMAKER, GAMEMAKER_ACTIONS, OBJECTIVES } from '../data/balance';
 import { eligibleMutts, engageMutt, rosterFor } from './mutts';
 import { ZoneEffectKind } from '../models/types';
 import { dropSupplies, severRandomEdge, startZoneEffect } from './zoneEffects';
 import { cycleOf, noteSighting } from './memory';
+import { addExcitement } from './audience';
+import { clampTribute } from './vitals';
+import { GAMEMAKER_TEXTS } from '../data/flavorText';
 
 /**
  * Gamemaker weather, expressed as exposure profiles.
@@ -97,9 +100,18 @@ const WEATHER_EFFECTS: ExposureProfile[] = [
     },
 ];
 
+/**
+ * S-5: the Gamemaker's toolkit.
+ *
+ * Six interventions covered fire, water, fog, a cut route, a supply drop and a
+ * bounty — every one of them a way to hurt somebody, and none of them the
+ * things a real Head Gamemaker spends most of their day doing: pointing the
+ * cameras, talking to the arena, and opening a door.
+ */
 export type GamemakerEventType =
     | 'mutt' | 'weather' | 'feast'
-    | 'burn' | 'flood' | 'fog' | 'sever' | 'bounty' | 'drop';
+    | 'burn' | 'flood' | 'fog' | 'sever' | 'bounty' | 'drop'
+    | 'spotlight' | 'announce' | 'reopen';
 
 export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType, targetId?: string) {
     if (!ctx.state.gamemakerMode) return;
@@ -216,7 +228,81 @@ export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType,
         });
     } else if (type === 'drop') {
         dropSupplies(ctx);
+    } else if (type === 'spotlight') {
+        spotlightTribute(ctx, targetId);
+    } else if (type === 'announce') {
+        announceFromTheSky(ctx);
+    } else if (type === 'reopen') {
+        reopenRoute(ctx, targetId);
     }
+}
+
+/**
+ * S-5: the camera, which is the Gamemakers' most-used instrument and was not
+ * in the toolkit at all. Excitement is the currency the sponsor stream and
+ * the boredom clock both read, so pointing it at somebody is a real
+ * intervention — it buys that tribute parachutes without touching the arena.
+ */
+function spotlightTribute(ctx: SimContext, targetId?: string) {
+    const alive = getAlive(ctx.state);
+    const target = targetId
+        ? alive.find(t => t.id === targetId)
+        // Nobody named: the story the audience is already leaning toward.
+        : [...alive].sort((a, b) => b.excitementRating - a.excitementRating)[0];
+    if (!target) return;
+    addExcitement(target, GAMEMAKER_ACTIONS.spotlightExcitement);
+    target.sponsorTrust = Math.min(100, target.sponsorTrust + GAMEMAKER_ACTIONS.spotlightTrust);
+    clampTribute(target);
+    ctx.logEvent(
+        `GAMEMAKER: every feed in the Capitol cuts to ${target.name} of District ${target.district} and stays there. `
+        + `Whatever they do in the next hour, the whole country is watching them do it.`,
+        [target.id],
+        { important: true, category: 'gamemaker' }
+    );
+}
+
+/**
+ * S-5: the voice from the sky. In canon it is how the Gamemakers move the
+ * board without touching it — the feast, the rule change, the reminder that
+ * somebody is watching. Here it resets the boredom clock and puts the whole
+ * field on notice.
+ */
+function announceFromTheSky(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    ctx.state.audienceInterest = Math.min(100, (ctx.state.audienceInterest ?? 50) + GAMEMAKER_ACTIONS.announceInterest);
+    alive.forEach(t => {
+        t.vitals.sanity -= GAMEMAKER_ACTIONS.announceSanity;
+        clampTribute(t);
+    });
+    ctx.logEvent(
+        ctx.pickText(GAMEMAKER_TEXTS.announcement),
+        alive.map(t => t.id),
+        { important: true, category: 'gamemaker' }
+    );
+}
+
+/**
+ * S-5: opening a door rather than closing one. `sever` could cut a route and
+ * nothing could ever restore one, so the Gamemakers could only ever make the
+ * arena smaller — which is half of what the job actually is.
+ */
+function reopenRoute(ctx: SimContext, targetId?: string) {
+    const severed = ctx.state.severedEdges ?? [];
+    if (severed.length === 0) {
+        ctx.logEvent('GAMEMAKER: there is nothing closed to open. Every route in the arena is already standing.', [], { category: 'gamemaker' });
+        return;
+    }
+    // A named zone reopens one of its own edges when it has one.
+    const preferred = targetId ? severed.find(key => key.split('|').includes(targetId)) : undefined;
+    const key = preferred ?? ctx.rng.pick(severed);
+    ctx.state.severedEdges = severed.filter(e => e !== key);
+    const [a, b] = key.split('|');
+    ctx.logEvent(
+        `GAMEMAKER: the route between ${a} and ${b} opens again — cleared, rebuilt, or simply un-collapsed, and nobody is explaining which. `
+        + `Anyone who had written that direction off has a decision to make.`,
+        [],
+        { important: true, zone: a, category: 'gamemaker' }
+    );
 }
 
 /** Resolves a zone action's target: the named zone if it stands, else a random standing zone. */

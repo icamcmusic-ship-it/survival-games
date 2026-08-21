@@ -817,6 +817,58 @@ export const gameActions = {
         return result;
     },
 
+    /**
+     * S-2: a wager placed after the gong, at the line the board is showing
+     * right now.
+     *
+     * Betting was pre-Games only, which left the whole middle of a run with no
+     * stakes for the player — and the odds board is recomputed live and
+     * genuinely moves (the soak shows nearly every survivor drifting off their
+     * opening line), so the price is real rather than decorative. A second
+     * wager on the same tribute blends into the first at a stake-weighted
+     * multiplier, which is what actually happens when you back something twice
+     * at two prices.
+     */
+    placeLiveBet(tributeId: string, stake: number): { ok: boolean; message: string } {
+        const { simulator, coins, bets, betsResolved } = gameStore.getState();
+        if (!simulator || !engine) return { ok: false, message: 'No Games are running.' };
+        if (betsResolved) return { ok: false, message: 'The book on these Games is already settled.' };
+
+        const state = simulator.getState();
+        const inArena = state.phase === 'bloodbath' || state.phase === 'day'
+            || state.phase === 'night' || state.phase === 'feast';
+        if (!inArena) return { ok: false, message: 'The book is only open once the tributes are in the arena.' };
+
+        const tribute = state.tributes.find(t => t.id === tributeId);
+        if (!tribute || tribute.status !== 'alive') {
+            return { ok: false, message: 'You cannot back a tribute who is already gone.' };
+        }
+        const amount = Math.max(1, Math.floor(stake));
+        if (coins < amount) return { ok: false, message: `That wager costs ${amount} coins. You have ${coins}.` };
+
+        const { mult } = engine.tributeOdds(tribute, state.tributes);
+        const held = bets[tributeId];
+        const blended = held
+            ? (held.stake * held.mult + amount * mult) / (held.stake + amount)
+            : mult;
+
+        gameActions.setCoins(coins - amount);
+        gameActions.setBets(prev => ({
+            ...prev,
+            [tributeId]: {
+                stake: (prev[tributeId]?.stake ?? 0) + amount,
+                mult: Math.round(blended * 100) / 100,
+            },
+        }));
+        persistRun();
+        return {
+            ok: true,
+            message: held
+                ? `${amount} more on ${tribute.name} at ${mult.toFixed(1)}x — your book on them now runs at ${blended.toFixed(1)}x.`
+                : `${amount} coins on ${tribute.name} at ${mult.toFixed(1)}x, live from the arena.`,
+        };
+    },
+
     triggerGamemakerEvent(type: GamemakerEventType, targetId?: string) {
         const { simulator } = gameStore.getState();
         if (!simulator) return;

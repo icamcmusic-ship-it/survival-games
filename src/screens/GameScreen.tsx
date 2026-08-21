@@ -1039,6 +1039,12 @@ export function GameScreen({
                                     ['flood', 'Flood', GAMEMAKER_COSTS.flood, 'Put the zone under water'],
                                     ['fog', 'Fog', GAMEMAKER_COSTS.fog, 'Blind everyone in the zone'],
                                     ['sever', 'Cut route', GAMEMAKER_COSTS.sever, 'Destroy one path out of the zone'],
+                                    // S-5: the non-destructive half of the job.
+                                    // (Mutts and the feast horn already have
+                                    // their own free controls further down the
+                                    // panel; duplicating them here priced
+                                    // would give the same act two costs.)
+                                    ['reopen', 'Reopen route', GAMEMAKER_COSTS.reopen, 'Restore a route the arena has closed'],
                                 ] as const).map(([type, label, cost, tip]) => (
                                     <button
                                         key={type}
@@ -1064,6 +1070,28 @@ export function GameScreen({
                                     : `Restock the Cornucopia with a supply drop (${GAMEMAKER_COSTS.drop} coins)`}
                             >
                                 Supply drop <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.drop}</span>
+                            </button>
+                            <button
+                                onClick={() => spendGamemaker('spotlight', GAMEMAKER_COSTS.spotlight, muttTargetId || undefined)}
+                                className="btn btn-sm w-full"
+                                disabled={coins < GAMEMAKER_COSTS.spotlight}
+                                aria-disabled={coins < GAMEMAKER_COSTS.spotlight}
+                                title={coins < GAMEMAKER_COSTS.spotlight
+                                    ? `A spotlight costs ${GAMEMAKER_COSTS.spotlight} coins and you have ${coins}. You need ${GAMEMAKER_COSTS.spotlight - coins} more.`
+                                    : `Point every camera in the Capitol at the selected tribute — excitement and sponsor trust follow (${GAMEMAKER_COSTS.spotlight} coins)`}
+                            >
+                                Spotlight <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.spotlight}</span>
+                            </button>
+                            <button
+                                onClick={() => spendGamemaker('announce', GAMEMAKER_COSTS.announce)}
+                                className="btn btn-sm w-full"
+                                disabled={coins < GAMEMAKER_COSTS.announce}
+                                aria-disabled={coins < GAMEMAKER_COSTS.announce}
+                                title={coins < GAMEMAKER_COSTS.announce
+                                    ? `An announcement costs ${GAMEMAKER_COSTS.announce} coins and you have ${coins}. You need ${GAMEMAKER_COSTS.announce - coins} more.`
+                                    : `Speak to the arena from the sky — it buys back the audience's patience and unsettles everyone in it (${GAMEMAKER_COSTS.announce} coins)`}
+                            >
+                                Announcement <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.announce}</span>
                             </button>
                             <button
                                 onClick={() => spendGamemaker('bounty', GAMEMAKER_COSTS.bounty, muttTargetId || undefined)}
