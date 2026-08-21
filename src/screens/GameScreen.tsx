@@ -16,8 +16,6 @@ import { ordinal } from '../engine/gamesProfile';
 import { gameActions, gameStore } from '../store/gameStore';
 import { readFilters, writeFilters } from '../utils/prefsStorage';
 
-/** §6.4/U-7: Gamemaker costs live in data/balance.ts with every other dial. */
-const GM_COSTS = GAMEMAKER_COSTS;
 import { useStore } from '../store/createStore';
 
 type Speed = 'manual' | '1x' | '5x' | 'auto';
@@ -981,10 +979,10 @@ export function GameScreen({
                             </div>
                             <div className="grid grid-cols-2 gap-1.5">
                                 {([
-                                    ['burn', 'Ignite', GM_COSTS.burn, 'Set the zone burning — and fire spreads'],
-                                    ['flood', 'Flood', GM_COSTS.flood, 'Put the zone under water'],
-                                    ['fog', 'Fog', GM_COSTS.fog, 'Blind everyone in the zone'],
-                                    ['sever', 'Cut route', GM_COSTS.sever, 'Destroy one path out of the zone'],
+                                    ['burn', 'Ignite', GAMEMAKER_COSTS.burn, 'Set the zone burning — and fire spreads'],
+                                    ['flood', 'Flood', GAMEMAKER_COSTS.flood, 'Put the zone under water'],
+                                    ['fog', 'Fog', GAMEMAKER_COSTS.fog, 'Blind everyone in the zone'],
+                                    ['sever', 'Cut route', GAMEMAKER_COSTS.sever, 'Destroy one path out of the zone'],
                                 ] as const).map(([type, label, cost, tip]) => (
                                     <button
                                         key={type}
@@ -1001,28 +999,28 @@ export function GameScreen({
                                 ))}
                             </div>
                             <button
-                                onClick={() => spendGamemaker('drop', GM_COSTS.drop)}
+                                onClick={() => spendGamemaker('drop', GAMEMAKER_COSTS.drop)}
                                 className="btn btn-sm w-full"
-                                disabled={coins < GM_COSTS.drop}
-                                aria-disabled={coins < GM_COSTS.drop}
-                                title={coins < GM_COSTS.drop
-                                    ? `A supply drop costs ${GM_COSTS.drop} coins and you have ${coins}. You need ${GM_COSTS.drop - coins} more.`
-                                    : `Restock the Cornucopia with a supply drop (${GM_COSTS.drop} coins)`}
+                                disabled={coins < GAMEMAKER_COSTS.drop}
+                                aria-disabled={coins < GAMEMAKER_COSTS.drop}
+                                title={coins < GAMEMAKER_COSTS.drop
+                                    ? `A supply drop costs ${GAMEMAKER_COSTS.drop} coins and you have ${coins}. You need ${GAMEMAKER_COSTS.drop - coins} more.`
+                                    : `Restock the Cornucopia with a supply drop (${GAMEMAKER_COSTS.drop} coins)`}
                             >
-                                Supply drop <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GM_COSTS.drop}</span>
+                                Supply drop <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.drop}</span>
                             </button>
                             <button
-                                onClick={() => spendGamemaker('bounty', GM_COSTS.bounty, muttTargetId || undefined)}
+                                onClick={() => spendGamemaker('bounty', GAMEMAKER_COSTS.bounty, muttTargetId || undefined)}
                                 className="btn btn-sm w-full"
-                                disabled={coins < GM_COSTS.bounty || !!gameState.bountyTargetId}
-                                aria-disabled={coins < GM_COSTS.bounty || !!gameState.bountyTargetId}
+                                disabled={coins < GAMEMAKER_COSTS.bounty || !!gameState.bountyTargetId}
+                                aria-disabled={coins < GAMEMAKER_COSTS.bounty || !!gameState.bountyTargetId}
                                 title={gameState.bountyTargetId
                                     ? 'A bounty already stands'
-                                    : coins < GM_COSTS.bounty
-                                        ? `A bounty costs ${GM_COSTS.bounty} coins and you have ${coins}. You need ${GM_COSTS.bounty - coins} more.`
-                                        : `Place a bounty on the selected tribute — or the dullest one — and point the whole field at them (${GM_COSTS.bounty} coins)`}
+                                    : coins < GAMEMAKER_COSTS.bounty
+                                        ? `A bounty costs ${GAMEMAKER_COSTS.bounty} coins and you have ${coins}. You need ${GAMEMAKER_COSTS.bounty - coins} more.`
+                                        : `Place a bounty on the selected tribute — or the dullest one — and point the whole field at them (${GAMEMAKER_COSTS.bounty} coins)`}
                             >
-                                Place bounty <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GM_COSTS.bounty}</span>
+                                Place bounty <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.bounty}</span>
                             </button>
                         </div>
                     </div>

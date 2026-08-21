@@ -77,6 +77,23 @@ export const GAMES_TEMPERAMENTS: GamesTemperament[] = [
         blurb: 'The Capitol has scheduled these Games tight. The border is expected to move early and keep moving.',
         hazardRate: 1.25, sponsorGenerosity: 1.1, betrayalRate: 1.1, escalationShift: -2,
     },
+    // §10.1: the run-length band was narrow — almost every Games had the same
+    // shape (bloodbath, quiet days, escalation, feast, finale). These two are
+    // the extremes the distribution was missing: a compressed, brutal Games
+    // with no time for alliances, and a long attrition Games where tributes
+    // can go days without meeting.
+    {
+        id: 'blitz',
+        name: 'a blitz Games',
+        blurb: 'The President wants it over by the weekend, and the Gamemakers have built an arena that agrees with him. Nobody expects alliances to matter this year.',
+        hazardRate: 1.6, sponsorGenerosity: 1.2, betrayalRate: 1.3, escalationShift: -4,
+    },
+    {
+        id: 'attrition',
+        name: 'an attrition Games',
+        blurb: 'A vast, quiet arena and a Capitol prepared to wait. These Games will be won by whoever is still eating in week three.',
+        hazardRate: 0.5, sponsorGenerosity: 0.7, betrayalRate: 0.9, escalationShift: 5,
+    },
 ];
 
 /**

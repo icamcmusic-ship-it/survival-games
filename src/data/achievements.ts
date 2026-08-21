@@ -271,7 +271,123 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'Crown a victor who deliberately concealed what they could do in training.',
         test: (_s, v) => !!v && v.trainingStrategy === 'conceal',
     },
+    // S-3: outcome achievements beyond the original 25 — the rare endings and
+    // the challenge-run shapes the simulation can produce.
+    {
+        id: 'dual-victory',
+        name: 'Both of Them',
+        hint: 'See a Games end with two victors.',
+        test: state => (state.victorIds?.length ?? 0) >= 2,
+    },
+    {
+        id: 'nightlock-ending',
+        name: 'The Berries',
+        hint: 'See a tribute choose the nightlock rather than keep playing.',
+        test: state => state.tributes.some(t => t.causeOfDeath?.includes('nightlock')),
+    },
+    {
+        id: 'wildfire',
+        name: 'Let It Burn',
+        hint: 'See a fire spread from one sector into the next.',
+        test: state => state.log.some(e => /The fire in .* jumps to/.test(e.text)),
+    },
+    {
+        id: 'tesserae-crown',
+        name: 'The Grain Paid Back',
+        hint: 'Crown a victor whose name was in the bowl for tesserae, year after year.',
+        test: (_s, v) => !!v && (v.tesserae ?? 0) >= 3,
+    },
+    {
+        id: 'crown-limping',
+        name: 'Held Together With String',
+        hint: 'Crown a victor carrying three or more standing injuries at the end.',
+        test: (_s, v) => !!v && Object.values(v.injuries).filter(Boolean).length >= 3,
+    },
+    {
+        id: 'district-partners',
+        name: 'Home Together',
+        hint: 'See both tributes from one district reach the final four.',
+        test: state => {
+            const ranked = [...state.tributes].sort((a, b) =>
+                (b.dayOfDeath ?? Infinity) - (a.dayOfDeath ?? Infinity));
+            const finalFour = ranked.slice(0, 4);
+            return [...new Set(finalFour.map(t => t.district))].length < finalFour.length;
+        },
+    },
 ];
+
+/**
+ * S-3: career-wide achievements, evaluated against the persistent Panem
+ * records rather than a single run — cumulative counts and per-district
+ * completion, which is also how the D10 problem gets surfaced to players
+ * directly ("you have never crowned District 10").
+ */
+export interface CareerTotals {
+    runs: number;
+    victors: number;
+    /** Total deaths witnessed across every finished run. */
+    deaths: number;
+    /** Districts that have ever produced a victor. */
+    crownedDistricts: number[];
+    /** Distinct arenas a victor has been crowned in. */
+    arenasWon: string[];
+}
+
+export interface MetaAchievement {
+    id: string;
+    name: string;
+    hint: string;
+    test: (totals: CareerTotals) => boolean;
+}
+
+export const META_ACHIEVEMENTS: MetaAchievement[] = [
+    {
+        id: 'meta-ten-games',
+        name: 'A Regular',
+        hint: 'Finish ten Games.',
+        test: t => t.runs >= 10,
+    },
+    {
+        id: 'meta-fifty-games',
+        name: 'The Career, So To Speak',
+        hint: 'Finish fifty Games.',
+        test: t => t.runs >= 50,
+    },
+    {
+        id: 'meta-hundred-deaths',
+        name: 'The Price of the Show',
+        hint: 'Witness one hundred deaths across all your Games.',
+        test: t => t.deaths >= 100,
+    },
+    {
+        id: 'meta-half-panem',
+        name: 'Half of Panem',
+        hint: 'Crown victors from six different districts.',
+        test: t => t.crownedDistricts.length >= 6,
+    },
+    {
+        id: 'meta-all-twelve',
+        name: 'Every District\'s Year',
+        hint: 'Crown a victor from every one of the twelve districts.',
+        test: t => t.crownedDistricts.length >= 12,
+    },
+    {
+        id: 'meta-grand-tour',
+        name: 'The Grand Tour',
+        hint: 'Crown victors in ten different arenas.',
+        test: t => t.arenasWon.length >= 10,
+    },
+];
+
+export function evaluateMetaAchievements(totals: CareerTotals): string[] {
+    return META_ACHIEVEMENTS.filter(a => {
+        try {
+            return a.test(totals);
+        } catch {
+            return false;
+        }
+    }).map(a => a.id);
+}
 
 /** Which achievements this finished run earned. */
 /**

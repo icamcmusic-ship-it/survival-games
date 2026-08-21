@@ -5,7 +5,7 @@ import { ReplayScrubber } from '../components/ReplayScrubber';
 import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { ChronicleExport } from '../components/ChronicleExport';
 import { Trophy, MapPin, Swords, Skull, RotateCcw } from 'lucide-react';
-import { ACHIEVEMENTS } from '../data/achievements';
+import { META_ACHIEVEMENTS, ACHIEVEMENTS } from '../data/achievements';
 import { RECORD_DEFS } from '../utils/panemStorage';
 import { gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
@@ -179,7 +179,7 @@ export function EndScreen({
                                 First time you have seen this
                             </span>
                             {outcome.newAchievements.map(id => {
-                                const found = ACHIEVEMENTS.find(a => a.id === id);
+                                const found = ACHIEVEMENTS.find(a => a.id === id) ?? META_ACHIEVEMENTS.find(a => a.id === id);
                                 if (!found) return null;
                                 return (
                                     <div key={id} className="panel-flush p-2.5">

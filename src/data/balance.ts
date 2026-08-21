@@ -2411,12 +2411,14 @@ export const CHARTER = {
  */
 export const GAMEMAKER_AGENCY = {
     /** Not while the cast is still enormous — this rescues the middle of a run. */
-    maxFieldSize: 12,
+    /** A-6: the signature is the roster's whole payoff — it fired in only 65%
+     * of runs. Wider window and better unprompted odds get it near-every-run. */
+    maxFieldSize: 16,
     earliestDay: 3,
     /** Audience interest below which the Head Gamemaker feels obliged to act. */
     boredomThreshold: 45,
     /** Odds they act anyway, on a day the feed is fine. */
-    unpromptedChance: 0.12,
+    unpromptedChance: 0.2,
     /** Ainsel's grind: everything slightly worse, everywhere. */
     grindDepletion: 0.2,
     grindThirst: 12,

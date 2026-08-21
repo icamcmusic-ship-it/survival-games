@@ -1,5 +1,5 @@
 import { GameState, Tribute } from '../models/types';
-import { NearMiss, evaluateAchievements, evaluateNearMisses } from '../data/achievements';
+import { CareerTotals, evaluateAchievements, evaluateMetaAchievements, evaluateNearMisses, NearMiss } from '../data/achievements';
 import { Notable, runNotables } from './notables';
 import {
     STORAGE_KEYS, StorageSpec, asNum, asObjMap, asRecord, asStrArray, readStored, removeStored,
@@ -50,6 +50,8 @@ export interface PanemRecords {
     patronDistrict?: number;
     /** One entry per tracked record, keyed by record id. */
     bests: Record<string, RecordHolder>;
+    /** S-3: distinct arenas a victor has been crowned in, for the career meta-achievements. */
+    arenasWon?: string[];
     /**
      * REPLAY-10: Head Gamemakers who persist across runs and accumulate a
      * reputation. Panem was a trophy case — nothing a player did in run 1
@@ -219,6 +221,7 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
             gamemakerRecords: asObjMap<GamemakerRecord>(r.gamemakerRecords),
             patronDistrict: Number.isFinite(patron) ? patron : undefined,
             districtCrowns: asObjMap<DistrictCrown>(r.districtCrowns),
+            arenasWon: asStrArray(r.arenasWon),
         };
     },
 };
@@ -314,7 +317,22 @@ export function commitRun(state: GameState): RunOutcome {
         }
     }
 
-    const earned = evaluateAchievements(state);
+    if (victor) {
+        records.arenasWon = records.arenasWon ?? [];
+        if (!records.arenasWon.includes(state.arena.name)) records.arenasWon.push(state.arena.name);
+    }
+
+    // S-3: career-wide achievements read the updated records, so cumulative
+    // counts and per-district completion unlock the moment they become true.
+    const totals: CareerTotals = {
+        runs: records.runs,
+        victors: records.victors,
+        deaths: Object.values(records.gamemakerRecords ?? {}).reduce((sum, gm) => sum + gm.deaths, 0),
+        crownedDistricts: Object.keys(records.districtCrowns ?? {}).map(Number),
+        arenasWon: records.arenasWon ?? [],
+    };
+
+    const earned = [...evaluateAchievements(state), ...evaluateMetaAchievements(totals)];
     const newAchievements = earned.filter(id => !records.unlocked.includes(id));
     records.unlocked = [...records.unlocked, ...newAchievements];
 

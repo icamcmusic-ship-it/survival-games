@@ -1,5 +1,5 @@
 import React from 'react';
-import { ACHIEVEMENTS } from '../data/achievements';
+import { ACHIEVEMENTS, META_ACHIEVEMENTS } from '../data/achievements';
 import { PanemRecords, RECORD_DEFS } from '../utils/panemStorage';
 import { DISTRICT_LEGACY, legacyOf } from '../data/districts';
 import { ARCHETYPES } from '../data/archetypes';
@@ -21,8 +21,9 @@ function archetypeName(id: string): string {
  */
 export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
     const unlocked = new Set(panem.unlocked);
-    const seen = ACHIEVEMENTS.filter(a => unlocked.has(a.id));
-    const unseen = ACHIEVEMENTS.filter(a => !unlocked.has(a.id));
+    const allAchievements = [...ACHIEVEMENTS, ...META_ACHIEVEMENTS];
+    const seen = allAchievements.filter(a => unlocked.has(a.id));
+    const unseen = allAchievements.filter(a => !unlocked.has(a.id));
     const heldRecords = RECORD_DEFS.filter(def => panem.bests[def.id] !== undefined);
     // Absent on any record written before district crowns existed, which reads
     // correctly as "nothing crowned yet".
@@ -47,7 +48,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                 <h3 className="panel-title">Your Panem</h3>
                 <span className="text-[11px] font-mono text-[var(--color-ink-500)]">
                     {panem.runs} Games finished · {panem.victors} crowned ·{' '}
-                    {seen.length}/{ACHIEVEMENTS.length} seen
+                    {seen.length}/{allAchievements.length} seen
                 </span>
             </div>
 
