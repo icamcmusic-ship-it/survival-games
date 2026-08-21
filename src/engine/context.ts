@@ -11,6 +11,19 @@ export interface SimContext {
      * row, which made the feed read like a stuck record.
      */
     pickText(pool: string[]): string;
+    /**
+     * The order zones fail in during border collapse, memoised per run.
+     *
+     * It used to live in a module-level `Map` in dayNight.ts — the one piece
+     * of global mutable state in an otherwise seeded/pure engine, cleared
+     * crudely at 32 entries with no real invalidation. A `SimContext` already
+     * lives exactly as long as one `Simulator`/run and is thrown away with it,
+     * which is the scope this cache actually needs: no cross-run leakage, no
+     * size cap to tune, and it stops being a problem the moment two runs (two
+     * tabs, a server-side batch) exist at the same time. Undefined until the
+     * first border-collapse cycle computes it.
+     */
+    collapseOrder?: string[];
 }
 
 export function getAlive(state: GameState): Tribute[] {
@@ -21,6 +34,7 @@ export function createContext(state: GameState, rng: RNG): SimContext {
     const ctx: SimContext = {
         state,
         rng,
+        collapseOrder: undefined,
         pickText(pool) {
             if (pool.length === 0) return '';
             if (pool.length === 1) return pool[0];
