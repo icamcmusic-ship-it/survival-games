@@ -14,6 +14,7 @@ import { GamemakerEventType } from '../engine/gamemaker';
 import { Explainer } from '../components/Explainer';
 import { ordinal } from '../engine/gamesProfile';
 import { gameActions, gameStore } from '../store/gameStore';
+import { readFilters, writeFilters } from '../utils/prefsStorage';
 
 /** §6.4: Gamemaker arena controls priced in the sponsorship economy's coins. */
 const GM_COSTS = { burn: 150, flood: 150, fog: 120, sever: 100, drop: 200, bounty: 300 } as const;
@@ -26,24 +27,7 @@ type Speed = 'manual' | '1x' | '5x' | 'auto';
  * a reader who mutes the ambient chatter every run should not have to do it
  * again every run.
  */
-const FILTER_STORAGE_KEY = 'survivalGamesFeedFilters';
-
-interface StoredFilters { mutedGroups: string[]; importantOnly: boolean; pauseOnDeath: boolean }
-
-function readStoredFilters(): StoredFilters {
-    try {
-        const raw = localStorage.getItem(FILTER_STORAGE_KEY);
-        if (!raw) return { mutedGroups: [], importantOnly: false, pauseOnDeath: false };
-        const parsed = JSON.parse(raw);
-        return {
-            mutedGroups: Array.isArray(parsed?.mutedGroups) ? parsed.mutedGroups : [],
-            importantOnly: parsed?.importantOnly === true,
-            pauseOnDeath: parsed?.pauseOnDeath === true,
-        };
-    } catch {
-        return { mutedGroups: [], importantOnly: false, pauseOnDeath: false };
-    }
-}
+const readStoredFilters = readFilters;
 
 const SPEED_DELAY: Record<Exclude<Speed, 'manual'>, number> = { '1x': 1200, '5x': 350, auto: 60 };
 
@@ -165,13 +149,8 @@ export function GameScreen({
     }, [mutedGroups]);
 
     useEffect(() => {
-        try {
-            localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
-                mutedGroups: [...mutedGroups], importantOnly, pauseOnDeath,
-            }));
-        } catch {
-            // Storage unavailable — the preference simply won't be remembered.
-        }
+        // Storage failures are absorbed — the preference simply won't be remembered.
+        writeFilters({ mutedGroups: [...mutedGroups], importantOnly, pauseOnDeath });
     }, [mutedGroups, importantOnly, pauseOnDeath]);
 
     // Auto-advance, paced by how much the phase just produced.

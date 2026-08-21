@@ -1,6 +1,10 @@
 import { GameState, Tribute } from '../models/types';
 import { NearMiss, evaluateAchievements, evaluateNearMisses } from '../data/achievements';
 import { Notable, runNotables } from './notables';
+import {
+    STORAGE_KEYS, StorageSpec, asNum, asObjMap, asRecord, asStrArray, readStored, removeStored,
+    writeStored,
+} from './storage';
 
 /**
  * REPLAY-03: the thing that persists between runs.
@@ -17,7 +21,7 @@ import { Notable, runNotables } from './notables';
  * than breaking a screen.
  */
 
-export const PANEM_STORAGE_KEY = 'survivalGamesPanem';
+export const PANEM_STORAGE_KEY = STORAGE_KEYS.panem;
 
 export interface RecordHolder {
     /** The number this record is for. */
@@ -149,29 +153,37 @@ export const RECORD_DEFS: Array<{
     },
 ];
 
-export function readPanem(): PanemRecords {
-    try {
-        const raw = localStorage.getItem(PANEM_STORAGE_KEY);
-        if (!raw) return { ...EMPTY_PANEM, bests: {} };
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object') return { ...EMPTY_PANEM, bests: {} };
+/**
+ * v0 — unversioned `PanemRecords`, written before the envelope existed. Note
+ *      that the old reader dropped `patronDistrict` and `gamemakerRecords`
+ *      entirely on every read, so a player's standing patronage was quietly
+ *      erased the first time the store was read back; the migration keeps them.
+ * v1 — versioned envelope, every field carried across.
+ */
+export const PANEM_SPEC: StorageSpec<PanemRecords> = {
+    key: STORAGE_KEYS.panem,
+    version: 1,
+    migrate: raw => {
+        const r = asRecord(raw);
+        if (!r) return null;
+        const patron = asNum(r.patronDistrict, NaN);
         return {
-            runs: typeof parsed.runs === 'number' ? parsed.runs : 0,
-            victors: typeof parsed.victors === 'number' ? parsed.victors : 0,
-            unlocked: Array.isArray(parsed.unlocked) ? parsed.unlocked.filter((u: unknown) => typeof u === 'string') : [],
-            bests: parsed.bests && typeof parsed.bests === 'object' ? parsed.bests : {},
+            runs: Math.max(0, asNum(r.runs, 0)),
+            victors: Math.max(0, asNum(r.victors, 0)),
+            unlocked: asStrArray(r.unlocked),
+            bests: asObjMap<RecordHolder>(r.bests),
+            gamemakerRecords: asObjMap<GamemakerRecord>(r.gamemakerRecords),
+            patronDistrict: Number.isFinite(patron) ? patron : undefined,
         };
-    } catch {
-        return { ...EMPTY_PANEM, bests: {} };
-    }
+    },
+};
+
+export function readPanem(): PanemRecords {
+    return readStored(PANEM_SPEC) ?? { ...EMPTY_PANEM, bests: {}, gamemakerRecords: {} };
 }
 
 function writePanem(records: PanemRecords): void {
-    try {
-        localStorage.setItem(PANEM_STORAGE_KEY, JSON.stringify(records));
-    } catch {
-        /* quota exhausted or storage disabled — the run still finished correctly */
-    }
+    writeStored(PANEM_SPEC, records);
 }
 
 export interface RunOutcome {
@@ -258,9 +270,5 @@ export function setPatronDistrict(district: number | undefined): PanemRecords {
 }
 
 export function clearPanem(): void {
-    try {
-        localStorage.removeItem(PANEM_STORAGE_KEY);
-    } catch {
-        /* nothing to do */
-    }
+    removeStored(PANEM_SPEC);
 }
