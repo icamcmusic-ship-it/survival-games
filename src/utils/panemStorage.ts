@@ -58,6 +58,48 @@ export interface PanemRecords {
      * content. Keyed by name.
      */
     gamemakerRecords?: Record<string, GamemakerRecord>;
+    /**
+     * REPLAY-12: the one thing the record book could not say.
+     *
+     * Every other entry here is an aggregate best — the longest Games, the most
+     * kills, the youngest crown — so the rarest achievement in the simulation
+     * (a District 6 or District 12 tribute actually winning, which happens in a
+     * low single-digit percentage of runs) left no specific trace. A player who
+     * managed it saw the same record book as a player who has only ever crowned
+     * Careers.
+     *
+     * Keyed by district number. A missing key means "never won with them yet",
+     * which is exactly what the UI wants to show as an empty slot, so no
+     * placeholder rows are ever written.
+     */
+    districtCrowns?: Record<number, DistrictCrown>;
+}
+
+/** One district's victory, stamped so it reads as a specific thing that happened. */
+export interface DistrictVictoryStamp {
+    /** The victor. */
+    name: string;
+    /** Their archetype id, so the crown records *how* it was won. */
+    archetype: string;
+    /** Which of this player's Games it was — the "year" on the plaque. */
+    run: number;
+    kills: number;
+    days: number;
+    seed: string;
+    arenaName: string;
+    date: string;
+}
+
+/** Everything this player has ever won with one district. */
+export interface DistrictCrown {
+    /** Crowns taken with this district. */
+    victories: number;
+    /** The first one — the one that was actually an achievement. */
+    first: DistrictVictoryStamp;
+    /** The most recent one, which may be the same as the first. */
+    latest: DistrictVictoryStamp;
+    /** Distinct archetype ids this district has won with, in the order first seen. */
+    archetypes: string[];
 }
 
 /** One Head Gamemaker's running record across this player's Panem. */
@@ -72,7 +114,7 @@ export interface GamemakerRecord {
     deaths: number;
 }
 
-export const EMPTY_PANEM: PanemRecords = { runs: 0, victors: 0, unlocked: [], bests: {}, gamemakerRecords: {} };
+export const EMPTY_PANEM: PanemRecords = { runs: 0, victors: 0, unlocked: [], bests: {}, gamemakerRecords: {}, districtCrowns: {} };
 
 /**
  * The record book. Each entry says what it measures and which direction is
@@ -158,7 +200,9 @@ export const RECORD_DEFS: Array<{
  *      that the old reader dropped `patronDistrict` and `gamemakerRecords`
  *      entirely on every read, so a player's standing patronage was quietly
  *      erased the first time the store was read back; the migration keeps them.
- * v1 — versioned envelope, every field carried across.
+ * v1 — versioned envelope, every field carried across. `districtCrowns` is
+ *      optional in the payload — a store written before the crowns board
+ *      existed simply has none, which normalises to "nothing crowned yet".
  */
 export const PANEM_SPEC: StorageSpec<PanemRecords> = {
     key: STORAGE_KEYS.panem,
@@ -174,12 +218,13 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
             bests: asObjMap<RecordHolder>(r.bests),
             gamemakerRecords: asObjMap<GamemakerRecord>(r.gamemakerRecords),
             patronDistrict: Number.isFinite(patron) ? patron : undefined,
+            districtCrowns: asObjMap<DistrictCrown>(r.districtCrowns),
         };
     },
 };
 
 export function readPanem(): PanemRecords {
-    return readStored(PANEM_SPEC) ?? { ...EMPTY_PANEM, bests: {}, gamemakerRecords: {} };
+    return readStored(PANEM_SPEC) ?? { ...EMPTY_PANEM, bests: {}, gamemakerRecords: {}, districtCrowns: {} };
 }
 
 function writePanem(records: PanemRecords): void {
@@ -187,6 +232,8 @@ function writePanem(records: PanemRecords): void {
 }
 
 export interface RunOutcome {
+    /** The district this run crowned for the very first time, if any. */
+    firstCrownDistrict?: number;
     /** Achievement ids this run earned that had never been seen before. */
     newAchievements: string[];
     /** Record ids this run beat. */
@@ -226,6 +273,47 @@ export function commitRun(state: GameState): RunOutcome {
         records.gamemakerRecords[gmName] = gm;
     }
 
+    // REPLAY-12: the crown is filed under the district that took it, so a
+    // District 12 win is a specific thing the player has done rather than a
+    // number folded into `victors`.
+    let firstCrownDistrict: number | undefined;
+    if (victor) {
+        records.districtCrowns = records.districtCrowns ?? {};
+        const stamp: DistrictVictoryStamp = {
+            name: victor.name,
+            archetype: victor.archetype,
+            run: records.runs,
+            kills: victor.kills,
+            days: victor.daysSurvived,
+            seed: state.seed,
+            arenaName: state.arena.name,
+            date: new Date().toISOString(),
+        };
+        // A store that was hand-edited (or written by a future/older build) can
+        // hold a partial entry; treat anything unusable as a first crown rather
+        // than throwing on the debrief.
+        const prior = records.districtCrowns[victor.district];
+        const existing = prior && prior.first && Array.isArray(prior.archetypes) ? prior : undefined;
+        if (existing) {
+            records.districtCrowns[victor.district] = {
+                victories: existing.victories + 1,
+                first: existing.first,
+                latest: stamp,
+                archetypes: existing.archetypes.includes(stamp.archetype)
+                    ? existing.archetypes
+                    : [...existing.archetypes, stamp.archetype],
+            };
+        } else {
+            records.districtCrowns[victor.district] = {
+                victories: 1,
+                first: stamp,
+                latest: stamp,
+                archetypes: [stamp.archetype],
+            };
+            firstCrownDistrict = victor.district;
+        }
+    }
+
     const earned = evaluateAchievements(state);
     const newAchievements = earned.filter(id => !records.unlocked.includes(id));
     records.unlocked = [...records.unlocked, ...newAchievements];
@@ -253,6 +341,7 @@ export function commitRun(state: GameState): RunOutcome {
 
     writePanem(records);
     return {
+        firstCrownDistrict,
         newAchievements,
         brokenRecords,
         records,
