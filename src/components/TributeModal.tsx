@@ -4,7 +4,9 @@ import { ARCHETYPES } from '../data/archetypes';
 import { FeedLine } from './EventFeed';
 import { fearOf } from '../engine/fear';
 import { heightLabel } from '../engine/physique';
-import { PROFICIENCY } from '../data/balance';
+import { HUNTING, PROFICIENCY, ROMANCE, SUSPICION } from '../data/balance';
+import { resolveOf, hasBroken } from '../engine/resolve';
+import { hasTruce, truceWith } from '../engine/parley';
 import { bleedSeverity } from '../engine/wounds';
 import { RelationshipGraph } from './RelationshipGraph';
 import { Explainer } from './Explainer';
@@ -166,6 +168,11 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
             // Decay leaves fractional values in the graph; the reader wants a number.
             value: Math.round(val as number),
             sworn: sworn.has(id),
+            // The streak is only stored on one side of each pair, so read both.
+            streak: Math.max(
+                tribute.memory?.contactStreak?.[id] ?? 0,
+                gameState.tributes.find(o => o.id === id)?.memory?.contactStreak?.[tribute.id] ?? 0,
+            ),
         }))
         .filter(r => !!r.other)
         .sort((a, b) => b.value - a.value);
@@ -199,6 +206,53 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
         .filter(z => z.threat > 0.15 || z.rivals > 0)
         .sort((a, b) => b.threat - a.threat)
         .slice(0, 4);
+
+    // --- Standings: the social state the engine has always ticked and the
+    // sheet never showed. Every list here is hidden entirely when empty, so a
+    // tribute who has agreed nothing and owes nobody reads as exactly that.
+    const nameOf = (id: string) => gameState.tributes.find(o => o.id === id)?.name;
+    const cycle = gameState.cycle ?? 0;
+
+    const truces = Object.keys(tribute.truces ?? {})
+        .filter(id => hasTruce(gameState, tribute, id) && !!nameOf(id))
+        .map(id => ({ id, name: nameOf(id)!, cyclesLeft: (truceWith(tribute, id) ?? cycle) - cycle }))
+        .sort((a, b) => b.cyclesLeft - a.cyclesLeft);
+
+    const protectees = (tribute.protectorBonds ?? [])
+        .map(id => ({ id, other: gameState.tributes.find(o => o.id === id) }))
+        .filter(p => !!p.other);
+
+    // Both directions of the ledger: a debt is only a story if you can see who
+    // is holding it over whom.
+    const owes = Object.entries(tribute.debts ?? {})
+        .map(([id, amount]) => ({ id, name: nameOf(id), amount }))
+        .filter(d => !!d.name && d.amount > 0)
+        .sort((a, b) => b.amount - a.amount);
+    const owed = gameState.tributes
+        .map(o => ({ id: o.id, name: o.name, amount: o.debts?.[tribute.id] ?? 0 }))
+        .filter(d => d.id !== tribute.id && d.amount > 0)
+        .sort((a, b) => b.amount - a.amount);
+
+    const suspicions = Object.entries(tribute.memory?.suspicion ?? {})
+        .map(([id, value]) => ({ id, name: nameOf(id), value }))
+        .filter(s => !!s.name && s.value > 0)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+    // §3.1: what the arena itself taught their body.
+    const drift = Object.entries(tribute.attributeDrift ?? {})
+        .filter(([, gain]) => (gain ?? 0) > 0) as Array<[string, number]>;
+
+    const momentum = tribute.momentum ?? 0;
+    const rattled = tribute.rattled ?? 0;
+    const resolve = Math.round(resolveOf(tribute));
+
+    // NOTE: `tribute.displayedRegard` is deliberately NOT rendered here.
+    // It is the performed-romance mechanic — one tribute playing a bond for the
+    // cameras while the other means it. The engine hides it from the arena and
+    // from the Capitol alike; the chronicle narrates it exactly once, at
+    // declaration. Putting it on the tribute sheet would spoil the only twist
+    // the mechanic exists to create.
 
     return (
         <div
@@ -327,6 +381,9 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                         </div>
                         <p className="text-xs text-[var(--color-ink-500)] mt-2">
                             {tribute.age} years old · {heightLabel(tribute.heightCm)} · {tribute.build} build
+                            {tribute.platePosition !== undefined && (
+                                <> · plate {tribute.platePosition < 0.34 ? 'close to the horn' : tribute.platePosition < 0.67 ? 'mid-ring' : 'on the far edge of the ring'}</>
+                            )}
                         </p>
                     </div>
                     <button onClick={onClose} className="btn btn-sm btn-ghost flex-none" aria-label="Close">
@@ -358,6 +415,23 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                     </>
                                 }
                             />
+                            <VitalBar
+                                label="Resolve"
+                                value={resolve}
+                                invert
+                                explain={
+                                    <>
+                                        Whether they still want to win — not whether they are holding together.
+                                        Allies, a score to settle, momentum and the crowd's attention hold it up;
+                                        grief, isolation, wounds, hunger and the field closing in pull it down. It
+                                        moves slowly on purpose: this is the arc of a run, not a mood.
+                                        <span className="block mt-1.5">
+                                            At the bottom a tribute stops playing — they walk into the open, or they
+                                            sit down and stop making plans, or they go looking for nightlock.
+                                        </span>
+                                    </>
+                                }
+                            />
                             <VitalBar label="Hunger" value={tribute.vitals.hunger} />
                             <VitalBar label="Thirst" value={tribute.vitals.thirst} />
                             <VitalBar label="Fatigue" value={tribute.vitals.fatigue} />
@@ -377,6 +451,42 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                 }
                             />
                         </div>
+                        {(momentum > 0 || rattled > 0 || hasBroken(tribute)) && tribute.status === 'alive' && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                {hasBroken(tribute) && (
+                                    <Explainer
+                                        align="left"
+                                        label={<span className="chip" style={{ color: 'var(--cat-death)' }}>Has stopped playing</span>}
+                                        title="Broken"
+                                    >
+                                        Their resolve has bottomed out. They are liable to break cover, sit down and
+                                        stop making plans, or take the nightlock if they can find any.
+                                    </Explainer>
+                                )}
+                                {momentum > 0 && (
+                                    <Explainer
+                                        align="left"
+                                        label={<span className="chip chip-gold">Momentum {momentum}/{HUNTING.momentumMax}</span>}
+                                        title="Momentum"
+                                    >
+                                        Bloodlust. A kill leaves a tribute keyed up — briefly harder to fight and far
+                                        less willing to break off — and it also props their resolve up. It bleeds off
+                                        every cycle, so it rewards pressing an advantage rather than having scored one.
+                                    </Explainer>
+                                )}
+                                {rattled > 0 && (
+                                    <Explainer
+                                        align="left"
+                                        label={<span className="chip chip-accent">Rattled {rattled}/{HUNTING.rattledMax}</span>}
+                                        title="Rattled"
+                                    >
+                                        Momentum's mirror. Fleeing a fight, walking into a trap or losing somebody
+                                        leaves a mark that outlasts the moment: they hit softer and run sooner. It
+                                        decays a point a cycle.
+                                    </Explainer>
+                                )}
+                            </div>
+                        )}
                     </section>
 
                     <section>
@@ -431,6 +541,12 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                 ))}
                             </div>
                         )}
+                        {drift.length > 0 && (
+                            <p className="text-[11px] text-[var(--color-ink-500)] mt-2">
+                                Sharpened by the arena itself:{' '}
+                                {drift.map(([attr, gain]) => `+${gain.toFixed(1)} ${attr}`).join(' · ')}
+                            </p>
+                        )}
                     </section>
 
                     {alliance && allyNames.length > 0 && (
@@ -472,6 +588,119 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                                             : alliance.sharedCache.map(i => i.name).join(', ')}
                                     </span>
                                 </div>
+                            </div>
+                        </section>
+                    )}
+
+                    {(truces.length > 0 || protectees.length > 0 || owes.length > 0 || owed.length > 0 || suspicions.length > 0) && (
+                        <section>
+                            <h4 className="panel-title mb-2">Standings</h4>
+                            <div className="space-y-3">
+                                {truces.length > 0 && (
+                                    <div>
+                                        <Explainer
+                                            align="left"
+                                            label={<span className="eyebrow">Truces</span>}
+                                            title="Truce"
+                                        >
+                                            An explicit, expiring non-aggression pact — not an alliance. Two tributes
+                                            who both liked their odds elsewhere agreed not to fight, and are still
+                                            honouring it. It lapses on its own, and it can be broken.
+                                        </Explainer>
+                                        <div className="space-y-1 mt-1">
+                                            {truces.map(tr => (
+                                                <div key={tr.id} className="flex justify-between items-center text-sm gap-2">
+                                                    <span className="truncate text-[var(--color-ink-200)]">{tr.name}</span>
+                                                    <span className="font-mono text-[10px] flex-none text-[var(--cat-alliance)]">
+                                                        {tr.cyclesLeft} cycle{tr.cyclesLeft === 1 ? '' : 's'} left
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {protectees.length > 0 && (
+                                    <div>
+                                        <Explainer
+                                            align="left"
+                                            label={<span className="eyebrow">Under their protection</span>}
+                                            title="Protector bond"
+                                        >
+                                            Somebody older or stronger appointed themselves this tribute's keeper.
+                                            It reshapes what they try to do — they guard rather than hunt, and they
+                                            will hand over food they need — and the Capitol's blocs notice.
+                                        </Explainer>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {protectees.map(p => (
+                                                <span
+                                                    key={p.id}
+                                                    className={`chip ${p.other!.status === 'dead' ? 'line-through' : ''}`}
+                                                >
+                                                    {p.other!.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(owes.length > 0 || owed.length > 0) && (
+                                    <div>
+                                        <Explainer
+                                            align="left"
+                                            label={<span className="eyebrow">Debts</span>}
+                                            title="Debt"
+                                        >
+                                            What being saved costs. Somebody who took a real risk for this tribute —
+                                            shared a fight, gave up supplies they needed, patched them up — is owed,
+                                            and the debt makes turning on them markedly harder. It decays slowly, and
+                                            it can be settled.
+                                        </Explainer>
+                                        <div className="space-y-1 mt-1">
+                                            {owes.map(d => (
+                                                <div key={`owes-${d.id}`} className="flex justify-between items-center text-sm gap-2">
+                                                    <span className="truncate text-[var(--color-ink-200)]">Owes {d.name}</span>
+                                                    <span className="font-mono text-[10px] flex-none text-[var(--cat-training)]">
+                                                        {Math.round(d.amount)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            {owed.map(d => (
+                                                <div key={`owed-${d.id}`} className="flex justify-between items-center text-sm gap-2">
+                                                    <span className="truncate text-[var(--color-ink-400)]">{d.name} owes them</span>
+                                                    <span className="font-mono text-[10px] flex-none text-[var(--cat-alliance)]">
+                                                        {Math.round(d.amount)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {suspicions.length > 0 && (
+                                    <div>
+                                        <Explainer
+                                            align="left"
+                                            label={<span className="eyebrow">Who they are watching</span>}
+                                            title="Suspicion"
+                                        >
+                                            How much this tribute distrusts a specific ally, 0–{SUSPICION.max}. It is
+                                            raised by witnessed betrayals and by broken alliance terms, it decays if
+                                            nothing else happens, and it eats into trust. Past {SUSPICION.departThreshold} they
+                                            will walk out of the alliance before anything is even done to them.
+                                        </Explainer>
+                                        <div className="space-y-1 mt-1">
+                                            {suspicions.map(s => (
+                                                <div key={s.id} className="flex justify-between items-center text-sm gap-2">
+                                                    <span className="truncate text-[var(--color-ink-200)]">{s.name}</span>
+                                                    <span className="font-mono text-xs flex-none text-[var(--cat-death)]">
+                                                        {s.value >= SUSPICION.departThreshold ? 'marked' : s.value >= 30 ? 'suspicious' : 'watchful'} · {Math.round(s.value)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </section>
                     )}
@@ -557,11 +786,19 @@ export function TributeModal({ tribute, gameState, onClose }: { tribute: Tribute
                         <div className="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pr-1">
                             {relationships.length === 0 ? (
                                 <span className="text-sm text-[var(--color-ink-400)]">Has not met anyone yet</span>
-                            ) : relationships.map(({ other, value, sworn }) => (
+                            ) : relationships.map(({ other, value, sworn, streak }) => (
                                 <div key={other!.id} className="flex justify-between items-center text-sm gap-2">
                                     <span className={`truncate ${other!.status === 'dead' ? 'text-[var(--color-ink-500)] line-through' : 'text-[var(--color-ink-200)]'}`}>
                                         {other!.name}
                                     </span>
+                                    {streak >= ROMANCE.sustainedCycles && other!.status === 'alive' && (
+                                        <span
+                                            className="font-mono text-[10px] flex-none text-[var(--color-ink-500)] ml-auto"
+                                            title={`They have kept each other's company ${streak} cycles running — sustained contact, not one shared scene.`}
+                                        >
+                                            {streak}c together
+                                        </span>
+                                    )}
                                     <span
                                         className="font-mono text-xs flex-none"
                                         style={{ color: value > 0 ? 'var(--cat-alliance)' : value < 0 ? 'var(--cat-death)' : 'var(--color-ink-500)' }}
