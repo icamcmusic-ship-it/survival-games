@@ -1,4 +1,5 @@
 import { Tribute } from '../models/types';
+import { injure } from './wounds';
 import { CRAFTING, PHYSIQUE } from '../data/balance';
 import { hasCamp } from './fieldcraft';
 import { SimContext } from './context';
@@ -78,7 +79,7 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
             * Math.max(0.4, 1 - massOf(t) * PHYSIQUE.frostbiteResistPerMass)
         : 0;
     if (frostbiteChance > 0 && !t.injuries.frostbitten && ctx.rng.chance(frostbiteChance)) {
-        t.injuries.frostbitten = true;
+        injure(t, 'frostbitten');
         ctx.logEvent(
             profile.onFrostbite?.(t) ?? `${t.name}'s fingers blacken with frostbite in ${profile.name}.`,
             [t.id],
@@ -86,7 +87,7 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
         );
     }
     if (profile.burn && !t.injuries.burned && ctx.rng.chance(profile.burn * scale * resist('burnResist'))) {
-        t.injuries.burned = true;
+        injure(t, 'burned');
         ctx.logEvent(
             profile.onBurn?.(t) ?? `${t.name} blisters badly in ${profile.name}.`,
             [t.id],
@@ -94,7 +95,7 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
         );
     }
     if (profile.poison && !t.injuries.poisoned && ctx.rng.chance(profile.poison * scale * resist('poisonResist'))) {
-        t.injuries.poisoned = true;
+        injure(t, 'poisoned');
         ctx.logEvent(
             profile.onPoison?.(t) ?? `${t.name} takes in a lungful of ${profile.name} and the toxins take hold.`,
             [t.id],
@@ -102,7 +103,7 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
         );
     }
     if (profile.infection && !t.injuries.infected && ctx.rng.chance(profile.infection * scale)) {
-        t.injuries.infected = true;
+        injure(t, 'infected');
     }
 
     if (profile.damage) {

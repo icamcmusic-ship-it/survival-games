@@ -57,6 +57,8 @@ export const VITALS = {
 export const BLEEDING = {
     /** Severity a fresh wound opens at, by source. */
     combatSeverity: 2,
+    /** T-5: extra status-damage multiplier per injury grade above 1 (all sites). */
+    gradeDamageStep: 0.3,
     muttSeverity: 3,
     hazardSeverity: 2,
     /** Per-cycle health cost, indexed by severity (0 is not bleeding). */
@@ -338,8 +340,12 @@ export const FEAR = {
     /** Watching someone kill, and losing an exchange to them. */
     witnessedKill: 30,
     lostExchange: 14,
-    /** A legendary training score frightens people before the gong.  */
-    perTrainingPointOverEight: 6,
+    /**
+     * A legendary training score frightens people before the gong. Trimmed
+     * from 6 (§3.3): the score already feeds odds, sponsor trust and persona
+     * threat — four compounding advantages from one roll was too many.
+     */
+    perTrainingPointOverEight: 4,
     /** Per-cycle fade — terror is not permanent, but it is sticky. */
     decayPerCycle: 0.9,
     /** Retreat chance added at maximum fear. */
@@ -398,6 +404,13 @@ export const SUSPICION = {
     departChance: 0.35,
     /** How much being watched costs a betrayer's target weighting, at full suspicion. */
     hardMarkFactor: 0.5,
+    /**
+     * §4.2 R-3: suspicion rises from more than witnessed betrayals. An ally
+     * whose kill count keeps climbing is an ally the rest of the group starts
+     * watching — the cannon and the anthem make kills public knowledge.
+     */
+    allyKillCountWary: 2,
+    perAllyKill: 8,
 } as const;
 
 export const DRIFT = {
@@ -409,6 +422,10 @@ export const DRIFT = {
     agilityPerCombatLevel: 0.15,
     /** Fractional stealth per whole level of tracking proficiency gained. */
     stealthPerTrackingLevel: 0.15,
+    /** T-1: fighting builds the frame doing it. */
+    strengthPerMeleeLevel: 0.1,
+    /** T-1: fieldcraft (medicine, forage) sharpens judgement. */
+    intelligencePerFieldcraftLevel: 0.1,
     /** Drift ceiling: earned points never exceed this above the printed stat. */
     maxGain: 1,
 } as const;
@@ -622,6 +639,8 @@ export const QUALITY_BIAS = {
 } as const;
 
 export const ENCOUNTERS = {
+    /** T-5: dodge penalty per grade of leg injury (was a flat 2 boolean). */
+    legsDodgePenaltyPerGrade: 1.25,
     /** Fallback escape difficulty for an event that does not name its own. */
     defaultDodgeDifficulty: 6,
     /**
@@ -643,6 +662,10 @@ export const ENCOUNTERS = {
     rescueGratitude: 10,
     ambientLineChance: 0.35,
     ambientArenaShare: 0.55,
+    /** Odds a dynamic ambient line is about a branded alliance rather than an individual. */
+    brandedAmbientChance: 0.25,
+    /** Odds the "they never noticed each other" near-miss line fires when stealth held. */
+    nearMissLineChance: 0.25,
     /** Share of ambient lines that read the run's own state instead of being pure scenery. */
     dynamicAmbientShare: 0.25,
     baseEventChance: 0.1,
@@ -675,6 +698,8 @@ export const COMBAT = {
     /** Extra damage per point of power advantage in the round. */
     damagePerPowerPoint: 2.2,
     /** Damage floor and ceiling for any one exchange. */
+    /** T-5: combat-power penalty per grade of arm/leg injury (was a flat 2). */
+    limbPowerPenaltyPerGrade: 1.25,
     minRoundDamage: 5,
     maxRoundDamage: 42,
     /**
@@ -982,8 +1007,14 @@ export const ZONE_EFFECTS = {
     burningBurnChance: 0.6,
     /** Cycles between spread attempts, and the terrain that can catch. */
     spreadEveryCycles: 1,
-    spreadChance: 0.4,
-    flammableTerrain: ['forest', 'wetland'] as const,
+    /**
+     * §5.1 A-1: a spreading wildfire is the most cinematic thing this system
+     * can do and it happened in 5% of Games — spread reached a neighbour 12
+     * times in 240 runs. Chance up, and open ground (dry grass, scrub, dunes)
+     * burns too.
+     */
+    spreadChance: 0.55,
+    flammableTerrain: ['forest', 'wetland', 'open'] as const,
 
     /** Flooding: drowning risk for anyone who lingers instead of leaving. */
     floodDamage: 14,
@@ -1014,8 +1045,8 @@ export const ZONE_EFFECTS = {
      * event flag, and none of the existing hazard text sets one.
      */
     ambientEscalatedOnly: true,
-    ambientFireChance: 0.03,
-    ambientFloodChance: 0.02,
+    ambientFireChance: 0.045,
+    ambientFloodChance: 0.03,
     ambientFreezeChance: 0.02,
     ambientContaminateChance: 0.02,
     ambientFogChance: 0.03,
@@ -1122,6 +1153,23 @@ export const INVENTORY = {
     baseCapacity: 4,
     /** A Backpack also keeps food out of the sun. */
     backpackSpoilageBonus: 2,
+
+    /**
+     * §3.3: encumbrance — the fast Career counterweight the balance goals
+     * needed. Careers win the bloodbath, take the Cornucopia, and used to pay
+     * nothing for hauling it: `enforceCapacity` was the only cost of being
+     * over-equipped. A pack laden with the horn's contents is now slower in a
+     * fight, louder in the brush, and wearier at the end of the day — which is
+     * exactly the canon dynamic.
+     */
+    /** Load fraction of carrying capacity below which nothing is felt. */
+    encumbranceFreeFraction: 0.6,
+    /** Combat-power penalty at a completely full pack. */
+    encumbrancePowerPenaltyMax: 3.5,
+    /** Concealment penalty at a completely full pack. */
+    encumbranceStealthPenaltyMax: 1.5,
+    /** Extra fatigue per cycle at a completely full pack. */
+    encumbranceFatigueMax: 5,
 } as const;
 
 /** Zone economy: foraging strips a zone, and the arena grows it back slowly. */
@@ -1138,6 +1186,8 @@ export const ZONES = {
     minYieldFraction: 0.1,
     /** Base forage odds before zone yield and archetype are added. */
     baseForageChance: 0.25,
+    /** T-7: odds a quiet cycle surfaces one of a tribute's quirks as colour. */
+    quirkLineChance: 0.06,
     yieldForageWeight: 0.4,
     survivalistForageBonus: 0.15,
     /** Aggressive/Evasive tributes can still stumble onto food or water while
@@ -1198,6 +1248,12 @@ export const STANCE = {
      */
     endgameFieldSize: 5,
     endgameAggression: 1.4,
+    /** §3.2: momentum's pull toward Aggressive (was an undeclared 0.35). */
+    momentumAggressionWeight: 0.25,
+    /** §3.2: the reasons Defensive exists — a ward, claimed ground, a built camp. */
+    protectDefensive: 1.2,
+    holdDefensive: 1.0,
+    campDefensive: 0.6,
 } as const;
 
 /** Relationship graph: bounds, decay, and the deltas life in the arena applies. */
@@ -1411,6 +1467,22 @@ export const ALLIANCES = {
     /** Within a faction, regard has to be genuinely better than across it, by this much. */
     schismCohesionGap: 12,
     schismChance: 0.4,
+    /**
+     * Leadership coup: the two dials that decide whether the pack's internal
+     * drama actually happens. The challenger needs this much more collective
+     * backing than the standing leader, and then the coup still only lands on
+     * this roll. Both used to be literals buried in `reconcileAlliances`.
+     */
+    coupBackingMargin: 20,
+    coupChance: 0.25,
+    /**
+     * §3.3: the crown rivalry. The two leading killers in a Career-majority
+     * pack erode each other's regard every cycle — the structural fault line
+     * that makes the pack brittle from inside rather than only from hunger.
+     */
+    crownRivalryMinKills: 2,
+    crownRivalryPerCycle: 3,
+    crownRivalryLineChance: 0.12,
     /** Base odds a group takes in a loner they get on with. */
     recruitChance: 0.35,
     /**
@@ -1699,9 +1771,35 @@ export const GENERATION = {
     fanFavouriteCount: 2,
     fanFavouriteTrust: 22,
     fanFavouriteExcitement: 25,
+    /** T-7: odds a tribute carries a second quirk. */
+    secondQuirkChance: 0.35,
     /** Baseline sponsor trust before reputation modifiers. */
     baseSponsorTrust: 50,
     trustSpread: 12,
+} as const;
+
+/**
+ * §7.1: tesserae — the mechanic that makes the reaping political rather than
+ * random. A child's name goes in once per eligible year by law; a poor child
+ * takes tesserae — extra entries in exchange for grain — every year a family
+ * needs feeding, so the bowl is rigged against the districts that are already
+ * starving. Two effects: the reaping draw skews older (entries compound with
+ * age), and it skews older *faster* in poor districts (tesserae compound too).
+ * A tribute who carries tessera slips has been hungry for years, which in this
+ * engine's inversion is worth something: they know how to ration.
+ */
+export const TESSERAE = {
+    /**
+     * Average tesserae a typical child of this legacy tier takes per eligible
+     * year. Storied districts feed their children; forgotten ones cannot.
+     */
+    ratePerTier: { storied: 0.05, strong: 0.15, modest: 0.45, thin: 0.75, forgotten: 1.1 } as Record<string, number>,
+    /** Hunger-drain multiplier improvement per tessera carried. */
+    resiliencePerTessera: 0.025,
+    /** Floor on what rationing experience can buy. */
+    resilienceFloorFactor: 0.8,
+    /** Tesserae at or above this earn the reaping-day note. */
+    notedAt: 3,
 } as const;
 
 /** Training visibility: what the rest of the cast makes of a big score. */
@@ -2086,6 +2184,13 @@ export const RESOLVE = {
     start: 70,
     max: 100,
     /**
+     * T-6: a breakdown needed more than one shape. Odds of the two new
+     * expressions — walking into the border once the arena is closing, and
+     * putting the weapons down in front of a hostile.
+     */
+    borderWalkChance: 0.12,
+    surrenderChance: 0.3,
+    /**
      * Baseline erosion. The arena wears people down by default; the bonuses
      * below are what holds a tribute up. Positive drift made resolve sit
      * pinned at its starting value for ~90% of the field, which is a stat that
@@ -2214,6 +2319,20 @@ export const PARLEY = {
     truceBreakReputationCost: 10,
     truceBreakExcitement: 25,
 
+    /**
+     * §4.1: expiry is a decision point, not a garbage-collection pass. 80 of
+     * 84 negotiated truces used to evaporate silently; every truce now
+     * resolves on-screen as one of renew / lapse / turn-on-them.
+     */
+    /** Odds the pair rolls the agreement over, given real mutual regard. */
+    truceRenewChance: 0.35,
+    truceRenewMinRegard: 10,
+    /** Base odds the lapse becomes a hunt; treachery is added on top. */
+    truceTurnChance: 0.12,
+    truceTurnTreacheryWeight: 0.5,
+    /** Cycles the striker commits to hunting the person they let walk. */
+    truceTurnHuntCycles: 3,
+
     /** Both armed, neither willing to move first. */
     standoffChance: 0.4,
     standoffPerFear: 0.004,
@@ -2248,6 +2367,17 @@ export const DEBTS = {
     repayExcitement: 10,
     repayRestRelief: 15,
 
+    /**
+     * §4.2 R-4: debts flowed one way — help was recorded, refusal never was.
+     * An ally close enough to haul you clear who chooses not to reach is as
+     * socially informative as one who does, and the victim sees it.
+     */
+    /** Regard below which an ally may simply not reach for you. */
+    refusalRegardThreshold: 0,
+    refusalChance: 0.25,
+    refusalResentment: 12,
+    refusalSuspicion: 12,
+
     /** District partners, simply for both still being here. */
     districtBondPerCycle: 0.6,
     districtLateBond: 2,
@@ -2281,12 +2411,14 @@ export const CHARTER = {
  */
 export const GAMEMAKER_AGENCY = {
     /** Not while the cast is still enormous — this rescues the middle of a run. */
-    maxFieldSize: 12,
+    /** A-6: the signature is the roster's whole payoff — it fired in only 65%
+     * of runs. Wider window and better unprompted odds get it near-every-run. */
+    maxFieldSize: 16,
     earliestDay: 3,
     /** Audience interest below which the Head Gamemaker feels obliged to act. */
     boredomThreshold: 45,
     /** Odds they act anyway, on a day the feed is fine. */
-    unpromptedChance: 0.12,
+    unpromptedChance: 0.2,
     /** Ainsel's grind: everything slightly worse, everywhere. */
     grindDepletion: 0.2,
     grindThirst: 12,
@@ -2322,4 +2454,18 @@ export const ZONE_CONTROL = {
     minItemValue: 20,
     excitement: 6,
     supplyRelief: 15,
+} as const;
+
+/**
+ * U-7: Gamemaker-mode arena interventions, priced in the sponsorship
+ * economy's Capitol Coins. Lived as a bare const in GameScreen.tsx — an
+ * economy-balance table in a view file, invisible to test:knobs.
+ */
+export const GAMEMAKER_COSTS = {
+    burn: 150,
+    flood: 150,
+    fog: 120,
+    sever: 100,
+    drop: 200,
+    bounty: 300,
 } as const;

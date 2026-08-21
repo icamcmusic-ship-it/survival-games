@@ -7,7 +7,7 @@ import { endgameEdge } from './objectives';
 import { getZone } from './map';
 import { hasEffect } from './zoneEffects';
 import { clampTribute } from './vitals';
-import { openWound } from './wounds';
+import { injure, openWound } from './wounds';
 import { profOf, trainProficiency } from './proficiency';
 import { awareness } from './stealth';
 import { traitMod } from '../data/traits';
@@ -148,7 +148,7 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
         : { cause, kind: 'hazard' });
     const bleedChance = trap.kind === 'snare' ? TRAPS.snareBleedChance : TRAPS.deadfallBleedChance;
     if (ctx.rng.chance(bleedChance)) openWound(t, BLEEDING.combatSeverity);
-    if (trap.kind === 'snare' && ctx.rng.chance(TRAPS.snareLegInjuryChance)) t.injuries.legs = true;
+    if (trap.kind === 'snare' && ctx.rng.chance(TRAPS.snareLegInjuryChance)) injure(t, 'legs');
     // §3.4: walking into someone's trap is exactly the kind of moment that rattles.
     rattle(t, HUNTING.rattledPerTrap);
 
@@ -322,7 +322,7 @@ export function poisonWeapon(ctx: SimContext, t: Tribute): boolean {
     if (!ctx.rng.chance(Math.min(0.95, chance))) {
         // Handling something you do not understand is its own risk.
         if (!t.injuries.poisoned && ctx.rng.chance(POISONING.selfPoisonChance)) {
-            t.injuries.poisoned = true;
+            injure(t, 'poisoned');
             ctx.logEvent(
                 `${t.name} tries to render ${source.name} down into something to coat a blade with, and gets it on their hands.`,
                 [t.id],

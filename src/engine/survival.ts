@@ -1,13 +1,13 @@
 import { Tribute } from '../models/types';
-import { DRIFT, CRAFTING, INJURY_DAMAGE, MEDICAL, RECOVERY, SANITY, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
 import { applyExposure } from './exposure';
 import { getZone } from './map';
-import { consumeOne, hasTool, spoilageBonus } from './items';
+import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
-import { bleedDamage, clearBleeding, tickBleeding } from './wounds';
+import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding } from './wounds';
 import { rememberedThreat } from './memory';
 import { hasCamp } from './fieldcraft';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
@@ -62,6 +62,15 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     // District 1 does, and that is the whole of what mining and the Seam buy.
     const resilience = craftOf(t.district).hungerResilience;
     if (resilience) hunger *= resilience;
+    // §7.1: a tribute who took tesserae has been rationing for years — the
+    // personal version of the district-level resilience above, and the
+    // mechanical teeth the reaping note promises.
+    if (t.tesserae) {
+        hunger *= Math.max(TESSERAE.resilienceFloorFactor, 1 - t.tesserae * TESSERAE.resiliencePerTessera);
+    }
+
+    // §3.3: hauling a laden pack all day is work.
+    fatigue += encumbranceOf(t) * INVENTORY.encumbranceFatigueMax;
 
     // Traits, as one table read rather than a growing chain of includes().
     hunger += traitMod(t, 'hungerDrain');
@@ -91,10 +100,10 @@ function reliefFor(t: Tribute, cause: 'hunger' | 'thirst' | 'bleeding' | 'infect
         case 'hunger': t.vitals.hunger = Math.min(t.vitals.hunger, VITALS.starvingThreshold - 5); break;
         case 'thirst': t.vitals.thirst = Math.min(t.vitals.thirst, VITALS.dehydratedThreshold - 5); break;
         case 'bleeding': clearBleeding(t); break;
-        case 'infected': t.injuries.infected = false; break;
-        case 'poisoned': t.injuries.poisoned = false; break;
-        case 'burned': t.injuries.burned = false; break;
-        case 'frostbitten': t.injuries.frostbitten = false; break;
+        case 'infected': healInjury(t, 'infected'); break;
+        case 'poisoned': healInjury(t, 'poisoned'); break;
+        case 'burned': healInjury(t, 'burned'); break;
+        case 'frostbitten': healInjury(t, 'frostbitten'); break;
     }
 }
 
@@ -125,23 +134,23 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
         }
     }
     if (t.injuries.infected) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.infected, { cause: 'Succumbed to an infected wound', kind: 'status' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.infected * gradeDamageScale(t, 'infected'), { cause: 'Succumbed to an infected wound', kind: 'status' })) {
             reliefFor(t, 'infected');
         }
     }
     if (t.injuries.poisoned) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.poisoned, { cause: 'Succumbed to poison', kind: 'status' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.poisoned * gradeDamageScale(t, 'poisoned'), { cause: 'Succumbed to poison', kind: 'status' })) {
             reliefFor(t, 'poisoned');
         }
         t.vitals.sanity -= INJURY_DAMAGE.poisonSanity;
     }
     if (t.injuries.burned) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.burned, { cause: 'Died of untreated burns', kind: 'status' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.burned * gradeDamageScale(t, 'burned'), { cause: 'Died of untreated burns', kind: 'status' })) {
             reliefFor(t, 'burned');
         }
     }
     if (t.injuries.frostbitten) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.frostbitten, { cause: 'Froze to death', kind: 'status' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.frostbitten * gradeDamageScale(t, 'frostbitten'), { cause: 'Froze to death', kind: 'status' })) {
             reliefFor(t, 'frostbitten');
         }
     }
@@ -172,7 +181,7 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
         // problem, and the venom is a chance rather than a certainty.
         t.vitals.thirst = Math.max(0, t.vitals.thirst - WATER.zoneDrinkRelief);
         if (!t.injuries.poisoned && ctx.rng.chance(WATER.foulPoisonChance)) {
-            t.injuries.poisoned = true;
+            injure(t, 'poisoned');
             ctx.logEvent(
                 `${t.name} is thirsty enough to drink from ${t.zone} untreated. The water goes down foul and stays down worse.`,
                 [t.id],
@@ -236,7 +245,7 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
     // Antidote cures poison before it becomes lethal.
     if (t.injuries.poisoned) {
         if (consumeOne(t, i => i.id === 'antidote')) {
-            t.injuries.poisoned = false;
+            healInjury(t, 'poisoned');
             ctx.logEvent(`${t.name} downs an Antidote Vial just in time, purging the venom from their blood.`, [t.id], { important: true, category: 'survival' });
             earnTrait(ctx, t, 'Venom-Wise');
         }
@@ -258,8 +267,8 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
     if (ointmentIdx >= 0 && (t.health < MEDICAL.ointmentHealthThreshold || t.injuries.infected || t.injuries.bleeding || t.injuries.burned)) {
         t.inventory.splice(ointmentIdx, 1);
         t.health = Math.min(100, t.health + MEDICAL.ointmentHeal);
-        t.injuries.infected = false;
-        t.injuries.burned = false;
+        healInjury(t, 'infected');
+        healInjury(t, 'burned');
         clearBleeding(t);
         ctx.logEvent(`${t.name} works Burn Ointment into their wounds and feels the sting fade.`, [t.id], { important: true, category: 'survival' });
     }

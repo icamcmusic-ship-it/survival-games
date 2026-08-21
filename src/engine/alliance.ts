@@ -3,7 +3,7 @@ import { ALLIANCES } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext } from './context';
 import { cycleOf } from './memory';
-import { getRel } from './relationships';
+import { adjustRel, getRel } from './relationships';
 
 /**
  * Alliance structure.
@@ -214,13 +214,34 @@ export function reconcileAlliances(ctx: SimContext) {
         if (challenger.id !== leader.id) {
             const backingFor = (t: Tribute) =>
                 members.reduce((sum, m) => sum + (m.id === t.id ? 0 : getRel(m, t.id)), 0);
-            if (backingFor(challenger) > backingFor(leader) + 20 && ctx.rng.chance(0.25)) {
+            if (backingFor(challenger) > backingFor(leader) + ALLIANCES.coupBackingMargin && ctx.rng.chance(ALLIANCES.coupChance)) {
                 record.leaderId = challenger.id;
                 ctx.logEvent(
                     `${challenger.name} stops deferring to ${leader.name}, and nobody in the group argues. The pack has a new leader.`,
                     members.map(m => m.id),
                     { important: true, category: 'alliance' }
                 );
+            }
+        }
+
+        // §3.3: the pack should be structurally brittle. The two most
+        // successful killers in a Career-majority group are rivals for the
+        // crown, and every cycle they share a camp the rivalry wears at the
+        // bond — a live internal fault line rather than a one-off penalty.
+        const careers = members.filter(m => m.isCareer);
+        if (careers.length * 2 >= members.length && members.length >= 3) {
+            const ranked = [...members].sort((a, b) => b.kills - a.kills);
+            const [first, second] = ranked;
+            if (first && second && first.kills >= ALLIANCES.crownRivalryMinKills && second.kills >= 1) {
+                adjustRel(first, second.id, -ALLIANCES.crownRivalryPerCycle);
+                adjustRel(second, first.id, -ALLIANCES.crownRivalryPerCycle);
+                if (ctx.rng.chance(ALLIANCES.crownRivalryLineChance)) {
+                    ctx.logEvent(
+                        `${first.name} and ${second.name} are keeping score against each other now, not just against the arena. The pack pretends not to notice.`,
+                        [first.id, second.id],
+                        { category: 'alliance' }
+                    );
+                }
             }
         }
     });

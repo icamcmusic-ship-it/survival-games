@@ -2,7 +2,7 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { BLEEDING, COMBAT, DEBTS, ESCALATION, FEAR, HUNTING, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
@@ -10,7 +10,7 @@ import { getZone, zoneFeatures } from './map';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound } from './memory';
 import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
-import { openWound } from './wounds';
+import { injure, injuryGrade, openWound } from './wounds';
 import { profOf, trainProficiency, weaponAffinity, weaponProficiency } from './proficiency';
 import { addFear, fearFraction, reduceFear } from './fear';
 import { areLovers } from './alliance';
@@ -20,7 +20,7 @@ import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
 import { PREGAMES } from '../data/balance';
-import { armourOf, effectiveDamage, wearArmour } from './items';
+import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -165,9 +165,9 @@ export function checkDeath(ctx: SimContext, t: Tribute, fallbackCause?: string) 
         ? ctx.state.tributes.find(o => o.id === record.sourceId)
         : undefined;
     if (killer) {
-        killTribute(ctx, t, killer, false, undefined, record?.cause);
+        killTribute(ctx, t, killer, { cause: record?.cause });
     } else {
-        killTribute(ctx, t, undefined, false, undefined, record?.cause || fallbackCause);
+        killTribute(ctx, t, undefined, { cause: record?.cause || fallbackCause });
     }
 }
 
@@ -239,14 +239,17 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     power += ARCHETYPES[t.archetype].aggression * 4;
 
     // Injury and status penalties
-    if (t.injuries.arms) power -= 2;
-    if (t.injuries.legs) power -= 2;
+    // T-5: a shattered arm is not a bruised one — penalties scale with grade.
+    power -= injuryGrade(t, 'arms') * COMBAT.limbPowerPenaltyPerGrade;
+    power -= injuryGrade(t, 'legs') * COMBAT.limbPowerPenaltyPerGrade;
     if (t.injuries.poisoned) power -= 3;
     if (t.injuries.burned) power -= 1;
     if (t.injuries.frostbitten) power -= 2;
     if (t.vitals.fatigue > 80) power -= 2;
     // A wrecked tribute fights like one.
     power -= (100 - t.health) / 22;
+    // §3.3: a pack laden with the horn's contents is slower where it counts.
+    power -= encumbranceOf(t) * INVENTORY.encumbrancePowerPenaltyMax;
 
     // Numbers advantage: the whole point of a pack.
     power += Math.min(COMBAT.outnumberMaxBonus, allies * COMBAT.outnumberPowerPerAlly);
@@ -341,12 +344,12 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     if (ctx.rng.chance(COMBAT.bleedChance)) openWound(defender, BLEEDING.combatSeverity);
     if (ctx.rng.chance(COMBAT.woundChance)) {
         const site = ctx.rng.pick(['head', 'torso', 'arms', 'legs'] as const);
-        defender.injuries[site] = true;
+        injure(defender, site);
     }
     // A Pyromaniac fights dirty with whatever burns — every landed hit has a
     // real chance to leave the defender scorched, not just bruised.
     if (attacker.traits.includes('Pyromaniac') && !defender.injuries.burned && ctx.rng.chance(COMBAT.pyromaniacBurnChance)) {
-        defender.injuries.burned = true;
+        injure(defender, 'burned');
         ctx.logEvent(
             `${attacker.name}'s strike leaves ${defender.name} scorched — Pyromaniacs make sure something is always burning.`,
             [defender.id, attacker.id],
@@ -354,7 +357,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
         );
     }
     if (weapon?.poison && ctx.rng.chance(COMBAT.poisonTransferChance) && !defender.injuries.poisoned) {
-        defender.injuries.poisoned = true;
+        injure(defender, 'poisoned');
         ctx.logEvent(
             `${defender.name} is grazed by ${attacker.name}'s poisoned dart and feels the venom spreading.`,
             [defender.id, attacker.id],
@@ -434,7 +437,7 @@ export function resolveCombat(
             { important: true, category: 'combat' }
         );
         if (t2.health <= 0) {
-            killTribute(ctx, t2, t1, isBloodbath, opener);
+            killTribute(ctx, t2, t1, { weapon: opener });
             [t1, t2].forEach(t => { if (t.status === 'alive') dropBrokenWeapons(t); });
             return;
         }
@@ -500,7 +503,7 @@ export function resolveCombat(
                 { category: 'combat' }
             );
             if (loser.health <= 0) {
-                killTribute(ctx, loser, winner, isBloodbath, weapon);
+                killTribute(ctx, loser, winner, { weapon });
                 ended = true;
                 break;
             }
@@ -532,7 +535,7 @@ export function resolveCombat(
                 const parting = bestWeapon(stayer);
                 landHit(ctx, stayer, fleer, 2, parting);
                 if (fleer.health <= 0) {
-                    killTribute(ctx, fleer, stayer, isBloodbath, parting);
+                    killTribute(ctx, fleer, stayer, { weapon: parting });
                     ended = true;
                     break;
                 }
@@ -726,14 +729,14 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             landHit(ctx, lead, target, edge, weapon);
             attackers.forEach(a => noteContact(ctx.state, a, target));
             if (target.health <= 0) {
-                killTribute(ctx, target, lead, false, weapon);
+                killTribute(ctx, target, lead, { weapon });
                 continue;
             }
         } else {
             // The outnumbered side lands one anyway — desperation cuts.
             landHit(ctx, target, lead, -edge, bestWeapon(target));
             if (lead.health <= 0) {
-                killTribute(ctx, lead, target, false, bestWeapon(target));
+                killTribute(ctx, lead, target, { weapon: bestWeapon(target) });
                 continue;
             }
         }
@@ -754,7 +757,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             noteGroupFight(a, target);
             landHit(ctx, a, target, supportEdge, supportWeapon);
             if (target.health <= 0) {
-                killTribute(ctx, target, a, false, supportWeapon);
+                killTribute(ctx, target, a, { weapon: supportWeapon });
                 targetDown = true;
             }
         }
@@ -864,10 +867,10 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
             - combatPower(ctx, target, bestWeapon(target), 0, attacker);
         if (edge > 0) {
             landHit(ctx, attacker, target, edge, weapon);
-            if (target.health <= 0) { killTribute(ctx, target, attacker, false, weapon); continue; }
+            if (target.health <= 0) { killTribute(ctx, target, attacker, { weapon }); continue; }
         } else {
             landHit(ctx, target, attacker, -edge, bestWeapon(target));
-            if (attacker.health <= 0) { killTribute(ctx, attacker, target, false, bestWeapon(target)); continue; }
+            if (attacker.health <= 0) { killTribute(ctx, attacker, target, { weapon: bestWeapon(target) }); continue; }
         }
 
         const breaking = standing.filter(t =>
@@ -907,7 +910,8 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
     });
 }
 
-export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, _isBloodbath: boolean = false, weapon?: Item, cause?: string) {
+export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, opts: { weapon?: Item; cause?: string } = {}) {
+    const { weapon, cause } = opts;
     if (victim.status === 'dead') return;
     victim.status = 'dead';
     victim.health = 0;

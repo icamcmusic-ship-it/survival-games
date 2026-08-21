@@ -5,7 +5,7 @@ import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { getZone } from './map';
 import { addZoneThreat, ensureMemory, cycleOf } from './memory';
-import { openWound } from './wounds';
+import { injure, openWound } from './wounds';
 import { clampTribute } from './vitals';
 import { trainProficiency } from './proficiency';
 import { earnTrait } from './earnedTraits';
@@ -62,10 +62,10 @@ export function eligibleMutts(ctx: SimContext, t: Tribute, time: 'day' | 'night'
 function applyMuttInjuries(t: Tribute, mutt: Mutt) {
     if (!mutt.inflicts) return;
     if (mutt.inflicts.bleeding) openWound(t, BLEEDING.muttSeverity);
-    if (mutt.inflicts.poisoned) t.injuries.poisoned = true;
-    if (mutt.inflicts.burned) t.injuries.burned = true;
-    if (mutt.inflicts.frostbitten) t.injuries.frostbitten = true;
-    if (mutt.inflicts.infected) t.injuries.infected = true;
+    if (mutt.inflicts.poisoned) injure(t, 'poisoned');
+    if (mutt.inflicts.burned) injure(t, 'burned');
+    if (mutt.inflicts.frostbitten) injure(t, 'frostbitten');
+    if (mutt.inflicts.infected) injure(t, 'infected');
 }
 
 /**

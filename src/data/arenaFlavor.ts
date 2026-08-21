@@ -876,314 +876,6 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
         ],
     },
 
-    'procedural-rainforest': {
-        ambient: [
-            'The canopy erupts with alarm calls, then falls dead silent.',
-            'Rain hammers the leaf ceiling so hard that nothing else can be heard for an hour.',
-            'Something enormous shakes a tree two hundred metres off and moves on.',
-        ],
-        actions: {
-            forage: [
-                '{tribute} splits open a seed pod in {zone} and finds {item} inside.',
-                '{tribute} climbs for a bromeliad pool in {zone} and comes down with {item}.',
-                '{tribute} follows a foraging trail through {zone} and recovers {item}.',
-            ],
-            rest: [
-                '{tribute} lashes themselves into a fork of the canopy above {zone} and sleeps.',
-                '{tribute} dries out under a broad leaf in {zone}, listening to the rain.',
-                '{tribute} picks ticks off their legs in {zone} and rests.',
-            ],
-            hide: [
-                '{tribute} vanishes into the undergrowth of {zone}, green on green.',
-                '{tribute} climbs high into the canopy above {zone} and stops moving.',
-                '{tribute} slides behind a buttress root in {zone} and waits.',
-            ],
-            hunt: [
-                '{tribute} tracks a broken vine trail through {zone} and loses it.',
-                '{tribute} waits above a game trail in {zone} with a weapon braced.',
-                '{tribute} hunts the thickets of {zone} and turns up nothing but insects.',
-            ],
-            travel: GENERIC_ACTIONS.travel,
-        },
-        events: [
-            {
-                text: 'A flash flood tears through {zone}. {tribute} is swept into deadfall and pinned there until the water drops.',
-                escapeText: '{tribute} hears the flood coming through {zone} and climbs.',
-                cause: 'Drowned in a flash flood',
-                dodgeStat: 'agility',
-                damage: 30,
-                bleeding: true,
-            },
-            {
-                text: 'An insect swarm engulfs {tribute} in {zone}, and the swelling closes one eye entirely.',
-                escapeText: '{tribute} smokes the insect swarm off with green wood in {zone}.',
-                cause: 'Killed by an insect swarm',
-                dodgeStat: 'stealth',
-                damage: 20,
-                poisoned: true,
-            },
-            {
-                text: 'Constrictor vines take hold of {tribute} in {zone} and tighten before they can cut free.',
-                escapeText: '{tribute} cuts through the constrictor vines of {zone} before they close.',
-                cause: 'Crushed by constrictor vines',
-                dodgeStat: 'strength',
-                damage: 32,
-                fatigue: 20,
-            },
-            {
-                text: 'A column of army ants sweeps through {zone} and over {tribute} before they can clear the ground.',
-                escapeText: '{tribute} hears the ant column coming through {zone} and climbs.',
-                cause: 'Stripped by army ants',
-                dodgeStat: 'agility',
-                damage: 24,
-                infected: true,
-            },
-            {
-                text: 'A strangler fig in {zone} drops a limb the width of a torso across {tribute}\'s back.',
-                escapeText: '{tribute} hears the fig limb crack over {zone} and is clear before it lands.',
-                cause: 'Crushed by falling timber',
-                dodgeStat: 'stealth',
-                damage: 30,
-                bleeding: true,
-            },
-            {
-                text: 'A fruiting bough hangs low over {zone}, heavy and unmistakably safe. {tribute} eats their fill.',
-                escapeText: '{tribute} does not trust the fruit in {zone} and walks past it hungry.',
-                cause: 'Poisoned by jungle fruit',
-                feed: 55,
-                quench: 20,
-            },
-        ],
-    },
-
-    'procedural-volcanic': {
-        ambient: [
-            'Ash falls like grey snow across the whole arena.',
-            'The ground shudders. Somewhere, a new vent has opened.',
-            'The sky over the caldera glows orange all night. Nobody sleeps well.',
-        ],
-        actions: {
-            forage: [
-                '{tribute} scrapes condensation off cool basalt in {zone} and finds {item} wedged in the rock.',
-                '{tribute} searches an ash-buried cache in {zone} and pulls free {item}.',
-                '{tribute} works a fissure in {zone} and recovers {item}.',
-            ],
-            rest: [
-                '{tribute} sleeps on warm stone in {zone}, the only comfort this arena offers.',
-                '{tribute} shakes ash out of everything they own in {zone}.',
-                '{tribute} wraps cloth over their mouth in {zone} and rests shallowly.',
-            ],
-            hide: [
-                '{tribute} slips into a lava tube beneath {zone} and goes quiet.',
-                '{tribute} lies in the ash of {zone} until they are just another grey shape.',
-                '{tribute} wedges between basalt columns in {zone}, unseen.',
-            ],
-            hunt: [
-                '{tribute} follows fresh prints through the ash of {zone} until they stop.',
-                '{tribute} watches the only pass out of {zone}, waiting.',
-                '{tribute} hunts the cinder fields of {zone} and finds them empty.',
-            ],
-            travel: GENERIC_ACTIONS.travel,
-        },
-        events: [
-            {
-                text: 'A lava flow cuts across {zone}. {tribute} escapes with their boots melted through and their legs scorched.',
-                escapeText: '{tribute} reads the flow line in {zone} and gets clear of the lava in time.',
-                cause: 'Consumed by the lava flow',
-                dodgeStat: 'agility',
-                damage: 35,
-                burned: true,
-            },
-            {
-                text: 'An ash storm buries {zone}. {tribute} breathes it in and cannot stop coughing.',
-                escapeText: '{tribute} seals their face and rides out the ash storm in {zone}.',
-                cause: 'Suffocated by the ash storm',
-                dodgeStat: 'intelligence',
-                damage: 18,
-                infected: true,
-                fatigue: 20,
-            },
-            {
-                text: 'A steam vent opens directly under {tribute} in {zone}.',
-                escapeText: '{tribute} hears the vent building under {zone} and moves off the fissure.',
-                cause: 'Scalded to death by a steam vent',
-                dodgeStat: 'agility',
-                dodgeDifficulty: 7,
-                damage: 30,
-                burned: true,
-            },
-            {
-                text: 'A lava tube under {zone} collapses. {tribute} drops into the hollow and comes out with their forearms seared.',
-                escapeText: '{tribute} sounds the ground in {zone} and skirts the hollow tube entirely.',
-                cause: 'Burned alive in a lava tube',
-                dodgeStat: 'intelligence',
-                damage: 32,
-                burned: true,
-            },
-            {
-                text: 'An ash storm buries {zone}. {tribute} spends the hour on their knees, breathing through a sleeve.',
-                escapeText: '{tribute} finds a lee in {zone} before the ash storm arrives.',
-                cause: 'Choked on volcanic ash',
-                dodgeStat: 'stealth',
-                damage: 14,
-                fatigue: 30,
-                sanity: 12,
-            },
-        ],
-    },
-
-    'procedural-archipelago': {
-        ambient: [
-            'The storm front stalls directly over the arena and simply stays there.',
-            'The tide goes out far enough to expose a land bridge that was not there this morning.',
-            'Gulls scatter off the water all at once. Something below them is hunting.',
-        ],
-        actions: {
-            forage: [
-                '{tribute} works the tide pools of {zone} and comes up with {item}.',
-                '{tribute} dives the shallows off {zone} and surfaces holding {item}.',
-                '{tribute} picks over the wrack line in {zone} and salvages {item}.',
-            ],
-            rest: [
-                '{tribute} dries salt off their gear on the rocks of {zone}.',
-                '{tribute} sleeps above the tide line in {zone}, listening to the surf.',
-                '{tribute} rigs a rain catch in {zone} and rests beneath it.',
-            ],
-            hide: [
-                '{tribute} tucks under an overhang in {zone} where the spray hides their tracks.',
-                '{tribute} floats motionless in the shallows off {zone}.',
-                '{tribute} hides among the wreck timbers of {zone}.',
-            ],
-            hunt: [
-                '{tribute} watches the crossing to {zone} for anyone foolish enough to swim it.',
-                '{tribute} patrols the beach of {zone}, weapon in hand.',
-                '{tribute} searches the rocks of {zone} for a rival and finds only crabs.',
-            ],
-            travel: GENERIC_ACTIONS.travel,
-        },
-        events: [
-            {
-                text: 'A riptide off {zone} drags {tribute} out past the break. They fight back to shore with nothing left.',
-                escapeText: '{tribute} swims parallel to the shore of {zone} and slips the riptide.',
-                cause: 'Drowned in the riptide',
-                dodgeStat: 'strength',
-                damage: 25,
-                fatigue: 35,
-            },
-            {
-                text: 'A tropical storm hammers {zone}. {tribute} is thrown against the rocks and cut open.',
-                escapeText: '{tribute} finds a lee in {zone} and waits the tropical storm out.',
-                cause: 'Killed by the tropical storm',
-                dodgeStat: 'intelligence',
-                damage: 26,
-                bleeding: true,
-            },
-            {
-                text: 'Razorfin sharks find {tribute} in the water off {zone}.',
-                escapeText: '{tribute} sees the fins off {zone} and makes shore before they close.',
-                cause: 'Taken by razorfin sharks',
-                dodgeStat: 'agility',
-                dodgeDifficulty: 7,
-                damage: 40,
-                bleeding: true,
-            },
-            {
-                text: 'A whirlpool opens in the channel off {zone} and takes {tribute} under twice before it lets go.',
-                escapeText: '{tribute} sees the water turning off {zone} and swims wide of the whirlpool.',
-                cause: 'Drowned in a whirlpool',
-                dodgeStat: 'strength',
-                dodgeDifficulty: 7,
-                damage: 34,
-                fatigue: 30,
-            },
-            {
-                text: 'A wreck breaks up on the reef off {zone} and {tribute} walks a week of stores off the sand.',
-                escapeText: '{tribute} watches the wreck break up off {zone} and cannot reach any of it.',
-                cause: 'Drowned in the surf',
-                grantItem: 'water',
-                feed: 30,
-                quench: 30,
-            },
-        ],
-    },
-
-    'procedural-highlands': {
-        ambient: [
-            'Fog rolls up the glen and swallows half the arena.',
-            'The wind on the ridge line rises to a howl that does not stop all night.',
-            'Lightning walks along the summit, striking the same stones over and over.',
-        ],
-        actions: {
-            forage: [
-                '{tribute} digs through the heather of {zone} and turns up {item}.',
-                '{tribute} follows a spring line in {zone} and finds {item} beside it.',
-                '{tribute} searches a shepherd\'s cairn in {zone} and recovers {item}.',
-            ],
-            rest: [
-                '{tribute} shelters behind a drystone wall in {zone} and sleeps.',
-                '{tribute} dries their boots over a peat fire in {zone}.',
-                '{tribute} lies out of the wind in {zone}, watching the ridge.',
-            ],
-            hide: [
-                '{tribute} lies flat in the heather of {zone} and disappears.',
-                '{tribute} slips into the fog bank over {zone} and is gone.',
-                '{tribute} crouches in a peat cutting in {zone}, still as stone.',
-            ],
-            hunt: [
-                '{tribute} works the ridge above {zone}, glassing the ground below.',
-                '{tribute} tracks bootprints through the peat of {zone} until the rain fills them.',
-                '{tribute} hunts the moor of {zone} and finds it empty.',
-            ],
-            travel: GENERIC_ACTIONS.travel,
-        },
-        events: [
-            {
-                text: 'A rockslide comes down the scree above {zone}. {tribute} is caught at the edge of it and carried thirty metres.',
-                escapeText: '{tribute} hears the scree go above {zone} and gets behind a boulder.',
-                cause: 'Crushed in a rockslide',
-                dodgeStat: 'agility',
-                damage: 33,
-                bleeding: true,
-            },
-            {
-                text: 'A fog bank closes over {zone} and {tribute} walks in circles for hours, freezing and disoriented.',
-                escapeText: '{tribute} navigates the fog over {zone} by the slope of the ground alone.',
-                cause: 'Lost in the fog',
-                dodgeStat: 'intelligence',
-                damage: 12,
-                frostbitten: true,
-                fatigue: 30,
-                sanity: 15,
-            },
-            {
-                text: 'Lightning strikes the ridge beside {tribute} in {zone}. They come to face down with their ears ringing and no memory of falling.',
-                escapeText: '{tribute} gets off the high ground of {zone} before the lightning walks in.',
-                cause: 'Struck by lightning',
-                dodgeStat: 'intelligence',
-                dodgeDifficulty: 7,
-                damage: 34,
-                burned: true,
-            },
-            {
-                text: 'A peat bog in {zone} takes {tribute} to the thigh, and the cold water takes everything else.',
-                escapeText: '{tribute} tests the peat in {zone} with a staff and finds the firm line across.',
-                cause: 'Drowned in a peat bog',
-                dodgeStat: 'intelligence',
-                damage: 20,
-                frostbitten: true,
-                fatigue: 25,
-            },
-            {
-                text: 'Dire rams come off the ridge above {zone} at a dead run. {tribute} is caught in the open.',
-                escapeText: '{tribute} gets behind a drystone wall in {zone} before the rams reach them.',
-                cause: 'Trampled by dire rams',
-                dodgeStat: 'agility',
-                damage: 30,
-                bleeding: true,
-            },
-        ],
-    },
-
     ashfall: {
         ambient: [
             'Grey snow falls across the whole basin. None of it is cold, and none of it is snow.',
@@ -3654,6 +3346,326 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     },
 };
 
+/**
+ * Fixed fallback packs for procedural arenas, keyed by `procedural-<biome>`.
+ *
+ * Kept separate from `ARENA_FLAVOR` on purpose: that record is asserted by
+ * `validate-arenas` to map exactly onto hand-authored arena ids in both
+ * directions, so a typo'd arena id can no longer hide among deliberate
+ * procedural tags. These packs are only reached when `arenaFlavor()` is
+ * called without the arena object (tag-composed flavour needs the zones).
+ */
+export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
+    'procedural-rainforest': {
+        ambient: [
+            'The canopy erupts with alarm calls, then falls dead silent.',
+            'Rain hammers the leaf ceiling so hard that nothing else can be heard for an hour.',
+            'Something enormous shakes a tree two hundred metres off and moves on.',
+        ],
+        actions: {
+            forage: [
+                '{tribute} splits open a seed pod in {zone} and finds {item} inside.',
+                '{tribute} climbs for a bromeliad pool in {zone} and comes down with {item}.',
+                '{tribute} follows a foraging trail through {zone} and recovers {item}.',
+            ],
+            rest: [
+                '{tribute} lashes themselves into a fork of the canopy above {zone} and sleeps.',
+                '{tribute} dries out under a broad leaf in {zone}, listening to the rain.',
+                '{tribute} picks ticks off their legs in {zone} and rests.',
+            ],
+            hide: [
+                '{tribute} vanishes into the undergrowth of {zone}, green on green.',
+                '{tribute} climbs high into the canopy above {zone} and stops moving.',
+                '{tribute} slides behind a buttress root in {zone} and waits.',
+            ],
+            hunt: [
+                '{tribute} tracks a broken vine trail through {zone} and loses it.',
+                '{tribute} waits above a game trail in {zone} with a weapon braced.',
+                '{tribute} hunts the thickets of {zone} and turns up nothing but insects.',
+            ],
+            travel: GENERIC_ACTIONS.travel,
+        },
+        events: [
+            {
+                text: 'A flash flood tears through {zone}. {tribute} is swept into deadfall and pinned there until the water drops.',
+                escapeText: '{tribute} hears the flood coming through {zone} and climbs.',
+                cause: 'Drowned in a flash flood',
+                dodgeStat: 'agility',
+                damage: 30,
+                bleeding: true,
+            },
+            {
+                text: 'An insect swarm engulfs {tribute} in {zone}, and the swelling closes one eye entirely.',
+                escapeText: '{tribute} smokes the insect swarm off with green wood in {zone}.',
+                cause: 'Killed by an insect swarm',
+                dodgeStat: 'stealth',
+                damage: 20,
+                poisoned: true,
+            },
+            {
+                text: 'Constrictor vines take hold of {tribute} in {zone} and tighten before they can cut free.',
+                escapeText: '{tribute} cuts through the constrictor vines of {zone} before they close.',
+                cause: 'Crushed by constrictor vines',
+                dodgeStat: 'strength',
+                damage: 32,
+                fatigue: 20,
+            },
+            {
+                text: 'A column of army ants sweeps through {zone} and over {tribute} before they can clear the ground.',
+                escapeText: '{tribute} hears the ant column coming through {zone} and climbs.',
+                cause: 'Stripped by army ants',
+                dodgeStat: 'agility',
+                damage: 24,
+                infected: true,
+            },
+            {
+                text: 'A strangler fig in {zone} drops a limb the width of a torso across {tribute}\'s back.',
+                escapeText: '{tribute} hears the fig limb crack over {zone} and is clear before it lands.',
+                cause: 'Crushed by falling timber',
+                dodgeStat: 'stealth',
+                damage: 30,
+                bleeding: true,
+            },
+            {
+                text: 'A fruiting bough hangs low over {zone}, heavy and unmistakably safe. {tribute} eats their fill.',
+                escapeText: '{tribute} does not trust the fruit in {zone} and walks past it hungry.',
+                cause: 'Poisoned by jungle fruit',
+                feed: 55,
+                quench: 20,
+            },
+        ],
+    },
+
+    'procedural-volcanic': {
+        ambient: [
+            'Ash falls like grey snow across the whole arena.',
+            'The ground shudders. Somewhere, a new vent has opened.',
+            'The sky over the caldera glows orange all night. Nobody sleeps well.',
+        ],
+        actions: {
+            forage: [
+                '{tribute} scrapes condensation off cool basalt in {zone} and finds {item} wedged in the rock.',
+                '{tribute} searches an ash-buried cache in {zone} and pulls free {item}.',
+                '{tribute} works a fissure in {zone} and recovers {item}.',
+            ],
+            rest: [
+                '{tribute} sleeps on warm stone in {zone}, the only comfort this arena offers.',
+                '{tribute} shakes ash out of everything they own in {zone}.',
+                '{tribute} wraps cloth over their mouth in {zone} and rests shallowly.',
+            ],
+            hide: [
+                '{tribute} slips into a lava tube beneath {zone} and goes quiet.',
+                '{tribute} lies in the ash of {zone} until they are just another grey shape.',
+                '{tribute} wedges between basalt columns in {zone}, unseen.',
+            ],
+            hunt: [
+                '{tribute} follows fresh prints through the ash of {zone} until they stop.',
+                '{tribute} watches the only pass out of {zone}, waiting.',
+                '{tribute} hunts the cinder fields of {zone} and finds them empty.',
+            ],
+            travel: GENERIC_ACTIONS.travel,
+        },
+        events: [
+            {
+                text: 'A lava flow cuts across {zone}. {tribute} escapes with their boots melted through and their legs scorched.',
+                escapeText: '{tribute} reads the flow line in {zone} and gets clear of the lava in time.',
+                cause: 'Consumed by the lava flow',
+                dodgeStat: 'agility',
+                damage: 35,
+                burned: true,
+            },
+            {
+                text: 'An ash storm buries {zone}. {tribute} breathes it in and cannot stop coughing.',
+                escapeText: '{tribute} seals their face and rides out the ash storm in {zone}.',
+                cause: 'Suffocated by the ash storm',
+                dodgeStat: 'intelligence',
+                damage: 18,
+                infected: true,
+                fatigue: 20,
+            },
+            {
+                text: 'A steam vent opens directly under {tribute} in {zone}.',
+                escapeText: '{tribute} hears the vent building under {zone} and moves off the fissure.',
+                cause: 'Scalded to death by a steam vent',
+                dodgeStat: 'agility',
+                dodgeDifficulty: 7,
+                damage: 30,
+                burned: true,
+            },
+            {
+                text: 'A lava tube under {zone} collapses. {tribute} drops into the hollow and comes out with their forearms seared.',
+                escapeText: '{tribute} sounds the ground in {zone} and skirts the hollow tube entirely.',
+                cause: 'Burned alive in a lava tube',
+                dodgeStat: 'intelligence',
+                damage: 32,
+                burned: true,
+            },
+            {
+                text: 'An ash storm buries {zone}. {tribute} spends the hour on their knees, breathing through a sleeve.',
+                escapeText: '{tribute} finds a lee in {zone} before the ash storm arrives.',
+                cause: 'Choked on volcanic ash',
+                dodgeStat: 'stealth',
+                damage: 14,
+                fatigue: 30,
+                sanity: 12,
+            },
+        ],
+    },
+
+    'procedural-archipelago': {
+        ambient: [
+            'The storm front stalls directly over the arena and simply stays there.',
+            'The tide goes out far enough to expose a land bridge that was not there this morning.',
+            'Gulls scatter off the water all at once. Something below them is hunting.',
+        ],
+        actions: {
+            forage: [
+                '{tribute} works the tide pools of {zone} and comes up with {item}.',
+                '{tribute} dives the shallows off {zone} and surfaces holding {item}.',
+                '{tribute} picks over the wrack line in {zone} and salvages {item}.',
+            ],
+            rest: [
+                '{tribute} dries salt off their gear on the rocks of {zone}.',
+                '{tribute} sleeps above the tide line in {zone}, listening to the surf.',
+                '{tribute} rigs a rain catch in {zone} and rests beneath it.',
+            ],
+            hide: [
+                '{tribute} tucks under an overhang in {zone} where the spray hides their tracks.',
+                '{tribute} floats motionless in the shallows off {zone}.',
+                '{tribute} hides among the wreck timbers of {zone}.',
+            ],
+            hunt: [
+                '{tribute} watches the crossing to {zone} for anyone foolish enough to swim it.',
+                '{tribute} patrols the beach of {zone}, weapon in hand.',
+                '{tribute} searches the rocks of {zone} for a rival and finds only crabs.',
+            ],
+            travel: GENERIC_ACTIONS.travel,
+        },
+        events: [
+            {
+                text: 'A riptide off {zone} drags {tribute} out past the break. They fight back to shore with nothing left.',
+                escapeText: '{tribute} swims parallel to the shore of {zone} and slips the riptide.',
+                cause: 'Drowned in the riptide',
+                dodgeStat: 'strength',
+                damage: 25,
+                fatigue: 35,
+            },
+            {
+                text: 'A tropical storm hammers {zone}. {tribute} is thrown against the rocks and cut open.',
+                escapeText: '{tribute} finds a lee in {zone} and waits the tropical storm out.',
+                cause: 'Killed by the tropical storm',
+                dodgeStat: 'intelligence',
+                damage: 26,
+                bleeding: true,
+            },
+            {
+                text: 'Razorfin sharks find {tribute} in the water off {zone}.',
+                escapeText: '{tribute} sees the fins off {zone} and makes shore before they close.',
+                cause: 'Taken by razorfin sharks',
+                dodgeStat: 'agility',
+                dodgeDifficulty: 7,
+                damage: 40,
+                bleeding: true,
+            },
+            {
+                text: 'A whirlpool opens in the channel off {zone} and takes {tribute} under twice before it lets go.',
+                escapeText: '{tribute} sees the water turning off {zone} and swims wide of the whirlpool.',
+                cause: 'Drowned in a whirlpool',
+                dodgeStat: 'strength',
+                dodgeDifficulty: 7,
+                damage: 34,
+                fatigue: 30,
+            },
+            {
+                text: 'A wreck breaks up on the reef off {zone} and {tribute} walks a week of stores off the sand.',
+                escapeText: '{tribute} watches the wreck break up off {zone} and cannot reach any of it.',
+                cause: 'Drowned in the surf',
+                grantItem: 'water',
+                feed: 30,
+                quench: 30,
+            },
+        ],
+    },
+
+    'procedural-highlands': {
+        ambient: [
+            'Fog rolls up the glen and swallows half the arena.',
+            'The wind on the ridge line rises to a howl that does not stop all night.',
+            'Lightning walks along the summit, striking the same stones over and over.',
+        ],
+        actions: {
+            forage: [
+                '{tribute} digs through the heather of {zone} and turns up {item}.',
+                '{tribute} follows a spring line in {zone} and finds {item} beside it.',
+                '{tribute} searches a shepherd\'s cairn in {zone} and recovers {item}.',
+            ],
+            rest: [
+                '{tribute} shelters behind a drystone wall in {zone} and sleeps.',
+                '{tribute} dries their boots over a peat fire in {zone}.',
+                '{tribute} lies out of the wind in {zone}, watching the ridge.',
+            ],
+            hide: [
+                '{tribute} lies flat in the heather of {zone} and disappears.',
+                '{tribute} slips into the fog bank over {zone} and is gone.',
+                '{tribute} crouches in a peat cutting in {zone}, still as stone.',
+            ],
+            hunt: [
+                '{tribute} works the ridge above {zone}, glassing the ground below.',
+                '{tribute} tracks bootprints through the peat of {zone} until the rain fills them.',
+                '{tribute} hunts the moor of {zone} and finds it empty.',
+            ],
+            travel: GENERIC_ACTIONS.travel,
+        },
+        events: [
+            {
+                text: 'A rockslide comes down the scree above {zone}. {tribute} is caught at the edge of it and carried thirty metres.',
+                escapeText: '{tribute} hears the scree go above {zone} and gets behind a boulder.',
+                cause: 'Crushed in a rockslide',
+                dodgeStat: 'agility',
+                damage: 33,
+                bleeding: true,
+            },
+            {
+                text: 'A fog bank closes over {zone} and {tribute} walks in circles for hours, freezing and disoriented.',
+                escapeText: '{tribute} navigates the fog over {zone} by the slope of the ground alone.',
+                cause: 'Lost in the fog',
+                dodgeStat: 'intelligence',
+                damage: 12,
+                frostbitten: true,
+                fatigue: 30,
+                sanity: 15,
+            },
+            {
+                text: 'Lightning strikes the ridge beside {tribute} in {zone}. They come to face down with their ears ringing and no memory of falling.',
+                escapeText: '{tribute} gets off the high ground of {zone} before the lightning walks in.',
+                cause: 'Struck by lightning',
+                dodgeStat: 'intelligence',
+                dodgeDifficulty: 7,
+                damage: 34,
+                burned: true,
+            },
+            {
+                text: 'A peat bog in {zone} takes {tribute} to the thigh, and the cold water takes everything else.',
+                escapeText: '{tribute} tests the peat in {zone} with a staff and finds the firm line across.',
+                cause: 'Drowned in a peat bog',
+                dodgeStat: 'intelligence',
+                damage: 20,
+                frostbitten: true,
+                fatigue: 25,
+            },
+            {
+                text: 'Dire rams come off the ridge above {zone} at a dead run. {tribute} is caught in the open.',
+                escapeText: '{tribute} gets behind a drystone wall in {zone} before the rams reach them.',
+                cause: 'Trampled by dire rams',
+                dodgeStat: 'agility',
+                damage: 30,
+                bleeding: true,
+            },
+        ],
+    },
+
+};
+
 
 /**
  * CONTENT-01: events every arena gets, on top of its own authored roster.
@@ -3796,7 +3808,7 @@ export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {
     // `proceduralArenaFlavor` composes flavour from the tags the generated
     // arena's zones actually carry.
     if (arena && arenaId.startsWith('procedural-')) return withUniversalEvents(proceduralArenaFlavor(arena));
-    return withUniversalEvents(ARENA_FLAVOR[arenaId] ?? GENERIC_ARENA_FLAVOR);
+    return withUniversalEvents(ARENA_FLAVOR[arenaId] ?? PROCEDURAL_FLAVOR_PACKS[arenaId] ?? GENERIC_ARENA_FLAVOR);
 }
 
 /** Merges the shared event pool into an arena's authored one. Never mutates the source. */

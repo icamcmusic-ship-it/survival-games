@@ -1,9 +1,9 @@
 import { Tribute, Zone } from '../models/types';
 import { zoneFeatures } from './map';
-import { CRAFTING, STEALTH } from '../data/balance';
+import { CRAFTING, INVENTORY, STEALTH } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { traitMod } from '../data/traits';
-import { hasTool } from './items';
+import { encumbranceOf, hasTool } from './items';
 
 /**
  * Concealment and awareness — the two halves of whether one tribute ever finds
@@ -61,6 +61,8 @@ export function concealment(
     }
 
     if (t.injuries.bleeding) value -= STEALTH.bleedingPenalty;
+    // §3.3: a full pack is a loud pack.
+    value -= encumbranceOf(t) * INVENTORY.encumbranceStealthPenaltyMax;
     // Traits that change how well someone disappears into the ground.
     value += traitMod(t, 'concealment');
     if (hasTool(t, 'light')) value -= STEALTH.lightConcealmentPenalty;

@@ -49,6 +49,41 @@ export function downloadChronicle(state: GameState, importantOnly = false) {
     URL.revokeObjectURL(url);
 }
 
+/**
+ * S-6: the machine-readable export — the full log with the metadata players
+ * would need to build their own tooling (stats sites, highlight reels,
+ * cross-run analysis), plus the seed and config to reproduce the run.
+ */
+export function chronicleJson(state: GameState): string {
+    return JSON.stringify({
+        seed: state.seed,
+        arena: { id: state.arena.id, name: state.arena.name },
+        config: state.baseConfig,
+        day: state.day,
+        phase: state.phase,
+        tributes: state.tributes.map(t => ({
+            id: t.id, name: t.name, district: t.district, gender: t.gender, age: t.age,
+            status: t.status, kills: t.kills, causeOfDeath: t.causeOfDeath, dayOfDeath: t.dayOfDeath,
+        })),
+        log: state.log.map(l => ({
+            id: l.id, day: l.day, phase: l.phase, category: l.category,
+            important: l.important, zone: l.zone, tributesInvolved: l.tributesInvolved, text: l.text,
+        })),
+    }, null, 2);
+}
+
+export function downloadChronicleJson(state: GameState) {
+    const blob = new Blob([chronicleJson(state)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `games-${state.seed}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
 export async function copyChronicle(state: GameState, importantOnly = false): Promise<boolean> {
     try {
         await navigator.clipboard.writeText(chronicleMarkdown(state, importantOnly));

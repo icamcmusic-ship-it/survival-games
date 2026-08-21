@@ -76,6 +76,7 @@ let borderTelegraphs = 0, cornucopiaRestocks = 0, muttEncounters = 0;
 // Newer systems: each needs evidence it actually fired across the sweep.
 let standoffs = 0, tributesPaid = 0, tributesPaidInformation = 0, trucesStruck = 0;
 let trucesBroken = 0, soloDepartures = 0, trucesHeld = 0, schisms = 0;
+let trucesRenewed = 0, trucesLapsed = 0, trucesTurned = 0;
 let resolveBreakdowns = 0, nightlockDeaths = 0;
 let debtsRepaid = 0, charterBreaches = 0, performedBonds = 0, districtBonds = 0;
 let weatherFronts = 0, trapsDestroyed = 0, gamemakerSignatures = 0;
@@ -231,6 +232,12 @@ for (let i = 0; i < 240; i++) {
     if (/^TRUCE:/.test(l.text)) trucesStruck++;
     if (/The agreement is holding|still worth more than the fight|it holds for one more day|Nothing is what they agreed on|That is what the word was for|and neither of them says what|It looks like courtesy|and neither of them moves/.test(l.text)) trucesHeld++;
     if (/there was never any agreement at all|decides the arithmetic has changed|has just stopped honouring it|Arguing would take longer|replays the handshake twice|is finished with it now/.test(l.text)) trucesBroken++;
+    // §4.1: expiry resolves on-screen now — renew, lapse, or turn. These three
+    // together are the fix for the "80 of 84 truces evaporated silently" bug,
+    // so the floor below asserts the resolution layer stays visible.
+    if (/truce holds another stretch|same terms, both still in|renew the agreement|The truce rolls over/.test(l.text)) trucesRenewed++;
+    if (/runs out quietly|simply expires, and from tomorrow|clock on it has run out|let the pact lapse|The truce is over/.test(l.text)) trucesLapsed++;
+    if (/was counting the hours|discovers what the letter was worth|turns on .* before the echo|kept the truce like a blade/.test(l.text)) trucesTurned++;
     if (/would rather stop pretending otherwise/.test(l.text)) soloDepartures++;
     if (/it is two camps/.test(l.text)) schisms++;
     if (/stops taking cover in|stops making plans/.test(l.text)) resolveBreakdowns++;
@@ -608,8 +615,12 @@ const firingFloors: Array<[string, number, number]> = [
     // that branch first — the whole path measured zero firings across the
     // sweep. A truce nobody can break is a timer rather than a promise, so the
     // break needs its own floor as well.
-    ['truces visibly holding', trucesHeld, 2],
-    ['truces broken', trucesBroken, 2],
+    // Renewal is a truce visibly holding — the mid-truce "both keep it" line
+    // and the expiry-day rollover are the same promise being kept on camera.
+    ['truces visibly holding', trucesHeld + trucesRenewed, 2],
+    // 'turned' is the expiry-timed break — same promise ending in the same blood.
+    ['truces broken', trucesBroken + trucesTurned, 2],
+    ['truces resolving on-screen at expiry', trucesRenewed + trucesLapsed + trucesTurned, 10],
     ['tributes leaving an alliance to go it alone', soloDepartures, 30],
     // §4: a large pack splitting along its own faction lines.
     ['alliances splitting into factions', schisms, 3],
@@ -631,7 +642,7 @@ console.log(`psychology: fear entries=${fearFelt} peakProficiency=${bestProficie
 console.log(`intentions: objectives formed=${objectivesFormed}`);
 console.log(`social: exoticBetrayals=${exoticBetrayals} merges=${merges} leaderChanges=${leadershipChanges} feuds=${feuds} freeForAlls=${freeForAlls}`);
 console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDefections=${careerDefections} cacheContributions=${cacheContributions}`);
-console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} paidInInformation=${tributesPaidInformation} truces=${trucesStruck} trucesHeld=${trucesHeld} trucesBroken=${trucesBroken} soloDepartures=${soloDepartures} schisms=${schisms}`);
+console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} paidInInformation=${tributesPaidInformation} truces=${trucesStruck} trucesHeld=${trucesHeld} trucesBroken=${trucesBroken} trucesRenewed=${trucesRenewed} trucesLapsed=${trucesLapsed} trucesTurned=${trucesTurned} soloDepartures=${soloDepartures} schisms=${schisms}`);
 console.log(`bonds: debtsRepaid=${debtsRepaid} charterBreaches=${charterBreaches} performed=${performedBonds} districtPairs=${districtBonds}`);
 console.log(`resolve: breakdowns=${resolveBreakdowns} nightlock=${nightlockDeaths}`);
 console.log(`arena2: weatherFronts=${weatherFronts} trapsDestroyed=${trapsDestroyed} gmSignatures=${gamemakerSignatures}`);

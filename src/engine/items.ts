@@ -177,6 +177,18 @@ export function enforceCapacity(t: Tribute): Item[] {
     return dropped;
 }
 
+/**
+ * §3.3: how laden a tribute is, 0-1. Zero until the pack passes
+ * `encumbranceFreeFraction` of capacity, rising to 1 at a full pack. Read by
+ * combat power, concealment and the fatigue drain — being over-equipped
+ * finally costs something at the moment it used to be pure advantage.
+ */
+export function encumbranceOf(t: Tribute): number {
+    const load = t.inventory.length / Math.max(1, carryCapacity(t));
+    const free = INVENTORY.encumbranceFreeFraction;
+    return Math.max(0, Math.min(1, (load - free) / (1 - free)));
+}
+
 /** How many cycles of shelf life a Backpack adds to fresh food. */
 export function spoilageBonus(t: Tribute): number {
     return hasBackpack(t) ? INVENTORY.backpackSpoilageBonus : 0;

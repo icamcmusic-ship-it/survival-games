@@ -33,7 +33,7 @@ import { runGamemakerSignature } from '../gamemakerAgency';
 import { tickWeatherFront } from '../weatherFront';
 import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
-import { decayTruces } from '../parley';
+import { resolveTruces } from '../parley';
 import { repayDebts, tickDistrictBonds } from '../debts';
 import { enforceCharters } from '../allianceCharter';
 import { gamemakerProfile } from '../../data/gamemakers';
@@ -187,7 +187,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayAllianceTrust(ctx.state);
     decayFear(ctx.state);
     decaySuspicion(ctx.state);
-    decayTruces(ctx.state);
+    resolveTruces(ctx);
     // Obligations come due, district partners grow into each other, and any
     // group that agreed terms is held to them.
     repayDebts(ctx);
@@ -429,7 +429,6 @@ function forceFinale(ctx: SimContext) {
     const horn = active.includes(ctx.state.arena.zones[0].name)
         ? ctx.state.arena.zones[0].name
         : active[active.length - 1] ?? ctx.state.arena.zones[0].name;
-    const cycle = cycleOf(ctx.state);
     if (ctx.state.finalistCycles === ESCALATION.finaleAfterFinalistCycles) {
         ctx.logEvent(
             `The arena starts taking everything else away. Water stops running, cover thins, and every route that is not toward ${horn} closes behind whoever walks it. `
@@ -464,7 +463,6 @@ function forceFinale(ctx: SimContext) {
     // the finalists on paper and let them wander past each other for three
     // hundred days.
     ctx.state.finaleZone = horn;
-    void cycle;
 }
 
 /**
@@ -518,7 +516,7 @@ function dynamicAmbientLine(ctx: SimContext): string {
     // is standing, some ambient lines are about them rather than individuals.
     const brands = Object.values(ctx.state.alliances ?? {})
         .filter(r => r.name && ctx.state.tributes.filter(t => t.status === 'alive' && t.allianceId === r.id).length >= 2);
-    if (brands.length > 0 && ctx.rng.chance(0.25)) {
+    if (brands.length > 0 && ctx.rng.chance(ENCOUNTERS.brandedAmbientChance)) {
         const r = ctx.rng.pick(brands);
         const size = ctx.state.tributes.filter(t => t.status === 'alive' && t.allianceId === r.id).length;
         return ctx.pickText([
@@ -898,7 +896,7 @@ function resolveEncounters(
         const others = inZone.filter(o =>
             isNoticed(ctx, o, t, zone, alliesOf(o)) || isNoticed(ctx, t, o, zone, alliesOf(t)));
 
-        if (others.length < inZone.length && ctx.rng.chance(0.25)) {
+        if (others.length < inZone.length && ctx.rng.chance(ENCOUNTERS.nearMissLineChance)) {
             const missed = inZone.filter(o => !others.includes(o));
             ctx.logEvent(
                 fill(ctx.pickText(ENCOUNTER_TEXTS.unnoticed), { t1: t.name, t2: missed[0].name, zone: t.zone }),

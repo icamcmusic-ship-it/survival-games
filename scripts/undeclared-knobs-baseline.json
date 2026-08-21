@@ -1,5 +1,4 @@
 {
-  "src/engine/alliance.ts :: chance :: chance(0.25": 1,
   "src/engine/alliance.ts :: threshold :: m.vitals.hunger < 40": 1,
   "src/engine/alliance.ts :: threshold :: m.vitals.thirst < 40": 1,
   "src/engine/arenaGenerator.ts :: threshold :: shapeRoll < 0.2": 1,
@@ -92,7 +91,6 @@
   "src/engine/phases/bloodbath.ts :: chance :: chance(0.6": 1,
   "src/engine/phases/bloodbath.ts :: chance :: chance(0.8": 1,
   "src/engine/phases/bloodbath.ts :: threshold :: t.attributes.strength > 7": 1,
-  "src/engine/phases/dayNight.ts :: chance :: chance(0.25": 2,
   "src/engine/phases/epilogue.ts :: threshold :: rel < -60": 1,
   "src/engine/phases/epilogue.ts :: threshold :: winner.age <= 13": 1,
   "src/engine/phases/feast.ts :: accumulate :: chance += 0.15": 1,

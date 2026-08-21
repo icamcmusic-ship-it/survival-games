@@ -1,6 +1,7 @@
 import { Arena, GameState, Tribute, Zone, ZoneFeatures } from '../models/types';
 import { traitMod } from '../data/traits';
 import { ZONES } from '../data/balance';
+import { injuryGrade } from './wounds';
 
 export function zoneNames(arena: Arena): string[] {
     return arena.zones.map(z => z.name);
@@ -19,13 +20,17 @@ export function getZone(arena: Arena, name: string): Zone | undefined {
  * case the crossing is ordinary ground to them.
  */
 export function travelCost(t: Tribute, dest: Zone): number {
+    // T-5/A-5: a badly injured leg finally slows a tribute down — a grade-2+
+    // leg turns any crossing into a slow one. `injuries.legs` was a boolean
+    // with no travel consequence at all.
+    const limping = injuryGrade(t, 'legs') >= 2 ? 1 : 0;
     if (dest.terrain === 'water' || dest.terrain === 'wetland') {
-        return traitMod(t, 'water') > 0 ? 1 : 2;
+        return (traitMod(t, 'water') > 0 ? 1 : 2) + limping;
     }
     if (dest.terrain === 'highland') {
-        return traitMod(t, 'highland') > 0 ? 1 : 2;
+        return (traitMod(t, 'highland') > 0 ? 1 : 2) + limping;
     }
-    return 1;
+    return 1 + limping;
 }
 
 /** Deterministic per-name hash in [0, 1), so derived features are stable per zone. */

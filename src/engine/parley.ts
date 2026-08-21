@@ -264,14 +264,85 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
     return null;
 }
 
-/** Per-cycle upkeep: expired truces are simply forgotten. */
-export function decayTruces(state: { cycle?: number; tributes: Tribute[] }) {
-    const cycle = state.cycle ?? 0;
+/**
+ * §4.1: per-cycle upkeep — but expiry is a decision point, not garbage
+ * collection. A negotiated non-aggression pact used to reach its expiry cycle
+ * and simply vanish from the Record: no payoff scene, no acknowledgement,
+ * nothing observable at all, for 80 of the 84 truces a 240-run soak produced.
+ * Every truce now resolves on-screen as one of three beats:
+ *
+ *  - **renew** — it has been working, and both still prefer it to the odds;
+ *  - **turn** — one of them kept the agreement like a blade kept sheathed,
+ *    and starts hunting the other the moment it lapses (no promise broken —
+ *    which is exactly the kind of technicality the Capitol loves);
+ *  - **lapse** — they part as they met: armed, watchful, and both alive
+ *    because a promise was kept. Still a line, because silence was the bug.
+ */
+export function resolveTruces(ctx: SimContext) {
+    const state = ctx.state;
+    const cycle = cycleOf(state);
+    const byId = new Map(state.tributes.map(t => [t.id, t] as const));
     state.tributes.forEach(t => {
         if (!t.truces) return;
-        Object.keys(t.truces).forEach(id => {
-            if (cycle >= t.truces![id]) delete t.truces![id];
+        Object.entries(t.truces).forEach(([otherId, until]) => {
+            if (cycle < until) return;
+            const other = byId.get(otherId);
+            // A dead counterparty leaves nothing to resolve.
+            if (!other || other.status !== 'alive' || t.status !== 'alive') {
+                delete t.truces![otherId];
+                return;
+            }
+            // Each pair resolves exactly once, from whichever side sorts first;
+            // the resolution clears both sides of the record.
+            if (t.id > otherId) return;
+            resolveTrucePair(ctx, t, other);
         });
-        if (Object.keys(t.truces).length === 0) delete t.truces;
+        if (t.truces && Object.keys(t.truces).length === 0) delete t.truces;
     });
+}
+
+function treacheryOf(t: Tribute): number {
+    return ARCHETYPES[t.archetype].treachery + traitMod(t, 'treachery');
+}
+
+function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
+    clearTruce(a, b);
+    const regard = Math.min(getRel(a, b.id), getRel(b, a.id));
+
+    // RENEW: it worked, and both of them know it.
+    if (regard >= PARLEY.truceRenewMinRegard && ctx.rng.chance(PARLEY.truceRenewChance)) {
+        declareTruce(ctx, a, b);
+        adjustMutual(ctx.state, a, b, PARLEY.truceRegard);
+        ctx.logEvent(
+            fill(ctx.pickText(PARLEY_TEXTS.truceRenewed), { t1: a.name, t2: b.name }),
+            [a.id, b.id],
+            { category: 'alliance' }
+        );
+        return;
+    }
+
+    // TURN: whichever of them is more treacherous was counting the hours.
+    const striker = treacheryOf(a) >= treacheryOf(b) ? a : b;
+    const target = striker.id === a.id ? b : a;
+    const turnChance = PARLEY.truceTurnChance
+        + Math.max(0, treacheryOf(striker)) * PARLEY.truceTurnTreacheryWeight;
+    if (ctx.rng.chance(Math.min(0.6, turnChance))) {
+        striker.objective = { kind: 'hunt', targetId: target.id, expires: cycleOf(ctx.state) + PARLEY.truceTurnHuntCycles };
+        adjustRel(target, striker.id, -PARLEY.truceBreakRegard);
+        raiseSuspicion(target, striker.id, PARLEY.truceBreakSuspicion);
+        addExcitement(striker, PARLEY.truceBreakExcitement);
+        ctx.logEvent(
+            fill(ctx.pickText(PARLEY_TEXTS.truceTurned), { t1: striker.name, t2: target.name, zone: striker.zone }),
+            [striker.id, target.id],
+            { important: true, category: 'betrayal' }
+        );
+        return;
+    }
+
+    // LAPSE: kept to the end. The arena takes note, and so does the feed.
+    ctx.logEvent(
+        fill(ctx.pickText(PARLEY_TEXTS.truceLapsed), { t1: a.name, t2: b.name }),
+        [a.id, b.id],
+        { category: 'alliance' }
+    );
 }

@@ -136,6 +136,43 @@ export function resolveBreakdowns(ctx: SimContext) {
             return;
         }
 
+        // T-6: walking into the border. Once the arena has started closing,
+        // the wall is always there, humming, and a tribute who is finished
+        // does not have to find nightlock — they only have to keep walking.
+        if (ctx.state.escalationDay !== undefined
+            && resolveOf(t) <= RESOLVE.nightlockThreshold
+            && ctx.rng.chance(RESOLVE.borderWalkChance)) {
+            t.health = 0;
+            clampTribute(t);
+            ctx.logEvent(
+                `${t.name} walks toward the edge of the arena in ${t.zone} at an ordinary pace, like someone going home. `
+                + `The commentators fall over each other explaining it as disorientation. It is not disorientation.`,
+                [t.id],
+                { important: true, category: 'death' }
+            );
+            checkDeath(ctx, t, 'Walked into the arena border rather than keep playing');
+            return;
+        }
+
+        // T-6: surrender. With a hostile standing right there, a broken
+        // tribute can simply put the weapon down — not a tactic, an
+        // abdication. Whether the other party takes the opening is up to the
+        // encounter that follows.
+        const hostile = getAlive(ctx.state).find(o =>
+            o.id !== t.id && o.zone === t.zone && (o.allianceId === undefined || o.allianceId !== t.allianceId));
+        const armed = t.inventory.some(i => i.type === 'weapon');
+        if (hostile && armed && ctx.rng.chance(RESOLVE.surrenderChance)) {
+            t.inventory = t.inventory.filter(i => i.type !== 'weapon');
+            t.stance = 'Defensive';
+            t.stanceHeld = 0;
+            ctx.logEvent(
+                `${t.name} looks at ${hostile.name} across ${t.zone}, and puts everything they are carrying that can cut on the ground between them. Whatever happens next, they are done doing it armed.`,
+                [t.id, hostile.id],
+                { important: true, category: 'sanity' }
+            );
+            return;
+        }
+
         if (t.stance !== 'Evasive' && ctx.rng.chance(0.5)) {
             // Walking into the open. Not a death wish exactly — an end to
             // caring which way it goes.
