@@ -324,6 +324,17 @@ export interface Tribute {
      * `EXHAUSTION.microsleepAfter` starts losing awareness, then whole turns.
      */
     sleeplessCycles?: number;
+    /**
+     * R-5: how well the *arena* knows what this tribute has done, 0-100.
+     * Distinct from `reputation`, which is the Capitol's opinion and the
+     * sponsor baseline. Kills and betrayals are public — the cannon, the
+     * anthem, the sky — so notoriety is the aggregate the fear system never
+     * had: "everyone knows what she did at the feast", rather than N separate
+     * per-observer fear entries.
+     */
+    notoriety?: number;
+    /** R-6: cycle a grief withdrawal lifts on. They will not ally before it. */
+    withdrawnUntil?: number;
     /** Ids of tributes this one has formed a protective bond with. See `growProtectorBond`. */
     protectorBonds?: string[];
     /**
@@ -396,7 +407,20 @@ export interface Alliance {
      * missing: the only ways out used to be death, betrayal and pact expiry.
      */
     charter?: CharterRule[];
+    /** R-1: tribute id -> the job they hold in this group. */
+    roles?: Partial<Record<AllianceRole, string>>;
+    /** R-2: other alliance id -> cycle a pack-to-pack pact expires on. */
+    packTruces?: Record<string, number>;
 }
+
+/**
+ * R-1: a job inside a group, beyond leading it.
+ *
+ * Alliances of five and six formed and then had nothing to do internally that
+ * a pair did not also do. A role is a reason for a particular person to be in
+ * a particular group, and a thing the group loses when they die.
+ */
+export type AllianceRole = 'scout' | 'quartermaster' | 'medic';
 
 /** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
 export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone';

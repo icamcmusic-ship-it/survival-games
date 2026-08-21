@@ -19,6 +19,8 @@ import { reachBonus } from './physique';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
+import { addNotoriety } from './notoriety';
+import { NOTORIETY } from '../data/balance';
 import { PREGAMES } from '../data/balance';
 import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
 
@@ -985,6 +987,9 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
 
             // The arc: the first one changes you, and enough of them changes
             // how the rest of the arena talks about you.
+            // R-5: the cannon and the sky are a broadcast. Everybody learns
+            // this happened, whether or not anybody was standing there.
+            addNotoriety(ctx, killer, NOTORIETY.perKill);
             if (killer.kills === 1) earnTrait(ctx, killer, 'Bloodied');
             if (killer.kills >= HUNTING.fearedAtKills) earnTrait(ctx, killer, 'Feared');
 

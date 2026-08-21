@@ -1,10 +1,11 @@
-import { Tribute, Zone } from '../models/types';
+import { GameState, Tribute, Zone } from '../models/types';
 import { zoneFeatures } from './map';
-import { CRAFTING, EXHAUSTION, INVENTORY, PROFICIENCY, STEALTH } from '../data/balance';
+import { ALLIANCE_ROLES, CRAFTING, EXHAUSTION, INVENTORY, PROFICIENCY, STEALTH } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { traitMod } from '../data/traits';
 import { encumbranceOf, hasTool } from './items';
 import { profOf, trainProficiency } from './proficiency';
+import { groupHasRole } from './alliance';
 
 /**
  * Concealment and awareness — the two halves of whether one tribute ever finds
@@ -77,7 +78,7 @@ export function concealment(
 }
 
 /** How good a tribute is at spotting someone who does not want to be spotted. */
-export function awareness(t: Tribute, dark = false): number {
+export function awareness(t: Tribute, dark = false, state?: GameState): number {
     let value = t.attributes.intelligence * STEALTH.awarenessFromIntelligence;
 
     // You cannot watch a treeline you cannot see. A light or the right eyes
@@ -87,6 +88,8 @@ export function awareness(t: Tribute, dark = false): number {
     }
 
     value += traitMod(t, 'awareness');
+    // R-1: the group's scout is watching the approaches for everybody.
+    if (state && groupHasRole(state, t, 'scout')) value += ALLIANCE_ROLES.scoutAwarenessBonus;
     // A hunter is looking; someone hiding in a bush is not.
     if (t.stance === 'Aggressive') value += 1.5;
     if (t.stance === 'Evasive') value -= 1;
@@ -117,7 +120,7 @@ export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone
     if (hider.allianceId !== undefined && hider.allianceId === seeker.allianceId) return true;
 
     const dark = isDark(ctx);
-    const advantage = hider.attributes.stealth - awareness(seeker, dark);
+    const advantage = hider.attributes.stealth - awareness(seeker, dark, ctx.state);
     // A fire gives a hider away and camouflage hides them further; both are
     // choices they made on an earlier turn, which is what makes them tactics.
     const cycle = ctx.state.cycle ?? 0;
@@ -161,7 +164,7 @@ export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute
     if (attacker.allianceId !== undefined && attacker.allianceId === defender.allianceId) return false;
 
     const dark = isDark(ctx);
-    const advantage = attacker.attributes.stealth - awareness(defender, dark);
+    const advantage = attacker.attributes.stealth - awareness(defender, dark, ctx.state);
     let chance = STEALTH.ambushBase + advantage * STEALTH.ambushPerPointAdvantage;
 
     // Night is when an ambush is an ambush. This is the whole reason a hunter

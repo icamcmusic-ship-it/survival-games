@@ -1,5 +1,5 @@
 import { Tribute } from '../models/types';
-import { DRIFT, CRAFTING, EXHAUSTION, INJURY_DAMAGE, INVENTORY, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { ALLIANCE_ROLES, DRIFT, CRAFTING, EXHAUSTION, INJURY_DAMAGE, INVENTORY, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -13,6 +13,7 @@ import { hasCamp } from './fieldcraft';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
 import { fill } from './encounters';
 import { craftOf } from '../data/districts';
+import { groupHasRole } from './alliance';
 import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
 import { earnTrait } from './earnedTraits';
@@ -25,7 +26,11 @@ import { earnTrait } from './earnedTraits';
 /** Food rots. A Backpack keeps it out of the sun a little longer. */
 export function processSpoilage(ctx: SimContext) {
     getAlive(ctx.state).forEach(t => {
-        const shelf = spoilageBonus(t) > 0 ? 0.5 : 1;
+        // R-1: a quartermaster standing with the group makes the rations last.
+        const rationed = groupHasRole(ctx.state, t, 'quartermaster')
+            ? 1 - ALLIANCE_ROLES.quartermasterSpoilageRelief
+            : 1;
+        const shelf = (spoilageBonus(t) > 0 ? 0.5 : 1) * rationed;
         t.inventory = t.inventory.filter(item => {
             if (item.type === 'food' && item.spoilage !== undefined) {
                 item.spoilage -= shelf;

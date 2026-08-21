@@ -36,6 +36,8 @@ import { tickWeatherFront } from '../weatherFront';
 import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
 import { resolveTruces } from '../parley';
+import { spreadNotoriety } from '../notoriety';
+import { decayPackTruces, resolvePackEncounters } from '../packParley';
 import { repayDebts, tickDistrictBonds } from '../debts';
 import { enforceCharters } from '../allianceCharter';
 import { gamemakerProfile } from '../../data/gamemakers';
@@ -155,6 +157,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         checkTraps(ctx, t);
     });
 
+    // R-2: two groups in one zone negotiate as groups before the encounter
+    // layer resolves them as a pile of individuals.
+    resolvePackEncounters(ctx);
+    decayPackTruces(ctx.state);
+
     // Dusk is over: everything from here resolves in full dark.
     ctx.state.timeOfDay = effectiveTime;
 
@@ -199,6 +206,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayFear(ctx.state);
     decaySuspicion(ctx.state);
     resolveTruces(ctx);
+    // R-5: the field catching up with what the sky told it.
+    spreadNotoriety(ctx);
     // Obligations come due, district partners grow into each other, and any
     // group that agreed terms is held to them.
     repayDebts(ctx);

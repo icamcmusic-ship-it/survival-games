@@ -6,7 +6,7 @@ import { ALLIANCES, PROTECTOR_BOND, ROMANCE, SUSPICION } from '../../data/balanc
 import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel, trustOf } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, suspicionOf } from '../memory';
-import { allianceOf, areLovers, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance } from '../alliance';
+import { allianceOf, areLovers, assignRoles, contributeToCache, isPerforming, isWithdrawn, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
 import { betrayalReluctance } from '../debts';
 import { addExcitement } from '../audience';
@@ -241,6 +241,9 @@ export function processAlliances(ctx: SimContext) {
                 // Same ground, like recruitment and mergers: an alliance is
                 // agreed face to face, not between two tributes standing in
                 // different zones who have never actually met.
+                // R-6: a tribute withdrawn by grief will not let anyone close
+                // for a few cycles. This is what withdrawal costs them.
+                if (isWithdrawn(ctx.state, t1) || isWithdrawn(ctx.state, t2)) continue;
                 if (!t1.allianceId && !t2.allianceId && t1.zone === t2.zone) {
                     // §4.3: joining someone is a trust decision, not a regard
                     // one. The mean, not the min: requiring the *lower* side to
@@ -341,6 +344,7 @@ export function processAlliances(ctx: SimContext) {
 
         candidates.forEach(candidate => {
             if (candidate.allianceId) return;
+            if (isWithdrawn(ctx.state, candidate)) return;
             if (members.length >= ALLIANCES.maxSize) return;
 
             // Both directions have to hold: the group has to want them, and

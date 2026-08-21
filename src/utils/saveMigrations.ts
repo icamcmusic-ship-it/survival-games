@@ -248,6 +248,7 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         protectorBonds: asStrArray(r.protectorBonds),
         quirks: asStrArray(r.quirks),
         sleeplessCycles: asNum(r.sleeplessCycles, 0),
+        notoriety: clamp(asNum(r.notoriety, 0), 0, 100),
         injurySeverity: asObjMap<number>(r.injurySeverity),
         platePosition: clamp(asNum(r.platePosition, 0.5), 0, 1),
     };
@@ -302,6 +303,10 @@ function normalizeAlliances(raw: unknown): Record<string, Alliance> | undefined 
                 ? a.sharedCache.map(normalizeItem).filter((i): i is Item => i !== null)
                 : [],
             pact: oneOf(a.pact, ['to-the-end', 'until-the-final-eight', 'no-pact'], 'no-pact'),
+            // R-1/R-2: both are mutated in place by the engine, so they are
+            // materialised here rather than relying on `??` at each call site.
+            roles: asObjMap<string>(a.roles),
+            packTruces: asNumMap(a.packTruces),
         };
     });
     return out;

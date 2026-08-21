@@ -1,8 +1,9 @@
-import { Alliance, GameState, Item, Tribute } from '../models/types';
-import { ALLIANCES } from '../data/balance';
+import { Alliance, AllianceRole, GameState, Item, Tribute } from '../models/types';
+import { ALLIANCES, ALLIANCE_ROLES } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext } from './context';
 import { cycleOf } from './memory';
+import { profOf } from './proficiency';
 import { adjustRel, getRel } from './relationships';
 
 /**
@@ -195,6 +196,10 @@ export function reconcileAlliances(ctx: SimContext) {
         const record = records[id];
         record.memberIds = members.map(m => m.id);
 
+        // R-1: jobs are re-checked as the group changes, so a dead medic is
+        // replaced (or not replaced, if nobody left can do it).
+        assignRoles(ctx, record, members);
+
         const leader = members.find(m => m.id === record.leaderId);
         if (!leader) {
             const replacement = pickLeader(members);
@@ -245,6 +250,84 @@ export function reconcileAlliances(ctx: SimContext) {
             }
         }
     });
+}
+
+/**
+ * R-6: whether grief has this tribute closed off to company right now.
+ * Read by both alliance-formation paths — the cost of withdrawal is that the
+ * arena keeps moving while they are not taking anybody's hand.
+ */
+export function isWithdrawn(state: GameState, t: Tribute): boolean {
+    return t.withdrawnUntil !== undefined && cycleOf(state) < t.withdrawnUntil;
+}
+
+/**
+ * R-1: who does what inside a group.
+ *
+ * A six-person alliance and a pair behaved identically beyond leader-challenge
+ * maths: there was nothing for the extra four people to *be*. Roles are
+ * assigned on merit, re-checked as the group changes, and each one is a real
+ * bonus the group loses when that specific person dies — which is what makes
+ * losing the medic different from losing a body.
+ */
+export function assignRoles(ctx: SimContext, record: Alliance, members: Tribute[]) {
+    if (members.length < ALLIANCE_ROLES.minSize) {
+        delete record.roles;
+        return;
+    }
+    const previous = record.roles ?? {};
+    const roles: NonNullable<Alliance['roles']> = {};
+    const taken = new Set<string>([record.leaderId]);
+
+    const claim = (role: AllianceRole, score: (t: Tribute) => number) => {
+        const pool = members.filter(m => !taken.has(m.id));
+        if (pool.length === 0) return;
+        const best = pool.reduce((top, m) => (score(m) > score(top) ? m : top));
+        roles[role] = best.id;
+        taken.add(best.id);
+    };
+
+    // Scout: eyes. Quartermaster: someone who can make supplies last.
+    // Medic: whoever can actually close a wound.
+    claim('scout', m => m.attributes.stealth + m.attributes.intelligence * 0.5 + profOf(m, 'tracking'));
+    claim('quartermaster', m => m.attributes.intelligence + profOf(m, 'forage'));
+    claim('medic', m => profOf(m, 'medicine') * 2 + m.attributes.intelligence * 0.5);
+
+    record.roles = roles;
+
+    // Announce only what changed, so the feed reports a group organising
+    // itself rather than restating its org chart every cycle.
+    (Object.keys(roles) as AllianceRole[]).forEach(role => {
+        const id = roles[role];
+        if (!id || previous[role] === id) return;
+        const holder = members.find(m => m.id === id);
+        if (!holder) return;
+        ctx.logEvent(
+            role === 'scout'
+                ? `${holder.name} takes the watch for the group — first out, last in, and the one who says when to move.`
+                : role === 'quartermaster'
+                    ? `${holder.name} ends up counting the group's supplies, because somebody has to and nobody else was going to.`
+                    : `${holder.name} becomes the one the group brings its wounds to.`,
+            [holder.id],
+            { category: 'alliance' }
+        );
+    });
+}
+
+/** The role this tribute holds in their alliance, if any. */
+export function roleOf(state: GameState, t: Tribute): AllianceRole | undefined {
+    const record = allianceOf(state, t.allianceId);
+    if (!record?.roles) return undefined;
+    return (Object.keys(record.roles) as AllianceRole[]).find(r => record.roles![r] === t.id);
+}
+
+/** Whether some member of `t`'s alliance standing in the same zone holds `role`. */
+export function groupHasRole(state: GameState, t: Tribute, role: AllianceRole): boolean {
+    const record = allianceOf(state, t.allianceId);
+    const holderId = record?.roles?.[role];
+    if (!holderId) return false;
+    const holder = state.tributes.find(o => o.id === holderId);
+    return !!holder && holder.status === 'alive' && holder.zone === t.zone;
 }
 
 /** The leader of a tribute's alliance, or undefined if they have none. */

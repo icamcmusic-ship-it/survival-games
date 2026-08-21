@@ -1,15 +1,16 @@
 import { GameState, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
-import { RELATIONSHIPS, GENERATION, HUNTING, SUSPICION } from '../data/balance';
+import { GRIEF, NOTORIETY, RELATIONSHIPS, GENERATION, HUNTING, SUSPICION } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
 import { clampTribute } from './vitals';
-import { cyclesSinceContact, ensureMemory, hasStoodBy, raiseSuspicion, rattle, swearVengeance, noteContact } from './memory';
+import { cycleOf, cyclesSinceContact, ensureMemory, hasStoodBy, raiseSuspicion, rattle, swearVengeance, noteContact } from './memory';
 import { areLovers } from './alliance';
 import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS } from '../data/flavorText';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
+import { addNotoriety } from './notoriety';
 
 /**
  * The social graph, and everything that writes to it.
@@ -193,6 +194,11 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
             // Watching someone you were actually close to die does not wash off.
             if ((isLover || wereAllied) && intensity > 0.5) earnTrait(ctx, other, 'Haunted');
 
+            // R-6: grief had one shape — a sanity hit and a vengeance roll.
+            // It has at least three, and which one a tribute falls into says
+            // more about them than the size of the number does.
+            applyGriefShape(ctx, other, victim, intensity);
+
             if (isLover) {
                 ctx.logEvent(
                     `TRAGEDY: ${other.name} hears the cannon and knows. Their star-crossed lover ${victim.name} is gone, and something in them goes with it.`,
@@ -247,6 +253,9 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
 
     victim.vitals.sanity -= 15;
     earnTrait(ctx, victim, 'Marked');
+    // R-5: a betrayal is a story the arena tells about you, not only a thing
+    // the person you did it to remembers.
+    addNotoriety(ctx, betrayer, NOTORIETY.perBetrayal);
     addExcitement(betrayer, 30);
     // The Capitol loves the drama and distrusts the man.
     betrayer.sponsorTrust -= 8;
@@ -308,4 +317,62 @@ export function driftReputation(t: Tribute, rate: number) {
     const target = t.reputation ?? GENERATION.baseSponsorTrust;
     if (t.sponsorTrust > target) t.sponsorTrust = Math.max(target, t.sponsorTrust - rate);
     else if (t.sponsorTrust < target) t.sponsorTrust = Math.min(target, t.sponsorTrust + rate);
+}
+
+/**
+ * R-6: how this particular tribute carries it.
+ *
+ * Grief that only ever lowers a gauge is grief the audience cannot see. These
+ * are the three shapes it takes that change what the tribute *does*:
+ * recklessness (they stop being careful), withdrawal (they will not let anyone
+ * close again for a while), and transference (they attach to whoever most
+ * resembles what they lost, which is what `protectorBonds` was always for).
+ * Mutually exclusive and rolled once, so a death produces one legible
+ * reaction rather than three overlapping ones.
+ */
+function applyGriefShape(ctx: SimContext, mourner: Tribute, victim: Tribute, intensity: number) {
+    if (intensity < 0.35) return;
+    const roll = ctx.rng.nextFloat();
+
+    if (roll < GRIEF.recklessChance) {
+        mourner.stance = 'Aggressive';
+        mourner.stanceHeld = 0;
+        mourner.momentum = Math.min(HUNTING.momentumMax, (mourner.momentum ?? 0) + GRIEF.recklessMomentum);
+        ctx.logEvent(
+            `${mourner.name} does not stop moving after the cannon. Whatever care they were taking with themselves went with ${victim.name}.`,
+            [mourner.id, victim.id],
+            { category: 'sanity' }
+        );
+        return;
+    }
+
+    if (roll < GRIEF.recklessChance + GRIEF.withdrawalChance) {
+        mourner.stance = 'Evasive';
+        mourner.stanceHeld = 0;
+        mourner.withdrawnUntil = cycleOf(ctx.state) + GRIEF.withdrawalCycles;
+        ctx.logEvent(
+            `${mourner.name} goes to ground after ${victim.name}'s cannon and stays there. Anyone who calls out to them across ${mourner.zone} gets nothing back.`,
+            [mourner.id, victim.id],
+            { category: 'sanity' }
+        );
+        return;
+    }
+
+    if (roll < GRIEF.recklessChance + GRIEF.withdrawalChance + GRIEF.transferenceChance) {
+        // Whoever most resembles what they lost: the victim's district
+        // partner first, otherwise the youngest tribute still breathing.
+        const living = ctx.state.tributes.filter(o =>
+            o.status === 'alive' && o.id !== mourner.id && o.id !== victim.id);
+        const stand = living.find(o => o.district === victim.district)
+            ?? [...living].sort((a, b) => a.age - b.age)[0];
+        if (!stand) return;
+        adjustRel(mourner, stand.id, GRIEF.transferenceRegard);
+        mourner.protectorBonds = [...new Set([...(mourner.protectorBonds ?? []), stand.id])];
+        ctx.logEvent(
+            `${mourner.name} finds ${stand.name} afterwards and will not be talked out of walking with them. `
+            + `Everyone watching understands exactly who ${mourner.name} is really looking at.`,
+            [mourner.id, stand.id, victim.id],
+            { important: true, category: 'alliance' }
+        );
+    }
 }

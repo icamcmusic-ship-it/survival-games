@@ -2284,8 +2284,13 @@ export const PARLEY = {
      * ratio gate. Someone with empty hands still has something to trade:
      * where they last saw people, and where the water is.
      */
-    /** On `ZoneMemory.threat`'s own 0-6 scale, not a percentage. */
-    tollInfoMinThreat: 1.5,
+    /**
+     * On `ZoneMemory.threat`'s own 0-6 scale, not a percentage. Eased from
+     * 1.5 alongside R-2: pack-level pacts now resolve some meetings as group
+     * discipline before they ever reach the individual parley, which thinned
+     * the candidate pool this branch draws from.
+     */
+    tollInfoMinThreat: 1.2,
     tollInfoResentment: 8,
     tollInfoSanityCost: 5,
 
@@ -2514,4 +2519,70 @@ export const ARMAMENT_MEMORY = {
     knownUnarmedRatio: 0.82,
     /** Threat multiplier when they were carrying something with reach. */
     knownArmedRatio: 1.15,
+} as const;
+
+/**
+ * R-6: grief had exactly one shape — a sanity hit scaled by bond, plus
+ * vengeance. Real grief in an arena has at least three, and which one a
+ * tribute falls into says more about them than the size of the number does.
+ */
+export const GRIEF = {
+    /** Recklessness: they stop being careful. Aggressive, and it sticks. */
+    recklessChance: 0.3,
+    recklessMomentum: 2,
+    /** Withdrawal: forced Evasive, and they will not take an ally for a while. */
+    withdrawalChance: 0.3,
+    withdrawalCycles: 4,
+    /**
+     * Transference: they attach to whoever most resembles what they lost —
+     * same district, or the youngest tribute left — and start protecting them.
+     */
+    transferenceChance: 0.22,
+    transferenceRegard: 18,
+} as const;
+
+/**
+ * R-5: notoriety — reputation *among the tributes*, as distinct from
+ * `reputation` (which is the sponsor baseline). Kills are public via the
+ * anthem, so "everyone knows what she did at the feast" is a thing the arena
+ * can know collectively rather than N separate fear entries.
+ */
+export const NOTORIETY = {
+    perKill: 14,
+    perBetrayal: 20,
+    /** Notoriety at or above this makes a tribute a name everybody knows. */
+    knownThreshold: 30,
+    /** Fear every tribute carries toward a notorious one, at full notoriety. */
+    ambientFearAtMax: 25,
+    max: 100,
+    /** Sponsors like a monster, up to a point. */
+    excitementPerPoint: 0.15,
+} as const;
+
+/**
+ * R-1/R-2: what a group is beyond a leader and a member list, and what two
+ * groups do when they meet.
+ */
+export const ALLIANCE_ROLES = {
+    /** Members needed before roles are worth assigning at all. */
+    minSize: 3,
+    /** Quartermaster: fraction of cache waste avoided (better rationing). */
+    quartermasterSpoilageRelief: 0.5,
+    /** Scout: awareness bonus for the whole group in their zone. */
+    scoutAwarenessBonus: 1.2,
+    /** Medic: bonus on any field dressing performed inside the group. */
+    medicDressBonus: 0.15,
+} as const;
+
+export const PACK_PARLEY = {
+    /** Odds two groups meeting in one zone talk instead of resolving by force. */
+    chance: 0.45,
+    /** Regard needed between the two leaders for terms to be reachable at all. */
+    minLeaderRegard: -20,
+    /** How long a pack-to-pack non-aggression pact holds, in cycles. */
+    truceCycles: 5,
+    /** Regard the standoff itself is worth to both sides. */
+    standoffRegard: 4,
+    /** Odds a pack parley ends in a merge offer rather than terms. */
+    mergeChance: 0.2,
 } as const;
