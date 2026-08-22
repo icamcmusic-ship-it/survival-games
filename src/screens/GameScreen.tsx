@@ -5,9 +5,9 @@ import { TributeModal } from '../components/TributeModal';
 import { EventFeed, FeedLine, VISIBLE_CAP, FeedDensity, tierOf } from '../components/EventFeed';
 import { ChronicleExport } from '../components/ChronicleExport';
 import { CATEGORY_GROUPS } from '../ui/eventStyles';
-import { tributeOdds } from '../engine/odds';
+import { oddsFactors, tributeOdds } from '../engine/odds';
 import { objectiveLabel } from '../engine/objectives';
-import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus, Star, Volume2, VolumeX, Undo2 } from 'lucide-react';
 import { ESCALATION, GAMEMAKER_COSTS } from '../data/balance';
 import { evaluateInRunNearMisses } from '../data/achievements';
 import { GamemakerEventType } from '../engine/gamemaker';
@@ -15,7 +15,8 @@ import { Explainer } from '../components/Explainer';
 import { ordinal } from '../engine/gamesProfile';
 import { gameActions, gameStore } from '../store/gameStore';
 import { readFilters, writeFilters } from '../utils/prefsStorage';
-import { prefsStore } from '../store/prefsStore';
+import { prefsStore, setPrefs } from '../store/prefsStore';
+import { playAnthem, playCannon, playParachute, unlockAudio } from '../utils/sound';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 
 import { useStore } from '../store/createStore';
@@ -90,8 +91,14 @@ export function GameScreen({
     const [showFilters, setShowFilters] = useState(false);
     // UX: auto-play at 5x/Skip blows straight past major deaths; opt-in brake.
     const [pauseOnDeath, setPauseOnDeath] = useState(storedFilters.current.pauseOnDeath);
-    /** A toast explaining why auto-advance just stopped. */
-    const [pauseNotice, setPauseNotice] = useState(false);
+    /** A toast explaining why auto-advance just stopped (null = nothing to say). */
+    const [pauseNotice, setPauseNotice] = useState<string | null>(null);
+    // §2.10: "play until X" — what a spectator actually wants from a speed
+    // control. Runs at Skim pace until the predicate hits, then drops to manual.
+    const [playUntil, setPlayUntil] = useState<'death' | 'feast' | 'final8' | null>(null);
+    // §2.12: one pinned tribute the feed, sidebar and brakes all foreground.
+    const [followedId, setFollowedId] = useState<string | null>(null);
+    const prefs = useStore(prefsStore, p => p);
     const bets = useStore(gameStore, s => s.bets);
     // §6.5: achievements the run is close to, shown while they still matter.
     const panem = useStore(gameStore, s => s.panem);
@@ -111,6 +118,41 @@ export function GameScreen({
     const [showHelp, setShowHelp] = useState(false);
     const nextPhaseRef = useRef(onNextPhase);
     nextPhaseRef.current = onNextPhase;
+
+    // Browsers refuse audio before a user gesture; the first click anywhere
+    // unlocks the shared context.
+    useEffect(() => {
+        const unlock = () => unlockAudio();
+        window.addEventListener('pointerdown', unlock, { once: true });
+        window.addEventListener('keydown', unlock, { once: true });
+        return () => {
+            window.removeEventListener('pointerdown', unlock);
+            window.removeEventListener('keydown', unlock);
+        };
+    }, []);
+
+    // §2.2: the cannon and the parachute, cued off new log lines regardless of
+    // whether the phase advanced by hand or on the timer. The cannon doubles
+    // as an accessibility cue — it says "somebody died" while the player's
+    // eyes are on the map pane.
+    const soundLogCount = useRef(gameState.log.length);
+    useEffect(() => {
+        const newCount = Math.max(0, gameState.log.length - soundLogCount.current);
+        const fresh = newCount > 0 ? gameState.log.slice(-newCount) : [];
+        soundLogCount.current = gameState.log.length;
+        if (fresh.some(l => l.category === 'death' || l.category === 'kill')) playCannon();
+        else if (fresh.some(l => l.category === 'sponsor')) playParachute();
+    }, [gameState.log.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // The anthem plays as night falls on a day that took someone.
+    const lastAnthemDay = useRef(-1);
+    useEffect(() => {
+        if (gameState.phase !== 'night' || gameState.day === lastAnthemDay.current) return;
+        if (gameState.tributes.some(t => t.status === 'dead' && t.dayOfDeath === gameState.day)) {
+            lastAnthemDay.current = gameState.day;
+            playAnthem();
+        }
+    }, [gameState.phase, gameState.day]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Chronicle scroll tracking (UX-04): the feed reads forward now, so "new"
     // means "at the bottom." Auto-follow the bottom while the reader is
@@ -169,15 +211,56 @@ export function GameScreen({
     useEffect(() => {
         // A fast-forward is already stepping the simulator; auto-advance must
         // not interleave with it.
-        if (speed === 'manual' || isOver || runProgress) return;
+        const running = speed !== 'manual' || playUntil !== null;
+        if (!running || isOver || runProgress) return;
         const newCount = Math.max(0, gameState.log.length - lastTickLogCount.current);
         const newLines = newCount > 0 ? gameState.log.slice(-newCount) : [];
         lastTickLogCount.current = gameState.log.length;
-        if (pauseOnDeath && newLines.some(l => l.category === 'death' || l.category === 'kill')) {
+
+        // §2.10: has the "play until" target been reached?
+        const aliveNow = gameState.tributes.filter(t => t.status === 'alive').length;
+        const untilHit = playUntil === 'death'
+            ? newLines.some(l => l.category === 'death' || l.category === 'kill')
+            : playUntil === 'feast'
+                ? gameState.phase === 'feast' || newLines.some(l => l.category === 'feast')
+                : playUntil === 'final8'
+                    ? aliveNow <= 8
+                    : false;
+        if (untilHit) {
+            setPlayUntil(null);
             setSpeed('manual');
-            // Without an explanation the silent drop to manual reads as the
-            // auto-advance breaking, especially to a first-time player.
-            setPauseNotice(true);
+            setPauseNotice(playUntil === 'death' ? 'A cannon fired — holding here.'
+                : playUntil === 'feast' ? 'The feast is called — holding here.'
+                : 'The final eight stand — holding here.');
+            return;
+        }
+
+        // §2.11: the brakes. Each is opt-in; any hit drops back to manual.
+        const brake = (() => {
+            if (pauseOnDeath && newLines.some(l => l.category === 'death' || l.category === 'kill')) {
+                // Without an explanation the silent drop to manual reads as the
+                // auto-advance breaking, especially to a first-time player.
+                return 'A cannon fired — auto-advance paused.';
+            }
+            if (prefs.pauseOnBetrayal && newLines.some(l => l.category === 'betrayal')) {
+                return 'A betrayal — auto-advance paused.';
+            }
+            if (prefs.pauseOnAlliance && newLines.some(l => l.category === 'alliance' && l.important)) {
+                return 'An alliance shifted — auto-advance paused.';
+            }
+            if (prefs.pauseOnSponsor && newLines.some(l => l.category === 'sponsor')) {
+                return 'A parachute came down — auto-advance paused.';
+            }
+            if (prefs.pauseOnFollowed && followedId && newLines.some(l => l.tributesInvolved.includes(followedId))) {
+                const name = gameState.tributes.find(t => t.id === followedId)?.name ?? 'Your tribute';
+                return `${name} was involved — auto-advance paused.`;
+            }
+            return null;
+        })();
+        if (brake) {
+            setPlayUntil(null);
+            setSpeed('manual');
+            setPauseNotice(brake);
             return;
         }
         // Pace on beats, not raw lines: a 4-line endgame day that contains a
@@ -191,9 +274,10 @@ export function GameScreen({
             prevKey = key;
         }
         const holdForDeath = newLines.some(l => tierOf(l) === 'headline') ? 2 : 0;
-        const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(speed, beatCount + holdForDeath));
+        const effectiveSpeed = speed === 'manual' ? '5x' : speed;
+        const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(effectiveSpeed, beatCount + holdForDeath));
         return () => clearTimeout(timer);
-    }, [speed, isOver, pauseOnDeath, runProgress, gameState.phase, gameState.day, gameState.log.length, gameState.log]);
+    }, [speed, playUntil, isOver, pauseOnDeath, prefs, followedId, runProgress, gameState.phase, gameState.day, gameState.log.length, gameState.log, gameState.tributes]);
 
     /**
      * §2.3: the keyboard path covered five keys — advance, filters, map, help,
@@ -299,7 +383,8 @@ export function GameScreen({
                 setSpeed(s => {
                     const next = s === 'manual' ? '1x' : 'manual';
                     announceShortcut(next === 'manual' ? 'Auto-advance paused' : 'Auto-advance running');
-                    setPauseNotice(false);
+                    setPauseNotice(null);
+                    setPlayUntil(null);
                     return next;
                 });
             } else if (key >= '1' && key <= String(Math.min(9, CATEGORY_GROUPS.length))) {
@@ -382,6 +467,9 @@ export function GameScreen({
     };
 
     const sortedSidebarTributes = useMemo(() => [...gameState.tributes].sort((a, b) => {
+        // The followed tribute pins to the very top while they live.
+        if (a.id === followedId && a.status === 'alive') return -1;
+        if (b.id === followedId && b.status === 'alive') return 1;
         if (a.status !== b.status) return a.status === 'alive' ? -1 : 1;
         if (a.status === 'alive') {
             if (a.allianceId && !b.allianceId) return -1;
@@ -392,7 +480,7 @@ export function GameScreen({
         }
         if (a.district !== b.district) return a.district - b.district;
         return a.gender.localeCompare(b.gender);
-    }), [gameState.tributes]);
+    }), [gameState.tributes, followedId]);
 
     // UX-08: the odds board runs live during the Games, not just before the gong.
     // Movement is measured against the previous phase's percentages.
@@ -517,6 +605,15 @@ export function GameScreen({
                                         Run to End
                                     </button>
                                 )}
+                                <button
+                                    onClick={() => gameActions.stepBack()}
+                                    className="btn"
+                                    disabled={!gameActions.canStepBack()}
+                                    title="Step back one phase — rewinds the simulation to just before the last advance"
+                                    aria-label="Step back one phase"
+                                >
+                                    <Undo2 className="w-4 h-4" />
+                                </button>
                                 <button onClick={onNextPhase} className="btn btn-primary" disabled={!!runProgress} title="Advance one phase (Space)">
                                     Proceed <FastForward className="w-4 h-4" />
                                 </button>
@@ -535,7 +632,7 @@ export function GameScreen({
                                     {(['manual', '1x', '5x', 'auto'] as const).map(s => (
                                         <button
                                             key={s}
-                                            onClick={() => { setSpeed(s); setPauseNotice(false); }}
+                                            onClick={() => { setSpeed(s); setPauseNotice(null); setPlayUntil(null); }}
                                             aria-pressed={speed === s}
                                             className="seg-item"
                                         >
@@ -554,10 +651,35 @@ export function GameScreen({
                                     />
                                     Pause on deaths
                                 </label>
+                                <select
+                                    className="field text-[10px] w-auto"
+                                    value={playUntil ?? ''}
+                                    aria-label="Play until a chosen moment, then hold"
+                                    title="Run at Skim pace until the chosen moment, then hold"
+                                    onChange={e => {
+                                        const v = e.target.value as '' | 'death' | 'feast' | 'final8';
+                                        setPauseNotice(null);
+                                        setPlayUntil(v === '' ? null : v);
+                                    }}
+                                >
+                                    <option value="">Play until…</option>
+                                    <option value="death">the next cannon</option>
+                                    <option value="feast" disabled={!gameState.config.enableFeast}>the feast</option>
+                                    <option value="final8" disabled={aliveCount <= 8}>the final eight</option>
+                                </select>
+                                <button
+                                    onClick={() => setPrefs({ muteAudio: !prefs.muteAudio })}
+                                    aria-pressed={prefs.muteAudio}
+                                    className="seg-item"
+                                    title={prefs.muteAudio ? 'Unmute the cannon, anthem and parachute cues' : 'Mute all sound'}
+                                    aria-label={prefs.muteAudio ? 'Unmute sound' : 'Mute sound'}
+                                >
+                                    {prefs.muteAudio ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                                </button>
                                 {pauseNotice && (
                                     <span role="status" aria-live="polite" className="text-[10px] uppercase tracking-wider text-[var(--red)] font-bold">
-                                        A cannon fired — auto-advance paused.
-                                        <button className="underline ml-1.5" onClick={() => setPauseNotice(false)}>Dismiss</button>
+                                        {pauseNotice}
+                                        <button className="underline ml-1.5" onClick={() => setPauseNotice(null)}>Dismiss</button>
                                     </span>
                                 )}
                             </div>
@@ -576,6 +698,24 @@ export function GameScreen({
                                 {(mutedGroups.size > 0 || density !== 'everything' || searchText || filterTributeId || filterTributeId2 || filterDay !== null) && <span className="ml-1 text-[var(--red)]">•</span>}
                             </button>
 
+                            {followedId && (() => {
+                                const f = gameState.tributes.find(t => t.id === followedId);
+                                if (!f) return null;
+                                return (
+                                    <span className="chip chip-accent flex items-center gap-1">
+                                        <Star className="w-3 h-3" aria-hidden="true" />
+                                        Following {f.name}{f.status === 'dead' ? ' †' : ''}
+                                        <button
+                                            className="underline ml-1"
+                                            onClick={() => { setFilterTributeId(followedId); setFilterTributeId2(null); setTacticalTab('chronicle'); setMobilePane('chronicle'); }}
+                                            title="Filter the chronicle to their story"
+                                        >
+                                            story
+                                        </button>
+                                        <button className="underline ml-1" onClick={() => setFollowedId(null)} aria-label={`Stop following ${f.name}`}>×</button>
+                                    </span>
+                                );
+                            })()}
                             <button
                                 onClick={() => setShowHelp(true)}
                                 className="seg-item ml-auto"
@@ -612,6 +752,26 @@ export function GameScreen({
                                         </button>
                                     ))}
                                 </div>
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
+                                <span className="eyebrow">Also pause on</span>
+                                {([
+                                    ['pauseOnBetrayal', 'Betrayals'],
+                                    ['pauseOnAlliance', 'Alliances forming'],
+                                    ['pauseOnSponsor', 'Sponsor gifts'],
+                                    ['pauseOnFollowed', 'Followed tribute'],
+                                ] as const).map(([key, label]) => (
+                                    <label key={key} className="flex items-center gap-1.5 cursor-pointer text-[10px] uppercase tracking-wider text-[var(--color-ink-500)]">
+                                        <input
+                                            type="checkbox"
+                                            checked={prefs[key]}
+                                            onChange={e => setPrefs({ [key]: e.target.checked })}
+                                            className="accent-[var(--red)]"
+                                            disabled={key === 'pauseOnFollowed' && !followedId}
+                                        />
+                                        {label}
+                                    </label>
+                                ))}
                             </div>
                             <div>
                                 <div className="eyebrow mb-2">Event categories — click to mute</div>
@@ -693,6 +853,26 @@ export function GameScreen({
                                 <button onClick={() => exportChronicle(true)} className="btn btn-sm" title="Copy the filtered chronicle as markdown">Copy MD</button>
                                 <button onClick={() => exportChronicle(false)} className="btn btn-sm" title="Download the filtered chronicle as a markdown file">Download</button>
                             </div>
+                            {!isOver && (
+                                <div className="flex flex-wrap gap-2 items-center">
+                                    <span className="eyebrow">Park this run</span>
+                                    {([2, 3] as const).map(slot => (
+                                        <button
+                                            key={slot}
+                                            className="btn btn-sm"
+                                            title={`Save a copy of this run into slot ${slot} — resume it later from the setup screen, even after starting another Games`}
+                                            onClick={e => {
+                                                const ok = gameActions.saveToSlot(slot);
+                                                const el = e.currentTarget;
+                                                el.textContent = ok ? `Saved to slot ${slot}` : 'Save failed';
+                                                setTimeout(() => { el.textContent = `Slot ${slot}`; }, 1800);
+                                            }}
+                                        >
+                                            Slot {slot}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                             <div className="text-[10px] text-[var(--color-ink-500)]">
                                 Showing {filteredLogs.length} of {gameState.log.length} logged events.
                             </div>
@@ -877,7 +1057,16 @@ export function GameScreen({
 
                 {!isOver && oddsLadder.length > 1 && (
                     <div className={`panel p-4 ${sidebarPane === 'odds' ? '' : 'hidden lg:block'}`}>
-                        <h3 className="panel-title mb-1">Live odds</h3>
+                        <h3 className="panel-title mb-1 flex items-center justify-between">
+                            Live odds
+                            <Explainer align="left" label={<span className="chip">why?</span>} title="How the odds are made">
+                                Each tribute's number is a share of the living field's combined score:
+                                raw strength and agility, the training score, how the bookmakers read
+                                their traits, then live form — kills, health, an alliance at their back,
+                                open wounds, and days survived against expectation. Hover any row for
+                                the top three factors moving that tribute right now.
+                            </Explainer>
+                        </h3>
                         <p className="text-[10px] text-[var(--color-ink-500)] mb-3">
                             Survival chance and movement since the last phase.
                         </p>
@@ -912,7 +1101,7 @@ export function GameScreen({
                                         key={tribute.id}
                                         onClick={() => setSelectedTributeId(tribute.id)}
                                         className="w-full text-left flex items-center gap-2 px-1.5 py-1 hover:bg-[var(--paper-flush)] transition-colors"
-                                        title={`${tribute.name} — ${pct}% survival chance, ${mult.toFixed(1)}× payout`}
+                                        title={`${tribute.name} — ${pct}% survival chance, ${mult.toFixed(1)}× payout.\n${oddsFactors(tribute).slice(0, 3).map(f => `${f.delta > 0 ? '+' : ''}${Math.round(f.delta)} ${f.label}`).join('\n')}`}
                                     >
                                         <span className="font-mono text-[10px] text-[var(--color-ink-500)] w-4 flex-none">{i + 1}</span>
                                         <span className="text-xs font-bold text-[var(--color-ink-100)] truncate flex-1 min-w-0">
@@ -1082,6 +1271,20 @@ export function GameScreen({
                                                 >
                                                     D{t.district}·{t.gender === 'Male' ? 'M' : 'F'}
                                                 </span>
+                                                {!dead && (
+                                                    <span
+                                                        role="button"
+                                                        tabIndex={0}
+                                                        aria-pressed={followedId === t.id}
+                                                        aria-label={followedId === t.id ? `Stop following ${t.name}` : `Follow ${t.name} — pin them to the top and brake on their events`}
+                                                        title={followedId === t.id ? 'Following — click to stop' : 'Follow this tribute'}
+                                                        onClick={e => { e.stopPropagation(); setFollowedId(id => (id === t.id ? null : t.id)); }}
+                                                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setFollowedId(id => (id === t.id ? null : t.id)); } }}
+                                                        className="inline-flex"
+                                                    >
+                                                        <Star className={`w-3 h-3 ${followedId === t.id ? 'text-[var(--red)] fill-[var(--red)]' : 'text-[var(--color-ink-600)]'}`} />
+                                                    </span>
+                                                )}
                                                 {!dead && t.allianceId && (
                                                     <span className="chip" style={accent ? { color: accent, borderColor: accent } : undefined}>
                                                         <Users className="w-2.5 h-2.5" /> Pack

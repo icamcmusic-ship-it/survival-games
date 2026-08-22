@@ -853,6 +853,11 @@ export interface HallOfFameEntry {
     quellId?: string | null;
     /** True for a Games nobody survived — archived as its own kind of entry. */
     noVictor?: boolean;
+    /**
+     * Player-pinned: never evicted by the HOF_CAP. A first-ever District 12
+     * crown should not be silently deleted by run 51.
+     */
+    pinned?: boolean;
     winnerName: string;
     winnerDistrict: number;
     kills: number;

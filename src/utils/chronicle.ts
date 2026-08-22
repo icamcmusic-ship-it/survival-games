@@ -6,11 +6,21 @@ import { GameState } from '../models/types';
  * Markdown, grouped the same way the EventFeed groups it, with the seed in the
  * header so a shared chronicle carries everything needed to replay it.
  */
-export function chronicleMarkdown(state: GameState, importantOnly = false): string {
-    const logs = importantOnly ? state.log.filter(l => l.important) : state.log;
+export interface ChronicleFilter {
+    importantOnly?: boolean;
+    /** §2.7: "everything involving Rue" — one tribute's whole story. */
+    tributeId?: string;
+}
+
+export function chronicleMarkdown(state: GameState, filter: boolean | ChronicleFilter = false): string {
+    const f: ChronicleFilter = typeof filter === 'boolean' ? { importantOnly: filter } : filter;
+    const logs = state.log.filter(l =>
+        (!f.importantOnly || l.important)
+        && (!f.tributeId || l.tributesInvolved.includes(f.tributeId)));
+    const followed = f.tributeId ? state.tributes.find(t => t.id === f.tributeId) : undefined;
     const winner = state.tributes.find(t => t.status === 'alive');
     const lines: string[] = [
-        `# The ${state.arena.name} Games`,
+        followed ? `# ${followed.name} of District ${followed.district} — The ${state.arena.name} Games` : `# The ${state.arena.name} Games`,
         '',
         `- **Seed:** \`${state.seed}\``,
         `- **Arena:** ${state.arena.name}`,
@@ -36,13 +46,15 @@ export function chronicleMarkdown(state: GameState, importantOnly = false): stri
     return lines.join('\n');
 }
 
-export function downloadChronicle(state: GameState, importantOnly = false) {
-    const md = chronicleMarkdown(state, importantOnly);
+export function downloadChronicle(state: GameState, filter: boolean | ChronicleFilter = false) {
+    const f: ChronicleFilter = typeof filter === 'boolean' ? { importantOnly: filter } : filter;
+    const md = chronicleMarkdown(state, f);
     const blob = new Blob([md], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
+    const who = f.tributeId ? `-${state.tributes.find(t => t.id === f.tributeId)?.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') ?? 'tribute'}` : '';
     a.href = url;
-    a.download = `games-${state.seed}${importantOnly ? '-highlights' : ''}.md`;
+    a.download = `games-${state.seed}${f.importantOnly ? '-highlights' : ''}${who}.md`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -84,9 +96,9 @@ export function downloadChronicleJson(state: GameState) {
     URL.revokeObjectURL(url);
 }
 
-export async function copyChronicle(state: GameState, importantOnly = false): Promise<boolean> {
+export async function copyChronicle(state: GameState, filter: boolean | ChronicleFilter = false): Promise<boolean> {
     try {
-        await navigator.clipboard.writeText(chronicleMarkdown(state, importantOnly));
+        await navigator.clipboard.writeText(chronicleMarkdown(state, filter));
         return true;
     } catch {
         return false;

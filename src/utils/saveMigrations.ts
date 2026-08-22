@@ -404,3 +404,15 @@ export const SAVED_RUN_SPEC: StorageSpec<SavedRun> = {
     // normalising on every read is that the shape repair is version-agnostic.
     migrate: raw => normalizeSavedRun(raw),
 };
+
+/**
+ * UX: named save slots. Slot 1 is the rolling autosave (`SAVED_RUN_SPEC`,
+ * unchanged); slots 2 and 3 are manual — a run parked mid-decision while
+ * another is played, or a branch point kept to revisit. Same schema, same
+ * migration chain, separate keys.
+ */
+export const SAVE_SLOT_SPECS: ReadonlyArray<StorageSpec<SavedRun>> = [
+    SAVED_RUN_SPEC,
+    { key: STORAGE_KEYS.saveSlot2, version: SAVED_RUN_VERSION, migrate: raw => normalizeSavedRun(raw) },
+    { key: STORAGE_KEYS.saveSlot3, version: SAVED_RUN_VERSION, migrate: raw => normalizeSavedRun(raw) },
+];

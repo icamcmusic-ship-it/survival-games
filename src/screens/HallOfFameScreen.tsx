@@ -4,7 +4,7 @@ import { readHallOfFame, writeHallOfFame, clearHallOfFame } from '../utils/hofSt
 import { HofFilters, applyHofQuery, isFiltered, EMPTY_HOF_QUERY, HofQuery } from '../components/HofFilters';
 import { HofAggregates } from '../components/HofAggregates';
 import { HofTransfer } from '../components/HofTransfer';
-import { Trophy, Trash2, Copy, Check, RotateCcw } from 'lucide-react';
+import { Trophy, Trash2, Copy, Check, RotateCcw, Pin } from 'lucide-react';
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { PanemRecordBook } from '../components/PanemRecordBook';
@@ -196,6 +196,23 @@ export function HallOfFameScreen() {
                                                         title={`Run the ${entry.arenaName} Games again on seed ${entry.seed}`}
                                                     >
                                                         <RotateCcw className="w-3.5 h-3.5" /> Run these Games again
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            // §2.13: pinned entries are never evicted by the
+                                                            // 50-record cap — a first D12 crown should not be
+                                                            // silently deleted by run 51.
+                                                            const next = entries.map(e => e.id === entry.id ? { ...e, pinned: !e.pinned || undefined } : e);
+                                                            writeHallOfFame(next);
+                                                            setEntries(readHallOfFame());
+                                                        }}
+                                                        className={`btn btn-sm ${entry.pinned ? 'btn-primary' : ''}`}
+                                                        aria-pressed={!!entry.pinned}
+                                                        title={entry.pinned
+                                                            ? 'Pinned — protected from the archive cap. Click to unpin.'
+                                                            : 'Pin this entry so the oldest-evicted archive cap can never delete it'}
+                                                    >
+                                                        <Pin className="w-3.5 h-3.5" /> {entry.pinned ? 'Pinned' : 'Pin'}
                                                     </button>
                                                 </div>
 

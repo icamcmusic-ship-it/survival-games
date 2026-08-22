@@ -44,6 +44,45 @@ export function oddsScore(t: Tribute): number {
     return Math.max(ODDS.minScore, Math.round(score));
 }
 
+/**
+ * §2.9: why the number is what it is. The same terms `oddsScore` adds up,
+ * returned as labelled contributions so the odds board can show the top
+ * factors instead of a bare percentage and an arrow.
+ */
+export interface OddsFactor {
+    label: string;
+    delta: number;
+}
+
+export function oddsFactors(t: Tribute): OddsFactor[] {
+    if (t.status === 'dead') return [];
+    const training = t.trainingScore || 5;
+    const factors: OddsFactor[] = [
+        { label: 'Raw strength', delta: t.attributes.strength * ODDS.strengthWeight },
+        { label: 'Agility', delta: t.attributes.agility * ODDS.agilityWeight },
+        { label: `Training score of ${training}`, delta: training * ODDS.trainingWeight },
+        { label: 'How the bookmakers read them', delta: traitMod(t, 'odds') * ODDS.traitWeight + traitMod(t, 'combatPower') * 4 },
+    ];
+    if (t.fanFavourite) factors.push({ label: 'Capitol darling', delta: ODDS.fanFavouriteBonus });
+    if (t.kills > 0) factors.push({ label: `${t.kills} confirmed kill${t.kills === 1 ? '' : 's'}`, delta: t.kills * ODDS.killWeight });
+    if (t.health < 100) factors.push({ label: `Down to ${t.health} health`, delta: -(100 - t.health) * ODDS.healthWeight });
+    if (t.allianceId) factors.push({ label: 'Alliance at their back', delta: ODDS.allianceBonus });
+    if (t.injuries.bleeding || t.injuries.poisoned || t.injuries.infected) {
+        factors.push({ label: 'Carrying an open wound', delta: -ODDS.woundedPenalty });
+    }
+    if (t.vitals.sanity < 30) factors.push({ label: 'Coming apart', delta: -ODDS.sanityPenalty });
+    if (t.daysSurvived > 0) {
+        const expectation = Math.min(1, training / 12);
+        factors.push({
+            label: `${t.daysSurvived} day${t.daysSurvived === 1 ? '' : 's'} survived against expectation`,
+            delta: t.daysSurvived * ODDS.survivalDayWeight * (1 - expectation * ODDS.survivalExpectationDamping),
+        });
+    }
+    return factors
+        .filter(f => Math.round(f.delta) !== 0)
+        .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
 export interface TributeOdds {
     /** Rounded survival chance as a percentage. */
     pct: number;

@@ -3,6 +3,7 @@ import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { GameConfig } from '../models/types';
 import { Play, ChevronDown, ChevronRight, ArrowRight, History } from 'lucide-react';
 import { gameActions, gameStore, readSavedRun } from '../store/gameStore';
+import type { SlotSummary } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
 // PERF: imported from the data module directly, not via `engine/arenaSignature`
@@ -84,6 +85,8 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const coins = useStore(gameStore, st => st.coins);
     const panem = useStore(gameStore, st => st.panem);
     const [savedRun, setSavedRun] = useState(readSavedRun);
+    // §2.1: the manual slots alongside the rolling autosave.
+    const [slots, setSlots] = useState<Array<SlotSummary | null>>(() => gameActions.readSaveSlots());
 
     const setConfig = (updater: GameConfig | ((c: GameConfig) => GameConfig)) => {
         setConfigState(prev => {
@@ -118,32 +121,47 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                 <p className="masthead-sub text-sm">Set your parameters, then reap twenty-four tributes for the Capitol's Games.</p>
             </div>
 
-            {savedRun && (
-                <div className="panel p-5 flex flex-wrap items-center justify-between gap-4" style={{ borderColor: 'var(--red)', borderWidth: '3px' }}>
-                    <div className="flex items-start gap-3 min-w-0">
-                        <History className="w-5 h-5 text-[var(--red)] flex-none mt-0.5" />
-                        <div className="min-w-0">
-                            <div className="font-black text-[var(--ink)] uppercase text-sm">Resume in-progress run</div>
-                            <div className="text-xs text-[var(--color-ink-500)] mt-0.5">
-                                {savedRun.gameState.arenaHidden && !canSeeArena(disclosureFor(savedRun.gameState.phase))
-                                    ? '❓ Arena sealed'
-                                    : savedRun.gameState.arena.name} · seed {savedRun.gameState.seed} ·{' '}
-                                {savedRun.gameState.day === 0 ? savedRun.gameState.phase : `Day ${savedRun.gameState.day} — ${savedRun.gameState.phase}`} ·{' '}
-                                {savedRun.gameState.tributes.filter(t => t.status === 'alive').length} tributes alive
+            {(savedRun || slots.some((sl, i) => i > 0 && sl)) && (
+                <div className="panel p-5 space-y-3" style={{ borderColor: 'var(--red)', borderWidth: '3px' }}>
+                    <div className="flex items-center gap-2">
+                        <History className="w-5 h-5 text-[var(--red)] flex-none" />
+                        <span className="font-black text-[var(--ink)] uppercase text-sm">Saved runs</span>
+                    </div>
+                    {slots.map((slot, i) => {
+                        if (!slot) return null;
+                        const label = i === 0 ? 'In progress (autosave)' : `Slot ${i + 1}`;
+                        return (
+                            <div key={i} className="flex flex-wrap items-center justify-between gap-3 panel-flush p-3">
+                                <div className="min-w-0">
+                                    <div className="font-bold text-xs uppercase text-[var(--ink)]">{label}</div>
+                                    <div className="text-xs text-[var(--color-ink-500)] mt-0.5">
+                                        {slot.arenaHidden && !canSeeArena(disclosureFor(slot.phase)) ? '❓ Arena sealed' : slot.arenaName}
+                                        {' · '}seed {slot.seed}
+                                        {' · '}{slot.day === 0 ? slot.phase : `Day ${slot.day} — ${slot.phase}`}
+                                        {' · '}{slot.alive} alive
+                                        {slot.savedAt && Date.parse(slot.savedAt) > 0 && (
+                                            <> · saved {new Date(slot.savedAt).toLocaleString()}</>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 flex-none">
+                                    <button
+                                        onClick={() => {
+                                            gameActions.discardSlot((i + 1) as 1 | 2 | 3);
+                                            setSlots(gameActions.readSaveSlots());
+                                            if (i === 0) setSavedRun(null);
+                                        }}
+                                        className="btn btn-sm btn-ghost"
+                                    >
+                                        Discard
+                                    </button>
+                                    <button onClick={() => { void gameActions.resumeFromSlot((i + 1) as 1 | 2 | 3); }} className="btn btn-primary btn-sm">
+                                        Resume
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    <div className="flex gap-2 flex-none">
-                        <button
-                            onClick={() => { gameActions.discardSavedRun(); setSavedRun(null); }}
-                            className="btn btn-sm btn-ghost"
-                        >
-                            Discard
-                        </button>
-                        <button onClick={() => { void gameActions.resumeSavedRun(); }} className="btn btn-primary btn-sm">
-                            Resume
-                        </button>
-                    </div>
+                        );
+                    })}
                 </div>
             )}
 

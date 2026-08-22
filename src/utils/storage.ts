@@ -34,6 +34,8 @@ export const STORAGE_KEYS = {
     feedFilters: 'survivalGamesFeedFilters',
     lastConfig: 'survivalGamesLastConfig',
     prefs: 'survivalGamesPrefs',
+    saveSlot2: 'survivalGamesSaveSlot2',
+    saveSlot3: 'survivalGamesSaveSlot3',
 } as const;
 
 /**

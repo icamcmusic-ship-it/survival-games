@@ -4,8 +4,9 @@
  */
 
 import React, { Suspense, lazy, useEffect } from 'react';
-import { Swords } from 'lucide-react';
+import { Settings2, Swords } from 'lucide-react';
 import { ShareButton } from './components/ShareButton';
+import { SettingsPanel } from './components/SettingsPanel';
 import { SetupScreen } from './screens/SetupScreen';
 import { gameActions, gameStore, prefetchEngine, ViewName } from './store/gameStore';
 import { initRouter, pathForView, redirectView, resolveView } from './store/router';
@@ -39,6 +40,7 @@ export default function App() {
   const bets = useStore(gameStore, s => s.bets);
   const betWonMessage = useStore(gameStore, s => s.betWonMessage);
   const isReplayedRun = useStore(gameStore, s => s.isReplayedRun);
+  const [showSettings, setShowSettings] = React.useState(false);
 
   // Replay sharing: ?seed=...&arena=...&districtCount=... boots straight into that exact run.
   // The router is started from the same effect, and only after this has run:
@@ -132,6 +134,16 @@ export default function App() {
                 follows them, and middle-click / open-in-new-tab work. The click
                 handler keeps the store in step for the case where the hash is
                 already what it's about to become. */}
+            <button
+              onClick={() => setShowSettings(true)}
+              className="px-2 py-1.5"
+              title="Settings — units, sound, auto-play brakes"
+              aria-label="Open settings"
+              aria-haspopup="dialog"
+              style={{ color: '#a89a86' }}
+            >
+              <Settings2 className="w-4 h-4" />
+            </button>
             {navItems.filter(i => i.show).map(item => (
               <a
                 key={item.id}
@@ -203,6 +215,8 @@ export default function App() {
         {view === 'hallOfFame' && <HallOfFameScreen />}
         </Suspense>
       </main>
+
+      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
 
       <footer className="max-w-6xl mx-auto px-4 pb-10 text-center">
         <p className="eyebrow">May the odds be ever in your favour</p>

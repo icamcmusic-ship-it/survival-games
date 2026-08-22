@@ -353,7 +353,7 @@ function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTr
     const rendered = expandedBeats ?? beats;
 
     return (
-        <section data-day={dayOfSection} className="space-y-2.5">
+        <section data-day={dayOfSection} className="feed-section space-y-2.5">
             <h3 className="panel-title border-b border-[var(--color-ink-800)] pb-1.5 flex items-center justify-between">
                 <span>{sectionKey}</span>
                 <span className="text-[var(--color-ink-600)]">{entries.length} entries</span>

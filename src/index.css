@@ -624,3 +624,11 @@ input[type="range"]:focus-visible {
     outline: 3px dashed var(--red);
     outline-offset: 6px;
 }
+
+/* §2.8: off-screen day/phase sections skip layout and paint entirely —
+   the chronicle can carry a 900-line run without a truncation button doing
+   the heavy lifting. The intrinsic-size estimate keeps the scrollbar sane. */
+.feed-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 480px;
+}

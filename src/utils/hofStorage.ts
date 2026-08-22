@@ -30,7 +30,7 @@ export const HOF_SPEC: StorageSpec<HallOfFameEntry[]> = {
         // Records written by older builds (or hand-edited by a player) can be missing
         // fields the screen indexes into, so everything read back is normalised once
         // here rather than defended against at every render site.
-        return raw.map(normalizeEntry).filter((e): e is HallOfFameEntry => e !== null).slice(0, HOF_CAP);
+        return capWithPins(raw.map(normalizeEntry).filter((e): e is HallOfFameEntry => e !== null));
     },
 };
 
@@ -38,8 +38,26 @@ export function readHallOfFame(): HallOfFameEntry[] {
     return readStored(HOF_SPEC) ?? [];
 }
 
+/**
+ * Applies the archive cap while honouring pins: pinned entries are never
+ * evicted, and unpinned ones fill the remaining space newest-first (list
+ * order). If a player somehow pins more than the cap, the pins all survive —
+ * the cap exists for storage hygiene, not to delete what they asked to keep.
+ */
+export function capWithPins(entries: HallOfFameEntry[], cap = HOF_CAP): HallOfFameEntry[] {
+    if (entries.length <= cap) return entries;
+    const kept: HallOfFameEntry[] = [];
+    let unpinned = 0;
+    const unpinnedBudget = Math.max(0, cap - entries.filter(e => e.pinned).length);
+    for (const e of entries) {
+        if (e.pinned) kept.push(e);
+        else if (unpinned < unpinnedBudget) { kept.push(e); unpinned++; }
+    }
+    return kept;
+}
+
 export function writeHallOfFame(entries: HallOfFameEntry[]): void {
-    writeStored(HOF_SPEC, entries.slice(0, HOF_CAP));
+    writeStored(HOF_SPEC, capWithPins(entries));
 }
 
 export function clearHallOfFame(): void {
@@ -92,10 +110,34 @@ export function normalizeEntry(raw: unknown): HallOfFameEntry | null {
         ? r.tributeSummaries.map(normalizeSummary).filter((s): s is TributeHoFSummary => s !== null)
         : undefined;
 
+    // The replay fields (arenaId, config, quellId) and the wipeout/pin flags
+    // must survive normalisation — this runs on every archive *read*, and
+    // dropping them here silently broke exact relaunches of stored entries.
+    const config = ((): HallOfFameEntry['config'] => {
+        const c = r.config;
+        if (!c || typeof c !== 'object' || Array.isArray(c)) return undefined;
+        const rc = c as Record<string, unknown>;
+        const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+        return {
+            districtCount: Math.min(12, Math.max(2, Math.round(num(rc.districtCount, 12)))),
+            hazardRate: num(rc.hazardRate, 1),
+            betrayalRate: num(rc.betrayalRate, 1),
+            sponsorGenerosity: num(rc.sponsorGenerosity, 1),
+            enableFeast: typeof rc.enableFeast === 'boolean' ? rc.enableFeast : true,
+            enableSanity: typeof rc.enableSanity === 'boolean' ? rc.enableSanity : true,
+            plainNames: typeof rc.plainNames === 'boolean' ? rc.plainNames : false,
+        };
+    })();
+
     return {
         id: asString(r.id) || `imported-${date}-${winnerName}`,
         seed: asString(r.seed, 'unknown'),
         arenaName: asString(r.arenaName, 'Unknown Arena'),
+        arenaId: typeof r.arenaId === 'string' ? r.arenaId : undefined,
+        config,
+        quellId: typeof r.quellId === 'string' || r.quellId === null ? r.quellId : undefined,
+        noVictor: r.noVictor === true ? true : undefined,
+        pinned: r.pinned === true ? true : undefined,
         winnerName,
         winnerDistrict: asNumber(r.winnerDistrict),
         kills: asNumber(r.kills),
@@ -157,7 +199,7 @@ export function importHallOfFame(rawJson: string, existing: HallOfFameEntry[]): 
     const seen = new Set(existing.map(e => e.id));
     const added = incoming.filter(e => !seen.has(e.id));
     const merged = [...existing, ...added].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
-    const capped = merged.slice(0, HOF_CAP);
+    const capped = capWithPins(merged);
     const evicted = merged.length - capped.length;
 
     const parts = [`Imported ${added.length} new record${added.length === 1 ? '' : 's'}`];
