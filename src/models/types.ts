@@ -319,6 +319,12 @@ export interface Tribute {
     stylist?: string;
     /** The angle the stylist took for the chariot parade. */
     chariotAngle?: string;
+    /**
+     * How hard the parade landed (the chariot angle's pull plus charisma and
+     * legacy). Read by the sponsor stream for the first few days of the Games
+     * — see SPONSORS.paradeBuzzPerPull/paradeBuzzDays.
+     */
+    paradeBuzz?: number;
     /** How they played the training floor: showcase, conceal, or neither. */
     trainingStrategy?: 'showcase' | 'conceal' | 'balanced';
     /** They put their hand up rather than being drawn out of the bowl. */
@@ -578,6 +584,14 @@ export interface SignatureRule {
 
 export interface Arena {
     id: string;
+    /**
+     * Procedural arenas only: a per-map identity. `id` collapses every
+     * generated arena of a biome to `procedural-<biome>` (flavour packs,
+     * climate profiles and mutt kits key on it and that must not change),
+     * so anything that cares which *map* this was — Panem records,
+     * achievements — reads `mapId ?? name` instead.
+     */
+    mapId?: string;
     name: string;
     description: string;
     /** Flavor text only — the game engine resolves mutts through `ARENA_MUTTS` (src/data/mutts.ts) via engine/mutts.ts, not this list. */

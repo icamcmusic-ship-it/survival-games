@@ -22,12 +22,18 @@ import { QUALITY_BIAS } from '../data/balance';
  * shape now governs the gift stream: your first parachute is likely, your
  * fourth is a story.
  */
-export function giftChance(t: Tribute, generosity: number): number {
+export function giftChance(t: Tribute, generosity: number, day = 99): number {
     const prior = ensureMemory(t).giftsReceived;
     const decayed = SPONSORS.baseGiftChance * Math.pow(SPONSORS.repeatDecay, prior);
     // The mentor is the person who actually places the gift, so their district's
     // record scales the whole stream rather than being a flat bonus on top of it.
-    const pull = decayed * generosity * mentorGenerosity(t);
+    // The chariot parade's buzz rides on top for the first few days: the whole
+    // point of a parade is sponsors, and a memorable angle keeps the phones
+    // ringing until the arena gives them something newer to talk about.
+    const paradeGlow = day <= SPONSORS.paradeBuzzDays
+        ? 1 + Math.max(0, t.paradeBuzz ?? 0) * SPONSORS.paradeBuzzPerPull
+        : 1;
+    const pull = decayed * generosity * mentorGenerosity(t) * paradeGlow;
     return Math.min(SPONSORS.maxGiftChance, Math.max(SPONSORS.repeatFloor, pull));
 }
 
@@ -117,7 +123,7 @@ export function processSponsors(ctx: SimContext) {
         // `quell-blood-debt`: a tribute who has killed is marked, and the
         // Capitol pays the marked less.
         if (wildcardIs(ctx.state, 'quell-blood-debt') && t.kills > 0) generosity *= QUELL_MECHANICS.bloodDebtGenerosityMult;
-        if (!ctx.rng.chance(giftChance(t, generosity))) return;
+        if (!ctx.rng.chance(giftChance(t, generosity, ctx.state.day))) return;
 
         const tier = rollGiftTier(ctx, t);
         const floor = TIER_FLOORS[tier];

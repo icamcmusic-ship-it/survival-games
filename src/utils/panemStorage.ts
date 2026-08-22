@@ -347,7 +347,11 @@ export function commitRun(state: GameState): RunOutcome {
 
     if (victor) {
         records.arenasWon = records.arenasWon ?? [];
-        if (!records.arenasWon.includes(state.arena.name)) records.arenasWon.push(state.arena.name);
+        // Procedural arenas: key on the per-map identity, not the display
+        // name — 4 biomes × 12 name suffixes collapsed genuinely distinct
+        // generated maps into a handful of entries.
+        const arenaKey = state.arena.mapId ?? state.arena.name;
+        if (!records.arenasWon.includes(arenaKey)) records.arenasWon.push(arenaKey);
     }
 
     // S-4: a Quell counts toward `meta-quell-collector` whether or not it

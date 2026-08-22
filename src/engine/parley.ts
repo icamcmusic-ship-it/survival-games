@@ -287,9 +287,15 @@ export function resolveTruces(ctx: SimContext) {
         Object.entries(t.truces).forEach(([otherId, until]) => {
             if (cycle < until) return;
             const other = byId.get(otherId);
-            // A dead counterparty leaves nothing to resolve.
+            // A dead counterparty leaves nothing to resolve. Clear both
+            // sides of the record — leaving the mirror key on the other
+            // tribute made save payloads accrete stale empty truce objects.
             if (!other || other.status !== 'alive' || t.status !== 'alive') {
                 delete t.truces![otherId];
+                if (other?.truces) {
+                    delete other.truces[t.id];
+                    if (Object.keys(other.truces).length === 0) delete other.truces;
+                }
                 return;
             }
             // Each pair resolves exactly once, from whichever side sorts first;

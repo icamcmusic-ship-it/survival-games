@@ -4,6 +4,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { FeedLine } from './EventFeed';
 import { fearOf } from '../engine/fear';
 import { heightLabel } from '../engine/physique';
+import { prefsStore } from '../store/prefsStore';
 import { HUNTING, PROFICIENCY, ROMANCE, SUSPICION } from '../data/balance';
 import { resolveOf, hasBroken } from '../engine/resolve';
 import { hasTruce, truceWith } from '../engine/parley';
@@ -131,6 +132,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
     /** U-3: jump the chronicle to this tribute's story (their death sits on top). */
     onShowInChronicle?: () => void;
 }) {
+    const units = useStore(prefsStore, p => p.units);
     const arenaSealed = !!gameState.arenaHidden && !canSeeArena(disclosureFor(gameState.phase));
     const panelRef = useRef<HTMLDivElement>(null);
     const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -388,7 +390,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                             )}
                         </div>
                         <p className="text-xs text-[var(--color-ink-500)] mt-2">
-                            {tribute.age} years old · {heightLabel(tribute.heightCm)} · {tribute.build} build
+                            {tribute.age} years old · {heightLabel(tribute.heightCm, units)} · {tribute.build} build
                             {tribute.platePosition !== undefined && (
                                 <> · plate {tribute.platePosition < 0.34 ? 'close to the horn' : tribute.platePosition < 0.67 ? 'mid-ring' : 'on the far edge of the ring'}</>
                             )}

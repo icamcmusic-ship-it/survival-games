@@ -1728,6 +1728,14 @@ export const SPONSORS = {
     excitementFloorDecay: 3,
     /** Trust drifts back toward the tribute's baseline reputation. */
     trustDriftPerCycle: 1.5,
+    /**
+     * The chariot parade's afterglow: for the first days of the Games a
+     * memorable entrance keeps the sponsor phones ringing. Multiplier on the
+     * gift chance per point of parade pull, and how many days it lasts —
+     * the Capitol's attention span, not the tribute's merit.
+     */
+    paradeBuzzPerPull: 0.06,
+    paradeBuzzDays: 3,
 } as const;
 
 /** Live betting odds. */

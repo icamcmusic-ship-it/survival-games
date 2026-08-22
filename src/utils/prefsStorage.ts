@@ -76,12 +76,15 @@ export const CONFIG_SPEC: StorageSpec<GameConfig> = {
         const r = asRecord(raw);
         if (!r) return null;
         return {
-            districtCount: Math.min(12, Math.max(1, asNum(r.districtCount, DEFAULT_GAME_CONFIG.districtCount))),
+            districtCount: Math.min(12, Math.max(2, asNum(r.districtCount, DEFAULT_GAME_CONFIG.districtCount))),
             hazardRate: asNum(r.hazardRate, DEFAULT_GAME_CONFIG.hazardRate),
             betrayalRate: asNum(r.betrayalRate, DEFAULT_GAME_CONFIG.betrayalRate),
             sponsorGenerosity: asNum(r.sponsorGenerosity, DEFAULT_GAME_CONFIG.sponsorGenerosity),
             enableFeast: asBool(r.enableFeast, DEFAULT_GAME_CONFIG.enableFeast),
             enableSanity: asBool(r.enableSanity, DEFAULT_GAME_CONFIG.enableSanity),
+            // Dropped here in v1's first cut, which silently reset the
+            // player's plain-names choice on every reload.
+            plainNames: asBool(r.plainNames, !!DEFAULT_GAME_CONFIG.plainNames),
         };
     },
 };

@@ -134,16 +134,22 @@ function applyVolunteer(rng: RNG, t: Tribute, shape?: CastShape) {
     // strength be recomputed against the new age.
     if (t.age < VOLUNTEER.minAge) t.age = rng.nextInt(VOLUNTEER.minAge, GENERATION.maxAge);
 
+    // Compose with any note already on the tribute (the tesserae note is set
+    // at construction) rather than overwriting it — the tesserae story is
+    // most meaningful in exactly the poor outer districts where the
+    // sibling-volunteer case lives.
+    const composeNote = (note: string) =>
+        t.reapingNote ? `${note} ${t.reapingNote}` : note;
     if (t.isCareer) {
         t.attributes.strength = Math.min(10, t.attributes.strength + VOLUNTEER.careerStrengthBonus);
         t.attributes.agility = Math.min(10, t.attributes.agility + VOLUNTEER.careerAgilityBonus);
         t.reputation = Math.min(95, t.reputation + VOLUNTEER.careerTrust);
         addExcitement(t, VOLUNTEER.careerExcitement);
-        t.reapingNote = `Volunteered before the escort had finished reading the card — ${craftOf(t.district).blurb}, and eighteen years of waiting for their turn.`;
+        t.reapingNote = composeNote(`Volunteered before the escort had finished reading the card — ${craftOf(t.district).blurb}, and eighteen years of waiting for their turn.`);
     } else {
         t.reputation = Math.min(95, t.reputation + VOLUNTEER.sacrificeTrust);
         addExcitement(t, VOLUNTEER.sacrificeExcitement);
-        t.reapingNote = `Volunteered for a sibling. District ${t.district} has not had a volunteer in living memory, and the crowd did not applaud — they touched three fingers to their lips instead.`;
+        t.reapingNote = composeNote(`Volunteered for a sibling. District ${t.district} has not had a volunteer in living memory, and the crowd did not applaud — they touched three fingers to their lips instead.`);
     }
     t.attributes.strength = Math.min(t.attributes.strength, strengthCapForAge(t.age));
     t.sponsorTrust = t.reputation;
@@ -171,6 +177,19 @@ export function generateTributes(
     // Names must be unique across the whole cast — two tributes called "Amber"
     // made the chronicle feed and the kill log ambiguous.
     const usedNames = new Set<string>();
+    // A name is supposed to encode its district's export, but ~200 of the
+    // 2,400 pool entries appear in more than one district's pool (Clover in
+    // five of them). Prefer names exclusive to this district so the flavour
+    // reads true, and so D1 drawing first never denies D11 its own Clover;
+    // the shared names remain a fallback if an exclusive pool ever runs dry.
+    const nameDistrictCounts = new Map<string, number>();
+    for (let d = 1; d <= 12; d++) {
+        for (const g of ['Male', 'Female'] as const) {
+            for (const n of new Set(DISTRICT_NAMES[d][g])) {
+                nameDistrictCounts.set(n, (nameDistrictCounts.get(n) ?? 0) + 1);
+            }
+        }
+    }
     const drawName = (district: number, gender: Gender): string => {
         // Pre-Games option: skip the flavour pools entirely and name every
         // tribute for their number — "District 7 Boy" — the way the books'
@@ -180,7 +199,25 @@ export function generateTributes(
         if (config.plainNames) return `District ${district} ${gender === 'Male' ? 'Boy' : 'Girl'}`;
         const pool = DISTRICT_NAMES[district][gender];
         const available = pool.filter(n => !usedNames.has(n));
-        const name = available.length > 0 ? rng.pick(available) : `${rng.pick(pool)} ${['II', 'III', 'IV', 'V'][rng.nextInt(0, 3)]}`;
+        const exclusive = available.filter(n => nameDistrictCounts.get(n) === 1);
+        let name: string;
+        if (exclusive.length > 0) {
+            name = rng.pick(exclusive);
+        } else if (available.length > 0) {
+            name = rng.pick(available);
+        } else {
+            // Exhausted pool (only possible with a shrunken pool): suffix a
+            // generation numeral, and keep going until the result is itself
+            // unused — the naked suffix could otherwise collide too.
+            const base = rng.pick(pool);
+            let ordinal = 2;
+            const numerals = ['II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+            name = `${base} ${numerals[ordinal - 2]}`;
+            while (usedNames.has(name) && ordinal - 2 < numerals.length - 1) {
+                ordinal++;
+                name = `${base} ${numerals[ordinal - 2]}`;
+            }
+        }
         usedNames.add(name);
         return name;
     };
@@ -340,8 +377,10 @@ export function generateTributes(
                 stanceHeld: 0,
                 fanFavourite: false,
                 tesserae,
-                // T-7: one or two habits the cameras will find. Drawn without
-                // replacement so a pair never shares a quirk within one cast.
+                // T-7: one or two habits the cameras will find. Deduped
+                // within the tribute only — with 25 quirks over a 24-strong
+                // cast, two tributes sharing a habit across the field is
+                // expected and fine; two identical habits on one card is not.
                 quirks: [rng.pick(QUIRKS).label, ...(rng.chance(GENERATION.secondQuirkChance) ? [rng.pick(QUIRKS).label] : [])]
                     .filter((q, i, arr) => arr.indexOf(q) === i),
                 reapingNote: tesserae >= TESSERAE.notedAt

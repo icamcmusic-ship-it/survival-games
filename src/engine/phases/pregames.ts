@@ -144,6 +144,10 @@ export function processPreGames(ctx: SimContext) {
         const pull = chariot.pull
             + (t.attributes.charisma - 5) * PREGAMES.paradeCharismaWeight
             + (legacyOf(t.district).tier === 'storied' ? PREGAMES.paradeLegacyBonus : 0);
+        // The parade's whole purpose is buzz: remember how hard it landed so
+        // the early-run sponsor stream can read it (chariotAngle stops being
+        // a write-only flavour string).
+        t.paradeBuzz = Math.max(0, pull);
         t.sponsorTrust = Math.max(0, Math.min(100,
             t.sponsorTrust + Math.round(pull * PREGAMES.paradeTrustPerPull)));
         t.reputation = Math.max(5, Math.min(95,
