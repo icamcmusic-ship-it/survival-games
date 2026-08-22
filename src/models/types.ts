@@ -104,6 +104,16 @@ export interface GameConfig {
     enableFeast: boolean;
     enableSanity: boolean;
     useDistrictNames: boolean; // if true, tributes are named "District # Boy/Girl" instead of unique names
+    quellId: string; // id of the active Quarter Quell twist, or 'none'
+    reapMultiplier: number; // tributes reaped per gender per district (2 = Double Reaping quell)
+    noAlliances: boolean; // if true, tributes never form or maintain alliances
+}
+
+export interface QuellTwist {
+    id: string;
+    name: string;
+    blurb: string; // "What made these games unusual" — the Capitol's official framing of the twist
+    overrides: Partial<GameConfig>;
 }
 
 export interface GameState {
@@ -154,4 +164,17 @@ export interface HallOfFameEntry {
     winnerTraits?: string[];
     winnerEndHealth?: number;
     tributeSummaries?: TributeHoFSummary[];
+    quellId?: string;
+    daysSurvived?: number;
+}
+
+export interface RecordsData {
+    gamesPlayed: number;
+    gamesWon: number;
+    totalKills: number;
+    longestGameDays: number;
+    shortestVictoryDays: number | null;
+    mostKillsByVictor: number;
+    mostKillsByVictorName: string | null;
+    unlockedAchievements: string[];
 }

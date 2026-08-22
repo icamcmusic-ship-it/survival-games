@@ -1,19 +1,24 @@
 import React, { useState } from 'react';
 import { GameState } from '../models/types';
-import { Trophy, MapPin, Swords } from 'lucide-react';
+import { Trophy, MapPin, Swords, Award } from 'lucide-react';
+import { QUELLS } from '../data/constants';
+import { Achievement } from '../data/achievements';
 
 export function EndScreen({
     gameState,
     onRestart,
     coins,
-    betWonMessage
+    betWonMessage,
+    newlyUnlockedAchievements = []
 }: {
     gameState: GameState,
     onRestart: () => void,
     coins: number,
-    betWonMessage: string | null
+    betWonMessage: string | null,
+    newlyUnlockedAchievements?: Achievement[]
 }) {
     const [activeTab, setActiveTab] = useState<'stats' | 'logs'>('stats');
+    const activeQuell = QUELLS.find(q => q.id === gameState.config.quellId);
 
     const killLeaderboard = [...gameState.tributes]
         .sort((a, b) => b.kills - a.kills)
@@ -120,6 +125,33 @@ export function EndScreen({
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
+                    {activeQuell && activeQuell.id !== 'none' && (
+                        <div className="col-span-1 md:col-span-2 bg-zinc-900 border border-red-900/30 rounded-xl p-5">
+                            <div className="text-[10px] uppercase tracking-widest font-bold text-red-400 mb-1.5">
+                                This Year's Quarter Quell — {activeQuell.name}
+                            </div>
+                            <p className="text-sm text-zinc-300 leading-relaxed">
+                                What made these games unusual: {activeQuell.blurb}
+                            </p>
+                        </div>
+                    )}
+
+                    {newlyUnlockedAchievements.length > 0 && (
+                        <div className="col-span-1 md:col-span-2 bg-zinc-900 border border-yellow-600/30 rounded-xl p-5 space-y-3">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-yellow-500 flex items-center gap-2">
+                                <Award className="w-4 h-4" /> Achievements Unlocked
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {newlyUnlockedAchievements.map(a => (
+                                    <div key={a.id} className="bg-zinc-950 border border-zinc-850 rounded-lg p-3">
+                                        <div className="font-bold text-white text-sm">{a.name}</div>
+                                        <div className="text-xs text-zinc-400 mt-0.5">{a.description}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {betWonMessage && (
                         <div className="col-span-1 md:col-span-2 bg-zinc-90 w-full bg-zinc-900 border border-teal-500/30 rounded-xl p-5 flex justify-between items-center gap-4">
                             <div className="space-y-1">

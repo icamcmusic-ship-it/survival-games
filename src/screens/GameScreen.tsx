@@ -1,41 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { GameState, Tribute, HallOfFameEntry } from '../models/types';
+import { GameState, Tribute } from '../models/types';
 import { Simulator } from '../engine/simulator';
 import { ArenaMap } from '../components/ArenaMap';
 import { TributeModal } from '../components/TributeModal';
 import { Skull, Heart, Zap as _Zap, Settings, FastForward, MapPin, Users, Swords } from 'lucide-react';
-
-function saveHallOfFame(state: GameState) {
-    const winner = state.tributes.find(t => t.status === 'alive');
-    if (!winner) return;
-    const entry: HallOfFameEntry = {
-        id: Math.random().toString(36).substring(2, 9),
-        seed: state.seed,
-        arenaName: state.arena.name,
-        winnerName: winner.name,
-        winnerDistrict: winner.district,
-        kills: winner.kills,
-        date: new Date().toISOString(),
-        winnerTraits: winner.traits,
-        winnerEndHealth: winner.health,
-        tributeSummaries: state.tributes.map(t => ({
-            name: t.name,
-            district: t.district,
-            kills: t.kills,
-            status: t.status,
-            causeOfDeath: t.causeOfDeath,
-            dayOfDeath: t.dayOfDeath
-        }))
-    };
-    let existing = [];
-    try {
-        existing = JSON.parse(localStorage.getItem('hungerGamesHoF') || '[]');
-        if (!Array.isArray(existing)) existing = [];
-    } catch (e) {
-        existing = [];
-    }
-    localStorage.setItem('hungerGamesHoF', JSON.stringify([entry, ...existing]));
-}
+import { finalizeGameEnd } from '../store/gameStore';
+import { QUELLS } from '../data/constants';
 
 export function GameScreen({
     gameState,
@@ -74,11 +44,11 @@ export function GameScreen({
         return () => clearTimeout(timer);
     }, [speed, gameState.phase, gameState.day, onNextPhase]);
 
-    // Run to completion instantly
+    // Run to completion instantly (stops at the epilogue interview, same as manual play)
     const handleRunToEnd = () => {
         let state = simulator.getState();
         let maxCycles = 500;
-        while (state.phase !== 'ended' && maxCycles > 0) {
+        while (state.phase !== 'ended' && state.phase !== 'epilogue' && maxCycles > 0) {
             if (state.phase === 'setup') {
                 simulator.processTraining();
             } else if (state.phase === 'training') {
@@ -94,8 +64,11 @@ export function GameScreen({
             maxCycles--;
         }
 
+        // "Run to End" always stops at the epilogue interview (or genuinely ends if
+        // the simulation somehow already had no winner); Hall of Fame / achievements
+        // are recorded once, uniformly, when the epilogue is finally advanced to 'ended'.
         if (state.phase === 'ended') {
-            saveHallOfFame(state);
+            finalizeGameEnd(state);
         }
         setGameState(JSON.parse(JSON.stringify(simulator.getState())));
     };
@@ -158,6 +131,11 @@ export function GameScreen({
                                 {gameState.phase === 'ended' ? 'The Games Have Ended' : `Day ${gameState.day} - ${gameState.phase.toUpperCase()}`}
                             </h2>
                             <p className="text-zinc-400 text-sm">{gameState.arena.name}</p>
+                            {gameState.config.quellId && gameState.config.quellId !== 'none' && (
+                                <p className="text-[11px] text-red-400 font-bold uppercase tracking-wider mt-1">
+                                    Quarter Quell: {QUELLS.find(q => q.id === gameState.config.quellId)?.name || gameState.config.quellId}
+                                </p>
+                            )}
                         </div>
                         {gameState.phase !== 'ended' && (
                             <div className="flex items-center gap-2">

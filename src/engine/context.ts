@@ -24,7 +24,11 @@ export function createContext(state: GameState, rng: RNG): SimContext {
                 }
             }
             ctx.state.log.push({
-                id: ctx.rng.nextInt(0, 1000000).toString(),
+                // A plain incrementing counter, not the gameplay RNG: log IDs must never
+                // perturb the deterministic random stream that drives simulation outcomes,
+                // and must be guaranteed unique (RNG-derived IDs could collide and break
+                // React's list rendering, silently hiding chronicle entries).
+                id: `log-${ctx.state.log.length}`,
                 day: ctx.state.day,
                 phase: ctx.state.phase,
                 text,

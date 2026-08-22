@@ -64,6 +64,19 @@ function pickArchetype(rng: RNG, isCareer: boolean, district: number): Archetype
     return rng.pick(NON_CAREER_ARCHETYPES);
 }
 
+function pickUniqueName(rng: RNG, pool: string[], used: Set<string>): string {
+    const available = pool.filter(n => !used.has(n));
+    if (available.length > 0) return rng.pick(available);
+    // Pool exhausted (e.g. a high Double Reaping count): fall back to a numbered repeat.
+    let n = 2;
+    let candidate = `${rng.pick(pool)} II`;
+    while (used.has(candidate)) {
+        n += 1;
+        candidate = `${rng.pick(pool)} ${n}`;
+    }
+    return candidate;
+}
+
 function buildFromStrength(rng: RNG, strength: number): Build {
     // Roughly correlate build with strength while keeping some randomness.
     const idx = Math.min(BUILDS.length - 1, Math.max(0, Math.floor(strength / 2) + rng.nextInt(-1, 1)));
@@ -74,10 +87,13 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
     const rng = new RNG(seed);
     const tributes: Tribute[] = [];
     const districtCount = Math.min(12, Math.max(1, config.districtCount));
+    const reapCount = Math.min(4, Math.max(1, config.reapMultiplier || 1));
+    const usedNames: Record<string, Set<string>> = {};
 
     for (let district = 1; district <= districtCount; district++) {
         for (const gender of ['Male', 'Female'] as const) {
             const isCareer = [1, 2, 4].includes(district);
+        for (let rep = 0; rep < reapCount; rep++) {
 
             // Base attributes
             const attributes: Attributes = {
@@ -129,15 +145,18 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 }
             }
 
+            const namesKey = `${district}-${gender}`;
+            if (!usedNames[namesKey]) usedNames[namesKey] = new Set();
             const chosenName = config.useDistrictNames
-                ? `District ${district} ${gender === 'Male' ? 'Boy' : 'Girl'}`
-                : rng.pick(DISTRICT_NAMES[district][gender]);
+                ? `District ${district} ${gender === 'Male' ? 'Boy' : 'Girl'}${reapCount > 1 ? ` (${rep + 1})` : ''}`
+                : pickUniqueName(rng, DISTRICT_NAMES[district][gender], usedNames[namesKey]);
+            usedNames[namesKey].add(chosenName);
             const age = rng.nextInt(12, 18);
             const heightCm = gender === 'Male' ? rng.nextInt(155, 195) : rng.nextInt(148, 185);
             const build = buildFromStrength(rng, attributes.strength);
 
             tributes.push({
-                id: `d${district}-${gender.toLowerCase()}`,
+                id: reapCount > 1 ? `d${district}-${gender.toLowerCase()}-${rep}` : `d${district}-${gender.toLowerCase()}`,
                 district,
                 gender,
                 name: chosenName,
@@ -161,6 +180,7 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 kills: 0,
                 zone: 'The Cornucopia'
             });
+        }
         }
     }
 

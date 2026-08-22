@@ -4,6 +4,7 @@ import { generateTributes } from '../engine/generator';
 import { generateArena } from '../engine/arenaGenerator';
 import { Simulator } from '../engine/simulator';
 import { createStore } from './createStore';
+import { Achievement, clearRecords, recordGameResult } from '../data/achievements';
 
 export type ViewName = 'setup' | 'roster' | 'game' | 'hallOfFame';
 
@@ -15,6 +16,7 @@ export interface GameStoreState {
     bets: Record<string, number>;
     betWonMessage: string | null;
     isReplayedRun: boolean;
+    lastGameAchievements: Achievement[];
 }
 
 function computeOddsScore(t: GameState['tributes'][number]) {
@@ -49,7 +51,9 @@ function saveHallOfFame(state: GameState) {
             status: t.status,
             causeOfDeath: t.causeOfDeath,
             dayOfDeath: t.dayOfDeath
-        }))
+        })),
+        quellId: state.config.quellId,
+        daysSurvived: state.day,
     };
     let existing = [];
     try {
@@ -61,6 +65,14 @@ function saveHallOfFame(state: GameState) {
     localStorage.setItem('hungerGamesHoF', JSON.stringify([entry, ...existing]));
 }
 
+/** Called once, exactly when a simulation reaches its final 'ended' state: records Hall of Fame,
+ *  achievements and aggregate stats. Shared by the normal phase-advance flow and "Run to End". */
+export function finalizeGameEnd(state: GameState) {
+    saveHallOfFame(state);
+    const newlyUnlocked = recordGameResult(state);
+    gameStore.setState({ lastGameAchievements: newlyUnlocked });
+}
+
 export const gameStore = createStore<GameStoreState>({
     gameState: null,
     simulator: null,
@@ -69,6 +81,7 @@ export const gameStore = createStore<GameStoreState>({
     bets: {},
     betWonMessage: null,
     isReplayedRun: false,
+    lastGameAchievements: [],
 });
 
 export const gameActions = {
@@ -88,7 +101,8 @@ export const gameActions = {
     resetRecords() {
         localStorage.removeItem('hungerGamesHoF');
         localStorage.removeItem('capitolCoins');
-        gameStore.setState({ coins: 1000 });
+        clearRecords();
+        gameStore.setState({ coins: 1000, lastGameAchievements: [] });
     },
 
     startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false) {
@@ -117,6 +131,7 @@ export const gameActions = {
             bets: {},
             betWonMessage: null,
             isReplayedRun: markReplayed || gameStore.getState().isReplayedRun,
+            lastGameAchievements: [],
         });
     },
 
@@ -180,16 +195,11 @@ export const gameActions = {
                 gameStore.setState({ betWonMessage: "Your wagered tributes did not survive. The Capitol takes your coins." });
             }
 
-            saveHallOfFame(state);
+            finalizeGameEnd(state);
         } else if (state.phase === 'ended') {
             return;
         } else {
             simulator.processTurn();
-
-            const newState = simulator.getState();
-            if (newState.phase === 'ended') {
-                saveHallOfFame(newState);
-            }
         }
 
         gameActions.syncFromSimulator();

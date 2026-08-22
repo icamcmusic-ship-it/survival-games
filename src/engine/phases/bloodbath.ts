@@ -12,6 +12,7 @@ export function startGames(ctx: SimContext) {
 }
 
 function initializeCareerAlliance(ctx: SimContext) {
+    if (ctx.state.config.noAlliances) return;
     const careers = getAlive(ctx.state).filter(t => t.isCareer);
     if (careers.length > 1) {
         const allianceId = `career-pack-${ctx.state.seed}`;

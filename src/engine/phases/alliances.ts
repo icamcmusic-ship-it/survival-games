@@ -49,7 +49,7 @@ export function processAlliances(ctx: SimContext) {
     });
 
     // 3. Dynamic Alliance Formation & Star-Crossed Lovers
-    if (alive.length > 4) {
+    if (!ctx.state.config.noAlliances && alive.length > 4) {
         for (let i = 0; i < alive.length; i++) {
             for (let j = i + 1; j < alive.length; j++) {
                 const t1 = alive[i];
@@ -74,6 +74,7 @@ export function processAlliances(ctx: SimContext) {
     }
 
     // 4. Romantic "Star-Crossed Lovers" formation check (District partners of opposite gender)
+    if (ctx.state.config.noAlliances) return;
     for (let dist = 1; dist <= 12; dist++) {
         const districtTributes = alive.filter(t => t.district === dist);
         if (districtTributes.length === 2 && districtTributes[0].gender !== districtTributes[1].gender) {

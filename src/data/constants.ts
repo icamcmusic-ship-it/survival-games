@@ -1,4 +1,4 @@
-import { Arena, Item, GameConfig, Build } from '../models/types';
+import { Arena, Item, GameConfig, Build, QuellTwist } from '../models/types';
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
     districtCount: 12,
@@ -8,7 +8,67 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     enableFeast: true,
     enableSanity: true,
     useDistrictNames: false,
+    quellId: 'none',
+    reapMultiplier: 1,
+    noAlliances: false,
 };
+
+export const QUELLS: QuellTwist[] = [
+    {
+        id: 'none',
+        name: 'Standard Games',
+        blurb: 'A standard year — no special Capitol decree altered the rules of the arena.',
+        overrides: {}
+    },
+    {
+        id: 'double-reaping',
+        name: 'The Double Reaping',
+        blurb: "As a reminder that for every rebel who dared to defy the Capitol, two loyal citizens died, twice the tributes were reaped from each district this year.",
+        overrides: { reapMultiplier: 2 }
+    },
+    {
+        id: 'merciless-arena',
+        name: 'The Merciless Arena',
+        blurb: 'As a reminder that the Capitol\'s wrath knows no mercy, the Gamemakers unleashed hazards and mutts at a punishing, unrelenting rate.',
+        overrides: { hazardRate: 2.5 }
+    },
+    {
+        id: 'lone-wolves',
+        name: 'No Allies, No Mercy',
+        blurb: 'As a reminder that in the end every tribute stands alone, alliances of any kind were forbidden inside the arena this year.',
+        overrides: { noAlliances: true, betrayalRate: 0 }
+    },
+    {
+        id: 'blood-feud',
+        name: 'The Blood Feud',
+        blurb: 'As a reminder that trust is the first casualty of war, even the closest allies turned on each other far more readily than usual.',
+        overrides: { betrayalRate: 3 }
+    },
+    {
+        id: 'feast-frenzy',
+        name: 'The Feast Frenzy',
+        blurb: 'As a reminder that salvation always comes at a price, the Cornucopia feast was held far more often, and sponsors gave with unusual generosity.',
+        overrides: { enableFeast: true, sponsorGenerosity: 2.5 }
+    },
+    {
+        id: 'the-faceless',
+        name: 'The Faceless',
+        blurb: 'As a reminder that the Capitol sees every citizen as replaceable, tributes entered the arena stripped of their names, known only by their district and gender.',
+        overrides: { useDistrictNames: true }
+    },
+    {
+        id: 'gauntlet',
+        name: 'The Gauntlet',
+        blurb: 'As a reminder of the Dark Days, only a small handful of districts sent tributes into a cramped, unforgiving arena.',
+        overrides: { districtCount: 4, hazardRate: 1.75 }
+    },
+    {
+        id: 'second-chance',
+        name: 'Second Chance Quell',
+        blurb: 'As a reminder that no victory comes without sacrifice, sponsors abandoned their favorites and hazards intensified while alliances crumbled under pressure.',
+        overrides: { hazardRate: 1.75, betrayalRate: 2, sponsorGenerosity: 0.5 }
+    },
+];
 
 export const BUILDS: Build[] = ['Frail', 'Slight', 'Average', 'Athletic', 'Stocky', 'Muscular'];
 

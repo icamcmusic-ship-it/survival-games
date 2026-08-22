@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { HallOfFameEntry } from '../models/types';
-import { Trophy, Trash2 } from 'lucide-react';
+import { HallOfFameEntry, RecordsData } from '../models/types';
+import { Trophy, Trash2, Award, BarChart3 } from 'lucide-react';
 import { gameActions } from '../store/gameStore';
+import { ACHIEVEMENTS, loadRecords } from '../data/achievements';
 
 export function HallOfFameScreen() {
     const [entries, setEntries] = useState<HallOfFameEntry[]>([]);
     const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
+    const [records, setRecords] = useState<RecordsData>(loadRecords());
 
     useEffect(() => {
         let saved = [];
@@ -16,13 +18,17 @@ export function HallOfFameScreen() {
             saved = [];
         }
         setEntries(saved);
+        setRecords(loadRecords());
     }, []);
 
+    const hasAnyData = entries.length > 0 || records.gamesPlayed > 0;
+
     const handleReset = () => {
-        const confirmed = confirm('This will permanently erase all Hall of Fame victors and reset your Capitol Coins. This cannot be undone. Continue?');
+        const confirmed = confirm('This will permanently erase all Hall of Fame victors, achievements, and records, and reset your Capitol Coins. This cannot be undone. Continue?');
         if (!confirmed) return;
         gameActions.resetRecords();
         setEntries([]);
+        setRecords(loadRecords());
     };
 
     return (
@@ -32,7 +38,7 @@ export function HallOfFameScreen() {
                     <Trophy className="w-12 h-12 text-yellow-500" /> Hall of Fame
                 </h2>
                 <p className="text-zinc-400 text-lg">The historic, legendary victors of past simulations.</p>
-                {entries.length > 0 && (
+                {hasAnyData && (
                     <button
                         onClick={handleReset}
                         className="inline-flex items-center gap-2 px-4 py-2 text-xs bg-zinc-900 hover:bg-red-950/40 border border-zinc-800 hover:border-red-900/50 rounded-lg text-zinc-400 hover:text-red-400 font-bold uppercase tracking-wider transition-colors"
@@ -41,6 +47,64 @@ export function HallOfFameScreen() {
                     </button>
                 )}
             </div>
+
+            {records.gamesPlayed > 0 && (
+                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4 text-cyan-500" /> All-Time Records
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                        <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-850 text-center">
+                            <div className="text-2xl font-black text-white">{records.gamesPlayed}</div>
+                            <div className="text-[10px] uppercase tracking-widest text-zinc-500 mt-1">Games Played</div>
+                        </div>
+                        <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-850 text-center">
+                            <div className="text-2xl font-black text-white">{records.gamesWon}</div>
+                            <div className="text-[10px] uppercase tracking-widest text-zinc-500 mt-1">Games with a Victor</div>
+                        </div>
+                        <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-850 text-center">
+                            <div className="text-2xl font-black text-white">{records.totalKills}</div>
+                            <div className="text-[10px] uppercase tracking-widest text-zinc-500 mt-1">Total Eliminations</div>
+                        </div>
+                        <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-850 text-center">
+                            <div className="text-2xl font-black text-white">{records.longestGameDays}</div>
+                            <div className="text-[10px] uppercase tracking-widest text-zinc-500 mt-1">Longest Games (Days)</div>
+                        </div>
+                        <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-850 text-center">
+                            <div className="text-2xl font-black text-white">{records.shortestVictoryDays ?? '—'}</div>
+                            <div className="text-[10px] uppercase tracking-widest text-zinc-500 mt-1">Fastest Victory (Days)</div>
+                        </div>
+                        <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-850 text-center">
+                            <div className="text-2xl font-black text-white">{records.mostKillsByVictor}</div>
+                            <div className="text-[10px] uppercase tracking-widest text-zinc-500 mt-1">
+                                Most Kills by a Victor{records.mostKillsByVictorName ? ` (${records.mostKillsByVictorName})` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {records.gamesPlayed > 0 && (
+                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+                        <Award className="w-4 h-4 text-yellow-500" /> Achievements ({records.unlockedAchievements.length}/{ACHIEVEMENTS.length})
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {ACHIEVEMENTS.map(a => {
+                            const unlocked = records.unlockedAchievements.includes(a.id);
+                            return (
+                                <div
+                                    key={a.id}
+                                    className={`p-3 rounded-lg border ${unlocked ? 'bg-yellow-950/10 border-yellow-700/30' : 'bg-zinc-950 border-zinc-850 opacity-50'}`}
+                                >
+                                    <div className={`font-bold text-sm ${unlocked ? 'text-yellow-400' : 'text-zinc-400'}`}>{a.name}</div>
+                                    <div className="text-xs text-zinc-500 mt-0.5">{a.description}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {entries.length === 0 ? (
                 <div className="text-center py-12 text-zinc-500 border border-dashed border-zinc-800 rounded-xl">

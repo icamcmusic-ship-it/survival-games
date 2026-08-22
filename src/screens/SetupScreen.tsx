@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
+import { ARENAS, DEFAULT_GAME_CONFIG, QUELLS } from '../data/constants';
 import { GameConfig } from '../models/types';
 import { Play } from 'lucide-react';
 
@@ -32,6 +32,10 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const [gamemakerMode, setGamemakerMode] = useState(false);
     const [config, setConfig] = useState<GameConfig>(DEFAULT_GAME_CONFIG);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [quellId, setQuellId] = useState('none');
+
+    const activeQuell = QUELLS.find(q => q.id === quellId) || QUELLS[0];
+    const effectiveConfig: GameConfig = { ...config, quellId, ...activeQuell.overrides };
 
     return (
         <div className="max-w-2xl mx-auto space-y-8">
@@ -80,6 +84,32 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             <p className="text-xs text-zinc-400 line-clamp-2">The Gamemakers craft a brand-new arena from your seed — biome, sectors, mutts, and hazards all generated fresh.</p>
                         </button>
                     </div>
+                </div>
+
+                <div className="space-y-2 pt-4 border-t border-zinc-800">
+                    <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500">Quarter Quell Twist</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {QUELLS.map(q => (
+                            <button
+                                key={q.id}
+                                onClick={() => setQuellId(q.id)}
+                                className={`p-3 rounded-lg border text-left transition-all ${quellId === q.id ? 'bg-red-950/30 border-red-500/50' : 'bg-zinc-950 border-zinc-800 hover:border-zinc-600'}`}
+                            >
+                                <h4 className="font-bold text-white text-sm mb-0.5">{q.name}</h4>
+                                {q.id === 'none' ? (
+                                    <p className="text-[11px] text-zinc-500">No twist this year.</p>
+                                ) : (
+                                    <p className="text-[11px] text-zinc-400 line-clamp-3">{q.blurb}</p>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                    {activeQuell.id !== 'none' && (
+                        <div className="bg-zinc-950 border border-red-900/30 rounded-lg p-3.5 mt-1">
+                            <div className="text-[10px] uppercase tracking-widest font-bold text-red-400 mb-1">What made these games unusual</div>
+                            <p className="text-xs text-zinc-300 leading-relaxed">{activeQuell.blurb}</p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-2 pt-4 border-t border-zinc-800">
@@ -181,7 +211,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                 </div>
 
                 <button
-                    onClick={() => onStart(seed, arenaId, gamemakerMode, config)}
+                    onClick={() => onStart(seed, arenaId, gamemakerMode, effectiveConfig)}
                     className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-bold uppercase tracking-widest rounded-lg transition-colors flex items-center justify-center gap-2 mt-8"
                 >
                     <Play className="w-5 h-5" />

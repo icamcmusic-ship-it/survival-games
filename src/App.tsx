@@ -25,6 +25,7 @@ export default function App() {
   const bets = useStore(gameStore, s => s.bets);
   const betWonMessage = useStore(gameStore, s => s.betWonMessage);
   const isReplayedRun = useStore(gameStore, s => s.isReplayedRun);
+  const lastGameAchievements = useStore(gameStore, s => s.lastGameAchievements);
 
   // Parse URL search parameters for Seed and Arena to support Replay Sharing!
   useEffect(() => {
@@ -94,7 +95,7 @@ export default function App() {
         )}
         {view === 'game' && gameState && simulator && (
           gameState.phase === 'ended' ? (
-            <EndScreen gameState={gameState} onRestart={() => gameActions.setView('setup')} coins={coins} betWonMessage={betWonMessage} />
+            <EndScreen gameState={gameState} onRestart={() => gameActions.setView('setup')} coins={coins} betWonMessage={betWonMessage} newlyUnlockedAchievements={lastGameAchievements} />
           ) : gameState.phase === 'epilogue' ? (
             <VictorInterviewScreen gameState={gameState} onProceed={gameActions.nextPhase} />
           ) : (
