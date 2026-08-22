@@ -1,6 +1,7 @@
-import { Arena, Terrain, Zone } from '../models/types';
+import { Arena, SignatureRule, Terrain, Zone, ZoneEffectKind } from '../models/types';
 import { RNG } from '../utils/rng';
 import { PROCEDURAL_EVENTS, FlavorTag } from '../data/proceduralFlavor';
+import { PROC_SIGNATURE } from '../data/balance';
 
 interface Biome {
     id: string;
@@ -248,6 +249,38 @@ function generateMuttNames(rng: RNG, activeTags: string[], count: number): strin
     return Array.from(names);
 }
 
+// Composes one SignatureRule (trigger × selector × payload × telegraph) per
+// generated arena from the same seeded RNG as the rest of the layout, so two
+// arenas of the same biome don't necessarily share a mechanic. See
+// `runDeclarativeSignature` in engine/arenaSignature.ts for how it executes.
+const TRIGGER_KINDS: SignatureRule['trigger']['kind'][] = ['everyCycle', 'everyNth', 'nightsOnly', 'daysOnly', 'afterEscalation', 'lowSurvivors'];
+const SELECTOR_KINDS: SignatureRule['selector']['kind'][] = ['fixedRotation', 'busiestZone', 'emptiestZone', 'nearCornucopia', 'lowestDanger', 'allZones'];
+const PAYLOAD_KINDS: SignatureRule['payload']['kind'][] = ['damageEffect', 'severEdges', 'invertResources', 'spawnMutt', 'drainVital', 'revealPositions'];
+const TELEGRAPH_KINDS: SignatureRule['telegraph']['kind'][] = ['oneAhead', 'none', 'falseChance'];
+const SIGNATURE_EFFECT_KINDS: ZoneEffectKind[] = ['burning', 'flooded', 'frozen', 'contaminated', 'fogbound', 'stripped'];
+
+function rollSignatureRule(rng: RNG): SignatureRule {
+    const triggerKind = rng.pick(TRIGGER_KINDS);
+    const payloadKind = rng.pick(PAYLOAD_KINDS);
+    const telegraphKind = rng.pick(TELEGRAPH_KINDS);
+    return {
+        trigger: {
+            kind: triggerKind,
+            n: triggerKind === 'everyNth' ? rng.nextInt(PROC_SIGNATURE.everyNthMin, PROC_SIGNATURE.everyNthMax) : undefined,
+            threshold: triggerKind === 'lowSurvivors' ? rng.nextInt(PROC_SIGNATURE.lowSurvivorsMin, PROC_SIGNATURE.lowSurvivorsMax) : undefined,
+        },
+        selector: { kind: rng.pick(SELECTOR_KINDS) },
+        payload: {
+            kind: payloadKind,
+            effect: payloadKind === 'damageEffect' ? rng.pick(SIGNATURE_EFFECT_KINDS) : undefined,
+        },
+        telegraph: {
+            kind: telegraphKind,
+            falseChance: telegraphKind === 'falseChance' ? range(rng, [PROC_SIGNATURE.falseChanceMin, PROC_SIGNATURE.falseChanceMax]) : undefined,
+        },
+    };
+}
+
 export function generateArena(seed: string): Arena {
     const rng = new RNG(`${seed}-arena`);
     const biome = rng.pick(BIOMES);
@@ -328,5 +361,6 @@ export function generateArena(seed: string): Arena {
         mutts,
         events: eventNames,
         zones,
+        signatureRule: rollSignatureRule(rng),
     };
 }

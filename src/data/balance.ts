@@ -174,6 +174,35 @@ export const SIGNATURE_RULES = {
     terracesFatigue: 12,
 } as const;
 
+/**
+ * The declarative signature grammar (procedural arenas only — see
+ * `SignatureRule` in models/types.ts and `runDeclarativeSignature` in
+ * engine/arenaSignature.ts). Hand-authored arenas' bespoke functions above
+ * keep their own inline numbers; this is the shared dial set for every
+ * composed rule a generated arena gets instead.
+ */
+export const PROC_SIGNATURE = {
+    /** 'everyNth' trigger: how many cycles between beats, [min, max]. */
+    everyNthMin: 2,
+    everyNthMax: 4,
+    /** 'lowSurvivors' trigger: alive-count threshold, [min, max]. */
+    lowSurvivorsMin: 4,
+    lowSurvivorsMax: 8,
+    /** 'damageEffect' payload base damage and its dodge roll. */
+    damageBase: 18,
+    dodgeBase: 0.25,
+    dodgeAgility: 0.04,
+    /** 'drainVital' payload magnitudes. */
+    sanityDrain: 8,
+    fatigueDrain: 10,
+    /** 'invertResources' payload: how far a zone's depletion swings, and the midpoint that decides which way. */
+    invertDelta: 0.4,
+    invertMidpoint: 0.5,
+    /** 'falseChance' telegraph: odds the warning names the wrong zone, [min, max] when rolled at generation. */
+    falseChanceMin: 0.15,
+    falseChanceMax: 0.35,
+} as const;
+
 /** What each trait is worth, in the units the vitals loop works in. */
 /**
  * What is left here after `data/traits.ts` took over the trait table: the two
