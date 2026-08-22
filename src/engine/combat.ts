@@ -776,7 +776,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         if (breaking.length > 0) {
             breaking.forEach(t => { t.stance = 'Evasive'; t.stanceHeld = 0; });
             ctx.logEvent(
-                fill(ctx.pickText(GROUP_COMBAT_TEXTS.scatter), { names: breaking.map(t => t.name).join(', '), zone }),
+                fill(ctx.pickText(breaking.length === 1 ? GROUP_COMBAT_TEXTS.scatterSolo : GROUP_COMBAT_TEXTS.scatter), { names: breaking.map(t => t.name).join(', '), zone }),
                 breaking.map(t => t.id),
                 { important: true, category: 'combat' }
             );
@@ -886,7 +886,7 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
                 else if (t.id === target.id) noteFled(t, attacker.id);
             });
             ctx.logEvent(
-                fill(ctx.pickText(GROUP_COMBAT_TEXTS.scatter), { names: breaking.map(t => t.name).join(', '), zone }),
+                fill(ctx.pickText(breaking.length === 1 ? GROUP_COMBAT_TEXTS.scatterSolo : GROUP_COMBAT_TEXTS.scatter), { names: breaking.map(t => t.name).join(', '), zone }),
                 breaking.map(t => t.id),
                 { important: true, category: 'combat' }
             );

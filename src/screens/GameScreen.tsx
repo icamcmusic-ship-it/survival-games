@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { EventCategory, GameState } from '../models/types';
 import { ArenaMap } from '../components/ArenaMap';
 import { TributeModal } from '../components/TributeModal';
-import { EventFeed, FeedLine, VISIBLE_CAP } from '../components/EventFeed';
+import { EventFeed, FeedLine, VISIBLE_CAP, FeedDensity, tierOf } from '../components/EventFeed';
 import { ChronicleExport } from '../components/ChronicleExport';
 import { CATEGORY_GROUPS } from '../ui/eventStyles';
 import { tributeOdds } from '../engine/odds';
@@ -15,6 +15,7 @@ import { Explainer } from '../components/Explainer';
 import { ordinal } from '../engine/gamesProfile';
 import { gameActions, gameStore } from '../store/gameStore';
 import { readFilters, writeFilters } from '../utils/prefsStorage';
+import { prefsStore } from '../store/prefsStore';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 
 import { useStore } from '../store/createStore';
@@ -65,7 +66,7 @@ export function GameScreen({
     const storedFilters = useRef(readStoredFilters());
     const [selectedTributeId, setSelectedTributeId] = useState<string | null>(null);
     const [speed, setSpeed] = useState<Speed>('manual');
-    const [importantOnly, setImportantOnly] = useState(storedFilters.current.importantOnly);
+    const [density, setDensity] = useState<FeedDensity>(storedFilters.current.density);
     const [muttTargetId, setMuttTargetId] = useState('');
     const [gmZone, setGmZone] = useState('');
     const coins = useStore(gameStore, s => s.coins);
@@ -111,30 +112,32 @@ export function GameScreen({
     const nextPhaseRef = useRef(onNextPhase);
     nextPhaseRef.current = onNextPhase;
 
-    // Chronicle scroll tracking (UX-04): entries render newest-first, so "new"
-    // means "at the top." Auto-follow the top while the reader is already
-    // there; once they've scrolled down to read older material, stop yanking
-    // their position and surface a pill instead.
+    // Chronicle scroll tracking (UX-04): the feed reads forward now, so "new"
+    // means "at the bottom." Auto-follow the bottom while the reader is
+    // already there; once they've scrolled up to read older material, stop
+    // yanking their position and surface a pill instead.
     const chronicleRef = useRef<HTMLDivElement>(null);
     /** Where the [ / ] day-jump last landed, so repeats step rather than restart. */
     const currentDayInViewRef = useRef<number | null>(null);
     const [scrolledAway, setScrolledAway] = useState(false);
     const prevLogCountRef = useRef(gameState.log.length);
 
+    const nearBottom = (el: HTMLElement) => el.scrollHeight - el.scrollTop - el.clientHeight <= 24;
     useEffect(() => {
         const el = chronicleRef.current;
         if (!el) return;
         const grew = gameState.log.length > prevLogCountRef.current;
         prevLogCountRef.current = gameState.log.length;
-        if (grew && el.scrollTop <= 24) {
-            el.scrollTop = 0;
-        } else if (grew && el.scrollTop > 24) {
+        if (grew && nearBottom(el)) {
+            el.scrollTop = el.scrollHeight;
+        } else if (grew) {
             setScrolledAway(true);
         }
     }, [gameState.log.length]);
 
     const jumpToLatest = () => {
-        if (chronicleRef.current) chronicleRef.current.scrollTop = 0;
+        const el = chronicleRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
         setScrolledAway(false);
     };
 
@@ -158,8 +161,8 @@ export function GameScreen({
 
     useEffect(() => {
         // Storage failures are absorbed — the preference simply won't be remembered.
-        writeFilters({ mutedGroups: [...mutedGroups], importantOnly, pauseOnDeath });
-    }, [mutedGroups, importantOnly, pauseOnDeath]);
+        writeFilters({ mutedGroups: [...mutedGroups], density, pauseOnDeath });
+    }, [mutedGroups, density, pauseOnDeath]);
 
     // Auto-advance, paced by how much the phase just produced.
     const lastTickLogCount = useRef(gameState.log.length);
@@ -177,7 +180,18 @@ export function GameScreen({
             setPauseNotice(true);
             return;
         }
-        const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(speed, newCount));
+        // Pace on beats, not raw lines: a 4-line endgame day that contains a
+        // death should hold on screen; 20 lines of one scene should not count
+        // as 20 separate things to read.
+        let beatCount = 0;
+        let prevKey: string | null = null;
+        for (const l of newLines) {
+            const key = `${l.zone ?? ''}|${l.category}`;
+            if (key !== prevKey) beatCount++;
+            prevKey = key;
+        }
+        const holdForDeath = newLines.some(l => tierOf(l) === 'headline') ? 2 : 0;
+        const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(speed, beatCount + holdForDeath));
         return () => clearTimeout(timer);
     }, [speed, isOver, pauseOnDeath, runProgress, gameState.phase, gameState.day, gameState.log.length, gameState.log]);
 
@@ -276,9 +290,10 @@ export function GameScreen({
             } else if (key === ']') {
                 jumpDay(1);
             } else if (key === 'i') {
-                setImportantOnly(v => {
-                    announceShortcut(v ? 'Showing every event' : 'Showing headline events only');
-                    return !v;
+                setDensity(d => {
+                    const next = d === 'everything' ? 'scenes' : d === 'scenes' ? 'headlines' : 'everything';
+                    announceShortcut(next === 'everything' ? 'Showing every event' : next === 'scenes' ? 'Showing headlines and scenes' : 'Showing headlines only');
+                    return next;
                 });
             } else if (key === 'p' && !isOver) {
                 setSpeed(s => {
@@ -295,7 +310,7 @@ export function GameScreen({
                 }
             } else if (key === '0') {
                 setMutedGroups(new Set());
-                setImportantOnly(false);
+                setDensity('everything');
                 setSearchText('');
                 setFilterTributeId(null);
                 setSelectedZone(null);
@@ -316,7 +331,6 @@ export function GameScreen({
     const filteredLogs = useMemo(() => {
         const needle = searchText.trim().toLowerCase();
         return gameState.log.filter(log => {
-            if (importantOnly && !log.important) return false;
             if (selectedZone && log.zone !== selectedZone) return false;
             if (mutedCategories.has(log.category)) return false;
             // Two tribute filters combine as OR: "everything involving A or B".
@@ -327,7 +341,7 @@ export function GameScreen({
             if (needle && !log.text.toLowerCase().includes(needle)) return false;
             return true;
         });
-    }, [gameState.log, importantOnly, selectedZone, mutedCategories, filterTributeId, filterTributeId2, filterDay, searchText]);
+    }, [gameState.log, selectedZone, mutedCategories, filterTributeId, filterTributeId2, filterDay, searchText]);
 
     /**
      * PERF: the sector log is newest-first and capped, like the main chronicle.
@@ -559,7 +573,7 @@ export function GameScreen({
 
                             <button onClick={() => setShowFilters(v => !v)} aria-pressed={showFilters} className="seg-item" title="Toggle filters (F)">
                                 <Filter className="w-3 h-3 inline mr-1" /> Filters
-                                {(mutedGroups.size > 0 || importantOnly || searchText || filterTributeId || filterTributeId2 || filterDay !== null) && <span className="ml-1 text-[var(--red)]">•</span>}
+                                {(mutedGroups.size > 0 || density !== 'everything' || searchText || filterTributeId || filterTributeId2 || filterDay !== null) && <span className="ml-1 text-[var(--red)]">•</span>}
                             </button>
 
                             <button
@@ -575,15 +589,30 @@ export function GameScreen({
 
                     {showFilters && (
                         <div className="panel-flush p-4 space-y-3 animate-fadeIn">
-                            <label className="flex items-center gap-2 cursor-pointer w-fit">
-                                <input
-                                    type="checkbox"
-                                    checked={importantOnly}
-                                    onChange={e => setImportantOnly(e.target.checked)}
-                                    className="w-4 h-4 accent-[var(--color-blood-500)] cursor-pointer"
-                                />
-                                <span className="eyebrow">Headline events only</span>
-                            </label>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="eyebrow">Reading density</span>
+                                <div className="seg">
+                                    {([
+                                        ['headlines', 'Headlines'],
+                                        ['scenes', 'Scenes'],
+                                        ['everything', 'Everything'],
+                                    ] as const).map(([id, label]) => (
+                                        <button
+                                            key={id}
+                                            onClick={() => setDensity(id)}
+                                            aria-pressed={density === id}
+                                            className="seg-item"
+                                            title={id === 'headlines'
+                                                ? 'Deaths, kills, betrayals and the Gamemakers — the skeleton of the Games'
+                                                : id === 'scenes'
+                                                    ? 'Headlines plus combat, mutts, hazards and sponsors'
+                                                    : 'Every logged line, with the quiet moments folded per phase'}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                             <div>
                                 <div className="eyebrow mb-2">Event categories — click to mute</div>
                                 <div className="flex flex-wrap gap-2">
@@ -607,9 +636,9 @@ export function GameScreen({
                                             </button>
                                         );
                                     })}
-                                    {(mutedGroups.size > 0 || importantOnly || !!searchText || !!filterTributeId || !!filterTributeId2 || filterDay !== null) && (
+                                    {(mutedGroups.size > 0 || density !== 'everything' || !!searchText || !!filterTributeId || !!filterTributeId2 || filterDay !== null) && (
                                         <button
-                                            onClick={() => { setMutedGroups(new Set()); setImportantOnly(false); setSearchText(''); setFilterTributeId(null); setFilterTributeId2(null); setFilterDay(null); }}
+                                            onClick={() => { setMutedGroups(new Set()); setDensity('everything'); setSearchText(''); setFilterTributeId(null); setFilterTributeId2(null); setFilterDay(null); }}
                                             className="chip chip-accent"
                                         >
                                             Reset filters
@@ -617,7 +646,7 @@ export function GameScreen({
                                     )}
                                 </div>
                             </div>
-                            <ChronicleExport gameState={gameState} importantOnly={importantOnly} />
+                            <ChronicleExport gameState={gameState} importantOnly={density === 'headlines'} />
                             <div className="flex flex-wrap gap-2 items-center">
                                 <input
                                     type="search"
@@ -725,34 +754,16 @@ export function GameScreen({
                                 onClick={jumpToLatest}
                                 className="chip chip-accent absolute top-3 right-5 z-10 shadow-[var(--shadow-ink-sm)]"
                             >
-                                ↑ Jump to newest
+                                ↓ Jump to newest
                             </button>
-                        )}
-                        {gameState.day >= 2 && (
-                            <div className="flex flex-wrap gap-1 items-center">
-                                <span className="eyebrow mr-1">Jump to</span>
-                                {Array.from(new Set(filteredLogs.map(l => l.day))).sort((a, b) => a - b).map(d => (
-                                    <button
-                                        key={d}
-                                        className="chip"
-                                        aria-label={d === 0 ? 'Jump to before the Games' : `Jump to day ${d}`}
-                                        onClick={() => {
-                                            const el = chronicleRef.current?.querySelector(`[data-day="${d}"]`);
-                                            el?.scrollIntoView({ block: 'start' });
-                                        }}
-                                    >
-                                        {d === 0 ? 'Pre' : `D${d}`}
-                                    </button>
-                                ))}
-                            </div>
                         )}
                         <div
                             ref={chronicleRef}
-                            onScroll={(e) => setScrolledAway(e.currentTarget.scrollTop > 24)}
+                            onScroll={(e) => setScrolledAway(!nearBottom(e.currentTarget))}
                             className="max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar"
                         >
                             {filteredLogs.length > 0 ? (
-                                <EventFeed logs={filteredLogs} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} />
+                                <EventFeed logs={filteredLogs} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} density={density} />
                             ) : (
                                 <div className="empty-state">
                                     {gameState.log.length === 0
@@ -1185,7 +1196,7 @@ export function GameScreen({
                                     ['Z / Shift+Z', 'Cycle the sector filter forward or back — past the last sector clears it'],
                                     ['T / Shift+T', 'Cycle the tribute filter forward or back — past the last tribute clears it'],
                                     ['[ / ]', 'Jump the chronicle to the previous or next day'],
-                                    ['I', 'Headline events only, on or off'],
+                                    ['I', 'Cycle reading density — everything, scenes, headlines'],
                                     ...CATEGORY_GROUPS.slice(0, 9).map((g, i) => [String(i + 1), `Mute or unmute ${g.label.toLowerCase()} events`]),
                                     ['0', 'Reset every chronicle filter'],
                                     ['?', 'Open this panel'],
@@ -1245,8 +1256,8 @@ export function GameScreen({
                     onClose={() => setSelectedTributeId(null)}
                     onShowInChronicle={() => {
                         // U-3: "what happened to X?" — filter the chronicle to
-                        // them. Entries render newest-first, so their death (or
-                        // latest moment) sits right at the top.
+                        // them; the feed auto-follows its end, so their death
+                        // (or latest moment) is where it lands.
                         setFilterTributeId(selectedTribute.id);
                         setFilterTributeId2(null);
                         setFilterDay(null);

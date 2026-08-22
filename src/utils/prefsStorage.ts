@@ -7,7 +7,7 @@
 import { GameConfig } from '../models/types';
 import { DEFAULT_GAME_CONFIG } from '../data/constants';
 import {
-    LEGACY_KEYS, STORAGE_KEYS, StorageSpec, asBool, asNum, asRecord, asStrArray,
+    LEGACY_KEYS, STORAGE_KEYS, StorageSpec, asBool, asNum, asRecord, asStr, asStrArray,
     readStored, writeStored,
 } from './storage';
 
@@ -39,23 +39,35 @@ export function writeCoins(coins: number): void {
     writeStored(COINS_SPEC, Math.max(0, Math.floor(coins)));
 }
 
+/** Reading density for the chronicle — mirrors FeedDensity in EventFeed. */
+export type StoredDensity = 'headlines' | 'scenes' | 'everything';
+
 export interface StoredFilters {
     mutedGroups: string[];
-    importantOnly: boolean;
+    /**
+     * Replaces the old `importantOnly` boolean: at 41% of lines flagged
+     * important it removed barely half the feed and was the only lever.
+     * v0/v1 payloads with `importantOnly: true` migrate to 'headlines'.
+     */
+    density: StoredDensity;
     pauseOnDeath: boolean;
 }
 
-export const DEFAULT_FILTERS: StoredFilters = { mutedGroups: [], importantOnly: false, pauseOnDeath: false };
+export const DEFAULT_FILTERS: StoredFilters = { mutedGroups: [], density: 'everything', pauseOnDeath: false };
 
 export const FILTERS_SPEC: StorageSpec<StoredFilters> = {
     key: STORAGE_KEYS.feedFilters,
-    version: 1,
+    version: 2,
     migrate: raw => {
         const r = asRecord(raw);
         if (!r) return null;
+        const d = asStr(r.density, '');
+        const density: StoredDensity = d === 'headlines' || d === 'scenes' || d === 'everything'
+            ? d
+            : asBool(r.importantOnly, false) ? 'headlines' : 'everything';
         return {
             mutedGroups: asStrArray(r.mutedGroups),
-            importantOnly: asBool(r.importantOnly, false),
+            density,
             pauseOnDeath: asBool(r.pauseOnDeath, false),
         };
     },

@@ -1,9 +1,92 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { EventLog, Tribute } from '../models/types';
+import { EventCategory, EventLog, Tribute } from '../models/types';
 import { categoryMeta } from '../ui/eventStyles';
 
 /** Cap on rendered rows before older entries collapse behind a "show earlier" control (UX-04). */
 export const VISIBLE_CAP = 200;
+
+/**
+ * Reading density. The old boolean (`important`, at 41% of all lines) filtered
+ * almost nothing and muted whole groups as the only other lever. The feed now
+ * reads in three tiers derived at render time — no save migration:
+ *
+ *  - headline: deaths, kills, betrayals, gamemaker moves, and the important
+ *    alliance/romance/feast beats. The skeleton of the Games. ~8% of lines.
+ *  - scene: combat, mutts, hazards, sponsors, arena and injuries — the action
+ *    around the skeleton. ~25%.
+ *  - ambient: travel, foraging, loot and broadcast chatter. The connective
+ *    tissue, collapsed behind a disclosure by default.
+ */
+export type FeedTier = 'headline' | 'scene' | 'ambient';
+export type FeedDensity = 'headlines' | 'scenes' | 'everything';
+
+const HEADLINE_ALWAYS = new Set<EventCategory>(['death', 'kill', 'betrayal', 'gamemaker']);
+const HEADLINE_IF_IMPORTANT = new Set<EventCategory>(['alliance', 'romance', 'feast']);
+const SCENE = new Set<EventCategory>(['combat', 'mutt', 'hazard', 'sponsor', 'arena', 'injury', 'alliance', 'romance', 'feast', 'sanity', 'training', 'interview']);
+
+export function tierOf(log: EventLog): FeedTier {
+    if (HEADLINE_ALWAYS.has(log.category)) return 'headline';
+    if (log.important && HEADLINE_IF_IMPORTANT.has(log.category)) return 'headline';
+    if (SCENE.has(log.category)) return 'scene';
+    // travel, survival, loot, system — plus anything new — reads as ambient
+    // unless the engine flagged it important.
+    return log.important ? 'scene' : 'ambient';
+}
+
+/**
+ * A beat: one scene at one place, involving one set of people. The unit of
+ * the feed is no longer a single log line — the engine already emits the
+ * structure needed to group them (zone, category group, tributesInvolved),
+ * so this is presentation only.
+ */
+export interface Beat {
+    zone?: string;
+    group: string;
+    logs: EventLog[];
+    cast: Set<string>;
+}
+
+const BEAT_MAX_LINES = 6;
+
+export function groupBeats(entries: EventLog[]): Beat[] {
+    const beats: Beat[] = [];
+    let current: Beat | null = null;
+    for (const log of entries) {
+        const group = categoryMeta(log.category).group;
+        const sharesCast = current
+            && (log.tributesInvolved.length === 0
+                || current.cast.size === 0
+                || log.tributesInvolved.some(id => current!.cast.has(id)));
+        const sameZone = current && (log.zone ?? undefined) === current.zone;
+        if (current && sameZone && group === current.group && sharesCast && current.logs.length < BEAT_MAX_LINES) {
+            current.logs.push(log);
+            log.tributesInvolved.forEach(id => current!.cast.add(id));
+        } else {
+            current = { zone: log.zone ?? undefined, group, logs: [log], cast: new Set(log.tributesInvolved) };
+            beats.push(current);
+        }
+    }
+    return beats;
+}
+
+/**
+ * 41.6% of lines repeated their zone inside the prose while the beat header
+ * already names it. Strip a trailing locative clause when — and only when —
+ * it names exactly the zone the header shows. Conservative by design: an
+ * unmatched pattern leaves the text untouched.
+ */
+export function stripZoneClause(text: string, zone: string): string {
+    const z = zone.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // " in {zone}", " at {zone}", " near {zone}", " of {zone}" etc., when
+    // followed by punctuation or the end of a clause.
+    const stripped = text.replace(
+        new RegExp(`\\s+(?:in|at|near|inside|around|of|from|through|into) ${z}(?=[,.;:!?)\\s]|$)`, 'g'),
+        ''
+    );
+    // Never strip down to something mangled — a template that *opens* with
+    // the zone ("Sector 2 is on fire") keeps its subject.
+    return stripped.trim().length >= 12 ? stripped : text;
+}
 
 /**
  * A cannon-worthy death, given the weight of one.
@@ -105,7 +188,7 @@ function withTributeLinks(
     });
 }
 
-export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTribute }: {
+export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTribute, stripZone, continuation = false }: {
     log: EventLog;
     showTag?: boolean;
     animate?: boolean;
@@ -113,6 +196,10 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
     cast?: Tribute[];
     /** Clicking a name in the line opens that tribute's profile. */
     onSelectTribute?: (id: string) => void;
+    /** The beat header already names this zone — drop it from the prose. */
+    stripZone?: string;
+    /** Not the first line of its beat: render as an indented continuation. */
+    continuation?: boolean;
 }) {
     const meta = categoryMeta(log.category);
 
@@ -127,18 +214,20 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
         return <DeathCard log={log} tribute={victim} animate={animate} cast={cast} onSelectTribute={onSelectTribute} />;
     }
 
+    const text = stripZone && log.zone === stripZone ? stripZoneClause(log.text, stripZone) : log.text;
+
     return (
         <div
-            className={`feed-item ${animate ? 'animate-riseIn' : ''} ${log.important ? 'is-important' : ''}`}
+            className={`feed-item ${animate ? 'animate-riseIn' : ''} ${log.important ? 'is-important' : ''} ${continuation ? 'ml-4 text-[13px] opacity-90' : ''}`}
             style={{ ['--cat' as string]: meta.color }}
         >
-            {showTag && <span className="feed-tag">{meta.label}</span>}
-            {withTributeLinks(log.text, cast, log.tributesInvolved, onSelectTribute)}
+            {showTag && !continuation && <span className="feed-tag">{meta.label}</span>}
+            {withTributeLinks(text, cast, log.tributesInvolved, onSelectTribute)}
         </div>
     );
 }
 
-/** Groups a log list into "Day N — Phase" sections, newest section first. */
+/** Groups a log list into "Day N — Phase" sections, in chronological order. */
 export function groupLogs(logs: EventLog[]): Array<[string, EventLog[]]> {
     const groups: Array<[string, EventLog[]]> = [];
     const index = new Map<string, EventLog[]>();
@@ -191,7 +280,118 @@ function AnthemCard({ day, fallen }: { day: number; fallen: Tribute[] }) {
     );
 }
 
-export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaultExpanded = false }: {
+/** One rendered beat: a zone-tagged header (when it earns one) plus its lines. */
+function BeatBlock({ beat, showTags, cast, onSelectTribute, newIds }: {
+    beat: Beat;
+    showTags: boolean;
+    cast?: Tribute[];
+    onSelectTribute?: (id: string) => void;
+    newIds: Set<string>;
+}) {
+    // A beat header earns its row when there is a scene to anchor: a place
+    // and more than a single line, or a place and a multi-party cast.
+    const showHeader = !!beat.zone && (beat.logs.length > 1 || beat.cast.size > 1);
+    return (
+        <div className="space-y-1">
+            {showHeader && (
+                <div className="font-mono text-[9px] font-black uppercase tracking-[0.12em] text-[var(--color-ink-500)] pt-1">
+                    {beat.zone}
+                </div>
+            )}
+            {beat.logs.map((log, i) => (
+                <FeedLine
+                    key={log.id}
+                    log={log}
+                    showTag={showTags}
+                    animate={newIds.has(log.id)}
+                    cast={cast}
+                    onSelectTribute={onSelectTribute}
+                    stripZone={showHeader ? beat.zone : undefined}
+                    continuation={showHeader && i > 0}
+                />
+            ))}
+        </div>
+    );
+}
+
+/** One "Day N — Phase" section: beats, plus its quiet lines behind a disclosure. */
+function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTribute, newIds, preGamesCollapsed }: {
+    sectionKey: string;
+    entries: EventLog[];
+    density: FeedDensity;
+    showTags: boolean;
+    cast?: Tribute[];
+    onSelectTribute?: (id: string) => void;
+    newIds: Set<string>;
+    /** Day-0 ceremony sections default to headlines with an expander (§pacing). */
+    preGamesCollapsed: boolean;
+}) {
+    const [showQuiet, setShowQuiet] = useState(false);
+    const [showCeremony, setShowCeremony] = useState(false);
+
+    const dayOfSection = entries[0]?.day ?? 0;
+    const isNight = entries[0]?.phase === 'night';
+    const fallenToday = isNight && cast
+        ? cast.filter(t => t.status === 'dead' && t.dayOfDeath === dayOfSection)
+        : [];
+
+    const ceremonyCollapse = preGamesCollapsed && !showCeremony;
+    const passesDensity = (log: EventLog): boolean => {
+        const tier = tierOf(log);
+        if (ceremonyCollapse) return tier === 'headline';
+        if (density === 'headlines') return tier === 'headline';
+        if (density === 'scenes') return tier !== 'ambient';
+        return true;
+    };
+
+    const visible = entries.filter(passesDensity);
+    const hidden = entries.length - visible.length;
+    const beats = useMemo(() => groupBeats(visible), [visible.length, sectionKey, showQuiet, density, ceremonyCollapse]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const expanded = showQuiet && hidden > 0;
+    const expandedBeats = useMemo(() => (expanded ? groupBeats(entries) : null), [expanded, entries.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    const rendered = expandedBeats ?? beats;
+
+    return (
+        <section data-day={dayOfSection} className="space-y-2.5">
+            <h3 className="panel-title border-b border-[var(--color-ink-800)] pb-1.5 flex items-center justify-between">
+                <span>{sectionKey}</span>
+                <span className="text-[var(--color-ink-600)]">{entries.length} entries</span>
+            </h3>
+            <div className="space-y-2">
+                {rendered.map((beat, i) => (
+                    <BeatBlock
+                        key={`${beat.logs[0].id}-${i}`}
+                        beat={beat}
+                        showTags={showTags}
+                        cast={cast}
+                        onSelectTribute={onSelectTribute}
+                        newIds={newIds}
+                    />
+                ))}
+                {hidden > 0 && !expanded && (
+                    <button
+                        onClick={() => (ceremonyCollapse ? setShowCeremony(true) : setShowQuiet(true))}
+                        className="btn btn-sm btn-ghost w-full justify-center text-[10px]"
+                    >
+                        {ceremonyCollapse
+                            ? `Show the ceremonies — ${hidden} more moments`
+                            : `${hidden} quiet ${hidden === 1 ? 'moment' : 'moments'} — show`}
+                    </button>
+                )}
+                {expanded && (
+                    <button onClick={() => setShowQuiet(false)} className="btn btn-sm btn-ghost w-full justify-center text-[10px]">
+                        Hide the quiet moments
+                    </button>
+                )}
+            </div>
+            {/* The roll-call belongs at the end of the night it summarises. */}
+            {fallenToday.length > 0 && <AnthemCard day={dayOfSection} fallen={fallenToday} />}
+        </section>
+    );
+}
+
+export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaultExpanded = false, density = 'everything' }: {
     logs: EventLog[];
     showTags?: boolean;
     cast?: Tribute[];
@@ -209,8 +409,11 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
      * only way back a small ghost button easy to miss entirely.
      */
     defaultExpanded?: boolean;
+    /** Reading density — see FeedDensity. */
+    density?: FeedDensity;
 }) {
     const [expanded, setExpanded] = useState(defaultExpanded);
+    const containerRef = useRef<HTMLDivElement>(null);
     // Only entries that are genuinely new since the last render get the rise-in
     // animation — otherwise every re-render (e.g. an unrelated store update)
     // replays the animation across the whole list and the feed flickers.
@@ -228,35 +431,44 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
 
     const visibleLogs = expanded ? logs : logs.slice(Math.max(0, logs.length - VISIBLE_CAP));
     const hiddenCount = logs.length - visibleLogs.length;
-    const groups = groupLogs(visibleLogs).reverse();
-    // Distinct days currently visible, newest first, for the jump rail.
+    // Chronological: the chronicle reads forward, oldest first — a narrative,
+    // not a notification tray. The parachute lands *after* the fight that
+    // earned it. (Both `.reverse()` calls this feed used to make are gone.)
+    const groups = groupLogs(visibleLogs);
+    // Distinct days currently visible, ascending, for the jump rail — the
+    // single day-jump control (the [ / ] keys share the same data-day markers).
     const days = useMemo(
         () => [...new Set(groups.map(([, entries]) => entries[0]?.day ?? 0))],
         // groups derives from visibleLogs; keying on it keeps this cheap.
         [visibleLogs]  // eslint-disable-line react-hooks/exhaustive-deps
     );
 
+    // The final section of the pre-Games ceremony block should not swallow the
+    // reveal: collapse day-0 training/interview sections to headlines only.
+    const CEREMONY_PHASES = new Set(['training', 'interviews']);
+
     return (
-        // §2.3: a continuously-updating feed with auto-advance is exactly the
-        // case screen readers need announced. role="log" implies polite
-        // announcements of additions without re-reading the whole region.
-        <div className="space-y-6" role="log" aria-label="Chronicle of the Games">
-            {/* §2.2: with ~900 entries across 8+ days there was no way to jump
-                to a day — only scroll or search. */}
+        // Deliberately NOT role="log": announcing every rendered line drowned
+        // screen readers in ambient scenery during auto-play. GameScreen's
+        // dedicated sr-only live regions announce headlines and deaths.
+        <div ref={containerRef} className="space-y-6" aria-label="Chronicle of the Games">
             {days.length > 2 && (
                 <nav aria-label="Jump to day" className="sticky top-0 z-10 flex flex-wrap gap-1 py-1.5 -my-1.5"
-                    style={{ background: 'var(--paper, var(--color-paper, transparent))' }}>
+                    style={{ background: 'var(--paper)' }}>
                     {days.map(d => (
                         <button
                             key={d}
                             className="btn btn-sm btn-ghost font-mono text-[10px]"
                             aria-label={d === 0 ? 'Jump to before the Games' : `Jump to day ${d}`}
                             onClick={() => {
-                                const nodes = document.querySelectorAll(`[data-day="${d}"]`);
+                                // Scoped to this feed's own container — EndScreen
+                                // renders an EventFeed too, and an unscoped
+                                // document query could land in the wrong one.
+                                const node = containerRef.current?.querySelector(`[data-day="${d}"]`);
                                 // A smooth scroll is an animation like any other:
                                 // honour the reduced-motion preference here too.
                                 const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-                                nodes[nodes.length - 1]?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+                                node?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
                             }}
                         >
                             {d === 0 ? 'Start' : `D${d}`}
@@ -269,29 +481,19 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
                     Show {hiddenCount} earlier entries
                 </button>
             )}
-            {groups.map(([key, entries]) => {
-                // The roll-call belongs at the end of the day it covers. Sections
-                // render newest-first, so it sits above the night's entries.
-                const dayOfSection = entries[0]?.day ?? 0;
-                const isNight = entries[0]?.phase === 'night';
-                const fallenToday = isNight && cast
-                    ? cast.filter(t => t.status === 'dead' && t.dayOfDeath === dayOfSection)
-                    : [];
-                return (
-                <section key={key} data-day={dayOfSection} className="space-y-2.5">
-                    <h3 className="panel-title border-b border-[var(--color-ink-800)] pb-1.5 flex items-center justify-between">
-                        <span>{key}</span>
-                        <span className="text-[var(--color-ink-600)]">{entries.length} entries</span>
-                    </h3>
-                    {fallenToday.length > 0 && <AnthemCard day={dayOfSection} fallen={fallenToday} />}
-                    <div className="space-y-1.5">
-                        {[...entries].reverse().map(log => (
-                            <FeedLine key={log.id} log={log} showTag={showTags} animate={newIds.has(log.id)} cast={cast} onSelectTribute={onSelectTribute} />
-                        ))}
-                    </div>
-                </section>
-                );
-            })}
+            {groups.map(([key, entries]) => (
+                <PhaseSection
+                    key={key}
+                    sectionKey={key}
+                    entries={entries}
+                    density={density}
+                    showTags={showTags}
+                    cast={cast}
+                    onSelectTribute={onSelectTribute}
+                    newIds={newIds}
+                    preGamesCollapsed={entries[0]?.day === 0 && CEREMONY_PHASES.has(entries[0]?.phase ?? '') && density === 'everything'}
+                />
+            ))}
         </div>
     );
 }
