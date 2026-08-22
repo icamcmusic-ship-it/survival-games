@@ -633,7 +633,7 @@ export type EventCategory =
     | 'system';
 
 export interface GameConfig {
-    districtCount: number; // 1-12, each district reaps 2 tributes
+    districtCount: number; // 2-12, each district reaps 2 tributes
     hazardRate: number; // multiplier on random event/mutt attack chance
     betrayalRate: number; // multiplier on alliance betrayal chance
     sponsorGenerosity: number; // multiplier on sponsor gift chance

@@ -19,23 +19,34 @@ function randomSeed() {
 /** Versioned read/write lives in `utils/prefsStorage`; this is the local alias. */
 const storeConfig = writeStoredConfig;
 
-/** UX-11 named presets: one click sets every slider to a coherent profile. */
-const PRESETS: Array<{ name: string; blurb: string; config: GameConfig }> = [
-    { name: 'Canon', blurb: 'Balanced, book-accurate pacing.', config: DEFAULT_GAME_CONFIG },
+/**
+ * UX-11 named presets: one click sets every pacing slider to a coherent
+ * profile. Presets deliberately own only the pacing knobs — district count
+ * and plain names are the player's structural/cosmetic choices and survive a
+ * preset click unchanged.
+ */
+type PresetConfig = Pick<GameConfig, 'hazardRate' | 'betrayalRate' | 'sponsorGenerosity' | 'enableFeast' | 'enableSanity'>;
+const PRESET_KEYS = ['hazardRate', 'betrayalRate', 'sponsorGenerosity', 'enableFeast', 'enableSanity'] as const;
+const PRESETS: Array<{ name: string; blurb: string; config: PresetConfig }> = [
+    {
+        name: 'Canon',
+        blurb: 'Balanced, book-accurate pacing.',
+        config: { hazardRate: DEFAULT_GAME_CONFIG.hazardRate, betrayalRate: DEFAULT_GAME_CONFIG.betrayalRate, sponsorGenerosity: DEFAULT_GAME_CONFIG.sponsorGenerosity, enableFeast: DEFAULT_GAME_CONFIG.enableFeast, enableSanity: DEFAULT_GAME_CONFIG.enableSanity },
+    },
     {
         name: 'Bloodbath',
         blurb: 'Frequent hazards, quick betrayals.',
-        config: { districtCount: 12, hazardRate: 2.0, betrayalRate: 2.25, sponsorGenerosity: 0.75, enableFeast: true, enableSanity: true },
+        config: { hazardRate: 2.0, betrayalRate: 2.25, sponsorGenerosity: 0.75, enableFeast: true, enableSanity: true },
     },
     {
         name: 'Slow Burn',
         blurb: 'Calm arena, loyal alliances, generous sponsors.',
-        config: { districtCount: 12, hazardRate: 0.5, betrayalRate: 0.25, sponsorGenerosity: 2.0, enableFeast: false, enableSanity: true },
+        config: { hazardRate: 0.5, betrayalRate: 0.25, sponsorGenerosity: 2.0, enableFeast: false, enableSanity: true },
     },
     {
         name: 'Chaos',
         blurb: 'Everything turned up as far as it goes.',
-        config: { districtCount: 12, hazardRate: 2.5, betrayalRate: 3.0, sponsorGenerosity: 3.0, enableFeast: true, enableSanity: true },
+        config: { hazardRate: 2.5, betrayalRate: 3.0, sponsorGenerosity: 3.0, enableFeast: true, enableSanity: true },
     },
 ];
 
@@ -320,11 +331,18 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 <span className="eyebrow">Presets</span>
                                 <div className="flex flex-wrap gap-2">
                                     {PRESETS.map(p => {
-                                        const active = JSON.stringify(config) === JSON.stringify(p.config);
+                                        // Key-by-key comparison over the keys the preset owns —
+                                        // JSON.stringify equality broke as soon as the config
+                                        // object gained a key (plainNames) the presets don't carry.
+                                        const active = PRESET_KEYS.every(k => config[k] === p.config[k]);
                                         return (
                                             <button
                                                 key={p.name}
-                                                onClick={() => setConfig(p.config)}
+                                                // Fresh object, merged over the current config: the
+                                                // player's district count and plain-names choices
+                                                // survive, and the module-level preset object never
+                                                // ends up in (mutable) React state.
+                                                onClick={() => setConfig(c => ({ ...c, ...p.config }))}
                                                 title={p.blurb}
                                                 className={`chip ${active ? 'chip-accent' : ''}`}
                                             >

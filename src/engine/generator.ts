@@ -163,7 +163,10 @@ export function generateTributes(
 ): Tribute[] {
     const rng = new RNG(seed);
     const tributes: Tribute[] = [];
-    const districtCount = Math.min(12, Math.max(1, config.districtCount));
+    // 2..12, matching the setup slider and the share-URL parser exactly. The
+    // old lower bound of 1 was reachable only through a hand-edited save and
+    // produced a degenerate two-tribute, one-day run.
+    const districtCount = Math.min(12, Math.max(2, config.districtCount));
 
     // Names must be unique across the whole cast — two tributes called "Amber"
     // made the chronicle feed and the kill log ambiguous.

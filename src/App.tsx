@@ -70,8 +70,15 @@ export default function App() {
         sponsorGenerosity: numParam('sponsorGenerosity', DEFAULT_GAME_CONFIG.sponsorGenerosity, 0, 3),
         enableFeast: boolParam('enableFeast', DEFAULT_GAME_CONFIG.enableFeast),
         enableSanity: boolParam('enableSanity', DEFAULT_GAME_CONFIG.enableSanity),
+        plainNames: boolParam('plainNames', !!DEFAULT_GAME_CONFIG.plainNames),
       };
-      void gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true);
+      // A shared link pins the run's exact Quarter Quell (or explicit lack of
+      // one) so it replays the same Games it was copied from — the same
+      // mechanism a Hall of Fame replay uses. Links from before this param
+      // existed (`null` here) fall through to the ordinary seeded draw.
+      const rawQuell = params.get('quell');
+      const pinnedQuellId = rawQuell === null ? undefined : (rawQuell === 'none' ? null : rawQuell);
+      void gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true, false, pinnedQuellId);
       bootedFromLink = true;
       // Consume the replay params so a later refresh doesn't relaunch it.
       window.history.replaceState(null, '', window.location.pathname);
@@ -119,7 +126,7 @@ export default function App() {
             )}
             <span className="chip chip-gold" title="Capitol Coins available for wagers">{coins} ⨷</span>
             {gameState && (
-              <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.baseConfig} />
+              <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.baseConfig} quellId={gameState.gamesProfile?.quell?.id ?? null} />
             )}
             {/* Real links now that screens are real routes: the address bar
                 follows them, and middle-click / open-in-new-tab work. The click
