@@ -229,6 +229,10 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         resolve: clamp(asNum(r.resolve, 70), 0, 100),
         truces: asNumMap(r.truces),
         displayedRegard: asNumMap(r.displayedRegard),
+        // §4.1: the second stored relationship axis (professional esteem).
+        // Saves from before it existed load as an empty map and the axis
+        // rebuilds from play.
+        respects: asNumMap(r.respects),
         debts: asNumMap(r.debts),
         districtBondNoted: asBool(r.districtBondNoted, false),
         bleedSeverity: clamp(asNum(r.bleedSeverity, r.injuries && asBool((asRecord(r.injuries) ?? {}).bleeding, false) ? 1 : 0), 0, 3),

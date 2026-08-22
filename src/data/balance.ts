@@ -478,6 +478,13 @@ export const FEAR = {
  * suspicious a harder mark for the betrayal they saw coming.
  */
 export const SUSPICION = {
+    /** §4.8: suspicion high enough to be worth testing, but short of walking out. */
+    investigateThreshold: 35,
+    investigateChance: 0.25,
+    /** How much a test that finds nothing buys back. */
+    investigateClearAmount: 20,
+    /** How much a test that finds something adds. */
+    investigateConfirmAmount: 25,
     max: 100,
     perWitnessedBetrayal: 35,
     perCharterBreach: 15,
@@ -1411,6 +1418,13 @@ export const STANCE = {
 
 /** Relationship graph: bounds, decay, and the deltas life in the arena applies. */
 export const RELATIONSHIPS = {
+    /** §4.9: two people who both loved the victim, grieving in the same
+     *  place, bond over it. */
+    sharedGriefBond: 6,
+    /** §4.6: the leader's authority slows their members' doubt of them; a
+     *  member out of sight of the camp is doubted faster. */
+    leaderDecayFactor: 0.6,
+    absentDecayFactor: 1.4,
     /** §4.3: trust corrections applied on top of regard. See `trustOf`. */
     trustStoodByBonus: 15,
     trustBetrayedPenalty: 40,
@@ -1504,6 +1518,10 @@ export const PROTECTOR_BOND = {
 } as const;
 
 export const ROMANCE = {
+    /** §4.4: odds an eligible tribute plans the showmance at the interview. */
+    showmanceInterviewChance: 0.12,
+    /** Multiplier on performedChance for a tribute who planned it. */
+    showmanceMultiplier: 2,
     /**
      * Odds a one-sided attachment gets played for the cameras instead.
      * §6.1: at 0.07 behind five conjunctive gates the performed bond fired
@@ -1513,13 +1531,13 @@ export const ROMANCE = {
      * alliance formation gained its same-zone gate: fewer organic alliances
      * means less sustained contact for the streak to build on.
      */
-    performedChance: 0.2,
+    performedChance: 0.08,
     /**
      * Regard the smitten party needs. Deliberately below `threshold`: a
      * performed bond does not need the mutual devotion a real one does, only
      * one person who has fallen far enough to be convincing about it.
      */
-    performedMinRegard: 62,
+    performedMinRegard: 72,
     /** Charisma needed to sell a romance you are not feeling. */
     performerCharisma: 5,
     /** What the performer shows, as opposed to what they feel. */
@@ -1527,7 +1545,7 @@ export const ROMANCE = {
     /** Nothing before the bloodbath is over and the cast is real. */
     minDay: 2,
     /** Bond required before a romance is even considered. */
-    threshold: 92,
+    threshold: 96,
     /**
      * How many pairs may convert in a single cycle.
      *
@@ -1541,18 +1559,19 @@ export const ROMANCE = {
      */
     maxPerCycle: 2,
     /** Cycles of recent contact required, tracked as a streak. */
-    sustainedCycles: 3,
+    sustainedCycles: 4,
     /** Contact this stale breaks the streak. */
     contactWindow: 2,
     /**
      * Odds per cycle once every condition holds. Romance is never automatic.
-     * Retuned 0.1 -> 0.04 at integration: removing the one-per-cycle romance
-     * throttle and loosening the performed-bond gates each passed the 5%-22%
-     * lover-runs guard alone, and stacked to 23.3% together. 0.04 lands the
-     * combined system at ~15%, the top of the 10%-15% design goal, with the
-     * performed-bond firing floor still comfortably clear.
+     * Retuned 0.1 -> 0.04 at integration, then 0.04 -> 0.02 when §4.2 made
+     * truces actually keepable: far more sustained peaceful contact means
+     * far more pairs holding the streak and the regard gates, so the same
+     * per-cycle odds produced 30%+ lover-runs. 0.02 (with sustainedCycles 4
+     * and performedChance 0.08) lands the combined system at ~11%, inside
+     * the 10%-15% design goal.
      */
-    chancePerCycle: 0.04,
+    chancePerCycle: 0.02,
     /**
      * Per-day decay on that chance. Keeps the romance rate a property of the
      * cast rather than a property of how long the Games happened to run.
@@ -1566,6 +1585,11 @@ export const ROMANCE = {
 
 /** Alliance formation and dissolution. */
 export const ALLIANCES = {
+    /** §4.7: the Career pack recruits hard in the early game — that is its
+     *  narrative function. Days it stays hungry, and how much hungrier. */
+    careerRecruitEarlyDays: 3,
+    careerRecruitMultiplier: 2.5,
+    careerRecruitThresholdFactor: 0.6,
     baseFormChance: 0.2,
     minFormChance: 0.02,
     baseRelThreshold: 40,
@@ -2431,6 +2455,25 @@ export const RESOLVE = {
  * out of it, paying to leave, or agreeing not to do this today. See
  * `engine/parley.ts`.
  */
+/**
+ * §4.1: the second stored axis. `relationships` is regard; `respects` is
+ * professional esteem — "I rate them as a fighter" — which regard cannot
+ * express (you can respect someone you would never sleep near). Written by
+ * witnessed kills and the training-score reveal; read by recruitment and by
+ * truce restraint.
+ */
+export const RESPECT = {
+    max: 100,
+    /** Respect earned by everyone watching a clean kill. */
+    witnessKill: 6,
+    /** Respect per point of training score above the middle of the band. */
+    trainingWeight: 2.5,
+    /** Weight of respect in a group's recruitment read of a candidate. */
+    recruitWeight: 0.3,
+    /** You do not cross someone you rate: divisor for the truce-break restraint. */
+    truceRestraintDivisor: 250,
+} as const;
+
 export const PARLEY = {
     /** A power ratio below this means a tribute genuinely likes their odds. */
     confidentRatio: 0.8,
@@ -2441,7 +2484,9 @@ export const PARLEY = {
      * outmatched through the perception layer almost never met the other
      * gates too.
      */
-    outmatchedRatio: 1.12,
+    // §4.3: loosened from 1.12 — the extortion branch sat behind an XOR of
+    // two readings that almost never disagreed at the old threshold.
+    outmatchedRatio: 1.08,
 
     /** Paying to be allowed to leave. */
     tributeChance: 0.6,
@@ -2571,6 +2616,10 @@ export const DEBTS = {
  * every disagreement had to escalate to a knife or not exist.
  */
 export const CHARTER = {
+    /** §4.5: odds a breach hardens the terms instead of only costing regard. */
+    renegotiateChance: 0.3,
+    /** §4.5: odds a forming alliance writes the endgame into its terms. */
+    endgameClauseChance: 0.25,
     /** Odds a group agrees to two clauses rather than one. */
     twoClauseChance: 0.35,
     /** Odds a given breach is actually noticed this cycle. */

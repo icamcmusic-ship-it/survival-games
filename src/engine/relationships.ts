@@ -1,6 +1,6 @@
 import { GameState, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
-import { RELATIONSHIPS, GENERATION, HUNTING, SUSPICION } from '../data/balance';
+import { RELATIONSHIPS, GENERATION, HUNTING, RESPECT, SUSPICION } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
 import { clampTribute } from './vitals';
@@ -67,6 +67,16 @@ export function adjustMutual(state: GameState, a: Tribute, b: Tribute, delta: nu
     adjustRel(a, b.id, delta);
     adjustRel(b, a.id, delta);
     noteContact(state, a, b);
+}
+
+/** §4.1: the second stored axis — professional esteem, not warmth. */
+export function respectOf(a: Tribute, bId: string): number {
+    return a.respects?.[bId] ?? 0;
+}
+
+export function adjustRespect(a: Tribute, bId: string, delta: number): void {
+    const next = Math.max(-RESPECT.max, Math.min(RESPECT.max, respectOf(a, bId) + delta));
+    a.respects = { ...(a.respects ?? {}), [bId]: Math.round(next * 10) / 10 };
 }
 
 export function setRel(a: Tribute, bId: string, value: number) {
@@ -140,6 +150,7 @@ const fill = (template: string, vars: Record<string, string>) =>
  */
 export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?: Tribute) {
     const state = ctx.state;
+    const mourners: Tribute[] = [];
 
     state.tributes.forEach(other => {
         if (other.status !== 'alive' || other.id === victim.id) return;
@@ -159,6 +170,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
             // The crowd rewards visible grief.
             other.sponsorTrust += Math.round(intensity * 6);
             ensureMemory(other).mourned.push(victim.id);
+            mourners.push(other);
             // §3.4: grief is also a bad day in the arena, not only a slow gauge.
             rattle(other, HUNTING.rattledPerGrief);
             clampTribute(other);
@@ -218,6 +230,30 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
             }
         }
     });
+
+    // §4.1: a kill is a résumé line. Everyone standing where it happened
+    // rates the killer higher as a fighter, whatever it does to their regard.
+    if (killer) {
+        state.tributes.forEach(w => {
+            if (w.status !== 'alive' || w.id === killer.id) return;
+            if (w.zone === killer.zone) adjustRespect(w, killer.id, RESPECT.witnessKill);
+        });
+    }
+
+    // §4.9: shared grief. Two people who both loved the victim, standing in
+    // the same place, bond over it — free content off existing state.
+    for (let i = 0; i < mourners.length; i++) {
+        for (let j = i + 1; j < mourners.length; j++) {
+            const a = mourners[i], b = mourners[j];
+            if (a.zone !== b.zone) continue;
+            adjustMutual(state, a, b, RELATIONSHIPS.sharedGriefBond);
+            ctx.logEvent(
+                `${a.name} and ${b.name} both knew ${victim.name}. Neither says much about it, but something settles between them that was not there before.`,
+                [a.id, b.id, victim.id],
+                { category: 'alliance' }
+            );
+        }
+    }
 
     // Sponsor reaction: putting down a crowd favourite is not a free action.
     if (killer && (victim.fanFavourite || victim.sponsorTrust > 75)) {
@@ -292,13 +328,21 @@ export function decayAllianceTrust(state: GameState) {
 
     alive.forEach(t => {
         if (!t.allianceId) return;
+        const record = state.alliances?.[t.allianceId];
         alive.forEach(other => {
             if (other.id === t.id || other.allianceId !== t.allianceId) return;
             // Star-crossed lovers are the one bond the endgame cannot erode.
             const bonded = areLovers(t, other);
             if (bonded) return;
             const paranoia = t.traits.includes('Paranoid') ? 1.8 : 1;
-            adjustRel(t, other.id, -rate * paranoia);
+            // §4.6: doubt is not uniform. The leader's authority slows it;
+            // a member who is off out of sight of the camp draws it faster.
+            let factor = 1;
+            if (record?.leaderId === other.id) factor *= RELATIONSHIPS.leaderDecayFactor;
+            if (record?.campZone && other.zone !== record.campZone && t.zone === record.campZone) {
+                factor *= RELATIONSHIPS.absentDecayFactor;
+            }
+            adjustRel(t, other.id, -rate * paranoia * factor);
         });
     });
 }

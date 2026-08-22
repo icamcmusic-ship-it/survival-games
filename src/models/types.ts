@@ -339,6 +339,15 @@ export interface Tribute {
     /** §3.5: they went all the way down once; some of it never comes back. */
     sanityScarred?: boolean;
     /**
+     * §4.1: professional esteem, per tribute id (0-100 scale deltas around 0).
+     * Distinct from `relationships` (regard): you can rate someone as a
+     * fighter and still never sleep unguarded near them. Written by witnessed
+     * kills and the training reveal; read by recruitment and truce restraint.
+     */
+    respects?: Record<string, number>;
+    /** §4.4: the angle they took with Caesar — a showmance is a strategy chosen before the arena. */
+    interviewAngle?: 'showmance';
+    /**
      * §7.1: tessera claims — extra name-slips taken for grain, one per family
      * mouth per year. Decided at generation from district poverty and age.
      * A tribute who carries them has been hungry for years: the hunger drain
@@ -394,7 +403,7 @@ export interface Alliance {
 }
 
 /** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
-export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone';
+export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone' | 'split-at-eight';
 
 /**
  * What happened between one specific pair, across the whole run.

@@ -2,12 +2,13 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { ALLIANCES, PROTECTOR_BOND, QUELL_MECHANICS, ROMANCE, SUSPICION } from '../../data/balance';
+import { RESPECT, ALLIANCES, PROTECTOR_BOND, QUELL_MECHANICS, ROMANCE, SUSPICION } from '../../data/balance';
 import { applyDamage, checkDeath } from '../combat';
 import { clampTribute } from '../vitals';
 import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel, trustOf } from '../relationships';
-import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, suspicionOf } from '../memory';
+import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, raiseSuspicion, suspicionOf } from '../memory';
+import { respectOf } from '../relationships';
 import { allianceOf, areLovers, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
 import { betrayalReluctance } from '../debts';
@@ -154,6 +155,43 @@ export function processAlliances(ctx: SimContext) {
             );
             alliances.delete(id);
         }
+    });
+
+    // 1b2. §4.8: suspicion gets an investigation path. A tribute who
+    // suspects an ally no longer only waits or leaves: below the departure
+    // threshold they *test* it — trail the suspect, check the cache, ask a
+    // third party — and the suspicion either resolves or hardens.
+    alliances.forEach((members, id) => {
+        if (members.length < 2 || id.startsWith('lovers-')) return;
+        members.forEach(m => {
+            if (m.status !== 'alive' || m.allianceId !== id) return;
+            const suspect = members.find(o =>
+                o.id !== m.id && o.status === 'alive'
+                && suspicionOf(m, o.id) >= SUSPICION.investigateThreshold
+                && suspicionOf(m, o.id) < SUSPICION.departThreshold);
+            if (!suspect) return;
+            if (!ctx.rng.chance(SUSPICION.investigateChance)) return;
+            // The test finds what there is to find: real treachery confirms,
+            // an honest ally clears.
+            const guilty = (ARCHETYPES[suspect.archetype].treachery + traitMod(suspect, 'treachery')) > 0.25
+                || ensureMemory(m).betrayedBy.includes(suspect.id);
+            if (guilty) {
+                raiseSuspicion(m, suspect.id, SUSPICION.investigateConfirmAmount);
+                ctx.logEvent(
+                    `${m.name} trails ${suspect.name} for half a day, says nothing, and comes back having seen enough. The watching gets harder to hide after that.`,
+                    [m.id, suspect.id],
+                    { important: true, category: 'alliance' }
+                );
+            } else {
+                raiseSuspicion(m, suspect.id, -SUSPICION.investigateClearAmount);
+                adjustRel(m, suspect.id, 4);
+                ctx.logEvent(
+                    `${m.name} checks the cache while ${suspect.name} sleeps, counts everything twice, and finds it all where it should be. Something eases.`,
+                    [m.id, suspect.id],
+                    { category: 'alliance' }
+                );
+            }
+        });
     });
 
     // 1c. §4.2: pre-emptive departure. A member whose suspicion of a specific
@@ -369,17 +407,25 @@ export function processAlliances(ctx: SimContext) {
 
             // Both directions have to hold: the group has to want them, and
             // they have to want the group.
-            // §4.3: recruitment is trust in both directions.
-            const groupOpinion = present.reduce((sum, m) => sum + trustOf(m, candidate), 0) / present.length;
+            // §4.3: recruitment is trust in both directions — and §4.1, a
+            // candidate the group *rates* is wanted above their warmth.
+            const groupOpinion = present.reduce(
+                (sum, m) => sum + trustOf(m, candidate) + respectOf(m, candidate.id) * RESPECT.recruitWeight,
+                0) / present.length;
             const theirOpinion = present.reduce((sum, m) => sum + trustOf(candidate, m), 0) / present.length;
             const distrust = distrustFactor(candidate);
-            const threshold = ALLIANCES.recruitThreshold * distrust;
+            // §4.7: the Career pack recruits hard in the early game — sweeping
+            // up the strong stragglers is its narrative function.
+            const hungryPack = members.some(m => m.isCareer) && ctx.state.day <= ALLIANCES.careerRecruitEarlyDays;
+            const threshold = ALLIANCES.recruitThreshold * distrust
+                * (hungryPack ? ALLIANCES.careerRecruitThresholdFactor : 1);
             if (groupOpinion < threshold || theirOpinion < threshold) return;
 
             const affinity = ARCHETYPES[candidate.archetype].allianceAffinity + traitMod(candidate, 'allianceAffinity');
             const chance = Math.max(
                 ALLIANCES.minFormChance,
-                (ALLIANCES.recruitChance + affinity - (members.length - 2) * ALLIANCES.recruitSizePenalty) / distrust
+                (ALLIANCES.recruitChance + affinity - (members.length - 2) * ALLIANCES.recruitSizePenalty)
+                    * (hungryPack ? ALLIANCES.careerRecruitMultiplier : 1) / distrust
             );
             if (!ctx.rng.chance(chance)) return;
 
@@ -680,10 +726,21 @@ function growRomance(ctx: SimContext) {
             if (!stoodBy && mutual < ROMANCE.threshold) {
                 const oneSided = Math.max(getRel(t1, t2.id), getRel(t2, t1.id));
                 const lateness = Math.max(0, ctx.state.day - ROMANCE.minDay);
-                const performChance = ROMANCE.performedChance * Math.pow(ROMANCE.latenessDecay, lateness);
+                // §4.4: a tribute who planned the showmance on Caesar's couch
+                // has been waiting for exactly this opening all run.
+                const planned = t1.interviewAngle === 'showmance' || t2.interviewAngle === 'showmance';
+                const performChance = ROMANCE.performedChance
+                    * (planned ? ROMANCE.showmanceMultiplier : 1)
+                    * Math.pow(ROMANCE.latenessDecay, lateness);
                 if (oneSided >= ROMANCE.performedMinRegard && ctx.rng.chance(performChance)) {
-                    const smitten = getRel(t1, t2.id) >= getRel(t2, t1.id) ? t1 : t2;
-                    const performer = smitten === t1 ? t2 : t1;
+                    // The planner performs if either could: the whole point
+                    // of the interview beat was choosing this in advance.
+                    let smitten = getRel(t1, t2.id) >= getRel(t2, t1.id) ? t1 : t2;
+                    let performer = smitten === t1 ? t2 : t1;
+                    if (smitten.interviewAngle === 'showmance' && performer.interviewAngle !== 'showmance'
+                        && getRel(performer, smitten.id) >= ROMANCE.performedMinRegard) {
+                        [smitten, performer] = [performer, smitten];
+                    }
                     // Playing it well is a charisma job, and the crowd is the
                     // only audience that matters.
                     if (performer.attributes.charisma >= ROMANCE.performerCharisma) {

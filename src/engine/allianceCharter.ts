@@ -28,6 +28,8 @@ const RULE_TEXT: Record<CharterRule, string> = {
     'no-fighting': 'nobody raises a hand to anybody here',
     'hold-the-camp': 'somebody is always at the camp',
     'no-hunting-alone': 'nobody goes out on their own',
+    // §4.5: the endgame is finally expressible as a pact.
+    'split-at-eight': 'when eight are left, this ends — everyone walks away clean',
 };
 
 /** Rolls the clauses a new alliance agrees to, from its members' natures. */
@@ -40,6 +42,9 @@ export function rollCharter(rng: RNG, members: Tribute[]): CharterRule[] {
         if (remaining.length === 0) break;
         chosen.push(rng.pick(remaining));
     }
+    // §4.5: a cautious group writes the ending into the terms up front —
+    // "we split at the final eight" is a pact, and now it is a clause.
+    if (rng.chance(CHARTER.endgameClauseChance)) chosen.push('split-at-eight');
     void members;
     return chosen;
 }
@@ -75,7 +80,24 @@ export function enforceCharters(ctx: SimContext) {
         const record = allianceOf(ctx.state, id);
         if (!record?.charter || members.length < 2) return;
 
+        // §4.5: the endgame clause resolves as a scene, not a breach — a
+        // pact honoured in full is the rarest and most valuable thing the
+        // social layer can produce.
+        if (record.charter.includes('split-at-eight') && alive.length <= 8) {
+            members.forEach(m => { delete m.allianceId; });
+            members.forEach(m => members.forEach(o => {
+                if (o.id !== m.id) adjustRel(m, o.id, CHARTER.breachRegardCost);
+            }));
+            ctx.logEvent(
+                `${members.map(m => m.name).join(', ')} count the cannons and stop at eight. The terms were the terms: they divide what is in the cache, and walk away from each other without a word being broken.`,
+                members.map(m => m.id),
+                { important: true, category: 'alliance' }
+            );
+            return;
+        }
+
         record.charter.forEach(rule => {
+            if (rule === 'split-at-eight') return;
             const offender = findBreach(ctx, rule, record, members);
             if (!offender) return;
             if (!ctx.rng.chance(CHARTER.noticeChance)) return;
@@ -92,6 +114,23 @@ export function enforceCharters(ctx: SimContext) {
                 members.map(m => m.id),
                 { important: true, category: 'alliance' }
             );
+
+            // §4.5: renegotiation — a breach can produce a new, harsher
+            // clause instead of only fallout. The group closes the loophole
+            // the offender just walked through.
+            if (ctx.rng.chance(CHARTER.renegotiateChance)) {
+                const pool: CharterRule[] = ['share-food', 'no-fighting', 'hold-the-camp', 'no-hunting-alone'];
+                const missing = pool.filter(r => !record.charter!.includes(r));
+                if (missing.length > 0) {
+                    const added = ctx.rng.pick(missing);
+                    record.charter = [...record.charter!, added];
+                    ctx.logEvent(
+                        `The terms get harsher around the fire that night: from now on, ${RULE_TEXT[added]}. Nobody looks at ${offender.name} while it is agreed.`,
+                        members.map(m => m.id),
+                        { category: 'alliance' }
+                    );
+                }
+            }
         });
     });
 }
