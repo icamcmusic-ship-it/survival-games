@@ -80,11 +80,26 @@ function drawQuell(rng: RNG, force: boolean): Quell | undefined {
     return QUELLS[0];
 }
 
-/** Synthesizes the standing Wildcard entries a Quell injects directly into the calendar. */
+/**
+ * Synthesizes the standing Wildcard entries a Quell injects directly into the
+ * calendar.
+ *
+ * A Quell with no `standingWildcards` (one that works purely through
+ * `castShapeOverride`/`temperamentOverride`/`configOverride` — Victors'
+ * Field, the Doubled Reaping, the Volunteers' Quell, and others) used to
+ * contribute nothing here at all, which meant `calendarOf` never carried its
+ * announcement (so it never appeared on the reaping screen) and the run's
+ * headline `wildcard.kind` fell back to `'nothing'` (so the in-run sidebar
+ * and the "A Quarter Quell" achievement both read the run as not a Quell). A
+ * bare `quell-standing` marker keeps every Quell visible the same way,
+ * whether or not it happens to need a mechanical standing wildcard too.
+ */
 function quellWildcards(quell: Quell): Wildcard[] {
-    return (quell.standingWildcards ?? []).map(kind => ({
+    const mechanical = (quell.standingWildcards ?? []).map(kind => ({
         kind, name: quell.name, announcement: quell.announcement, day: 0,
     }));
+    if (mechanical.length > 0) return mechanical;
+    return [{ kind: 'quell-standing' as const, name: quell.name, announcement: quell.announcement, day: 0 }];
 }
 
 function materialise(def: WildcardDef, rng: RNG, dayOverride?: number): Wildcard {

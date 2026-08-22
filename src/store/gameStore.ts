@@ -462,7 +462,26 @@ export const gameActions = {
         // shallow clone gives this run its own zone objects (arenaLawOverride
         // below, and the Moving Arena Quell later, both write to them).
         const arena = { ...baseArena, zones: baseArena.zones.map(z => ({ ...z })) };
-        if (gamesProfile.quell?.arenaLawOverride) arena.law = gamesProfile.quell.arenaLawOverride;
+        if (gamesProfile.quell?.arenaLawOverride) {
+            arena.law = gamesProfile.quell.arenaLawOverride;
+            // 'sponsorsFixedZone' and 'noWaterExceptZone' both compare a
+            // tribute's zone against `arena.lawZone` — on the handful of
+            // arenas that define one of these laws natively that's already
+            // set, but a Quell forces the law onto whichever arena the
+            // player (or the hidden-arena roll) picked, most of which carry
+            // no `lawZone` at all. Left undefined, `t.zone === lawZone` is
+            // never true for any real zone: sponsor gifts would land nowhere
+            // for the entire run, or every zone would come up dry, for a
+            // Quell whose entire point was to concentrate the drama on one
+            // sector of the map. Defaulting to the Cornucopia keeps the
+            // mechanic meaningful regardless of which arena it lands on.
+            if (
+                (gamesProfile.quell.arenaLawOverride === 'sponsorsFixedZone' || gamesProfile.quell.arenaLawOverride === 'noWaterExceptZone')
+                && !arena.lawZone
+            ) {
+                arena.lawZone = arena.zones[0]?.name;
+            }
+        }
         const startZone = arena.zones[0].name;
 
         const tributes = generateTributes(safeSeed, config, startZone, gamesProfile.castShape, gamesProfile.quell);

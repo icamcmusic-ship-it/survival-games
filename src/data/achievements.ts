@@ -173,7 +173,13 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'quarter-quell',
         name: 'A Quarter Quell',
         hint: 'Run a Games the Capitol has declared a Quarter Quell.',
-        test: state => state.gamesProfile?.wildcard.kind.startsWith('quarter-quell') === true,
+        // Was `wildcard.kind.startsWith('quarter-quell')` — true only for the
+        // two legacy Quells that happen to use that kind prefix, so most of
+        // the 20+ Quells (anything working through castShapeOverride/
+        // configOverride alone, like Victors' Field or the Doubled Reaping)
+        // never unlocked this at all. `gamesProfile.quell` is set for every
+        // Quell regardless of which lever it uses.
+        test: state => state.gamesProfile?.quell !== undefined,
     },
     {
         id: 'silent-arena',
@@ -314,6 +320,88 @@ export const ACHIEVEMENTS: Achievement[] = [
             return [...new Set(finalFour.map(t => t.district))].length < finalFour.length;
         },
     },
+    // S-4: a second wave beyond the original 26 — outcomes the engine has
+    // long been able to produce (debts, quirks, fan favourites, the
+    // Cornucopia standoff, a Quell-specific mutt) with no achievement keyed
+    // to any of them.
+    {
+        id: 'lone-wolf',
+        name: 'Never Needed Anyone',
+        hint: 'Crown a victor who never once joined an alliance.',
+        test: (state, v) => !!v && !state.log.some(e => e.category === 'alliance' && e.tributesInvolved.includes(v.id)),
+    },
+    {
+        id: 'debt-unsettled',
+        name: 'Still Owed',
+        hint: 'Crown a victor who walked out of the arena still owing somebody.',
+        test: (_s, v) => !!v && Object.values(v.debts ?? {}).some(d => d > 0),
+    },
+    {
+        id: 'owed-by-many',
+        name: 'Everybody Owed Them',
+        hint: 'Crown a victor that two or more tributes still owed when the Games ended.',
+        test: (state, v) => !!v && state.tributes.filter(t => t.id !== v.id && (t.debts?.[v.id] ?? 0) > 0).length >= 2,
+    },
+    {
+        id: 'camera-ready',
+        name: 'Camera-Ready',
+        hint: 'Crown a victor with two or more habits the cameras caught.',
+        test: (_s, v) => !!v && (v.quirks?.length ?? 0) >= 2,
+    },
+    {
+        id: 'capitol-darling',
+        name: "The Capitol's Darling",
+        hint: 'Crown a tribute the Capitol had already marked a favourite before the gong.',
+        test: (_s, v) => !!v && v.fanFavourite === true,
+    },
+    {
+        id: 'cornucopia-holdout',
+        name: 'Held the Horn',
+        hint: 'See one alliance hold the Cornucopia for five days running.',
+        test: state => state.cornucopiaHolder !== undefined
+            && state.cornucopiaHeldSince !== undefined
+            && (state.day - state.cornucopiaHeldSince) >= 5,
+    },
+    {
+        id: 'protector-victor',
+        name: 'Kept Their Word',
+        hint: 'Crown a victor who was still protecting someone younger when the Games ended.',
+        test: (_s, v) => !!v && (v.protectorBonds?.length ?? 0) > 0,
+    },
+    {
+        id: 'full-showcase',
+        name: 'Left Nothing Back',
+        hint: 'Crown a victor who showed the Gamemakers everything in training instead of concealing it.',
+        test: (_s, v) => !!v && v.trainingStrategy === 'showcase',
+    },
+    {
+        id: 'clean-getaway',
+        name: 'Clean Getaway',
+        hint: 'Crown a victor who never once logged a standing injury — not a scratch, not a burn, not a break.',
+        test: (_s, v) => !!v && !Object.values(v.injuries).some(Boolean),
+    },
+    {
+        id: 'sole-of-two',
+        name: 'Went In Together, Came Out Alone',
+        hint: "Crown a victor whose district partner died in the bloodbath.",
+        test: (state, v) => {
+            if (!v) return false;
+            const partner = state.tributes.find(t => t.district === v.district && t.id !== v.id);
+            return !!partner && partner.status === 'dead' && partner.dayOfDeath === 0;
+        },
+    },
+    {
+        id: 'reflection-survivor',
+        name: 'Beat Their Own Reflection',
+        hint: 'Crown a victor in the Quell where every tribute faces a mutt wearing their own face.',
+        test: (state, v) => !!v && state.gamesProfile?.quell?.id === 'the-reflection',
+    },
+    {
+        id: 'bloodless-quell',
+        name: 'A Quell With No Blood On It',
+        hint: 'See a Quarter Quell end with no victor having killed anybody.',
+        test: (state, v) => !!v && state.gamesProfile?.quell !== undefined && v.kills === 0,
+    },
 ];
 
 /**
@@ -331,6 +419,8 @@ export interface CareerTotals {
     crownedDistricts: number[];
     /** Distinct arenas a victor has been crowned in. */
     arenasWon: string[];
+    /** Distinct Quarter Quell ids this player has run, win or lose. */
+    quellsSeen: string[];
 }
 
 export interface MetaAchievement {
@@ -376,6 +466,24 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         name: 'The Grand Tour',
         hint: 'Crown victors in ten different arenas.',
         test: t => t.arenasWon.length >= 10,
+    },
+    {
+        id: 'meta-two-hundred-deaths',
+        name: 'The Show Must Go On',
+        hint: 'Witness two hundred deaths across all your Games.',
+        test: t => t.deaths >= 200,
+    },
+    {
+        id: 'meta-quell-collector',
+        name: "The Capitol's Whims",
+        hint: 'See five different Quarter Quells play out, win or lose.',
+        test: t => t.quellsSeen.length >= 5,
+    },
+    {
+        id: 'meta-hundred-games',
+        name: 'A Life\'s Work',
+        hint: 'Finish one hundred Games.',
+        test: t => t.runs >= 100,
     },
 ];
 

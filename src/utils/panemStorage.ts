@@ -75,6 +75,8 @@ export interface PanemRecords {
      * placeholder rows are ever written.
      */
     districtCrowns?: Record<number, DistrictCrown>;
+    /** S-4: distinct Quarter Quell ids this player has run, win or lose — for `meta-quell-collector`. */
+    quellsSeen?: string[];
 }
 
 /** One district's victory, stamped so it reads as a specific thing that happened. */
@@ -116,7 +118,7 @@ export interface GamemakerRecord {
     deaths: number;
 }
 
-export const EMPTY_PANEM: PanemRecords = { runs: 0, victors: 0, unlocked: [], bests: {}, gamemakerRecords: {}, districtCrowns: {} };
+export const EMPTY_PANEM: PanemRecords = { runs: 0, victors: 0, unlocked: [], bests: {}, gamemakerRecords: {}, districtCrowns: {}, quellsSeen: [] };
 
 /**
  * The record book. Each entry says what it measures and which direction is
@@ -195,6 +197,31 @@ export const RECORD_DEFS: Array<{
         },
         format: v => `a ${v}`,
     },
+    {
+        id: 'most-sponsor-gifts',
+        label: 'Most sponsor gifts to a victor',
+        extract: (state, victor) => victor
+            ? { value: state.log.filter(l => l.category === 'sponsor' && l.tributesInvolved.includes(victor.id)).length, holder: victor }
+            : undefined,
+        format: v => `${v} gift${v === 1 ? '' : 's'}`,
+    },
+    {
+        id: 'longest-survival-no-crown',
+        label: 'Longest survival without winning',
+        extract: state => {
+            const fallen = state.tributes.filter(t => t.status === 'dead');
+            if (fallen.length === 0) return undefined;
+            const best = fallen.reduce((a, b) => (b.daysSurvived > a.daysSurvived ? b : a));
+            return { value: best.daysSurvived, holder: best };
+        },
+        format: v => `${v} days`,
+    },
+    {
+        id: 'most-tesserae-victor',
+        label: 'Most tesserae slips carried by a victor',
+        extract: (_s, victor) => (victor && (victor.tesserae ?? 0) > 0) ? { value: victor.tesserae!, holder: victor } : undefined,
+        format: v => `${v} slip${v === 1 ? '' : 's'}`,
+    },
 ];
 
 /**
@@ -222,6 +249,7 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
             patronDistrict: Number.isFinite(patron) ? patron : undefined,
             districtCrowns: asObjMap<DistrictCrown>(r.districtCrowns),
             arenasWon: asStrArray(r.arenasWon),
+            quellsSeen: asStrArray(r.quellsSeen),
         };
     },
 };
@@ -322,6 +350,13 @@ export function commitRun(state: GameState): RunOutcome {
         if (!records.arenasWon.includes(state.arena.name)) records.arenasWon.push(state.arena.name);
     }
 
+    // S-4: a Quell counts toward `meta-quell-collector` whether or not it
+    // produced a victor — the point is having seen it, not having won it.
+    if (state.gamesProfile?.quell) {
+        records.quellsSeen = records.quellsSeen ?? [];
+        if (!records.quellsSeen.includes(state.gamesProfile.quell.id)) records.quellsSeen.push(state.gamesProfile.quell.id);
+    }
+
     // S-3: career-wide achievements read the updated records, so cumulative
     // counts and per-district completion unlock the moment they become true.
     const totals: CareerTotals = {
@@ -330,6 +365,7 @@ export function commitRun(state: GameState): RunOutcome {
         deaths: Object.values(records.gamemakerRecords ?? {}).reduce((sum, gm) => sum + gm.deaths, 0),
         crownedDistricts: Object.keys(records.districtCrowns ?? {}).map(Number),
         arenasWon: records.arenasWon ?? [],
+        quellsSeen: records.quellsSeen ?? [],
     };
 
     const earned = [...evaluateAchievements(state), ...evaluateMetaAchievements(totals)];

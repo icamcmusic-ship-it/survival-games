@@ -864,7 +864,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                             {personalLog.length === 0 ? (
                                 <span className="text-sm text-[var(--color-ink-400)]">Nothing recorded about them yet</span>
                             ) : (
-                                [...personalLog].reverse().map(l => <FeedLine key={l.id} log={l} animate={false} />)
+                                [...personalLog].reverse().map(l => <FeedLine key={l.id} log={l} animate={false} cast={gameState.tributes} />)
                             )}
                         </div>
                     </section>
