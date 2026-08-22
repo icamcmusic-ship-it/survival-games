@@ -10,7 +10,7 @@ import { RNG } from '../utils/rng';
 import type { Simulator } from '../engine/simulator';
 import type { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
-import { PanemRecords, RunOutcome, commitRun, readPanem, setPatronDistrict } from '../utils/panemStorage';
+import { PanemRecords, RunOutcome, clearPanem, commitRun, readPanem, setPatronDistrict } from '../utils/panemStorage';
 import type { SponsorResult } from '../engine/playerSponsor';
 
 /**
@@ -420,6 +420,12 @@ export const gameActions = {
     },
 
     patronCost: PATRON_COST,
+
+    /** Wipes achievements, records, and career totals — the "Your Panem" book — back to a blank slate. */
+    resetPanem() {
+        clearPanem();
+        gameStore.setState({ panem: readPanem() });
+    },
 
     async startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false, forceQuell = false, pinnedQuellId?: string | null) {
         // Abandoning a run mid-wager used to silently pocket the player's coins.
