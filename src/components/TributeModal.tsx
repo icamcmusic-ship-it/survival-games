@@ -18,6 +18,7 @@ import { conditionOf, displayName } from '../engine/items';
 import { sponsorCost, sponsorableItems } from '../engine/playerSponsor';
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
+import { canSeeArena, disclosureFor } from '../ui/disclosure';
 import { copyTributeStory, downloadTributeStory } from '../utils/tributeStory';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
@@ -130,6 +131,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
     /** U-3: jump the chronicle to this tribute's story (their death sits on top). */
     onShowInChronicle?: () => void;
 }) {
+    const arenaSealed = !!gameState.arenaHidden && !canSeeArena(disclosureFor(gameState.phase));
     const panelRef = useRef<HTMLDivElement>(null);
     const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -366,7 +368,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                             )}
                         </div>
                         <div className="flex flex-wrap gap-3 mt-2.5 text-sm text-[var(--color-ink-400)]">
-                            <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {tribute.zone}</span>
+                            <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {arenaSealed ? '❓ Sealed' : tribute.zone}</span>
                             {tribute.status === 'alive' && (
                                 <Explainer
                                     align="left"

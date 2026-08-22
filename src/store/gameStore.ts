@@ -5,6 +5,7 @@ import { HOF_CAP, readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
 import { readStored, removeStored, tryWriteStored, writeStored } from '../utils/storage';
 import { snapshotState } from '../utils/snapshot';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
+import { RNG } from '../utils/rng';
 import type { Simulator } from '../engine/simulator';
 import type { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
@@ -432,9 +433,18 @@ export const gameActions = {
         // Quarter Quell — are rolled from the seed before the arena and cast
         // are resolved, because a Quell can shape both of them.
         const gamesProfile = gamesProfileFor(safeSeed);
-        const baseArena = arenaId.startsWith('procedural')
+        // 'random-hidden': a real arena, still resolved deterministically from
+        // the seed (a shared seed reproduces the same Games) — the pick just
+        // isn't the player's to make, and its identity stays out of the UI
+        // until the bloodbath reveals it (see arenaHidden below and
+        // ui/disclosure.ts's canSeeArena).
+        const arenaHidden = arenaId === 'random-hidden';
+        const resolvedArenaId = arenaHidden
+            ? new RNG(`${safeSeed}-random-arena`).pick([...ARENAS.map(a => a.id), 'procedural'])
+            : arenaId;
+        const baseArena = resolvedArenaId.startsWith('procedural')
             ? generateArena(safeSeed)
-            : (ARENAS.find(a => a.id === arenaId) || ARENAS[0]);
+            : (ARENAS.find(a => a.id === resolvedArenaId) || ARENAS[0]);
         // Never mutate the shared ARENAS/generated-arena objects: a per-zone
         // shallow clone gives this run its own zone objects (arenaLawOverride
         // below, and the Moving Arena Quell later, both write to them).
@@ -463,6 +473,7 @@ export const gameActions = {
             day: 0,
             log: [],
             gamemakerMode,
+            arenaHidden,
             config: configForProfile(config, gamesProfile),
             baseConfig: config,
             gamesProfile,

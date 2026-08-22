@@ -10,6 +10,7 @@ import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
 // simulation engine (and its ~5k lines of flavour/balance tables) in with it.
 import { SIGNATURE_BLURBS } from '../data/signatureBlurbs';
 import { readStoredConfig, writeStoredConfig } from '../utils/prefsStorage';
+import { canSeeArena, disclosureFor } from '../ui/disclosure';
 
 function randomSeed() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -91,6 +92,9 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const arenaOptions = [
         ...ARENAS.map(a => ({ id: a.id, name: a.name, description: a.description })),
         { id: 'procedural', name: '🎲 Procedural Arena', description: 'The Gamemakers build a fresh arena from your seed — biome, sectors, mutts and hazards generated on the spot.' },
+        // No SIGNATURE_BLURBS entry on purpose — the whole point is that
+        // nothing about this arena is knowable until the bloodbath.
+        { id: 'random-hidden', name: '❓ Random Arena (Hidden)', description: 'The Capitol picks. Its name, its layout, its rules — none of it is shown until the tributes are already standing on the plates.' },
     ];
 
     return (
@@ -109,7 +113,9 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         <div className="min-w-0">
                             <div className="font-black text-[var(--ink)] uppercase text-sm">Resume in-progress run</div>
                             <div className="text-xs text-[var(--color-ink-500)] mt-0.5">
-                                {savedRun.gameState.arena.name} · seed {savedRun.gameState.seed} ·{' '}
+                                {savedRun.gameState.arenaHidden && !canSeeArena(disclosureFor(savedRun.gameState.phase))
+                                    ? '❓ Arena sealed'
+                                    : savedRun.gameState.arena.name} · seed {savedRun.gameState.seed} ·{' '}
                                 {savedRun.gameState.day === 0 ? savedRun.gameState.phase : `Day ${savedRun.gameState.day} — ${savedRun.gameState.phase}`} ·{' '}
                                 {savedRun.gameState.tributes.filter(t => t.status === 'alive').length} tributes alive
                             </div>

@@ -652,6 +652,8 @@ export interface GameState {
     day: number;
     log: EventLog[];
     gamemakerMode: boolean;
+    /** Set when the player picked a random, hidden arena at setup — the identity (name, description, zone names, map) stays out of the UI until the bloodbath phase reveals it. The arena itself is still resolved deterministically from the seed. */
+    arenaHidden?: boolean;
     /** The config actually driving the simulation (base config with the games profile's multipliers applied). */
     config: GameConfig;
     /** The player's unmultiplied config, as chosen at setup — what gets shared or archived so a replay starts from the same inputs rather than double-applying the profile. */

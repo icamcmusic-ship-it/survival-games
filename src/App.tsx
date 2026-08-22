@@ -150,7 +150,7 @@ export default function App() {
         {view === 'roster' && gameState && gameState.phase === 'reaping' && (
           <ReapingScreen
             tributes={gameState.tributes}
-            arenaName={gameState.arena.name}
+            arenaName={gameState.arenaHidden ? '❓ Arena sealed until the bloodbath' : gameState.arena.name}
             seed={gameState.seed}
             profile={gameState.gamesProfile}
             onReroll={gameActions.rerollCast}
