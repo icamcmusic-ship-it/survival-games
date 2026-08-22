@@ -4,6 +4,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { FeedLine } from './EventFeed';
 import { fearOf } from '../engine/fear';
 import { heightLabel } from '../engine/physique';
+import { prefsStore } from '../store/prefsStore';
 import { HUNTING, PROFICIENCY, ROMANCE, SUSPICION } from '../data/balance';
 import { resolveOf, hasBroken } from '../engine/resolve';
 import { hasTruce, truceWith } from '../engine/parley';
@@ -131,6 +132,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
     /** U-3: jump the chronicle to this tribute's story (their death sits on top). */
     onShowInChronicle?: () => void;
 }) {
+    const units = useStore(prefsStore, p => p.units);
     const arenaSealed = !!gameState.arenaHidden && !canSeeArena(disclosureFor(gameState.phase));
     const panelRef = useRef<HTMLDivElement>(null);
     const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -388,7 +390,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                             )}
                         </div>
                         <p className="text-xs text-[var(--color-ink-500)] mt-2">
-                            {tribute.age} years old · {heightLabel(tribute.heightCm)} · {tribute.build} build
+                            {tribute.age} years old · {heightLabel(tribute.heightCm, units)} · {tribute.build} build
                             {tribute.platePosition !== undefined && (
                                 <> · plate {tribute.platePosition < 0.34 ? 'close to the horn' : tribute.platePosition < 0.67 ? 'mid-ring' : 'on the far edge of the ring'}</>
                             )}
@@ -526,6 +528,15 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                         {(tribute.quirks?.length ?? 0) > 0 && (
                             <p className="text-sm text-[var(--color-ink-400)] mt-2 italic">
                                 The cameras have noticed: {tribute.quirks!.join('; ')}.
+                            </p>
+                        )}
+                        {tribute.motive && (
+                            <p className="text-sm text-[var(--color-ink-400)] mt-2 italic">
+                                {tribute.motive === 'family' && 'The commentators keep mentioning the family waiting at home.'}
+                                {tribute.motive === 'partner' && 'Whatever happens to their district partner will decide who this tribute becomes.'}
+                                {tribute.motive === 'prove' && 'Nobody rated them, and they know it. That is the fuel.'}
+                                {tribute.motive === 'honour' && 'They carry their district\'s record on their back, and mean to add to it.'}
+                                {tribute.motive === 'escape' && 'Winning, for this one, is mostly about never going back to what was before.'}
                             </p>
                         )}
                     </section>

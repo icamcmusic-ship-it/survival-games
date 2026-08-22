@@ -3,6 +3,7 @@ import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { GameConfig } from '../models/types';
 import { Play, ChevronDown, ChevronRight, ArrowRight, History } from 'lucide-react';
 import { gameActions, gameStore, readSavedRun } from '../store/gameStore';
+import type { SlotSummary } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
 // PERF: imported from the data module directly, not via `engine/arenaSignature`
@@ -19,23 +20,34 @@ function randomSeed() {
 /** Versioned read/write lives in `utils/prefsStorage`; this is the local alias. */
 const storeConfig = writeStoredConfig;
 
-/** UX-11 named presets: one click sets every slider to a coherent profile. */
-const PRESETS: Array<{ name: string; blurb: string; config: GameConfig }> = [
-    { name: 'Canon', blurb: 'Balanced, book-accurate pacing.', config: DEFAULT_GAME_CONFIG },
+/**
+ * UX-11 named presets: one click sets every pacing slider to a coherent
+ * profile. Presets deliberately own only the pacing knobs — district count
+ * and plain names are the player's structural/cosmetic choices and survive a
+ * preset click unchanged.
+ */
+type PresetConfig = Pick<GameConfig, 'hazardRate' | 'betrayalRate' | 'sponsorGenerosity' | 'enableFeast' | 'enableSanity'>;
+const PRESET_KEYS = ['hazardRate', 'betrayalRate', 'sponsorGenerosity', 'enableFeast', 'enableSanity'] as const;
+const PRESETS: Array<{ name: string; blurb: string; config: PresetConfig }> = [
+    {
+        name: 'Canon',
+        blurb: 'Balanced, book-accurate pacing.',
+        config: { hazardRate: DEFAULT_GAME_CONFIG.hazardRate, betrayalRate: DEFAULT_GAME_CONFIG.betrayalRate, sponsorGenerosity: DEFAULT_GAME_CONFIG.sponsorGenerosity, enableFeast: DEFAULT_GAME_CONFIG.enableFeast, enableSanity: DEFAULT_GAME_CONFIG.enableSanity },
+    },
     {
         name: 'Bloodbath',
         blurb: 'Frequent hazards, quick betrayals.',
-        config: { districtCount: 12, hazardRate: 2.0, betrayalRate: 2.25, sponsorGenerosity: 0.75, enableFeast: true, enableSanity: true },
+        config: { hazardRate: 2.0, betrayalRate: 2.25, sponsorGenerosity: 0.75, enableFeast: true, enableSanity: true },
     },
     {
         name: 'Slow Burn',
         blurb: 'Calm arena, loyal alliances, generous sponsors.',
-        config: { districtCount: 12, hazardRate: 0.5, betrayalRate: 0.25, sponsorGenerosity: 2.0, enableFeast: false, enableSanity: true },
+        config: { hazardRate: 0.5, betrayalRate: 0.25, sponsorGenerosity: 2.0, enableFeast: false, enableSanity: true },
     },
     {
         name: 'Chaos',
         blurb: 'Everything turned up as far as it goes.',
-        config: { districtCount: 12, hazardRate: 2.5, betrayalRate: 3.0, sponsorGenerosity: 3.0, enableFeast: true, enableSanity: true },
+        config: { hazardRate: 2.5, betrayalRate: 3.0, sponsorGenerosity: 3.0, enableFeast: true, enableSanity: true },
     },
 ];
 
@@ -73,6 +85,8 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const coins = useStore(gameStore, st => st.coins);
     const panem = useStore(gameStore, st => st.panem);
     const [savedRun, setSavedRun] = useState(readSavedRun);
+    // §2.1: the manual slots alongside the rolling autosave.
+    const [slots, setSlots] = useState<Array<SlotSummary | null>>(() => gameActions.readSaveSlots());
 
     const setConfig = (updater: GameConfig | ((c: GameConfig) => GameConfig)) => {
         setConfigState(prev => {
@@ -107,32 +121,47 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                 <p className="masthead-sub text-sm">Set your parameters, then reap twenty-four tributes for the Capitol's Games.</p>
             </div>
 
-            {savedRun && (
-                <div className="panel p-5 flex flex-wrap items-center justify-between gap-4" style={{ borderColor: 'var(--red)', borderWidth: '3px' }}>
-                    <div className="flex items-start gap-3 min-w-0">
-                        <History className="w-5 h-5 text-[var(--red)] flex-none mt-0.5" />
-                        <div className="min-w-0">
-                            <div className="font-black text-[var(--ink)] uppercase text-sm">Resume in-progress run</div>
-                            <div className="text-xs text-[var(--color-ink-500)] mt-0.5">
-                                {savedRun.gameState.arenaHidden && !canSeeArena(disclosureFor(savedRun.gameState.phase))
-                                    ? '❓ Arena sealed'
-                                    : savedRun.gameState.arena.name} · seed {savedRun.gameState.seed} ·{' '}
-                                {savedRun.gameState.day === 0 ? savedRun.gameState.phase : `Day ${savedRun.gameState.day} — ${savedRun.gameState.phase}`} ·{' '}
-                                {savedRun.gameState.tributes.filter(t => t.status === 'alive').length} tributes alive
+            {(savedRun || slots.some((sl, i) => i > 0 && sl)) && (
+                <div className="panel p-5 space-y-3" style={{ borderColor: 'var(--red)', borderWidth: '3px' }}>
+                    <div className="flex items-center gap-2">
+                        <History className="w-5 h-5 text-[var(--red)] flex-none" />
+                        <span className="font-black text-[var(--ink)] uppercase text-sm">Saved runs</span>
+                    </div>
+                    {slots.map((slot, i) => {
+                        if (!slot) return null;
+                        const label = i === 0 ? 'In progress (autosave)' : `Slot ${i + 1}`;
+                        return (
+                            <div key={i} className="flex flex-wrap items-center justify-between gap-3 panel-flush p-3">
+                                <div className="min-w-0">
+                                    <div className="font-bold text-xs uppercase text-[var(--ink)]">{label}</div>
+                                    <div className="text-xs text-[var(--color-ink-500)] mt-0.5">
+                                        {slot.arenaHidden && !canSeeArena(disclosureFor(slot.phase)) ? '❓ Arena sealed' : slot.arenaName}
+                                        {' · '}seed {slot.seed}
+                                        {' · '}{slot.day === 0 ? slot.phase : `Day ${slot.day} — ${slot.phase}`}
+                                        {' · '}{slot.alive} alive
+                                        {slot.savedAt && Date.parse(slot.savedAt) > 0 && (
+                                            <> · saved {new Date(slot.savedAt).toLocaleString()}</>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 flex-none">
+                                    <button
+                                        onClick={() => {
+                                            gameActions.discardSlot((i + 1) as 1 | 2 | 3);
+                                            setSlots(gameActions.readSaveSlots());
+                                            if (i === 0) setSavedRun(null);
+                                        }}
+                                        className="btn btn-sm btn-ghost"
+                                    >
+                                        Discard
+                                    </button>
+                                    <button onClick={() => { void gameActions.resumeFromSlot((i + 1) as 1 | 2 | 3); }} className="btn btn-primary btn-sm">
+                                        Resume
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    <div className="flex gap-2 flex-none">
-                        <button
-                            onClick={() => { gameActions.discardSavedRun(); setSavedRun(null); }}
-                            className="btn btn-sm btn-ghost"
-                        >
-                            Discard
-                        </button>
-                        <button onClick={() => { void gameActions.resumeSavedRun(); }} className="btn btn-primary btn-sm">
-                            Resume
-                        </button>
-                    </div>
+                        );
+                    })}
                 </div>
             )}
 
@@ -320,11 +349,18 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 <span className="eyebrow">Presets</span>
                                 <div className="flex flex-wrap gap-2">
                                     {PRESETS.map(p => {
-                                        const active = JSON.stringify(config) === JSON.stringify(p.config);
+                                        // Key-by-key comparison over the keys the preset owns —
+                                        // JSON.stringify equality broke as soon as the config
+                                        // object gained a key (plainNames) the presets don't carry.
+                                        const active = PRESET_KEYS.every(k => config[k] === p.config[k]);
                                         return (
                                             <button
                                                 key={p.name}
-                                                onClick={() => setConfig(p.config)}
+                                                // Fresh object, merged over the current config: the
+                                                // player's district count and plain-names choices
+                                                // survive, and the module-level preset object never
+                                                // ends up in (mutable) React state.
+                                                onClick={() => setConfig(c => ({ ...c, ...p.config }))}
                                                 title={p.blurb}
                                                 className={`chip ${active ? 'chip-accent' : ''}`}
                                             >

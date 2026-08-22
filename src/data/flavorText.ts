@@ -936,6 +936,15 @@ export const GROUP_COMBAT_TEXTS = {
         'The fight in {zone} dissolves rather than ends — {names} backing away, then turning, then gone.',
         'Nobody wins it. {names} bleed apart into the ground around {zone} and the cameras have to pick one to follow.',
     ],
+    // One tribute breaking off alone — the plural `scatter` lines rendered
+    // "…and Lane are all running" whenever exactly one name filled {names}.
+    scatterSolo: [
+        '{names} loses their nerve and breaks off, leaving the fight in {zone} behind them.',
+        'Something breaks in {names} mid-swing, and then they are running.',
+        '{names} picks the exit over the odds and is gone from {zone} inside a breath.',
+        'The arithmetic stops working for {names}, who backs away, turns, and runs.',
+        'A cannon somewhere else does it: {names} remembers there are worse things loose than this fight, and runs.',
+    ],
     standDown: [
         '{names} all reach {zone} at once, recognise each other, and stand down.',
         '{names} converge in {zone} expecting a fight and find only allies.',

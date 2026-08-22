@@ -1,11 +1,12 @@
 import { Item, Tribute } from '../models/types';
-import { PARLEY } from '../data/balance';
+import { COMPOSURE, PARLEY, RESPECT } from '../data/balance';
+import { RNG } from '../utils/rng';
 import { PARLEY_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
 import { SimContext } from './context';
 import { assessZone } from './stance';
-import { adjustMutual, adjustRel, getRel } from './relationships';
+import { adjustMutual, adjustRel, getRel, respectOf } from './relationships';
 import { addZoneThreat, cycleOf, ensureMemory, noteStoodBy, raiseSuspicion, rememberedThreat, swearVengeance } from './memory';
 import { areLovers } from './alliance';
 import { giveItem, itemPhrase } from './items';
@@ -87,9 +88,54 @@ export function breaksTruce(ctx: SimContext, t: Tribute, other: Tribute): boolea
 
     // Genuine regard is what holds a promise together when nothing else does.
     chance *= Math.max(0.05, 1 - Math.max(0, getRel(t, other.id)) / 110);
+    // §4.1: and so is professional esteem — you do not cross someone you rate.
+    chance *= Math.max(0.3, 1 - Math.max(0, respectOf(t, other.id)) / RESPECT.truceRestraintDivisor);
     if (ensureMemory(t).betrayedBy.length > 0) chance *= PARLEY.truceBreakBetrayedRestraint;
 
+    return breakChanceOf(ctx, chance);
+}
+
+/** Probability post-processing hook — kept separate so `resolveTrucePair` and
+ *  the encounter path share one clamp. */
+function breakChanceOf(ctx: SimContext, chance: number): boolean {
     return ctx.rng.chance(Math.max(0, Math.min(0.75, chance)));
+}
+
+/**
+ * §4.2: one break decision per pair per cycle, not one roll per party per
+ * encounter. Truce survival used to decay geometrically in encounters — two
+ * tributes camping the same sector re-rolled the coin every time they laid
+ * eyes on each other, so of 141 declared truces only 5 were ever *held*.
+ * The decision is drawn deterministically from (seed, cycle, pair), so a
+ * second meeting in the same cycle cannot re-litigate it; `breaksTruce`
+ * still supplies each party's inclination.
+ */
+function truceBreakerThisCycle(ctx: SimContext, a: Tribute, b: Tribute): Tribute | null {
+    const [lo, hi] = a.id < b.id ? [a, b] : [b, a];
+    const roll = new RNG(`${ctx.state.seed}-truce-${cycleOf(ctx.state)}-${lo.id}-${hi.id}`).nextFloat();
+    // Each party gets the front section of the unit interval proportional to
+    // their own inclination; the shared roll lands in at most one of them.
+    const chanceLo = truceBreakChance(ctx, lo, hi);
+    const chanceHi = truceBreakChance(ctx, hi, lo);
+    if (roll < chanceLo) return lo;
+    if (roll < chanceLo + chanceHi) return hi;
+    return null;
+}
+
+/** The bare probability `breaksTruce` would roll against. */
+function truceBreakChance(ctx: SimContext, t: Tribute, other: Tribute): number {
+    if (areLovers(t, other)) return 0;
+    if (t.allianceId !== undefined && t.allianceId === other.allianceId) return 0;
+    let chance = PARLEY.truceBreakBase
+        + (ARCHETYPES[t.archetype].treachery + traitMod(t, 'treachery')) * PARLEY.truceBreakTreacheryWeight;
+    const ratio = assessZone(other, [other, t], ctx.state).ratio;
+    if (ratio > PARLEY.truceBreakOpportunismRatio) chance += PARLEY.truceBreakOpportunismBonus;
+    const alive = ctx.state.tributes.filter(o => o.status === 'alive').length;
+    if (alive <= PARLEY.truceBreakEndgameFieldSize) chance += PARLEY.truceBreakEndgameBonus;
+    chance *= Math.max(0.05, 1 - Math.max(0, getRel(t, other.id)) / 110);
+    chance *= Math.max(0.3, 1 - Math.max(0, respectOf(t, other.id)) / RESPECT.truceRestraintDivisor);
+    if (ensureMemory(t).betrayedBy.length > 0) chance *= PARLEY.truceBreakBetrayedRestraint;
+    return Math.max(0, Math.min(0.75, chance));
 }
 
 /**
@@ -139,12 +185,11 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
     // goes back on it; returning null drops the caller through to combat,
     // which is exactly what a broken truce should become.
     if (hasTruce(ctx.state, t, other.id)) {
-        if (breaksTruce(ctx, t, other)) {
-            breakTruce(ctx, t, other);
-            return null;
-        }
-        if (breaksTruce(ctx, other, t)) {
-            breakTruce(ctx, other, t);
+        // §4.2: one decision per pair per cycle — meeting twice in a day does
+        // not re-roll the coin, so a kept truce is actually keepable.
+        const breaker = truceBreakerThisCycle(ctx, t, other);
+        if (breaker) {
+            breakTruce(ctx, breaker, breaker === t ? other : t);
             return null;
         }
         ctx.logEvent(
@@ -230,7 +275,10 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
 
     // TRUCE: neither can see an advantage, and there is at least some basis for
     // taking the other at their word. This is the one that can later be broken.
-    if (mutualRegard > PARLEY.truceMinRegard && ctx.rng.chance(PARLEY.truceChance)) {
+    // §3.4: a rattled party wants out of this conversation alive more than
+    // they want anything else — being shaken makes the pact more likely.
+    const rattledBonus = ((t.rattled ?? 0) > 0 || (other.rattled ?? 0) > 0) ? COMPOSURE.rattledParleyBonus : 0;
+    if (mutualRegard > PARLEY.truceMinRegard && ctx.rng.chance(PARLEY.truceChance + rattledBonus)) {
         declareTruce(ctx, t, other);
         // Agreeing to something and keeping it is the seed of a real bond.
         adjustMutual(ctx.state, t, other, PARLEY.truceRegard);
@@ -287,9 +335,15 @@ export function resolveTruces(ctx: SimContext) {
         Object.entries(t.truces).forEach(([otherId, until]) => {
             if (cycle < until) return;
             const other = byId.get(otherId);
-            // A dead counterparty leaves nothing to resolve.
+            // A dead counterparty leaves nothing to resolve. Clear both
+            // sides of the record — leaving the mirror key on the other
+            // tribute made save payloads accrete stale empty truce objects.
             if (!other || other.status !== 'alive' || t.status !== 'alive') {
                 delete t.truces![otherId];
+                if (other?.truces) {
+                    delete other.truces[t.id];
+                    if (Object.keys(other.truces).length === 0) delete other.truces;
+                }
                 return;
             }
             // Each pair resolves exactly once, from whichever side sorts first;

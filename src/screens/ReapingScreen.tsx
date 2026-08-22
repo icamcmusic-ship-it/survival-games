@@ -1,6 +1,8 @@
 import React from 'react';
 import { Tribute } from '../models/types';
 import { heightLabel } from '../engine/physique';
+import { prefsStore } from '../store/prefsStore';
+import { useStore } from '../store/createStore';
 import { Shuffle, FastForward } from 'lucide-react';
 import { REAPING_CROWDS } from '../data/pregames';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
@@ -15,6 +17,7 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, onReroll, on
     onReroll: () => void,
     onConfirm: () => void,
 }) {
+    const units = useStore(prefsStore, p => p.units);
     const byDistrict = new Map<number, Tribute[]>();
     tributes.forEach(t => {
         if (!byDistrict.has(t.district)) byDistrict.set(t.district, []);
@@ -129,7 +132,7 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, onReroll, on
                                 </div>
                                 <div className="text-right text-[11px] text-[var(--color-ink-500)] font-mono font-semibold leading-relaxed flex-none">
                                     <div>Age {t.age}</div>
-                                    <div>{heightLabel(t.heightCm)}</div>
+                                    <div>{heightLabel(t.heightCm, units)}</div>
                                     <div>{t.build}</div>
                                 </div>
                             </div>

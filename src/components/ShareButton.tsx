@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Share2, Check } from 'lucide-react';
 import { GameConfig } from '../models/types';
 
-export function ShareButton({ seed, arenaId, gamemakerMode, config }: { seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig }) {
+export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: { seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig, quellId: string | null }) {
     const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
     // On copy failure the URL is shown in a selectable field so the player can
     // copy it by hand instead of being told "Copy failed" with nothing to copy.
@@ -19,6 +19,11 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config }: { seed: st
             sponsorGenerosity: String(config.sponsorGenerosity),
             enableFeast: String(config.enableFeast),
             enableSanity: String(config.enableSanity),
+            plainNames: String(!!config.plainNames),
+            // Pin this run's exact Quarter Quell (or explicit lack of one) the
+            // same way HallOfFameEntry.quellId does — without it a link to a
+            // forced-Quell run replays as an ordinary year.
+            quell: quellId ?? 'none',
         });
         return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
     };

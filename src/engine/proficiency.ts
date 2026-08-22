@@ -78,7 +78,11 @@ export function trainProficiency(t: Tribute, skill: Proficiency): number {
     const current = profOf(t, skill);
     // Each level already held shrinks the next gain, so the curve flattens
     // toward the cap instead of specialists slamming into a wall by mid-run.
-    const gain = PROFICIENCY.gainPerUse * Math.pow(1 - PROFICIENCY.diminishingPerLevel, current);
+    // §3.7: necessity is the arena's tutor — gains accelerate as the run
+    // wears on, so the top of the curve is actually reachable and a
+    // survivalist visibly arrives somewhere by the endgame.
+    const pressure = 1 + Math.min(PROFICIENCY.lateRunGainCap, t.daysSurvived * PROFICIENCY.lateRunGainPerDay);
+    const gain = PROFICIENCY.gainPerUse * pressure * Math.pow(1 - PROFICIENCY.diminishingPerLevel, current);
     const next = Math.min(PROFICIENCY.max, current + gain);
     // Rounded so the value stays legible in a tooltip and in save files.
     t.proficiencies[skill] = Math.round(next * 100) / 100;
@@ -87,13 +91,21 @@ export function trainProficiency(t: Tribute, skill: Proficiency): number {
     if (Math.floor(next) > Math.floor(current)) {
         t.attributeDrift = t.attributeDrift ?? {};
         // Capped both by DRIFT.maxGain and by the attribute scale itself (10).
+        // §3.3: per-attribute ceilings — the frame has more room to grow in
+        // eight days than judgement does.
+        const capFor = (attr: keyof Tribute['attributes']): number =>
+            attr === 'strength' ? DRIFT.maxGainStrength
+            : attr === 'agility' ? DRIFT.maxGainAgility
+            : attr === 'stealth' ? DRIFT.maxGainStealth
+            : attr === 'intelligence' ? DRIFT.maxGainIntelligence
+            : DRIFT.maxGain;
         const drift = (attr: keyof Tribute['attributes'], per: number) => {
             const held = t.attributeDrift![attr] ?? 0;
-            if (held >= DRIFT.maxGain) return;
+            if (held >= capFor(attr)) return;
             // Strength drift also respects the age ceiling — a fourteen-year-old
             // does not train past a fourteen-year-old's frame.
             const ceiling = attr === 'strength' ? Math.min(10, strengthCapForAge(t.age)) : 10;
-            const inc = Math.min(per, DRIFT.maxGain - held, ceiling - t.attributes[attr]);
+            const inc = Math.min(per, capFor(attr) - held, ceiling - t.attributes[attr]);
             if (inc <= 0) return;
             t.attributeDrift![attr] = Math.round((held + inc) * 100) / 100;
             t.attributes[attr] = Math.round((t.attributes[attr] + inc) * 100) / 100;
@@ -112,4 +124,23 @@ export function trainProficiency(t: Tribute, skill: Proficiency): number {
 /** The weapon skill a given weapon class trains and benefits from. */
 export function weaponProficiency(weaponClass: string | undefined): Proficiency {
     return weaponClass === 'ranged' || weaponClass === 'thrown' ? 'ranged' : 'melee';
+}
+
+/**
+ * §3.3: the decay path. Earned combat drift is a habit, and habits fade — a
+ * tribute who spends a cycle neither fighting nor hunting loses a sliver of
+ * the strength and agility the arena taught them. Fieldcraft judgement
+ * (intelligence, stealth) is knowledge and keeps. Drift is a curve, not a
+ * ratchet.
+ */
+export function decayIdleDrift(t: Tribute): void {
+    if (!t.attributeDrift) return;
+    if (t.stance === 'Aggressive' || (t.momentum ?? 0) > 0) return;
+    (['strength', 'agility'] as const).forEach(attr => {
+        const held = t.attributeDrift![attr] ?? 0;
+        if (held <= 0) return;
+        const dec = Math.min(held, DRIFT.decayPerIdleCycle);
+        t.attributeDrift![attr] = Math.round((held - dec) * 100) / 100;
+        t.attributes[attr] = Math.round((t.attributes[attr] - dec) * 100) / 100;
+    });
 }

@@ -117,7 +117,7 @@ await step('proceed advances phases', async () => {
 
 await step('filters panel mutes categories', async () => {
   await page.getByRole('button', { name: /filters/i }).click();
-  await page.getByText(/headline events only/i).click();
+  await page.getByRole('button', { name: /^headlines$/i }).click();
   await page.getByRole('button', { name: /violence/i }).click();
   await page.getByRole('button', { name: /reset filters/i }).click();
   await page.getByRole('button', { name: /filters/i }).click();
@@ -143,7 +143,9 @@ await step('tribute modal opens with live data and closes with Escape', async ()
 await step('gamemaker controls fire', async () => {
   await page.getByRole('button', { name: /release mutts/i }).click();
   await page.getByRole('button', { name: /force weather/i }).click();
-  await page.getByRole('button', { name: /announce feast/i }).click();
+  // A 'no-feast' wildcard year (seed luck) legitimately disables this button.
+  const feastBtn = page.getByRole('button', { name: /announce feast/i });
+  if (await feastBtn.isEnabled()) await feastBtn.click();
   await page.waitForTimeout(200);
   const select = page.locator('#mutt-target');
   const opts = await select.locator('option').count();
@@ -311,7 +313,7 @@ await step('new keyboard shortcuts drive the arena', async () => {
   await page.keyboard.press('Shift+T');
   await page.keyboard.press('[');        // day jump
   await page.keyboard.press(']');
-  await page.keyboard.press('i');        // headline events only
+  await page.keyboard.press('i');        // cycle reading density
   await page.keyboard.press('i');
   await page.keyboard.press('1');        // mute a category group
   await page.keyboard.press('1');

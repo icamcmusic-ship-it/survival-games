@@ -1,13 +1,15 @@
 import { SimContext, getAlive } from '../context';
 import { Tribute } from '../../models/types';
 import { RNG } from '../../utils/rng';
+import { ARCHETYPES } from '../../data/archetypes';
+import { adjustRespect } from '../relationships';
 import {
     CAESAR_FOLLOWUPS, INTERVIEW_CLOSERS, INTERVIEW_SCENARIOS, PERSONA_DRIFT,
 } from '../../data/flavorText';
 import { clampTribute } from '../vitals';
 import { adjustRel } from '../relationships';
 import { addExcitement } from '../audience';
-import { INTERVIEWS, INTERVIEW_ANGLES } from '../../data/balance';
+import { RESPECT, ROMANCE, INTERVIEWS, INTERVIEW_ANGLES } from '../../data/balance';
 import { traitMod } from '../../data/traits';
 
 /**
@@ -125,6 +127,17 @@ export function processInterviews(ctx: SimContext) {
         { important: true, category: 'interview' }
     );
 
+    // §4.1: the training scores were broadcast; everyone in the cast has
+    // done the arithmetic on everyone else. Respect (professional esteem) is
+    // seeded here, distinct from regard.
+    cast.forEach(t => {
+        cast.forEach(o => {
+            if (o.id === t.id) return;
+            const read = (o.trainingScore - 5) * RESPECT.trainingWeight;
+            if (read !== 0) adjustRespect(t, o.id, read);
+        });
+    });
+
     cast.forEach(t => {
         // ---- Beat one: the angle they walked out with ----
         const scenario = pickAngle(ctx, t);
@@ -167,6 +180,21 @@ export function processInterviews(ctx: SimContext) {
                 { important: held, category: 'interview' }
             );
             if (!held) persona = PERSONA_DRIFT[scenario.strategy] ?? scenario.strategy;
+        }
+
+        // §4.4: Star-Crossed as strategy. A charismatic tribute with the
+        // nerve for it decides *here*, on the couch, that a romance will be
+        // worth sponsors — and carries that plan into the arena, where the
+        // performed-bond machinery pays it off (see ROMANCE.showmanceMultiplier).
+        if (t.attributes.charisma >= ROMANCE.performerCharisma
+            && ctx.rng.chance(ROMANCE.showmanceInterviewChance)
+            && (ARCHETYPES[t.archetype].treachery > 0.15 || t.archetype === 'trickster')) {
+            t.interviewAngle = 'showmance';
+            ctx.logEvent(
+                `${t.name} lets one answer hang a half-second too long, glances into the wings, and the Capitol decides on the spot that somebody in that arena holds their heart. Nobody backstage can say who. That is the point.`,
+                [t.id],
+                { important: true, category: 'interview' }
+            );
         }
 
         // The persona is public and permanent — the rest of the cast watched it,

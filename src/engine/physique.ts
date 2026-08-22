@@ -22,8 +22,12 @@ export function reachBonus(t: Tribute): number {
     return Math.max(-PHYSIQUE.maxReachBonus, Math.min(PHYSIQUE.maxReachBonus, advantage));
 }
 
-/** Formats a height for display in feet and inches. */
-export function heightLabel(heightCm: number): string {
+/**
+ * Formats a height for display. The underlying field is centimetres; the
+ * player's unit preference (survivalGamesPrefs) decides how it reads.
+ */
+export function heightLabel(heightCm: number, units: 'imperial' | 'metric' = 'imperial'): string {
+    if (units === 'metric') return `${Math.round(heightCm)} cm`;
     const totalInches = Math.round(heightCm / 2.54);
     return `${Math.floor(totalInches / 12)}'${totalInches % 12}"`;
 }

@@ -1,7 +1,7 @@
 import { GameState, GameConfig, HallOfFameEntry } from '../models/types';
-import { Bet, SAVED_RUN_SPEC, SavedRun } from '../utils/saveMigrations';
+import { Bet, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun } from '../utils/saveMigrations';
 import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
-import { HOF_CAP, readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
+import { readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
 import { readStored, removeStored, tryWriteStored, writeStored } from '../utils/storage';
 import { snapshotState } from '../utils/snapshot';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
@@ -180,6 +180,49 @@ function clearSavedRun() {
     removeStored(SAVED_RUN_SPEC);
 }
 
+/** A one-line description of a saved run, for the slot cards. */
+export interface SlotSummary {
+    slot: number;
+    savedAt: string;
+    seed: string;
+    arenaName: string;
+    arenaHidden: boolean;
+    phase: GameState['phase'];
+    day: number;
+    alive: number;
+}
+
+function summarize(slot: number, saved: SavedRun): SlotSummary {
+    return {
+        slot,
+        savedAt: saved.savedAt,
+        seed: saved.gameState.seed,
+        arenaName: saved.gameState.arena.name,
+        arenaHidden: !!saved.gameState.arenaHidden,
+        phase: saved.gameState.phase,
+        day: saved.gameState.day,
+        alive: saved.gameState.tributes.filter(t => t.status === 'alive').length,
+    };
+}
+
+/**
+ * §2.6: an in-run "step back one phase". Every phase advance snapshots the
+ * state it left behind (bounded ring, module-level so React never diffs it);
+ * stepping back rebuilds the simulator from the snapshot. Deliberately not
+ * usable once the run has ended — bets and records have already committed.
+ */
+const REWIND_CAP = 16;
+let rewindStack: GameState[] = [];
+
+function pushRewind(state: GameState) {
+    rewindStack.push(snapshotState(state));
+    if (rewindStack.length > REWIND_CAP) rewindStack.shift();
+}
+
+function clearRewind() {
+    rewindStack = [];
+}
+
 function saveHallOfFame(state: GameState) {
     const survivors = state.tributes.filter(t => t.status === 'alive');
     const winner = survivors[0];
@@ -212,8 +255,9 @@ function saveHallOfFame(state: GameState) {
         }))
     };
     // Keep the archive bounded — storage quota is not infinite. writeHallOfFame
-    // applies the cap and swallows a full/unavailable store.
-    writeHallOfFame([entry, ...readHallOfFame()].slice(0, HOF_CAP));
+    // applies the cap (honouring player pins) and swallows a full/unavailable
+    // store.
+    writeHallOfFame([entry, ...readHallOfFame()]);
 }
 
 export const gameStore = createStore<GameStoreState>({
@@ -384,15 +428,44 @@ export const gameActions = {
     },
 
     async resumeSavedRun() {
-        const saved = readSavedRun();
+        return gameActions.resumeFromSlot(1);
+    },
+
+    discardSavedRun() {
+        clearSavedRun();
+    },
+
+    /** Cards for the setup screen's saved-runs panel; null = empty slot. */
+    readSaveSlots(): Array<SlotSummary | null> {
+        return SAVE_SLOT_SPECS.map((spec, i) => {
+            const saved = readStored(spec);
+            return saved ? summarize(i + 1, saved) : null;
+        });
+    },
+
+    /**
+     * Parks the current run in a manual slot (2 or 3) without touching the
+     * rolling autosave, so a run can be kept at a decision point while
+     * another is played.
+     */
+    saveToSlot(slot: 2 | 3): boolean {
+        const { gameState, bets, betsResolved, hofSaved, isReplayedRun } = gameStore.getState();
+        if (!gameState || gameState.phase === 'ended') return false;
+        const spec = SAVE_SLOT_SPECS[slot - 1];
+        return tryWriteStored(spec, {
+            gameState, bets, betsResolved, hofSaved, isReplayedRun,
+            savedAt: new Date().toISOString(),
+        } as SavedRun) === 'ok';
+    },
+
+    async resumeFromSlot(slot: 1 | 2 | 3) {
+        const spec = SAVE_SLOT_SPECS[slot - 1];
+        const saved = readStored(spec);
         if (!saved) return;
         cancelRunToEnd();
-        // Resuming is a cold-load entry into the simulation, so it has to cross
-        // the lazy engine boundary too.
+        clearRewind();
         const { Simulator } = await loadEngine();
         const { gameState } = saved;
-        // Saves written before baseConfig existed: the executed config is the
-        // best remaining approximation of what the player chose.
         if (!gameState.baseConfig) gameState.baseConfig = gameState.config;
         gameStore.setState({
             gameState,
@@ -404,10 +477,28 @@ export const gameActions = {
             hofSaved: saved.hofSaved,
             isReplayedRun: saved.isReplayedRun,
         });
+        // Resuming a manual slot makes it the live run; the autosave takes
+        // over from here (slot content is left in place as the branch point).
+        if (slot !== 1) persistRun();
     },
 
-    discardSavedRun() {
-        clearSavedRun();
+    discardSlot(slot: 1 | 2 | 3) {
+        if (slot === 1) { clearSavedRun(); return; }
+        removeStored(SAVE_SLOT_SPECS[slot - 1]);
+    },
+
+    /** Whether a step back is currently possible. */
+    canStepBack(): boolean {
+        const { gameState, runProgress } = gameStore.getState();
+        return rewindStack.length > 0 && !!gameState && gameState.phase !== 'ended' && !runProgress;
+    },
+
+    /** §2.6: rewind exactly one phase, rebuilding the simulator from the snapshot. */
+    stepBack() {
+        if (!gameActions.canStepBack() || !engine) return;
+        const prev = rewindStack.pop()!;
+        gameStore.setState({ gameState: prev, simulator: new engine.Simulator(prev) });
+        persistRun();
     },
 
     /** §6.2: spend coins to become the standing patron of one district. */
@@ -432,6 +523,7 @@ export const gameActions = {
         gameActions.refundOpenBets();
         cancelRunToEnd();
         clearSavedRun();
+        clearRewind();
 
         const { Simulator, generateArena, generateTributes, gamesProfileFor, configForProfile } = await loadEngine();
 
@@ -572,6 +664,8 @@ export const gameActions = {
         if (!simulator) return;
 
         const state = simulator.getState();
+        // Snapshot the state this advance is leaving, for "step back one phase".
+        if (state.phase !== 'ended' && state.phase !== 'epilogue') pushRewind(state);
         if (state.phase === 'setup') {
             simulator.processTraining();
         } else if (state.phase === 'training') {

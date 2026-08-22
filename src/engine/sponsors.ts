@@ -1,6 +1,7 @@
 import { SimContext, getAlive } from './context';
 import { ITEMS } from '../data/constants';
-import { QUELL_MECHANICS, SPONSORS } from '../data/balance';
+import { COMPOSURE, QUELL_MECHANICS, SPONSORS } from '../data/balance';
+import { composureOf } from './composure';
 import { SPONSOR_TEXTS } from '../data/flavorText';
 import { drawFromBloc } from './sponsorBlocs';
 import { clampTribute } from './vitals';
@@ -22,12 +23,18 @@ import { QUALITY_BIAS } from '../data/balance';
  * shape now governs the gift stream: your first parachute is likely, your
  * fourth is a story.
  */
-export function giftChance(t: Tribute, generosity: number): number {
+export function giftChance(t: Tribute, generosity: number, day = 99): number {
     const prior = ensureMemory(t).giftsReceived;
     const decayed = SPONSORS.baseGiftChance * Math.pow(SPONSORS.repeatDecay, prior);
     // The mentor is the person who actually places the gift, so their district's
     // record scales the whole stream rather than being a flat bonus on top of it.
-    const pull = decayed * generosity * mentorGenerosity(t);
+    // The chariot parade's buzz rides on top for the first few days: the whole
+    // point of a parade is sponsors, and a memorable angle keeps the phones
+    // ringing until the arena gives them something newer to talk about.
+    const paradeGlow = day <= SPONSORS.paradeBuzzDays
+        ? 1 + Math.max(0, t.paradeBuzz ?? 0) * SPONSORS.paradeBuzzPerPull
+        : 1;
+    const pull = decayed * generosity * mentorGenerosity(t) * paradeGlow;
     return Math.min(SPONSORS.maxGiftChance, Math.max(SPONSORS.repeatFloor, pull));
 }
 
@@ -38,7 +45,10 @@ export function giftChance(t: Tribute, generosity: number): number {
  */
 function rollGiftTier(ctx: SimContext, t: Tribute): number {
     let tier = 0;
-    const merit = 0.6 + t.sponsorTrust / 120 + (t.fanFavourite ? 0.3 : 0);
+    // §3.4: a keyed-up tribute reads as a contender; a rattled one reads as
+    // damaged goods. The blocs price it in.
+    const merit = 0.6 + t.sponsorTrust / 120 + (t.fanFavourite ? 0.3 : 0)
+        + composureOf(t) * COMPOSURE.sponsorMeritWeight;
     for (let step = 1; step <= 3; step++) {
         const chance = SPONSORS.rarityGateBase * Math.pow(SPONSORS.rarityGateDecay, step - 1) * merit;
         if (ctx.rng.chance(Math.min(0.7, chance))) tier = step;
@@ -117,7 +127,7 @@ export function processSponsors(ctx: SimContext) {
         // `quell-blood-debt`: a tribute who has killed is marked, and the
         // Capitol pays the marked less.
         if (wildcardIs(ctx.state, 'quell-blood-debt') && t.kills > 0) generosity *= QUELL_MECHANICS.bloodDebtGenerosityMult;
-        if (!ctx.rng.chance(giftChance(t, generosity))) return;
+        if (!ctx.rng.chance(giftChance(t, generosity, ctx.state.day))) return;
 
         const tier = rollGiftTier(ctx, t);
         const floor = TIER_FLOORS[tier];

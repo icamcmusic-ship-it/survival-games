@@ -265,8 +265,15 @@ test('feed filters and setup config round-trip and repair partial v0 data', () =
     seedLegacy(STORAGE_KEYS.feedFilters, { mutedGroups: ['ambient', 7], importantOnly: 'yes' });
     const f = readStored(FILTERS_SPEC)!;
     assert.deepEqual(f.mutedGroups, ['ambient']);
-    assert.equal(f.importantOnly, false);
+    // Non-boolean legacy importantOnly reads as false → full density.
+    assert.equal(f.density, 'everything');
     assert.equal(f.pauseOnDeath, false);
+
+    // A v1 payload that had headline-only ON migrates to the headline tier.
+    seedLegacy(STORAGE_KEYS.feedFilters, { mutedGroups: [], importantOnly: true, pauseOnDeath: true });
+    const f2 = readStored(FILTERS_SPEC)!;
+    assert.equal(f2.density, 'headlines', 'importantOnly=true not migrated to headlines density');
+    assert.equal(f2.pauseOnDeath, true);
 
     seedLegacy(STORAGE_KEYS.lastConfig, { districtCount: 99, hazardRate: 2 });
     const c = readStored(CONFIG_SPEC)!;

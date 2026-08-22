@@ -62,10 +62,20 @@ function drawReapingAge(rng: RNG, district: number): number {
 
 export { strengthCapForAge } from './physique';
 
-function buildFromStrength(rng: RNG, strength: number): Build {
-    // Roughly correlate build with strength while keeping some randomness.
-    const idx = Math.min(BUILDS.length - 1, Math.max(0, Math.floor(strength / 2) + rng.nextInt(-1, 1)));
-    return BUILDS[idx];
+/**
+ * §3.1: build is a second axis, not a strength alias. An independent frame
+ * roll (how much of them there simply is) blended with strength at
+ * GENERATION.buildFrameWeight — so a wiry powerhouse and a heavy-set average
+ * tribute both exist, and `massOf` (cold, being moved, carry capacity) reads
+ * information the strength stat does not already carry.
+ */
+function rollBuild(rng: RNG, strength: number): Build {
+    const frame = rng.nextInt(0, BUILDS.length - 1);
+    const idx = Math.round(
+        frame * GENERATION.buildFrameWeight
+        + (strength / 2) * (1 - GENERATION.buildFrameWeight)
+    );
+    return BUILDS[Math.min(BUILDS.length - 1, Math.max(0, idx))];
 }
 
 /**
@@ -97,18 +107,48 @@ function applyAgeProfile(attributes: Attributes, age: number) {
  * than average?) and one spiked and one dumped attribute, so "the survivalist
  * from 11" is a person rather than a template.
  */
-function applyPersonalVariance(rng: RNG, attributes: Attributes) {
-    const talent = rng.nextInt(-GENERATION.talentSpread, GENERATION.talentSpread);
+function applyPersonalVariance(rng: RNG, attributes: Attributes, archetype: ArchetypeId) {
+    // §3.2: the variance *shape* is part of the archetype. Careers come out
+    // of a filter — narrow spread, floor shifted up, small spikes. Wildcards
+    // are genuinely bimodal — talent that is never merely average, and twice
+    // the spikes and dumps. Everyone else keeps the global profile.
+    let spread: number = GENERATION.talentSpread;
+    let shift = 0;
+    let spikeCount: number = GENERATION.spikeCount;
+    let dumpCount: number = GENERATION.dumpCount;
+    let spikeSize: number = GENERATION.spikeSize;
+    let dumpSize: number = GENERATION.dumpSize;
+    if (archetype === 'career') {
+        spread = GENERATION.careerTalentSpread;
+        spikeSize = GENERATION.careerSpikeSize;
+        dumpSize = GENERATION.careerSpikeSize;
+    } else if (archetype === 'wildcard') {
+        spikeCount = GENERATION.wildcardSpikeCount;
+        dumpCount = GENERATION.wildcardSpikeCount;
+        spikeSize = GENERATION.wildcardSpikeSize;
+        dumpSize = GENERATION.wildcardSpikeSize;
+    }
+    let talent = rng.nextInt(-spread, spread) + shift;
+    if (archetype === 'career') {
+        // The academy filters its worst out before reaping day: the bottom of
+        // the talent band is trimmed, the top is not extended — narrow and
+        // high without simply buffing the average.
+        talent = Math.max(talent, -spread + GENERATION.careerTalentShift);
+    }
+    if (archetype === 'wildcard' && Math.abs(talent) < GENERATION.wildcardTalentMin) {
+        // Bimodal: push a middling roll out to one of the lobes.
+        talent = (talent >= 0 ? 1 : -1) * GENERATION.wildcardTalentMin;
+    }
     const keys = rng.shuffle(Object.keys(attributes) as Array<keyof Attributes>);
 
     // Talent is spread thinly across everything.
     keys.forEach(k => { attributes[k] += Math.round(talent / 2.5); });
 
-    for (let i = 0; i < GENERATION.spikeCount && i < keys.length; i++) {
-        attributes[keys[i]] += GENERATION.spikeSize;
+    for (let i = 0; i < spikeCount && i < keys.length; i++) {
+        attributes[keys[i]] += spikeSize;
     }
-    for (let i = 0; i < GENERATION.dumpCount && keys.length - 1 - i >= GENERATION.spikeCount; i++) {
-        attributes[keys[keys.length - 1 - i]] -= GENERATION.dumpSize;
+    for (let i = 0; i < dumpCount && keys.length - 1 - i >= spikeCount; i++) {
+        attributes[keys[keys.length - 1 - i]] -= dumpSize;
     }
 }
 
@@ -134,16 +174,22 @@ function applyVolunteer(rng: RNG, t: Tribute, shape?: CastShape) {
     // strength be recomputed against the new age.
     if (t.age < VOLUNTEER.minAge) t.age = rng.nextInt(VOLUNTEER.minAge, GENERATION.maxAge);
 
+    // Compose with any note already on the tribute (the tesserae note is set
+    // at construction) rather than overwriting it — the tesserae story is
+    // most meaningful in exactly the poor outer districts where the
+    // sibling-volunteer case lives.
+    const composeNote = (note: string) =>
+        t.reapingNote ? `${note} ${t.reapingNote}` : note;
     if (t.isCareer) {
         t.attributes.strength = Math.min(10, t.attributes.strength + VOLUNTEER.careerStrengthBonus);
         t.attributes.agility = Math.min(10, t.attributes.agility + VOLUNTEER.careerAgilityBonus);
         t.reputation = Math.min(95, t.reputation + VOLUNTEER.careerTrust);
         addExcitement(t, VOLUNTEER.careerExcitement);
-        t.reapingNote = `Volunteered before the escort had finished reading the card — ${craftOf(t.district).blurb}, and eighteen years of waiting for their turn.`;
+        t.reapingNote = composeNote(`Volunteered before the escort had finished reading the card — ${craftOf(t.district).blurb}, and eighteen years of waiting for their turn.`);
     } else {
         t.reputation = Math.min(95, t.reputation + VOLUNTEER.sacrificeTrust);
         addExcitement(t, VOLUNTEER.sacrificeExcitement);
-        t.reapingNote = `Volunteered for a sibling. District ${t.district} has not had a volunteer in living memory, and the crowd did not applaud — they touched three fingers to their lips instead.`;
+        t.reapingNote = composeNote(`Volunteered for a sibling. District ${t.district} has not had a volunteer in living memory, and the crowd did not applaud — they touched three fingers to their lips instead.`);
     }
     t.attributes.strength = Math.min(t.attributes.strength, strengthCapForAge(t.age));
     t.sponsorTrust = t.reputation;
@@ -163,11 +209,27 @@ export function generateTributes(
 ): Tribute[] {
     const rng = new RNG(seed);
     const tributes: Tribute[] = [];
-    const districtCount = Math.min(12, Math.max(1, config.districtCount));
+    // 2..12, matching the setup slider and the share-URL parser exactly. The
+    // old lower bound of 1 was reachable only through a hand-edited save and
+    // produced a degenerate two-tribute, one-day run.
+    const districtCount = Math.min(12, Math.max(2, config.districtCount));
 
     // Names must be unique across the whole cast — two tributes called "Amber"
     // made the chronicle feed and the kill log ambiguous.
     const usedNames = new Set<string>();
+    // A name is supposed to encode its district's export, but ~200 of the
+    // 2,400 pool entries appear in more than one district's pool (Clover in
+    // five of them). Prefer names exclusive to this district so the flavour
+    // reads true, and so D1 drawing first never denies D11 its own Clover;
+    // the shared names remain a fallback if an exclusive pool ever runs dry.
+    const nameDistrictCounts = new Map<string, number>();
+    for (let d = 1; d <= 12; d++) {
+        for (const g of ['Male', 'Female'] as const) {
+            for (const n of new Set(DISTRICT_NAMES[d][g])) {
+                nameDistrictCounts.set(n, (nameDistrictCounts.get(n) ?? 0) + 1);
+            }
+        }
+    }
     const drawName = (district: number, gender: Gender): string => {
         // Pre-Games option: skip the flavour pools entirely and name every
         // tribute for their number — "District 7 Boy" — the way the books'
@@ -177,7 +239,25 @@ export function generateTributes(
         if (config.plainNames) return `District ${district} ${gender === 'Male' ? 'Boy' : 'Girl'}`;
         const pool = DISTRICT_NAMES[district][gender];
         const available = pool.filter(n => !usedNames.has(n));
-        const name = available.length > 0 ? rng.pick(available) : `${rng.pick(pool)} ${['II', 'III', 'IV', 'V'][rng.nextInt(0, 3)]}`;
+        const exclusive = available.filter(n => nameDistrictCounts.get(n) === 1);
+        let name: string;
+        if (exclusive.length > 0) {
+            name = rng.pick(exclusive);
+        } else if (available.length > 0) {
+            name = rng.pick(available);
+        } else {
+            // Exhausted pool (only possible with a shrunken pool): suffix a
+            // generation numeral, and keep going until the result is itself
+            // unused — the naked suffix could otherwise collide too.
+            const base = rng.pick(pool);
+            let ordinal = 2;
+            const numerals = ['II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+            name = `${base} ${numerals[ordinal - 2]}`;
+            while (usedNames.has(name) && ordinal - 2 < numerals.length - 1) {
+                ordinal++;
+                name = `${base} ${numerals[ordinal - 2]}`;
+            }
+        }
         usedNames.add(name);
         return name;
     };
@@ -244,15 +324,16 @@ export function generateTributes(
             const tesseraRate = TESSERAE.ratePerTier[legacyOf(district).tier] ?? 0.5;
             const tesserae = Math.max(0, Math.round(tesseraRate * (age - GENERATION.minAge + 1) + rng.nextInt(-1, 1)));
             applyAgeProfile(attributes, age);
-            applyPersonalVariance(rng, attributes);
+
+            // Archetype first: its variance *shape* feeds the personal roll.
+            const archetype = pickArchetype(rng, district, shape?.careerBias ?? 0);
+            applyPersonalVariance(rng, attributes, archetype);
             if (shape?.talentBonus) {
                 (Object.keys(attributes) as Array<keyof Attributes>).forEach(k => {
                     attributes[k] += shape.talentBonus;
                 });
             }
 
-            // Archetype: shapes stats, traits, and in-game behavior
-            const archetype = pickArchetype(rng, district, shape?.careerBias ?? 0);
             const archetypeDef = ARCHETYPES[archetype];
             (Object.entries(archetypeDef.statBias) as Array<[keyof Attributes, number]>).forEach(([k, bonus]) => {
                 attributes[k] += bonus;
@@ -284,7 +365,7 @@ export function generateTributes(
             const heightCm = gender === 'Male'
                 ? rng.nextInt(148 + (age - GENERATION.minAge) * 4, 168 + (age - GENERATION.minAge) * 4)
                 : rng.nextInt(142 + (age - GENERATION.minAge) * 4, 160 + (age - GENERATION.minAge) * 4);
-            const build = buildFromStrength(rng, attributes.strength);
+            const build = rollBuild(rng, attributes.strength);
 
             // Reputation: the trust level the crowd keeps drifting back toward.
             // A district's Games record travels with its tributes — the crowd
@@ -337,10 +418,21 @@ export function generateTributes(
                 stanceHeld: 0,
                 fanFavourite: false,
                 tesserae,
-                // T-7: one or two habits the cameras will find. Drawn without
-                // replacement so a pair never shares a quirk within one cast.
+                // T-7: one or two habits the cameras will find. Deduped
+                // within the tribute only — with 25 quirks over a 24-strong
+                // cast, two tributes sharing a habit across the field is
+                // expected and fine; two identical habits on one card is not.
                 quirks: [rng.pick(QUIRKS).label, ...(rng.chance(GENERATION.secondQuirkChance) ? [rng.pick(QUIRKS).label] : [])]
                     .filter((q, i, arr) => arr.indexOf(q) === i),
+                // §3.10: the private reason they intend to come home. Careers
+                // mostly carry the district's honour; outer districts carry
+                // people. Volunteering (below) can overwrite this with
+                // 'partner'-adjacent stakes via the sibling note.
+                motive: rng.pick(
+                    isCareer
+                        ? (['honour', 'honour', 'prove', 'escape'] as const)
+                        : (['family', 'family', 'partner', 'prove', 'escape'] as const)
+                ),
                 reapingNote: tesserae >= TESSERAE.notedAt
                     ? `Their name was in the bowl ${age - GENERATION.minAge + 1 + tesserae} times — ${tesserae} of those slips bought grain, one winter at a time. Everyone in the square knew whose names the bowl was heavy with.`
                     : undefined,

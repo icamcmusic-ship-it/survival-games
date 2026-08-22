@@ -431,10 +431,24 @@ export function generateArena(seed: string): Arena {
         'Crucible', 'Gauntlet', 'Expanse', 'Labyrinth', 'Proving Grounds',
         'Wilds', 'Reach', 'Maze', 'Killing Ground', 'Hollow', 'Circuit', 'Basin',
     ]);
+    // In-world phrasing per topology — the player is a Capitol viewer, not a
+    // level designer, so no "procedurally generated" or engine topology names
+    // in the summary (which can surface on a hidden-arena reveal).
+    const layoutBlurb: Record<Topology, string> = {
+        linear: 'The Gamemakers built it long and narrow this year — one way forward, and everything waiting along it.',
+        hub: 'Every path in it bends back toward the Cornucopia, exactly as the Gamemakers intended.',
+        ring: 'The arena runs in a great circle; keep walking and you meet whatever is walking the other way.',
+        bisected: 'Something vast divides the arena clean in two, and crossing it is the whole question.',
+        layered: 'The arena is stacked in tiers, and holding the high ground means something here.',
+    };
     return {
         id: `procedural-${biome.id}`,
+        // A per-map identity for records and achievements: `id` must stay
+        // exactly `procedural-<biome>` (flavour packs, climate profiles and
+        // mutt kits key on it), so distinctness lives here instead.
+        mapId: `procedural-${biome.id}-${new RNG(`${seed}-arena-map-id`).nextInt(0, 999999).toString(36)}-${topology}`,
         name: `The ${biome.namePrefix} ${suffix}`,
-        description: `${biome.description} (Procedurally generated arena — ${topology} layout.)`,
+        description: `${biome.description} ${layoutBlurb[topology]}`,
         mutts,
         events: eventNames,
         zones,

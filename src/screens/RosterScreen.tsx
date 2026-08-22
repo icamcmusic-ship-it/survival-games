@@ -3,6 +3,8 @@ import { Tribute, Phase } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { Explainer } from '../components/Explainer';
 import { heightLabel } from '../engine/physique';
+import { prefsStore } from '../store/prefsStore';
+import { useStore } from '../store/createStore';
 import { traitInfo } from '../data/traitInfo';
 import {
     attributeBand, canSeeArchetype, canSeeAttributeBands, canSeeExactAttributes,
@@ -38,6 +40,7 @@ export function RosterScreen({
     const disclosure = disclosureFor(phase);
     const buttonText = bettingOpen ? 'Begin training' : 'Return to arena';
 
+    const units = useStore(prefsStore, p => p.units);
     const [query, setQuery] = useState('');
     const [sortKey, setSortKey] = useState<SortKey>('district');
 
@@ -186,8 +189,8 @@ export function RosterScreen({
                                                     {t.reapingNote}
                                                 </Explainer>
                                             )}
-                                            <span className="chip" title={`${t.gender}, age ${t.age}, ${heightLabel(t.heightCm)}, ${t.build} build`}>
-                                                {t.gender} · {t.age} · {heightLabel(t.heightCm)} · {t.build}
+                                            <span className="chip" title={`${t.gender}, age ${t.age}, ${heightLabel(t.heightCm, units)}, ${t.build} build`}>
+                                                {t.gender} · {t.age} · {heightLabel(t.heightCm, units)} · {t.build}
                                             </span>
                                             {canSeeArchetype(disclosure) ? (
                                                 <Explainer

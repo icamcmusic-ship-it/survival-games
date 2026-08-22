@@ -1,6 +1,6 @@
 import { Terrain, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { BLEEDING, CRAFTING, DESPERATION, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, PROFICIENCY, VITALS, ZONES } from '../data/balance';
+import { BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, PROFICIENCY, SANITY_BANDS, VITALS, ZONES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaEventDef, arenaFlavor } from '../data/arenaFlavor';
 import { QUIRKS } from '../data/quirks';
@@ -18,6 +18,8 @@ import { clampTribute } from './vitals';
 import { attemptFieldDressing, clearBleeding, healInjury, injure, injuryGrade, openWound, shouldDressWound } from './wounds';
 import { profOf, trainProficiency } from './proficiency';
 import { attemptFieldcraft } from './fieldcraft';
+import { composureOf } from './composure';
+import { sanityBandOf } from './sanityBands';
 import { resolveMuttAttack as resolveMuttAttackImpl } from './mutts';
 import { severRandomEdge, startZoneEffect } from './zoneEffects';
 import { traitMod } from '../data/traits';
@@ -522,7 +524,11 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         + available * ZONES.yieldForageWeight
         + (t.archetype === 'survivalist' ? ZONES.survivalistForageBonus : 0)
         + traitMod(t, 'forage')
-        + profOf(t, 'forage') * PROFICIENCY.forageWeight;
+        + profOf(t, 'forage') * PROFICIENCY.forageWeight
+        // §3.4: steady hands find food; shaking ones miss it.
+        + composureOf(t) * COMPOSURE.forageWeight
+        // §3.5: a tribute who is unravelling stops trusting what they pick.
+        - (sanityBandOf(t) === 'unravelling' || sanityBandOf(t) === 'gone' ? SANITY_BANDS.unravellingForagePenalty : 0);
 
     // A wound that is actually running is the most urgent thing in their life,
     // whatever stance they are in. This is the move the simulation was missing:

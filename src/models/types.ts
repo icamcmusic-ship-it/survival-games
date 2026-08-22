@@ -319,12 +319,34 @@ export interface Tribute {
     stylist?: string;
     /** The angle the stylist took for the chariot parade. */
     chariotAngle?: string;
+    /**
+     * How hard the parade landed (the chariot angle's pull plus charisma and
+     * legacy). Read by the sponsor stream for the first few days of the Games
+     * — see SPONSORS.paradeBuzzPerPull/paradeBuzzDays.
+     */
+    paradeBuzz?: number;
     /** How they played the training floor: showcase, conceal, or neither. */
     trainingStrategy?: 'showcase' | 'conceal' | 'balanced';
     /** They put their hand up rather than being drawn out of the bowl. */
     volunteered?: boolean;
     /** The reaping-day line: how they came to be standing on that plate. */
     reapingNote?: string;
+    /**
+     * §3.10: the private reason they intend to survive, set at the reaping.
+     * Biases resolve and vengeance, and pays off in the epilogue interview.
+     */
+    motive?: 'family' | 'partner' | 'prove' | 'honour' | 'escape';
+    /** §3.5: they went all the way down once; some of it never comes back. */
+    sanityScarred?: boolean;
+    /**
+     * §4.1: professional esteem, per tribute id (0-100 scale deltas around 0).
+     * Distinct from `relationships` (regard): you can rate someone as a
+     * fighter and still never sleep unguarded near them. Written by witnessed
+     * kills and the training reveal; read by recruitment and truce restraint.
+     */
+    respects?: Record<string, number>;
+    /** §4.4: the angle they took with Caesar — a showmance is a strategy chosen before the arena. */
+    interviewAngle?: 'showmance';
     /**
      * §7.1: tessera claims — extra name-slips taken for grain, one per family
      * mouth per year. Decided at generation from district poverty and age.
@@ -381,7 +403,7 @@ export interface Alliance {
 }
 
 /** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
-export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone';
+export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone' | 'split-at-eight';
 
 /**
  * What happened between one specific pair, across the whole run.
@@ -578,6 +600,14 @@ export interface SignatureRule {
 
 export interface Arena {
     id: string;
+    /**
+     * Procedural arenas only: a per-map identity. `id` collapses every
+     * generated arena of a biome to `procedural-<biome>` (flavour packs,
+     * climate profiles and mutt kits key on it and that must not change),
+     * so anything that cares which *map* this was — Panem records,
+     * achievements — reads `mapId ?? name` instead.
+     */
+    mapId?: string;
     name: string;
     description: string;
     /** Flavor text only — the game engine resolves mutts through `ARENA_MUTTS` (src/data/mutts.ts) via engine/mutts.ts, not this list. */
@@ -633,7 +663,7 @@ export type EventCategory =
     | 'system';
 
 export interface GameConfig {
-    districtCount: number; // 1-12, each district reaps 2 tributes
+    districtCount: number; // 2-12, each district reaps 2 tributes
     hazardRate: number; // multiplier on random event/mutt attack chance
     betrayalRate: number; // multiplier on alliance betrayal chance
     sponsorGenerosity: number; // multiplier on sponsor gift chance
@@ -839,6 +869,11 @@ export interface HallOfFameEntry {
     quellId?: string | null;
     /** True for a Games nobody survived — archived as its own kind of entry. */
     noVictor?: boolean;
+    /**
+     * Player-pinned: never evicted by the HOF_CAP. A first-ever District 12
+     * crown should not be silently deleted by run 51.
+     */
+    pinned?: boolean;
     winnerName: string;
     winnerDistrict: number;
     kills: number;
