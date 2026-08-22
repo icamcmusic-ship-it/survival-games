@@ -44,7 +44,12 @@ function scaledDamage(ctx: SimContext, mutt: Mutt): number {
 }
 
 export function rosterFor(ctx: SimContext): Mutt[] {
-    return ARENA_MUTTS[ctx.state.arena.id] ?? [];
+    const id = ctx.state.arena.id;
+    // Procedural arenas are keyed `procedural-<biome>` on the Arena itself,
+    // but their ARENA_MUTTS entries are keyed by the bare biome id — try the
+    // exact id first so a hand-authored arena is never mangled, then fall
+    // back to the biome id for procedural arenas.
+    return ARENA_MUTTS[id] ?? ARENA_MUTTS[id.replace(/^procedural-/, '')] ?? [];
 }
 
 /** Mutts allowed to appear right now, given terrain and time of day. */

@@ -172,6 +172,7 @@ const CLIMATES: Record<string, ClimateProfile> = {
     ashwaste: ASH_WASTE,
     quarry: QUARRY_DAMP,
     'procedural-highlands': FROZEN,
+    'procedural-rainforest': TOXIC,
     solar: SOLAR,
     saltflats: SOLAR,
     toxic: TOXIC,
