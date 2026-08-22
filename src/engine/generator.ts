@@ -223,11 +223,13 @@ export function generateTributes(
                 attributes.stealth += rng.nextInt(2, 4);
                 attributes.agility += rng.nextInt(1, 2);
             }
+            // Floor of 1 rather than 0: a bonus that can roll away entirely
+            // wasn't moving the win column for these districts at all.
             if (district === 5 || district === 9 || district === 10) {
-                attributes.strength += rng.nextInt(0, 2);
+                attributes.strength += rng.nextInt(1, 2);
             }
             if (district === 6 || district === 8) {
-                attributes.agility += rng.nextInt(0, 2);
+                attributes.agility += rng.nextInt(1, 2);
             }
 
             // The cast shape leans on the age roll before it is clamped back

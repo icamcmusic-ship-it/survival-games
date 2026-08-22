@@ -253,7 +253,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     if (time === 'night') soundTheAnthem(ctx);
     // §8.3: the desk, after the cycle's events have actually resolved — so a
     // "quiet day" line only ever follows a day that was quiet.
-    commentate(ctx, time, getAlive(ctx.state).length - aliveAtCycleStart);
+    commentate(ctx, time, aliveAtCycleStart - getAlive(ctx.state).length);
 }
 
 /**
@@ -325,7 +325,10 @@ function soundTheAnthem(ctx: SimContext) {
 // run, with nothing to invalidate and no size cap to tune.
 function buildCollapseOrder(ctx: SimContext): string[] {
     if (ctx.collapseOrder) return ctx.collapseOrder;
-    const order = computeCollapseOrder(ctx);
+    // A half-arena year's walled-off sectors are already closed: escalation
+    // must not spend days telegraphing and "closing" them a second time.
+    const pre = new Set(ctx.state.preClosedZones ?? []);
+    const order = computeCollapseOrder(ctx).filter(z => !pre.has(z));
     ctx.collapseOrder = order;
     return order;
 }
@@ -665,10 +668,15 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
     if (ctx.state.escalationDay === undefined) return false;
 
     const collapsedList = collapseOrder.slice(0, thisCount);
-    ctx.state.collapsedZones = collapsedList;
+    // Union with the format's pre-closed ground: this assignment used to
+    // replace the list wholesale, which quietly REOPENED a half-arena year's
+    // walled-off sectors the moment escalation started.
+    ctx.state.collapsedZones = [...new Set([...(ctx.state.preClosedZones ?? []), ...collapsedList])];
 
     getAlive(ctx.state).forEach(t => {
-        if (!collapsedList.includes(t.zone)) return;
+        // The union, not just the escalation list — anyone who somehow ended
+        // up inside pre-closed ground gets herded out with everyone else.
+        if (!(ctx.state.collapsedZones ?? collapsedList).includes(t.zone)) return;
 
         // The Gamemakers want a victor, not an empty arena: the border herds
         // the last survivors together rather than finishing them. For
@@ -679,7 +687,11 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         const damage = finalists
             ? Math.min(ESCALATION.finalistCollapseDamage, Math.max(0, t.health - 1))
             : ESCALATION.collapseDamageBase + (ctx.state.day - startDay) * ESCALATION.collapseDamagePerDay;
-        const safeZones = allZoneNames.filter(z => !collapsedList.includes(z));
+        // Filter on the full closed set (escalation + pre-closed), not just
+        // this run's escalation list — the border must not "rescue" a tribute
+        // into a sector that was walled off at the gong.
+        const closed = ctx.state.collapsedZones ?? collapsedList;
+        const safeZones = allZoneNames.filter(z => !closed.includes(z));
         // Nearest reachable safe zone via the adjacency graph, not an
         // arbitrary index — a tribute should not teleport across the arena,
         // and cannot flee across a bridge the arena has already burned.

@@ -365,6 +365,8 @@ export function normalizeGameState(raw: unknown): GameState | null {
         traps: Array.isArray(r.traps) ? (r.traps as GameState['traps']) : [],
         alliances: normalizeAlliances(r.alliances) ?? {},
         scarredZones: asStrArray(r.scarredZones),
+        preClosedZones: asStrArray(r.preClosedZones),
+        broadcastBeats: asStrArray(r.broadcastBeats),
         camps: asObjMap(r.camps),
         activeMutts: Array.isArray(r.activeMutts) ? (r.activeMutts as GameState['activeMutts']) : [],
         sponsorBlocBudgets: asNumMap(r.sponsorBlocBudgets),

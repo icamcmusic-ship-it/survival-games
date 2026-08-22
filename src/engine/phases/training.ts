@@ -187,7 +187,7 @@ export function processTraining(ctx: SimContext) {
     cast.forEach(t => {
         const totalStats = Object.values(t.attributes).reduce((a, b) => a + b, 0);
         const bestSkill = Math.max(
-            profOf(t, 'melee'), profOf(t, 'ranged'), profOf(t, 'forage'), profOf(t, 'tracking'));
+            profOf(t, 'melee'), profOf(t, 'ranged'), profOf(t, 'thrown'), profOf(t, 'forage'), profOf(t, 'tracking'));
 
         // Base band: 1-8, from what they can actually do in front of a panel.
         // Calibrated against the source material rather than against the stat

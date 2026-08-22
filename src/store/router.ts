@@ -47,8 +47,23 @@ export function pathForView(view: ViewName): string {
 }
 
 export function viewForPath(path: string): ViewName | null {
-    const normalised = path.replace(/\/+$/, '') || '/';
+    // §2.2: a route can carry a query (`#/game?line=…`, the shareable
+    // chronicle-line links). The query is not part of the route.
+    const normalised = path.split('?')[0].replace(/\/+$/, '') || '/';
     return ROUTES.find(r => r.path === normalised)?.view ?? null;
+}
+
+/**
+ * §2.2: query params from the URL the app was *opened* with, captured at
+ * module load — before `initRouter` canonicalises the hash and strips them.
+ * A shared line-link works by being read exactly once, here.
+ */
+const initialHashQuery = new URLSearchParams(
+    typeof window !== 'undefined' ? window.location.hash.split('?')[1] ?? '' : ''
+);
+
+export function initialHashParam(key: string): string | undefined {
+    return initialHashQuery.get(key) ?? undefined;
 }
 
 /**

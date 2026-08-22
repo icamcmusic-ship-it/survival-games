@@ -721,6 +721,20 @@ export interface GameState {
     /** §10.2: the horn was never filled this year. */
     emptyCornucopia?: boolean;
     /**
+     * §10.2: zones walled off before the gong (the half-arena format).
+     * Kept separately from `collapsedZones` because `collapseBorders`
+     * recomputes that list wholesale from the escalation schedule each cycle
+     * — without this record, a pre-closed zone silently reopened the moment
+     * escalation started.
+     */
+    preClosedZones?: string[];
+    /**
+     * §8.3: the once-per-run broadcast beats (final eight, final three,
+     * opening days) already delivered. On the state, not in module memory,
+     * so a rewind or resumed save cannot replay them into the chronicle.
+     */
+    broadcastBeats?: string[];
+    /**
      * §10.2: how these Games actually ended, beyond who was left standing.
      * The simulation could produce last-one-standing, a dual victory, or a
      * wipeout, and nothing else — so the ending was the one part of a run that

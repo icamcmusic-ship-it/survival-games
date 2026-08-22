@@ -2390,9 +2390,9 @@ export const PARLEY = {
      */
     tollInfoMinThreat: 1.0,
     /** Item value above which the weaker party would sooner give directions. */
-    tollInfoRatherThanValue: 55,
+    tollInfoRatherThanValue: 70,
     /** Share of otherwise-payable shakedowns settled in directions instead. */
-    tollInfoPreferredShare: 0.3,
+    tollInfoPreferredShare: 0.25,
     tollInfoResentment: 8,
     tollInfoSanityCost: 5,
 
@@ -2692,6 +2692,8 @@ export const PACK_PARLEY = {
     truceCycles: 3,
     /** Regard the standoff itself is worth to both sides. */
     standoffRegard: 4,
+    /** Fatigue every member pays for holding a line nobody crosses. */
+    standoffFatigue: 4,
     /** Odds a pack parley ends in a merge offer rather than terms. */
     mergeChance: 0.2,
 } as const;
