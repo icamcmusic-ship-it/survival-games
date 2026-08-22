@@ -69,6 +69,50 @@ const FRONTS: ExposureProfile[] = [
         poison: 0.12,
         onPoison: t => `${t.name} breathes too much of the fog before they find the edge of it.`,
     },
+    // §8.3: "weather variety beyond the front system" — the variety belongs
+    // *in* the front system, which already moves, telegraphs and expires.
+    // Four profiles meant the same storm every third run; these five widen
+    // the repertoire, including the two the pool conspicuously lacked: heat,
+    // and weather that helps.
+    {
+        name: 'a heat wave with no shade in it',
+        cause: 'Succumbed to heatstroke in the front',
+        damage: 5,
+        fatigue: 24,
+        thirst: 28,
+        burn: 0.1,
+    },
+    {
+        name: 'a hailstorm throwing stones the size of eggs',
+        cause: 'Beaten down by the hail front',
+        damage: 9,
+        fatigue: 12,
+        sanity: 6,
+    },
+    {
+        name: 'a soft, soaking drizzle',
+        // Weather that is genuinely useful: it fills whatever can catch
+        // water and costs only comfort. A front the tributes are glad to
+        // see is what makes the frightening ones read as frightening.
+        cause: 'Died of exposure in the long rain',
+        fatigue: 8,
+        quench: 45,
+    },
+    {
+        name: 'a static storm that stands the hair on end',
+        cause: 'Struck in the static storm',
+        damage: 8,
+        sanity: 16,
+        fatigue: 10,
+    },
+    {
+        name: 'a wet snow that erases every track',
+        cause: 'Froze in the snow front',
+        damage: 4,
+        fatigue: 20,
+        frostbite: 0.12,
+        wardedBy: 'sleeping-bag',
+    },
 ];
 
 /** Human-readable name of whatever is currently blowing through. */

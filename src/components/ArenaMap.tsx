@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { tributeColor } from '../ui/tributeColor';
+import { landmarkOf } from '../engine/landmarks';
 import { GameState, Tribute } from '../models/types';
 import { effectiveResources } from '../engine/map';
 import { ArenaGraph } from './ArenaGraph';
@@ -71,7 +72,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                             // The card's own text is a pile of glyphs and percentages;
                             // spoken, it needs to be one sentence about one sector.
                             aria-label={`${zone.name} — ${zone.terrain}, ${dangerLabel(zone.danger)} danger, ${Math.round(stock * 100)}% supplies, ${occupants.length} tribute${occupants.length === 1 ? '' : 's'} present${isCollapsed ? ', out of bounds' : ''}. ${isSelected ? 'Selected — activate to clear' : 'Activate to show only its events'}`}
-                            title={`${zone.name} — ${zone.terrain}, ${dangerLabel(zone.danger)}, ${Math.round(stock * 100)}% stock (${Math.round(zone.resources * 100)}% potential)`}
+                            title={`${zone.name} — ${zone.terrain}, ${dangerLabel(zone.danger)}, ${Math.round(stock * 100)}% stock (${Math.round(zone.resources * 100)}% potential). Known for ${landmarkOf(zone)}.`}
                             className={`panel-flush p-3.5 text-left transition-all flex flex-col justify-between gap-3 min-h-[136px] hover:border-[var(--color-ink-600)] ${
                                 isSelected ? 'ring-2 ring-[var(--red)] border-[var(--red)]' : ''
                             } ${isCollapsed ? 'opacity-60' : ''}`}

@@ -43,6 +43,7 @@ import { repayDebts, tickDistrictBonds } from '../debts';
 import { enforceCharters } from '../allianceCharter';
 import { gamemakerProfile } from '../../data/gamemakers';
 import { readCustomContent } from '../../utils/customContent';
+import { landmarkOf } from '../landmarks';
 import { escalationShift, hasModifier, modifierEscalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
@@ -951,6 +952,19 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     noteTraffic(ctx.state, oldZone, newZone);
     if (t.stance === 'Evasive') {
         ctx.logEvent(`${t.name} slips out of ${oldZone} without a sound.`, [t.id], { zone: newZone, category: 'travel' });
+    } else if (ctx.rng.chance(MOVEMENT.landmarkLineChance)) {
+        // §8.3: survivors navigate by the specific thing, not the sector
+        // label. The landmark is deterministic per zone, so it accumulates
+        // meaning as the same one keeps turning up in different tributes'
+        // lines across a run.
+        const dest = getZone(ctx.state.arena, newZone);
+        ctx.logEvent(
+            dest
+                ? `${t.name} comes into ${newZone} past ${landmarkOf(dest)}, checking it the way you check a thing that has not moved since yesterday.`
+                : fill(ctx.pickText(flavor.actions.travel), { tribute: t.name, zone: newZone }),
+            [t.id],
+            { zone: newZone, category: 'travel' }
+        );
     } else {
         ctx.logEvent(
             fill(ctx.pickText(flavor.actions.travel), { tribute: t.name, zone: newZone }),

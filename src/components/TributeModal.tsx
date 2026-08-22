@@ -581,6 +581,11 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                                     </Explainer>
                                 ))}
                         </div>
+                        {tribute.backstory && (
+                            <p className="text-sm text-[var(--color-ink-300)] mt-2 leading-relaxed">
+                                {tribute.backstory}
+                            </p>
+                        )}
                         {(tribute.quirks?.length ?? 0) > 0 && (
                             <p className="text-sm text-[var(--color-ink-400)] mt-2 italic">
                                 The cameras have noticed: {tribute.quirks!.join('; ')}.

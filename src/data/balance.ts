@@ -885,6 +885,9 @@ export const STEALTH = {
  * carries between cycles: find water, find somewhere to sleep.
  */
 export const MOVEMENT = {
+    /** §8.3: odds an arrival line steers by the zone's landmark instead of the pool. */
+    landmarkLineChance: 0.12,
+
     /** A-3: odds a high-ground watcher makes out *who* is moving next door. */
     highGroundIdentifyChance: 0.3,
     /** A-3: odds an adjacent listener's reaction to a fight gets a line. */

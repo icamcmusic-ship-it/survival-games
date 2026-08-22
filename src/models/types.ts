@@ -366,6 +366,13 @@ export interface Tribute {
     /** The reaping-day line: how they came to be standing on that plate. */
     reapingNote?: string;
     /**
+     * §8.3: who was standing on the plate. Composed once at generation from
+     * family, district trade and one formative detail that agrees with their
+     * traits — see `data/backstories.ts`. The reaping note says how they got
+     * here; this says who arrived.
+     */
+    backstory?: string;
+    /**
      * §7.1: tessera claims — extra name-slips taken for grain, one per family
      * mouth per year. Decided at generation from district poverty and age.
      * A tribute who carries them has been hungry for years: the hunger drain
