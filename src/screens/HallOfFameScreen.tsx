@@ -15,6 +15,7 @@ export function HallOfFameScreen() {
     const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
     const [copiedSeed, setCopiedSeed] = useState<string | null>(null);
     const [confirmClear, setConfirmClear] = useState(false);
+    const [confirmResetPanem, setConfirmResetPanem] = useState(false);
 
     useEffect(() => {
         setEntries(readHallOfFame());
@@ -36,6 +37,11 @@ export function HallOfFameScreen() {
         clearHallOfFame();
         setEntries([]);
         setConfirmClear(false);
+    };
+
+    const resetPanem = () => {
+        gameActions.resetPanem();
+        setConfirmResetPanem(false);
     };
 
     /** Imports are persisted immediately: a merge the player can't see survive a reload is worse than no merge. */
@@ -65,6 +71,22 @@ export function HallOfFameScreen() {
             </div>
 
             <PanemRecordBook panem={panem} />
+
+            {panem.runs > 0 && (
+                <div className="flex justify-end -mt-4">
+                    {confirmResetPanem ? (
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-[var(--color-ink-400)]">Erase every achievement and record?</span>
+                            <button onClick={resetPanem} className="btn btn-sm btn-primary">Erase</button>
+                            <button onClick={() => setConfirmResetPanem(false)} className="btn btn-sm btn-ghost">Cancel</button>
+                        </div>
+                    ) : (
+                        <button onClick={() => setConfirmResetPanem(true)} className="btn btn-sm btn-ghost">
+                            <Trash2 className="w-3.5 h-3.5" /> Reset achievements &amp; records
+                        </button>
+                    )}
+                </div>
+            )}
 
             {entries.length === 0 ? (
                 <>
