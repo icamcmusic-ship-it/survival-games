@@ -4,6 +4,7 @@ import { traitMod } from '../data/traits';
 import { addFear } from './fear';
 import { getZone } from './map';
 import { SimContext } from './context';
+import { arenaIsSilent } from './gamesProfile';
 
 /**
  * Tribute memory: the difference between an AI that reacts to the current
@@ -126,7 +127,10 @@ export function broadcastDeath(ctx: SimContext, victim: Tribute, killer?: Tribut
             raiseSuspicion(other, killer.id, SUSPICION.perAllyKill);
         }
         const witnessed = other.zone === zone;
-        addZoneThreat(state, other, zone, witnessed ? MEMORY.deathThreat : MEMORY.cannonThreat);
+        // A witnessed kill is seen in person, whatever the arena's cannon law
+        // says — only the arena-wide broadcast to everyone else is suppressed.
+        const silent = !witnessed && arenaIsSilent(state);
+        addZoneThreat(state, other, zone, witnessed ? MEMORY.deathThreat : silent ? 0 : MEMORY.cannonThreat);
         if (witnessed && killer && killer.id !== other.id) {
             // Seeing who did it is worth far more than hearing the cannon.
             noteSighting(state, other, zone, Math.max(1, rememberedRivals(state, other, zone)), rememberedBarren(state, other, zone));
@@ -136,8 +140,9 @@ export function broadcastDeath(ctx: SimContext, victim: Tribute, killer?: Tribut
         // share of the time they pin it on the wrong person entirely: whoever
         // they last crossed paths with, or already dreaded. Nothing writes a
         // false impression like a half-heard death. Direct contact (a landed
-        // hit — see reduceFear) is what corrects it.
-        if (!witnessed && killer && killer.id !== other.id
+        // hit — see reduceFear) is what corrects it. None of this happens at
+        // all with no cannon to hear in the first place.
+        if (!witnessed && !silent && killer && killer.id !== other.id
             && killZone?.adjacent.includes(other.zone)
             && ctx.rng !== undefined) {
             if (ctx.rng.chance(FEAR.misattributionChance)) {

@@ -2,12 +2,12 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, SPONSORS } from '../../data/balance';
+import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, SPONSORS } from '../../data/balance';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting,
@@ -37,7 +37,7 @@ import { resolveTruces } from '../parley';
 import { repayDebts, tickDistrictBonds } from '../debts';
 import { enforceCharters } from '../allianceCharter';
 import { gamemakerProfile } from '../../data/gamemakers';
-import { escalationShift, wildcardIs } from '../gamesProfile';
+import { arenaHasLaw, arenaIsSilent, escalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 
@@ -131,7 +131,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             return;
         }
 
-        move(ctx, t, currentAlive, collapsed, flavor, severed, crossed);
+        move(ctx, t, currentAlive, collapsed, flavor, severed, crossed, effectiveTime);
     });
 
     // Walking into a zone is what springs things left in it. This runs as a
@@ -180,6 +180,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     rollAmbientZoneEffects(ctx);
     tickZoneEffects(ctx);
     restockCornucopia(ctx);
+    maintainBounty(ctx);
+    maintainMovingArena(ctx);
     tickTraps(ctx);
     decayTraffic(ctx.state);
     decayMemories(ctx.state);
@@ -236,9 +238,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
  * confirmed to them in the most Capitol way possible.
  */
 function soundTheAnthem(ctx: SimContext) {
-    // A silent-arena year: no anthem, no faces, and nobody finds out who is
-    // left except by walking into them.
-    if (wildcardIs(ctx.state, 'silent-arena')) return;
+    // A silent-arena year, or an arena whose own law is noCannons: no
+    // anthem, no faces, and nobody finds out who is left except by walking
+    // into them.
+    if (arenaIsSilent(ctx.state)) return;
 
     const fallenToday = ctx.state.tributes.filter(t =>
         t.status === 'dead' && t.dayOfDeath === ctx.state.day);
@@ -277,6 +280,58 @@ function soundTheAnthem(ctx: SimContext) {
         }
         clampTribute(t);
     });
+}
+
+/**
+ * 'The Bounty Quell': names (or renames) the quarry. Retargets on a fixed
+ * schedule, or immediately once the current quarry is dead — killTribute
+ * (combat.ts) pays out the standing sponsor bonus; this just keeps a live
+ * target named at all times.
+ */
+function maintainBounty(ctx: SimContext) {
+    if (!wildcardIs(ctx.state, 'quell-bounty-rotating')) return;
+    const alive = getAlive(ctx.state);
+    if (alive.length === 0) return;
+    const cycle = cycleOf(ctx.state);
+    const current = ctx.state.quellBounty;
+    const currentStillAlive = current && alive.some(t => t.id === current.targetId);
+    const stale = !current || cycle - current.namedCycle >= QUELL_MECHANICS.bountyRetargetEveryCycles;
+    if (currentStillAlive && !stale) return;
+
+    const target = ctx.rng.pick(alive);
+    ctx.state.quellBounty = { targetId: target.id, namedCycle: cycle };
+    ctx.logEvent(
+        `THE CAPITOL: a bounty is named. ${target.name} is the quarry now — whoever collects it eats well for the rest of the Games.`,
+        [target.id],
+        { important: true, category: 'sponsor' }
+    );
+}
+
+/**
+ * 'The Moving Arena': the arena will not be the same arena on the last day
+ * as it was on the first. Two zones swap terrain, danger and resources —
+ * not their name or adjacency — so a memorized route goes stale without the
+ * map itself changing shape. Relies on `Arena.zones` being this run's own
+ * array (gameStore.ts deep-clones it precisely so this is safe to mutate).
+ */
+function maintainMovingArena(ctx: SimContext) {
+    if (!wildcardIs(ctx.state, 'quell-moving-arena')) return;
+    const cycle = cycleOf(ctx.state);
+    if (cycle % QUELL_MECHANICS.movingArenaEveryCycles !== 0) return;
+    const collapsed = ctx.state.collapsedZones ?? [];
+    const cornucopia = ctx.state.arena.zones[0]?.name;
+    const candidates = ctx.state.arena.zones.filter(z => z.name !== cornucopia && !collapsed.includes(z.name));
+    if (candidates.length < 2) return;
+
+    const [a, b] = ctx.rng.shuffle(candidates).slice(0, 2);
+    const swap = { terrain: a.terrain, danger: a.danger, resources: a.resources };
+    a.terrain = b.terrain; a.danger = b.danger; a.resources = b.resources;
+    b.terrain = swap.terrain; b.danger = swap.danger; b.resources = swap.resources;
+    ctx.logEvent(
+        `THE ARENA: ${a.name} and ${b.name} are not what they were yesterday. The ground itself has moved.`,
+        [],
+        { important: true, category: 'arena' }
+    );
 }
 
 /**
@@ -534,6 +589,9 @@ function dynamicAmbientLine(ctx: SimContext): string {
 
 /** Hazard escalation and safe-zone shrinking. Returns whether it is active. */
 function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
+    // 'The Long Games': the border will not move this year, whatever else
+    // happens inside it. Starvation, infection and attrition decide it instead.
+    if (wildcardIs(ctx.state, 'quell-long-games')) return false;
     const collapseOrder = buildCollapseOrder(ctx);
     const allZoneNames = zoneNames(ctx.state.arena);
 
@@ -691,6 +749,7 @@ function wanderChanceFor(t: Tribute): number {
 function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
     const dest = getZone(ctx.state.arena, destName);
     const cost = dest ? travelCost(t, dest) : 1;
+    applyEdgeToll(ctx, t, t.zone, destName);
     if (cost <= 1) return true;
     t.transit = { to: destName, remaining: cost - 1 };
     ctx.logEvent(
@@ -703,7 +762,7 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
     return false;
 }
 
-function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>, severed: Set<string>, crossed: Set<string>) {
+function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>, severed: Set<string>, crossed: Set<string>, time: 'day' | 'night') {
     // A group crossing is resolved once, for everyone who lands together —
     // anyone already brought ashore by an ally's iteration this cycle has
     // nothing left to do. See the arrival block below.
@@ -772,7 +831,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         } else if (!leader || t.id !== leader.id) {
             return;
         } else {
-            const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed);
+            const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed, time);
             if (options.length === 0) return;
 
             // The group follows whatever its leader has decided to do; only when the
@@ -808,7 +867,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         }
     }
 
-    const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed);
+    const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed, time);
     if (options.length === 0) return;
 
     // A tribute who has decided to be somewhere goes there, by the shortest

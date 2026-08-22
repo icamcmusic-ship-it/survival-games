@@ -172,6 +172,7 @@ const CLIMATES: Record<string, ClimateProfile> = {
     ashwaste: ASH_WASTE,
     quarry: QUARRY_DAMP,
     'procedural-highlands': FROZEN,
+    'procedural-rainforest': TOXIC,
     solar: SOLAR,
     saltflats: SOLAR,
     toxic: TOXIC,
@@ -180,6 +181,10 @@ const CLIMATES: Record<string, ClimateProfile> = {
     'procedural-volcanic': ASHEN,
     tempest: TEMPEST,
     'procedural-archipelago': TEMPEST,
+    seapeaks: FROZEN,
+    acousticforest: MAGNETIC_FOG,
+    burnscar: ASHEN,
+    craterfield: TOXIC,
 };
 
 export function climateOf(arenaId: string): ClimateProfile | undefined {

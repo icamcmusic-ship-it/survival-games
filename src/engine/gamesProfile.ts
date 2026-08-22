@@ -1,9 +1,10 @@
-import { GameConfig, GameState } from '../models/types';
+import { ArenaLawId, GameConfig, GameState } from '../models/types';
 import { RNG } from '../utils/rng';
 import {
     CAST_SHAPES, CastShape, CastShapeId, GAMES_TEMPERAMENTS, GamesTemperament,
-    Wildcard, WildcardDef, WILDCARDS, WildcardKind,
+    Quell, QUELLS, Wildcard, WildcardDef, WILDCARDS, WildcardKind,
 } from '../data/gamesProfile';
+import { QUELL_MECHANICS } from '../data/balance';
 
 /**
  * REPLAY-01: rolling a run's identity, once, from its seed.
@@ -37,15 +38,17 @@ export interface GamesProfile {
     calendar: Wildcard[];
     /** REPLAY-09: what kind of cast the bowls produced this year. */
     castShape: CastShape;
+    /** REPLAY-11: this run's Quarter Quell, if the low-weight draw (or an explicit request) landed on one. */
+    quell?: Quell;
 }
 
 /** Weighted draw over the cast shapes, with the Quells overriding the roll. */
-function rollCastShape(rng: RNG, calendar: Wildcard[]): CastShape {
+function rollCastShape(rng: RNG, calendar: Wildcard[], quell?: Quell): CastShape {
     const byId = (id: CastShapeId) => CAST_SHAPES.find(s => s.id === id) ?? CAST_SHAPES[0];
 
-    // A Quarter Quell is a structural change to the reaping, not a multiplier.
-    // "Tributes will be reaped in bonded pairs" and "this arena has been built
-    // without mercy" are announcements the cast itself has to honour.
+    // A Quell's own shape (or a legacy quarter-quell-* wildcard's) overrides
+    // the ordinary weighted draw — the cast itself has to honour the premise.
+    if (quell?.castShapeOverride) return byId(quell.castShapeOverride);
     if (calendar.some(w => w.kind === 'quarter-quell-pairs')) return byId('bonded-pairs');
     if (calendar.some(w => w.kind === 'quarter-quell-doubled')) return byId('veteran-field');
 
@@ -56,6 +59,32 @@ function rollCastShape(rng: RNG, calendar: Wildcard[]): CastShape {
         if (roll <= 0) return shape;
     }
     return CAST_SHAPES[0];
+}
+
+/**
+ * A Quell is drawn from its own low-weight pool, separate from the ordinary
+ * wildcard calendar, so "no Quell this year" dominates by design — most
+ * Games are not Quarter Quells. `force` (the Setup "Force a Quell" toggle)
+ * skips the no-Quell gate but still rolls deterministically from the seed.
+ */
+const NO_QUELL_WEIGHT = 600;
+function drawQuell(rng: RNG, force: boolean): Quell | undefined {
+    const questTotal = QUELLS.reduce((sum, q) => sum + q.weight, 0);
+    if (!force && rng.nextFloat() * (questTotal + NO_QUELL_WEIGHT) >= questTotal) return undefined;
+
+    let roll = rng.nextFloat() * questTotal;
+    for (const quell of QUELLS) {
+        roll -= quell.weight;
+        if (roll <= 0) return quell;
+    }
+    return QUELLS[0];
+}
+
+/** Synthesizes the standing Wildcard entries a Quell injects directly into the calendar. */
+function quellWildcards(quell: Quell): Wildcard[] {
+    return (quell.standingWildcards ?? []).map(kind => ({
+        kind, name: quell.name, announcement: quell.announcement, day: 0,
+    }));
 }
 
 function materialise(def: WildcardDef, rng: RNG, dayOverride?: number): Wildcard {
@@ -118,19 +147,44 @@ function rollCalendar(rng: RNG): Wildcard[] {
     return calendar.sort((a, b) => a.day - b.day);
 }
 
-export function gamesProfileFor(seed: string): GamesProfile {
+/**
+ * `forceQuell` is the Setup "Force a Quell" toggle. The Quell draw uses its
+ * own `${seed}-quell` sub-stream, deliberately separate from
+ * `${seed}-games-profile` — so adding Quells at all doesn't reshuffle the
+ * temperament/calendar/castShape roll for every run that doesn't draw one,
+ * the same way `${seed}-arena` and `${seed}-signature-*` already stay out of
+ * each other's way.
+ *
+ * `pinnedQuell` lets a caller carry an already-decided Quell through instead
+ * of drawing a new one — `rerollCast` uses this so a cast reroll can't
+ * silently swap the run's Quell out from under its already-locked-in arena.
+ * `null` explicitly pins to "no Quell"; `undefined` (the default) draws normally.
+ */
+export function gamesProfileFor(seed: string, forceQuell = false, pinnedQuell?: Quell | null): GamesProfile {
+    const quell = pinnedQuell !== undefined ? pinnedQuell ?? undefined : drawQuell(new RNG(`${seed}-quell`), forceQuell);
+    const quellBeats = quell ? quellWildcards(quell) : [];
     const rng = new RNG(`${seed}-games-profile`);
     const calendar = rollCalendar(rng);
+    calendar.push(...quellBeats);
+    calendar.sort((a, b) => a.day - b.day);
+
+    // The Quell always wins the reaping's billing when there is one — even a
+    // castShape/temperament-only Quell with nothing standing in the calendar
+    // (e.g. Victors' Field) gets its own headline object here rather than
+    // some unrelated scheduled beat announcing itself instead.
+    const quellHeadline: Wildcard | undefined = quell
+        ? { kind: quellBeats[0]?.kind ?? 'nothing', name: quell.name, announcement: quell.announcement, day: 0 }
+        : undefined;
+
     return {
         // A Games number the player can refer to. Anchored well past the 75th so
         // a Quarter Quell wildcard is never contradicted by the arithmetic.
         gamesNumber: rng.nextInt(60, 140),
         temperament: rng.pick(GAMES_TEMPERAMENTS),
-        // The headline the reaping announces. A scheduled beat makes a better
-        // announcement than a standing condition, so it wins the billing.
-        wildcard: calendar.find(w => w.day > 0) ?? calendar[0],
+        wildcard: quellHeadline ?? calendar.find(w => w.day > 0) ?? calendar[0],
         calendar,
-        castShape: rollCastShape(rng, calendar),
+        castShape: rollCastShape(rng, calendar, quell),
+        quell,
     };
 }
 
@@ -139,7 +193,7 @@ export function gamesProfileFor(seed: string): GamesProfile {
  * by this year's temperament and by any standing wildcard condition.
  */
 export function configForProfile(base: GameConfig, profile: GamesProfile): GameConfig {
-    const t = profile.temperament;
+    const t = { ...profile.temperament, ...profile.quell?.temperamentOverride };
     let sponsorGenerosity = base.sponsorGenerosity * t.sponsorGenerosity;
     let hazardRate = base.hazardRate * t.hazardRate;
     let betrayalRate = base.betrayalRate * t.betrayalRate;
@@ -160,7 +214,7 @@ export function configForProfile(base: GameConfig, profile: GamesProfile): GameC
         }
     }
 
-    return { ...base, sponsorGenerosity, hazardRate, betrayalRate, enableFeast };
+    return { ...base, sponsorGenerosity, hazardRate, betrayalRate, enableFeast, ...profile.quell?.configOverride };
 }
 
 /** The run's schedule, tolerating profiles saved before the calendar existed. */
@@ -173,6 +227,27 @@ export function wildcardIs(state: GameState, kind: WildcardKind): boolean {
     const profile = state.gamesProfile;
     if (!profile) return false;
     return calendarOf(profile).some(w => w.kind === kind);
+}
+
+/** True when this arena's standing law is `law` — see `Arena.law` (models/types.ts). */
+export function arenaHasLaw(state: GameState, law: ArenaLawId): boolean {
+    return state.arena.law === law;
+}
+
+/**
+ * No cannon, no faces in the sky — whether because a `silent-arena` wildcard
+ * was drawn for this run or because the arena's own standing law is
+ * `noCannons`. Two different mechanisms (a run-wide condition and an
+ * arena-specific one) that mean the same thing to every consumer, so they
+ * share one check instead of every call site growing a second guard.
+ */
+export function arenaIsSilent(state: GameState): boolean {
+    return wildcardIs(state, 'silent-arena') || arenaHasLaw(state, 'noCannons');
+}
+
+/** 'No Alliances': the alliance-size cap this run is playing under. */
+export function effectiveAllianceMaxSize(state: GameState, defaultMax: number): number {
+    return wildcardIs(state, 'quell-alliance-cap') ? QUELL_MECHANICS.allianceCapSize : defaultMax;
 }
 
 /** How much earlier or later this year's border starts closing. */

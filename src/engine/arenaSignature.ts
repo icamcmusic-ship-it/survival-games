@@ -1,13 +1,14 @@
-import { Tribute } from '../models/types';
+import { SignatureRule, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
-import { getZone, severEdge, edgeKey } from './map';
+import { getZone, severEdge, edgeKey, depleteZone, depletionOf } from './map';
 import { addZoneThreat, noteSighting } from './memory';
 import { startZoneEffect, hasEffect, severRandomEdge } from './zoneEffects';
 import { injure, openWound } from './wounds';
 import { clampTribute } from './vitals';
-import { BLEEDING, ESCALATION, MEMORY, SIGNATURE_RULES } from '../data/balance';
+import { rosterFor, engageMutt } from './mutts';
+import { BLEEDING, ESCALATION, MEMORY, PROC_SIGNATURE, SIGNATURE_RULES } from '../data/balance';
 
 /**
  * Arena signature mechanics.
@@ -806,6 +807,270 @@ function terracesSignature(ctx: SimContext, cycle: number, rng: RNG) {
     if (routes.length > 1) severEdge(ctx.state, target, rng.pick(routes));
 }
 
+/**
+ * The Alpine Archipelago's rising tide: the sea comes up another fifty feet
+ * every few cycles, and whatever low ground was dry when the Games started
+ * is not dry now.
+ */
+function seapeaksSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    if (cycle % 3 !== 0) return;
+    const zones = activeZones(ctx);
+    const candidates = ctx.state.arena.zones.filter(z =>
+        zones.includes(z.name) && z.name !== ctx.state.arena.zones[0].name && (z.terrain === 'open' || z.terrain === 'ruins'));
+    if (candidates.length === 0) return;
+    const target = rng.pick(candidates);
+
+    ctx.logEvent(`THE TIDE: the water climbs another fifty feet, and ${target.name} goes under.`, [], { important: true, zone: target.name, category: 'arena' });
+    tributesIn(ctx, target.name).forEach(t => {
+        applyDamage(ctx, t, 18, { cause: `Caught by the rising tide in ${target.name}`, kind: 'arena' });
+        addZoneThreat(ctx.state, t, target.name, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Caught by the rising tide in ${target.name}`);
+    });
+    startZoneEffect(ctx, target.name, 'flooded', false);
+    const severed = new Set(ctx.state.severedEdges ?? []);
+    const routes = target.adjacent.filter(n => !severed.has(edgeKey(target.name, n)));
+    if (routes.length > 1) severEdge(ctx.state, target.name, rng.pick(routes));
+}
+
+/**
+ * The Suspended Canopy Web's needle-shrapnel drops: the Gamemakers shake the
+ * high limbs with sonic blasts, and millions of stiff needles come down like
+ * kinetic darts — through clothing, through rope bridges, through anyone
+ * still on the ground.
+ */
+function canopywebSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return;
+    const target = rng.pick(zones);
+    ctx.logEvent(`THE CANOPY: the high limbs shake, and a hail of needles rains down on ${target}.`, [], { important: true, zone: target, category: 'arena' });
+    tributesIn(ctx, target).forEach(t => {
+        if (rng.chance(SIGNATURE_RULES.canopywebDodgeBase + t.attributes.agility * 0.04)) {
+            ctx.logEvent(`${t.name} gets under cover before the worst of it reaches ${target}.`, [t.id], { zone: target, category: 'arena' });
+            return;
+        }
+        applyDamage(ctx, t, 16, { cause: `Shredded by falling needles in ${target}`, kind: 'arena' });
+        openWound(t, BLEEDING.hazardSeverity);
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Shredded by falling needles in ${target}`);
+    });
+    // The rope bridges take it worse than the tributes do.
+    if (rng.chance(SIGNATURE_RULES.canopywebSeverChance)) severRandomEdge(ctx, target);
+}
+
+/**
+ * The Whispering Acoustic Forest's resonant shattering: the Gamemakers tune
+ * the wind to the hollow pines' exact resonant frequency, and an entire
+ * grove comes apart into flying timber at once.
+ */
+function acousticforestSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    const zones = activeZones(ctx).filter(z => getZone(ctx.state.arena, z)?.terrain === 'forest');
+    if (zones.length === 0) return;
+    const target = rng.pick(zones);
+    ctx.logEvent(`THE WIND FINDS THE NOTE: the whole grove at ${target} starts to shake, and then it comes apart.`, [], { important: true, zone: target, category: 'arena' });
+    tributesIn(ctx, target).forEach(t => {
+        if (rng.chance(SIGNATURE_RULES.acousticforestDodgeBase + t.attributes.agility * 0.04)) {
+            ctx.logEvent(`${t.name} throws themself flat as ${target} implodes into splinters overhead.`, [t.id], { zone: target, category: 'arena' });
+            return;
+        }
+        applyDamage(ctx, t, 24, { cause: `Caught in the shattering trees of ${target}`, kind: 'arena' });
+        openWound(t, BLEEDING.hazardSeverity);
+        t.vitals.sanity -= SIGNATURE_RULES.acousticforestSanityLoss;
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Caught in the shattering trees of ${target}`);
+    });
+}
+
+/**
+ * The Post-Burn Scar's heat-activated seed shrapnel: thermal flares trigger
+ * serotinous cones to explode like shrapnel, igniting brushfires and seeding
+ * instant-growth thorn barriers in the same instant.
+ */
+function burnscarSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return;
+    const target = rng.pick(zones);
+    ctx.logEvent(`THE MOUNTAIN CATCHES HEAT: the seed pods over ${target} go off at once, and the brush with them.`, [], { important: true, zone: target, category: 'arena' });
+    tributesIn(ctx, target).forEach(t => {
+        applyDamage(ctx, t, 15, { cause: `Caught in the seed-shrapnel over ${target}`, kind: 'arena' });
+        if (!t.injuries.burned && rng.chance(SIGNATURE_RULES.burnscarBurnChance)) injure(t, 'burned');
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Caught in the seed-shrapnel over ${target}`);
+    });
+    startZoneEffect(ctx, target, 'burning', false);
+    if (rng.chance(SIGNATURE_RULES.burnscarSeverChance)) severRandomEdge(ctx, target); // an instant thorn barrier
+}
+
+/**
+ * The Overgrown Ordnance Crater Field's pressure-sensitive seed pods: the
+ * vines' pods look like wild fruit and detonate like landmines when picked.
+ */
+function craterfieldSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return;
+    const target = rng.pick(zones);
+    const present = tributesIn(ctx, target);
+    if (present.length === 0) return;
+    const t = rng.pick(present);
+    if (rng.chance(SIGNATURE_RULES.craterfieldDodgeBase + t.attributes.agility * 0.03)) {
+        ctx.logEvent(`${t.name} spots the seed pod in ${target} for what it is, just in time.`, [t.id], { zone: target, category: 'arena' });
+        return;
+    }
+    ctx.logEvent(`${t.name} reaches for what looks like fruit in ${target}, and the pod goes off in their hand.`, [t.id], { important: true, zone: target, category: 'arena' });
+    applyDamage(ctx, t, 26, { cause: `Caught by a pressure pod in ${target}`, kind: 'arena' });
+    openWound(t, BLEEDING.hazardSeverity);
+    addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+    clampTribute(t);
+    checkDeath(ctx, t, `Caught by a pressure pod in ${target}`);
+}
+
+/**
+ * The declarative signature grammar for procedurally generated arenas.
+ *
+ * Every hand-authored arena above got a bespoke rule; every procedural arena
+ * got none — `SIGNATURES[id]` was always undefined for the four `procedural-*`
+ * ids, so `runArenaSignature` silently no-oped and two arenas of the same
+ * biome played identically. `SignatureRule` (models/types.ts) composes one
+ * from `trigger × selector × payload × telegraph`, rolled once per generated
+ * arena in `generateArena` and stored on `Arena.signatureRule`. This runs it
+ * through the exact same primitives the hand-authored signatures above use.
+ */
+
+function triggerFires(ctx: SimContext, trigger: SignatureRule['trigger'], cycle: number): boolean {
+    switch (trigger.kind) {
+        case 'everyCycle': return true;
+        case 'everyNth': return cycle % Math.max(1, trigger.n ?? 3) === 0;
+        case 'nightsOnly': return ctx.state.timeOfDay !== 'day';
+        case 'daysOnly': return ctx.state.timeOfDay === 'day';
+        case 'afterEscalation': return ctx.state.escalationDay !== undefined;
+        case 'lowSurvivors': return getAlive(ctx.state).length <= (trigger.threshold ?? 6);
+        default: return true;
+    }
+}
+
+function selectSignatureZones(ctx: SimContext, selector: SignatureRule['selector'], cycle: number): string[] {
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return [];
+    switch (selector.kind) {
+        case 'allZones':
+            return zones;
+        case 'fixedRotation': {
+            const all = ctx.state.arena.zones.map(z => z.name);
+            const striking = all[cycle % all.length];
+            return zones.includes(striking) ? [striking] : [];
+        }
+        case 'busiestZone':
+        case 'emptiestZone': {
+            const counts = zones.map(z => [z, tributesIn(ctx, z).length] as const);
+            counts.sort((a, b) => selector.kind === 'busiestZone' ? b[1] - a[1] : a[1] - b[1]);
+            return counts.length ? [counts[0][0]] : [];
+        }
+        case 'nearCornucopia': {
+            const cornucopia = ctx.state.arena.zones[0];
+            const adj = (cornucopia?.adjacent ?? []).filter(n => zones.includes(n));
+            return adj.length ? adj : (cornucopia && zones.includes(cornucopia.name) ? [cornucopia.name] : []);
+        }
+        case 'lowestDanger': {
+            const withDanger = ctx.state.arena.zones
+                .filter(z => zones.includes(z.name))
+                .sort((a, b) => a.danger - b.danger);
+            return withDanger.length ? [withDanger[0].name] : [];
+        }
+        default:
+            return [];
+    }
+}
+
+/** One cycle's warning, in the same voice `clockworkSignature` already uses for `next`. */
+function telegraphSignature(ctx: SimContext, rule: SignatureRule, cycle: number, rng: RNG) {
+    if (rule.telegraph.kind === 'none') return;
+    const upcoming = selectSignatureZones(ctx, rule.selector, cycle + 1);
+    if (upcoming.length === 0) return;
+    let named = upcoming;
+    if (rule.telegraph.kind === 'falseChance' && rng.chance(rule.telegraph.falseChance ?? PROC_SIGNATURE.falseChanceMin)) {
+        const others = activeZones(ctx).filter(z => !upcoming.includes(z));
+        if (others.length > 0) named = [rng.pick(others)];
+    }
+    ctx.logEvent(
+        `THE ARENA: something in ${named.join(' and ')} is about to give way.`,
+        [],
+        { zone: named[0], category: 'arena' }
+    );
+}
+
+function applySignaturePayload(ctx: SimContext, zones: string[], payload: SignatureRule['payload'], rng: RNG) {
+    switch (payload.kind) {
+        case 'damageEffect': {
+            const damage = payload.amount ?? PROC_SIGNATURE.damageBase;
+            zones.forEach(zone => {
+                tributesIn(ctx, zone).forEach(t => {
+                    if (rng.chance(PROC_SIGNATURE.dodgeBase + t.attributes.agility * PROC_SIGNATURE.dodgeAgility)) {
+                        ctx.logEvent(`${t.name} feels the arena shift in ${zone} and gets clear in time.`, [t.id], { zone, category: 'arena' });
+                        return;
+                    }
+                    applyDamage(ctx, t, damage, { cause: `Caught by the arena in ${zone}`, kind: 'arena' });
+                    addZoneThreat(ctx.state, t, zone, MEMORY.hazardThreat * 2);
+                    clampTribute(t);
+                    checkDeath(ctx, t, `Caught by the arena in ${zone}`);
+                });
+                if (payload.effect) startZoneEffect(ctx, zone, payload.effect, false);
+            });
+            break;
+        }
+        case 'severEdges':
+            zones.forEach(zone => severRandomEdge(ctx, zone));
+            break;
+        case 'invertResources':
+            zones.forEach(zone => {
+                const current = depletionOf(ctx.state, zone);
+                const delta = current >= PROC_SIGNATURE.invertMidpoint ? -PROC_SIGNATURE.invertDelta : PROC_SIGNATURE.invertDelta;
+                depleteZone(ctx.state, zone, delta);
+            });
+            ctx.logEvent(`THE ARENA: what was scarce is suddenly plentiful, and what was plentiful is gone.`, [], { category: 'arena' });
+            break;
+        case 'spawnMutt': {
+            const roster = rosterFor(ctx);
+            if (roster.length === 0) break;
+            zones.forEach(zone => {
+                const present = tributesIn(ctx, zone);
+                if (present.length === 0) return;
+                engageMutt(ctx, rng.pick(present), rng.pick(roster));
+            });
+            break;
+        }
+        case 'drainVital':
+            zones.forEach(zone => {
+                tributesIn(ctx, zone).forEach(t => {
+                    t.vitals.sanity -= payload.amount ?? PROC_SIGNATURE.sanityDrain;
+                    t.vitals.fatigue += PROC_SIGNATURE.fatigueDrain;
+                    clampTribute(t);
+                });
+            });
+            break;
+        case 'revealPositions':
+            zones.forEach(zone => {
+                const present = tributesIn(ctx, zone);
+                if (present.length === 0) return;
+                getAlive(ctx.state).forEach(t => addZoneThreat(ctx.state, t, zone, MEMORY.cannonThreat));
+            });
+            ctx.logEvent(`THE ARENA: every position in the field lights up on the Gamemakers' board, and everyone knows it.`, [], { category: 'arena' });
+            break;
+        default:
+            break;
+    }
+}
+
+export function runDeclarativeSignature(ctx: SimContext, rule: SignatureRule, cycle: number, rng: RNG) {
+    if (!triggerFires(ctx, rule.trigger, cycle)) return;
+    telegraphSignature(ctx, rule, cycle, rng);
+    const zones = selectSignatureZones(ctx, rule.selector, cycle);
+    if (zones.length === 0) return;
+    applySignaturePayload(ctx, zones, rule.payload, rng);
+}
+
 const SIGNATURES: Record<string, Signature> = {
     islands: islandsSignature,
     eclipse: eclipseSignature,
@@ -830,11 +1095,35 @@ const SIGNATURES: Record<string, Signature> = {
     ashfall: ashfallSignature,
     saltflats: saltflatsSignature,
     sporefields: sporefieldsSignature,
+    seapeaks: seapeaksSignature,
+    canopyweb: canopywebSignature,
+    acousticforest: acousticforestSignature,
+    burnscar: burnscarSignature,
+    craterfield: craterfieldSignature,
 };
 
 /** True when this arena has a rule of its own — used by the UI to explain it. */
-export function hasSignature(arenaId: string): boolean {
-    return SIGNATURES[arenaId] !== undefined;
+export function hasSignature(arenaId: string, signatureRule?: SignatureRule): boolean {
+    return SIGNATURES[arenaId] !== undefined || signatureRule !== undefined;
+}
+
+/** A generated one-line summary of a composed rule, for arenas with no hand-authored blurb. */
+export function describeSignatureRule(rule: SignatureRule): string {
+    const when: Record<SignatureRule['trigger']['kind'], string> = {
+        everyCycle: 'every cycle', everyNth: 'on a rotation', nightsOnly: 'every night',
+        daysOnly: 'every day', afterEscalation: 'once the border starts closing', lowSurvivors: 'once the field thins out',
+    };
+    const where: Record<SignatureRule['selector']['kind'], string> = {
+        fixedRotation: 'a zone that rotates on a schedule', busiestZone: 'wherever the most tributes are standing',
+        emptiestZone: 'wherever almost nobody is standing', nearCornucopia: 'a zone near the Cornucopia',
+        lowestDanger: 'the zone that looked safest', allZones: 'the whole arena at once',
+    };
+    const what: Record<SignatureRule['payload']['kind'], string> = {
+        damageEffect: 'turns lethal', severEdges: 'cuts off a route out', invertResources: 'flips scarce and plentiful',
+        spawnMutt: 'lets something loose', drainVital: 'wears at whoever is there', revealPositions: 'lights up every position on the board',
+    };
+    const telegraphed = rule.telegraph.kind === 'none' ? 'without warning' : 'with a warning the cycle before';
+    return `${when[rule.trigger.kind]}, ${where[rule.selector.kind]} ${what[rule.payload.kind]}, ${telegraphed}.`;
 }
 
 export { SIGNATURE_BLURBS } from '../data/signatureBlurbs';
@@ -845,13 +1134,17 @@ export { SIGNATURE_BLURBS } from '../data/signatureBlurbs';
  * tributes actually ended up.
  */
 export function runArenaSignature(ctx: SimContext) {
-    const signature = SIGNATURES[ctx.state.arena.id];
-    if (!signature) return;
     // The Gamemakers want a victor, not an empty arena. Once the field is down
     // to the finalists the arena stops taking swings of its own and lets them
     // settle it — the same principle the border collapse follows.
     if (getAlive(ctx.state).length <= ESCALATION.finalistCount) return;
     const cycle = ctx.state.cycle ?? 0;
+    const signature = SIGNATURES[ctx.state.arena.id];
     const rng = new RNG(`${ctx.state.seed}-signature-${ctx.state.arena.id}-${cycle}`);
-    signature(ctx, cycle, rng);
+    if (signature) {
+        signature(ctx, cycle, rng);
+        return;
+    }
+    const rule = ctx.state.arena.signatureRule;
+    if (rule) runDeclarativeSignature(ctx, rule, cycle, rng);
 }

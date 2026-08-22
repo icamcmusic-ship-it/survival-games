@@ -2,7 +2,9 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { ALLIANCES, PROTECTOR_BOND, ROMANCE, SUSPICION } from '../../data/balance';
+import { ALLIANCES, PROTECTOR_BOND, QUELL_MECHANICS, ROMANCE, SUSPICION } from '../../data/balance';
+import { applyDamage, checkDeath } from '../combat';
+import { clampTribute } from '../vitals';
 import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel, trustOf } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, suspicionOf } from '../memory';
@@ -11,7 +13,7 @@ import { resolveBetrayal } from '../betrayal';
 import { betrayalReluctance } from '../debts';
 import { addExcitement } from '../audience';
 import { traitMod } from '../../data/traits';
-import { wildcardIs } from '../gamesProfile';
+import { effectiveAllianceMaxSize, wildcardIs } from '../gamesProfile';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -101,6 +103,27 @@ export function processAlliances(ctx: SimContext) {
             alliances.get(t.allianceId)!.push(t);
         }
     });
+
+    // 0. 'No Alliances': the recruit/merge caps above stop a group from
+    // *growing* past the limit, but the Career pack still forms all at once
+    // at the bloodbath — this is the Gamemakers' answer to that, a small
+    // hazard tax on anyone still standing in an oversized group.
+    if (wildcardIs(ctx.state, 'quell-alliance-cap')) {
+        const cap = effectiveAllianceMaxSize(ctx.state, ALLIANCES.maxSize);
+        alliances.forEach(members => {
+            if (members.length <= cap) return;
+            members.forEach(m => {
+                applyDamage(ctx, m, QUELL_MECHANICS.allianceCapHazardDamage, { cause: 'Struck down for defying the Gamemakers\' Quell', kind: 'arena' });
+                clampTribute(m);
+                checkDeath(ctx, m, 'Struck down for defying the Gamemakers\' Quell');
+            });
+            ctx.logEvent(
+                `The Gamemakers make an example of the pack still travelling ${members.length} strong. This year, that costs them.`,
+                members.map(m => m.id),
+                { important: true, category: 'gamemaker' }
+            );
+        });
+    }
 
     // 1. Dissolve small alliances
     alliances.forEach((members, id) => {
@@ -326,9 +349,10 @@ export function processAlliances(ctx: SimContext) {
         groups.get(t.allianceId)!.push(t);
     });
 
+    const maxSize = effectiveAllianceMaxSize(ctx.state, ALLIANCES.maxSize);
     groups.forEach((members, id) => {
         if (alliancesForbidden) return;
-        if (members.length < 2 || members.length >= ALLIANCES.maxSize) return;
+        if (members.length < 2 || members.length >= maxSize) return;
         // Star-crossed lovers are a pair, not the seed of a gang.
         if (id.startsWith('lovers-')) return;
 
@@ -341,7 +365,7 @@ export function processAlliances(ctx: SimContext) {
 
         candidates.forEach(candidate => {
             if (candidate.allianceId) return;
-            if (members.length >= ALLIANCES.maxSize) return;
+            if (members.length >= maxSize) return;
 
             // Both directions have to hold: the group has to want them, and
             // they have to want the group.
@@ -488,6 +512,7 @@ function mergeAlliances(ctx: SimContext) {
         if (!groups.has(t.allianceId)) groups.set(t.allianceId, []);
         groups.get(t.allianceId)!.push(t);
     });
+    const maxSize = effectiveAllianceMaxSize(ctx.state, ALLIANCES.maxSize);
 
     // Bounded per cycle rather than returning on the first success, which made
     // a third merge-ready pairing wait a cycle for no reason. See
@@ -501,7 +526,7 @@ function mergeAlliances(ctx: SimContext) {
             // A group absorbed earlier this cycle is no longer its own group.
             if (!a || !b || !groups.has(ids[i]) || !groups.has(ids[j])) continue;
             if (a.length < 2 || b.length < 2) continue;
-            if (a.length + b.length > ALLIANCES.maxSize) continue;
+            if (a.length + b.length > maxSize) continue;
             // Same ground, or there is no conversation to have — judged by the
             // leaders who would do the negotiating, not by array order.
             if (pickLeader(a).zone !== pickLeader(b).zone) continue;

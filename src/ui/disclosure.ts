@@ -40,6 +40,8 @@ export const canSeeArchetype = (d: Disclosure) => d !== 'public';
 export const canSeeTraits = (d: Disclosure) => d === 'interviewed' || d === 'open';
 export const canSeeExactAttributes = (d: Disclosure) => d === 'open';
 export const canSeeAttributeBands = (d: Disclosure) => d !== 'public';
+/** A "Random Arena" pick at setup: the identity stays sealed until the Games actually begin. */
+export const canSeeArena = (d: Disclosure) => d === 'open';
 
 /**
  * An attribute as the Capitol reports it before the gong: a band, not a number.

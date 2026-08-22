@@ -172,6 +172,81 @@ export const SIGNATURE_RULES = {
     alpineDodgeBase: 0.3,
     terracesDodgeBase: 0.35,
     terracesFatigue: 12,
+    canopywebDodgeBase: 0.3,
+    canopywebSeverChance: 0.5,
+    acousticforestDodgeBase: 0.28,
+    acousticforestSanityLoss: 8,
+    burnscarBurnChance: 0.3,
+    burnscarSeverChance: 0.5,
+    craterfieldDodgeBase: 0.35,
+} as const;
+
+/**
+ * The declarative signature grammar (procedural arenas only — see
+ * `SignatureRule` in models/types.ts and `runDeclarativeSignature` in
+ * engine/arenaSignature.ts). Hand-authored arenas' bespoke functions above
+ * keep their own inline numbers; this is the shared dial set for every
+ * composed rule a generated arena gets instead.
+ */
+export const PROC_SIGNATURE = {
+    /** 'everyNth' trigger: how many cycles between beats, [min, max]. */
+    everyNthMin: 2,
+    everyNthMax: 4,
+    /** 'lowSurvivors' trigger: alive-count threshold, [min, max]. */
+    lowSurvivorsMin: 4,
+    lowSurvivorsMax: 8,
+    /** 'damageEffect' payload base damage and its dodge roll. */
+    damageBase: 18,
+    dodgeBase: 0.25,
+    dodgeAgility: 0.04,
+    /** 'drainVital' payload magnitudes. */
+    sanityDrain: 8,
+    fatigueDrain: 10,
+    /** 'invertResources' payload: how far a zone's depletion swings, and the midpoint that decides which way. */
+    invertDelta: 0.4,
+    invertMidpoint: 0.5,
+    /** 'falseChance' telegraph: odds the warning names the wrong zone, [min, max] when rolled at generation. */
+    falseChanceMin: 0.15,
+    falseChanceMax: 0.35,
+} as const;
+
+/**
+ * Numeric dials for the Quell-specific mechanics in src/data/gamesProfile.ts
+ * (QUELLS) that need more than a temperament/config multiplier — see each
+ * consumer for exactly where it's read.
+ */
+export const QUELL_MECHANICS = {
+    /** 'No Alliances': hard cap on alliance size, and the per-cycle tax on anyone still in a group over it. */
+    allianceCapSize: 2,
+    allianceCapHazardDamage: 8,
+    /** 'The Mandatory Alliance': vitals cost per cycle spent apart from your district partner. */
+    mandatoryPartnerSanityDrain: 5,
+    mandatoryPartnerFatigueDrain: 4,
+    /** 'Two Victors': odds the Capitol's promise holds at the final moment (a literal coin flip). */
+    twoVictorsHoldChance: 0.5,
+    /** 'The Bounty Quell': how often the target rotates, and the standing sponsor boost for whoever collects it. */
+    bountyRetargetEveryCycles: 6,
+    bountySponsorTrustBonus: 30,
+    /** 'The Blood Debt': sponsor-generosity multiplier applied to any tribute who has killed. */
+    bloodDebtGenerosityMult: 0.4,
+    /** 'The Reflection': how a tribute's own attributes translate into their mirror mutt's kit. */
+    reflectionDamageScale: 1.1,
+    reflectionSpeedScale: 1.0,
+    reflectionFearAura: 12,
+    /** 'The Moving Arena': how often two zones trade terrain/danger/resources. */
+    movingArenaEveryCycles: 5,
+} as const;
+
+/**
+ * Per-arena terrain variance (procedural arenas only). The generator's base
+ * `TERRAIN_PROFILES` is one danger/resource band per terrain shared by every
+ * arena ever generated — this is how far a single arena's own version of a
+ * terrain is allowed to drift from that shared band, so "forest" can mean a
+ * larder in one arena and a hunting ground in another.
+ */
+export const PROC_TERRAIN = {
+    /** Max shift applied to both ends of a terrain's danger/resources band. */
+    shiftMax: 0.18,
 } as const;
 
 /** What each trait is worth, in the units the vitals loop works in. */
@@ -989,6 +1064,11 @@ export const MUTTS = {
      */
     facesOfFallenChance: 0.08,
     facesOfFallenSanityLoss: 30,
+    /** `herder` role: a connecting hit relocates instead of damaging. Sanity cost for the shove, no health cost. */
+    herderSanityLoss: 6,
+    /** `swarm` role: extra damage multiplier per additional tribute present in the zone, beyond the first. */
+    swarmDamagePerAlly: 0.25,
+    swarmDamageCap: 2.5,
 } as const;
 
 export const ZONE_EFFECTS = {

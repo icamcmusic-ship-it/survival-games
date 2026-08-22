@@ -14,6 +14,7 @@ import { GamemakerEventType, triggerGamemakerEvent as triggerGamemakerEventPhase
 import { checkDualVictory } from './victory';
 import { fireScheduledWildcard } from './wildcards';
 import { FEAST_TEXTS } from '../data/flavorText';
+import { wildcardIs } from './gamesProfile';
 
 const MAX_FEASTS = 2;
 
@@ -129,6 +130,20 @@ export class Simulator {
      */
     private maybeAnnounceFeast() {
         if (!this.state.config.enableFeast) return;
+
+        // 'The Feast Quell': a feast every single night, no cap, no roll —
+        // the ordinary scarcity/overdue logic below never even runs.
+        if (wildcardIs(this.state, 'quell-feast-nightly')) {
+            if (this.state.feastDay !== undefined) return;
+            if (getAlive(this.state).length <= 2) return;
+            this.state.feastDay = this.state.day + 1;
+            this.ctx.logEvent(
+                'THE CAPITOL: there will be a feast every night this year, and nothing else worth eating.',
+                [], { important: true, category: 'feast' }
+            );
+            return;
+        }
+
         if ((this.state.feastsHeld ?? 0) >= MAX_FEASTS) return;
         // One already announced and not yet convened — re-announcing would push
         // the date back a day every night and the table would never be laid.

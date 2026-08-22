@@ -15,6 +15,7 @@ import { Explainer } from '../components/Explainer';
 import { ordinal } from '../engine/gamesProfile';
 import { gameActions, gameStore } from '../store/gameStore';
 import { readFilters, writeFilters } from '../utils/prefsStorage';
+import { canSeeArena, disclosureFor } from '../ui/disclosure';
 
 import { useStore } from '../store/createStore';
 
@@ -58,6 +59,9 @@ export function GameScreen({
     onRunToEnd: () => void,
     onGamemakerEvent: (type: GamemakerEventType, targetId?: string) => void,
 }) {
+    // A "Random Arena (Hidden)" pick at setup: identity, zone names and the
+    // map itself stay out of the UI until the bloodbath phase reveals them.
+    const arenaSealed = !!gameState.arenaHidden && !canSeeArena(disclosureFor(gameState.phase));
     const storedFilters = useRef(readStoredFilters());
     const [selectedTributeId, setSelectedTributeId] = useState<string | null>(null);
     const [speed, setSpeed] = useState<Speed>('manual');
@@ -204,7 +208,7 @@ export function GameScreen({
             // The help panel is modal: only the keys that close it respond.
             if (showHelp && e.key !== 'Escape' && e.key !== '?') return;
 
-            const zones = gameState.arena.zones.map(z => z.name);
+            const zones = arenaSealed ? [] : gameState.arena.zones.map(z => z.name);
             const cycle = <T,>(list: T[], current: T | null, step: number): T | null => {
                 if (list.length === 0) return null;
                 if (current === null) return step > 0 ? list[0] : list[list.length - 1];
@@ -340,7 +344,7 @@ export function GameScreen({
 
     /** UX: the chronicle is the artefact people share — offer it as markdown. */
     const exportChronicle = (copy: boolean) => {
-        const lines: string[] = [`# ${gameState.arena.name} — seed ${gameState.seed}`, ''];
+        const lines: string[] = [`# ${arenaSealed ? 'Arena sealed' : gameState.arena.name} — seed ${gameState.seed}`, ''];
         let lastDay = -1;
         filteredLogs.forEach(l => {
             if (l.day !== lastDay) {
@@ -465,7 +469,9 @@ export function GameScreen({
                     <div className="flex flex-wrap justify-between items-start gap-4 pb-3 border-b border-[var(--color-ink-800)]">
                         <div>
                             <h2 className="display-title text-2xl">{phaseLabel}</h2>
-                            <p className="text-[var(--color-ink-400)] text-sm mt-0.5">{gameState.arena.name}</p>
+                            <p className="text-[var(--color-ink-400)] text-sm mt-0.5" title={arenaSealed ? 'Sealed until the Games begin.' : undefined}>
+                                {arenaSealed ? '❓ Arena sealed' : gameState.arena.name}
+                            </p>
                         </div>
                         {!isOver && (
                             <div className="flex items-center gap-2">
@@ -668,14 +674,20 @@ export function GameScreen({
                 {/* ---------- main pane ---------- */}
                 {tacticalTab === 'map' ? (
                     <div className="panel p-5 space-y-4">
-                        <ArenaMap
-                            gameState={gameState}
-                            selectedZone={selectedZone}
-                            onSelectZone={setSelectedZone}
-                            tributes={gameState.tributes}
-                        />
+                        {arenaSealed ? (
+                            <div className="empty-state py-12">
+                                ❓ The Capitol has not shown this arena to anyone yet. The map unseals at the bloodbath.
+                            </div>
+                        ) : (
+                            <ArenaMap
+                                gameState={gameState}
+                                selectedZone={selectedZone}
+                                onSelectZone={setSelectedZone}
+                                tributes={gameState.tributes}
+                            />
+                        )}
 
-                        {selectedZone ? (
+                        {!arenaSealed && selectedZone ? (
                             <div className="panel-flush p-4 animate-fadeIn">
                                 <div className="flex justify-between items-center mb-3">
                                     <span className="panel-title text-[var(--red)]">Sector log — {selectedZone}</span>
@@ -970,9 +982,11 @@ export function GameScreen({
                                     value={gmZone}
                                     onChange={e => setGmZone(e.target.value)}
                                     className="field text-xs"
+                                    disabled={arenaSealed}
+                                    title={arenaSealed ? 'Sealed until the Games begin.' : undefined}
                                 >
                                     <option value="">Random zone</option>
-                                    {gameState.arena.zones
+                                    {!arenaSealed && gameState.arena.zones
                                         .filter(z => !(gameState.collapsedZones ?? []).includes(z.name))
                                         .map(z => <option key={z.name} value={z.name}>{z.name}</option>)}
                                 </select>
@@ -1079,7 +1093,7 @@ export function GameScreen({
                                                     <>
                                                         <span className="flex items-center gap-1"><Heart className="w-3 h-3 text-[var(--cat-death)]" /> {t.health}</span>
                                                         <span className="flex items-center gap-1"><Swords className="w-3 h-3" /> {t.kills}</span>
-                                                        <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3 text-[var(--cat-travel)]" /> {t.zone}</span>
+                                                        <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3 text-[var(--cat-travel)]" /> {arenaSealed ? '❓' : t.zone}</span>
                                                         {/* What they are actually trying to do, so the sidebar
                                                             explains the movement instead of just reporting it. */}
                                                         <span className="w-full truncate text-[var(--red)]">{objectiveLabel(gameState, t)}</span>

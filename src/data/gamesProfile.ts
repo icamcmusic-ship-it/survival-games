@@ -13,6 +13,8 @@
  * subsystem, so a profile cannot break a run, only colour it.
  */
 
+import type { ArenaLawId, GameConfig } from '../models/types';
+
 export interface GamesTemperament {
     id: string;
     /** Headline, as the Capitol would print it. */
@@ -112,7 +114,15 @@ export type WildcardKind =
     | 'rule-change-allies' | 'rule-change-no-allies'
     | 'blackout' | 'drought' | 'bounty'
     | 'quarter-quell-pairs' | 'quarter-quell-doubled'
-    | 'nothing' | 'silent-arena' | 'crowd-revolt';
+    | 'nothing' | 'silent-arena' | 'crowd-revolt'
+    // Quell-only standing conditions (see QUELLS below). Never drawn from the
+    // ordinary WILDCARDS pool — gamesProfileFor injects them directly into a
+    // run's calendar when the matching Quell is rolled, so they can never
+    // appear on a non-Quell run.
+    | 'quell-alliance-cap' | 'quell-mandatory-partner' | 'quell-sponsors-by-vote'
+    | 'quell-cornucopia-forfeit' | 'quell-moving-arena' | 'quell-two-victors'
+    | 'quell-bounty-rotating' | 'quell-long-games' | 'quell-feast-nightly'
+    | 'quell-reflection' | 'quell-weapons-fixed' | 'quell-blood-debt';
 
 export interface Wildcard {
     kind: WildcardKind;
@@ -262,7 +272,7 @@ export const WILDCARDS: WildcardDef[] = [
  */
 export type CastShapeId =
     | 'ordinary' | 'young-field' | 'veteran-field' | 'all-volunteer'
-    | 'career-heavy' | 'outer-districts' | 'bonded-pairs';
+    | 'career-heavy' | 'outer-districts' | 'bonded-pairs' | 'victors-field';
 
 export interface CastShape {
     id: CastShapeId;
@@ -317,5 +327,176 @@ export const CAST_SHAPES: CastShape[] = [
         id: 'bonded-pairs', name: 'a reaping of bonded pairs',
         blurb: 'Each district sends two who already know each other, and the Capitol has made very sure everybody understands what that means.',
         ageShift: 0, volunteerChance: 0, careerBias: 0, talentBonus: 0, pairBond: 70, weight: 2,
+    },
+    {
+        // Quell-only — the "Victors' Field" Quell below is the sole source of
+        // this shape (weight 0 keeps it out of the ordinary weighted draw).
+        id: 'victors-field', name: 'a field of victors',
+        blurb: 'Every tribute this year has done this before. Whatever they learned the first time, they brought it back with them.',
+        ageShift: 3, volunteerChance: 0, careerBias: 0.1, talentBonus: 1.6, pairBond: 25, weight: 0,
+    },
+];
+
+/**
+ * A Quarter Quell: a structural change to the reaping, the arena's rules, or
+ * the win condition for one run — not a hazard multiplier. `quarter-quell-pairs`
+ * and `quarter-quell-doubled` already exist as ordinary `WildcardDef` entries
+ * (drawn like "an early feast"); a Quell wraps one or more standing
+ * conditions into a single named, announced package, and is drawn from its
+ * own low-weight pool in `gamesProfileFor` (engine/gamesProfile.ts) rather
+ * than the general wildcard calendar, so it composes with (and doesn't
+ * crowd out) that run's own wildcard beats.
+ *
+ * Preferred mechanism is `standingWildcards`: reuse an existing `WildcardKind`
+ * (or one of the `quell-*` kinds above) wherever one already does the job, so
+ * every consumer that already checks `wildcardIs`/`calendarOf` picks the
+ * Quell up for free. `castShapeOverride`/`temperamentOverride`/`configOverride`/
+ * `arenaLawOverride` are for the handful of Quells that need a lever no
+ * wildcard already provides.
+ */
+export interface Quell {
+    id: string;
+    name: string;
+    /** Read at the reaping, in the Capitol's own voice. */
+    announcement: string;
+    standingWildcards?: WildcardKind[];
+    castShapeOverride?: CastShapeId;
+    temperamentOverride?: Partial<GamesTemperament>;
+    configOverride?: Partial<GameConfig>;
+    arenaLawOverride?: ArenaLawId;
+    /** Relative draw weight within the Quell pool (not the ordinary wildcard pool). */
+    weight: number;
+}
+
+/**
+ * REPLAY-11: 20 Quells (of an original 22 — "No Victor" and "The Mentors'
+ * Quell" were cut as needing a hidden-win-condition system and a one-off
+ * mentor-intervention system respectively, neither of which exists yet).
+ * "Bonded Pairs" and "The Silent Games" wrap wildcards that already have
+ * full mechanical effects (see gamesProfile.ts/victory.ts/dayNight.ts) —
+ * everything else here is genuinely new, gated on its own `quell-*` kind.
+ */
+export const QUELLS: Quell[] = [
+    {
+        id: 'bonded-pairs', name: 'Bonded Pairs',
+        announcement: 'QUARTER QUELL: tributes will be reaped in bonded pairs from each district.',
+        standingWildcards: ['quarter-quell-pairs'],
+        weight: 3,
+    },
+    {
+        id: 'victors-field', name: "Victors' Field",
+        announcement: "QUARTER QUELL: as a reminder that no Games are ever truly over, this year's pool is drawn from the ranks of past victors.",
+        castShapeOverride: 'victors-field',
+        weight: 2,
+    },
+    {
+        id: 'doubled-reaping', name: 'The Doubled Reaping',
+        announcement: 'QUARTER QUELL: as a reminder that the Capitol can always ask for more, every district will send its full complement — forty-eight tributes will enter the arena.',
+        configOverride: { districtCount: 12 },
+        temperamentOverride: { hazardRate: 1.6, betrayalRate: 1.2, escalationShift: -3, sponsorGenerosity: 1 },
+        weight: 2,
+    },
+    {
+        id: 'no-alliances', name: 'No Alliances',
+        announcement: 'QUARTER QUELL: any alliance of more than two will be punished by the Gamemakers themselves.',
+        standingWildcards: ['quell-alliance-cap'],
+        weight: 2,
+    },
+    {
+        id: 'mandatory-alliance', name: 'The Mandatory Alliance',
+        announcement: 'QUARTER QUELL: every tribute must remain within one zone of their district partner, or be marked.',
+        standingWildcards: ['quell-mandatory-partner'],
+        weight: 2,
+    },
+    {
+        id: 'silent-games', name: 'The Silent Games',
+        announcement: 'QUARTER QUELL: there will be no cannons, no faces in the sky, and no death announcements this year.',
+        standingWildcards: ['silent-arena'],
+        weight: 2,
+    },
+    {
+        id: 'sponsors-quell', name: "The Sponsors' Quell",
+        announcement: 'QUARTER QUELL: sponsor gifts will be decided by a vote of the Capitol audience, not bought.',
+        standingWildcards: ['quell-sponsors-by-vote'],
+        weight: 2,
+    },
+    {
+        id: 'volunteers-quell', name: "The Volunteers' Quell",
+        announcement: 'QUARTER QUELL: every district must send a volunteer this year, or forfeit its tribute entirely.',
+        castShapeOverride: 'career-heavy',
+        weight: 1,
+    },
+    {
+        id: 'the-youngest', name: 'The Youngest',
+        announcement: 'QUARTER QUELL: every tribute this year will be reaped from the youngest eligible age.',
+        castShapeOverride: 'young-field',
+        weight: 2,
+    },
+    {
+        id: 'the-elders', name: "The Elders' Quell",
+        announcement: 'QUARTER QUELL: every tribute this year will be reaped from the oldest eligible age.',
+        castShapeOverride: 'veteran-field',
+        weight: 2,
+    },
+    {
+        id: 'cornucopia-forfeit', name: 'The Cornucopia Forfeit',
+        announcement: 'QUARTER QUELL: there will be no weapons at the Cornucopia this year. Only food.',
+        standingWildcards: ['quell-cornucopia-forfeit'],
+        weight: 2,
+    },
+    {
+        id: 'moving-arena', name: 'The Moving Arena',
+        announcement: 'QUARTER QUELL: the arena will not be the same arena on the last day as it was on the first.',
+        standingWildcards: ['quell-moving-arena'],
+        weight: 2,
+    },
+    {
+        id: 'two-victors', name: 'Two Victors',
+        announcement: 'QUARTER QUELL: the Capitol has promised that two tributes may live this year.',
+        standingWildcards: ['quell-two-victors'],
+        weight: 2,
+    },
+    {
+        id: 'bounty-quell', name: 'The Bounty Quell',
+        announcement: 'QUARTER QUELL: one tribute will be named the quarry. Whoever kills them will be fed for the rest of the Games.',
+        standingWildcards: ['quell-bounty-rotating'],
+        weight: 2,
+    },
+    {
+        id: 'tributes-choice', name: "The Tribute's Choice",
+        announcement: 'QUARTER QUELL: each district will choose its own tribute, by open vote.',
+        castShapeOverride: 'all-volunteer',
+        weight: 1,
+    },
+    {
+        id: 'long-games', name: 'The Long Games',
+        announcement: 'QUARTER QUELL: the border of the arena will not move this year, whatever else happens inside it.',
+        standingWildcards: ['quell-long-games'],
+        temperamentOverride: { escalationShift: 999 },
+        weight: 2,
+    },
+    {
+        id: 'feast-quell', name: 'The Feast Quell',
+        announcement: 'QUARTER QUELL: there will be a feast every night this year, and nothing else to eat.',
+        standingWildcards: ['quell-feast-nightly'],
+        weight: 2,
+    },
+    {
+        id: 'the-reflection', name: 'The Reflection',
+        announcement: 'QUARTER QUELL: each tribute will face a mutt wearing their own face.',
+        standingWildcards: ['quell-reflection'],
+        weight: 2,
+    },
+    {
+        id: 'weapons-quell', name: 'The Weapons Quell',
+        announcement: "QUARTER QUELL: each tribute will arrive with their district's own tool, and nothing else.",
+        standingWildcards: ['quell-weapons-fixed'],
+        weight: 2,
+    },
+    {
+        id: 'blood-debt', name: 'The Blood Debt',
+        announcement: 'QUARTER QUELL: a tribute who kills is marked. The Capitol pays the marked less.',
+        standingWildcards: ['quell-blood-debt'],
+        weight: 2,
     },
 ];

@@ -416,6 +416,8 @@ export interface ZoneEffect {
     expiresCycle: number;
     /** 'burning' only: the cycle it is next eligible to spread to a neighbour. */
     nextSpreadCycle?: number;
+    /** Multiplier on this instance's per-tick damage/chance constants. Defaults to 1 where absent. */
+    severity?: number;
 }
 
 /** A snare, deadfall or tripline left in a zone, waiting for whoever walks into it. */
@@ -432,6 +434,19 @@ export interface Trap {
 }
 
 export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland';
+
+/**
+ * A behavioural archetype layered on top of a mutt's raw kit. Undefined means
+ * a plain attacker with no special handling beyond `Mutt`'s own fields.
+ *
+ * - `ambusher`: only eligible in fogbound zones or at night.
+ * - `herder`: a connecting hit relocates the tribute to an adjacent zone instead of damaging them.
+ * - `scavenger`: only eligible in a zone where a cannon fired this cycle.
+ * - `siege`: forced `persistent`, and re-attacks pin to its original zone rather than roaming.
+ * - `mimic`: formalizes "Faces of the Fallen" — always eligible for that beat, never rolls it by chance.
+ * - `swarm`: damage scales up with how many tributes are present in the zone.
+ */
+export type MuttRole = 'ambusher' | 'herder' | 'scavenger' | 'siege' | 'mimic' | 'swarm';
 
 /**
  * A mutt archetype, not a mutt instance.
@@ -461,6 +476,10 @@ export interface Mutt {
     persistent?: boolean;
     /** Flat sanity cost from the encounter alone, evaded or not. */
     fearAura?: number;
+    /** Behavioural archetype beyond the base kit above. See `MuttRole`. */
+    role?: MuttRole;
+    /** `siege` only: the zone it never leaves. Ignored for every other role. */
+    homeZone?: string;
 }
 
 /**
@@ -505,6 +524,58 @@ export interface Zone {
     features?: ZoneFeatures;
 }
 
+/**
+ * A single override to the engine's default rules, scoped to one arena. Each
+ * law is a standing condition for the whole run, not a one-off event — see
+ * the hook it hangs off of in `arenaLaw.ts` for exactly what it changes.
+ */
+export type ArenaLawId =
+    | 'noCannons'          // no cannon/sky broadcast on death — witnessed kills are still seen in person
+    | 'cornucopiaRefills'  // the Cornucopia restocks on schedule all run, not just once early
+    | 'sponsorsFixedZone'  // gifts only deliver to a tribute standing in `Arena.lawZone`
+    | 'noNight'            // the arena never leaves 'day' — no rest phase, fatigue never fully recovers
+    | 'noWaterExceptZone'  // only `Arena.lawZone` yields any water relief; everywhere else is dry
+    | 'fireImpossible';    // fire cannot be lit anywhere in this arena
+
+/** A traversal rule layered on top of plain adjacency for one edge. Keyed by `edgeKey(a,b)` on `Arena.edgeRules`. */
+export interface EdgeRule {
+    kind: 'oneWay' | 'tolled' | 'timeGated';
+    /** 'oneWay' only: the one direction this edge may be crossed. */
+    from?: string;
+    to?: string;
+    /** 'tolled' only: an extra cost paid to cross, on top of normal travel cost. */
+    toll?: { fatigue?: number; woundChance?: number };
+    /** 'timeGated' only: the edge is only passable during this time. */
+    gatedTime?: 'day' | 'night';
+}
+
+/**
+ * A composed, declarative arena signature for procedurally generated arenas
+ * — the trigger/selector/payload/telegraph a hand-authored arena instead
+ * expresses as a bespoke function in `SIGNATURES` (engine/arenaSignature.ts).
+ * Rolled once per generated arena from `(seed, biome)` and stored here so two
+ * arenas of the same biome don't necessarily share a mechanic.
+ */
+export interface SignatureRule {
+    trigger: {
+        kind: 'everyCycle' | 'everyNth' | 'nightsOnly' | 'daysOnly' | 'afterEscalation' | 'lowSurvivors';
+        n?: number;           // 'everyNth'
+        threshold?: number;   // 'lowSurvivors'
+    };
+    selector: {
+        kind: 'fixedRotation' | 'busiestZone' | 'emptiestZone' | 'nearCornucopia' | 'lowestDanger' | 'allZones';
+    };
+    payload: {
+        kind: 'damageEffect' | 'severEdges' | 'invertResources' | 'spawnMutt' | 'drainVital' | 'revealPositions';
+        effect?: ZoneEffectKind;  // 'damageEffect'
+        amount?: number;          // magnitude, meaning depends on `kind`
+    };
+    telegraph: {
+        kind: 'oneAhead' | 'none' | 'falseChance';
+        falseChance?: number;  // 'falseChance': odds the telegraph lies
+    };
+}
+
 export interface Arena {
     id: string;
     name: string;
@@ -514,6 +585,22 @@ export interface Arena {
     /** Flavor text only — terrain events are resolved through `arenaFlavor` (src/data/arenaFlavor.ts) via engine/encounters.ts, not this list. */
     events: string[];
     zones: Zone[];
+    /** A standing rule override for this arena only. See `ArenaLawId`. */
+    law?: ArenaLawId;
+    /** The zone a law's "except here"/"only here" clause refers to (`noWaterExceptZone`, `sponsorsFixedZone`). */
+    lawZone?: string;
+    /** Multiplier on sponsor-gift frequency for this arena. Defaults to 1. */
+    sponsorMultiplier?: number;
+    /** Per-arena renaming/retuning of the six zone-effect primitives. Absent kinds use the engine defaults. */
+    effectVocab?: Partial<Record<ZoneEffectKind, { label: string; severityMult?: number; durationMult?: number }>>;
+    /** Traversal rules beyond plain adjacency, keyed by `edgeKey(a,b)` (engine/map.ts). */
+    edgeRules?: Record<string, EdgeRule>;
+    /** Procedural arenas only: the composed signature dispatched when no hand-authored `SIGNATURES[id]` exists. */
+    signatureRule?: SignatureRule;
+    /** Procedural arenas only: per-terrain danger/resource ranges for this generated arena, overriding the generator's defaults. */
+    terrainVariant?: Partial<Record<Terrain, { danger: [number, number]; resources: [number, number] }>>;
+    /** Procedural arenas only: the real mutt kit generated for this specific arena. Takes priority over `ARENA_MUTTS` in `rosterFor`. */
+    muttRoster?: Mutt[];
 }
 
 export type Phase = 'setup' | 'roster' | 'reaping' | 'training' | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'epilogue' | 'ended';
@@ -565,6 +652,8 @@ export interface GameState {
     day: number;
     log: EventLog[];
     gamemakerMode: boolean;
+    /** Set when the player picked a random, hidden arena at setup — the identity (name, description, zone names, map) stays out of the UI until the bloodbath phase reveals it. The arena itself is still resolved deterministically from the seed. */
+    arenaHidden?: boolean;
     /** The config actually driving the simulation (base config with the games profile's multipliers applied). */
     config: GameConfig;
     /** The player's unmultiplied config, as chosen at setup — what gets shared or archived so a replay starts from the same inputs rather than double-applying the profile. */
@@ -680,6 +769,10 @@ export interface GameState {
     camps?: Record<string, { fire?: number; shelter?: number; camouflage?: number }>;
     /** Persistent mutts currently hunting a specific tribute. See `ActiveMutt`. */
     activeMutts?: ActiveMutt[];
+    /** Zones a cannon fired in this cycle, with the cycle it happened — reads as "just now" only while `cycle` still matches. Feeds the `scavenger` mutt role. */
+    recentCannonZones?: { zone: string; cycle: number }[];
+    /** 'The Bounty Quell': the currently-named quarry, and the cycle they were last (re)named. */
+    quellBounty?: { targetId: string; namedCycle: number };
 }
 
 export interface EventLog {
@@ -724,6 +817,16 @@ export interface HallOfFameEntry {
      */
     arenaId?: string;
     config?: GameConfig;
+    /**
+     * The run's Quell, so a replay reproduces it exactly rather than
+     * re-drawing from the seed (which could land on a different Quell, or
+     * none, than the archived run actually had — especially for a
+     * `forceQuell` run, whose whole premise a plain re-draw wouldn't honour).
+     * `null` means "this run had no Quell" (still pinned, so an ordinary run
+     * doesn't drift into one on replay); `undefined` means the entry predates
+     * Quells entirely and there's nothing to pin.
+     */
+    quellId?: string | null;
     /** True for a Games nobody survived — archived as its own kind of entry. */
     noVictor?: boolean;
     winnerName: string;

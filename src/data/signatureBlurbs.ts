@@ -23,4 +23,9 @@ export const SIGNATURE_BLURBS: Record<string, string> = {
     floe: 'The drift: most nights black water opens a crossing; every fourth cycle the pack grinds back together.',
     alpine: 'The snow: every second cycle a loaded slope releases onto a highland sector and buries the pass.',
     terraces: 'The slip: every third cycle a terrace settles or a cable parts, and somebody\'s road stops existing.',
+    seapeaks: 'The tide: every third cycle the sea climbs fifty feet, and one more low sector goes under for good.',
+    canopyweb: 'The shake: the high limbs let go without warning, and a hail of needles scours whatever sector is under them.',
+    acousticforest: 'The note: the wind finds a grove\'s resonant frequency, and it comes apart into flying timber at once.',
+    burnscar: 'The flash: heat-triggered pods go off like shrapnel, torching the brush and seeding thorn barriers in the same instant.',
+    craterfield: 'The pod: the vines\' fruit is rigged like a mine, and somebody in the field is about to find out.',
 };

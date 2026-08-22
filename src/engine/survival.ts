@@ -1,5 +1,5 @@
 import { Tribute } from '../models/types';
-import { DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -16,6 +16,7 @@ import { craftOf } from '../data/districts';
 import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
 import { earnTrait } from './earnedTraits';
+import { arenaHasLaw, wildcardIs } from './gamesProfile';
 
 /**
  * Staying alive between encounters: spoilage, hunger, thirst, exposure, wounds
@@ -39,15 +40,38 @@ export function processSpoilage(ctx: SimContext) {
     });
 }
 
+/**
+ * 'The Mandatory Alliance': every tribute must stay within one zone of their
+ * district partner or pay for it in fatigue and sanity, every cycle they're
+ * apart. `board` is already the alive-tributes list `processVitals` built.
+ */
+function applyMandatoryPartnerDrain(ctx: SimContext, t: Tribute, board: Tribute[]) {
+    if (!wildcardIs(ctx.state, 'quell-mandatory-partner')) return;
+    const partner = board.find(o => o.id !== t.id && o.district === t.district);
+    if (!partner) return; // no living partner left — nothing left to enforce
+    const zone = getZone(ctx.state.arena, t.zone);
+    const withinOne = t.zone === partner.zone || (zone?.adjacent.includes(partner.zone) ?? false);
+    if (withinOne) return;
+    t.vitals.sanity -= QUELL_MECHANICS.mandatoryPartnerSanityDrain;
+    t.vitals.fatigue += QUELL_MECHANICS.mandatoryPartnerFatigueDrain;
+}
+
 /** Terrain, climate and traits, applied as modifiers to the base drains. */
 function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     let hunger = VITALS.hungerDrain;
     let thirst = VITALS.thirstDrain;
-    let fatigue = time === 'day' ? VITALS.fatigueDayDrain : VITALS.fatigueNightRecovery;
+    // `noNight`: the sun never sets on this arena, so there is no true rest
+    // phase — fatigue drains at the day rate even during the scheduled
+    // 'night' phase, and never gets the night's recovery.
+    const noNight = arenaHasLaw(ctx.state, 'noNight');
+    let fatigue = time === 'day' || noNight ? VITALS.fatigueDayDrain : VITALS.fatigueNightRecovery;
 
     const zone = getZone(ctx.state.arena, t.zone);
     if (zone) {
-        if (zone.terrain === 'water' || zone.terrain === 'wetland') thirst -= VITALS.waterThirstRelief;
+        // `noWaterExceptZone`: only the arena's one designated water source
+        // gives any relief at all — everywhere else is as dry as open ground.
+        const wateredHere = !arenaHasLaw(ctx.state, 'noWaterExceptZone') || t.zone === ctx.state.arena.lawZone;
+        if ((zone.terrain === 'water' || zone.terrain === 'wetland') && wateredHere) thirst -= VITALS.waterThirstRelief;
         if (zone.terrain === 'highland') fatigue += VITALS.highlandFatiguePenalty;
         if (zone.terrain === 'forest' && time === 'night') fatigue -= VITALS.forestNightShelter;
     }
@@ -169,6 +193,8 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
 function drinkFromZone(ctx: SimContext, t: Tribute) {
     const zone = getZone(ctx.state.arena, t.zone);
     if (!zone || (zone.terrain !== 'water' && zone.terrain !== 'wetland')) return;
+    // `noWaterExceptZone`: nothing to drink anywhere but the designated zone.
+    if (arenaHasLaw(ctx.state, 'noWaterExceptZone') && t.zone !== ctx.state.arena.lawZone) return;
 
     const foul = climateOf(ctx.state.arena.id)?.foulWater === true;
     // Purification is a property of the item now, not a hardcoded id list, so
@@ -390,6 +416,7 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         t.vitals.hunger += Math.max(0, drains.hunger);
         t.vitals.thirst += Math.max(0, drains.thirst);
         t.vitals.fatigue += drains.fatigue;
+        applyMandatoryPartnerDrain(ctx, t, board);
         applySanityPressure(ctx, t, time, alliesPresent);
         clampTribute(t);
 

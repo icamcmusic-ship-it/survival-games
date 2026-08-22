@@ -1,7 +1,8 @@
 import { Arena, GameState, Tribute, Zone, ZoneFeatures } from '../models/types';
 import { traitMod } from '../data/traits';
-import { ZONES } from '../data/balance';
-import { injuryGrade } from './wounds';
+import { BLEEDING, ZONES } from '../data/balance';
+import { injuryGrade, openWound } from './wounds';
+import { SimContext } from './context';
 
 export function zoneNames(arena: Arena): string[] {
     return arena.zones.map(z => z.name);
@@ -31,6 +32,23 @@ export function travelCost(t: Tribute, dest: Zone): number {
         return (traitMod(t, 'highland') > 0 ? 1 : 2) + limping;
     }
     return 1 + limping;
+}
+
+/**
+ * `tolled` edges (`Arena.edgeRules`) charge a fatigue cost and/or a wound
+ * roll the moment a tribute commits to crossing them — called once from
+ * `beginMove` (dayNight.ts), which is the single place every kind of move
+ * (immediate, multi-cycle transit, alliance-led) actually decides to cross
+ * a specific edge.
+ */
+export function applyEdgeToll(ctx: SimContext, t: Tribute, from: string, to: string) {
+    const rule = ctx.state.arena.edgeRules?.[edgeKey(from, to)];
+    if (!rule || rule.kind !== 'tolled' || !rule.toll) return;
+    if (rule.toll.fatigue) t.vitals.fatigue = Math.min(100, t.vitals.fatigue + rule.toll.fatigue);
+    if (rule.toll.woundChance && ctx.rng.chance(rule.toll.woundChance)) {
+        openWound(t, BLEEDING.hazardSeverity);
+        ctx.logEvent(`${t.name} pays for the crossing from ${from} to ${to} in blood.`, [t.id], { important: true, category: 'travel' });
+    }
 }
 
 /** Deterministic per-name hash in [0, 1), so derived features are stable per zone. */
@@ -63,16 +81,37 @@ export function zoneFeatures(zone: Zone): ZoneFeatures {
     return { cover, elevation, chokepoint };
 }
 
+/**
+ * Whether an edge can be crossed from `a` to `b` right now, per `Arena.edgeRules`.
+ * `oneWay` only allows its declared direction; `timeGated` only allows its
+ * declared time (open when `time` isn't supplied — a caller that doesn't
+ * track time of day gets the ungated graph rather than a silent block).
+ * `tolled` edges are always passable — the toll itself is a fatigue/wound
+ * cost applied where a crossing actually commits (`beginMove` in dayNight.ts),
+ * not a reachability question.
+ */
+function edgeAllowed(arena: Arena, a: string, b: string, time?: 'day' | 'night'): boolean {
+    const rule = arena.edgeRules?.[edgeKey(a, b)];
+    if (!rule) return true;
+    switch (rule.kind) {
+        case 'oneWay': return rule.from === a && rule.to === b;
+        case 'timeGated': return time === undefined || rule.gatedTime === undefined || rule.gatedTime === time;
+        default: return true;
+    }
+}
+
 // Zones reachable in one move from `from`, excluding collapsed ones.
 // Empty when every neighbour is collapsed or severed — a tribute walled into
 // a dead end holds position (and takes the border-collapse pressure that is
 // already meant to punish that) rather than teleporting across the arena.
-export function reachableZones(arena: Arena, from: string, collapsed: string[], severed?: Set<string>): Zone[] {
+export function reachableZones(arena: Arena, from: string, collapsed: string[], severed?: Set<string>, time?: 'day' | 'night'): Zone[] {
     const active = arena.zones.filter(z => !collapsed.includes(z.name));
     const current = getZone(arena, from);
     if (!current) return active;
     return active.filter(z =>
-        current.adjacent.includes(z.name) && !(severed && severed.has(edgeKey(from, z.name))));
+        current.adjacent.includes(z.name)
+        && !(severed && severed.has(edgeKey(from, z.name)))
+        && edgeAllowed(arena, from, z.name, time));
 }
 
 /** Builds the severed-edge set once per cycle, for callers that need to pass it repeatedly. */
@@ -131,10 +170,15 @@ export function nextHopToward(
     target: string,
     collapsed: string[],
     severed?: Set<string>,
+    time?: 'day' | 'night',
 ): string | undefined {
     if (from === target) return undefined;
     const blocked = new Set(collapsed);
-    const cut = (a: string, b: string) => !!severed && severed.has(edgeKey(a, b));
+    // Note: the search below walks the BFS edge as (name -> neighbor) but a
+    // route is actually walked the other way (neighbor -> name, from the
+    // destination out to `from`) — `edgeAllowed` is checked in the direction
+    // a tribute would actually cross it, `neighbor -> name`, not the BFS's own.
+    const cut = (a: string, b: string) => (!!severed && severed.has(edgeKey(a, b))) || !edgeAllowed(arena, b, a, time);
     // Breadth-first from the destination outwards, so the first time the search
     // touches one of `from`'s neighbours we have a shortest route and that
     // neighbour is the step to take.
@@ -163,10 +207,10 @@ export function nextHopToward(
 }
 
 /** Shortest number of hops from `from` to `target` over the adjacency graph, or undefined if unreachable. */
-export function hopsTo(arena: Arena, from: string, target: string, collapsed: string[], severed?: Set<string>): number | undefined {
+export function hopsTo(arena: Arena, from: string, target: string, collapsed: string[], severed?: Set<string>, time?: 'day' | 'night'): number | undefined {
     if (from === target) return 0;
     const blocked = new Set(collapsed);
-    const cut = (a: string, b: string) => !!severed && severed.has(edgeKey(a, b));
+    const cut = (a: string, b: string) => (!!severed && severed.has(edgeKey(a, b))) || !edgeAllowed(arena, a, b, time);
     const visited = new Set<string>([from]);
     let frontier = [from];
     let hops = 0;

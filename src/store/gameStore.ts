@@ -5,6 +5,8 @@ import { HOF_CAP, readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
 import { readStored, removeStored, tryWriteStored, writeStored } from '../utils/storage';
 import { snapshotState } from '../utils/snapshot';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
+import { QUELLS } from '../data/gamesProfile';
+import { RNG } from '../utils/rng';
 import type { Simulator } from '../engine/simulator';
 import type { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
@@ -191,6 +193,7 @@ function saveHallOfFame(state: GameState) {
         seed: state.seed,
         arenaName: state.arena.name,
         arenaId: state.arena.id,
+        quellId: state.gamesProfile?.quell?.id ?? null,
         config: state.baseConfig,
         noVictor: !winner,
         winnerName: jointName ?? winner?.name ?? 'No victor',
@@ -377,7 +380,7 @@ export const gameActions = {
         const arenaId = entry.arenaId
             ?? ARENAS.find(a => a.name === entry.arenaName)?.id
             ?? 'procedural';
-        return gameActions.startGame(entry.seed, arenaId, false, entry.config ?? DEFAULT_GAME_CONFIG, true);
+        return gameActions.startGame(entry.seed, arenaId, false, entry.config ?? DEFAULT_GAME_CONFIG, true, false, entry.quellId);
     },
 
     async resumeSavedRun() {
@@ -418,7 +421,7 @@ export const gameActions = {
 
     patronCost: PATRON_COST,
 
-    async startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false) {
+    async startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false, forceQuell = false, pinnedQuellId?: string | null) {
         // Abandoning a run mid-wager used to silently pocket the player's coins.
         gameActions.refundOpenBets();
         cancelRunToEnd();
@@ -427,17 +430,36 @@ export const gameActions = {
         const { Simulator, generateArena, generateTributes, gamesProfileFor, configForProfile } = await loadEngine();
 
         const safeSeed = seed.trim() || Math.random().toString(36).substring(2, 8).toUpperCase();
-        const arena = arenaId.startsWith('procedural')
+
+        // REPLAY-01/REPLAY-11: this year's Games — including whether it's a
+        // Quarter Quell — are rolled from the seed before the arena and cast
+        // are resolved, because a Quell can shape both of them.
+        // A Hall of Fame replay pins the archived run's exact Quell (or
+        // explicit lack of one) rather than re-drawing from the seed — see
+        // HallOfFameEntry.quellId. `undefined` (no replay, or an entry that
+        // predates Quells) falls through to the ordinary seeded draw.
+        const pinnedQuell = pinnedQuellId === undefined ? undefined : (pinnedQuellId === null ? null : QUELLS.find(q => q.id === pinnedQuellId) ?? null);
+        const gamesProfile = gamesProfileFor(safeSeed, forceQuell, pinnedQuell);
+        // 'random-hidden': a real arena, still resolved deterministically from
+        // the seed (a shared seed reproduces the same Games) — the pick just
+        // isn't the player's to make, and its identity stays out of the UI
+        // until the bloodbath reveals it (see arenaHidden below and
+        // ui/disclosure.ts's canSeeArena).
+        const arenaHidden = arenaId === 'random-hidden';
+        const resolvedArenaId = arenaHidden
+            ? new RNG(`${safeSeed}-random-arena`).pick([...ARENAS.map(a => a.id), 'procedural'])
+            : arenaId;
+        const baseArena = resolvedArenaId.startsWith('procedural')
             ? generateArena(safeSeed)
-            : (ARENAS.find(a => a.id === arenaId) || ARENAS[0]);
+            : (ARENAS.find(a => a.id === resolvedArenaId) || ARENAS[0]);
+        // Never mutate the shared ARENAS/generated-arena objects: a per-zone
+        // shallow clone gives this run its own zone objects (arenaLawOverride
+        // below, and the Moving Arena Quell later, both write to them).
+        const arena = { ...baseArena, zones: baseArena.zones.map(z => ({ ...z })) };
+        if (gamesProfile.quell?.arenaLawOverride) arena.law = gamesProfile.quell.arenaLawOverride;
         const startZone = arena.zones[0].name;
 
-        // REPLAY-01: this year's Games are rolled from the seed and the
-        // player's config is multiplied through them, so a shared seed
-        // reproduces the same Games rather than merely the same cast. The
-        // profile is rolled before the cast because it decides the cast's shape.
-        const gamesProfile = gamesProfileFor(safeSeed);
-        const tributes = generateTributes(safeSeed, config, startZone, gamesProfile.castShape);
+        const tributes = generateTributes(safeSeed, config, startZone, gamesProfile.castShape, gamesProfile.quell);
 
         // §6.2: standing district patronage — a persistent sink for Capitol
         // Coins. The patron's tributes arrive with sponsors already warm.
@@ -458,6 +480,7 @@ export const gameActions = {
             day: 0,
             log: [],
             gamemakerMode,
+            arenaHidden,
             config: configForProfile(config, gamesProfile),
             baseConfig: config,
             gamesProfile,
@@ -488,10 +511,13 @@ export const gameActions = {
         const newSeed = `${baseSeed}~${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
         // A rerolled cast is a rerolled Games: the sub-seed decides both, and
         // the executed config is re-derived from the player's base config so
-        // the old profile's multipliers don't leak into the new year.
-        const gamesProfile = gamesProfileFor(newSeed);
+        // the old profile's multipliers don't leak into the new year. The
+        // Quell is pinned to whatever it already was, though — the arena is
+        // already locked in (law and all), so a reroll can't silently swap
+        // the run's Quell out from under it.
+        const gamesProfile = gamesProfileFor(newSeed, false, gameState.gamesProfile?.quell ?? null);
         const config = configForProfile(gameState.baseConfig, gamesProfile);
-        const tributes = generateTributes(newSeed, config, gameState.arena.zones[0].name, gamesProfile.castShape);
+        const tributes = generateTributes(newSeed, config, gameState.arena.zones[0].name, gamesProfile.castShape, gamesProfile.quell);
         const newState: GameState = {
             ...gameState, seed: newSeed, tributes, log: [], logCounter: 0, gamesProfile, config,
         };

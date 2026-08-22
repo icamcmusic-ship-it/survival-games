@@ -10,7 +10,9 @@ import { strengthCapForAge } from './physique';
 import { blankProficiencies } from './proficiency';
 import { seedBackstoryRelationships } from './relationships';
 import { addExcitement } from './audience';
-import { CastShape } from '../data/gamesProfile';
+import { CastShape, Quell } from '../data/gamesProfile';
+import { ITEMS } from '../data/constants';
+import { giveItem, mintItem } from './items';
 import { QUIRKS } from '../data/quirks';
 
 /** Weighted draw from the district's archetype table. */
@@ -157,6 +159,7 @@ export function generateTributes(
      * which case the draw behaves exactly as it always did.
      */
     shape?: CastShape,
+    quell?: Quell,
 ): Tribute[] {
     const rng = new RNG(seed);
     const tributes: Tribute[] = [];
@@ -377,6 +380,20 @@ export function generateTributes(
             b.reapingNote = b.reapingNote
                 ?? `Reaped as one half of a bonded pair with ${a.name}. Neither of them chose the other, and it will not matter.`;
         }
+    }
+
+    // 'The Weapons Quell': each tribute arrives with their district's own
+    // tool, and nothing else — the normal empty-inventory-until-the-horn
+    // start is replaced with exactly one themed item, drawn from the
+    // district's craft affinity where it has one.
+    if (quell?.standingWildcards?.includes('quell-weapons-fixed')) {
+        tributes.forEach(t => {
+            t.inventory = [];
+            const craft = craftOf(t.district);
+            const baseId = craft.affinityItems[0];
+            const base = ITEMS.find(i => i.id === baseId) ?? ITEMS.find(i => i.id === 'knife')!;
+            giveItem(t, mintItem(rng, base));
+        });
     }
 
     return tributes;

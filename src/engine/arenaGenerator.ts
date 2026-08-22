@@ -1,6 +1,7 @@
-import { Arena, Terrain, Zone } from '../models/types';
+import { Arena, Injuries, Mutt, MuttRole, SignatureRule, Terrain, Zone, ZoneEffectKind } from '../models/types';
 import { RNG } from '../utils/rng';
 import { PROCEDURAL_EVENTS, FlavorTag } from '../data/proceduralFlavor';
+import { PROC_SIGNATURE, PROC_TERRAIN } from '../data/balance';
 
 interface Biome {
     id: string;
@@ -90,6 +91,33 @@ const TERRAIN_PROFILES: Record<Terrain, { danger: [number, number]; resources: [
 
 function range(rng: RNG, [min, max]: [number, number]): number {
     return Math.round((min + rng.nextFloat() * (max - min)) * 100) / 100;
+}
+
+function clampBand([min, max]: [number, number]): [number, number] {
+    return [Math.max(0, Math.min(1, min)), Math.max(0, Math.min(1, max))];
+}
+
+/**
+ * Rolls this arena's own version of every terrain it can contain, shifting
+ * the shared `TERRAIN_PROFILES` band up or down (danger and resources roll
+ * independently) so "forest" doesn't mean the same larder-or-hunting-ground
+ * in every generated arena. Stored on `Arena.terrainVariant` and consulted
+ * ahead of `TERRAIN_PROFILES` everywhere a zone's danger/resources are rolled.
+ */
+type TerrainVariant = Partial<Record<Terrain, { danger: [number, number]; resources: [number, number] }>>;
+
+function rollTerrainVariant(rng: RNG, terrains: Terrain[]): TerrainVariant {
+    const variant: TerrainVariant = {};
+    terrains.forEach(terrain => {
+        const base = TERRAIN_PROFILES[terrain];
+        const dangerShift = (rng.nextFloat() * 2 - 1) * PROC_TERRAIN.shiftMax;
+        const resourceShift = (rng.nextFloat() * 2 - 1) * PROC_TERRAIN.shiftMax;
+        variant[terrain] = {
+            danger: clampBand([base.danger[0] + dangerShift, base.danger[1] + dangerShift]),
+            resources: clampBand([base.resources[0] + resourceShift, base.resources[1] + resourceShift]),
+        };
+    });
+    return variant;
 }
 
 // ARENA-08: every procedural arena used to be one ring-plus-spokes graph, so
@@ -234,18 +262,95 @@ const MODIFIERS_BY_TAG: Record<string, string[]> = {
 const GENERIC_MODIFIERS = ['Iron-Jawed', 'Blood-Eyed', 'Night-Bred', 'Hollow-Eyed'];
 const CREATURE_BASES = ['Harpies', 'Wraiths', 'Hounds', 'Stalkers', 'Serpents', 'Mutts', 'Ravagers', 'Screechers', 'Crawlers', 'Reapers'];
 
-function generateMuttNames(rng: RNG, activeTags: string[], count: number): string[] {
+/**
+ * Arena-native mutts, not just names. `generateMuttNames` used to produce
+ * flavour strings for `Arena.mutts` with no kit behind them — the display
+ * list and what `rosterFor()` actually resolved (a fixed 3-mutt roster
+ * shared by every arena of the same biome) didn't even agree, let alone have
+ * roles. This rolls real `Mutt` objects, one role each, so a generated
+ * arena's bestiary is specific to that arena and actually has teeth.
+ */
+interface RoleTemplate {
+    role: MuttRole;
+    packSize: [number, number];
+    damage: number;
+    speed: number;
+    inflicts?: Partial<Injuries>;
+    nocturnal?: boolean;
+    fearAura?: number;
+}
+const ROLE_TEMPLATES: RoleTemplate[] = [
+    { role: 'ambusher', packSize: [1, 2], damage: 24, speed: 9, inflicts: { bleeding: true }, nocturnal: true },
+    { role: 'herder', packSize: [1, 2], damage: 10, speed: 7 },
+    { role: 'scavenger', packSize: [1, 3], damage: 14, speed: 6, inflicts: { infected: true } },
+    { role: 'siege', packSize: [1, 1], damage: 26, speed: 5 },
+    { role: 'mimic', packSize: [1, 1], damage: 16, speed: 6, fearAura: 10 },
+    { role: 'swarm', packSize: [3, 6], damage: 9, speed: 6 },
+];
+
+function generateMuttRoster(rng: RNG, biome: Biome, activeTags: string[], count: number, zoneNames: string[]): Mutt[] {
     const pools = activeTags.length
         ? activeTags.flatMap(t => MODIFIERS_BY_TAG[t] || [])
         : [];
     const modifierPool = (pools.length ? pools : GENERIC_MODIFIERS).concat(GENERIC_MODIFIERS);
-    const names = new Set<string>();
-    let attempts = 30;
-    while (names.size < count && attempts-- > 0) {
-        const name = `${rng.pick(modifierPool)} ${rng.pick(CREATURE_BASES)}`;
-        names.add(name);
-    }
-    return Array.from(names);
+    const usedNames = new Set<string>();
+    const templates = rng.shuffle(ROLE_TEMPLATES).slice(0, count);
+    // Siege mutts get a home outside the Cornucopia when there's a choice —
+    // pinning one to the one zone every tribute passes through would make it
+    // less a territorial horror than a mandatory toll booth.
+    const homeOptions = zoneNames.length > 1 ? zoneNames.slice(1) : zoneNames;
+
+    return templates.map((tpl, i) => {
+        let name = `${rng.pick(modifierPool)} ${rng.pick(CREATURE_BASES)}`;
+        let attempts = 10;
+        while (usedNames.has(name) && attempts-- > 0) name = `${rng.pick(modifierPool)} ${rng.pick(CREATURE_BASES)}`;
+        usedNames.add(name);
+        const mutt: Mutt = {
+            id: `${biome.id}-${tpl.role}-${i}`,
+            name,
+            packSize: tpl.packSize,
+            damage: tpl.damage,
+            speed: tpl.speed,
+            inflicts: tpl.inflicts,
+            nocturnal: tpl.nocturnal,
+            fearAura: tpl.fearAura,
+            role: tpl.role,
+        };
+        if (tpl.role === 'siege' && homeOptions.length > 0) mutt.homeZone = rng.pick(homeOptions);
+        return mutt;
+    });
+}
+
+// Composes one SignatureRule (trigger × selector × payload × telegraph) per
+// generated arena from the same seeded RNG as the rest of the layout, so two
+// arenas of the same biome don't necessarily share a mechanic. See
+// `runDeclarativeSignature` in engine/arenaSignature.ts for how it executes.
+const TRIGGER_KINDS: SignatureRule['trigger']['kind'][] = ['everyCycle', 'everyNth', 'nightsOnly', 'daysOnly', 'afterEscalation', 'lowSurvivors'];
+const SELECTOR_KINDS: SignatureRule['selector']['kind'][] = ['fixedRotation', 'busiestZone', 'emptiestZone', 'nearCornucopia', 'lowestDanger', 'allZones'];
+const PAYLOAD_KINDS: SignatureRule['payload']['kind'][] = ['damageEffect', 'severEdges', 'invertResources', 'spawnMutt', 'drainVital', 'revealPositions'];
+const TELEGRAPH_KINDS: SignatureRule['telegraph']['kind'][] = ['oneAhead', 'none', 'falseChance'];
+const SIGNATURE_EFFECT_KINDS: ZoneEffectKind[] = ['burning', 'flooded', 'frozen', 'contaminated', 'fogbound', 'stripped'];
+
+function rollSignatureRule(rng: RNG): SignatureRule {
+    const triggerKind = rng.pick(TRIGGER_KINDS);
+    const payloadKind = rng.pick(PAYLOAD_KINDS);
+    const telegraphKind = rng.pick(TELEGRAPH_KINDS);
+    return {
+        trigger: {
+            kind: triggerKind,
+            n: triggerKind === 'everyNth' ? rng.nextInt(PROC_SIGNATURE.everyNthMin, PROC_SIGNATURE.everyNthMax) : undefined,
+            threshold: triggerKind === 'lowSurvivors' ? rng.nextInt(PROC_SIGNATURE.lowSurvivorsMin, PROC_SIGNATURE.lowSurvivorsMax) : undefined,
+        },
+        selector: { kind: rng.pick(SELECTOR_KINDS) },
+        payload: {
+            kind: payloadKind,
+            effect: payloadKind === 'damageEffect' ? rng.pick(SIGNATURE_EFFECT_KINDS) : undefined,
+        },
+        telegraph: {
+            kind: telegraphKind,
+            falseChance: telegraphKind === 'falseChance' ? range(rng, [PROC_SIGNATURE.falseChanceMin, PROC_SIGNATURE.falseChanceMax]) : undefined,
+        },
+    };
 }
 
 export function generateArena(seed: string): Arena {
@@ -261,6 +366,7 @@ export function generateArena(seed: string): Arena {
         : shapeRoll < 0.85 ? rng.nextInt(9, 12)
         : rng.nextInt(13, 16);
     const topology = rng.pick(TOPOLOGIES);
+    const terrainVariant = rollTerrainVariant(rng, biome.terrains);
 
     // The Cornucopia is always the hub
     const zones: Zone[] = [{
@@ -281,7 +387,7 @@ export function generateArena(seed: string): Arena {
         if (pool.length === 0) continue;
         const name = rng.pick(pool);
         usedNames.add(name);
-        const profile = TERRAIN_PROFILES[terrain];
+        const profile = terrainVariant[terrain] ?? TERRAIN_PROFILES[terrain];
         zones.push({
             name,
             terrain,
@@ -295,10 +401,14 @@ export function generateArena(seed: string): Arena {
     guaranteeConnectivity(zones);
 
     const activeTags = Array.from(new Set(zones.map(z => z.terrain as string)));
-    // §8.3: mutt count varies too — one arena with a single persistent horror
-    // reads very differently from one with five kinds of teeth.
-    const muttCount = rng.nextInt(1, 5);
-    const mutts = generateMuttNames(rng, activeTags, muttCount);
+    // §8.3 / ARENA-11: mutt count varies too — one arena with a single
+    // persistent horror reads very differently from one with three kinds of
+    // teeth. `muttRoster` is what the encounter system actually resolves
+    // against; `mutts` (display names) is now derived from it directly, so
+    // the arena summary never again names a mutt that can't actually appear.
+    const muttCount = rng.nextInt(1, 3);
+    const muttRoster = generateMuttRoster(rng, biome, activeTags, muttCount, zones.map(z => z.name));
+    const mutts = muttRoster.map(m => m.name);
 
     // `events` here is just the arena's own signature-event *name* list
     // (shown in arena summaries) — the actual event bodies/text come from
@@ -328,5 +438,8 @@ export function generateArena(seed: string): Arena {
         mutts,
         events: eventNames,
         zones,
+        signatureRule: rollSignatureRule(rng),
+        muttRoster,
+        terrainVariant,
     };
 }
