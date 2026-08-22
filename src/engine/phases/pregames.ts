@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import {
-    CHARIOT_ANGLES, GOODBYE_SCENES, REAPING_CROWDS, REAPING_REACTIONS, STYLISTS, TRAIN_SCENES,
+    CHARIOT_ANGLES, DISTRICT_TOKENS, GOODBYE_SCENES, REAPING_CROWDS, REAPING_REACTIONS, STYLISTS, TRAIN_SCENES,
 } from '../../data/pregames';
 import { PREGAMES } from '../../data/balance';
 import { addExcitement } from '../audience';
@@ -71,7 +71,14 @@ export function processPreGames(ctx: SimContext) {
 
         cast.filter(t => t.district === district).forEach(t => {
             if (t.reapingNote) {
-                ctx.logEvent(`${t.name} volunteers. ${t.reapingNote}`, [t.id], { important: true, category: 'system' });
+                // Only an actual volunteer gets the "volunteers." lead-in — the
+                // note pool now covers plenty of stories that are nothing of
+                // the kind (tesserae, kin pairs, the faint, the silence).
+                ctx.logEvent(
+                    t.volunteered ? `${t.name} volunteers. ${t.reapingNote}` : `${t.name}: ${t.reapingNote}`,
+                    [t.id],
+                    { important: true, category: 'system' }
+                );
             }
             ctx.logEvent(
                 fill(ctx.pickText(reactionPool(t)), { tribute: t.name }),
@@ -87,6 +94,18 @@ export function processPreGames(ctx: SimContext) {
 
     // ---- 2. The goodbye room ----
     cast.forEach(t => {
+        // §6.9: the district token, pressed into their hands here. Stored on
+        // the tribute so the broadcast can find it again — at the sheet, at
+        // the death, in the victor's hands on the way home.
+        const tokenPool = DISTRICT_TOKENS[t.district];
+        if (tokenPool && !t.token) {
+            t.token = ctx.rng.pick(tokenPool);
+            ctx.logEvent(
+                `${t.name} leaves the goodbye room carrying their district token: ${t.token}. The review board will allow it. It is the only thing of home the arena will.`,
+                [t.id],
+                { category: 'system' }
+            );
+        }
         const scene = ctx.pickText(GOODBYE_SCENES);
         const alone = scene.startsWith('Nobody comes');
         ctx.logEvent(fill(scene, { tribute: t.name }), [t.id], { category: 'sanity' });

@@ -1028,6 +1028,19 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         ctx.logEvent(text, witness ? [victim.id, witness.id] : [victim.id], { important: true, category: 'death' });
     }
 
+    // §6.9: the district token goes home with the body. The cameras do not
+    // always find it, but when they do it is the shot of the night. Selection
+    // is deterministic from the death itself rather than an rng draw — a
+    // per-kill draw here would shift every roll downstream of every kill,
+    // which perturbs the whole run for the sake of one flavour line.
+    if (victim.token && (victim.district + ctx.state.day + victim.age) % 4 === 0) {
+        ctx.logEvent(
+            `The hovercraft lifts ${victim.name} with their district token still on them — ${victim.token}. District ${victim.district} sent it out with them, and District ${victim.district} gets it back.`,
+            [victim.id],
+            { category: 'death' }
+        );
+    }
+
     // Watching someone kill is the single most frightening thing that can
     // happen to a tribute, and it attaches to that person, not to the zone.
     if (killer) {

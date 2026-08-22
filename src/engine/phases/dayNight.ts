@@ -7,7 +7,7 @@ import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SU
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, hasForceField, zoneSightlines } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting,
@@ -27,7 +27,7 @@ import {
     pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
 } from '../encounters';
 import { tickPersistentMutts } from '../mutts';
-import { restockCornucopia, rollAmbientZoneEffects, tickZoneEffects } from '../zoneEffects';
+import { restockCornucopia, rollAmbientZoneEffects, tickForceField, tickZoneEffects } from '../zoneEffects';
 import { runArenaSignature } from '../arenaSignature';
 import { runGamemakerSignature } from '../gamemakerAgency';
 import { tickWeatherFront } from '../weatherFront';
@@ -119,6 +119,21 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         const here = currentAlive.filter(o => o.status === 'alive' && o.zone === t.zone);
         const hostiles = here.filter(o => o.id !== t.id && o.allianceId !== t.allianceId).length;
         noteSighting(ctx.state, t, t.zone, hostiles, depletionOf(ctx.state, t.zone));
+        // §5.6: high ground is a watchtower. A tribute on elevation reads the
+        // zones its sightlines reach — who is moving down there — and feeds it
+        // into the same memory the sighting layer uses, so a ridge camp is
+        // genuinely worth holding for the intelligence alone. Only by daylight.
+        if (ctx.state.timeOfDay === 'day') {
+            const vantage = getZone(ctx.state.arena, t.zone);
+            if (vantage) {
+                zoneSightlines(ctx.state.arena, vantage).forEach(watched => {
+                    const rivalsThere = currentAlive.filter(o =>
+                        o.status === 'alive' && o.zone === watched && o.id !== t.id
+                        && (o.allianceId === undefined || o.allianceId !== t.allianceId)).length;
+                    noteSighting(ctx.state, t, watched, rivalsThere, depletionOf(ctx.state, watched));
+                });
+            }
+        }
 
         updateStance(ctx, t, here);
         // Stance first, then intention: what they mean to do this cycle depends
@@ -172,13 +187,15 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
     // 5. Cycle upkeep: the arena restocks, memories fade, bonds cool, the
     // crowd's attention wanders.
-    regenerateZones(ctx.state);
+    regenerateZones(ctx);
     // Fire spreads, floods drown stragglers, and whatever else is happening to
     // the ground itself lands after this cycle's movement has resolved.
     tickWeatherFront(ctx);
     tickZoneControl(ctx);
     rollAmbientZoneEffects(ctx);
     tickZoneEffects(ctx);
+    // §7.1: the arena's edge is a thing tributes can find, touch, and use.
+    tickForceField(ctx);
     restockCornucopia(ctx);
     maintainBounty(ctx);
     maintainMovingArena(ctx);
@@ -639,10 +656,12 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         const newSafeZone = nearestSafeZone(ctx.state.arena, t.zone, safeZones, severedEdgeSet(ctx.state));
         const trappedZone = t.zone;
 
-        applyDamage(ctx, t, damage, {
-            cause: `Caught in the collapsing border of ${trappedZone}`,
-            kind: 'arena',
-        });
+        // §7.1: at the arena's own edge, the closing border is the force
+        // field itself — the death reads as the wall, not abstract collapse.
+        const cause = hasForceField(ctx.state.arena, trappedZone)
+            ? `Driven into the force field as the border closed over ${trappedZone}`
+            : `Caught in the collapsing border of ${trappedZone}`;
+        applyDamage(ctx, t, damage, { cause, kind: 'arena' });
         ctx.logEvent(
             fill(ctx.pickText(BORDER_TEXTS.collapse), {
                 tribute: t.name, trapped: trappedZone, damage: String(damage), safe: newSafeZone,
@@ -652,7 +671,7 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         );
         t.zone = newSafeZone;
         addZoneThreat(ctx.state, t, trappedZone, MEMORY.deathThreat);
-        checkDeath(ctx, t, `Caught in the collapsing border of ${trappedZone}`);
+        checkDeath(ctx, t, cause);
     });
 
     return true;

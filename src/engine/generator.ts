@@ -3,7 +3,8 @@ import { Tribute, Attributes, Build, GameConfig, ArchetypeId, Gender } from '../
 import { TRAITS, BUILDS, DEFAULT_GAME_CONFIG, traitFits } from '../data/constants';
 import { ARCHETYPES, archetypeWeightsFor } from '../data/archetypes';
 import { GENERATION, TESSERAE, VOLUNTEER } from '../data/balance';
-import { DISTRICT_NAMES } from '../data/names';
+import { DISTRICT_NAMES, DISTRICT_SURNAMES } from '../data/names';
+import { REAPING_NOTE_TEXTS } from '../data/pregames';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { blankMemory } from './memory';
 import { strengthCapForAge } from './physique';
@@ -185,11 +186,14 @@ function applyVolunteer(rng: RNG, t: Tribute, shape?: CastShape) {
         t.attributes.agility = Math.min(10, t.attributes.agility + VOLUNTEER.careerAgilityBonus);
         t.reputation = Math.min(95, t.reputation + VOLUNTEER.careerTrust);
         addExcitement(t, VOLUNTEER.careerExcitement);
-        t.reapingNote = composeNote(`Volunteered before the escort had finished reading the card — ${craftOf(t.district).blurb}, and eighteen years of waiting for their turn.`);
+        t.reapingNote = composeNote(rng.pick(REAPING_NOTE_TEXTS.careerVolunteer)
+            .split('{blurb}').join(craftOf(t.district).blurb)
+            .split('{district}').join(String(t.district)));
     } else {
         t.reputation = Math.min(95, t.reputation + VOLUNTEER.sacrificeTrust);
         addExcitement(t, VOLUNTEER.sacrificeExcitement);
-        t.reapingNote = composeNote(`Volunteered for a sibling. District ${t.district} has not had a volunteer in living memory, and the crowd did not applaud — they touched three fingers to their lips instead.`);
+        t.reapingNote = composeNote(rng.pick(REAPING_NOTE_TEXTS.siblingVolunteer)
+            .split('{district}').join(String(t.district)));
     }
     t.attributes.strength = Math.min(t.attributes.strength, strengthCapForAge(t.age));
     t.sponsorTrust = t.reputation;
@@ -263,6 +267,11 @@ export function generateTributes(
     };
 
     for (let district = 1; district <= districtCount; district++) {
+        // Surnames come from the district's own pool. Occasionally the bowl
+        // hands up two slips from the same family — district partners who
+        // share a surname walk to the stage as kin, and the square knows it.
+        const surnamePool = DISTRICT_SURNAMES[district];
+        const familySurname = rng.chance(0.15) ? rng.pick(surnamePool) : undefined;
         for (const gender of ['Male', 'Female'] as const) {
             const isCareer = [1, 2, 4].includes(district);
 
@@ -361,7 +370,14 @@ export function generateTributes(
                 if (traitFits(traits, trait)) traits.push(trait);
             }
 
-            const chosenName = drawName(district, gender);
+            // Full name: "First Surname". Plain-names mode has no surname to
+            // append; everyone else takes the district pool (or the shared
+            // family surname for a kin pair). First names are already unique
+            // across the cast, so the full name is too.
+            const firstName = drawName(district, gender);
+            const chosenName = config.plainNames
+                ? firstName
+                : `${firstName} ${familySurname ?? rng.pick(surnamePool)}`;
             const heightCm = gender === 'Male'
                 ? rng.nextInt(148 + (age - GENERATION.minAge) * 4, 168 + (age - GENERATION.minAge) * 4)
                 : rng.nextInt(142 + (age - GENERATION.minAge) * 4, 160 + (age - GENERATION.minAge) * 4);
@@ -434,14 +450,55 @@ export function generateTributes(
                         : (['family', 'family', 'partner', 'prove', 'escape'] as const)
                 ),
                 reapingNote: tesserae >= TESSERAE.notedAt
-                    ? `Their name was in the bowl ${age - GENERATION.minAge + 1 + tesserae} times — ${tesserae} of those slips bought grain, one winter at a time. Everyone in the square knew whose names the bowl was heavy with.`
+                    ? rng.pick(REAPING_NOTE_TEXTS.tesserae)
+                        .split('{slips}').join(String(age - GENERATION.minAge + 1 + tesserae))
+                        .split('{tesserae}').join(String(tesserae))
+                        .split('{district}').join(String(district))
                     : undefined,
             });
         }
     }
 
+    // A shared surname is a story the square already knows: two slips, one
+    // family, the same year. Flag it before the volunteer pass so a volunteer
+    // note composes on top of it the way it does with the tesserae note.
+    if (!config.plainNames) {
+        for (let district = 1; district <= districtCount; district++) {
+            const pair = tributes.filter(t => t.district === district);
+            if (pair.length !== 2) continue;
+            const [a, b] = pair;
+            const surnameOf = (t: Tribute) => t.name.split(' ').pop();
+            if (surnameOf(a) !== surnameOf(b)) continue;
+            const note = (other: Tribute) =>
+                `Reaped alongside their cousin ${other.name} — two slips out of the same family, the same year. The square did that arithmetic in silence.`;
+            a.reapingNote = a.reapingNote ? `${note(b)} ${a.reapingNote}` : note(b);
+            b.reapingNote = b.reapingNote ? `${note(a)} ${b.reapingNote}` : note(a);
+            // Family walks in already knowing each other.
+            a.relationships[b.id] = Math.max(a.relationships[b.id] ?? 0, 25);
+            b.relationships[a.id] = Math.max(b.relationships[a.id] ?? 0, 25);
+        }
+    }
+
     // The reaping is not just a name out of a bowl.
     tributes.forEach(t => applyVolunteer(rng, t, shape));
+
+    // The square's other stories. Some tributes arrive on the plate already
+    // defined by the thirty seconds after their name was read — the faint,
+    // the silence, the parent held back, the escort getting the name wrong.
+    const MISC_NOTE_POOLS = [
+        REAPING_NOTE_TEXTS.stunnedSilence,
+        REAPING_NOTE_TEXTS.defiantWalk,
+        REAPING_NOTE_TEXTS.fainted,
+        REAPING_NOTE_TEXTS.parentHeldBack,
+        REAPING_NOTE_TEXTS.allyShouted,
+        REAPING_NOTE_TEXTS.escortMispronounced,
+        REAPING_NOTE_TEXTS.tooCalm,
+    ];
+    tributes.forEach(t => {
+        if (t.reapingNote || !rng.chance(0.3)) return;
+        t.reapingNote = rng.pick(rng.pick(MISC_NOTE_POOLS))
+            .split('{district}').join(String(t.district));
+    });
 
     // Audience meta: the Capitol has favourites before the gong.
     // Charisma, a good story and a career pedigree all feed the pre-Games buzz.
@@ -473,10 +530,12 @@ export function generateTributes(
             const [a, b] = pair;
             a.relationships[b.id] = shape.pairBond;
             b.relationships[a.id] = shape.pairBond;
-            a.reapingNote = a.reapingNote
-                ?? `Reaped as one half of a bonded pair with ${b.name}. Neither of them chose the other, and it will not matter.`;
-            b.reapingNote = b.reapingNote
-                ?? `Reaped as one half of a bonded pair with ${a.name}. Neither of them chose the other, and it will not matter.`;
+            const bondNote = (partner: Tribute, self: Tribute) =>
+                rng.pick(REAPING_NOTE_TEXTS.pairBond)
+                    .split('{partner}').join(partner.name)
+                    .split('{district}').join(String(self.district));
+            a.reapingNote = a.reapingNote ?? bondNote(b, a);
+            b.reapingNote = b.reapingNote ?? bondNote(a, b);
         }
     }
 

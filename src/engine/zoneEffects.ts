@@ -1,10 +1,10 @@
 import { GameState, Terrain, Tribute, ZoneEffect, ZoneEffectKind } from '../models/types';
-import { injure } from './wounds';
-import { ZONE_EFFECTS } from '../data/balance';
+import { injure, openWound } from './wounds';
+import { BLEEDING, ZONE_EFFECTS } from '../data/balance';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { cycleOf } from './memory';
-import { depleteZone, getZone, severEdge } from './map';
+import { depleteZone, getZone, hasForceField, severEdge } from './map';
 import { clampTribute } from './vitals';
 import { climateOf } from './climate';
 import { arenaHasLaw } from './gamesProfile';
@@ -70,6 +70,11 @@ export function startZoneEffect(ctx: SimContext, zone: string, kind: ZoneEffectK
         return;
     }
 
+    // §5.7: effects meet each other instead of stacking blindly. An incoming
+    // effect landing on a zone that already carries its opposite resolves the
+    // physics first — sometimes consuming the new effect entirely.
+    if (resolveEffectInteraction(ctx, zone, kind, list)) return;
+
     list.push({
         kind,
         expiresCycle,
@@ -91,6 +96,69 @@ export function startZoneEffect(ctx: SimContext, zone: string, kind: ZoneEffectK
         stripped: `${zone} is burned down to ash and bare rock. There is nothing left here worth finding.`,
     };
     ctx.logEvent(lines[kind], [], { important: true, zone, category: 'hazard' });
+}
+
+/**
+ * §5.7: what happens when one effect arrives in a zone another already holds.
+ * Returns true when the incoming effect was consumed by the interaction and
+ * must not be applied. Mutates `list` in place (it is the zone's live list).
+ *
+ * - fire onto flood, or flood onto fire: both cancel in a wall of steam.
+ * - fire onto a frozen zone, or a freeze onto a burning one: the fire dies
+ *   and the ice comes down as meltwater — the zone floods instead.
+ * - contamination meeting standing floodwater (either order): the water
+ *   carries it downstream into one or two neighbouring zones.
+ */
+function resolveEffectInteraction(ctx: SimContext, zone: string, incoming: ZoneEffectKind, list: ZoneEffect[]): boolean {
+    const state = ctx.state;
+    const has = (kind: ZoneEffectKind) => list.some(e => e.kind === kind);
+
+    if ((incoming === 'burning' && has('flooded')) || (incoming === 'flooded' && has('burning'))) {
+        endZoneEffect(state, zone, incoming === 'burning' ? 'flooded' : 'burning');
+        ctx.logEvent(
+            `Fire and floodwater meet in ${zone} and cancel each other in a wall of steam. When it clears, both are gone.`,
+            [],
+            { important: true, zone, category: 'hazard' }
+        );
+        return true;
+    }
+
+    if ((incoming === 'burning' && has('frozen')) || (incoming === 'frozen' && has('burning'))) {
+        endZoneEffect(state, zone, incoming === 'burning' ? 'frozen' : 'burning');
+        ctx.logEvent(
+            `Heat meets the ice locked over ${zone}, and the freeze lets go all at once — the zone goes under its own meltwater.`,
+            [],
+            { important: true, zone, category: 'hazard' }
+        );
+        startZoneEffect(ctx, zone, 'flooded', false);
+        return true;
+    }
+
+    if ((incoming === 'contaminated' && has('flooded')) || (incoming === 'flooded' && has('contaminated'))) {
+        // Both effects stand — but the water carries the taint downstream.
+        spreadContamination(ctx, zone);
+        return false;
+    }
+
+    return false;
+}
+
+/** §5.7: floodwater carrying contamination into 1-2 neighbouring zones. */
+function spreadContamination(ctx: SimContext, from: string) {
+    const zone = getZone(ctx.state.arena, from);
+    if (!zone) return;
+    const collapsed = ctx.state.collapsedZones ?? [];
+    const candidates = zone.adjacent.filter(n => !collapsed.includes(n) && !hasEffect(ctx.state, n, 'contaminated'));
+    if (candidates.length === 0) return;
+    const targets = ctx.rng.shuffle(candidates).slice(0, ctx.rng.nextInt(1, Math.min(2, candidates.length)));
+    targets.forEach(n => {
+        startZoneEffect(ctx, n, 'contaminated', false);
+        ctx.logEvent(
+            `The floodwater running out of ${from} carries whatever is wrong with it into ${n}.`,
+            [],
+            { important: true, zone: n, category: 'hazard' }
+        );
+    });
 }
 
 function endZoneEffect(state: GameState, zone: string, kind: ZoneEffectKind) {
@@ -215,19 +283,55 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
     });
 }
 
-/** Fire catching on an adjacent zone whose terrain can actually burn. */
+/**
+ * §5.8: how dry the arena is running. A standing climate that multiplies
+ * thirst (desert glare, furnace heat) or a live weather front that reads as
+ * drought-adjacent means everything catches easier; a soaked coast dampens it.
+ */
+function arenaDryness(ctx: SimContext): number {
+    const climate = climateOf(ctx.state.arena.id);
+    if (climate?.drains?.thirstMultiplier && climate.drains.thirstMultiplier > 1) return ZONE_EFFECTS.spreadDrynessHotClimate;
+    return 1;
+}
+
+/** §5.8: per-terrain fuel: dry scrub and timber carry a fire; a marsh resists it. */
+const TERRAIN_DRYNESS: Partial<Record<Terrain, number>> = {
+    forest: 1.15,
+    open: 1.0,
+    wetland: 0.55,
+};
+
+/**
+ * Fire catching on an adjacent zone whose terrain can actually burn.
+ *
+ * §5.8: the odds compound instead of being one flat constant — a zone with
+ * several burning neighbours is being attacked from all sides, a parched
+ * arena carries flame further, and wet ground still resists. This is what
+ * makes a genuine multi-zone conflagration possible without making every
+ * campfire the end of the map.
+ */
 function spreadFire(ctx: SimContext, from: string) {
     const state = ctx.state;
     const zone = getZone(state.arena, from);
     if (!zone) return;
     const collapsed = state.collapsedZones ?? [];
+    const dryness = arenaDryness(ctx);
 
     zone.adjacent.forEach(neighborName => {
         if (collapsed.includes(neighborName)) return;
         if (hasEffect(state, neighborName, 'burning') || hasEffect(state, neighborName, 'stripped')) return;
         const neighbor = getZone(state.arena, neighborName);
         if (!neighbor || !(ZONE_EFFECTS.flammableTerrain as readonly Terrain[]).includes(neighbor.terrain)) return;
-        if (!ctx.rng.chance(ZONE_EFFECTS.spreadChance)) return;
+
+        // Every burning neighbour beyond this one is another front the zone
+        // is catching sparks from — each adds to the odds.
+        const burningNeighbors = neighbor.adjacent.filter(n => hasEffect(state, n, 'burning')).length;
+        const chance = Math.min(ZONE_EFFECTS.spreadChanceMax,
+            ZONE_EFFECTS.spreadChance
+            * dryness
+            * (TERRAIN_DRYNESS[neighbor.terrain] ?? 1)
+            + Math.max(0, burningNeighbors - 1) * ZONE_EFFECTS.spreadPerExtraFront);
+        if (!ctx.rng.chance(chance)) return;
 
         startZoneEffect(ctx, neighborName, 'burning', false);
         ctx.logEvent(`The fire in ${from} jumps to ${neighborName}.`, [], { important: true, zone: neighborName, category: 'hazard' });
@@ -326,6 +430,65 @@ export function rollAmbientZoneEffects(ctx: SimContext) {
             );
         }
     }
+}
+
+/**
+ * §7.1: the arena's force field, as a discoverable object.
+ *
+ * Every arena has always ended somewhere; nothing in the simulation ever let a
+ * tribute find the edge. Border zones (see `hasForceField` in engine/map) carry
+ * the field: a tribute standing in one can discover it — a shimmer where the
+ * sky meets the ground, once per tribute — and after that it is a thing in
+ * their world: rarely, they misjudge it and take a rebound; rarely, a sharp
+ * one turns it into a tool, the way canon tributes bounced knives and cooked
+ * off it. Called once per cycle after movement has resolved.
+ */
+export function tickForceField(ctx: SimContext) {
+    const state = ctx.state;
+    state.forceFieldSeen = state.forceFieldSeen ?? [];
+    const seen = state.forceFieldSeen;
+    const collapsed = state.collapsedZones ?? [];
+
+    state.tributes.forEach(t => {
+        if (t.status !== 'alive' || collapsed.includes(t.zone)) return;
+        if (!hasForceField(state.arena, t.zone)) return;
+
+        if (!seen.includes(t.id)) {
+            if (!ctx.rng.chance(ZONE_EFFECTS.forceFieldDiscoverChance)) return;
+            seen.push(t.id);
+            ctx.logEvent(
+                `${t.name} throws a stone past the treeline of ${t.zone} and it comes straight back. A faint shimmer, a hum under the birdsong — the arena ends here.`,
+                [t.id],
+                { important: true, zone: t.zone, category: 'arena' }
+            );
+            return;
+        }
+
+        // A high-intellect tribute who knows the field is there can use it.
+        if (t.attributes.intelligence >= ZONE_EFFECTS.forceFieldExploitIntellect
+            && ctx.rng.chance(ZONE_EFFECTS.forceFieldExploitChance)) {
+            t.vitals.hunger = Math.max(0, t.vitals.hunger - ZONE_EFFECTS.forceFieldExploitHungerRelief);
+            ctx.logEvent(
+                `${t.name} spears a scrap of meat on a green stick and holds it against the force field at ${t.zone} until it chars. The Gamemakers did not design it as a cooker, but it is one.`,
+                [t.id],
+                { important: true, zone: t.zone, category: 'survival' }
+            );
+            return;
+        }
+
+        // Everyone else who knows it is there still occasionally misjudges it.
+        if (ctx.rng.chance(ZONE_EFFECTS.forceFieldReboundChance)) {
+            applyDamage(ctx, t, ZONE_EFFECTS.forceFieldReboundDamage, { cause: `Thrown back by the force field at ${t.zone}`, kind: 'arena' });
+            openWound(t, BLEEDING.hazardSeverity);
+            ctx.logEvent(
+                `${t.name} strays a step too close to the edge of ${t.zone} and the force field throws them back into the dirt, smoking at the shoulder.`,
+                [t.id],
+                { important: true, zone: t.zone, category: 'hazard' }
+            );
+            clampTribute(t);
+            checkDeath(ctx, t, `Thrown back by the force field at ${t.zone}`);
+        }
+    });
 }
 
 /**

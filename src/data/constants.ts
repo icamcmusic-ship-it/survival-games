@@ -21,6 +21,9 @@ export const ARENAS: Arena[] = [
         mutts: ['Tick-Tock Monkeys', 'Lightning Birds', 'Acid Fog', 'Jabberjays', 'Reef Barracuda'],
         events: ['Sector Shift', 'Blood Rain', 'Tidal Wave'],
         law: 'cornucopiaRefills',
+        // The climb to the Lightning Tree is a scramble up bare rock with a
+        // storm generator at the top of it.
+        edgeRules: { 'Sector 3 (Cliffs)|Sector 5 (Lightning Tree)': { kind: 'tolled', toll: { fatigue: 6 } } },
         zones: [
             { name: 'The Cornucopia', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Sector 1 (Jungle)', 'Sector 2 (Beach)', 'Sector 3 (Cliffs)', 'Sector 4 (Swamp)', 'Sector 12 (Blood Rain)'] },
             { name: 'Sector 1 (Jungle)', terrain: 'forest', danger: 0.5, resources: 0.7, adjacent: ['The Cornucopia', 'Sector 2 (Beach)', 'Sector 11 (Monkey Wood)'] },
@@ -42,6 +45,8 @@ export const ARENAS: Arena[] = [
         mutts: ['Ice Wolves', 'Snow Camouflage Snakes', 'Frostbite Beetles', 'Snowblind Owls'],
         events: ['Blizzard', 'Avalanche', 'Thin Ice Collapse'],
         sponsorMultiplier: 1.2,
+        // A freeze here is the arena doing what it was built for.
+        effectVocab: { frozen: { label: 'a blizzard whiteout', severityMult: 1.2 } },
         edgeRules: { 'Frozen Lake|The Meltwater Channel': { kind: 'timeGated', gatedTime: 'day' } },
         zones: [
             { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Frozen Lake', 'Snowy Pine Forest', 'The Windbreak'] },
@@ -70,16 +75,23 @@ export const ARENAS: Arena[] = [
             'Skyscraper Ruins|The Cornucopia (City Square)': { kind: 'tolled', toll: { fatigue: 6 } },
             'The Clocktower|The Rail Yard': { kind: 'tolled', toll: { fatigue: 6 } },
         },
+        // §5.5: widened to thirteen zones — a metropolis should sprawl, with
+        // whole districts a tribute can vanish into for days.
         zones: [
             { name: 'The Cornucopia (City Square)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Abandoned Subway', 'Skyscraper Ruins', 'Overgrown Park', 'The Flooded Underpass'] },
-            { name: 'Abandoned Subway', terrain: 'ruins', danger: 0.7, resources: 0.3, adjacent: ['The Cornucopia (City Square)', 'Industrial District', 'The Flooded Underpass'] },
+            { name: 'Abandoned Subway', terrain: 'ruins', danger: 0.7, resources: 0.3, adjacent: ['The Cornucopia (City Square)', 'Industrial District', 'The Flooded Underpass', 'The Storm Drains'] },
             { name: 'Skyscraper Ruins', terrain: 'highland', danger: 0.85, resources: 0.4, adjacent: ['The Cornucopia (City Square)', 'Industrial District', 'The Rooftop Gardens'] },
             { name: 'Overgrown Park', terrain: 'forest', danger: 0.3, resources: 0.7, adjacent: ['The Cornucopia (City Square)', 'Industrial District', 'The Reservoir'] },
             { name: 'Industrial District', terrain: 'ruins', danger: 0.6, resources: 0.4, adjacent: ['Abandoned Subway', 'Skyscraper Ruins', 'Overgrown Park', 'The Rail Yard'] },
-            { name: 'The Flooded Underpass', terrain: 'water', danger: 0.65, resources: 0.35, adjacent: ['The Cornucopia (City Square)', 'Abandoned Subway', 'The Reservoir'] },
-            { name: 'The Rooftop Gardens', terrain: 'forest', danger: 0.45, resources: 0.65, adjacent: ['Skyscraper Ruins', 'The Rail Yard'] },
-            { name: 'The Reservoir', terrain: 'water', danger: 0.4, resources: 0.6, adjacent: ['Overgrown Park', 'The Flooded Underpass'] },
-            { name: 'The Rail Yard', terrain: 'open', danger: 0.55, resources: 0.25, adjacent: ['Industrial District', 'The Rooftop Gardens', 'The Clocktower'] },
+            { name: 'The Flooded Underpass', terrain: 'water', danger: 0.65, resources: 0.35, adjacent: ['The Cornucopia (City Square)', 'Abandoned Subway', 'The Reservoir', 'The Storm Drains'] },
+            { name: 'The Rooftop Gardens', terrain: 'forest', danger: 0.45, resources: 0.65, adjacent: ['Skyscraper Ruins', 'The Rail Yard', 'The Botanical Atrium'] },
+            { name: 'The Reservoir', terrain: 'water', danger: 0.4, resources: 0.6, adjacent: ['Overgrown Park', 'The Flooded Underpass', 'The Botanical Atrium'] },
+            { name: 'The Rail Yard', terrain: 'open', danger: 0.55, resources: 0.25, adjacent: ['Industrial District', 'The Rooftop Gardens', 'The Clocktower', 'The Collapsed Overpass'] },
+            // The outer districts: a shattered ring road, a glasshouse gone
+            // feral, and the storm sewers under everything.
+            { name: 'The Collapsed Overpass', terrain: 'highland', danger: 0.75, resources: 0.2, adjacent: ['The Rail Yard', 'The Storm Drains'] },
+            { name: 'The Botanical Atrium', terrain: 'forest', danger: 0.35, resources: 0.75, adjacent: ['The Rooftop Gardens', 'The Reservoir'] },
+            { name: 'The Storm Drains', terrain: 'wetland', danger: 0.6, resources: 0.35, adjacent: ['Abandoned Subway', 'The Flooded Underpass', 'The Collapsed Overpass'] },
             // A dead end (one edge) and a pure ambush zone by design — high
             // danger, kept low on resources so it's never worth the risk as bait.
             { name: 'The Clocktower', terrain: 'highland', danger: 0.9, resources: 0.15, adjacent: ['The Rail Yard'] },
@@ -91,19 +103,24 @@ export const ARENAS: Arena[] = [
         description: 'Hallucinogenic gas and poison risk. The water is mostly undrinkable without purification.',
         mutts: ['Venomous Toads', 'Leech Swarms', 'Camouflaged Crocodiles', 'Bloatflies'],
         events: ['Hallucinogenic Spores', 'Methane Explosion', 'Quicksand Sinkhole'],
+        // The gas is this arena's whole premise — contamination hits harder
+        // and hangs around longer here than anywhere.
+        effectVocab: { contaminated: { label: 'a methane bloom off the bog', severityMult: 1.2, durationMult: 1.25 } },
+        // The bog crossing is only readable while there is light to read it by.
+        edgeRules: { 'Glowing Bog|Murky Waters': { kind: 'timeGated', gatedTime: 'day' } },
+        // §5.5: trimmed to eight zones — a tight, claustrophobic swamp rather
+        // than another ten-zone standard shape.
         zones: [
             { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Murky Waters', 'Dead Tree Grove', 'The Causeway'] },
             // Undrinkable and barely worth foraging — the danger carries this
             // terrain here, not the resources.
             { name: 'Murky Waters', terrain: 'water', danger: 0.7, resources: 0.15, adjacent: ['The Cornucopia', 'Glowing Bog', 'The Reed Maze'] },
             { name: 'Dead Tree Grove', terrain: 'forest', danger: 0.4, resources: 0.5, adjacent: ['The Cornucopia', 'Ruined Shacks', 'The Cypress Stand'] },
-            { name: 'Glowing Bog', terrain: 'wetland', danger: 0.8, resources: 0.6, adjacent: ['Murky Waters', 'Ruined Shacks', 'The Gas Flats'] },
-            { name: 'Ruined Shacks', terrain: 'ruins', danger: 0.3, resources: 0.4, adjacent: ['Dead Tree Grove', 'Glowing Bog', 'The Stilt Village'] },
+            { name: 'Glowing Bog', terrain: 'wetland', danger: 0.8, resources: 0.6, adjacent: ['Murky Waters', 'Ruined Shacks'] },
+            { name: 'Ruined Shacks', terrain: 'ruins', danger: 0.3, resources: 0.4, adjacent: ['Dead Tree Grove', 'Glowing Bog'] },
             { name: 'The Causeway', terrain: 'open', danger: 0.55, resources: 0.2, adjacent: ['The Cornucopia', 'The Reed Maze', 'The Cypress Stand'] },
-            { name: 'The Reed Maze', terrain: 'wetland', danger: 0.6, resources: 0.55, adjacent: ['Murky Waters', 'The Causeway', 'The Gas Flats'] },
-            { name: 'The Cypress Stand', terrain: 'forest', danger: 0.35, resources: 0.75, adjacent: ['Dead Tree Grove', 'The Causeway', 'The Stilt Village'] },
-            { name: 'The Gas Flats', terrain: 'wetland', danger: 0.9, resources: 0.25, adjacent: ['Glowing Bog', 'The Reed Maze'] },
-            { name: 'The Stilt Village', terrain: 'ruins', danger: 0.45, resources: 0.5, adjacent: ['Ruined Shacks', 'The Cypress Stand'] },
+            { name: 'The Reed Maze', terrain: 'wetland', danger: 0.6, resources: 0.55, adjacent: ['Murky Waters', 'The Causeway'] },
+            { name: 'The Cypress Stand', terrain: 'forest', danger: 0.35, resources: 0.75, adjacent: ['Dead Tree Grove', 'The Causeway'] },
         ]
     },
     {
@@ -115,6 +132,8 @@ export const ARENAS: Arena[] = [
         law: 'noNight',
         sponsorMultiplier: 0.85,
         edgeRules: { 'Canyon Shadows|The Slot Canyon': { kind: 'timeGated', gatedTime: 'day' } },
+        // Under a sun that never sets, a fire is a flare — fierce and brief.
+        effectVocab: { burning: { label: 'a solar-flare firestorm', severityMult: 1.25, durationMult: 0.75 } },
         zones: [
             { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Endless Dunes', 'Rocky Outcrop', 'The Bone Road'] },
             { name: 'Endless Dunes', terrain: 'open', danger: 0.7, resources: 0.05, adjacent: ['The Cornucopia', 'Dried Oasis', 'The Glass Sea'] },
@@ -136,6 +155,11 @@ export const ARENAS: Arena[] = [
         events: ['Ashfall Surge', 'Ground Fissure', 'Pyroclastic Gust'],
         // A one-way descent — no route back up without a rope.
         edgeRules: { 'Magma Vents|The Rim Path': { kind: 'oneWay', from: 'Magma Vents', to: 'The Rim Path' } },
+        // Fire here comes off the mountain, and the ash swallows what light there is.
+        effectVocab: {
+            burning: { label: 'a pyroclastic gust', severityMult: 1.3, durationMult: 0.7 },
+            fogbound: { label: 'an ash whiteout' },
+        },
         zones: [
             { name: 'The Cornucopia (Caldera Floor)', terrain: 'open', danger: 0.6, resources: 0.25, adjacent: ['Cinder Fields', 'The Obsidian Maze', 'Sulphur Springs'] },
             { name: 'Cinder Fields', terrain: 'open', danger: 0.5, resources: 0.15, adjacent: ['The Cornucopia (Caldera Floor)', 'Ashen Woods', 'Sulphur Springs', 'The Scoria Slope'] },
@@ -156,17 +180,28 @@ export const ARENAS: Arena[] = [
         mutts: ['Squall Serpents', 'Barnacle Crabs', 'Drowned Gulls', 'Surge Eels'],
         events: ['Storm Surge', 'Lightning Barrage', 'King Tide'],
         sponsorMultiplier: 1.15,
+        // Flooding here is the storm's own escalation, not an accident.
+        effectVocab: { flooded: { label: 'a storm surge', severityMult: 1.25 } },
+        // The stair is cut into wet rock in a permanent gale.
+        edgeRules: { 'The Cliff Stair|The Lighthouse': { kind: 'tolled', toll: { fatigue: 7 } } },
+        // §5.5: widened to thirteen zones — a drowned coastline should feel
+        // like a coastline, with room to lose someone along it.
         zones: [
             { name: 'The Cornucopia (Breakwater)', terrain: 'open', danger: 0.65, resources: 0.3, adjacent: ['Flooded Terraces', 'The Lighthouse', 'Kelp Shallows'] },
-            { name: 'Flooded Terraces', terrain: 'wetland', danger: 0.5, resources: 0.6, adjacent: ['The Cornucopia (Breakwater)', 'Mangrove Sprawl', 'The Salt Marsh'] },
+            { name: 'Flooded Terraces', terrain: 'wetland', danger: 0.5, resources: 0.6, adjacent: ['The Cornucopia (Breakwater)', 'Mangrove Sprawl', 'The Salt Marsh', 'The Storm Barrens'] },
             { name: 'The Lighthouse', terrain: 'highland', danger: 0.7, resources: 0.2, adjacent: ['The Cornucopia (Breakwater)', 'Wreck Graveyard', 'The Cliff Stair'] },
             { name: 'Kelp Shallows', terrain: 'water', danger: 0.45, resources: 0.65, adjacent: ['The Cornucopia (Breakwater)', 'Mangrove Sprawl', 'Wreck Graveyard'] },
-            { name: 'Mangrove Sprawl', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['Flooded Terraces', 'Kelp Shallows', 'The Boathouse'] },
+            { name: 'Mangrove Sprawl', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['Flooded Terraces', 'Kelp Shallows', 'The Boathouse', 'The Storm Barrens'] },
             { name: 'Wreck Graveyard', terrain: 'ruins', danger: 0.8, resources: 0.4, adjacent: ['The Lighthouse', 'Kelp Shallows', 'The Tidal Cave'] },
-            { name: 'The Salt Marsh', terrain: 'wetland', danger: 0.55, resources: 0.5, adjacent: ['Flooded Terraces', 'The Boathouse'] },
-            { name: 'The Cliff Stair', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Lighthouse', 'The Tidal Cave'] },
-            { name: 'The Boathouse', terrain: 'ruins', danger: 0.4, resources: 0.55, adjacent: ['Mangrove Sprawl', 'The Salt Marsh'] },
-            { name: 'The Tidal Cave', terrain: 'water', danger: 0.75, resources: 0.45, adjacent: ['Wreck Graveyard', 'The Cliff Stair'] },
+            { name: 'The Salt Marsh', terrain: 'wetland', danger: 0.55, resources: 0.5, adjacent: ['Flooded Terraces', 'The Boathouse', 'The Drowned Quarter'] },
+            { name: 'The Cliff Stair', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Lighthouse', 'The Tidal Cave', 'The Gull Roost'] },
+            { name: 'The Boathouse', terrain: 'ruins', danger: 0.4, resources: 0.55, adjacent: ['Mangrove Sprawl', 'The Salt Marsh', 'The Drowned Quarter'] },
+            { name: 'The Tidal Cave', terrain: 'water', danger: 0.75, resources: 0.45, adjacent: ['Wreck Graveyard', 'The Cliff Stair', 'The Gull Roost'] },
+            // The far end of the coast: a drowned town, a bare headland, and
+            // the one high roost the storm never quite reaches.
+            { name: 'The Drowned Quarter', terrain: 'ruins', danger: 0.6, resources: 0.5, adjacent: ['The Salt Marsh', 'The Boathouse'] },
+            { name: 'The Storm Barrens', terrain: 'open', danger: 0.7, resources: 0.15, adjacent: ['Flooded Terraces', 'Mangrove Sprawl'] },
+            { name: 'The Gull Roost', terrain: 'highland', danger: 0.55, resources: 0.35, adjacent: ['The Cliff Stair', 'The Tidal Cave'] },
         ]
     },
     {
@@ -178,17 +213,18 @@ export const ARENAS: Arena[] = [
         // Total visibility means the Capitol sees every gift land and every
         // desperate scramble for it — this arena's spectacle.
         sponsorMultiplier: 1.3,
+        // The slog across the open crust: no shade, no cover, glare from below.
+        edgeRules: { 'The Cornucopia (Salt Pan)|The Hexagon Flats': { kind: 'tolled', toll: { fatigue: 6 } } },
+        // §5.5: trimmed to seven zones. A dried sea with nowhere to hide reads
+        // truest as a small, merciless map where everyone can see everyone.
         zones: [
             { name: 'The Cornucopia (Salt Pan)', terrain: 'open', danger: 0.6, resources: 0.2, adjacent: ['The Hexagon Flats', 'Brine Pools', 'The Boneyard'] },
-            { name: 'The Hexagon Flats', terrain: 'open', danger: 0.7, resources: 0.05, adjacent: ['The Cornucopia (Salt Pan)', 'Crystal Spires', 'The Mirage Line'] },
+            { name: 'The Hexagon Flats', terrain: 'open', danger: 0.7, resources: 0.05, adjacent: ['The Cornucopia (Salt Pan)', 'Crystal Spires'] },
             { name: 'Brine Pools', terrain: 'water', danger: 0.5, resources: 0.45, adjacent: ['The Cornucopia (Salt Pan)', 'The Boneyard', 'Crystal Spires'] },
             { name: 'The Boneyard', terrain: 'ruins', danger: 0.45, resources: 0.35, adjacent: ['The Cornucopia (Salt Pan)', 'Brine Pools', 'Scrub Hollow'] },
             { name: 'Crystal Spires', terrain: 'highland', danger: 0.8, resources: 0.15, adjacent: ['The Hexagon Flats', 'Brine Pools', 'The Evaporation Pans'] },
-            { name: 'Scrub Hollow', terrain: 'forest', danger: 0.3, resources: 0.6, adjacent: ['The Boneyard', 'The Old Jetty'] },
-            { name: 'The Mirage Line', terrain: 'open', danger: 0.85, resources: 0.05, adjacent: ['The Hexagon Flats', 'The Evaporation Pans'] },
-            { name: 'The Evaporation Pans', terrain: 'water', danger: 0.55, resources: 0.4, adjacent: ['Crystal Spires', 'The Mirage Line', 'The Sink'] },
-            { name: 'The Old Jetty', terrain: 'ruins', danger: 0.5, resources: 0.45, adjacent: ['Scrub Hollow', 'The Sink'] },
-            { name: 'The Sink', terrain: 'wetland', danger: 0.65, resources: 0.5, adjacent: ['The Evaporation Pans', 'The Old Jetty'] },
+            { name: 'Scrub Hollow', terrain: 'forest', danger: 0.3, resources: 0.6, adjacent: ['The Boneyard', 'The Evaporation Pans'] },
+            { name: 'The Evaporation Pans', terrain: 'water', danger: 0.55, resources: 0.4, adjacent: ['Crystal Spires', 'Scrub Hollow'] },
         ]
     },
     {
@@ -203,6 +239,8 @@ export const ARENAS: Arena[] = [
         // technically food, so sponsor interest runs low on top of the law
         // above — until someone gets poisoned.
         sponsorMultiplier: 0.8,
+        // Contamination here is the forest doing what it grew to do.
+        effectVocab: { contaminated: { label: 'a spore bloom', durationMult: 1.25 } },
         zones: [
             { name: 'The Cornucopia (Ring of Caps)', terrain: 'open', danger: 0.55, resources: 0.4, adjacent: ['The Glowcap Wood', 'Rot Hollow', 'Mycelium Steps'] },
             { name: 'The Glowcap Wood', terrain: 'forest', danger: 0.4, resources: 0.85, adjacent: ['The Cornucopia (Ring of Caps)', 'Spore Marsh', 'The Shelf Terraces'] },
@@ -253,6 +291,11 @@ export const ARENAS: Arena[] = [
         sponsorMultiplier: 0.6,
         // No route around the reactor core.
         edgeRules: { 'Reactor Level|The Turbine Hall': { kind: 'tolled', toll: { fatigue: 5, woundChance: 0.12 } } },
+        // Down here the dark is a schedule and the water arrives by valve.
+        effectVocab: {
+            fogbound: { label: 'a rolling blackout', durationMult: 1.5 },
+            flooded: { label: 'a flood-valve release' },
+        },
         zones: [
             { name: 'The Cornucopia (Atrium)', terrain: 'open', danger: 0.65, resources: 0.3, adjacent: ['Service Tunnels', 'The Hydroponics Bay', 'Reactor Level'] },
             { name: 'Service Tunnels', terrain: 'ruins', danger: 0.7, resources: 0.25, adjacent: ['The Cornucopia (Atrium)', 'The Cistern', 'Dormitory Block', 'The Ventilation Shafts'] },
@@ -296,6 +339,8 @@ export const ARENAS: Arena[] = [
         description: 'Micro-islands adrift in a sea of thick magnetic fog, joined by swaying rope bridges and zip-lines. Compasses spin, the fog below has never been surveyed, and a cut rope is a border redrawn.',
         mutts: ['Lodestone Gulls', 'Fogline Eels', 'The Ferryman', 'Rust Mites'],
         events: ['Bridge Failure', 'Magnetic Squall', 'The Fog Rises'],
+        // Nobody crosses the great bridge blind: after dark the fog owns it.
+        edgeRules: { 'The Cornucopia (Anchor Isle)|The Long Span': { kind: 'timeGated', gatedTime: 'day' } },
         zones: [
             { name: 'The Cornucopia (Anchor Isle)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Long Span', 'The Fog Shallows', 'The Orchard Isle'] },
             { name: 'The Long Span', terrain: 'open', danger: 0.75, resources: 0.1, adjacent: ['The Cornucopia (Anchor Isle)', 'Lodestone Crag', 'Gullrock'], features: { cover: 0.05, elevation: true, chokepoint: true } },
@@ -358,6 +403,8 @@ export const ARENAS: Arena[] = [
         events: ['The Line Starts', 'Furnace Backdraft', 'Piston Cycle'],
         // Visually the most "watchable" arena — the Capitol likes the machinery.
         sponsorMultiplier: 1.1,
+        // Fire in here comes out of a furnace door, not a lightning strike.
+        effectVocab: { burning: { label: 'a furnace backdraft', severityMult: 1.2 } },
         zones: [
             { name: 'The Cornucopia (Kill Floor)', terrain: 'open', danger: 0.65, resources: 0.35, adjacent: ['The Conveyor Deck', 'The Gear Gallery', 'The Coolant Vats'] },
             { name: 'The Conveyor Deck', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Cornucopia (Kill Floor)', 'The Piston Hall', 'The Catwalks'] },
@@ -377,17 +424,24 @@ export const ARENAS: Arena[] = [
         description: 'A decayed amusement park swallowed by a fog-choked pine forest. The paint is gone, the music boxes are not, and some of the rides still have power from somewhere.',
         mutts: ['Calliope Jays', 'The Barker', 'Prize Hounds', 'Ticket Wasps'],
         events: ['The Ride Wakes', 'Fog Bank', 'Structural Rot'],
+        // Broken glass floor to ceiling: crossing the maze costs blood as often as not.
+        edgeRules: { 'The Carousel|The Mirror Maze': { kind: 'tolled', toll: { woundChance: 0.1 } } },
+        // §5.5: widened to twelve zones — a park has more dark corners than this.
         zones: [
             { name: 'The Cornucopia (The Midway)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Carousel', 'The Big Top', 'The Pine Dark'] },
             { name: 'The Carousel', terrain: 'ruins', danger: 0.65, resources: 0.3, adjacent: ['The Cornucopia (The Midway)', 'The Mirror Maze', 'The Duck Pond'] },
             { name: 'The Big Top', terrain: 'ruins', danger: 0.55, resources: 0.45, adjacent: ['The Cornucopia (The Midway)', 'The Ferris Wheel', "Fortune Teller's Row"] },
             { name: 'The Pine Dark', terrain: 'forest', danger: 0.45, resources: 0.7, adjacent: ['The Cornucopia (The Midway)', 'The Duck Pond', 'The Overgrown Campground'], features: { cover: 0.9, elevation: false, chokepoint: false } },
-            { name: 'The Mirror Maze', terrain: 'ruins', danger: 0.8, resources: 0.2, adjacent: ['The Carousel', 'The Ferris Wheel'], features: { cover: 0.7, elevation: false, chokepoint: true } },
-            { name: 'The Duck Pond', terrain: 'water', danger: 0.4, resources: 0.55, adjacent: ['The Carousel', 'The Pine Dark', 'The Sunken Boat Ride'] },
-            { name: 'The Ferris Wheel', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Big Top', 'The Mirror Maze'] },
+            { name: 'The Mirror Maze', terrain: 'ruins', danger: 0.8, resources: 0.2, adjacent: ['The Carousel', 'The Ferris Wheel', 'The Haunted Manor'], features: { cover: 0.7, elevation: false, chokepoint: true } },
+            { name: 'The Duck Pond', terrain: 'water', danger: 0.4, resources: 0.55, adjacent: ['The Carousel', 'The Pine Dark', 'The Sunken Boat Ride', 'The Swan Boat Canal'] },
+            { name: 'The Ferris Wheel', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Big Top', 'The Mirror Maze', 'The Haunted Manor'] },
             { name: "Fortune Teller's Row", terrain: 'ruins', danger: 0.5, resources: 0.5, adjacent: ['The Big Top', 'The Overgrown Campground'] },
             { name: 'The Overgrown Campground', terrain: 'forest', danger: 0.35, resources: 0.65, adjacent: ['The Pine Dark', "Fortune Teller's Row", 'The Sunken Boat Ride'] },
-            { name: 'The Sunken Boat Ride', terrain: 'wetland', danger: 0.6, resources: 0.45, adjacent: ['The Duck Pond', 'The Overgrown Campground'] },
+            { name: 'The Sunken Boat Ride', terrain: 'wetland', danger: 0.6, resources: 0.45, adjacent: ['The Duck Pond', 'The Overgrown Campground', 'The Swan Boat Canal'] },
+            // The back of the park: the dark ride nobody finished, and the
+            // canal that used to carry the swan boats between attractions.
+            { name: 'The Haunted Manor', terrain: 'ruins', danger: 0.7, resources: 0.4, adjacent: ['The Mirror Maze', 'The Ferris Wheel'], features: { cover: 0.8, elevation: false, chokepoint: true } },
+            { name: 'The Swan Boat Canal', terrain: 'water', danger: 0.5, resources: 0.4, adjacent: ['The Duck Pond', 'The Sunken Boat Ride'] },
         ]
     },
     {
@@ -414,12 +468,14 @@ export const ARENAS: Arena[] = [
         description: 'A cylindrical open-pit mine, spiral roads cut into sheer stone, dropping bench by bench to a flooded black centre. The only ways down are the ways everyone else knows about.',
         mutts: ['Bench Cats', 'Blast Bats', 'The Dredger', 'Scree Adders'],
         events: ['Bench Collapse', 'Runaway Cart', 'The Pit Exhales'],
+        // The only road down, and every step of it is exposed switchback.
+        edgeRules: { 'The Middle Benches|The Spiral Road': { kind: 'tolled', toll: { fatigue: 6 } } },
+        // §5.5: trimmed to nine zones — the Blast Face sheared off years ago.
         zones: [
             { name: 'The Cornucopia (Rim Camp)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Spiral Road', 'The Upper Benches', 'The Scrub Ledges'] },
-            { name: 'The Spiral Road', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Cornucopia (Rim Camp)', 'The Middle Benches', 'The Blast Face'], features: { cover: 0.1, elevation: true, chokepoint: true } },
-            { name: 'The Upper Benches', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['The Cornucopia (Rim Camp)', 'The Blast Face', 'The Powder Magazine'] },
+            { name: 'The Spiral Road', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Cornucopia (Rim Camp)', 'The Middle Benches'], features: { cover: 0.1, elevation: true, chokepoint: true } },
+            { name: 'The Upper Benches', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['The Cornucopia (Rim Camp)', 'The Powder Magazine'] },
             { name: 'The Scrub Ledges', terrain: 'forest', danger: 0.35, resources: 0.6, adjacent: ['The Cornucopia (Rim Camp)', 'The Powder Magazine', 'The Seep Wall'] },
-            { name: 'The Blast Face', terrain: 'highland', danger: 0.85, resources: 0.2, adjacent: ['The Spiral Road', 'The Upper Benches'] },
             { name: 'The Middle Benches', terrain: 'open', danger: 0.6, resources: 0.25, adjacent: ['The Spiral Road', 'The Crusher House', 'The Flooded Pit'] },
             { name: 'The Powder Magazine', terrain: 'ruins', danger: 0.7, resources: 0.45, adjacent: ['The Upper Benches', 'The Scrub Ledges'] },
             { name: 'The Seep Wall', terrain: 'wetland', danger: 0.45, resources: 0.55, adjacent: ['The Scrub Ledges', 'The Flooded Pit'] },
@@ -435,6 +491,11 @@ export const ARENAS: Arena[] = [
         events: ['Calving', 'Whiteout', 'Tunnel Slip'],
         // A vertical shaft — one-way down only, matching a real moulin's behaviour.
         edgeRules: { 'The Moulin|The Pressure Ridge': { kind: 'oneWay', from: 'The Pressure Ridge', to: 'The Moulin' } },
+        // The glacier's own weather, and the water it makes when it moves.
+        effectVocab: {
+            frozen: { label: 'a calving chill', severityMult: 1.15 },
+            flooded: { label: 'a meltwater surge' },
+        },
         zones: [
             { name: 'The Cornucopia (Snowfield)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Firn Slope', 'The Blue Galleries', 'The Frozen Falls'] },
             { name: 'The Firn Slope', terrain: 'open', danger: 0.6, resources: 0.2, adjacent: ['The Cornucopia (Snowfield)', 'The Serac Field', 'The Pressure Ridge'] },
@@ -455,6 +516,8 @@ export const ARENAS: Arena[] = [
         description: 'Open pack ice on a pitch-black frigid ocean, plates grinding and drifting all night, the Cornucopia stranded on the one shelf big enough to trust. The map is provisional. The water is not survivable.',
         mutts: ['Ice Orcas', 'Floe Bears', 'Storm Petrels', 'The Under-Thing'],
         events: ['The Lead Opens', 'Plate Collision', 'Black Water'],
+        // Grease ice will hold a careful tribute. Mostly.
+        edgeRules: { 'The Black Lead|The Grease Ice': { kind: 'tolled', toll: { fatigue: 7, woundChance: 0.08 } } },
         zones: [
             { name: 'The Cornucopia (Ice Shelf)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Pack Ice', 'The Pressure Ridges', 'The Black Lead'] },
             { name: 'The Pack Ice', terrain: 'open', danger: 0.65, resources: 0.2, adjacent: ['The Cornucopia (Ice Shelf)', 'The Grease Ice', 'The Frozen Wreck'] },
@@ -473,6 +536,8 @@ export const ARENAS: Arena[] = [
         description: 'Steep alpine slopes, heavy timber below, bare rock and loaded snowfields above. Everything worth having is downhill; everything that can kill you is up, and it is all one loud noise from coming down.',
         mutts: ['Timberline Wolves', 'The White Stag', 'Chough Flocks', 'Marmot Mutts'],
         events: ['Avalanche', 'Rockfall', 'Whiteout Front'],
+        // The traverse to the summit snows is a knife's edge in crampon weather.
+        edgeRules: { 'The Knife Ridge|The Summit Snows': { kind: 'tolled', toll: { fatigue: 8, woundChance: 0.1 } } },
         zones: [
             { name: 'The Cornucopia (Treeline Meadow)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Old Growth', 'The Scree Chutes', 'The Tarn'] },
             { name: 'The Old Growth', terrain: 'forest', danger: 0.35, resources: 0.75, adjacent: ['The Cornucopia (Treeline Meadow)', 'The Deadfall Slope', 'The Hunting Lodge'], features: { cover: 0.85, elevation: false, chokepoint: false } },
@@ -492,6 +557,8 @@ export const ARENAS: Arena[] = [
         description: 'A mountain cut into dozens of stepped stone terraces by pre-Dark Days mining, riddled with open shaft mouths and strung with the rusted bones of a cable car system nobody has trusted in a century.',
         mutts: ['Shaft Swifts', 'Terrace Jackals', 'The Foreman', 'Cable Spiders'],
         events: ['Terrace Slip', 'The Cable Parts', 'Shaft Breath'],
+        // Hand over hand along the counterweight cable to the winch house.
+        edgeRules: { 'The Counterweight Span|The Winch House': { kind: 'tolled', toll: { fatigue: 7 } } },
         zones: [
             { name: 'The Cornucopia (Grand Terrace)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Upper Steps', 'The Overgrown Steps', 'The Tailings Fans'] },
             { name: 'The Upper Steps', terrain: 'highland', danger: 0.65, resources: 0.25, adjacent: ['The Cornucopia (Grand Terrace)', 'The Cable Car Station', 'The Counterweight Span'] },
@@ -513,6 +580,8 @@ export const ARENAS: Arena[] = [
         description: 'A chain of sharp mountain peaks thrust directly out of a deep, rough ocean — no coastlines, no beaches, no gradual slopes. Scale the ice or swim the swells; there is no third way between any two peaks.',
         mutts: ['Undertow Serpents', 'Cliff Harriers', 'Deep Current Grapplers'],
         events: ['Rising Tide', 'Ice Shear', 'Rogue Swell'],
+        // The chimney is a free climb up sea-slick ice; the sea takes the rest.
+        edgeRules: { 'The Ice Chimney|The Summit Col': { kind: 'tolled', toll: { fatigue: 8, woundChance: 0.12 } } },
         zones: [
             { name: 'The Cornucopia (The Shelf)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The First Peak', 'The Drowned Approach', 'Open Water Reach'] },
             { name: 'The First Peak', terrain: 'highland', danger: 0.7, resources: 0.2, adjacent: ['The Cornucopia (The Shelf)', 'The Ice Chimney', 'The Sea Cave'] },

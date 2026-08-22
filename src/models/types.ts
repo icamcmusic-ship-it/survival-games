@@ -360,6 +360,12 @@ export interface Tribute {
      * on camera: quirks show on the sheet and surface from quiet cycles.
      */
     quirks?: string[];
+    /**
+     * §6.9: the district token — the one thing from home they are allowed to
+     * carry into the arena. Set in the goodbye room at pregames; surfaces
+     * again at their death or in the victor's hands.
+     */
+    token?: string;
 }
 
 /**
@@ -534,6 +540,19 @@ export interface ZoneFeatures {
     elevation: boolean;
     /** Bottlenecked ways in and out: ambushes easier, retreat harder. */
     chokepoint: boolean;
+    /**
+     * §5.6: drinkable water inside the zone, distinct from the terrain being
+     * 'water' — a spring on a moor is a water source; a brine sump is not
+     * automatically one. Derived from terrain and name when absent
+     * (see `zoneFeatures` in engine/map); read by the hydration layer.
+     */
+    waterSource?: boolean;
+    /**
+     * §5.6: 0-1, how much shelter the zone's interior offers against the
+     * weather — caves, ruins and deep timber near 1, bare flats near 0.
+     * Scales exposure ticks and derives from terrain and cover when absent.
+     */
+    shelterQuality?: number;
 }
 
 export interface Zone {
@@ -811,6 +830,19 @@ export interface GameState {
     activeMutts?: ActiveMutt[];
     /** Zones a cannon fired in this cycle, with the cycle it happened — reads as "just now" only while `cycle` still matches. Feeds the `scavenger` mutt role. */
     recentCannonZones?: { zone: string; cycle: number }[];
+    /**
+     * §5.10: zone name -> the deepest depletion it has reached since it last
+     * fully recovered. Written by `depleteZone`, cleared by `regenerateZones`
+     * when the zone comes back — which is what gates the visible "green
+     * returns" beat to once per zone per recovery.
+     */
+    zoneDepletionPeak?: Record<string, number>;
+    /**
+     * §7.1: tribute ids who have personally discovered the arena's force
+     * field — pressed a hand against the sky at the border and felt it push
+     * back. Gates the discovery beat to once per tribute.
+     */
+    forceFieldSeen?: string[];
     /** 'The Bounty Quell': the currently-named quarry, and the cycle they were last (re)named. */
     quellBounty?: { targetId: string; namedCycle: number };
 }

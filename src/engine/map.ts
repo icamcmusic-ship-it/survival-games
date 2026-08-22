@@ -65,6 +65,16 @@ const BASE_COVER: Record<Zone['terrain'], number> = {
     forest: 0.8, wetland: 0.6, ruins: 0.6, highland: 0.35, water: 0.2, open: 0.1,
 };
 
+/** §5.6: how much shelter each terrain's interior offers before cover adjusts it. */
+const BASE_SHELTER: Record<Zone['terrain'], number> = {
+    forest: 0.6, wetland: 0.3, ruins: 0.7, highland: 0.25, water: 0.1, open: 0.1,
+};
+
+/** §5.6: names that read as a drinkable source even off water terrain. */
+const WATER_SOURCE_NAME = /spring|creek|brook|stream|well|cistern|seep|tarn|loch|lake|river|falls|rain catch|meltwater|oasis|pond|pool/i;
+/** ...and water-terrain names that are explicitly not drinkable. */
+const FOUL_SOURCE_NAME = /brine|salt|sulphur|sulfur|boiling|steam|coolant|slurry|stagnant|black lead|sump/i;
+
 /**
  * §5.2: the zone's interior, hand-authored or derived. Derivation is
  * deterministic — terrain sets the baseline, the name jitters it — so the
@@ -72,13 +82,54 @@ const BASE_COVER: Record<Zone['terrain'], number> = {
  * arena author can override any zone by setting `features` in its data.
  */
 export function zoneFeatures(zone: Zone): ZoneFeatures {
-    if (zone.features) return zone.features;
     const h = nameHash(zone.name);
+    const derivedWater = !FOUL_SOURCE_NAME.test(zone.name)
+        && (zone.terrain === 'water' || zone.terrain === 'wetland' || WATER_SOURCE_NAME.test(zone.name));
+    if (zone.features) {
+        // Hand-authored features predate §5.6's fields: fill in what data
+        // does not declare, so an authored `cover` never zeroes out shelter.
+        return {
+            ...zone.features,
+            waterSource: zone.features.waterSource ?? derivedWater,
+            shelterQuality: zone.features.shelterQuality
+                ?? Math.max(0, Math.min(1, BASE_SHELTER[zone.terrain] + zone.features.cover * 0.25)),
+        };
+    }
     const cover = Math.max(0, Math.min(1, BASE_COVER[zone.terrain] + (h - 0.5) * 0.3));
     const elevation = zone.terrain === 'highland' || /ridge|cliff|tower|spire|peak|stair|terrace|hill/i.test(zone.name) || h > 0.85;
     const chokepoint = /pass|bridge|ravine|tunnel|gate|causeway|canal|strait|corridor/i.test(zone.name)
         || (!elevation && h >= 0.62 && h <= 0.78);
-    return { cover, elevation, chokepoint };
+    const shelterQuality = Math.max(0, Math.min(1,
+        BASE_SHELTER[zone.terrain] + cover * 0.25 + (/cave|cavern|tunnel|vault|cellar|shaft|bunker|lodge|cabin|shack|hollow/i.test(zone.name) ? 0.2 : 0)));
+    return { cover, elevation, chokepoint, waterSource: derivedWater, shelterQuality };
+}
+
+/**
+ * §5.6: zone names visible from this zone. High ground sees into every
+ * adjacent zone that is not itself elevated — a watcher on a ridge counts
+ * campfires in the valley; two ridges only glare at each other. Ground-level
+ * zones see nothing beyond their own treeline.
+ */
+export function zoneSightlines(arena: Arena, zone: Zone): string[] {
+    if (!zoneFeatures(zone).elevation) return [];
+    return zone.adjacent.filter(n => {
+        const neighbor = getZone(arena, n);
+        return !!neighbor && !zoneFeatures(neighbor).elevation;
+    });
+}
+
+/**
+ * §7.1: whether this zone sits against the arena's force field. The border
+ * is where the map runs out: the zones with the fewest ways in and out.
+ * The Cornucopia is never a border zone, whatever its degree — it is the
+ * centre by construction.
+ */
+export function hasForceField(arena: Arena, zoneName: string): boolean {
+    const zone = getZone(arena, zoneName);
+    if (!zone || zone === arena.zones[0]) return false;
+    const degrees = arena.zones.slice(1).map(z => z.adjacent.length);
+    const min = Math.min(...degrees);
+    return zone.adjacent.length <= Math.max(2, min);
 }
 
 /**
@@ -279,10 +330,20 @@ export function depleteZone(state: GameState, zoneName: string, amount: number) 
     state.zoneDepletion = state.zoneDepletion || {};
     const next = Math.min(1 - ZONES.minYieldFraction, depletionOf(state, zoneName) + amount);
     state.zoneDepletion[zoneName] = Math.round(next * 1000) / 1000;
+    // §5.10: remember the deepest this zone has been stripped, so its eventual
+    // recovery can be narrated once instead of happening silently.
+    state.zoneDepletionPeak = state.zoneDepletionPeak ?? {};
+    state.zoneDepletionPeak[zoneName] = Math.max(state.zoneDepletionPeak[zoneName] ?? 0, state.zoneDepletion[zoneName]);
 }
 
+/** Depletion below which a badly stripped zone visibly reads as recovered. */
+const REGROWTH_BEAT_BELOW = 0.2;
+/** Peak depletion a zone must have hit for its recovery to be worth a line. */
+const REGROWTH_BEAT_PEAK = 0.5;
+
 /** Called once per cycle: the arena quietly restocks what nobody is stripping. */
-export function regenerateZones(state: GameState) {
+export function regenerateZones(ctx: SimContext) {
+    const state = ctx.state;
     if (!state.zoneDepletion) return;
     Object.keys(state.zoneDepletion).forEach(name => {
         const current = state.zoneDepletion![name];
@@ -293,5 +354,20 @@ export function regenerateZones(state: GameState) {
         const next = Math.max(0, current - ZONES.regenPerCycle);
         if (next <= 0.001) delete state.zoneDepletion![name];
         else state.zoneDepletion![name] = Math.round(next * 1000) / 1000;
+
+        // §5.10: the regrowth beat. A zone that was visibly stripped bare and
+        // has grown most of the way back gets one line saying so — the arena
+        // repairing itself is worth a camera cut, and it tells the field the
+        // ground is worth returning to. Once per zone per recovery: the peak
+        // record is cleared here and only rewritten by fresh depletion.
+        const peak = state.zoneDepletionPeak?.[name] ?? 0;
+        if (peak >= REGROWTH_BEAT_PEAK && next <= REGROWTH_BEAT_BELOW) {
+            delete state.zoneDepletionPeak![name];
+            ctx.logEvent(
+                `The green returns to ${name}. What was picked over and trampled a few days ago is quietly worth foraging again.`,
+                [],
+                { zone: name, category: 'arena' }
+            );
+        }
     });
 }

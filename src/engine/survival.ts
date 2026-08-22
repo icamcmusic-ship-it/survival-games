@@ -4,7 +4,7 @@ import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
 import { applyExposure } from './exposure';
-import { getZone } from './map';
+import { getZone, zoneFeatures } from './map';
 import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { sanityBandOf } from './sanityBands';
@@ -73,7 +73,9 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
         // `noWaterExceptZone`: only the arena's one designated water source
         // gives any relief at all — everywhere else is as dry as open ground.
         const wateredHere = !arenaHasLaw(ctx.state, 'noWaterExceptZone') || t.zone === ctx.state.arena.lawZone;
-        if ((zone.terrain === 'water' || zone.terrain === 'wetland') && wateredHere) thirst -= VITALS.waterThirstRelief;
+        // §5.6: relief keys on the zone actually holding drinkable water — a
+        // moorland spring waters a tribute, a brine pool never did.
+        if (zoneFeatures(zone).waterSource && wateredHere) thirst -= VITALS.waterThirstRelief;
         if (zone.terrain === 'highland') fatigue += VITALS.highlandFatiguePenalty;
         if (zone.terrain === 'forest' && time === 'night') fatigue -= VITALS.forestNightShelter;
     }
@@ -194,7 +196,9 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
  */
 function drinkFromZone(ctx: SimContext, t: Tribute) {
     const zone = getZone(ctx.state.arena, t.zone);
-    if (!zone || (zone.terrain !== 'water' && zone.terrain !== 'wetland')) return;
+    // §5.6: `waterSource` is the drinkability question — a spring on a moor
+    // counts, a brine sump does not, whatever the printed terrain says.
+    if (!zone || !zoneFeatures(zone).waterSource) return;
     // `noWaterExceptZone`: nothing to drink anywhere but the designated zone.
     if (arenaHasLaw(ctx.state, 'noWaterExceptZone') && t.zone !== ctx.state.arena.lawZone) return;
 

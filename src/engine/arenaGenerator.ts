@@ -1,11 +1,12 @@
-import { Arena, Injuries, Mutt, MuttRole, SignatureRule, Terrain, Zone, ZoneEffectKind } from '../models/types';
+import { Arena, ArenaLawId, EdgeRule, Injuries, Mutt, MuttRole, SignatureRule, Terrain, Zone, ZoneEffectKind } from '../models/types';
 import { RNG } from '../utils/rng';
 import { PROCEDURAL_EVENTS, FlavorTag } from '../data/proceduralFlavor';
 import { PROC_SIGNATURE, PROC_TERRAIN } from '../data/balance';
 
 interface Biome {
     id: string;
-    namePrefix: string;
+    /** Display-name prefixes this biome can roll — `The <prefix> <suffix>`. */
+    namePrefixes: string[];
     description: string;
     terrains: Terrain[];
     zoneNames: Record<Terrain, string[]>;
@@ -21,61 +22,120 @@ interface Biome {
 // exhausted its pool mid-generation just came out smaller and reused the
 // same handful of names on every large roll. Pools are now sized well past
 // 16 per biome, and every terrain with a written pool is actually reachable.
+// §5.1/§8.4: eight biomes (four new — tundra, dunes, bayou, ruinlands), and
+// every terrain pool holds at least eight names, so even a 16-zone sprawl
+// never runs a pool dry and two same-biome arenas rarely share a map.
 const BIOMES: Biome[] = [
     {
         id: 'rainforest',
-        namePrefix: 'Rainforest',
+        namePrefixes: ['Rainforest', 'Jungle', 'Verdant'],
         description: 'A dense, humid jungle. Food is everywhere — and so are the things that eat it.',
         terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins'],
         zoneNames: {
-            open: ['The Clearing', 'Sunlit Break', 'Trampled Clearing', 'Fallen Giant'],
-            forest: ['Strangler Canopy', 'Vine Thicket', 'Fern Hollow', 'Kapok Grove', 'Howler Canopy', 'Root Tangle'],
-            water: ['Piranha River', 'Waterfall Basin', 'Flooded Grotto', 'Blackwater Shallows', 'Rapids Bend'],
-            wetland: ['Leech Marsh', 'Mangrove Maze', 'Sinking Flat', 'Mosquito Bog'],
-            highland: ['Emerald Ridge', 'Temple Steps', 'Moss-Choked Bluff', 'Canopy Walk'],
-            ruins: ['Sunken Temple', 'Overgrown Altar', 'Collapsed Shrine', 'Idol Grove'],
+            open: ['The Clearing', 'Sunlit Break', 'Trampled Clearing', 'Fallen Giant', 'The Burn Gap', 'Orchid Meadow', 'The Landslip Scar', 'Elephant Grass Flat'],
+            forest: ['Strangler Canopy', 'Vine Thicket', 'Fern Hollow', 'Kapok Grove', 'Howler Canopy', 'Root Tangle', 'The Liana Web', 'Fig Cathedral', 'The Understory Dark'],
+            water: ['Piranha River', 'Waterfall Basin', 'Flooded Grotto', 'Blackwater Shallows', 'Rapids Bend', 'The Oxbow', 'Caiman Pool', 'The Silt Delta'],
+            wetland: ['Leech Marsh', 'Mangrove Maze', 'Sinking Flat', 'Mosquito Bog', 'The Drowned Grove', 'Heliconia Swamp', 'The Rot Channel', 'Fever Lagoon'],
+            highland: ['Emerald Ridge', 'Temple Steps', 'Moss-Choked Bluff', 'Canopy Walk', 'The Mist Terraces', 'Jaguar Ledge', 'The Green Wall', 'Thunder Bluff'],
+            ruins: ['Sunken Temple', 'Overgrown Altar', 'Collapsed Shrine', 'Idol Grove', 'The Vine-Bound Gate', 'Serpent Stair', 'The Moss Court', 'Forgotten Terrace'],
         },
     },
     {
         id: 'volcanic',
-        namePrefix: 'Volcanic',
+        namePrefixes: ['Volcanic', 'Cinder', 'Molten'],
         description: 'Black rock, ash storms, and rivers of magma. Water is scarce, burns are not.',
         terrains: ['open', 'forest', 'wetland', 'highland', 'ruins', 'water'],
         zoneNames: {
-            open: ['Ash Flats', 'Obsidian Plain', 'Cinder Wastes', 'Scorched Flat'],
-            forest: ['Charred Woods', 'Blackened Grove', 'Smoldering Thicket'],
-            water: ['Steam Vents', 'Boiling Spring', 'Mineral Pool'],
-            wetland: ['Sulfur Pools', 'Tar Seep', 'Ashen Mudflat'],
-            highland: ['Caldera Rim', 'Lava Tubes', 'Cinder Cone', 'Fumarole Terrace', 'Obsidian Spire'],
-            ruins: ['Buried Outpost', 'Basalt Columns', 'Ash-Choked Vault', 'Slag Foundry'],
+            open: ['Ash Flats', 'Obsidian Plain', 'Cinder Wastes', 'Scorched Flat', 'The Pumice Field', 'Ember Basin', 'The Glass Barrens', 'Fissure Plain'],
+            forest: ['Charred Woods', 'Blackened Grove', 'Smoldering Thicket', 'The Ash Orchard', 'Soot Pines', 'The Half-Burned Stand', 'Cinder Copse', 'The Widowmaker Snags'],
+            water: ['Steam Vents', 'Boiling Spring', 'Mineral Pool', 'The Scalding Run', 'Geyser Field', 'The Warm Shallows', 'Acid Tarn', 'The Vapor Channel'],
+            wetland: ['Sulfur Pools', 'Tar Seep', 'Ashen Mudflat', 'The Fumarole Marsh', 'Brimstone Bog', 'The Grey Slurry', 'Mudpot Flats', 'The Steaming Fen'],
+            highland: ['Caldera Rim', 'Lava Tubes', 'Cinder Cone', 'Fumarole Terrace', 'Obsidian Spire', 'The Basalt Stair', 'Magma Overlook', 'The Shield Slope'],
+            ruins: ['Buried Outpost', 'Basalt Columns', 'Ash-Choked Vault', 'Slag Foundry', 'The Entombed Village', 'Pyroclast Quarry', 'The Smelter Bones', 'Vitrified Keep'],
         },
     },
     {
         id: 'archipelago',
-        namePrefix: 'Archipelago',
+        namePrefixes: ['Archipelago', 'Island', 'Tidal'],
         description: 'A chain of storm-lashed islands. Swimming between zones is half the battle.',
         terrains: ['water', 'open', 'forest', 'wetland', 'highland', 'ruins'],
         zoneNames: {
-            open: ['Shipwreck Beach', 'Tidal Flats', 'Driftwood Cove', 'Sandbar Spit'],
-            forest: ['Palm Grove', 'Bamboo Isle', 'Windbreak Thicket'],
-            water: ['The Shallows', 'Riptide Channel', 'Coral Reef', 'Sunken Reef', 'Whirlpool Strait'],
-            wetland: ['Salt Lagoon', 'Mangrove Shoal', 'Tidepool Flat'],
-            highland: ['Lighthouse Rock', 'Sea Cliffs', 'Watchtower Bluff'],
-            ruins: ['Drowned Village', 'Barnacled Wreck', 'Old Harbor'],
+            open: ['Shipwreck Beach', 'Tidal Flats', 'Driftwood Cove', 'Sandbar Spit', 'The Shell Strand', 'Gull Beach', 'The Wind Flats', 'Castaway Point'],
+            forest: ['Palm Grove', 'Bamboo Isle', 'Windbreak Thicket', 'The Salt Pines', 'Coconut Stand', 'The Leaning Grove', 'Seagrape Tangle', 'The Green Islet'],
+            water: ['The Shallows', 'Riptide Channel', 'Coral Reef', 'Sunken Reef', 'Whirlpool Strait', 'The Deep Passage', 'Shark Sound', 'The Breaker Line'],
+            wetland: ['Salt Lagoon', 'Mangrove Shoal', 'Tidepool Flat', 'The Eel Grass Beds', 'Crab Marsh', 'The Brackish Slough', 'Heron Flats', 'The Drowning Sands'],
+            highland: ['Lighthouse Rock', 'Sea Cliffs', 'Watchtower Bluff', 'The Basalt Head', 'Cormorant Crag', 'The Storm Stack', 'Signal Hill', 'The Razorback Spine'],
+            ruins: ['Drowned Village', 'Barnacled Wreck', 'Old Harbor', 'The Fish Cannery', 'Pirate Stockade', 'The Sea Fort', 'Sunken Pier', 'The Whaler\'s Station'],
         },
     },
     {
         id: 'highlands',
-        namePrefix: 'Highland',
+        namePrefixes: ['Highland', 'Moorland', 'Summit'],
         description: 'Windswept moors and treacherous peaks. The cold and the drops kill as surely as blades.',
         terrains: ['highland', 'open', 'forest', 'water', 'wetland', 'ruins'],
         zoneNames: {
-            open: ['Windswept Moor', 'Heather Field', 'Frostbitten Plain'],
-            forest: ['Stunted Pines', 'Misty Glen', 'Dead Timber'],
-            water: ['Black Loch', 'Mountain Spring', 'Frozen Tarn'],
-            wetland: ['Peat Bog', 'Sodden Fen'],
-            highland: ['Shrouded Summit', 'Scree Slopes', 'Eagle Pass', 'Wind Gap', 'Frost-Cracked Ridge'],
-            ruins: ['Broken Watchtower', 'Standing Stones', 'Cairn Field', 'Abandoned Croft'],
+            open: ['Windswept Moor', 'Heather Field', 'Frostbitten Plain', 'The Gorse Flats', 'Bracken Slope', 'The High Meadow', 'Thistle Common', 'The Barren Shoulder'],
+            forest: ['Stunted Pines', 'Misty Glen', 'Dead Timber', 'The Rowan Stand', 'Crooked Birches', 'The Wolf Wood', 'Larch Hollow', 'The Wind-Bent Grove'],
+            water: ['Black Loch', 'Mountain Spring', 'Frozen Tarn', 'The Roaring Burn', 'Kelpie Pool', 'The Grey Falls', 'Corrie Lake', 'The Cold Beck'],
+            wetland: ['Peat Bog', 'Sodden Fen', 'The Quaking Moss', 'Curlew Mire', 'The Black Sump', 'Rushes Flat', 'The Drowned Moor', 'Sphagnum Hollow'],
+            highland: ['Shrouded Summit', 'Scree Slopes', 'Eagle Pass', 'Wind Gap', 'Frost-Cracked Ridge', 'The Granite Teeth', 'Raven Crag', 'The Saddle'],
+            ruins: ['Broken Watchtower', 'Standing Stones', 'Cairn Field', 'Abandoned Croft', 'The Shepherd\'s Bothy', 'Fallen Chapel', 'The Old Sheepfold', 'Beacon Ring'],
+        },
+    },
+    {
+        id: 'tundra',
+        namePrefixes: ['Tundra', 'Frostbound', 'White'],
+        description: 'A treeless white plain under a sky the Gamemakers keep well below freezing. Warmth is the only currency that matters.',
+        terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins'],
+        zoneNames: {
+            open: ['The Snowfields', 'Whiteout Flats', 'The Wind Scour', 'Caribou Plain', 'The Frost Heave', 'Blue Shadow Basin', 'The Drift Sea', 'Bone-Cold Barrens'],
+            forest: ['The Krummholz', 'Frozen Spruce Stand', 'The Rime Wood', 'Snow-Bent Willows', 'The Last Timber', 'Hoarfrost Grove', 'The Buried Firs', 'Ptarmigan Thicket'],
+            water: ['The Ice Lake', 'Aurora Tarn', 'The Black Polynya', 'Frozen River Braid', 'The Seal Hole', 'Glacier Melt Spring', 'The Slush Channel', 'Winterlock Lagoon'],
+            wetland: ['The Frozen Muskeg', 'Tussock Marsh', 'The Icebound Fen', 'Permafrost Sink', 'The Grey Thaw', 'Cottongrass Flats', 'The Cracked Mire', 'Meltpool Maze'],
+            highland: ['The Nunatak', 'Windward Ridge', 'The Cornice Line', 'Frost Spire', 'The Icefall Shelf', 'Caribou Lookout', 'The Blue Ice Wall', 'Avalanche Shoulder'],
+            ruins: ['The Frozen Camp', 'Buried Research Post', 'The Ice-Locked Convoy', 'Whalebone Circle', 'The Collapsed Lodge', 'Snow-Choked Mine Head', 'The Radio Mast', 'Dead Man\'s Cache'],
+        },
+    },
+    {
+        id: 'dunes',
+        namePrefixes: ['Dune', 'Desert', 'Sunblasted'],
+        description: 'An ocean of red sand under a sun that never blinks. Every shadow is contested, and the water is wherever you are not.',
+        terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins'],
+        zoneNames: {
+            open: ['The Singing Dunes', 'Red Sand Sea', 'The Hardpan', 'Scorpion Flats', 'The Mirage Plain', 'Sun Anvil', 'The Cracked Basin', 'Bone Dust Reach'],
+            forest: ['The Cactus Forest', 'Acacia Shade', 'The Thorn Break', 'Date Palm Stand', 'The Tamarisk Belt', 'Joshua Grove', 'The Dry Orchard', 'Saltbush Scrub'],
+            water: ['The Hidden Oasis', 'Canyon Spring', 'The Last Well', 'Flash-Flood Wash', 'The Green Pool', 'Buried Cistern Lake', 'The Seep Line', 'Wadi Bend'],
+            wetland: ['The Salt Pan Marsh', 'Reed Oasis Fringe', 'The Alkali Flats', 'Tamarisk Slough', 'The Mud Cracks', 'Locust Fen', 'The Bitter Shallows', 'Dust-Storm Delta'],
+            highland: ['The Mesa Top', 'Sandstone Arches', 'The Knife Butte', 'Vulture Rim', 'The Slickrock Stair', 'Sunset Cliffs', 'The Hoodoo Maze', 'Rattlesnake Ledge'],
+            ruins: ['The Buried Caravan', 'Sandswallowed Town', 'The Broken Aqueduct', 'Ghost Bazaar', 'The Toppled Colossus', 'Wind-Carved Tombs', 'The Dry Fountain Court', 'Caravanserai Shell'],
+        },
+    },
+    {
+        id: 'bayou',
+        namePrefixes: ['Bayou', 'Blackwater', 'Drowned'],
+        description: 'A drowned lowland of black water and grey moss, where the ground is a rumour and everything old is still hungry.',
+        terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins'],
+        zoneNames: {
+            open: ['The Levee Top', 'Cane Field Flat', 'The Burned Landing', 'Egret Meadow', 'The Shell Midden', 'Hurricane Clearing', 'The Dry Hummock', 'Firefly Flats'],
+            forest: ['The Cypress Dark', 'Spanish Moss Hall', 'The Tupelo Stand', 'Gator Log Grove', 'The Grey Veil', 'Willow Tangle', 'The Knee Roots', 'Owl Roost Wood'],
+            water: ['The Black Channel', 'Snakebird Slough', 'The Slow Water', 'Gar Hole', 'The Green Mirror', 'Moccasin Run', 'The Drowned Ferry Crossing', 'Catfish Deep'],
+            wetland: ['The Trembling Prairie', 'Leech Slough', 'The Sucking Mud', 'Cottonmouth Marsh', 'The Fog Flats', 'Crawfish Beds', 'The Rot Garden', 'Widow\'s Mire'],
+            highland: ['The Indian Mound', 'Levee Ridge', 'The High Bank', 'Live Oak Knoll', 'The Bluff Cut', 'Heron Watch', 'The Old Railbed', 'Lightning Tree Rise'],
+            ruins: ['The Sunken Plantation', 'Rotting Stilt Town', 'The Flooded Chapel', 'Shrimp Boat Graveyard', 'The Moss-Eaten Mill', 'Voodoo Landing', 'The Broken Levee Works', 'Drowned Depot'],
+        },
+    },
+    {
+        id: 'ruinlands',
+        namePrefixes: ['Ruined', 'Derelict', 'Rustbound'],
+        description: 'A pre-Dark Days city gone back to weeds and rust. The buildings remember being taller, and none of them are done falling down.',
+        terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins'],
+        zoneNames: {
+            open: ['The Cracked Plaza', 'Parking Field', 'The Ashphalt Prairie', 'Stadium Floor', 'The Old Runway', 'Market Square', 'The Rubble Flats', 'Monument Green'],
+            forest: ['The Street Forest', 'Rooftop Orchard Gone Wild', 'The Park Overgrowth', 'Ivy-Eaten Block', 'The Cemetery Pines', 'Greenhouse Jungle', 'The Median Wood', 'Courtyard Thicket'],
+            water: ['The Flooded Metro', 'Reservoir Basin', 'The Canal Locks', 'Fountain Lake', 'The Burst Main', 'Drowned Underpass', 'The Water Treatment Pools', 'Riverwalk Channel'],
+            wetland: ['The Sewer Marsh', 'Sunken Block Bog', 'The Storm Drain Fens', 'Collapsed Cellar Pools', 'The Weeping Foundations', 'Rooftop Rain Gardens', 'The Silt Yards', 'Culvert Maze'],
+            highland: ['The Tower Skeleton', 'Overpass Spiral', 'The Crane Nest', 'Cathedral Spire', 'The Fire Escape Warren', 'Billboard Ridge', 'The Elevated Line', 'Water Tower Hill'],
+            ruins: ['The Gutted Mall', 'Rust Yard', 'The Fallen Library', 'Tenement Maze', 'The Hollow Factory', 'Subway Concourse', 'The Collapsed Theatre', 'Bank Vault Row'],
         },
     },
 ];
@@ -353,6 +413,131 @@ function rollSignatureRule(rng: RNG): SignatureRule {
     };
 }
 
+const ARENA_NAME_SUFFIXES = [
+    'Crucible', 'Gauntlet', 'Expanse', 'Labyrinth', 'Proving Grounds',
+    'Wilds', 'Reach', 'Maze', 'Killing Ground', 'Hollow', 'Circuit', 'Basin',
+    'Crown', 'Verge', 'Sprawl', 'Cauldron', 'Threshing Floor', 'Amphitheatre',
+    'Enclosure', 'Preserve', 'Snare', 'Vise', 'Coliseum', 'Frontier', 'Waste',
+    'Dominion', 'Theatre', 'Harrow', 'Gyre', 'Cage', 'Spiral', 'Winnowing',
+];
+
+// §5.2: the Gamemakers' standing rules for a generated arena — the same
+// declarative fields hand-authored arenas set in src/data/constants.ts
+// (`law`/`lawZone`, `edgeRules`, `effectVocab`, `sponsorMultiplier`), rolled
+// from the arena's own seeded RNG so a shared seed reproduces them exactly.
+const PROC_LAWS: ArenaLawId[] = [
+    'noCannons', 'cornucopiaRefills', 'sponsorsFixedZone', 'noNight', 'noWaterExceptZone', 'fireImpossible',
+];
+
+function rollLaw(rng: RNG, zones: Zone[]): { law?: ArenaLawId; lawZone?: string } {
+    if (!rng.chance(0.5)) return {};
+    const law = rng.pick(PROC_LAWS);
+    // Laws with an "only here" clause need a valid zone to point at.
+    if (law === 'sponsorsFixedZone') return { law, lawZone: zones[0].name };
+    if (law === 'noWaterExceptZone') {
+        const watered = zones.filter(z => z.terrain === 'water' || z.terrain === 'wetland');
+        // No water anywhere is the Warren's deliberate shape: legal, no lawZone.
+        if (watered.length === 0) return { law };
+        return { law, lawZone: rng.pick(watered).name };
+    }
+    return { law };
+}
+
+/** Stable key for an undirected edge — must match `edgeKey` in engine/map.ts. */
+function procEdgeKey(a: string, b: string): string {
+    return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+function rollEdgeRules(rng: RNG, zones: Zone[]): Record<string, EdgeRule> | undefined {
+    if (!rng.chance(0.4)) return undefined;
+    // Every distinct edge in the built graph, in printed order for determinism.
+    const seen = new Set<string>();
+    const edges: [Zone, Zone][] = [];
+    zones.forEach(z => z.adjacent.forEach(n => {
+        const key = procEdgeKey(z.name, n);
+        if (seen.has(key)) return;
+        seen.add(key);
+        const other = zones.find(o => o.name === n);
+        if (other) edges.push([z, other]);
+    }));
+    if (edges.length === 0) return undefined;
+
+    const rules: Record<string, EdgeRule> = {};
+    const count = rng.nextInt(1, Math.min(3, edges.length));
+    const picked = rng.shuffle(edges).slice(0, count);
+    picked.forEach(([a, b]) => {
+        const roll = rng.nextFloat();
+        if (roll < 0.45) {
+            rules[procEdgeKey(a.name, b.name)] = {
+                kind: 'tolled',
+                toll: {
+                    fatigue: rng.nextInt(4, 8),
+                    woundChance: rng.chance(0.4) ? Math.round((0.08 + rng.nextFloat() * 0.07) * 100) / 100 : undefined,
+                },
+            };
+        } else if (roll < 0.75) {
+            rules[procEdgeKey(a.name, b.name)] = { kind: 'timeGated', gatedTime: rng.chance(0.7) ? 'day' : 'night' };
+        } else if (a.adjacent.length > 1 && b.adjacent.length > 1) {
+            // One-way only between well-connected zones — a oneWay into a
+            // dead end would be a pit trap the AI cannot reason about.
+            const [from, to] = rng.chance(0.5) ? [a, b] : [b, a];
+            rules[procEdgeKey(a.name, b.name)] = { kind: 'oneWay', from: from.name, to: to.name };
+        } else {
+            rules[procEdgeKey(a.name, b.name)] = { kind: 'tolled', toll: { fatigue: rng.nextInt(4, 8) } };
+        }
+    });
+    return rules;
+}
+
+/** Themed renamings of the zone-effect primitives, per biome. */
+const EFFECT_VOCAB_BY_BIOME: Record<string, Array<NonNullable<Arena['effectVocab']>>> = {
+    rainforest: [
+        { contaminated: { label: 'a haze of spore-rot', severityMult: 1.15 } },
+        { flooded: { label: 'a flash flood off the canopy', severityMult: 1.2 } },
+    ],
+    volcanic: [
+        { burning: { label: 'a lava surge', severityMult: 1.3, durationMult: 0.8 } },
+        { fogbound: { label: 'an ash blackout', durationMult: 1.25 } },
+    ],
+    archipelago: [
+        { flooded: { label: 'a king tide', severityMult: 1.25 } },
+        { fogbound: { label: 'a sea fog bank', durationMult: 1.5 } },
+    ],
+    highlands: [
+        { frozen: { label: 'a killing frost', severityMult: 1.2 } },
+        { fogbound: { label: 'a cloudbank sitting down on the moor' } },
+    ],
+    tundra: [
+        { frozen: { label: 'a whiteout front', severityMult: 1.3 } },
+        { fogbound: { label: 'a wall of ice fog', durationMult: 1.5 } },
+    ],
+    dunes: [
+        { burning: { label: 'a firestorm off the dry scrub', severityMult: 1.2 } },
+        { contaminated: { label: 'an alkali dust storm' } },
+    ],
+    bayou: [
+        { contaminated: { label: 'a gas bloom off the black water', severityMult: 1.2 } },
+        { flooded: { label: 'the bayou rising', durationMult: 1.3 } },
+    ],
+    ruinlands: [
+        { contaminated: { label: 'a leak from something pre-war', severityMult: 1.15 } },
+        { fogbound: { label: 'a concrete-dust whiteout' } },
+    ],
+};
+
+function rollEffectVocab(rng: RNG, biome: Biome): Arena['effectVocab'] | undefined {
+    if (!rng.chance(0.35)) return undefined;
+    const options = EFFECT_VOCAB_BY_BIOME[biome.id];
+    if (!options || options.length === 0) return undefined;
+    return rng.pick(options);
+}
+
+/** Hand-authored arenas run 0.6-1.3; generated ones roll the same band. */
+function rollSponsorMultiplier(rng: RNG): number | undefined {
+    if (!rng.chance(0.55)) return undefined;
+    return Math.round((0.7 + rng.nextFloat() * 0.6) * 20) / 20;
+}
+
 export function generateArena(seed: string): Arena {
     const rng = new RNG(`${seed}-arena`);
     const biome = rng.pick(BIOMES);
@@ -421,16 +606,12 @@ export function generateArena(seed: string): Arena {
         (eligible.length ? eligible : PROCEDURAL_EVENTS).map(e => e.cause.replace(/^(Killed|Drowned|Died|Fell|Poisoned|Burned|Struck|Crushed|Stripped|Suffocated|Bled out to|Froze to death|Lost and frozen in|Lost to|Impaled in|Blinded and battered by)\b\s*(by|in|to|from)?\s*/, '').replace(/^\w/, c => c.toUpperCase()))
     )).slice(0, 5);
 
-    // B3: 4 biomes × 5 suffixes gave only 20 distinct arena display names in
-    // total, so returning players saw the same handful of titles over and
-    // over regardless of how different the actual layout was. More than
-    // doubling the suffix pool is a cheap way to widen that without touching
-    // `arena.id` (which flavor packs, climate profiles and mutt lists key on
-    // and must stay exactly `procedural-<biome>`).
-    const suffix = rng.pick([
-        'Crucible', 'Gauntlet', 'Expanse', 'Labyrinth', 'Proving Grounds',
-        'Wilds', 'Reach', 'Maze', 'Killing Ground', 'Hollow', 'Circuit', 'Basin',
-    ]);
+    // §8.6: 24 biome prefixes × 32 suffixes — several hundred distinct titles,
+    // so returning players stop seeing the same handful regardless of layout.
+    // `arena.id` stays exactly `procedural-<biome>` (flavor packs, climate
+    // profiles and mutt lists key on it); only the display name widens.
+    const prefix = rng.pick(biome.namePrefixes);
+    const suffix = rng.pick(ARENA_NAME_SUFFIXES);
     // In-world phrasing per topology — the player is a Capitol viewer, not a
     // level designer, so no "procedurally generated" or engine topology names
     // in the summary (which can surface on a hidden-arena reveal).
@@ -441,13 +622,20 @@ export function generateArena(seed: string): Arena {
         bisected: 'Something vast divides the arena clean in two, and crossing it is the whole question.',
         layered: 'The arena is stacked in tiers, and holding the high ground means something here.',
     };
+    // §5.2: the Gamemakers' standing rules, rolled after the map is final so
+    // every zone-referencing clause points at a zone that actually exists.
+    const { law, lawZone } = rollLaw(rng, zones);
+    const edgeRules = rollEdgeRules(rng, zones);
+    const effectVocab = rollEffectVocab(rng, biome);
+    const sponsorMultiplier = rollSponsorMultiplier(rng);
+
     return {
         id: `procedural-${biome.id}`,
         // A per-map identity for records and achievements: `id` must stay
         // exactly `procedural-<biome>` (flavour packs, climate profiles and
         // mutt kits key on it), so distinctness lives here instead.
         mapId: `procedural-${biome.id}-${new RNG(`${seed}-arena-map-id`).nextInt(0, 999999).toString(36)}-${topology}`,
-        name: `The ${biome.namePrefix} ${suffix}`,
+        name: `The ${prefix} ${suffix}`,
         description: `${biome.description} ${layoutBlurb[topology]}`,
         mutts,
         events: eventNames,
@@ -455,5 +643,10 @@ export function generateArena(seed: string): Arena {
         signatureRule: rollSignatureRule(rng),
         muttRoster,
         terrainVariant,
+        law,
+        lawZone,
+        edgeRules,
+        effectVocab,
+        sponsorMultiplier,
     };
 }

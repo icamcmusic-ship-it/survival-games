@@ -645,7 +645,10 @@ firingFloors.forEach(([label, count, floor]) => {
 console.log(`runs=${runs} victors=${victors} wipeouts=${wipeouts} avgDays=${(totalDays/runs).toFixed(1)} avgLogs=${(totalLogs/runs).toFixed(0)} runsWithFeast=${feastRuns}`);
 console.log('phases seen:', [...phasesSeen].sort().join(', '));
 console.log('categories seen:', [...categoriesSeen].sort().join(', '));
-console.log(`behaviour: vengeance=${vengeanceSworn} groupFights=${groupFights} retreats=${retreats} griefMoments=${griefEvents} strippedZones=${depletedForages}`);
+// `foragedOutZones` (forage depletion, behavioural) is a different metric
+// from the arena line's `strippedZones` (fire burning ground down to ash) —
+// they printed under near-identical names for a while and read as duplicates.
+console.log(`behaviour: vengeance=${vengeanceSworn} groupFights=${groupFights} retreats=${retreats} griefMoments=${griefEvents} foragedOutZones=${depletedForages}`);
 console.log(`stealth: ambushes=${ambushes} unnoticed=${hiddenMoments}`);
 console.log(`wounds: clots=${clots} fieldDressings=${fieldDressings} restRecoveries=${restRecoveries}`);
 console.log(`agency: hunts/crafts=${huntOrCraft} zoneDrinks=${zoneDrinks} pursuits=${pursuits} desperationFights=${desperationFights}`);
@@ -660,7 +663,7 @@ console.log(`arena2: weatherFronts=${weatherFronts} trapsDestroyed=${trapsDestro
 console.log(`zoneControl: held=${cornucopiaHeld} payouts=${cornucopiaPayouts}`);
 console.log(`schedule: signatureBeats=${signatureBeats} calendarBeats=${calendarBeats}`);
 console.log(`fieldcraft: trapsSet=${trapsSet} trapsTriggered=${trapsTriggered} fires=${firesLit} shelters=${sheltersBuilt} camouflage=${camouflaged} poisonedWeapons=${weaponsPoisoned}`);
-console.log(`arena: zoneFires=${zoneFiresStarted} (spread ${zoneFiresSpread}) floods=${zoneFloods} freezes=${zoneFreezes} contaminations=${zoneContaminations} fogs=${zoneFogs} stripped=${zoneStripped} severed=${zoneSevered}`);
+console.log(`arena: zoneFires=${zoneFiresStarted} (spread ${zoneFiresSpread}) floods=${zoneFloods} freezes=${zoneFreezes} contaminations=${zoneContaminations} fogs=${zoneFogs} strippedZones=${zoneStripped} severed=${zoneSevered}`);
 console.log(`arena: borderTelegraphs=${borderTelegraphs} cornucopiaRestocks=${cornucopiaRestocks} muttEncounters=${muttEncounters}`);
 console.log(`alliances: recruitments=${recruitments} organicGroupsOf3Plus=${organicTrios} largestSeen=${maxAllianceSeen}`);
 console.log(`inventory: overloaded drops=${overloadedDrops}`);

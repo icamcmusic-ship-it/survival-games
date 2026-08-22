@@ -170,6 +170,18 @@ export function processEpilogue(ctx: SimContext) {
         ])}'`
     });
 
+    // §6.9: the district token made it all the way through.
+    if (winner.token) {
+        qas.push({
+            question: `Caesar Flickerman: 'Our cameras noticed you kept something with you out there, all ${facts.daysSurvived} days of it. Show us?'`,
+            answer: `${winner.name}: '${pick(rng, [
+                `It's ${winner.token}. It went into the arena with me and it is going home with me. That was the whole deal I made with myself.`,
+                `${winner.token}. Someone put it in my hands in the goodbye room and told me to bring it back. So I did.`,
+                `Just ${winner.token}, Caesar. It is worth nothing. It is the only thing in that arena that was worth anything.`,
+            ])}'`,
+        });
+    }
+
     // The specific thing that ended it.
     if (facts.finalKill) {
         qas.push({

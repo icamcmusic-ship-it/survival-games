@@ -2,6 +2,7 @@ import { Tribute } from '../models/types';
 import { injure } from './wounds';
 import { CRAFTING, PHYSIQUE } from '../data/balance';
 import { hasCamp } from './fieldcraft';
+import { getZone, zoneFeatures } from './map';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { clampTribute } from './vitals';
@@ -59,7 +60,11 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     // declared knob that nothing read, and building a shelter in the Frozen
     // Wasteland did nothing about the thing actually killing you.
     const shelterScale = hasCamp(ctx, t, 'shelter') ? 1 - CRAFTING.shelterExposureReduction : 1;
-    const scale = (profile.intensity ?? 1) * shelterScale;
+    // §5.6: the ground itself shelters. A cave system or deep timber takes a
+    // real edge off the weather even with no built camp; bare flats take none.
+    const zone = getZone(ctx.state.arena, t.zone);
+    const zoneShelterScale = zone ? 1 - (zoneFeatures(zone).shelterQuality ?? 0) * PHYSIQUE.zoneShelterExposureReduction : 1;
+    const scale = (profile.intensity ?? 1) * shelterScale * zoneShelterScale;
     const amount = (value: number | undefined) => Math.round((value ?? 0) * scale);
 
     // Heat resistance takes the edge off anything that works by exhausting you.

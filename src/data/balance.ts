@@ -624,6 +624,8 @@ export const PHYSIQUE = {
     capacityPerMass: 0.5,
     /** Cold resistance per point of mass. */
     frostbiteResistPerMass: 0.04,
+    /** §5.6: max fraction of an exposure tick a full-shelter zone (quality 1) absorbs. */
+    zoneShelterExposureReduction: 0.35,
 } as const;
 
 /** When a tribute reaches for the medical kit, and what it buys them. */
@@ -1174,6 +1176,15 @@ export const ZONE_EFFECTS = {
      * burns too.
      */
     spreadChance: 0.55,
+    /**
+     * §5.8: spread compounds with dryness and adjacency instead of staying a
+     * flat coin. A hot/dry standing climate multiplies the base chance, each
+     * burning front beyond the first adds flat odds, and a hard cap keeps a
+     * conflagration possible without making it a certainty.
+     */
+    spreadDrynessHotClimate: 1.35,
+    spreadPerExtraFront: 0.15,
+    spreadChanceMax: 0.9,
     flammableTerrain: ['forest', 'wetland', 'open'] as const,
 
     /** Flooding: drowning risk for anyone who lingers instead of leaving. */
@@ -1211,6 +1222,18 @@ export const ZONE_EFFECTS = {
     ambientContaminateChance: 0.02,
     ambientFogChance: 0.03,
     ambientSeverChance: 0.012,
+
+    /**
+     * §7.1: the force field at the arena's border zones. Discovery is common
+     * enough to happen most runs; the rebound and the cooking exploit are
+     * rare beats, not a tax on standing near the edge.
+     */
+    forceFieldDiscoverChance: 0.12,
+    forceFieldReboundChance: 0.03,
+    forceFieldReboundDamage: 9,
+    forceFieldExploitIntellect: 8,
+    forceFieldExploitChance: 0.05,
+    forceFieldExploitHungerRelief: 25,
 } as const;
 
 export const CRAFTING = {
