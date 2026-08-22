@@ -129,7 +129,9 @@ export function generateTributes(seed: string, config: GameConfig = DEFAULT_GAME
                 }
             }
 
-            const chosenName = rng.pick(DISTRICT_NAMES[district][gender]);
+            const chosenName = config.useDistrictNames
+                ? `District ${district} ${gender === 'Male' ? 'Boy' : 'Girl'}`
+                : rng.pick(DISTRICT_NAMES[district][gender]);
             const age = rng.nextInt(12, 18);
             const heightCm = gender === 'Male' ? rng.nextInt(155, 195) : rng.nextInt(148, 185);
             const build = buildFromStrength(rng, attributes.strength);

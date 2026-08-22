@@ -100,6 +100,24 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     </label>
                 </div>
 
+                <div className="space-y-2 pt-4 border-t border-zinc-800">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                        <div className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${config.useDistrictNames ? 'bg-red-500 border-red-500' : 'bg-zinc-950 border-zinc-700 group-hover:border-zinc-500'}`}>
+                            {config.useDistrictNames && <div className="w-2 h-2 bg-white rounded-sm" />}
+                        </div>
+                        <div>
+                            <div className="font-bold text-white">Anonymous Tributes</div>
+                            <div className="text-xs text-zinc-400">Names tributes "District # Boy/Girl" instead of unique names.</div>
+                        </div>
+                        <input
+                            type="checkbox"
+                            className="hidden"
+                            checked={config.useDistrictNames}
+                            onChange={(e) => setConfig(c => ({ ...c, useDistrictNames: e.target.checked }))}
+                        />
+                    </label>
+                </div>
+
                 <div className="space-y-3 pt-4 border-t border-zinc-800">
                     <button
                         onClick={() => setShowAdvanced(v => !v)}

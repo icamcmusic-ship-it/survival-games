@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HallOfFameEntry } from '../models/types';
-import { Trophy } from 'lucide-react';
+import { Trophy, Trash2 } from 'lucide-react';
+import { gameActions } from '../store/gameStore';
 
 export function HallOfFameScreen() {
     const [entries, setEntries] = useState<HallOfFameEntry[]>([]);
@@ -17,6 +18,13 @@ export function HallOfFameScreen() {
         setEntries(saved);
     }, []);
 
+    const handleReset = () => {
+        const confirmed = confirm('This will permanently erase all Hall of Fame victors and reset your Capitol Coins. This cannot be undone. Continue?');
+        if (!confirmed) return;
+        gameActions.resetRecords();
+        setEntries([]);
+    };
+
     return (
         <div className="max-w-4xl mx-auto space-y-8">
             <div className="text-center space-y-4 mb-12">
@@ -24,6 +32,14 @@ export function HallOfFameScreen() {
                     <Trophy className="w-12 h-12 text-yellow-500" /> Hall of Fame
                 </h2>
                 <p className="text-zinc-400 text-lg">The historic, legendary victors of past simulations.</p>
+                {entries.length > 0 && (
+                    <button
+                        onClick={handleReset}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-xs bg-zinc-900 hover:bg-red-950/40 border border-zinc-800 hover:border-red-900/50 rounded-lg text-zinc-400 hover:text-red-400 font-bold uppercase tracking-wider transition-colors"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" /> Reset All Achievements & Records
+                    </button>
+                )}
             </div>
 
             {entries.length === 0 ? (

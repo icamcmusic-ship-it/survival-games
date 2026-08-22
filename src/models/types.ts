@@ -103,6 +103,7 @@ export interface GameConfig {
     sponsorGenerosity: number; // multiplier on sponsor gift chance
     enableFeast: boolean;
     enableSanity: boolean;
+    useDistrictNames: boolean; // if true, tributes are named "District # Boy/Girl" instead of unique names
 }
 
 export interface GameState {

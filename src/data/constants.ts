@@ -7,6 +7,7 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     sponsorGenerosity: 1.0,
     enableFeast: true,
     enableSanity: true,
+    useDistrictNames: false,
 };
 
 export const BUILDS: Build[] = ['Frail', 'Slight', 'Average', 'Athletic', 'Stocky', 'Muscular'];

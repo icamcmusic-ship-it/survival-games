@@ -85,6 +85,12 @@ export const gameActions = {
         gameStore.setState({ coins });
     },
 
+    resetRecords() {
+        localStorage.removeItem('hungerGamesHoF');
+        localStorage.removeItem('capitolCoins');
+        gameStore.setState({ coins: 1000 });
+    },
+
     startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false) {
         const arena = arenaId.startsWith('procedural')
             ? generateArena(seed)
