@@ -1,6 +1,6 @@
 import { SimContext, getAlive } from './context';
 import { ITEMS } from '../data/constants';
-import { SPONSORS } from '../data/balance';
+import { QUELL_MECHANICS, SPONSORS } from '../data/balance';
 import { SPONSOR_TEXTS } from '../data/flavorText';
 import { drawFromBloc } from './sponsorBlocs';
 import { clampTribute } from './vitals';
@@ -8,7 +8,7 @@ import { giveItem, itemPhrase } from './items';
 import { ensureMemory } from './memory';
 import { mentorGenerosity, processMentorPleas } from './mentors';
 import { Item, Tribute } from '../models/types';
-import { arenaHasLaw } from './gamesProfile';
+import { arenaHasLaw, wildcardIs } from './gamesProfile';
 import { mintItem } from './items';
 import { QUALITY_BIAS } from '../data/balance';
 
@@ -103,12 +103,20 @@ export function processSponsors(ctx: SimContext) {
         // the arena's one drop zone — sponsorship becomes a race to be there,
         // not a reward for wherever a tribute happens to be.
         if (arenaHasLaw(ctx.state, 'sponsorsFixedZone') && t.zone !== ctx.state.arena.lawZone) return;
-        const sponsorScore = t.excitementRating + t.sponsorTrust;
+        // `quell-sponsors-by-vote`: gifts are voted for by the audience, not
+        // bought — proven competence (sponsorTrust) stops earning aid, and
+        // only how much the crowd likes watching them does.
+        const sponsorScore = wildcardIs(ctx.state, 'quell-sponsors-by-vote')
+            ? t.excitementRating
+            : t.excitementRating + t.sponsorTrust;
         if (sponsorScore <= SPONSORS.giftThreshold) return;
         // Arena.sponsorMultiplier: how much the Capitol's attention is worth
         // in this arena specifically (Salt Mirror's total visibility vs. the
         // Vault's dead cameras) — layered on top of the run's own generosity.
-        const generosity = ctx.state.config.sponsorGenerosity * (ctx.state.arena.sponsorMultiplier ?? 1);
+        let generosity = ctx.state.config.sponsorGenerosity * (ctx.state.arena.sponsorMultiplier ?? 1);
+        // `quell-blood-debt`: a tribute who has killed is marked, and the
+        // Capitol pays the marked less.
+        if (wildcardIs(ctx.state, 'quell-blood-debt') && t.kills > 0) generosity *= QUELL_MECHANICS.bloodDebtGenerosityMult;
         if (!ctx.rng.chance(giftChance(t, generosity))) return;
 
         const tier = rollGiftTier(ctx, t);

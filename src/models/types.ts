@@ -769,6 +769,8 @@ export interface GameState {
     activeMutts?: ActiveMutt[];
     /** Zones a cannon fired in this cycle, with the cycle it happened — reads as "just now" only while `cycle` still matches. Feeds the `scavenger` mutt role. */
     recentCannonZones?: { zone: string; cycle: number }[];
+    /** 'The Bounty Quell': the currently-named quarry, and the cycle they were last (re)named. */
+    quellBounty?: { targetId: string; namedCycle: number };
 }
 
 export interface EventLog {

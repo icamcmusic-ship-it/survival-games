@@ -1,5 +1,5 @@
 import { Tribute } from '../models/types';
-import { DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -16,7 +16,7 @@ import { craftOf } from '../data/districts';
 import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
 import { earnTrait } from './earnedTraits';
-import { arenaHasLaw } from './gamesProfile';
+import { arenaHasLaw, wildcardIs } from './gamesProfile';
 
 /**
  * Staying alive between encounters: spoilage, hunger, thirst, exposure, wounds
@@ -38,6 +38,22 @@ export function processSpoilage(ctx: SimContext) {
             return true;
         });
     });
+}
+
+/**
+ * 'The Mandatory Alliance': every tribute must stay within one zone of their
+ * district partner or pay for it in fatigue and sanity, every cycle they're
+ * apart. `board` is already the alive-tributes list `processVitals` built.
+ */
+function applyMandatoryPartnerDrain(ctx: SimContext, t: Tribute, board: Tribute[]) {
+    if (!wildcardIs(ctx.state, 'quell-mandatory-partner')) return;
+    const partner = board.find(o => o.id !== t.id && o.district === t.district);
+    if (!partner) return; // no living partner left — nothing left to enforce
+    const zone = getZone(ctx.state.arena, t.zone);
+    const withinOne = t.zone === partner.zone || (zone?.adjacent.includes(partner.zone) ?? false);
+    if (withinOne) return;
+    t.vitals.sanity -= QUELL_MECHANICS.mandatoryPartnerSanityDrain;
+    t.vitals.fatigue += QUELL_MECHANICS.mandatoryPartnerFatigueDrain;
 }
 
 /** Terrain, climate and traits, applied as modifiers to the base drains. */
@@ -400,6 +416,7 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         t.vitals.hunger += Math.max(0, drains.hunger);
         t.vitals.thirst += Math.max(0, drains.thirst);
         t.vitals.fatigue += drains.fatigue;
+        applyMandatoryPartnerDrain(ctx, t, board);
         applySanityPressure(ctx, t, time, alliesPresent);
         clampTribute(t);
 

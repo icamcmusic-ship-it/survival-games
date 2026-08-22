@@ -204,6 +204,33 @@ export const PROC_SIGNATURE = {
 } as const;
 
 /**
+ * Numeric dials for the Quell-specific mechanics in src/data/gamesProfile.ts
+ * (QUELLS) that need more than a temperament/config multiplier — see each
+ * consumer for exactly where it's read.
+ */
+export const QUELL_MECHANICS = {
+    /** 'No Alliances': hard cap on alliance size, and the per-cycle tax on anyone still in a group over it. */
+    allianceCapSize: 2,
+    allianceCapHazardDamage: 8,
+    /** 'The Mandatory Alliance': vitals cost per cycle spent apart from your district partner. */
+    mandatoryPartnerSanityDrain: 5,
+    mandatoryPartnerFatigueDrain: 4,
+    /** 'Two Victors': odds the Capitol's promise holds at the final moment (a literal coin flip). */
+    twoVictorsHoldChance: 0.5,
+    /** 'The Bounty Quell': how often the target rotates, and the standing sponsor boost for whoever collects it. */
+    bountyRetargetEveryCycles: 6,
+    bountySponsorTrustBonus: 30,
+    /** 'The Blood Debt': sponsor-generosity multiplier applied to any tribute who has killed. */
+    bloodDebtGenerosityMult: 0.4,
+    /** 'The Reflection': how a tribute's own attributes translate into their mirror mutt's kit. */
+    reflectionDamageScale: 1.1,
+    reflectionSpeedScale: 1.0,
+    reflectionFearAura: 12,
+    /** 'The Moving Arena': how often two zones trade terrain/danger/resources. */
+    movingArenaEveryCycles: 5,
+} as const;
+
+/**
  * Per-arena terrain variance (procedural arenas only). The generator's base
  * `TERRAIN_PROFILES` is one danger/resource band per terrain shared by every
  * arena ever generated — this is how far a single arena's own version of a

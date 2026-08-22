@@ -1,6 +1,6 @@
 import { Mutt, Tribute } from '../models/types';
 import { ARENA_MUTTS } from '../data/mutts';
-import { BLEEDING, MEMORY, MUTTS } from '../data/balance';
+import { BLEEDING, MEMORY, MUTTS, QUELL_MECHANICS } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { getZone, reachableZones, severedEdgeSet } from './map';
@@ -10,6 +10,7 @@ import { injure, openWound } from './wounds';
 import { clampTribute } from './vitals';
 import { trainProficiency } from './proficiency';
 import { earnTrait } from './earnedTraits';
+import { wildcardIs } from './gamesProfile';
 
 /**
  * Mutt resolution (ARENA-04): every mutt used to be a name string, a fixed
@@ -57,8 +58,27 @@ export function rosterFor(ctx: SimContext): Mutt[] {
     return ARENA_MUTTS[id] ?? ARENA_MUTTS[id.replace(/^procedural-/, '')] ?? [];
 }
 
+/**
+ * 'The Reflection': every tribute's own mutt, statted from their own
+ * attributes rather than drawn from the arena's roster — always eligible,
+ * wherever they are. `role: 'mimic'` reuses "Faces of the Fallen" as-is;
+ * this mutt simply always wears one face in particular.
+ */
+function reflectionMuttFor(t: Tribute): Mutt {
+    return {
+        id: `reflection-${t.id}`,
+        name: `${t.name}'s Reflection`,
+        packSize: [1, 1],
+        damage: Math.round(t.attributes.strength * QUELL_MECHANICS.reflectionDamageScale),
+        speed: Math.round(t.attributes.agility * QUELL_MECHANICS.reflectionSpeedScale),
+        fearAura: QUELL_MECHANICS.reflectionFearAura,
+        role: 'mimic',
+    };
+}
+
 /** Mutts allowed to appear right now, given terrain, time of day, and role. */
 export function eligibleMutts(ctx: SimContext, t: Tribute, time: 'day' | 'night'): Mutt[] {
+    if (wildcardIs(ctx.state, 'quell-reflection')) return [reflectionMuttFor(t)];
     const zone = getZone(ctx.state.arena, t.zone);
     const cycle = cycleOf(ctx.state);
     return rosterFor(ctx).filter(m => {

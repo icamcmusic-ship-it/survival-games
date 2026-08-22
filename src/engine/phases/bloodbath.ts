@@ -1,6 +1,6 @@
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
-import { Tribute } from '../../models/types';
+import { Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
 import { ALLIANCES, BLOODBATH, QUALITY_BIAS } from '../../data/balance';
@@ -11,6 +11,7 @@ import { giveItem, itemPhrase, mintItem } from '../items';
 import { personaThreat } from './alliances';
 import { getRel, setRel } from '../relationships';
 import { noteSighting } from '../memory';
+import { wildcardIs } from '../gamesProfile';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -102,6 +103,18 @@ function reachScore(ctx: SimContext, t: Tribute): number {
 /** Weapons only. What is actually laid out at the mouth of the horn. */
 const HORN_WEAPONS = ITEMS.filter(i => i.type === 'weapon');
 
+/**
+ * 'The Cornucopia Forfeit': no weapons anywhere near the horn this year,
+ * only food — every loot draw in the bloodbath routes through this instead
+ * of the unfiltered `ITEMS`/`HORN_WEAPONS` when the Quell is standing.
+ */
+function lootPool(ctx: SimContext): Item[] {
+    return wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? ITEMS.filter(i => i.type === 'food') : ITEMS;
+}
+function hornWeaponsPool(ctx: SimContext): Item[] {
+    return wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? lootPool(ctx) : HORN_WEAPONS;
+}
+
 export function processBloodbath(ctx: SimContext) {
     ctx.state.phase = 'bloodbath';
     ctx.rng = new RNG(`${ctx.state.seed}-bloodbath`);
@@ -153,7 +166,7 @@ export function processBloodbath(ctx: SimContext) {
         if (!ctx.rng.chance(first ? BLOODBATH.armedAtHornChance : BLOODBATH.armedAtHornChance * 0.5)) return;
         // The good steel is stacked at the mouth of the horn; the outer ring is
         // backpacks and whatever was scattered on the grass.
-        const base = first ? ctx.rng.pick(HORN_WEAPONS) : ctx.rng.pick(ITEMS);
+        const base = first ? ctx.rng.pick(hornWeaponsPool(ctx)) : ctx.rng.pick(lootPool(ctx));
         const item = mintItem(ctx.rng, base, first ? QUALITY_BIAS.hornMouth : QUALITY_BIAS.hornScatter);
         giveItem(t, item);
         ctx.logEvent(
@@ -190,7 +203,7 @@ export function processBloodbath(ctx: SimContext) {
         if (ctx.rng.chance(0.8)) {
             ctx.logEvent(fill(ctx.pickText(BLOODBATH_TEXTS.flee), { tribute: t.name }), [t.id], { category: 'survival' });
         } else {
-            const item = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.hornScatter);
+            const item = mintItem(ctx.rng, ctx.rng.pick(lootPool(ctx)), QUALITY_BIAS.hornScatter);
             giveItem(t, item);
             ctx.logEvent(
                 fill(ctx.pickText(BLOODBATH_TEXTS.fleeWithItem), { tribute: t.name, item: itemPhrase(item) }),
@@ -264,7 +277,7 @@ export function processBloodbath(ctx: SimContext) {
             { category: 'combat' }
         );
         pool.splice(1).forEach(t => {
-            const item = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.hornScatter);
+            const item = mintItem(ctx.rng, ctx.rng.pick(lootPool(ctx)), QUALITY_BIAS.hornScatter);
             giveItem(t, item);
             ctx.logEvent(`${t.name} grabs ${itemPhrase(item)} on the way out.`, [t.id], { category: 'loot' });
         });
@@ -272,8 +285,8 @@ export function processBloodbath(ctx: SimContext) {
 
     else if (pool.length === 1) {
         const winner = pool[0];
-        const item1 = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.hornMouth);
-        const item2 = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.hornMouth);
+        const item1 = mintItem(ctx.rng, ctx.rng.pick(lootPool(ctx)), QUALITY_BIAS.hornMouth);
+        const item2 = mintItem(ctx.rng, ctx.rng.pick(lootPool(ctx)), QUALITY_BIAS.hornMouth);
         giveItem(winner, item1, item2);
         ctx.logEvent(
             fill(ctx.pickText(BLOODBATH_TEXTS.survive), { tribute: winner.name, items: `${item1.name} and ${item2.name}` }),

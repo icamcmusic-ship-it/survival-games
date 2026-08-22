@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, SPONSORS } from '../../data/balance';
+import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, SPONSORS } from '../../data/balance';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
@@ -180,6 +180,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     rollAmbientZoneEffects(ctx);
     tickZoneEffects(ctx);
     restockCornucopia(ctx);
+    maintainBounty(ctx);
+    maintainMovingArena(ctx);
     tickTraps(ctx);
     decayTraffic(ctx.state);
     decayMemories(ctx.state);
@@ -278,6 +280,58 @@ function soundTheAnthem(ctx: SimContext) {
         }
         clampTribute(t);
     });
+}
+
+/**
+ * 'The Bounty Quell': names (or renames) the quarry. Retargets on a fixed
+ * schedule, or immediately once the current quarry is dead — killTribute
+ * (combat.ts) pays out the standing sponsor bonus; this just keeps a live
+ * target named at all times.
+ */
+function maintainBounty(ctx: SimContext) {
+    if (!wildcardIs(ctx.state, 'quell-bounty-rotating')) return;
+    const alive = getAlive(ctx.state);
+    if (alive.length === 0) return;
+    const cycle = cycleOf(ctx.state);
+    const current = ctx.state.quellBounty;
+    const currentStillAlive = current && alive.some(t => t.id === current.targetId);
+    const stale = !current || cycle - current.namedCycle >= QUELL_MECHANICS.bountyRetargetEveryCycles;
+    if (currentStillAlive && !stale) return;
+
+    const target = ctx.rng.pick(alive);
+    ctx.state.quellBounty = { targetId: target.id, namedCycle: cycle };
+    ctx.logEvent(
+        `THE CAPITOL: a bounty is named. ${target.name} is the quarry now — whoever collects it eats well for the rest of the Games.`,
+        [target.id],
+        { important: true, category: 'sponsor' }
+    );
+}
+
+/**
+ * 'The Moving Arena': the arena will not be the same arena on the last day
+ * as it was on the first. Two zones swap terrain, danger and resources —
+ * not their name or adjacency — so a memorized route goes stale without the
+ * map itself changing shape. Relies on `Arena.zones` being this run's own
+ * array (gameStore.ts deep-clones it precisely so this is safe to mutate).
+ */
+function maintainMovingArena(ctx: SimContext) {
+    if (!wildcardIs(ctx.state, 'quell-moving-arena')) return;
+    const cycle = cycleOf(ctx.state);
+    if (cycle % QUELL_MECHANICS.movingArenaEveryCycles !== 0) return;
+    const collapsed = ctx.state.collapsedZones ?? [];
+    const cornucopia = ctx.state.arena.zones[0]?.name;
+    const candidates = ctx.state.arena.zones.filter(z => z.name !== cornucopia && !collapsed.includes(z.name));
+    if (candidates.length < 2) return;
+
+    const [a, b] = ctx.rng.shuffle(candidates).slice(0, 2);
+    const swap = { terrain: a.terrain, danger: a.danger, resources: a.resources };
+    a.terrain = b.terrain; a.danger = b.danger; a.resources = b.resources;
+    b.terrain = swap.terrain; b.danger = swap.danger; b.resources = swap.resources;
+    ctx.logEvent(
+        `THE ARENA: ${a.name} and ${b.name} are not what they were yesterday. The ground itself has moved.`,
+        [],
+        { important: true, category: 'arena' }
+    );
 }
 
 /**
@@ -535,6 +589,9 @@ function dynamicAmbientLine(ctx: SimContext): string {
 
 /** Hazard escalation and safe-zone shrinking. Returns whether it is active. */
 function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
+    // 'The Long Games': the border will not move this year, whatever else
+    // happens inside it. Starvation, infection and attrition decide it instead.
+    if (wildcardIs(ctx.state, 'quell-long-games')) return false;
     const collapseOrder = buildCollapseOrder(ctx);
     const allZoneNames = zoneNames(ctx.state.arena);
 

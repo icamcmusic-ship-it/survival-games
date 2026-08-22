@@ -2,7 +2,7 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { BLEEDING, COMBAT, DEBTS, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, RIVALRY, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
@@ -1049,4 +1049,16 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     ctx.state.recentCannonZones = (ctx.state.recentCannonZones ?? [])
         .filter(c => c.cycle === cycle)
         .concat({ zone: victim.zone, cycle });
+
+    // 'The Bounty Quell': collecting the named quarry is a standing sponsor
+    // stream, not a one-off gift — maintainBounty (dayNight.ts) names a new
+    // quarry as soon as this one drops.
+    if (killer && ctx.state.quellBounty?.targetId === victim.id) {
+        killer.sponsorTrust = Math.min(100, killer.sponsorTrust + QUELL_MECHANICS.bountySponsorTrustBonus);
+        ctx.logEvent(
+            `${killer.name} collects the bounty on ${victim.name}. Every sponsor purse in the Capitol opens for them at once.`,
+            [killer.id],
+            { important: true, category: 'sponsor' }
+        );
+    }
 }

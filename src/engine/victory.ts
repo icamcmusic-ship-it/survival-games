@@ -2,6 +2,7 @@ import { SimContext, getAlive } from './context';
 import { Tribute } from '../models/types';
 import { areLovers } from './alliance';
 import { wildcardIs } from './gamesProfile';
+import { QUELL_MECHANICS } from '../data/balance';
 
 /**
  * §7.1: the dual-victor endgame.
@@ -30,6 +31,28 @@ export function checkDualVictory(ctx: SimContext): [Tribute, Tribute] | undefine
     const [a, b] = alive;
 
     const allied = (a.allianceId !== undefined && a.allianceId === b.allianceId) || areLovers(a, b);
+
+    // 'Two Victors': the Capitol's own promise, tested at the last possible
+    // moment. Any final two qualify — allied or not — but the promise is
+    // only as good as a coin flip. A revoke doesn't end the run; it falls
+    // through to whatever else might still crown them (lovers' nightlock,
+    // say), same as any other year the promise was never made at all.
+    if (wildcardIs(ctx.state, 'quell-two-victors')) {
+        if (ctx.rng.chance(QUELL_MECHANICS.twoVictorsHoldChance)) {
+            ctx.logEvent(
+                `The anthem plays for both of them. The Capitol's promise of two victors holds: ${a.name} and ${b.name} go home together.`,
+                [a.id, b.id],
+                { important: true, category: 'system' }
+            );
+            return crown(ctx, a, b);
+        }
+        ctx.logEvent(
+            `The promise of two victors is revoked without warning, live, on every screen in Panem. ${a.name} and ${b.name} `
+            + `are still both standing — and now only one of them can leave.`,
+            [a.id, b.id],
+            { important: true, category: 'system' }
+        );
+    }
 
     if (wildcardIs(ctx.state, 'rule-change-allies') && allied) {
         ctx.logEvent(
