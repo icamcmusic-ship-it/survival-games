@@ -50,15 +50,22 @@ const DURATION_BY_KIND: Record<ZoneEffectKind, number> = {
  * Starts (or refreshes) an effect on a zone. Refreshing rather than stacking —
  * a second fire in an already-burning zone extends it, it does not double the
  * damage — keeps this from compounding into something unreadable.
+ *
+ * `severity` is a per-instance multiplier on top of whatever `Arena.effectVocab`
+ * declares for this arena — most callers omit it and get 1, so nothing existing
+ * changes; a signature or law that wants a fiercer or gentler version of the
+ * same effect passes its own number.
  */
-export function startZoneEffect(ctx: SimContext, zone: string, kind: ZoneEffectKind, announce = true) {
+export function startZoneEffect(ctx: SimContext, zone: string, kind: ZoneEffectKind, announce = true, severity = 1) {
+    const vocab = ctx.state.arena.effectVocab?.[kind];
     const list = effectsFor(ctx.state, zone);
     const cycle = cycleOf(ctx.state);
-    const expiresCycle = cycle + DURATION_BY_KIND[kind];
+    const expiresCycle = cycle + Math.round(DURATION_BY_KIND[kind] * (vocab?.durationMult ?? 1));
     const existing = list.find(e => e.kind === kind);
 
     if (existing) {
         existing.expiresCycle = expiresCycle;
+        existing.severity = severity;
         return;
     }
 
@@ -66,9 +73,14 @@ export function startZoneEffect(ctx: SimContext, zone: string, kind: ZoneEffectK
         kind,
         expiresCycle,
         nextSpreadCycle: kind === 'burning' ? cycle + ZONE_EFFECTS.spreadEveryCycles : undefined,
+        severity,
     });
 
     if (!announce) return;
+    if (vocab?.label) {
+        ctx.logEvent(`${vocab.label} takes hold of ${zone}, and it is not letting go on its own.`, [], { important: true, zone, category: 'hazard' });
+        return;
+    }
     const lines: Record<ZoneEffectKind, string> = {
         burning: `Fire takes hold in ${zone}. Anyone still there needs to not be, and it is not done spreading.`,
         flooded: `${zone} goes under. What was solid ground an hour ago is now a hazard in its own right.`,
@@ -134,7 +146,20 @@ export function tickZoneEffects(ctx: SimContext) {
     });
 }
 
+/**
+ * Combined severity for one effect instance: the per-instance roll on the
+ * `ZoneEffect` itself (a signature or law asking for a fiercer/gentler hit
+ * than normal) times this arena's own retuning of the whole kind, if any.
+ * Every magnitude below is scaled by this rather than the raw constant, so
+ * "flooded" can be lethal in one arena and a mere nuisance in another.
+ */
+function severityOf(ctx: SimContext, effect: ZoneEffect): number {
+    const vocab = ctx.state.arena.effectVocab?.[effect.kind];
+    return (effect.severity ?? 1) * (vocab?.severityMult ?? 1);
+}
+
 function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, occupants: Tribute[]) {
+    const severity = severityOf(ctx, effect);
     occupants.forEach(t => {
         // The occupant list is snapshotted once per zone, before any of its
         // effects tick. A zone can carry several at once (a flood on top of a
@@ -144,8 +169,8 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
         if (t.status !== 'alive') return;
         switch (effect.kind) {
             case 'burning':
-                applyDamage(ctx, t, ZONE_EFFECTS.burningDamage, { cause: `Caught in the fire in ${zoneName}`, kind: 'arena' });
-                if (ctx.rng.chance(ZONE_EFFECTS.burningBurnChance) && !t.injuries.burned) {
+                applyDamage(ctx, t, Math.round(ZONE_EFFECTS.burningDamage * severity), { cause: `Caught in the fire in ${zoneName}`, kind: 'arena' });
+                if (ctx.rng.chance(ZONE_EFFECTS.burningBurnChance * severity) && !t.injuries.burned) {
                     injure(t, 'burned');
                     ctx.logEvent(`${t.name} does not get clear of the fire in ${zoneName} fast enough.`, [t.id], { important: true, category: 'hazard' });
                 }
@@ -154,8 +179,8 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                 break;
 
             case 'flooded':
-                if (ctx.rng.chance(ZONE_EFFECTS.floodDrownChance)) {
-                    applyDamage(ctx, t, ZONE_EFFECTS.floodDamage, { cause: `Caught in the flooding of ${zoneName}`, kind: 'arena' });
+                if (ctx.rng.chance(ZONE_EFFECTS.floodDrownChance * severity)) {
+                    applyDamage(ctx, t, Math.round(ZONE_EFFECTS.floodDamage * severity), { cause: `Caught in the flooding of ${zoneName}`, kind: 'arena' });
                     ctx.logEvent(`${t.name} is dragged under by the current in flooded ${zoneName} and barely surfaces.`, [t.id], { important: true, category: 'hazard' });
                     clampTribute(t);
                     checkDeath(ctx, t, `Caught in the flooding of ${zoneName}`);
@@ -163,8 +188,8 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                 break;
 
             case 'frozen':
-                t.vitals.fatigue += ZONE_EFFECTS.frozenFatigue;
-                if (!t.injuries.frostbitten && ctx.rng.chance(ZONE_EFFECTS.frozenFrostbiteChance)) {
+                t.vitals.fatigue += ZONE_EFFECTS.frozenFatigue * severity;
+                if (!t.injuries.frostbitten && ctx.rng.chance(ZONE_EFFECTS.frozenFrostbiteChance * severity)) {
                     injure(t, 'frostbitten');
                     ctx.logEvent(`${t.name}'s fingers go white in the hard freeze over ${zoneName}.`, [t.id], { important: true, category: 'injury' });
                 }
@@ -172,11 +197,11 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                 break;
 
             case 'contaminated':
-                if (!t.injuries.poisoned && ctx.rng.chance(ZONE_EFFECTS.contaminatedPoisonChance)) {
+                if (!t.injuries.poisoned && ctx.rng.chance(ZONE_EFFECTS.contaminatedPoisonChance * severity)) {
                     injure(t, 'poisoned');
                     ctx.logEvent(`${t.name} has been breathing whatever is wrong with ${zoneName} for too long.`, [t.id], { important: true, category: 'injury' });
                 }
-                t.vitals.sanity -= ZONE_EFFECTS.contaminatedSanityLoss;
+                t.vitals.sanity -= ZONE_EFFECTS.contaminatedSanityLoss * severity;
                 clampTribute(t);
                 break;
 
