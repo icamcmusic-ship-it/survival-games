@@ -7,7 +7,7 @@ import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SU
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting,
@@ -131,7 +131,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             return;
         }
 
-        move(ctx, t, currentAlive, collapsed, flavor, severed, crossed);
+        move(ctx, t, currentAlive, collapsed, flavor, severed, crossed, effectiveTime);
     });
 
     // Walking into a zone is what springs things left in it. This runs as a
@@ -691,6 +691,7 @@ function wanderChanceFor(t: Tribute): number {
 function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
     const dest = getZone(ctx.state.arena, destName);
     const cost = dest ? travelCost(t, dest) : 1;
+    applyEdgeToll(ctx, t, t.zone, destName);
     if (cost <= 1) return true;
     t.transit = { to: destName, remaining: cost - 1 };
     ctx.logEvent(
@@ -703,7 +704,7 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
     return false;
 }
 
-function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>, severed: Set<string>, crossed: Set<string>) {
+function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>, severed: Set<string>, crossed: Set<string>, time: 'day' | 'night') {
     // A group crossing is resolved once, for everyone who lands together —
     // anyone already brought ashore by an ally's iteration this cycle has
     // nothing left to do. See the arrival block below.
@@ -772,7 +773,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         } else if (!leader || t.id !== leader.id) {
             return;
         } else {
-            const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed);
+            const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed, time);
             if (options.length === 0) return;
 
             // The group follows whatever its leader has decided to do; only when the
@@ -808,7 +809,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         }
     }
 
-    const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed);
+    const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed, time);
     if (options.length === 0) return;
 
     // A tribute who has decided to be somewhere goes there, by the shortest
