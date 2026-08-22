@@ -63,10 +63,11 @@ function ConfigSlider({ label, hint, value, min, max, step, format, onChange }: 
     );
 }
 
-export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig) => void }) {
+export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig, forceQuell: boolean) => void }) {
     const [seed, setSeed] = useState(randomSeed());
     const [arenaId, setArenaId] = useState(ARENAS[0].id);
     const [gamemakerMode, setGamemakerMode] = useState(false);
+    const [forceQuell, setForceQuell] = useState(false);
     const [config, setConfigState] = useState<GameConfig>(readStoredConfig);
     const [showAdvanced, setShowAdvanced] = useState(false);
     const coins = useStore(gameStore, st => st.coins);
@@ -86,7 +87,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
         // Starting a new Games discards the saved run immediately, and the
         // resume card alone was not a guard on that destructive path.
         if (savedRun && !window.confirm('A Games is already in progress. Starting a new one abandons that run — continue?')) return;
-        onStart(trimmedSeed || randomSeed(), arenaId, gamemakerMode, config);
+        onStart(trimmedSeed || randomSeed(), arenaId, gamemakerMode, config, forceQuell);
     };
 
     const arenaOptions = [
@@ -163,7 +164,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     {(() => {
                         // The Games profile is a pure function of the seed, so the
                         // temperament the player is committing to can be shown live.
-                        const preview = gamesProfileFor(trimmedSeed || seed);
+                        const preview = gamesProfileFor(trimmedSeed || seed, forceQuell);
                         const t = preview.temperament;
                         const mults: string[] = [];
                         if (t.hazardRate !== 1) mults.push(`hazards ×${t.hazardRate}`);
@@ -229,6 +230,21 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             <div className="text-xs text-[var(--color-ink-500)]">Release mutts, force weather, and call feasts by hand mid-run.</div>
                         </div>
                         <input type="checkbox" className="sr-only" checked={gamemakerMode} onChange={(e) => setGamemakerMode(e.target.checked)} />
+                    </label>
+                </div>
+
+                <div className="p-5 pt-0">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                        <div className={`w-5 h-5 border-2 flex items-center justify-center transition-colors flex-none ${
+                            forceQuell ? 'bg-[var(--red)] border-[var(--ink)]' : 'bg-[var(--paper-panel)] border-[var(--line)]'
+                        }`}>
+                            {forceQuell && <div className="w-2 h-2 bg-white" />}
+                        </div>
+                        <div>
+                            <div className="font-black text-[var(--ink)] text-sm uppercase">Force a Quarter Quell</div>
+                            <div className="text-xs text-[var(--color-ink-500)]">Most Games are not Quells. Check this to guarantee one — still rolled deterministically from your seed.</div>
+                        </div>
+                        <input type="checkbox" className="sr-only" checked={forceQuell} onChange={(e) => setForceQuell(e.target.checked)} />
                     </label>
                 </div>
 

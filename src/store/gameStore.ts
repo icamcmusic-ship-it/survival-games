@@ -5,6 +5,7 @@ import { HOF_CAP, readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
 import { readStored, removeStored, tryWriteStored, writeStored } from '../utils/storage';
 import { snapshotState } from '../utils/snapshot';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
+import { QUELLS } from '../data/gamesProfile';
 import { RNG } from '../utils/rng';
 import type { Simulator } from '../engine/simulator';
 import type { GamemakerEventType } from '../engine/gamemaker';
@@ -192,6 +193,7 @@ function saveHallOfFame(state: GameState) {
         seed: state.seed,
         arenaName: state.arena.name,
         arenaId: state.arena.id,
+        quellId: state.gamesProfile?.quell?.id ?? null,
         config: state.baseConfig,
         noVictor: !winner,
         winnerName: jointName ?? winner?.name ?? 'No victor',
@@ -378,7 +380,7 @@ export const gameActions = {
         const arenaId = entry.arenaId
             ?? ARENAS.find(a => a.name === entry.arenaName)?.id
             ?? 'procedural';
-        return gameActions.startGame(entry.seed, arenaId, false, entry.config ?? DEFAULT_GAME_CONFIG, true);
+        return gameActions.startGame(entry.seed, arenaId, false, entry.config ?? DEFAULT_GAME_CONFIG, true, false, entry.quellId);
     },
 
     async resumeSavedRun() {
@@ -419,7 +421,7 @@ export const gameActions = {
 
     patronCost: PATRON_COST,
 
-    async startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false) {
+    async startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false, forceQuell = false, pinnedQuellId?: string | null) {
         // Abandoning a run mid-wager used to silently pocket the player's coins.
         gameActions.refundOpenBets();
         cancelRunToEnd();
@@ -432,7 +434,12 @@ export const gameActions = {
         // REPLAY-01/REPLAY-11: this year's Games — including whether it's a
         // Quarter Quell — are rolled from the seed before the arena and cast
         // are resolved, because a Quell can shape both of them.
-        const gamesProfile = gamesProfileFor(safeSeed);
+        // A Hall of Fame replay pins the archived run's exact Quell (or
+        // explicit lack of one) rather than re-drawing from the seed — see
+        // HallOfFameEntry.quellId. `undefined` (no replay, or an entry that
+        // predates Quells) falls through to the ordinary seeded draw.
+        const pinnedQuell = pinnedQuellId === undefined ? undefined : (pinnedQuellId === null ? null : QUELLS.find(q => q.id === pinnedQuellId) ?? null);
+        const gamesProfile = gamesProfileFor(safeSeed, forceQuell, pinnedQuell);
         // 'random-hidden': a real arena, still resolved deterministically from
         // the seed (a shared seed reproduces the same Games) — the pick just
         // isn't the player's to make, and its identity stays out of the UI

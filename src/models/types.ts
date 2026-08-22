@@ -817,6 +817,16 @@ export interface HallOfFameEntry {
      */
     arenaId?: string;
     config?: GameConfig;
+    /**
+     * The run's Quell, so a replay reproduces it exactly rather than
+     * re-drawing from the seed (which could land on a different Quell, or
+     * none, than the archived run actually had — especially for a
+     * `forceQuell` run, whose whole premise a plain re-draw wouldn't honour).
+     * `null` means "this run had no Quell" (still pinned, so an ordinary run
+     * doesn't drift into one on replay); `undefined` means the entry predates
+     * Quells entirely and there's nothing to pin.
+     */
+    quellId?: string | null;
     /** True for a Games nobody survived — archived as its own kind of entry. */
     noVictor?: boolean;
     winnerName: string;

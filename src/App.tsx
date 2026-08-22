@@ -144,7 +144,7 @@ export default function App() {
       <main id="main-content" tabIndex={-1} className="max-w-6xl mx-auto px-4 py-8">
         <Suspense fallback={<ScreenFallback />}>
         {view === 'setup' && (
-          <SetupScreen onStart={(seed, arenaId, gamemakerMode, config) => { void gameActions.startGame(seed, arenaId, gamemakerMode, config); }} />
+          <SetupScreen onStart={(seed, arenaId, gamemakerMode, config, forceQuell) => { void gameActions.startGame(seed, arenaId, gamemakerMode, config, false, forceQuell); }} />
         )}
 
         {view === 'roster' && gameState && gameState.phase === 'reaping' && (
