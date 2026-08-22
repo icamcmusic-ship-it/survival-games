@@ -748,6 +748,108 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
         },
     ],
 
+    seapeaks: [
+        {
+            id: 'undertow-serpents', name: 'Undertow Serpents',
+            packSize: [1, 2], damage: 22, speed: 8,
+            inflicts: { bleeding: true },
+            terrainPreference: ['water'],
+        },
+        {
+            id: 'cliff-harriers', name: 'Cliff Harriers',
+            // Only shows itself at night, in the fog it favours, or over the drop.
+            packSize: [1, 2], damage: 20, speed: 10,
+            terrainPreference: ['highland'],
+            nocturnal: true,
+            role: 'ambusher',
+        },
+        {
+            id: 'deep-current-grapplers', name: 'Deep Current Grapplers',
+            packSize: [1, 1], damage: 26, speed: 5,
+            role: 'siege',
+            homeZone: 'Open Water Reach',
+        },
+    ],
+    canopyweb: [
+        {
+            id: 'silk-line-stalkers', name: 'Silk-Line Stalkers',
+            packSize: [1, 2], damage: 18, speed: 9,
+            nocturnal: true,
+            role: 'ambusher',
+        },
+        {
+            id: 'needle-wasps', name: 'Needle Wasps',
+            packSize: [3, 6], damage: 8, speed: 7,
+            inflicts: { poisoned: true },
+            role: 'swarm',
+        },
+        {
+            id: 'understory-reach', name: 'The Understory Reach',
+            packSize: [1, 1], damage: 24, speed: 4,
+            fearAura: 10,
+            role: 'siege',
+            homeZone: 'The Understory Fog',
+        },
+    ],
+    acousticforest: [
+        {
+            id: 'wind-throat-owls', name: 'Wind-Throat Owls',
+            packSize: [1, 3], damage: 16, speed: 10,
+            nocturnal: true,
+        },
+        {
+            id: 'resonance-moths', name: 'Resonance Moths',
+            packSize: [1, 1], damage: 10, speed: 6,
+            fearAura: 8,
+            role: 'mimic',
+        },
+        {
+            id: 'hollow-bore-beetles', name: 'Hollow-Bore Beetles',
+            packSize: [2, 5], damage: 9, speed: 5,
+            inflicts: { infected: true },
+            role: 'scavenger',
+        },
+    ],
+    burnscar: [
+        {
+            id: 'cinder-back-boars', name: 'Cinder-Back Boars',
+            packSize: [1, 3], damage: 20, speed: 6,
+            inflicts: { burned: true },
+        },
+        {
+            id: 'thornvine-jackals', name: 'Thornvine Jackals',
+            packSize: [2, 5], damage: 12, speed: 8,
+            inflicts: { bleeding: true },
+            role: 'swarm',
+        },
+        {
+            id: 'the-standing-char', name: 'The Standing Char',
+            packSize: [1, 1], damage: 25, speed: 4,
+            fearAura: 10,
+            role: 'siege',
+            homeZone: 'The Char Ridge',
+        },
+    ],
+    craterfield: [
+        {
+            id: 'bog-adders', name: 'Bog Adders',
+            packSize: [1, 2], damage: 14, speed: 7,
+            inflicts: { poisoned: true },
+            terrainPreference: ['wetland', 'water'],
+        },
+        {
+            id: 'root-mat-crawlers', name: 'Root-Mat Crawlers',
+            packSize: [1, 3], damage: 16, speed: 6,
+            nocturnal: true,
+            role: 'ambusher',
+        },
+        {
+            id: 'the-salvage-hound', name: 'The Salvage Hound',
+            packSize: [1, 2], damage: 18, speed: 8,
+            role: 'scavenger',
+        },
+    ],
+
     // Procedural biomes (src/engine/arenaGenerator.ts BIOMES ids).
     rainforest: [
         {

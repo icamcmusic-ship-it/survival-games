@@ -808,6 +808,126 @@ function terracesSignature(ctx: SimContext, cycle: number, rng: RNG) {
 }
 
 /**
+ * The Alpine Archipelago's rising tide: the sea comes up another fifty feet
+ * every few cycles, and whatever low ground was dry when the Games started
+ * is not dry now.
+ */
+function seapeaksSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    if (cycle % 3 !== 0) return;
+    const zones = activeZones(ctx);
+    const candidates = ctx.state.arena.zones.filter(z =>
+        zones.includes(z.name) && z.name !== ctx.state.arena.zones[0].name && (z.terrain === 'open' || z.terrain === 'ruins'));
+    if (candidates.length === 0) return;
+    const target = rng.pick(candidates);
+
+    ctx.logEvent(`THE TIDE: the water climbs another fifty feet, and ${target.name} goes under.`, [], { important: true, zone: target.name, category: 'arena' });
+    tributesIn(ctx, target.name).forEach(t => {
+        applyDamage(ctx, t, 18, { cause: `Caught by the rising tide in ${target.name}`, kind: 'arena' });
+        addZoneThreat(ctx.state, t, target.name, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Caught by the rising tide in ${target.name}`);
+    });
+    startZoneEffect(ctx, target.name, 'flooded', false);
+    const severed = new Set(ctx.state.severedEdges ?? []);
+    const routes = target.adjacent.filter(n => !severed.has(edgeKey(target.name, n)));
+    if (routes.length > 1) severEdge(ctx.state, target.name, rng.pick(routes));
+}
+
+/**
+ * The Suspended Canopy Web's needle-shrapnel drops: the Gamemakers shake the
+ * high limbs with sonic blasts, and millions of stiff needles come down like
+ * kinetic darts — through clothing, through rope bridges, through anyone
+ * still on the ground.
+ */
+function canopywebSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return;
+    const target = rng.pick(zones);
+    ctx.logEvent(`THE CANOPY: the high limbs shake, and a hail of needles rains down on ${target}.`, [], { important: true, zone: target, category: 'arena' });
+    tributesIn(ctx, target).forEach(t => {
+        if (rng.chance(SIGNATURE_RULES.canopywebDodgeBase + t.attributes.agility * 0.04)) {
+            ctx.logEvent(`${t.name} gets under cover before the worst of it reaches ${target}.`, [t.id], { zone: target, category: 'arena' });
+            return;
+        }
+        applyDamage(ctx, t, 16, { cause: `Shredded by falling needles in ${target}`, kind: 'arena' });
+        openWound(t, BLEEDING.hazardSeverity);
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Shredded by falling needles in ${target}`);
+    });
+    // The rope bridges take it worse than the tributes do.
+    if (rng.chance(SIGNATURE_RULES.canopywebSeverChance)) severRandomEdge(ctx, target);
+}
+
+/**
+ * The Whispering Acoustic Forest's resonant shattering: the Gamemakers tune
+ * the wind to the hollow pines' exact resonant frequency, and an entire
+ * grove comes apart into flying timber at once.
+ */
+function acousticforestSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    const zones = activeZones(ctx).filter(z => getZone(ctx.state.arena, z)?.terrain === 'forest');
+    if (zones.length === 0) return;
+    const target = rng.pick(zones);
+    ctx.logEvent(`THE WIND FINDS THE NOTE: the whole grove at ${target} starts to shake, and then it comes apart.`, [], { important: true, zone: target, category: 'arena' });
+    tributesIn(ctx, target).forEach(t => {
+        if (rng.chance(SIGNATURE_RULES.acousticforestDodgeBase + t.attributes.agility * 0.04)) {
+            ctx.logEvent(`${t.name} throws themself flat as ${target} implodes into splinters overhead.`, [t.id], { zone: target, category: 'arena' });
+            return;
+        }
+        applyDamage(ctx, t, 24, { cause: `Caught in the shattering trees of ${target}`, kind: 'arena' });
+        openWound(t, BLEEDING.hazardSeverity);
+        t.vitals.sanity -= SIGNATURE_RULES.acousticforestSanityLoss;
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Caught in the shattering trees of ${target}`);
+    });
+}
+
+/**
+ * The Post-Burn Scar's heat-activated seed shrapnel: thermal flares trigger
+ * serotinous cones to explode like shrapnel, igniting brushfires and seeding
+ * instant-growth thorn barriers in the same instant.
+ */
+function burnscarSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return;
+    const target = rng.pick(zones);
+    ctx.logEvent(`THE MOUNTAIN CATCHES HEAT: the seed pods over ${target} go off at once, and the brush with them.`, [], { important: true, zone: target, category: 'arena' });
+    tributesIn(ctx, target).forEach(t => {
+        applyDamage(ctx, t, 15, { cause: `Caught in the seed-shrapnel over ${target}`, kind: 'arena' });
+        if (!t.injuries.burned && rng.chance(SIGNATURE_RULES.burnscarBurnChance)) injure(t, 'burned');
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Caught in the seed-shrapnel over ${target}`);
+    });
+    startZoneEffect(ctx, target, 'burning', false);
+    if (rng.chance(SIGNATURE_RULES.burnscarSeverChance)) severRandomEdge(ctx, target); // an instant thorn barrier
+}
+
+/**
+ * The Overgrown Ordnance Crater Field's pressure-sensitive seed pods: the
+ * vines' pods look like wild fruit and detonate like landmines when picked.
+ */
+function craterfieldSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    const zones = activeZones(ctx);
+    if (zones.length === 0) return;
+    const target = rng.pick(zones);
+    const present = tributesIn(ctx, target);
+    if (present.length === 0) return;
+    const t = rng.pick(present);
+    if (rng.chance(SIGNATURE_RULES.craterfieldDodgeBase + t.attributes.agility * 0.03)) {
+        ctx.logEvent(`${t.name} spots the seed pod in ${target} for what it is, just in time.`, [t.id], { zone: target, category: 'arena' });
+        return;
+    }
+    ctx.logEvent(`${t.name} reaches for what looks like fruit in ${target}, and the pod goes off in their hand.`, [t.id], { important: true, zone: target, category: 'arena' });
+    applyDamage(ctx, t, 26, { cause: `Caught by a pressure pod in ${target}`, kind: 'arena' });
+    openWound(t, BLEEDING.hazardSeverity);
+    addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+    clampTribute(t);
+    checkDeath(ctx, t, `Caught by a pressure pod in ${target}`);
+}
+
+/**
  * The declarative signature grammar for procedurally generated arenas.
  *
  * Every hand-authored arena above got a bespoke rule; every procedural arena
@@ -975,6 +1095,11 @@ const SIGNATURES: Record<string, Signature> = {
     ashfall: ashfallSignature,
     saltflats: saltflatsSignature,
     sporefields: sporefieldsSignature,
+    seapeaks: seapeaksSignature,
+    canopyweb: canopywebSignature,
+    acousticforest: acousticforestSignature,
+    burnscar: burnscarSignature,
+    craterfield: craterfieldSignature,
 };
 
 /** True when this arena has a rule of its own — used by the UI to explain it. */

@@ -89,7 +89,13 @@ let cornucopiaHeld = 0, cornucopiaPayouts = 0;
 let signatureBeats = 0, calendarBeats = 0;
 let maxAbsRelationship = 0;
 
-for (let i = 0; i < 240; i++) {
+// 400, not 240: five new arenas widened the round-robin denominator
+// (arenaIds.length), which on its own reshuffles which seed/config lands on
+// which arena across a fixed-size sweep and can starve a rare firing-rate
+// floor below its calibrated threshold with no underlying regression. The
+// sweep is cheap (a few seconds for hundreds of runs), so scaling it up
+// preserves the floors' statistical power instead of loosening them.
+for (let i = 0; i < 400; i++) {
   const seed = `SOAK${i}`;
   const arenaId = arenaIds[i % arenaIds.length];
   const config = configs[i % configs.length];
@@ -534,7 +540,7 @@ for (const seed of ['GRAPH1', 'GRAPH2', 'GRAPH3', 'GRAPH4', 'GRAPH5']) {
 }
 
 // A dead system is as much a bug as a broken one: if a mechanic never fires
-// across 240 runs, it is not implemented, it is decorative.
+// across the whole sweep, it is not implemented, it is decorative.
 if (vengeanceSworn === 0) note('no tribute ever swore vengeance across the whole soak');
 if (groupFights === 0) note('group combat never triggered across the whole soak');
 if (retreats === 0) note('nobody ever retreated from a fight');
@@ -598,9 +604,9 @@ if (muttEncounters === 0) note('no mutt ever attacked anyone across the whole so
 // §6.1/§10.3: the firing-rate floor, as an assertion instead of a printed
 // line. Zero-checks above catch a mechanic that is dead; this catches one
 // that is merely unreachable — authored content a player will essentially
-// never see. The floors are aggregate counts against the 240-run sweep,
-// set at roughly half the measured post-tuning baselines so ordinary drift
-// passes and a regression to the pre-tuning rates fails.
+// never see. The floors are aggregate counts against the full sweep, set at
+// roughly half the measured post-tuning baselines so ordinary drift passes
+// and a regression to the pre-tuning rates fails.
 const firingFloors: Array<[string, number, number]> = [
     ['performed (insincere) bonds', performedBonds, 4],
     ['nightlock deaths', nightlockDeaths, 2],

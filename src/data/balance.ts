@@ -172,6 +172,13 @@ export const SIGNATURE_RULES = {
     alpineDodgeBase: 0.3,
     terracesDodgeBase: 0.35,
     terracesFatigue: 12,
+    canopywebDodgeBase: 0.3,
+    canopywebSeverChance: 0.5,
+    acousticforestDodgeBase: 0.28,
+    acousticforestSanityLoss: 8,
+    burnscarBurnChance: 0.3,
+    burnscarSeverChance: 0.5,
+    craterfieldDodgeBase: 0.35,
 } as const;
 
 /**
