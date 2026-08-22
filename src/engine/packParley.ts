@@ -84,8 +84,12 @@ export function resolvePackEncounters(ctx: SimContext) {
         // MERGE: the leaders already get on and one group is clearly the
         // junior partner. The smaller folds in rather than being fought.
         if (regard > 0 && aMembers.length > bMembers.length && ctx.rng.chance(PACK_PARLEY.mergeChance)) {
-            bMembers.forEach(m => { m.allianceId = aId; });
-            const merged = [...aMembers, ...bMembers];
+            // The whole of b folds in, not just the members standing here — a
+            // scout separated by a border collapse must not be left holding a
+            // dangling allianceId whose record is about to be deleted.
+            const bEveryone = alive.filter(m => m.allianceId === bId);
+            bEveryone.forEach(m => { m.allianceId = aId; });
+            const merged = [...aMembers, ...bEveryone.filter(m => !bMembers.includes(m)), ...bMembers];
             mergeAllianceRecords(ctx, aId, bId, merged);
             const record = allianceRecords(ctx.state)[aId];
             if (record) record.leaderId = pickLeader(merged).id;
@@ -117,7 +121,11 @@ export function resolvePackEncounters(ctx: SimContext) {
 
         // STANDOFF: nobody moves first, and both groups leave by the way they
         // came in. Nothing is agreed and everything is noted.
-        aMembers.concat(bMembers).forEach(m => { m.vitals.fatigue += PACK_PARLEY.standoffRegard; });
+        // Taking each other's measure without violence is worth something
+        // between the leaders (the regard constant was being applied as
+        // fatigue here); the tension itself is what tires everyone out.
+        adjustMutual(ctx.state, aLeader, bLeader, PACK_PARLEY.standoffRegard);
+        aMembers.concat(bMembers).forEach(m => { m.vitals.fatigue += PACK_PARLEY.standoffFatigue; });
         ctx.logEvent(
             `${aName} and ${bName} end up facing each other across ${zone} with nobody willing to be the one who starts it. `
             + `Both groups back out the way they came, and neither turns around until they are out of sight.`,

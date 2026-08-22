@@ -19,14 +19,17 @@ import { SimContext, getAlive } from './context';
  * narrowing to a countable number, the feast, and nightfall.
  */
 
-/** Guards the once-per-run threshold beats so they cannot repeat. */
-const FIRED = new WeakMap<object, Set<string>>();
-
+/**
+ * Guards the once-per-run threshold beats so they cannot repeat. Lives on the
+ * state itself rather than in a module-side WeakMap: a rewind or a resumed
+ * save constructs a fresh state object, and a WeakMap keyed on the old one
+ * would happily let Caesar announce "the final eight" into a chronicle that
+ * already contains it.
+ */
 function once(ctx: SimContext, key: string): boolean {
-    const seen = FIRED.get(ctx.state) ?? new Set<string>();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    FIRED.set(ctx.state, seen);
+    const seen = ctx.state.broadcastBeats ?? [];
+    if (seen.includes(key)) return false;
+    ctx.state.broadcastBeats = [...seen, key];
     return true;
 }
 

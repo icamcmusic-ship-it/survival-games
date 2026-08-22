@@ -17,6 +17,7 @@ import { Explainer } from '../components/Explainer';
 import { ordinal } from '../engine/gamesProfile';
 import { gameActions, gameStore } from '../store/gameStore';
 import { readFilters, writeFilters } from '../utils/prefsStorage';
+import { initialHashParam } from '../store/router';
 
 import { useStore } from '../store/createStore';
 
@@ -96,10 +97,10 @@ export function GameScreen({
      * Read once at mount: the hash is a link somebody followed, not a live
      * control, and re-reading it would fight the router.
      */
-    const [deepLinkedLine] = useState<string | undefined>(() => {
-        const query = window.location.hash.split('?')[1];
-        return query ? new URLSearchParams(query).get('line') ?? undefined : undefined;
-    });
+    // Read from the router's boot-time capture rather than the live hash: by
+    // the time this screen mounts, initRouter has already canonicalised the
+    // URL and the query is gone from `location.hash`.
+    const [deepLinkedLine] = useState<string | undefined>(() => initialHashParam('line'));
     // §2.2: chronicle density and the opt-in audio cues, both persisted.
     const [density, setDensity] = useState<FeedDensity>(storedFilters.current.density);
     const [sound, setSound] = useState(storedFilters.current.sound);

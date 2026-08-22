@@ -44,6 +44,7 @@ function applyArenaModifiers(ctx: SimContext) {
             .filter(z => z.name !== horn.name && !horn.adjacent.includes(z.name));
         const closing = ordered.slice(0, Math.floor(state.arena.zones.length * MODIFIERS.halfArenaClosedShare));
         if (closing.length > 0) {
+            state.preClosedZones = closing.map(z => z.name);
             state.collapsedZones = [...new Set([...(state.collapsedZones ?? []), ...closing.map(z => z.name)])];
             ctx.logEvent(
                 `The arena the tributes walk into is a fraction of the one the Capitol advertised. `

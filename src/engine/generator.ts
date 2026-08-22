@@ -13,6 +13,7 @@ import { addExcitement } from './audience';
 import { CastShape } from '../data/gamesProfile';
 import { QUIRKS } from '../data/quirks';
 import { readCustomContent } from '../utils/customContent';
+import { composeBackstory } from '../data/backstories';
 
 /** Weighted draw from the district's archetype table. */
 function pickArchetype(rng: RNG, district: number, careerBias = 0): ArchetypeId {
@@ -222,11 +223,13 @@ export function generateTributes(
                 attributes.stealth += rng.nextInt(2, 4);
                 attributes.agility += rng.nextInt(1, 2);
             }
+            // Floor of 1 rather than 0: a bonus that can roll away entirely
+            // wasn't moving the win column for these districts at all.
             if (district === 5 || district === 9 || district === 10) {
-                attributes.strength += rng.nextInt(0, 2);
+                attributes.strength += rng.nextInt(1, 2);
             }
             if (district === 6 || district === 8) {
-                attributes.agility += rng.nextInt(0, 2);
+                attributes.agility += rng.nextInt(1, 2);
             }
 
             // The cast shape leans on the age roll before it is clamped back
@@ -347,6 +350,11 @@ export function generateTributes(
 
     // The reaping is not just a name out of a bowl.
     tributes.forEach(t => applyVolunteer(rng, t, shape));
+
+    // §8.3: who each of them was before the reaping. Composed after the
+    // volunteer pass so a volunteer's re-rolled age and stats are what the
+    // detail gates read.
+    tributes.forEach(t => { t.backstory = composeBackstory(rng, t); });
 
     // Audience meta: the Capitol has favourites before the gong.
     // Charisma, a good story and a career pedigree all feed the pre-Games buzz.

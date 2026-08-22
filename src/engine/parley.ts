@@ -123,7 +123,11 @@ export function breakTruce(ctx: SimContext, breaker: Tribute, victim: Tribute) {
 function tributePayment(t: Tribute): Item | undefined {
     const weapons = t.inventory.filter(i => i.type === 'weapon').length;
     const spare = t.inventory.filter(i => i.type !== 'weapon' || weapons > 1);
-    if (spare.length === 0) return undefined;
+    // A tribute being shaken down does not get to declare their only weapon
+    // off-limits — it is the first thing the stronger party takes. Keeping it
+    // out of `spare` had made the item toll unreachable: the weaker party in
+    // an outmatched meeting almost never carries anything else.
+    if (spare.length === 0) return t.inventory.find(i => i.type === 'weapon');
     return spare.reduce((worst, i) => (i.value < worst.value ? i : worst));
 }
 

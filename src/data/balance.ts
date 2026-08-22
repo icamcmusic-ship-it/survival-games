@@ -885,6 +885,9 @@ export const STEALTH = {
  * carries between cycles: find water, find somewhere to sleep.
  */
 export const MOVEMENT = {
+    /** §8.3: odds an arrival line steers by the zone's landmark instead of the pool. */
+    landmarkLineChance: 0.12,
+
     /** A-3: odds a high-ground watcher makes out *who* is moving next door. */
     highGroundIdentifyChance: 0.3,
     /** A-3: odds an adjacent listener's reaction to a fight gets a line. */
@@ -2387,9 +2390,9 @@ export const PARLEY = {
      */
     tollInfoMinThreat: 1.0,
     /** Item value above which the weaker party would sooner give directions. */
-    tollInfoRatherThanValue: 55,
+    tollInfoRatherThanValue: 70,
     /** Share of otherwise-payable shakedowns settled in directions instead. */
-    tollInfoPreferredShare: 0.3,
+    tollInfoPreferredShare: 0.25,
     tollInfoResentment: 8,
     tollInfoSanityCost: 5,
 
@@ -2689,6 +2692,8 @@ export const PACK_PARLEY = {
     truceCycles: 3,
     /** Regard the standoff itself is worth to both sides. */
     standoffRegard: 4,
+    /** Fatigue every member pays for holding a line nobody crosses. */
+    standoffFatigue: 4,
     /** Odds a pack parley ends in a merge offer rather than terms. */
     mergeChance: 0.2,
 } as const;

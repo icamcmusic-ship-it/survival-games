@@ -69,9 +69,13 @@ const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * visible cap first) when somebody follows it.
  */
 async function copyLineLink(id: string, onCopied: (id: string | null) => void) {
-    const base = `${window.location.origin}${window.location.pathname}`;
+    // Keep the seed-replay query (`?seed=…&arena=…`) if the current URL has
+    // one — without it the recipient has no run to scroll, and `#/arena`
+    // would just fall back to setup. The route is `/arena`, not `/game`:
+    // the old path matched nothing and every copied link landed on setup.
+    const base = `${window.location.origin}${window.location.pathname}${window.location.search}`;
     try {
-        await navigator.clipboard.writeText(`${base}#/game?line=${encodeURIComponent(id)}`);
+        await navigator.clipboard.writeText(`${base}#/arena?line=${encodeURIComponent(id)}`);
         onCopied(id);
         setTimeout(() => onCopied(null), 2000);
     } catch {

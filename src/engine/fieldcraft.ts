@@ -120,7 +120,9 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     // Awareness is already the engine's "did you notice something you were not
     // meant to" roll — reusing it keeps spotting a tripline consistent with
     // spotting a person in cover.
-    const spotted = ctx.rng.chance(Math.max(0.05, Math.min(0.9, awareness(t) / 20)))
+    // Same signature as every other awareness read: night makes a tripline
+    // harder to see, and the group's scout is watching the ground too.
+    const spotted = ctx.rng.chance(Math.max(0.05, Math.min(0.9, awareness(t, ctx.state.timeOfDay === 'night', ctx.state) / 20)))
         && !ctx.rng.chance(trap.concealment);
 
     if (spotted) {

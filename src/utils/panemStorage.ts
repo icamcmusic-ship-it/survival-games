@@ -195,6 +195,140 @@ export const RECORD_DEFS: Array<{
         },
         format: v => `a ${v}`,
     },
+    // The book grew with the systems: every record below reads a number a
+    // newer layer already keeps (notoriety, tesserae, proficiency, feuds,
+    // zone memory), so the record book is also a map of what the engine
+    // tracks. Fields older saves never wrote simply never qualify.
+    {
+        id: 'shortest-games',
+        label: 'Shortest Games',
+        lowerIsBetter: true,
+        extract: (state, victor) => victor ? { value: state.day, holder: victor } : undefined,
+        format: v => `${v} day${v === 1 ? '' : 's'}`,
+    },
+    {
+        id: 'oldest-victor',
+        label: 'Oldest victor',
+        extract: (_s, victor) => victor ? { value: victor.age, holder: victor } : undefined,
+        format: v => `${v} years old`,
+    },
+    {
+        id: 'biggest-upset',
+        label: 'Biggest upset',
+        lowerIsBetter: true,
+        extract: (_s, victor) => victor && victor.trainingScore > 0
+            ? { value: victor.trainingScore, holder: victor }
+            : undefined,
+        format: v => `won off a training score of ${v}`,
+    },
+    {
+        id: 'deadliest-tribute',
+        label: 'Deadliest tribute, crowned or not',
+        extract: state => {
+            const best = state.tributes.reduce((a, b) => (b.kills > a.kills ? b : a));
+            return best.kills > 0 ? { value: best.kills, holder: best } : undefined;
+        },
+        format: v => `${v} kill${v === 1 ? '' : 's'}`,
+    },
+    {
+        id: 'most-notorious',
+        label: 'Most notorious',
+        extract: state => {
+            const best = state.tributes.reduce((a, b) => ((b.notoriety ?? 0) > (a.notoriety ?? 0) ? b : a));
+            return (best.notoriety ?? 0) > 0 ? { value: best.notoriety!, holder: best } : undefined;
+        },
+        format: v => `notoriety ${v}`,
+    },
+    {
+        id: 'most-gifted',
+        label: 'Most parachutes received',
+        extract: state => {
+            const best = state.tributes.reduce((a, b) =>
+                ((b.memory?.giftsReceived ?? 0) > (a.memory?.giftsReceived ?? 0) ? b : a));
+            const gifts = best.memory?.giftsReceived ?? 0;
+            return gifts > 0 ? { value: gifts, holder: best } : undefined;
+        },
+        format: v => `${v} parachute${v === 1 ? '' : 's'}`,
+    },
+    {
+        id: 'most-feared',
+        label: 'Most feared by the field',
+        extract: state => {
+            let best: { value: number; holder: Tribute } | undefined;
+            state.tributes.forEach(t => {
+                const dread = state.tributes.reduce((sum, o) =>
+                    o.id === t.id ? sum : sum + (o.memory?.fear?.[t.id] ?? 0), 0);
+                if (dread > 0 && (!best || dread > best.value)) best = { value: Math.round(dread), holder: t };
+            });
+            return best;
+        },
+        format: v => `${v} points of collective dread`,
+    },
+    {
+        id: 'sharpest-skill',
+        label: 'Sharpest skill',
+        extract: state => {
+            let best: { value: number; holder: Tribute } | undefined;
+            state.tributes.forEach(t => {
+                const peak = Math.max(0, ...Object.values(t.proficiencies ?? {}).map(v => v ?? 0));
+                if (peak > 0 && (!best || peak > best.value)) best = { value: peak, holder: t };
+            });
+            return best;
+        },
+        format: v => `level ${v}`,
+    },
+    {
+        id: 'most-betrayed',
+        label: 'Most times sold out',
+        extract: state => {
+            const best = state.tributes.reduce((a, b) =>
+                ((b.memory?.timesBetrayed ?? 0) > (a.memory?.timesBetrayed ?? 0) ? b : a));
+            const times = best.memory?.timesBetrayed ?? 0;
+            return times > 0 ? { value: times, holder: best } : undefined;
+        },
+        format: v => `betrayed ${v} time${v === 1 ? '' : 's'}`,
+    },
+    {
+        id: 'least-televised',
+        label: 'Least televised victor',
+        lowerIsBetter: true,
+        extract: (state, victor) => victor
+            ? { value: state.log.filter(l => l.tributesInvolved.includes(victor.id)).length, holder: victor }
+            : undefined,
+        format: v => `${v} chronicle entries`,
+    },
+    {
+        id: 'heaviest-bowl',
+        label: 'Heaviest name in the bowl to win',
+        extract: (_s, victor) => victor && (victor.tesserae ?? 0) > 0
+            ? { value: victor.tesserae!, holder: victor }
+            : undefined,
+        format: v => `${v} tesserae carried home`,
+    },
+    {
+        id: 'widest-wanderer',
+        label: 'Most ground covered',
+        extract: state => {
+            const best = state.tributes.reduce((a, b) =>
+                (Object.keys(b.memory?.zones ?? {}).length > Object.keys(a.memory?.zones ?? {}).length ? b : a));
+            const seen = Object.keys(best.memory?.zones ?? {}).length;
+            return seen > 1 ? { value: seen, holder: best } : undefined;
+        },
+        format: v => `${v} sectors known`,
+    },
+    {
+        id: 'longest-feud',
+        label: 'Longest-running feud',
+        extract: state => {
+            let best: { value: number; holder: Tribute } | undefined;
+            state.tributes.forEach(t => {
+                const fights = Math.max(0, ...Object.values(t.memory?.rivals ?? {}).map(r => r.fights));
+                if (fights > 1 && (!best || fights > best.value)) best = { value: fights, holder: t };
+            });
+            return best;
+        },
+        format: v => `${v} fights with the same rival`,
+    },
 ];
 
 /**
@@ -324,12 +458,18 @@ export function commitRun(state: GameState): RunOutcome {
 
     // S-3: career-wide achievements read the updated records, so cumulative
     // counts and per-district completion unlock the moment they become true.
+    const gmGames = Object.values(records.gamemakerRecords ?? {}).map(gm => gm.games);
     const totals: CareerTotals = {
         runs: records.runs,
         victors: records.victors,
         deaths: Object.values(records.gamemakerRecords ?? {}).reduce((sum, gm) => sum + gm.deaths, 0),
         crownedDistricts: Object.keys(records.districtCrowns ?? {}).map(Number),
         arenasWon: records.arenasWon ?? [],
+        unlockedCount: records.unlocked.length,
+        maxGamemakerGames: gmGames.length > 0 ? Math.max(...gmGames) : 0,
+        outerVictories: Object.entries(records.districtCrowns ?? {})
+            .filter(([d]) => ![1, 2, 4].includes(Number(d)))
+            .reduce((sum, [, crown]) => sum + (crown?.victories ?? 0), 0),
     };
 
     const earned = [...evaluateAchievements(state), ...evaluateMetaAchievements(totals)];

@@ -314,6 +314,140 @@ export const ACHIEVEMENTS: Achievement[] = [
             return [...new Set(finalFour.map(t => t.district))].length < finalFour.length;
         },
     },
+    // The endings §10.2 added — each is rare twice over (gated on what
+    // happened to the victor, then rolled), so each is worth naming.
+    {
+        id: 'refused-crown',
+        name: 'Not Wearing It',
+        hint: 'See a victor refuse the crown in front of the whole Capitol.',
+        test: state => state.endingKind === 'refused',
+    },
+    {
+        id: 'lifted-out',
+        name: 'On Their Terms',
+        hint: 'See the Gamemakers end the Games themselves rather than let the arena finish it.',
+        test: state => state.endingKind === 'overruled',
+    },
+    {
+        id: 'hollow-crown',
+        name: 'The Long Way Home',
+        hint: 'Crown a victor whose homecoming reads as a loss.',
+        test: state => state.endingKind === 'hollow',
+    },
+    // The format modifiers — winning under a changed rule set is a different
+    // achievement from winning at all.
+    {
+        id: 'format-year',
+        name: 'The Rules Were Different',
+        hint: 'Finish a Games run under two or more format changes at once.',
+        test: state => (state.gamesProfile?.modifiers?.length ?? 0) >= 2,
+    },
+    {
+        id: 'empty-horn-victor',
+        name: 'Nothing at the Middle',
+        hint: 'Crown a victor in a year the Cornucopia stood empty.',
+        test: (state, v) => !!v && (state.gamesProfile?.modifiers ?? []).includes('no-cornucopia'),
+    },
+    {
+        id: 'silent-year-victor',
+        name: 'Under a Silent Sky',
+        hint: 'Crown a victor in a year with no anthem and no faces in the sky.',
+        test: (state, v) => !!v && (state.gamesProfile?.modifiers ?? []).includes('no-anthem'),
+    },
+    {
+        id: 'sealed-year-victor',
+        name: 'No Parachutes',
+        hint: 'Crown a victor in a sealed sponsorship year — nothing sent, nothing received.',
+        test: (state, v) => !!v && (state.gamesProfile?.modifiers ?? []).includes('no-sponsors'),
+    },
+    // What a run can produce that the original list never looked for.
+    {
+        id: 'ghost-victor',
+        name: 'The Ghost',
+        hint: 'Crown a victor who was never once in a fight.',
+        test: (_s, v) => !!v && Object.values(v.memory?.rivals ?? {}).every(r => r.fights === 0),
+    },
+    {
+        id: 'notorious',
+        name: 'The Name They Say Carefully',
+        hint: 'See a tribute become so feared that the whole field knows them by reputation alone.',
+        test: state => state.tributes.some(t => (t.notoriety ?? 0) >= 60),
+    },
+    {
+        id: 'as-advertised',
+        name: 'As Advertised',
+        hint: 'Crown a victor the Capitol had already fallen for before the gong.',
+        test: (_s, v) => !!v && v.fanFavourite,
+    },
+    {
+        id: 'dark-horse',
+        name: 'Nobody Saw Them Coming',
+        hint: 'Crown a victor who scored a three or worse in training.',
+        test: (_s, v) => !!v && v.trainingScore > 0 && v.trainingScore <= 3,
+    },
+    {
+        id: 'seam-year',
+        name: 'Coal Into Diamond',
+        hint: 'Crown a victor from District 12 itself.',
+        test: (_s, v) => !!v && v.district === 12,
+    },
+    {
+        id: 'half-the-field',
+        name: 'A Quarter of Panem',
+        hint: 'Crown a victor who personally accounted for a quarter of the field or more.',
+        test: (state, v) => !!v && state.tributes.length > 0 && v.kills >= state.tributes.length / 4,
+    },
+    {
+        id: 'steady-hands',
+        name: 'Steady Hands',
+        hint: 'See one tribute close two or more wounds properly — their own, or somebody else\'s.',
+        test: state => state.tributes.some(t =>
+            state.log.filter(l => /packs and binds|binds their wound tight/.test(l.text)
+                && l.tributesInvolved.includes(t.id)).length >= 2),
+    },
+    {
+        id: 'labs-year',
+        name: 'The Labs\' Year',
+        hint: 'See the mutts take three or more tributes in one Games.',
+        test: state => state.tributes.filter(t =>
+            t.status === 'dead' && t.lastDamage?.kind === 'mutt').length >= 3,
+    },
+    {
+        id: 'scarred-earth',
+        name: 'Scorched Into the Map',
+        hint: 'See fire permanently scar three or more sectors of one arena.',
+        test: state => (state.scarredZones?.length ?? 0) >= 3,
+    },
+    {
+        id: 'strange-skies',
+        name: 'Strange Skies',
+        hint: 'See hail, a static storm, or track-erasing snow cross the arena.',
+        test: state => state.log.some(l => /hailstorm|static storm|wet snow/.test(l.text)),
+    },
+    {
+        id: 'oath-keeper',
+        name: 'The Word Held',
+        hint: 'Crown a victor who renewed a truce rather than letting it lapse.',
+        test: (state, v) => !!v && state.log.some(l =>
+            /truce holds another stretch|same terms, both still in|renew the agreement|The truce rolls over/.test(l.text)
+            && l.tributesInvolved.includes(v.id)),
+    },
+    {
+        id: 'role-crown',
+        name: 'Somebody Had To',
+        hint: 'Crown a victor who was their alliance\'s scout, quartermaster or medic.',
+        test: (state, v) => !!v && Object.values(state.alliances ?? {}).some(a =>
+            Object.values(a.roles ?? {}).includes(v.id)),
+    },
+    {
+        id: 'pack-to-pack',
+        name: 'The Arithmetic Out Loud',
+        hint: 'See one whole alliance fold itself into another rather than fight it.',
+        // The terms-agreed beat fires in most runs now that groups negotiate;
+        // the *merge* — a leader walking out with empty hands and doing the
+        // arithmetic in front of both packs — is the rare one worth naming.
+        test: state => state.log.some(l => l.text.includes('does the arithmetic out loud')),
+    },
 ];
 
 /**
@@ -331,6 +465,12 @@ export interface CareerTotals {
     crownedDistricts: number[];
     /** Distinct arenas a victor has been crowned in. */
     arenasWon: string[];
+    /** Achievements unlocked so far (before this run's are merged). */
+    unlockedCount: number;
+    /** The most Games any single Head Gamemaker has run for this player. */
+    maxGamemakerGames: number;
+    /** Victories by districts outside 1, 2 and 4, summed. */
+    outerVictories: number;
 }
 
 export interface MetaAchievement {
@@ -376,6 +516,66 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         name: 'The Grand Tour',
         hint: 'Crown victors in ten different arenas.',
         test: t => t.arenasWon.length >= 10,
+    },
+    {
+        id: 'meta-first-crown',
+        name: 'Somebody Came Home',
+        hint: 'Crown your first victor.',
+        test: t => t.victors >= 1,
+    },
+    {
+        id: 'meta-twenty-five',
+        name: 'Silver Anniversary',
+        hint: 'Finish twenty-five Games.',
+        test: t => t.runs >= 25,
+    },
+    {
+        id: 'meta-hundred-games',
+        name: 'A Century of Games',
+        hint: 'Finish one hundred Games.',
+        test: t => t.runs >= 100,
+    },
+    {
+        id: 'meta-five-hundred-deaths',
+        name: 'The Ledger',
+        hint: 'Witness five hundred deaths across all your Games.',
+        test: t => t.deaths >= 500,
+    },
+    {
+        id: 'meta-cartographer',
+        name: 'The Cartographer',
+        hint: 'Crown victors in twenty different arenas.',
+        test: t => t.arenasWon.length >= 20,
+    },
+    {
+        id: 'meta-collector',
+        name: 'The Collection Begins',
+        hint: 'Unlock twenty achievements.',
+        test: t => t.unlockedCount >= 20,
+    },
+    {
+        id: 'meta-archivist',
+        name: 'The Archivist',
+        hint: 'Unlock forty achievements.',
+        test: t => t.unlockedCount >= 40,
+    },
+    {
+        id: 'meta-house-gamemaker',
+        name: 'The House Gamemaker',
+        hint: 'See the same Head Gamemaker run five of your Games.',
+        test: t => t.maxGamemakerGames >= 5,
+    },
+    {
+        id: 'meta-against-the-academy',
+        name: 'Against the Academy',
+        hint: 'Crown five victors from outside Districts 1, 2 and 4.',
+        test: t => t.outerVictories >= 5,
+    },
+    {
+        id: 'meta-outer-dynasty',
+        name: 'The Outer Dynasty',
+        hint: 'Crown fifteen victors from outside Districts 1, 2 and 4.',
+        test: t => t.outerVictories >= 15,
     },
 ];
 

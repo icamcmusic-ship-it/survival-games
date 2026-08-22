@@ -366,6 +366,13 @@ export interface Tribute {
     /** The reaping-day line: how they came to be standing on that plate. */
     reapingNote?: string;
     /**
+     * §8.3: who was standing on the plate. Composed once at generation from
+     * family, district trade and one formative detail that agrees with their
+     * traits — see `data/backstories.ts`. The reaping note says how they got
+     * here; this says who arrived.
+     */
+    backstory?: string;
+    /**
      * §7.1: tessera claims — extra name-slips taken for grain, one per family
      * mouth per year. Decided at generation from district poverty and age.
      * A tribute who carries them has been hungry for years: the hunger drain
@@ -713,6 +720,20 @@ export interface GameState {
     yieldMultiplier?: number;
     /** §10.2: the horn was never filled this year. */
     emptyCornucopia?: boolean;
+    /**
+     * §10.2: zones walled off before the gong (the half-arena format).
+     * Kept separately from `collapsedZones` because `collapseBorders`
+     * recomputes that list wholesale from the escalation schedule each cycle
+     * — without this record, a pre-closed zone silently reopened the moment
+     * escalation started.
+     */
+    preClosedZones?: string[];
+    /**
+     * §8.3: the once-per-run broadcast beats (final eight, final three,
+     * opening days) already delivered. On the state, not in module memory,
+     * so a rewind or resumed save cannot replay them into the chronicle.
+     */
+    broadcastBeats?: string[];
     /**
      * §10.2: how these Games actually ended, beyond who was left standing.
      * The simulation could produce last-one-standing, a dual victory, or a

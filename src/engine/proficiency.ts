@@ -102,7 +102,7 @@ export function trainProficiency(t: Tribute, skill: Proficiency): number {
             t.attributeDrift![attr] = Math.round((held + inc) * 100) / 100;
             t.attributes[attr] = Math.round((t.attributes[attr] + inc) * 100) / 100;
         };
-        if (skill === 'melee' || skill === 'ranged') drift('agility', DRIFT.agilityPerCombatLevel);
+        if (skill === 'melee' || skill === 'ranged' || skill === 'thrown') drift('agility', DRIFT.agilityPerCombatLevel);
         else if (skill === 'tracking') drift('stealth', DRIFT.stealthPerTrackingLevel);
         // T-1: the arena plausibly changes everything. Fighting hand-to-hand
         // builds the arm behind the blade; working wounds and reading ground
