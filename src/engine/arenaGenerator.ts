@@ -1,7 +1,7 @@
 import { Arena, Injuries, Mutt, MuttRole, SignatureRule, Terrain, Zone, ZoneEffectKind } from '../models/types';
 import { RNG } from '../utils/rng';
 import { PROCEDURAL_EVENTS, FlavorTag } from '../data/proceduralFlavor';
-import { PROC_SIGNATURE } from '../data/balance';
+import { PROC_SIGNATURE, PROC_TERRAIN } from '../data/balance';
 
 interface Biome {
     id: string;
@@ -91,6 +91,33 @@ const TERRAIN_PROFILES: Record<Terrain, { danger: [number, number]; resources: [
 
 function range(rng: RNG, [min, max]: [number, number]): number {
     return Math.round((min + rng.nextFloat() * (max - min)) * 100) / 100;
+}
+
+function clampBand([min, max]: [number, number]): [number, number] {
+    return [Math.max(0, Math.min(1, min)), Math.max(0, Math.min(1, max))];
+}
+
+/**
+ * Rolls this arena's own version of every terrain it can contain, shifting
+ * the shared `TERRAIN_PROFILES` band up or down (danger and resources roll
+ * independently) so "forest" doesn't mean the same larder-or-hunting-ground
+ * in every generated arena. Stored on `Arena.terrainVariant` and consulted
+ * ahead of `TERRAIN_PROFILES` everywhere a zone's danger/resources are rolled.
+ */
+type TerrainVariant = Partial<Record<Terrain, { danger: [number, number]; resources: [number, number] }>>;
+
+function rollTerrainVariant(rng: RNG, terrains: Terrain[]): TerrainVariant {
+    const variant: TerrainVariant = {};
+    terrains.forEach(terrain => {
+        const base = TERRAIN_PROFILES[terrain];
+        const dangerShift = (rng.nextFloat() * 2 - 1) * PROC_TERRAIN.shiftMax;
+        const resourceShift = (rng.nextFloat() * 2 - 1) * PROC_TERRAIN.shiftMax;
+        variant[terrain] = {
+            danger: clampBand([base.danger[0] + dangerShift, base.danger[1] + dangerShift]),
+            resources: clampBand([base.resources[0] + resourceShift, base.resources[1] + resourceShift]),
+        };
+    });
+    return variant;
 }
 
 // ARENA-08: every procedural arena used to be one ring-plus-spokes graph, so
@@ -339,6 +366,7 @@ export function generateArena(seed: string): Arena {
         : shapeRoll < 0.85 ? rng.nextInt(9, 12)
         : rng.nextInt(13, 16);
     const topology = rng.pick(TOPOLOGIES);
+    const terrainVariant = rollTerrainVariant(rng, biome.terrains);
 
     // The Cornucopia is always the hub
     const zones: Zone[] = [{
@@ -359,7 +387,7 @@ export function generateArena(seed: string): Arena {
         if (pool.length === 0) continue;
         const name = rng.pick(pool);
         usedNames.add(name);
-        const profile = TERRAIN_PROFILES[terrain];
+        const profile = terrainVariant[terrain] ?? TERRAIN_PROFILES[terrain];
         zones.push({
             name,
             terrain,
@@ -412,5 +440,6 @@ export function generateArena(seed: string): Arena {
         zones,
         signatureRule: rollSignatureRule(rng),
         muttRoster,
+        terrainVariant,
     };
 }

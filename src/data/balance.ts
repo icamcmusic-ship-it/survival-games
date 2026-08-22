@@ -203,6 +203,18 @@ export const PROC_SIGNATURE = {
     falseChanceMax: 0.35,
 } as const;
 
+/**
+ * Per-arena terrain variance (procedural arenas only). The generator's base
+ * `TERRAIN_PROFILES` is one danger/resource band per terrain shared by every
+ * arena ever generated — this is how far a single arena's own version of a
+ * terrain is allowed to drift from that shared band, so "forest" can mean a
+ * larder in one arena and a hunting ground in another.
+ */
+export const PROC_TERRAIN = {
+    /** Max shift applied to both ends of a terrain's danger/resources band. */
+    shiftMax: 0.18,
+} as const;
+
 /** What each trait is worth, in the units the vitals loop works in. */
 /**
  * What is left here after `data/traits.ts` took over the trait table: the two
