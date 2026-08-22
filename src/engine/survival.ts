@@ -1,5 +1,5 @@
 import { Tribute } from '../models/types';
-import { DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -7,6 +7,8 @@ import { applyExposure } from './exposure';
 import { getZone } from './map';
 import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
+import { sanityBandOf } from './sanityBands';
+import { decayIdleDrift } from './proficiency';
 import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding } from './wounds';
 import { rememberedThreat } from './memory';
 import { hasCamp } from './fieldcraft';
@@ -387,6 +389,63 @@ function applySanityPressure(ctx: SimContext, t: Tribute, time: 'day' | 'night',
     t.vitals.sanity += recovery - drain;
 }
 
+/**
+ * §3.9 / §3.5 / §3.3: the body and the mind make specific mistakes.
+ *
+ * Fatigue used to gate actions but never cause an error; sanity's bottom end
+ * was one stealth hack; earned drift never faded. All three now leave marks a
+ * reader can see in the feed.
+ */
+function applyWearAndTear(ctx: SimContext, t: Tribute) {
+    // Fatigue mistake: drop something, or stumble.
+    if (t.vitals.fatigue > FATIGUE_MISTAKES.threshold && ctx.rng.chance(FATIGUE_MISTAKES.chance)) {
+        const droppable = t.inventory.filter(i => i.type !== 'weapon' || t.inventory.filter(w => w.type === 'weapon').length > 1);
+        if (droppable.length > 0 && ctx.rng.chance(FATIGUE_MISTAKES.dropShare)) {
+            const lost = ctx.rng.pick(droppable);
+            t.inventory = t.inventory.filter(i => i !== lost);
+            ctx.logEvent(
+                `${t.name} is too tired to notice the ${lost.name} slip loose somewhere between one camp and the next. It is simply gone.`,
+                [t.id],
+                { category: 'survival' }
+            );
+        } else {
+            t.health = Math.max(1, t.health - FATIGUE_MISTAKES.stumbleDamage);
+            ctx.logEvent(
+                `${t.name} misjudges a step they would have made easily three days ago and goes down hard. Exhaustion is its own hazard now.`,
+                [t.id],
+                { category: 'injury' }
+            );
+        }
+    }
+
+    // Sanity residue: the bottom band abandons things, and the first visit
+    // down there leaves a permanent mark.
+    const band = sanityBandOf(t);
+    if (band === 'gone') {
+        if (!t.sanityScarred) {
+            t.sanityScarred = true;
+            t.attributes.stealth = Math.max(1, t.attributes.stealth - SANITY_BANDS.scarStealthLoss);
+            ctx.logEvent(
+                `Something in ${t.name} goes quiet and does not come back. Whatever they are from here on, it is not what walked into the arena.`,
+                [t.id],
+                { important: true, category: 'sanity' }
+            );
+        }
+        if (t.inventory.length > 0 && ctx.rng.chance(SANITY_BANDS.goneDropChance)) {
+            const left = ctx.rng.pick(t.inventory);
+            t.inventory = t.inventory.filter(i => i !== left);
+            ctx.logEvent(
+                `${t.name} sets the ${left.name} down carefully, as if putting it away at home, and walks off without it.`,
+                [t.id],
+                { category: 'sanity' }
+            );
+        }
+    }
+
+    // Earned combat drift fades on idle cycles — a curve, not a ratchet.
+    decayIdleDrift(t);
+}
+
 /** One cycle of simply existing in the arena. */
 export function processVitals(ctx: SimContext, time: 'day' | 'night') {
     const board = getAlive(ctx.state);
@@ -419,6 +478,9 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         applyMandatoryPartnerDrain(ctx, t, board);
         applySanityPressure(ctx, t, time, alliesPresent);
         clampTribute(t);
+
+        applyWearAndTear(ctx, t);
+        if (t.status !== 'alive') return;
 
         applyStatusDamage(ctx, t);
         consumeSupplies(ctx, t);

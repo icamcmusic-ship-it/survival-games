@@ -332,6 +332,13 @@ export interface Tribute {
     /** The reaping-day line: how they came to be standing on that plate. */
     reapingNote?: string;
     /**
+     * §3.10: the private reason they intend to survive, set at the reaping.
+     * Biases resolve and vengeance, and pays off in the epilogue interview.
+     */
+    motive?: 'family' | 'partner' | 'prove' | 'honour' | 'escape';
+    /** §3.5: they went all the way down once; some of it never comes back. */
+    sanityScarred?: boolean;
+    /**
      * §7.1: tessera claims — extra name-slips taken for grain, one per family
      * mouth per year. Decided at generation from district poverty and age.
      * A tribute who carries them has been hungry for years: the hunger drain

@@ -1,5 +1,5 @@
 import { Tribute } from '../models/types';
-import { RESOLVE } from '../data/balance';
+import { MOTIVES, RESOLVE } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { ensureMemory, cyclesSinceContact } from './memory';
 import { clampTribute } from './vitals';
@@ -56,7 +56,14 @@ export function tickResolve(ctx: SimContext) {
         // Somebody to keep going for, or somebody to avenge. Both work.
         const allies = alive.filter(o => o.id !== t.id && o.allianceId !== undefined && o.allianceId === t.allianceId);
         if (allies.length > 0) delta += RESOLVE.allyBonus;
-        if (mem.vengeance.length > 0) delta += RESOLVE.vengeanceBonus;
+        // §3.10: private motive. A tribute holding onto someone at home is
+        // harder to put out; one whose whole reason is their district
+        // partner burns hotter for vengeance when it comes to that.
+        if (mem.vengeance.length > 0) {
+            delta += RESOLVE.vengeanceBonus
+                * (t.motive === 'partner' ? MOTIVES.avengeVengeanceMultiplier : 1);
+        }
+        if (t.motive === 'family') delta += MOTIVES.familyResolveBonus;
         // Being remembered by the Capitol is, grimly, a reason to keep standing.
         if (t.excitementRating > RESOLVE.watchedExcitement) delta += RESOLVE.watchedBonus;
 

@@ -530,6 +530,15 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                                 The cameras have noticed: {tribute.quirks!.join('; ')}.
                             </p>
                         )}
+                        {tribute.motive && (
+                            <p className="text-sm text-[var(--color-ink-400)] mt-2 italic">
+                                {tribute.motive === 'family' && 'The commentators keep mentioning the family waiting at home.'}
+                                {tribute.motive === 'partner' && 'Whatever happens to their district partner will decide who this tribute becomes.'}
+                                {tribute.motive === 'prove' && 'Nobody rated them, and they know it. That is the fuel.'}
+                                {tribute.motive === 'honour' && 'They carry their district\'s record on their back, and mean to add to it.'}
+                                {tribute.motive === 'escape' && 'Winning, for this one, is mostly about never going back to what was before.'}
+                            </p>
+                        )}
                     </section>
 
                     <section>

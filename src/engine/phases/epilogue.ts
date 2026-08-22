@@ -311,5 +311,34 @@ export function processEpilogue(ctx: SimContext) {
         ]).replace('{district}', String(winner.district))}'`
     });
 
+    // §3.10: the motive pays off. Set at the reaping, biased their resolve
+    // all run, and Caesar has done his homework.
+    if (winner?.motive) {
+        const motiveQA: Record<string, { q: string; a: string }> = {
+            family: {
+                q: `Caesar Flickerman: 'There was someone at home, wasn't there? We could all see it. Who were you fighting for?'`,
+                a: `${winner.name}: 'My family. Every day in there, that was the whole plan: get back to them. I'm going home.'`,
+            },
+            partner: {
+                q: `Caesar Flickerman: 'Your district partner. The whole of Panem watched what that cost you. Do you want to say their name?'`,
+                a: `${winner.name}: 'I said it every night in the arena. I'll be saying it for the rest of my life.'`,
+            },
+            prove: {
+                q: `Caesar Flickerman: 'Nobody had you on their card. Not the bookmakers, not the sponsors. What kept you certain?'`,
+                a: `${winner.name}: 'They weren't wrong about my odds. They were wrong about what I'd do with them.'`,
+            },
+            honour: {
+                q: `Caesar Flickerman: 'District ${winner?.district}'s academy will hang your portrait tonight. Is this what eighteen years of training feels like?'`,
+                a: `${winner.name}: 'It feels like the job. I came to bring the crown home, and it's coming home.'`,
+            },
+            escape: {
+                q: `Caesar Flickerman: 'And now? A victor's house, a victor's life. What does tomorrow look like?'`,
+                a: `${winner.name}: 'Like anywhere but where I've been. That was the point. It was always the point.'`,
+            },
+        };
+        const qa = motiveQA[winner.motive];
+        if (qa) qas.push({ question: qa.q, answer: qa.a });
+    }
+
     ctx.state.epilogueInterview = qas;
 }

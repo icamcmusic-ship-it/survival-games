@@ -64,7 +64,7 @@ export const BLEEDING = {
     /** Per-cycle health cost, indexed by severity (0 is not bleeding). */
     damageBySeverity: [0, 3, 7, 12],
     /** Base odds a wound drops one severity step at the end of a cycle. */
-    baseClotChance: 0.4,
+    baseClotChance: 0.28,
     /** Clotting rewards a clear head and a strong frame. */
     clotPerIntelligence: 0.025,
     clotPerStrength: 0.02,
@@ -79,9 +79,9 @@ export const BLEEDING = {
      * medicine proficiency, and improves a lot if they are holding something
      * to bind with.
      */
-    dressBaseChance: 0.3,
+    dressBaseChance: 0.35,
     dressPerIntelligence: 0.035,
-    dressPerMedicine: 0.12,
+    dressPerMedicine: 0.2,
     /** Rope, wire or a spare pack to tear into strips. */
     dressBindingBonus: 0.2,
     /** Severity steps a successful dressing removes. */
@@ -393,6 +393,14 @@ export const PROFICIENCY = {
     diminishingPerLevel: 0.22,
     /** Archetypes start their signature skill slightly ahead. */
     archetypeHeadStart: 1,
+    /**
+     * §3.7: learning under pressure. Board-sample best proficiency averaged
+     * 1.79 against a cap of 6 — the top of the curve was unreachable. Gains
+     * accelerate as the run wears on (necessity is the arena's tutor), so a
+     * survivalist visibly arrives somewhere by the endgame.
+     */
+    lateRunGainPerDay: 0.09,
+    lateRunGainCap: 0.9,
     /** Forage chance added per point of forage proficiency. */
     forageWeight: 0.05,
     /** Combat power added per point of the relevant weapon proficiency. */
@@ -503,6 +511,71 @@ export const DRIFT = {
     intelligencePerFieldcraftLevel: 0.1,
     /** Drift ceiling: earned points never exceed this above the printed stat. */
     maxGain: 1,
+    /**
+     * §3.3: per-attribute ceilings — the body has more room to grow than
+     * judgement does in eight days — and a decay path: a tribute who stops
+     * fighting loses the edge, so drift is a curve rather than a ratchet.
+     */
+    maxGainStrength: 1.5,
+    maxGainAgility: 1.2,
+    maxGainStealth: 1.2,
+    maxGainIntelligence: 0.8,
+    /** Earned combat drift lost per idle cycle (no fight, no aggression). */
+    decayPerIdleCycle: 0.03,
+} as const;
+
+/**
+ * §3.4: composure — momentum and rattled read as one signed value. A tribute
+ * keyed up from a kill forages worse but projects better; a rattled one sues
+ * for peace and reads as damaged goods to the sponsor blocs.
+ */
+export const COMPOSURE = {
+    /** Forage success per point of composure (steady hands find food). */
+    forageWeight: 0.015,
+    /** Sponsor gift-tier merit per point of composure. */
+    sponsorMeritWeight: 0.02,
+    /** Extra truce willingness when either party is rattled. */
+    rattledParleyBonus: 0.15,
+} as const;
+
+/**
+ * §3.5: sanity thresholds with distinct, visible behavioural states. The
+ * bands read from `sanityBandOf`; each has its own residue.
+ */
+export const SANITY_BANDS = {
+    frayed: 70,
+    unravelling: 40,
+    gone: 15,
+    /** Forage penalty while unravelling — they stop trusting what they pick. */
+    unravellingForagePenalty: 0.1,
+    /** Odds per cycle that a tribute who is gone abandons an item where they stood. */
+    goneDropChance: 0.15,
+    /** Crossing the bottom band leaves a permanent mark (once per run). */
+    scarStealthLoss: 1,
+} as const;
+
+/**
+ * §3.9: fatigue causes specific mistakes, not just gated actions — the
+ * cheapest available source of emergent narrative.
+ */
+export const FATIGUE_MISTAKES = {
+    /** Fatigue above this rolls for a mistake each cycle. */
+    threshold: 82,
+    chance: 0.12,
+    /** Of the mistakes: odds it is a dropped item (else a stumble). */
+    dropShare: 0.5,
+    stumbleDamage: 6,
+} as const;
+
+/**
+ * §3.10: private motives, assigned at the reaping. Not another stat — a bias
+ * on why this tribute keeps standing, paid off in the epilogue.
+ */
+export const MOTIVES = {
+    /** Extra positive resolve drift for a tribute holding onto someone at home. */
+    familyResolveBonus: 0.75,
+    /** Vengeance weighs heavier for a tribute whose motive is their partner. */
+    avengeVengeanceMultiplier: 1.6,
 } as const;
 
 export const ENDGAME = {
@@ -1861,6 +1934,24 @@ export const GENERATION = {
     fanFavouriteExcitement: 25,
     /** T-7: odds a tribute carries a second quirk. */
     secondQuirkChance: 0.35,
+    /**
+     * §3.2: archetype-specific variance shapes. A Career and an underdog no
+     * longer share one variance profile: Careers are narrow and high (the
+     * academy filters out the outliers), wildcards genuinely bimodal (double
+     * spikes and dumps, talent that is never merely average).
+     */
+    careerTalentSpread: 2,
+    careerTalentShift: 1,
+    careerSpikeSize: 1,
+    wildcardTalentMin: 2,
+    wildcardSpikeCount: 2,
+    wildcardSpikeSize: 3,
+    /**
+     * §3.1: build is a real second axis now — an independent frame roll
+     * blended with strength at this weight (1.0 would make it a strength
+     * alias again; 0 would decouple them entirely).
+     */
+    buildFrameWeight: 0.6,
     /** Baseline sponsor trust before reputation modifiers. */
     baseSponsorTrust: 50,
     trustSpread: 12,
@@ -2325,11 +2416,11 @@ export const RESOLVE = {
     /** Taking the nightlock needs to be genuinely final, and is still rare —
      *  but 14/0.3 meant 1-4 firings per 240 runs, an ending players would
      *  never see (§6.1). */
-    nightlockThreshold: 18,
-    nightlockChance: 0.5,
+    nightlockThreshold: 24,
+    nightlockChance: 0.6,
     /** A tribute with nothing left can go looking for it where things grow. */
-    nightlockForageResources: 0.35,
-    nightlockFindChance: 0.6,
+    nightlockForageResources: 0.25,
+    nightlockFindChance: 0.75,
 } as const;
 
 /**

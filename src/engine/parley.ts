@@ -1,5 +1,5 @@
 import { Item, Tribute } from '../models/types';
-import { PARLEY } from '../data/balance';
+import { COMPOSURE, PARLEY } from '../data/balance';
 import { PARLEY_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
@@ -230,7 +230,10 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
 
     // TRUCE: neither can see an advantage, and there is at least some basis for
     // taking the other at their word. This is the one that can later be broken.
-    if (mutualRegard > PARLEY.truceMinRegard && ctx.rng.chance(PARLEY.truceChance)) {
+    // §3.4: a rattled party wants out of this conversation alive more than
+    // they want anything else — being shaken makes the pact more likely.
+    const rattledBonus = ((t.rattled ?? 0) > 0 || (other.rattled ?? 0) > 0) ? COMPOSURE.rattledParleyBonus : 0;
+    if (mutualRegard > PARLEY.truceMinRegard && ctx.rng.chance(PARLEY.truceChance + rattledBonus)) {
         declareTruce(ctx, t, other);
         // Agreeing to something and keeping it is the seed of a real bond.
         adjustMutual(ctx.state, t, other, PARLEY.truceRegard);
