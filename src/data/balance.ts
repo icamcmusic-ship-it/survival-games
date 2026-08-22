@@ -1018,6 +1018,11 @@ export const MUTTS = {
      */
     facesOfFallenChance: 0.08,
     facesOfFallenSanityLoss: 30,
+    /** `herder` role: a connecting hit relocates instead of damaging. Sanity cost for the shove, no health cost. */
+    herderSanityLoss: 6,
+    /** `swarm` role: extra damage multiplier per additional tribute present in the zone, beyond the first. */
+    swarmDamagePerAlly: 0.25,
+    swarmDamageCap: 2.5,
 } as const;
 
 export const ZONE_EFFECTS = {

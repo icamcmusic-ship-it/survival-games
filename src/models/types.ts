@@ -478,6 +478,8 @@ export interface Mutt {
     fearAura?: number;
     /** Behavioural archetype beyond the base kit above. See `MuttRole`. */
     role?: MuttRole;
+    /** `siege` only: the zone it never leaves. Ignored for every other role. */
+    homeZone?: string;
 }
 
 /**
@@ -597,6 +599,8 @@ export interface Arena {
     signatureRule?: SignatureRule;
     /** Procedural arenas only: per-terrain danger/resource ranges for this generated arena, overriding the generator's defaults. */
     terrainVariant?: Partial<Record<Terrain, { danger: [number, number]; resources: [number, number] }>>;
+    /** Procedural arenas only: the real mutt kit generated for this specific arena. Takes priority over `ARENA_MUTTS` in `rosterFor`. */
+    muttRoster?: Mutt[];
 }
 
 export type Phase = 'setup' | 'roster' | 'reaping' | 'training' | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'epilogue' | 'ended';
@@ -763,6 +767,8 @@ export interface GameState {
     camps?: Record<string, { fire?: number; shelter?: number; camouflage?: number }>;
     /** Persistent mutts currently hunting a specific tribute. See `ActiveMutt`. */
     activeMutts?: ActiveMutt[];
+    /** Zones a cannon fired in this cycle, with the cycle it happened — reads as "just now" only while `cycle` still matches. Feeds the `scavenger` mutt role. */
+    recentCannonZones?: { zone: string; cycle: number }[];
 }
 
 export interface EventLog {

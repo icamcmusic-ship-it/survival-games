@@ -1041,4 +1041,12 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     // Everything a cannon does to everyone still breathing.
     broadcastDeath(ctx, victim, killer);
     propagateDeathFallout(ctx, victim, killer);
+
+    // Feeds the `scavenger` mutt role: only eligible where a cannon just
+    // fired. Pruned to the current cycle each time so this never grows
+    // unbounded across a long run.
+    const cycle = cycleOf(ctx.state);
+    ctx.state.recentCannonZones = (ctx.state.recentCannonZones ?? [])
+        .filter(c => c.cycle === cycle)
+        .concat({ zone: victim.zone, cycle });
 }

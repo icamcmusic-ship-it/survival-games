@@ -1,10 +1,11 @@
 import { Mutt, Tribute } from '../models/types';
 import { ARENA_MUTTS } from '../data/mutts';
 import { BLEEDING, MEMORY, MUTTS } from '../data/balance';
-import { SimContext } from './context';
+import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
-import { getZone } from './map';
+import { getZone, reachableZones, severedEdgeSet } from './map';
 import { addZoneThreat, ensureMemory, cycleOf } from './memory';
+import { hasEffect } from './zoneEffects';
 import { injure, openWound } from './wounds';
 import { clampTribute } from './vitals';
 import { trainProficiency } from './proficiency';
@@ -44,6 +45,10 @@ function scaledDamage(ctx: SimContext, mutt: Mutt): number {
 }
 
 export function rosterFor(ctx: SimContext): Mutt[] {
+    // A generated arena's own roster (see arenaGenerator.ts) always wins —
+    // it's specific to this run, where ARENA_MUTTS's procedural entries are
+    // one shared roster per biome, reused by every arena of that biome.
+    if (ctx.state.arena.muttRoster) return ctx.state.arena.muttRoster;
     const id = ctx.state.arena.id;
     // Procedural arenas are keyed `procedural-<biome>` on the Arena itself,
     // but their ARENA_MUTTS entries are keyed by the bare biome id — try the
@@ -52,13 +57,30 @@ export function rosterFor(ctx: SimContext): Mutt[] {
     return ARENA_MUTTS[id] ?? ARENA_MUTTS[id.replace(/^procedural-/, '')] ?? [];
 }
 
-/** Mutts allowed to appear right now, given terrain and time of day. */
+/** Mutts allowed to appear right now, given terrain, time of day, and role. */
 export function eligibleMutts(ctx: SimContext, t: Tribute, time: 'day' | 'night'): Mutt[] {
     const zone = getZone(ctx.state.arena, t.zone);
+    const cycle = cycleOf(ctx.state);
     return rosterFor(ctx).filter(m => {
         if (m.nocturnal && time !== 'night') return false;
         // Ice wolves don't swim: undefined preference means "anywhere".
         if (m.terrainPreference && zone && !m.terrainPreference.includes(zone.terrain)) return false;
+        switch (m.role) {
+            case 'ambusher':
+                // Only shows itself in the dark or under cover of fog.
+                if (time !== 'night' && !(zone && hasEffect(ctx.state, zone.name, 'fogbound'))) return false;
+                break;
+            case 'scavenger':
+                // Only interested in a zone where a cannon just fired.
+                if (!(ctx.state.recentCannonZones ?? []).some(c => c.zone === t.zone && c.cycle === cycle)) return false;
+                break;
+            case 'siege':
+                // Never leaves its zone — it isn't eligible anywhere else.
+                if (m.homeZone && m.homeZone !== t.zone) return false;
+                break;
+            default:
+                break;
+        }
         return true;
     });
 }
@@ -82,7 +104,10 @@ function applyMuttInjuries(t: Tribute, mutt: Mutt) {
 function tryFacesOfTheFallen(ctx: SimContext, t: Tribute, mutt: Mutt) {
     const mourned = ensureMemory(t).mourned;
     if (mourned.length === 0) return;
-    if (!ctx.rng.chance(MUTTS.facesOfFallenChance)) return;
+    // The `mimic` role formalizes this beat as its whole identity rather than
+    // a rare layer on top of a normal attack — it always wears a face, once
+    // there's a face available to wear.
+    if (mutt.role !== 'mimic' && !ctx.rng.chance(MUTTS.facesOfFallenChance)) return;
 
     const fallen = ctx.rng.pick(mourned);
     const fallenTribute = ctx.state.tributes.find(o => o.id === fallen);
@@ -133,9 +158,33 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
         return;
     }
 
+    // `herder` never damages — a connecting hit shoves the tribute into an
+    // adjacent zone instead, and the encounter ends there.
+    if (mutt.role === 'herder') {
+        const options = reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state));
+        if (options.length > 0) {
+            const from = t.zone;
+            const dest = ctx.rng.pick(options);
+            t.zone = dest.name;
+            t.vitals.sanity -= MUTTS.herderSanityLoss;
+            addZoneThreat(ctx.state, t, from, MEMORY.hazardThreat);
+            ctx.logEvent(`${mutt.name} drives ${t.name} out of ${from} and into ${dest.name}.`, [t.id], { important: true, category: 'mutt' });
+        }
+        clampTribute(t);
+        return;
+    }
+
     // First hit at full damage, each additional connecting mutt adds less,
     // bounded so a big pack raises danger without guaranteeing a kill.
-    const base = scaledDamage(ctx, mutt);
+    let base = scaledDamage(ctx, mutt);
+    // `swarm` hits harder for every other tribute standing in the same zone —
+    // it punishes exactly the alliance-clustering that makes every other
+    // encounter safer.
+    if (mutt.role === 'swarm') {
+        const occupants = getAlive(ctx.state).filter(o => o.zone === t.zone).length;
+        const scale = Math.min(MUTTS.swarmDamageCap, 1 + Math.max(0, occupants - 1) * MUTTS.swarmDamagePerAlly);
+        base *= scale;
+    }
     let damage = base;
     for (let i = 1; i < hits; i++) damage += base * Math.pow(MUTTS.packDamageFalloff, i);
     damage = Math.min(damage, base * MUTTS.packDamageCap);

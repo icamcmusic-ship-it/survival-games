@@ -1,4 +1,4 @@
-import { Arena, SignatureRule, Terrain, Zone, ZoneEffectKind } from '../models/types';
+import { Arena, Injuries, Mutt, MuttRole, SignatureRule, Terrain, Zone, ZoneEffectKind } from '../models/types';
 import { RNG } from '../utils/rng';
 import { PROCEDURAL_EVENTS, FlavorTag } from '../data/proceduralFlavor';
 import { PROC_SIGNATURE } from '../data/balance';
@@ -235,18 +235,63 @@ const MODIFIERS_BY_TAG: Record<string, string[]> = {
 const GENERIC_MODIFIERS = ['Iron-Jawed', 'Blood-Eyed', 'Night-Bred', 'Hollow-Eyed'];
 const CREATURE_BASES = ['Harpies', 'Wraiths', 'Hounds', 'Stalkers', 'Serpents', 'Mutts', 'Ravagers', 'Screechers', 'Crawlers', 'Reapers'];
 
-function generateMuttNames(rng: RNG, activeTags: string[], count: number): string[] {
+/**
+ * Arena-native mutts, not just names. `generateMuttNames` used to produce
+ * flavour strings for `Arena.mutts` with no kit behind them — the display
+ * list and what `rosterFor()` actually resolved (a fixed 3-mutt roster
+ * shared by every arena of the same biome) didn't even agree, let alone have
+ * roles. This rolls real `Mutt` objects, one role each, so a generated
+ * arena's bestiary is specific to that arena and actually has teeth.
+ */
+interface RoleTemplate {
+    role: MuttRole;
+    packSize: [number, number];
+    damage: number;
+    speed: number;
+    inflicts?: Partial<Injuries>;
+    nocturnal?: boolean;
+    fearAura?: number;
+}
+const ROLE_TEMPLATES: RoleTemplate[] = [
+    { role: 'ambusher', packSize: [1, 2], damage: 24, speed: 9, inflicts: { bleeding: true }, nocturnal: true },
+    { role: 'herder', packSize: [1, 2], damage: 10, speed: 7 },
+    { role: 'scavenger', packSize: [1, 3], damage: 14, speed: 6, inflicts: { infected: true } },
+    { role: 'siege', packSize: [1, 1], damage: 26, speed: 5 },
+    { role: 'mimic', packSize: [1, 1], damage: 16, speed: 6, fearAura: 10 },
+    { role: 'swarm', packSize: [3, 6], damage: 9, speed: 6 },
+];
+
+function generateMuttRoster(rng: RNG, biome: Biome, activeTags: string[], count: number, zoneNames: string[]): Mutt[] {
     const pools = activeTags.length
         ? activeTags.flatMap(t => MODIFIERS_BY_TAG[t] || [])
         : [];
     const modifierPool = (pools.length ? pools : GENERIC_MODIFIERS).concat(GENERIC_MODIFIERS);
-    const names = new Set<string>();
-    let attempts = 30;
-    while (names.size < count && attempts-- > 0) {
-        const name = `${rng.pick(modifierPool)} ${rng.pick(CREATURE_BASES)}`;
-        names.add(name);
-    }
-    return Array.from(names);
+    const usedNames = new Set<string>();
+    const templates = rng.shuffle(ROLE_TEMPLATES).slice(0, count);
+    // Siege mutts get a home outside the Cornucopia when there's a choice —
+    // pinning one to the one zone every tribute passes through would make it
+    // less a territorial horror than a mandatory toll booth.
+    const homeOptions = zoneNames.length > 1 ? zoneNames.slice(1) : zoneNames;
+
+    return templates.map((tpl, i) => {
+        let name = `${rng.pick(modifierPool)} ${rng.pick(CREATURE_BASES)}`;
+        let attempts = 10;
+        while (usedNames.has(name) && attempts-- > 0) name = `${rng.pick(modifierPool)} ${rng.pick(CREATURE_BASES)}`;
+        usedNames.add(name);
+        const mutt: Mutt = {
+            id: `${biome.id}-${tpl.role}-${i}`,
+            name,
+            packSize: tpl.packSize,
+            damage: tpl.damage,
+            speed: tpl.speed,
+            inflicts: tpl.inflicts,
+            nocturnal: tpl.nocturnal,
+            fearAura: tpl.fearAura,
+            role: tpl.role,
+        };
+        if (tpl.role === 'siege' && homeOptions.length > 0) mutt.homeZone = rng.pick(homeOptions);
+        return mutt;
+    });
 }
 
 // Composes one SignatureRule (trigger × selector × payload × telegraph) per
@@ -328,10 +373,14 @@ export function generateArena(seed: string): Arena {
     guaranteeConnectivity(zones);
 
     const activeTags = Array.from(new Set(zones.map(z => z.terrain as string)));
-    // §8.3: mutt count varies too — one arena with a single persistent horror
-    // reads very differently from one with five kinds of teeth.
-    const muttCount = rng.nextInt(1, 5);
-    const mutts = generateMuttNames(rng, activeTags, muttCount);
+    // §8.3 / ARENA-11: mutt count varies too — one arena with a single
+    // persistent horror reads very differently from one with three kinds of
+    // teeth. `muttRoster` is what the encounter system actually resolves
+    // against; `mutts` (display names) is now derived from it directly, so
+    // the arena summary never again names a mutt that can't actually appear.
+    const muttCount = rng.nextInt(1, 3);
+    const muttRoster = generateMuttRoster(rng, biome, activeTags, muttCount, zones.map(z => z.name));
+    const mutts = muttRoster.map(m => m.name);
 
     // `events` here is just the arena's own signature-event *name* list
     // (shown in arena summaries) — the actual event bodies/text come from
@@ -362,5 +411,6 @@ export function generateArena(seed: string): Arena {
         events: eventNames,
         zones,
         signatureRule: rollSignatureRule(rng),
+        muttRoster,
     };
 }
