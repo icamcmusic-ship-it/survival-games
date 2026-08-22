@@ -8,6 +8,7 @@ import { giveItem, itemPhrase } from './items';
 import { ensureMemory } from './memory';
 import { mentorGenerosity, processMentorPleas } from './mentors';
 import { Item, Tribute } from '../models/types';
+import { arenaHasLaw } from './gamesProfile';
 import { mintItem } from './items';
 import { QUALITY_BIAS } from '../data/balance';
 
@@ -98,9 +99,17 @@ export function processSponsors(ctx: SimContext) {
     const rescued = processMentorPleas(ctx, alive);
     alive.forEach(t => {
         if (rescued.has(t.id)) return;
+        // `sponsorsFixedZone`: gifts only ever reach a tribute standing in
+        // the arena's one drop zone — sponsorship becomes a race to be there,
+        // not a reward for wherever a tribute happens to be.
+        if (arenaHasLaw(ctx.state, 'sponsorsFixedZone') && t.zone !== ctx.state.arena.lawZone) return;
         const sponsorScore = t.excitementRating + t.sponsorTrust;
         if (sponsorScore <= SPONSORS.giftThreshold) return;
-        if (!ctx.rng.chance(giftChance(t, ctx.state.config.sponsorGenerosity))) return;
+        // Arena.sponsorMultiplier: how much the Capitol's attention is worth
+        // in this arena specifically (Salt Mirror's total visibility vs. the
+        // Vault's dead cameras) — layered on top of the run's own generosity.
+        const generosity = ctx.state.config.sponsorGenerosity * (ctx.state.arena.sponsorMultiplier ?? 1);
+        if (!ctx.rng.chance(giftChance(t, generosity))) return;
 
         const tier = rollGiftTier(ctx, t);
         const floor = TIER_FLOORS[tier];

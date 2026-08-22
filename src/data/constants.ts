@@ -19,6 +19,7 @@ export const ARENAS: Arena[] = [
         description: 'A shifting map layout divided into sectors, each unleashing a different horror at a specific hour.',
         mutts: ['Tick-Tock Monkeys', 'Lightning Birds', 'Acid Fog', 'Jabberjays', 'Reef Barracuda'],
         events: ['Sector Shift', 'Blood Rain', 'Tidal Wave'],
+        law: 'cornucopiaRefills',
         zones: [
             { name: 'The Cornucopia', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Sector 1 (Jungle)', 'Sector 2 (Beach)', 'Sector 3 (Cliffs)', 'Sector 4 (Swamp)', 'Sector 12 (Blood Rain)'] },
             { name: 'Sector 1 (Jungle)', terrain: 'forest', danger: 0.5, resources: 0.7, adjacent: ['The Cornucopia', 'Sector 2 (Beach)', 'Sector 11 (Monkey Wood)'] },
@@ -96,6 +97,7 @@ export const ARENAS: Arena[] = [
         description: 'Extreme heat, severe water scarcity, and deadly solar flares. Shade is a premium.',
         mutts: ['Sand Vipers', 'Mirage Scorpions', 'Burrowing Centipedes', 'Glass Hawks'],
         events: ['Solar Flare', 'Sandstorm', 'Oasis Mirage'],
+        law: 'noNight',
         zones: [
             { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Endless Dunes', 'Rocky Outcrop', 'The Bone Road'] },
             { name: 'Endless Dunes', terrain: 'open', danger: 0.7, resources: 0.1, adjacent: ['The Cornucopia', 'Dried Oasis', 'The Glass Sea'] },
@@ -172,6 +174,8 @@ export const ARENAS: Arena[] = [
         description: 'A fungal forest grown for the occasion. Everything here is edible, and roughly half of it will kill you for trying.',
         mutts: ['Spore Moths', 'Mycelial Hounds', 'Puffball Swarms', 'Cordyceps Ticks'],
         events: ['Spore Bloom', 'Collapsing Cap', 'Rot Sink'],
+        law: 'sponsorsFixedZone',
+        lawZone: 'The Cornucopia (Ring of Caps)',
         zones: [
             { name: 'The Cornucopia (Ring of Caps)', terrain: 'open', danger: 0.55, resources: 0.4, adjacent: ['The Glowcap Wood', 'Rot Hollow', 'Mycelium Steps'] },
             { name: 'The Glowcap Wood', terrain: 'forest', danger: 0.4, resources: 0.85, adjacent: ['The Cornucopia (Ring of Caps)', 'Spore Marsh', 'The Shelf Terraces'] },
@@ -210,6 +214,7 @@ export const ARENAS: Arena[] = [
         description: 'A sealed underground complex with no sky at all. The faces of the fallen are projected onto the ceiling, and the lights go out on a schedule nobody explains.',
         mutts: ['Pallid Stalkers', 'Rebar Hounds', 'Circuit Wasps', 'Sump Eels'],
         events: ['Blackout', 'Flood Valve', 'Ceiling Collapse'],
+        law: 'noCannons',
         zones: [
             { name: 'The Cornucopia (Atrium)', terrain: 'open', danger: 0.65, resources: 0.3, adjacent: ['Service Tunnels', 'The Hydroponics Bay', 'Reactor Level'] },
             { name: 'Service Tunnels', terrain: 'ruins', danger: 0.7, resources: 0.25, adjacent: ['The Cornucopia (Atrium)', 'The Cistern', 'Dormitory Block', 'The Ventilation Shafts'] },
@@ -233,6 +238,9 @@ export const ARENAS: Arena[] = [
         description: 'A mine that was old before Panem was young: six chambers of tunnel and dust, no open sky, and no standing water anywhere. Everything a tribute drinks down here, somebody carried in. And something else lives in the dark.',
         mutts: ['The Warden', 'Pit Rats'],
         events: ['Tunnel Collapse', 'Bad Air', 'The Shifting'],
+        // No `lawZone` is deliberate: there is no exception, nowhere down
+        // here has water at all — see the description above.
+        law: 'noWaterExceptZone',
         zones: [
             { name: 'The Cornucopia (The Hub)', terrain: 'open', danger: 0.6, resources: 0.45, adjacent: ['The Choke', 'The Root Gardens', 'The Dust Flats'] },
             { name: 'The Choke', terrain: 'ruins', danger: 0.8, resources: 0.2, adjacent: ['The Cornucopia (The Hub)', 'The Old Workings', 'The Collapsed Galleries'] },
@@ -286,6 +294,7 @@ export const ARENAS: Arena[] = [
         description: 'A drained ocean floor, bleach-white and razor-edged: fossilised coral heads, deep dry trenches, and vast fields of anemones that did not die when the water left. Everything sharp, nothing soft, and the only water is brine.',
         mutts: ['Trench Morays', 'Anemone Colonies', 'Bonefish Swarms', 'The Dry Shark'],
         events: ['Coral Collapse', 'Anemone Bloom', 'Trench Wind'],
+        law: 'fireImpossible',
         zones: [
             { name: 'The Cornucopia (Drained Basin)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Coral Razors', 'The Urchin Barrens', 'The Dry Kelp Forest'] },
             { name: 'The Coral Razors', terrain: 'ruins', danger: 0.8, resources: 0.25, adjacent: ['The Cornucopia (Drained Basin)', 'The Shelf Break', 'The Anemone Fields'] },

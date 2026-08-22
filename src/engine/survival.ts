@@ -16,6 +16,7 @@ import { craftOf } from '../data/districts';
 import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
 import { earnTrait } from './earnedTraits';
+import { arenaHasLaw } from './gamesProfile';
 
 /**
  * Staying alive between encounters: spoilage, hunger, thirst, exposure, wounds
@@ -43,11 +44,18 @@ export function processSpoilage(ctx: SimContext) {
 function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     let hunger = VITALS.hungerDrain;
     let thirst = VITALS.thirstDrain;
-    let fatigue = time === 'day' ? VITALS.fatigueDayDrain : VITALS.fatigueNightRecovery;
+    // `noNight`: the sun never sets on this arena, so there is no true rest
+    // phase — fatigue drains at the day rate even during the scheduled
+    // 'night' phase, and never gets the night's recovery.
+    const noNight = arenaHasLaw(ctx.state, 'noNight');
+    let fatigue = time === 'day' || noNight ? VITALS.fatigueDayDrain : VITALS.fatigueNightRecovery;
 
     const zone = getZone(ctx.state.arena, t.zone);
     if (zone) {
-        if (zone.terrain === 'water' || zone.terrain === 'wetland') thirst -= VITALS.waterThirstRelief;
+        // `noWaterExceptZone`: only the arena's one designated water source
+        // gives any relief at all — everywhere else is as dry as open ground.
+        const wateredHere = !arenaHasLaw(ctx.state, 'noWaterExceptZone') || t.zone === ctx.state.arena.lawZone;
+        if ((zone.terrain === 'water' || zone.terrain === 'wetland') && wateredHere) thirst -= VITALS.waterThirstRelief;
         if (zone.terrain === 'highland') fatigue += VITALS.highlandFatiguePenalty;
         if (zone.terrain === 'forest' && time === 'night') fatigue -= VITALS.forestNightShelter;
     }
@@ -169,6 +177,8 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
 function drinkFromZone(ctx: SimContext, t: Tribute) {
     const zone = getZone(ctx.state.arena, t.zone);
     if (!zone || (zone.terrain !== 'water' && zone.terrain !== 'wetland')) return;
+    // `noWaterExceptZone`: nothing to drink anywhere but the designated zone.
+    if (arenaHasLaw(ctx.state, 'noWaterExceptZone') && t.zone !== ctx.state.arena.lawZone) return;
 
     const foul = climateOf(ctx.state.arena.id)?.foulWater === true;
     // Purification is a property of the item now, not a hardcoded id list, so

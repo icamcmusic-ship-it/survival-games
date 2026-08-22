@@ -7,6 +7,7 @@ import { cycleOf } from './memory';
 import { depleteZone, getZone, severEdge } from './map';
 import { clampTribute } from './vitals';
 import { climateOf } from './climate';
+import { arenaHasLaw } from './gamesProfile';
 
 /**
  * Zone effects: the arena in a state other than its printed one.
@@ -337,6 +338,10 @@ export function rollAmbientZoneEffects(ctx: SimContext) {
  * back to.
  */
 export function restockCornucopia(ctx: SimContext) {
+    // `cornucopiaRefills`: the Cornucopia restocks every cycle, no schedule
+    // gate and no roll — the centre of the arena never stops being worth the
+    // risk of going back to.
+    if (arenaHasLaw(ctx.state, 'cornucopiaRefills')) { dropSupplies(ctx); return; }
     const cycle = cycleOf(ctx.state);
     if (cycle % ZONE_EFFECTS.cornucopiaRestockEveryCycles !== 0) return;
     if (!ctx.rng.chance(ZONE_EFFECTS.cornucopiaRestockChance)) return;

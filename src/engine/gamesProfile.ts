@@ -1,4 +1,4 @@
-import { GameConfig, GameState } from '../models/types';
+import { ArenaLawId, GameConfig, GameState } from '../models/types';
 import { RNG } from '../utils/rng';
 import {
     CAST_SHAPES, CastShape, CastShapeId, GAMES_TEMPERAMENTS, GamesTemperament,
@@ -173,6 +173,22 @@ export function wildcardIs(state: GameState, kind: WildcardKind): boolean {
     const profile = state.gamesProfile;
     if (!profile) return false;
     return calendarOf(profile).some(w => w.kind === kind);
+}
+
+/** True when this arena's standing law is `law` — see `Arena.law` (models/types.ts). */
+export function arenaHasLaw(state: GameState, law: ArenaLawId): boolean {
+    return state.arena.law === law;
+}
+
+/**
+ * No cannon, no faces in the sky — whether because a `silent-arena` wildcard
+ * was drawn for this run or because the arena's own standing law is
+ * `noCannons`. Two different mechanisms (a run-wide condition and an
+ * arena-specific one) that mean the same thing to every consumer, so they
+ * share one check instead of every call site growing a second guard.
+ */
+export function arenaIsSilent(state: GameState): boolean {
+    return wildcardIs(state, 'silent-arena') || arenaHasLaw(state, 'noCannons');
 }
 
 /** How much earlier or later this year's border starts closing. */

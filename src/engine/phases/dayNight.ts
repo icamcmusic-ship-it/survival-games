@@ -37,7 +37,7 @@ import { resolveTruces } from '../parley';
 import { repayDebts, tickDistrictBonds } from '../debts';
 import { enforceCharters } from '../allianceCharter';
 import { gamemakerProfile } from '../../data/gamemakers';
-import { escalationShift, wildcardIs } from '../gamesProfile';
+import { arenaHasLaw, arenaIsSilent, escalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 
@@ -236,9 +236,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
  * confirmed to them in the most Capitol way possible.
  */
 function soundTheAnthem(ctx: SimContext) {
-    // A silent-arena year: no anthem, no faces, and nobody finds out who is
-    // left except by walking into them.
-    if (wildcardIs(ctx.state, 'silent-arena')) return;
+    // A silent-arena year, or an arena whose own law is noCannons: no
+    // anthem, no faces, and nobody finds out who is left except by walking
+    // into them.
+    if (arenaIsSilent(ctx.state)) return;
 
     const fallenToday = ctx.state.tributes.filter(t =>
         t.status === 'dead' && t.dayOfDeath === ctx.state.day);

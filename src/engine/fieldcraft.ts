@@ -8,6 +8,7 @@ import { getZone } from './map';
 import { hasEffect } from './zoneEffects';
 import { clampTribute } from './vitals';
 import { injure, openWound } from './wounds';
+import { arenaHasLaw } from './gamesProfile';
 import { profOf, trainProficiency } from './proficiency';
 import { awareness } from './stealth';
 import { traitMod } from '../data/traits';
@@ -244,6 +245,9 @@ function buildChance(t: Tribute): number {
  */
 export function lightFire(ctx: SimContext, t: Tribute): boolean {
     if (hasCamp(ctx, t, 'fire')) return false;
+    // `fireImpossible`: no dry fuel anywhere in this arena — every warmth,
+    // cooking and signalling use fire would have provided simply isn't available.
+    if (arenaHasLaw(ctx.state, 'fireImpossible')) return false;
 
     // Matches are 1 of 34 loot items with no other ignition source, which
     // made fire — and everything gated on it (revealFires, fire sanity
