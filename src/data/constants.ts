@@ -264,7 +264,8 @@ export const ARENAS: Arena[] = [
         // is a baseline rule, not just something the signature's bridge cuts add.
         edgeRules: {
             'The Cornucopia (Great Bough)|The Rope Bridges': { kind: 'tolled', toll: { fatigue: 8 } },
-            'The Crown|The Rope Bridges': { kind: 'tolled', toll: { fatigue: 8 } },
+            // §11.6: the climb to the Crown takes real time as well as sweat.
+            'The Crown|The Rope Bridges': { kind: 'tolled', toll: { fatigue: 8, timeCost: 1 } },
         },
         zones: [
             { name: 'The Cornucopia (Great Bough)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Rope Bridges', 'Orchid Terraces', 'The Undercanopy'] },
@@ -581,7 +582,8 @@ export const ARENAS: Arena[] = [
         mutts: ['Undertow Serpents', 'Cliff Harriers', 'Deep Current Grapplers'],
         events: ['Rising Tide', 'Ice Shear', 'Rogue Swell'],
         // The chimney is a free climb up sea-slick ice; the sea takes the rest.
-        edgeRules: { 'The Ice Chimney|The Summit Col': { kind: 'tolled', toll: { fatigue: 8, woundChance: 0.12 } } },
+        // §11.6: nobody free-climbs the chimney without leaving gear in it.
+        edgeRules: { 'The Ice Chimney|The Summit Col': { kind: 'tolled', toll: { fatigue: 8, woundChance: 0.12, itemCost: true } } },
         zones: [
             { name: 'The Cornucopia (The Shelf)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The First Peak', 'The Drowned Approach', 'Open Water Reach'] },
             { name: 'The First Peak', terrain: 'highland', danger: 0.7, resources: 0.2, adjacent: ['The Cornucopia (The Shelf)', 'The Ice Chimney', 'The Sea Cave'] },
@@ -783,6 +785,34 @@ export const ITEMS: Item[] = [
     { id: 'net', name: 'Fishing Net', type: 'tool', value: 30, fishing: true },
     { id: 'satchel', name: 'Canvas Satchel', type: 'utility', value: 20, capacity: 1 },
     { id: 'whetstone', name: 'Whetstone', type: 'tool', value: 25, stack: 3 },
+
+    // §8.3: the catalogue widened from 33 to ~50, spreading the special
+    // properties (purifies/light/warmth/fishing/capacity/armour/poison)
+    // across more of the table instead of one item each.
+    // Water.
+    { id: 'waterskin', name: 'Waterskin', type: 'water', value: 25, stack: 3 },
+    { id: 'canteen', name: 'Steel Canteen', type: 'water', value: 30, stack: 2 },
+    { id: 'iodine', name: 'Iodine Drops', type: 'medical', value: 45, purifies: true, stack: 2 },
+    // Food.
+    { id: 'dried-fruit', name: 'Dried Fruit', type: 'food', value: 12, spoilage: 8, stack: 3 },
+    { id: 'groosling', name: 'Smoked Groosling', type: 'food', value: 25, spoilage: 5, stack: 2 },
+    { id: 'crackers', name: 'District Crackers', type: 'food', value: 10, spoilage: 10, stack: 3 },
+    { id: 'cheese', name: 'Goat Cheese', type: 'food', value: 18, spoilage: 4, stack: 2 },
+    { id: 'lamb-stew', name: 'Capitol Lamb Stew', type: 'food', value: 40, spoilage: 2 },
+    { id: 'hardtack', name: 'Hardtack Ration', type: 'food', value: 14, spoilage: 12, stack: 3 },
+    // Medical.
+    { id: 'bandages', name: 'Sterile Bandages', type: 'medical', value: 30, stack: 3 },
+    { id: 'morphling', name: 'Morphling Vial', type: 'medical', value: 55 },
+    // Tools and special properties, each subsystem's second carrier.
+    { id: 'fishing-kit', name: 'Line and Hooks', type: 'tool', value: 25, fishing: true },
+    { id: 'charcoal-filter', name: 'Charcoal Filter', type: 'tool', value: 35, purifies: true },
+    { id: 'glow-stick', name: 'Chemical Glowlight', type: 'tool', value: 20, light: true },
+    { id: 'thermal-cloak', name: 'Thermal Cloak', type: 'utility', value: 55, warmth: true },
+    { id: 'bandolier', name: 'Leather Bandolier', type: 'utility', value: 22, capacity: 1 },
+    { id: 'helmet', name: 'Padded Helmet', type: 'armour', value: 25, armour: 0.06, durability: 50, maxDurability: 50 },
+    // Poison sources beyond the berry bushes — see POISONING.sources.
+    { id: 'venom-vial', name: 'Venom Vial', type: 'utility', value: 35 },
+    { id: 'venom-gland', name: 'Mutt Venom Gland', type: 'utility', value: 18 },
 ];
 
 /**

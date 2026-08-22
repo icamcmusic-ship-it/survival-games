@@ -9,7 +9,7 @@ import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/
 import { adjustRel, getRel, trustOf } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, raiseSuspicion, suspicionOf } from '../memory';
 import { respectOf } from '../relationships';
-import { allianceOf, areLovers, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance } from '../alliance';
+import { allianceOf, areLovers, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
 import { betrayalReluctance } from '../debts';
 import { addExcitement } from '../audience';
@@ -56,6 +56,12 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         weight += weakness(m) * ALLIANCES.betrayalWeaknessWeight;
         // Genuine affection is the one thing that stays a betrayer's hand.
         weight *= Math.max(0.05, 1 - Math.max(0, getRel(betrayer, m.id)) / 110);
+        // §11.1: and the mark's own performance works on the betrayer too — a
+        // member who keeps playing warm toward them reads as safe to keep, or
+        // as an easy, unguarded target, depending on the knife. Net: the
+        // displayed warmth stays the betrayer's hand a little, because a
+        // devoted ally is worth more alive than looted.
+        weight *= Math.max(0.3, 1 - Math.max(0, shownRegard(m, betrayer.id)) / 250);
         // Someone who already burned you goes to the top of the list.
         if (ensureMemory(betrayer).betrayedBy.includes(m.id)) weight *= ALLIANCES.betrayedFirstStrikeWeight;
         // Someone who never stops watching is a much worse mark.
@@ -143,8 +149,10 @@ export function processAlliances(ctx: SimContext) {
     // 1b. An alliance whose trust has rotted through falls apart on its own.
     alliances.forEach((members, id) => {
         if (members.length < 2) return;
+        // §11.1: the group judges the room it can see. A performer's shown
+        // warmth counts toward cohesion even when the ledger underneath is cold.
         const averageTrust = members.reduce((sum, m) =>
-            sum + members.reduce((inner, o) => inner + (o.id === m.id ? 0 : getRel(m, o.id)), 0) / (members.length - 1), 0) / members.length;
+            sum + members.reduce((inner, o) => inner + (o.id === m.id ? 0 : shownRegard(m, o.id)), 0) / (members.length - 1), 0) / members.length;
         if (averageTrust < ALLIANCES.rotDissolveTrust) {
             members.forEach(m => { delete m.allianceId; });
             // One line for the whole collapse, not a near-identical one per member.

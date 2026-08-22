@@ -3,6 +3,7 @@ import { ITEMS } from '../data/constants';
 import { QUALITY_BIAS, WILDCARD } from '../data/balance';
 import { giveItem, itemPhrase, mintItem } from './items';
 import { triggerGamemakerEvent } from './gamemaker';
+import { announceFeastTheme } from './phases/feast';
 import { addExcitement } from './audience';
 import { clampTribute } from './vitals';
 import { RNG } from '../utils/rng';
@@ -34,12 +35,48 @@ export function fireScheduledWildcard(ctx: SimContext) {
         if (wildcard.day === 0 || ctx.state.day < wildcard.day) return;
         if (fired.includes(index)) return;
         fired.push(index);
+        ctx.state.lastWildcardCycle = cycleOf(ctx.state);
         ctx.rng = new RNG(`${ctx.state.seed}-wildcard-${index}-${ctx.state.day}`);
         if (wildcard.onFire) {
             ctx.logEvent(wildcard.onFire, [], { important: true, category: 'gamemaker' });
         }
         resolveWildcard(ctx, wildcard);
     });
+
+    fireExtraDisruption(ctx);
+}
+
+/**
+ * §10.7: beyond the calendar. The Capitol's patience is not a fixed list —
+ * up to WILDCARD.maxExtraDisruptions unscheduled beats can land per run, at
+ * diminishing odds, never inside the spacing window of the last disruption.
+ */
+const EXTRA_DISRUPTIONS: Array<{ kind: Wildcard['kind']; name: string; onFire: string }> = [
+    { kind: 'supply-drop', name: 'an unscheduled supply drop', onFire: 'Unaddressed parachutes come down all over the arena. Nobody in the booth is saying whose idea it was.' },
+    { kind: 'mutt-release', name: 'an unscheduled release', onFire: 'A gate nobody has used since the bloodbath grinds open. The Gamemakers have decided the field needs company.' },
+    { kind: 'weather-front', name: 'an unscheduled storm', onFire: 'The weather systems spin up without an announcement. Whatever this is, it was not on the calendar.' },
+    { kind: 'crowd-revolt', name: 'a crowd revolt', onFire: 'The Capitol audience turns on its own favourites, live, and the sponsor boards start rewriting themselves.' },
+    { kind: 'bounty', name: 'a surprise bounty', onFire: 'A voice over the arena names a name. The Capitol wants somebody watched, and now everybody is watching them.' },
+];
+
+function fireExtraDisruption(ctx: SimContext) {
+    const state = ctx.state;
+    const extras = state.extraWildcardsFired ?? 0;
+    if (extras >= WILDCARD.maxExtraDisruptions) return;
+    if (state.day < WILDCARD.extraDisruptionEarliestDay) return;
+    const cycle = cycleOf(state);
+    if (cycle - (state.lastWildcardCycle ?? -99) < WILDCARD.extraDisruptionSpacingCycles) return;
+
+    const rng = new RNG(`${state.seed}-extra-wildcard-${cycle}`);
+    const chance = WILDCARD.extraDisruptionBaseChance * Math.pow(WILDCARD.extraDisruptionDecay, extras);
+    if (!rng.chance(chance)) return;
+
+    const pick = rng.pick(EXTRA_DISRUPTIONS);
+    state.extraWildcardsFired = extras + 1;
+    state.lastWildcardCycle = cycle;
+    ctx.rng = rng;
+    ctx.logEvent(pick.onFire, [], { important: true, category: 'gamemaker' });
+    resolveWildcard(ctx, { kind: pick.kind, name: pick.name, announcement: '', day: state.day });
 }
 
 function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
@@ -53,6 +90,7 @@ function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
             // two feasts landing on the same day.
             if (ctx.state.config.enableFeast && (ctx.state.phase === 'day' || ctx.state.phase === 'night')) {
                 ctx.state.feastDay = ctx.state.day;
+                announceFeastTheme(ctx);
                 ctx.state.phase = 'feast';
             }
             break;
@@ -60,11 +98,11 @@ function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
         case 'mutt-release':
             // Forced through regardless of Gamemaker mode: this is the Capitol's
             // schedule, not the player's intervention.
-            withGamemakerMode(ctx, () => triggerGamemakerEvent(ctx, 'mutt'));
+            withGamemakerMode(ctx, () => triggerGamemakerEvent(ctx, 'mutt', undefined, true));
             break;
 
         case 'weather-front':
-            withGamemakerMode(ctx, () => triggerGamemakerEvent(ctx, 'weather'));
+            withGamemakerMode(ctx, () => triggerGamemakerEvent(ctx, 'weather', undefined, true));
             break;
 
         case 'supply-drop': {
@@ -95,7 +133,7 @@ function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
         case 'gamemaker-malfunction': {
             // The arena does something nobody planned: one zone effect, one
             // severed route, and a field that suddenly trusts nothing.
-            withGamemakerMode(ctx, () => triggerGamemakerEvent(ctx, 'weather'));
+            withGamemakerMode(ctx, () => triggerGamemakerEvent(ctx, 'weather', undefined, true));
             alive.forEach(t => {
                 t.vitals.sanity = Math.max(0, t.vitals.sanity - WILDCARD.malfunctionSanity);
                 clampTribute(t);

@@ -1,6 +1,8 @@
 import { Mutt, Tribute } from '../models/types';
 import { ARENA_MUTTS } from '../data/mutts';
-import { BLEEDING, MEMORY, MUTTS, QUELL_MECHANICS } from '../data/balance';
+import { ITEMS } from '../data/constants';
+import { BLEEDING, MEMORY, MUTTS, POISONING, QUELL_MECHANICS } from '../data/balance';
+import { giveItem } from './items';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { getZone, reachableZones, severedEdgeSet } from './map';
@@ -237,6 +239,20 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     checkDeath(ctx, t, `Torn apart by ${mutt.name}`);
     // Surviving the Gamemakers' own animals recalibrates what frightens you.
     if (t.status === 'alive') earnTrait(ctx, t, 'Hardened');
+    // §6.4: venom comes off the arena's own animals. Fighting free of a
+    // venomous mutt sometimes leaves a tribute holding the gland — the raw
+    // material a blade gets coated with.
+    if (t.status === 'alive' && mutt.inflicts?.poisoned && ctx.rng.chance(POISONING.muttGlandChance)) {
+        const gland = ITEMS.find(i => i.id === 'venom-gland');
+        if (gland && !t.inventory.some(i => i.id === 'venom-gland')) {
+            giveItem(t, { ...gland });
+            ctx.logEvent(
+                `${t.name} cuts the venom gland out of what ${mutt.name} left behind. It is not food. It is not for food.`,
+                [t.id],
+                { category: 'loot' }
+            );
+        }
+    }
 
     if (mutt.persistent && t.status === 'alive') {
         const state = ctx.state;

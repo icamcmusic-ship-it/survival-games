@@ -1,7 +1,8 @@
 import { Arena, GameState, Tribute, Zone, ZoneFeatures } from '../models/types';
 import { traitMod } from '../data/traits';
-import { BLEEDING, ZONES } from '../data/balance';
+import { BLEEDING, EDGE_TOLL, ZONES } from '../data/balance';
 import { injuryGrade, openWound } from './wounds';
+import { massOf } from './physique';
 import { SimContext } from './context';
 
 export function zoneNames(arena: Arena): string[] {
@@ -44,11 +45,43 @@ export function travelCost(t: Tribute, dest: Zone): number {
 export function applyEdgeToll(ctx: SimContext, t: Tribute, from: string, to: string) {
     const rule = ctx.state.arena.edgeRules?.[edgeKey(from, to)];
     if (!rule || rule.kind !== 'tolled' || !rule.toll) return;
-    if (rule.toll.fatigue) t.vitals.fatigue = Math.min(100, t.vitals.fatigue + rule.toll.fatigue);
+    if (rule.toll.fatigue) {
+        // §11.6: the same rope costs different bodies differently — a heavy
+        // frame hauls more of itself up it, and a bad limb pays again.
+        const massSurcharge = Math.max(0, massOf(t)) * EDGE_TOLL.fatiguePerMass;
+        const injurySurcharge = (injuryGrade(t, 'legs') + injuryGrade(t, 'arms')) * EDGE_TOLL.fatiguePerInjuryGrade;
+        t.vitals.fatigue = Math.min(100, t.vitals.fatigue + rule.toll.fatigue + Math.round(massSurcharge + injurySurcharge));
+    }
     if (rule.toll.woundChance && ctx.rng.chance(rule.toll.woundChance)) {
         openWound(t, BLEEDING.hazardSeverity);
         ctx.logEvent(`${t.name} pays for the crossing from ${from} to ${to} in blood.`, [t.id], { important: true, category: 'travel' });
     }
+    // §11.6: some crossings consume gear — rope burned on the descent, a pack
+    // lost to the current. The least-valued non-weapon item goes.
+    if (rule.toll.itemCost) {
+        const droppable = t.inventory.filter(i => i.type !== 'weapon');
+        if (droppable.length > 0) {
+            const lost = droppable.reduce((worst, i) => (i.value < worst.value ? i : worst));
+            t.inventory = t.inventory.filter(i => i !== lost);
+            ctx.logEvent(
+                `The crossing from ${from} to ${to} takes ${t.name}'s ${lost.name} with it. That is the toll, paid in kind.`,
+                [t.id],
+                { category: 'travel' }
+            );
+        }
+    }
+    // §11.6 `timeCost` (extra cycles on the edge): applied by `beginMove` as
+    // added transit, with a recovery penalty per extra cycle charged here.
+    if (rule.toll.timeCost) {
+        t.vitals.fatigue = Math.min(100, t.vitals.fatigue + rule.toll.timeCost * EDGE_TOLL.recoveryFatiguePerCycle);
+    }
+}
+
+/** §11.6: extra transit cycles a tolled edge adds on top of terrain cost. */
+export function edgeTimeCost(state: GameState, from: string, to: string): number {
+    const rule = state.arena.edgeRules?.[edgeKey(from, to)];
+    if (!rule || rule.kind !== 'tolled') return 0;
+    return rule.toll?.timeCost ?? 0;
 }
 
 /** Deterministic per-name hash in [0, 1), so derived features are stable per zone. */

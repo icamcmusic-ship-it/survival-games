@@ -1,5 +1,5 @@
 import { Item, Tribute } from '../models/types';
-import { COMPOSURE, PARLEY, RESPECT } from '../data/balance';
+import { COMPOSURE, PARLEY, RESPECT, ROMANCE } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { PARLEY_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
@@ -8,7 +8,7 @@ import { SimContext } from './context';
 import { assessZone } from './stance';
 import { adjustMutual, adjustRel, getRel, respectOf } from './relationships';
 import { addZoneThreat, cycleOf, ensureMemory, noteStoodBy, raiseSuspicion, rememberedThreat, swearVengeance } from './memory';
-import { areLovers } from './alliance';
+import { areLovers, maintainPerformance } from './alliance';
 import { giveItem, itemPhrase } from './items';
 import { fearOf } from './fear';
 import { clampTribute } from './vitals';
@@ -53,6 +53,9 @@ function declareTruce(ctx: SimContext, a: Tribute, b: Tribute) {
     const until = cycleOf(ctx.state) + PARLEY.truceCycles;
     a.truces = { ...(a.truces ?? {}), [b.id]: until };
     b.truces = { ...(b.truces ?? {}), [a.id]: until };
+    // §11.1: a parley is a stage. A performer plays the negotiation warm.
+    maintainPerformance(a, b.id, ROMANCE.performedUpkeep);
+    maintainPerformance(b, a.id, ROMANCE.performedUpkeep);
 }
 
 /** Tears up a standing truce from both sides, so neither is still honouring it. */

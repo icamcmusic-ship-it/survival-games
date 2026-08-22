@@ -258,6 +258,12 @@ export interface Tribute {
      */
     displayedRegard?: Record<string, number>;
     /**
+     * §11.1: consecutive cycles this tribute has been performing a bond
+     * (displayedRegard non-empty). Resets when the act drops. Read by the
+     * chronicle and reserved for a future performance achievement.
+     */
+    performingStreak?: number;
+    /**
      * Outstanding obligations: other tribute id -> how much is owed them.
      *
      * `memory.stoodBy` recorded that somebody took a risk for you, and then
@@ -459,6 +465,11 @@ export interface Trap {
     concealment: number;
     /** Cycle it was set, so the arena can rot them out rather than accumulating forever. */
     setCycle: number;
+    /**
+     * §6.2: tribute ids who have spotted this trap and chosen to leave it
+     * standing. They walk around it from then on; everyone else still rolls.
+     */
+    knownBy?: string[];
 }
 
 export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland';
@@ -584,8 +595,11 @@ export interface EdgeRule {
     /** 'oneWay' only: the one direction this edge may be crossed. */
     from?: string;
     to?: string;
-    /** 'tolled' only: an extra cost paid to cross, on top of normal travel cost. */
-    toll?: { fatigue?: number; woundChance?: number };
+    /** 'tolled' only: an extra cost paid to cross, on top of normal travel cost.
+     *  §11.6: `itemCost` consumes one carried non-weapon item (rope burned on
+     *  the climb, a pack lost to the current); `timeCost` adds extra transit
+     *  cycles on top of the terrain's own travel cost. */
+    toll?: { fatigue?: number; woundChance?: number; itemCost?: boolean; timeCost?: number };
     /** 'timeGated' only: the edge is only passable during this time. */
     gatedTime?: 'day' | 'night';
 }
@@ -682,7 +696,7 @@ export type EventCategory =
     | 'system';
 
 export interface GameConfig {
-    districtCount: number; // 2-12, each district reaps 2 tributes
+    districtCount: number; // 2-16, each district reaps 2 tributes (13-16 are the "expanded Games" outer territories)
     hazardRate: number; // multiplier on random event/mutt attack chance
     betrayalRate: number; // multiplier on alliance betrayal chance
     sponsorGenerosity: number; // multiplier on sponsor gift chance
@@ -792,8 +806,15 @@ export interface GameState {
      * shared seed reproduces the same Games, not merely the same cast.
      */
     gamesProfile?: GamesProfile;
-    /** Guard so a scheduled wildcard fires exactly once. */
-    wildcardFired?: boolean;
+    /**
+     * §10.7: extra, unscheduled calendar disruptions fired so far this run.
+     * Replaces the never-written `wildcardFired` boolean — a run can now take
+     * up to WILDCARD.maxExtraDisruptions additional beats, spaced out and at
+     * diminishing odds. See `fireScheduledWildcard` in engine/wildcards.ts.
+     */
+    extraWildcardsFired?: number;
+    /** Cycle the last calendar/extra wildcard resolved on, for spacing. */
+    lastWildcardCycle?: number;
     /**
      * Which half of the cycle is currently resolving.
      *
@@ -845,6 +866,28 @@ export interface GameState {
     forceFieldSeen?: string[];
     /** 'The Bounty Quell': the currently-named quarry, and the cycle they were last (re)named. */
     quellBounty?: { targetId: string; namedCycle: number };
+    /**
+     * §10.6: what the Gamemakers put on the table this time. Chosen when a
+     * feast is announced (so tributes can weigh the risk against what is
+     * actually offered) and consumed by `processFeast`.
+     */
+    feastTheme?: 'weapons' | 'medical' | 'food' | 'district-gifts';
+    /** §6.8: tribute who drew first blood (first tribute-dealt kill). */
+    firstBloodId?: string;
+    /** §6.8: per-day odds snapshot — day -> tribute id -> shown win %. */
+    oddsHistory?: Record<number, Record<string, number>>;
+    /** §6.7: per-event Gamemaker usage, for cooldowns, escalating cost and overuse. */
+    gamemakerUse?: Record<string, { lastCycle: number; uses: number }>;
+    /** §6.6: tribute id -> cycle a player parachute last reached them. Blocs read it as "covered". */
+    playerGiftCycle?: Record<string, number>;
+    /** §7.6: tribute id -> cycle their mentor pointedly withheld a gift. */
+    mentorWithheld?: Record<string, number>;
+    /**
+     * §6.10: the player's pre-Games coaching of one chosen tribute — a pinned
+     * training-floor strategy and/or interview angle, honoured by the phase
+     * engines instead of their own rolls.
+     */
+    playerCoaching?: { tributeId: string; trainingStrategy?: 'showcase' | 'conceal' | 'balanced'; interviewStrategy?: string };
 }
 
 export interface EventLog {

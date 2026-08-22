@@ -43,6 +43,26 @@ export function isPerforming(t: Tribute, otherId: string): boolean {
     return t.displayedRegard?.[otherId] !== undefined;
 }
 
+/**
+ * §11.1: what `t` appears to feel toward `otherId` — the performance where
+ * one is running, the real number where it is not. This is the value other
+ * people's trust/betrayal reads should consume: the audience in the arena
+ * sees the act, not the ledger.
+ */
+export function shownRegard(t: Tribute, otherId: string): number {
+    return t.displayedRegard?.[otherId] ?? (t.relationships[otherId] || 0);
+}
+
+/**
+ * §11.1: the performance is maintained scene by scene. A shared camp, a
+ * parley, alliance chatter — each one the performer plays warm refreshes the
+ * displayed number, independent of whatever they actually feel.
+ */
+export function maintainPerformance(t: Tribute, otherId: string, delta: number) {
+    if (!t.displayedRegard || t.displayedRegard[otherId] === undefined) return;
+    t.displayedRegard[otherId] = Math.max(-100, Math.min(100, t.displayedRegard[otherId] + delta));
+}
+
 export function areLovers(a: Tribute, b: Tribute): boolean {
     if (a.id === b.id) return false;
     if (!a.traits.includes('Star-Crossed') || !b.traits.includes('Star-Crossed')) return false;

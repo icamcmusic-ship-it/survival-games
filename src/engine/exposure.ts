@@ -1,6 +1,7 @@
 import { Tribute } from '../models/types';
 import { injure } from './wounds';
-import { CRAFTING, PHYSIQUE } from '../data/balance';
+import { CRAFTING, PHYSIQUE, TOOLS } from '../data/balance';
+import { hasTool } from './items';
 import { hasCamp } from './fieldcraft';
 import { getZone, zoneFeatures } from './map';
 import { SimContext } from './context';
@@ -82,6 +83,8 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     const frostbiteChance = profile.frostbite
         ? profile.frostbite * scale * resist('coldResist')
             * Math.max(0.4, 1 - massOf(t) * PHYSIQUE.frostbiteResistPerMass)
+            // §11.5: warmth gear does the thing it is famous for.
+            * (hasTool(t, 'warmth') ? TOOLS.warmthFrostbiteMultiplier : 1)
         : 0;
     if (frostbiteChance > 0 && !t.injuries.frostbitten && ctx.rng.chance(frostbiteChance)) {
         injure(t, 'frostbitten');

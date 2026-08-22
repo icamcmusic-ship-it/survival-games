@@ -10,7 +10,7 @@ import { objectiveLabel } from '../engine/objectives';
 import { Skull, Heart, Settings, FastForward, MapPin, Users, Swords, Filter, Play, Pause, TrendingUp, TrendingDown, Minus, Star, Volume2, VolumeX, Undo2 } from 'lucide-react';
 import { ESCALATION, GAMEMAKER_COSTS } from '../data/balance';
 import { evaluateInRunNearMisses } from '../data/achievements';
-import { GamemakerEventType } from '../engine/gamemaker';
+import { GamemakerEventType, gamemakerCooldownRemaining, gamemakerEventCost } from '../engine/gamemaker';
 import { Explainer } from '../components/Explainer';
 import { ordinal } from '../engine/gamesProfile';
 import { gameActions, gameStore } from '../store/gameStore';
@@ -75,8 +75,15 @@ export function GameScreen({
     // readout and swaps the button for a working Cancel.
     const runProgress = useStore(gameStore, s => s.runProgress);
     const spendGamemaker = (type: GamemakerEventType, cost: number, targetId?: string) => {
-        if (coins < cost) return;
-        gameActions.setCoins(c => c - cost);
+        // §6.7: repeat uses of the same lever cost more, and a lever still on
+        // cooldown takes no coins — the booth refuses the order in the feed.
+        const escalated = gamemakerEventCost(gameState, type, cost);
+        if (coins < escalated) return;
+        if (gamemakerCooldownRemaining(gameState, type) > 0) {
+            onGamemakerEvent(type, targetId); // logs the refusal, charges nothing
+            return;
+        }
+        gameActions.setCoins(c => c - escalated);
         onGamemakerEvent(type, targetId);
     };
     const [tacticalTab, setTacticalTab] = useState<'chronicle' | 'map'>('chronicle');
@@ -1086,6 +1093,16 @@ export function GameScreen({
                                                         ? `now ${live.mult.toFixed(1)}×`
                                                         : ''}
                                             </span>
+                                            {/* §6.8: settle the position early at its current implied value. */}
+                                            {t.status === 'alive' && live && (
+                                                <button
+                                                    className="btn btn-sm btn-ghost flex-none -my-1"
+                                                    title={`Cash out now at the current price (${live.pct}% implied)`}
+                                                    onClick={() => gameActions.cashOutBet(t.id)}
+                                                >
+                                                    Cash out
+                                                </button>
+                                            )}
                                         </div>
                                     );
                                 })}

@@ -195,6 +195,18 @@ export function processEpilogue(ctx: SimContext) {
         });
     }
 
+    // §11.3: the promise kept. The district-partner arc got its own beat on
+    // the way in ("Nobody in the Capitol is saying out loud..."); if the
+    // survivor of that pair went on to win, the arc closes here.
+    const fallenPartner = ctx.state.tributes.find(o =>
+        o.id !== winner.id && o.district === winner.district && o.status === 'dead');
+    if (winner.districtBondNoted && fallenPartner) {
+        qas.push({
+            question: `Caesar Flickerman: 'The whole country watched you and ${fallenPartner.name} carry District ${winner.district} deep into these Games together. And now you are here alone.'`,
+            answer: `${winner.name}: 'We said whichever of us it was would go home and stand in the square for both of us. That was the promise. I am going to keep it, Caesar — that is all this crown is for.'`,
+        });
+    }
+
     // Vengeance is the single best story a run can produce.
     if (facts.avenged && facts.avengedFor) {
         qas.push({

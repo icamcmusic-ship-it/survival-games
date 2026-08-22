@@ -1,6 +1,6 @@
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
-import { Tribute } from '../../models/types';
+import { GameState, Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
 import { FEAST } from '../../data/balance';
@@ -18,6 +18,37 @@ import { pickNeededGift } from '../sponsors';
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
 
+/**
+ * §10.6: what is on the table this time. Rolled when the feast is announced
+ * (deterministically from seed+day) and said out loud, so a tribute can weigh
+ * the risk against what is actually offered — a wounded tribute risks the
+ * medical table; a well-fed Career shrugs at the food one.
+ */
+const FEAST_THEMES: Array<NonNullable<GameState['feastTheme']>> = ['weapons', 'medical', 'food', 'district-gifts'];
+
+const THEME_ANNOUNCEMENTS: Record<NonNullable<GameState['feastTheme']>, string> = {
+    weapons: 'The announcement is specific: a weapons cache. Steel on the table, and nothing to eat — the Gamemakers want a fight over the means of one.',
+    medical: 'The announcement is specific: medicine. Kits, antidotes, dressings — everything a wound needs, laid out for whoever is desperate enough to come claim it.',
+    food: 'The announcement is specific: a banquet. Bread, meat and clean water — the Gamemakers are betting on empty stomachs overruling good judgement.',
+    'district-gifts': 'The announcement is specific: packs marked by district number, each holding the one thing its tribute needs most.',
+};
+
+export function announceFeastTheme(ctx: SimContext) {
+    const rng = new RNG(`${ctx.state.seed}-feast-theme-${ctx.state.day}`);
+    ctx.state.feastTheme = rng.pick(FEAST_THEMES);
+    ctx.logEvent(THEME_ANNOUNCEMENTS[ctx.state.feastTheme], [], { important: true, category: 'feast' });
+}
+
+/** The loot pool the announced theme actually lays out. */
+function themedPool(theme: GameState['feastTheme']): Item[] {
+    switch (theme) {
+        case 'weapons': return ITEMS.filter(i => i.type === 'weapon' || i.type === 'armour');
+        case 'medical': return ITEMS.filter(i => i.type === 'medical');
+        case 'food': return ITEMS.filter(i => i.type === 'food' || i.type === 'water');
+        default: return ITEMS;
+    }
+}
+
 export function processFeast(ctx: SimContext) {
     ctx.rng = new RNG(`${ctx.state.seed}-${ctx.state.day}-feast`);
     const alive = getAlive(ctx.state);
@@ -29,6 +60,13 @@ export function processFeast(ctx: SimContext) {
     // cast toward the Cornucopia for the rest of the run.
     ctx.state.feastDay = undefined;
     ctx.state.lastFeastDay = ctx.state.day;
+    // §10.6: the table the announcement promised. Consumed here, defaulting
+    // to the classic district packs for feasts announced before themes existed.
+    const theme = ctx.state.feastTheme ?? 'district-gifts';
+    ctx.state.feastTheme = undefined;
+    const tablePool = themedPool(theme);
+    const themedGift = (t: Tribute) =>
+        mintItem(ctx.rng, theme === 'district-gifts' ? pickNeededGift(ctx, t, ITEMS) : pickNeededGift(ctx, t, tablePool), QUALITY_BIAS.feast);
 
     const decliners = [] as typeof alive;
     const strandedFar = [] as typeof alive;
@@ -47,7 +85,7 @@ export function processFeast(ctx: SimContext) {
             attendees.push(t);
             return;
         }
-        if (ctx.rng.chance(attendanceChance(t, alive))) attendees.push(t);
+        if (ctx.rng.chance(attendanceChance(t, alive, theme))) attendees.push(t);
         else decliners.push(t);
     });
 
@@ -77,13 +115,15 @@ export function processFeast(ctx: SimContext) {
     attendees.forEach(t => { t.zone = cornucopia; });
     announce(attendees, FEAST_TEXTS.attend, names => `${names} break cover and converge on the Cornucopia.`);
     if (attendees.length > 0) {
-        // Canon's defining feast image: a table of packs, each marked with a
-        // district number, each holding the one thing its tribute needs.
-        ctx.logEvent(
-            `On the table sit packs marked by district number. Whatever each tribute needs most, the Gamemakers have packed it.`,
-            [],
-            { zone: cornucopia, category: 'feast' }
-        );
+        // Canon's defining feast image, themed: what the announcement
+        // promised is what is actually on the table.
+        const tableLines: Record<typeof theme, string> = {
+            weapons: 'On the table: racked steel and stacked armour, and not a crumb of food anywhere on it.',
+            medical: 'On the table: kits, vials and dressings, laid out like an infirmary with the walls taken away.',
+            food: 'On the table: bread still warm, meat, and clean water in sealed flasks.',
+            'district-gifts': 'On the table sit packs marked by district number. Whatever each tribute needs most, the Gamemakers have packed it.',
+        };
+        ctx.logEvent(tableLines[theme], [], { zone: cornucopia, category: 'feast' });
     }
 
     if (attendees.length === 0) {
@@ -141,7 +181,7 @@ export function processFeast(ctx: SimContext) {
         shuffled.splice(1).forEach(t => {
             // Their own district pack: the thing they actually need, per the
             // same need arithmetic the sponsor stream uses.
-            const minted = mintItem(ctx.rng, pickNeededGift(ctx, t, ITEMS), QUALITY_BIAS.feast);
+            const minted = themedGift(t);
             giveItem(t, minted);
             t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
             t.vitals.thirst = Math.max(0, t.vitals.thirst - 40);
@@ -153,8 +193,8 @@ export function processFeast(ctx: SimContext) {
     else if (shuffled.length === 1) {
         const winner = shuffled[0];
         // Their own pack, plus whichever of the unclaimed ones suits them best.
-        const item1 = mintItem(ctx.rng, pickNeededGift(ctx, winner, ITEMS), QUALITY_BIAS.feast);
-        const item2 = mintItem(ctx.rng, pickNeededGift(ctx, winner, ITEMS), QUALITY_BIAS.feast);
+        const item1 = themedGift(winner);
+        const item2 = themedGift(winner);
         giveItem(winner, item1, item2);
         winner.health = Math.min(100, winner.health + 50);
         winner.vitals.hunger = 0;
@@ -177,13 +217,27 @@ export function processFeast(ctx: SimContext) {
  * tribute who had sworn to kill someone would happily skip the one event that
  * guarantees the target's location.
  */
-function attendanceChance(t: Tribute, alive: Tribute[]): number {
+function attendanceChance(t: Tribute, alive: Tribute[], theme: NonNullable<GameState['feastTheme']> = 'district-gifts'): number {
     let chance = FEAST.baseAttendChance;
     const arch = ARCHETYPES[t.archetype];
 
     chance += arch.aggression * FEAST.aggressionDraw;
     chance -= arch.caution * FEAST.aggressionDraw;
     if (t.health < 50) chance -= FEAST.woundedDeterrent;
+
+    // §10.6: the announced table changes the calculus. A medical feast is
+    // worth the wounded tribute's risk; a weapons cache draws the unarmed and
+    // bores the well-equipped; a banquet pulls hardest on empty stomachs.
+    // balance-exempt: same wounded band the deterrent line above already uses
+    const wounded = t.health < 50 || t.injuries.bleeding || t.injuries.infected || t.injuries.poisoned;
+    if (theme === 'medical' && wounded) chance += FEAST.woundedDeterrent + FEAST.medicalThemeWoundedDraw;
+    if (theme === 'weapons') {
+        chance += t.inventory.some(i => i.type === 'weapon')
+            ? -FEAST.weaponsThemeArmedDeter
+            : FEAST.weaponsThemeUnarmedDraw;
+    }
+    // balance-exempt: same hunger band the ally supply-sharing logic uses; the draw weight is the knob
+    if (theme === 'food' && t.vitals.hunger > 40) chance += FEAST.foodThemeHungerDraw;
     if (t.stance === 'Evasive') chance -= 0.15;
     if (t.stance === 'Aggressive') chance += 0.15;
 

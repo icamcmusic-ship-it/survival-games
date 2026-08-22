@@ -144,7 +144,12 @@ export function processTraining(ctx: SimContext) {
     // ---- 1-2. Three days on the floor, and a decision about being watched ----
     const worked = new Map<string, Array<keyof Attributes>>();
     cast.forEach(t => {
-        t.trainingStrategy = pickStrategy(ctx, t);
+        // §6.10: player coaching. A pinned strategy for the chosen tribute
+        // replaces the roll; everyone else decides for themselves.
+        const coached = ctx.state.playerCoaching;
+        t.trainingStrategy = coached?.tributeId === t.id && coached.trainingStrategy
+            ? coached.trainingStrategy
+            : pickStrategy(ctx, t);
         const stations: Array<keyof Attributes> = [];
         for (let day = 0; day < TRAINING.days; day++) {
             stations.push(pickStation(ctx, t, stations));

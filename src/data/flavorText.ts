@@ -1096,6 +1096,28 @@ export const MENTOR_PLEA_FAILED_TEXTS = [
     "The pitch was good. The room agreed the pitch was good. Nothing comes down into {zone}, and {mentor} starts drafting tomorrow's.",
 ];
 
+/**
+ * §7.6: the withheld gift. The mentor could pay, and pointedly does not —
+ * the tribute is making a mistake they can fix themselves, and the silence
+ * is the coaching.
+ */
+export const MENTOR_WITHHELD_TEXTS = [
+    'No parachute comes down into {zone}. {mentor} could afford one, and everyone in the sponsor rooms knows it. The silence is the note.',
+    '{mentor} watches {tribute} in {zone}, hand hovering over the order slip, and puts the pen down. Some lessons only teach themselves.',
+    'The sponsor rooms wait for {mentor} to spend on {tribute}, and {mentor} orders another drink instead. The message will reach {zone} faster than any parachute.',
+    "{mentor} says one sentence to the sponsor liaison: 'Not until they use what is already in front of them.' Nothing flies to {zone} tonight.",
+    'A patron offers to cover {tribute} outright, and {mentor} declines on their behalf. In {zone}, the sky stays empty on purpose.',
+];
+
+/** §7.6: the lesson landed — the gift arrives with the point attached. */
+export const MENTOR_POINTED_TEXTS = [
+    'The moment {tribute} sorts themselves out, the parachute {mentor} was sitting on comes down into {zone}: {item}, and no note needed.',
+    '{item} drifts into {zone} within the hour of {tribute} fixing their own mistake. {mentor} wanted the timing to be unmistakable.',
+    "{mentor} finally signs the slip. {item} lands beside {tribute} in {zone}, and the message reads itself: 'You did not need me. Now you get me.'",
+    'A parachute follows {tribute} into {zone} almost apologetically — {item}, released the second {mentor} saw them do the right thing.',
+    "The chime over {zone} sounds like approval. {item} for {tribute}, from {mentor}, priced at exactly one lesson.",
+];
+
 export const AMBIENT_TEXTS = [
     'The anthem plays across the arena. Tonight\'s faces burn in the sky.',
     'A hovercraft descends somewhere out of sight and lifts a body away.',

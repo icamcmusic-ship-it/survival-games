@@ -12,7 +12,7 @@ import {
 } from '../ui/disclosure';
 import { Stat } from '../components/Stat';
 import { tributeOdds } from '../engine/odds';
-import { Bet } from '../store/gameStore';
+import { Bet, gameActions, gameStore } from '../store/gameStore';
 import { Swords, Zap, Brain, Eye, User, FastForward, Search } from 'lucide-react';
 
 type SortKey = 'district' | 'odds' | 'training' | 'name';
@@ -35,6 +35,7 @@ export function RosterScreen({
     setCoins: (coins: number | ((prev: number) => number)) => void
 }) {
     const bettingOpen = phase === 'setup';
+    const sideBets = useStore(gameStore, s => s.sideBets);
     // UX-16: the audience learns things when the Capitol broadcasts them, not
     // all at once the moment the reaping ends.
     const disclosure = disclosureFor(phase);
@@ -139,6 +140,31 @@ export function RosterScreen({
                             <div className="eyebrow">Staked</div>
                             <div className="text-2xl font-black text-[var(--ink)] font-mono">{totalStaked}</div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* §6.8: the proposition book — settled from what the run does, not who wins. */}
+            {bettingOpen && (
+                <div className="panel p-4 space-y-2">
+                    <div className="flex items-baseline justify-between flex-wrap gap-2">
+                        <span className="eyebrow">Side bets (50 coins each)</span>
+                        {sideBets.length > 0 && (
+                            <span className="font-mono text-[11px] text-[var(--color-ink-500)]">
+                                {sideBets.map(b => `${b.kind} @ ${b.mult.toFixed(1)}×`).join(' · ')}
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <span className="chip opacity-70" title="This wager needs a name — use the '1st blood' button on a tribute card below.">
+                            First blood: pick a tribute below
+                        </span>
+                        <button className="chip" disabled={coins < 50} onClick={() => gameActions.placeSideBet('no-victor', 50)}>
+                            No victor at all
+                        </button>
+                        <button className="chip" disabled={coins < 50} onClick={() => gameActions.placeSideBet('career-victor', 50)}>
+                            A Career wins
+                        </button>
                     </div>
                 </div>
             )}
@@ -299,6 +325,15 @@ export function RosterScreen({
                                         <div className="flex items-center gap-1.5">
                                             <button onClick={() => placeBet(t, 50)} disabled={coins < 50} className="btn btn-sm flex-1">+50</button>
                                             <button onClick={() => placeBet(t, 100)} disabled={coins < 100} className="btn btn-sm flex-1">+100</button>
+                                            {/* §6.8: the named side bet. */}
+                                            <button
+                                                onClick={() => gameActions.placeSideBet('first-blood', 50, t.id)}
+                                                disabled={coins < 50 || sideBets.some(b => b.kind === 'first-blood')}
+                                                className="btn btn-sm"
+                                                title="Side bet: this tribute draws first blood (50 coins)"
+                                            >
+                                                1st blood
+                                            </button>
                                             {currentBet > 0 && (
                                                 <button onClick={() => clearBet(t)} className="btn btn-sm" title="Refund this wager">Clear</button>
                                             )}

@@ -2,12 +2,12 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, SPONSORS } from '../../data/balance';
+import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, SANITY_BANDS, SPONSORS, ZONE_EFFECTS } from '../../data/balance';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, hasForceField, zoneSightlines } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting,
@@ -27,7 +27,9 @@ import {
     pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
 } from '../encounters';
 import { tickPersistentMutts } from '../mutts';
-import { restockCornucopia, rollAmbientZoneEffects, tickForceField, tickZoneEffects } from '../zoneEffects';
+import { hasEffect, restockCornucopia, rollAmbientZoneEffects, startZoneEffect, tickForceField, tickZoneEffects } from '../zoneEffects';
+import { climateOf } from '../climate';
+import { tributeOdds } from '../odds';
 import { runArenaSignature } from '../arenaSignature';
 import { runGamemakerSignature } from '../gamemakerAgency';
 import { tickWeatherFront } from '../weatherFront';
@@ -166,6 +168,13 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // arena visible from a zone away. This is the trade the source material is
     // built on, and it only pays off at night.
     if (effectiveTime === 'night') revealFires(ctx);
+    // §6.3: by daylight the flame is invisible and the smoke is not.
+    if (effectiveTime === 'day') revealSmoke(ctx);
+    // §11.4: low sanity blows cover audibly, and only the dark makes it matter.
+    if (effectiveTime === 'night') revealNoisyBreakdowns(ctx);
+    // §6.3/§6.5: camps meet the arena — a fire can escape into dry ground,
+    // and rain scrubs camouflage off early.
+    tickCampConsequences(ctx);
 
     // 4. Hazards, mutts and everyone who runs into everyone else.
     resolveEncounters(ctx, currentAlive, acted, isEscalated, flavor, effectiveTime);
@@ -233,8 +242,22 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             t.excitementRating * (1 - SPONSORS.excitementDecayPerCycle) - SPONSORS.excitementFloorDecay
         ));
         driftReputation(t, SPONSORS.trustDriftPerCycle);
+        // §11.1: how long the act has been running. Counted on the performer,
+        // reset the moment the performance drops.
+        t.performingStreak = t.displayedRegard && Object.keys(t.displayedRegard).length > 0
+            ? (t.performingStreak ?? 0) + 1
+            : 0;
         clampTribute(t);
     });
+
+    // §6.8: the book reprices once a day — a snapshot the betting layer (and
+    // any cash-out) can read as "the price when the day closed".
+    if (time === 'day') {
+        const board = getAlive(ctx.state);
+        ctx.state.oddsHistory = ctx.state.oddsHistory ?? {};
+        ctx.state.oddsHistory[ctx.state.day] = Object.fromEntries(
+            board.map(t => [t.id, tributeOdds(t, ctx.state.tributes).pct]));
+    }
 
     processSponsors(ctx);
 
@@ -579,6 +602,116 @@ function revealFires(ctx: SimContext) {
     });
 }
 
+/**
+ * §6.3: daytime smoke. A fire by daylight is not a glow but a column, and a
+ * column is a signal — less certain than the night's beacon, but read by the
+ * same neighbouring zones.
+ */
+function revealSmoke(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    const severed = severedEdgeSet(ctx.state);
+
+    alive.forEach(t => {
+        if (!hasCamp(ctx, t, 'fire')) return;
+        const zone = getZone(ctx.state.arena, t.zone);
+        if (!zone) return;
+
+        const watchers = alive.filter(o =>
+            o.id !== t.id
+            && o.allianceId !== t.allianceId
+            && zone.adjacent.includes(o.zone)
+            && !severed.has(edgeKey(t.zone, o.zone))
+            && ctx.rng.chance(CRAFTING.smokeRevealChance));
+        if (watchers.length === 0) return;
+
+        watchers.forEach(o => {
+            noteSighting(ctx.state, o, t.zone, 1, depletionOf(ctx.state, t.zone));
+        });
+        ctx.logEvent(
+            `A column of smoke stands up over ${t.zone}. ${watchers.map(w => w.name).join(', ')} read${watchers.length === 1 ? 's' : ''} it for exactly what it is.`,
+            [t.id, ...watchers.map(w => w.id)],
+            { zone: t.zone, category: 'survival' }
+        );
+    });
+}
+
+/**
+ * §11.4: the stealth mistake, made audible. A tribute far enough gone makes
+ * noise in the dark — and everyone within a zone of them learns where they
+ * are, which is the cap turned into a mechanic.
+ */
+function revealNoisyBreakdowns(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    if (!ctx.state.config.enableSanity) return;
+    const severed = severedEdgeSet(ctx.state);
+
+    alive.forEach(t => {
+        const frayed = t.vitals.sanity < SANITY_BANDS.noisyNightSanity || (t.sanityStealthLoss ?? 0) > 0;
+        if (!frayed || !ctx.rng.chance(SANITY_BANDS.noisyNightChance)) return;
+        const zone = getZone(ctx.state.arena, t.zone);
+        if (!zone) return;
+
+        const hearers = alive.filter(o =>
+            o.id !== t.id
+            && o.allianceId !== t.allianceId
+            && (o.zone === t.zone || (zone.adjacent.includes(o.zone) && !severed.has(edgeKey(t.zone, o.zone)))));
+        if (hearers.length === 0) return;
+
+        hearers.forEach(o => {
+            noteSighting(ctx.state, o, t.zone, Math.max(1, o.zone === t.zone ? 1 : 0), depletionOf(ctx.state, t.zone));
+        });
+        ctx.logEvent(
+            `Something in ${t.name} slips in the dark — a cry, a dropped pot, a fire fed too high in ${t.zone}. ${hearers.map(h => h.name).join(', ')} hear${hearers.length === 1 ? 's' : ''} every second of it.`,
+            [t.id, ...hearers.map(h => h.id)],
+            { important: true, zone: t.zone, category: 'sanity' }
+        );
+    });
+}
+
+/**
+ * The camps meeting the arena. A fire left burning in dry terrain can escape
+ * into the zone-effect system; a weather front over a camouflaged tribute
+ * scrubs the work off early.
+ */
+function tickCampConsequences(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    // Same dryness read the fire-spread arithmetic uses: a hot climate is one
+    // that multiplies thirst.
+    const climate = climateOf(ctx.state.arena.id);
+    const hotClimate = (climate?.drains?.thirstMultiplier ?? 1) > 1;
+
+    alive.forEach(t => {
+        const zone = getZone(ctx.state.arena, t.zone);
+        if (!zone) return;
+
+        // §6.3: the campfire that gets away.
+        if (hasCamp(ctx, t, 'fire')
+            && (ZONE_EFFECTS.flammableTerrain as readonly string[]).includes(zone.terrain)
+            && !hasEffect(ctx.state, t.zone, 'burning')
+            && ctx.rng.chance(CRAFTING.fireEscapeChance * (hotClimate ? CRAFTING.fireEscapeDryMultiplier : 1))) {
+            ctx.logEvent(
+                `${t.name}'s campfire finds the dry ground of ${t.zone} and stops being anybody's campfire.`,
+                [t.id],
+                { important: true, zone: t.zone, category: 'hazard' }
+            );
+            startZoneEffect(ctx, t.zone, 'burning');
+        }
+
+        // §6.5: rain and camouflage do not coexist.
+        if (ctx.state.weatherFront?.zone === t.zone
+            && ctx.state.camps?.[t.id]?.camouflage !== undefined
+            && hasCamp(ctx, t, 'camouflage')
+            && ctx.rng.chance(CRAFTING.camouflageRainWashChance)) {
+            delete ctx.state.camps[t.id].camouflage;
+            ctx.logEvent(
+                `The weather over ${t.zone} takes ${t.name}'s camouflage off them in streaks. The shape of a person comes back.`,
+                [t.id],
+                { category: 'survival' }
+            );
+        }
+    });
+}
+
 /** Fills in a state-aware ambient line: who's alive, who's fallen, who the Capitol favours. */
 function dynamicAmbientLine(ctx: SimContext): string {
     const alive = getAlive(ctx.state);
@@ -767,7 +900,9 @@ function wanderChanceFor(t: Tribute): number {
  */
 function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
     const dest = getZone(ctx.state.arena, destName);
-    const cost = dest ? travelCost(t, dest) : 1;
+    // §11.6: a tolled edge's `timeCost` is extra cycles spent on the crossing
+    // itself, on top of whatever the destination terrain already costs.
+    const cost = (dest ? travelCost(t, dest) : 1) + edgeTimeCost(ctx.state, t.zone, destName);
     applyEdgeToll(ctx, t, t.zone, destName);
     if (cost <= 1) return true;
     t.transit = { to: destName, remaining: cost - 1 };

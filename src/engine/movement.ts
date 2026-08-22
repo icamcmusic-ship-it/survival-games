@@ -2,7 +2,7 @@ import { Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { FEAR, MEMORY, MOVEMENT } from '../data/balance';
 import { SimContext } from './context';
-import { effectiveResources } from './map';
+import { effectiveResources, zoneFeatures } from './map';
 import { ensureMemory, hasVengeanceAgainst, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { fearInZone } from './fear';
 import { traitMod } from '../data/traits';
@@ -31,7 +31,7 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         // water — this is the simplest and most important standing intention in
         // the arena, and without it they wandered by resource score alone and
         // died of dehydration two zones from a river.
-        if (t.vitals.thirst > MOVEMENT.thirstUrgency && (z.terrain === 'water' || z.terrain === 'wetland')) {
+        if (t.vitals.thirst > MOVEMENT.thirstUrgency && zoneFeatures(z).waterSource === true) {
             const urgency = (t.vitals.thirst - MOVEMENT.thirstUrgency) / (100 - MOVEMENT.thirstUrgency);
             score += urgency * MOVEMENT.waterSeekWeight;
         }

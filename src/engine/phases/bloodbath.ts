@@ -10,7 +10,8 @@ import { BLOODBATH_TEXTS } from '../../data/flavorText';
 import { giveItem, itemPhrase, mintItem } from '../items';
 import { personaThreat } from './alliances';
 import { getRel, setRel } from '../relationships';
-import { noteSighting } from '../memory';
+import { noteContact, noteSighting } from '../memory';
+import { addFear } from '../fear';
 import { wildcardIs } from '../gamesProfile';
 
 const fill = (template: string, vars: Record<string, string>) =>
@@ -124,6 +125,37 @@ export function processBloodbath(ctx: SimContext) {
     // that normally stamps it never runs for them — which fed bad data to
     // ODDS.survivalDayWeight and the Panem record book.
     alive.forEach(t => { t.daysSurvived = ctx.state.day; });
+
+    // §6.1: sixty seconds on the plates. Each tribute has genuinely *seen*
+    // whoever landed on the neighbouring plates — a real contact in the
+    // sighting memory, not a blank slate — and a neighbour with a legendary
+    // training score is frightening before anyone has moved a muscle.
+    let worstNeighbourFear = 0;
+    let worstPair: [Tribute, Tribute] | undefined;
+    for (let i = 0; i < alive.length; i++) {
+        for (let j = i + 1; j < alive.length; j++) {
+            const a = alive[i], b = alive[j];
+            const apart = Math.abs((a.platePosition ?? 0.5) - (b.platePosition ?? 0.5));
+            if (apart > BLOODBATH.plateNeighbourRange) continue;
+            noteContact(ctx.state, a, b);
+            [[a, b], [b, a]].forEach(([watcher, watched]) => {
+                if (watched.trainingScore < BLOODBATH.plateNeighbourFearScore || watcher.isCareer) return;
+                const dread = (watched.trainingScore - 8) * BLOODBATH.plateNeighbourFearPerPoint;
+                addFear(watcher, watched.id, dread);
+                if (dread > worstNeighbourFear) {
+                    worstNeighbourFear = dread;
+                    worstPair = [watcher, watched];
+                }
+            });
+        }
+    }
+    if (worstPair) {
+        ctx.logEvent(
+            `${worstPair[0].name} comes up on the plate two metres from ${worstPair[1].name} — the ${worstPair[1].trainingScore} in training — and spends the whole minute not looking at the horn.`,
+            [worstPair[0].id, worstPair[1].id],
+            { category: 'system' }
+        );
+    }
 
     ctx.logEvent(
         `The gong sounds. ${alive.length} tributes come off their plates at once.`,

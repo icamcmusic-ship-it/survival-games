@@ -430,6 +430,7 @@ const PROC_LAWS: ArenaLawId[] = [
 ];
 
 function rollLaw(rng: RNG, zones: Zone[]): { law?: ArenaLawId; lawZone?: string } {
+    // balance-exempt: generation-mix ratio, part of the arena grammar's shape rather than a designer dial
     if (!rng.chance(0.5)) return {};
     const law = rng.pick(PROC_LAWS);
     // Laws with an "only here" clause need a valid zone to point at.
@@ -449,6 +450,7 @@ function procEdgeKey(a: string, b: string): string {
 }
 
 function rollEdgeRules(rng: RNG, zones: Zone[]): Record<string, EdgeRule> | undefined {
+    // balance-exempt: generation-mix ratio — how many generated maps carry edge rules at all
     if (!rng.chance(0.4)) return undefined;
     // Every distinct edge in the built graph, in printed order for determinism.
     const seen = new Set<string>();
@@ -467,19 +469,29 @@ function rollEdgeRules(rng: RNG, zones: Zone[]): Record<string, EdgeRule> | unde
     const picked = rng.shuffle(edges).slice(0, count);
     picked.forEach(([a, b]) => {
         const roll = rng.nextFloat();
+        // balance-exempt: rule-kind mix shares over one roll (tolled/timeGated/oneWay), structural to the grammar
         if (roll < 0.45) {
             rules[procEdgeKey(a.name, b.name)] = {
                 kind: 'tolled',
                 toll: {
                     fatigue: rng.nextInt(4, 8),
+                    // balance-exempt: which tolls carry a wound roll is part of the generation mix, not a lethality dial
                     woundChance: rng.chance(0.4) ? Math.round((0.08 + rng.nextFloat() * 0.07) * 100) / 100 : undefined,
+                    // §11.6: some generated crossings also eat time or gear.
+                    // balance-exempt: generation-mix share of tolls that also cost time
+                    timeCost: rng.chance(0.25) ? 1 : undefined,
+                    // balance-exempt: generation-mix share of tolls that also cost gear
+                    itemCost: rng.chance(0.15) ? true : undefined,
                 },
             };
+        // balance-exempt: rule-kind mix share, same roll as above
         } else if (roll < 0.75) {
+            // balance-exempt: day/night split of generated gates, structural to the grammar
             rules[procEdgeKey(a.name, b.name)] = { kind: 'timeGated', gatedTime: rng.chance(0.7) ? 'day' : 'night' };
         } else if (a.adjacent.length > 1 && b.adjacent.length > 1) {
             // One-way only between well-connected zones — a oneWay into a
             // dead end would be a pit trap the AI cannot reason about.
+            // balance-exempt: fair coin for the one-way direction
             const [from, to] = rng.chance(0.5) ? [a, b] : [b, a];
             rules[procEdgeKey(a.name, b.name)] = { kind: 'oneWay', from: from.name, to: to.name };
         } else {
@@ -526,6 +538,7 @@ const EFFECT_VOCAB_BY_BIOME: Record<string, Array<NonNullable<Arena['effectVocab
 };
 
 function rollEffectVocab(rng: RNG, biome: Biome): Arena['effectVocab'] | undefined {
+    // balance-exempt: generation-mix ratio for this optional arena feature
     if (!rng.chance(0.35)) return undefined;
     const options = EFFECT_VOCAB_BY_BIOME[biome.id];
     if (!options || options.length === 0) return undefined;
@@ -534,6 +547,7 @@ function rollEffectVocab(rng: RNG, biome: Biome): Arena['effectVocab'] | undefin
 
 /** Hand-authored arenas run 0.6-1.3; generated ones roll the same band. */
 function rollSponsorMultiplier(rng: RNG): number | undefined {
+    // balance-exempt: generation-mix ratio for this optional arena feature
     if (!rng.chance(0.55)) return undefined;
     return Math.round((0.7 + rng.nextFloat() * 0.6) * 20) / 20;
 }

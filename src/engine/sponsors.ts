@@ -1,6 +1,6 @@
 import { SimContext, getAlive } from './context';
 import { ITEMS } from '../data/constants';
-import { COMPOSURE, QUELL_MECHANICS, SPONSORS } from '../data/balance';
+import { COMPOSURE, QUELL_MECHANICS, SPONSORS, SPONSOR_MARKET } from '../data/balance';
 import { composureOf } from './composure';
 import { SPONSOR_TEXTS } from '../data/flavorText';
 import { drawFromBloc } from './sponsorBlocs';
@@ -127,6 +127,13 @@ export function processSponsors(ctx: SimContext) {
         // `quell-blood-debt`: a tribute who has killed is marked, and the
         // Capitol pays the marked less.
         if (wildcardIs(ctx.state, 'quell-blood-debt') && t.kills > 0) generosity *= QUELL_MECHANICS.bloodDebtGenerosityMult;
+        // §6.6: a player parachute landed recently — the blocs read the
+        // tribute as somebody else's project and sit on their purses.
+        const playerGiftAt = ctx.state.playerGiftCycle?.[t.id];
+        if (playerGiftAt !== undefined
+            && (ctx.state.cycle ?? 0) - playerGiftAt < SPONSOR_MARKET.coveredCycles) {
+            generosity *= SPONSOR_MARKET.coveredGiftMultiplier;
+        }
         if (!ctx.rng.chance(giftChance(t, generosity, ctx.state.day))) return;
 
         const tier = rollGiftTier(ctx, t);

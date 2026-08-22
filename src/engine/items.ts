@@ -189,9 +189,13 @@ export function encumbranceOf(t: Tribute): number {
     return Math.max(0, Math.min(1, (load - free) / (1 - free)));
 }
 
-/** How many cycles of shelf life a Backpack adds to fresh food. */
+/** How many cycles of shelf life carried containers add to fresh food.
+ *  §11.5: any capacity keeps food out of the sun — a satchel buys one cycle,
+ *  the full Backpack still buys the most. */
 export function spoilageBonus(t: Tribute): number {
-    return hasBackpack(t) ? INVENTORY.backpackSpoilageBonus : 0;
+    const capacity = t.inventory.reduce((sum, i) => sum + (i.capacity ?? 0), 0);
+    if (capacity <= 0) return 0;
+    return Math.min(INVENTORY.backpackSpoilageBonus, capacity);
 }
 
 /**

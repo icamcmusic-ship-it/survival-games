@@ -51,7 +51,15 @@ export function concealment(
 
     // A fire is warmth, hot food and a beacon. Camouflage is the reverse trade.
     if (camp?.fire) value -= CRAFTING.fireConcealmentPenalty;
-    if (camp?.camouflage) value += CRAFTING.camouflageConcealment;
+    if (camp?.camouflage) {
+        // §6.5: camouflage is imitation, and the zone decides how much there
+        // is to imitate — full value in deep forest, next to nothing on open
+        // salt or standing water.
+        const coverScale = zone
+            ? Math.max(0.2, 1 + (zoneFeatures(zone).cover - CRAFTING.camouflageCoverPivot) * CRAFTING.camouflageCoverWeight)
+            : 1;
+        value += CRAFTING.camouflageConcealment * coverScale;
+    }
 
     if (zone) {
         // §5.2: graded cover from the zone's interior, replacing the old

@@ -1,13 +1,14 @@
 import { SimContext } from './context';
 import { ITEMS } from '../data/constants';
 import { legacyOf, LegacyTier } from '../data/districts';
-import { MENTOR_PARACHUTE_TEXTS, MENTOR_PLEA_FAILED_TEXTS } from '../data/flavorText';
+import { MENTOR_PARACHUTE_TEXTS, MENTOR_PLEA_FAILED_TEXTS, MENTOR_POINTED_TEXTS, MENTOR_WITHHELD_TEXTS } from '../data/flavorText';
 import { giveItem, itemPhrase } from './items';
-import { ensureMemory } from './memory';
+import { cycleOf, ensureMemory } from './memory';
 import { clampTribute } from './vitals';
+import { getZone, zoneFeatures } from './map';
 import { Item, Tribute } from '../models/types';
 import { mintItem } from './items';
-import { QUALITY_BIAS } from '../data/balance';
+import { MENTOR_DRAMA, QUALITY_BIAS } from '../data/balance';
 
 /**
  * Mentors, as a sponsorship mechanic.
@@ -127,8 +128,37 @@ const NEED_PHRASES: Record<Need, string> = {
  * tribute rescued by their mentor does not also draw a crowd parachute in the
  * same cycle. Returns the tributes it delivered to.
  */
+/**
+ * §7.6: whether the tribute is currently making a *survivable* mistake — one
+ * the mentor can see the fix for from the booth. Dying of thirst next to a
+ * stream, or starving in a zone that is still green, is not an emergency to
+ * parachute out of; it is a lesson to let land.
+ */
+function survivableMistake(ctx: SimContext, t: Tribute): 'water' | 'food' | undefined {
+    const zone = getZone(ctx.state.arena, t.zone);
+    if (!zone) return undefined;
+    if (t.vitals.thirst >= MENTOR_DRAMA.withholdThirst) {
+        const nearWater = zoneFeatures(zone).waterSource
+            || zone.adjacent.some(n => {
+                const neighbour = getZone(ctx.state.arena, n);
+                return neighbour !== undefined && zoneFeatures(neighbour).waterSource;
+            });
+        if (nearWater) return 'water';
+    }
+    if (t.vitals.hunger >= MENTOR_DRAMA.withholdHunger && zone.resources >= MENTOR_DRAMA.withholdZoneResources) {
+        return 'food';
+    }
+    return undefined;
+}
+
+/** §7.6: the lesson landing — the withheld need has been answered by the tribute themselves. */
+function selfCorrected(t: Tribute): boolean {
+    return t.vitals.thirst < MENTOR_DRAMA.correctedBelow && t.vitals.hunger < MENTOR_DRAMA.correctedBelow;
+}
+
 export function processMentorPleas(ctx: SimContext, alive: Tribute[]): Set<string> {
     const helped = new Set<string>();
+    const cycle = cycleOf(ctx.state);
     alive.forEach(t => {
         const mentor = t.mentorLegacy;
         if (!mentor) return;
@@ -136,8 +166,58 @@ export function processMentorPleas(ctx: SimContext, alive: Tribute[]): Set<strin
         if (pull <= 0) return;
         if (t.sponsorTrust < MENTOR_TRUST_FLOOR) return;
 
+        // §7.6: an outstanding lesson resolves first. If they fixed it
+        // themselves, the parachute finally comes — with the point attached.
+        const withheldAt = ctx.state.mentorWithheld?.[t.id];
+        if (withheldAt !== undefined) {
+            if (cycle - withheldAt > MENTOR_DRAMA.lessonWindowCycles) {
+                delete ctx.state.mentorWithheld![t.id];
+            } else if (selfCorrected(t)) {
+                delete ctx.state.mentorWithheld![t.id];
+                if (ctx.rng.chance(MENTOR_DRAMA.correctedGiftChance)) {
+                    // balance-exempt: fair coin between the two pointed-gift shapes
+                    const gift = itemForNeed(ctx, t, ctx.rng.chance(0.5) ? 'water' : 'food');
+                    giveItem(t, gift);
+                    ensureMemory(t).giftsReceived += 1;
+                    clampTribute(t);
+                    helped.add(t.id);
+                    ctx.logEvent(
+                        ctx.pickText(MENTOR_POINTED_TEXTS)
+                            .split('{mentor}').join(mentor)
+                            .split('{tribute}').join(t.name)
+                            .split('{item}').join(itemPhrase(gift))
+                            .split('{zone}').join(t.zone),
+                        [t.id],
+                        { important: true, category: 'sponsor' }
+                    );
+                    return;
+                }
+            }
+        }
+
         const need = urgentNeed(t);
         if (!need) return;
+
+        // §7.6: the withheld gift. The mentor could afford this one — and the
+        // tribute is dying of something they could fix themselves. No
+        // parachute comes; the silence is the note.
+        const mistake = survivableMistake(ctx, t);
+        if (mistake && withheldAt === undefined && ctx.rng.chance(MENTOR_DRAMA.withholdChance)) {
+            ctx.state.mentorWithheld = ctx.state.mentorWithheld ?? {};
+            ctx.state.mentorWithheld[t.id] = cycle;
+            if (ctx.rng.chance(MENTOR_DRAMA.withholdLineChance)) {
+                ctx.logEvent(
+                    ctx.pickText(MENTOR_WITHHELD_TEXTS)
+                        .split('{mentor}').join(mentor)
+                        .split('{tribute}').join(t.name)
+                        .split('{zone}').join(t.zone),
+                    [t.id],
+                    { important: true, category: 'sponsor' }
+                );
+            }
+            return;
+        }
+        if (withheldAt !== undefined && cycle - withheldAt <= MENTOR_DRAMA.lessonWindowCycles) return;
 
         const mem = ensureMemory(t);
         const chance = pull * Math.pow(MENTOR_REPEAT_DECAY, mem.giftsReceived);

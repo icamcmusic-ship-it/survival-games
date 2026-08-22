@@ -27,11 +27,13 @@ export const VITALS = {
     starvingThreshold: 80,
     dehydratedThreshold: 80,
     starvingDamage: 5,
-    dehydratedDamage: 10,
+    /** §7.7: 10 -> 8 — dehydration is meant to pressure tributes toward water, not out-kill the mutts. */
+    dehydratedDamage: 8,
 
     /** A tribute eats/drinks from their pack once past these. */
     eatThreshold: 50,
-    drinkThreshold: 50,
+    /** §7.7: 50 -> 42 — drink before the drain arithmetic gets ahead of you. */
+    drinkThreshold: 42,
     foodRelief: 40,
     waterRelief: 50,
 
@@ -114,7 +116,8 @@ export const INJURY_DAMAGE = {
     infected: 10,
     poisoned: 12,
     burned: 4,
-    frostbitten: 6,
+    /** §7.7: 6 -> 5, paired with the warm-thaw path in survival.ts. */
+    frostbitten: 5,
     /** Poison also gnaws at the mind. */
     poisonSanity: 5,
 } as const;
@@ -559,6 +562,15 @@ export const SANITY_BANDS = {
     goneDropChance: 0.15,
     /** Crossing the bottom band leaves a permanent mark (once per run). */
     scarStealthLoss: 1,
+    /**
+     * §11.4: low sanity makes noise. A tribute far enough gone (or already
+     * carrying stealth damage from breakdowns) can blow their own cover at
+     * night — a scream, a dropped pot, a fire fed too high — and everyone
+     * one zone over learns exactly where they are.
+     */
+    noisyNightChance: 0.18,
+    /** Sanity below which the night mistakes start. */
+    noisyNightSanity: 40,
 } as const;
 
 /**
@@ -634,6 +646,10 @@ export const MEDICAL = {
     medkitHeal: 50,
     ointmentHealthThreshold: 85,
     ointmentHeal: 25,
+    /** §8.3: the morphling vial — a painkiller, not a cure. */
+    morphlingHealthThreshold: 55,
+    morphlingHeal: 15,
+    morphlingSanity: 18,
 } as const;
 
 /** The shrinking arena, from day 5 onward. */
@@ -675,6 +691,18 @@ export const BLOODBATH = {
      * plate was.
      */
     runDownChance: 0.5,
+    /**
+     * §6.1: the plates before the gong. Two tributes whose plates landed
+     * within this fraction of the ring of each other spend the sixty seconds
+     * looking at each other — they start the Games having genuinely seen one
+     * another (a real contact in the sighting memory), and a frightening
+     * neighbour is frightening before anyone moves.
+     */
+    plateNeighbourRange: 0.12,
+    /** Training score at or above which a plate neighbour is worth dreading. */
+    plateNeighbourFearScore: 9,
+    /** Fear per training point over eight, felt across two metres of gravel. */
+    plateNeighbourFearPerPoint: 5,
 } as const;
 
 /**
@@ -1029,9 +1057,11 @@ export const STEALTH = {
 export const MOVEMENT = {
     /** §5.3: extra fatigue for completing a two-cycle crossing or climb. */
     crossingFatigue: 8,
-    /** Thirst above which finding water outranks everything else. */
-    thirstUrgency: 45,
-    waterSeekWeight: 7,
+    /** Thirst above which finding water outranks everything else.
+     *  §7.7: lowered 45 -> 38 — dehydration was outranking mutts as a killer,
+     *  and the fix is tributes moving toward water a cycle earlier. */
+    thirstUrgency: 38,
+    waterSeekWeight: 9,
     /** Hunger above which walking somewhere that still has food becomes a plan. */
     hungerUrgency: 55,
     /** A zone this stripped (believed) is not worth foraging in. */
@@ -1119,25 +1149,26 @@ export const MUTTS = {
     packDamageFalloff: 0.7,
     /** A pack can never deal more than this multiple of the lead mutt's base
      *  damage in one encounter, however many extra mutts connect. */
-    packDamageCap: 3.4,
+    packDamageCap: 3.8,
     /**
      * Flat multiplier on every mutt's printed damage. A single dial beats
      * editing 46 roster entries, and keeps each mutt's *relative* danger — the
      * careful part of that data — exactly as authored.
      */
-    damageScale: 1.55,
+    /** §7.7: raised 1.55 -> 2.3 — mutts out-killed by dehydration is backwards. */
+    damageScale: 2.3,
     /**
      * Escalation teeth. Once the Gamemakers have started closing the arena,
      * what they release is not what they released on day two. Scales with days
      * since escalation began, capped so a long run does not produce mutts that
      * delete a healthy tribute outright.
      */
-    escalationDamagePerDay: 0.12,
-    escalationDamageCap: 0.6,
+    escalationDamagePerDay: 0.16,
+    escalationDamageCap: 0.7,
     /** How many cycles a persistent mutt keeps hunting once it finds someone. */
     persistentDuration: 3,
     /** Chance a persistent mutt's tracked target gets caught again on a given tick. */
-    persistentReattackChance: 0.55,
+    persistentReattackChance: 0.65,
     /**
      * "Wearing the faces of the fallen" — canon's most disturbing mutt beat.
      * Kept rare and gated on there actually being a death someone in the zone
@@ -1265,6 +1296,35 @@ export const CRAFTING = {
     /** Camouflage: mud, ash and foliage. The cheapest concealment in the arena. */
     camouflageCycles: 2,
     camouflageConcealment: 0.18,
+    /**
+     * §6.5: camouflage is only as good as the ground it copies. The
+     * concealment it grants scales with the zone's cover (deep forest and
+     * wetland carry it; open crust and water give it nothing to imitate),
+     * pivoting around this cover level at weight `camouflageCoverWeight`.
+     */
+    camouflageCoverPivot: 0.35,
+    camouflageCoverWeight: 1.2,
+    /** Extra cycles the work lasts in terrain that grows the materials. */
+    camouflageRichTerrainBonusCycles: 1,
+    /** Rain scrubs mud and ash off: odds per cycle a weather front over the zone ends it early. */
+    camouflageRainWashChance: 0.6,
+
+    /**
+     * §6.3: what a fire is actually for. Cooking turns the same forage into a
+     * better meal; a pot over the flames purifies foul water at the cost of
+     * the time it takes; and by daylight the smoke column is a signal every
+     * ridge in range can read.
+     */
+    cookFeedBonus: 12,
+    cookLineChance: 0.3,
+    /** Boiling foul water works with no purifier at all — it just takes the hour. */
+    fireBoilFatigue: 8,
+    /** Odds per day cycle an adjacent watcher reads the smoke column. */
+    smokeRevealChance: 0.35,
+    /** Odds per cycle a campfire in dry terrain escapes into the zone itself. */
+    fireEscapeChance: 0.02,
+    /** Multiplier on that escape under a hot, dry standing climate. */
+    fireEscapeDryMultiplier: 2,
 
     /** Base odds a build attempt succeeds, before intelligence. */
     buildBaseChance: 0.45,
@@ -1311,16 +1371,42 @@ export const TRAPS = {
     /** Odds an unsprung snare catches an animal instead, feeding its owner. */
     gameCatchChance: 0.22,
     gameFeed: 30,
+
+    /**
+     * §6.2: detection with choices. A perceptive tribute who spots a trap no
+     * longer automatically dismantles it — they decide: disarm it (a
+     * trapping/fieldcraft roll that can go badly wrong), step around it, or
+     * leave it standing on purpose and remember exactly where it is.
+     */
+    disarmBaseChance: 0.4,
+    disarmPerIntelligence: 0.035,
+    disarmPerTracking: 0.09,
+    /** A botched disarm is a hand on the tripline. */
+    failedDisarmTriggerChance: 0.45,
+    /** Odds a spotter attempts the disarm at all rather than walking around it. */
+    attemptDisarmChance: 0.55,
+    /** Dread filed against the zone by knowingly leaving a live trap in it. */
+    knownTrapThreat: 0.4,
+    /** Per-cycle odds a standing trap simply rots, slips or is sprung by weather. */
+    rotChancePerCycle: 0.09,
 } as const;
 
 /** Applying venom to a blade — the Trickster's other unspoken speciality. */
 export const POISONING = {
     /** Items that can be rendered down into something to coat a blade with. */
-    sources: ['nightlock', 'berries'] as const,
-    baseChance: 0.4,
+    sources: ['nightlock', 'berries', 'venom-vial', 'venom-gland'] as const,
+    baseChance: 0.45,
     perIntelligence: 0.05,
     /** Odds a botched attempt poisons the poisoner. */
     selfPoisonChance: 0.25,
+    /** §6.4: odds an idle turn is spent coating right away when both halves are in hand. */
+    coatOpportunityChance: 0.65,
+    /**
+     * §6.4: venom comes off the arena's own animals. Surviving an encounter
+     * with a venomous mutt sometimes leaves a tribute holding the gland that
+     * nearly killed them — the second source path beyond forage.
+     */
+    muttGlandChance: 0.3,
 } as const;
 
 /** What a tribute can physically carry. */
@@ -1378,7 +1464,8 @@ export const ZONES = {
     aggressiveForageMultiplier: 0.4,
     evasiveForageMultiplier: 0.25,
     /** Share of successful forages that turn up nightlock instead of a meal. */
-    nightlockChance: 0.12,
+    /** §6.4: raised 0.12 -> 0.16 so blade-poison material actually circulates. */
+    nightlockChance: 0.16,
 } as const;
 
 /** What tributes remember, and how fast they forget it. */
@@ -1565,6 +1652,8 @@ export const ROMANCE = {
     performerCharisma: 5,
     /** What the performer shows, as opposed to what they feel. */
     performedDisplayedRegard: 75,
+    /** §11.1: displayed-regard refresh per social scene the performer plays warm. */
+    performedUpkeep: 2,
     /** Nothing before the bloodbath is over and the cast is real. */
     minDay: 2,
     /** Bond required before a romance is even considered. */
@@ -1828,6 +1917,17 @@ export const SPONSOR_MARKET = {
     /** Knowing somebody out there is paying attention is worth something. */
     trustGain: 6,
     sanityGain: 8,
+    /**
+     * §6.6: one economy, not two. The blocs' interest in a tribute is demand
+     * pressure on the player's quote — a tribute the old-money families are
+     * already eyeing costs more to reach first...
+     */
+    blocDemandPressure: 0.05,
+    blocDemandCap: 0.5,
+    /** ...and after a player parachute lands, the blocs read the tribute as
+     *  covered and sit on their purses for a while. */
+    coveredCycles: 4,
+    coveredGiftMultiplier: 0.35,
 } as const;
 
 export const SPONSORS = {
@@ -1924,6 +2024,19 @@ export const WILDCARD = {
     blackoutCycles: 3,
     /** How far a crowd revolt swings sponsor trust, in both directions. */
     revoltTrustSwing: 30,
+    /**
+     * §10.7: the calendar is not the whole of the Capitol's patience. Beyond
+     * the scheduled beats, up to this many extra disruptions can fire per
+     * run, each at diminishing odds and never within the spacing window of
+     * the last one — so a long Games stays alive without a short one being
+     * buried under interventions.
+     */
+    maxExtraDisruptions: 2,
+    extraDisruptionBaseChance: 0.06,
+    extraDisruptionDecay: 0.5,
+    extraDisruptionSpacingCycles: 5,
+    /** No extra disruptions before this day — the opening days are busy enough. */
+    extraDisruptionEarliestDay: 4,
 } as const;
 
 export const GAMEMAKER = {
@@ -1935,6 +2048,18 @@ export const GAMEMAKER = {
     weatherIntensity: 1.6,
     muttSweepBaseChance: 0.2,
     muttSweepDangerWeight: 0.3,
+    /**
+     * §6.7: intervention discipline. Each event type has a cooldown, each
+     * repeat use of the same lever costs more (the sponsor market's repeat^n
+     * shape), and an audience that keeps being shown the same trick gets
+     * bored of it — or turns on the booth outright.
+     */
+    eventCooldownCycles: 2,
+    repeatCostMultiplier: 1.5,
+    /** Uses of one lever within the boredom window before the crowd sours. */
+    overuseThreshold: 3,
+    /** Excitement the whole field sheds when the crowd sours on the booth. */
+    overuseExcitementPenalty: 5,
 } as const;
 
 /** Feast attendance. */
@@ -1947,6 +2072,16 @@ export const FEAST = {
     rivalDeterWeight: 0.3,
     woundedDeterrent: 0.25,
     aggressionDraw: 0.3,
+    /**
+     * §10.6: the table is themed, and the announcement says so — which is
+     * what lets a tribute decide differently. A wounded tribute risks the
+     * medical feast they would skip on an ordinary year; a well-armed Career
+     * shrugs at a food table; an unarmed underdog eyes the weapons cache.
+     */
+    medicalThemeWoundedDraw: 0.35,
+    weaponsThemeUnarmedDraw: 0.25,
+    weaponsThemeArmedDeter: 0.1,
+    foodThemeHungerDraw: 0.2,
 } as const;
 
 /** Tribute generation. */
@@ -2297,13 +2432,15 @@ export const TRAINING = {
  */
 export const TRAINING_SCORE = {
     /** Base odds of clearing the first gate (an 8 becoming a 9). */
-    eliteGateBase: 0.3,
+    eliteGateBase: 0.38,
     /**
-     * 0.3 measured out to one 11 every ~18 Games and a 12 every ~140 —
-     * canon's 11 is remarkable but happens; 0.42 keeps the exponential shape
-     * one notch gentler than a straight halving.
+     * §7.5: 0.3/0.42 measured out to 11s at 0.59% and 12s at 0.03% of all
+     * scores — "unprecedented" had drifted into "unseen". 0.36/0.52 keeps the
+     * exponential shape but lands 11s around 1.5-2.5% and 12s around
+     * 0.2-0.4%: an 11 is a talking point most Games have one of, a 12 is a
+     * story a Games *can* have.
      */
-    eliteGateDecay: 0.42,
+    eliteGateDecay: 0.55,
     eliteGateCap: 0.55,
     /** Points above 8 that are reachable at all: 9 through 12. */
     eliteGates: 4,
@@ -2630,6 +2767,13 @@ export const DEBTS = {
     districtLateBond: 2,
     districtLateFieldSize: 8,
     districtMilestoneRegard: 45,
+    /**
+     * §11.3: the partner's death is a bigger loss than an ally's. Extra
+     * sanity torn off on top of the ordinary grief arithmetic, and the bond
+     * above which the survivor swears it will mean something.
+     */
+    partnerGriefSanity: 10,
+    partnerGriefBond: 20,
 } as const;
 
 /**
@@ -2712,6 +2856,77 @@ export const ZONE_CONTROL = {
  * economy's Capitol Coins. Lived as a bare const in GameScreen.tsx — an
  * economy-balance table in a view file, invisible to test:knobs.
  */
+/**
+ * §7.6: the withheld gift — mentorship as dramaturgy. A mentor who *could*
+ * afford a parachute watches their tribute make a survivable mistake (dry
+ * mouth two hundred metres from a stream; starving in a zone still green) and
+ * deliberately sends nothing: the silence is the note. When the tribute then
+ * fixes it themselves, the parachute arrives with the point attached.
+ */
+export const MENTOR_DRAMA = {
+    /** Thirst at which sitting near water reads as the mistake. */
+    withholdThirst: 62,
+    /** Hunger at which starving in a green zone reads as the mistake. */
+    withholdHunger: 72,
+    /** Zone resources above which "there is food here, use it" applies. */
+    withholdZoneResources: 0.45,
+    /** Odds the mentor plays it this way rather than simply pleading. */
+    withholdChance: 0.5,
+    /** Odds the silence gets its own line the cycle it happens. */
+    withholdLineChance: 0.6,
+    /** Once the tribute self-corrects: odds the pointed gift actually flies. */
+    correctedGiftChance: 0.55,
+    /** Vitals level the tribute must get back under to count as corrected. */
+    correctedBelow: 45,
+    /** Cycles the lesson stays live before the mentor lets it drop. */
+    lessonWindowCycles: 6,
+} as const;
+
+/**
+ * §11.6: what a tolled crossing costs different bodies. The printed toll is
+ * the base; a heavy frame hauls itself up the same rope for more, and a bad
+ * leg pays again.
+ */
+export const EDGE_TOLL = {
+    /** Extra fatigue per point of mass (build) on top of the printed toll. */
+    fatiguePerMass: 1.2,
+    /** Extra fatigue per grade of leg/arm injury. */
+    fatiguePerInjuryGrade: 2,
+    /** `timeCost` crossings: extra fatigue per additional cycle spent on the edge. */
+    recoveryFatiguePerCycle: 4,
+} as const;
+
+/**
+ * §11.5: the tool subsystems' second read sites. Light turns night searching
+ * back into searching; warmth blunts the cold's teeth at night; a fishing kit
+ * makes still water a larder for a hunter too.
+ */
+export const TOOLS = {
+    /** Forage chance a light source adds after dark. */
+    lightNightForageBonus: 0.12,
+    /** Multiplier on frostbite exposure odds while carrying warmth. */
+    warmthFrostbiteMultiplier: 0.5,
+    /** Chance a warm night (fire or warmth gear) thaws frostbite before it worsens. */
+    warmFrostbiteHealChance: 0.55,
+    /** Zone shelterQuality at which the ground itself (caves, deep timber) counts as warmth. */
+    shelterWarmHealQuality: 0.5,
+    /** Hunting near water with a fishing tool: added small-game odds. */
+    fishingHuntBonus: 0.15,
+} as const;
+
+/**
+ * §6.8: side bets — settled from the run itself rather than from who wins.
+ * Multipliers are fixed at placement; `cashOutMargin` is the book's cut on
+ * settling a victory wager early at its current implied value.
+ */
+export const SIDE_BETS = {
+    firstBloodMult: 8,
+    noVictorMult: 30,
+    careerVictorMult: 2.2,
+    /** Fraction of fair implied value paid on an early cash-out. */
+    cashOutMargin: 0.8,
+} as const;
+
 export const GAMEMAKER_COSTS = {
     burn: 150,
     flood: 150,

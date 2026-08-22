@@ -7,7 +7,7 @@ import { processPreGames } from './phases/pregames';
 import { processInterviews } from './phases/interviews';
 import { startGames, processBloodbath } from './phases/bloodbath';
 import { processAlliances } from './phases/alliances';
-import { processFeast } from './phases/feast';
+import { announceFeastTheme, processFeast } from './phases/feast';
 import { processDayNight } from './phases/dayNight';
 import { processEpilogue } from './phases/epilogue';
 import { GamemakerEventType, triggerGamemakerEvent as triggerGamemakerEventPhase } from './gamemaker';
@@ -141,6 +141,7 @@ export class Simulator {
                 'THE CAPITOL: there will be a feast every night this year, and nothing else worth eating.',
                 [], { important: true, category: 'feast' }
             );
+            announceFeastTheme(this.ctx);
             return;
         }
 
@@ -165,6 +166,8 @@ export class Simulator {
         // where the tension lives. The feast itself convenes tomorrow.
         this.state.feastDay = this.state.day + 1;
         this.ctx.logEvent(rng.pick(FEAST_TEXTS.announce), [], { important: true, category: 'feast' });
+        // §10.6: the table is themed, and the announcement says what is on it.
+        announceFeastTheme(this.ctx);
     }
 
     public triggerGamemakerEvent(type: GamemakerEventType, targetId?: string) {

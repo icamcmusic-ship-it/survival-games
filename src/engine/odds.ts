@@ -32,6 +32,7 @@ export function oddsScore(t: Tribute): number {
     score -= (100 - t.health) * ODDS.healthWeight;
     if (t.allianceId) score += ODDS.allianceBonus;
     if (t.injuries.bleeding || t.injuries.poisoned || t.injuries.infected) score -= ODDS.woundedPenalty;
+    // balance-exempt: mirrors the UI band the sheet already shows; the penalty itself is the knob
     if (t.vitals.sanity < 30) score -= ODDS.sanityPenalty;
     // Every day survived is evidence — but only against expectation. A flat
     // "still breathing" bonus is identical for every living tribute and
@@ -70,6 +71,7 @@ export function oddsFactors(t: Tribute): OddsFactor[] {
     if (t.injuries.bleeding || t.injuries.poisoned || t.injuries.infected) {
         factors.push({ label: 'Carrying an open wound', delta: -ODDS.woundedPenalty });
     }
+    // balance-exempt: must match the oddsScore band above
     if (t.vitals.sanity < 30) factors.push({ label: 'Coming apart', delta: -ODDS.sanityPenalty });
     if (t.daysSurvived > 0) {
         const expectation = Math.min(1, training / 12);

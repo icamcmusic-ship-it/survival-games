@@ -27,9 +27,21 @@ export interface Bet {
     mult: number;
 }
 
+/** §6.8: a proposition bet settled from the run itself rather than the crown. */
+export type SideBetKind = 'first-blood' | 'no-victor' | 'career-victor';
+export interface SideBet {
+    kind: SideBetKind;
+    stake: number;
+    /** Fixed at placement — see SIDE_BETS in balance.ts. */
+    mult: number;
+    /** 'first-blood' only: the tribute wagered to draw it. */
+    targetId?: string;
+}
+
 export interface SavedRun {
     gameState: GameState;
     bets: Record<string, Bet>;
+    sideBets: SideBet[];
     betsResolved: boolean;
     hofSaved: boolean;
     isReplayedRun: boolean;
@@ -259,7 +271,7 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
 function normalizeConfig(raw: unknown): GameConfig {
     const r = asRecord(raw) ?? {};
     return {
-        districtCount: clamp(asNum(r.districtCount, DEFAULT_GAME_CONFIG.districtCount), 1, 12),
+        districtCount: clamp(asNum(r.districtCount, DEFAULT_GAME_CONFIG.districtCount), 1, 16),
         hazardRate: asNum(r.hazardRate, DEFAULT_GAME_CONFIG.hazardRate),
         betrayalRate: asNum(r.betrayalRate, DEFAULT_GAME_CONFIG.betrayalRate),
         sponsorGenerosity: asNum(r.sponsorGenerosity, DEFAULT_GAME_CONFIG.sponsorGenerosity),
@@ -380,6 +392,24 @@ function normalizeBets(raw: unknown): Record<string, Bet> {
     return out;
 }
 
+function normalizeSideBets(raw: unknown): SideBet[] {
+    if (!Array.isArray(raw)) return [];
+    return raw.flatMap(entry => {
+        const b = asRecord(entry);
+        if (!b) return [];
+        const kind = b.kind;
+        if (kind !== 'first-blood' && kind !== 'no-victor' && kind !== 'career-victor') return [];
+        const stake = asNum(b.stake, 0);
+        if (stake <= 0) return [];
+        return [{
+            kind,
+            stake,
+            mult: Math.max(1, asNum(b.mult, 1)),
+            targetId: typeof b.targetId === 'string' ? b.targetId : undefined,
+        }];
+    });
+}
+
 /** Total, non-throwing coercion of an unknown payload into a `SavedRun`. */
 export function normalizeSavedRun(raw: unknown): SavedRun | null {
     const r = asRecord(raw);
@@ -394,6 +424,7 @@ export function normalizeSavedRun(raw: unknown): SavedRun | null {
     return {
         gameState,
         bets: normalizeBets(r.bets),
+        sideBets: normalizeSideBets(r.sideBets),
         betsResolved: asBool(r.betsResolved, false),
         hofSaved: asBool(r.hofSaved, false),
         isReplayedRun: asBool(r.isReplayedRun, false),

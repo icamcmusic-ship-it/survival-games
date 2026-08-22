@@ -213,10 +213,13 @@ export function generateTributes(
 ): Tribute[] {
     const rng = new RNG(seed);
     const tributes: Tribute[] = [];
-    // 2..12, matching the setup slider and the share-URL parser exactly. The
-    // old lower bound of 1 was reachable only through a hand-edited save and
-    // produced a degenerate two-tribute, one-day run.
-    const districtCount = Math.min(12, Math.max(2, config.districtCount));
+    // 2..16, matching the setup slider and the share-URL parser exactly.
+    // §8.5: districts 13-16 are the "expanded Games" outer territories — they
+    // borrow the name/legacy/craft tables of district ((d-1) % 12) + 1, so a
+    // 16-district reaping needs no new content tables to run.
+    const districtCount = Math.min(16, Math.max(2, config.districtCount));
+    // Table lookups for districts beyond the canonical twelve.
+    const tableDistrict = (d: number) => ((d - 1) % 12) + 1;
 
     // Names must be unique across the whole cast — two tributes called "Amber"
     // made the chronicle feed and the kill log ambiguous.
@@ -241,7 +244,7 @@ export function generateTributes(
         // district+gender pair is already unique across the cast, so this
         // never needs the used-name/disambiguation machinery below it.
         if (config.plainNames) return `District ${district} ${gender === 'Male' ? 'Boy' : 'Girl'}`;
-        const pool = DISTRICT_NAMES[district][gender];
+        const pool = DISTRICT_NAMES[((district - 1) % 12) + 1][gender];
         const available = pool.filter(n => !usedNames.has(n));
         const exclusive = available.filter(n => nameDistrictCounts.get(n) === 1);
         let name: string;
@@ -270,7 +273,8 @@ export function generateTributes(
         // Surnames come from the district's own pool. Occasionally the bowl
         // hands up two slips from the same family — district partners who
         // share a surname walk to the stage as kin, and the square knows it.
-        const surnamePool = DISTRICT_SURNAMES[district];
+        const surnamePool = DISTRICT_SURNAMES[tableDistrict(district)];
+        // balance-exempt: flavour frequency of the kin-pair surname beat, not a balance dial
         const familySurname = rng.chance(0.15) ? rng.pick(surnamePool) : undefined;
         for (const gender of ['Male', 'Female'] as const) {
             const isCareer = [1, 2, 4].includes(district);
@@ -495,6 +499,7 @@ export function generateTributes(
         REAPING_NOTE_TEXTS.tooCalm,
     ];
     tributes.forEach(t => {
+        // balance-exempt: flavour frequency of the misc reaping notes, not a balance dial
         if (t.reapingNote || !rng.chance(0.3)) return;
         t.reapingNote = rng.pick(rng.pick(MISC_NOTE_POOLS))
             .split('{district}').join(String(t.district));

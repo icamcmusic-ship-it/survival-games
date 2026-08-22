@@ -1,5 +1,6 @@
 import { GameState, GameConfig, HallOfFameEntry } from '../models/types';
-import { Bet, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun } from '../utils/saveMigrations';
+import { Bet, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind } from '../utils/saveMigrations';
+import { SIDE_BETS } from '../data/balance';
 import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
 import { readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
 import { readStored, removeStored, tryWriteStored, writeStored } from '../utils/storage';
@@ -58,7 +59,7 @@ export type ViewName = 'setup' | 'roster' | 'game' | 'hallOfFame';
  * that repairs them on load) and re-exported here so existing importers of
  * `gameStore` are unaffected.
  */
-export type { Bet, SavedRun };
+export type { Bet, SavedRun, SideBet, SideBetKind };
 
 export interface GameStoreState {
     gameState: GameState | null;
@@ -66,6 +67,8 @@ export interface GameStoreState {
     view: ViewName;
     coins: number;
     bets: Record<string, Bet>;
+    /** §6.8: proposition bets settled from the run itself. */
+    sideBets: SideBet[];
     betWonMessage: string | null;
     isReplayedRun: boolean;
     /** Guards against paying out the same wager twice (e.g. Run to End then Proceed). */
@@ -127,7 +130,7 @@ function readSavedRun(): SavedRun | null {
 const LOG_TAIL_FALLBACKS = [4000, 2000, 800, 200];
 
 function writeSave() {
-    const { gameState, bets, betsResolved, hofSaved, isReplayedRun } = gameStore.getState();
+    const { gameState, bets, sideBets, betsResolved, hofSaved, isReplayedRun } = gameStore.getState();
     if (!gameState || gameState.phase === 'ended') {
         clearSavedRun();
         return;
@@ -139,7 +142,7 @@ function writeSave() {
     const savedAt = new Date().toISOString();
     const attempt = (log: GameState['log']) => tryWriteStored(SAVED_RUN_SPEC, {
         gameState: log === gameState.log ? gameState : { ...gameState, log },
-        bets, betsResolved, hofSaved, isReplayedRun, savedAt,
+        bets, sideBets, betsResolved, hofSaved, isReplayedRun, savedAt,
     } as SavedRun);
 
     const first = attempt(gameState.log);
@@ -266,6 +269,7 @@ export const gameStore = createStore<GameStoreState>({
     view: 'setup',
     coins: readCoins(),
     bets: {},
+    sideBets: [],
     betWonMessage: null,
     isReplayedRun: false,
     betsResolved: false,
@@ -292,9 +296,45 @@ function commitVictory(state: GameState) {
     });
 }
 
+/** §6.8: settles the proposition book from the finished run's own state. */
+function settleSideBets(state: GameState, sideBets: SideBet[]): { winnings: number; lines: string[] } {
+    let winnings = 0;
+    const lines: string[] = [];
+    const survivors = state.tributes.filter(t => t.status === 'alive');
+    sideBets.forEach(bet => {
+        let won = false;
+        let label = '';
+        if (bet.kind === 'first-blood') {
+            const target = state.tributes.find(t => t.id === bet.targetId);
+            won = state.firstBloodId !== undefined && state.firstBloodId === bet.targetId;
+            label = `first blood by ${target?.name ?? 'a named tribute'}`;
+        } else if (bet.kind === 'no-victor') {
+            won = survivors.length === 0;
+            label = 'a Games with no victor';
+        } else {
+            won = survivors.some(t => t.isCareer);
+            label = 'a Career victor';
+        }
+        if (won) {
+            const payout = Math.floor(bet.stake * bet.mult);
+            winnings += payout;
+            lines.push(`Your side wager on ${label} lands: ${bet.stake} coins pay ${payout} at ${bet.mult.toFixed(1)}x.`);
+        } else {
+            lines.push(`Your ${bet.stake}-coin side wager on ${label} does not come in.`);
+        }
+    });
+    return { winnings, lines };
+}
+
 function resolveBets(state: GameState) {
-    const { bets, coins, betsResolved } = gameStore.getState();
+    const { bets, sideBets, coins: coinsAtStart, betsResolved } = gameStore.getState();
     if (betsResolved) return;
+    const side = settleSideBets(state, sideBets);
+    if (side.winnings > 0) gameActions.setCoins(coinsAtStart + side.winnings);
+    if (side.lines.length > 0) {
+        gameStore.setState({ betWonMessage: side.lines.join(' '), sideBets: [] });
+    }
+    const coins = gameStore.getState().coins;
     if (Object.keys(bets).length === 0) {
         gameStore.setState({ betsResolved: true });
         // A player who went broke sponsoring parachutes rather than wagering
@@ -318,15 +358,16 @@ function resolveBets(state: GameState) {
         const total = payouts.reduce((sum, p) => sum + p.winnings, 0);
         gameActions.setCoins(coins + total);
         gameStore.setState({
-            betWonMessage: payouts
-                .map(({ w, winnings }) => `${w.name} of District ${w.district} came home. Your ${bets[w.id].stake}-coin wager pays out ${winnings} Capitol Coins at ${bets[w.id].mult.toFixed(1)}x.`)
-                .join(' '),
+            betWonMessage: [
+                ...payouts.map(({ w, winnings }) => `${w.name} of District ${w.district} came home. Your ${bets[w.id].stake}-coin wager pays out ${winnings} Capitol Coins at ${bets[w.id].mult.toFixed(1)}x.`),
+                ...side.lines,
+            ].join(' '),
             betsResolved: true,
         });
     } else {
         const staked = Object.values(bets).reduce((a, b) => a + b.stake, 0);
         gameStore.setState({
-            betWonMessage: `None of your ${staked} coins came back. The Capitol thanks you for your contribution.`,
+            betWonMessage: [`None of your ${staked} coins came back. The Capitol thanks you for your contribution.`, ...side.lines].join(' '),
             betsResolved: true,
         });
     }
@@ -393,6 +434,64 @@ export const gameActions = {
         gameStore.setState(s => ({ bets: typeof bets === 'function' ? bets(s.bets) : bets }));
     },
 
+    /**
+     * §6.8: place a proposition bet. Open only while the ordinary book is —
+     * before the gong. Multipliers are fixed (SIDE_BETS in balance.ts).
+     */
+    placeSideBet(kind: SideBetKind, stake: number, targetId?: string): boolean {
+        const { gameState, coins, sideBets } = gameStore.getState();
+        if (!gameState || (gameState.phase !== 'reaping' && gameState.phase !== 'setup')) return false;
+        if (stake <= 0 || coins < stake) return false;
+        if (kind === 'first-blood' && !targetId) return false;
+        const mult = kind === 'first-blood' ? SIDE_BETS.firstBloodMult
+            : kind === 'no-victor' ? SIDE_BETS.noVictorMult
+            : SIDE_BETS.careerVictorMult;
+        gameActions.setCoins(coins - stake);
+        gameStore.setState({ sideBets: [...sideBets, { kind, stake, mult, targetId }] });
+        persistRun();
+        return true;
+    },
+
+    /**
+     * §6.8: cash out a standing victory wager early, at its current implied
+     * value (stake x locked multiplier x live win probability), less the
+     * book's cash-out margin. Uses the engine's live odds.
+     */
+    cashOutBet(tributeId: string): number {
+        const { gameState, bets, coins, betsResolved } = gameStore.getState();
+        const bet = bets[tributeId];
+        if (!gameState || !bet || betsResolved || !engine || gameState.phase === 'ended') return 0;
+        const tribute = gameState.tributes.find(t => t.id === tributeId);
+        if (!tribute) return 0;
+        const live = engine.tributeOdds(tribute, gameState.tributes);
+        const value = Math.floor(bet.stake * bet.mult * (live.pct / 100) * SIDE_BETS.cashOutMargin);
+        const rest = { ...bets };
+        delete rest[tributeId];
+        gameActions.setCoins(coins + value);
+        gameStore.setState({
+            bets: rest,
+            betWonMessage: value > 0
+                ? `The book settles your position on ${tribute.name} early: ${value} coins at the current price.`
+                : `The book buys out your position on ${tribute.name} for nothing. It was worth nothing.`,
+        });
+        persistRun();
+        return value;
+    },
+
+    /**
+     * §6.10: pre-Games coaching — pin a chosen tribute's training-floor
+     * strategy and/or interview angle. Only before the training phase runs.
+     */
+    setCoaching(tributeId: string, coaching: { trainingStrategy?: 'showcase' | 'conceal' | 'balanced'; interviewStrategy?: string }): boolean {
+        const { gameState, simulator } = gameStore.getState();
+        if (!gameState || !simulator) return false;
+        if (gameState.phase !== 'reaping' && gameState.phase !== 'setup') return false;
+        // Written onto the simulator's live state so the phase engines see it.
+        simulator.getState().playerCoaching = { tributeId, ...coaching };
+        gameActions.syncFromSimulator();
+        return true;
+    },
+
     setCoins(coins: number | ((prev: number) => number)) {
         gameStore.setState(s => {
             const next = typeof coins === 'function' ? coins(s.coins) : coins;
@@ -405,11 +504,12 @@ export const gameActions = {
 
     /** Hands back any coins staked on a run that never resolved. */
     refundOpenBets() {
-        const { bets, betsResolved, coins } = gameStore.getState();
-        const staked = Object.values(bets).reduce((a, b) => a + b.stake, 0);
+        const { bets, sideBets, betsResolved, coins } = gameStore.getState();
+        const staked = Object.values(bets).reduce((a, b) => a + b.stake, 0)
+            + sideBets.reduce((a, b) => a + b.stake, 0);
         if (betsResolved || staked === 0) return;
         gameActions.setCoins(coins + staked);
-        gameStore.setState({ bets: {} });
+        gameStore.setState({ bets: {}, sideBets: [] });
     },
 
     /**
@@ -449,11 +549,11 @@ export const gameActions = {
      * another is played.
      */
     saveToSlot(slot: 2 | 3): boolean {
-        const { gameState, bets, betsResolved, hofSaved, isReplayedRun } = gameStore.getState();
+        const { gameState, bets, sideBets, betsResolved, hofSaved, isReplayedRun } = gameStore.getState();
         if (!gameState || gameState.phase === 'ended') return false;
         const spec = SAVE_SLOT_SPECS[slot - 1];
         return tryWriteStored(spec, {
-            gameState, bets, betsResolved, hofSaved, isReplayedRun,
+            gameState, bets, sideBets, betsResolved, hofSaved, isReplayedRun,
             savedAt: new Date().toISOString(),
         } as SavedRun) === 'ok';
     },
@@ -472,6 +572,7 @@ export const gameActions = {
             simulator: new Simulator(gameState),
             view: gameState.phase === 'reaping' || gameState.phase === 'setup' ? 'roster' : 'game',
             bets: saved.bets,
+            sideBets: saved.sideBets ?? [],
             betWonMessage: null,
             betsResolved: saved.betsResolved,
             hofSaved: saved.hofSaved,
@@ -610,6 +711,7 @@ export const gameActions = {
             simulator: new Simulator(initialState),
             view: 'roster',
             bets: {},
+            sideBets: [],
             betWonMessage: null,
             betsResolved: false,
             hofSaved: false,
