@@ -154,9 +154,14 @@ function rollCalendar(rng: RNG): Wildcard[] {
  * temperament/calendar/castShape roll for every run that doesn't draw one,
  * the same way `${seed}-arena` and `${seed}-signature-*` already stay out of
  * each other's way.
+ *
+ * `pinnedQuell` lets a caller carry an already-decided Quell through instead
+ * of drawing a new one — `rerollCast` uses this so a cast reroll can't
+ * silently swap the run's Quell out from under its already-locked-in arena.
+ * `null` explicitly pins to "no Quell"; `undefined` (the default) draws normally.
  */
-export function gamesProfileFor(seed: string, forceQuell = false): GamesProfile {
-    const quell = drawQuell(new RNG(`${seed}-quell`), forceQuell);
+export function gamesProfileFor(seed: string, forceQuell = false, pinnedQuell?: Quell | null): GamesProfile {
+    const quell = pinnedQuell !== undefined ? pinnedQuell ?? undefined : drawQuell(new RNG(`${seed}-quell`), forceQuell);
     const quellBeats = quell ? quellWildcards(quell) : [];
     const rng = new RNG(`${seed}-games-profile`);
     const calendar = rollCalendar(rng);

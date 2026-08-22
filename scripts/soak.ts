@@ -34,9 +34,14 @@ const configs: GameConfig[] = [
 ];
 
 function start(seed: string, arenaId: string, config: GameConfig, gamemaker: boolean): GameState {
-  const arena = arenaId.startsWith('procedural') ? generateArena(seed) : ARENAS.find(a => a.id === arenaId)!;
   const gamesProfile = gamesProfileFor(seed);
-  const tributes = generateTributes(seed, config, arena.zones[0].name, gamesProfile.castShape);
+  const baseArena = arenaId.startsWith('procedural') ? generateArena(seed) : ARENAS.find(a => a.id === arenaId)!;
+  // Mirrors gameStore.ts's startGame: never mutate the shared ARENAS array —
+  // a Moving Arena Quell run would otherwise corrupt that arena's zones for
+  // every later soak run in this same process.
+  const arena = { ...baseArena, zones: baseArena.zones.map(z => ({ ...z })) };
+  if (gamesProfile.quell?.arenaLawOverride) arena.law = gamesProfile.quell.arenaLawOverride;
+  const tributes = generateTributes(seed, config, arena.zones[0].name, gamesProfile.castShape, gamesProfile.quell);
   return { seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: gamemaker, config, baseConfig: config, gamesProfile, logCounter: 0, feastsHeld: 0, cycle: 0 };
 }
 

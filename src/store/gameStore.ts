@@ -427,17 +427,22 @@ export const gameActions = {
         const { Simulator, generateArena, generateTributes, gamesProfileFor, configForProfile } = await loadEngine();
 
         const safeSeed = seed.trim() || Math.random().toString(36).substring(2, 8).toUpperCase();
-        const arena = arenaId.startsWith('procedural')
+
+        // REPLAY-01/REPLAY-11: this year's Games — including whether it's a
+        // Quarter Quell — are rolled from the seed before the arena and cast
+        // are resolved, because a Quell can shape both of them.
+        const gamesProfile = gamesProfileFor(safeSeed);
+        const baseArena = arenaId.startsWith('procedural')
             ? generateArena(safeSeed)
             : (ARENAS.find(a => a.id === arenaId) || ARENAS[0]);
+        // Never mutate the shared ARENAS/generated-arena objects: a per-zone
+        // shallow clone gives this run its own zone objects (arenaLawOverride
+        // below, and the Moving Arena Quell later, both write to them).
+        const arena = { ...baseArena, zones: baseArena.zones.map(z => ({ ...z })) };
+        if (gamesProfile.quell?.arenaLawOverride) arena.law = gamesProfile.quell.arenaLawOverride;
         const startZone = arena.zones[0].name;
 
-        // REPLAY-01: this year's Games are rolled from the seed and the
-        // player's config is multiplied through them, so a shared seed
-        // reproduces the same Games rather than merely the same cast. The
-        // profile is rolled before the cast because it decides the cast's shape.
-        const gamesProfile = gamesProfileFor(safeSeed);
-        const tributes = generateTributes(safeSeed, config, startZone, gamesProfile.castShape);
+        const tributes = generateTributes(safeSeed, config, startZone, gamesProfile.castShape, gamesProfile.quell);
 
         // §6.2: standing district patronage — a persistent sink for Capitol
         // Coins. The patron's tributes arrive with sponsors already warm.
@@ -488,10 +493,13 @@ export const gameActions = {
         const newSeed = `${baseSeed}~${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
         // A rerolled cast is a rerolled Games: the sub-seed decides both, and
         // the executed config is re-derived from the player's base config so
-        // the old profile's multipliers don't leak into the new year.
-        const gamesProfile = gamesProfileFor(newSeed);
+        // the old profile's multipliers don't leak into the new year. The
+        // Quell is pinned to whatever it already was, though — the arena is
+        // already locked in (law and all), so a reroll can't silently swap
+        // the run's Quell out from under it.
+        const gamesProfile = gamesProfileFor(newSeed, false, gameState.gamesProfile?.quell ?? null);
         const config = configForProfile(gameState.baseConfig, gamesProfile);
-        const tributes = generateTributes(newSeed, config, gameState.arena.zones[0].name, gamesProfile.castShape);
+        const tributes = generateTributes(newSeed, config, gameState.arena.zones[0].name, gamesProfile.castShape, gamesProfile.quell);
         const newState: GameState = {
             ...gameState, seed: newSeed, tributes, log: [], logCounter: 0, gamesProfile, config,
         };
