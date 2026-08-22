@@ -191,13 +191,26 @@ function AnthemCard({ day, fallen }: { day: number; fallen: Tribute[] }) {
     );
 }
 
-export function EventFeed({ logs, showTags = true, cast, onSelectTribute }: {
+export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaultExpanded = false }: {
     logs: EventLog[];
     showTags?: boolean;
     cast?: Tribute[];
     onSelectTribute?: (id: string) => void;
+    /**
+     * Show the whole chronicle from the first render instead of capping to
+     * the newest `VISIBLE_CAP` entries behind a "show earlier" button.
+     *
+     * The cap exists for the live, auto-advancing chronicle during a run,
+     * where only the newest lines matter and re-rendering ~900 entries on
+     * every tick would be wasted work. The finished run's "Full chronicle"
+     * tab is a different reader with a different goal — its entire point is
+     * to be the complete archive — and defaulting it to the same 200-line
+     * cap read as the archive silently dropping most of the Games, with the
+     * only way back a small ghost button easy to miss entirely.
+     */
+    defaultExpanded?: boolean;
 }) {
-    const [expanded, setExpanded] = useState(false);
+    const [expanded, setExpanded] = useState(defaultExpanded);
     // Only entries that are genuinely new since the last render get the rise-in
     // animation — otherwise every re-render (e.g. an unrelated store update)
     // replays the animation across the whole list and the feed flickers.

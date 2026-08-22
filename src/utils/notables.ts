@@ -175,5 +175,81 @@ export function runNotables(state: GameState, records: PanemRecords): Notable[] 
         });
     }
 
+    // --- What the Capitol had planned before the gong even sounded ---
+    //
+    // A Quarter Quell, a temperament and a cast shape are the three biggest
+    // levers this simulation has for making one run read differently from
+    // the last, and none of them had a single notable reacting to them —
+    // the section was built to explain the *outcome* of a run and never
+    // once credited the *conditions* that shaped it. Weighted high: a Quell
+    // especially is the rarest and most structurally different thing a run
+    // can be, and belongs at the top of the list when it happens.
+    const profile = state.gamesProfile;
+    if (profile?.quell) {
+        notables.push({
+            weight: 13,
+            text: `This was ${profile.quell.name} — a Quarter Quell. ${profile.quell.announcement.replace(/^QUARTER QUELL:\s*/i, '')}`,
+        });
+    }
+    if (profile && !['standard'].includes(profile.temperament.id)) {
+        notables.push({
+            weight: 4,
+            text: `The Capitol billed this as ${profile.temperament.name}. ${profile.temperament.blurb}`,
+        });
+    }
+    if (profile?.castShape && profile.castShape.id !== 'ordinary' && profile.castShape.id !== 'victors-field') {
+        notables.push({
+            weight: 4,
+            text: `The reaping itself was unusual: ${profile.castShape.name}. ${profile.castShape.blurb}`,
+        });
+    }
+
+    // --- The social shape of the run ---
+    const allianceCount = state.log.filter(l => l.category === 'alliance').length;
+    if (allianceCount === 0 && cast >= 12) {
+        notables.push({
+            weight: 8,
+            text: `Not one alliance formed this year. Every tribute in that arena played it completely alone.`,
+        });
+    }
+    const romances = state.log.filter(l => l.category === 'romance');
+    if (romances.length > 0) {
+        const lovers = state.tributes.filter(t => t.traits.includes('Star-Crossed'));
+        const bothGone = lovers.length >= 2 && lovers.every(l => l.status === 'dead');
+        if (bothGone) {
+            notables.push({
+                weight: 9,
+                text: `The romance the Capitol built its broadcast around ended with neither of them coming home.`,
+            });
+        }
+    }
+    if (state.log.some(l => l.text.startsWith('VENGEANCE'))) {
+        notables.push({
+            weight: 7,
+            text: `Somebody in that arena did not just survive — they went and found the specific person who took someone from them.`,
+        });
+    }
+
+    // --- The mentor who mattered ---
+    if (victor?.mentorLegacy) {
+        const landed = state.log.some(l =>
+            l.category === 'sponsor' && l.important && l.tributesInvolved.includes(victor.id) && l.text.includes(victor.mentorLegacy!));
+        if (landed) {
+            notables.push({
+                weight: 7,
+                text: `${victor.mentorLegacy} spent everything they had on ${victor.name}, and it is the reason there was a victor to talk about at all.`,
+            });
+        }
+    }
+
+    // --- A favourite the Capitol lost early ---
+    const earlyFavourite = dead.find(t => t.fanFavourite && t.dayOfDeath === 0);
+    if (earlyFavourite) {
+        notables.push({
+            weight: 8,
+            text: `${earlyFavourite.name} was supposed to be this year's story. The bloodbath did not care.`,
+        });
+    }
+
     return notables.sort((a, b) => b.weight - a.weight).slice(0, 3);
 }

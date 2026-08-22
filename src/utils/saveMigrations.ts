@@ -261,6 +261,7 @@ function normalizeConfig(raw: unknown): GameConfig {
         sponsorGenerosity: asNum(r.sponsorGenerosity, DEFAULT_GAME_CONFIG.sponsorGenerosity),
         enableFeast: asBool(r.enableFeast, DEFAULT_GAME_CONFIG.enableFeast),
         enableSanity: asBool(r.enableSanity, DEFAULT_GAME_CONFIG.enableSanity),
+        plainNames: asBool(r.plainNames, DEFAULT_GAME_CONFIG.plainNames ?? false),
     };
 }
 

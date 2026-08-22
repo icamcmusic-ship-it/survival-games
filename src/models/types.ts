@@ -639,6 +639,16 @@ export interface GameConfig {
     sponsorGenerosity: number; // multiplier on sponsor gift chance
     enableFeast: boolean;
     enableSanity: boolean;
+    /**
+     * Pre-Games option: every tribute is named "District # Boy/Girl" instead
+     * of drawing from the flavour name pools — for players who want the
+     * roster to read like the source material's plainest naming, or who find
+     * a hundred invented names per district harder to track than a district
+     * number. Purely cosmetic: nothing about generation, stats or behaviour
+     * changes, only `Tribute.name`. Optional so a save/config from before
+     * this existed defaults to the flavour names it always had.
+     */
+    plainNames?: boolean;
 }
 
 import type { GamesProfile } from '../engine/gamesProfile';

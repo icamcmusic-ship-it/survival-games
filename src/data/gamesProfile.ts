@@ -122,7 +122,19 @@ export type WildcardKind =
     | 'quell-alliance-cap' | 'quell-mandatory-partner' | 'quell-sponsors-by-vote'
     | 'quell-cornucopia-forfeit' | 'quell-moving-arena' | 'quell-two-victors'
     | 'quell-bounty-rotating' | 'quell-long-games' | 'quell-feast-nightly'
-    | 'quell-reflection' | 'quell-weapons-fixed' | 'quell-blood-debt';
+    | 'quell-reflection' | 'quell-weapons-fixed' | 'quell-blood-debt'
+    /**
+     * A Quell whose only lever is `castShapeOverride`/`temperamentOverride`/
+     * `configOverride` has nothing to put in `standingWildcards` — but that
+     * used to mean it got no calendar entry at all, so its own announcement
+     * never appeared on the reaping screen (`calendarOf`) and its headline
+     * `wildcard.kind` fell back to `'nothing'`, which every "is this Games a
+     * Quell" check elsewhere (the in-run sidebar, the "A Quarter Quell"
+     * achievement) reads as "no Quell". `quellWildcards` below now emits one
+     * of these for any Quell with no mechanical standing wildcard, purely so
+     * the Quell is visible — nothing reads this kind for behaviour.
+     */
+    | 'quell-standing';
 
 export interface Wildcard {
     kind: WildcardKind;
@@ -256,7 +268,17 @@ export const WILDCARDS: WildcardDef[] = [
     {
         kind: 'crowd-revolt', name: 'an audience that has lost patience',
         announcement: 'Capitol viewing figures are down. The Gamemakers have been told, in writing, to fix it.',
-        window: [0, 0], weight: 2,
+        onFire: 'The Capitol turns on its own favourites without warning. Whoever the cameras have been carrying is about to find out what that is worth.',
+        // Was [0, 0] — a "standing" day, which `fireScheduledWildcard` never
+        // resolves (it returns before the switch for any day-0 entry). The
+        // sponsor-swing event this kind actually implements in
+        // `engine/wildcards.ts` was consequently dead code: it was drawn,
+        // announced, and then never once fired. `configForProfile`'s hazard
+        // multiplier for this kind is day-independent and keeps applying
+        // exactly as before; giving it a real window on top of that is what
+        // makes it "fire" as an event during the run, the way its case in
+        // `resolveWildcard` was always written to.
+        window: [4, 8], weight: 2,
     },
 ];
 
@@ -369,11 +391,13 @@ export interface Quell {
 }
 
 /**
- * REPLAY-11: 20 Quells (of an original 22 — "No Victor" and "The Mentors'
+ * REPLAY-11/S-4: 28 Quells (of an original 22 — "No Victor" and "The Mentors'
  * Quell" were cut as needing a hidden-win-condition system and a one-off
- * mentor-intervention system respectively, neither of which exists yet).
- * "Bonded Pairs" and "The Silent Games" wrap wildcards that already have
- * full mechanical effects (see gamesProfile.ts/victory.ts/dayNight.ts) —
+ * mentor-intervention system respectively, neither of which exists yet — plus
+ * 8 added later reusing the ordinary wildcard pool and the arena-law system,
+ * both already fully mechanical). "Bonded Pairs" and "The Silent Games" wrap
+ * wildcards that already have full mechanical effects (see
+ * gamesProfile.ts/victory.ts/dayNight.ts) —
  * everything else here is genuinely new, gated on its own `quell-*` kind.
  */
 export const QUELLS: Quell[] = [
@@ -497,6 +521,62 @@ export const QUELLS: Quell[] = [
         id: 'blood-debt', name: 'The Blood Debt',
         announcement: 'QUARTER QUELL: a tribute who kills is marked. The Capitol pays the marked less.',
         standingWildcards: ['quell-blood-debt'],
+        weight: 2,
+    },
+    // S-4: a second wave of Quells, on top of the original 20 — reusing
+    // machinery the ordinary wildcard pool and the arena-law system already
+    // have, exactly the way the block comment above this array asks for.
+    {
+        id: 'feral-quell', name: 'The Feral Quell',
+        announcement: 'QUARTER QUELL: alliances are forbidden this year, absolutely — not capped, not discouraged, forbidden. The Gamemakers have promised zero tolerance.',
+        // Distinct from 'No Alliances' above: that one caps a pack at two
+        // (`quell-alliance-cap`) and taxes anyone over it. This is the
+        // ordinary `rule-change-no-allies` wildcard — a flat ban, plus the
+        // 2.5x betrayal-rate multiplier `configForProfile` already applies
+        // to it — promoted to a guaranteed standing condition.
+        standingWildcards: ['rule-change-no-allies'],
+        weight: 2,
+    },
+    {
+        id: 'lean-quell', name: 'The Lean Quell',
+        announcement: 'QUARTER QUELL: there will be no feast this year, at any point. Whatever the tributes need, the arena itself will have to provide it — or nobody will.',
+        standingWildcards: ['no-feast'],
+        weight: 2,
+    },
+    {
+        id: 'open-wallet-quell', name: "The Capitol's Generosity",
+        announcement: "QUARTER QUELL: the Capitol has ordered unlimited sponsorship this year. Every mentor in the city has already spent their allowance twice over before the gong.",
+        standingWildcards: ['sponsor-flood'],
+        weight: 2,
+    },
+    {
+        id: 'endless-day-quell', name: 'The Quell That Never Sleeps',
+        announcement: 'QUARTER QUELL: the arena will not permit a single night this year. There is no rest, at any hour, for anyone.',
+        arenaLawOverride: 'noNight',
+        weight: 2,
+    },
+    {
+        id: 'cold-quell', name: 'The Cold Quell',
+        announcement: 'QUARTER QUELL: no flame will catch in this arena, all year — no fire, no light, no warmth but what a tribute carries in themselves.',
+        arenaLawOverride: 'fireImpossible',
+        weight: 2,
+    },
+    {
+        id: 'feeding-ground-quell', name: 'The Feeding Ground',
+        announcement: 'QUARTER QUELL: the Cornucopia will restock all year, not just once at the start. Whoever controls it controls everything.',
+        arenaLawOverride: 'cornucopiaRefills',
+        weight: 2,
+    },
+    {
+        id: 'single-drop-zone-quell', name: 'The Single Drop Zone',
+        announcement: 'QUARTER QUELL: sponsor gifts will only reach one place in this arena, all year. Everyone who wants Capitol help will have to come to it.',
+        arenaLawOverride: 'sponsorsFixedZone',
+        weight: 2,
+    },
+    {
+        id: 'thirst-quell', name: 'The Thirst Quell',
+        announcement: 'QUARTER QUELL: water in this arena comes from exactly one place this year, and every tribute knows exactly where to find it.',
+        arenaLawOverride: 'noWaterExceptZone',
         weight: 2,
     },
 ];

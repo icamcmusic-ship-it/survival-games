@@ -169,6 +169,12 @@ export function generateTributes(
     // made the chronicle feed and the kill log ambiguous.
     const usedNames = new Set<string>();
     const drawName = (district: number, gender: Gender): string => {
+        // Pre-Games option: skip the flavour pools entirely and name every
+        // tribute for their number — "District 7 Boy" — the way the books'
+        // own reaping scenes sometimes do before a name is ever given. One
+        // district+gender pair is already unique across the cast, so this
+        // never needs the used-name/disambiguation machinery below it.
+        if (config.plainNames) return `District ${district} ${gender === 'Male' ? 'Boy' : 'Girl'}`;
         const pool = DISTRICT_NAMES[district][gender];
         const available = pool.filter(n => !usedNames.has(n));
         const name = available.length > 0 ? rng.pick(available) : `${rng.pick(pool)} ${['II', 'III', 'IV', 'V'][rng.nextInt(0, 3)]}`;

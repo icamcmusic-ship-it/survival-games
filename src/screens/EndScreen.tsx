@@ -4,6 +4,7 @@ import { EventFeed } from '../components/EventFeed';
 import { ReplayScrubber } from '../components/ReplayScrubber';
 import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { ChronicleExport } from '../components/ChronicleExport';
+import { TributeModal } from '../components/TributeModal';
 import { Trophy, MapPin, Swords, Skull, RotateCcw } from 'lucide-react';
 import { META_ACHIEVEMENTS, ACHIEVEMENTS } from '../data/achievements';
 import { RECORD_DEFS } from '../utils/panemStorage';
@@ -38,6 +39,13 @@ export function EndScreen({
     betWonMessage: string | null
 }) {
     const [activeTab, setActiveTab] = useState<'stats' | 'replay' | 'logs'>('stats');
+    // Full chronicle: clicking a linked name opens the same tribute profile
+    // the live Game screen offers, so "who was that?" doesn't require
+    // switching screens.
+    const [selectedTributeId, setSelectedTributeId] = useState<string | null>(null);
+    const selectedTribute = selectedTributeId
+        ? gameState.tributes.find(t => t.id === selectedTributeId) ?? null
+        : null;
     // REPLAY-03/04: what this run showed the player that no previous run did.
     const outcome = useStore(gameStore, s => s.lastRunOutcome);
 
@@ -139,7 +147,7 @@ export function EndScreen({
                         <ChronicleExport gameState={gameState} />
                     </div>
                     <div className="max-h-[620px] overflow-y-auto pr-2 custom-scrollbar">
-                        <EventFeed logs={gameState.log} />
+                        <EventFeed logs={gameState.log} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} defaultExpanded />
                     </div>
                 </div>
             ) : (
@@ -355,6 +363,14 @@ export function EndScreen({
                         </div>
                     </div>
                 </div>
+            )}
+
+            {selectedTribute && (
+                <TributeModal
+                    tribute={selectedTribute}
+                    gameState={gameState}
+                    onClose={() => setSelectedTributeId(null)}
+                />
             )}
         </div>
     );

@@ -248,6 +248,28 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     </label>
                 </div>
 
+                <div className="p-5 pt-0">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                        <div className={`w-5 h-5 border-2 flex items-center justify-center transition-colors flex-none ${
+                            config.plainNames ? 'bg-[var(--red)] border-[var(--ink)]' : 'bg-[var(--paper-panel)] border-[var(--line)]'
+                        }`}>
+                            {config.plainNames && <div className="w-2 h-2 bg-white" />}
+                        </div>
+                        <div>
+                            <div className="font-black text-[var(--ink)] text-sm uppercase">Plain tribute names</div>
+                            <div className="text-xs text-[var(--color-ink-500)]">
+                                Skip the invented name pools — every tribute is simply "District # Boy/Girl". Nothing about stats or behaviour changes.
+                            </div>
+                        </div>
+                        <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={!!config.plainNames}
+                            onChange={(e) => setConfig(c => ({ ...c, plainNames: e.target.checked }))}
+                        />
+                    </label>
+                </div>
+
                 {/* §6.2: the standing patronage — a persistent sink for Capitol
                     Coins. Survives across runs via the Panem records. */}
                 <div className="p-5 pt-0">

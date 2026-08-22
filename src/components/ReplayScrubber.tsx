@@ -248,7 +248,7 @@ export function ReplayScrubber({
                             <section key={key} className="space-y-1.5">
                                 <h5 className="eyebrow">{key}</h5>
                                 {entries.map(entry => (
-                                    <FeedLine key={entry.id} log={entry} animate={false} />
+                                    <FeedLine key={entry.id} log={entry} animate={false} cast={tributes} />
                                 ))}
                             </section>
                         ))}
