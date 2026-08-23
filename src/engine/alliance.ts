@@ -117,9 +117,9 @@ function brandFor(ctx: SimContext, id: string, leader: Tribute, members: Tribute
     if (id.startsWith('career-pack')) return 'the Career pack';
     const districts = [...new Set(members.map(m => m.district))].sort((a, b) => a - b);
     const patterns = [
-        `the ${leader.name.split(' ')[0]} crew`,
+        `the ${leader.name} crew`,
         districts.length === 1 ? `the District ${districts[0]} bloc` : `the ${districts.map(d => `${d}`).join('-')} compact`,
-        `${leader.name.split(' ')[0]}'s ${members.length > 2 ? 'company' : 'pair'}`,
+        `${leader.name}'s ${members.length > 2 ? 'company' : 'pair'}`,
     ];
     return ctx.rng.pick(patterns);
 }

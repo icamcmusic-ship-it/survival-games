@@ -26,7 +26,7 @@ import { runArchetypeSignatures, tickGhosts } from '../archetypeHooks';
 import { processSpoilage, processVitals } from '../survival';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
-    pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
+    pendingChain, pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
 } from '../encounters';
 import { tickPersistentMutts } from '../mutts';
 import { hasEffect, restockCornucopia, rollAmbientZoneEffects, startZoneEffect, tickForceField, tickZoneEffects } from '../zoneEffects';
@@ -1231,7 +1231,9 @@ function resolveEncounters(
         muttChance = Math.min(ENCOUNTERS.hazardCeiling, muttChance * ctx.state.config.hazardRate);
 
         if (ctx.rng.chance(eventChance)) {
-            applyArenaEvent(ctx, t, pickTerrainEvent(ctx, flavor.events, zone?.terrain));
+            // §7e: an arena that started a story last cycle finishes it.
+            applyArenaEvent(ctx, t,
+                pendingChain(ctx, t, flavor.events) ?? pickTerrainEvent(ctx, flavor.events, zone?.terrain, t));
             acted.add(t.id);
             return;
         }

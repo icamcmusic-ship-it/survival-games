@@ -21,7 +21,8 @@ import { attemptFieldcraft, poisonWeapon } from './fieldcraft';
 import { composureOf } from './composure';
 import { sanityBandOf } from './sanityBands';
 import { resolveMuttAttack as resolveMuttAttackImpl } from './mutts';
-import { severRandomEdge, startZoneEffect } from './zoneEffects';
+import { hasEffect, severRandomEdge, startZoneEffect } from './zoneEffects';
+import { arenaHasLaw } from './gamesProfile';
 import { traitMod } from '../data/traits';
 import { QUALITY_BIAS } from '../data/balance';
 import { isAggressiveStance, isDefensiveStance, isEvasiveStance } from '../data/stances';
@@ -218,6 +219,29 @@ export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDe
             );
         }
     }
+    // §7e: a zone-wide event that nobody else was caught by was still seen.
+    // Being a witness is its own thing — it feeds nothing mechanical here, it
+    // simply means the feed names the people who watched it happen.
+    if (event.witnesses) {
+        const watching = ctx.state.tributes.filter(o =>
+            o.status === 'alive' && o.id !== t.id && o.zone === t.zone);
+        if (watching.length > 0) {
+            ctx.logEvent(
+                `${watching.map(o => o.name).join(', ')} ${watching.length > 1 ? 'watch' : 'watches'} it happen to ${t.name} from close enough to have done something about it.`,
+                [t.id, ...watching.map(o => o.id)],
+                { category: isBoon ? 'survival' : 'hazard' }
+            );
+        }
+    }
+    // §7e: one-time beats, recorded so the arena's set piece stays a set piece.
+    if (event.oncePerRun && event.id) {
+        ctx.state.firedEvents = [...(ctx.state.firedEvents ?? []), event.id];
+    }
+    // §7e: and the second half of a two-part story, queued on this tribute.
+    if (event.chain) {
+        ctx.state.eventChains = ctx.state.eventChains ?? {};
+        ctx.state.eventChains[t.id] = event.chain;
+    }
     if (event.startsZoneEffect) startZoneEffect(ctx, t.zone, event.startsZoneEffect);
     if (event.severesRoute) {
         const cut = severRandomEdge(ctx, t.zone);
@@ -263,11 +287,56 @@ function inferredTerrains(event: ArenaEventDef): Terrain[] | undefined {
  * stays eligible everywhere, which is the correct behaviour for genuinely
  * generic hazards like a Gamemaker-triggered storm.
  */
-export function pickTerrainEvent(ctx: SimContext, events: ArenaEventDef[], terrain: Terrain | undefined): ArenaEventDef {
+/**
+ * §7e: whether an event's `requires` block holds right now.
+ *
+ * Terrain was the only thing an event could key off, which is why every
+ * authored event reads as weather: there was no way to write "only once the
+ * zone is already burning", "only after dark", "only when six are left" or
+ * "only under this law". Absent fields are unconstrained, so every existing
+ * event is eligible exactly as before.
+ */
+function requirementsHold(ctx: SimContext, t: Tribute, event: ArenaEventDef): boolean {
+    const need = event.requires;
+    if (!need) return true;
+    if (need.effect && !hasEffect(ctx.state, t.zone, need.effect)) return false;
+    if (need.time && ctx.state.phase !== need.time) return false;
+    if (need.law && !arenaHasLaw(ctx.state, need.law)) return false;
+    if (need.minSurvivors !== undefined || need.maxSurvivors !== undefined) {
+        const alive = ctx.state.tributes.filter(o => o.status === 'alive').length;
+        if (need.minSurvivors !== undefined && alive < need.minSurvivors) return false;
+        if (need.maxSurvivors !== undefined && alive > need.maxSurvivors) return false;
+    }
+    return true;
+}
+
+/** §7e: an event that has already had its one turn this run. */
+function spent(ctx: SimContext, event: ArenaEventDef): boolean {
+    return event.oncePerRun === true && event.id !== undefined
+        && (ctx.state.firedEvents ?? []).includes(event.id);
+}
+
+/**
+ * §7e: the event this tribute is owed from last cycle, if the arena set one up.
+ * Consumed on read — a chain is a two-part story, not a standing condition.
+ */
+export function pendingChain(ctx: SimContext, t: Tribute, events: ArenaEventDef[]): ArenaEventDef | undefined {
+    const queued = ctx.state.eventChains?.[t.id];
+    if (!queued) return undefined;
+    delete ctx.state.eventChains![t.id];
+    return events.find(e => e.id === queued);
+}
+
+export function pickTerrainEvent(ctx: SimContext, events: ArenaEventDef[], terrain: Terrain | undefined, t?: Tribute): ArenaEventDef {
     const fits = (event: ArenaEventDef) => {
         const tags = event.terrains ?? inferredTerrains(event);
         return !tags || tags.includes(terrain!);
     };
+    // §7e: state gates first — an event whose preconditions do not hold is not
+    // a worse fit for this zone, it is not an option at all.
+    const eligible = events.filter(e => !spent(ctx, e) && (!t || requirementsHold(ctx, t, e)));
+    const gated = eligible.length > 0 ? eligible : events.filter(e => !spent(ctx, e));
+    events = gated.length > 0 ? gated : events;
     const pool = terrain ? events.filter(fits) : events;
     const candidates = pool.length > 0 ? pool : events;
     // §1.3: weighted, not uniform. `withUniversalEvents` marks the shared pool

@@ -119,6 +119,11 @@ export function processSponsors(ctx: SimContext) {
         // the arena's one drop zone — sponsorship becomes a race to be there,
         // not a reward for wherever a tribute happens to be.
         if (arenaHasLaw(ctx.state, 'sponsorsFixedZone') && t.zone !== ctx.state.arena.lawZone) return;
+        // §5.1 `noSponsors`: a communications blackout arena. Nothing the
+        // Capitol wants to send can be got down to the floor, which turns
+        // sponsor trust into pure reputation and makes the Cornucopia the only
+        // supply line there is.
+        if (arenaHasLaw(ctx.state, 'noSponsors')) return;
         // `quell-sponsors-by-vote`: gifts are voted for by the audience, not
         // bought — proven competence (sponsorTrust) stops earning aid, and
         // only how much the crowd likes watching them does.

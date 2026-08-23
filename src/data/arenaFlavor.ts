@@ -4528,6 +4528,162 @@ const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         fatigue: 10,
         terrains: ['highland', 'open'],
     },
+    // ---- §7a: new universal death causes -------------------------------
+    // Eleven distinct ways to die across 7,196 deaths, in a game whose entire
+    // subject is dying. These are the environmental and physiological gaps —
+    // each one a way the arena finishes a job it had already started.
+    {
+        text: 'The water in {zone} is deeper and faster than it looked from the bank, and {tribute} is halfway across before they understand that.',
+        escapeText: '{tribute} feels the current take their footing in {zone} and gets back to the near bank on their hands and knees.',
+        cause: 'Drowned attempting a crossing',
+        dodgeStat: 'strength',
+        dodgeAlt: 'agility',
+        damage: 34,
+        fatigue: 14,
+        terrains: ['water', 'wetland'],
+    },
+    {
+        text: '{tribute} is moving too fast over broken ground in {zone} to pick their footing, and the drop does the rest.',
+        escapeText: '{tribute} skids to the lip of a drop in {zone} with their heels over nothing, and stops.',
+        cause: 'Fell from height while running',
+        dodgeStat: 'agility',
+        damage: 30,
+        bleeding: true,
+        terrains: ['highland', 'ruins', 'forest'],
+    },
+    {
+        text: '{tribute} has been soaked through since the small hours, and the cold in {zone} has stopped feeling cold.',
+        escapeText: '{tribute} strips off what is wet, gets moving, and outruns the shivering in {zone}.',
+        cause: 'Died of hypothermia',
+        dodgeStat: 'endurance',
+        dodgeAlt: 'intelligence',
+        damage: 22,
+        fatigue: 12,
+        // §7e: not a temperature event — a wet tribute in mild cold, which is
+        // a different death from frostbite and needs the zone to be wet.
+        requires: { effect: 'flooded' },
+    },
+    {
+        text: 'The high ground in {zone} is the only high ground, and the storm finds {tribute} standing on it.',
+        escapeText: '{tribute} gets off the ridge in {zone} before the next one comes down.',
+        cause: 'Struck by lightning',
+        dodgeStat: 'intelligence',
+        damage: 45,
+        burned: true,
+        terrains: ['highland', 'open'],
+        requires: { time: 'day' },
+    },
+    {
+        text: '{tribute} has been on their feet for days on nothing, and in {zone} their body simply files the objection.',
+        escapeText: '{tribute} gets down before they fall down, and something in {zone} lets them keep the hour.',
+        cause: 'Died of exhaustion',
+        dodgeStat: 'endurance',
+        dodgeAlt: 'willpower',
+        dodgeDifficulty: 9,
+        damage: 26,
+        fatigue: 10,
+    },
+    {
+        text: 'Whatever {tribute} ate in {zone}, it was never food, and it is making that clear.',
+        escapeText: '{tribute} spits out whatever they picked in {zone} before it gets far enough to matter.',
+        cause: 'Poisoned by something that was never food',
+        dodgeStat: 'intelligence',
+        damage: 12,
+        poisoned: true,
+    },
+
+    // ---- §7c: discovery -------------------------------------------------
+    // The universal pool had no class of event that was purely *finding out*.
+    {
+        text: '{tribute} finds a body in {zone}. The cannon for it went off two days ago and nobody has been back since.',
+        escapeText: '',
+        cause: '',
+        sanity: 6,
+        grantItem: 'bandages',
+        id: 'find-body',
+        chain: 'find-body-after',
+        witnesses: true,
+    },
+    {
+        text: '{tribute} sits with what they took off the body in {zone} for longer than they need to, and does not look at it again after.',
+        escapeText: '',
+        cause: '',
+        sanity: 4,
+        id: 'find-body-after',
+        // Only ever reached through the chain above — weight 0 keeps it out of
+        // the ordinary draw entirely.
+        weight: 0,
+    },
+    {
+        text: 'A token nobody living owns is lying in the dirt in {zone}. {tribute} picks it up, and then has to decide what to do with it.',
+        escapeText: '',
+        cause: '',
+        sanity: 3,
+    },
+    {
+        text: '{tribute} finds somebody else\'s cache in {zone}: buried, careful, and clearly meant to be come back for.',
+        escapeText: '',
+        cause: '',
+        feed: 18,
+        quench: 12,
+        grantItem: 'dried-meat',
+    },
+    {
+        text: '{tribute} counts the faces in the sky over {zone} and works out, correctly, exactly how many of them are left.',
+        escapeText: '',
+        cause: '',
+        sanity: 4,
+        requires: { time: 'night', maxSurvivors: 8 },
+        id: 'count-the-field',
+        oncePerRun: true,
+    },
+
+    // ---- §7c: social at a distance --------------------------------------
+    {
+        text: 'A cannon goes off somewhere past {zone} and {tribute} has no way at all of knowing who it was for.',
+        escapeText: '',
+        cause: '',
+        sanity: 5,
+    },
+    {
+        text: 'Somebody screams in the next sector over from {zone}. It stops. {tribute} stays exactly where they are.',
+        escapeText: '',
+        cause: '',
+        sanity: 6,
+        fatigue: 4,
+        requires: { time: 'night' },
+    },
+    {
+        text: 'There is a fire burning somewhere out past {zone}, and {tribute} spends a long time deciding not to walk toward it.',
+        escapeText: '',
+        cause: '',
+        sanity: 3,
+        requires: { time: 'night' },
+    },
+
+    // ---- §7c: interior ---------------------------------------------------
+    {
+        text: 'Something in {zone} — a smell, a shape in the trees — puts {tribute} back home for a second, and it is worse than being here.',
+        escapeText: '',
+        cause: '',
+        sanity: 4,
+        heal: 3,
+    },
+    {
+        text: '{tribute} takes out the thing they were allowed to bring and holds it for a while in {zone}. Nobody is watching who would understand it.',
+        escapeText: '',
+        cause: '',
+        heal: 4,
+        sanity: -6,
+    },
+    {
+        text: 'For an hour in {zone}, nothing at all happens to {tribute}, and they let themselves notice that.',
+        escapeText: '',
+        cause: '',
+        heal: 5,
+        fatigue: -10,
+        sanity: -8,
+    },
 ];
 
 export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {

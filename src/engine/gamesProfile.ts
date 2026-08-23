@@ -244,9 +244,23 @@ export function wildcardIs(state: GameState, kind: WildcardKind): boolean {
     return calendarOf(profile).some(w => w.kind === kind);
 }
 
-/** True when this arena's standing law is `law` — see `Arena.law` (models/types.ts). */
+/**
+ * True when this arena is running under `law`.
+ *
+ * §5.1: `Arena.law` was singular, which meant an arena could express exactly
+ * one standing rule and a Quell override silently replaced whatever the arena
+ * itself declared. Both fields are read here so every existing call site — and
+ * every existing arena, save file and share link — keeps working while an
+ * arena that wants to be both a blackout *and* a no-healing arena can say so.
+ */
 export function arenaHasLaw(state: GameState, law: ArenaLawId): boolean {
-    return state.arena.law === law;
+    return state.arena.law === law || (state.arena.laws?.includes(law) ?? false);
+}
+
+/** Every standing law this arena is running under, deduped. */
+export function arenaLaws(state: GameState): ArenaLawId[] {
+    const all = [...(state.arena.law ? [state.arena.law] : []), ...(state.arena.laws ?? [])];
+    return all.filter((law, i) => all.indexOf(law) === i);
 }
 
 /**

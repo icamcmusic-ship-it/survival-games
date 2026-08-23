@@ -353,6 +353,11 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
         }
     }
 
+    // §5.1 `noHealing`: the arena where the medical kit is a prop. Every item
+    // below still exists, still weighs something and is still worth stealing —
+    // it simply does nothing when opened, so rest is the only way back up.
+    if (arenaHasLaw(ctx.state, 'noHealing')) return;
+
     // Antidote cures poison before it becomes lethal.
     if (t.injuries.poisoned) {
         if (consumeOne(t, i => i.id === 'antidote')) {

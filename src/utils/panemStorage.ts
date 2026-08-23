@@ -1,5 +1,6 @@
 import { GameState, Tribute } from '../models/types';
 import { CareerTotals, evaluateAchievements, evaluateMetaAchievements, evaluateNearMisses, NearMiss } from '../data/achievements';
+import { arenaLaws } from '../engine/gamesProfile';
 import { Notable, runNotables } from './notables';
 import { ARENAS } from '../data/constants';
 import { ARENA_MUTTS } from '../data/mutts';
@@ -377,10 +378,12 @@ export function commitRun(state: GameState): RunOutcome {
 
         // §10.1: the collector shelves — which arena law this crown was won
         // under, and which procedural biome the arena was built from.
-        if (state.arena.law) {
+        // §5.1: an arena can run under more than one law now, and a crown won
+        // under a stacked arena counts for each of them.
+        arenaLaws(state).forEach(law => {
             records.lawsWonUnder = records.lawsWonUnder ?? [];
-            if (!records.lawsWonUnder.includes(state.arena.law)) records.lawsWonUnder.push(state.arena.law);
-        }
+            if (!records.lawsWonUnder.includes(law)) records.lawsWonUnder.push(law);
+        });
         if (state.arena.id.startsWith('procedural-')) {
             const biome = state.arena.id.slice('procedural-'.length);
             records.biomesWon = records.biomesWon ?? [];
