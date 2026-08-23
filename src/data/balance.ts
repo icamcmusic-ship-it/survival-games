@@ -494,6 +494,19 @@ export const PROFICIENCY = {
     persuasionRecruitWeight: 0.04,
     /** Regard granted per point when a persuasion-led negotiation lands. */
     persuasionRegardWeight: 1.5,
+    /**
+     * §8: renewal chance added per point of persuasion, and the fraction of a
+     * partner's break chance talked down per point.
+     *
+     * Persuasion used to buy only the *striking* of a truce — every read site
+     * above is a one-shot negotiation. So a charisma build paid three training
+     * days for a handshake and then had exactly the same odds as anyone else
+     * of that handshake surviving contact, which is most of why persuasion did
+     * not pay rent: 216 truces struck across 400 runs, 16 held. A talker's
+     * edge is keeping people at the table, not getting them to it.
+     */
+    persuasionRenewWeight: 0.06,
+    persuasionRestraintWeight: 0.05,
 } as const;
 
 /**
@@ -1829,8 +1842,15 @@ export const STANCE_MODES = {
          * objective, and measured 0.2% of cycles.
          */
         trackingMin: 1,
-        /** Base pull once the precondition holds. */
-        base: 2.4,
+        /**
+         * Base pull once the precondition holds.
+         *
+         * §8: 2.4 lost to Aggressive nearly every time it was available —
+         * Hunting held 1.6% of cycles, so a tribute with a named quarry and
+         * the tracking to follow them mostly just swept the zone like anybody
+         * else. Committing to one person should beat looking for anyone.
+         */
+        base: 4.0,
         /** Extra pull per point of remembered fear of the quarry. */
         vengeanceBonus: 1.2,
         /** Ambush edge while working a named target. */
@@ -1847,12 +1867,21 @@ export const STANCE_MODES = {
     fortified: {
         /** Cycles a tribute must have held the same zone before digging in. */
         holdCycles: 2,
-        base: 2.2,
+        /**
+         * §8: 2.2 against Aggressive and Evasive, which start at 0 but
+         * accumulate a dozen terms apiece and routinely reach 5-6. Fortified
+         * was reachable in 0.48% of alive-cycles and *chosen* in 0.03% — one
+         * cycle in a thousand — so the README's headline conditional-stance
+         * system had a member nobody has ever seen. Digging in on prepared,
+         * defensible ground you have already held for two cycles should beat
+         * wandering off it; this is what that costs.
+         */
+        base: 4.2,
         /** Extra pull per trap already set in the zone. */
         perTrapBonus: 0.5,
         /** ...and for ground worth holding. */
-        chokepointBonus: 0.8,
-        elevationBonus: 0.6,
+        chokepointBonus: 1.2,
+        elevationBonus: 1.0,
         /** Trap trigger multiplier against anyone entering their ground. */
         trapTriggerMultiplier: 1.5,
         /** Movement costs double fatigue: leaving a position is expensive. */
@@ -1915,8 +1944,11 @@ export const STANCE_MODES = {
         exitBand: 2,
     },
     shadowing: {
-        stealthMin: 7,
-        base: 2.6,
+        // §8: 7 of 10 stealth, on a cast whose stealth averages nearer 5, on
+        // top of an unbroken unseen streak and a valid quarry one zone over.
+        // Shadowing fired in 0.5% of cycles.
+        stealthMin: 6,
+        base: 4.4,
         /** Consecutive unnoticed cycles that convert into a free ambush. */
         cyclesToAmbush: 3,
         /** Concealment edge while trailing rather than closing. */
@@ -2992,8 +3024,25 @@ export const TRAINING_SCORE = {
     /** A tribute who just startled the panel is far likelier to clear a gate. */
     stuntGateMultiplier: 1.8,
 
-    /** Base band, from what they can do in front of a panel. */
-    statsPerPoint: 5,
+    /**
+     * Base band, from what they can do in front of a panel.
+     *
+     * §8: this is the divisor on the *sum* of a tribute's attributes, and it
+     * was calibrated at 5 when `Attributes` had five fields. §3.1 added
+     * endurance and willpower without retuning it, so the same tribute's
+     * `totalStats` grew by two whole attributes' worth — roughly 40% — and the
+     * base band stopped discriminating: `floor(totalStats / 5)` pinned almost
+     * everybody at or above the ceiling of 8 before the skill term or the
+     * jitter was even added. Measured consequence: mode 8 at 35.4% of all
+     * scores, 9-or-better at 37.3% against a regression guard of 7-24% and a
+     * design intent of 12-18%, and scores of 1-6 accounting for 14.9% of the
+     * board combined. A 10 is supposed to be remarkable; it was happening
+     * 10.4% of the time.
+     *
+     * 7 restores the five-attribute calibration: attribute *count* times the
+     * original per-point cost divided by the original count.
+     */
+    statsPerPoint: 7,
     skillPerPoint: 3,
     /** Panel mood: the same performance is not scored the same twice. */
     jitterMin: -1,
