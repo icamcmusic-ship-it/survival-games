@@ -12,6 +12,7 @@ import { SURVIVAL_TEXTS } from '../data/flavorText';
 import { fill } from './encounters';
 import { isAggressiveStance } from '../data/stances';
 import { objectiveBiasFor, targetPreferenceScore } from './archetypeHooks';
+import { resolveOf } from './resolve';
 
 /**
  * Intentions.
@@ -68,6 +69,20 @@ function announce(ctx: SimContext, t: Tribute, objective: Objective) {
                 { category: 'travel' }
             );
             return;
+        case 'stalk':
+            ctx.logEvent(
+                `${t.name} settles in behind ${name(objective.targetId)} at a distance, with no apparent intention of closing it.`,
+                [t.id, objective.targetId],
+                { important: true, category: 'travel' }
+            );
+            return;
+        case 'wait':
+            ctx.logEvent(
+                `${t.name} picks a spot in ${objective.zone} where everything has to come past them, and stops moving.`,
+                [t.id],
+                { category: 'survival' }
+            );
+            return;
         case 'protect':
             ctx.logEvent(
                 `${t.name} decides ${name(objective.wardId)} is not dying on their watch.`,
@@ -97,12 +112,17 @@ export function isObjectiveValid(ctx: SimContext, t: Tribute): boolean {
             // frightened of to follow through on.
             return !!living(objective.targetId)
                 && fearOf(t, objective.targetId) < OBJECTIVES.huntAbandonFear;
+        case 'stalk':
+            // §3.3: a stalk survives fear that would abandon a hunt — being
+            // frightened of somebody is a reason to keep watching them.
+            return !!living(objective.targetId);
         case 'protect':
             return !!living(objective.wardId);
         case 'reach':
             // Arrived, or the ground went out of bounds under the destination.
             return t.zone !== objective.zone && !collapsed.includes(objective.zone);
         case 'hold':
+        case 'wait':
             return t.zone === objective.zone && !collapsed.includes(objective.zone);
         case 'flee':
             return t.zone === objective.from;
@@ -132,8 +152,35 @@ export function endgameEdge(state: GameState, t: Tribute): number {
     return Math.max(-1, Math.min(1, edge));
 }
 
-function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objective {
+/**
+ * §3.4: one pass of the priority cascade.
+ *
+ * The cascade below is a ladder of needs, and it used to return the first rung
+ * that applied and throw the rest away — so there was no representation of a
+ * tribute torn between two of them. `offer` is the seam: every rung now
+ * declares its tier and goes through it, which lets the same function be run a
+ * second time with the winner suppressed to find out what they *nearly* did
+ * and by how much (see `updateObjective`).
+ *
+ * `skip` suppresses a candidate; `out` receives the tier the returned
+ * objective came from. `dry` is set on the runner-up pass: it suppresses the
+ * two branches with side effects (a broken truce) or an RNG draw, so asking
+ * the question a second time cannot change the world or the stream.
+ */
+function chooseObjective(
+    ctx: SimContext,
+    t: Tribute,
+    here: Tribute[],
+    skip?: (o: Objective) => boolean,
+    out?: { tier: number },
+    dry = false,
+): Objective {
     const state = ctx.state;
+    const offer = (tier: number, objective: Objective): Objective | undefined => {
+        if (skip?.(objective)) return undefined;
+        if (out) out.tier = tier;
+        return objective;
+    };
     const cycle = cycleOf(state);
     const arch = ARCHETYPES[t.archetype];
     const collapsed = state.collapsedZones ?? [];
@@ -148,10 +195,12 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
         const rival = state.tributes.find(o =>
             o.status === 'alive' && o.id !== t.id && !areLovers(t, o));
         if (rival && rival.zone === t.zone) {
-            return { kind: 'hunt', targetId: rival.id, expires: expiry(OBJECTIVES.huntCycles) };
+            const o = offer(100, { kind: 'hunt', targetId: rival.id, expires: expiry(OBJECTIVES.huntCycles) });
+            if (o) return o;
         }
         if (t.zone !== state.finaleZone) {
-            return { kind: 'reach', zone: state.finaleZone, reason: 'feast', expires: expiry(OBJECTIVES.reachCycles) };
+            const o = offer(100, { kind: 'reach', zone: state.finaleZone, reason: 'feast', expires: expiry(OBJECTIVES.reachCycles) });
+            if (o) return o;
         }
     }
 
@@ -161,9 +210,10 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
         o.id !== t.id && (o.allianceId === undefined || o.allianceId !== t.allianceId));
     const scaredOf = hostilesHere.some(o => fearOf(t, o.id) >= OBJECTIVES.fleeFear);
     const fleePull = objectiveBiasFor(t, 'flee');
-    if ((scaredOf || (fleePull > 0 && hostilesHere.length > 0 && ctx.rng.chance(fleePull)))
+    if ((scaredOf || (!dry && fleePull > 0 && hostilesHere.length > 0 && ctx.rng.chance(fleePull)))
         && !isAggressiveStance(t.stance)) {
-        return { kind: 'flee', from: t.zone, expires: expiry(OBJECTIVES.fleeCycles) };
+        const o = offer(90, { kind: 'flee', from: t.zone, expires: expiry(OBJECTIVES.fleeCycles) });
+        if (o) return o;
     }
 
     // 2. Thirst. The most reliable killer that a tribute can actually do
@@ -173,7 +223,8 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
         // the same waterSource read the hydration layer itself uses.
         const water = nearestZoneMatching(ctx, t, active, z => zoneFeatures(z).waterSource === true);
         if (water && water !== t.zone) {
-            return { kind: 'reach', zone: water, reason: 'water', expires: expiry(OBJECTIVES.reachCycles) };
+            const o = offer(80, { kind: 'reach', zone: water, reason: 'water', expires: expiry(OBJECTIVES.reachCycles) });
+            if (o) return o;
         }
     }
 
@@ -191,7 +242,8 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
                 z.resources >= MOVEMENT.forageMinResources
                 && rememberedBarren(state, t, z.name) < MOVEMENT.forageBarrenThreshold);
             if (larder && larder !== t.zone) {
-                return { kind: 'reach', zone: larder, reason: 'forage', expires: expiry(OBJECTIVES.reachCycles) };
+                const o = offer(72, { kind: 'reach', zone: larder, reason: 'forage', expires: expiry(OBJECTIVES.reachCycles) });
+                if (o) return o;
             }
         }
     }
@@ -206,7 +258,8 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
         if (mates.length > 0 && !together) {
             const known = mates.find(o => cyclesSinceContact(state, t, o.id) <= MEMORY.sightingLifetime * 2);
             if (known && !collapsed.includes(known.zone)) {
-                return { kind: 'reach', zone: known.zone, reason: 'ally', expires: expiry(OBJECTIVES.reachCycles) };
+                const o = offer(66, { kind: 'reach', zone: known.zone, reason: 'ally', expires: expiry(OBJECTIVES.reachCycles) });
+                if (o) return o;
             }
         }
     }
@@ -216,7 +269,8 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
     if (state.feastDay !== undefined && state.day >= state.feastDay - 1) {
         const cornucopia = active.find(z => /cornucopia/i.test(z.name));
         if (cornucopia && cornucopia.name !== t.zone && arch.aggression > -0.2) {
-            return { kind: 'reach', zone: cornucopia.name, reason: 'feast', expires: expiry(OBJECTIVES.reachCycles) };
+            const o = offer(60, { kind: 'reach', zone: cornucopia.name, reason: 'feast', expires: expiry(OBJECTIVES.reachCycles) });
+            if (o) return o;
         }
     }
 
@@ -227,7 +281,8 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
         .map(id => state.tributes.find(o => o.id === id && o.status === 'alive'))
         .find(o => !!o);
     if (sworn) {
-        return { kind: 'hunt', targetId: sworn.id, expires: expiry(OBJECTIVES.huntCycles) };
+        const o = offer(56, { kind: 'hunt', targetId: sworn.id, expires: expiry(OBJECTIVES.huntCycles) });
+        if (o) return o;
     }
     // §3.3: in the endgame, a tribute who concludes they win a straight fight
     // hunts whatever their stance says — waiting is how favourites get
@@ -240,7 +295,7 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
     // Beast goes looking whatever posture the scoring table settled on.
     const huntPull = objectiveBiasFor(t, 'hunt');
     if (isAggressiveStance(t.stance) || (countingTheField && edge > ENDGAME.hunterEdge)
-        || (huntPull > 0 && ctx.rng.chance(huntPull))) {
+        || (!dry && huntPull > 0 && ctx.rng.chance(huntPull))) {
         // Only somebody they have actually seen recently — a hunter with no
         // sighting is not tracking anyone, they are just walking around angry.
         // `rememberedRivals(state, t, o.zone) > 0` alone only confirms that
@@ -296,7 +351,7 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
             // then is the roll made — so a truce is never broken idly, and
             // never over someone who was not worth it.
             const tempting = underTruce.length > 0 ? best(underTruce) : undefined;
-            if (tempting && (!target || score(tempting) > score(target))
+            if (!dry && tempting && (!target || score(tempting) > score(target))
                 && breaksTruce(ctx, t, tempting)) {
                 breakTruce(ctx, t, tempting);
                 return { kind: 'hunt', targetId: tempting.id, expires: expiry(OBJECTIVES.huntCycles) };
@@ -304,7 +359,18 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
             // No honest mark and no truce worth breaking: fall through to the
             // objectives below rather than forcing a hunt that has no target.
             if (target) {
-                return { kind: 'hunt', targetId: target.id, expires: expiry(OBJECTIVES.huntCycles) };
+                // §3.3: hunting is not the only thing to do with somebody you
+                // have found. A tribute who is behind on the fight — hurt,
+                // outmatched, or simply built for it — follows instead, which
+                // is the behavioural pair to the Shadowing stance and the only
+                // objective in the list that wants the target left alive.
+                const shadowing = t.stance === 'Shadowing'
+                    || t.health < OBJECTIVES.stalkHealth
+                    || fearOf(t, target.id) >= OBJECTIVES.stalkFear;
+                const o = shadowing
+                    ? offer(50, { kind: 'stalk', targetId: target.id, expires: expiry(OBJECTIVES.stalkCycles) })
+                    : offer(52, { kind: 'hunt', targetId: target.id, expires: expiry(OBJECTIVES.huntCycles) });
+                if (o) return o;
             }
         }
     }
@@ -324,7 +390,8 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
             && (o.health < OBJECTIVES.wardHealth + protectPull * OBJECTIVES.wardBiasHealth
                 || getRel(t, o.id) > OBJECTIVES.wardBond - protectPull * OBJECTIVES.wardBiasBond));
         if (ward) {
-            return { kind: 'protect', wardId: ward.id, expires: expiry(OBJECTIVES.protectCycles) };
+            const o = offer(48, { kind: 'protect', wardId: ward.id, expires: expiry(OBJECTIVES.protectCycles) });
+            if (o) return o;
         }
     }
 
@@ -338,10 +405,12 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
         || t.health < OBJECTIVES.holeUpHealth || t.injuries.frostbitten) {
         const shelter = nearestZoneMatching(ctx, t, active, z => z.terrain === 'forest' || z.terrain === 'ruins');
         if (shelter && shelter !== t.zone) {
-            return { kind: 'reach', zone: shelter, reason: 'shelter', expires: expiry(OBJECTIVES.reachCycles) };
+            const o = offer(40, { kind: 'reach', zone: shelter, reason: 'shelter', expires: expiry(OBJECTIVES.reachCycles) });
+            if (o) return o;
         }
         if (shelter === t.zone) {
-            return { kind: 'hold', zone: t.zone, expires: expiry(OBJECTIVES.holdCycles) };
+            const o = offer(40, { kind: 'hold', zone: t.zone, expires: expiry(OBJECTIVES.holdCycles) });
+            if (o) return o;
         }
     }
 
@@ -350,9 +419,22 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
     if (current && rememberedThreat(state, t, t.zone) < OBJECTIVES.holdMaxThreat
         && hostilesHere.length === 0
         && current.resources > OBJECTIVES.holdMinResources - objectiveBiasFor(t, 'hold') * OBJECTIVES.holdBiasResources) {
-        return { kind: 'hold', zone: t.zone, expires: expiry(OBJECTIVES.holdCycles) };
+        const o = offer(30, { kind: 'hold', zone: t.zone, expires: expiry(OBJECTIVES.holdCycles) });
+        if (o) return o;
     }
 
+    // §3.3: waiting. Distinct from holding, which is holding ground worth
+    // having — this is sitting on a chokepoint precisely because everyone else
+    // has to come through it, and it is the one intention that wants the zone
+    // to stay empty until it does not.
+    const chokepoint = current && zoneFeatures(current).chokepoint === true;
+    if (chokepoint && hostilesHere.length === 0 && !isAggressiveStance(t.stance)
+        && t.vitals.fatigue > OBJECTIVES.waitFatigue) {
+        const o = offer(28, { kind: 'wait', zone: t.zone, expires: expiry(OBJECTIVES.waitCycles) });
+        if (o) return o;
+    }
+
+    if (out) out.tier = 0;
     return { kind: 'survive' };
 }
 
@@ -390,7 +472,35 @@ export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
     if (isObjectiveValid(ctx, t)) return;
 
     const previous = t.objective;
-    const next = chooseObjective(ctx, t, here);
+    const chosenTier = { tier: 0 };
+    let next = chooseObjective(ctx, t, here, undefined, chosenTier);
+
+    // §3.4: what they nearly did instead. The same cascade, run again with the
+    // winner suppressed and its side-effecting branches disabled, which is the
+    // cheapest honest way to ask "and what was the other thing?" of a priority
+    // ladder. A tribute needing water while their ally is dying two zones over
+    // now has both facts on them, not just the one that won.
+    const runnerTier = { tier: 0 };
+    const runnerUp = chooseObjective(ctx, t, here, o => sameObjective(next, o), runnerTier, true);
+    const margin = chosenTier.tier - runnerTier.tier;
+
+    if (runnerUp.kind !== 'survive' && next.kind !== 'survive' && margin <= OBJECTIVES.tensionMargin) {
+        t.objectiveTension = { runnerUp, margin };
+        // Under pressure the other option wins often enough that a torn
+        // tribute reads as torn rather than as decisive-with-a-footnote.
+        const cracking = resolveOf(t) <= OBJECTIVES.tensionPressureBelow
+            || t.vitals.sanity <= OBJECTIVES.tensionPressureBelow;
+        const flip = OBJECTIVES.tensionFlipChance + (cracking ? OBJECTIVES.tensionFlipUnderPressure : 0);
+        if (ctx.rng.chance(flip)) {
+            t.objectiveTension = { runnerUp: next, margin };
+            next = runnerUp;
+        }
+        hesitate(ctx, t, next, t.objectiveTension.runnerUp);
+        t.objectiveTension.voiced = true;
+    } else {
+        t.objectiveTension = undefined;
+    }
+
     t.objective = next;
 
     // Only narrate genuinely new intentions, and never the null one — a line
@@ -400,9 +510,47 @@ export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
     }
 }
 
+/**
+ * §3.4: the hesitation beat.
+ *
+ * The most human-reading line the simulation can produce, and it costs one
+ * comparison: a tribute who is about to do one thing, visibly weighing the
+ * other. Narrated once per re-evaluation, and only for pairs where the
+ * conflict is legible — nobody needs to watch somebody agonise over which
+ * patch of forest to forage in.
+ */
+function hesitate(ctx: SimContext, t: Tribute, chosen: Objective, other: Objective) {
+    const name = (id: string) => ctx.state.tributes.find(o => o.id === id)?.name ?? 'someone';
+    const describe = (o: Objective): string | undefined => {
+        switch (o.kind) {
+            case 'hunt': return `going after ${name(o.targetId)}`;
+            case 'stalk': return `following ${name(o.targetId)}`;
+            case 'protect': return `getting to ${name(o.wardId)}`;
+            case 'flee': return 'getting out';
+            case 'hold': return `staying where they are`;
+            case 'wait': return `sitting on ${o.zone}`;
+            case 'reach': return {
+                water: 'finding water', shelter: 'finding somewhere to sleep',
+                feast: 'the feast', ally: 'reaching their allies', forage: 'finding food',
+            }[o.reason];
+            default: return undefined;
+        }
+    };
+    const a = describe(chosen);
+    const b = describe(other);
+    if (!a || !b) return;
+    ctx.logEvent(
+        `${t.name} stands still for a moment longer than they should, weighing ${a} against ${b}. They settle on ${a}, and it does not look like a decision they are finished making.`,
+        [t.id],
+        { category: 'travel' }
+    );
+}
+
 function sameObjective(a: Objective | undefined, b: Objective): boolean {
     if (!a || a.kind !== b.kind) return false;
     if (a.kind === 'hunt' && b.kind === 'hunt') return a.targetId === b.targetId;
+    if (a.kind === 'stalk' && b.kind === 'stalk') return a.targetId === b.targetId;
+    if (a.kind === 'wait' && b.kind === 'wait') return a.zone === b.zone;
     if (a.kind === 'protect' && b.kind === 'protect') return a.wardId === b.wardId;
     if (a.kind === 'reach' && b.kind === 'reach') return a.zone === b.zone;
     if (a.kind === 'hold' && b.kind === 'hold') return a.zone === b.zone;
@@ -424,7 +572,9 @@ export function objectiveZone(ctx: SimContext, t: Tribute): string | undefined {
         case 'reach':
             return objective.zone;
         case 'hold':
+        case 'wait':
             return objective.zone;
+        case 'stalk':
         case 'hunt': {
             const target = state.tributes.find(o => o.id === objective.targetId && o.status === 'alive');
             if (!target) return undefined;
@@ -455,7 +605,7 @@ export function objectiveStep(ctx: SimContext, t: Tribute, options: Zone[]): Zon
     if (!objective || objective.kind === 'survive') return undefined;
     const collapsed = ctx.state.collapsedZones ?? [];
 
-    if (objective.kind === 'hold') {
+    if (objective.kind === 'hold' || objective.kind === 'wait') {
         // Holding is expressed by not moving, which the caller handles.
         return undefined;
     }
@@ -478,7 +628,7 @@ export function objectiveStep(ctx: SimContext, t: Tribute, options: Zone[]): Zon
 
 /** True when the objective says to stay put this cycle. */
 export function objectiveHolds(t: Tribute): boolean {
-    return t.objective?.kind === 'hold';
+    return t.objective?.kind === 'hold' || t.objective?.kind === 'wait';
 }
 
 /** Short label for the UI, so a reader can see what a tribute is trying to do. */
@@ -488,6 +638,8 @@ export function objectiveLabel(state: { tributes: Tribute[] }, t: Tribute): stri
     const name = (id: string) => state.tributes.find(o => o.id === id)?.name ?? 'someone';
     switch (objective.kind) {
         case 'hunt': return `Hunting ${name(objective.targetId)}`;
+        case 'stalk': return `Shadowing ${name(objective.targetId)}`;
+        case 'wait': return `Waiting at ${objective.zone}`;
         case 'protect': return `Protecting ${name(objective.wardId)}`;
         case 'hold': return `Holding ${objective.zone}`;
         case 'flee': return `Fleeing ${objective.from}`;

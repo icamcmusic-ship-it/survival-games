@@ -10,6 +10,28 @@
 
 /** Per-cycle vitals drain and the thresholds that start hurting a tribute. */
 export const VITALS = {
+    /**
+     * §3.1: how much one point of endurance either side of average is worth
+     * per cycle, and how much of that carries into the night's recovery. Small
+     * on purpose — over a fourteen-day run it is the difference between a
+     * tribute who is still walking and one who is not, without ever being the
+     * headline number on the sheet.
+     */
+    endurancePerPoint: 0.6,
+    enduranceRecoveryShare: 0.5,
+    /**
+     * §3.5: the interaction matrix. Each coupling is a fraction of how far
+     * past its threshold the driving vital is, applied per cycle.
+     */
+    interactionThirstFrom: 55,
+    thirstFatigueCoupling: 0.06,
+    interactionFatigueFrom: 65,
+    fatigueSanityCoupling: 0.05,
+    interactionHungerFrom: 70,
+    starvedClotPenalty: 0.35,
+    /** §3.1: willpower's cut of the fatigue-to-sanity coupling, per point. */
+    willpowerSanityGuard: 0.08,
+    willpowerGuardFloor: 0.4,
     hungerDrain: 10,
     thirstDrain: 15,
     fatigueDayDrain: 10,
@@ -422,6 +444,29 @@ export const PROFICIENCY = {
      */
     lateRunGainPerDay: 0.09,
     lateRunGainCap: 0.9,
+    /**
+     * §3.9: the bottom of the curve. Proficiency averaged 1.85 against a cap
+     * of 6 across 400 runs — flat enough that most tributes never felt a
+     * skill. The first two levels now come roughly twice as fast, which is
+     * both how skill acquisition actually works and what makes the bands
+     * below reachable inside an eight-day run.
+     */
+    earlyBand: 2,
+    earlyGainMultiplier: 1.9,
+    /** §3.9: the visible bands, in prose and on the tribute sheet. */
+    competentBand: 2,
+    skilledBand: 3.5,
+    expertBand: 5,
+    /**
+     * §3.10: learning by watching somebody who knows how. Gated on
+     * intelligence, worth a fraction of doing it yourself, and only from
+     * somebody genuinely ahead of you.
+     */
+    observeMinTeacher: 2,
+    observeMinGap: 1,
+    observeBaseChance: 0.18,
+    observePerIntelligence: 0.05,
+    observeShare: 0.5,
     /** Forage chance added per point of forage proficiency. */
     forageWeight: 0.05,
     /** Combat power added per point of the relevant weapon proficiency. */
@@ -817,6 +862,29 @@ export const EARNED_TRAIT_RULES = {
     silentStepCycles: 5,
     /** Bodies stripped before the cameras call it what it is. */
     vultureCorpses: 4,
+
+    /**
+     * §3.2: traits stop being one-way.
+     *
+     * A trait list used to only ever grow, which made the earned-trait system —
+     * the closest thing the game has to an arc — a set of badges rather than a
+     * character changing. Three shapes, all resolved in `engine/traitArcs.ts`:
+     *
+     *   decay      a trait the run has disproved burns off (Softhearted, after
+     *              the third kill; Skittish, once they stop being afraid);
+     *   conflict   two traits that cannot both be true resolve into a third
+     *              (Pacifist + Bloodied -> Broken);
+     *   evolution  a chain a tribute walks down as it keeps happening
+     *              (Skittish -> Haunted -> Hollow).
+     */
+    softheartedShedKills: 3,
+    /** Consecutive cycles carrying Haunted before it can become Hollow. */
+    hollowCycles: 6,
+    /** Sanity at or below which Haunted is eligible to become Hollow. */
+    hollowSanity: 35,
+    /** Cycles a Skittish tribute must hold high resolve before the fear burns off. */
+    skittishShedCycles: 5,
+    skittishShedResolve: 70,
 } as const;
 
 /**
@@ -1170,6 +1238,28 @@ export const MOVEMENT = {
  * legible in the chronicle without outliving the situation that produced it.
  */
 export const OBJECTIVES = {
+    /**
+     * §3.3: stalking — following without engaging. Taken instead of a hunt by
+     * anyone who has found somebody they are not confident of beating today.
+     */
+    stalkHealth: 55,
+    stalkFear: 35,
+    stalkCycles: 3,
+    /** §3.3: waiting at a chokepoint. Cheap, patient, and not the same as holding. */
+    waitFatigue: 45,
+    waitCycles: 2,
+    /**
+     * §3.4: goal conflict. When the winning objective's priority tier is
+     * within this of the runner-up's, the tribute is genuinely torn — worth a
+     * hesitation beat, and liable to flip under pressure.
+     */
+    tensionMargin: 10,
+    /** Odds a torn tribute takes the other option instead, per re-evaluation. */
+    tensionFlipChance: 0.3,
+    /** Extra flip odds when they are already coming apart (low resolve, low sanity). */
+    tensionFlipUnderPressure: 0.3,
+    /** Resolve/sanity at or below which "under pressure" applies. */
+    tensionPressureBelow: 40,
     // ---- A2: how far an archetype's declared objective bias may move a gate ----
     /** Ward-noticing threshold shift, per point of `objectiveBias.protect`. */
     wardBiasHealth: 25,
@@ -1321,6 +1411,26 @@ export const ZONE_EFFECTS = {
     /** A localised freeze on top of whatever the arena's own climate is doing. */
     frozenFatigue: 6,
     frozenFrostbiteChance: 0.12,
+
+    /**
+     * §5.2: abundance, the effect the set was missing. Every other kind is a
+     * punishment, which meant the arena could only ever take. A bloom is a
+     * short window where a zone genuinely feeds people — and it is exactly as
+     * dangerous as good ground always is, because everyone else can see it too.
+     */
+    bloomingDuration: 3,
+    bloomingResourceLift: 0.35,
+    bloomingSanityRelief: 3,
+
+    /**
+     * §5.2: contamination that never lifts and slowly widens. Modelled with a
+     * very long expiry rather than a true infinity so nothing downstream has to
+     * special-case an effect list that never shrinks.
+     */
+    irradiatedDuration: 999,
+    irradiatedDamage: 6,
+    irradiatedSanityLoss: 3,
+    irradiatedCreepChance: 0.06,
 
     /** Contamination: a toxin in the ground or the air, zone-scoped. */
     contaminatedPoisonChance: 0.1,
@@ -2400,6 +2510,20 @@ export const GENERATION = {
      */
     strengthCapAtMinAge: 5,
     strengthCapPerYear: 1,
+    /**
+     * §3.1: the endurance and willpower age curves.
+     *
+     * Endurance rises gently with age and never spikes — it is years of
+     * walking, not a growth spurt. Willpower is flat across most of the band
+     * and dips hard at the bottom of it: the twelve- and thirteen-year-olds
+     * are the ones who break under grief, which is the whole reason the trait
+     * was split out of per-run resolve.
+     */
+    endurancePerYear: 0.35,
+    willpowerYoungAge: 13,
+    willpowerYoungPenalty: 1,
+    willpowerPlateauYears: 2,
+    willpowerPerYear: 0.5,
     /** Spread of the per-tribute talent roll, on top of archetype and district. */
     talentSpread: 3,
     /** How many attributes get the "spike / dump" treatment for identity. */
@@ -2910,6 +3034,13 @@ export const TRAINING_FLOOR = {
  * that swings inside one cycle is a mood rather than an arc.
  */
 export const RESOLVE = {
+    /**
+     * §3.1: willpower's grip on the per-cycle drift. A bad day costs less and
+     * a good day is worth a little more; the downside share is capped at the
+     * drift itself so willpower can blunt a collapse but never invert it.
+     */
+    willpowerPerPoint: 0.35,
+    willpowerUpsideShare: 0.5,
     start: 70,
     max: 100,
     /**

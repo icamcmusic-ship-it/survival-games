@@ -1,7 +1,7 @@
 import { InjurySite, Tribute } from '../models/types';
 import { BLEEDING, VITALS } from '../data/balance';
 import { SimContext } from './context';
-import { profOf, trainProficiency } from './proficiency';
+import { profOf, trainProficiency, observeProficiency } from './proficiency';
 import { traitMod } from '../data/traits';
 import { isAggressiveStance } from '../data/stances';
 
@@ -168,7 +168,9 @@ export function attemptFieldDressing(ctx: SimContext, patient: Tribute, medic: T
         return false;
     }
 
-    trainProficiency(medic, 'medicine');
+    trainProficiency(medic, 'medicine', ctx);
+    // §3.10: field medicine is the most watchable skill in the arena.
+    observeProficiency(ctx, medic, 'medicine');
     const next = Math.max(0, severity - BLEEDING.dressSeverityDrop);
     if (next <= 0) {
         clearBleeding(patient);

@@ -16,7 +16,7 @@ import { DEBTS } from '../data/balance';
 import { giveItem, hasTool, itemPhrase, mintItem, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { attemptFieldDressing, clearBleeding, healInjury, injure, injuryGrade, openWound, shouldDressWound } from './wounds';
-import { profOf, trainProficiency } from './proficiency';
+import { profOf, trainProficiency, observeProficiency } from './proficiency';
 import { attemptFieldcraft, poisonWeapon } from './fieldcraft';
 import { composureOf } from './composure';
 import { sanityBandOf } from './sanityBands';
@@ -499,7 +499,9 @@ function attemptForage(
     const fresh = mintItem(ctx.rng, item, QUALITY_BIAS.scavenged);
     if (fresh.type === 'food' && fresh.spoilage !== undefined) fresh.spoilage += spoilageBonus(t);
     const dropped = giveItem(t, fresh);
-    trainProficiency(t, 'forage');
+    trainProficiency(t, 'forage', ctx);
+    // §3.10: anybody standing here watched them do it.
+    observeProficiency(ctx, t, 'forage');
     depleteZone(ctx.state, t.zone, ZONES.depletionPerForage);
     ctx.logEvent(
         fill(ctx.pickText(flavor.actions.forage), { tribute: t.name, zone: t.zone, item: itemPhrase(fresh) }),

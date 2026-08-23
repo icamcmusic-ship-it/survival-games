@@ -296,6 +296,16 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         earned: true,
         mods: { sanityDrain: 0.3, allianceAffinity: -0.25, retreat: -0.05 },
     },
+    'Broken': {
+        info: 'Earned the moment what they swore they would not do became what they had done. §3.2: the resolution of Pacifist and Bloodied held at once — they no longer flinch from it and no longer believe in anything either.',
+        earned: true,
+        mods: { killSanity: -0.2, sanityDrain: 0.4, resolveDrift: -1, allianceAffinity: -0.3, retreat: -0.1 },
+    },
+    'Hollow': {
+        info: 'The end of the road that started at Skittish and went through Haunted. Nothing frightens them any more, because nothing reaches them any more.',
+        earned: true,
+        mods: { fearGain: -0.8, sanityDrain: 0.25, allianceAffinity: -0.4, retreat: -0.15, excitement: 0.2 },
+    },
     'Hardened': {
         info: 'Earned surviving a mutt. Whatever the Gamemakers send next, they have already met worse.',
         earned: true,

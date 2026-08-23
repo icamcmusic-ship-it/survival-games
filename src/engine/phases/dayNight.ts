@@ -41,6 +41,7 @@ import { resolveTruces } from '../parley';
 import { repayDebts, tickDistrictBonds } from '../debts';
 import { enforceCharters } from '../allianceCharter';
 import { earnTrait } from '../earnedTraits';
+import { tickTraitArcs } from '../traitArcs';
 import { gamemakerProfile } from '../../data/gamemakers';
 import { arenaHasLaw, arenaIsSilent, escalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
@@ -196,6 +197,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // this cycle actually did to them, then the ones who have run out act on it.
     tickResolve(ctx);
     resolveBreakdowns(ctx);
+    // 4a-ii. §3.2: and whether this cycle changed who they are. Traits decay,
+    // collide and evolve here, after everything that could have earned one.
+    tickTraitArcs(ctx);
 
     // 4b. The arena's own rule — the clock, the tide, the blackout schedule.
     // Runs after movement and encounters so it acts on where tributes actually

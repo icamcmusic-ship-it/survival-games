@@ -399,7 +399,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     // §3.2: and landing one on somebody you had only heard stories about is
     // how you learn the stories were bigger than the person.
     reduceFear(attacker, defender.id, FEAR.realityCorrection);
-    if (weapon) trainProficiency(attacker, weaponProficiency(weapon.weaponClass));
+    if (weapon) trainProficiency(attacker, weaponProficiency(weapon.weaponClass), ctx);
     clampTribute(defender);
     return damage;
 }

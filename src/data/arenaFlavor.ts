@@ -1,4 +1,4 @@
-import { Arena, Attributes, Terrain, ZoneEffectKind } from '../models/types';
+import { Arena, ArenaLawId, Attributes, Terrain, ZoneEffectKind } from '../models/types';
 import { proceduralArenaFlavor } from './proceduralFlavor';
 
 /**
@@ -64,6 +64,30 @@ export interface ArenaEventDef {
      * times out of four.
      */
     weight?: number;
+    /**
+     * §7e: stable identity, needed by anything that has to refer to a specific
+     * event later — `oncePerRun` bookkeeping and `chain`. Optional: the great
+     * majority of events are anonymous and stay that way.
+     */
+    id?: string;
+    /** §7e: fires at most once in a run. Requires `id`. */
+    oncePerRun?: boolean;
+    /**
+     * §7e: preconditions on arena *state* rather than on terrain alone, so an
+     * event can be written for "this zone is already on fire", "after dark",
+     * "when the field is down to six" or "only under this law".
+     */
+    requires?: {
+        effect?: ZoneEffectKind;
+        time?: 'day' | 'night';
+        minSurvivors?: number;
+        maxSurvivors?: number;
+        law?: ArenaLawId;
+    };
+    /** §7e: id of the event this one leads to, fired on the same tribute next cycle. */
+    chain?: string;
+    /** §7e: names everyone who saw it, whether or not the event itself touched them. */
+    witnesses?: boolean;
 }
 
 export interface ArenaActions {

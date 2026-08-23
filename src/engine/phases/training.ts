@@ -81,6 +81,11 @@ const STATION_SKILL: Record<keyof Attributes, Proficiency> = {
     // ('sponsor pitch booth', 'mock-interview couch') and no proficiency
     // behind it, so three days there bought raw charisma and nothing else.
     charisma: 'persuasion',
+    // §3.1: the two new attributes train on the floor like everything else —
+    // the endurance course is a rope and a treadmill, and the willpower
+    // station is the one nobody talks about.
+    endurance: 'forage',
+    willpower: 'medicine',
 };
 
 /**
