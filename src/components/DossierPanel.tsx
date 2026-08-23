@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GameState, Tribute } from '../models/types';
 import {
     Heart, MapPin, Settings, Skull, Star, Swords, TrendingDown, TrendingUp, Minus, Users,
@@ -74,6 +74,29 @@ export function DossierPanel({
     const coins = useStore(gameStore, s => s.coins);
     const bets = useStore(gameStore, s => s.bets);
     const [oddsExpanded, setOddsExpanded] = useState(false);
+
+    /**
+     * §2.4: what just changed.
+     *
+     * After Proceed the tribute list's numbers jump with nothing saying which
+     * of them moved. Health deltas are held for one cycle beside the number
+     * that moved, which is where a reader is already looking.
+     */
+    const prevHealth = useRef<Record<string, number>>({});
+    const [healthDelta, setHealthDelta] = useState<Record<string, number>>({});
+    useEffect(() => {
+        const deltas: Record<string, number> = {};
+        gameState.tributes.forEach(t => {
+            const before = prevHealth.current[t.id];
+            const now = t.status === 'alive' ? t.health : 0;
+            if (before !== undefined && before !== now) deltas[t.id] = now - before;
+            prevHealth.current[t.id] = now;
+        });
+        if (Object.keys(deltas).length > 0) setHealthDelta(deltas);
+        // Recomputed at phase boundaries, not on every render, so the deltas
+        // describe the cycle just played rather than flickering to zero.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameState.phase, gameState.day]);
     const [muttTargetId, setMuttTargetId] = useState('');
     const [gmZone, setGmZone] = useState('');
 
@@ -152,7 +175,18 @@ export function DossierPanel({
                                                 <span className="truncate">Day {t.dayOfDeath ?? '—'} · {t.causeOfDeath ?? 'Eliminated'}</span>
                                             ) : (
                                                 <>
-                                                    <span className="flex items-center gap-1"><Heart className="w-3 h-3 text-[var(--cat-death)]" /> {t.health}</span>
+                                                    <span className="flex items-center gap-1">
+                                                        <Heart className="w-3 h-3 text-[var(--cat-death)]" /> {t.health}
+                                                        {!!healthDelta[t.id] && (
+                                                            <span
+                                                                className="font-bold"
+                                                                style={{ color: healthDelta[t.id] > 0 ? 'var(--cat-alliance)' : 'var(--cat-death)' }}
+                                                                title={`${healthDelta[t.id] > 0 ? 'Recovered' : 'Lost'} ${Math.abs(healthDelta[t.id])} health last cycle`}
+                                                            >
+                                                                {healthDelta[t.id] > 0 ? '↑' : '↓'}{Math.abs(healthDelta[t.id])}
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                     <span className="flex items-center gap-1"><Swords className="w-3 h-3" /> {t.kills}</span>
                                                     <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3 text-[var(--cat-travel)]" /> {arenaSealed ? '❓' : t.zone}</span>
                                                     <span className="w-full truncate text-[var(--red)]">{objectiveLabel(gameState, t)}</span>

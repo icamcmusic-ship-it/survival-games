@@ -3406,3 +3406,81 @@ export const ARCHETYPE_HOOKS = {
     ghostNamingField: 8,
     namingFear: 5,
 } as const;
+
+
+/**
+ * §1.5: the hand-authored arena signatures' own numbers.
+ *
+ * `arenaSignature.ts` was the single worst offender in the undeclared-knob
+ * baseline — 21 sites, more than any other file — and it is one of the two
+ * files A1/A2 expanded most, so leaving it undeclared would have doubled the
+ * drift alongside the new work. Each signature is a named arena mechanic, so
+ * the knobs are grouped by the arena rather than by what they do to a vital:
+ * tuning "the tide" means editing one block.
+ */
+export const ARENA_SIGNATURES = {
+    /** The Clockwork Island: the hour turns and one sector pays for it. */
+    clock: {
+        dodgeBase: 0.25,
+        dodgePerAgility: 0.04,
+    },
+    /** The Vault: every light fails at once, on a schedule. */
+    vault: {
+        stumbleChance: 0.3,
+        stumbleSanity: 8,
+    },
+    /** The Drowned Islands: the tide comes up over a sector in the dark. */
+    tide: {
+        /** Chance the tide takes the busiest sector rather than a random one. */
+        busiestChance: 0.6,
+        swimBase: 0.3,
+        swimPerStrength: 0.05,
+        swimFatigue: 15,
+        caughtFatigue: 25,
+    },
+    /** The Solar Desert: the Gamemakers hold noon in place. */
+    stalledSun: {
+        thirst: 22,
+        fatigue: 12,
+        burnChance: 0.25,
+    },
+    /** The Frozen Wasteland: the cold snap. */
+    freeze: {
+        fatigue: 18,
+        frostbiteChance: 0.3,
+    },
+    /** The Concrete Jungle: something enormous comes down. */
+    collapse: {
+        dodgeBase: 0.35,
+        dodgePerAgility: 0.04,
+    },
+    /** The Toxic Bog: the swamp exhales. */
+    bog: {
+        /** Chance the bog exhales at all this cycle. */
+        fireChance: 0.5,
+        sanity: 22,
+    },
+    /** The Ashfall Basin: the fall thickens. */
+    ashfall: {
+        filteredFatigue: 4,
+        unfilteredFatigue: 12,
+        thirst: 8,
+        chokeChance: 0.2,
+    },
+    /** The Salt Flats: nowhere at all to stand out of the light. */
+    saltFlats: {
+        thirst: 10,
+        glareChance: 0.2,
+        glareSanity: 6,
+    },
+    /** The Spore Fields: the bloom, and the gamble it is. */
+    bloom: {
+        /** Chance the bloom happens at all this cycle. */
+        fireChance: 0.55,
+        /** Chance a tribute standing in it eats. */
+        eatChance: 0.7,
+        safeBase: 0.4,
+        safePerIntelligence: 0.06,
+        poisonSanity: 18,
+    },
+} as const;
