@@ -109,6 +109,40 @@ export function pickLeader(members: Tribute[]): Tribute {
  * "until the final eight" has committed to a public deadline.
  */
 /**
+ * §4.4: who does what inside the group.
+ *
+ * An Alliance was a leaderId and a flat memberIds, which meant a coup changed
+ * one string and a betrayal had no natural target — everyone in the group was
+ * mechanically interchangeable, so the only thing that could distinguish them
+ * was regard. Roles are assigned once on formation from what each member is
+ * actually best at, and each one is a job somebody else can want:
+ *
+ *   quartermaster  holds the cache. The obvious knife target, and the member a
+ *                  charter breach over rations is measured against.
+ *   scout          moves ahead of the group; their sightings are the group's.
+ *   muscle         the one sent to the front of a fight.
+ *   medic          patches the others up before themselves.
+ *
+ * One member may hold more than one role in a pair; a role is never assigned
+ * to somebody who is not in the group.
+ */
+export function assignRoles(members: Tribute[], leader: Tribute): Alliance['roles'] {
+    if (members.length < 2) return undefined;
+    const best = (score: (t: Tribute) => number) =>
+        members.reduce((top, m) => (score(m) > score(top) ? m : top)).id;
+    return {
+        // Not the leader where the group is big enough to spread the work: a
+        // leader who also holds the supplies is a dictatorship, not a pact.
+        quartermaster: best(t =>
+            t.attributes.intelligence + t.attributes.strength * 0.5
+            + (members.length > 2 && t.id === leader.id ? -4 : 0)),
+        scout: best(t => t.attributes.stealth * 1.4 + t.attributes.agility),
+        muscle: best(t => t.attributes.strength * 1.5 + t.kills),
+        medic: best(t => t.attributes.intelligence * 1.2 + (t.proficiencies?.medicine ?? 0) * 2),
+    };
+}
+
+/**
  * §4.5: names the group for the broadcast. The Capitol brands everything it
  * televises; an alliance the commentators can refer to by name is one the
  * audience follows week to week.
@@ -153,9 +187,27 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         sharedCache: [],
         pact,
         charter: isLoversBond ? [] : rollCharter(ctx.rng, members),
+        // §4.4: lovers are not an organisation and do not get assigned jobs.
+        roles: isLoversBond ? undefined : assignRoles(members, leader),
     };
     records[id] = record;
     announceCharter(ctx, record, members);
+
+    // §4.4: the division of labour, said out loud. Only for groups big enough
+    // for it to be a division rather than a description of a pair.
+    if (record.roles && members.length >= 3) {
+        const named = (role: keyof NonNullable<Alliance['roles']>) =>
+            members.find(m => m.id === record.roles?.[role])?.name;
+        const quartermaster = named('quartermaster');
+        const scout = named('scout');
+        if (quartermaster && scout) {
+            ctx.logEvent(
+                `${quartermaster} ends up holding the supplies and ${scout} ends up walking point. Nobody votes on it; it is simply what each of them is obviously for.`,
+                members.map(m => m.id),
+                { category: 'alliance' }
+            );
+        }
+    }
 
     if (pact !== 'no-pact') {
         ctx.logEvent(
@@ -185,7 +237,11 @@ export function mergeAllianceRecords(ctx: SimContext, keepId: string, absorbedId
 
     const strictness: Record<Alliance['pact'], number> = { 'no-pact': 0, 'until-the-final-eight': 1, 'to-the-end': 2 };
     keep.memberIds = members.map(m => m.id);
-    keep.leaderId = pickLeader(members).id;
+    const merged = pickLeader(members);
+    keep.leaderId = merged.id;
+    // §4.4: a merged group re-divides the work across the whole roster, the
+    // same way it re-elects.
+    if (keep.roles) keep.roles = assignRoles(members, merged);
     if (absorbed) {
         keep.sharedCache = [...keep.sharedCache, ...absorbed.sharedCache].slice(0, ALLIANCES.cacheMaxSize);
         keep.formedCycle = Math.min(keep.formedCycle, absorbed.formedCycle);

@@ -64,6 +64,11 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         // displayed warmth stays the betrayer's hand a little, because a
         // devoted ally is worth more alive than looted.
         weight *= Math.max(0.3, 1 - Math.max(0, shownRegard(m, betrayer.id)) / 250);
+        // §4.4: the quartermaster holds the cache, which makes them the one
+        // member whose death pays for itself. A role is a reason, which is
+        // exactly what a flat memberIds list could never give a betrayal.
+        const record = allianceOf(ctx.state, betrayer.allianceId);
+        if (record?.roles?.quartermaster === m.id) weight *= ALLIANCES.betrayalQuartermasterWeight;
         // Someone who already burned you goes to the top of the list.
         if (ensureMemory(betrayer).betrayedBy.includes(m.id)) weight *= ALLIANCES.betrayedFirstStrikeWeight;
         // Someone who never stops watching is a much worse mark.
@@ -778,7 +783,24 @@ function growRomance(ctx: SimContext) {
                 const performChance = ROMANCE.performedChance
                     * (planned ? ROMANCE.showmanceMultiplier : 1)
                     * Math.pow(ROMANCE.latenessDecay, lateness);
-                if (oneSided >= ROMANCE.performedMinRegard && ctx.rng.chance(performChance)) {
+                // §4.1: regard floor *and* asymmetry. The pair that makes this
+                // work is one tribute in deep and one who is not, which the
+                // old absolute-ceiling gate could not express — it selected
+                // for mutual warmth just below the romance threshold, which is
+                // the one shape a performance is least likely to come out of.
+                // Either shape qualifies: somebody far enough gone that it
+                // plays on its own (the old absolute gate, now the fallback),
+                // or a gap wide enough that the performance is the story —
+                // one tribute in deep and one who has noticed. Requiring both
+                // at once measured worse than the original: a pair with a
+                // sustained contact streak is warm on both sides almost by
+                // construction, so asymmetry-and-regard selected for nearly
+                // nobody. Asymmetry is the interesting case, not the only one.
+                const gap = Math.abs(getRel(t1, t2.id) - getRel(t2, t1.id));
+                const qualifies = gap >= ROMANCE.performedMinAsymmetry
+                    ? oneSided >= ROMANCE.performedMinRegard
+                    : oneSided >= ROMANCE.performedHighRegard;
+                if (qualifies && ctx.rng.chance(performChance)) {
                     // The planner performs if either could: the whole point
                     // of the interview beat was choosing this in advance.
                     let smitten = getRel(t1, t2.id) >= getRel(t2, t1.id) ? t1 : t2;
@@ -786,6 +808,15 @@ function growRomance(ctx: SimContext) {
                     if (smitten.interviewAngle === 'showmance' && performer.interviewAngle !== 'showmance'
                         && getRel(performer, smitten.id) >= ROMANCE.performedMinRegard) {
                         [smitten, performer] = [performer, smitten];
+                    }
+                    // §4.1: a showmance planned on Caesar's couch is a decision
+                    // already taken. Charisma decides how well it plays, not
+                    // whether it happens — a planner who cannot sell it sells
+                    // it badly, which is its own kind of television.
+                    if (performer.interviewAngle === 'showmance') {
+                        declareLovers(ctx, smitten, performer, performer);
+                        if (++declared >= ROMANCE.maxPerCycle) return;
+                        continue;
                     }
                     // Playing it well is a charisma job, and the crowd is the
                     // only audience that matters.

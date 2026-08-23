@@ -10,8 +10,7 @@ import { processSponsors } from '../sponsors';
 import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
-    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting,
-} from '../memory';
+    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting, shareScoutSighting } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { isNoticed } from '../stealth';
@@ -126,6 +125,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         const here = currentAlive.filter(o => o.status === 'alive' && o.zone === t.zone);
         const hostiles = here.filter(o => o.id !== t.id && o.allianceId !== t.allianceId).length;
         noteSighting(ctx.state, t, t.zone, hostiles, depletionOf(ctx.state, t.zone));
+        // §4.4/§5.9: if this is the group's scout, that sighting belongs to
+        // everybody wearing the same colours.
+        shareScoutSighting(ctx.state, t, t.zone, hostiles, depletionOf(ctx.state, t.zone));
         // §5.6: high ground is a watchtower. A tribute on elevation reads the
         // zones its sightlines reach — who is moving down there — and feeds it
         // into the same memory the sighting layer uses, so a ridge camp is

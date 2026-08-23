@@ -2049,13 +2049,23 @@ export const ROMANCE = {
      * alliance formation gained its same-zone gate: fewer organic alliances
      * means less sustained contact for the streak to build on.
      */
-    performedChance: 0.08,
+    performedChance: 0.13,
     /**
      * Regard the smitten party needs. Deliberately below `threshold`: a
      * performed bond does not need the mutual devotion a real one does, only
      * one person who has fallen far enough to be convincing about it.
      */
-    performedMinRegard: 72,
+    performedMinRegard: 50,
+    /**
+     * §4.1: the gate that was missing. A performed bond is not "somebody likes
+     * you a great deal", it is asymmetry — one person who has fallen and one
+     * who has noticed. Requiring the *gap* rather than an absolute ceiling is
+     * both the actual dramatic condition and reachable: the old 72-regard
+     * floor behind four other conjunctive gates fired 8 times in 400 runs.
+     */
+    performedMinAsymmetry: 30,
+    /** Regard that carries a performance on its own, with no asymmetry to it. */
+    performedHighRegard: 72,
     /** Charisma needed to sell a romance you are not feeling. */
     performerCharisma: 5,
     /** What the performer shows, as opposed to what they feel. */
@@ -2105,6 +2115,8 @@ export const ROMANCE = {
 
 /** Alliance formation and dissolution. */
 export const ALLIANCES = {
+    /** §4.4: how much more attractive a mark the member holding the cache is. */
+    betrayalQuartermasterWeight: 1.6,
     /**
      * A2: the cache value at or below which a Mercenary considers the contract
      * finished. Zero would mean literally empty, which almost never happens;
