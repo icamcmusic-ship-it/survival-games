@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
+import { ARENAS, STARTER_ARENA_IDS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { GameConfig } from '../models/types';
-import { Play, ChevronDown, ChevronRight, ArrowRight, History } from 'lucide-react';
+import { Play, ChevronDown, ChevronRight, ArrowRight, History, Lock } from 'lucide-react';
 import { gameActions, gameStore, readSavedRun } from '../store/gameStore';
 import type { SlotSummary } from '../store/gameStore';
 import { useStore } from '../store/createStore';
@@ -93,6 +93,12 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const seenArenas = new Set(panem.arenasSeen ?? []);
     const unseenArena = (id: string, name: string) =>
         panem.runs > 0 && id !== 'procedural' && id !== 'random-hidden' && !seenArenas.has(name);
+    // §Special requests: an arena is unlocked if it is one of the starters, if
+    // the player has played it before (`arenasSeen`, keyed by display name), or
+    // if it is the sealed draw — which is never gated, because it is how the
+    // rest of the roster is reached.
+    const arenaUnlocked = (id: string, name: string) =>
+        id === 'random-hidden' || STARTER_ARENA_IDS.includes(id) || seenArenas.has(name);
     const [savedRun, setSavedRun] = useState(readSavedRun);
     // §2.1: the manual slots alongside the rolling autosave.
     const [slots, setSlots] = useState<Array<SlotSummary | null>>(() => gameActions.readSaveSlots());
@@ -113,12 +119,18 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
         onStart(trimmedSeed || randomSeed(), arenaId, gamemakerMode, config, forceQuell);
     };
 
+    // §Special requests: the sealed draw leads, because it is both the way a
+    // player who does not want to choose starts a run and the way locked
+    // arenas are reached. The explicit 'procedural' entry is gone from the
+    // picker — the generator still backs the sealed draw and the procedural
+    // achievements, so none of `arenaGenerator.ts`, `proceduralFlavor.ts` or
+    // `meta-every-biome` is affected; it is only no longer a thing the player
+    // picks by name.
     const arenaOptions = [
-        ...ARENAS.map(a => ({ id: a.id, name: a.name, description: a.description })),
-        { id: 'procedural', name: '🎲 Procedural Arena', description: 'The Gamemakers build a fresh arena from your seed — biome, sectors, mutts and hazards generated on the spot.' },
         // No SIGNATURE_BLURBS entry on purpose — the whole point is that
         // nothing about this arena is knowable until the bloodbath.
         { id: 'random-hidden', name: '❓ Random Arena (Hidden)', description: 'The Capitol picks. Its name, its layout, its rules — none of it is shown until the tributes are already standing on the plates.' },
+        ...ARENAS.map(a => ({ id: a.id, name: a.name, description: a.description })),
     ];
 
     return (
@@ -202,7 +214,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     {(() => {
                         // The Games profile is a pure function of the seed, so the
                         // temperament the player is committing to can be shown live.
-                        const preview = gamesProfileFor(trimmedSeed || seed, forceQuell);
+                        const preview = gamesProfileFor(trimmedSeed || seed, forceQuell, undefined, config.vanillaRules === true);
                         const t = preview.temperament;
                         const mults: string[] = [];
                         if (t.hazardRate !== 1) mults.push(`hazards ×${t.hazardRate}`);
@@ -225,28 +237,47 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     <div className="mt-2">
                         {arenaOptions.map(a => {
                             const selected = arenaId === a.id;
+                            const unlocked = arenaUnlocked(a.id, a.name);
                             return (
                                 <button
                                     key={a.id}
-                                    onClick={() => setArenaId(a.id)}
+                                    onClick={() => unlocked && setArenaId(a.id)}
+                                    disabled={!unlocked}
                                     aria-pressed={selected}
+                                    // §2: the picker conveyed selection through colour and an icon
+                                    // swap alone, unlike the patron picker beside it. The state is
+                                    // now in the accessible name as well as on screen.
+                                    // The accessible name has to match what is on
+                                    // screen: labelling a locked entry with the arena's
+                                    // real name would read the thing the lock is hiding
+                                    // out loud to exactly the users relying on it.
+                                    aria-label={unlocked
+                                        ? `${a.name}${selected ? ' — selected' : ''}`
+                                        : 'Undiscovered arena — locked'}
+                                    title={unlocked ? undefined : 'Not discovered yet — reach it through a sealed draw'}
                                     className={`w-full text-left flex items-center justify-between gap-4 transition-colors ${
                                         selected
                                             ? 'bg-[var(--ink)] px-4 py-3.5'
-                                            : 'px-1 py-3.5 border-b-2 border-[var(--line)] last:border-0 hover:bg-[var(--paper-flush)]'
+                                            : `px-1 py-3.5 border-b-2 border-[var(--line)] last:border-0 ${
+                                                unlocked ? 'hover:bg-[var(--paper-flush)]' : 'opacity-45 cursor-not-allowed'
+                                            }`
                                     }`}
                                 >
                                     <div className="min-w-0">
                                         <div className={`font-black uppercase text-base ${selected ? 'text-white' : 'text-[var(--ink)]'}`}>
-                                            {a.name}
-                                            {unseenArena(a.id, a.name) && (
+                                            {unlocked ? a.name : '🔒 Undiscovered Arena'}
+                                            {unlocked && unseenArena(a.id, a.name) && (
                                                 <span className={`ml-2 align-middle font-mono text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 border ${selected ? 'text-[#c9b8a0] border-[#c9b8a0]' : 'text-[var(--red)] border-[var(--red)]'}`}>
                                                     New to you
                                                 </span>
                                             )}
                                         </div>
-                                        <div className={`text-xs mt-0.5 ${selected ? 'text-[#c9b8a0]' : 'text-[var(--color-ink-500)]'}`}>{a.description}</div>
-                                    {SIGNATURE_BLURBS[a.id] && (
+                                        <div className={`text-xs mt-0.5 ${selected ? 'text-[#c9b8a0]' : 'text-[var(--color-ink-500)]'}`}>
+                                            {unlocked
+                                                ? a.description
+                                                : 'The Capitol has not shown you this one yet. Take a sealed draw and it may be where you land — play it once and it is yours to pick.'}
+                                        </div>
+                                    {unlocked && SIGNATURE_BLURBS[a.id] && (
                                         <div className={`text-[10px] mt-1 font-mono ${selected ? 'text-[var(--red)]' : 'text-[var(--color-ink-600)]'}`}>
                                             ⚙ {SIGNATURE_BLURBS[a.id]}
                                         </div>
@@ -254,8 +285,10 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     </div>
                                     {selected ? (
                                         <span className="flex-none text-[var(--red)] font-mono text-[11px] font-extrabold uppercase tracking-wider">Selected</span>
-                                    ) : (
+                                    ) : unlocked ? (
                                         <ArrowRight className="w-4 h-4 flex-none text-[var(--color-ink-500)]" />
+                                    ) : (
+                                        <Lock className="w-4 h-4 flex-none text-[var(--color-ink-500)]" aria-hidden="true" />
                                     )}
                                 </button>
                             );
@@ -289,7 +322,15 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             <div className="font-black text-[var(--ink)] text-sm uppercase">Force a Quarter Quell</div>
                             <div className="text-xs text-[var(--color-ink-500)]">Most Games are not Quells. Check this to guarantee one — still rolled deterministically from your seed.</div>
                         </div>
-                        <input type="checkbox" className="sr-only" checked={forceQuell} onChange={(e) => setForceQuell(e.target.checked)} />
+                        {/* Vanilla Games skips the Quell draw entirely, so this
+                            control would silently do nothing while it is on. */}
+                        <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={forceQuell && !config.vanillaRules}
+                            disabled={!!config.vanillaRules}
+                            onChange={(e) => setForceQuell(e.target.checked)}
+                        />
                     </label>
                 </div>
 
@@ -311,6 +352,34 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             className="sr-only"
                             checked={!!config.plainNames}
                             onChange={(e) => setConfig(c => ({ ...c, plainNames: e.target.checked }))}
+                        />
+                    </label>
+                </div>
+
+                {/* §Special requests: "Vanilla Games". The temperament draw, the
+                    wildcard calendar and the Quell are the reason two runs on the
+                    same sliders are not the same run — and the reason a player
+                    cannot test a slider. This turns all three off. */}
+                <div className="p-5 pt-0">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                        <div className={`w-5 h-5 border-2 flex items-center justify-center transition-colors flex-none ${
+                            config.vanillaRules ? 'bg-[var(--red)] border-[var(--ink)]' : 'bg-[var(--paper-panel)] border-[var(--line)]'
+                        }`}>
+                            {config.vanillaRules && <div className="w-2 h-2 bg-white" />}
+                        </div>
+                        <div>
+                            <div className="font-black text-[var(--ink)] text-sm uppercase">Vanilla Games</div>
+                            <div className="text-xs text-[var(--color-ink-500)]">
+                                No temperament, no wildcard calendar, no Quarter Quell. The Games run on exactly the
+                                settings above and nothing else — the plainest possible year, and the only way to see
+                                what a slider actually does.
+                            </div>
+                        </div>
+                        <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={!!config.vanillaRules}
+                            onChange={(e) => setConfig(c => ({ ...c, vanillaRules: e.target.checked }))}
                         />
                     </label>
                 </div>

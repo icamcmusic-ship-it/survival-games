@@ -16,6 +16,7 @@ export function HallOfFameScreen() {
     const [copiedSeed, setCopiedSeed] = useState<string | null>(null);
     const [confirmClear, setConfirmClear] = useState(false);
     const [confirmResetPanem, setConfirmResetPanem] = useState(false);
+    const [confirmResetAll, setConfirmResetAll] = useState(false);
 
     useEffect(() => {
         setEntries(readHallOfFame());
@@ -42,6 +43,21 @@ export function HallOfFameScreen() {
     const resetPanem = () => {
         gameActions.resetPanem();
         setConfirmResetPanem(false);
+    };
+
+    /**
+     * The real one. `resetPanem` above clears the record book only — one of the
+     * nine stored keys — so this is the button for a player who means it: the
+     * archive, coins, prefs, feed filters, last config and every save slot too.
+     */
+    const resetEverything = () => {
+        gameActions.resetEverything();
+        clearHallOfFame();
+        setEntries([]);
+        setQuery(EMPTY_HOF_QUERY);
+        setConfirmResetAll(false);
+        setConfirmResetPanem(false);
+        setConfirmClear(false);
     };
 
     /** Imports are persisted immediately: a merge the player can't see survive a reload is worse than no merge. */
@@ -87,6 +103,33 @@ export function HallOfFameScreen() {
                     )}
                 </div>
             )}
+
+            <div className="flex flex-wrap justify-end gap-2">
+                {confirmResetAll ? (
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        <span className="text-xs text-[var(--color-ink-400)]">
+                            Erase <em>everything</em> — records, victors, coins, unlocked arenas, preferences and all three
+                            save slots? This cannot be undone.
+                        </span>
+                        <button
+                            onClick={resetEverything}
+                            className="btn btn-sm btn-primary"
+                            aria-label="Confirm erasing all saved data"
+                        >
+                            Erase everything
+                        </button>
+                        <button onClick={() => setConfirmResetAll(false)} className="btn btn-sm btn-ghost">Cancel</button>
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => setConfirmResetAll(true)}
+                        className="btn btn-sm btn-ghost"
+                        aria-label="Erase all saved data and start over"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" /> Erase all saved data
+                    </button>
+                )}
+            </div>
 
             {entries.length === 0 ? (
                 <>

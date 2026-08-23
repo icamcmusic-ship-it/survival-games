@@ -971,6 +971,24 @@ export interface GameConfig {
      * this existed defaults to the flavour names it always had.
      */
     plainNames?: boolean;
+    /**
+     * §Special requests: "Vanilla Games" — the sliders and nothing else.
+     *
+     * A run's executed config is normally the player's settings multiplied by
+     * a randomly drawn temperament (one of nine) and by every standing
+     * condition on a randomly rolled twenty-entry calendar, with a Quarter
+     * Quell on top. That is the game's best feature and it is also the reason
+     * a player who wants to test a specific slider cannot: `gamesProfileFor`
+     * rolled a temperament and a calendar unconditionally, and
+     * `configForProfile` always multiplied through them, so there was no way
+     * to ask for the numbers you actually set.
+     *
+     * With this on, the profile draws the neutral 1.0/1.0/1.0 temperament, an
+     * empty calendar, no Quell and no cast shape, and the executed config is
+     * the base config unchanged. Optional so every save and config written
+     * before it existed keeps the full-chaos behaviour it was recorded under.
+     */
+    vanillaRules?: boolean;
 }
 
 import type { GamesProfile } from '../engine/gamesProfile';
