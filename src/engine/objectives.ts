@@ -12,6 +12,7 @@ import { SURVIVAL_TEXTS } from '../data/flavorText';
 import { fill } from './encounters';
 import { isAggressiveStance } from '../data/stances';
 import { objectiveBiasFor, targetPreferenceScore } from './archetypeHooks';
+import { traitMod } from '../data/traits';
 import { resolveOf } from './resolve';
 
 /**
@@ -340,7 +341,12 @@ function chooseObjective(
                 // pack, a Zealot wants whoever is hardest, and neither is
                 // expressible as another point of aggression.
                 const hops = hopsTo(state.arena, t.zone, o.zone, collapsed, severedEdgeSet(state)) ?? 4;
+                // §8c: how much the field wants this person at all. The only
+                // trait that claimed to be hard to notice (Unremarkable) had
+                // no read site anywhere in the targeting layer, which is why
+                // it was the worst trait in the game.
                 return winnable + loot + grudge - fearOf(t, o.id)
+                    + traitMod(o, 'targetDraw')
                     + targetPreferenceScore(t, o, hops);
             };
             const best = (pool: Tribute[]) =>

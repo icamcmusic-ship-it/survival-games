@@ -1010,6 +1010,13 @@ export const ENCOUNTERS = {
 
 /** Multi-round duels: how long they last and when someone breaks off. */
 export const COMBAT = {
+    /**
+     * §8a: the numbers advantage decays with the pack's own trust. A group
+     * that has stopped trusting each other still outnumbers you — it simply
+     * stops fighting like one animal. Floor keeps a hostile pack dangerous.
+     */
+    packCohesionFloor: 0.45,
+    packCohesionFullRegard: 55,
     /** Hard ceiling on exchanges in a single encounter. */
     maxRounds: 4,
     /**
@@ -2954,7 +2961,6 @@ export const TRAINING_SCORE = {
      * on its own.
      */
     meritCareer: 0.45,
-    meritCareerArchetype: 0.2,
     meritBrute: 0.15,
     meritStrategist: 0.15,
     meritEagleEyed: 0.1,

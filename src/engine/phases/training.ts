@@ -46,7 +46,10 @@ import { traitMod } from '../../data/traits';
 function meritMultiplier(t: Tribute): number {
     let m = 1;
     if (t.isCareer) m += TRAINING_SCORE.meritCareer;
-    if (t.archetype === 'career') m += TRAINING_SCORE.meritCareerArchetype;
+    // §8a: `meritCareerArchetype` removed — it was redundant with
+    // `meritCareer` (a Career-archetype tribute is almost always from a Career
+    // district) and was one of six stacking advantages behind the Career
+    // archetype's 2.2x win rate.
     if (t.traits.includes('Brute')) m += TRAINING_SCORE.meritBrute;
     if (t.traits.includes('Strategist')) m += TRAINING_SCORE.meritStrategist;
     if (t.traits.includes('Eagle-Eyed')) m += TRAINING_SCORE.meritEagleEyed;

@@ -201,6 +201,24 @@ function rematchEdge(t: Tribute, opponent?: Tribute): number {
     return Math.min(RIVALRY.maxStudyBonus, record.fights * RIVALRY.revengeStudyBonus);
 }
 
+/**
+ * §8a: how well this tribute's group still fights as one, 0-1ish.
+ *
+ * Average regard toward the allies actually standing with them. A fresh
+ * alliance fights at full numbers; one that has spent a week eroding fights
+ * closer to a collection of individuals who happen to be in the same clearing.
+ */
+function packCohesion(ctx: SimContext, t: Tribute): number {
+    if (!t.allianceId) return 1;
+    const mates = ctx.state.tributes.filter(o =>
+        o.status === 'alive' && o.id !== t.id && o.allianceId === t.allianceId && o.zone === t.zone);
+    if (mates.length === 0) return 1;
+    const regard = mates.reduce((sum, o) => sum + getRel(t, o.id), 0) / mates.length;
+    const scaled = COMBAT.packCohesionFloor
+        + (1 - COMBAT.packCohesionFloor) * Math.max(0, Math.min(1, regard / COMBAT.packCohesionFullRegard));
+    return scaled;
+}
+
 function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opponent?: Tribute): number {
     let power = effectiveStrength(t) + t.attributes.agility + ctx.rng.nextInt(0, 5);
 
@@ -253,8 +271,17 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     // §3.3: a pack laden with the horn's contents is slower where it counts.
     power -= encumbranceOf(t) * INVENTORY.encumbrancePowerPenaltyMax;
 
-    // Numbers advantage: the whole point of a pack.
-    power += Math.min(COMBAT.outnumberMaxBonus, allies * COMBAT.outnumberPowerPerAlly);
+    // Numbers advantage: the whole point of a pack — but a pack is only worth
+    // its numbers while it is still a pack.
+    //
+    // §8a: the Career archetype wins at 2.2x the field average not on one
+    // axis but on six multiplicative ones, and this is the last of them: the
+    // numbers bonus was flat, so a Career pack three days into open mutual
+    // suspicion fought exactly as well together as it did on day one. It now
+    // decays with the group's own trust, which is the mechanic the alliance
+    // layer already simulates and combat never read.
+    const cohesion = packCohesion(ctx, t);
+    power += Math.min(COMBAT.outnumberMaxBonus, allies * COMBAT.outnumberPowerPerAlly) * cohesion;
 
     // Bloodlust. A tribute who has just killed is keyed up and dangerous — this
     // is what lets a hunter snowball instead of every fight starting from zero.

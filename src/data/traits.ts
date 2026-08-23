@@ -33,6 +33,8 @@ export type TraitMod =
     | 'heatResist'
     // stealth.ts
     | 'awareness'            // flat, on the awareness scale (intelligence * 0.6-ish)
+    | 'awarenessNight'       // flat, added to awareness only after dark
+    | 'targetDraw'           // flat, on the hunt-scoring scale: how much the field wants you
     | 'concealment'          // flat, 0-1 scale
     | 'ambush'               // flat, 0-1 scale
     // combat.ts
@@ -95,8 +97,12 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { hungerDrain: -5, poisonResist: 0.2 },
     },
     'Insomniac': {
-        info: 'Cannot sleep in the arena. Recovers far less fatigue at night, so the days compound.',
-        mods: { fatigueNight: 10 },
+        info: 'Cannot sleep in the arena. Recovers far less fatigue at night — but they are awake, and awake is worth something after dark.',
+        // §8c: the worst-designed trait in the file at 3.15% — a flat penalty
+        // with no compensating upside, and the only trait it was unambiguously
+        // bad to draw. Power budget: a real fatigue cost, paid back as the
+        // best night-watch in the game. They are lying there listening anyway.
+        mods: { fatigueNight: 10, awarenessNight: 2 },
     },
     'Light Sleeper': {
         info: 'Wakes at a snapped twig. A steady awareness bonus that works around the clock.',
@@ -111,8 +117,13 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { poisonResist: 0.5 },
     },
     'Frost-Born': {
-        info: 'Raised somewhere cold. Frostbite and freezing weather are much less likely to take hold.',
-        mods: { coldResist: 0.5 },
+        info: 'Raised somewhere cold. Frostbite and freezing weather are much less likely to take hold, and a long night costs them less than it costs anyone else.',
+        // §8c: second-highest average days of any reaping trait and second-
+        // worst win rate — the signature of a pure environmental niche that
+        // stops mattering the moment the endgame arrives. Power budget: keep
+        // the resist as the headline, and add a small rider that still fires
+        // in the last five days whatever arena this turned out to be.
+        mods: { coldResist: 0.5, fatigueNight: -2, resolveDrift: 0.25 },
     },
     'Sun-Hardened': {
         info: 'Worked outdoors through worse summers than this. Heat and burns land softer.',
@@ -257,8 +268,14 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { sponsorTrust: 2.5, allianceAffinity: 0.1 },
     },
     'Unremarkable': {
-        info: 'Nobody is watching. Draws very little excitement and almost no sponsorship — and is rarely the first person anyone goes for.',
-        mods: { excitement: -0.4, sponsorTrust: -1.5, odds: -1 },
+        info: 'Nobody is watching. Draws very little excitement and almost no sponsorship — and is genuinely the last person anyone goes looking for.',
+        // §8c: at 2.18% the worst trait in the game, because the promise in
+        // its own info string was never mechanical: the targeting layer did
+        // not weight it at all. `targetDraw` is that discount made real and
+        // made large — being overlooked is the entire trait, so it has to be
+        // worth as much as a weapon. The sponsor rider pays out late, when
+        // the crowd finally notices somebody they have not been shown.
+        mods: { excitement: -0.4, sponsorTrust: -1.5, odds: -1, targetDraw: -28, concealment: 0.08 },
     },
 
     // ---- the pack and the pantry ---------------------------------------
