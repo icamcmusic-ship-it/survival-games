@@ -57,6 +57,13 @@ export interface ArenaEventDef {
     startsZoneEffect?: ZoneEffectKind;
     /** Severs one of the zone's adjacency edges — a bridge going out. */
     severesRoute?: boolean;
+    /**
+     * §1.3: relative draw weight. Defaults to 1 for a hand-authored arena
+     * event; the shared universal pool is merged in at `UNIVERSAL_EVENT_WEIGHT`
+     * so an arena with five authored events does not read as generic three
+     * times out of four.
+     */
+    weight?: number;
 }
 
 export interface ArenaActions {
@@ -65,7 +72,23 @@ export interface ArenaActions {
     hide: string[];
     hunt: string[];
     travel: string[];
+    /**
+     * A1: one pool per conditional stance.
+     *
+     * Optional, and resolved through `actionPool()` rather than read directly,
+     * so the twenty-eight hand-authored arenas keep working unchanged and pick
+     * up the terrain-general fallbacks below until somebody writes them a
+     * bespoke set. An arena that *does* author them wins; nothing silently
+     * prints an empty string.
+     */
+    fortify?: string[];
+    scavenge?: string[];
+    shadow?: string[];
+    flail?: string[];
 }
+
+/** The keys `actionPool` will fall back on. */
+export type ArenaActionKey = keyof ArenaActions;
 
 export interface ArenaFlavor {
     /** Broadcast-style scene setting, fired occasionally with no tribute attached. */
@@ -126,6 +149,62 @@ const GENERIC_ACTIONS: ArenaActions = {
         '{tribute} takes up a position overlooking {zone} and watches nothing happen.',
         '{tribute} hunts {zone} the way they were taught, and the arena simply does not cooperate.',
         '{tribute} moves through {zone} loud on purpose, daring somebody to notice. Nobody does.',
+    ],
+    fortify: [
+        '{tribute} spends the hour making {zone} harder to walk into: a line here, a deadfall there, a sightline cleared.',
+        '{tribute} sets their back to the best cover {zone} has and starts turning the rest of it into a problem.',
+        '{tribute} walks the approaches to {zone} twice, marking every way in, and then closes two of them.',
+        '{tribute} has stopped thinking of {zone} as somewhere to pass through. They are digging in.',
+        '{tribute} re-sets a tripline in {zone}, tests it, and re-sets it again until it satisfies them.',
+        '{tribute} arranges what they own around them in {zone} the way somebody arranges a room they intend to keep.',
+        '{tribute} clears a firing line across {zone} and settles into the one spot it does not cover.',
+        '{tribute} sleeps in {zone} with the ground itself on watch.',
+        '{tribute} banks earth and debris across the narrow end of {zone}. Anyone coming in is coming in slowly.',
+        '{tribute} checks every one of their own traps in {zone}, in order, and finds them all still waiting.',
+        '{tribute} learns the sound {zone} makes when nothing is wrong, so that they will hear it when something is.',
+        '{tribute} holds {zone} for another cycle. It is starting to look less like cover and more like territory.',
+    ],
+    scavenge: [
+        '{tribute} works over the ground in {zone} that somebody else already picked through, and finds what they missed.',
+        '{tribute} goes through {zone} looking for what people drop when they are running.',
+        '{tribute} follows the mess in {zone} back to whoever made it.',
+        '{tribute} finds the marks of a camp in {zone}, cold now, and takes what was left behind.',
+        '{tribute} searches {zone} the way a person searches when they own nothing at all.',
+        '{tribute} turns over every stone in {zone} that looks like it has been turned over before.',
+        '{tribute} reads the churned ground in {zone} and works out where the fight went, then follows it.',
+        '{tribute} salvages something broken out of {zone} and decides it can be made to work.',
+        '{tribute} picks over {zone} without much hope and is rewarded anyway.',
+        '{tribute} takes the long way through {zone}, checking every place a pack could have been dropped.',
+        '{tribute} has no weapon and no food and is not proud about either. {zone} gets searched properly.',
+        '{tribute} finds a cannon site in {zone} still warm and does what needs doing before anybody else arrives.',
+    ],
+    shadow: [
+        '{tribute} keeps to the far edge of {zone}, matching somebody else\'s pace without ever closing it.',
+        '{tribute} moves through {zone} in the gaps between the sounds ahead of them.',
+        '{tribute} lets the distance across {zone} stay exactly what it is. Not yet.',
+        '{tribute} stops when the footsteps ahead stop, and starts again when they start.',
+        '{tribute} watches the line somebody cut through {zone} and walks it a full turning later.',
+        '{tribute} could close the gap in {zone} in under a minute. They do not.',
+        '{tribute} stays in the shadow of the cover through {zone}, one turning back, learning.',
+        '{tribute} follows through {zone} the way a thing follows: patiently, and without any sound at all.',
+        '{tribute} counts the paces ahead of them through {zone} and finds the count reassuring.',
+        '{tribute} has been behind somebody through {zone} for long enough to know how they walk when they are tired.',
+        '{tribute} chooses not to be seen crossing {zone}, which is a choice, and a skill.',
+        '{tribute} keeps {zone} between themselves and the person they are following.',
+    ],
+    flail: [
+        '{tribute} is past caring what {zone} is. They go through it anyway.',
+        '{tribute} takes a swing at nothing in {zone} and the sound of it carries further than they meant.',
+        '{tribute} stops trying to be careful in {zone}. Careful stopped working days ago.',
+        '{tribute} walks the open ground of {zone} without checking any of it. They are past checking.',
+        '{tribute} shouts once in {zone}, at nobody. The arena does not answer.',
+        '{tribute} eats something in {zone} they would not have touched on day one.',
+        '{tribute} moves through {zone} like somebody who has already decided how this ends.',
+        '{tribute} is not hiding in {zone} any more. Whatever finds them, finds them.',
+        '{tribute} tears through {zone} looking for anything at all, and stops pretending it is a search.',
+        '{tribute} has nothing left in {zone} and does not slow down for it.',
+        '{tribute} strips the last of their own kit apart in {zone} looking for something that was never there.',
+        '{tribute} crosses {zone} at a pace nobody in their condition should manage. Nothing about it looks sustainable.',
     ],
     travel: [
         '{tribute} moves out toward {zone}.',
@@ -4245,7 +4324,45 @@ export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {
     return withUniversalEvents(ARENA_FLAVOR[arenaId] ?? PROCEDURAL_FLAVOR_PACKS[arenaId] ?? GENERIC_ARENA_FLAVOR);
 }
 
+/**
+ * A1: reads an action pool with a fallback.
+ *
+ * The four stance pools added with the extended stance roster are optional per
+ * arena — twenty-eight arenas times four pools is a lot of prose to gate the
+ * mechanic behind. An arena that authors its own wins; everything else falls
+ * back to the terrain-general generic set, which is written to work on ground
+ * the author has never seen.
+ */
+export function actionPool(flavor: ArenaFlavor, key: ArenaActionKey): string[] {
+    const authored = flavor.actions[key];
+    if (authored && authored.length > 0) return authored;
+    const generic = GENERIC_ACTIONS[key];
+    if (generic && generic.length > 0) return generic;
+    return GENERIC_ACTIONS.rest;
+}
+
+/**
+ * §1.3: how much of the pool the shared universal events are allowed to be.
+ *
+ * `withUniversalEvents` appended fourteen universal events to per-arena packs
+ * of five to twelve and the picker drew uniformly, so the five sparsest arenas
+ * (seapeaks, craterfield, burnscar, canopyweb, acousticforest) drew a generic
+ * event roughly three times in four — which is most of why they read
+ * interchangeably. The universal pool is now weighted down to a ~30% share
+ * regardless of how many authored events an arena has, so a thin arena is
+ * repetitive in its own voice rather than in nobody's.
+ */
+export const UNIVERSAL_EVENT_SHARE = 0.3;
+
 /** Merges the shared event pool into an arena's authored one. Never mutates the source. */
 function withUniversalEvents(flavor: ArenaFlavor): ArenaFlavor {
-    return { ...flavor, events: [...flavor.events, ...UNIVERSAL_EVENTS] };
+    const authoredWeight = flavor.events.reduce((sum, e) => sum + (e.weight ?? 1), 0) || 1;
+    // Solve `u / (authored + u) = share` for the total weight the universal
+    // pool should carry, then split it evenly across its members.
+    const universalTotal = authoredWeight * UNIVERSAL_EVENT_SHARE / (1 - UNIVERSAL_EVENT_SHARE);
+    const per = universalTotal / Math.max(1, UNIVERSAL_EVENTS.length);
+    return {
+        ...flavor,
+        events: [...flavor.events, ...UNIVERSAL_EVENTS.map(e => ({ ...e, weight: per }))],
+    };
 }

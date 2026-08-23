@@ -10,6 +10,7 @@ import { areLovers } from './alliance';
 import { getRel } from './relationships';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
 import { fill } from './encounters';
+import { isAggressiveStance } from '../data/stances';
 
 /**
  * Intentions.
@@ -158,7 +159,7 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
     const hostilesHere = here.filter(o =>
         o.id !== t.id && (o.allianceId === undefined || o.allianceId !== t.allianceId));
     const scaredOf = hostilesHere.some(o => fearOf(t, o.id) >= OBJECTIVES.fleeFear);
-    if (scaredOf && t.stance !== 'Aggressive') {
+    if (scaredOf && !isAggressiveStance(t.stance)) {
         return { kind: 'flee', from: t.zone, expires: expiry(OBJECTIVES.fleeCycles) };
     }
 
@@ -231,7 +232,7 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
     const fieldCount = state.tributes.filter(o => o.status === 'alive').length;
     const countingTheField = fieldCount <= ENDGAME.fieldSize;
     const edge = countingTheField ? endgameEdge(state, t) : 0;
-    if (t.stance === 'Aggressive' || (countingTheField && edge > ENDGAME.hunterEdge)) {
+    if (isAggressiveStance(t.stance) || (countingTheField && edge > ENDGAME.hunterEdge)) {
         // Only somebody they have actually seen recently — a hunter with no
         // sighting is not tracking anyone, they are just walking around angry.
         // `rememberedRivals(state, t, o.zone) > 0` alone only confirms that

@@ -1,8 +1,8 @@
 import { Terrain, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES } from '../data/balance';
+import { BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES, STANCE_MODES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
-import { ArenaEventDef, arenaFlavor } from '../data/arenaFlavor';
+import { ArenaActionKey, ArenaEventDef, actionPool, arenaFlavor } from '../data/arenaFlavor';
 import { QUIRKS } from '../data/quirks';
 import { SimContext } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
@@ -24,6 +24,7 @@ import { resolveMuttAttack as resolveMuttAttackImpl } from './mutts';
 import { severRandomEdge, startZoneEffect } from './zoneEffects';
 import { traitMod } from '../data/traits';
 import { QUALITY_BIAS } from '../data/balance';
+import { isAggressiveStance, isDefensiveStance, isEvasiveStance } from '../data/stances';
 
 export function fill(template: string, vars: Record<string, string>): string {
     return Object.entries(vars).reduce(
@@ -263,13 +264,22 @@ function inferredTerrains(event: ArenaEventDef): Terrain[] | undefined {
  * generic hazards like a Gamemaker-triggered storm.
  */
 export function pickTerrainEvent(ctx: SimContext, events: ArenaEventDef[], terrain: Terrain | undefined): ArenaEventDef {
-    if (!terrain) return ctx.rng.pick(events);
     const fits = (event: ArenaEventDef) => {
         const tags = event.terrains ?? inferredTerrains(event);
-        return !tags || tags.includes(terrain);
+        return !tags || tags.includes(terrain!);
     };
-    const matching = events.filter(fits);
-    return ctx.rng.pick(matching.length > 0 ? matching : events);
+    const pool = terrain ? events.filter(fits) : events;
+    const candidates = pool.length > 0 ? pool : events;
+    // §1.3: weighted, not uniform. `withUniversalEvents` marks the shared pool
+    // down so an arena with five authored events still reads as itself.
+    const total = candidates.reduce((sum, e) => sum + (e.weight ?? 1), 0);
+    if (total <= 0) return ctx.rng.pick(candidates);
+    let roll = ctx.rng.nextFloat() * total;
+    for (const event of candidates) {
+        roll -= event.weight ?? 1;
+        if (roll <= 0) return event;
+    }
+    return candidates[candidates.length - 1];
 }
 
 /**
@@ -423,7 +433,7 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         adjustMutual(ctx.state, t, other, 5);
         maintainPerformance(t, other.id, ROMANCE.performedUpkeep);
         maintainPerformance(other, t.id, ROMANCE.performedUpkeep);
-    } else if (t.stance === 'Aggressive' || other.stance === 'Aggressive' || relationship < -10) {
+    } else if (isAggressiveStance(t.stance) || isAggressiveStance(other.stance) || relationship < -10) {
         // Even a hostile meeting can end in a negotiation rather than a fight,
         // if neither of them likes the odds enough to start one.
         if (!tryParley(ctx, t, other)) resolveCombat(ctx, t, other);
@@ -521,7 +531,7 @@ function huntAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeof arena
         );
         return;
     }
-    ctx.logEvent(fill(ctx.pickText(flavor.actions.hunt), { tribute: t.name, zone: t.zone }), [t.id], { category: 'survival' });
+    ctx.logEvent(fill(ctx.pickText(actionPool(flavor, 'hunt')), { tribute: t.name, zone: t.zone }), [t.id], { category: 'survival' });
 }
 
 export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeof arenaFlavor>) {
@@ -583,7 +593,57 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         return;
     }
 
-    if (t.stance === 'Evasive') {
+    // A1: the conditional stances each spend an idle turn differently. Handled
+    // ahead of the family fallbacks below so a Fortified tribute is described
+    // fortifying rather than "resting", which is what the stance would have
+    // degraded to on its family alone.
+    const say = (key: ArenaActionKey) => ctx.logEvent(
+        fill(ctx.pickText(actionPool(flavor, key)), { tribute: t.name, zone: t.zone }),
+        [t.id],
+        { category: 'survival' }
+    );
+
+    if (t.stance === 'Fortified') {
+        // Prepared ground feeds its occupant: they know where everything in it
+        // is by now. Failing that, the hour goes on the position itself.
+        if (attemptForage(ctx, t, flavor, baseForageChance)) {
+            noteSighting(ctx.state, t, t.zone, 0, depletionOf(ctx.state, t.zone));
+            return;
+        }
+        // Another trap, another sightline — the fortification is the turn.
+        if (attemptFieldcraft(ctx, t)) return;
+        say('fortify');
+        noteSighting(ctx.state, t, t.zone, 0, depletionOf(ctx.state, t.zone));
+        return;
+    }
+
+    if (t.stance === 'Scavenging') {
+        // Ground others have stripped of food still holds what they dropped.
+        if (attemptForage(ctx, t, flavor, baseForageChance + STANCE_MODES.scavenging.pickingsBonus)) {
+            noteSighting(ctx.state, t, t.zone, 0, depletionOf(ctx.state, t.zone));
+            return;
+        }
+        say('scavenge');
+        noteSighting(ctx.state, t, t.zone, 0, depletionOf(ctx.state, t.zone));
+        return;
+    }
+
+    if (t.stance === 'Shadowing') {
+        // A shadow does not stop to forage. The turn is the following.
+        say('shadow');
+        return;
+    }
+
+    if (t.stance === 'Desperate') {
+        // They will eat anything and they will look anywhere.
+        if (attemptForage(ctx, t, flavor, baseForageChance * ZONES.aggressiveForageMultiplier)) {
+            return;
+        }
+        say('flail');
+        return;
+    }
+
+    if (isEvasiveStance(t.stance)) {
         // Hiding does not mean starving — there is still a stream in whatever
         // zone they went to ground in, just a much smaller chance they risk
         // reaching for it instead of staying still.
@@ -591,20 +651,22 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
             noteSighting(ctx.state, t, t.zone, 0, depletionOf(ctx.state, t.zone));
             return;
         }
-        ctx.logEvent(fill(ctx.pickText(flavor.actions.hide), { tribute: t.name, zone: t.zone }), [t.id], { category: 'survival' });
+        say('hide');
         return;
     }
 
-    if (t.stance === 'Defensive') {
+    if (isDefensiveStance(t.stance)) {
         if (!attemptForage(ctx, t, flavor, baseForageChance)) {
             const stripped = depletionOf(ctx.state, t.zone) > ENCOUNTERS.strippedZoneNotice;
-            ctx.logEvent(
-                stripped
-                    ? `${t.name} works over ${t.zone} and finds it already stripped bare. Someone has been here first.`
-                    : fill(ctx.pickText(flavor.actions.rest), { tribute: t.name, zone: t.zone }),
-                [t.id],
-                { category: 'survival' }
-            );
+            if (stripped) {
+                ctx.logEvent(
+                    `${t.name} works over ${t.zone} and finds it already stripped bare. Someone has been here first.`,
+                    [t.id],
+                    { category: 'survival' }
+                );
+            } else {
+                say('rest');
+            }
         }
         noteSighting(ctx.state, t, t.zone, 0, depletionOf(ctx.state, t.zone));
         return;

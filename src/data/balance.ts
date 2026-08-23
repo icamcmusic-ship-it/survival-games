@@ -371,6 +371,20 @@ export const HUNTING = {
     rattledPerFlee: 2,
     rattledPerTrap: 2,
     rattledPerGrief: 3,
+    /**
+     * §1.2: `rattled` was documented as the symmetric counterpart to momentum
+     * and was written from almost nothing — losing an exchange, being
+     * ambushed, surviving a mutt and walking away from a near-death all left a
+     * tribute completely unshaken. These are the missing writes.
+     */
+    rattledPerLostExchange: 1,
+    rattledPerAmbushed: 3,
+    rattledPerMutt: 2,
+    rattledPerNearDeath: 3,
+    /** A1: a shadow whose quarry turns around at the wrong moment. */
+    rattledPerSpotted: 2,
+    /** Health below which surviving the cycle counts as a near-death. */
+    nearDeathHealth: 15,
     /** Combat power lost per point of rattled. */
     rattledPowerWeight: 0.7,
     /** Retreat chance added per point of rattled. */
@@ -1002,6 +1016,11 @@ export const COMBAT = {
  * the game to give teeth to, because every tribute already has a number for it.
  */
 export const STEALTH = {
+    /** A1/§1.5: awareness swing from posture, migrated out of `stealth.ts`. */
+    aggressiveAwareness: 1.5,
+    evasiveAwareness: 1,
+    /** A trickster has been setting this up since the gong. */
+    tricksterAmbushBonus: 0.12,
     /** §5.2: concealment/ambush per unit of zone cover above the 0.35 baseline. */
     coverGradeScale: 0.5,
     /** §5.2: ambush chance lost against a zone with commanding high ground. */
@@ -1082,6 +1101,17 @@ export const STEALTH = {
  * carries between cycles: find water, find somewhere to sleep.
  */
 export const MOVEMENT = {
+    /** A1: fatigue a plain move costs, used by the Fortified movement penalty. */
+    baseMoveFatigue: 4,
+    // ---- A1: how the conditional stances route ----
+    /** Cycles a cannon stays worth walking toward for a scavenger. */
+    scavengeCannonMemory: 3,
+    scavengeCannonWeight: 3.5,
+    /** Stripped ground is stripped of food, not of kit. */
+    scavengeBarrenWeight: 1.5,
+    scavengeBodyWeight: 2.5,
+    /** A shadow goes where their quarry went and nowhere else. */
+    shadowFollowWeight: 8,
     /** §5.3: extra fatigue for completing a two-cycle crossing or climb. */
     crossingFatigue: 8,
     /** Thirst above which finding water outranks everything else.
@@ -1551,6 +1581,185 @@ export const STANCE = {
     protectDefensive: 1.2,
     holdDefensive: 1.0,
     campDefensive: 0.6,
+
+    // ---- A1/§1.5: the fifteen knobs that used to be typed straight into
+    // `engine/stance.ts`. Migrated wholesale as part of the stance expansion,
+    // because doubling the size of the scoring table on top of undeclared
+    // literals would have doubled the drift with it.
+
+    /** Threat estimate: what an observer reads off a stranger. */
+    visibleBase: 5,
+    visibleMassWeight: 1.2,
+    visibleWeaponBonus: 4,
+    visibleBleedingPenalty: 1.5,
+    visibleLegPenalty: 1,
+    /** §1.6: exact health is not observable. Read as a band, not a number. */
+    visibleHurtHealth: 40,
+    visibleHurtPenalty: 2,
+    /** ...unless the observer is genuinely good at reading people. */
+    visibleFineReadAwareness: 7,
+    visibleFineReadDivisor: 25,
+    /** Reputation: the training score is public, and it precedes them. */
+    trainingScorePivot: 5,
+    trainingScoreWeight: 0.5,
+    careerVisibleBonus: 1.5,
+    /** How much of the estimate personal fear of them accounts for. */
+    fearVisibleWeight: 4,
+    /** Regression toward "average tribute" for a stale sighting. */
+    staleConfidenceFloor: 0.35,
+    staleConfidencePerCycle: 0.15,
+    staleAveragePower: 8,
+    ownWeaponBonus: 4,
+    ownHealthDivisor: 25,
+    friendRegardThreshold: 25,
+
+    /** Scoring weights, shared by every stance row in `STANCE_SCORERS`. */
+    archetypeWeight: 3,
+    weaponAggression: 1.2,
+    aggressiveHealthDivisor: 30,
+    careerAggression: 0.8,
+    vengeanceAggression: 1.5,
+    dominantAggression: 1.2,
+    huntingHungerAggression: 0.8,
+    evasiveHealthDivisor: 25,
+    woundedEvasive: 1.0,
+    unarmedEvasive: 0.6,
+    outmatchedEvasive: 1.6,
+    cautiousArchetypeThreshold: 0.2,
+    cautiousEvasive: 1.0,
+    lowSanityEvasive: 0.8,
+    stealthPivot: 5,
+    stealthEvasiveWeight: 0.06,
+    defensiveBase: 1,
+    defensiveTemperament: 0.5,
+    allianceDefensive: 0.5,
+    /**
+     * A1: cycles a conditional stance is locked out for after being vacated.
+     * A lapsed precondition must vacate immediately, which is exactly the
+     * shape that thrashes when the precondition flickers; the lockout is what
+     * makes leaving one stick.
+     */
+    conditionalCooldown: 3,
+    /** A genuine emergency overrides the hold. */
+    emergencyHealthFactor: 0.6,
+    emergencyRatioFactor: 1.6,
+} as const;
+
+/**
+ * A1: the five conditional stances — what it takes to enter each one and what
+ * being in it is actually worth. Kept separate from `STANCE` so the entry
+ * conditions read next to the payoffs they gate.
+ */
+export const STANCE_MODES = {
+    /** How much of the archetype's temperament a conditional stance inherits. */
+    conditionalArchetypeWeight: 0.5,
+    hunting: {
+        /**
+         * Tracking proficiency floor: this is a skill, not a mood. Set at 1
+         * rather than 2 because best-proficiency across a run averages 1.8 —
+         * at 2 the stance was reachable by almost nobody who also held a hunt
+         * objective, and measured 0.2% of cycles.
+         */
+        trackingMin: 1,
+        /** Base pull once the precondition holds. */
+        base: 2.4,
+        /** Extra pull per point of remembered fear of the quarry. */
+        vengeanceBonus: 1.2,
+        /** Ambush edge while working a named target. */
+        ambushBonus: 0.14,
+        /** ...paid for by being loud on the way there. */
+        concealmentPenalty: 0.12,
+        /** Awareness edge: they are looking for exactly one person. */
+        awarenessBonus: 1,
+        /** Cycles of travel budget per turn — a hunter covers two zones. */
+        zonesPerCycle: 2,
+        /** Pull per point of tracking proficiency. */
+        perTrackingPoint: 0.2,
+    },
+    fortified: {
+        /** Cycles a tribute must have held the same zone before digging in. */
+        holdCycles: 2,
+        base: 2.2,
+        /** Extra pull per trap already set in the zone. */
+        perTrapBonus: 0.5,
+        /** ...and for ground worth holding. */
+        chokepointBonus: 0.8,
+        elevationBonus: 0.6,
+        /** Trap trigger multiplier against anyone entering their ground. */
+        trapTriggerMultiplier: 1.5,
+        /** Movement costs double fatigue: leaving a position is expensive. */
+        moveFatigueMultiplier: 2,
+        /** Damage soak from prepared ground, as a fraction. */
+        armourEffect: 0.12,
+        /** Pull from having somewhere and someone to hold it for. */
+        alliedBonus: 0.5,
+    },
+    desperate: {
+        healthThreshold: 25,
+        /** Both hunger and thirst above this is a body out of options. */
+        vitalThreshold: 80,
+        base: 3.6,
+        /** Combat power added by having nothing left to lose. */
+        powerBonus: 2.5,
+        /** ...and the tunnel vision that comes with it. */
+        awarenessPenalty: 2,
+        concealmentPenalty: 0.1,
+        /** Chance per cycle of robbing an ally for supplies. */
+        robAllyChance: 0.3,
+        /** Extra pull per ten health below the threshold. */
+        perTenHealthBelow: 1,
+        /** Extra pull from a broken resolve, and from each ruined vital. */
+        brokenBonus: 1,
+        vitalBonus: 0.6,
+        /** What robbing an ally costs, socially. */
+        victimRegard: 30,
+        thiefRegard: 10,
+        victimFear: 8,
+        victimSuspicion: 20,
+    },
+    scavenging: {
+        /** Inventory value below which a tribute has nothing worth having. */
+        inventoryValue: 8,
+        base: 1.8,
+        /** Pull from a cannon in an adjacent zone: someone dropped their kit. */
+        cannonBonus: 1.6,
+        /** Corpse-looting edge. */
+        lootBonus: 0.35,
+        /** Forage edge on ground others have already worked. */
+        pickingsBonus: 0.18,
+        /** ...paid for in a fight they did not want. */
+        combatPenalty: 1.5,
+        /** Pull from carrying no weapon at all. */
+        unarmedBonus: 0.8,
+        /** Pull per point of kit value they are short of the threshold. */
+        perMissingValue: 0.08,
+        /** ...and the discount for a cannon site with people still on it. */
+        contestedPenalty: 1.5,
+        /** Chance of successfully stripping a body already in the zone. */
+        bodyStripChance: 0.75,
+    },
+    shadowing: {
+        stealthMin: 7,
+        base: 2.6,
+        /** Consecutive unnoticed cycles that convert into a free ambush. */
+        cyclesToAmbush: 3,
+        /** Concealment edge while trailing rather than closing. */
+        concealmentBonus: 0.1,
+        /** The free opener, once the count lands. */
+        ambushPowerBonus: 4,
+        ambushDamageMultiplier: 1.7,
+        /** Pull per point of stealth above the floor. */
+        perStealthPoint: 0.25,
+        /** ...and per cycle already invested in this particular trail. */
+        perTrailCycle: 0.5,
+        armedBonus: 0.5,
+        woundedPenalty: 1,
+        /** What being spotted mid-trail does to the quarry. */
+        spottedFear: 6,
+        /** Awareness a bystander needs to register a fortified position. */
+        positionNoticeAwareness: 5,
+        positionFear: 3,
+    },
 } as const;
 
 /** Relationship graph: bounds, decay, and the deltas life in the arena applies. */
@@ -2663,7 +2872,10 @@ export const RESPECT = {
 
 export const PARLEY = {
     /** A power ratio below this means a tribute genuinely likes their odds. */
-    confidentRatio: 0.8,
+    // §1.11: read against the same measured distribution as `outmatchedRatio`
+    // — at 0.8 nine hostile meetings in ten counted as "confident", so the
+    // no-negotiation guard fired almost unconditionally.
+    confidentRatio: 0.22,
     /**
      * A power ratio above this means they know they are losing. 1.25 left the
      * pay-your-way-out path effectively dead (≤5 firings across 240 runs, and
@@ -2671,9 +2883,17 @@ export const PARLEY = {
      * outmatched through the perception layer almost never met the other
      * gates too.
      */
-    // §4.3: loosened from 1.12 — the extortion branch sat behind an XOR of
-    // two readings that almost never disagreed at the old threshold.
-    outmatchedRatio: 1.08,
+    // §1.11: loosened twice before (1.12 -> 1.08) without ever fixing the
+    // cause. `assessZone`'s ratio is not on a 1.0-is-even scale: the estimate
+    // side is a visible-power reading regressed toward "average tribute" by
+    // the confidence term, while the denominator is the observer's own known
+    // sheet. Measured across a 60-run probe the ratio two strangers read of
+    // each other is p25 0.21, p50 0.31, p95 0.70 — so *every* pair read as
+    // mutually un-outmatched at 1.08 and the XOR below could never be true.
+    // That is the whole reason `tributesPaid` measured 1 across 400 runs.
+    // Set at the measured median, where an asymmetric matchup genuinely
+    // straddles it.
+    outmatchedRatio: 0.32,
 
     /** Paying to be allowed to leave. */
     tributeChance: 0.6,
@@ -2696,7 +2916,15 @@ export const PARLEY = {
      * where they last saw people, and where the water is.
      */
     /** On `ZoneMemory.threat`'s own 0-6 scale, not a percentage. */
-    tollInfoMinThreat: 1.5,
+    /**
+     * §1.11: threat a remembered zone needs before it is worth trading.
+     *
+     * At 1.5 this needed a tribute to have accumulated more than a witnessed
+     * death's worth of dread on one zone *and* survive to be shaken down over
+     * it, which fired six times across 400 runs. 0.8 is "somewhere they
+     * watched something happen", which is what the beat is actually about.
+     */
+    tollInfoMinThreat: 0.8,
     /**
      * Chance the stronger party wants directions rather than the weaker's
      * loose item even when there is one to take. The wider item catalogue

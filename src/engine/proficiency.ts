@@ -2,6 +2,7 @@ import { ArchetypeId, Item, Proficiency, Tribute } from '../models/types';
 import { DRIFT, PROFICIENCY } from '../data/balance';
 import { craftOf } from '../data/districts';
 import { strengthCapForAge } from './physique';
+import { isAggressiveStance } from '../data/stances';
 
 /**
  * Skills that improve with use.
@@ -26,6 +27,16 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     trickster: 'tracking',
     wildcard: 'ranged',
     underdog: 'forage',
+    // A2: the added roster. §1.4's `persuasion` is what makes Diplomat and
+    // Mercenary mechanical rather than decorative.
+    mercenary: 'melee',
+    zealot: 'melee',
+    medic: 'medicine',
+    saboteur: 'tracking',
+    beast: 'melee',
+    diplomat: 'persuasion',
+    scholar: 'forage',
+    ghost: 'tracking',
 };
 
 /**
@@ -135,7 +146,7 @@ export function weaponProficiency(weaponClass: string | undefined): Proficiency 
  */
 export function decayIdleDrift(t: Tribute): void {
     if (!t.attributeDrift) return;
-    if (t.stance === 'Aggressive' || (t.momentum ?? 0) > 0) return;
+    if (isAggressiveStance(t.stance) || (t.momentum ?? 0) > 0) return;
     (['strength', 'agility'] as const).forEach(attr => {
         const held = t.attributeDrift![attr] ?? 0;
         if (held <= 0) return;

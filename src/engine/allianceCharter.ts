@@ -5,6 +5,7 @@ import { SimContext, getAlive } from './context';
 import { allianceOf } from './alliance';
 import { adjustRel, getRel } from './relationships';
 import { RNG } from '../utils/rng';
+import { isAggressiveStance } from '../data/stances';
 
 /**
  * The alliance charter: rules a group agrees to, and what happens when somebody
@@ -162,7 +163,7 @@ function findBreach(ctx: SimContext, rule: CharterRule, record: Alliance, member
         }
         case 'no-hunting-alone': {
             return members.find(m =>
-                m.stance === 'Aggressive'
+                isAggressiveStance(m.stance)
                 && !members.some(o => o.id !== m.id && o.zone === m.zone));
         }
         default:

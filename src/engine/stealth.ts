@@ -1,9 +1,10 @@
 import { Tribute, Zone } from '../models/types';
 import { zoneFeatures } from './map';
-import { CRAFTING, INVENTORY, STEALTH } from '../data/balance';
+import { CRAFTING, INVENTORY, STANCE_MODES, STEALTH } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { traitMod } from '../data/traits';
 import { encumbranceOf, hasTool } from './items';
+import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 
 /**
  * Concealment and awareness — the two halves of whether one tribute ever finds
@@ -46,8 +47,14 @@ export function concealment(
     // The dark hides everybody, unless they are carrying the reason it doesn't.
     if (dark && !hasTool(t, 'light')) value += STEALTH.nightConcealment;
 
-    if (t.stance === 'Evasive') value += STEALTH.evasiveBonus;
-    if (t.stance === 'Aggressive') value -= STEALTH.aggressivePenalty;
+    if (isEvasiveStance(t.stance)) value += STEALTH.evasiveBonus;
+    if (isAggressiveStance(t.stance)) value -= STEALTH.aggressivePenalty;
+    // A1: the conditional stances trade cover for their own payoffs. A hunter
+    // crossing ground toward a named target is not being careful about it; a
+    // shadow is doing nothing else *but* being careful about it.
+    if (t.stance === 'Hunting') value -= STANCE_MODES.hunting.concealmentPenalty;
+    if (t.stance === 'Shadowing') value += STANCE_MODES.shadowing.concealmentBonus;
+    if (t.stance === 'Desperate') value -= STANCE_MODES.desperate.concealmentPenalty;
 
     // A fire is warmth, hot food and a beacon. Camouflage is the reverse trade.
     if (camp?.fire) value -= CRAFTING.fireConcealmentPenalty;
@@ -92,8 +99,12 @@ export function awareness(t: Tribute, dark = false): number {
 
     value += traitMod(t, 'awareness');
     // A hunter is looking; someone hiding in a bush is not.
-    if (t.stance === 'Aggressive') value += 1.5;
-    if (t.stance === 'Evasive') value -= 1;
+    if (isAggressiveStance(t.stance)) value += STEALTH.aggressiveAwareness;
+    if (isEvasiveStance(t.stance)) value -= STEALTH.evasiveAwareness;
+    // A1: a hunter is looking for exactly one person and finds them; a tribute
+    // past caring has stopped watching anything but the next few feet.
+    if (t.stance === 'Hunting') value += STANCE_MODES.hunting.awarenessBonus;
+    if (t.stance === 'Desperate') value -= STANCE_MODES.desperate.awarenessPenalty;
 
     // A light in your hand is the difference between watching the treeline and
     // guessing at it — and it is the reason everyone else can see you.
@@ -154,6 +165,9 @@ export function endgameVisibility(ctx: SimContext): number {
 export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute, zone: Zone | undefined): boolean {
     // You cannot ambush someone who is already fighting you, or an ally.
     if (attacker.allianceId !== undefined && attacker.allianceId === defender.allianceId) return false;
+    // A1: Fortified is prepared ground with sightlines its occupant chose.
+    // Nobody surprises them on it — that is the whole reason to dig in.
+    if (defender.stance === 'Fortified') return false;
 
     const dark = isDark(ctx);
     const advantage = attacker.attributes.stealth - awareness(defender, dark);
@@ -175,9 +189,11 @@ export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute
         if (f.elevation) chance -= STEALTH.elevationAmbushPenalty;
         if (f.chokepoint) chance += STEALTH.chokepointAmbushBonus;
     }
-    if (attacker.archetype === 'trickster') chance += 0.12;
+    if (attacker.archetype === 'trickster') chance += STEALTH.tricksterAmbushBonus;
+    // A1: a hunter has been reading this specific person's movements.
+    if (attacker.stance === 'Hunting') chance += STANCE_MODES.hunting.ambushBonus;
     chance += traitMod(attacker, 'ambush');
-    if (defender.stance === 'Aggressive') chance -= 0.1;
+    if (isAggressiveStance(defender.stance)) chance -= 0.1;
 
     return ctx.rng.chance(Math.max(0, Math.min(STEALTH.maxAmbushChance, chance)));
 }

@@ -1,12 +1,12 @@
 import { Mutt, Tribute } from '../models/types';
 import { ARENA_MUTTS } from '../data/mutts';
 import { ITEMS } from '../data/constants';
-import { BLEEDING, MEMORY, MUTTS, POISONING, QUELL_MECHANICS } from '../data/balance';
+import { BLEEDING, MEMORY, MUTTS, POISONING, QUELL_MECHANICS, HUNTING } from '../data/balance';
 import { giveItem } from './items';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { getZone, reachableZones, severedEdgeSet } from './map';
-import { addZoneThreat, ensureMemory, cycleOf } from './memory';
+import { addZoneThreat, ensureMemory, cycleOf, rattle } from './memory';
 import { hasEffect } from './zoneEffects';
 import { injure, openWound } from './wounds';
 import { clampTribute } from './vitals';
@@ -216,6 +216,9 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     damage = Math.min(damage, base * MUTTS.packDamageCap);
 
     applyDamage(ctx, t, Math.round(damage), { cause: `Torn apart by ${mutt.name}`, kind: 'mutt' });
+    // §1.2: walking away from something with teeth leaves a mark that is not
+    // an injury. Read by combat power and the retreat roll, same as momentum.
+    if (t.status === 'alive') rattle(t, HUNTING.rattledPerMutt);
     applyMuttInjuries(t, mutt);
     trainProficiency(t, 'tracking');
     addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat * 2);

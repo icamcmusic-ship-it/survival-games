@@ -14,6 +14,7 @@ import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 import { hopsTo, severedEdgeSet } from '../map';
 import { pickNeededGift } from '../sponsors';
+import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -238,8 +239,8 @@ function attendanceChance(t: Tribute, alive: Tribute[], theme: NonNullable<GameS
     }
     // balance-exempt: same hunger band the ally supply-sharing logic uses; the draw weight is the knob
     if (theme === 'food' && t.vitals.hunger > 40) chance += FEAST.foodThemeHungerDraw;
-    if (t.stance === 'Evasive') chance -= 0.15;
-    if (t.stance === 'Aggressive') chance += 0.15;
+    if (isEvasiveStance(t.stance)) chance -= 0.15;
+    if (isAggressiveStance(t.stance)) chance += 0.15;
 
     alive.forEach(other => {
         if (other.id === t.id) return;

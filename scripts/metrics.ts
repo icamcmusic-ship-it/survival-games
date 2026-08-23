@@ -17,6 +17,7 @@ import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig, GameState, Stance, Tribute } from '../src/models/types';
+import { STANCES } from '../src/data/stances';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 
 const RUNS = 400;
@@ -72,7 +73,7 @@ const runLengths: number[] = [];
 
 // Sampled once per cycle across every living tribute.
 let aliveSamples = 0, armedSamples = 0;
-const stanceSamples: Record<Stance, number> = { Aggressive: 0, Defensive: 0, Evasive: 0 };
+const stanceSamples: Record<Stance, number> = Object.fromEntries(STANCES.map((s: Stance) => [s, 0])) as Record<Stance, number>;
 let bleedingSamples = 0;
 // Proficiency growth: is anyone actually getting better at anything?
 let profSamples = 0, profTotal = 0, profMax = 0;
@@ -545,7 +546,11 @@ console.log('\nvictors by district:');
 console.log('\nboard samples:');
 console.log(`  carrying a weapon  ${pct(armedSamples, aliveSamples)}`);
 console.log(`  currently bleeding ${pct(bleedingSamples, aliveSamples)}`);
-console.log(`  stance             Defensive ${pct(stanceSamples.Defensive, aliveSamples)} / Evasive ${pct(stanceSamples.Evasive, aliveSamples)} / Aggressive ${pct(stanceSamples.Aggressive, aliveSamples)}`);
+console.log('  stance             '
+    + STANCES.filter((st: Stance) => stanceSamples[st] > 0)
+        .sort((a: Stance, b: Stance) => stanceSamples[b] - stanceSamples[a])
+        .map((st: Stance) => `${st} ${pct(stanceSamples[st], aliveSamples)}`)
+        .join(' / '));
 if (profSamples > 0) {
     console.log(`  best proficiency   avg ${(profTotal / profSamples).toFixed(2)}, peak ${profMax.toFixed(2)}`);
 }
