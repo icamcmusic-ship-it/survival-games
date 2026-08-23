@@ -46,6 +46,8 @@ const DURATION_BY_KIND: Record<ZoneEffectKind, number> = {
     contaminated: ZONE_EFFECTS.contaminatedDuration,
     fogbound: ZONE_EFFECTS.fogboundDuration,
     stripped: ZONE_EFFECTS.strippedDuration,
+    blooming: ZONE_EFFECTS.bloomingDuration,
+    irradiated: ZONE_EFFECTS.irradiatedDuration,
 };
 
 /**
@@ -103,6 +105,8 @@ export function startZoneEffect(ctx: SimContext, zone: string, kind: ZoneEffectK
         contaminated: `Something in ${zone} is wrong — the air, the water, the ground itself. It lingers.`,
         fogbound: `A fog bank rolls into ${zone} and does not lift. Nobody in it can see past their own hands.`,
         stripped: `${zone} is burned down to ash and bare rock. There is nothing left here worth finding.`,
+        blooming: `Something has come good in ${zone} — fruit, fish, run-off water, all of it at once. It will not last, and everyone who can see it knows that.`,
+        irradiated: `Whatever the Gamemakers have let loose in ${zone}, it is not going to lift. The ground itself is the hazard now, and the edge of it is moving.`,
     };
     ctx.logEvent(lines[kind], [], { important: true, zone, category: 'hazard' });
 }
@@ -194,6 +198,24 @@ export function tickZoneEffects(ctx: SimContext) {
         list.forEach(effect => {
             applyEffectTick(ctx, zoneName, effect, occupants);
 
+            // §5.2: irradiation is permanent and it creeps. Slowly — a zone a
+            // cycle at the outside — so an arena can be permanently narrowed
+            // by its own accident rather than only by the border.
+            if (effect.kind === 'irradiated' && ctx.rng.chance(ZONE_EFFECTS.irradiatedCreepChance)) {
+                const here = getZone(state.arena, zoneName);
+                const outward = (here?.adjacent ?? []).filter(n =>
+                    !(state.collapsedZones ?? []).includes(n) && !hasEffect(state, n, 'irradiated'));
+                if (outward.length > 0) {
+                    const next = ctx.rng.pick(outward);
+                    startZoneEffect(ctx, next, 'irradiated', false);
+                    ctx.logEvent(
+                        `The edge of whatever is wrong with ${zoneName} has reached ${next}. It does not appear to be stopping.`,
+                        [],
+                        { important: true, zone: next, category: 'hazard' }
+                    );
+                }
+            }
+
             if (effect.kind === 'burning' && effect.nextSpreadCycle !== undefined && cycle >= effect.nextSpreadCycle) {
                 effect.nextSpreadCycle = cycle + ZONE_EFFECTS.spreadEveryCycles;
                 spreadFire(ctx, zoneName);
@@ -278,6 +300,22 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                 }
                 t.vitals.sanity -= ZONE_EFFECTS.contaminatedSanityLoss * severity;
                 clampTribute(t);
+                break;
+
+            case 'blooming':
+                // §5.2: the inverse effect. A bloom feeds and settles whoever
+                // is standing in it — the arena's only unambiguous kindness,
+                // and a reason to fight over a zone that is not the horn.
+                t.vitals.sanity = Math.min(100, t.vitals.sanity + ZONE_EFFECTS.bloomingSanityRelief);
+                clampTribute(t);
+                break;
+
+            case 'irradiated':
+                applyDamage(ctx, t, Math.round(ZONE_EFFECTS.irradiatedDamage * severity), { cause: `Poisoned by whatever is loose in ${zoneName}`, kind: 'arena' });
+                t.vitals.sanity -= ZONE_EFFECTS.irradiatedSanityLoss * severity;
+                if (!t.injuries.poisoned) injure(t, 'poisoned');
+                clampTribute(t);
+                checkDeath(ctx, t, `Poisoned by whatever is loose in ${zoneName}`);
                 break;
 
             case 'fogbound':

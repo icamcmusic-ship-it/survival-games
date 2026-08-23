@@ -6,6 +6,7 @@ import { fearOf } from '../engine/fear';
 import { heightLabel } from '../engine/physique';
 import { prefsStore } from '../store/prefsStore';
 import { HUNTING, PROFICIENCY, ROMANCE, SUSPICION } from '../data/balance';
+import { bandLabel } from '../engine/proficiency';
 import { resolveOf, hasBroken } from '../engine/resolve';
 import { hasTruce, truceWith } from '../engine/parley';
 import { bleedSeverity } from '../engine/wounds';
@@ -790,6 +791,9 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                                         <span className="font-mono text-xs text-[var(--color-ink-400)] w-10 text-right flex-none">
                                             {level.toFixed(1)}
                                         </span>
+                                        {/* §3.9: the visible band. A number between 0 and 6 tells a
+                                            reader nothing; "Expert" tells them who this person is now. */}
+                                        <span className="eyebrow w-16 text-right flex-none">{bandLabel(level) ?? ''}</span>
                                     </div>
                                 ))}
                             </div>

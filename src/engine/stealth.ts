@@ -98,6 +98,9 @@ export function awareness(t: Tribute, dark = false): number {
     }
 
     value += traitMod(t, 'awareness');
+    // §8c: awareness that only exists after dark. An insomniac is not a better
+    // lookout at noon; they are simply the one who is still awake at three.
+    if (dark) value += traitMod(t, 'awarenessNight');
     // A hunter is looking; someone hiding in a bush is not.
     if (isAggressiveStance(t.stance)) value += STEALTH.aggressiveAwareness;
     if (isEvasiveStance(t.stance)) value -= STEALTH.evasiveAwareness;

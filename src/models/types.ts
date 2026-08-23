@@ -57,6 +57,37 @@ export interface Attributes {
     intelligence: number;
     charisma: number;
     stealth: number;
+    /**
+     * §3.1: the difference between "can fight" and "can keep walking".
+     *
+     * Fatigue used to do both jobs: the same number that decided whether a
+     * tribute could swing a sword decided whether they could cross the arena
+     * on the eighth day. Endurance is the trait half of that — a scalar rolled
+     * at the reaping that scales how fast fatigue accumulates and how much of
+     * it a night's rest gives back. Optional-free (always written by the
+     * generator) but read defensively through `attr()` so saves from before it
+     * existed resume with a neutral 5.
+     */
+    endurance: number;
+    /**
+     * §3.1: the trait `resolve` was conflating.
+     *
+     * `Tribute.resolve` is per-run state — it rises and falls with what has
+     * happened. Willpower is the disposition underneath it: how steeply that
+     * state falls, how much fear and grief land, and how likely a tribute is
+     * to keep going when the arithmetic says not to.
+     */
+    willpower: number;
+}
+
+/**
+ * One attribute, tolerating tributes generated before §3.1 added endurance
+ * and willpower. Everything that reads the two new scalars goes through this
+ * rather than `t.attributes.endurance` so an in-flight save never yields NaN.
+ */
+export function attr(t: { attributes: Attributes }, key: keyof Attributes): number {
+    const value = t.attributes[key];
+    return typeof value === 'number' && !Number.isNaN(value) ? value : 5;
 }
 
 export interface Vitals {
@@ -110,7 +141,35 @@ export type Objective =
     | { kind: 'reach'; zone: string; reason: ObjectiveReason; expires: number }
     | { kind: 'hold'; zone: string; expires: number }
     | { kind: 'flee'; from: string; expires: number }
-    | { kind: 'protect'; wardId: string; expires: number };
+    | { kind: 'protect'; wardId: string; expires: number }
+    /**
+     * §3.3: following without engaging. The behavioural pair to the Shadowing
+     * stance — a tribute who has decided that knowing where somebody is beats
+     * fighting them today.
+     */
+    | { kind: 'stalk'; targetId: string; expires: number }
+    /**
+     * §3.3: deliberate inaction at a chokepoint. Distinct from 'hold', which
+     * is holding ground worth having; this is holding ground worth *watching*,
+     * and it is the only objective that wants nobody else to arrive.
+     */
+    | { kind: 'wait'; zone: string; expires: number };
+
+/**
+ * §3.4: the objective that came second, and by how much.
+ *
+ * `chooseObjective` used to take the top of a priority cascade and throw the
+ * rest away, so there was no representation of a tribute torn — needing water
+ * while their ally is dying two zones over. The runner-up is kept so a narrow
+ * margin can be narrated (a hesitation beat) and, under pressure, acted on.
+ */
+export interface ObjectiveTension {
+    runnerUp: Objective;
+    /** Score gap between the chosen objective and the runner-up. */
+    margin: number;
+    /** Set once the hesitation beat has been narrated, so it fires once per choice. */
+    voiced?: boolean;
+}
 
 export type WeaponClass = 'melee' | 'ranged' | 'thrown';
 
@@ -370,6 +429,30 @@ export interface Tribute {
     proficiencies?: Partial<Record<Proficiency, number>>;
     /** What they are currently trying to do. See `Objective`. */
     objective?: Objective;
+    /** §3.4: what they nearly did instead, and how close it was. */
+    objectiveTension?: ObjectiveTension;
+    /**
+     * §3.6: sites that will never fully come back. Written when a grade-3
+     * injury heals; read by `visiblePower` (a tribute who favours an arm is
+     * read as weaker) and by the epilogue.
+     */
+    scars?: Partial<Record<InjurySite, boolean>>;
+    /**
+     * §3.6: the observable consequence of a bad leg or arm — a limp, a guarded
+     * shoulder. Set alongside the severity grade, cleared when the site heals
+     * below grade 2, and visible to anyone who can see them.
+     */
+    favouring?: InjurySite;
+    /**
+     * §3.2: cycles a trait has been carried, keyed by trait name. Drives trait
+     * decay and the evolution chains in `engine/traitArcs.ts` — a trait is a
+     * stage a tribute is passing through, not a permanent label.
+     */
+    traitAge?: Record<string, number>;
+    /** §3.2: traits that have burned off or transformed, kept for the epilogue. */
+    shedTraits?: string[];
+    /** §3.6: cycles of undisturbed healing banked per injury site. */
+    recoveryProgress?: Partial<Record<InjurySite, number>>;
     /** Ids of tributes this one has formed a protective bond with. See `growProtectorBond`. */
     protectorBonds?: string[];
     /**
@@ -539,6 +622,13 @@ export interface Alliance {
      */
     pact: 'to-the-end' | 'until-the-final-eight' | 'no-pact';
     /**
+     * §4.4: who does what inside the group. Assigned on formation from
+     * attributes, so a coup and a betrayal both have somewhere to land: the
+     * quartermaster holds the cache and is the natural knife target, the
+     * scout's sightings are pooled into the group's memory.
+     */
+    roles?: Partial<Record<AllianceRole, string>>;
+    /**
      * The rules they actually agreed to keep, beyond the pact's expiry date.
      * Breaking one is fallout short of a full betrayal — an argument, a lost
      * night's trust — which is the whole middle ground the alliance layer was
@@ -548,6 +638,9 @@ export interface Alliance {
     /** §10.1: charter breaches this group has logged, for 'Charter Kept'. */
     breaches?: number;
 }
+
+/** §4.4: a job inside an alliance, held by exactly one member. */
+export type AllianceRole = 'quartermaster' | 'scout' | 'muscle' | 'medic';
 
 /** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
 export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone' | 'split-at-eight';
@@ -577,7 +670,17 @@ export interface RivalRecord {
  * something over the course of a run — burn, flood, freeze, fog over — the way
  * `zoneDepletion` already lets it get quietly stripped.
  */
-export type ZoneEffectKind = 'burning' | 'flooded' | 'frozen' | 'contaminated' | 'fogbound' | 'stripped';
+/**
+ * §5.2: the six primitives, plus the two the set was missing entirely — an
+ * abundance effect (every existing kind is a punishment) and a permanent one.
+ * Interactions between kinds are resolved in `engine/zoneEffects.ts`:
+ * water puts fire out, fire on ice makes meltwater, and contamination
+ * travels along the adjacency it is floated down.
+ */
+export type ZoneEffectKind =
+    | 'burning' | 'flooded' | 'frozen' | 'contaminated' | 'fogbound' | 'stripped'
+    | 'blooming'      // temporary abundance — forage and morale both lift
+    | 'irradiated';   // permanent, and it creeps
 
 export interface ZoneEffect {
     kind: ZoneEffectKind;
@@ -724,7 +827,10 @@ export type ArenaLawId =
     | 'sponsorsFixedZone'  // gifts only deliver to a tribute standing in `Arena.lawZone`
     | 'noNight'            // the arena never leaves 'day' — no rest phase, fatigue never fully recovers
     | 'noWaterExceptZone'  // only `Arena.lawZone` yields any water relief; everywhere else is dry
-    | 'fireImpossible';    // fire cannot be lit anywhere in this arena
+    | 'fireImpossible'      // fire cannot be lit anywhere in this arena
+    // §5.1: an arena is allowed more than one of these now (`Arena.laws`).
+    | 'noSponsors'         // communications blackout: no gift ever lands
+    | 'noHealing';         // medical items do nothing; rest is the only recovery
 
 /** A traversal rule layered on top of plain adjacency for one edge. Keyed by `edgeKey(a,b)` on `Arena.edgeRules`. */
 export interface EdgeRule {
@@ -785,8 +891,16 @@ export interface Arena {
     /** Flavor text only — terrain events are resolved through `arenaFlavor` (src/data/arenaFlavor.ts) via engine/encounters.ts, not this list. */
     events: string[];
     zones: Zone[];
-    /** A standing rule override for this arena only. See `ArenaLawId`. */
+    /**
+     * A standing rule override for this arena only. See `ArenaLawId`.
+     *
+     * §5.1: kept as the single-law field every existing arena, Quell override
+     * and save file already writes. `laws` is the plural form; read both
+     * through `arenaHasLaw`, never directly.
+     */
     law?: ArenaLawId;
+    /** §5.1: additional standing rules, stacked on top of `law`. */
+    laws?: ArenaLawId[];
     /** The zone a law's "except here"/"only here" clause refers to (`noWaterExceptZone`, `sponsorsFixedZone`). */
     lawZone?: string;
     /** Multiplier on sponsor-gift frequency for this arena. Defaults to 1. */
@@ -869,6 +983,17 @@ export interface GameState {
     /** The player's unmultiplied config, as chosen at setup — what gets shared or archived so a replay starts from the same inputs rather than double-applying the profile. */
     baseConfig: GameConfig;
     collapsedZones?: string[];
+    /**
+     * §7e: ids of `oncePerRun` arena events that have already fired. A
+     * signature beat that is a one-time reveal stops being eligible after it
+     * lands rather than becoming this arena's running gag.
+     */
+    firedEvents?: string[];
+    /**
+     * §7e: tribute id -> the id of the event queued to fire on them next
+     * cycle, set by an event's `chain`. The arena telling a two-part story.
+     */
+    eventChains?: Record<string, string>;
     epilogueInterview?: EpilogueQA[];
     /** Day the next Gamemaker feast is scheduled for (undefined = none scheduled). Cleared once the feast resolves. */
     feastDay?: number;

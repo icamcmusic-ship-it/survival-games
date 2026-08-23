@@ -1,4 +1,4 @@
-import { Tribute } from '../models/types';
+import { Tribute, attr } from '../models/types';
 import { FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
@@ -9,7 +9,7 @@ import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { sanityBandOf } from './sanityBands';
 import { decayIdleDrift } from './proficiency';
-import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding } from './wounds';
+import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding, tickWoundRecovery } from './wounds';
 import { rememberedThreat } from './memory';
 import { hasCamp } from './fieldcraft';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
@@ -101,6 +101,14 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     // §3.3: hauling a laden pack all day is work.
     fatigue += encumbranceOf(t) * INVENTORY.encumbranceFatigueMax;
 
+    // §3.1: endurance is the trait fatigue was doing two jobs for. It scales
+    // the day's accumulation and the night's recovery in opposite directions,
+    // so a tough tribute is not merely slower to tire but genuinely better at
+    // getting a night back — which is what separates "can fight" from "can
+    // keep walking on day nine".
+    const stamina = (attr(t, 'endurance') - 5) * VITALS.endurancePerPoint;
+    fatigue += fatigue > 0 ? -stamina : -stamina * VITALS.enduranceRecoveryShare;
+
     // Traits, as one table read rather than a growing chain of includes().
     hunger += traitMod(t, 'hungerDrain');
     thirst += traitMod(t, 'thirstDrain');
@@ -112,6 +120,43 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     }
 
     return { hunger, thirst, fatigue };
+}
+
+/**
+ * §3.5: the vitals compound instead of running as four parallel timers.
+ *
+ * hunger, thirst, fatigue and sanity each drained on their own track and each
+ * applied their own penalty, which made a long run four independent clocks
+ * rather than attrition. In a body they feed each other: dehydration is
+ * exhausting long before it is lethal, exhaustion is what makes the arena
+ * start talking to you, and a starving tribute heals from nothing. Applied
+ * after the base drains land, so the matrix reads the cycle's real state.
+ *
+ * Deliberately one-directional and small per cycle — this is a bias on the
+ * shape of a long run, not a second drain system on top of the first.
+ */
+function applyVitalInteractions(ctx: SimContext, t: Tribute) {
+    const { hunger, thirst, fatigue } = t.vitals;
+
+    // Dehydration accelerates fatigue. The first thing to go is the legs.
+    if (thirst > VITALS.interactionThirstFrom) {
+        t.vitals.fatigue += (thirst - VITALS.interactionThirstFrom) * VITALS.thirstFatigueCoupling;
+    }
+    // Exhaustion accelerates sanity loss — this is where the arena starts
+    // making suggestions. Willpower is the trait that decides how much of it
+    // actually lands (§3.1), so the two additions to the model meet here.
+    if (fatigue > VITALS.interactionFatigueFrom) {
+        const grip = 1 - (attr(t, 'willpower') - 5) * VITALS.willpowerSanityGuard;
+        t.vitals.sanity -= (fatigue - VITALS.interactionFatigueFrom)
+            * VITALS.fatigueSanityCoupling * Math.max(VITALS.willpowerGuardFloor, grip);
+    }
+    // Starvation slows healing: `applyNaturalRecovery` reads `starving` off
+    // the same threshold, and a body with nothing coming in does not close
+    // wounds. Bleeding runs a little longer, too — see `tickBleeding`.
+    if (hunger > VITALS.interactionHungerFrom && t.injuries.bleeding && ctx.rng.chance(VITALS.starvedClotPenalty)) {
+        t.bleedSeverity = Math.max(t.bleedSeverity ?? 1, 1);
+    }
+    clampTribute(t);
 }
 
 /**
@@ -307,6 +352,11 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
             drinkFromZone(ctx, t);
         }
     }
+
+    // §5.1 `noHealing`: the arena where the medical kit is a prop. Every item
+    // below still exists, still weighs something and is still worth stealing —
+    // it simply does nothing when opened, so rest is the only way back up.
+    if (arenaHasLaw(ctx.state, 'noHealing')) return;
 
     // Antidote cures poison before it becomes lethal.
     if (t.injuries.poisoned) {
@@ -531,6 +581,7 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         t.vitals.hunger += Math.max(0, drains.hunger);
         t.vitals.thirst += Math.max(0, drains.thirst);
         t.vitals.fatigue += drains.fatigue;
+        applyVitalInteractions(ctx, t);
         applyMandatoryPartnerDrain(ctx, t, board);
         applySanityPressure(ctx, t, time, alliesPresent);
         clampTribute(t);
@@ -543,6 +594,8 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         // Order matters: the wound costs health first, then gets its chance to
         // close. A fresh cut always draws blood before it starts to clot.
         tickBleeding(ctx, t);
+        // §3.6: and every other site gets its own slow, unassisted recovery.
+        tickWoundRecovery(ctx, t);
         applyNaturalRecovery(ctx, t, time, alliesPresent);
 
         clampTribute(t);

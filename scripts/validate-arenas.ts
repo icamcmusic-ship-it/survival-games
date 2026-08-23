@@ -8,11 +8,22 @@ import { ARENAS } from '../src/data/constants';
 import { ARENA_FLAVOR, GENERIC_ARENA_FLAVOR, PROCEDURAL_FLAVOR_PACKS } from '../src/data/arenaFlavor';
 import { DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { ArenaLawId, GameState } from '../src/models/types';
+import { ARENA_MUTTS } from '../src/data/mutts';
 import { Simulator } from '../src/engine/simulator';
 import { generateTributes } from '../src/engine/generator';
 import { gamesProfileFor } from '../src/engine/gamesProfile';
 
 const problems: string[] = [];
+/** §5.12: things worth saying out loud that are not build failures. */
+const notes: string[] = [];
+
+/** Every real `ZoneEffectKind`, for the effectVocab key check below. */
+const EFFECT_KINDS = new Set<string>([
+    'burning', 'flooded', 'frozen', 'contaminated', 'fogbound', 'stripped', 'blooming', 'irradiated',
+]);
+
+/** §5.12: authored events per arena, below which an arena reads as generic. */
+const AUTHORED_EVENT_TARGET = 12;
 
 ARENAS.forEach(arena => {
     const names = new Set(arena.zones.map(z => z.name));
@@ -52,6 +63,34 @@ ARENAS.forEach(arena => {
     // does still need at least one.
     if (arena.mutts.length < 1) problems.push(`${arena.id}: no mutts at all`);
     if (arena.events.length < 3) problems.push(`${arena.id}: fewer than 3 signature events`);
+
+    // §5.12: the checks the structural pass was missing. All three are things
+    // that fail silently at runtime rather than loudly at authoring time: a
+    // law that points at a zone which does not exist simply never applies, and
+    // an effectVocab key that is not a real ZoneEffectKind renames nothing.
+    if (arena.lawZone && !names.has(arena.lawZone)) {
+        problems.push(`${arena.id}: lawZone '${arena.lawZone}' is not one of its zones`);
+    }
+    // `sponsorsFixedZone` without a drop zone means no gift ever lands, which
+    // is a different law wearing this one's name. `noWaterExceptZone` is
+    // exempt on purpose: the Warren omits `lawZone` to mean "nowhere at all".
+    if ((arena.law === 'sponsorsFixedZone' || (arena.laws ?? []).includes('sponsorsFixedZone'))
+        && !arena.lawZone) {
+        problems.push(`${arena.id}: sponsorsFixedZone needs a lawZone and has none`);
+    }
+    Object.keys(arena.effectVocab ?? {}).forEach(kind => {
+        if (!EFFECT_KINDS.has(kind)) problems.push(`${arena.id}: effectVocab key '${kind}' is not a ZoneEffectKind`);
+    });
+    // §5.12: an arena's mutt roster should cover the terrain it is made of, or
+    // whole zones are mechanically toothless. Reported rather than fatal —
+    // some arenas deliberately keep one horror and one habitat for it.
+    const roster = ARENA_MUTTS[arena.id] ?? [];
+    if (roster.length > 0) {
+        const covered = new Set(roster.flatMap(m => m.terrains ?? []));
+        const uncovered = [...new Set(arena.zones.map(z => z.terrain))]
+            .filter(terrain => roster.some(m => m.terrains) && !covered.has(terrain));
+        if (uncovered.length > 0) notes.push(`${arena.id}: no mutt eligible on ${uncovered.join(', ')}`);
+    }
 });
 
 // Both directions, exactly: every ARENA_FLAVOR key names a real hand-authored
@@ -68,6 +107,12 @@ Object.keys(PROCEDURAL_FLAVOR_PACKS).forEach(id => {
 
 Object.entries({ ...ARENA_FLAVOR, ...PROCEDURAL_FLAVOR_PACKS }).forEach(([id, flavor]) => {
     if (flavor.events.length < 3) problems.push(`${id}: flavour pack has fewer than 3 events`);
+    // §7b: every arena should carry a dozen of its own before the universal
+    // pool starts speaking for it. A note, not a failure — the gap is an
+    // authoring backlog, and failing the build on it helps nobody.
+    if (flavor.events.length < AUTHORED_EVENT_TARGET) {
+        notes.push(`${id}: ${flavor.events.length} authored events (target ${AUTHORED_EVENT_TARGET})`);
+    }
     if (flavor.ambient.length < 3) problems.push(`${id}: flavour pack has fewer than 3 ambient lines`);
     (['forage', 'rest', 'hide', 'hunt', 'travel'] as const).forEach(k => {
         if (flavor.actions[k].length < 3) problems.push(`${id}: flavour pack ${k} pool is thin`);
@@ -97,7 +142,7 @@ if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has n
  * It is implemented the right way. This is the check that keeps it that way.
  */
 {
-    const LAWS_TO_CHECK: Array<ArenaLawId | undefined> = [undefined, 'noNight', 'noCannons', 'fireImpossible'];
+    const LAWS_TO_CHECK: Array<ArenaLawId | undefined> = [undefined, 'noNight', 'noCannons', 'fireImpossible', 'noSponsors', 'noHealing'];
     const DAYS = 4;
     LAWS_TO_CHECK.forEach(law => {
         const base = ARENAS[0];
@@ -162,6 +207,9 @@ walk('src').forEach(file => {
 
 console.log(`arenas=${ARENAS.length} flavourPacks=${Object.keys(ARENA_FLAVOR).length} sourcesScanned=${walk('src').length}`);
 console.log(ARENAS.map(a => `  ${a.id.padEnd(12)} ${a.zones.length} zones  ${a.name}`).join('\n'));
+if (notes.length) {
+    console.log('\nNOTES (not failures):\n' + notes.map(n => ' - ' + n).join('\n'));
+}
 if (problems.length) {
     console.log('\nPROBLEMS:\n' + problems.map(p => ' - ' + p).join('\n'));
     process.exit(1);

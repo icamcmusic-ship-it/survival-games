@@ -72,6 +72,25 @@ export function noteSighting(state: GameState, t: Tribute, zone: string, rivals:
     slot.barren = barren;
 }
 
+/**
+ * §4.4/§5.9: the scout's sighting, pooled to their group.
+ *
+ * ZoneMemory is per-tribute and was never shared, so an alliance of five had
+ * five private and mostly redundant maps — holding ground bought no
+ * informational advantage at all, and the scout role had nothing to do that a
+ * bystander did not. What the scout sees, the group knows: the same slot,
+ * written to each living ally, so the group moves on the group's information.
+ */
+export function shareScoutSighting(state: GameState, scout: Tribute, zone: string, rivals: number, barren: number) {
+    if (!scout.allianceId) return;
+    const record = state.alliances?.[scout.allianceId];
+    if (record?.roles?.scout !== scout.id) return;
+    state.tributes.forEach(mate => {
+        if (mate.id === scout.id || mate.status !== 'alive' || mate.allianceId !== scout.allianceId) return;
+        noteSighting(state, mate, zone, rivals, barren);
+    });
+}
+
 /** Adds dread to a tribute's impression of a place. */
 export function addZoneThreat(state: GameState, t: Tribute, zone: string, amount: number) {
     const slot = zoneSlot(t, zone);

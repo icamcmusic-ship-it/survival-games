@@ -73,6 +73,23 @@ const victorsByDistrict: Record<number, number> = {};
 // handicap, and it was not being tracked at all.
 const archetypeEntrants: Record<string, number> = {};
 const archetypeWins: Record<string, number> = {};
+/**
+ * §8d: per-trait tracking, partitioned.
+ *
+ * The trait win-rate table cannot be read naively: `earnedTraits.ts` grants
+ * traits mid-run, so Vulture's 34.67% is survivorship — you cannot earn it
+ * without surviving long enough to loot four corpses. Reaping-assigned traits
+ * are the only ones that can be balanced against each other, so the two
+ * populations are counted separately: the reaping set is captured from the
+ * cast at generation (before a single cycle has run), and anything a tribute
+ * finishes with that is not in that set was earned.
+ */
+const reapingTraitEntrants: Record<string, number> = {};
+const reapingTraitWins: Record<string, number> = {};
+const earnedTraitHolders: Record<string, number> = {};
+const earnedTraitWins: Record<string, number> = {};
+/** §3.2: how often a trait is shed or transformed rather than merely gained. */
+let traitsShed = 0;
 const archetypeDays: Record<string, number> = {};
 const archetypeKills: Record<string, number> = {};
 let runs = 0, totalDays = 0;
@@ -122,6 +139,15 @@ for (let i = 0; i < RUNS; i++) {
     const sim = new Simulator(start(seed, arenaIds[i % arenaIds.length], configs[i % configs.length]));
     let guard = 3000;
     let state = sim.getState();
+    // §8d: the reaping-assigned set, snapshotted before a cycle has run.
+    // Everything a tribute finishes with that is not in here was earned.
+    const reapingTraits = new Map<string, string[]>();
+    state.tributes.forEach(t => {
+        reapingTraits.set(t.id, [...t.traits]);
+        t.traits.forEach(trait => {
+            reapingTraitEntrants[trait] = (reapingTraitEntrants[trait] ?? 0) + 1;
+        });
+    });
 
     while (state.phase !== 'ended' && guard-- > 0) {
         if (state.phase === 'setup') {
@@ -178,6 +204,11 @@ for (let i = 0; i < RUNS; i++) {
         }
     });
     state.tributes.forEach(t => {
+        traitsShed += (t.shedTraits ?? []).length;
+        const reaped = reapingTraits.get(t.id) ?? [];
+        t.traits.filter(trait => !reaped.includes(trait)).forEach(trait => {
+            earnedTraitHolders[trait] = (earnedTraitHolders[trait] ?? 0) + 1;
+        });
         archetypeEntrants[t.archetype] = (archetypeEntrants[t.archetype] ?? 0) + 1;
         archetypeDays[t.archetype] = (archetypeDays[t.archetype] ?? 0) + t.daysSurvived;
         archetypeKills[t.archetype] = (archetypeKills[t.archetype] ?? 0) + t.kills;
@@ -195,6 +226,11 @@ for (let i = 0; i < RUNS; i++) {
         victorsByDistrict[winner.district] = (victorsByDistrict[winner.district] ?? 0) + 1;
         if (winner.isCareer) careerVictors++;
         archetypeWins[winner.archetype] = (archetypeWins[winner.archetype] ?? 0) + 1;
+        const reaped = reapingTraits.get(winner.id) ?? [];
+        reaped.forEach(trait => { reapingTraitWins[trait] = (reapingTraitWins[trait] ?? 0) + 1; });
+        winner.traits.filter(trait => !reaped.includes(trait)).forEach(trait => {
+            earnedTraitWins[trait] = (earnedTraitWins[trait] ?? 0) + 1;
+        });
     } else {
         // Every canonical Games produces a victor. A run that ends with an
         // empty arena is the largest canon-fidelity failure the sim can have.
@@ -252,11 +288,87 @@ const topThreeDistrictShare = (() => {
     return counts.slice(0, 3).reduce((a, b) => a + b, 0) / victors;
 })();
 
+/**
+ * §8d: the two numbers the harness never measured — the two things a player
+ * actually chooses to care about.
+ *
+ * `archetypeSpread` is the ratio of the best archetype's win rate to the
+ * worst; `reapingTraitSpread` the same for reaping-assigned traits only
+ * (earned traits are excluded on purpose: their win rates are survivorship,
+ * not power — see the comment on `reapingTraitEntrants`). Both are computed
+ * over populations large enough to mean something.
+ */
+const MIN_SAMPLE = 100;
+function winRates(entrants: Record<string, number>, wins: Record<string, number>): Array<[string, number, number]> {
+    return Object.keys(entrants)
+        .filter(k => entrants[k] >= MIN_SAMPLE)
+        .map(k => [k, (wins[k] ?? 0) / entrants[k], entrants[k]] as [string, number, number])
+        .sort((a, b) => b[1] - a[1]);
+}
+const archetypeRates = winRates(archetypeEntrants, archetypeWins);
+const reapingTraitRates = winRates(reapingTraitEntrants, reapingTraitWins);
+const earnedTraitRates = winRates(earnedTraitHolders, earnedTraitWins);
+const spreadOf = (rates: Array<[string, number, number]>) => {
+    if (rates.length < 2) return 1;
+    const worst = rates[rates.length - 1][1];
+    return worst > 0 ? rates[0][1] / worst : Infinity;
+};
+const archetypeSpread = spreadOf(archetypeRates);
+const reapingTraitSpread = spreadOf(reapingTraitRates);
+const worstArchetypeRate = archetypeRates.length ? archetypeRates[archetypeRates.length - 1][1] : 0;
+const bestArchetypeRate = archetypeRates.length ? archetypeRates[0][1] : 0;
+
 /** How many districts win often enough to be worth rooting for at all. */
 const viableDistricts = Object.values(victorsByDistrict)
     .filter(n => n / Math.max(1, victors) >= 0.04).length;
 
 const indicators: Indicator[] = [
+    {
+        // §8d: the harness measured districts and stances and not the two
+        // things a player chooses. Career ran at 2.2x the field average and
+        // 4.6x the worst archetype; Strategist at 2.56% was a flavour label.
+        label: 'archetype win-rate spread (best/worst)',
+        value: archetypeSpread,
+        guard: v => v <= 4.6,
+        guardText: '<= 4.6',
+        goal: '<= 2.3',
+        goalMet: v => v <= 2.3,
+        baseline: '4.6',
+        fmt: v => `${v.toFixed(2)}x`,
+    },
+    {
+        label: 'worst archetype win rate',
+        value: worstArchetypeRate,
+        guard: v => v >= 0.02,
+        guardText: '>= 2.0%',
+        goal: '>= 3.5%',
+        goalMet: v => v >= 0.035,
+        baseline: '2.56%',
+        fmt: v => `${(v * 100).toFixed(2)}%`,
+    },
+    {
+        label: 'best archetype win rate',
+        value: bestArchetypeRate,
+        guard: v => v <= 0.13,
+        guardText: '<= 13%',
+        goal: '<= 8%',
+        goalMet: v => v <= 0.08,
+        baseline: '11.8%',
+        fmt: v => `${(v * 100).toFixed(2)}%`,
+    },
+    {
+        // §8b/§8d: reaping-assigned traits only. Earned traits are excluded
+        // because their win rates are survivorship — you cannot earn Vulture
+        // without having already survived four deaths.
+        label: 'reaping-trait win spread (best/worst)',
+        value: reapingTraitSpread,
+        guard: v => v <= 4.5,
+        guardText: '<= 4.5',
+        goal: '<= 2.5',
+        goalMet: v => v <= 2.5,
+        baseline: '4.31 measured here (the audit reported 4.3)',
+        fmt: v => `${v.toFixed(2)}x`,
+    },
     {
         // REPLAY-01. Every run used to have the same shape: mean 8.0 days in a
         // tight 5-14 band, same escalation schedule, same sponsor climate. A
@@ -577,6 +689,18 @@ console.log('  stance             '
 if (profSamples > 0) {
     console.log(`  best proficiency   avg ${(profTotal / profSamples).toFixed(2)}, peak ${profMax.toFixed(2)}`);
 }
+
+console.log('');
+console.log('reaping-assigned traits (n / win%) — the only set that can be balanced against itself:');
+reapingTraitRates.forEach(([trait, rate, n]) => {
+    console.log(`  ${trait.padEnd(16)} ${String(n).padStart(5)}  ${(rate * 100).toFixed(2).padStart(6)}%`);
+});
+console.log('');
+console.log('earned traits (holders / win%) — survivorship, NOT power. Read against the field, not each other:');
+earnedTraitRates.forEach(([trait, rate, n]) => {
+    console.log(`  ${trait.padEnd(16)} ${String(n).padStart(5)}  ${(rate * 100).toFixed(2).padStart(6)}%`);
+});
+console.log(`  traits shed or transformed (§3.2): ${traitsShed} across ${runs} runs`);
 
 console.log('\nsocial systems:');
 console.log(`  runs with star-crossed lovers  ${pct(runsWithLovers, runs)}${loverRuns > 0 ? `, avg day ${(loverDaySum / loverRuns).toFixed(1)}` : ''}`);

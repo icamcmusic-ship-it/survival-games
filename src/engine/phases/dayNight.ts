@@ -10,8 +10,7 @@ import { processSponsors } from '../sponsors';
 import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
-    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting,
-} from '../memory';
+    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting, shareScoutSighting } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { isNoticed } from '../stealth';
@@ -26,7 +25,7 @@ import { runArchetypeSignatures, tickGhosts } from '../archetypeHooks';
 import { processSpoilage, processVitals } from '../survival';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
-    pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
+    pendingChain, pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
 } from '../encounters';
 import { tickPersistentMutts } from '../mutts';
 import { hasEffect, restockCornucopia, rollAmbientZoneEffects, startZoneEffect, tickForceField, tickZoneEffects } from '../zoneEffects';
@@ -41,6 +40,7 @@ import { resolveTruces } from '../parley';
 import { repayDebts, tickDistrictBonds } from '../debts';
 import { enforceCharters } from '../allianceCharter';
 import { earnTrait } from '../earnedTraits';
+import { tickTraitArcs } from '../traitArcs';
 import { gamemakerProfile } from '../../data/gamemakers';
 import { arenaHasLaw, arenaIsSilent, escalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
@@ -125,6 +125,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         const here = currentAlive.filter(o => o.status === 'alive' && o.zone === t.zone);
         const hostiles = here.filter(o => o.id !== t.id && o.allianceId !== t.allianceId).length;
         noteSighting(ctx.state, t, t.zone, hostiles, depletionOf(ctx.state, t.zone));
+        // §4.4/§5.9: if this is the group's scout, that sighting belongs to
+        // everybody wearing the same colours.
+        shareScoutSighting(ctx.state, t, t.zone, hostiles, depletionOf(ctx.state, t.zone));
         // §5.6: high ground is a watchtower. A tribute on elevation reads the
         // zones its sightlines reach — who is moving down there — and feeds it
         // into the same memory the sighting layer uses, so a ridge camp is
@@ -196,6 +199,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // this cycle actually did to them, then the ones who have run out act on it.
     tickResolve(ctx);
     resolveBreakdowns(ctx);
+    // 4a-ii. §3.2: and whether this cycle changed who they are. Traits decay,
+    // collide and evolve here, after everything that could have earned one.
+    tickTraitArcs(ctx);
 
     // 4b. The arena's own rule — the clock, the tide, the blackout schedule.
     // Runs after movement and encounters so it acts on where tributes actually
@@ -1227,7 +1233,9 @@ function resolveEncounters(
         muttChance = Math.min(ENCOUNTERS.hazardCeiling, muttChance * ctx.state.config.hazardRate);
 
         if (ctx.rng.chance(eventChance)) {
-            applyArenaEvent(ctx, t, pickTerrainEvent(ctx, flavor.events, zone?.terrain));
+            // §7e: an arena that started a story last cycle finishes it.
+            applyArenaEvent(ctx, t,
+                pendingChain(ctx, t, flavor.events) ?? pickTerrainEvent(ctx, flavor.events, zone?.terrain, t));
             acted.add(t.id);
             return;
         }

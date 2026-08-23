@@ -29,7 +29,14 @@ function visiblePower(o: Tribute, observer?: Tribute): number {
         + massOf(o) * STANCE.visibleMassWeight
         + (o.inventory.some(i => i.type === 'weapon') ? STANCE.visibleWeaponBonus : 0)
         - (o.injuries.bleeding ? STANCE.visibleBleedingPenalty : 0)
-        - (o.injuries.legs ? STANCE.visibleLegPenalty : 0);
+        - (o.injuries.legs ? STANCE.visibleLegPenalty : 0)
+        // §3.6: a limp, or an arm held against the body. The grade layer knew
+        // how badly somebody was hurt and nobody could see it — a favoured
+        // limb is the most readable thing about a tribute at fifty yards, and
+        // it is now a reason the field picks them.
+        - (o.favouring ? STANCE.visibleFavouringPenalty : 0)
+        // A scar reads the other way: whoever gave them that is not here.
+        + (Object.keys(o.scars ?? {}).length > 0 ? STANCE.visibleScarBonus : 0);
     // Somebody in obvious trouble looks like somebody in obvious trouble.
     if (o.health < STANCE.visibleHurtHealth) power -= STANCE.visibleHurtPenalty;
     // A2: the Beast is the one archetype that wants to be underestimated on

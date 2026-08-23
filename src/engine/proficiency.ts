@@ -3,6 +3,8 @@ import { DRIFT, PROFICIENCY } from '../data/balance';
 import { craftOf } from '../data/districts';
 import { strengthCapForAge } from './physique';
 import { isAggressiveStance } from '../data/stances';
+import { SimContext } from './context';
+import { fill } from './encounters';
 
 /**
  * Skills that improve with use.
@@ -84,7 +86,7 @@ export function profOf(t: Tribute, skill: Proficiency): number {
  * Records a successful use. Returns the new level so callers can narrate a
  * milestone if they want one.
  */
-export function trainProficiency(t: Tribute, skill: Proficiency): number {
+export function trainProficiency(t: Tribute, skill: Proficiency, ctx?: SimContext): number {
     if (!t.proficiencies) t.proficiencies = {};
     const current = profOf(t, skill);
     // Each level already held shrinks the next gain, so the curve flattens
@@ -93,7 +95,14 @@ export function trainProficiency(t: Tribute, skill: Proficiency): number {
     // wears on, so the top of the curve is actually reachable and a
     // survivalist visibly arrives somewhere by the endgame.
     const pressure = 1 + Math.min(PROFICIENCY.lateRunGainCap, t.daysSurvived * PROFICIENCY.lateRunGainPerDay);
-    const gain = PROFICIENCY.gainPerUse * pressure * Math.pow(1 - PROFICIENCY.diminishingPerLevel, current);
+    // §3.9: the curve was too flat at the bottom to be felt. Board sampling
+    // put the average proficiency at 1.85 against a cap of 6, which meant most
+    // tributes spent an entire run inside the noise floor of a system that is
+    // supposed to be the visible difference between day one and day eight.
+    // The first two levels come fast — that is where real skill acquisition
+    // lives — and the diminishing term still binds everything above it.
+    const early = current < PROFICIENCY.earlyBand ? PROFICIENCY.earlyGainMultiplier : 1;
+    const gain = PROFICIENCY.gainPerUse * pressure * early * Math.pow(1 - PROFICIENCY.diminishingPerLevel, current);
     const next = Math.min(PROFICIENCY.max, current + gain);
     // Rounded so the value stays legible in a tooltip and in save files.
     t.proficiencies[skill] = Math.round(next * 100) / 100;
@@ -129,7 +138,92 @@ export function trainProficiency(t: Tribute, skill: Proficiency): number {
         if (skill === 'melee') drift('strength', DRIFT.strengthPerMeleeLevel);
         if (skill === 'medicine' || skill === 'forage') drift('intelligence', DRIFT.intelligencePerFieldcraftLevel);
     }
+    // §3.9: crossing into a named band is a visible thing about a person, and
+    // the only part of the proficiency system a viewer can see without a
+    // tooltip. Narrated at whichever call sites thread a context through.
+    if (ctx) {
+        const before = bandOf(current);
+        const after = bandOf(next);
+        if (after && after !== before) {
+            ctx.logEvent(fill(ctx.pickText(BAND_LINES[after][skill] ?? BAND_LINES[after].default), {
+                tribute: t.name,
+            }), [t.id], { category: 'survival' });
+        }
+    }
     return t.proficiencies[skill]!;
+}
+
+/** §3.9: the three bands a proficiency can read as, or undefined below them all. */
+export type ProficiencyBand = 'competent' | 'skilled' | 'expert';
+
+export function bandOf(level: number): ProficiencyBand | undefined {
+    if (level >= PROFICIENCY.expertBand) return 'expert';
+    if (level >= PROFICIENCY.skilledBand) return 'skilled';
+    if (level >= PROFICIENCY.competentBand) return 'competent';
+    return undefined;
+}
+
+/** Band label for the tribute sheet — "Skilled forager" and so on. */
+export function bandLabel(level: number): string | undefined {
+    const band = bandOf(level);
+    return band ? band.charAt(0).toUpperCase() + band.slice(1) : undefined;
+}
+
+/**
+ * The line the feed runs when somebody crosses a band. Per skill where the
+ * skill has a picture worth painting, and a fallback where it does not.
+ */
+const BAND_LINES: Record<ProficiencyBand, Partial<Record<Proficiency, string[]>> & { default: string[] }> = {
+    competent: {
+        forage: ['{tribute} has stopped guessing at which plants are which. They pick, they check, they move on.'],
+        melee: ['{tribute} has stopped swinging like someone who has never swung anything.'],
+        medicine: ['{tribute} ties off a dressing without having to think about the order of it.'],
+        default: ['{tribute} is getting the hang of this, which is not nothing out here.'],
+    },
+    skilled: {
+        forage: ['{tribute} works the treeline the way somebody works a garden they know.'],
+        ranged: ['{tribute} looses without checking their grip first. The arrow goes where they were looking.'],
+        tracking: ['{tribute} reads the ground for a moment and then walks straight to where somebody stood.'],
+        default: ['{tribute} is good at this now. The arena taught them and they were paying attention.'],
+    },
+    expert: {
+        forage: ['{tribute} has done this a hundred times now, and it shows in how little of it they have to look at.'],
+        melee: ['{tribute} fights like it has stopped costing them anything to decide.'],
+        medicine: ['{tribute} works the wound with the flat competence of somebody who has stopped being frightened of blood.'],
+        default: ['{tribute} has done this a hundred times now. Whatever they were on the plate, they are not that.'],
+    },
+};
+
+/**
+ * §3.10: learning by watching.
+ *
+ * A tribute could watch an ally build a fire, set a snare or purify water every
+ * cycle for a week and come away knowing exactly nothing — skill only ever came
+ * from doing. Watching somebody who is better than you is most of how anybody
+ * learns anything, and it is gated on the attribute that ought to gate it:
+ * intelligence decides whether you saw a technique or merely a person crouching.
+ *
+ * The teacher must actually be ahead of the student, which makes an alliance
+ * with a survivalist in it worth something beyond the shared cache, and gives
+ * the Scholar and the district-craft head starts somewhere to propagate to.
+ */
+export function observeProficiency(ctx: SimContext, actor: Tribute, skill: Proficiency) {
+    const teaching = profOf(actor, skill);
+    if (teaching < PROFICIENCY.observeMinTeacher) return;
+    ctx.state.tributes.forEach(watcher => {
+        if (watcher.id === actor.id || watcher.status !== 'alive' || watcher.zone !== actor.zone) return;
+        if (profOf(watcher, skill) >= teaching - PROFICIENCY.observeMinGap) return;
+        const chance = PROFICIENCY.observeBaseChance
+            + (watcher.attributes.intelligence - 5) * PROFICIENCY.observePerIntelligence;
+        if (!ctx.rng.chance(Math.max(0, chance))) return;
+        // Watching is worth a fraction of doing, and it is deliberately not
+        // narrated per instance — the band-crossing line above is where it
+        // surfaces, which is the only place it is interesting.
+        const before = profOf(watcher, skill);
+        trainProficiency(watcher, skill);
+        const gained = profOf(watcher, skill) - before;
+        watcher.proficiencies![skill] = Math.round((before + gained * PROFICIENCY.observeShare) * 100) / 100;
+    });
 }
 
 /** The weapon skill a given weapon class trains and benefits from. */

@@ -1,4 +1,4 @@
-import { Tribute } from '../models/types';
+import { Tribute, attr } from '../models/types';
 import { MOTIVES, RESOLVE } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { ensureMemory, cyclesSinceContact } from './memory';
@@ -94,6 +94,12 @@ export function tickResolve(ctx: SimContext) {
 
         // Traits: some people are simply harder to put out.
         delta += traitMod(t, 'resolveDrift');
+        // §3.1: resolve is per-run state; willpower is the disposition under
+        // it. A negative day costs a strong-willed tribute less and a fragile
+        // one more, and a positive day is worth slightly more to them — which
+        // is the difference between a trait and a mood.
+        const grit = (attr(t, 'willpower') - 5) * RESOLVE.willpowerPerPoint;
+        delta += delta < 0 ? Math.min(-delta, grit) : grit * RESOLVE.willpowerUpsideShare;
 
         adjustResolve(t, delta);
     });

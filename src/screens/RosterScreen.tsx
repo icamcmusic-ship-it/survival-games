@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Tribute, Phase } from '../models/types';
+import { Tribute, Phase, attr } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { Explainer } from '../components/Explainer';
 import { heightLabel } from '../engine/physique';
@@ -13,7 +13,7 @@ import {
 import { Stat } from '../components/Stat';
 import { tributeOdds } from '../engine/odds';
 import { Bet, gameActions, gameStore } from '../store/gameStore';
-import { Swords, Zap, Brain, Eye, User, FastForward, Search } from 'lucide-react';
+import { Swords, Zap, Brain, Eye, User, FastForward, Search, Heart, Flame } from 'lucide-react';
 
 type SortKey = 'district' | 'odds' | 'training' | 'name' | 'age' | 'archetype';
 
@@ -325,6 +325,10 @@ export function RosterScreen({
                                         <Stat icon={<Brain className="w-3.5 h-3.5 text-[var(--cat-loot)]" />} label="INT" value={t.attributes.intelligence} />
                                         <Stat icon={<Eye className="w-3.5 h-3.5 text-[var(--cat-sanity)]" />} label="STL" value={t.attributes.stealth} />
                                         <Stat icon={<User className="w-3.5 h-3.5 text-[var(--cat-romance)]" />} label="CHA" value={t.attributes.charisma} />
+                                        {/* §3.1: the two attributes that separate "can fight" from
+                                            "can keep walking", and disposition from per-run resolve. */}
+                                        <Stat icon={<Heart className="w-3.5 h-3.5 text-[var(--cat-survival)]" />} label="END" value={attr(t, 'endurance')} />
+                                        <Stat icon={<Flame className="w-3.5 h-3.5 text-[var(--cat-hazard)]" />} label="WIL" value={attr(t, 'willpower')} />
                                     </div>
                                 ) : canSeeAttributeBands(disclosure) ? (
                                     <div className="space-y-1">
@@ -333,6 +337,8 @@ export function RosterScreen({
                                             ['Agility', t.attributes.agility],
                                             ['Cunning', t.attributes.intelligence],
                                             ['Stealth', t.attributes.stealth],
+                                            ['Endurance', attr(t, 'endurance')],
+                                            ['Will', attr(t, 'willpower')],
                                         ] as Array<[string, number]>).map(([label, value]) => {
                                             const band = attributeBand(value);
                                             return (

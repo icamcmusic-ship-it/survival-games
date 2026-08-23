@@ -80,6 +80,11 @@ function normalizeAttributes(raw: unknown): Attributes {
         intelligence: clamp(asNum(r.intelligence, 5), 0, 100),
         charisma: clamp(asNum(r.charisma, 5), 0, 100),
         stealth: clamp(asNum(r.stealth, 5), 0, 100),
+        // §3.1: saves written before endurance and willpower existed resume
+        // with a neutral 5 rather than NaN, which is exactly what `attr()`
+        // in models/types.ts assumes for anything that slips past here.
+        endurance: clamp(asNum(r.endurance, 5), 0, 100),
+        willpower: clamp(asNum(r.willpower, 5), 0, 100),
     };
 }
 

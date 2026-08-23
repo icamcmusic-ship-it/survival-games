@@ -431,112 +431,12 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
 };
 
 /**
- * Per-district surname pools.
+ * Tributes go by one name.
  *
- * A tribute's full name is "First Surname", assembled in the generator. Like
- * the first-name pools, each surname encodes the district's export — but where
- * first names are literal nouns, surnames wear the trade the way real surnames
- * do: occupational (-wright, -man, -smith), locational (-field, -hurst, -mont),
- * and patronymic (-son) forms built on industry words. District partners
- * occasionally share one, and the reaping note says so: everyone in a district
- * square knows exactly which families the bowl keeps coming back to.
+ * There used to be a per-district surname pool here, and a tribute's `name`
+ * was "First Surname". Nothing downstream wanted the second half: the feed,
+ * the kill log, the chronicle and the alliance brands all split it back off
+ * again, and the one mechanic that read it — two slips out of the same family
+ * — recognised kin by string-comparing the suffix. That roll now stands on its
+ * own in `generateTributes`, and the pool is gone with the surnames.
  */
-export const DISTRICT_SURNAMES: Record<number, string[]> = {
-    // District 1 — Luxury goods.
-    1: [
-        'Gildersleeve', 'Aurmont', 'Silvercrest', 'Luxley', 'Gemmell', 'Sheenwright',
-        'Diamant', 'Marquardt', 'Facethorne', 'Regalton', 'Vainwright', 'Polister',
-        'Goldbraid', 'Carathers', 'Bijoulet', 'Splendane',
-    ],
-    // District 2 — Masonry & Peacekeepers.
-    2: [
-        'Quarrington', 'Stonewright', 'Chiselhurst', 'Garristone', 'Bulwarke', 'Praetorius',
-        'Aquilius', 'Ferrostone', 'Marblehall', 'Obsidane', 'Cragmore', 'Wallbright',
-        'Masoner', 'Hewston', 'Redmount', 'Siegewick',
-    ],
-    // District 3 — Technology.
-    3: [
-        'Amperson', 'Voltaggio', 'Wireman', 'Solderberg', 'Transtrom', 'Ohmstead',
-        'Kilowick', 'Chipman', 'Datley', 'Fusewell', 'Anodson', 'Circuiter',
-        'Diodati', 'Pixler', 'Servin', 'Cachewell',
-    ],
-    // District 4 — Fishing.
-    4: [
-        'Saltmarsh', 'Fisker', 'Tidewell', 'Marlborne', 'Seaworthy', 'Netwright',
-        'Harbourne', 'Shoalwater', 'Finmore', 'Wakeford', 'Brinewell', 'Ankerman',
-        'Gaffney', 'Trawley', 'Reefton', 'Sternway',
-    ],
-    // District 5 — Power.
-    5: [
-        'Dynamore', 'Gridley', 'Wattenberg', 'Sparkman', 'Turbin', 'Coilton',
-        'Fluxman', 'Pyler', 'Surgis', 'Ampfield', 'Lumendale', 'Fusington',
-        'Currenza', 'Hydell', 'Megson', 'Brownell',
-    ],
-    // District 6 — Transportation.
-    6: [
-        'Wheelwright', 'Axleson', 'Railsback', 'Steamworth', 'Drayton', 'Cartwright',
-        'Motterman', 'Vanmeter', 'Trackston', 'Gearhart', 'Freightman', 'Depeaux',
-        'Transom', 'Hubberly', 'Pistonelli', 'Lorimer',
-    ],
-    // District 7 — Lumber.
-    7: [
-        'Timberlane', 'Hackberry', 'Woodhall', 'Sawtelle', 'Pinehurst', 'Oakes',
-        'Fellman', 'Hewson', 'Logsdon', 'Barkwright', 'Cedarholm', 'Rootwell',
-        'Splitlog', 'Greenbough', 'Axford', 'Millwood',
-    ],
-    // District 8 — Textiles.
-    8: [
-        'Threadgill', 'Weaverton', 'Spindler', 'Bobbinet', 'Dyerson', 'Loomfield',
-        'Stitchworth', 'Sartorius', 'Cottrell', 'Woolridge', 'Needleman', 'Selvidge',
-        'Twillinger', 'Feltman', 'Braidwood', 'Hemsworth',
-    ],
-    // District 9 — Grain.
-    9: [
-        'Granfield', 'Wheatcroft', 'Millbank', 'Ryecroft', 'Oatfield', 'Sheafer',
-        'Threshfield', 'Barleycorn', 'Siloway', 'Harrowgate', 'Chaffee', 'Breadmore',
-        'Winrow', 'Stubblefield', 'Croftson', 'Gleanley',
-    ],
-    // District 10 — Livestock.
-    10: [
-        'Herdman', 'Cattlow', 'Ranchford', 'Bridlington', 'Oxbow', 'Calloway',
-        'Steerforth', 'Grazier', 'Lambourne', 'Droverson', 'Rawlins', 'Pasterfield',
-        'Spurlock', 'Bellowes', 'Farrington', 'Longacre',
-    ],
-    // District 11 — Agriculture.
-    11: [
-        'Orchardson', 'Fielder', 'Rowcroft', 'Seedborne', 'Tillman', 'Vinecroft',
-        'Plowright', 'Furrowes', 'Gleave', 'Cropsey', 'Appleyard', 'Berryman',
-        'Mowbray', 'Loamfield', 'Grangerford', 'Haywood',
-    ],
-    // District 12 — Coal mining.
-    12: [
-        'Coalworth', 'Undercliff', 'Blackdamp', 'Deepseam', 'Minewright', 'Ashdown',
-        'Pickford', 'Slagle', 'Cindermill', 'Lampman', 'Gravener', 'Sootfield',
-        'Carbone', 'Duskin', 'Tunnicliffe', 'Emberton',
-    ],
-    // §1.1: the expanded Games territories.
-    // District 13 — Graphite and munitions.
-    13: [
-        'Ashgrave', 'Powderly', 'Ordnant', 'Nitrewell', 'Casingham', 'Breechford',
-        'Corvane', 'Adamantis', 'Fuzewright', 'Tallisor', 'Quillan', 'Struckmore',
-        'Pitchblende', 'Calibrant', 'Reckwood', 'Lodemarch',
-    ],
-    // District 14 — Salt and refrigeration.
-    14: [
-        'Halloran', 'Ossuary', 'Brinewald', 'Coldwell', 'Marlstone', 'Rimegarth',
-        'Saltmarch', 'Caskwright', 'Hoarfield', 'Pickering', 'Larderby', 'Winterbourne',
-        'Sumpton', 'Curewood', 'Glaciar', 'Panford',
-    ],
-    // District 15 — Glassworks.
-    15: [
-        'Marrowe', 'Kilnwright', 'Cullethorne', 'Vitrane', 'Annealby', 'Sheenford',
-        'Crucibell', 'Shardwood', 'Facetley', 'Lehrmont', 'Glintwater', 'Opaline',
-        'Batchford', 'Temperance', 'Refracta', 'Bevelmoor',
-    ],
-    // District 16 — Deepwater drilling.
-    16: [
-        'Vaunt', 'Fathomly', 'Derrickson', 'Hawserly', 'Undertowe', 'Keelmarsh',
-        'Bathwick', 'Grapnelle', 'Plumbrook', 'Shoalgrave', 'Windlassey', 'Nadirson',
-        'Cordager', 'Bilgemont', 'Trawlwood', 'Anchorly',
-    ],
-};

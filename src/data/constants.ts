@@ -287,9 +287,10 @@ export const ARENAS: Arena[] = [
         mutts: ['Pallid Stalkers', 'Rebar Hounds', 'Circuit Wasps', 'Sump Eels'],
         events: ['Blackout', 'Flood Valve', 'Ceiling Collapse'],
         law: 'noCannons',
-        // No cameras work well underground — the most sponsor-starved arena
-        // by design, forcing self-sufficiency.
-        sponsorMultiplier: 0.6,
+        // §5.1: the Vault is the arena that proves laws stack. No cannon, and
+        // nothing gets down here from the Capitol either — the sponsor
+        // multiplier was flavour text for a blackout it could not declare.
+        laws: ['noSponsors'],
         // No route around the reactor core.
         edgeRules: { 'Reactor Level|The Turbine Hall': { kind: 'tolled', toll: { fatigue: 5, woundChance: 0.12 } } },
         // Down here the dark is a schedule and the water arrives by valve.
@@ -383,6 +384,9 @@ export const ARENAS: Arena[] = [
         mutts: ['Trench Morays', 'Anemone Colonies', 'Bonefish Swarms', 'The Dry Shark'],
         events: ['Coral Collapse', 'Anemone Bloom', 'Trench Wind'],
         law: 'fireImpossible',
+        // §5.1: no fire, no fresh water, and nothing that cuts on coral heals
+        // clean. The reef is the no-healing arena — rest is the only medicine.
+        laws: ['noHealing'],
         zones: [
             { name: 'The Cornucopia (Drained Basin)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Coral Razors', 'The Urchin Barrens', 'The Dry Kelp Forest'] },
             { name: 'The Coral Razors', terrain: 'ruins', danger: 0.8, resources: 0.25, adjacent: ['The Cornucopia (Drained Basin)', 'The Shelf Break', 'The Anemone Fields'] },

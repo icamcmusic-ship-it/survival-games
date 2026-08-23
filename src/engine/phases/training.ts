@@ -46,7 +46,10 @@ import { traitMod } from '../../data/traits';
 function meritMultiplier(t: Tribute): number {
     let m = 1;
     if (t.isCareer) m += TRAINING_SCORE.meritCareer;
-    if (t.archetype === 'career') m += TRAINING_SCORE.meritCareerArchetype;
+    // §8a: `meritCareerArchetype` removed — it was redundant with
+    // `meritCareer` (a Career-archetype tribute is almost always from a Career
+    // district) and was one of six stacking advantages behind the Career
+    // archetype's 2.2x win rate.
     if (t.traits.includes('Brute')) m += TRAINING_SCORE.meritBrute;
     if (t.traits.includes('Strategist')) m += TRAINING_SCORE.meritStrategist;
     if (t.traits.includes('Eagle-Eyed')) m += TRAINING_SCORE.meritEagleEyed;
@@ -81,6 +84,11 @@ const STATION_SKILL: Record<keyof Attributes, Proficiency> = {
     // ('sponsor pitch booth', 'mock-interview couch') and no proficiency
     // behind it, so three days there bought raw charisma and nothing else.
     charisma: 'persuasion',
+    // §3.1: the two new attributes train on the floor like everything else —
+    // the endurance course is a rope and a treadmill, and the willpower
+    // station is the one nobody talks about.
+    endurance: 'forage',
+    willpower: 'medicine',
 };
 
 /**

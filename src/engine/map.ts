@@ -1,6 +1,6 @@
 import { Arena, GameState, Tribute, Zone, ZoneFeatures } from '../models/types';
 import { traitMod } from '../data/traits';
-import { BLEEDING, EDGE_TOLL, ZONES } from '../data/balance';
+import { BLEEDING, EDGE_TOLL, ZONE_EFFECTS, ZONES } from '../data/balance';
 import { injuryGrade, openWound } from './wounds';
 import { massOf } from './physique';
 import { SimContext } from './context';
@@ -356,7 +356,12 @@ export function depletionOf(state: GameState, zoneName: string): number {
 export function effectiveResources(state: GameState, zone: Zone | undefined): number {
     if (!zone) return 0;
     const remaining = 1 - depletionOf(state, zone.name);
-    return zone.resources * Math.max(ZONES.minYieldFraction, remaining);
+    const base = zone.resources * Math.max(ZONES.minYieldFraction, remaining);
+    // §5.2: a bloom is the one effect that gives. It lifts the zone's yield
+    // for as long as it lasts, on top of whatever depletion has taken —
+    // stripped ground that blooms is worth foraging again, briefly.
+    const blooming = (state.zoneEffects?.[zone.name] ?? []).some(e => e.kind === 'blooming');
+    return blooming ? Math.min(1, base + ZONE_EFFECTS.bloomingResourceLift) : base;
 }
 
 export function depleteZone(state: GameState, zoneName: string, amount: number) {

@@ -9,7 +9,7 @@ import { hasEffect } from './zoneEffects';
 import { clampTribute } from './vitals';
 import { injure, openWound } from './wounds';
 import { arenaHasLaw } from './gamesProfile';
-import { profOf, trainProficiency } from './proficiency';
+import { profOf, trainProficiency, observeProficiency } from './proficiency';
 import { earnTrait } from './earnedTraits';
 import { awareness } from './stealth';
 import { traitMod } from '../data/traits';
@@ -361,7 +361,10 @@ export function buildShelter(ctx: SimContext, t: Tribute): boolean {
     if (!ctx.rng.chance(buildChance(t))) return false;
 
     campOf(ctx, t).shelter = cycleOf(ctx.state) + CRAFTING.shelterCycles;
-    trainProficiency(t, 'forage');
+    trainProficiency(t, 'forage', ctx);
+    // §3.10: a shelter going up in front of you is a lesson whether or not
+    // the person building it meant it as one.
+    observeProficiency(ctx, t, 'forage');
     ctx.logEvent(
         `${t.name} lashes together a shelter in ${t.zone} — branches, a rock overhang, and something almost like a roof.`,
         [t.id],

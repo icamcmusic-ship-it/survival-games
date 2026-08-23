@@ -3,7 +3,7 @@ import { Tribute, Attributes, Build, GameConfig, ArchetypeId, Gender } from '../
 import { TRAITS, BUILDS, DEFAULT_GAME_CONFIG, traitFits } from '../data/constants';
 import { ARCHETYPES, archetypeWeightsFor } from '../data/archetypes';
 import { GENERATION, TESSERAE, VOLUNTEER } from '../data/balance';
-import { DISTRICT_NAMES, DISTRICT_SURNAMES } from '../data/names';
+import { DISTRICT_NAMES } from '../data/names';
 import { REAPING_NOTE_TEXTS } from '../data/pregames';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { blankMemory } from './memory';
@@ -101,6 +101,19 @@ function applyAgeProfile(attributes: Attributes, age: number) {
         attributes.stealth += 1;
         attributes.strength -= 1;
     }
+    // §3.1: the two attributes the age curve was always waiting for.
+    //
+    // Strength is capped by the frame, which is why `strengthCapForAge` exists.
+    // Endurance is not the same curve: a fifteen-year-old who has walked to a
+    // mine and back since they were nine has more of it than an eighteen-
+    // year-old academy sprinter, so it rises gently with age and never spikes.
+    // Willpower runs the other way at the bottom of the band — the youngest
+    // tributes break under grief where an older one merely bends (§3.8) — and
+    // flattens out by seventeen.
+    attributes.endurance += Math.round(yearsFromMid * GENERATION.endurancePerYear);
+    attributes.willpower += age <= GENERATION.willpowerYoungAge
+        ? -GENERATION.willpowerYoungPenalty
+        : Math.round(Math.min(yearsFromMid, GENERATION.willpowerPlateauYears) * GENERATION.willpowerPerYear);
 }
 
 /**
@@ -231,6 +244,8 @@ export function generateTributes(
     // Names must be unique across the whole cast — two tributes called "Amber"
     // made the chronicle feed and the kill log ambiguous.
     const usedNames = new Set<string>();
+    // Districts whose two slips came out of the same family this year.
+    const kinDistricts = new Set<number>();
     // A name is supposed to encode its district's export, but ~200 of the
     // 2,400 pool entries appear in more than one district's pool (Clover in
     // five of them). Prefer names exclusive to this district so the flavour
@@ -282,12 +297,16 @@ export function generateTributes(
     };
 
     for (let district = 1; district <= districtCount; district++) {
-        // Surnames come from the district's own pool. Occasionally the bowl
-        // hands up two slips from the same family — district partners who
-        // share a surname walk to the stage as kin, and the square knows it.
-        const surnamePool = DISTRICT_SURNAMES[tableDistrict(district)];
-        // balance-exempt: flavour frequency of the kin-pair surname beat, not a balance dial
-        const familySurname = rng.chance(0.15) ? rng.pick(surnamePool) : undefined;
+        // Tributes go by one name.
+        //
+        // Panem's reaping is a card with a name on it, and the broadcast, the
+        // chronicle and the kill log all used the first name anyway — the
+        // surname existed only to be split back off again by the kin check
+        // below. It is gone; the kin beat it was carrying survives as its own
+        // roll, which is what it always actually was.
+        // balance-exempt: flavour frequency of the kin-pair beat, not a balance dial
+        const kinPair = rng.chance(0.15);
+        if (kinPair) kinDistricts.add(district);
         for (const gender of ['Male', 'Female'] as const) {
             const isCareer = [1, 2, 4].includes(district);
 
@@ -298,6 +317,11 @@ export function generateTributes(
                 intelligence: rng.nextInt(3, 7),
                 charisma: rng.nextInt(3, 7),
                 stealth: rng.nextInt(3, 7),
+                // §3.1: rolled on the same band as the original five, so a
+                // tribute sheet reads consistently and every existing
+                // "attribute - 5" idiom keeps its meaning.
+                endurance: rng.nextInt(3, 7),
+                willpower: rng.nextInt(3, 7),
             };
 
             // District bonuses.
@@ -429,14 +453,8 @@ export function generateTributes(
                 if (traitFits(traits, trait)) traits.push(trait);
             }
 
-            // Full name: "First Surname". Plain-names mode has no surname to
-            // append; everyone else takes the district pool (or the shared
-            // family surname for a kin pair). First names are already unique
-            // across the cast, so the full name is too.
-            const firstName = drawName(district, gender);
-            const chosenName = config.plainNames
-                ? firstName
-                : `${firstName} ${familySurname ?? rng.pick(surnamePool)}`;
+            // One name, drawn unique across the whole cast.
+            const chosenName = drawName(district, gender);
             const heightCm = gender === 'Male'
                 ? rng.nextInt(148 + (age - GENERATION.minAge) * 4, 168 + (age - GENERATION.minAge) * 4)
                 : rng.nextInt(142 + (age - GENERATION.minAge) * 4, 160 + (age - GENERATION.minAge) * 4);
@@ -518,16 +536,15 @@ export function generateTributes(
         }
     }
 
-    // A shared surname is a story the square already knows: two slips, one
-    // family, the same year. Flag it before the volunteer pass so a volunteer
-    // note composes on top of it the way it does with the tesserae note.
+    // Two slips, one family, the same year — a story the square already knows.
+    // Flag it before the volunteer pass so a volunteer note composes on top of
+    // it the way it does with the tesserae note.
     if (!config.plainNames) {
         for (let district = 1; district <= districtCount; district++) {
+            if (!kinDistricts.has(district)) continue;
             const pair = tributes.filter(t => t.district === district);
             if (pair.length !== 2) continue;
             const [a, b] = pair;
-            const surnameOf = (t: Tribute) => t.name.split(' ').pop();
-            if (surnameOf(a) !== surnameOf(b)) continue;
             const note = (other: Tribute) =>
                 `Reaped alongside their cousin ${other.name} — two slips out of the same family, the same year. The square did that arithmetic in silence.`;
             a.reapingNote = a.reapingNote ? `${note(b)} ${a.reapingNote}` : note(b);
