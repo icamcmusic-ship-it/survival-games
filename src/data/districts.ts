@@ -49,6 +49,21 @@ export const DISTRICT_LEGACY: Record<number, DistrictLegacy> = {
     10: { industry: 'Livestock',     tier: 'thin',      mentors: ['Dalton Rein', 'Brandy Colt'] },
     11: { industry: 'Agriculture',   tier: 'modest',    mentors: ['Seeder Vale', 'Chaff Booker'] },
     12: { industry: 'Mining',        tier: 'forgotten', mentors: ['Haymitch Abernathy', 'Wickham Ash'] },
+    // §1.1: the expanded Games. `GameConfig.districtCount` is documented as
+    // 2-16 and the setup slider allows it, but 13-16 had no row in any of the
+    // district tables — so they drew District 1's Career-flavoured names,
+    // fell through to `{ industry: 'Unknown', tier: 'thin' }`, had no craft,
+    // no archetype weighting (and therefore could never roll a Career), no
+    // reaping crowd, and no district token, which silently disabled the
+    // 'The Token' achievement for anyone reaped out of them.
+    //
+    // These are the outer territories: annexed late, worked hard, and sent to
+    // the Games as an afterthought that the Capitol has not yet worked out how
+    // to sell.
+    13: { industry: 'Graphite and munitions', tier: 'forgotten', mentors: ['Coriolan Ash', 'Petra Quill'] },
+    14: { industry: 'Salt and refrigeration', tier: 'thin',      mentors: ['Brine Halloran', 'Marl Ossuary'] },
+    15: { industry: 'Glassworks',             tier: 'forgotten', mentors: ['Vitra Sable', 'Kiln Marrowe'] },
+    16: { industry: 'Deepwater drilling',     tier: 'forgotten', mentors: ['Derrick Vaunt', 'Sable Fathom'] },
 };
 
 export function legacyOf(district: number): DistrictLegacy {
@@ -120,6 +135,13 @@ export const DISTRICT_CRAFT: Record<number, DistrictCraft> = {
     10: { proficiencies: { medicine: TRADE_MINOR, melee: TRADE },     affinityItems: ['sickle', 'knife', 'machete'], affinityClasses: ['melee'], hungerResilience: 0.95, blurb: 'stockyards: unsqueamish, steady with a blade, and used to a struggling animal' },
     11: { proficiencies: { forage: TRADE, medicine: TRADE_MINOR }, affinityItems: ['sickle', 'slingshot'], affinityClasses: [],                 hungerResilience: 0.9,  blurb: 'orchard work: they know on sight which plants will kill them' },
     12: { proficiencies: { forage: TRADE_MINOR, tracking: TRADE_MINOR }, affinityItems: ['knife'],       affinityClasses: [],                   hungerResilience: 0.82, blurb: 'the Seam: poaching, the mines, and a lifetime of being hungry' },
+    // §1.1: the expanded Games territories. Written as real trades rather
+    // than filler, because `craftOf` returning an empty craft is the
+    // difference between a district and a number.
+    13: { proficiencies: { tracking: TRADE, medicine: TRADE_MINOR }, affinityItems: ['wire', 'knife'],   affinityClasses: [],                   hungerResilience: 0.86, blurb: 'graphite pits and shell lines: steady hands, bad lungs, and a working knowledge of what goes bang' },
+    14: { proficiencies: { forage: TRADE_MINOR, melee: TRADE },   affinityItems: ['machete', 'knife'],   affinityClasses: ['melee'],            hungerResilience: 1.05, blurb: 'the salt flats and the cold rooms: hard labour, hard water, and meat that keeps' },
+    15: { proficiencies: { medicine: TRADE_MINOR, tracking: TRADE_MINOR }, affinityItems: ['knife', 'garrote'], affinityClasses: [],             hungerResilience: 0.9,  blurb: 'the glassworks: heat, patience, and an intimate understanding of how things shatter' },
+    16: { proficiencies: { forage: TRADE, melee: TRADE_MINOR },   affinityItems: ['spear', 'gaff', 'trident'], affinityClasses: ['thrown'],      hungerResilience: 0.88, blurb: 'the deepwater rigs: months offshore, and nothing to eat that they did not pull out of the sea themselves' },
 };
 
 export function craftOf(district: number): DistrictCraft {

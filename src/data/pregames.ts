@@ -22,6 +22,12 @@ export const REAPING_CROWDS: Record<number, string> = {
     10: 'District 10 gathers in the stockyard. The smell is the same as every other day and so are the faces.',
     11: 'District 11 is the largest square in Panem and the most heavily guarded. The Peacekeepers walk the aisles the entire time.',
     12: 'The District 12 square is roped off in front of the Justice Building. Everyone knows everyone, which is the worst part of it.',
+    // §1.1: districts 13-16 had no entry here at all, so a reaping in the
+    // expanded Games simply skipped the square scene for four whole districts.
+    13: 'District 13 assembles on the shell-line yard, in ranks, because that is the only way District 13 assembles. Nobody coughs. Half of them cannot help it.',
+    14: 'The District 14 square is the loading floor of the cold house, and the Capitol did not think to turn the refrigeration off. Everyone stands in their own breath for an hour.',
+    15: 'District 15 gathers on the annealing floor with the furnaces banked but not out. The heat comes up through everyone\'s boots the entire time the escort is talking.',
+    16: 'District 16 holds its reaping on the supply pier, because half the district is offshore and the other half is waiting for them. The names are read twice: once for the square, once over the radio.',
 };
 
 export const REAPING_REACTIONS = {
@@ -340,5 +346,48 @@ export const DISTRICT_TOKENS: Record<number, string[]> = {
         'a button of pressed coal dust and resin, made in the school workshop',
         'a pinch of Seam earth in a twist of cloth, tied with mending thread',
         'a fragment of pit pony harness brass, polished to gold',
+    ],
+    // §1.1: without these rows no tribute reaped out of 13-16 ever received a
+    // district token at all, which silently disabled the 'The Token'
+    // achievement path for a quarter of an expanded reaping.
+    13: [
+        'a spent primer cap, the first one they ever seated correctly',
+        'a graphite stub worn to the length of a thumbnail',
+        'a strip of measuring tape, the eleven inches their mother cut off for them',
+        'a shell casing with a name punched into the base that is not theirs',
+        'a fuse cord tied in a ring, the length of one safe second',
+        'a dosimeter badge that never turned, kept for luck',
+        'a lead weight from the assay bench, exactly one ounce',
+        'a folded requisition slip signed by somebody who is dead now',
+    ],
+    14: [
+        'a salt crystal the size of a knuckle, grown in the family evaporation pan',
+        'a cold-house key for a door that was bricked up years ago',
+        'a strip of cured hide, soft from a decade of handling',
+        'a brine hydrometer float, glass, impossibly light',
+        'a nail of frost-blackened iron pulled from the old pier',
+        'a twist of preserving twine their grandmother tied and never explained',
+        'a thermometer bulb with the scale rubbed off it',
+        'a pressed flower that has been in the cold store so long it is still perfect',
+    ],
+    15: [
+        'a cullet chip in a colour the works stopped making',
+        'a glass bird with one wing shorter than the other, their own first attempt',
+        'a punty scar disc, snapped off a piece their father signed',
+        'a lens ground for spectacles nobody ever collected',
+        'a marble with a spiral in it that catches the light wrong',
+        'a shard of annealed pane, edges fired smooth so it cannot cut',
+        'a thimble of silica sand from the pit their family has worked for four generations',
+        'a fused lump of two colours that were never meant to touch',
+    ],
+    16: [
+        'a drill bit tooth, blunted, on a bootlace',
+        'a fathom of sounding line with the marks still knotted into it',
+        'a fish hook with the barb filed off so it cannot catch anything',
+        'a piece of pressure glass from a gauge that failed at depth',
+        'a shell dredged up from further down than anything is supposed to live',
+        'a brass rig tag stamped with a crew number that is one short now',
+        'a knot their mother taught them, tied in a loop of hawser and never undone',
+        'a vial of the black water they pulled up on the day they were born',
     ],
 };

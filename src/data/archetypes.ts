@@ -386,12 +386,13 @@ export const DISTRICT_ARCHETYPE_WEIGHTS: Record<number, ArchetypeWeights> = {
  * rather than something the reader could see in the roster.
  */
 export const CAST_SHAPE_ARCHETYPE_WEIGHTS: Record<string, ArchetypeWeights> = {
-    careerHeavy: { career: 3, zealot: 1, mercenary: 0.8, ghost: -0.2 },
-    noPack: { career: -6, underdog: 1.5, ghost: 1.2, survivalist: 1, saboteur: 0.8 },
-    young: { underdog: 2, ghost: 1, protector: 1, beast: -0.15 },
-    veteran: { strategist: 1.5, scholar: 1.2, mercenary: 1, career: 1 },
-    volunteerHeavy: { career: 2, zealot: 1.5, protector: 1.2 },
-    brutal: { beast: 1, zealot: 1.2, career: 1, medic: -0.2 },
+    'career-heavy': { career: 3, zealot: 1, mercenary: 0.8, ghost: -0.2 },
+    'outer-districts': { career: -6, underdog: 1.5, ghost: 1.2, survivalist: 1, saboteur: 0.8 },
+    'young-field': { underdog: 2, ghost: 1, protector: 1, beast: -0.15 },
+    'veteran-field': { strategist: 1.5, scholar: 1.2, mercenary: 1, career: 1 },
+    'all-volunteer': { career: 2, zealot: 1.5, protector: 1.2 },
+    'bonded-pairs': { protector: 1.5, medic: 1.2, diplomat: 1 },
+    'victors-field': { strategist: 1.5, career: 1.5, scholar: 1, beast: 0.5 },
 };
 
 /**
