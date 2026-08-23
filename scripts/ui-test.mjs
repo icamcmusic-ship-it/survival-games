@@ -157,6 +157,14 @@ await step('standings tab sorts', async () => {
 await step('tribute modal opens with live data and closes with Escape', async () => {
   await page.locator('.panel button[title*="open profile"]').first().click();
   await page.getByRole('dialog').waitFor();
+  // A5: four tabs, defaulting to Overview.
+  for (const tab of [/combat/i, /^social$/i, /^story$/i, /^overview$/i]) {
+    await page.getByRole('tab', { name: tab }).click();
+  }
+  // A5: comparison mode renders a second tribute beside the first.
+  const compare = page.getByLabel(/compare with another tribute/i);
+  const opts = await compare.locator('option').count();
+  if (opts > 1) await compare.selectOption({ index: 1 });
   await page.keyboard.press('Escape');
   await page.getByRole('dialog').waitFor({ state: 'detached' });
 });
