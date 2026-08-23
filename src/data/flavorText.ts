@@ -2229,3 +2229,174 @@ export const ARCHETYPE_SIGNATURE_TEXTS: Record<string, string[]> = {
         'Eight tributes left, and the anchor has to check a card for one of them. {tribute}. The arena learns, all at once, that somebody has been out there the whole time.',
     ],
 };
+
+/**
+ * A4: three narrated days on the training floor.
+ *
+ * `processTraining` genuinely simulated three days — it picked a station per
+ * day and applied per-day gains — and then emitted a single line per tribute
+ * for all three days combined, so days two and three were invisible. Nothing
+ * social happened on the floor at all: the only inter-tribute interaction in
+ * the entire phase was the post-broadcast intimidation pass.
+ *
+ * These are the pools those three days are narrated from. `{tribute}`,
+ * `{other}`, `{station}` and `{day}` are the available placeholders; the
+ * Career/outsider/child variants follow the same convention `DEATH_TEXTS`
+ * already uses.
+ */
+
+/** A station attempt that went badly in front of everybody. */
+export const TRAINING_FAILURE: Record<string, string[]> = {
+    generic: [
+        '{tribute} takes the {station} and fails it, publicly, twice. The trainer stops correcting them the second time.',
+        'The {station} beats {tribute} in front of half the floor. They get up. They do not try it again today.',
+        '{tribute} misjudges the {station} badly enough that a trainer steps in, and the room goes quiet in the particular way rooms do.',
+        'Whatever {tribute} was trying at the {station}, it does not work, and everyone who was watching has now stopped.',
+        '{tribute} comes off the {station} with nothing to show for the hour but the knowledge that they cannot do it.',
+        '{tribute} has three goes at the {station} and gets worse each time. The gallery finds something else to look at.',
+        'The {station} is not difficult, which is the worst part of watching {tribute} fail it.',
+        '{tribute} freezes at the {station} — not for long, but long enough that four people notice and one of them files it away.',
+        'A trainer takes the equipment out of {tribute}\'s hands at the {station} without saying anything. That is somehow worse than being shouted at.',
+        '{tribute} drops it. Then picks it up and drops it again. The {station} is having a better day than they are.',
+        '{tribute} attempts the {station} the way somebody attempts something they have already decided they will fail at.',
+        'The Careers watch {tribute} fail the {station} from across the room and do not bother pretending otherwise.',
+    ],
+    career: [
+        '{tribute} fails the {station}, which is not supposed to happen to somebody with an academy behind them, and the whole floor understands what it means.',
+        'Something goes wrong for {tribute} at the {station}. Two other Careers see it. Nobody says anything, which is the point.',
+        '{tribute} loses the {station} badly, and for the first time this week somebody in the room stops being afraid of them.',
+    ],
+    child: [
+        '{tribute} cannot reach half the {station} and nobody has thought to adjust it. They try anyway, until a trainer quietly moves them on.',
+        'The {station} was not built for somebody {tribute}\'s size. That is not an excuse anyone in this building accepts.',
+        '{tribute} is too small for the {station} and too proud to say so. It ends the way it was always going to.',
+    ],
+};
+
+/** Half of it landed, and the wrong people were watching. */
+export const TRAINING_STRUGGLE: Record<string, string[]> = {
+    generic: [
+        '{tribute} gets through the {station}, eventually, and everybody watching now has a very accurate idea of how much it cost them.',
+        'The {station} takes {tribute} twice as long as it should. They finish it. That is the most that can be said.',
+        '{tribute} works the {station} until it stops going wrong rather than until it goes right.',
+        '{tribute} is visibly out of their depth at the {station} and visibly refuses to leave it.',
+        '{tribute} half-manages the {station}. A trainer nods, which is not the same as being impressed.',
+        'The {station} exposes something about {tribute} that they were hoping to keep. Several people notice.',
+        '{tribute} comes off the {station} shaking out one arm and pretending it is nothing.',
+        'It takes {tribute} four attempts to get the {station} right and every one of them is watched.',
+        '{tribute} grinds through the {station} on effort alone. The gallery respects it slightly less than they should.',
+        '{tribute} does the {station} correctly on the last try, which the people who were counting have already discounted.',
+    ],
+    career: [
+        '{tribute} has to work at the {station}, which the academy did not prepare them for, and the working shows.',
+        'The {station} is harder for {tribute} than it should be and they cover for it badly.',
+    ],
+    child: [
+        '{tribute} gets through the {station} the way small people get through things: by being stubborn about it long after it stopped being fun to watch.',
+        'The {station} nearly beats {tribute}, and then does not, and the trainer looks at them differently afterwards.',
+    ],
+};
+
+/** Two people at the same station who end up talking. */
+export const TRAINING_MINGLE: string[] = [
+    '{tribute} and {other} spend most of the {station} session working the same drill, and by the end of it they are talking.',
+    '{other} shows {tribute} a better grip at the {station}. It takes ten seconds and it is the first kind thing anybody has done for {tribute} in a week.',
+    '{tribute} and {other} end up partnered at the {station}, and neither of them makes it awkward, which is its own small mercy.',
+    'At the {station}, {other} says something to {tribute} that makes them laugh. Twenty-two other people hear it.',
+    '{tribute} and {other} take turns at the {station} without either of them having agreed to. It just happens that way.',
+    '{other} waits for {tribute} to finish at the {station} rather than pushing past. That is a decision, and {tribute} notices it.',
+    '{tribute} and {other} compare notes at the {station} in low voices, and the Careers across the room notice them doing it.',
+    'The {station} puts {tribute} and {other} shoulder to shoulder for an hour. They spend most of it in silence and come away easier with each other anyway.',
+    '{other} corrects {tribute} at the {station} without making a thing of it, and {tribute} says thank you like they mean it.',
+    '{tribute} asks {other} something at the {station} that has nothing to do with training at all.',
+    'At the {station}, {tribute} and {other} discover they are from districts that supply each other, and talk about it for longer than either expected.',
+    '{other} and {tribute} work the {station} together well enough that a trainer comments on it, which neither of them wanted.',
+    '{tribute} covers for {other} at the {station} when a trainer looks over. It is nothing. It is not nothing.',
+    'Nobody planned it, but {tribute} and {other} spend the whole {station} rotation next to each other, and something in both of them relaxes slightly.',
+    '{tribute} and {other} do not exchange names at the {station}. They exchange something, though.',
+];
+
+/** A pre-agreement, struck on the floor. */
+export const TRAINING_TEAMUP: string[] = [
+    '{tribute} and {other} come to an understanding at the {station}: at the gong, they find each other. Nothing is written down. Nothing needs to be.',
+    'It is not an alliance yet, because nothing is an alliance until the gong. But {tribute} and {other} have agreed on where to meet.',
+    '{tribute} says it first, at the {station}, and {other} does not say no: whatever happens in the first minute, they run the same direction.',
+    'By the end of the {station} rotation, {tribute} and {other} have a plan for the bloodbath. It is a bad plan. It is better than not having one.',
+    '{other} makes {tribute} an offer at the {station} and gives them the rest of the day to think about it. {tribute} does not need it.',
+    '{tribute} and {other} shake on something at the {station}, briefly, and then go back to pretending they have not.',
+    'The agreement between {tribute} and {other} takes about four words. Everything that matters about it is in the look afterwards.',
+    '{tribute} and {other} decide, at the {station}, that two is better odds than one. Everybody who has ever decided that has been half right.',
+    'Careers do this on day one and everybody else does it late and badly. {tribute} and {other} do it at the {station}, and mean it.',
+    '{tribute} tells {other} where they will be standing when the plates go down. That is the whole of the arrangement.',
+];
+
+/** Two people who came into this building already disliking each other. */
+export const TRAINING_ALTERCATION: Record<string, string[]> = {
+    generic: [
+        '{tribute} and {other} end up at the {station} at the same time, which surprises nobody, and it goes exactly the way everybody expected. Trainers get between them inside four seconds.',
+        'Something is said at the {station}. {tribute} goes for {other}, or {other} goes for {tribute} — the footage is unclear and the Capitol runs it eleven times anyway.',
+        '{tribute} and {other} have to be separated at the {station}. Neither of them is hurt. Both of them are now committed.',
+        'The trainers break up {tribute} and {other} at the {station} before it costs anybody a hand. The Gamemakers upstairs watch the whole thing without intervening.',
+        '{tribute} shoves {other} at the {station} and the room stops. It lasts three seconds and it will last the whole Games.',
+        '{tribute} and {other} do not touch each other at the {station}. Everyone present would rather they had.',
+        'Whatever is between {tribute} and {other} surfaces at the {station}, loudly, and the whole floor now knows about it.',
+        '{other} gets in {tribute}\'s way at the {station} on purpose. It escalates in under a minute.',
+        'A trainer separates {tribute} and {other} at the {station} and threatens both of them with the Peacekeepers. Neither is listening.',
+        'It is not a fight, exactly. But nobody watching {tribute} and {other} at the {station} calls it anything else afterwards.',
+    ],
+    career: [
+        '{tribute} makes an example of {other} at the {station}, which is how the academies teach it, and the trainers are slow to intervene.',
+        '{other} does not back down from {tribute} at the {station}, which is either brave or the last mistake of a short week.',
+    ],
+    child: [
+        '{other} is twice {tribute}\'s size and it does not stop {tribute} at the {station}. The trainers pull them apart. The gallery has found a favourite.',
+        '{tribute} is the smallest person in the room and squares up to {other} at the {station} anyway. Nobody in the Capitol stops talking about it for a day.',
+    ],
+};
+
+/** What a tribute takes away from watching everybody else. */
+export const TRAINING_OBSERVATION: string[] = [
+    '{tribute} spends an hour of day {day} not training at all, just watching, and comes away with a list.',
+    'By the end of day {day}, {tribute} knows exactly which three people in this room they cannot fight.',
+    '{tribute} watches {other} at the {station} on day {day} and revises their estimate sharply upward.',
+    'What {tribute} notices about {other} on day {day} is not what {other} was showing.',
+    '{tribute} counts on day {day}: who is fast, who is strong, who is pretending. The last list is the longest.',
+    '{other} does something at the {station} on day {day} that {tribute} will still be thinking about in the arena.',
+    '{tribute} makes no impression on anybody on day {day} and spends the whole time making impressions of everybody else.',
+    'Day {day}, and {tribute} has stopped watching the weapons and started watching the faces.',
+    '{tribute} sees {other} succeed at the {station} and files it under the only heading that matters this week.',
+    'On day {day}, {tribute} works out that the most dangerous person in the room is not the one everyone is looking at.',
+];
+
+/** The dining hall, the quarters, and the hours nobody trains in. */
+export const TRAINING_EVENING: Record<string, string[]> = {
+    generic: [
+        'In the dining hall that night, the Career table takes the long window and nobody contests it.',
+        'Somebody cries in the lift on the way up. The other three people in it look at the floor.',
+        'A mentor spends the evening saying the same six words to a tribute who has stopped hearing them.',
+        'Two tributes from districts that have never spoken sit at the same table and do not talk, which is still something.',
+        'The Avoxes clear plates that have not been touched. There are more of them every night.',
+        'Somebody has worked out how to see the Capitol skyline from the quarters and half the floor is queuing for the window.',
+        'An argument in one of the district suites carries down the corridor and stops abruptly.',
+        'The food is the best any of them have ever eaten and most of them cannot manage more than a few mouthfuls.',
+        'A mentor tells a story about their own Games and stops halfway through it.',
+        'Somebody spends the whole evening at the window counting hovercraft.',
+        'Two tributes discover they know the same song. They sing about a verse and a half of it before somebody makes them stop.',
+        'The lights go down on schedule. Nobody in this building is asleep.',
+    ],
+    day1: [
+        'First night in the Capitol. The beds are too soft and the ceilings are too high, and almost nobody manages more than an hour.',
+        'The escorts are still doing the enthusiasm. It will wear off around the second night; tonight it is unbearable.',
+        'Somebody asks their mentor, on the first night, whether it hurts. The mentor takes a long time answering.',
+    ],
+    day2: [
+        'Second night, and the room has sorted itself: the Careers together, the pairs together, and the rest alone.',
+        'By the second evening the small talk has run out and the building is much quieter for it.',
+        'A mentor finally says something useful on the second night, and it is not about weapons.',
+    ],
+    day3: [
+        'Last night before the private sessions. Two tributes spend it rehearsing. One spends it asleep, which is either wisdom or surrender.',
+        'The night before the sessions, somebody goes down to the training floor after hours and is politely returned to their quarters.',
+        'On the last evening the escorts hand out the schedule for tomorrow and every single tribute reads it twice.',
+    ],
+};

@@ -1597,8 +1597,14 @@ export const STANCE = {
     concealDiscount: 0.7,
     /** Minimum cycles a stance is held before it may change again. */
     minHold: 3,
-    /** Score margin a challenger stance must beat the current one by. */
-    switchMargin: 0.8,
+    /**
+     * Score margin a challenger stance must beat the current one by.
+     *
+     * A1: raised from 0.8 alongside the roster expansion. Eight scored stances
+     * sit closer together than three did, so the margin that separated them
+     * cleanly no longer does.
+     */
+    switchMargin: 1.1,
     /** Health fractions that pull a tribute toward each stance. */
     evasiveHealth: 40,
     cautiousEvasiveHealth: 55,
@@ -2656,6 +2662,75 @@ export const TRAINING = {
      */
     /** Days on the training floor before the private sessions. */
     days: 3,
+
+    // ---- A4: the three days, narrated ----
+    /**
+     * The station gain used to be unconditional: every day at every station
+     * simply worked. Rolling it against the attribute is what makes
+     * `trainingStrategy: 'conceal'` a real gamble rather than a flat score
+     * penalty, and what gives the floor a public record to react to.
+     */
+    stationBaseSuccess: 0.45,
+    stationPerAttributePoint: 0.055,
+    /** Each day on the floor is more tiring than the last. */
+    stationFatiguePerDay: 0.06,
+    /** A district that raised them on this work has an easier time of it. */
+    stationCraftBonus: 0.12,
+    /** Concealers deliberately underperform, and are sometimes believed. */
+    stationConcealPenalty: 0.2,
+    /** Below the success band but above this, they got through it badly. */
+    stationStruggleBand: 0.22,
+    /** Fraction of the ordinary gain a struggle is worth. */
+    struggleGainFactor: 0.5,
+    /** Respect the room withdraws from somebody it watched flounder. */
+    struggleRespect: 4,
+    failureRespect: 9,
+    /** What a public failure costs the tribute themselves. */
+    failureSanity: 5,
+    /** ...and what a Career takes from watching it. */
+    failureCareerFearDrop: 6,
+    /** Respect the room grants somebody it watched succeed visibly. */
+    successRespect: 5,
+    /** ...more, if they were showcasing. */
+    showcaseRespectBonus: 4,
+
+    /** Warmth between two tributes who worked the same station all day. */
+    mingleWarmth: 6,
+    /** Chance a shared station actually turns into a conversation. */
+    mingleChance: 0.55,
+    /** Chance two tributes who have been mingling strike a pre-agreement. */
+    pactChance: 0.3,
+    /** Regard a pre-agreement needs before it is even offered. */
+    pactMinRegard: 12,
+    /** ...and the regard striking one is worth. */
+    pactWarmth: 12,
+    /** Careers form theirs on day one and it is visible. */
+    careerPactDay: 1,
+    /** What watching a pack assemble itself does to everybody else. */
+    careerPactFear: 6,
+    /** How much a pre-agreement raises the odds of converging at the gong. */
+    pactBloodbathPull: 0.45,
+
+    /** Regard below which two tributes at the same station may come to blows. */
+    altercationRegard: -12,
+    /** Chance a hostile pairing at a station actually goes off. */
+    altercationChance: 0.45,
+    /** Fear each direction after a confrontation the trainers broke up. */
+    altercationFear: 9,
+    /** Sponsor swing: the crowd loves a feud and distrusts a brawler. */
+    altercationExcitement: 20,
+    altercationTrust: -3,
+
+    /** Fear written by watching somebody be frightening at a combat station. */
+    observationFear: 5,
+    /** Respect written by watching somebody be visibly good at anything. */
+    observationRespect: 4,
+    /** Attribute at or above which a combat-station showing reads as a threat. */
+    observationThreatAttribute: 8,
+    /** Chance a tribute's observation of the floor produces a line. */
+    observationLineChance: 0.18,
+    /** Chance the evening beat draws from that day's own pool rather than the general one. */
+    eveningDayPoolChance: 0.5,
     /** Attribute points a day at a station is worth, before aptitude. */
     stationAttributeGain: 0.5,
     /** Proficiency a day at a station is worth. */

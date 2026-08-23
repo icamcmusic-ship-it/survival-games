@@ -432,8 +432,8 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         return;
     }
 
-    // A genuine emergency overrides the hold: nobody stands their ground
-    // bleeding out.
+    // A genuine emergency overrides the *hold*: nobody stands their ground
+    // bleeding out waiting for a minimum-cycles counter.
     const emergency = t.health < STANCE.evasiveHealth * STANCE.emergencyHealthFactor
         || sig.ratio > STANCE.outmatchedRatio * STANCE.emergencyRatioFactor
         || !stillValid;
@@ -443,7 +443,14 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         t.stanceHeld += 1;
         return;
     }
-    if (!emergency && bestScore < (scores[t.stance] ?? -Infinity) + STANCE.switchMargin) {
+    // ...but it does *not* override the switch margin, which is the part that
+    // stops oscillation rather than the part that stops responsiveness. It used
+    // to skip both, so a badly hurt tribute — permanently in "emergency" by
+    // definition — had no hysteresis at all and flipped between two near-equal
+    // scorers every single cycle for the rest of their short life. The margin
+    // is skipped only when the incumbent stance is no longer available, where
+    // there is no incumbent score to compare against.
+    if (stillValid && bestScore < (scores[t.stance] ?? -Infinity) + STANCE.switchMargin) {
         t.stanceHeld += 1;
         return;
     }

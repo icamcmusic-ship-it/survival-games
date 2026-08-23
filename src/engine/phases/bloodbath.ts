@@ -3,7 +3,7 @@ import { RNG } from '../../utils/rng';
 import { Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
-import { ALLIANCES, BLOODBATH, QUALITY_BIAS } from '../../data/balance';
+import { ALLIANCES, BLOODBATH, QUALITY_BIAS, TRAINING } from '../../data/balance';
 import { registerAlliance } from '../alliance';
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { BLOODBATH_TEXTS } from '../../data/flavorText';
@@ -185,6 +185,33 @@ export function processBloodbath(ctx: SimContext) {
 
         if (ctx.rng.chance(fightChance)) fighters.push(t);
         else runners.push(t);
+    });
+
+    // A4: a pre-agreement struck on the training floor pulls two tributes the
+    // same way off the plates. Nothing binding — nobody in this arena is bound
+    // by anything — but two people who agreed on where to meet mostly do the
+    // same thing when the gong goes, which is the entire point of having made
+    // the agreement.
+    const sideOf = new Map<string, 'fight' | 'run'>();
+    fighters.forEach(t => sideOf.set(t.id, 'fight'));
+    runners.forEach(t => sideOf.set(t.id, 'run'));
+    alive.forEach(t => {
+        const partnerId = (t.trainingPact ?? []).find(id => sideOf.has(id));
+        if (!partnerId) return;
+        const mine = sideOf.get(t.id);
+        const theirs = sideOf.get(partnerId);
+        if (!mine || !theirs || mine === theirs) return;
+        if (!ctx.rng.chance(TRAINING.pactBloodbathPull)) return;
+        // The one who committed to the horn is the one who is harder to move.
+        const follower = theirs === 'fight' ? t : ctx.state.tributes.find(o => o.id === partnerId);
+        if (!follower) return;
+        const from = sideOf.get(follower.id) === 'fight' ? fighters : runners;
+        const to = sideOf.get(follower.id) === 'fight' ? runners : fighters;
+        const idx = from.indexOf(follower);
+        if (idx < 0) return;
+        from.splice(idx, 1);
+        to.push(follower);
+        sideOf.set(follower.id, sideOf.get(follower.id) === 'fight' ? 'run' : 'fight');
     });
 
     // 2. The race itself. Arrival order decides who is inside the horn when the
