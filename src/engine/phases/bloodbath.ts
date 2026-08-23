@@ -354,7 +354,13 @@ export function processBloodbath(ctx: SimContext) {
         );
     }
 
-    const fallen = alive.filter(t => t.status === 'dead').length;
+    // §12: mark the Cornucopia dead as Cornucopia dead. `dayOfDeath` cannot
+    // distinguish them from anyone who dies later on day 1, which is why
+    // 'Went In Together, Came Out Alone' had never fired for anybody.
+    const cornucopiaDead = alive.filter(t => t.status === 'dead');
+    cornucopiaDead.forEach(t => { t.diedInBloodbath = true; });
+
+    const fallen = cornucopiaDead.length;
     ctx.logEvent(
         fallen === 0
             ? 'The bloodbath ends without a single cannon. The Gamemakers are not pleased.'

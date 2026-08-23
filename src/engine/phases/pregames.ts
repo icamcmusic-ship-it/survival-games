@@ -97,11 +97,24 @@ export function processPreGames(ctx: SimContext) {
         // §6.9: the district token, pressed into their hands here. Stored on
         // the tribute so the broadcast can find it again — at the sheet, at
         // the death, in the victor's hands on the way home.
+        //
+        // §12: the review board does not allow all of them. Every tribute used
+        // to be issued a token unconditionally, which quietly turned the 'The
+        // Token' achievement — crown a victor still carrying the one thing
+        // they brought from home — into "win the Games", at a 98.8% fire rate.
+        // A token somebody could have been refused is a token worth keeping.
         const tokenPool = DISTRICT_TOKENS[t.district];
-        if (tokenPool && !t.token) {
+        if (tokenPool && !t.token && ctx.rng.chance(PREGAMES.tokenAllowedChance)) {
             t.token = ctx.rng.pick(tokenPool);
             ctx.logEvent(
                 `${t.name} leaves the goodbye room carrying their district token: ${t.token}. The review board will allow it. It is the only thing of home the arena will.`,
+                [t.id],
+                { category: 'system' }
+            );
+        } else if (tokenPool && !t.token) {
+            ctx.logEvent(
+                `${t.name} is asked to leave their token behind at the review board. No reason is given, and none is ever given. `
+                + `They go in with nothing of home on them at all.`,
                 [t.id],
                 { category: 'system' }
             );

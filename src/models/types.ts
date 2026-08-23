@@ -320,6 +320,14 @@ export interface Tribute {
     trainingScore: number;
     kills: number;
     causeOfDeath?: string;
+    /**
+     * Killed at the Cornucopia rather than out in the Games.
+     *
+     * §12: `dayOfDeath` cannot answer this — `startGames` sets day 1 before the
+     * bloodbath resolves, so a bloodbath death and a first-day death carry the
+     * same stamp. Set once, where the bloodbath ends.
+     */
+    diedInBloodbath?: boolean;
     dayOfDeath?: number;
     zone: string;
     allianceId?: string;
@@ -1005,8 +1013,30 @@ export interface GameState {
     cornucopiaHolder?: string;
     /** §10.1: the longest unbroken Cornucopia hold this run, in cycles. */
     maxHornHold?: number;
-    /** Cycle that holder's tenure began, or last paid out. */
+    /**
+     * §12: two allies who grieved the same death were seen still allied, at
+     * some point in the run, while both were alive.
+     *
+     * 'Both Mourned' used to be evaluated only against the final state — where
+     * everyone but the victor is dead and alliances have dissolved — so it
+     * could only ever be answered with the wreckage. Recorded live instead.
+     */
+    sharedGriefAllies?: boolean;
+    /** The grieving pair currently being watched, and the cycle they were first seen. */
+    sharedGriefPending?: { pair: string; cycle: number };
+    /**
+     * Cycle the current holder's tenure began.
+     *
+     * §10.1: this used to double as the payout clock — `tickZoneControl` reset
+     * it to the current cycle every time the hold paid out — so the measured
+     * hold length could never exceed `ZONE_CONTROL.payoutEveryCycles`, and
+     * `maxHornHold` topped out at 2 across every run ever played. Both horn
+     * achievements were unreachable by construction. The payout clock is now
+     * `cornucopiaPaidAt`, and this field means only what its name says.
+     */
     cornucopiaHeldSince?: number;
+    /** Cycle the current hold last paid its holders out. See `engine/zoneControl.ts`. */
+    cornucopiaPaidAt?: number;
     /** Cycle an extended-darkness wildcard releases the arena on. */
     blackoutUntilCycle?: number;
     /** Tribute the Capitol has put a bounty on, if any. */

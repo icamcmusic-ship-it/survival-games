@@ -2193,7 +2193,14 @@ export const ALLIANCES = {
      * this roll. Both used to be literals buried in `reconcileAlliances`.
      */
     coupBackingMargin: 20,
-    coupChance: 0.25,
+    /**
+     * §12: was 0.25, which produced at most one coup in an entire Games and
+     * frequently none — 'Mutiny' had never fired for anybody. Alliances break
+     * up long before a second challenger can gather the backing, so the roll
+     * has to land more often for a contested pack to be a thing a viewer ever
+     * sees twice.
+     */
+    coupChance: 0.45,
     /**
      * §3.3: the crown rivalry. The two leading killers in a Career-majority
      * pack erode each other's regard every cycle — the structural fault line
@@ -2776,7 +2783,32 @@ export const INTERVIEW_ANGLES = {
  * by the Gamemakers deciding when to start closing the arena. The pageantry is
  * not decoration; it is where the audience is won.
  */
+export const ACHIEVEMENT_BARS = {
+    /**
+     * §12: how many of armour / light / warmth / purifier a tribute must hold
+     * at once for 'Full Kit'. Was effectively 4 (all of them) and nobody ever
+     * managed it — carry capacity puts a fourth utility slot in competition
+     * with food, water and a weapon.
+     */
+    fullKitSlots: 3,
+    /**
+     * §12: cycles a pair who grieved the same death must stay allied before
+     * 'Both Mourned' counts. Without a hold requirement the pairing is simply
+     * "an alliance that has been in the Games a while", and it fired on nearly
+     * every run.
+     */
+    sharedGriefCycles: 4,
+} as const;
+
 export const PREGAMES = {
+    /**
+     * §12: share of tributes whose district token clears the review board.
+     *
+     * Every tribute used to be issued one, which made 'The Token' — crown a
+     * victor still carrying the one thing they brought from home — fire on
+     * 98.8% of runs. It was measuring the goodbye-room scene, not the victor.
+     */
+    tokenAllowedChance: 0.62,
     /** Age at which a reaping is a national incident rather than a formality. */
     childAge: 13,
     childReactionExcitement: 12,
@@ -3112,6 +3144,16 @@ export const RESOLVE = {
     brokenThreshold: 20,
     /** Per-cycle odds a broken tribute actually acts on it. */
     breakdownChance: 0.35,
+    /**
+     * §12: chance a breakdown costs the tribute their district token.
+     *
+     * Tokens used to be indestructible flavour — issued to everyone at the
+     * goodbye room and never taken away — which made the 'The Token'
+     * achievement ("crown a victor still carrying the one thing they brought
+     * from home") fire on 98.8% of runs, because it reduced to "win". A token
+     * you can put down is a token that means something when you do not.
+     */
+    tokenLostOnBreakdown: 0.18,
     /** Walking into the open is cathartic: it buys back a little will. */
     breakdownRebound: 12,
     /** Sitting down and stopping is not, and compounds instead. */

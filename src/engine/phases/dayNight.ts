@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
+import { ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
@@ -222,6 +222,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // the ground itself lands after this cycle's movement has resolved.
     tickWeatherFront(ctx);
     tickZoneControl(ctx);
+    tickSharedGrief(ctx);
     rollAmbientZoneEffects(ctx);
     tickZoneEffects(ctx);
     // §7.1: the arena's edge is a thing tributes can find, touch, and use.
@@ -267,13 +268,23 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         // there this instant, and there was no way to ask that question before.
         if (t.zoneHeldName === t.zone) t.zoneHeld = (t.zoneHeld ?? 0) + 1;
         else { t.zoneHeldName = t.zone; t.zoneHeld = 0; }
-        // §10.1: 'Full Kit' — armour, light, warmth and a purifier at once.
-        if (!t.fullKitSeen
-            && t.inventory.some(i => (i.armour ?? 0) > 0)
-            && t.inventory.some(i => i.light)
-            && t.inventory.some(i => i.warmth)
-            && t.inventory.some(i => i.purifies)) {
-            t.fullKitSeen = true;
+        // §10.1: 'Full Kit' — three of armour, light, warmth and a purifier at
+        // once.
+        //
+        // §12: this used to require all four, and nobody ever managed it: the
+        // most any tribute reached across 400 measured runs was three, because
+        // a fourth utility slot competes with food, water and a weapon for the
+        // same carry capacity. An achievement gated above what the item and
+        // capacity systems can produce is decoration, so the bar is now the
+        // top of what they actually produce.
+        if (!t.fullKitSeen) {
+            const kit = [
+                t.inventory.some(i => (i.armour ?? 0) > 0),
+                t.inventory.some(i => i.light),
+                t.inventory.some(i => i.warmth),
+                t.inventory.some(i => i.purifies),
+            ].filter(Boolean).length;
+            if (kit >= ACHIEVEMENT_BARS.fullKitSlots) t.fullKitSeen = true;
         }
         // Bloodlust cools. A kill on day 3 should not still be making someone
         // braver on day 8.
@@ -1315,4 +1326,41 @@ function resolveEncounters(
         idleAction(ctx, t, flavor);
         acted.add(t.id);
     });
+}
+
+/**
+ * §12: 'Both Mourned' — two tributes who grieved the same death and are still
+ * standing together afterwards.
+ *
+ * This has to be sampled during the run. Evaluated against the end state, as
+ * it used to be, the only tribute left alive is the victor and every alliance
+ * has dissolved, so the pairing it describes is structurally unobservable by
+ * the time anybody asks.
+ */
+function tickSharedGrief(ctx: SimContext) {
+    if (ctx.state.sharedGriefAllies) return;
+    const allied = getAlive(ctx.state).filter(t => t.allianceId);
+    for (let i = 0; i < allied.length; i++) {
+        for (let j = i + 1; j < allied.length; j++) {
+            const a = allied[i], b = allied[j];
+            if (a.allianceId !== b.allianceId) continue;
+            const mournedA = a.memory?.mourned ?? [];
+            if (mournedA.length === 0) continue;
+            if (!mournedA.some(id => (b.memory?.mourned ?? []).includes(id))) continue;
+            // Grief alone is not the achievement — nearly every allied pair
+            // has watched somebody die by the midgame, which is why simply
+            // observing the pairing fired on 96.8% of runs. What it names is
+            // an alliance that *held* through it, so the pair has to still be
+            // together a few cycles later before it counts.
+            const key = [a.id, b.id].join('|');
+            const cycle = ctx.state.cycle ?? 0;
+            const pending = ctx.state.sharedGriefPending;
+            if (pending?.pair !== key) {
+                ctx.state.sharedGriefPending = { pair: key, cycle };
+            } else if (cycle - pending.cycle >= ACHIEVEMENT_BARS.sharedGriefCycles) {
+                ctx.state.sharedGriefAllies = true;
+            }
+            return;
+        }
+    }
 }
