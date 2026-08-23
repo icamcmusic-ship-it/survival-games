@@ -388,6 +388,12 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                 </button>
             </footer>
 
+            {/* §2.5: paging is a navigation event with no visual anchor for a
+                screen-reader user — say which page they landed on. */}
+            <div aria-live="polite" className="sr-only">
+                {page ? `${page.label}. ${beats.length} moments. ${survivorsAtPage} still standing.` : ''}
+            </div>
+
             {selectedTribute && (
                 <TributeModal
                     tribute={selectedTribute}

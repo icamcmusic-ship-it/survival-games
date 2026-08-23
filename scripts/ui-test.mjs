@@ -76,6 +76,15 @@ await step('confirm reaping opens roster + betting', async () => {
   await page.getByText(/capitol betting parlour/i).waitFor();
 });
 
+await step('command palette searches across the run', async () => {
+  await page.keyboard.press('Control+k');
+  await page.getByRole('dialog', { name: /search everything/i }).waitFor();
+  await page.getByLabel(/search tributes, sectors and the chronicle/i).fill('a');
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Escape');
+  await page.getByRole('dialog', { name: /search everything/i }).waitFor({ state: 'detached' });
+});
+
 await step('search and sort roster', async () => {
   await page.getByPlaceholder(/search name/i).fill('district 1');
   await page.waitForTimeout(150);
@@ -90,6 +99,12 @@ await step('search and sort roster', async () => {
 });
 
 const coinsText = async () => (await page.locator('header .chip-gold').last().textContent()).trim();
+
+await step('roster filters narrow the cast', async () => {
+  await page.getByRole('button', { name: /^careers$/i }).click();
+  await page.getByRole('button', { name: /^armed$/i }).click();
+  await page.getByRole('button', { name: /^clear$/i }).first().click();
+});
 
 await step('betting deducts and refunds coins', async () => {
   const before = parseInt(await coinsText());

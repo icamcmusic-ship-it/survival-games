@@ -620,7 +620,10 @@ export function GameScreen({
                             />
                         </div>
                     ) : stageTab === 'map' ? (
-                        <div className="panel p-4 grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-4 items-start">
+                        // The side rail only splits off at very wide viewports: the
+                        // stage is already two thirds of the page, and halving that
+                        // again left the graph unreadably small.
+                        <div className="panel p-4 grid grid-cols-1 2xl:grid-cols-[3fr_2fr] gap-4 items-start">
                             <div>
                                 {arenaSealed ? (
                                     <div className="empty-state py-12">

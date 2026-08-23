@@ -106,7 +106,17 @@ function DeathCard({ log, tribute, animate, cast, onSelectTribute }: {
 }) {
     const meta = categoryMeta(log.category);
     return (
+        // §2.5: the death interstitial breaks the column visually and was not
+        // announced at all — a screen-reader user got the most significant
+        // thing that can happen in the Games as an unremarkable paragraph.
+        // `role="note"` plus an explicit label names it as what it is; the
+        // announcement itself still comes from GameScreen's assertive region,
+        // which does not repeat on scroll.
         <div
+            role="note"
+            aria-label={tribute
+                ? `${meta.label}. ${tribute.name} of District ${tribute.district}.`
+                : meta.label}
             className={`panel-flush border-l-[6px] p-3.5 my-2 ${animate ? 'animate-riseIn' : ''}`}
             style={{ borderLeftColor: meta.color, background: 'color-mix(in srgb, var(--cat-death) 8%, var(--paper-panel))' }}
         >

@@ -49,6 +49,9 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                         <span>Lines · routes between sectors</span>
                         <span style={{ color: 'var(--red)' }}>Thick/red · traffic this cycle</span>
                         <span style={{ color: 'var(--cat-loot)' }}>Ring · forage remaining</span>
+                        <span style={{ color: 'var(--red)' }}>● · tributes standing there</span>
+                        <span style={{ color: 'var(--cat-death)' }}>† · deaths here</span>
+                        <span>⛺ · a camp stands here</span>
                         <span>Dashed · out of bounds</span>
                     </div>
                 </div>

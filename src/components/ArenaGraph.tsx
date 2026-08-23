@@ -116,6 +116,17 @@ export function ArenaGraph({ gameState, selectedZone, onSelectZone, tributes }: 
     const positions = useMemo(() => layoutZones(arena), [arena]);
     const collapsed = gameState.collapsedZones ?? [];
     const traffic = gameState.zoneTraffic ?? {};
+    // §2.9: `zoneDeaths` and `camps` have both been stored since they landed
+    // and neither was ever drawn — the map showed structure and forage and
+    // nothing about what has actually happened on it.
+    const deaths = gameState.zoneDeaths ?? {};
+    const campZones = new Set(
+        Object.entries(gameState.camps ?? {})
+            .filter(([, camp]) => camp.shelter !== undefined || camp.fire !== undefined)
+            .map(([id]) => tributes.find(t => t.id === id))
+            .filter((t): t is Tribute => !!t && t.status === 'alive')
+            .map(t => t.zone)
+    );
 
     // Deduplicated edge list: `adjacent` lists both directions.
     const edges = useMemo(() => {
@@ -182,6 +193,8 @@ export function ArenaGraph({ gameState, selectedZone, onSelectZone, tributes }: 
                 const occupants = tributes.filter(t => t.status === 'alive' && t.zone === zone.name);
                 const stock = effectiveResources(gameState, zone);
                 const deadEnd = zone.adjacent.filter(n => !collapsed.includes(n)).length <= 1;
+                const zoneDeaths = deaths[zone.name] ?? 0;
+                const hasCamp = campZones.has(zone.name);
 
                 return (
                     <g
@@ -193,6 +206,8 @@ export function ArenaGraph({ gameState, selectedZone, onSelectZone, tributes }: 
                             `${zone.name}. ${zone.terrain}. ${dangerLabel(zone.danger)}. ` +
                             `${Math.round(stock * 100)} percent forage remaining. ` +
                             `${occupants.length} tribute${occupants.length === 1 ? '' : 's'} present.` +
+                            `${zoneDeaths > 0 ? ` ${zoneDeaths} died here.` : ''}` +
+                            `${hasCamp ? ' A camp stands here.' : ''}` +
                             `${isCollapsed ? ' Out of bounds.' : ''}${deadEnd && !isCollapsed ? ' Dead end.' : ''}`
                         }
                         onClick={() => onSelectZone(isSelected ? null : zone.name)}
@@ -245,6 +260,35 @@ export function ArenaGraph({ gameState, selectedZone, onSelectZone, tributes }: 
                                     {occupants.length}
                                 </text>
                             </>
+                        )}
+                        {/* §2.9: bodies. The count of deaths this sector has
+                            taken, which is the single most useful thing a
+                            reader can know about a place before walking into it. */}
+                        {zoneDeaths > 0 && (
+                            <>
+                                <circle
+                                    cx={p.x - NODE_R + 4} cy={p.y + NODE_R - 4} r={9}
+                                    fill="var(--ink)" stroke="var(--cat-death)" strokeWidth={1.5}
+                                />
+                                <text
+                                    x={p.x - NODE_R + 4} y={p.y + NODE_R - 3}
+                                    textAnchor="middle" dominantBaseline="middle"
+                                    style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 800 }}
+                                    fill="var(--cat-death)"
+                                >
+                                    †{zoneDeaths}
+                                </text>
+                            </>
+                        )}
+                        {/* §2.9: somebody has built something here. */}
+                        {hasCamp && !isCollapsed && (
+                            <text
+                                x={p.x - NODE_R + 2} y={p.y - NODE_R + 6}
+                                textAnchor="middle" dominantBaseline="middle"
+                                style={{ fontSize: 11 }}
+                            >
+                                ⛺
+                            </text>
                         )}
                         <text
                             x={p.x} y={p.y + NODE_R + 18}
