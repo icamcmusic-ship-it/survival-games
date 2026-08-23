@@ -221,7 +221,13 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
             className={`feed-item ${animate ? 'animate-riseIn' : ''} ${log.important ? 'is-important' : ''} ${continuation ? 'ml-4 text-[13px] opacity-90' : ''}`}
             style={{ ['--cat' as string]: meta.color }}
         >
-            {showTag && !continuation && <span className="feed-tag">{meta.label}</span>}
+            {showTag && !continuation && (
+                <span className="feed-tag">
+                    {/* §2.5: the glyph, so the category is legible without colour. */}
+                    <span className="cat-glyph mr-1" aria-hidden="true">{meta.glyph}</span>
+                    {meta.label}
+                </span>
+            )}
             {withTributeLinks(text, cast, log.tributesInvolved, onSelectTribute)}
         </div>
     );

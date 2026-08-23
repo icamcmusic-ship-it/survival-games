@@ -22,6 +22,7 @@ const ReapingScreen = lazy(() => import('./screens/ReapingScreen').then(m => ({ 
 const RosterScreen = lazy(() => import('./screens/RosterScreen').then(m => ({ default: m.RosterScreen })));
 const GameScreen = lazy(() => import('./screens/GameScreen').then(m => ({ default: m.GameScreen })));
 const EndScreen = lazy(() => import('./screens/EndScreen').then(m => ({ default: m.EndScreen })));
+const ChronicleScreen = lazy(() => import('./screens/ChronicleScreen').then(m => ({ default: m.ChronicleScreen })));
 const HallOfFameScreen = lazy(() => import('./screens/HallOfFameScreen').then(m => ({ default: m.HallOfFameScreen })));
 const VictorInterviewScreen = lazy(() => import('./screens/VictorInterviewScreen').then(m => ({ default: m.VictorInterviewScreen })));
 
@@ -109,6 +110,7 @@ export default function App() {
     { id: 'setup', label: 'New Game', show: true },
     { id: 'roster', label: 'Roster', show: !!gameState },
     { id: 'game', label: 'Arena', show: !!gameState && gameState.phase !== 'setup' && gameState.phase !== 'reaping' },
+    { id: 'chronicle', label: 'Chronicle', show: !!gameState && gameState.phase !== 'setup' && gameState.phase !== 'reaping' },
     { id: 'hallOfFame', label: 'Hall of Fame', show: true },
   ];
 
@@ -190,6 +192,10 @@ export default function App() {
               gameActions.setView('game');
             }}
           />
+        )}
+
+        {view === 'chronicle' && gameState && (
+          <ChronicleScreen gameState={gameState} />
         )}
 
         {view === 'game' && gameState && simulator && (

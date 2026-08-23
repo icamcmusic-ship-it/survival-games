@@ -116,21 +116,42 @@ await step('proceed advances phases', async () => {
 });
 
 await step('filters panel mutes categories', async () => {
-  await page.getByRole('button', { name: /filters/i }).click();
+  // A6: density is on the chronicle tab header now, not two clicks into a drawer.
   await page.getByRole('button', { name: /^headlines$/i }).click();
-  await page.getByRole('button', { name: /violence/i }).click();
+  await page.getByRole('button', { name: /filters/i }).click();
+  await page.getByRole('button', { name: /mute violence events/i }).click();
   await page.getByRole('button', { name: /reset filters/i }).click();
   await page.getByRole('button', { name: /filters/i }).click();
+  await page.getByRole('button', { name: /^everything$/i }).click();
+});
+
+await step('the chronicle page pages by phase', async () => {
+  await page.getByRole('link', { name: /^chronicle$/i }).click();
+  await page.getByRole('button', { name: /next phase/i }).waitFor();
+  await page.getByRole('button', { name: /next phase/i }).click();
+  await page.getByRole('button', { name: /previous phase/i }).click();
+  if (!/#\/chronicle/.test(page.url())) throw new Error('chronicle route did not stick: ' + page.url());
+  await page.getByRole('link', { name: /^arena$/i }).click();
+  await page.getByRole('button', { name: /proceed/i }).first().waitFor();
 });
 
 await step('arena map tab + sector selection', async () => {
-  await page.getByRole('button', { name: /arena map/i }).click();
+  // A6: the stage tabs read Chronicle / Map / Standings.
+  await page.getByRole('button', { name: /^map$/i }).click();
   // The map opens on the graph view; the per-sector buttons live behind Detail.
   await page.getByRole('button', { name: /^detail$/i }).first().click();
   await page.locator('button:has-text("Active"), button:has-text("Collapsed")').first().click();
   await page.waitForTimeout(150);
   await page.getByRole('button', { name: /^clear$/i }).first().click();
-  await page.getByRole('button', { name: /chronicle/i }).click();
+  await page.getByRole('button', { name: /^chronicle$/i }).first().click();
+});
+
+await step('standings tab sorts', async () => {
+  await page.getByRole('button', { name: /^standings$/i }).first().click();
+  await page.getByRole('button', { name: /^kills$/i }).click();
+  await page.getByRole('button', { name: /^kills$/i }).click();
+  await page.getByRole('columnheader', { name: /health/i }).waitFor();
+  await page.getByRole('button', { name: /^chronicle$/i }).first().click();
 });
 
 await step('tribute modal opens with live data and closes with Escape', async () => {
@@ -141,6 +162,8 @@ await step('tribute modal opens with live data and closes with Escape', async ()
 });
 
 await step('gamemaker controls fire', async () => {
+  // A6: the booth is one of the dossier column's accordion sections now.
+  await page.getByRole('button', { name: /gamemaker booth/i }).click();
   await page.getByRole('button', { name: /release mutts/i }).click();
   await page.getByRole('button', { name: /force weather/i }).click();
   // A 'no-feast' wildcard year (seed luck) legitimately disables this button.

@@ -586,6 +586,48 @@ body {
         flex: none;
     }
 
+    /* ---------- A3: the chronicle page ----------
+
+       The sidebar feed reads at 13px in a third of the viewport because it is
+       a ticker. A full-width page is a reading experience, so the prose sits
+       at ~15px with a real measure, and §2.12's text-size and column-width
+       settings scale from here rather than from arbitrary utility classes
+       sprinkled through the markup. */
+    .chronicle-prose {
+        font-size: 0.9375rem;
+        line-height: 1.55;
+    }
+
+    .chronicle-text-sm .chronicle-prose {
+        font-size: 0.8125rem;
+        line-height: 1.5;
+    }
+
+    .chronicle-text-lg .chronicle-prose {
+        font-size: 1.0625rem;
+        line-height: 1.6;
+    }
+
+    /* A long line is a hard line to read. The narrow measure caps the column
+       at roughly 62 characters, which is where continuous prose belongs. */
+    .chronicle-narrow .chronicle-prose {
+        max-width: 34em;
+    }
+
+    /* §2.5: colour is not an encoding.
+       Category colour was the *only* thing distinguishing an event type in the
+       feed — a legend dot and a border stripe, both hue-only. The glyph gives
+       a colour-blind reader something to scan on, and it costs nothing to
+       anybody else. */
+    .cat-glyph {
+        font-family: var(--font-mono);
+        font-size: 0.6875rem;
+        font-weight: 900;
+        line-height: 1;
+        display: inline-block;
+        flex: none;
+    }
+
     .empty-state {
         border: 2px dashed var(--line-soft);
         border-radius: 2px;

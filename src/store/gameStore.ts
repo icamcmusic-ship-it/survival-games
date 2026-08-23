@@ -52,7 +52,7 @@ export function prefetchEngine() {
     void loadEngine().catch(() => { /* the real load path reports failures */ });
 }
 
-export type ViewName = 'setup' | 'roster' | 'game' | 'hallOfFame';
+export type ViewName = 'setup' | 'roster' | 'game' | 'chronicle' | 'hallOfFame';
 
 /**
  * `Bet` and `SavedRun` are declared in `utils/saveMigrations` (with the schema

@@ -51,24 +51,62 @@ export interface StoredFilters {
      */
     density: StoredDensity;
     pauseOnDeath: boolean;
+    /**
+     * A6: which of the dossier column's accordion sections are open. The
+     * sidebar used to be three panes behind a mobile-only segmented control
+     * with no memory at all; now that it is five sections a reader can open
+     * independently, which ones they keep open is a preference.
+     */
+    openSections?: string[];
+    /**
+     * §2.12: reading comfort for a chronicle that runs to ~600 lines. Text
+     * size and a measure cap are the two settings a long-form reader actually
+     * reaches for.
+     */
+    textScale?: 'small' | 'normal' | 'large';
+    narrowMeasure?: boolean;
+    /** §2.7: whether the one-time density hint has been dismissed. */
+    densityHintSeen?: boolean;
 }
 
-export const DEFAULT_FILTERS: StoredFilters = { mutedGroups: [], density: 'everything', pauseOnDeath: false };
+export const DEFAULT_FILTERS: StoredFilters = {
+    mutedGroups: [],
+    // §2.7: a first run at 'everything' is 568 lines at 13px in a third of the
+    // viewport. 'scenes' is the density a first-time reader can actually
+    // follow; the one-time hint explains the other two.
+    density: 'scenes',
+    pauseOnDeath: false,
+    openSections: ['tributes'],
+    textScale: 'normal',
+    narrowMeasure: false,
+    densityHintSeen: false,
+};
 
 export const FILTERS_SPEC: StorageSpec<StoredFilters> = {
     key: STORAGE_KEYS.feedFilters,
-    version: 2,
+    version: 3,
     migrate: raw => {
         const r = asRecord(raw);
         if (!r) return null;
         const d = asStr(r.density, '');
         const density: StoredDensity = d === 'headlines' || d === 'scenes' || d === 'everything'
             ? d
+            // A v0/v1 payload predates the three-tier density entirely. It also
+            // predates the 'scenes' default, so an existing reader keeps the
+            // "show me everything" behaviour they already had rather than
+            // silently losing two thirds of their feed on upgrade.
             : asBool(r.importantOnly, false) ? 'headlines' : 'everything';
+        const scale = asStr(r.textScale, 'normal');
         return {
             mutedGroups: asStrArray(r.mutedGroups),
             density,
             pauseOnDeath: asBool(r.pauseOnDeath, false),
+            openSections: r.openSections === undefined
+                ? [...DEFAULT_FILTERS.openSections!]
+                : asStrArray(r.openSections),
+            textScale: scale === 'small' || scale === 'large' ? scale : 'normal',
+            narrowMeasure: asBool(r.narrowMeasure, false),
+            densityHintSeen: asBool(r.densityHintSeen, false),
         };
     },
 };
