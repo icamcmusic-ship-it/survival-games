@@ -498,6 +498,10 @@ export function proceduralArenaFlavor(arena: Arena): ArenaFlavor {
         volcanic: ['heat', 'toxic'],
         archipelago: ['storm', 'water'],
         highlands: ['cold', 'height', 'storm'],
+        tundra: ['cold', 'storm'],
+        dunes: ['heat'],
+        bayou: ['toxic', 'eerie', 'water'],
+        ruinlands: ['eerie', 'ruins'],
     };
     const biomeId = arena.id.replace(/^procedural-/, '');
     (moodByBiome[biomeId] || []).forEach(t => active.add(t));

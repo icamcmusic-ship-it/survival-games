@@ -3,7 +3,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { ENDGAME, MEMORY, MOVEMENT, OBJECTIVES } from '../data/balance';
 import { SimContext } from './context';
 import { cycleOf, cyclesSinceContact, ensureMemory, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
-import { getZone, hopsTo, nextHopToward, severedEdgeSet } from './map';
+import { getZone, hopsTo, nextHopToward, severedEdgeSet, zoneFeatures } from './map';
 import { fearOf } from './fear';
 import { breakTruce, breaksTruce, hasTruce } from './parley';
 import { areLovers } from './alliance';
@@ -165,7 +165,9 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
     // 2. Thirst. The most reliable killer that a tribute can actually do
     //    something about, and the clearest possible intention.
     if (t.vitals.thirst > MOVEMENT.thirstUrgency && !t.inventory.some(i => i.type === 'water')) {
-        const water = nearestZoneMatching(ctx, t, active, z => z.terrain === 'water' || z.terrain === 'wetland');
+        // §7.7: a drinkable spring on a moor counts; a brine sump does not —
+        // the same waterSource read the hydration layer itself uses.
+        const water = nearestZoneMatching(ctx, t, active, z => zoneFeatures(z).waterSource === true);
         if (water && water !== t.zone) {
             return { kind: 'reach', zone: water, reason: 'water', expires: expiry(OBJECTIVES.reachCycles) };
         }
@@ -305,8 +307,9 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
         }
     }
 
-    // 6. Somewhere to sleep it off.
-    if (t.vitals.fatigue > MOVEMENT.shelterUrgency || t.health < OBJECTIVES.holeUpHealth) {
+    // 6. Somewhere to sleep it off — or somewhere to get warm before the
+    // cold finishes what it started (§7.7).
+    if (t.vitals.fatigue > MOVEMENT.shelterUrgency || t.health < OBJECTIVES.holeUpHealth || t.injuries.frostbitten) {
         const shelter = nearestZoneMatching(ctx, t, active, z => z.terrain === 'forest' || z.terrain === 'ruins');
         if (shelter && shelter !== t.zone) {
             return { kind: 'reach', zone: shelter, reason: 'shelter', expires: expiry(OBJECTIVES.reachCycles) };

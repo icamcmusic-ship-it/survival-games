@@ -3,7 +3,8 @@ import { Tribute, Attributes, Build, GameConfig, ArchetypeId, Gender } from '../
 import { TRAITS, BUILDS, DEFAULT_GAME_CONFIG, traitFits } from '../data/constants';
 import { ARCHETYPES, archetypeWeightsFor } from '../data/archetypes';
 import { GENERATION, TESSERAE, VOLUNTEER } from '../data/balance';
-import { DISTRICT_NAMES } from '../data/names';
+import { DISTRICT_NAMES, DISTRICT_SURNAMES } from '../data/names';
+import { REAPING_NOTE_TEXTS } from '../data/pregames';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { blankMemory } from './memory';
 import { strengthCapForAge } from './physique';
@@ -185,11 +186,14 @@ function applyVolunteer(rng: RNG, t: Tribute, shape?: CastShape) {
         t.attributes.agility = Math.min(10, t.attributes.agility + VOLUNTEER.careerAgilityBonus);
         t.reputation = Math.min(95, t.reputation + VOLUNTEER.careerTrust);
         addExcitement(t, VOLUNTEER.careerExcitement);
-        t.reapingNote = composeNote(`Volunteered before the escort had finished reading the card — ${craftOf(t.district).blurb}, and eighteen years of waiting for their turn.`);
+        t.reapingNote = composeNote(rng.pick(REAPING_NOTE_TEXTS.careerVolunteer)
+            .split('{blurb}').join(craftOf(t.district).blurb)
+            .split('{district}').join(String(t.district)));
     } else {
         t.reputation = Math.min(95, t.reputation + VOLUNTEER.sacrificeTrust);
         addExcitement(t, VOLUNTEER.sacrificeExcitement);
-        t.reapingNote = composeNote(`Volunteered for a sibling. District ${t.district} has not had a volunteer in living memory, and the crowd did not applaud — they touched three fingers to their lips instead.`);
+        t.reapingNote = composeNote(rng.pick(REAPING_NOTE_TEXTS.siblingVolunteer)
+            .split('{district}').join(String(t.district)));
     }
     t.attributes.strength = Math.min(t.attributes.strength, strengthCapForAge(t.age));
     t.sponsorTrust = t.reputation;
@@ -209,10 +213,13 @@ export function generateTributes(
 ): Tribute[] {
     const rng = new RNG(seed);
     const tributes: Tribute[] = [];
-    // 2..12, matching the setup slider and the share-URL parser exactly. The
-    // old lower bound of 1 was reachable only through a hand-edited save and
-    // produced a degenerate two-tribute, one-day run.
-    const districtCount = Math.min(12, Math.max(2, config.districtCount));
+    // 2..16, matching the setup slider and the share-URL parser exactly.
+    // §8.5: districts 13-16 are the "expanded Games" outer territories — they
+    // borrow the name/legacy/craft tables of district ((d-1) % 12) + 1, so a
+    // 16-district reaping needs no new content tables to run.
+    const districtCount = Math.min(16, Math.max(2, config.districtCount));
+    // Table lookups for districts beyond the canonical twelve.
+    const tableDistrict = (d: number) => ((d - 1) % 12) + 1;
 
     // Names must be unique across the whole cast — two tributes called "Amber"
     // made the chronicle feed and the kill log ambiguous.
@@ -237,7 +244,7 @@ export function generateTributes(
         // district+gender pair is already unique across the cast, so this
         // never needs the used-name/disambiguation machinery below it.
         if (config.plainNames) return `District ${district} ${gender === 'Male' ? 'Boy' : 'Girl'}`;
-        const pool = DISTRICT_NAMES[district][gender];
+        const pool = DISTRICT_NAMES[((district - 1) % 12) + 1][gender];
         const available = pool.filter(n => !usedNames.has(n));
         const exclusive = available.filter(n => nameDistrictCounts.get(n) === 1);
         let name: string;
@@ -263,6 +270,12 @@ export function generateTributes(
     };
 
     for (let district = 1; district <= districtCount; district++) {
+        // Surnames come from the district's own pool. Occasionally the bowl
+        // hands up two slips from the same family — district partners who
+        // share a surname walk to the stage as kin, and the square knows it.
+        const surnamePool = DISTRICT_SURNAMES[tableDistrict(district)];
+        // balance-exempt: flavour frequency of the kin-pair surname beat, not a balance dial
+        const familySurname = rng.chance(0.15) ? rng.pick(surnamePool) : undefined;
         for (const gender of ['Male', 'Female'] as const) {
             const isCareer = [1, 2, 4].includes(district);
 
@@ -291,12 +304,18 @@ export function generateTributes(
             // their own — a fraction of the Career bonus, in the attribute
             // their actual work would plausibly build, so a hard-labour
             // district tribute is a survivable fight rather than a bye.
+            // §10.2: the Career head start is softened at the floor (0-2, not
+            // a guaranteed +1 in both stats) and every outer district's
+            // compensating bonus has a real floor of its own — the academy is
+            // still the favourite, but a stockyard tribute now arrives with
+            // the strength their work would actually have built.
             if (isCareer) {
-                attributes.strength += rng.nextInt(1, 2);
-                attributes.agility += rng.nextInt(1, 2);
+                attributes.strength += rng.nextInt(0, 2);
+                attributes.agility += rng.nextInt(0, 2);
             }
             if (district === 3) {
                 attributes.intelligence += rng.nextInt(2, 4);
+                attributes.agility += rng.nextInt(0, 1);
             }
             if (district === 7) {
                 attributes.strength += rng.nextInt(1, 3);
@@ -305,11 +324,27 @@ export function generateTributes(
                 attributes.stealth += rng.nextInt(2, 4);
                 attributes.agility += rng.nextInt(1, 2);
             }
-            if (district === 5 || district === 9 || district === 10) {
-                attributes.strength += rng.nextInt(0, 2);
+            if (district === 12) {
+                // A childhood hauling coal carts builds the same back a
+                // lumberyard does — the Seam's dead-last win rate was the
+                // one §10.2 outlier stealth alone could not close.
+                attributes.strength += rng.nextInt(1, 2);
+            }
+            if (district === 5 || district === 10) {
+                attributes.strength += rng.nextInt(1, 2);
+            }
+            if (district === 9) {
+                // Grain country: a childhood swinging a scythe is worth as
+                // much as District 7's axe work, and a life spent in
+                // head-high grain teaches a body how not to be seen.
+                attributes.strength += rng.nextInt(1, 3);
+                attributes.stealth += rng.nextInt(0, 2);
+            }
+            if (district === 9 || district === 10) {
+                attributes.agility += rng.nextInt(0, 2);
             }
             if (district === 6 || district === 8) {
-                attributes.agility += rng.nextInt(0, 2);
+                attributes.agility += rng.nextInt(1, 2);
             }
 
             // The cast shape leans on the age roll before it is clamped back
@@ -361,7 +396,14 @@ export function generateTributes(
                 if (traitFits(traits, trait)) traits.push(trait);
             }
 
-            const chosenName = drawName(district, gender);
+            // Full name: "First Surname". Plain-names mode has no surname to
+            // append; everyone else takes the district pool (or the shared
+            // family surname for a kin pair). First names are already unique
+            // across the cast, so the full name is too.
+            const firstName = drawName(district, gender);
+            const chosenName = config.plainNames
+                ? firstName
+                : `${firstName} ${familySurname ?? rng.pick(surnamePool)}`;
             const heightCm = gender === 'Male'
                 ? rng.nextInt(148 + (age - GENERATION.minAge) * 4, 168 + (age - GENERATION.minAge) * 4)
                 : rng.nextInt(142 + (age - GENERATION.minAge) * 4, 160 + (age - GENERATION.minAge) * 4);
@@ -434,14 +476,56 @@ export function generateTributes(
                         : (['family', 'family', 'partner', 'prove', 'escape'] as const)
                 ),
                 reapingNote: tesserae >= TESSERAE.notedAt
-                    ? `Their name was in the bowl ${age - GENERATION.minAge + 1 + tesserae} times — ${tesserae} of those slips bought grain, one winter at a time. Everyone in the square knew whose names the bowl was heavy with.`
+                    ? rng.pick(REAPING_NOTE_TEXTS.tesserae)
+                        .split('{slips}').join(String(age - GENERATION.minAge + 1 + tesserae))
+                        .split('{tesserae}').join(String(tesserae))
+                        .split('{district}').join(String(district))
                     : undefined,
             });
         }
     }
 
+    // A shared surname is a story the square already knows: two slips, one
+    // family, the same year. Flag it before the volunteer pass so a volunteer
+    // note composes on top of it the way it does with the tesserae note.
+    if (!config.plainNames) {
+        for (let district = 1; district <= districtCount; district++) {
+            const pair = tributes.filter(t => t.district === district);
+            if (pair.length !== 2) continue;
+            const [a, b] = pair;
+            const surnameOf = (t: Tribute) => t.name.split(' ').pop();
+            if (surnameOf(a) !== surnameOf(b)) continue;
+            const note = (other: Tribute) =>
+                `Reaped alongside their cousin ${other.name} — two slips out of the same family, the same year. The square did that arithmetic in silence.`;
+            a.reapingNote = a.reapingNote ? `${note(b)} ${a.reapingNote}` : note(b);
+            b.reapingNote = b.reapingNote ? `${note(a)} ${b.reapingNote}` : note(a);
+            // Family walks in already knowing each other.
+            a.relationships[b.id] = Math.max(a.relationships[b.id] ?? 0, 25);
+            b.relationships[a.id] = Math.max(b.relationships[a.id] ?? 0, 25);
+        }
+    }
+
     // The reaping is not just a name out of a bowl.
     tributes.forEach(t => applyVolunteer(rng, t, shape));
+
+    // The square's other stories. Some tributes arrive on the plate already
+    // defined by the thirty seconds after their name was read — the faint,
+    // the silence, the parent held back, the escort getting the name wrong.
+    const MISC_NOTE_POOLS = [
+        REAPING_NOTE_TEXTS.stunnedSilence,
+        REAPING_NOTE_TEXTS.defiantWalk,
+        REAPING_NOTE_TEXTS.fainted,
+        REAPING_NOTE_TEXTS.parentHeldBack,
+        REAPING_NOTE_TEXTS.allyShouted,
+        REAPING_NOTE_TEXTS.escortMispronounced,
+        REAPING_NOTE_TEXTS.tooCalm,
+    ];
+    tributes.forEach(t => {
+        // balance-exempt: flavour frequency of the misc reaping notes, not a balance dial
+        if (t.reapingNote || !rng.chance(0.3)) return;
+        t.reapingNote = rng.pick(rng.pick(MISC_NOTE_POOLS))
+            .split('{district}').join(String(t.district));
+    });
 
     // Audience meta: the Capitol has favourites before the gong.
     // Charisma, a good story and a career pedigree all feed the pre-Games buzz.
@@ -473,10 +557,12 @@ export function generateTributes(
             const [a, b] = pair;
             a.relationships[b.id] = shape.pairBond;
             b.relationships[a.id] = shape.pairBond;
-            a.reapingNote = a.reapingNote
-                ?? `Reaped as one half of a bonded pair with ${b.name}. Neither of them chose the other, and it will not matter.`;
-            b.reapingNote = b.reapingNote
-                ?? `Reaped as one half of a bonded pair with ${a.name}. Neither of them chose the other, and it will not matter.`;
+            const bondNote = (partner: Tribute, self: Tribute) =>
+                rng.pick(REAPING_NOTE_TEXTS.pairBond)
+                    .split('{partner}').join(partner.name)
+                    .split('{district}').join(String(self.district));
+            a.reapingNote = a.reapingNote ?? bondNote(b, a);
+            b.reapingNote = b.reapingNote ?? bondNote(a, b);
         }
     }
 

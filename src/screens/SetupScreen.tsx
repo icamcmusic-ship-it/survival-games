@@ -22,32 +22,34 @@ const storeConfig = writeStoredConfig;
 
 /**
  * UX-11 named presets: one click sets every pacing slider to a coherent
- * profile. Presets deliberately own only the pacing knobs — district count
- * and plain names are the player's structural/cosmetic choices and survive a
- * preset click unchanged.
+ * profile. §8.5: presets now also own district count, so they differ
+ * structurally as well as in pacing; plain names remains the player's
+ * cosmetic choice and survives a preset click unchanged.
  */
-type PresetConfig = Pick<GameConfig, 'hazardRate' | 'betrayalRate' | 'sponsorGenerosity' | 'enableFeast' | 'enableSanity'>;
-const PRESET_KEYS = ['hazardRate', 'betrayalRate', 'sponsorGenerosity', 'enableFeast', 'enableSanity'] as const;
+type PresetConfig = Pick<GameConfig, 'hazardRate' | 'betrayalRate' | 'sponsorGenerosity' | 'enableFeast' | 'enableSanity' | 'districtCount'>;
+const PRESET_KEYS = ['hazardRate', 'betrayalRate', 'sponsorGenerosity', 'enableFeast', 'enableSanity', 'districtCount'] as const;
+// §8.5: presets differ structurally, not only in pacing — a small six-district
+// Games, the canonical twelve, and a sixteen-district expanded reaping.
 const PRESETS: Array<{ name: string; blurb: string; config: PresetConfig }> = [
     {
         name: 'Canon',
-        blurb: 'Balanced, book-accurate pacing.',
-        config: { hazardRate: DEFAULT_GAME_CONFIG.hazardRate, betrayalRate: DEFAULT_GAME_CONFIG.betrayalRate, sponsorGenerosity: DEFAULT_GAME_CONFIG.sponsorGenerosity, enableFeast: DEFAULT_GAME_CONFIG.enableFeast, enableSanity: DEFAULT_GAME_CONFIG.enableSanity },
+        blurb: 'Balanced, book-accurate pacing. Twelve districts.',
+        config: { districtCount: 12, hazardRate: DEFAULT_GAME_CONFIG.hazardRate, betrayalRate: DEFAULT_GAME_CONFIG.betrayalRate, sponsorGenerosity: DEFAULT_GAME_CONFIG.sponsorGenerosity, enableFeast: DEFAULT_GAME_CONFIG.enableFeast, enableSanity: DEFAULT_GAME_CONFIG.enableSanity },
     },
     {
         name: 'Bloodbath',
-        blurb: 'Frequent hazards, quick betrayals.',
-        config: { hazardRate: 2.0, betrayalRate: 2.25, sponsorGenerosity: 0.75, enableFeast: true, enableSanity: true },
+        blurb: 'Frequent hazards, quick betrayals, the full field.',
+        config: { districtCount: 12, hazardRate: 2.0, betrayalRate: 2.25, sponsorGenerosity: 0.75, enableFeast: true, enableSanity: true },
     },
     {
-        name: 'Slow Burn',
-        blurb: 'Calm arena, loyal alliances, generous sponsors.',
-        config: { hazardRate: 0.5, betrayalRate: 0.25, sponsorGenerosity: 2.0, enableFeast: false, enableSanity: true },
+        name: 'Small Games',
+        blurb: 'Six districts, calm arena, loyal alliances, generous sponsors — an intimate, slow-burn year.',
+        config: { districtCount: 6, hazardRate: 0.5, betrayalRate: 0.25, sponsorGenerosity: 2.0, enableFeast: false, enableSanity: true },
     },
     {
-        name: 'Chaos',
-        blurb: 'Everything turned up as far as it goes.',
-        config: { hazardRate: 2.5, betrayalRate: 3.0, sponsorGenerosity: 3.0, enableFeast: true, enableSanity: true },
+        name: 'Expanded Chaos',
+        blurb: 'Sixteen districts — the outer territories reaped too — and everything turned up as far as it goes.',
+        config: { districtCount: 16, hazardRate: 2.5, betrayalRate: 3.0, sponsorGenerosity: 3.0, enableFeast: true, enableSanity: true },
     },
 ];
 
@@ -84,6 +86,13 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const [showAdvanced, setShowAdvanced] = useState(false);
     const coins = useStore(gameStore, st => st.coins);
     const panem = useStore(gameStore, st => st.panem);
+    // §10.9: arenas this player has never run. Hand-authored arenas are keyed
+    // by display name in `arenasSeen` (procedural maps by mapId, so they never
+    // match here — the dice and the sealed pick carry no badge on purpose).
+    // Suppressed entirely for a brand-new book, where everything is new.
+    const seenArenas = new Set(panem.arenasSeen ?? []);
+    const unseenArena = (id: string, name: string) =>
+        panem.runs > 0 && id !== 'procedural' && id !== 'random-hidden' && !seenArenas.has(name);
     const [savedRun, setSavedRun] = useState(readSavedRun);
     // §2.1: the manual slots alongside the rolling autosave.
     const [slots, setSlots] = useState<Array<SlotSummary | null>>(() => gameActions.readSaveSlots());
@@ -228,7 +237,14 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     }`}
                                 >
                                     <div className="min-w-0">
-                                        <div className={`font-black uppercase text-base ${selected ? 'text-white' : 'text-[var(--ink)]'}`}>{a.name}</div>
+                                        <div className={`font-black uppercase text-base ${selected ? 'text-white' : 'text-[var(--ink)]'}`}>
+                                            {a.name}
+                                            {unseenArena(a.id, a.name) && (
+                                                <span className={`ml-2 align-middle font-mono text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 border ${selected ? 'text-[#c9b8a0] border-[#c9b8a0]' : 'text-[var(--red)] border-[var(--red)]'}`}>
+                                                    New to you
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className={`text-xs mt-0.5 ${selected ? 'text-[#c9b8a0]' : 'text-[var(--color-ink-500)]'}`}>{a.description}</div>
                                     {SIGNATURE_BLURBS[a.id] && (
                                         <div className={`text-[10px] mt-1 font-mono ${selected ? 'text-[var(--red)]' : 'text-[var(--color-ink-600)]'}`}>
@@ -372,9 +388,9 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             </div>
                             <ConfigSlider
                                 label="Districts"
-                                hint="Two tributes are reaped from every district."
+                                hint="Two tributes are reaped from every district. Above twelve, the expanded outer territories are reaped too."
                                 value={config.districtCount}
-                                min={2} max={12} step={1}
+                                min={2} max={16} step={1}
                                 format={(v) => `${v} districts · ${v * 2} tributes`}
                                 onChange={(v) => setConfig(c => ({ ...c, districtCount: v }))}
                             />

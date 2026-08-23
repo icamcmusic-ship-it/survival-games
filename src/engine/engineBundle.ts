@@ -15,3 +15,4 @@ export { generateTributes } from './generator';
 export { generateArena } from './arenaGenerator';
 export { configForProfile, gamesProfileFor } from './gamesProfile';
 export { sendPlayerParachute, sponsorCost, sponsorableItems } from './playerSponsor';
+export { tributeOdds } from './odds';

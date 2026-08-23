@@ -1,10 +1,10 @@
 import { Tribute } from '../models/types';
-import { FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
 import { applyExposure } from './exposure';
-import { getZone } from './map';
+import { getZone, zoneFeatures } from './map';
 import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { sanityBandOf } from './sanityBands';
@@ -73,7 +73,9 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
         // `noWaterExceptZone`: only the arena's one designated water source
         // gives any relief at all — everywhere else is as dry as open ground.
         const wateredHere = !arenaHasLaw(ctx.state, 'noWaterExceptZone') || t.zone === ctx.state.arena.lawZone;
-        if ((zone.terrain === 'water' || zone.terrain === 'wetland') && wateredHere) thirst -= VITALS.waterThirstRelief;
+        // §5.6: relief keys on the zone actually holding drinkable water — a
+        // moorland spring waters a tribute, a brine pool never did.
+        if (zoneFeatures(zone).waterSource && wateredHere) thirst -= VITALS.waterThirstRelief;
         if (zone.terrain === 'highland') fatigue += VITALS.highlandFatiguePenalty;
         if (zone.terrain === 'forest' && time === 'night') fatigue -= VITALS.forestNightShelter;
     }
@@ -176,7 +178,20 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
         }
     }
     if (t.injuries.frostbitten) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.frostbitten * gradeDamageScale(t, 'frostbitten'), { cause: 'Froze to death', kind: 'status' })) {
+        // §7.7/§11.5: warmth is self-preservation. A fire or an insulated bag
+        // gives frostbite a real chance to thaw before it ticks again.
+        const zoneHere = getZone(ctx.state.arena, t.zone);
+        const warmGround = zoneHere !== undefined
+            && (zoneFeatures(zoneHere).shelterQuality ?? 0) >= TOOLS.shelterWarmHealQuality;
+        if ((hasCamp(ctx, t, 'fire') || hasCamp(ctx, t, 'shelter') || hasTool(t, 'warmth') || warmGround)
+            && ctx.rng.chance(TOOLS.warmFrostbiteHealChance)) {
+            healInjury(t, 'frostbitten');
+            ctx.logEvent(
+                `${t.name} gets warm enough for long enough, and the frostbite loosens its grip.`,
+                [t.id],
+                { category: 'survival' }
+            );
+        } else if (applyDamage(ctx, t, INJURY_DAMAGE.frostbitten * gradeDamageScale(t, 'frostbitten'), { cause: 'Froze to death', kind: 'status' })) {
             reliefFor(t, 'frostbitten');
         }
     }
@@ -194,7 +209,9 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
  */
 function drinkFromZone(ctx: SimContext, t: Tribute) {
     const zone = getZone(ctx.state.arena, t.zone);
-    if (!zone || (zone.terrain !== 'water' && zone.terrain !== 'wetland')) return;
+    // §5.6: `waterSource` is the drinkability question — a spring on a moor
+    // counts, a brine sump does not, whatever the printed terrain says.
+    if (!zone || !zoneFeatures(zone).waterSource) return;
     // `noWaterExceptZone`: nothing to drink anywhere but the designated zone.
     if (arenaHasLaw(ctx.state, 'noWaterExceptZone') && t.zone !== ctx.state.arena.lawZone) return;
 
@@ -203,6 +220,19 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
     // tablets and a fire-and-a-pot both answer the same question.
     const purifier = t.inventory.find(i =>
         i.purifies === true || (WATER.purifiers as readonly string[]).includes(i.id));
+
+    // §6.3: fire is the fallback purifier. No tablets, no filter — but a
+    // fire and something to boil in costs only the hour it takes.
+    if (foul && !purifier && hasCamp(ctx, t, 'fire')) {
+        t.vitals.thirst = Math.max(0, t.vitals.thirst - WATER.zoneDrinkRelief);
+        t.vitals.fatigue = Math.min(100, t.vitals.fatigue + CRAFTING.fireBoilFatigue);
+        ctx.logEvent(
+            `${t.name} boils water from ${t.zone} over their fire until it is safe to drink. It costs the hour, and it is worth the hour.`,
+            [t.id],
+            { category: 'survival' }
+        );
+        return;
+    }
 
     if (foul && !purifier) {
         // Desperate enough to drink it anyway — the thirst is the more urgent
@@ -257,8 +287,15 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
     if (t.vitals.hunger > VITALS.eatThreshold) {
         const food = consumeOne(t, i => i.type === 'food');
         if (food) {
-            t.vitals.hunger = Math.max(0, t.vitals.hunger - VITALS.foodRelief);
-            ctx.logEvent(`${t.name} eats their ${food.name}.`, [t.id], { category: 'survival' });
+            // §6.3: the same ration cooked over a fire goes further — hot
+            // food is one of the things a fire is actually for.
+            const cooked = hasCamp(ctx, t, 'fire');
+            t.vitals.hunger = Math.max(0, t.vitals.hunger - VITALS.foodRelief - (cooked ? CRAFTING.cookFeedBonus : 0));
+            if (cooked && ctx.rng.chance(CRAFTING.cookLineChance)) {
+                ctx.logEvent(`${t.name} cooks their ${food.name} over the fire and eats properly for the first time in days.`, [t.id], { category: 'survival' });
+            } else {
+                ctx.logEvent(`${t.name} eats their ${food.name}.`, [t.id], { category: 'survival' });
+            }
         }
     }
     if (t.vitals.thirst > VITALS.drinkThreshold) {
@@ -279,6 +316,15 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
         }
     }
 
+    // §8.3: sterile bandages — the cheap, common answer to an open wound,
+    // sitting below the full kit in both value and effect.
+    if (t.injuries.bleeding) {
+        if (consumeOne(t, i => i.id === 'bandages')) {
+            clearBleeding(t);
+            ctx.logEvent(`${t.name} winds sterile bandages over the wound until the bleeding gives up.`, [t.id], { category: 'survival' });
+        }
+    }
+
     const medkitIdx = t.inventory.findIndex(i => i.id === 'medkit');
     if (medkitIdx >= 0 && (t.health < MEDICAL.medkitHealthThreshold || Object.values(t.injuries).some(v => v))) {
         t.inventory.splice(medkitIdx, 1);
@@ -289,6 +335,15 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
         clearBleeding(t);
         ctx.logEvent(`${t.name} works through a First Aid Kit, stitching and binding everything they can reach.`, [t.id], { important: true, category: 'survival' });
         return;
+    }
+
+    // §8.3: morphling dulls what it cannot mend.
+    if (t.health < MEDICAL.morphlingHealthThreshold) {
+        if (consumeOne(t, i => i.id === 'morphling')) {
+            t.health = Math.min(100, t.health + MEDICAL.morphlingHeal);
+            t.vitals.sanity = Math.min(100, t.vitals.sanity + MEDICAL.morphlingSanity);
+            ctx.logEvent(`${t.name} presses the morphling vial to their arm and the arena goes soft at the edges for a while.`, [t.id], { category: 'survival' });
+        }
     }
 
     const ointmentIdx = t.inventory.findIndex(i => i.id === 'ointment');

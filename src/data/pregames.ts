@@ -132,3 +132,213 @@ export const CHARIOT_ANGLES = [
     { angle: 'in glass', line: '{stylist} builds {tribute} a costume of hanging glass that chimes with the chariot. It is beautiful, fragile, and everyone watching understands the metaphor.', pull: 1.5 },
     { angle: 'matched', line: '{stylist} dresses {tribute} and their district partner as two halves of one design, and the pair of them are worth more together than either alone. The sponsors take note.', pull: 2 },
 ];
+
+/**
+ * §6.8: the reaping-day line — how they came to be standing on that plate.
+ *
+ * Four hardcoded strings in the generator became four one-line stories told
+ * identically every Games. Each is a pool now, and the categories the square
+ * actually produces — the faint, the silence, the parent held back, the escort
+ * getting the name wrong — get lines of their own. Placeholders: {district}
+ * always; {blurb} in the Career pool (the district craft's blurb, lowercase
+ * mid-sentence); {partner} in the pair-bond pool.
+ */
+export const REAPING_NOTE_TEXTS = {
+    tesserae: [
+        'Their name was in the bowl {slips} times — {tesserae} of those slips bought grain, one winter at a time. Everyone in the square knew whose names the bowl was heavy with.',
+        '{slips} slips carried their name, and {tesserae} of them were the price of keeping a family fed. The odds were never in their favour; the odds were purchased against them, a tessera at a time.',
+        'The escort drew one slip out of {slips} that said the same name, {tesserae} of them signed for grain. Nobody in District {district} calls that bad luck.',
+        'They took the tesserae every year the family needed it, and this year the arithmetic came due: {slips} slips in the bowl, {tesserae} of them bought with hunger.',
+        'A rich child stands in that square with one slip a year. This one stood with {slips}, {tesserae} of them traded for grain, and the bowl did what bowls full of a poor family\'s name eventually do.',
+        'The grain those {tesserae} extra slips bought is long since eaten. The slips were still in the bowl — all {slips} of them — and one of them came out.',
+    ],
+    careerVolunteer: [
+        'Volunteered before the escort had finished reading the card — {blurb}, and eighteen years of waiting for their turn.',
+        'Volunteered. The academy decided months ago whose year this was, and the reaped child stepped down before the applause had even settled.',
+        'Volunteered the way District {district} volunteers: loudly, first, and with the academy rows chanting the name before the stage was reached.',
+        'Volunteered. The card in the escort\'s hand never mattered — {blurb}, and everyone in that square knew the name that would answer it.',
+        'Volunteered off the academy\'s front row, exactly on cue. In District {district} the reaping is a formality with a bowl in it.',
+        'Volunteered at a dead run, taking the steps two at a time. Whoever the slip actually named will spend the rest of their life grateful and never once say so.',
+    ],
+    siblingVolunteer: [
+        'Volunteered for a sibling. District {district} has not had a volunteer in living memory, and the crowd did not applaud — they touched three fingers to their lips instead.',
+        'Volunteered for a sibling — stepped in front of the stage before the name had finished echoing, and would not be moved. The square went silent the way a square only goes for this.',
+        'Volunteered the moment their sibling\'s name was read. The escort asked twice to be sure. They said it louder the second time.',
+        'Volunteered for a younger sibling, and the two of them had to be pulled apart at the steps. The cameras kept the shot; District {district} will never forgive them for it.',
+        'Volunteered for a sibling with a voice that did not shake until afterwards, in the goodbye room, where the cameras could not follow.',
+        'Volunteered for family. It is the only reason anyone volunteers in District {district}, and everyone in the square understood it before the sentence was finished.',
+    ],
+    pairBond: [
+        'Reaped as one half of a bonded pair with {partner}. Neither of them chose the other, and it will not matter.',
+        'Bound to {partner} by this year\'s rules before either of them had left the square. The Capitol calls it a twist; District {district} calls it two children instead of one.',
+        'Reaped alongside {partner} under the pair rule, and made to stand together on the stage while the escort explained what that will mean. Neither reacted, which took more than reacting would have.',
+        'One half of a bonded pair with {partner}. They looked at each other exactly once on the stage, and whatever passed between them was not for the cameras.',
+        'Paired with {partner} by a rule neither had heard of before the escort read it out. The square had no idea how to respond, so it did not.',
+    ],
+    // The square's other stories — assigned when nothing louder happened.
+    stunnedSilence: [
+        'When the name was read, the square made no sound at all — not a gasp, not a shuffle. The escort waited for a reaction that never came, and moved on.',
+        'Nobody reacted to the name. Not the crowd, not the family, not even them — a whole square deciding together that if they did not respond, it might not be true.',
+        'The silence after the name lasted long enough that the broadcast cut to the escort\'s face. District {district} gave the cameras nothing, which was the point.',
+    ],
+    defiantWalk: [
+        'Walked to the stage slowly — unhurried, head level, making the whole square and every camera wait. It is the only protest the reaping permits, and they used all of it.',
+        'Took the steps at their own pace, without help and without hurry, and looked at the escort until the escort looked away.',
+        'Did not cry, did not stumble, did not blink. Walked up like the stage owed them something, and half of District {district} stood a little straighter watching it.',
+    ],
+    fainted: [
+        'Went down on the second step — flat, sudden, the whole square lurching forward against the ropes. They finished the walk two minutes later, grey-faced, refusing the Peacekeeper\'s arm.',
+        'Fainted when the name was read and had to be carried the first ten metres. The Capitol replayed it all evening; District {district} turned its screens off.',
+        'Their legs quit before their face did. They sat down in the aisle, got up unaided, and made the stage on the second attempt — which is its own kind of resolve.',
+    ],
+    parentHeldBack: [
+        'A parent broke the rope line before the name had finished echoing, and it took three Peacekeepers to hold them. The tribute walked the rest of the way not looking back, because looking back would have finished them.',
+        'Their mother had to be restrained at the barricade, and the sound she made followed them all the way up the steps. The microphones caught every second of it.',
+        'A father\'s voice came out of the crowd once — one word, their name — and then the sound of him being quieted. The stage pretended not to hear. Nobody else in District {district} did.',
+    ],
+    allyShouted: [
+        'A friend from their crew shouted something from the roped section as they climbed the steps — quick, in district slang, and the escort did not understand a word of it. They visibly did.',
+        'Somebody their age yelled their name from the back of the square, once, like a promise. They did not turn around, and their shoulders came down half an inch.',
+        'Half their work gang was in the square, and every one of them shouted together the moment the name was read. The Peacekeepers let it go. Some things are cheaper to allow.',
+    ],
+    escortMispronounced: [
+        'The escort mispronounced the name — twice, differently each time — and they had to walk to the stage anyway, to a version of themselves that does not exist. District {district} will not forget it.',
+        'The escort got the name wrong, and they corrected it from the floor of the square, clearly, before walking up. It was the first thing the Capitol learned about them.',
+        'The name the escort read was theirs the way a Capitol accent makes anything theirs — barely. They answered to it because somebody had to, and the square hated every syllable.',
+    ],
+    tooCalm: [
+        'Reacted to the name with a nod, as if a question they had been expecting had finally been asked. It unsettled the square more than tears would have.',
+        'Was halfway to the aisle before the escort finished reading, as though they had counted the slips themselves and knew. The calm read strangely on camera, and the commentators noticed.',
+        'Handed their jacket to the person beside them, said something short, and walked up. Whatever they had been carrying that morning, they had evidently already set it down.',
+    ],
+};
+
+/**
+ * §6.9: the district token — the one thing from home a tribute is allowed to
+ * carry into the arena. Pressed into their hands in the goodbye room, stored on
+ * the tribute, and it surfaces again where it matters: on the sheet, at the
+ * death, in the victor's hands. One pool per district; the object is always
+ * small, always legal, and always heavier than it weighs.
+ */
+export const DISTRICT_TOKENS: Record<number, string[]> = {
+    1: [
+        'a flawed gemstone, the one reject their family\'s workshop was allowed to keep',
+        'a ring of gold wire, plaited from bench scraps swept up over a year',
+        'a glass bead their mother wore at her own reaping',
+        'a sliver of polished onyx on a silk cord',
+        'a tiny silver clasp, the first piece they ever finished unsupervised',
+        'a cufflink with the family maker\'s mark stamped inside it',
+        'a drop pearl that never sold, worn smooth from being worried at',
+        'a coil of gold thread tied into a knot with no name',
+    ],
+    2: [
+        'a chip of marble from the quarry face their father cut',
+        'a whetstone the size of a thumbnail, worn hollow in the middle',
+        'a lead soldier from the academy, one arm long gone',
+        'a square of granite polished to a mirror, small enough to swallow',
+        'an old Peacekeeper button with the crest worn to a shadow',
+        'a plumb bob on a foot of string, their grandfather\'s',
+        'a shard of slate with a mountain scratched into it',
+        'a knuckle of iron ore that has been in the family longer than anyone can say',
+    ],
+    3: [
+        'a resistor on a loop of wire, banded in their birth-year colours',
+        'a vacuum tube that still lights if you warm it in your hands',
+        'a fragment of circuit board sanded smooth as sea glass',
+        'a magnet the size of a coin that has held the family\'s notes to the stove for years',
+        'a watch mechanism with no watch around it, still ticking',
+        'a coil of copper wire bent into a ring',
+        'a key to a factory door that no longer exists',
+        'a glass fuse, blown, kept from the night the whole block went dark together',
+    ],
+    4: [
+        'a fish hook filed from a nail, their first',
+        'a knot of green sailcloth from a boat that came home when it should not have',
+        'a cowrie shell drilled for a cord, worn by three generations of reapings',
+        'a scale from a fish nobody believed the size of, lacquered stiff',
+        'a wooden float carved with the family boat\'s name',
+        'a twist of tarred netting tied into a bracelet',
+        'a shark tooth on a leather lace',
+        'a compass needle, unhoused, that still finds north on a still day',
+    ],
+    5: [
+        'a stub of copper busbar, buffed until it shines like an award',
+        'a glass insulator bead from the first pylon their mother strung',
+        'a switch toggle from a decommissioned board, kept for luck through every shift since',
+        'a filament bulb the size of an acorn, unbroken',
+        'a meter dial with the needle stuck forever at full',
+        'a knot of rubber cable insulation braided into a ring',
+        'a brass terminal screw their father carried through his whole working life',
+        'a sliver of turbine blade, no bigger than a leaf',
+    ],
+    6: [
+        'a punched ticket from the only passenger train they ever rode',
+        'a rail spike ground down to the size of a finger',
+        'a brass hub cap from a child\'s wagon, polished to sunlight',
+        'a length of engine chain, three links, worn like a bracelet',
+        'a compass with a cracked face that still swings true',
+        'a station token from a stop the maps stopped printing',
+        'a valve cap their brother turned into a whistle',
+        'a scrap of timetable with one departure circled in pencil',
+    ],
+    7: [
+        'a curl of cedar shaving that still smells of the cut',
+        'an acorn from the tree behind their house, drilled and strung',
+        'a whittled songbird small enough to close a fist around',
+        'a wedge of heartwood from the biggest fell their crew ever brought down',
+        'a knot of pine resin gone amber-hard, with a midge caught in it',
+        'a carved thimble of birch, their grandmother\'s',
+        'a sliver of their own axe handle, snapped the week before the reaping',
+        'a maple seed that spins when you drop it, kept flat in a fold of paper',
+    ],
+    8: [
+        'a spool of thread wound from the last of their mother\'s good silk',
+        'a scrap of the first bolt of cloth they ever wove, hemmed to a square',
+        'a brass thimble with a dent for every year of their apprenticeship',
+        'a button from a coat that went to somebody who needed it more',
+        'a braided cord of every colour the mill dyed that year',
+        'a needle case carved from a loom shuttle',
+        'a patch of quilt from the bed they were born in',
+        'a ribbon that has been re-tied on every birthday since their first',
+    ],
+    9: [
+        'a single head of wheat, dried whole and wrapped in cloth',
+        'a worry-stone of bread crust, fired hard as pottery in the oven',
+        'a mill token, good for one grind, never spent',
+        'a corn dolly the size of a finger, plaited at last year\'s harvest home',
+        'a scythe stone worn crescent-thin',
+        'a knot of straw braided into a ring on their last morning in the fields',
+        'a seed head of barley kept from the best year anyone remembers',
+        'a heel of flour sacking with the family\'s stencil still legible',
+    ],
+    10: [
+        'a brass bell no bigger than an acorn, off the first lamb they raised',
+        'a plait of mane hair from a horse who will notice they are gone',
+        'a brand token stamped with the family\'s mark',
+        'a knot of rawhide tied by their father, never untied',
+        'a river-worn stone from a trough where every animal they ever raised has drunk',
+        'a shirt button carved from cattle horn',
+        'a feather from a rooster mean enough to be famous in three counties',
+        'a coil of fence wire bent into a ring',
+    ],
+    11: [
+        'a peach stone, sanded satin-smooth over years in a pocket',
+        'a seed packet, folded shut, of a flower their mother never had ground to plant',
+        'a plaited grass ring from the orchard rows',
+        'a dried apple blossom pressed flat in a scrap of waxed paper',
+        'a pecan shell half worn to velvet',
+        'a thumb-length of sugar cane, cut the morning of the reaping',
+        'a scrap of head-cloth in the pattern their grandmother wore into the fields',
+        'a smooth black bean their little brother swore was lucky',
+    ],
+    12: [
+        'a lump of coal with a fern fossil caught in it, sharp as a photograph',
+        'a canary feather sealed in a locket that will not open anymore',
+        'a mine tag stamped with their father\'s shift number',
+        'a shard of lamp glass from the seam, worn soft-edged in a pocket',
+        'a knot of blackberry root from the fence line of the Meadow',
+        'a button of pressed coal dust and resin, made in the school workshop',
+        'a pinch of Seam earth in a twist of cloth, tied with mending thread',
+        'a fragment of pit pony harness brass, polished to gold',
+    ],
+};

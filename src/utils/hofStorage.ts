@@ -119,7 +119,7 @@ export function normalizeEntry(raw: unknown): HallOfFameEntry | null {
         const rc = c as Record<string, unknown>;
         const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
         return {
-            districtCount: Math.min(12, Math.max(2, Math.round(num(rc.districtCount, 12)))),
+            districtCount: Math.min(16, Math.max(2, Math.round(num(rc.districtCount, 12)))),
             hazardRate: num(rc.hazardRate, 1),
             betrayalRate: num(rc.betrayalRate, 1),
             sponsorGenerosity: num(rc.sponsorGenerosity, 1),

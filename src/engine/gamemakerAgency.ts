@@ -1,3 +1,4 @@
+import { announceFeastTheme } from './phases/feast';
 import { ITEMS } from '../data/constants';
 import { GAMEMAKER_AGENCY, QUALITY_BIAS } from '../data/balance';
 import { gamemakerProfile } from '../data/gamemakers';
@@ -54,11 +55,11 @@ export function runGamemakerSignature(ctx: SimContext) {
 
     switch (profile.signature) {
         case 'release-mutts':
-            asGamemaker(ctx, () => triggerGamemakerEvent(ctx, 'mutt'));
+            asGamemaker(ctx, () => triggerGamemakerEvent(ctx, 'mutt', undefined, true));
             break;
 
         case 'weather-front':
-            asGamemaker(ctx, () => triggerGamemakerEvent(ctx, 'weather'));
+            asGamemaker(ctx, () => triggerGamemakerEvent(ctx, 'weather', undefined, true));
             break;
 
         case 'call-the-feast':
@@ -71,8 +72,9 @@ export function runGamemakerSignature(ctx: SimContext) {
                     [],
                     { important: true, category: 'feast' }
                 );
+                announceFeastTheme(ctx);
             } else {
-                asGamemaker(ctx, () => triggerGamemakerEvent(ctx, 'weather'));
+                asGamemaker(ctx, () => triggerGamemakerEvent(ctx, 'weather', undefined, true));
             }
             break;
 

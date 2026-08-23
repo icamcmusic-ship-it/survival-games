@@ -277,7 +277,7 @@ test('feed filters and setup config round-trip and repair partial v0 data', () =
 
     seedLegacy(STORAGE_KEYS.lastConfig, { districtCount: 99, hazardRate: 2 });
     const c = readStored(CONFIG_SPEC)!;
-    assert.equal(c.districtCount, 12, 'out-of-range district count accepted');
+    assert.equal(c.districtCount, 16, 'out-of-range district count accepted');
     assert.equal(c.hazardRate, 2);
     assert.equal(c.enableFeast, true, 'missing flag not defaulted');
 });

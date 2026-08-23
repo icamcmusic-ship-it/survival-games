@@ -139,8 +139,24 @@ export function processInterviews(ctx: SimContext) {
     });
 
     cast.forEach(t => {
+        // §11.2: Caesar opens off the parade. The chariot angle is the last
+        // thing the Capitol saw of them, and a memorable one is the intro.
+        if (t.chariotAngle && (t.paradeBuzz ?? 0) >= 2) {
+            ctx.logEvent(
+                `Caesar opens on the parade footage: ${t.name}, sent down the avenue ${t.chariotAngle} — "the whole city is still talking about that entrance," and for once he is not exaggerating.`,
+                [t.id],
+                { category: 'interview' }
+            );
+        }
         // ---- Beat one: the angle they walked out with ----
-        const scenario = pickAngle(ctx, t);
+        // §6.10: a coached tribute walks on with the angle the player chose
+        // for them; whether they can hold it under Caesar is still their own
+        // charisma's problem.
+        const coached = ctx.state.playerCoaching;
+        const pinned = coached?.tributeId === t.id && coached.interviewStrategy
+            ? INTERVIEW_SCENARIOS.find(s => s.strategy === coached.interviewStrategy)
+            : undefined;
+        const scenario = pinned ?? pickAngle(ctx, t);
         const poise = t.attributes.charisma
             + ctx.rng.nextInt(INTERVIEWS.poiseJitterMin, INTERVIEWS.poiseJitterMax)
             + (t.fanFavourite ? INTERVIEWS.poiseFanFavourite : 0)
@@ -188,6 +204,7 @@ export function processInterviews(ctx: SimContext) {
         // performed-bond machinery pays it off (see ROMANCE.showmanceMultiplier).
         if (t.attributes.charisma >= ROMANCE.performerCharisma
             && ctx.rng.chance(ROMANCE.showmanceInterviewChance)
+            // balance-exempt: archetype-table band test, not an independent dial
             && (ARCHETYPES[t.archetype].treachery > 0.15 || t.archetype === 'trickster')) {
             t.interviewAngle = 'showmance';
             ctx.logEvent(

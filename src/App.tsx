@@ -66,7 +66,7 @@ export default function App() {
       // Ranges mirror the setup screen's sliders — a shared link is untrusted
       // input and must not be able to exceed what the UI itself allows.
       const config = {
-        districtCount: Math.round(numParam('districtCount', DEFAULT_GAME_CONFIG.districtCount, 2, 12)),
+        districtCount: Math.round(numParam('districtCount', DEFAULT_GAME_CONFIG.districtCount, 2, 16)),
         hazardRate: numParam('hazardRate', DEFAULT_GAME_CONFIG.hazardRate, 0.25, 2.5),
         betrayalRate: numParam('betrayalRate', DEFAULT_GAME_CONFIG.betrayalRate, 0, 3),
         sponsorGenerosity: numParam('sponsorGenerosity', DEFAULT_GAME_CONFIG.sponsorGenerosity, 0, 3),

@@ -2,7 +2,7 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { BLEEDING, COMBAT, DEBTS, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
@@ -358,6 +358,9 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     }
     if (weapon?.poison && ctx.rng.chance(COMBAT.poisonTransferChance) && !defender.injuries.poisoned) {
         injure(defender, 'poisoned');
+        // §10.1: 'Venom' — the mark of an envenomed blade, distinct from the
+        // arena's own poisons, so a later poison death reads as this weapon's.
+        defender.poisonedByWeapon = true;
         ctx.logEvent(
             `${defender.name} is grazed by ${attacker.name}'s poisoned dart and feels the venom spreading.`,
             [defender.id, attacker.id],
@@ -933,6 +936,9 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     if (killer) {
         const killerAlive = killer.status === 'alive';
         if (killerAlive) killer.kills += 1;
+        // §6.8: the first tribute-dealt kill of the Games — the side-bet book
+        // settles 'first blood' off this.
+        if (ctx.state.firstBloodId === undefined) ctx.state.firstBloodId = killer.id;
         victim.causeOfDeath = cause
             || (weapon ? `Killed by ${killer.name} (${weapon.name})` : `Killed by ${killer.name}`);
 
@@ -995,6 +1001,10 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             if (victim.inventory.length > 0) {
                 const spoils = victim.inventory;
                 victim.inventory = [];
+                // §8.9: stripping the fallen, done often enough, becomes who
+                // you are on camera.
+                killer.corpsesLooted = (killer.corpsesLooted ?? 0) + 1;
+                if (killer.corpsesLooted >= EARNED_TRAIT_RULES.vultureCorpses) earnTrait(ctx, killer, 'Vulture');
                 const dropped = giveItem(killer, ...spoils);
                 const taken = spoils.filter(i => !dropped.includes(i));
                 const lootNames = taken.map(i => i.name).join(', ');
@@ -1026,6 +1036,19 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             .split('{age}').join(String(victim.age))
             .split('{witness}').join(witness?.name ?? 'someone nearby');
         ctx.logEvent(text, witness ? [victim.id, witness.id] : [victim.id], { important: true, category: 'death' });
+    }
+
+    // §6.9: the district token goes home with the body. The cameras do not
+    // always find it, but when they do it is the shot of the night. Selection
+    // is deterministic from the death itself rather than an rng draw — a
+    // per-kill draw here would shift every roll downstream of every kill,
+    // which perturbs the whole run for the sake of one flavour line.
+    if (victim.token && (victim.district + ctx.state.day + victim.age) % 4 === 0) {
+        ctx.logEvent(
+            `The hovercraft lifts ${victim.name} with their district token still on them — ${victim.token}. District ${victim.district} sent it out with them, and District ${victim.district} gets it back.`,
+            [victim.id],
+            { category: 'death' }
+        );
     }
 
     // Watching someone kill is the single most frightening thing that can

@@ -1,6 +1,6 @@
 import { GameState, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
-import { RELATIONSHIPS, GENERATION, HUNTING, RESPECT, SUSPICION } from '../data/balance';
+import { DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, SUSPICION } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
 import { clampTribute } from './vitals';
@@ -158,11 +158,17 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
         const wereAllied = other.allianceId !== undefined && other.allianceId === victim.allianceId;
         const isLover = areLovers(other, victim);
 
-        if (bond >= RELATIONSHIPS.grievableBond || wereAllied || isLover) {
+        // §11.3: the district partner is the person from home. Their death is
+        // a bigger loss than an ally's, whatever the raw number said.
+        const isPartner = other.district === victim.district
+            && (bond >= DEBTS.partnerGriefBond || other.districtBondNoted === true);
+
+        if (bond >= RELATIONSHIPS.grievableBond || wereAllied || isLover || isPartner) {
             const intensity = isLover ? 1 : Math.min(1, (bond + (wereAllied ? 25 : 0)) / 100);
-            const sanityHit = isLover
+            const sanityHit = (isLover
                 ? RELATIONSHIPS.griefSanityMax + 15
-                : RELATIONSHIPS.griefSanityMin + intensity * (RELATIONSHIPS.griefSanityMax - RELATIONSHIPS.griefSanityMin);
+                : RELATIONSHIPS.griefSanityMin + intensity * (RELATIONSHIPS.griefSanityMax - RELATIONSHIPS.griefSanityMin))
+                + (isPartner ? DEBTS.partnerGriefSanity : 0);
 
             // Some people have buried someone before, and some people have not.
             other.vitals.sanity -= sanityHit * Math.max(0, 1 - traitMod(other, 'griefResist'));
@@ -189,7 +195,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 // what happened to Y" — appeared in well under 1% of runs.
                 // Watching your ally or someone you loved die is sufficient on
                 // its own; the relationship hit is the consequence, not the gate.
-                const personal = wereAllied || isLover || bond >= RELATIONSHIPS.vengeanceBond;
+                const personal = wereAllied || isLover || isPartner || bond >= RELATIONSHIPS.vengeanceBond;
                 if (personal || now <= RELATIONSHIPS.vengeanceThreshold) {
                     swearVengeance(other, killer.id);
                     other.stance = 'Aggressive';
@@ -210,6 +216,14 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                     `TRAGEDY: ${other.name} hears the cannon and knows. Their star-crossed lover ${victim.name} is gone, and something in them goes with it.`,
                     [other.id, victim.id],
                     { important: true, category: 'romance' }
+                );
+            } else if (isPartner) {
+                ctx.logEvent(
+                    killer && killer.id !== other.id
+                        ? `${other.name} hears the cannon for ${victim.name} — the other half of District ${other.district} — and something colder than grief settles in behind the tears. Their whole district watched that happen.`
+                        : `${other.name} is the last of District ${other.district} now. ${victim.name} rode the same train, ate at the same table, and there is nobody left in the arena who knew home.`,
+                    killer && killer.id !== other.id ? [other.id, victim.id, killer.id] : [other.id, victim.id],
+                    { important: true, category: 'sanity' }
                 );
             } else if (intensity > 0.45) {
                 ctx.logEvent(

@@ -88,7 +88,7 @@ export const CONFIG_SPEC: StorageSpec<GameConfig> = {
         const r = asRecord(raw);
         if (!r) return null;
         return {
-            districtCount: Math.min(12, Math.max(2, asNum(r.districtCount, DEFAULT_GAME_CONFIG.districtCount))),
+            districtCount: Math.min(16, Math.max(2, asNum(r.districtCount, DEFAULT_GAME_CONFIG.districtCount))),
             hazardRate: asNum(r.hazardRate, DEFAULT_GAME_CONFIG.hazardRate),
             betrayalRate: asNum(r.betrayalRate, DEFAULT_GAME_CONFIG.betrayalRate),
             sponsorGenerosity: asNum(r.sponsorGenerosity, DEFAULT_GAME_CONFIG.sponsorGenerosity),

@@ -258,6 +258,12 @@ export interface Tribute {
      */
     displayedRegard?: Record<string, number>;
     /**
+     * §11.1: consecutive cycles this tribute has been performing a bond
+     * (displayedRegard non-empty). Resets when the act drops. Read by the
+     * chronicle and reserved for a future performance achievement.
+     */
+    performingStreak?: number;
+    /**
      * Outstanding obligations: other tribute id -> how much is owed them.
      *
      * `memory.stoodBy` recorded that somebody took a risk for you, and then
@@ -360,6 +366,36 @@ export interface Tribute {
      * on camera: quirks show on the sheet and surface from quiet cycles.
      */
     quirks?: string[];
+    /**
+     * §6.9: the district token — the one thing from home they are allowed to
+     * carry into the arena. Set in the goodbye room at pregames; surfaces
+     * again at their death or in the victor's hands.
+     */
+    token?: string;
+    /** §10.1: the longest performing streak this tribute ever held, for 'The Long Con'. */
+    maxPerformingStreak?: number;
+    /** §10.1: tribute ids this one has extorted at a parley (item or information). */
+    extortedIds?: string[];
+    /** §10.1: set the first time a weapon enters their inventory, ever. */
+    everCarriedWeapon?: boolean;
+    /** §10.1: every zone this tribute has personally stood in. */
+    visitedZones?: string[];
+    /** §10.1: kills credited to this tribute's own traps. */
+    trapKills?: number;
+    /** §8.9: traps this tribute has successfully pulled apart. */
+    trapsDisarmed?: number;
+    /** §8.9: hard water crossings begun (destination terrain 'water'). */
+    waterCrossings?: number;
+    /** §8.9: consecutive cycles spent with no hostile in their zone. */
+    unseenStreak?: number;
+    /** §8.9: bodies this tribute has stripped for supplies. */
+    corpsesLooted?: number;
+    /** §10.1: they took a graze from a poisoned weapon at some point. */
+    poisonedByWeapon?: boolean;
+    /** §10.1: they held armour, light, warmth and a purifier all at once. */
+    fullKitSeen?: boolean;
+    /** §10.1: other tribute id -> times a truce with them was renewed. */
+    truceRenewed?: Record<string, number>;
 }
 
 /**
@@ -400,6 +436,8 @@ export interface Alliance {
      * missing: the only ways out used to be death, betrayal and pact expiry.
      */
     charter?: CharterRule[];
+    /** §10.1: charter breaches this group has logged, for 'Charter Kept'. */
+    breaches?: number;
 }
 
 /** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
@@ -438,6 +476,8 @@ export interface ZoneEffect {
     expiresCycle: number;
     /** 'burning' only: the cycle it is next eligible to spread to a neighbour. */
     nextSpreadCycle?: number;
+    /** 'burning' only: how many zones deep this particular fire chain runs (1 = the origin fire). */
+    chainLength?: number;
     /** Multiplier on this instance's per-tick damage/chance constants. Defaults to 1 where absent. */
     severity?: number;
 }
@@ -453,6 +493,11 @@ export interface Trap {
     concealment: number;
     /** Cycle it was set, so the arena can rot them out rather than accumulating forever. */
     setCycle: number;
+    /**
+     * §6.2: tribute ids who have spotted this trap and chosen to leave it
+     * standing. They walk around it from then on; everyone else still rolls.
+     */
+    knownBy?: string[];
 }
 
 export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland';
@@ -534,6 +579,19 @@ export interface ZoneFeatures {
     elevation: boolean;
     /** Bottlenecked ways in and out: ambushes easier, retreat harder. */
     chokepoint: boolean;
+    /**
+     * §5.6: drinkable water inside the zone, distinct from the terrain being
+     * 'water' — a spring on a moor is a water source; a brine sump is not
+     * automatically one. Derived from terrain and name when absent
+     * (see `zoneFeatures` in engine/map); read by the hydration layer.
+     */
+    waterSource?: boolean;
+    /**
+     * §5.6: 0-1, how much shelter the zone's interior offers against the
+     * weather — caves, ruins and deep timber near 1, bare flats near 0.
+     * Scales exposure ticks and derives from terrain and cover when absent.
+     */
+    shelterQuality?: number;
 }
 
 export interface Zone {
@@ -565,8 +623,11 @@ export interface EdgeRule {
     /** 'oneWay' only: the one direction this edge may be crossed. */
     from?: string;
     to?: string;
-    /** 'tolled' only: an extra cost paid to cross, on top of normal travel cost. */
-    toll?: { fatigue?: number; woundChance?: number };
+    /** 'tolled' only: an extra cost paid to cross, on top of normal travel cost.
+     *  §11.6: `itemCost` consumes one carried non-weapon item (rope burned on
+     *  the climb, a pack lost to the current); `timeCost` adds extra transit
+     *  cycles on top of the terrain's own travel cost. */
+    toll?: { fatigue?: number; woundChance?: number; itemCost?: boolean; timeCost?: number };
     /** 'timeGated' only: the edge is only passable during this time. */
     gatedTime?: 'day' | 'night';
 }
@@ -663,7 +724,7 @@ export type EventCategory =
     | 'system';
 
 export interface GameConfig {
-    districtCount: number; // 2-12, each district reaps 2 tributes
+    districtCount: number; // 2-16, each district reaps 2 tributes (13-16 are the "expanded Games" outer territories)
     hazardRate: number; // multiplier on random event/mutt attack chance
     betrayalRate: number; // multiplier on alliance betrayal chance
     sponsorGenerosity: number; // multiplier on sponsor gift chance
@@ -708,6 +769,8 @@ export interface GameState {
     weatherFront?: WeatherFront;
     /** Alliance id currently holding the Cornucopia. See `engine/zoneControl.ts`. */
     cornucopiaHolder?: string;
+    /** §10.1: the longest unbroken Cornucopia hold this run, in cycles. */
+    maxHornHold?: number;
     /** Cycle that holder's tenure began, or last paid out. */
     cornucopiaHeldSince?: number;
     /** Cycle an extended-darkness wildcard releases the arena on. */
@@ -773,8 +836,15 @@ export interface GameState {
      * shared seed reproduces the same Games, not merely the same cast.
      */
     gamesProfile?: GamesProfile;
-    /** Guard so a scheduled wildcard fires exactly once. */
-    wildcardFired?: boolean;
+    /**
+     * §10.7: extra, unscheduled calendar disruptions fired so far this run.
+     * Replaces the never-written `wildcardFired` boolean — a run can now take
+     * up to WILDCARD.maxExtraDisruptions additional beats, spaced out and at
+     * diminishing odds. See `fireScheduledWildcard` in engine/wildcards.ts.
+     */
+    extraWildcardsFired?: number;
+    /** Cycle the last calendar/extra wildcard resolved on, for spacing. */
+    lastWildcardCycle?: number;
     /**
      * Which half of the cycle is currently resolving.
      *
@@ -811,8 +881,59 @@ export interface GameState {
     activeMutts?: ActiveMutt[];
     /** Zones a cannon fired in this cycle, with the cycle it happened — reads as "just now" only while `cycle` still matches. Feeds the `scavenger` mutt role. */
     recentCannonZones?: { zone: string; cycle: number }[];
+    /**
+     * §5.10: zone name -> the deepest depletion it has reached since it last
+     * fully recovered. Written by `depleteZone`, cleared by `regenerateZones`
+     * when the zone comes back — which is what gates the visible "green
+     * returns" beat to once per zone per recovery.
+     */
+    zoneDepletionPeak?: Record<string, number>;
+    /**
+     * §7.1: tribute ids who have personally discovered the arena's force
+     * field — pressed a hand against the sky at the border and felt it push
+     * back. Gates the discovery beat to once per tribute.
+     */
+    forceFieldSeen?: string[];
     /** 'The Bounty Quell': the currently-named quarry, and the cycle they were last (re)named. */
     quellBounty?: { targetId: string; namedCycle: number };
+    /**
+     * §10.6: what the Gamemakers put on the table this time. Chosen when a
+     * feast is announced (so tributes can weigh the risk against what is
+     * actually offered) and consumed by `processFeast`.
+     */
+    feastTheme?: 'weapons' | 'medical' | 'food' | 'district-gifts';
+    /** §6.8: tribute who drew first blood (first tribute-dealt kill). */
+    firstBloodId?: string;
+    /** §10.1: the longest single fire chain this run produced, in zones. */
+    fireChainMax?: number;
+    /** §10.1: a renewed truce was still standing when one of its parties died. */
+    keptWordSeen?: boolean;
+    /** §10.1: a 3+ alliance reached the final eight with a clean charter. */
+    charterKeptSeen?: boolean;
+    /** §10.1: alliance id -> leaders deposed by coup, kept even if the group later dissolves. */
+    allianceDeposals?: Record<string, number>;
+    /** §10.1: every distinct mutt name that has attacked someone this run. */
+    muttsSeen?: string[];
+    /** §10.1: a real debt has existed at some point this run (cycle-sampled). */
+    debtsEverIncurred?: boolean;
+    /** §10.1: guard so the final-four debt audit runs exactly once. */
+    finalFourDebtsChecked?: boolean;
+    /** §10.1: debts existed and every one was settled before the final four. */
+    paidInFullSeen?: boolean;
+    /** §6.8: per-day odds snapshot — day -> tribute id -> shown win %. */
+    oddsHistory?: Record<number, Record<string, number>>;
+    /** §6.7: per-event Gamemaker usage, for cooldowns, escalating cost and overuse. */
+    gamemakerUse?: Record<string, { lastCycle: number; uses: number }>;
+    /** §6.6: tribute id -> cycle a player parachute last reached them. Blocs read it as "covered". */
+    playerGiftCycle?: Record<string, number>;
+    /** §7.6: tribute id -> cycle their mentor pointedly withheld a gift. */
+    mentorWithheld?: Record<string, number>;
+    /**
+     * §6.10: the player's pre-Games coaching of one chosen tribute — a pinned
+     * training-floor strategy and/or interview angle, honoured by the phase
+     * engines instead of their own rolls.
+     */
+    playerCoaching?: { tributeId: string; trainingStrategy?: 'showcase' | 'conceal' | 'balanced'; interviewStrategy?: string };
 }
 
 export interface EventLog {

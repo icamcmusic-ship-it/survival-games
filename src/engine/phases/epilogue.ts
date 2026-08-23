@@ -170,6 +170,18 @@ export function processEpilogue(ctx: SimContext) {
         ])}'`
     });
 
+    // §6.9: the district token made it all the way through.
+    if (winner.token) {
+        qas.push({
+            question: `Caesar Flickerman: 'Our cameras noticed you kept something with you out there, all ${facts.daysSurvived} days of it. Show us?'`,
+            answer: `${winner.name}: '${pick(rng, [
+                `It's ${winner.token}. It went into the arena with me and it is going home with me. That was the whole deal I made with myself.`,
+                `${winner.token}. Someone put it in my hands in the goodbye room and told me to bring it back. So I did.`,
+                `Just ${winner.token}, Caesar. It is worth nothing. It is the only thing in that arena that was worth anything.`,
+            ])}'`,
+        });
+    }
+
     // The specific thing that ended it.
     if (facts.finalKill) {
         qas.push({
@@ -180,6 +192,18 @@ export function processEpilogue(ctx: SimContext) {
         qas.push({
             question: "Caesar Flickerman: 'Fascinatingly, you never took a single life out there. You won on stealth and endurance alone — a ghost of the arena!'",
             answer: `${winner.name}: 'I did not want to take a life if I did not have to, Caesar. Letting the arena and the others do the work was my only option.'`
+        });
+    }
+
+    // §11.3: the promise kept. The district-partner arc got its own beat on
+    // the way in ("Nobody in the Capitol is saying out loud..."); if the
+    // survivor of that pair went on to win, the arc closes here.
+    const fallenPartner = ctx.state.tributes.find(o =>
+        o.id !== winner.id && o.district === winner.district && o.status === 'dead');
+    if (winner.districtBondNoted && fallenPartner) {
+        qas.push({
+            question: `Caesar Flickerman: 'The whole country watched you and ${fallenPartner.name} carry District ${winner.district} deep into these Games together. And now you are here alone.'`,
+            answer: `${winner.name}: 'We said whichever of us it was would go home and stand in the square for both of us. That was the promise. I am going to keep it, Caesar — that is all this crown is for.'`,
         });
     }
 

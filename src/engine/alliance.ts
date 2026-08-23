@@ -43,6 +43,26 @@ export function isPerforming(t: Tribute, otherId: string): boolean {
     return t.displayedRegard?.[otherId] !== undefined;
 }
 
+/**
+ * §11.1: what `t` appears to feel toward `otherId` — the performance where
+ * one is running, the real number where it is not. This is the value other
+ * people's trust/betrayal reads should consume: the audience in the arena
+ * sees the act, not the ledger.
+ */
+export function shownRegard(t: Tribute, otherId: string): number {
+    return t.displayedRegard?.[otherId] ?? (t.relationships[otherId] || 0);
+}
+
+/**
+ * §11.1: the performance is maintained scene by scene. A shared camp, a
+ * parley, alliance chatter — each one the performer plays warm refreshes the
+ * displayed number, independent of whatever they actually feel.
+ */
+export function maintainPerformance(t: Tribute, otherId: string, delta: number) {
+    if (!t.displayedRegard || t.displayedRegard[otherId] === undefined) return;
+    t.displayedRegard[otherId] = Math.max(-100, Math.min(100, t.displayedRegard[otherId] + delta));
+}
+
 export function areLovers(a: Tribute, b: Tribute): boolean {
     if (a.id === b.id) return false;
     if (!a.traits.includes('Star-Crossed') || !b.traits.includes('Star-Crossed')) return false;
@@ -216,6 +236,10 @@ export function reconcileAlliances(ctx: SimContext) {
                 members.reduce((sum, m) => sum + (m.id === t.id ? 0 : getRel(m, t.id)), 0);
             if (backingFor(challenger) > backingFor(leader) + ALLIANCES.coupBackingMargin && ctx.rng.chance(ALLIANCES.coupChance)) {
                 record.leaderId = challenger.id;
+                // §10.1: 'Mutiny' — deposals are counted on the state so the
+                // record survives the alliance itself dissolving later.
+                ctx.state.allianceDeposals = ctx.state.allianceDeposals ?? {};
+                ctx.state.allianceDeposals[id] = (ctx.state.allianceDeposals[id] ?? 0) + 1;
                 ctx.logEvent(
                     `${challenger.name} stops deferring to ${leader.name}, and nobody in the group argues. The pack has a new leader.`,
                     members.map(m => m.id),

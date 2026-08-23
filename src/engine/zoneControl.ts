@@ -91,6 +91,8 @@ export function tickZoneControl(ctx: SimContext) {
 
     // Held across cycles: this is where it starts paying.
     const heldFor = cycle - (ctx.state.cornucopiaHeldSince ?? cycle);
+    // §10.1: the longest unbroken hold this run produced, for 'Held the Horn'.
+    if (heldFor > (ctx.state.maxHornHold ?? 0)) ctx.state.maxHornHold = heldFor;
     if (heldFor < ZONE_CONTROL.payoutEveryCycles) return;
     ctx.state.cornucopiaHeldSince = cycle;
 

@@ -1,6 +1,6 @@
 import { Terrain, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, PROFICIENCY, SANITY_BANDS, VITALS, ZONES } from '../data/balance';
+import { BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaEventDef, arenaFlavor } from '../data/arenaFlavor';
 import { QUIRKS } from '../data/quirks';
@@ -10,14 +10,14 @@ import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
 import { addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy, raiseSuspicion } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { hasTruce, tryParley } from './parley';
-import { areLovers } from './alliance';
+import { areLovers, maintainPerformance } from './alliance';
 import { incurDebt } from './debts';
 import { DEBTS } from '../data/balance';
 import { giveItem, hasTool, itemPhrase, mintItem, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { attemptFieldDressing, clearBleeding, healInjury, injure, injuryGrade, openWound, shouldDressWound } from './wounds';
 import { profOf, trainProficiency } from './proficiency';
-import { attemptFieldcraft } from './fieldcraft';
+import { attemptFieldcraft, poisonWeapon } from './fieldcraft';
 import { composureOf } from './composure';
 import { sanityBandOf } from './sanityBands';
 import { resolveMuttAttack as resolveMuttAttackImpl } from './mutts';
@@ -390,6 +390,10 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         shareAllianceSupplies(ctx, t, other);
         shareAllianceSupplies(ctx, other, t);
         adjustMutual(ctx.state, t, other, 5);
+        // §11.1: a shared camp scene is a performance opportunity — the
+        // performer's shown warmth is refreshed by playing it.
+        maintainPerformance(t, other.id, ROMANCE.performedUpkeep);
+        maintainPerformance(other, t.id, ROMANCE.performedUpkeep);
         ctx.logEvent(fill(ctx.pickText(ALLIANCE_TEXTS.support), vars), [t.id, other.id], { category: 'alliance' });
     } else if (hasTruce(ctx.state, t, other.id)) {
         // An explicit agreement with a clock on it outranks a bad mood *and*
@@ -417,6 +421,8 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         t.vitals.hunger = Math.max(0, t.vitals.hunger - 10);
         other.vitals.hunger = Math.max(0, other.vitals.hunger - 10);
         adjustMutual(ctx.state, t, other, 5);
+        maintainPerformance(t, other.id, ROMANCE.performedUpkeep);
+        maintainPerformance(other, t.id, ROMANCE.performedUpkeep);
     } else if (t.stance === 'Aggressive' || other.stance === 'Aggressive' || relationship < -10) {
         // Even a hostile meeting can end in a negotiation rather than a fight,
         // if neither of them likes the odds enough to start one.
@@ -498,7 +504,12 @@ function attemptForage(
  * you food and bought you nothing, which is why almost nobody picked it.
  */
 function huntAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeof arenaFlavor>) {
-    const gameChance = HUNTING.gameChance + profOf(t, 'tracking') * HUNTING.trackingBonus;
+    const zone = getZone(ctx.state.arena, t.zone);
+    // §11.5: a fishing kit makes still water a hunter's larder too.
+    const fishingEdge = hasTool(t, 'fishing') && (zone?.terrain === 'water' || zone?.terrain === 'wetland')
+        ? TOOLS.fishingHuntBonus
+        : 0;
+    const gameChance = HUNTING.gameChance + profOf(t, 'tracking') * HUNTING.trackingBonus + fishingEdge;
     if (ctx.rng.chance(gameChance)) {
         t.vitals.hunger = Math.max(0, t.vitals.hunger - HUNTING.gameFeed);
         trainProficiency(t, 'tracking');
@@ -521,6 +532,8 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         && (zone?.terrain === 'water' || zone?.terrain === 'wetland');
     const baseForageChance = ZONES.baseForageChance
         + (fishing ? ZONES.fishingBonus : 0)
+        // §11.5: a light after dark turns groping into searching.
+        + (ctx.state.timeOfDay === 'night' && hasTool(t, 'light') ? TOOLS.lightNightForageBonus : 0)
         + available * ZONES.yieldForageWeight
         + (t.archetype === 'survivalist' ? ZONES.survivalistForageBonus : 0)
         + traitMod(t, 'forage')
@@ -529,6 +542,16 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         + composureOf(t) * COMPOSURE.forageWeight
         // §3.5: a tribute who is unravelling stops trusting what they pick.
         - (sanityBandOf(t) === 'unravelling' || sanityBandOf(t) === 'gone' ? SANITY_BANDS.unravellingForagePenalty : 0);
+
+    // §6.4: anyone holding a clean blade and something to coat it with takes
+    // the opportunity — nightlock spoils, and a poisoned edge is the outer
+    // districts' great equaliser.
+    if (t.inventory.some(i => i.type === 'weapon' && !i.poison)
+        && t.inventory.some(i => (POISONING.sources as readonly string[]).includes(i.id))
+        && ctx.rng.chance(POISONING.coatOpportunityChance)
+        && poisonWeapon(ctx, t)) {
+        return;
+    }
 
     // A wound that is actually running is the most urgent thing in their life,
     // whatever stance they are in. This is the move the simulation was missing:

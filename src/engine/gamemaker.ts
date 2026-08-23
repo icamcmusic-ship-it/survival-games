@@ -3,8 +3,9 @@ import { ExposureProfile, applyExposure } from './exposure';
 import { getZone } from './map';
 import { GAMEMAKER, OBJECTIVES } from '../data/balance';
 import { eligibleMutts, engageMutt, rosterFor } from './mutts';
-import { ZoneEffectKind } from '../models/types';
+import { GameState, ZoneEffectKind } from '../models/types';
 import { dropSupplies, severRandomEdge, startZoneEffect } from './zoneEffects';
+import { announceFeastTheme } from './phases/feast';
 import { cycleOf, noteSighting } from './memory';
 
 /**
@@ -101,8 +102,57 @@ export type GamemakerEventType =
     | 'mutt' | 'weather' | 'feast'
     | 'burn' | 'flood' | 'fog' | 'sever' | 'bounty' | 'drop';
 
-export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType, targetId?: string) {
+/**
+ * §6.7: what pressing the same lever again actually costs. Escalates on the
+ * sponsor market's repeat^n shape, per event type, per run.
+ */
+export function gamemakerEventCost(state: GameState, type: GamemakerEventType, baseCost: number): number {
+    const uses = state.gamemakerUse?.[type]?.uses ?? 0;
+    return Math.round(baseCost * Math.pow(GAMEMAKER.repeatCostMultiplier, uses));
+}
+
+/** §6.7: cycles until this lever may be pulled again (0 = ready now). */
+export function gamemakerCooldownRemaining(state: GameState, type: GamemakerEventType): number {
+    const use = state.gamemakerUse?.[type];
+    if (!use) return 0;
+    return Math.max(0, GAMEMAKER.eventCooldownCycles - ((state.cycle ?? 0) - use.lastCycle));
+}
+
+export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType, targetId?: string, capitolSchedule = false) {
     if (!ctx.state.gamemakerMode) return;
+
+    // §6.7: per-event cooldown. The arena's machinery needs resetting between
+    // uses, and the broadcast needs the intervention to still read as one.
+    // The Capitol's own calendar (wildcards) is exempt — the discipline is on
+    // the player's booth, not on the schedule.
+    const cycle = cycleOf(ctx.state);
+    const prior = ctx.state.gamemakerUse?.[type];
+    if (!capitolSchedule && prior && cycle - prior.lastCycle < GAMEMAKER.eventCooldownCycles) {
+        ctx.logEvent(
+            `GAMEMAKER: the ${type} systems are still resetting. The booth will take that order again in ${GAMEMAKER.eventCooldownCycles - (cycle - prior.lastCycle)} cycle(s).`,
+            [],
+            { category: 'gamemaker' }
+        );
+        return;
+    }
+    if (!capitolSchedule) {
+        ctx.state.gamemakerUse = ctx.state.gamemakerUse ?? {};
+        ctx.state.gamemakerUse[type] = { lastCycle: cycle, uses: (prior?.uses ?? 0) + 1 };
+    }
+    const record = ctx.state.gamemakerUse?.[type] ?? { lastCycle: cycle, uses: 0 };
+
+    // §6.7: audience reaction to overuse. The crowd came for the tributes,
+    // not for the booth playing the same card over and over.
+    if (!capitolSchedule && record.uses > GAMEMAKER.overuseThreshold) {
+        getAlive(ctx.state).forEach(t => {
+            t.excitementRating = Math.max(0, t.excitementRating - GAMEMAKER.overuseExcitementPenalty);
+        });
+        ctx.logEvent(
+            `The Capitol commentators do not bother narrating this one. The audience has seen the ${type} trick ${record.uses} times now, and the booth is starting to be the story — which is never a compliment.`,
+            [],
+            { important: true, category: 'gamemaker' }
+        );
+    }
 
     if (type === 'mutt') {
         // Route through the full per-arena mutt roster (engine/mutts.ts) rather
@@ -170,6 +220,7 @@ export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType,
         }
         ctx.logEvent(`GAMEMAKER: A feast is announced at the Cornucopia!`, [], { important: true, category: 'gamemaker' });
         ctx.state.feastDay = ctx.state.day;
+        announceFeastTheme(ctx);
         ctx.state.phase = 'feast';
     } else if (type === 'burn' || type === 'flood' || type === 'fog') {
         // §6.4: the engine already had ZoneEffectKind, severed edges, bounties

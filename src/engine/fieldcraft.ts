@@ -1,15 +1,16 @@
 import { Item, Tribute, Trap } from '../models/types';
-import { BLEEDING, CRAFTING, ENDGAME, HUNTING, POISONING, TRAPS } from '../data/balance';
+import { BLEEDING, CRAFTING, EARNED_TRAIT_RULES, ENDGAME, HUNTING, POISONING, TRAPS } from '../data/balance';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
-import { cycleOf, rattle } from './memory';
+import { addZoneThreat, cycleOf, rattle } from './memory';
 import { endgameEdge } from './objectives';
-import { getZone } from './map';
+import { getZone, zoneFeatures } from './map';
 import { hasEffect } from './zoneEffects';
 import { clampTribute } from './vitals';
 import { injure, openWound } from './wounds';
 import { arenaHasLaw } from './gamesProfile';
 import { profOf, trainProficiency } from './proficiency';
+import { earnTrait } from './earnedTraits';
 import { awareness } from './stealth';
 import { traitMod } from '../data/traits';
 import { conditionOf, consumeOne, hasTool } from './items';
@@ -113,7 +114,9 @@ export function setTrap(ctx: SimContext, t: Tribute) {
  * step over their own work; everyone else rolls awareness against concealment.
  */
 export function checkTraps(ctx: SimContext, t: Tribute) {
-    const here = trapsIn(ctx, t.zone).filter(tr => tr.ownerId !== t.id);
+    // A trap this tribute already found and chose to leave standing is a
+    // known hazard they step around, not a fresh roll every cycle.
+    const here = trapsIn(ctx, t.zone).filter(tr => tr.ownerId !== t.id && !(tr.knownBy ?? []).includes(t.id));
     if (here.length === 0) return;
 
     const trap = here[0];
@@ -125,13 +128,60 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
         && !ctx.rng.chance(trap.concealment);
 
     if (spotted) {
-        removeTrap(ctx, trap.id);
-        ctx.logEvent(
-            `${t.name} stops dead in ${t.zone}, crouches, and pulls apart a ${trap.kind} someone left for them.`,
-            owner ? [t.id, owner.id] : [t.id],
-            { important: true, category: 'survival' }
-        );
-        return;
+        // §6.2: spotting it is a decision point, not an automatic dismantle.
+        // Disarm it (and maybe set it off with your own hands), or leave it
+        // standing and remember exactly where it is.
+        const attemptsDisarm = ctx.rng.chance(TRAPS.attemptDisarmChance + traitMod(t, 'trapSkill'));
+        if (attemptsDisarm) {
+            let disarmChance = TRAPS.disarmBaseChance
+                + t.attributes.intelligence * TRAPS.disarmPerIntelligence
+                + profOf(t, 'tracking') * TRAPS.disarmPerTracking;
+            if (t.archetype === 'trickster') disarmChance += TRAPS.trickeryBonus;
+            if (ctx.rng.chance(Math.min(0.95, disarmChance))) {
+                removeTrap(ctx, trap.id);
+                trainProficiency(t, 'tracking');
+                // §8.9: enough of other people's mechanisms and you start to
+                // think in them.
+                t.trapsDisarmed = (t.trapsDisarmed ?? 0) + 1;
+                if (t.trapsDisarmed >= EARNED_TRAIT_RULES.trapwiseDisarms) earnTrait(ctx, t, 'Trapwise');
+                ctx.logEvent(
+                    `${t.name} stops dead in ${t.zone}, crouches, and pulls apart a ${trap.kind} someone left for them.`,
+                    owner ? [t.id, owner.id] : [t.id],
+                    { important: true, category: 'survival' }
+                );
+                return;
+            }
+            if (!ctx.rng.chance(TRAPS.failedDisarmTriggerChance)) {
+                // Botched it without setting it off: they back away and leave
+                // the thing armed, warier of the whole zone.
+                trap.knownBy = [...(trap.knownBy ?? []), t.id];
+                addZoneThreat(ctx.state, t, t.zone, TRAPS.knownTrapThreat);
+                ctx.logEvent(
+                    `${t.name} finds a ${trap.kind} in ${t.zone}, works at the mechanism, and thinks better of it. They leave it armed and give it a wide berth.`,
+                    owner ? [t.id, owner.id] : [t.id],
+                    { category: 'survival' }
+                );
+                return;
+            }
+            // Their own hands on the tripline: fall through to the trigger
+            // below, having found it the hard way.
+            ctx.logEvent(
+                `${t.name} spots a ${trap.kind} in ${t.zone} and reaches in to disarm it. The mechanism has other ideas.`,
+                owner ? [t.id, owner.id] : [t.id],
+                { important: true, category: 'survival' }
+            );
+        } else {
+            // Seen, avoided, remembered — via the same zone-memory system a
+            // witnessed death writes to.
+            trap.knownBy = [...(trap.knownBy ?? []), t.id];
+            addZoneThreat(ctx.state, t, t.zone, TRAPS.knownTrapThreat);
+            ctx.logEvent(
+                `${t.name} reads the ground in ${t.zone}, steps around a ${trap.kind} without touching it, and files the spot away.`,
+                owner ? [t.id, owner.id] : [t.id],
+                { category: 'survival' }
+            );
+            return;
+        }
     }
 
     removeTrap(ctx, trap.id);
@@ -162,6 +212,8 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     );
     clampTribute(t);
     checkDeath(ctx, t, cause);
+    // §10.1: 'Trapper's Crown' — a kill the builder earned days earlier.
+    if (t.status === 'dead' && claimant) claimant.trapKills = (claimant.trapKills ?? 0) + 1;
 }
 
 function removeTrap(ctx: SimContext, id: string) {
@@ -212,6 +264,18 @@ export function tickTraps(ctx: SimContext) {
         }
 
         if (cycle - trap.setCycle >= TRAPS.lifetime) return;
+        // §6.2: entropy gets a vote every cycle, not only at the deadline —
+        // a line slips, an animal springs it badly, the rain takes the set.
+        if (ctx.rng.chance(TRAPS.rotChancePerCycle)) {
+            if (owner.zone === trap.zone) {
+                ctx.logEvent(
+                    `${owner.name} finds their ${trap.kind} in ${trap.zone} sprung on nothing at all. The arena takes its cut.`,
+                    [owner.id],
+                    { category: 'survival' }
+                );
+            }
+            return;
+        }
         surviving.push(trap);
     });
 
@@ -303,9 +367,17 @@ export function applyCamouflage(ctx: SimContext, t: Tribute): boolean {
     if (hasCamp(ctx, t, 'camouflage')) return false;
     if (!ctx.rng.chance(buildChance(t))) return false;
 
-    campOf(ctx, t).camouflage = cycleOf(ctx.state) + CRAFTING.camouflageCycles;
+    // §6.5: camouflage copies the ground, so it is only as good as the
+    // ground. Rich cover (forest, deep wetland) supplies the materials and
+    // extends the work; open crust and water barely hold a smear of mud.
+    const zone = getZone(ctx.state.arena, t.zone);
+    const rich = zone !== undefined && zoneFeatures(zone).cover >= CRAFTING.camouflageCoverPivot + 0.2;
+    const cycles = CRAFTING.camouflageCycles + (rich ? CRAFTING.camouflageRichTerrainBonusCycles : 0);
+    campOf(ctx, t).camouflage = cycleOf(ctx.state) + cycles;
     ctx.logEvent(
-        `${t.name} works mud and leaf litter into their clothes until the shape of a person goes out of them.`,
+        rich
+            ? `${t.name} works mud and leaf litter into their clothes until the shape of a person goes out of them.`
+            : `${t.name} does what they can with dust and a smear of mud in ${t.zone}. Out here there is not much of anything to look like.`,
         [t.id],
         { category: 'survival' }
     );

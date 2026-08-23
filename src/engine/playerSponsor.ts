@@ -1,6 +1,7 @@
 import { GameState, Item, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
 import { SPONSOR_MARKET, QUALITY_BIAS } from '../data/balance';
+import { SPONSOR_BLOCS } from './sponsorBlocs';
 import { RNG } from '../utils/rng';
 import { giveItem, itemPhrase, mintItem } from './items';
 import { ensureMemory } from './memory';
@@ -27,6 +28,9 @@ export const SPONSORABLE_IDS = [
     'water', 'bread', 'dried-meat', 'tablets', 'ointment', 'medkit', 'antidote',
     'rope', 'matches', 'backpack', 'sleeping-bag', 'lantern', 'net', 'whetstone',
     'bracers', 'vest', 'knife', 'spear', 'sword', 'bow',
+    // §8.3: the widened catalogue's sensible parachute candidates.
+    'waterskin', 'iodine', 'groosling', 'lamb-stew', 'bandages', 'morphling',
+    'fishing-kit', 'charcoal-filter', 'glow-stick', 'thermal-cloak', 'helmet',
 ] as const;
 
 export function sponsorableItems(): Item[] {
@@ -44,13 +48,29 @@ export function sponsorableItems(): Item[] {
  * to add to; a tribute nobody is watching is cheap, which is the only advantage
  * an unpopular tribute ever gets.
  */
+/**
+ * §6.6: how hard the AI blocs are currently leaning toward this tribute —
+ * the player is bidding in the same room. Only blocs whose purse could still
+ * cover the item count as live demand.
+ */
+export function blocDemandFor(state: GameState, t: Tribute, itemValue: number): number {
+    const budgets = state.sponsorBlocBudgets;
+    const live = SPONSOR_BLOCS.filter(b => (budgets?.[b.id] ?? b.budget) >= itemValue * 0.5);
+    if (live.length === 0) return 0;
+    return Math.max(0, ...live.map(b => b.prefer(state, t)));
+}
+
 export function sponsorCost(state: GameState, t: Tribute, item: Item): number {
     const prior = ensureMemory(t).giftsReceived;
     const dayScale = 1 + Math.max(0, state.day) * SPONSOR_MARKET.perDay;
     const repeat = Math.pow(SPONSOR_MARKET.repeatMultiplier, prior);
     // Popularity is the Capitol's pricing signal, not a discount for the player.
     const demand = 1 + (t.sponsorTrust - 50) / SPONSOR_MARKET.trustDivisor;
-    const raw = item.value * SPONSOR_MARKET.valueMultiplier * dayScale * repeat * Math.max(0.6, demand);
+    // §6.6: the blocs' interest is demand pressure on the same quote — a
+    // tribute the syndicates are already eyeing costs more to reach first.
+    const blocPressure = 1 + Math.min(SPONSOR_MARKET.blocDemandCap,
+        blocDemandFor(state, t, item.value) * SPONSOR_MARKET.blocDemandPressure);
+    const raw = item.value * SPONSOR_MARKET.valueMultiplier * dayScale * repeat * Math.max(0.6, demand) * blocPressure;
     return Math.max(SPONSOR_MARKET.minCost, Math.round(raw / 5) * 5);
 }
 
@@ -80,6 +100,10 @@ export function sendPlayerParachute(state: GameState, tributeId: string, itemId:
     const dropped = giveItem(t, gift);
 
     ensureMemory(t).giftsReceived += 1;
+    // §6.6: the blocs saw the parachute land too. For a while they treat the
+    // tribute as covered — see `processSponsors`.
+    state.playerGiftCycle = state.playerGiftCycle ?? {};
+    state.playerGiftCycle[t.id] = state.cycle ?? 0;
     t.sponsorTrust = Math.min(100, t.sponsorTrust + SPONSOR_MARKET.trustGain);
     t.vitals.sanity = Math.min(100, t.vitals.sanity + SPONSOR_MARKET.sanityGain);
     clampTribute(t);
