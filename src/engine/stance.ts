@@ -32,6 +32,10 @@ function visiblePower(o: Tribute, observer?: Tribute): number {
         - (o.injuries.legs ? STANCE.visibleLegPenalty : 0);
     // Somebody in obvious trouble looks like somebody in obvious trouble.
     if (o.health < STANCE.visibleHurtHealth) power -= STANCE.visibleHurtPenalty;
+    // A2: the Beast is the one archetype that wants to be underestimated on
+    // paper and over-read on sight. Nothing in their file explains it; the
+    // moment somebody actually looks at them, it does.
+    if (o.archetype === 'beast') power += STANCE.beastVisibleBonus;
     // Eagle-Eyed, or simply paying attention: the fine reading is a skill.
     if (observer && awareness(observer) >= STANCE.visibleFineReadAwareness) {
         power += (o.health - STANCE.visibleHurtHealth) / STANCE.visibleFineReadDivisor;
@@ -207,18 +211,33 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
         return sig.ownTrapsHere > 0 || camp?.shelter !== undefined;
     },
 
-    Desperate: (_ctx, t, sig) =>
-        t.health < STANCE_MODES.desperate.healthThreshold
-        || sig.broken
-        || (t.vitals.hunger > STANCE_MODES.desperate.vitalThreshold
-            && t.vitals.thirst > STANCE_MODES.desperate.vitalThreshold),
+    // Sticky on the way out: a tribute who has been Desperate stays Desperate
+    // until they are meaningfully clear of it, not the instant a bandage puts
+    // them one point over the line. Without the exit band this is the single
+    // worst thrashing source in the roster, because Desperate is (correctly)
+    // exempt from both the minimum hold and the re-entry cooldown.
+    Desperate: (_ctx, t, sig) => {
+        const band = t.stance === 'Desperate' ? STANCE_MODES.desperate.exitBand : 1;
+        return t.health < STANCE_MODES.desperate.healthThreshold * band
+            || sig.broken
+            || (t.vitals.hunger > STANCE_MODES.desperate.vitalThreshold / band
+                && t.vitals.thirst > STANCE_MODES.desperate.vitalThreshold / band);
+    },
 
-    Scavenging: (_ctx, t, sig) =>
-        (!sig.hasWeapon && sig.kit < STANCE_MODES.scavenging.inventoryValue) || sig.cannonNearby,
+    Scavenging: (_ctx, t, sig) => {
+        // Same exit band: picking up one knife should not end a scavenging
+        // run mid-sweep.
+        const band = t.stance === 'Scavenging' ? STANCE_MODES.scavenging.exitBand : 1;
+        return (!sig.hasWeapon && sig.kit < STANCE_MODES.scavenging.inventoryValue * band)
+            || sig.cannonNearby;
+    },
 
+    // A trail already underway survives a cycle in which the quarry briefly
+    // steps out of the adjacent sector — otherwise a shadow drops the stance
+    // and its accumulated count every time their target crosses a boundary.
     Shadowing: (_ctx, t, sig) =>
         t.attributes.stealth >= STANCE_MODES.shadowing.stealthMin
-        && !!sig.shadowTarget
+        && (!!sig.shadowTarget || (t.stance === 'Shadowing' && !!t.shadowing))
         && (t.unseenStreak ?? 0) > 0,
 };
 

@@ -68,6 +68,13 @@ let deaths = 0;
 let victors = 0, victorKills = 0, victorZeroKills = 0, victorHealth = 0;
 let wipeouts = 0, careerVictors = 0;
 const victorsByDistrict: Record<number, number> = {};
+// A2: the archetype balance table the design review measured by hand. Win
+// rate is the only number that says whether an archetype is a character or a
+// handicap, and it was not being tracked at all.
+const archetypeEntrants: Record<string, number> = {};
+const archetypeWins: Record<string, number> = {};
+const archetypeDays: Record<string, number> = {};
+const archetypeKills: Record<string, number> = {};
 let runs = 0, totalDays = 0;
 const runLengths: number[] = [];
 
@@ -170,6 +177,11 @@ for (let i = 0; i < RUNS; i++) {
             deathsByCause[bucket] = (deathsByCause[bucket] || 0) + 1;
         }
     });
+    state.tributes.forEach(t => {
+        archetypeEntrants[t.archetype] = (archetypeEntrants[t.archetype] ?? 0) + 1;
+        archetypeDays[t.archetype] = (archetypeDays[t.archetype] ?? 0) + t.daysSurvived;
+        archetypeKills[t.archetype] = (archetypeKills[t.archetype] ?? 0) + t.kills;
+    });
     const winner = state.tributes.find(t => t.status === 'alive');
     if (winner) {
         victors++;
@@ -182,6 +194,7 @@ for (let i = 0; i < RUNS; i++) {
         // in the source material.
         victorsByDistrict[winner.district] = (victorsByDistrict[winner.district] ?? 0) + 1;
         if (winner.isCareer) careerVictors++;
+        archetypeWins[winner.archetype] = (archetypeWins[winner.archetype] ?? 0) + 1;
     } else {
         // Every canonical Games produces a victor. A run that ends with an
         // empty arena is the largest canon-fidelity failure the sim can have.
@@ -546,6 +559,16 @@ console.log('\nvictors by district:');
 console.log('\nboard samples:');
 console.log(`  carrying a weapon  ${pct(armedSamples, aliveSamples)}`);
 console.log(`  currently bleeding ${pct(bleedingSamples, aliveSamples)}`);
+console.log('');
+console.log('archetypes (n / win% / avg days / avg kills):');
+Object.keys(archetypeEntrants)
+    .sort((a, b) => (archetypeWins[b] ?? 0) / archetypeEntrants[b] - (archetypeWins[a] ?? 0) / archetypeEntrants[a])
+    .forEach(id => {
+        const n = archetypeEntrants[id];
+        const wins = archetypeWins[id] ?? 0;
+        console.log(`  ${id.padEnd(12)} ${String(n).padStart(5)}  ${(wins / n * 100).toFixed(2).padStart(5)}%  ${(archetypeDays[id] / n).toFixed(2).padStart(5)}  ${(archetypeKills[id] / n).toFixed(2).padStart(5)}`);
+    });
+console.log('');
 console.log('  stance             '
     + STANCES.filter((st: Stance) => stanceSamples[st] > 0)
         .sort((a: Stance, b: Stance) => stanceSamples[b] - stanceSamples[a])

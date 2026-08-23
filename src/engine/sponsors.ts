@@ -1,6 +1,7 @@
 import { SimContext, getAlive } from './context';
+import { profOf } from './proficiency';
 import { ITEMS } from '../data/constants';
-import { COMPOSURE, QUELL_MECHANICS, SPONSORS, SPONSOR_MARKET } from '../data/balance';
+import { COMPOSURE, QUELL_MECHANICS, SPONSORS, SPONSOR_MARKET, PROFICIENCY } from '../data/balance';
 import { composureOf } from './composure';
 import { SPONSOR_TEXTS } from '../data/flavorText';
 import { drawFromBloc } from './sponsorBlocs';
@@ -47,8 +48,13 @@ function rollGiftTier(ctx: SimContext, t: Tribute): number {
     let tier = 0;
     // §3.4: a keyed-up tribute reads as a contender; a rattled one reads as
     // damaged goods. The blocs price it in.
+    // §1.4: a tribute who spent the training floor at the sponsor pitch booth
+    // and the mock-interview couch is genuinely better at asking, and the
+    // parachutes reflect it. Before `persuasion` existed those three days
+    // bought nothing at all.
     const merit = 0.6 + t.sponsorTrust / 120 + (t.fanFavourite ? 0.3 : 0)
-        + composureOf(t) * COMPOSURE.sponsorMeritWeight;
+        + composureOf(t) * COMPOSURE.sponsorMeritWeight
+        + profOf(t, 'persuasion') * PROFICIENCY.persuasionSponsorWeight / 100;
     for (let step = 1; step <= 3; step++) {
         const chance = SPONSORS.rarityGateBase * Math.pow(SPONSORS.rarityGateDecay, step - 1) * merit;
         if (ctx.rng.chance(Math.min(0.7, chance))) tier = step;

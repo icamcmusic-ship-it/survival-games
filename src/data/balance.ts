@@ -57,6 +57,8 @@ export const VITALS = {
  * and stop hurting later.
  */
 export const BLEEDING = {
+    /** A2: the Medic archetype's hands, on somebody else's wound. */
+    medicArchetypeMultiplier: 2,
     /** Severity a fresh wound opens at, by source. */
     combatSeverity: 2,
     /** T-5: extra status-damage multiplier per injury grade above 1 (all sites). */
@@ -192,6 +194,8 @@ export const SIGNATURE_RULES = {
  * composed rule a generated arena gets instead.
  */
 export const PROC_SIGNATURE = {
+    /** A2: how long a Scholar's early read of the arena holds as an intention. */
+    scholarForesightCycles: 3,
     /** 'everyNth' trigger: how many cycles between beats, [min, max]. */
     everyNthMin: 2,
     everyNthMax: 4,
@@ -426,6 +430,25 @@ export const PROFICIENCY = {
     affinityItemBonus: 2.2,
     /** Smaller bonus for a weapon merely of a familiar class. */
     affinityClassBonus: 1.1,
+    /**
+     * §1.4: the charisma station trained nothing at all.
+     *
+     * `STATION_SKILL` mapped four of the five attributes onto a proficiency and
+     * silently omitted charisma, so a tribute who spent all three training days
+     * at the sponsor pitch booth and the mock-interview couch came out with raw
+     * charisma and no skill, no sponsor effect, and no social consequence. The
+     * weights below are every place `persuasion` is now read.
+     */
+    /** Truce chance added per point of persuasion (best of the two parties). */
+    persuasionTruceWeight: 0.05,
+    /** Toll-extraction chance added per point, for whoever is doing the asking. */
+    persuasionTollWeight: 0.04,
+    /** Sponsor appeal added per point. */
+    persuasionSponsorWeight: 2.5,
+    /** Alliance recruitment chance added per point. */
+    persuasionRecruitWeight: 0.04,
+    /** Regard granted per point when a persuasion-led negotiation lands. */
+    persuasionRegardWeight: 1.5,
 } as const;
 
 /**
@@ -1139,6 +1162,14 @@ export const MOVEMENT = {
  * legible in the chronicle without outliving the situation that produced it.
  */
 export const OBJECTIVES = {
+    // ---- A2: how far an archetype's declared objective bias may move a gate ----
+    /** Ward-noticing threshold shift, per point of `objectiveBias.protect`. */
+    wardBiasHealth: 25,
+    wardBiasBond: 25,
+    /** Ground-worth-holding threshold shift, per point of `objectiveBias.hold`. */
+    holdBiasResources: 0.3,
+    /** Willingness-to-walk shift, per point of `objectiveBias.reach`. */
+    reachBiasUrgency: 25,
     /** How long each kind of intention survives before it is re-evaluated. */
     huntCycles: 4,
     reachCycles: 4,
@@ -1599,6 +1630,8 @@ export const STANCE = {
     /** ...unless the observer is genuinely good at reading people. */
     visibleFineReadAwareness: 7,
     visibleFineReadDivisor: 25,
+    /** A2: what the Beast archetype adds to a stranger's read of them. */
+    beastVisibleBonus: 4,
     /** Reputation: the training score is public, and it precedes them. */
     trainingScorePivot: 5,
     trainingScoreWeight: 0.5,
@@ -1639,7 +1672,7 @@ export const STANCE = {
      * shape that thrashes when the precondition flickers; the lockout is what
      * makes leaving one stick.
      */
-    conditionalCooldown: 3,
+    conditionalCooldown: 4,
     /** A genuine emergency overrides the hold. */
     emergencyHealthFactor: 0.6,
     emergencyRatioFactor: 1.6,
@@ -1704,6 +1737,12 @@ export const STANCE_MODES = {
         /** ...and the tunnel vision that comes with it. */
         awarenessPenalty: 2,
         concealmentPenalty: 0.1,
+        /**
+         * Hysteresis on the way out: the entry threshold is multiplied by this
+         * while the tribute is already Desperate, so recovering one point of
+         * health does not immediately end the state.
+         */
+        exitBand: 1.8,
         /** Chance per cycle of robbing an ally for supplies. */
         robAllyChance: 0.3,
         /** Extra pull per ten health below the threshold. */
@@ -1737,6 +1776,8 @@ export const STANCE_MODES = {
         contestedPenalty: 1.5,
         /** Chance of successfully stripping a body already in the zone. */
         bodyStripChance: 0.75,
+        /** Hysteresis on the way out. See `desperate.exitBand`. */
+        exitBand: 2,
     },
     shadowing: {
         stealthMin: 7,
@@ -1933,6 +1974,12 @@ export const ROMANCE = {
 
 /** Alliance formation and dissolution. */
 export const ALLIANCES = {
+    /**
+     * A2: the cache value at or below which a Mercenary considers the contract
+     * finished. Zero would mean literally empty, which almost never happens;
+     * this is "nothing worth staying for".
+     */
+    mercenaryRetainer: 6,
     /** §4.7: the Career pack recruits hard in the early game — that is its
      *  narrative function. Days it stays hungry, and how much hungrier. */
     careerRecruitEarlyDays: 3,
@@ -3203,4 +3250,76 @@ export const GAMEMAKER_COSTS = {
     sever: 100,
     drop: 200,
     bounty: 300,
+} as const;
+
+
+/**
+ * A2: the numbers behind the archetype behavioural hooks.
+ *
+ * Kept in one group rather than scattered through `archetypeHooks.ts`, because
+ * the whole point of the hook model is that an archetype's identity is data —
+ * putting its magnitudes back into the engine would have given the new roster
+ * the same undeclared-knob problem the stance table just got out of.
+ */
+export const ARCHETYPE_HOOKS = {
+    // ---- riskCurve ----
+    /** `escalating`: warier every day, up to a ceiling. */
+    escalatingPerDay: 0.03,
+    escalatingCap: 0.25,
+    /** `front-loaded`: spends it all at the gong and settles afterwards. */
+    frontLoadedPerDay: 0.05,
+    frontLoadedCap: 0.3,
+
+    // ---- targetPreference ----
+    /** Scale on the preference term, against the shared opportunism score. */
+    targetPreferenceWeight: 0.5,
+    strongestPerTrainingPoint: 4,
+    nearestPerHop: 12,
+    richestPerValue: 1.2,
+
+    // ---- signatures ----
+    /** Per-cycle chance the beat lands, once its conditions hold. */
+    signatureChancePerCycle: 0.25,
+    /** How long a signature-set objective is held for. */
+    signatureObjectiveCycles: 6,
+    signatureExcitement: 25,
+    signatureTrust: 8,
+    /** Career: the pack names somebody, out loud. */
+    declarationFear: 8,
+    /** Trickster: the snare nobody watched them build. */
+    snareFear: 6,
+    /** Wildcard: the turn, and what it costs them. */
+    wildcardMomentum: 3,
+    wildcardSanity: 8,
+    /** Underdog: the moment they stop apologising for being here. */
+    refusalResolve: 25,
+    /** Survivalist: the larder nobody noticed. */
+    larderRelief: 40,
+    /** Protector: standing in front of somebody. */
+    standRegard: 30,
+    standBond: 15,
+    /** Mercenary: the contract, and how long it buys. */
+    contractTruceCycles: 8,
+    /** Zealot: the sermon. */
+    sermonFear: 7,
+    sermonSanity: 6,
+    /** Medic: triage in the open. */
+    triageHealth: 45,
+    triageHeal: 25,
+    triageBond: 20,
+    /** Saboteur: one arena-scale act of vandalism. */
+    sabotageTraps: 3,
+    /** Beast: the sound. */
+    roarFear: 12,
+    roarSanity: 9,
+    /** Diplomat: an agreement between two people who are not them. */
+    brokeredTruceCycles: 10,
+    accordGratitude: 18,
+    /** Ghost: sponsor credit for going unfilmed, and the crowd's answer to it. */
+    ghostTrustPerCycle: 0.4,
+    ghostTrustCap: 2.5,
+    ghostExcitementDrain: 3,
+    /** Ghost: named personally, at the field size where it stings. */
+    ghostNamingField: 8,
+    namingFear: 5,
 } as const;

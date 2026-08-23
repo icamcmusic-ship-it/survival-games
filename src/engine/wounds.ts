@@ -136,6 +136,11 @@ function dressChance(medic: Tribute, isAlly: boolean): number {
         + medic.attributes.intelligence * BLEEDING.dressPerIntelligence
         + profOf(medic, 'medicine') * BLEEDING.dressPerMedicine;
     if (hasBinding(medic)) chance += BLEEDING.dressBindingBonus;
+    // A2: the Medic archetype is the reason an alliance holds together. Their
+    // hands on somebody else's wound are worth double — and, deliberately,
+    // worth nothing extra on their own, which is what makes them terrible
+    // alone and indispensable in company.
+    if (medic.archetype === 'medic' && isAlly) chance *= BLEEDING.medicArchetypeMultiplier;
     // Someone else's steady hands beat your own on a wound you cannot see.
     if (isAlly) chance += BLEEDING.allyDressBonus;
     chance += traitMod(medic, 'medicine');

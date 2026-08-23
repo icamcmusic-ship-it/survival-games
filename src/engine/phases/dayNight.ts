@@ -22,6 +22,7 @@ import { areLovers, leaderFor } from '../alliance';
 import { decayFear } from '../fear';
 import { updateStance } from '../stance';
 import { runStanceBeats } from '../stanceBeats';
+import { runArchetypeSignatures, tickGhosts } from '../archetypeHooks';
 import { processSpoilage, processVitals } from '../survival';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
@@ -202,6 +203,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     runArenaSignature(ctx);
     // ...and the Head Gamemaker's, once per run, when the feed needs saving.
     runGamemakerSignature(ctx);
+    // A2: and the archetypes' own — one set piece per tribute per run, which
+    // is what makes an archetype a character rather than a modifier row.
+    runArchetypeSignatures(ctx);
+    // A2: the Ghost's two opposed currencies, settled once per cycle.
+    tickGhosts(ctx);
 
     // 5. Cycle upkeep: the arena restocks, memories fade, bonds cool, the
     // crowd's attention wanders.

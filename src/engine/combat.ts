@@ -2,6 +2,7 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
+import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
 import { BLEEDING, COMBAT, DEBTS, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
@@ -303,9 +304,12 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     const healthFraction = t.health / 100;
     if (healthFraction <= COMBAT.routHealthFraction) return true;
 
+    // A2: `riskCurve` is where caution actually moves. A Zealot on day 9 is
+    // the Zealot from day 1; a Career has spent everything by then; a
+    // Strategist has been getting warier the whole time.
     let chance = COMBAT.retreatBase
         + (1 - healthFraction) * COMBAT.retreatPerHealthLost
-        + arch.caution * COMBAT.retreatCautionWeight
+        + effectiveCaution(t, ctx.state.day) * COMBAT.retreatCautionWeight
         - arch.aggression * COMBAT.retreatAggressionWeight
         + Math.max(0, 17 - t.age) * COMBAT.retreatYouthWeight
         + roundsFought * 0.05;
@@ -941,6 +945,10 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     victim.status = 'dead';
     victim.health = 0;
     victim.dayOfDeath = ctx.state.day;
+
+    // A2: a Diplomat's death dissolves every truce they talked other people
+    // into. The agreements were only ever held together by them being there.
+    dissolveBrokeredTruces(ctx, victim);
 
     // A corpse is not part of an alliance; leaving the id set kept dead
     // tributes in the alliance roster and skewed betrayal targeting.

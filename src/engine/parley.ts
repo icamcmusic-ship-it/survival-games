@@ -1,5 +1,5 @@
 import { Item, Tribute } from '../models/types';
-import { COMPOSURE, PARLEY, RESPECT, ROMANCE } from '../data/balance';
+import { COMPOSURE, PARLEY, PROFICIENCY, RESPECT, ROMANCE } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { PARLEY_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
@@ -12,6 +12,7 @@ import { areLovers, maintainPerformance } from './alliance';
 import { earnTrait } from './earnedTraits';
 import { giveItem, itemPhrase } from './items';
 import { fearOf } from './fear';
+import { profOf, trainProficiency } from './proficiency';
 import { clampTribute } from './vitals';
 import { addExcitement } from './audience';
 import { isAggressiveStance } from '../data/stances';
@@ -49,6 +50,19 @@ export function truceWith(t: Tribute, otherId: string): number | undefined {
 export function hasTruce(state: { cycle?: number }, t: Tribute, otherId: string): boolean {
     const until = truceWith(t, otherId);
     return until !== undefined && (state.cycle ?? 0) < until;
+}
+
+/**
+ * A2: a truce struck by somebody other than the two parties.
+ *
+ * The Diplomat's whole mechanical identity — brokering an agreement between
+ * two people who are not them — needs a way to write a truce that
+ * `declareTruce`'s parley-local shape does not offer.
+ */
+export function grantTruce(ctx: SimContext, a: Tribute, b: Tribute, cycles: number) {
+    const until = cycleOf(ctx.state) + cycles;
+    a.truces = { ...(a.truces ?? {}), [b.id]: until };
+    b.truces = { ...(b.truces ?? {}), [a.id]: until };
 }
 
 function declareTruce(ctx: SimContext, a: Tribute, b: Tribute) {
@@ -255,7 +269,12 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
         // which starved this branch — so the shakedown sometimes wants
         // directions even from a tribute with something in their pack.
         const wantsInfo = !payment || ctx.rng.chance(PARLEY.tollInfoPreferenceChance);
-        if (wantsInfo && ctx.rng.chance(PARLEY.tributeChance)) {
+        // §1.4: getting somebody to hand over their supplies rather than fight
+        // for them is a persuasion problem, and the stronger party's skill at
+        // it is what decides whether the shakedown comes off.
+        const tollChance = PARLEY.tributeChance
+            + profOf(stronger, 'persuasion') * PROFICIENCY.persuasionTollWeight;
+        if (wantsInfo && ctx.rng.chance(tollChance)) {
             // Nothing spare to hand over. Someone with empty hands is exactly
             // the tribute most likely to be shaken down, and they still have
             // the only thing everyone in an arena wants: where the bodies
@@ -270,6 +289,7 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
             const worst = known[0];
             if (worst) {
                 noteExtortion(stronger, weaker.id);
+                trainProficiency(stronger, 'persuasion');
                 addZoneThreat(ctx.state, stronger, worst.zone, worst.threat);
                 adjustMutual(ctx.state, weaker, stronger, -PARLEY.tollInfoResentment);
                 addExcitement(stronger, PARLEY.tributeExcitement);
@@ -286,8 +306,9 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
                 return 'tribute';
             }
         }
-        if (payment && ctx.rng.chance(PARLEY.tributeChance)) {
+        if (payment && ctx.rng.chance(tollChance)) {
             noteExtortion(stronger, weaker.id);
+            trainProficiency(stronger, 'persuasion');
             weaker.inventory = weaker.inventory.filter(i => i !== payment);
             giveItem(stronger, payment);
             // Being extorted is not being befriended, and the crowd loves it.
@@ -317,10 +338,21 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
     // §3.4: a rattled party wants out of this conversation alive more than
     // they want anything else — being shaken makes the pact more likely.
     const rattledBonus = ((t.rattled ?? 0) > 0 || (other.rattled ?? 0) > 0) ? COMPOSURE.rattledParleyBonus : 0;
-    if (mutualRegard > PARLEY.truceMinRegard && ctx.rng.chance(PARLEY.truceChance + rattledBonus)) {
+    // §1.4: whoever is better at talking is the reason the conversation lands.
+    // This is `persuasion`'s primary read site and the whole reason the
+    // charisma station now trains something.
+    const talker = Math.max(profOf(t, 'persuasion'), profOf(other, 'persuasion'));
+    const persuasionBonus = talker * PROFICIENCY.persuasionTruceWeight;
+    if (mutualRegard > PARLEY.truceMinRegard
+        && ctx.rng.chance(PARLEY.truceChance + rattledBonus + persuasionBonus)) {
+        trainProficiency(t, 'persuasion');
+        trainProficiency(other, 'persuasion');
         declareTruce(ctx, t, other);
-        // Agreeing to something and keeping it is the seed of a real bond.
-        adjustMutual(ctx.state, t, other, PARLEY.truceRegard);
+        // Agreeing to something and keeping it is the seed of a real bond —
+        // and §1.4, a negotiation somebody actually talked their way through
+        // leaves both parties thinking better of the other than a shrug does.
+        adjustMutual(ctx.state, t, other,
+            PARLEY.truceRegard + talker * PROFICIENCY.persuasionRegardWeight);
         noteStoodBy(t, other.id);
         noteStoodBy(other, t.id);
         ctx.logEvent(

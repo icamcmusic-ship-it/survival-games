@@ -2,7 +2,7 @@ import { SignatureRule, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
-import { getZone, severEdge, edgeKey, depleteZone, depletionOf } from './map';
+import { getZone, reachableZones, severEdge, edgeKey, depleteZone, depletionOf } from './map';
 import { addZoneThreat, noteSighting } from './memory';
 import { startZoneEffect, hasEffect, severRandomEdge } from './zoneEffects';
 import { injure, openWound } from './wounds';
@@ -999,6 +999,30 @@ function telegraphSignature(ctx: SimContext, rule: SignatureRule, cycle: number,
         [],
         { zone: named[0], category: 'arena' }
     );
+
+    // A2: the Scholar reads the arena rather than the tributes, and this is
+    // the one system that had no counter-play at all — a false telegraph
+    // fooled everybody equally. A Scholar standing in a zone that is genuinely
+    // about to go moves; a Scholar told a lie about a zone they are not
+    // standing in simply does not act on it.
+    const truth = upcoming;
+    getAlive(ctx.state).forEach(t => {
+        if (t.archetype !== 'scholar') return;
+        if (!truth.includes(t.zone)) return;
+        const escape = reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones || [])
+            .map(z => z.name)
+            .find(z => !truth.includes(z));
+        if (!escape) return;
+        t.objective = {
+            kind: 'reach', zone: escape, reason: 'shelter',
+            expires: (ctx.state.cycle ?? 0) + PROC_SIGNATURE.scholarForesightCycles,
+        };
+        ctx.logEvent(
+            `${t.name} has been reading ${t.zone} all day and does not need the announcement. They are already moving toward ${escape}.`,
+            [t.id],
+            { important: true, category: 'arena' }
+        );
+    });
 }
 
 function applySignaturePayload(ctx: SimContext, zones: string[], payload: SignatureRule['payload'], rng: RNG) {

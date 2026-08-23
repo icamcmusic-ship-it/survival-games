@@ -66,11 +66,15 @@ export function eliteGateChance(t: Tribute, pointAboveEight: number): number {
 const ATTRS = ['strength', 'agility', 'intelligence', 'stealth', 'charisma'] as const;
 
 /** The proficiency a station trains, where it trains one at all. */
-const STATION_SKILL: Partial<Record<keyof Attributes, Proficiency>> = {
+const STATION_SKILL: Record<keyof Attributes, Proficiency> = {
     strength: 'melee',
     agility: 'ranged',
     intelligence: 'forage',
     stealth: 'tracking',
+    // §1.4: charisma was the one attribute with training-floor prose
+    // ('sponsor pitch booth', 'mock-interview couch') and no proficiency
+    // behind it, so three days there bought raw charisma and nothing else.
+    charisma: 'persuasion',
 };
 
 /**

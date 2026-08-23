@@ -2126,3 +2126,106 @@ export const BORDER_TEXTS = {
         "BORDER COLLAPSE: {trapped} closes like a book with {tribute} still on the page. They tear out the {safe} side, minus {damage}.",
     ],
 };
+
+/**
+ * A2: the once-per-run archetype beat.
+ *
+ * Every archetype gets one set piece. The pools are short by the standards of
+ * this file on purpose — a signature fires at most once per tribute per run,
+ * so four to six lines is already more variety than any single run can show.
+ */
+export const ARCHETYPE_SIGNATURE_TEXTS: Record<string, string[]> = {
+    careerDeclaration: [
+        'The pack stops in {zone} long enough for {tribute} to say a name out loud: {target}. It is not a threat so much as a schedule.',
+        '{tribute} writes {target} into the pack\'s plans in {zone}, in front of everyone, and nobody argues. That is how the Careers do it — publicly, so the rest of the arena hears.',
+        'In {zone}, {tribute} tells the pack exactly who they are going to find first. {target}. The Capitol feed cuts to {target}\'s face for a full three seconds.',
+        '{tribute} does the thing the Careers always do and does it well: names {target} in front of the cameras, and lets the arena do the rest of the work.',
+    ],
+    strategistGambit: [
+        '{tribute} has been counting since the gong, and in {zone} the count comes out. They stop watching everyone and start watching {target}.',
+        'Somewhere in {zone}, {tribute} finishes a piece of arithmetic they have been running for days. The answer is {target}.',
+        '{tribute} spends the hour in {zone} doing nothing visible at all, and comes out of it having decided about {target}.',
+        'It is not a decision {tribute} makes in {zone} so much as one they arrive at. {target}, and soon.',
+    ],
+    survivalistLarder: [
+        '{tribute} goes to a place in {zone} nobody else has looked and digs up a week of food they cached on day two. This is what the survival stations are for.',
+        'What {tribute} pulls out of the ground in {zone} has been there since before anyone thought to watch them. They eat properly for the first time in days.',
+        '{tribute} has been quietly stocking {zone} the entire time. Tonight they draw on it, and the difference is visible from the Capitol.',
+        'The arena has been trying to starve {tribute} for a week. In {zone}, they open a store nobody knew about and the arena loses that argument.',
+    ],
+    protectorStand: [
+        '{tribute} puts themselves between {ward} and the whole of {zone}, and makes no speech about it whatsoever.',
+        'In {zone}, {tribute} stops moving. {ward} is behind them, and that is now the arrangement, whatever comes.',
+        'Nobody asks {tribute} to stand in front of {ward} in {zone}. They just do, and keep doing it.',
+        '{tribute} shifts their footing in {zone} so that anything coming for {ward} has to come through them first. The crowd notices.',
+    ],
+    tricksterSnare: [
+        'Nobody watched {tribute} build anything in {zone}, which is precisely how {tribute} builds things. It is finished now.',
+        '{tribute} spends an unremarkable hour in {zone}. What is left behind is not unremarkable at all, and the whole arena is about to learn that.',
+        'What {tribute} does in {zone} does not look like much on the broadcast. It will look like a great deal in about a day.',
+        '{tribute} sets something in {zone} the way a person sets a table: unhurried, and expecting company.',
+    ],
+    wildcardTurn: [
+        'Something goes over in {tribute} in {zone}, and the Gamemakers\' model of them stops being any use at all.',
+        '{tribute} does something in {zone} that no reading of their file predicted, and looks entirely at peace with it.',
+        'Whatever {tribute} was before {zone}, they are not that now. The odds board moves before anyone can explain why.',
+        'In {zone}, {tribute} stops behaving like a person with a strategy and starts behaving like weather.',
+    ],
+    underdogRefusal: [
+        '{tribute} stops apologising for being in {zone} at all. It is a small change and it is visible from orbit.',
+        'Something in {tribute} decides, in {zone}, that they are not the joke of this year\'s Games. They have not been for a while.',
+        'In {zone}, {tribute} straightens up. Twelve districts of people who were not watching them start watching them.',
+        '{tribute} has been counted out since the reaping. In {zone}, they quietly stop agreeing with the count.',
+    ],
+    mercenaryContract: [
+        '{tribute} names a price in {zone} and {client} pays it: {fee}, handed over in front of the cameras. They are allies now, for exactly as long as that lasts.',
+        '"{fee}," says {tribute} in {zone}, and {client} does not argue. The arrangement is not friendship and neither of them pretends otherwise.',
+        '{client} buys {tribute}\'s company in {zone} for {fee}. It is the most honest alliance anyone has formed all year.',
+        '{tribute} takes {fee} off {client} in {zone} and shakes on it. The crowd cannot decide whether to be appalled or delighted.',
+    ],
+    zealotSermon: [
+        '{tribute} says something out loud in {zone} about what all of this is *for*, and means every word. Everyone within a zone hears it.',
+        'In {zone}, {tribute} explains the Games to the arena. Nobody asked. Nobody who hears it sleeps well.',
+        'What {tribute} believes about {zone}, and about the Games, and about themselves, comes out of them in one long unbroken stretch. It is not a breakdown. That is the frightening part.',
+        '{tribute} preaches in {zone} to an audience of nobody and twenty-four million people, and does not stumble once.',
+    ],
+    medicTriage: [
+        '{tribute} gets {patient} on the ground in {zone} and works on them properly — hands steady, no hurry, no audience management at all. {patient} is going to live.',
+        'In {zone}, {tribute} does for {patient} what a Capitol surgery would do and does it with what is in their pockets.',
+        '{tribute} does not ask {patient} anything in {zone}. They just start working, and by the end of the hour {patient} has stopped bleeding.',
+        'The cameras find {tribute} in {zone} elbow-deep in keeping {patient} alive, and stay there. It is the best television of the day.',
+    ],
+    saboteurTraps: [
+        '{tribute} walks {zone} setting off other people\'s work — {count} mechanisms, sprung deliberately and left useless. Somebody spent days on those.',
+        'Across {zone}, {count} traps go off with nobody in them. {tribute} is a long way away by the time anyone works out why.',
+        '{tribute} spends the hour in {zone} un-making {count} careful pieces of somebody else\'s planning.',
+    ],
+    saboteurCache: [
+        '{tribute} gets at {victim}\'s {item} in {zone} and does something to it that will not be visible until it matters.',
+        'Nobody sees {tribute} near {victim}\'s supplies in {zone}. The {item} looks exactly as it did. It is not.',
+        '{tribute} leaves {victim}\'s {item} where it was in {zone}, which is the entire trick.',
+    ],
+    beastRoar: [
+        'Something in {zone} makes a sound that nothing in the arena roster accounts for. It is {tribute}, and everyone who hears it understands the mistake they made reading the file.',
+        '{tribute} makes a noise in {zone} that carries across three sectors. Nobody who hears it goes back to sleep.',
+        'The Capitol had {tribute} at long odds. The sound out of {zone} rewrites every one of them.',
+        'Whatever {tribute} is, it is not what the district paperwork says, and {zone} finds out first.',
+    ],
+    diplomatAccord: [
+        '{tribute} talks {first} and {second} out of it in {zone} — not a truce with {tribute}, a truce with each other. Nobody has done that in this arena before.',
+        'In {zone}, {tribute} spends an hour saying reasonable things to {first} and {second} until both of them put their weapons down. It holds.',
+        '{first} and {second} agree to leave each other alone in {zone}, and the only reason either of them believes it is that {tribute} is standing there.',
+        '{tribute} brokers something in {zone} that has no business existing: {first} and {second}, at peace, on the record.',
+    ],
+    scholarReading: [
+        '{tribute} looks at {read} for a long moment and then walks out of it toward {elsewhere}. An hour later, everyone understands why.',
+        '"Not here," {tribute} says of {read}, to nobody, and goes to {elsewhere}. They are right, and they are right early.',
+        '{tribute} reads something in the ground at {read} that the Gamemakers put there for later, and leaves for {elsewhere} before later arrives.',
+        'Whatever {tribute} sees in {read}, they do not stay to confirm it. {elsewhere} it is.',
+    ],
+    ghostNaming: [
+        'With eight left, the Gamemakers do something they almost never do: they name {tribute} personally, on the broadcast, because the audience has no idea who they are. Nobody has any footage. That is now a problem for {tribute}.',
+        'The Capitol has run out of ways to talk about a final eight containing somebody it has never filmed. So it says the name out loud: {tribute}. Every survivor hears it.',
+        'Eight tributes left, and the anchor has to check a card for one of them. {tribute}. The arena learns, all at once, that somebody has been out there the whole time.',
+    ],
+};

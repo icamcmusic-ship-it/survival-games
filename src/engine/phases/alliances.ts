@@ -2,14 +2,15 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { RESPECT, ALLIANCES, PROTECTOR_BOND, QUELL_MECHANICS, ROMANCE, SUSPICION } from '../../data/balance';
+import { RESPECT, ALLIANCES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, ROMANCE, SUSPICION } from '../../data/balance';
+import { profOf, trainProficiency } from '../proficiency';
 import { applyDamage, checkDeath } from '../combat';
 import { clampTribute } from '../vitals';
 import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel, trustOf } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, raiseSuspicion, suspicionOf } from '../memory';
 import { respectOf } from '../relationships';
-import { allianceOf, areLovers, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
+import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
 import { betrayalReluctance } from '../debts';
 import { addExcitement } from '../audience';
@@ -272,6 +273,32 @@ export function processAlliances(ctx: SimContext) {
         });
     }
 
+    // 1e. A2: the Mercenary's terms coming due.
+    //
+    // `parley.ts` gestured at alliance-as-transaction and nothing in the model
+    // could express it — a mercenary who joined for pay stayed for affection
+    // like everybody else. They leave the cycle the cache runs dry, without
+    // rancour and without apology, because that was always the deal.
+    alliances.forEach((members, id) => {
+        if (members.length < 2 || id.startsWith('lovers-')) return;
+        const record = allianceOf(ctx.state, id);
+        if (!record || cacheValue(record) > ALLIANCES.mercenaryRetainer) return;
+        members.forEach(m => {
+            if (m.status !== 'alive' || m.allianceId !== id) return;
+            if (m.archetype !== 'mercenary') return;
+            const others = members.filter(o => o.id !== m.id && o.status === 'alive');
+            if (others.length === 0) return;
+            delete m.allianceId;
+            ctx.logEvent(
+                `${m.name} counts what is left in the alliance's cache in ${m.zone}, finds it empty, and leaves. `
+                + `${others.map(o => o.name).join(' and ')} are not betrayed so much as no longer paying, and ${m.name} makes no pretence that it was ever anything else.`,
+                [m.id, ...others.map(o => o.id)],
+                { important: true, category: 'alliance' }
+            );
+            others.forEach(o => adjustRel(o, m.id, -ALLIANCES.soloDepartureRegard));
+        });
+    });
+
     // 2. Betrayal Logic
     alliances.forEach((members) => {
         if (members.length < 2) return;
@@ -421,6 +448,10 @@ export function processAlliances(ctx: SimContext) {
                 (sum, m) => sum + trustOf(m, candidate) + respectOf(m, candidate.id) * RESPECT.recruitWeight,
                 0) / present.length;
             const theirOpinion = present.reduce((sum, m) => sum + trustOf(candidate, m), 0) / present.length;
+            // A2: the Beast has no capacity for company at all. Not a low
+            // affinity — none. It is the one thing that makes them read as
+            // something the arena made rather than a district.
+            if (candidate.archetype === 'beast' || present.some(m => m.archetype === 'beast')) return;
             const distrust = distrustFactor(candidate);
             // §4.7: the Career pack recruits hard in the early game — sweeping
             // up the strong stragglers is its narrative function.
@@ -429,7 +460,12 @@ export function processAlliances(ctx: SimContext) {
                 * (hungryPack ? ALLIANCES.careerRecruitThresholdFactor : 1);
             if (groupOpinion < threshold || theirOpinion < threshold) return;
 
-            const affinity = ARCHETYPES[candidate.archetype].allianceAffinity + traitMod(candidate, 'allianceAffinity');
+            // §1.4: somebody in the group has to do the persuading, and being
+            // good at it is a trainable skill rather than a raw charisma read.
+            const advocate = Math.max(0, ...present.map(m => profOf(m, 'persuasion')));
+            const affinity = ARCHETYPES[candidate.archetype].allianceAffinity
+                + traitMod(candidate, 'allianceAffinity')
+                + advocate * PROFICIENCY.persuasionRecruitWeight;
             const chance = Math.max(
                 ALLIANCES.minFormChance,
                 (ALLIANCES.recruitChance + affinity - (members.length - 2) * ALLIANCES.recruitSizePenalty)
@@ -438,6 +474,7 @@ export function processAlliances(ctx: SimContext) {
             if (!ctx.rng.chance(chance)) return;
 
             candidate.allianceId = id;
+            present.forEach(m => { if (profOf(m, 'persuasion') === advocate) trainProficiency(m, 'persuasion'); });
             members.forEach(m => noteContact(ctx.state, m, candidate));
             members.push(candidate);
             ctx.logEvent(
