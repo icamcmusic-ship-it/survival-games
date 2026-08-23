@@ -62,8 +62,19 @@ The whole simulation is seeded: the same seed plus arena always replays the
 same Games, which is what the Share button encodes into a URL.
 
 Every logged event carries a semantic category (kill, hazard, alliance,
-sponsor, sanity, …) that drives the colour coding and the filters in the
-chronicle feed.
+sponsor, sanity, …) that drives the colour coding, the glyphs and the filters
+in the chronicle.
+
+The training phase is three narrated days, not one summary line: each day is a
+station attempt with a visible outcome (success, a public struggle, a public
+failure), mingling between tributes at the same station, pre-agreements struck
+on the floor, altercations between people who already disliked each other, an
+observation pass that writes respect and fear, and an evening beat.
+
+The chronicle can be read two ways. The in-arena sidebar is a live ticker; the
+`#/chronicle` page is one phase per full-width page, with event cards, tribute
+tiles, a phase scrubber and deep links (`#/chronicle?day=4&phase=night`). Both
+read the same filter state.
 
 ## How the simulation is put together
 
@@ -101,6 +112,16 @@ running in parallel:
   The engine sites that predate the check are inventoried in
   `scripts/undeclared-knobs-baseline.json` — that file is the honest measure of
   how far off the claim still is, and it should only ever get shorter.
+- **Stance** (`engine/stance.ts`, `data/stances.ts`) is scored from a table
+  rather than a block of hand-written branches. Aggressive, Defensive and
+  Evasive are always available; Hunting, Fortified, Desperate, Scavenging and
+  Shadowing each need a specific situation to hold, are filtered out of the
+  ranking when it does not, and are vacated the moment it passes. Adding a
+  stance is two data rows.
+- **Archetypes** (`data/archetypes.ts`, `engine/archetypeHooks.ts`) are
+  characters rather than four bias scalars: a target preference, a risk curve,
+  an objective bias, declared antipathies, and one signature set piece per run.
+  Fifteen of them, weighted per district and by the year's cast shape.
 - **Districts** (`data/districts.ts`) carry a Games record. A tribute from a
   storied district arrives with a mentor who has stood on the podium and a
   crowd that already expects them to do well; a tribute from a forgotten one
