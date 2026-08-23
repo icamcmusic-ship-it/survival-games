@@ -647,7 +647,9 @@ export function GameScreen({
                                         <button onClick={() => setChronicle({ selectedZone: null })} className="btn btn-sm btn-ghost">Clear</button>
                                     )}
                                 </div>
-                                {!filters.selectedZone ? (
+                                {arenaSealed ? (
+                                    <div className="empty-state">Sealed until the Games begin.</div>
+                                ) : !filters.selectedZone ? (
                                     <div className="empty-state">Select a sector to isolate everything that happened there.</div>
                                 ) : (
                                     <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
@@ -691,6 +693,7 @@ export function GameScreen({
                                         cast={gameState.tributes}
                                         onSelectTribute={setSelectedTributeId}
                                         density={filters.density}
+                                        hideZones={arenaSealed}
                                     />
                                 ) : (
                                     <div className="empty-state">

@@ -1,4 +1,26 @@
 export type Gender = 'Male' | 'Female';
+
+/**
+ * §1.7: the thirteen personas a tribute can sell on Caesar's couch.
+ *
+ * Declared here rather than derived from `INTERVIEW_SCENARIOS` because
+ * `models/types.ts` must not import from `data/` — the check that the two
+ * lists match lives in `data/personas.ts`, which does.
+ */
+export type InterviewPersona =
+    | 'The Star-Crossed Lover'
+    | 'The Ruthless Warrior'
+    | 'The Humble Underdog'
+    | 'The Mysterious Enigma'
+    | 'The Charming Flirt'
+    | 'The Arrogant Brute'
+    | 'The Quirky Oddball'
+    | 'The Silent Threat'
+    | 'The Grieving Sibling'
+    | 'The Cold Strategist'
+    | 'The Reluctant Hero'
+    | 'The District Loyalist'
+    | 'The Wildcard';
 /**
  * A tribute's standing posture.
  *
@@ -250,8 +272,18 @@ export interface Tribute {
     stanceHeld: number;
     /** Pre-Games audience darling. Starts with sponsor trust and draws envy. */
     fanFavourite: boolean;
-    /** Persona sold on the interview couch — shapes who allies and who targets them. */
-    interviewStrategy?: string;
+    /**
+     * Persona sold on the interview couch — shapes who allies and who targets
+     * them.
+     *
+     * §1.7: this was a bare `string` while `trainingStrategy` was a proper
+     * union, and it is read by `personaThreat` and `interviewChemistry` through
+     * literal comparisons in three files. A typo in a flavour table became a
+     * silently unmatched persona: no threat weighting, no chemistry, no
+     * warning. The union is the same list `INTERVIEW_SCENARIOS` declares, and
+     * `data/personas.ts` asserts the two stay in step.
+     */
+    interviewStrategy?: InterviewPersona;
     /** Baseline sponsor trust the crowd keeps drifting back toward. */
     reputation: number;
     /** Days this tribute lasted. Frozen at the day they died. */
@@ -1010,7 +1042,7 @@ export interface GameState {
      * training-floor strategy and/or interview angle, honoured by the phase
      * engines instead of their own rolls.
      */
-    playerCoaching?: { tributeId: string; trainingStrategy?: 'showcase' | 'conceal' | 'balanced'; interviewStrategy?: string };
+    playerCoaching?: { tributeId: string; trainingStrategy?: 'showcase' | 'conceal' | 'balanced'; interviewStrategy?: InterviewPersona };
 }
 
 export interface EventLog {

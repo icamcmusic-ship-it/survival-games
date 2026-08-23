@@ -63,13 +63,28 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: {
                 className="btn btn-sm"
                 // No aria-label here on purpose: the button's own text is what
                 // changes to "Copied", and a static label would silence that.
-                title={`Copy a link that replays seed ${seed}`}
+                // §1.8: a rerolled cast composes its seed as `base~SUFFIX`,
+                // where the suffix is a non-seeded `Math.random()`. The share
+                // link encodes the composite verbatim, which replays correctly
+                // — but the UI elsewhere shows the base, so the displayed seed
+                // and the "real" one diverge. Say the composite out loud here.
+                title={seed.includes('~')
+                    ? `Copy a link that replays this exact rerolled cast. The full seed is ${seed} — the part after the ~ is what the reroll drew, and a link without it replays the original cast instead.`
+                    : `Copy a link that replays seed ${seed}`}
             >
                 {status === 'copied'
                     ? <Check aria-hidden="true" className="w-3.5 h-3.5 text-[var(--color-coin-400)]" />
                     : <Share2 aria-hidden="true" className="w-3.5 h-3.5" />}
                 {status === 'copied' ? 'Copied' : status === 'failed' ? 'Copy failed' : 'Share'}
             </button>
+            {seed.includes('~') && (
+                <span
+                    className="chip"
+                    title={`This cast was rerolled. The full seed is ${seed}; the base seed alone (${seed.split('~')[0]}) replays the original cast.`}
+                >
+                    seed {seed}
+                </span>
+            )}
             {fallbackUrl && (
                 <input
                     className="field text-xs w-52"

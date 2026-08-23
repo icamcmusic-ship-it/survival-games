@@ -287,16 +287,18 @@ function AnthemCard({ day, fallen }: { day: number; fallen: Tribute[] }) {
 }
 
 /** One rendered beat: a zone-tagged header (when it earns one) plus its lines. */
-function BeatBlock({ beat, showTags, cast, onSelectTribute, newIds }: {
+function BeatBlock({ beat, showTags, cast, onSelectTribute, newIds, hideZones }: {
     beat: Beat;
     showTags: boolean;
     cast?: Tribute[];
     onSelectTribute?: (id: string) => void;
     newIds: Set<string>;
+    /** §1.9: a sealed arena must not name its sectors in the beat headers. */
+    hideZones?: boolean;
 }) {
     // A beat header earns its row when there is a scene to anchor: a place
     // and more than a single line, or a place and a multi-party cast.
-    const showHeader = !!beat.zone && (beat.logs.length > 1 || beat.cast.size > 1);
+    const showHeader = !hideZones && !!beat.zone && (beat.logs.length > 1 || beat.cast.size > 1);
     return (
         <div className="space-y-1">
             {showHeader && (
@@ -321,7 +323,7 @@ function BeatBlock({ beat, showTags, cast, onSelectTribute, newIds }: {
 }
 
 /** One "Day N — Phase" section: beats, plus its quiet lines behind a disclosure. */
-function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTribute, newIds, preGamesCollapsed }: {
+function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTribute, newIds, preGamesCollapsed, hideZones }: {
     sectionKey: string;
     entries: EventLog[];
     density: FeedDensity;
@@ -331,6 +333,7 @@ function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTr
     newIds: Set<string>;
     /** Day-0 ceremony sections default to headlines with an expander (§pacing). */
     preGamesCollapsed: boolean;
+    hideZones?: boolean;
 }) {
     const [showQuiet, setShowQuiet] = useState(false);
     const [showCeremony, setShowCeremony] = useState(false);
@@ -373,6 +376,7 @@ function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTr
                         cast={cast}
                         onSelectTribute={onSelectTribute}
                         newIds={newIds}
+                        hideZones={hideZones}
                     />
                 ))}
                 {hidden > 0 && !expanded && (
@@ -397,7 +401,7 @@ function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTr
     );
 }
 
-export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaultExpanded = false, density = 'everything' }: {
+export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaultExpanded = false, density = 'everything', hideZones = false }: {
     logs: EventLog[];
     showTags?: boolean;
     cast?: Tribute[];
@@ -417,6 +421,12 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
     defaultExpanded?: boolean;
     /** Reading density — see FeedDensity. */
     density?: FeedDensity;
+    /**
+     * §1.9: `canSeeArena(disclosureFor(phase))` gated the header and the
+     * tribute sheet's zone but not the feed's own beat headers, so a sealed
+     * arena named its sectors in the chronicle anyway.
+     */
+    hideZones?: boolean;
 }) {
     const [expanded, setExpanded] = useState(defaultExpanded);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -497,6 +507,7 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
                     cast={cast}
                     onSelectTribute={onSelectTribute}
                     newIds={newIds}
+                    hideZones={hideZones}
                     preGamesCollapsed={entries[0]?.day === 0 && CEREMONY_PHASES.has(entries[0]?.phase ?? '') && density === 'everything'}
                 />
             ))}
