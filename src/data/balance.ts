@@ -48,6 +48,18 @@ export const VITALS = {
     starvedTraitChance: 0.25,
     starvingThreshold: 80,
     dehydratedThreshold: 80,
+    /**
+     * §7: fatigue existed as a vital with no terminal state of its own. A
+     * tribute could sit pinned at 100 fatigue indefinitely and only ever die
+     * of something else — so the death breakdown had no exhaustion in it at
+     * all, despite the arena having a full stamina system and an endurance
+     * attribute feeding it. Above this, with nowhere to rest, the body simply
+     * stops. Set above the coupling thresholds so it is genuinely the end of
+     * the scale and not a second dehydration.
+     */
+    exhaustedThreshold: 96,
+    exhaustedDamage: 6,
+    /** Relief drops fatigue to just under the threshold, as with the other vitals. */
     starvingDamage: 5,
     /** §7.7: 10 -> 8 — dehydration is meant to pressure tributes toward water, not out-kill the mutts. */
     dehydratedDamage: 8,
@@ -614,6 +626,16 @@ export const DRIFT = {
     strengthPerMeleeLevel: 0.1,
     /** T-1: fieldcraft (medicine, forage) sharpens judgement. */
     intelligencePerFieldcraftLevel: 0.1,
+    /**
+     * §3: and talking to people is a skill that improves with use.
+     *
+     * Strength, agility, stealth and intelligence all grew over a run;
+     * charisma was the one attribute fixed at the reaping forever, so a
+     * social build could not compound its way back into relevance the way a
+     * physical one could. `persuasion` was already a trained proficiency with
+     * a level curve — it simply had no attribute behind it.
+     */
+    charismaPerPersuasionLevel: 0.12,
     /** Drift ceiling: earned points never exceed this above the printed stat. */
     maxGain: 1,
     /**
@@ -625,6 +647,7 @@ export const DRIFT = {
     maxGainAgility: 1.2,
     maxGainStealth: 1.2,
     maxGainIntelligence: 0.8,
+    maxGainCharisma: 1,
     /** Earned combat drift lost per idle cycle (no fight, no aggression). */
     decayPerIdleCycle: 0.03,
 } as const;
@@ -1427,6 +1450,26 @@ export const ZONE_EFFECTS = {
     /** Flooding: drowning risk for anyone who lingers instead of leaving. */
     floodDamage: 14,
     floodDrownChance: 0.12,
+    /**
+     * §7: whether the water is survivable is a question about the swimmer.
+     *
+     * Flooding used to hit everybody identically and record it as
+     * "Caught in the flooding of X" — a generic hazard death — so there was no
+     * drowning in the cause breakdown at all, despite `water` terrain, a
+     * Swimmer trait and swimming being a named skill requirement across
+     * several arenas. Someone who can swim gets swept and comes out of it;
+     * someone who cannot, in deep water, does not.
+     *
+     * The check is strength and agility against the flood, with the Swimmer
+     * trait's `water` affinity on top and fatigue against it — a tired
+     * non-swimmer in a flooded sector is the case this exists for.
+     */
+    drownBase: 0.55,
+    drownPerAttribute: 0.055,
+    drownSwimmerBonus: 0.11,
+    drownFatiguePenalty: 0.003,
+    /** Failing the swim outright, rather than merely being battered by it. */
+    drownDamage: 42,
 
     /** A localised freeze on top of whatever the arena's own climate is doing. */
     frozenFatigue: 6,

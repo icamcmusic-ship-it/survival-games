@@ -2,6 +2,7 @@ import { GameState, Terrain, Tribute, ZoneEffect, ZoneEffectKind } from '../mode
 import { injure, openWound } from './wounds';
 import { BLEEDING, ZONE_EFFECTS } from '../data/balance';
 import { SimContext } from './context';
+import { traitMod } from '../data/traits';
 import { applyDamage, checkDeath } from './combat';
 import { cycleOf } from './memory';
 import { depleteZone, getZone, hasForceField, severEdge } from './map';
@@ -277,10 +278,31 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
 
             case 'flooded':
                 if (ctx.rng.chance(ZONE_EFFECTS.floodDrownChance * severity)) {
-                    applyDamage(ctx, t, Math.round(ZONE_EFFECTS.floodDamage * severity), { cause: `Caught in the flooding of ${zoneName}`, kind: 'arena' });
-                    ctx.logEvent(`${t.name} is dragged under by the current in flooded ${zoneName} and barely surfaces.`, [t.id], { important: true, category: 'hazard' });
-                    clampTribute(t);
-                    checkDeath(ctx, t, `Caught in the flooding of ${zoneName}`);
+                    // §7: can they swim? Everyone in a flooded sector used to
+                    // take the same battering and, if it killed them, the same
+                    // generic hazard obituary — so drowning did not exist as a
+                    // cause of death in a game with water terrain, a Swimmer
+                    // trait and arenas that name swimming as a requirement.
+                    const swim = ZONE_EFFECTS.drownBase
+                        + (t.attributes.strength + t.attributes.agility) * ZONE_EFFECTS.drownPerAttribute
+                        + traitMod(t, 'water') * ZONE_EFFECTS.drownSwimmerBonus
+                        - t.vitals.fatigue * ZONE_EFFECTS.drownFatiguePenalty;
+                    if (ctx.rng.chance(Math.max(0.05, Math.min(0.97, swim)))) {
+                        applyDamage(ctx, t, Math.round(ZONE_EFFECTS.floodDamage * severity), { cause: `Caught in the flooding of ${zoneName}`, kind: 'arena' });
+                        ctx.logEvent(`${t.name} is dragged under by the current in flooded ${zoneName} and barely surfaces.`, [t.id], { important: true, category: 'hazard' });
+                        clampTribute(t);
+                        checkDeath(ctx, t, `Caught in the flooding of ${zoneName}`);
+                    } else {
+                        applyDamage(ctx, t, ZONE_EFFECTS.drownDamage, { cause: `Drowned in ${zoneName}`, kind: 'arena' });
+                        ctx.logEvent(
+                            `${t.name} goes into the water in flooded ${zoneName} and does not come up where anyone is looking. `
+                            + `They were never taught, and the current does not care when you learn.`,
+                            [t.id],
+                            { important: true, category: 'hazard' }
+                        );
+                        clampTribute(t);
+                        checkDeath(ctx, t, `Drowned in ${zoneName}`);
+                    }
                 }
                 break;
 

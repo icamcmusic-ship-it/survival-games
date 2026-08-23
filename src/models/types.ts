@@ -424,10 +424,17 @@ export interface Tribute {
     /** §3.4: short-lived shaken state, symmetric to momentum. Decays per cycle. */
     rattled?: number;
     /**
-     * §3.1: attribute points earned in the arena, per attribute, capped by
-     * DRIFT.maxGain. T-1: widened from agility/stealth only — repeated
-     * fighting builds strength and practised fieldcraft sharpens judgement,
-     * so a survivalist can genuinely become a fighter over a run.
+     * §3.1: attribute points earned in the arena, per attribute, capped per
+     * attribute by the `DRIFT.maxGain*` ceilings.
+     *
+     * T-1 widened this from agility/stealth only — repeated fighting builds
+     * strength and practised fieldcraft sharpens judgement, so a survivalist
+     * can genuinely become a fighter over a run. §3 closed the last gap:
+     * charisma used to be the one attribute fixed at the reaping forever,
+     * which meant physical builds visibly compounded over a run and social
+     * ones could not. Every attribute now has a proficiency behind it that can
+     * move it: melee/ranged -> agility, melee -> strength, tracking -> stealth,
+     * medicine/forage -> intelligence, persuasion -> charisma.
      */
     attributeDrift?: Partial<Record<keyof Attributes, number>>;
     /** §5.3: a slow traversal in progress — a crossing or a climb. The tribute

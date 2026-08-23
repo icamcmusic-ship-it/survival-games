@@ -1107,6 +1107,13 @@ export const MENTOR_WITHHELD_TEXTS = [
     'The sponsor rooms wait for {mentor} to spend on {tribute}, and {mentor} orders another drink instead. The message will reach {zone} faster than any parachute.',
     "{mentor} says one sentence to the sponsor liaison: 'Not until they use what is already in front of them.' Nothing flies to {zone} tonight.",
     'A patron offers to cover {tribute} outright, and {mentor} declines on their behalf. In {zone}, the sky stays empty on purpose.',
+    '{mentor} is asked, on camera, why nothing has gone to {tribute}. The answer is a long look at the screen showing {zone}, and no words at all.',
+    'The order for {tribute} sits filled out and unsigned on {mentor}\'s table all evening. In {zone}, nothing falls.',
+    '{mentor} has sponsors, money and a clear shot at {zone}, and spends the night explaining to all three why {tribute} is not getting any of it.',
+    "'They will do it or they will not,' {mentor} tells the liaison. The parachute bay stays shut and {zone} stays quiet.",
+    'Somebody in the sponsor rooms starts a collection for {tribute}. {mentor} politely kills it. Whatever {tribute} needs in {zone}, they find themselves.',
+    '{mentor} watches the feed from {zone} without blinking and without buying. The commentators call it cold. It is not cold.',
+    'A gift for {tribute} is drafted, costed, and withdrawn. {mentor} has decided {zone} is a lesson and not an emergency.',
 ];
 
 /** §7.6: the lesson landed — the gift arrives with the point attached. */
@@ -1116,6 +1123,13 @@ export const MENTOR_POINTED_TEXTS = [
     "{mentor} finally signs the slip. {item} lands beside {tribute} in {zone}, and the message reads itself: 'You did not need me. Now you get me.'",
     'A parachute follows {tribute} into {zone} almost apologetically — {item}, released the second {mentor} saw them do the right thing.',
     "The chime over {zone} sounds like approval. {item} for {tribute}, from {mentor}, priced at exactly one lesson.",
+    '{mentor} does not wait for the liaison to finish the paperwork. {item} is over {zone} before {tribute} has finished catching their breath.',
+    "'That,' says {mentor}, to nobody, 'is what I have been waiting three days for.' {item} goes out to {tribute} in {zone} on the next release.",
+    '{tribute} solves it themselves in {zone}, and the parachute is already falling before they look up. {mentor} had {item} loaded and waiting.',
+    '{item} arrives in {zone} with no note, which is the note. {mentor} has never once explained a gift and is not about to start.',
+    'The sponsor rooms cheer when {mentor} finally spends. {item} lands beside {tribute} in {zone}, and half the Capitol understands why it took this long.',
+    '{mentor} taps the slip twice before signing it. {item} reaches {tribute} in {zone} within the hour, and it means: correct.',
+    'They earned it in {zone} and {mentor} pays out immediately. {item}, no ceremony, no lecture — the lecture already happened.',
 ];
 
 export const AMBIENT_TEXTS = [
@@ -1199,6 +1213,20 @@ export const VENGEANCE_TEXTS = [
     'VENGEANCE: {mourner} does not cry over {victim}. They sharpen instead, and think about {killer} with every stroke.',
     'VENGEANCE: The Capitol cameras find {mourner}\'s face when they learn what {killer} did to {victim}, and the betting on {killer} shifts within the hour.',
     'VENGEANCE: {mourner} scratches {killer}\'s district number into a tree. It is a promise, and half the arena has seen it by nightfall.',
+    'VENGEANCE: {mourner} sits with {victim}\'s name for a long time and gets up with only {killer}\'s. There is no room in them for both.',
+    'VENGEANCE: {mourner} asks three separate people to describe exactly how {killer} did it. They are not grieving; they are studying.',
+    'VENGEANCE: {mourner} eats, drinks, and sleeps the way somebody does when they have decided to last long enough for one specific thing. {killer} is that thing.',
+    'VENGEANCE: The commentators call it grief. {mourner} has stopped looking anywhere except in the direction {killer} went.',
+    'VENGEANCE: {mourner} washes {victim}\'s blood off their hands slowly, and does not look up. When they do, they are looking for {killer}.',
+    'VENGEANCE: {mourner} apologises to {victim} out loud for what they are about to become, and then goes to find {killer}.',
+    'VENGEANCE: For the first time since the gong, {mourner} moves toward the noise instead of away from it. {killer} made that happen.',
+    'VENGEANCE: {mourner} has been counting days. They start counting something else the hour they learn {killer} killed {victim}.',
+    'VENGEANCE: Somebody offers {mourner} a way out of the sector. {mourner} asks which way {killer} went instead.',
+    'VENGEANCE: {mourner} says {killer}\'s name flatly, twice, the way you check a tool still works. {victim} is not mentioned at all.',
+    'VENGEANCE: The odds on {mourner} lengthen the moment the sponsor rooms realise what they are doing. Nobody bets on somebody hunting {killer}.',
+    'VENGEANCE: {mourner} leaves {victim} where they fell, because moving them would take time, and time now belongs to {killer}.',
+    'VENGEANCE: {mourner} throws up, wipes their mouth, picks the weapon back up. Then they start walking toward wherever {killer} is.',
+    'VENGEANCE: There is no speech. {mourner} simply stops behaving like somebody who intends to go home, and {killer} is the reason.',
 ];
 
 export const RELIEF_TEXTS = [
