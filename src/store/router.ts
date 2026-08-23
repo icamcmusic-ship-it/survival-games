@@ -19,6 +19,8 @@ const ROUTES: Array<{ view: ViewName; path: string }> = [
     { view: 'setup', path: '/' },
     { view: 'roster', path: '/roster' },
     { view: 'game', path: '/arena' },
+    // A3: the chronicle as a page of its own, not a scrollbox inside the arena.
+    { view: 'chronicle', path: '/chronicle' },
     { view: 'hallOfFame', path: '/hall-of-fame' },
 ];
 
@@ -32,13 +34,17 @@ const ROUTES: Array<{ view: ViewName; path: string }> = [
 function routeIsAvailable(view: ViewName): boolean {
     const { gameState } = gameStore.getState();
     if (view === 'roster') return !!gameState;
-    if (view === 'game') return !!gameState && gameState.phase !== 'setup' && gameState.phase !== 'reaping';
+    // The chronicle mirrors the arena: both need a run that has left the
+    // reaping, because before that there is nothing to page through.
+    if (view === 'game' || view === 'chronicle') {
+        return !!gameState && gameState.phase !== 'setup' && gameState.phase !== 'reaping';
+    }
     return true;
 }
 
 /** Where a route falls back to when it can't render. */
 export function fallbackFor(view: ViewName): ViewName {
-    if (view === 'game' && gameStore.getState().gameState) return 'roster';
+    if ((view === 'game' || view === 'chronicle') && gameStore.getState().gameState) return 'roster';
     return 'setup';
 }
 
@@ -61,7 +67,11 @@ export function viewForPath(path: string): ViewName | null {
 export function viewFromLocation(): ViewName | null {
     const hash = window.location.hash.replace(/^#/, '');
     if (!hash.startsWith('/')) return null;
-    return viewForPath(hash);
+    // A3: `#/chronicle?day=4&phase=night` is a deep link into a chronicle
+    // page. The query belongs to the screen, not to the route, so it is
+    // stripped before the path is matched.
+    const q = hash.indexOf('?');
+    return viewForPath(q < 0 ? hash : hash.slice(0, q));
 }
 
 /** True when the hash is a fragment link rather than a route. */

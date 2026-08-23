@@ -2,12 +2,13 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { BLEEDING, COMBAT, DEBTS, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STEALTH } from '../data/balance';
+import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
+import { BLEEDING, COMBAT, DEBTS, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone, zoneFeatures } from './map';
-import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound } from './memory';
+import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
 import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { injure, injuryGrade, openWound } from './wounds';
@@ -21,6 +22,7 @@ import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
 import { PREGAMES } from '../data/balance';
 import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
+import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -260,6 +262,12 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     // §3.4: a shaken tribute fights below their numbers.
     power -= (t.rattled ?? 0) * HUNTING.rattledPowerWeight;
 
+    // A1: what the conditional stances are worth in an exchange. Desperate is
+    // the state `desperationFights` was only ever a coin flip for; Scavenging
+    // is somebody who did not want this fight and is not equipped for it.
+    if (t.stance === 'Desperate') power += STANCE_MODES.desperate.powerBonus;
+    if (t.stance === 'Scavenging') power -= STANCE_MODES.scavenging.combatPenalty;
+
     // What they have learned from losing to this person before.
     power += rematchEdge(t, opponent);
 
@@ -287,13 +295,21 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
         return false;
     }
 
+    // A1: Desperate ignores the retreat roll entirely. This is the difference
+    // between a stance and a modifier — there is no number to tune, they simply
+    // do not break off.
+    if (t.stance === 'Desperate') return false;
+
     const arch = ARCHETYPES[t.archetype];
     const healthFraction = t.health / 100;
     if (healthFraction <= COMBAT.routHealthFraction) return true;
 
+    // A2: `riskCurve` is where caution actually moves. A Zealot on day 9 is
+    // the Zealot from day 1; a Career has spent everything by then; a
+    // Strategist has been getting warier the whole time.
     let chance = COMBAT.retreatBase
         + (1 - healthFraction) * COMBAT.retreatPerHealthLost
-        + arch.caution * COMBAT.retreatCautionWeight
+        + effectiveCaution(t, ctx.state.day) * COMBAT.retreatCautionWeight
         - arch.aggression * COMBAT.retreatAggressionWeight
         + Math.max(0, 17 - t.age) * COMBAT.retreatYouthWeight
         + roundsFought * 0.05;
@@ -301,8 +317,8 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     if (opponentEdge > 0) chance += COMBAT.retreatLosingBonus;
     chance += traitMod(t, 'retreat');
     if (t.isCareer) chance -= 0.1;
-    if (t.stance === 'Aggressive') chance -= 0.12;
-    if (t.stance === 'Evasive') chance += 0.15;
+    if (isAggressiveStance(t.stance)) chance -= 0.12;
+    if (isEvasiveStance(t.stance)) chance += 0.15;
     // Who they are fighting, not just how badly it is going: a tribute who has
     // watched this particular person kill wants out long before the numbers say so.
     if (opponent) chance += fearFraction(t, opponent.id) * FEAR.retreatWeight;
@@ -373,6 +389,13 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     // Losing an exchange to someone is how you learn to be afraid of them
     // specifically — and how the attacker gets better at the weapon they used.
     addFear(defender, attacker.id, FEAR.lostExchange);
+    // §1.2: `rattled` is documented as the symmetric counterpart to momentum
+    // and was written from grief and almost nothing else. Losing an exchange
+    // shakes a person, and coming out of one barely standing shakes them more.
+    rattle(defender, HUNTING.rattledPerLostExchange);
+    if (defender.status === 'alive' && defender.health > 0 && defender.health < HUNTING.nearDeathHealth) {
+        rattle(defender, HUNTING.rattledPerNearDeath);
+    }
     // §3.2: and landing one on somebody you had only heard stories about is
     // how you learn the stories were bigger than the person.
     reduceFear(attacker, defender.id, FEAR.realityCorrection);
@@ -432,6 +455,9 @@ export function resolveCombat(
     const zone = getZone(ctx.state.arena, t1.zone);
     const ambushed = !isBloodbath && (isBetrayal || rollAmbush(ctx, t1, t2, zone));
     if (ambushed) {
+        // §1.2: being taken from cover is the single most shaking thing that
+        // can happen to somebody who survives it.
+        rattle(t2, HUNTING.rattledPerAmbushed);
         const opener = bestWeapon(t1);
         const damage = landHit(ctx, t1, t2, STEALTH.ambushPowerBonus, opener, STEALTH.ambushDamageMultiplier);
         ctx.logEvent(
@@ -919,6 +945,10 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     victim.status = 'dead';
     victim.health = 0;
     victim.dayOfDeath = ctx.state.day;
+
+    // A2: a Diplomat's death dissolves every truce they talked other people
+    // into. The agreements were only ever held together by them being there.
+    dissolveBrokeredTruces(ctx, victim);
 
     // A corpse is not part of an alliance; leaving the id set kept dead
     // tributes in the alliance roster and skewed betrayal targeting.

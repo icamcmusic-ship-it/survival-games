@@ -1,4 +1,4 @@
-import { GameState, GameConfig, HallOfFameEntry } from '../models/types';
+import { InterviewPersona, GameState, GameConfig, HallOfFameEntry } from '../models/types';
 import { Bet, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind } from '../utils/saveMigrations';
 import { SIDE_BETS } from '../data/balance';
 import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
@@ -52,7 +52,7 @@ export function prefetchEngine() {
     void loadEngine().catch(() => { /* the real load path reports failures */ });
 }
 
-export type ViewName = 'setup' | 'roster' | 'game' | 'hallOfFame';
+export type ViewName = 'setup' | 'roster' | 'game' | 'chronicle' | 'hallOfFame';
 
 /**
  * `Bet` and `SavedRun` are declared in `utils/saveMigrations` (with the schema
@@ -482,7 +482,7 @@ export const gameActions = {
      * §6.10: pre-Games coaching — pin a chosen tribute's training-floor
      * strategy and/or interview angle. Only before the training phase runs.
      */
-    setCoaching(tributeId: string, coaching: { trainingStrategy?: 'showcase' | 'conceal' | 'balanced'; interviewStrategy?: string }): boolean {
+    setCoaching(tributeId: string, coaching: { trainingStrategy?: 'showcase' | 'conceal' | 'balanced'; interviewStrategy?: InterviewPersona }): boolean {
         const { gameState, simulator } = gameStore.getState();
         if (!gameState || !simulator) return false;
         if (gameState.phase !== 'reaping' && gameState.phase !== 'setup') return false;

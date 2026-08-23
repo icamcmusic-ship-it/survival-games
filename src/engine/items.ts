@@ -186,6 +186,16 @@ export function enforceCapacity(t: Tribute): Item[] {
  * combat power, concealment and the fatigue drain — being over-equipped
  * finally costs something at the moment it used to be pure advantage.
  */
+/**
+ * Total worth of everything a tribute is carrying.
+ *
+ * A1: read by the Scavenging precondition — "has nothing worth having" is a
+ * situation, and it needs a number.
+ */
+export function inventoryValue(t: Tribute): number {
+    return t.inventory.reduce((sum, i) => sum + i.value * (i.stack ?? 1), 0);
+}
+
 export function encumbranceOf(t: Tribute): number {
     const load = t.inventory.length / Math.max(1, carryCapacity(t));
     const free = INVENTORY.encumbranceFreeFraction;

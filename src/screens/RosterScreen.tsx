@@ -15,7 +15,25 @@ import { tributeOdds } from '../engine/odds';
 import { Bet, gameActions, gameStore } from '../store/gameStore';
 import { Swords, Zap, Brain, Eye, User, FastForward, Search } from 'lucide-react';
 
-type SortKey = 'district' | 'odds' | 'training' | 'name';
+type SortKey = 'district' | 'odds' | 'training' | 'name' | 'age' | 'archetype';
+
+/**
+ * §2.1: the roster rendered in district order and nothing else.
+ *
+ * Sorting by age or archetype and narrowing to "who is still alive", "who is
+ * armed", "who is hurt" are the questions a reader actually asks of a roster
+ * mid-run, and none of them were expressible. Each filter is a predicate so
+ * the set composes rather than being a single mutually-exclusive mode.
+ */
+type RosterFilter = 'alive' | 'allied' | 'wounded' | 'armed' | 'career';
+
+const FILTERS: Array<{ id: RosterFilter; label: string; test: (t: Tribute) => boolean }> = [
+    { id: 'alive', label: 'Alive', test: t => t.status === 'alive' },
+    { id: 'allied', label: 'Allied', test: t => !!t.allianceId },
+    { id: 'wounded', label: 'Wounded', test: t => t.status === 'alive' && (t.health < 70 || t.injuries.bleeding) },
+    { id: 'armed', label: 'Armed', test: t => t.inventory.some(i => i.type === 'weapon') },
+    { id: 'career', label: 'Careers', test: t => t.isCareer },
+];
 
 export function RosterScreen({
     tributes,
@@ -44,6 +62,7 @@ export function RosterScreen({
     const units = useStore(prefsStore, p => p.units);
     const [query, setQuery] = useState('');
     const [sortKey, setSortKey] = useState<SortKey>('district');
+    const [active, setActive] = useState<Set<RosterFilter>>(() => new Set());
 
     const oddsById = useMemo(() => {
         const map = new Map<string, ReturnType<typeof tributeOdds>>();
@@ -64,7 +83,12 @@ export function RosterScreen({
                 (canSeeTraits(disclosure) && t.traits.some(tr => tr.toLowerCase().includes(needle))))
             : tributes;
 
-        return [...filtered].sort((a, b) => {
+        // Filters compose: "allied and armed" is a question worth asking.
+        const narrowed = active.size === 0
+            ? filtered
+            : filtered.filter(t => FILTERS.filter(f => active.has(f.id)).every(f => f.test(t)));
+
+        return [...narrowed].sort((a, b) => {
             switch (sortKey) {
                 case 'odds':
                     return (oddsById.get(b.id)?.pct ?? 0) - (oddsById.get(a.id)?.pct ?? 0);
@@ -72,11 +96,20 @@ export function RosterScreen({
                     return b.trainingScore - a.trainingScore;
                 case 'name':
                     return a.name.localeCompare(b.name);
+                case 'age':
+                    return a.age - b.age || a.name.localeCompare(b.name);
+                case 'archetype':
+                    // Sealed archetypes must not be orderable, or the sort
+                    // itself leaks what the card is hiding.
+                    return canSeeArchetype(disclosure)
+                        ? ARCHETYPES[a.archetype].name.localeCompare(ARCHETYPES[b.archetype].name)
+                            || a.district - b.district
+                        : a.district - b.district;
                 default:
                     return a.district - b.district || a.gender.localeCompare(b.gender);
             }
         });
-    }, [tributes, query, sortKey, oddsById, disclosure]);
+    }, [tributes, query, sortKey, active, oddsById, disclosure]);
 
     const totalStaked = Object.values(bets).reduce((a, b) => a + b.stake, 0);
 
@@ -181,7 +214,10 @@ export function RosterScreen({
                     />
                 </div>
                 <div className="seg">
-                    {([['district', 'District'], ['odds', 'Odds'], ['training', 'Training'], ['name', 'Name']] as const).map(([key, label]) => (
+                    {([
+                        ['district', 'District'], ['odds', 'Odds'], ['training', 'Training'],
+                        ['name', 'Name'], ['age', 'Age'], ['archetype', 'Archetype'],
+                    ] as const).map(([key, label]) => (
                         <button key={key} onClick={() => setSortKey(key)} aria-pressed={sortKey === key} className="seg-item">
                             {label}
                         </button>
@@ -189,8 +225,38 @@ export function RosterScreen({
                 </div>
             </div>
 
+            <div className="flex flex-wrap gap-2 items-center" role="group" aria-label="Narrow the roster">
+                <span className="eyebrow">Show only</span>
+                {FILTERS.map(f => {
+                    const on = active.has(f.id);
+                    return (
+                        <button
+                            key={f.id}
+                            aria-pressed={on}
+                            className={`chip ${on ? 'chip-accent' : ''}`}
+                            onClick={() => setActive(prev => {
+                                const next = new Set(prev);
+                                if (next.has(f.id)) next.delete(f.id); else next.add(f.id);
+                                return next;
+                            })}
+                        >
+                            {f.label}
+                        </button>
+                    );
+                })}
+                {active.size > 0 && (
+                    <button className="btn btn-sm btn-ghost" onClick={() => setActive(new Set())}>Clear</button>
+                )}
+                <span className="text-[10px] text-[var(--color-ink-500)] ml-auto">
+                    {visible.length} of {tributes.length}
+                </span>
+            </div>
+
             {visible.length === 0 ? (
-                <div className="empty-state">No tribute matches “{query}”.</div>
+                <div className="empty-state">
+                    {query ? `No tribute matches “${query}”` : 'No tribute matches those filters'}
+                    {active.size > 0 && query ? ' and those filters' : ''}.
+                </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {visible.map(t => {

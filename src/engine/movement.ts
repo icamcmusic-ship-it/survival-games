@@ -6,6 +6,7 @@ import { effectiveResources, zoneFeatures } from './map';
 import { ensureMemory, hasVengeanceAgainst, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { fearInZone } from './fear';
 import { traitMod } from '../data/traits';
+import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 
 /**
  * Destination scoring.
@@ -44,12 +45,12 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         // Remembered dread: bodies, ambushes and hazards leave a mark.
         const threat = rememberedThreat(state, t, z.name);
         score -= threat * (1 + arch.caution) * 1.5;
-        if (t.stance === 'Evasive' && threat > MEMORY.avoidThreshold) score -= 3;
+        if (isEvasiveStance(t.stance) && threat > MEMORY.avoidThreshold) score -= 3;
 
         // Remembered company: hunters follow it, hiders run from it.
         const rivals = rememberedRivals(state, t, z.name);
         if (rivals > 0) {
-            const seeking = t.stance === 'Aggressive' || arch.aggression > 0.1;
+            const seeking = isAggressiveStance(t.stance) || arch.aggression > 0.1;
             score += seeking
                 ? rivals * MEMORY.rivalSeekWeight
                 : -rivals * MEMORY.rivalAvoidWeight * (1 + arch.caution);
@@ -73,7 +74,7 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         if (dreaded > 0) {
             // Unless they are the one doing the hunting: a target's menace is a
             // reason to go, not a reason to stay away.
-            const hunting = t.stance === 'Aggressive' || ensureMemory(t).vengeance.length > 0;
+            const hunting = isAggressiveStance(t.stance) || ensureMemory(t).vengeance.length > 0;
             if (!hunting) score -= dreaded * FEAR.avoidWeight * (1 + arch.caution);
         }
 
@@ -82,7 +83,30 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         if (z.terrain === 'highland') score += traitMod(t, 'highland');
         if (z.terrain === 'water' || z.terrain === 'wetland') score += traitMod(t, 'water');
 
-        if (t.stance === 'Evasive') score -= z.danger * 2;
+        if (isEvasiveStance(t.stance)) score -= z.danger * 2;
+
+        // A1: Scavenging routes toward ground somebody else has already paid
+        // for — a cannon site with a dropped pack still on it, or a zone
+        // stripped of forage but never picked over for kit. This is the
+        // opposite of the barren penalty above and deliberately overrides it.
+        if (t.stance === 'Scavenging') {
+            const cycle = state.cycle ?? 0;
+            const cannon = (state.recentCannonZones ?? [])
+                .filter(c => c.zone === z.name && c.cycle >= cycle - MOVEMENT.scavengeCannonMemory).length;
+            score += cannon * MOVEMENT.scavengeCannonWeight;
+            // Depleted-but-unlooted ground: the food is gone, the gear is not.
+            score += rememberedBarren(state, t, z.name) * MOVEMENT.scavengeBarrenWeight;
+            const bodies = state.tributes.filter(o => o.status === 'dead' && o.zone === z.name).length;
+            score += bodies * MOVEMENT.scavengeBodyWeight;
+        }
+
+        // A1: Shadowing follows one zone behind a specific person rather than
+        // scoring the map at all.
+        if (t.stance === 'Shadowing' && t.shadowing) {
+            const quarry = state.tributes.find(o => o.id === t.shadowing!.targetId);
+            if (quarry?.status === 'alive' && quarry.zone === z.name) score += MOVEMENT.shadowFollowWeight;
+        }
+
         return { z, score: Math.max(0.1, score) };
     });
 

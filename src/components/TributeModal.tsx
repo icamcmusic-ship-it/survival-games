@@ -21,10 +21,24 @@ import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 import { copyTributeStory, downloadTributeStory } from '../utils/tributeStory';
+import { BODY_SITES, severityOf, summarySentence, vitalWord, worstFear } from './TributeSummary';
+import { BodyDiagram } from './BodyDiagram';
+import { STANCE_PROFILES, STANCES } from '../data/stances';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
+    persuasion: 'Persuasion',
 };
+
+/** A5: four tabs, defaulting to Overview. */
+type ModalTab = 'overview' | 'combat' | 'social' | 'story';
+
+const TABS: Array<[ModalTab, string]> = [
+    ['overview', 'Overview'],
+    ['combat', 'Combat & Kit'],
+    ['social', 'Social'],
+    ['story', 'Story'],
+];
 
 /** A wound's rate, not merely its existence. */
 const PACT_LABELS: Record<string, string> = {
@@ -39,20 +53,33 @@ const BLEED_LABELS: Record<number, string> = {
 
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 
-function VitalBar({ label, value, invert = false, explain }: { label: string; value: number; invert?: boolean; explain?: React.ReactNode }) {
+function VitalBar({ label, value, invert = false, explain, tribute }: {
+    label: string;
+    value: number;
+    invert?: boolean;
+    explain?: React.ReactNode;
+    /** Supplied so Sanity can read its band rather than re-deriving thresholds. */
+    tribute?: Tribute;
+}) {
     // For hunger/thirst/fatigue a high number is bad (severity = value). For
     // health/sanity/sponsor trust a high number is good, so severity runs the
     // other way — this was backwards before, which painted a tribute at full
     // health in danger-red.
     const severity = invert ? 100 - value : value;
     const color = severity >= 66 ? 'var(--cat-death)' : severity >= 33 ? 'var(--cat-training)' : 'var(--cat-alliance)';
+    // A5: six gauges printing six percentages is six numbers to convert. The
+    // word is the reading; the number is the evidence for it.
+    const word = vitalWord(label, value, tribute);
     return (
         <div className="panel-flush p-2.5 space-y-1.5">
-            <div className="flex justify-between items-baseline">
+            <div className="flex justify-between items-baseline gap-2">
                 {explain
                     ? <Explainer align="left" label={<span className="eyebrow">{label}</span>} title={label}>{explain}</Explainer>
                     : <span className="eyebrow">{label}</span>}
-                <span className="font-mono text-[var(--ink)] text-sm">{value}%</span>
+                <span className="flex items-baseline gap-1.5 min-w-0">
+                    <span className="text-xs font-semibold truncate" style={{ color }}>{word}</span>
+                    <span className="font-mono text-[var(--color-ink-500)] text-[11px] flex-none">{value}%</span>
+                </span>
             </div>
             <div className="meter">
                 <span style={{ width: `${Math.max(0, Math.min(100, value))}%`, background: color }} />
@@ -125,6 +152,72 @@ function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: Gam
     );
 }
 
+/**
+ * A5: the Story tab's own content — who they were before the arena.
+ *
+ * The reaping note, the motive, the token and the quirks were scattered across
+ * the Traits section and the header's chip wall, where they read as attributes
+ * rather than as a person. Gathered here, they are the closest thing the sheet
+ * has to a biography.
+ */
+function StoryPanel({ tribute }: { tribute: Tribute }) {
+    const MOTIVE_LINES: Record<string, string> = {
+        family: 'The commentators keep mentioning the family waiting at home.',
+        partner: 'Whatever happens to their district partner will decide who this tribute becomes.',
+        prove: 'Nobody rated them, and they know it. That is the fuel.',
+        honour: 'They carry their district\'s record on their back, and mean to add to it.',
+        escape: 'Winning, for this one, is mostly about never going back to what was before.',
+    };
+    const has = tribute.reapingNote || tribute.motive || tribute.token || (tribute.quirks?.length ?? 0) > 0
+        || tribute.stylist || tribute.chariotAngle;
+    if (!has) {
+        return (
+            <section>
+                <h4 className="panel-title mb-2">Before the arena</h4>
+                <p className="text-sm text-[var(--color-ink-400)]">Nothing recorded about them yet.</p>
+            </section>
+        );
+    }
+    return (
+        <section>
+            <h4 className="panel-title mb-2">Before the arena</h4>
+            <div className="space-y-2.5 text-sm text-[var(--color-ink-300)]">
+                {tribute.reapingNote && (
+                    <p>
+                        <span className="eyebrow block mb-0.5">The reaping</span>
+                        {tribute.reapingNote}
+                    </p>
+                )}
+                {tribute.motive && (
+                    <p>
+                        <span className="eyebrow block mb-0.5">Why they intend to survive</span>
+                        <span className="italic">{MOTIVE_LINES[tribute.motive]}</span>
+                    </p>
+                )}
+                {tribute.token && (
+                    <p>
+                        <span className="eyebrow block mb-0.5">Their district token</span>
+                        {tribute.token.charAt(0).toUpperCase() + tribute.token.slice(1)}.
+                    </p>
+                )}
+                {(tribute.stylist || tribute.chariotAngle) && (
+                    <p>
+                        <span className="eyebrow block mb-0.5">The Remake Center</span>
+                        {tribute.stylist ? `${tribute.stylist} dressed them` : 'Dressed'}
+                        {tribute.chariotAngle ? ` — ${tribute.chariotAngle}` : ''}.
+                    </p>
+                )}
+                {(tribute.quirks?.length ?? 0) > 0 && (
+                    <p>
+                        <span className="eyebrow block mb-0.5">What the cameras have noticed</span>
+                        <span className="italic">{tribute.quirks!.join('; ')}.</span>
+                    </p>
+                )}
+            </div>
+        </section>
+    );
+}
+
 export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }: {
     tribute: Tribute;
     gameState: GameState;
@@ -169,6 +262,11 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
     }, [onClose]);
 
     const [storyCopied, setStoryCopied] = useState<'idle' | 'ok' | 'fail'>('idle');
+    // A5: four tabs, defaulting to Overview, and an optional second tribute
+    // rendered beside the first.
+    const [tab, setTab] = useState<ModalTab>('overview');
+    const [compareId, setCompareId] = useState('');
+    const compare = compareId ? gameState.tributes.find(o => o.id === compareId) ?? null : null;
     const archetype = ARCHETYPES[tribute.archetype];
     const injuries = Object.entries(tribute.injuries).filter(([, v]) => v).map(([k]) => k);
     const sworn = new Set(tribute.memory?.vengeance ?? []);
@@ -272,10 +370,13 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
             aria-modal="true"
             aria-label={`${tribute.name} profile`}
         >
-            <div ref={panelRef} tabIndex={-1} className="panel p-6 max-w-lg w-full max-h-[88vh] overflow-y-auto custom-scrollbar animate-riseIn" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-start mb-5 gap-4">
+            <div ref={panelRef} tabIndex={-1} className="panel p-6 max-w-3xl w-full max-h-[88vh] overflow-y-auto custom-scrollbar animate-riseIn" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-start mb-3 gap-4">
                     <div className="min-w-0">
                         <h3 className="display-title text-2xl">{tribute.name}</h3>
+                        {/* A5: at most five chips. Everything else moves to the
+                            dossier line below, as plain text with its Explainer
+                            still attached — the header used to stack twelve. */}
                         <div className="flex flex-wrap gap-1.5 mt-2">
                             <span className="chip">District {tribute.district}</span>
                             <Explainer
@@ -290,70 +391,40 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                                     Loyalty {archetype.allianceAffinity.toFixed(2)} ·
                                     Treachery {archetype.treachery.toFixed(2)}
                                 </span>
+                                {archetype.targetPreference && (
+                                    <span className="block mt-1.5">
+                                        They go for the <strong>{archetype.targetPreference}</strong> when they have a
+                                        choice{archetype.riskCurve ? `, and their caution is ${archetype.riskCurve === 'flat' ? 'the same on day nine as on day one' : archetype.riskCurve === 'escalating' ? 'rising as the field narrows' : 'spent early and settled afterwards'}` : ''}.
+                                    </span>
+                                )}
                                 <span className="block mt-1.5">
                                     These weights bias every stance choice, alliance decision and retreat roll they make.
                                 </span>
                             </Explainer>
-                            {tribute.isCareer && <span className="chip chip-gold">Career</span>}
-                            {tribute.volunteered && (
-                                <Explainer
-                                    align="left"
-                                    label={<span className="chip chip-gold">Volunteer</span>}
-                                    title="Volunteered"
-                                >
-                                    {tribute.reapingNote}
-                                </Explainer>
-                            )}
-                            <Explainer
-                                align="left"
-                                label={<span className="chip">{legacyOf(tribute.district).industry}</span>}
-                                title={`District ${tribute.district}: ${legacyOf(tribute.district).industry}`}
-                            >
-                                {craftOf(tribute.district).blurb}.
-                                <span className="block mt-1.5">
-                                    Twelve years of a district's trade is not decoration: it seeds the skills this
-                                    tribute walks in with, and it decides which weapons feel like something they
-                                    have held before.
-                                </span>
-                            </Explainer>
-                            {tribute.fanFavourite && <span className="chip chip-gold" title="The Capitol had a favourite before the gong ever sounded.">Fan favourite</span>}
-                            {tribute.interviewStrategy && <span className="chip" title="The persona they held on Caesar's couch — which may not be the one they walked out with.">{tribute.interviewStrategy}</span>}
-                            {tribute.trainingStrategy && tribute.trainingStrategy !== 'balanced' && (
-                                <Explainer
-                                    align="left"
-                                    label={<span className="chip">{tribute.trainingStrategy === 'conceal' ? 'Hid their hand' : 'Played to the gallery'}</span>}
-                                    title="Training strategy"
-                                >
-                                    {tribute.trainingStrategy === 'conceal'
-                                        ? 'They spent three days on the training floor doing nothing they could not have done at home. It costs them sponsors and a low score, and it keeps them off everybody else\'s list.'
-                                        : 'They worked the floor where the gallery could see them. It buys sponsor trust and a higher score, and it paints a target.'}
-                                </Explainer>
-                            )}
-                            {tribute.stylist && (
-                                <Explainer
-                                    align="left"
-                                    label={<span className="chip">{tribute.stylist}</span>}
-                                    title="Stylist"
-                                >
-                                    {tribute.stylist} dressed them for the chariot parade
-                                    {tribute.chariotAngle ? ` — ${tribute.chariotAngle}` : ''}. What the Capitol
-                                    saw on the City Circle is most of what it thinks about them now, and sponsor
-                                    trust is read by the parachute stream all run.
-                                </Explainer>
+                            {/* The archetype chip beside this one already reads
+                                "Career" for a Career-archetype tribute; printing
+                                it twice was two chips saying one thing. */}
+                            {tribute.isCareer && tribute.archetype !== 'career' && <span className="chip chip-gold">Career</span>}
+                            {(!tribute.isCareer || tribute.archetype === 'career') && tribute.volunteered && (
+                                <span className="chip chip-gold">Volunteer</span>
                             )}
                             <Explainer
                                 align="left"
                                 label={<span className="chip">{tribute.stance}</span>}
-                                title="Stance"
+                                title={`Stance — ${tribute.stance}`}
                             >
-                                Stance is not chosen by you or by them — it is scored every cycle from health,
-                                whether they are armed, how badly they are hurt, their archetype, and a threat
-                                assessment of everyone standing in the same sector. A challenger stance has to
-                                clearly beat the incumbent to take over, so it will not flip back and forth.
+                                {STANCE_PROFILES[tribute.stance]?.blurb}
                                 <span className="block mt-1.5">
-                                    <strong>Aggressive</strong> sweeps the sector for a fight and hunts.{' '}
-                                    <strong>Defensive</strong> forages and rests.{' '}
-                                    <strong>Evasive</strong> hides, and heals if left alone.
+                                    Stance is not chosen by you or by them — it is scored every cycle from health,
+                                    whether they are armed, how badly they are hurt, their archetype, and a threat
+                                    assessment of everyone standing in the same sector. A challenger has to clearly
+                                    beat the incumbent to take over, so it will not flip back and forth.
+                                </span>
+                                <span className="block mt-1.5">
+                                    Three of the {STANCES.length} are always available. The other five need a specific
+                                    situation to hold — a named quarry, prepared ground, nothing left to lose, a fresh
+                                    cannon nearby, somebody who has not looked behind them — and are vacated the
+                                    moment it passes.
                                 </span>
                             </Explainer>
                             {tribute.trainingScore > 0 && (
@@ -364,45 +435,137 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                                 >
                                     Scores of 1-8 are earned on merit from the training stations. Every point above 8
                                     is a separate, much rarer roll, which is why a 10 is genuinely frightening.
-                                    A score of 9 or more intimidates the rest of the cast: it costs them sanity,
-                                    sours them on this tribute, and leaves a lasting fear of them specifically.
+                                    A score of 9 or more intimidates the rest of the cast.
                                 </Explainer>
                             )}
                         </div>
-                        <div className="flex flex-wrap gap-3 mt-2.5 text-sm text-[var(--color-ink-400)]">
-                            <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {arenaSealed ? '❓ Sealed' : tribute.zone}</span>
-                            {tribute.status === 'alive' && (
-                                <Explainer
-                                    align="left"
-                                    label={<span className="text-[var(--red)] font-semibold">{objectiveLabel(gameState, tribute)}</span>}
-                                    title="Current intention"
-                                >
-                                    Tributes hold an objective across cycles rather than re-deciding every turn.
-                                    It is chosen from what they need, who they are, and what they remember —
-                                    and it is only re-evaluated when it expires or stops making sense
-                                    (their quarry dies, they arrive, the ground goes out of bounds).
-                                    Movement then routes toward it along the sector graph.
-                                </Explainer>
-                            )}
-                            <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5 text-[var(--cat-death)]" /> {tribute.kills} kills</span>
-                            {tribute.allianceId && (
-                                <span className="flex items-center gap-1 text-[var(--cat-alliance)]"><Users className="w-3.5 h-3.5" /> In an alliance</span>
-                            )}
-                        </div>
-                        <p className="text-xs text-[var(--color-ink-500)] mt-2">
-                            {tribute.age} years old · {heightLabel(tribute.heightCm, units)} · {tribute.build} build
-                            {tribute.platePosition !== undefined && (
-                                <> · plate {tribute.platePosition < 0.34 ? 'close to the horn' : tribute.platePosition < 0.67 ? 'mid-ring' : 'on the far edge of the ring'}</>
-                            )}
-                        </p>
                     </div>
-                    <button onClick={onClose} className="btn btn-sm btn-ghost flex-none" aria-label="Close">
-                        <X className="w-4 h-4" />
-                    </button>
+                    <div className="flex-none flex items-center gap-2">
+                        {/* A5: comparison mode — the single most-requested feature
+                            in every simulator of this genre, and all the data was
+                            already here. */}
+                        <select
+                            className="field text-xs w-auto"
+                            value={compareId}
+                            onChange={e => setCompareId(e.target.value)}
+                            aria-label="Compare with another tribute"
+                            title="Show a second tribute's overview beside this one"
+                        >
+                            <option value="">Compare with…</option>
+                            {gameState.tributes
+                                .filter(o => o.id !== tribute.id)
+                                .sort((a, b) => a.district - b.district)
+                                .map(o => (
+                                    <option key={o.id} value={o.id}>{o.name} (D{o.district}){o.status === 'dead' ? ' †' : ''}</option>
+                                ))}
+                        </select>
+                        <button onClick={onClose} className="btn btn-sm btn-ghost" aria-label="Close">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
 
+                {/* A5: the sentence, before any number. */}
+                <p className="text-[15px] leading-snug text-[var(--ink)] font-semibold mb-3">
+                    {summarySentence(gameState, tribute)}
+                </p>
+
+                <div className="flex flex-wrap gap-3 mb-3 text-sm text-[var(--color-ink-400)]">
+                    <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {arenaSealed ? '❓ Sealed' : tribute.zone}</span>
+                    {tribute.status === 'alive' && (
+                        <Explainer
+                            align="left"
+                            label={<span className="text-[var(--red)] font-semibold">{objectiveLabel(gameState, tribute)}</span>}
+                            title="Current intention"
+                        >
+                            Tributes hold an objective across cycles rather than re-deciding every turn.
+                            It is chosen from what they need, who they are, and what they remember —
+                            and it is only re-evaluated when it expires or stops making sense.
+                        </Explainer>
+                    )}
+                    <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5 text-[var(--cat-death)]" /> {tribute.kills} kills</span>
+                    {tribute.allianceId && (
+                        <span className="flex items-center gap-1 text-[var(--cat-alliance)]"><Users className="w-3.5 h-3.5" /> In an alliance</span>
+                    )}
+                </div>
+
+                {/* A5: the demoted chip wall, as one collapsed dossier line. */}
+                <details className="panel-flush px-3 py-2 mb-4 text-xs text-[var(--color-ink-400)]">
+                    <summary className="cursor-pointer eyebrow">Dossier</summary>
+                    <p className="mt-2 leading-relaxed">
+                        {tribute.age} years old · {heightLabel(tribute.heightCm, units)} · {tribute.build} build
+                        {tribute.platePosition !== undefined && (
+                            <> · plate {tribute.platePosition < 0.34 ? 'close to the horn' : tribute.platePosition < 0.67 ? 'mid-ring' : 'on the far edge of the ring'}</>
+                        )}
+                    </p>
+                    <p className="mt-1.5 leading-relaxed flex flex-wrap gap-x-2 gap-y-1 items-baseline">
+                        <Explainer
+                            align="left"
+                            label={<span className="underline decoration-dotted">{legacyOf(tribute.district).industry}</span>}
+                            title={`District ${tribute.district}: ${legacyOf(tribute.district).industry}`}
+                        >
+                            {craftOf(tribute.district).blurb}.
+                            <span className="block mt-1.5">
+                                Twelve years of a district's trade is not decoration: it seeds the skills this
+                                tribute walks in with, and it decides which weapons feel like something they
+                                have held before.
+                            </span>
+                        </Explainer>
+                        {tribute.stylist && (
+                            <>
+                                <span aria-hidden="true">·</span>
+                                <Explainer
+                                    align="left"
+                                    label={<span className="underline decoration-dotted">{tribute.stylist}</span>}
+                                    title="Stylist"
+                                >
+                                    {tribute.stylist} dressed them for the chariot parade
+                                    {tribute.chariotAngle ? ` — ${tribute.chariotAngle}` : ''}. What the Capitol
+                                    saw on the City Circle is most of what it thinks about them now.
+                                </Explainer>
+                            </>
+                        )}
+                        {tribute.interviewStrategy && (
+                            <>
+                                <span aria-hidden="true">·</span>
+                                <Explainer
+                                    align="left"
+                                    label={<span className="underline decoration-dotted">{tribute.interviewStrategy}</span>}
+                                    title="Interview angle"
+                                >
+                                    The persona they held on Caesar's couch — which may not be the one they
+                                    walked out with, and which the rest of the cast remembers.
+                                </Explainer>
+                            </>
+                        )}
+                        {tribute.trainingStrategy && tribute.trainingStrategy !== 'balanced' && (
+                            <>
+                                <span aria-hidden="true">·</span>
+                                <Explainer
+                                    align="left"
+                                    label={<span className="underline decoration-dotted">{tribute.trainingStrategy === 'conceal' ? 'Hid their hand' : 'Played to the gallery'}</span>}
+                                    title="Training strategy"
+                                >
+                                    {tribute.trainingStrategy === 'conceal'
+                                        ? 'They spent three days on the training floor doing nothing they could not have done at home. It costs them sponsors and a low score, and it keeps them off everybody else\'s list — until a kill or a lost fight gives the game away.'
+                                        : 'They worked the floor where the gallery could see them. It buys sponsor trust and a higher score, and it paints a target.'}
+                                </Explainer>
+                            </>
+                        )}
+                        {tribute.volunteered && tribute.isCareer && (
+                            <><span aria-hidden="true">·</span><span>Volunteered</span></>
+                        )}
+                        {tribute.fanFavourite && (
+                            <>
+                                <span aria-hidden="true">·</span>
+                                <span title="The Capitol had a favourite before the gong ever sounded.">Fan favourite</span>
+                            </>
+                        )}
+                    </p>
+                </details>
+
                 {tribute.status === 'dead' && (
-                    <div className="panel-flush p-3 mb-5 text-sm text-[var(--cat-death)]">
+                    <div className="panel-flush p-3 mb-4 text-sm text-[var(--cat-death)]">
                         Died on day {tribute.dayOfDeath ?? '—'} · {tribute.causeOfDeath ?? 'Eliminated'}
                         {onShowInChronicle && (
                             <button
@@ -417,7 +580,49 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                     </div>
                 )}
 
+                {/* A5: four tabs instead of fifteen sections in one column. */}
+                <div className="seg mb-4 w-full" role="tablist" aria-label="Tribute sheet sections">
+                    {TABS.map(([id, label]) => (
+                        <button
+                            key={id}
+                            role="tab"
+                            aria-selected={tab === id}
+                            onClick={() => setTab(id)}
+                            className="seg-item flex-1"
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+
+                {compare && (
+                    <div className="panel-flush p-3 mb-4 grid grid-cols-2 gap-4 text-xs">
+                        {[tribute, compare].map(t => (
+                            <div key={t.id} className="space-y-1">
+                                <div className="font-black uppercase text-[var(--ink)] text-sm">{t.name}</div>
+                                <p className="text-[var(--color-ink-400)] leading-snug">{summarySentence(gameState, t)}</p>
+                                <dl className="grid grid-cols-2 gap-x-2 font-mono text-[11px] text-[var(--color-ink-500)] mt-1.5">
+                                    {([
+                                        ['Health', t.status === 'alive' ? String(t.health) : '—'],
+                                        ['Kills', String(t.kills)],
+                                        ['Training', String(t.trainingScore)],
+                                        ['Days', String(t.daysSurvived)],
+                                        ['Stance', t.status === 'alive' ? t.stance : '—'],
+                                        ['Archetype', ARCHETYPES[t.archetype]?.name ?? t.archetype],
+                                    ] as const).map(([k, v]) => (
+                                        <React.Fragment key={k}>
+                                            <dt>{k}</dt>
+                                            <dd className="text-[var(--color-ink-200)] text-right">{v}</dd>
+                                        </React.Fragment>
+                                    ))}
+                                </dl>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <div className="space-y-5">
+                    {tab === 'overview' && <>
                     <section>
                         <h4 className="panel-title mb-2">Condition</h4>
                         <div className="grid grid-cols-2 gap-2">
@@ -425,6 +630,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                             <VitalBar
                                 label="Sanity"
                                 value={tribute.vitals.sanity}
+                                tribute={tribute}
                                 invert
                                 explain={
                                     <>
@@ -525,34 +731,47 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                                     </Explainer>
                                 ))}
                         </div>
-                        {(tribute.quirks?.length ?? 0) > 0 && (
-                            <p className="text-sm text-[var(--color-ink-400)] mt-2 italic">
-                                The cameras have noticed: {tribute.quirks!.join('; ')}.
-                            </p>
-                        )}
-                        {tribute.motive && (
-                            <p className="text-sm text-[var(--color-ink-400)] mt-2 italic">
-                                {tribute.motive === 'family' && 'The commentators keep mentioning the family waiting at home.'}
-                                {tribute.motive === 'partner' && 'Whatever happens to their district partner will decide who this tribute becomes.'}
-                                {tribute.motive === 'prove' && 'Nobody rated them, and they know it. That is the fuel.'}
-                                {tribute.motive === 'honour' && 'They carry their district\'s record on their back, and mean to add to it.'}
-                                {tribute.motive === 'escape' && 'Winning, for this one, is mostly about never going back to what was before.'}
-                            </p>
-                        )}
+                        {/* Quirks, motive and the reaping note live on the Story
+                            tab now — they are biography, not a stat block. */}
                     </section>
 
+                    <SponsorPanel tribute={tribute} gameState={gameState} />
+                    </>}
+
+                    {tab === 'combat' && <>
                     <section>
                         <h4 className="panel-title mb-2">Injuries</h4>
-                        <div className="flex flex-wrap gap-1.5">
-                            {injuries.length === 0
-                                ? <span className="text-sm text-[var(--cat-alliance)]">Unharmed</span>
-                                : injuries.map(k => (
-                                    <span key={k} className="chip chip-accent">
-                                        {/* Bleeding is the one injury with a rate, not just a state —
-                                            a trickle and an artery are very different problems. */}
-                                        {k === 'bleeding' ? `${BLEED_LABELS[bleedSeverity(tribute)] ?? 'bleeding'}` : k}
-                                    </span>
-                                ))}
+                        <div className="flex items-start gap-4">
+                            {/* A5: `injurySeverity` is graded 0-3 per site and used
+                                to render as a row of booleans-with-adjectives. The
+                                figure answers "how bad, and where" at a glance; the
+                                chips stay for the exact words. */}
+                            <BodyDiagram tribute={tribute} />
+                            <div className="min-w-0 space-y-2">
+                                <div className="flex flex-wrap gap-1.5">
+                                    {injuries.length === 0
+                                        ? <span className="text-sm text-[var(--cat-alliance)]">Unharmed</span>
+                                        : injuries.map(k => (
+                                            <span key={k} className="chip chip-accent">
+                                                {/* Bleeding is the one injury with a rate, not just a state —
+                                                    a trickle and an artery are very different problems. */}
+                                                {k === 'bleeding' ? `${BLEED_LABELS[bleedSeverity(tribute)] ?? 'bleeding'}` : k}
+                                            </span>
+                                        ))}
+                                </div>
+                                {BODY_SITES.some(site => severityOf(tribute, site) > 0) && (
+                                    <dl className="grid grid-cols-[auto_1fr] gap-x-2 text-xs text-[var(--color-ink-400)]">
+                                        {BODY_SITES.filter(site => severityOf(tribute, site) > 0).map(site => (
+                                            <React.Fragment key={site}>
+                                                <dt className="capitalize">{site}</dt>
+                                                <dd className="font-mono">
+                                                    {['—', 'bruised', 'hurt', 'broken'][Math.min(3, severityOf(tribute, site))]}
+                                                </dd>
+                                            </React.Fragment>
+                                        ))}
+                                    </dl>
+                                )}
+                            </div>
                         </div>
                     </section>
 
@@ -583,6 +802,61 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                         )}
                     </section>
 
+                    {/* A5: what they are carrying and who they are afraid of
+                        belong beside the fight, not buried between two social
+                        panels halfway down a single scrolling column. */}
+                    {feared.length > 0 && (
+                        <section>
+                            <h4 className="panel-title mb-2">Who frightens them</h4>
+                            <div className="space-y-1">
+                                {feared.map(({ other, value }) => (
+                                    <div key={other!.id} className="flex justify-between items-center text-sm gap-2">
+                                        <span className={`truncate ${other!.status === 'dead' ? 'text-[var(--color-ink-500)] line-through' : 'text-[var(--color-ink-200)]'}`}>
+                                            {other!.name}
+                                        </span>
+                                        <span className="font-mono text-xs flex-none text-[var(--cat-death)]">
+                                            {value >= 60 ? 'terrified' : value >= 30 ? 'wary' : 'uneasy'} · {value}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    <section>
+                        <h4 className="panel-title mb-2">Inventory ({tribute.inventory.length})</h4>
+                        <div className="space-y-1.5">
+                            {tribute.inventory.length === 0 ? (
+                                <span className="text-sm text-[var(--color-ink-400)]">Carrying nothing</span>
+                            ) : tribute.inventory.map((item, i) => (
+                                <div key={`${item.id}-${i}`} className="panel-flush p-2 flex justify-between items-center gap-2">
+                                    <span className="text-sm text-[var(--ink)] truncate">
+                                        {displayName(item)}
+                                        {item.stack !== undefined && item.stack > 1 && (
+                                            <span className="text-[var(--color-ink-500)]"> ×{item.stack}</span>
+                                        )}
+                                        {item.poison && <span className="ml-1 text-[var(--cat-death)]" title="Coated with poison.">☠</span>}
+                                    </span>
+                                    <span className="flex items-center gap-2 flex-none">
+                                        {item.durability !== undefined && (
+                                            <span
+                                                className="text-[10px] font-mono"
+                                                style={{ color: conditionOf(item) < 0.35 ? 'var(--red)' : 'var(--color-ink-500)' }}
+                                                title="Condition. A worn weapon hits softer, not just closer to breaking."
+                                            >
+                                                {Math.round(conditionOf(item) * 100)}%
+                                            </span>
+                                        )}
+                                        <span className="chip">{item.type}</span>
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    </>}
+
+                    {tab === 'social' && <>
                     {alliance && allyNames.length > 0 && (
                         <section>
                             <h4 className="panel-title mb-2">Their alliance</h4>
@@ -759,57 +1033,6 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                         </section>
                     )}
 
-                    {feared.length > 0 && (
-                        <section>
-                            <h4 className="panel-title mb-2">Who frightens them</h4>
-                            <div className="space-y-1">
-                                {feared.map(({ other, value }) => (
-                                    <div key={other!.id} className="flex justify-between items-center text-sm gap-2">
-                                        <span className={`truncate ${other!.status === 'dead' ? 'text-[var(--color-ink-500)] line-through' : 'text-[var(--color-ink-200)]'}`}>
-                                            {other!.name}
-                                        </span>
-                                        <span className="font-mono text-xs flex-none text-[var(--cat-death)]">
-                                            {value >= 60 ? 'terrified' : value >= 30 ? 'wary' : 'uneasy'} · {value}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    <section>
-                        <h4 className="panel-title mb-2">Inventory ({tribute.inventory.length})</h4>
-                        <div className="space-y-1.5">
-                            {tribute.inventory.length === 0 ? (
-                                <span className="text-sm text-[var(--color-ink-400)]">Carrying nothing</span>
-                            ) : tribute.inventory.map((item, i) => (
-                                <div key={`${item.id}-${i}`} className="panel-flush p-2 flex justify-between items-center gap-2">
-                                    <span className="text-sm text-[var(--ink)] truncate">
-                                        {displayName(item)}
-                                        {item.stack !== undefined && item.stack > 1 && (
-                                            <span className="text-[var(--color-ink-500)]"> ×{item.stack}</span>
-                                        )}
-                                        {item.poison && <span className="ml-1 text-[var(--cat-death)]" title="Coated with poison.">☠</span>}
-                                    </span>
-                                    <span className="flex items-center gap-2 flex-none">
-                                        {item.durability !== undefined && (
-                                            <span
-                                                className="text-[10px] font-mono"
-                                                style={{ color: conditionOf(item) < 0.35 ? 'var(--red)' : 'var(--color-ink-500)' }}
-                                                title="Condition. A worn weapon hits softer, not just closer to breaking."
-                                            >
-                                                {Math.round(conditionOf(item) * 100)}%
-                                            </span>
-                                        )}
-                                        <span className="chip">{item.type}</span>
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    <SponsorPanel tribute={tribute} gameState={gameState} />
-
                     <section>
                         <h4 className="panel-title mb-2">Social graph</h4>
                         <RelationshipGraph tribute={tribute} gameState={gameState} />
@@ -844,6 +1067,11 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                             ))}
                         </div>
                     </section>
+
+                    </>}
+
+                    {tab === 'story' && <>
+                    <StoryPanel tribute={tribute} />
 
                     <section>
                         <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
@@ -899,6 +1127,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                             </div>
                         )}
                     </section>
+                    </>}
                 </div>
             </div>
         </div>

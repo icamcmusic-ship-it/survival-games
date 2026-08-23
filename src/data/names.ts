@@ -357,6 +357,77 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Campion', 'Seam', 'Shalene', 'Slatewyn', 'Sootrose', 'Tallow', 'Veina', 'Wickley', 'Xanthe', 'Lamplight',
         ],
     },
+    // §1.1: the expanded Games territories. `districtCount` is documented as
+    // 2-16 and the setup slider allows it, but 13-16 had no name pool at all —
+    // `generator.ts` wrapped them onto `((d - 1) % 12) + 1`, so District 13
+    // drew District 1's gemstone-and-finery names, which is exactly the
+    // opposite of what a graphite-pit territory should sound like. Each pool
+    // below is built from its own industry, the way the original twelve are.
+
+    // District 13 — Graphite and munitions: ordnance, minerals, and the
+    // clipped, functional register of a place that measures everything.
+    13: {
+        Male: [
+            'Cordite', 'Flint', 'Graphite', 'Primer', 'Casing', 'Vector', 'Ordnance', 'Breech',
+            'Nitre', 'Sulfur', 'Bore', 'Tracer', 'Fuze', 'Calibre', 'Ramrod', 'Percy',
+            'Magnus', 'Barrel', 'Charge', 'Ledger', 'Tallis', 'Corvus', 'Adamant', 'Coriolan',
+            'Struck', 'Blast', 'Pitchblende', 'Hollis', 'Anvil', 'Cinder',
+        ],
+        Female: [
+            'Petra', 'Nitra', 'Salvo', 'Cordelia', 'Vesta', 'Fuselle', 'Mensura', 'Quill',
+            'Adamanta', 'Emberline', 'Grisel', 'Powder', 'Calibra', 'Sable', 'Ordina', 'Tallis',
+            'Corva', 'Sulfa', 'Reckoning', 'Pitchara', 'Anvilla', 'Struck', 'Muster', 'Argent',
+            'Volley', 'Lodestone', 'Mira', 'Reserve', 'Cassia', 'Blastine',
+        ],
+    },
+    // District 14 — Salt and refrigeration: brine, preservation, cold, and the
+    // long shelf-life of everything including grudges.
+    14: {
+        Male: [
+            'Brine', 'Halloran', 'Saltus', 'Marl', 'Frost', 'Rime', 'Cured', 'Barrow',
+            'Kelvin', 'Pickett', 'Ossian', 'Winterbourne', 'Cask', 'Hoar', 'Brack', 'Sump',
+            'Glaive', 'Cullen', 'Larder', 'Chill', 'Saline', 'Crust', 'Keeper', 'Cole',
+            'Halite', 'Freeze', 'Pan', 'Evapor', 'Coldwell', 'Stack',
+        ],
+        Female: [
+            'Saline', 'Brinna', 'Rimewyn', 'Halite', 'Frosta', 'Marlene', 'Cura', 'Winterly',
+            'Kelvina', 'Ossa', 'Larderly', 'Solene', 'Brackwyn', 'Coldrose', 'Preserva', 'Icelin',
+            'Cask', 'Salterly', 'Hoarfrost', 'Pallas', 'Crystelle', 'Nivea', 'Chilla', 'Sumpwyn',
+            'Sable', 'Everfrost', 'Panne', 'Keepsake', 'Glacia', 'Cellara',
+        ],
+    },
+    // District 15 — Glassworks: heat, clarity, fragility, and the vocabulary
+    // of things that break beautifully.
+    15: {
+        Male: [
+            'Kiln', 'Vitrus', 'Cullet', 'Pane', 'Prism', 'Anneal', 'Silex', 'Blowpipe',
+            'Lehr', 'Frit', 'Crazing', 'Obsidian', 'Marver', 'Gaffer', 'Punty', 'Slump',
+            'Fuse', 'Facet', 'Shard', 'Crucible', 'Batch', 'Temper', 'Lume', 'Clarion',
+            'Sable', 'Etch', 'Bevel', 'Flux', 'Glint', 'Refract',
+        ],
+        Female: [
+            'Vitra', 'Prisma', 'Clarity', 'Lumen', 'Silica', 'Annealla', 'Shardis', 'Facette',
+            'Crazia', 'Cullette', 'Marvella', 'Pane', 'Lustra', 'Fritte', 'Obsidia', 'Bevelle',
+            'Temperance', 'Glinta', 'Crucible', 'Etcha', 'Refracta', 'Slumpwyn', 'Clarion', 'Sablewyn',
+            'Fusia', 'Batchel', 'Lehrwyn', 'Opaline', 'Verre', 'Sheen',
+        ],
+    },
+    // District 16 — Deepwater drilling: months offshore, pressure, dark water,
+    // and names that sound like equipment because half of them are.
+    16: {
+        Male: [
+            'Derrick', 'Fathom', 'Vaunt', 'Sounder', 'Riser', 'Kelp', 'Trawl', 'Bathys',
+            'Anchor', 'Rig', 'Drill', 'Marlin', 'Deepwell', 'Gaff', 'Plumb', 'Grapnel',
+            'Bilge', 'Keel', 'Hawser', 'Cleat', 'Undertow', 'Barnacle', 'Cordage', 'Sable',
+            'Windlass', 'Shoal', 'Tiller', 'Nadir', 'Brace', 'Corrie',
+        ],
+        Female: [
+            'Fathoma', 'Marina', 'Nerissa', 'Riserly', 'Bathya', 'Undertow', 'Corrie', 'Sirena',
+            'Plumbline', 'Anchora', 'Trawla', 'Kelpie', 'Hawsell', 'Cleatwyn', 'Nadira', 'Shoala',
+            'Cordelle', 'Bilgewyn', 'Keelin', 'Marlena', 'Sable', 'Windlassa', 'Tillera', 'Brackish',
+            'Abyssa', 'Sounder', 'Derricka', 'Pelagia', 'Grapnelle', 'Deepwyn',
+        ],
+    },
 };
 
 /**
@@ -442,5 +513,30 @@ export const DISTRICT_SURNAMES: Record<number, string[]> = {
         'Coalworth', 'Undercliff', 'Blackdamp', 'Deepseam', 'Minewright', 'Ashdown',
         'Pickford', 'Slagle', 'Cindermill', 'Lampman', 'Gravener', 'Sootfield',
         'Carbone', 'Duskin', 'Tunnicliffe', 'Emberton',
+    ],
+    // §1.1: the expanded Games territories.
+    // District 13 — Graphite and munitions.
+    13: [
+        'Ashgrave', 'Powderly', 'Ordnant', 'Nitrewell', 'Casingham', 'Breechford',
+        'Corvane', 'Adamantis', 'Fuzewright', 'Tallisor', 'Quillan', 'Struckmore',
+        'Pitchblende', 'Calibrant', 'Reckwood', 'Lodemarch',
+    ],
+    // District 14 — Salt and refrigeration.
+    14: [
+        'Halloran', 'Ossuary', 'Brinewald', 'Coldwell', 'Marlstone', 'Rimegarth',
+        'Saltmarch', 'Caskwright', 'Hoarfield', 'Pickering', 'Larderby', 'Winterbourne',
+        'Sumpton', 'Curewood', 'Glaciar', 'Panford',
+    ],
+    // District 15 — Glassworks.
+    15: [
+        'Marrowe', 'Kilnwright', 'Cullethorne', 'Vitrane', 'Annealby', 'Sheenford',
+        'Crucibell', 'Shardwood', 'Facetley', 'Lehrmont', 'Glintwater', 'Opaline',
+        'Batchford', 'Temperance', 'Refracta', 'Bevelmoor',
+    ],
+    // District 16 — Deepwater drilling.
+    16: [
+        'Vaunt', 'Fathomly', 'Derrickson', 'Hawserly', 'Undertowe', 'Keelmarsh',
+        'Bathwick', 'Grapnelle', 'Plumbrook', 'Shoalgrave', 'Windlassey', 'Nadirson',
+        'Cordager', 'Bilgemont', 'Trawlwood', 'Anchorly',
     ],
 };

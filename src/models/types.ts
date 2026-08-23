@@ -1,7 +1,55 @@
 export type Gender = 'Male' | 'Female';
-export type Stance = 'Aggressive' | 'Defensive' | 'Evasive';
 
-export type ArchetypeId = 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog';
+/**
+ * §1.7: the thirteen personas a tribute can sell on Caesar's couch.
+ *
+ * Declared here rather than derived from `INTERVIEW_SCENARIOS` because
+ * `models/types.ts` must not import from `data/` — the check that the two
+ * lists match lives in `data/personas.ts`, which does.
+ */
+export type InterviewPersona =
+    | 'The Star-Crossed Lover'
+    | 'The Ruthless Warrior'
+    | 'The Humble Underdog'
+    | 'The Mysterious Enigma'
+    | 'The Charming Flirt'
+    | 'The Arrogant Brute'
+    | 'The Quirky Oddball'
+    | 'The Silent Threat'
+    | 'The Grieving Sibling'
+    | 'The Cold Strategist'
+    | 'The Reluctant Hero'
+    | 'The District Loyalist'
+    | 'The Wildcard';
+/**
+ * A tribute's standing posture.
+ *
+ * A1: the original three-value union (Aggressive/Defensive/Evasive) was too
+ * coarse to express the difference between hiding and running, or between
+ * hunting and holding a line. The core triad is always reachable; the five
+ * added here are *conditional* — each has a precondition predicate in
+ * `engine/stance.ts` and is filtered out of the ranking entirely when its
+ * situation does not hold, so nobody thrashes in and out of Fortified.
+ *
+ * Every legacy read site (`t.stance === 'Aggressive'`) now goes through
+ * `stanceFamily()` in `data/stances.ts`, which maps each new stance onto the
+ * one of the original three it behaves like.
+ */
+export type Stance =
+    | 'Aggressive'
+    | 'Defensive'
+    | 'Evasive'
+    | 'Hunting'
+    | 'Fortified'
+    | 'Desperate'
+    | 'Scavenging'
+    | 'Shadowing';
+
+export type ArchetypeId =
+    | 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog'
+    // A2: eight archetypes with behavioural hooks rather than four more bias
+    // scalars. See `data/archetypes.ts`.
+    | 'mercenary' | 'zealot' | 'medic' | 'saboteur' | 'beast' | 'diplomat' | 'scholar' | 'ghost';
 
 export interface Attributes {
     strength: number;
@@ -41,7 +89,7 @@ export type InjurySite = keyof Injuries;
  * a survivalist visibly become a survivalist over a run instead of merely
  * being labelled one.
  */
-export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking';
+export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking' | 'persuasion';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage';
@@ -224,8 +272,18 @@ export interface Tribute {
     stanceHeld: number;
     /** Pre-Games audience darling. Starts with sponsor trust and draws envy. */
     fanFavourite: boolean;
-    /** Persona sold on the interview couch — shapes who allies and who targets them. */
-    interviewStrategy?: string;
+    /**
+     * Persona sold on the interview couch — shapes who allies and who targets
+     * them.
+     *
+     * §1.7: this was a bare `string` while `trainingStrategy` was a proper
+     * union, and it is read by `personaThreat` and `interviewChemistry` through
+     * literal comparisons in three files. A typo in a flavour table became a
+     * silently unmatched persona: no threat weighting, no chemistry, no
+     * warning. The union is the same list `INTERVIEW_SCENARIOS` declares, and
+     * `data/personas.ts` asserts the two stay in step.
+     */
+    interviewStrategy?: InterviewPersona;
     /** Baseline sponsor trust the crowd keeps drifting back toward. */
     reputation: number;
     /** Days this tribute lasted. Frozen at the day they died. */
@@ -396,6 +454,57 @@ export interface Tribute {
     fullKitSeen?: boolean;
     /** §10.1: other tribute id -> times a truce with them was renewed. */
     truceRenewed?: Record<string, number>;
+
+    // ---- A1: state the conditional stances read ----
+    /**
+     * Consecutive cycles spent in the current zone. Fortified needs a tribute
+     * to have actually settled somewhere; without this "held the same zone for
+     * three cycles" was unrepresentable.
+     */
+    zoneHeld?: number;
+    /** The zone `zoneHeld` is counting, so a move resets it rather than lying. */
+    zoneHeldName?: string;
+    /**
+     * Shadowing: who they are one zone behind, and for how many consecutive
+     * cycles the target has failed to notice them. Three in a row converts to
+     * a free ambush — the payoff `unseenStreak` never had.
+     */
+    shadowing?: { targetId: string; cycles: number };
+    /** A1: cycles the tribute has been dug in — read by the Fortified payoffs. */
+    fortifiedCycles?: number;
+    /**
+     * A1: per-stance re-entry lockout, stance -> cycle it becomes available
+     * again. A conditional stance whose precondition flickers cycle to cycle
+     * (a cannon two zones over, a quarry stepping in and out of the next
+     * sector) would otherwise thrash a tribute in and out of it; the minimum
+     * hold cannot help, because a lapsed precondition has to vacate the stance
+     * immediately whatever the hold says.
+     */
+    stanceCooldown?: Partial<Record<Stance, number>>;
+    /**
+     * A1: the last cycle each conditional stance's precondition was true.
+     *
+     * Entry latency, the mirror of `stanceCooldown`'s exit lockout: a
+     * conditional stance may only be *entered* once its situation has held for
+     * two consecutive cycles, so a cannon two zones over or a quarry stepping
+     * briefly into the next sector cannot pull a tribute out of what they were
+     * doing for a single turn and then drop them back.
+     */
+    stanceReady?: Partial<Record<Stance, number>>;
+
+    // ---- A2: archetype hook state ----
+    /** A2: whether this tribute's once-per-run archetype signature has fired. */
+    signatureFired?: boolean;
+    /** A2: Mercenary — the price of their company, and who has paid it. */
+    retainerPaidBy?: string[];
+    /** A4: pre-arena agreements struck on the training floor. */
+    trainingPact?: string[];
+    /** A4: stations worked, per day, so the chronicle can narrate three days. */
+    trainingLog?: Array<{ day: number; station: string; outcome: 'success' | 'struggle' | 'failure' }>;
+    /** A2: Diplomat — truces this tribute brokered between two other people. */
+    brokeredTruces?: Array<[string, string]>;
+    /** A2: Ghost — sponsor credit accrued purely for never being seen. */
+    ghostTrust?: number;
 }
 
 /**
@@ -933,7 +1042,7 @@ export interface GameState {
      * training-floor strategy and/or interview angle, honoured by the phase
      * engines instead of their own rolls.
      */
-    playerCoaching?: { tributeId: string; trainingStrategy?: 'showcase' | 'conceal' | 'balanced'; interviewStrategy?: string };
+    playerCoaching?: { tributeId: string; trainingStrategy?: 'showcase' | 'conceal' | 'balanced'; interviewStrategy?: InterviewPersona };
 }
 
 export interface EventLog {

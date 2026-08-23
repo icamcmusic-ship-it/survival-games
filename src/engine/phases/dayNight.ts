@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, SANITY_BANDS, SPONSORS, ZONE_EFFECTS } from '../../data/balance';
+import { ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
@@ -21,6 +21,8 @@ import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { areLovers, leaderFor } from '../alliance';
 import { decayFear } from '../fear';
 import { updateStance } from '../stance';
+import { runStanceBeats } from '../stanceBeats';
+import { runArchetypeSignatures, tickGhosts } from '../archetypeHooks';
 import { processSpoilage, processVitals } from '../survival';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
@@ -43,6 +45,7 @@ import { gamemakerProfile } from '../../data/gamemakers';
 import { arenaHasLaw, arenaIsSilent, escalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
+import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
 
 /**
  * The day/night cycle: the orchestrator, not the implementation.
@@ -177,6 +180,12 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // and rain scrubs camouflage off early.
     tickCampConsequences(ctx);
 
+    // A1: the per-stance beats — a shadow's three quiet cycles cashing in, a
+    // desperate tribute robbing their own alliance, a scavenger working a
+    // body. Resolved before the generic encounter pass so those people are not
+    // also described doing something else in the same cycle.
+    runStanceBeats(ctx);
+
     // 4. Hazards, mutts and everyone who runs into everyone else.
     resolveEncounters(ctx, currentAlive, acted, isEscalated, flavor, effectiveTime);
     // A mutt that has found someone keeps looking for them for a few more
@@ -194,6 +203,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     runArenaSignature(ctx);
     // ...and the Head Gamemaker's, once per run, when the feed needs saving.
     runGamemakerSignature(ctx);
+    // A2: and the archetypes' own — one set piece per tribute per run, which
+    // is what makes an archetype a character rather than a modifier row.
+    runArchetypeSignatures(ctx);
+    // A2: the Ghost's two opposed currencies, settled once per cycle.
+    tickGhosts(ctx);
 
     // 5. Cycle upkeep: the arena restocks, memories fade, bonds cool, the
     // crowd's attention wanders.
@@ -242,6 +256,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             && (o.allianceId === undefined || o.allianceId !== t.allianceId));
         t.unseenStreak = hostileHere ? 0 : (t.unseenStreak ?? 0) + 1;
         if (t.unseenStreak >= EARNED_TRAIT_RULES.silentStepCycles) earnTrait(ctx, t, 'Silent Step');
+        // A1: consecutive cycles on the same ground. Fortified needs a tribute
+        // to have actually settled somewhere rather than merely be standing
+        // there this instant, and there was no way to ask that question before.
+        if (t.zoneHeldName === t.zone) t.zoneHeld = (t.zoneHeld ?? 0) + 1;
+        else { t.zoneHeldName = t.zone; t.zoneHeld = 0; }
         // §10.1: 'Full Kit' — armour, light, warmth and a purifier at once.
         if (!t.fullKitSeen
             && t.inventory.some(i => (i.armour ?? 0) > 0)
@@ -978,7 +997,7 @@ function craft(ctx: SimContext, t: Tribute) {
 // Hiding is the one stance that should hold position — a reduced chance to
 // slip away quietly, not the guaranteed, silent teleport it used to be.
 function wanderChanceFor(t: Tribute): number {
-    return t.stance === 'Evasive' ? ENCOUNTERS.wanderChance * 0.4 : ENCOUNTERS.wanderChance;
+    return isEvasiveStance(t.stance) ? ENCOUNTERS.wanderChance * 0.4 : ENCOUNTERS.wanderChance;
 }
 
 /**
@@ -992,6 +1011,14 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
     // itself, on top of whatever the destination terrain already costs.
     const cost = (dest ? travelCost(t, dest) : 1) + edgeTimeCost(ctx.state, t.zone, destName);
     applyEdgeToll(ctx, t, t.zone, destName);
+    // A1: Fortified is a commitment to *ground*. Pulling up a prepared
+    // position and carrying it somewhere else costs double the fatigue —
+    // which is the price that makes digging in a real decision rather than a
+    // free bonus.
+    if (t.stance === 'Fortified') {
+        t.vitals.fatigue = Math.min(100,
+            t.vitals.fatigue + MOVEMENT.baseMoveFatigue * STANCE_MODES.fortified.moveFatigueMultiplier);
+    }
     // §8.9: a crossing into open water is a swim, whatever else it is.
     if (dest?.terrain === 'water') {
         t.waterCrossings = (t.waterCrossings ?? 0) + 1;
@@ -1101,7 +1128,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             const departed = t.zone;
             present.forEach(m => { m.zone = newZone; });
             noteTraffic(ctx.state, departed, newZone, present.length);
-            if (t.stance === 'Evasive') {
+            if (isEvasiveStance(t.stance)) {
                 ctx.logEvent(`${present.map(m => m.name).join(', ')} slip out of ${departed} without a sound.`, present.map(m => m.id), { zone: newZone, category: 'travel' });
             } else {
                 ctx.logEvent(
@@ -1132,6 +1159,23 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             [t.id],
             { zone: step.name, category: 'travel' }
         );
+        // A1: a hunter covers two zones a cycle. Somebody working a named
+        // target closes ground faster than somebody drifting, which is most of
+        // what makes Hunting frightening to be the subject of.
+        if (t.stance === 'Hunting' && !t.transit) {
+            const onward = reachableZones(ctx.state.arena, t.zone, collapsed, severed, time);
+            const second = objectiveStep(ctx, t, onward);
+            if (second && second.name !== t.zone && beginMove(ctx, t, second.name)) {
+                const midpoint = t.zone;
+                t.zone = second.name;
+                noteTraffic(ctx.state, midpoint, second.name);
+                ctx.logEvent(
+                    `${t.name} does not stop in ${midpoint} — they are through it and into ${second.name} inside the hour.`,
+                    [t.id],
+                    { zone: second.name, category: 'travel' }
+                );
+            }
+        }
         return;
     }
 
@@ -1143,7 +1187,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     const oldZone = t.zone;
     t.zone = newZone;
     noteTraffic(ctx.state, oldZone, newZone);
-    if (t.stance === 'Evasive') {
+    if (isEvasiveStance(t.stance)) {
         ctx.logEvent(`${t.name} slips out of ${oldZone} without a sound.`, [t.id], { zone: newZone, category: 'travel' });
     } else {
         ctx.logEvent(
@@ -1226,7 +1270,7 @@ function resolveEncounters(
         // roll is what let a forced finale run for hundreds of days.
         const meetChance = ctx.state.finaleZone
             ? 1
-            : t.stance === 'Aggressive'
+            : isAggressiveStance(t.stance)
                 ? Math.min(0.95, ENCOUNTERS.meetChance * HUNTING.meetChanceMultiplier)
                 : ENCOUNTERS.meetChance;
 
@@ -1235,7 +1279,7 @@ function resolveEncounters(
             const hostilePresent = others.filter(o => o.allianceId === undefined || o.allianceId !== t.allianceId);
             if (others.length >= 2 && hostilePresent.length >= 1 && ctx.rng.chance(ENCOUNTERS.groupFightChance)) {
                 const party = [t, ...others].slice(0, ENCOUNTERS.maxBrawlSize);
-                const anyAggressive = party.some(p => p.stance === 'Aggressive');
+                const anyAggressive = party.some(p => isAggressiveStance(p.stance));
                 const anyGrudge = party.some(p => party.some(q => q.id !== p.id && getRel(p, q.id) < -10));
                 if (anyAggressive || anyGrudge) {
                     party.forEach(p => acted.add(p.id));

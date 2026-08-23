@@ -6,6 +6,11 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ARENAS } from '../src/data/constants';
 import { ARENA_FLAVOR, GENERIC_ARENA_FLAVOR, PROCEDURAL_FLAVOR_PACKS } from '../src/data/arenaFlavor';
+import { DEFAULT_GAME_CONFIG } from '../src/data/constants';
+import { ArenaLawId, GameState } from '../src/models/types';
+import { Simulator } from '../src/engine/simulator';
+import { generateTributes } from '../src/engine/generator';
+import { gamesProfileFor } from '../src/engine/gamesProfile';
 
 const problems: string[] = [];
 
@@ -75,6 +80,57 @@ Object.entries({ ...ARENA_FLAVOR, ...PROCEDURAL_FLAVOR_PACKS }).forEach(([id, fl
 });
 
 if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has no events');
+
+/**
+ * §1.10: cycles must advance at the same rate under every arena law.
+ *
+ * `finalistCycles`, `blackoutUntilCycle`, the stance cooldowns and the trap and
+ * memory decay clocks are all counted in *cycles*, while the border collapse
+ * and the escalation schedule are counted in *days*. That equivalence only
+ * holds because every day runs exactly two `processDayNight` calls. The
+ * `noNight` law was the case worth checking: it makes the arena never go dark,
+ * and if it had been implemented by skipping the night phase rather than by
+ * keeping `timeOfDay` at 'day', every cycle-counted clock in the engine would
+ * have run at half rate relative to every other arena — silently, and only in
+ * the arenas that carry the law.
+ *
+ * It is implemented the right way. This is the check that keeps it that way.
+ */
+{
+    const LAWS_TO_CHECK: Array<ArenaLawId | undefined> = [undefined, 'noNight', 'noCannons', 'fireImpossible'];
+    const DAYS = 4;
+    LAWS_TO_CHECK.forEach(law => {
+        const base = ARENAS[0];
+        const arena = { ...base, zones: base.zones.map(z => ({ ...z })), law };
+        const seed = `cycle-law-${law ?? 'none'}`;
+        const gamesProfile = gamesProfileFor(seed);
+        const tributes = generateTributes(seed, DEFAULT_GAME_CONFIG, arena.zones[0].name, gamesProfile.castShape);
+        const state = {
+            seed, arena, tributes, phase: 'day', day: 1, log: [], gamemakerMode: false,
+            config: DEFAULT_GAME_CONFIG, baseConfig: DEFAULT_GAME_CONFIG, gamesProfile,
+            logCounter: 0, feastsHeld: 0, cycle: 0,
+        } as unknown as GameState;
+        // `Simulator` snapshots the state it is handed, so the live object to
+        // read afterwards is the simulator's own, not the literal above.
+        const sim = new Simulator(state);
+        const live = sim.getState();
+        const startDay = live.day;
+        let guard = 200;
+        while (live.day < startDay + DAYS && guard-- > 0) {
+            if (!sim.processTurn()) break;
+        }
+        const daysElapsed = live.day - startDay;
+        const cycles = live.cycle ?? 0;
+        // Two cycles a day, every day, whatever the law says about the sky.
+        // A run that ends early (a wipeout) is not evidence either way.
+        if (daysElapsed > 0 && cycles !== daysElapsed * 2) {
+            problems.push(
+                `arena law ${law ?? 'none'}: ${cycles} cycles across ${daysElapsed} days — `
+                + 'every cycle-counted clock in the engine assumes exactly two per day'
+            );
+        }
+    });
+}
 
 /**
  * Source guard: no seeded shuffle may go through a random sort comparator.

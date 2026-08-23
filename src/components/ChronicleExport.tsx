@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GameState } from '../models/types';
-import { copyChronicle, downloadChronicle, downloadChronicleJson } from '../utils/chronicle';
+import { ChronicleFormat, copyChronicle, downloadChronicleAs, downloadChronicleJson } from '../utils/chronicle';
 
 /**
  * "Copy chronicle" / "Download as Markdown" — the cheapest retention feature
@@ -14,6 +14,9 @@ export function ChronicleExport({ gameState, importantOnly = false }: {
     const [copied, setCopied] = useState<'idle' | 'ok' | 'fail'>('idle');
     // §2.7: per-tribute chronicle — "everything involving Rue" as one file.
     const [tributeId, setTributeId] = useState('');
+    // §2.11: markdown was the only format. A forum post wants BBCode and a
+    // plain-text file wants no markers at all.
+    const [format, setFormat] = useState<ChronicleFormat>('markdown');
     const filter = { importantOnly, tributeId: tributeId || undefined };
 
     return (
@@ -30,13 +33,24 @@ export function ChronicleExport({ gameState, importantOnly = false }: {
                     <option key={t.id} value={t.id}>{t.name} (D{t.district}){t.status === 'dead' ? ' †' : ''}</option>
                 ))}
             </select>
+            <select
+                value={format}
+                onChange={e => setFormat(e.target.value as ChronicleFormat)}
+                className="field text-xs w-auto"
+                aria-label="Export format"
+                title="Markdown for a document, BBCode for a forum post, plain text for anything else"
+            >
+                <option value="markdown">Markdown</option>
+                <option value="text">Plain text</option>
+                <option value="bbcode">BBCode</option>
+            </select>
             <button
                 type="button"
                 className="btn btn-sm btn-ghost"
                 aria-live="polite"
                 aria-label={copied === 'ok' ? 'Chronicle copied to clipboard' : 'Copy the chronicle to the clipboard as Markdown'}
                 onClick={async () => {
-                    const ok = await copyChronicle(gameState, filter);
+                    const ok = await copyChronicle(gameState, filter, format);
                     setCopied(ok ? 'ok' : 'fail');
                     setTimeout(() => setCopied('idle'), 2500);
                 }}
@@ -46,10 +60,10 @@ export function ChronicleExport({ gameState, importantOnly = false }: {
             <button
                 type="button"
                 className="btn btn-sm btn-ghost"
-                aria-label="Download the chronicle as a Markdown file"
-                onClick={() => downloadChronicle(gameState, filter)}
+                aria-label="Download the chronicle as a file"
+                onClick={() => downloadChronicleAs(gameState, filter, format)}
             >
-                Download as Markdown
+                Download
             </button>
             <button
                 type="button"

@@ -9,11 +9,12 @@ import { FEAST_TEXTS } from '../../data/flavorText';
 import { clampTribute } from '../vitals';
 import { giveItem, itemPhrase } from '../items';
 import { getRel } from '../relationships';
-import { hasVengeanceAgainst, noteSighting } from '../memory';
+import { advanceCycle, hasVengeanceAgainst, noteSighting } from '../memory';
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 import { hopsTo, severedEdgeSet } from '../map';
 import { pickNeededGift } from '../sponsors';
+import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -51,6 +52,13 @@ function themedPool(theme: GameState['feastTheme']): Item[] {
 
 export function processFeast(ctx: SimContext) {
     ctx.rng = new RNG(`${ctx.state.seed}-${ctx.state.day}-feast`);
+    // §1.10: a feast *replaces* that day's day-phase, and it was the one phase
+    // that never advanced the cycle counter. Everything counted in cycles —
+    // stance holds and cooldowns, `finalistCycles`, the blackout clock, trap
+    // and memory decay, contact recency — therefore lost a beat on every feast
+    // day, at half rate relative to every other day in the run. The scheduled
+    // day/night phases both advance it; so does this one.
+    advanceCycle(ctx.state);
     const alive = getAlive(ctx.state);
     const attendees = [] as typeof alive;
     const cornucopia = ctx.state.arena.zones[0]?.name ?? 'The Cornucopia';
@@ -238,8 +246,8 @@ function attendanceChance(t: Tribute, alive: Tribute[], theme: NonNullable<GameS
     }
     // balance-exempt: same hunger band the ally supply-sharing logic uses; the draw weight is the knob
     if (theme === 'food' && t.vitals.hunger > 40) chance += FEAST.foodThemeHungerDraw;
-    if (t.stance === 'Evasive') chance -= 0.15;
-    if (t.stance === 'Aggressive') chance += 0.15;
+    if (isEvasiveStance(t.stance)) chance -= 0.15;
+    if (isAggressiveStance(t.stance)) chance += 0.15;
 
     alive.forEach(other => {
         if (other.id === t.id) return;

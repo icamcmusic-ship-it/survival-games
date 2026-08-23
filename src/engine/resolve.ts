@@ -7,6 +7,7 @@ import { checkDeath } from './combat';
 import { getZone } from './map';
 import { traitMod } from '../data/traits';
 import { getRel } from './relationships';
+import { isEvasiveStance } from '../data/stances';
 
 /**
  * Resolve: the will to keep going, as distinct from sanity.
@@ -180,7 +181,7 @@ export function resolveBreakdowns(ctx: SimContext) {
             return;
         }
 
-        if (t.stance !== 'Evasive' && ctx.rng.chance(0.5)) {
+        if (!isEvasiveStance(t.stance) && ctx.rng.chance(0.5)) {
             // Walking into the open. Not a death wish exactly — an end to
             // caring which way it goes.
             t.stance = 'Aggressive';

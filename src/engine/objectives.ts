@@ -10,6 +10,8 @@ import { areLovers } from './alliance';
 import { getRel } from './relationships';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
 import { fill } from './encounters';
+import { isAggressiveStance } from '../data/stances';
+import { objectiveBiasFor, targetPreferenceScore } from './archetypeHooks';
 
 /**
  * Intentions.
@@ -158,7 +160,9 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
     const hostilesHere = here.filter(o =>
         o.id !== t.id && (o.allianceId === undefined || o.allianceId !== t.allianceId));
     const scaredOf = hostilesHere.some(o => fearOf(t, o.id) >= OBJECTIVES.fleeFear);
-    if (scaredOf && t.stance !== 'Aggressive') {
+    const fleePull = objectiveBiasFor(t, 'flee');
+    if ((scaredOf || (fleePull > 0 && hostilesHere.length > 0 && ctx.rng.chance(fleePull)))
+        && !isAggressiveStance(t.stance)) {
         return { kind: 'flee', from: t.zone, expires: expiry(OBJECTIVES.fleeCycles) };
     }
 
@@ -231,7 +235,12 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
     const fieldCount = state.tributes.filter(o => o.status === 'alive').length;
     const countingTheField = fieldCount <= ENDGAME.fieldSize;
     const edge = countingTheField ? endgameEdge(state, t) : 0;
-    if (t.stance === 'Aggressive' || (countingTheField && edge > ENDGAME.hunterEdge)) {
+    // A2: `objectiveBias.hunt` is an archetype reaching for the intention on
+    // its own account rather than waiting for the stance to hand it over — a
+    // Beast goes looking whatever posture the scoring table settled on.
+    const huntPull = objectiveBiasFor(t, 'hunt');
+    if (isAggressiveStance(t.stance) || (countingTheField && edge > ENDGAME.hunterEdge)
+        || (huntPull > 0 && ctx.rng.chance(huntPull))) {
         // Only somebody they have actually seen recently — a hunter with no
         // sighting is not tracking anyone, they are just walking around angry.
         // `rememberedRivals(state, t, o.zone) > 0` alone only confirms that
@@ -269,7 +278,15 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
                     + (o.allianceId === undefined ? 15 : 0);
                 const loot = o.inventory.reduce((sum, i) => sum + i.value, 0) * 0.3;
                 const grudge = Math.max(0, -getRel(t, o.id)) * 0.5;
-                return winnable + loot + grudge - fearOf(t, o.id);
+                // A2: whose board this is. The shared arithmetic above is
+                // "easiest kill worth the most loot", which is how everybody
+                // used to read the arena; `targetPreference` is the archetype
+                // reading it their own way — a Mercenary wants the richest
+                // pack, a Zealot wants whoever is hardest, and neither is
+                // expressible as another point of aggression.
+                const hops = hopsTo(state.arena, t.zone, o.zone, collapsed, severedEdgeSet(state)) ?? 4;
+                return winnable + loot + grudge - fearOf(t, o.id)
+                    + targetPreferenceScore(t, o, hops);
             };
             const best = (pool: Tribute[]) =>
                 pool.reduce((top, o) => (score(o) > score(top) ? o : top));
@@ -294,14 +311,18 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
 
     // 5. Somebody to keep alive. Protectors are defined by this and had no way
     //    to express it.
-    if (arch.allianceAffinity > 0.15 || t.archetype === 'protector' || (t.protectorBonds?.length ?? 0) > 0) {
+    const protectPull = objectiveBiasFor(t, 'protect');
+    if (arch.allianceAffinity > 0.15 || protectPull > 0 || (t.protectorBonds?.length ?? 0) > 0) {
         const ward = state.tributes.find(o =>
             o.status === 'alive' && o.id !== t.id
             // §4.5: a sworn protector bond outranks the alliance test — a
             // protector does not need a charter to refuse to leave their ward.
             && ((t.protectorBonds?.includes(o.id))
                 || (o.allianceId !== undefined && o.allianceId === t.allianceId))
-            && (o.health < OBJECTIVES.wardHealth || getRel(t, o.id) > OBJECTIVES.wardBond));
+            // A2: an archetype that exists to keep somebody alive notices a
+            // ward sooner and on thinner grounds than one that does not.
+            && (o.health < OBJECTIVES.wardHealth + protectPull * OBJECTIVES.wardBiasHealth
+                || getRel(t, o.id) > OBJECTIVES.wardBond - protectPull * OBJECTIVES.wardBiasBond));
         if (ward) {
             return { kind: 'protect', wardId: ward.id, expires: expiry(OBJECTIVES.protectCycles) };
         }
@@ -309,7 +330,12 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
 
     // 6. Somewhere to sleep it off — or somewhere to get warm before the
     // cold finishes what it started (§7.7).
-    if (t.vitals.fatigue > MOVEMENT.shelterUrgency || t.health < OBJECTIVES.holeUpHealth || t.injuries.frostbitten) {
+    // A2: `objectiveBias.reach` is an archetype more willing to *go somewhere*
+    // than to sit where it is — the Scholar's whole counter-play to the arena
+    // signature is being elsewhere before the arena does the thing.
+    const reachPull = objectiveBiasFor(t, 'reach');
+    if (t.vitals.fatigue > MOVEMENT.shelterUrgency - reachPull * OBJECTIVES.reachBiasUrgency
+        || t.health < OBJECTIVES.holeUpHealth || t.injuries.frostbitten) {
         const shelter = nearestZoneMatching(ctx, t, active, z => z.terrain === 'forest' || z.terrain === 'ruins');
         if (shelter && shelter !== t.zone) {
             return { kind: 'reach', zone: shelter, reason: 'shelter', expires: expiry(OBJECTIVES.reachCycles) };
@@ -322,7 +348,8 @@ function chooseObjective(ctx: SimContext, t: Tribute, here: Tribute[]): Objectiv
     // 7. Ground worth standing on: good forage, no bad memories, nobody else in it.
     const current = getZone(state.arena, t.zone);
     if (current && rememberedThreat(state, t, t.zone) < OBJECTIVES.holdMaxThreat
-        && hostilesHere.length === 0 && current.resources > OBJECTIVES.holdMinResources) {
+        && hostilesHere.length === 0
+        && current.resources > OBJECTIVES.holdMinResources - objectiveBiasFor(t, 'hold') * OBJECTIVES.holdBiasResources) {
         return { kind: 'hold', zone: t.zone, expires: expiry(OBJECTIVES.holdCycles) };
     }
 

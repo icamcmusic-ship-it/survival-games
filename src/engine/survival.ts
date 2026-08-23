@@ -19,6 +19,7 @@ import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
 import { earnTrait } from './earnedTraits';
 import { arenaHasLaw, wildcardIs } from './gamesProfile';
+import { isEvasiveStance } from '../data/stances';
 
 /**
  * Staying alive between encounters: spoilage, hunger, thirst, exposure, wounds
@@ -385,7 +386,7 @@ function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night'
     // trade, without which the night is a flat tax on everybody: a tribute who
     // deliberately goes to ground in the dark actually sleeps, because the dark
     // is doing the hiding for them.
-    if (t.stance === 'Evasive' || hasCamp(ctx, t, 'camouflage')) amount += RECOVERY.darkAndHiddenBonus;
+    if (isEvasiveStance(t.stance) || hasCamp(ctx, t, 'camouflage')) amount += RECOVERY.darkAndHiddenBonus;
     // Someone keeping watch is the difference between sleeping and lying awake.
     if (alliesPresent > 0) amount += RECOVERY.allyWatchBonus;
     // Exhaustion eats the whole benefit as it approaches the ceiling.

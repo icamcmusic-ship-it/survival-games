@@ -76,6 +76,15 @@ await step('confirm reaping opens roster + betting', async () => {
   await page.getByText(/capitol betting parlour/i).waitFor();
 });
 
+await step('command palette searches across the run', async () => {
+  await page.keyboard.press('Control+k');
+  await page.getByRole('dialog', { name: /search everything/i }).waitFor();
+  await page.getByLabel(/search tributes, sectors and the chronicle/i).fill('a');
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Escape');
+  await page.getByRole('dialog', { name: /search everything/i }).waitFor({ state: 'detached' });
+});
+
 await step('search and sort roster', async () => {
   await page.getByPlaceholder(/search name/i).fill('district 1');
   await page.waitForTimeout(150);
@@ -90,6 +99,12 @@ await step('search and sort roster', async () => {
 });
 
 const coinsText = async () => (await page.locator('header .chip-gold').last().textContent()).trim();
+
+await step('roster filters narrow the cast', async () => {
+  await page.getByRole('button', { name: /^careers$/i }).click();
+  await page.getByRole('button', { name: /^armed$/i }).click();
+  await page.getByRole('button', { name: /^clear$/i }).first().click();
+});
 
 await step('betting deducts and refunds coins', async () => {
   const before = parseInt(await coinsText());
@@ -116,31 +131,62 @@ await step('proceed advances phases', async () => {
 });
 
 await step('filters panel mutes categories', async () => {
-  await page.getByRole('button', { name: /filters/i }).click();
+  // A6: density is on the chronicle tab header now, not two clicks into a drawer.
   await page.getByRole('button', { name: /^headlines$/i }).click();
-  await page.getByRole('button', { name: /violence/i }).click();
+  await page.getByRole('button', { name: /filters/i }).click();
+  await page.getByRole('button', { name: /mute violence events/i }).click();
   await page.getByRole('button', { name: /reset filters/i }).click();
   await page.getByRole('button', { name: /filters/i }).click();
+  await page.getByRole('button', { name: /^everything$/i }).click();
+});
+
+await step('the chronicle page pages by phase', async () => {
+  await page.getByRole('link', { name: /^chronicle$/i }).click();
+  await page.getByRole('button', { name: /next phase/i }).waitFor();
+  await page.getByRole('button', { name: /next phase/i }).click();
+  await page.getByRole('button', { name: /previous phase/i }).click();
+  if (!/#\/chronicle/.test(page.url())) throw new Error('chronicle route did not stick: ' + page.url());
+  await page.getByRole('link', { name: /^arena$/i }).click();
+  await page.getByRole('button', { name: /proceed/i }).first().waitFor();
 });
 
 await step('arena map tab + sector selection', async () => {
-  await page.getByRole('button', { name: /arena map/i }).click();
+  // A6: the stage tabs read Chronicle / Map / Standings.
+  await page.getByRole('button', { name: /^map$/i }).click();
   // The map opens on the graph view; the per-sector buttons live behind Detail.
   await page.getByRole('button', { name: /^detail$/i }).first().click();
   await page.locator('button:has-text("Active"), button:has-text("Collapsed")').first().click();
   await page.waitForTimeout(150);
   await page.getByRole('button', { name: /^clear$/i }).first().click();
-  await page.getByRole('button', { name: /chronicle/i }).click();
+  await page.getByRole('button', { name: /^chronicle$/i }).first().click();
+});
+
+await step('standings tab sorts', async () => {
+  await page.getByRole('button', { name: /^standings$/i }).first().click();
+  await page.getByRole('button', { name: /^kills$/i }).click();
+  await page.getByRole('button', { name: /^kills$/i }).click();
+  await page.getByRole('columnheader', { name: /health/i }).waitFor();
+  await page.getByRole('button', { name: /^chronicle$/i }).first().click();
 });
 
 await step('tribute modal opens with live data and closes with Escape', async () => {
   await page.locator('.panel button[title*="open profile"]').first().click();
   await page.getByRole('dialog').waitFor();
+  // A5: four tabs, defaulting to Overview.
+  for (const tab of [/combat/i, /^social$/i, /^story$/i, /^overview$/i]) {
+    await page.getByRole('tab', { name: tab }).click();
+  }
+  // A5: comparison mode renders a second tribute beside the first.
+  const compare = page.getByLabel(/compare with another tribute/i);
+  const opts = await compare.locator('option').count();
+  if (opts > 1) await compare.selectOption({ index: 1 });
   await page.keyboard.press('Escape');
   await page.getByRole('dialog').waitFor({ state: 'detached' });
 });
 
 await step('gamemaker controls fire', async () => {
+  // A6: the booth is one of the dossier column's accordion sections now.
+  await page.getByRole('button', { name: /gamemaker booth/i }).click();
   await page.getByRole('button', { name: /release mutts/i }).click();
   await page.getByRole('button', { name: /force weather/i }).click();
   // A 'no-feast' wildcard year (seed luck) legitimately disables this button.

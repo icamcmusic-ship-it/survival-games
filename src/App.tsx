@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Settings2, Swords } from 'lucide-react';
 import { ShareButton } from './components/ShareButton';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -22,13 +22,46 @@ const ReapingScreen = lazy(() => import('./screens/ReapingScreen').then(m => ({ 
 const RosterScreen = lazy(() => import('./screens/RosterScreen').then(m => ({ default: m.RosterScreen })));
 const GameScreen = lazy(() => import('./screens/GameScreen').then(m => ({ default: m.GameScreen })));
 const EndScreen = lazy(() => import('./screens/EndScreen').then(m => ({ default: m.EndScreen })));
+const ChronicleScreen = lazy(() => import('./screens/ChronicleScreen').then(m => ({ default: m.ChronicleScreen })));
 const HallOfFameScreen = lazy(() => import('./screens/HallOfFameScreen').then(m => ({ default: m.HallOfFameScreen })));
 const VictorInterviewScreen = lazy(() => import('./screens/VictorInterviewScreen').then(m => ({ default: m.VictorInterviewScreen })));
 
 /** Shown for the moment a split screen chunk is in flight. */
+/**
+ * §2.14: a skeleton of the destination, not one line of text.
+ *
+ * The lazy chunk behind this fallback can include the whole engine, so on a
+ * cold load the reader sat looking at a single sentence in an otherwise empty
+ * page for as long as it took to arrive. A skeleton of roughly the right shape
+ * reads as "this is loading" rather than "this is broken".
+ */
 function ScreenFallback() {
-  return <div className="empty-state" role="status" aria-live="polite">Loading the arena…</div>;
+  return (
+    <div role="status" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading…</span>
+      <div className="panel p-5 mb-5">
+        <div className="skeleton h-6 w-56 mb-3" />
+        <div className="skeleton h-3 w-80" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 panel p-5 space-y-3">
+          {[0, 1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="space-y-1.5">
+              <div className="skeleton h-3 w-24" />
+              <div className="skeleton h-4 w-full" />
+              <div className="skeleton h-4" style={{ width: `${70 - i * 6}%` }} />
+            </div>
+          ))}
+        </div>
+        <div className="panel p-4 space-y-2">
+          {[0, 1, 2, 3, 4].map(i => <div key={i} className="skeleton h-12 w-full" />)}
+        </div>
+      </div>
+    </div>
+  );
 }
+import { CommandPalette } from './components/CommandPalette';
+import { TributeModal } from './components/TributeModal';
 import { useStore } from './store/createStore';
 import { DEFAULT_GAME_CONFIG } from './data/constants';
 
@@ -39,6 +72,12 @@ export default function App() {
   const coins = useStore(gameStore, s => s.coins);
   const bets = useStore(gameStore, s => s.bets);
   const betWonMessage = useStore(gameStore, s => s.betWonMessage);
+  // A tribute chosen from the command palette opens here rather than inside
+  // whichever screen happens to be showing — the palette works from all of them.
+  const [paletteTributeId, setPaletteTributeId] = useState<string | null>(null);
+  const paletteTribute = paletteTributeId && gameState
+    ? gameState.tributes.find(t => t.id === paletteTributeId) ?? null
+    : null;
   const isReplayedRun = useStore(gameStore, s => s.isReplayedRun);
   const [showSettings, setShowSettings] = React.useState(false);
 
@@ -109,6 +148,7 @@ export default function App() {
     { id: 'setup', label: 'New Game', show: true },
     { id: 'roster', label: 'Roster', show: !!gameState },
     { id: 'game', label: 'Arena', show: !!gameState && gameState.phase !== 'setup' && gameState.phase !== 'reaping' },
+    { id: 'chronicle', label: 'Chronicle', show: !!gameState && gameState.phase !== 'setup' && gameState.phase !== 'reaping' },
     { id: 'hallOfFame', label: 'Hall of Fame', show: true },
   ];
 
@@ -160,6 +200,17 @@ export default function App() {
         </div>
       </header>
 
+      {/* §2.2: Cmd-K / Ctrl-K, across the whole run. Mounted at the app level
+          so it works from any screen, including the ones that have no search. */}
+      <CommandPalette gameState={gameState} onSelectTribute={setPaletteTributeId} />
+      {paletteTribute && gameState && (
+        <TributeModal
+          tribute={paletteTribute}
+          gameState={gameState}
+          onClose={() => setPaletteTributeId(null)}
+        />
+      )}
+
       <main id="main-content" tabIndex={-1} className="max-w-6xl mx-auto px-4 py-8">
         <Suspense fallback={<ScreenFallback />}>
         {view === 'setup' && (
@@ -172,6 +223,7 @@ export default function App() {
             arenaName={gameState.arenaHidden ? '❓ Arena sealed until the bloodbath' : gameState.arena.name}
             seed={gameState.seed}
             profile={gameState.gamesProfile}
+            gameState={gameState}
             onReroll={gameActions.rerollCast}
             onConfirm={gameActions.confirmReaping}
           />
@@ -190,6 +242,10 @@ export default function App() {
               gameActions.setView('game');
             }}
           />
+        )}
+
+        {view === 'chronicle' && gameState && (
+          <ChronicleScreen gameState={gameState} />
         )}
 
         {view === 'game' && gameState && simulator && (

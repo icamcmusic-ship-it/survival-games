@@ -3,6 +3,7 @@ import { BLEEDING, VITALS } from '../data/balance';
 import { SimContext } from './context';
 import { profOf, trainProficiency } from './proficiency';
 import { traitMod } from '../data/traits';
+import { isAggressiveStance } from '../data/stances';
 
 /**
  * Bleeding, and what a tribute can do about it.
@@ -93,7 +94,7 @@ function clotChance(t: Tribute): number {
         + t.attributes.intelligence * BLEEDING.clotPerIntelligence
         + t.attributes.strength * BLEEDING.clotPerStrength;
     // Running and fighting tears a closing wound back open.
-    if (t.stance === 'Aggressive') chance -= BLEEDING.aggressiveClotPenalty;
+    if (isAggressiveStance(t.stance)) chance -= BLEEDING.aggressiveClotPenalty;
     // A body with nothing left cannot spend anything on repairs.
     if (t.vitals.fatigue > 80 || t.vitals.hunger > VITALS.starvingThreshold) {
         chance -= BLEEDING.exhaustedClotPenalty;
@@ -135,6 +136,11 @@ function dressChance(medic: Tribute, isAlly: boolean): number {
         + medic.attributes.intelligence * BLEEDING.dressPerIntelligence
         + profOf(medic, 'medicine') * BLEEDING.dressPerMedicine;
     if (hasBinding(medic)) chance += BLEEDING.dressBindingBonus;
+    // A2: the Medic archetype is the reason an alliance holds together. Their
+    // hands on somebody else's wound are worth double — and, deliberately,
+    // worth nothing extra on their own, which is what makes them terrible
+    // alone and indispensable in company.
+    if (medic.archetype === 'medic' && isAlly) chance *= BLEEDING.medicArchetypeMultiplier;
     // Someone else's steady hands beat your own on a wound you cannot see.
     if (isAlly) chance += BLEEDING.allyDressBonus;
     chance += traitMod(medic, 'medicine');

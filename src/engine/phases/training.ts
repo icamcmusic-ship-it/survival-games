@@ -1,12 +1,18 @@
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Attributes, Proficiency, Tribute } from '../../models/types';
-import { TRAINING_STATIONS, TRAINING_VERDICTS, INTIMIDATION_TEXTS } from '../../data/flavorText';
-import { FEAR, TRAINING, TRAINING_FLOOR, TRAINING_SCORE } from '../../data/balance';
-import { addFear } from '../fear';
+import {
+    TRAINING_STATIONS, TRAINING_VERDICTS, INTIMIDATION_TEXTS,
+    TRAINING_ALTERCATION, TRAINING_EVENING, TRAINING_FAILURE, TRAINING_MINGLE,
+    TRAINING_OBSERVATION, TRAINING_STRUGGLE, TRAINING_TEAMUP,
+} from '../../data/flavorText';
+import { FEAR, PREGAMES, TRAINING, TRAINING_FLOOR, TRAINING_SCORE } from '../../data/balance';
+import { addFear, reduceFear } from '../fear';
 import { strengthCapForAge } from '../generator';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../../data/districts';
-import { adjustRel } from '../relationships';
+import { adjustMutual, adjustRel, adjustRespect, getRel } from '../relationships';
+import { noteContact, noteFight } from '../memory';
+import { archetypeAntipathy } from '../../data/archetypes';
 import { clampTribute } from '../vitals';
 import { addExcitement } from '../audience';
 import { profOf, trainProficiency } from '../proficiency';
@@ -66,11 +72,15 @@ export function eliteGateChance(t: Tribute, pointAboveEight: number): number {
 const ATTRS = ['strength', 'agility', 'intelligence', 'stealth', 'charisma'] as const;
 
 /** The proficiency a station trains, where it trains one at all. */
-const STATION_SKILL: Partial<Record<keyof Attributes, Proficiency>> = {
+const STATION_SKILL: Record<keyof Attributes, Proficiency> = {
     strength: 'melee',
     agility: 'ranged',
     intelligence: 'forage',
     stealth: 'tracking',
+    // §1.4: charisma was the one attribute with training-floor prose
+    // ('sponsor pitch booth', 'mock-interview couch') and no proficiency
+    // behind it, so three days there bought raw charisma and nothing else.
+    charisma: 'persuasion',
 };
 
 /**
@@ -136,13 +146,307 @@ const STRATEGY_LINES: Record<TrainingStrategy, (t: Tribute, station: string) => 
     balanced: (t, station) => `${t.name} works the ${station} steadily and gives the gallery nothing to talk about either way.`,
 };
 
+/** Which flavour variant a tribute reads under — same convention as DEATH_TEXTS. */
+function variantFor(t: Tribute): 'career' | 'child' | 'generic' {
+    if (t.isCareer || t.archetype === 'career') return 'career';
+    if (t.age <= PREGAMES.childAge) return 'child';
+    return 'generic';
+}
+
+/** Reads a keyed pool with its generic fallback. */
+function variantPool(pools: Record<string, string[]>, t: Tribute): string[] {
+    const keyed = pools[variantFor(t)];
+    return keyed && keyed.length > 0 ? keyed : pools.generic;
+}
+
+function fillLine(template: string, vars: Record<string, string>): string {
+    return Object.entries(vars).reduce(
+        (text, [k, v]) => text.split(`{${k}}`).join(v), template);
+}
+
+type StationOutcome = 'success' | 'struggle' | 'failure';
+
+/**
+ * A4(a): a station attempt with a visible outcome.
+ *
+ * The gain used to be unconditional — three days at a station always worked,
+ * which is why `trainingStrategy: 'conceal'` was a flat score penalty with no
+ * upside anybody could see. Rolling it means the floor has a public record: a
+ * tribute seen floundering is a tribute the room revises downward, and a
+ * Career who watched it happen has a name for later.
+ */
+function attemptStation(
+    ctx: SimContext,
+    t: Tribute,
+    attr: keyof Attributes,
+    station: string,
+    day: number,
+    floor: Tribute[],
+): StationOutcome {
+    const craft = craftOf(t.district);
+    let chance = TRAINING.stationBaseSuccess
+        + t.attributes[attr] * TRAINING.stationPerAttributePoint
+        - day * TRAINING.stationFatiguePerDay;
+    if (craft.affinityClasses.includes('melee') && attr === 'strength') chance += TRAINING.stationCraftBonus;
+    if (Object.keys(craft.proficiencies).includes('forage') && attr === 'intelligence') chance += TRAINING.stationCraftBonus;
+    // Somebody deliberately playing it down is not trying to pass.
+    if (t.trainingStrategy === 'conceal') chance -= TRAINING.stationConcealPenalty;
+
+    const roll = ctx.rng.nextFloat();
+    const outcome: StationOutcome = roll < chance ? 'success'
+        : roll < chance + TRAINING.stationStruggleBand ? 'struggle'
+        : 'failure';
+
+    const aptitude = TRAINING_FLOOR.aptitudeBase + t.attributes[attr] / TRAINING_FLOOR.aptitudeDivisor;
+    const ceiling = attr === 'strength' ? strengthCapForAge(t.age) : TRAINING_FLOOR.attributeCeiling;
+    const gainFactor = outcome === 'success' ? 1 : outcome === 'struggle' ? TRAINING.struggleGainFactor : 0;
+
+    if (gainFactor > 0) {
+        t.attributes[attr] = Math.min(ceiling,
+            t.attributes[attr] + TRAINING.stationAttributeGain * aptitude * gainFactor);
+        const skill = STATION_SKILL[attr];
+        const steps = Math.round(TRAINING.stationProficiencyGain * gainFactor / TRAINING_FLOOR.proficiencyStep);
+        for (let i = 0; i < steps; i++) trainProficiency(t, skill);
+    }
+
+    t.trainingLog = [...(t.trainingLog ?? []), { day: day + 1, station, outcome }];
+
+    if (outcome === 'success') {
+        ctx.logEvent(
+            STRATEGY_LINES[t.trainingStrategy ?? 'balanced'](t, station),
+            [t.id],
+            { category: 'training' }
+        );
+        // Being visibly good at something in a room of twenty-three people who
+        // are all counting is worth exactly what it sounds like.
+        const seen = t.trainingStrategy === 'showcase'
+            ? TRAINING.successRespect + TRAINING.showcaseRespectBonus
+            : TRAINING.successRespect;
+        floor.forEach(o => { if (o.id !== t.id) adjustRespect(o, t.id, seen); });
+        return outcome;
+    }
+
+    if (outcome === 'struggle') {
+        ctx.logEvent(
+            fillLine(ctx.pickText(variantPool(TRAINING_STRUGGLE, t)), { tribute: t.name, station }),
+            [t.id],
+            { category: 'training' }
+        );
+        floor.forEach(o => { if (o.id !== t.id) adjustRespect(o, t.id, -TRAINING.struggleRespect); });
+        return outcome;
+    }
+
+    ctx.logEvent(
+        fillLine(ctx.pickText(variantPool(TRAINING_FAILURE, t)), { tribute: t.name, station }),
+        [t.id],
+        { important: true, category: 'training' }
+    );
+    t.vitals.sanity = Math.max(0, t.vitals.sanity - TRAINING.failureSanity);
+    clampTribute(t);
+    floor.forEach(o => {
+        if (o.id === t.id) return;
+        adjustRespect(o, t.id, -TRAINING.failureRespect);
+        // A Career who watches somebody fail publicly stops being wary of them
+        // and starts thinking of them as a name to get out of the way early.
+        // This is the other half of what makes concealing a genuine gamble.
+        if (o.isCareer || o.archetype === 'career') reduceFear(o, t.id, TRAINING.failureCareerFearDrop);
+    });
+    return outcome;
+}
+
+/**
+ * A4(b/c/d): what happens between two tributes who spent the day at the same
+ * station — which, before this, was nothing at all. The only inter-tribute
+ * interaction in the entire training phase was the post-broadcast intimidation
+ * pass, which is also why `performed` measured 8 across 400 runs: a showmance
+ * needs a contact streak, and there was no way to start one before the arena.
+ */
+function runFloorSocial(
+    ctx: SimContext,
+    day: number,
+    stationsToday: Map<string, keyof Attributes>,
+    stationNames: Map<keyof Attributes, string>,
+    cast: Tribute[],
+) {
+    const byStation = new Map<keyof Attributes, Tribute[]>();
+    cast.forEach(t => {
+        const attr = stationsToday.get(t.id);
+        if (!attr) return;
+        byStation.set(attr, [...(byStation.get(attr) ?? []), t]);
+    });
+
+    byStation.forEach((group, attr) => {
+        if (group.length < 2) return;
+        const station = stationNames.get(attr) ?? ctx.rng.pick(TRAINING_STATIONS[attr]);
+        // Disjoint pairs rather than every combination: a station has people
+        // working next to each other, not each tribute holding a separate
+        // conversation with all four of the others. The full cross-product
+        // produced roughly eighty social lines a day, which drowned the
+        // station outcomes it was supposed to sit alongside.
+        const partners = ctx.rng.shuffle(group);
+        for (let i = 0; i + 1 < partners.length; i += 2) {
+            {
+                const a = partners[i];
+                const b = partners[i + 1];
+                const regard = Math.min(getRel(a, b.id), getRel(b, a.id));
+
+                // (d) Altercation. `seedBackstoryRelationships` already
+                // produces these — fan-favourite envy, career rivalry,
+                // archetype antipathy — and nothing ever cashed them in before
+                // the gong. `feuds` measured 142 per 400 runs, which is far
+                // too rare for something this central.
+                const hostile = regard <= TRAINING.altercationRegard
+                    || archetypeAntipathy(a.archetype, b.archetype);
+                if (hostile && ctx.rng.chance(TRAINING.altercationChance)) {
+                    const instigator = getRel(a, b.id) <= getRel(b, a.id) ? a : b;
+                    const target = instigator === a ? b : a;
+                    ctx.logEvent(
+                        fillLine(ctx.pickText(variantPool(TRAINING_ALTERCATION, instigator)), {
+                            tribute: instigator.name, other: target.name, station,
+                        }),
+                        [instigator.id, target.id],
+                        { important: true, category: 'training' }
+                    );
+                    // No damage — the trainers get between them — but the feud
+                    // escalation curve starts here rather than at the gong.
+                    addFear(a, b.id, TRAINING.altercationFear);
+                    addFear(b, a.id, TRAINING.altercationFear);
+                    noteFight(ctx.state, a, b);
+                    adjustMutual(ctx.state, a, b, TRAINING.altercationRegard);
+                    [a, b].forEach(x => {
+                        addExcitement(x, TRAINING.altercationExcitement);
+                        x.sponsorTrust = Math.max(0, x.sponsorTrust + TRAINING.altercationTrust);
+                    });
+                    continue;
+                }
+
+                // (b) Mingling.
+                if (!ctx.rng.chance(TRAINING.mingleChance)) continue;
+                adjustMutual(ctx.state, a, b, TRAINING.mingleWarmth);
+                noteContact(ctx.state, a, b);
+                ctx.logEvent(
+                    fillLine(ctx.pickText(TRAINING_MINGLE), { tribute: a.name, other: b.name, station }),
+                    [a.id, b.id],
+                    { category: 'training' }
+                );
+
+                // (c) Team-ups, from day 2 — except the Careers, who do this on
+                // day 1 and make sure it is seen, which is most of where the
+                // pack's menace comes from in the source material.
+                const bothCareer = (a.isCareer || a.archetype === 'career')
+                    && (b.isCareer || b.archetype === 'career');
+                const eligibleDay = bothCareer ? TRAINING.careerPactDay : 2;
+                if (day + 1 < eligibleDay) continue;
+                if (Math.min(getRel(a, b.id), getRel(b, a.id)) < TRAINING.pactMinRegard) continue;
+                if (a.trainingPact?.includes(b.id)) continue;
+                if (!ctx.rng.chance(TRAINING.pactChance)) continue;
+
+                a.trainingPact = [...(a.trainingPact ?? []), b.id];
+                b.trainingPact = [...(b.trainingPact ?? []), a.id];
+                adjustMutual(ctx.state, a, b, TRAINING.pactWarmth);
+                ctx.logEvent(
+                    fillLine(ctx.pickText(TRAINING_TEAMUP), { tribute: a.name, other: b.name, station }),
+                    [a.id, b.id],
+                    { important: true, category: 'training' }
+                );
+            }
+        }
+    });
+}
+
+/**
+ * A4(e): everybody watches everybody.
+ *
+ * Before this the only pre-arena threat information anyone had was the training
+ * score, which is why `assessZone`'s `concealDiscount` was carrying the whole
+ * deception mechanic on its own.
+ */
+function observeFloor(
+    ctx: SimContext,
+    day: number,
+    stationsToday: Map<string, keyof Attributes>,
+    stationNames: Map<keyof Attributes, string>,
+    cast: Tribute[],
+) {
+    cast.forEach(observer => {
+        cast.forEach(subject => {
+            if (subject.id === observer.id) return;
+            const attr = stationsToday.get(subject.id);
+            if (!attr) return;
+            const combat = attr === 'strength' || attr === 'agility';
+            if (combat && subject.attributes[attr] >= TRAINING.observationThreatAttribute) {
+                addFear(observer, subject.id, TRAINING.observationFear);
+                adjustRespect(observer, subject.id, TRAINING.observationRespect);
+            }
+        });
+    });
+
+    // One line, from one tribute, so the observation pass reads as a beat
+    // rather than as twenty-four silent bookkeeping updates.
+    const watcher = ctx.rng.pick(cast);
+    if (!ctx.rng.chance(TRAINING.observationLineChance)) return;
+    const subject = ctx.rng.pick(cast.filter(o => o.id !== watcher.id));
+    if (!subject) return;
+    const attr = stationsToday.get(subject.id) ?? 'strength';
+    ctx.logEvent(
+        fillLine(ctx.pickText(TRAINING_OBSERVATION), {
+            tribute: watcher.name,
+            other: subject.name,
+            station: stationNames.get(attr) ?? ctx.rng.pick(TRAINING_STATIONS[attr]),
+            day: String(day + 1),
+        }),
+        [watcher.id, subject.id],
+        { category: 'training' }
+    );
+}
+
+/** A4(f): the hours nobody trains in. */
+function eveningBeat(ctx: SimContext, day: number) {
+    const keyed = TRAINING_EVENING[`day${day + 1}`];
+    const pool = keyed && ctx.rng.chance(TRAINING.eveningDayPoolChance) ? keyed : TRAINING_EVENING.generic;
+    ctx.logEvent(ctx.pickText(pool), [], { category: 'training' });
+}
+
+/**
+ * A4(c): the Career pack, agreed in public on day one.
+ *
+ * Not an alliance — nothing is an alliance until the gong, and
+ * `initializeCareerAlliance` still decides whether the pack actually forms.
+ * This is the agreement that makes it likely, and the moment the rest of the
+ * floor learns who has already decided about them.
+ */
+function declareCareerPact(ctx: SimContext, cast: Tribute[]) {
+    const careers = cast.filter(t => t.isCareer || t.archetype === 'career');
+    if (careers.length < 2) return;
+    careers.forEach(a => careers.forEach(b => {
+        if (a.id === b.id || a.trainingPact?.includes(b.id)) return;
+        a.trainingPact = [...(a.trainingPact ?? []), b.id];
+    }));
+    ctx.logEvent(
+        `The Careers find each other before the first rotation is over — ${careers.map(c => `${c.name} (D${c.district})`).join(', ')} — `
+        + `and spend the rest of the day training as a unit in the middle of the floor, where everybody has to walk around them.`,
+        careers.map(c => c.id),
+        { important: true, category: 'training' }
+    );
+    // Twenty-odd people have just watched a pack assemble itself.
+    cast.forEach(o => {
+        if (careers.some(c => c.id === o.id)) return;
+        careers.forEach(c => addFear(o, c.id, TRAINING.careerPactFear));
+    });
+}
+
+const DAY_HEADLINES = [
+    'DAY ONE ON THE TRAINING FLOOR. The doors open on twenty-four people who have never been in a room like this and will never be in one again.',
+    'DAY TWO. The floor has settled. Everybody now knows where they are going first and, more importantly, who else is going there.',
+    'DAY THREE. Last day before the private sessions, and it shows in everything anybody does.',
+];
+
 export function processTraining(ctx: SimContext) {
     ctx.state.phase = 'training';
     ctx.rng = new RNG(`${ctx.state.seed}-training`);
     const cast = getAlive(ctx.state);
 
-    // ---- 1-2. Three days on the floor, and a decision about being watched ----
-    const worked = new Map<string, Array<keyof Attributes>>();
+    // ---- 1-2. A decision about being watched, then three days on the floor ----
     cast.forEach(t => {
         // §6.10: player coaching. A pinned strategy for the chosen tribute
         // replaces the roll; everyone else decides for themselves.
@@ -150,39 +454,59 @@ export function processTraining(ctx: SimContext) {
         t.trainingStrategy = coached?.tributeId === t.id && coached.trainingStrategy
             ? coached.trainingStrategy
             : pickStrategy(ctx, t);
-        const stations: Array<keyof Attributes> = [];
-        for (let day = 0; day < TRAINING.days; day++) {
-            stations.push(pickStation(ctx, t, stations));
-        }
-        worked.set(t.id, stations);
+        t.trainingLog = [];
+    });
 
-        stations.forEach(attr => {
-            // Aptitude compounds: a day on something you are already good at
-            // gets you further than a day on something you are not.
-            const aptitude = TRAINING_FLOOR.aptitudeBase + t.attributes[attr] / TRAINING_FLOOR.aptitudeDivisor;
-            const ceiling = attr === 'strength' ? strengthCapForAge(t.age) : TRAINING_FLOOR.attributeCeiling;
-            t.attributes[attr] = Math.min(ceiling,
-                t.attributes[attr] + TRAINING.stationAttributeGain * aptitude);
-            const skill = STATION_SKILL[attr];
-            if (skill) {
-                for (let i = 0; i < Math.round(TRAINING.stationProficiencyGain / TRAINING_FLOOR.proficiencyStep); i++) {
-                    trainProficiency(t, skill);
-                }
-            }
+    const worked = new Map<string, Array<keyof Attributes>>();
+    cast.forEach(t => worked.set(t.id, []));
+
+    for (let day = 0; day < TRAINING.days; day++) {
+        // A4: each day gets its own stream so the three days are independently
+        // replayable — a change to day three must not reshuffle day one.
+        ctx.rng = new RNG(`${ctx.state.seed}-training-day${day + 1}`);
+        ctx.logEvent(DAY_HEADLINES[day] ?? `DAY ${day + 1} ON THE TRAINING FLOOR.`, [], {
+            important: true, category: 'training',
         });
 
+        const stationsToday = new Map<string, keyof Attributes>();
+        cast.forEach(t => {
+            const history = worked.get(t.id)!;
+            const attr = pickStation(ctx, t, history);
+            history.push(attr);
+            stationsToday.set(t.id, attr);
+        });
+        // One named station per discipline per day, so the tribute described
+        // working the grappling mat is the tribute described arguing at the
+        // grappling mat an hour later. Picking a fresh name in each pass read
+        // as two different places.
+        const stationNames = new Map<keyof Attributes, string>();
+        ATTRS.forEach(attr => stationNames.set(attr, ctx.rng.pick(TRAINING_STATIONS[attr])));
+
+        cast.forEach(t => {
+            const attr = stationsToday.get(t.id)!;
+            attemptStation(ctx, t, attr, stationNames.get(attr)!, day, cast);
+        });
+        // The Careers form theirs on day one and make sure the room sees it —
+        // which is most of where the pack's menace comes from in the source
+        // material. Leaving it to the ordinary station pairing meant the pack
+        // only announced itself if the roll happened to put two of them at the
+        // same drill, which is exactly the thing the pack does not leave to
+        // chance.
+        if (day + 1 === TRAINING.careerPactDay) declareCareerPact(ctx, cast);
+        runFloorSocial(ctx, day, stationsToday, stationNames, cast);
+        observeFloor(ctx, day, stationsToday, stationNames, cast);
+        eveningBeat(ctx, day);
+    }
+
+    // Attributes settle once, at the end of the three days, rather than being
+    // rounded three separate times.
+    ctx.rng = new RNG(`${ctx.state.seed}-training-sessions`);
+    cast.forEach(t => {
         (Object.keys(t.attributes) as Array<keyof Attributes>).forEach(k => {
             t.attributes[k] = Math.max(TRAINING_FLOOR.attributeFloor,
                 Math.min(TRAINING_FLOOR.attributeCeiling, Math.round(t.attributes[k])));
         });
         t.attributes.strength = Math.min(t.attributes.strength, strengthCapForAge(t.age));
-
-        const headline = ctx.rng.pick(stations);
-        ctx.logEvent(
-            STRATEGY_LINES[t.trainingStrategy](t, ctx.rng.pick(TRAINING_STATIONS[headline])),
-            [t.id],
-            { category: 'training' }
-        );
     });
 
     // ---- 3. The private sessions ----

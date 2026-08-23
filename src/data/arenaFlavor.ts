@@ -57,6 +57,13 @@ export interface ArenaEventDef {
     startsZoneEffect?: ZoneEffectKind;
     /** Severs one of the zone's adjacency edges — a bridge going out. */
     severesRoute?: boolean;
+    /**
+     * §1.3: relative draw weight. Defaults to 1 for a hand-authored arena
+     * event; the shared universal pool is merged in at `UNIVERSAL_EVENT_WEIGHT`
+     * so an arena with five authored events does not read as generic three
+     * times out of four.
+     */
+    weight?: number;
 }
 
 export interface ArenaActions {
@@ -65,7 +72,23 @@ export interface ArenaActions {
     hide: string[];
     hunt: string[];
     travel: string[];
+    /**
+     * A1: one pool per conditional stance.
+     *
+     * Optional, and resolved through `actionPool()` rather than read directly,
+     * so the twenty-eight hand-authored arenas keep working unchanged and pick
+     * up the terrain-general fallbacks below until somebody writes them a
+     * bespoke set. An arena that *does* author them wins; nothing silently
+     * prints an empty string.
+     */
+    fortify?: string[];
+    scavenge?: string[];
+    shadow?: string[];
+    flail?: string[];
 }
+
+/** The keys `actionPool` will fall back on. */
+export type ArenaActionKey = keyof ArenaActions;
 
 export interface ArenaFlavor {
     /** Broadcast-style scene setting, fired occasionally with no tribute attached. */
@@ -126,6 +149,62 @@ const GENERIC_ACTIONS: ArenaActions = {
         '{tribute} takes up a position overlooking {zone} and watches nothing happen.',
         '{tribute} hunts {zone} the way they were taught, and the arena simply does not cooperate.',
         '{tribute} moves through {zone} loud on purpose, daring somebody to notice. Nobody does.',
+    ],
+    fortify: [
+        '{tribute} spends the hour making {zone} harder to walk into: a line here, a deadfall there, a sightline cleared.',
+        '{tribute} sets their back to the best cover {zone} has and starts turning the rest of it into a problem.',
+        '{tribute} walks the approaches to {zone} twice, marking every way in, and then closes two of them.',
+        '{tribute} has stopped thinking of {zone} as somewhere to pass through. They are digging in.',
+        '{tribute} re-sets a tripline in {zone}, tests it, and re-sets it again until it satisfies them.',
+        '{tribute} arranges what they own around them in {zone} the way somebody arranges a room they intend to keep.',
+        '{tribute} clears a firing line across {zone} and settles into the one spot it does not cover.',
+        '{tribute} sleeps in {zone} with the ground itself on watch.',
+        '{tribute} banks earth and debris across the narrow end of {zone}. Anyone coming in is coming in slowly.',
+        '{tribute} checks every one of their own traps in {zone}, in order, and finds them all still waiting.',
+        '{tribute} learns the sound {zone} makes when nothing is wrong, so that they will hear it when something is.',
+        '{tribute} holds {zone} for another cycle. It is starting to look less like cover and more like territory.',
+    ],
+    scavenge: [
+        '{tribute} works over the ground in {zone} that somebody else already picked through, and finds what they missed.',
+        '{tribute} goes through {zone} looking for what people drop when they are running.',
+        '{tribute} follows the mess in {zone} back to whoever made it.',
+        '{tribute} finds the marks of a camp in {zone}, cold now, and takes what was left behind.',
+        '{tribute} searches {zone} the way a person searches when they own nothing at all.',
+        '{tribute} turns over every stone in {zone} that looks like it has been turned over before.',
+        '{tribute} reads the churned ground in {zone} and works out where the fight went, then follows it.',
+        '{tribute} salvages something broken out of {zone} and decides it can be made to work.',
+        '{tribute} picks over {zone} without much hope and is rewarded anyway.',
+        '{tribute} takes the long way through {zone}, checking every place a pack could have been dropped.',
+        '{tribute} has no weapon and no food and is not proud about either. {zone} gets searched properly.',
+        '{tribute} finds a cannon site in {zone} still warm and does what needs doing before anybody else arrives.',
+    ],
+    shadow: [
+        '{tribute} keeps to the far edge of {zone}, matching somebody else\'s pace without ever closing it.',
+        '{tribute} moves through {zone} in the gaps between the sounds ahead of them.',
+        '{tribute} lets the distance across {zone} stay exactly what it is. Not yet.',
+        '{tribute} stops when the footsteps ahead stop, and starts again when they start.',
+        '{tribute} watches the line somebody cut through {zone} and walks it a full turning later.',
+        '{tribute} could close the gap in {zone} in under a minute. They do not.',
+        '{tribute} stays in the shadow of the cover through {zone}, one turning back, learning.',
+        '{tribute} follows through {zone} the way a thing follows: patiently, and without any sound at all.',
+        '{tribute} counts the paces ahead of them through {zone} and finds the count reassuring.',
+        '{tribute} has been behind somebody through {zone} for long enough to know how they walk when they are tired.',
+        '{tribute} chooses not to be seen crossing {zone}, which is a choice, and a skill.',
+        '{tribute} keeps {zone} between themselves and the person they are following.',
+    ],
+    flail: [
+        '{tribute} is past caring what {zone} is. They go through it anyway.',
+        '{tribute} takes a swing at nothing in {zone} and the sound of it carries further than they meant.',
+        '{tribute} stops trying to be careful in {zone}. Careful stopped working days ago.',
+        '{tribute} walks the open ground of {zone} without checking any of it. They are past checking.',
+        '{tribute} shouts once in {zone}, at nobody. The arena does not answer.',
+        '{tribute} eats something in {zone} they would not have touched on day one.',
+        '{tribute} moves through {zone} like somebody who has already decided how this ends.',
+        '{tribute} is not hiding in {zone} any more. Whatever finds them, finds them.',
+        '{tribute} tears through {zone} looking for anything at all, and stops pretending it is a search.',
+        '{tribute} has nothing left in {zone} and does not slow down for it.',
+        '{tribute} strips the last of their own kit apart in {zone} looking for something that was never there.',
+        '{tribute} crosses {zone} at a pace nobody in their condition should manage. Nothing about it looks sustainable.',
     ],
     travel: [
         '{tribute} moves out toward {zone}.',
@@ -286,6 +365,30 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} hunts {zone} on the safe hour, betting somebody else has done the same arithmetic.',
             ],
             travel: GENERIC_ACTIONS.travel,
+            fortify: [
+                '{tribute} sets up in {zone} on the arithmetic: they know when it rotates, and they know which face is a wall when it does.',
+                '{tribute} wedges the mechanism under {zone} with something that will hold for exactly one turn.',
+                '{tribute} has held {zone} through three rotations now and has stopped being surprised by any of them.',
+                '{tribute} re-lays a line across the seam of {zone} and marks where the ground will be an hour from now.',
+            ],
+            scavenge: [
+                '{tribute} works the seam in {zone} where the rotation grinds things loose, and takes what it left.',
+                '{tribute} finds a cache in {zone} that the island moved out from under somebody last cycle.',
+                '{tribute} searches the joint under {zone} for whatever fell through it.',
+                '{tribute} strips a camp in {zone} whose owner set it up before the island turned.',
+            ],
+            shadow: [
+                '{tribute} follows somebody across {zone} using the rotation schedule rather than their footprints.',
+                '{tribute} lets a sector of {zone} turn between themselves and the person they are following, and comes out still behind them.',
+                '{tribute} keeps one plate of {zone} back the whole way, which on this island is a genuine skill.',
+                '{tribute} times their crossing of {zone} to arrive exactly where somebody else has just left.',
+            ],
+            flail: [
+                '{tribute} crosses {zone} without checking the rotation, which is the one thing this island punishes.',
+                '{tribute} stands on the seam of {zone} while it moves, and lets it.',
+                '{tribute} beats on the mechanism under {zone} until their hands are ruined and the island does not notice.',
+                '{tribute} stops counting rotations in {zone}. Counting was the entire strategy.',
+            ],
         },
         events: [
             {
@@ -424,6 +527,30 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} follows a blood trail across the snow of {zone} that turns out to belong to an animal.',
             ],
             travel: GENERIC_ACTIONS.travel,
+            fortify: [
+                '{tribute} cuts a shelter into the drift at {zone} with one entrance and a roof that will hold.',
+                '{tribute} banks snow across the approach to {zone} until walking in becomes wading in.',
+                '{tribute} has held {zone} long enough for their own tracks to be the only ones that make sense there.',
+                '{tribute} re-sets a snare in the hard snow of {zone} and packs it back over.',
+            ],
+            scavenge: [
+                '{tribute} digs through the drift at {zone} for whatever the snow took and kept.',
+                '{tribute} finds a shape under the ice at {zone} and works at it until it comes free.',
+                '{tribute} strips a frozen camp in {zone} that nobody came back to.',
+                '{tribute} follows a depression in the snow of {zone} to something somebody dropped a day ago.',
+            ],
+            shadow: [
+                '{tribute} follows a line of prints out of {zone} — this ground keeps every one of them — and stays out of sight.',
+                '{tribute} matches their pace to somebody else\'s across the white of {zone} and never once closes.',
+                '{tribute} keeps a drift of {zone} between themselves and the figure ahead.',
+                '{tribute} lets the wind fill the tracks between themselves and {zone} before moving again.',
+            ],
+            flail: [
+                '{tribute} crosses the open white of {zone} where anything can see them from a mile out.',
+                '{tribute} eats snow in {zone}, which everyone knows better than to do.',
+                '{tribute} lies down in {zone} for a moment, then gets up, and neither was really a decision.',
+                '{tribute} walks into the wind across {zone} without covering their face.',
+            ],
         },
         events: [
             {
@@ -1511,6 +1638,30 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} squeezes through a fall of rock into {zone} and comes out the far side grey to the eyes.',
                 '{tribute} pushes an old ore cart ahead of them into {zone}, in case the floor has opinions.',
                 '{tribute} walks into {zone} through dark that has been waiting there a hundred years.',
+            ],
+            fortify: [
+                '{tribute} picks a junction in {zone} with one way in and stops going anywhere else.',
+                '{tribute} collapses two of the three tunnels out of {zone} and sits at the mouth of the third.',
+                '{tribute} has held this chamber of {zone} long enough to hear the difference between a draught and a footstep.',
+                '{tribute} re-sets a deadfall in the passage into {zone} and packs the spoil back over it.',
+            ],
+            scavenge: [
+                '{tribute} works the side passages of {zone} for whatever people dropped running through them.',
+                '{tribute} finds a bolt-hole in {zone} somebody stocked and then never reached.',
+                '{tribute} searches a collapsed section of {zone} by feel and comes out with something.',
+                '{tribute} strips a cold camp in the dark of {zone} without ever seeing it properly.',
+            ],
+            shadow: [
+                '{tribute} follows a sound down the tunnels of {zone}, one turning behind, never showing a light.',
+                '{tribute} keeps a bend of {zone} between themselves and whoever is ahead of them in the dark.',
+                '{tribute} matches their footfalls to the ones echoing through {zone} so there is only ever one set.',
+                '{tribute} waits at a junction in {zone} while somebody passes the other end of it.',
+            ],
+            flail: [
+                '{tribute} runs the tunnels of {zone} in the dark without a hand on the wall.',
+                '{tribute} shouts down a passage of {zone} and the warren gives it back from three directions.',
+                '{tribute} takes a side passage in {zone} they have never taken and do not intend to map.',
+                '{tribute} stops counting turnings in {zone}, which down here is the same as lying down.',
             ],
         },
         events: [
@@ -3388,6 +3539,30 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} crosses open water for {zone}, counting strokes to keep from counting the cold.',
                 '{tribute} works the ledges toward {zone} one handhold at a time.',
             ],
+            fortify: [
+                '{tribute} wedges into the one notch on {zone} that the wind cannot reach and the climb cannot bypass, and stops leaving it.',
+                '{tribute} stacks loose rock across the only ledge into {zone} until arriving there quietly becomes impossible.',
+                '{tribute} has held {zone} through two tides now. The peak is not shelter any more; it is a position.',
+                '{tribute} cuts steps into the ice above {zone} and then breaks the ones below, which is the whole idea.',
+            ],
+            scavenge: [
+                '{tribute} works the tide line below {zone} for whatever the swell took off somebody else and gave back.',
+                '{tribute} climbs down to a ledge under {zone} where things collect, and things have collected.',
+                '{tribute} strips a cache off the rock of {zone} that somebody lashed down and never came back for.',
+                '{tribute} picks through what the water left on {zone}, and does not look too closely at all of it.',
+            ],
+            shadow: [
+                '{tribute} keeps the shoulder of {zone} between themselves and the climber ahead, matching the pace exactly.',
+                '{tribute} follows a line of fresh chalk across {zone} and stays a full pitch below it.',
+                '{tribute} could overtake on {zone}. On this rock, overtaking means being seen from above.',
+                '{tribute} waits out a rest stop somewhere above {zone}, pressed flat, and moves when the moving starts again.',
+            ],
+            flail: [
+                '{tribute} takes the exposed traverse of {zone} without roping, without checking, without much of anything.',
+                '{tribute} shouts once off {zone} and the wind takes it out to sea, which is the only answer they were going to get.',
+                '{tribute} drinks salt water on {zone} because there is nothing else on {zone}.',
+                '{tribute} climbs on {zone} the way people climb when the fall has stopped being the worst outcome.',
+            ],
         },
         events: [
             {
@@ -3477,6 +3652,30 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} times a gust and crosses into {zone} while the wood is still.',
                 '{tribute} picks a route through the boughs toward {zone}, testing each one before trusting it.',
             ],
+            fortify: [
+                '{tribute} cuts every line into their platform in {zone} but one, and sits at the top of the one they left.',
+                '{tribute} lashes the walkways around {zone} into something that will hold one person and complain loudly about two.',
+                '{tribute} has not come down from {zone} in days. The platform has a shape now, and the shape is defensive.',
+                '{tribute} re-rigs a snare across the approach to {zone} and tests it with their own weight.',
+            ],
+            scavenge: [
+                '{tribute} works the netting under {zone} for everything anyone has ever dropped through it.',
+                '{tribute} climbs to a platform in {zone} somebody abandoned and takes what they were too frightened to carry.',
+                '{tribute} finds a pack snagged in the web below {zone} and spends an hour getting to it.',
+                '{tribute} strips a cold camp on {zone} down to the lashings.',
+            ],
+            shadow: [
+                '{tribute} follows the sway of the web out of {zone} — the platforms tell you where everyone is — and stays one span back.',
+                '{tribute} times their steps across {zone} to somebody else\'s, so the walkway only moves once.',
+                '{tribute} keeps a platform of {zone} between themselves and the person ahead, and lets the fog do the rest.',
+                '{tribute} hangs below the walkway in {zone} while somebody crosses above them.',
+            ],
+            flail: [
+                '{tribute} crosses the web of {zone} without testing a single line.',
+                '{tribute} shouts down into the fog under {zone}, at nothing, and the fog takes it.',
+                '{tribute} makes the walkway out of {zone} swing hard enough that anybody in three sectors knows where they are.',
+                '{tribute} runs a span of {zone} that nobody runs, and arrives, which proves nothing.',
+            ],
         },
         events: [
             {
@@ -3563,6 +3762,30 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} picks a line into {zone}, trusting sight over the sounds the forest keeps making.',
                 '{tribute} pushes into {zone} with the whispering at their back the entire way.',
                 '{tribute} moves toward {zone}, straining to tell wind from footsteps and getting neither answer.',
+            ],
+            fortify: [
+                '{tribute} learns the exact sound their patch of {zone} makes when nothing is wrong, and settles in to hear it change.',
+                '{tribute} rings their position in {zone} with dry needles. Nothing crosses that quietly.',
+                '{tribute} has held the same hollow in {zone} for days and can now name every direction by its echo.',
+                '{tribute} re-sets a snare in {zone} and listens to it settle, because in this forest that is a check.',
+            ],
+            scavenge: [
+                '{tribute} follows an echo across {zone} to the place somebody dropped something and did not stop for it.',
+                '{tribute} works over a camp in {zone} whose owner is not coming back, and does it in near-silence.',
+                '{tribute} searches the needle litter of {zone} for what the last search missed.',
+                '{tribute} finds a cache in {zone} by the way the ground under it does not sound right.',
+            ],
+            shadow: [
+                '{tribute} follows a sound through {zone} at exactly the distance where it stays a sound and not a person.',
+                '{tribute} matches their footfalls to somebody else\'s across {zone}, so the forest only hears one set.',
+                '{tribute} keeps a stand of trees in {zone} between themselves and the noise they are following.',
+                '{tribute} stops when the sound ahead in {zone} stops. Every time. For an hour.',
+            ],
+            flail: [
+                '{tribute} makes noise in {zone} on purpose, in a forest that carries everything, and does not care who hears it.',
+                '{tribute} crashes through the needle litter of {zone} loud enough to be a broadcast.',
+                '{tribute} shouts into {zone} and the forest gives it back to them four times.',
+                '{tribute} stops listening in {zone}, which in this arena is the same as closing their eyes.',
             ],
         },
         events: [
@@ -3651,6 +3874,30 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} moves into {zone} fast, before whatever ticked in the brush decides anything.',
                 '{tribute} works the ridge toward {zone}, ash lifting with every step.',
             ],
+            fortify: [
+                '{tribute} clears the fireweed back from a stand of black timber in {zone} and makes it somewhere with one way in.',
+                '{tribute} builds a break around their patch of {zone} — the one thing this ground cannot argue with.',
+                '{tribute} has held the same burnt hollow in {zone} long enough to have opinions about every approach to it.',
+                '{tribute} lays deadfall across the ash road into {zone} and leaves the harder route open on purpose.',
+            ],
+            scavenge: [
+                '{tribute} rakes through the ash of {zone} for whatever the fire did not finish.',
+                '{tribute} finds a cache in {zone} that burned on the outside and held on the inside.',
+                '{tribute} works the scorched ground of {zone} where the heat drove people to drop things and run.',
+                '{tribute} pulls something out of the char in {zone}, cleans it on their sleeve, and keeps it.',
+            ],
+            shadow: [
+                '{tribute} follows a line of prints through the ash of {zone} — this ground keeps everything — and stays well back.',
+                '{tribute} moves through the black timber of {zone} matching somebody else\'s pace exactly.',
+                '{tribute} keeps to the fireweed of {zone}, which is the only cover left, and does not close the gap.',
+                '{tribute} watches the ash settle behind somebody crossing {zone} and waits for it to settle again before moving.',
+            ],
+            flail: [
+                '{tribute} walks the open burn of {zone} where there is no cover at all and does not care.',
+                '{tribute} drinks from something standing in {zone} that has ash in it.',
+                '{tribute} kicks a burnt trunk in {zone} until it comes down, for no reason either of them could give.',
+                '{tribute} crosses {zone} through the deepest ash, loud, leaving a line anyone could follow.',
+            ],
         },
         events: [
             {
@@ -3735,6 +3982,30 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} works through the vine tangle toward {zone}, one careful step at a time.',
                 '{tribute} skirts the crater rims on the way to {zone}.',
                 '{tribute} crosses into {zone} fast, on the theory that speed beats caution out here.',
+            ],
+            fortify: [
+                '{tribute} takes a crater rim in {zone} and works it: the lip cleared, the approaches sown with somebody else\'s old ordnance.',
+                '{tribute} settles into a shell hole in {zone} deep enough to sleep in and steep enough to be a problem.',
+                '{tribute} has not left {zone} in days, and the ground around it now has a shape somebody chose.',
+                '{tribute} re-lays a tripline across the crater mouth of {zone} and tests it twice.',
+            ],
+            scavenge: [
+                '{tribute} digs through the churned ground of {zone} for whatever the last blast turned up and nobody collected.',
+                '{tribute} works a crater in {zone} that has been picked over, and finds the thing three people missed.',
+                '{tribute} pulls something metal out of the fill in {zone} and turns it over a long time before deciding what it is.',
+                '{tribute} strips a half-buried pack out of the lip of {zone} and does not ask whose it was.',
+            ],
+            shadow: [
+                '{tribute} moves crater to crater across {zone}, always one behind, never on the open ground between.',
+                '{tribute} keeps a rim of {zone} between themselves and the person crossing it.',
+                '{tribute} follows a line of prints through the ash of {zone} and lets them stay ahead.',
+                '{tribute} waits in a shell hole in {zone} while somebody walks past the top of it, and does not breathe.',
+            ],
+            flail: [
+                '{tribute} walks the open ground of {zone} between craters, upright, in daylight.',
+                '{tribute} kicks something buried in {zone} hard enough that it could have gone either way.',
+                '{tribute} stops reading the ground in {zone}. Reading the ground was the only thing keeping them alive out here.',
+                '{tribute} shouts into a crater in {zone} and waits for whatever answers.',
             ],
         },
         events: [
@@ -4245,7 +4516,45 @@ export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {
     return withUniversalEvents(ARENA_FLAVOR[arenaId] ?? PROCEDURAL_FLAVOR_PACKS[arenaId] ?? GENERIC_ARENA_FLAVOR);
 }
 
+/**
+ * A1: reads an action pool with a fallback.
+ *
+ * The four stance pools added with the extended stance roster are optional per
+ * arena — twenty-eight arenas times four pools is a lot of prose to gate the
+ * mechanic behind. An arena that authors its own wins; everything else falls
+ * back to the terrain-general generic set, which is written to work on ground
+ * the author has never seen.
+ */
+export function actionPool(flavor: ArenaFlavor, key: ArenaActionKey): string[] {
+    const authored = flavor.actions[key];
+    if (authored && authored.length > 0) return authored;
+    const generic = GENERIC_ACTIONS[key];
+    if (generic && generic.length > 0) return generic;
+    return GENERIC_ACTIONS.rest;
+}
+
+/**
+ * §1.3: how much of the pool the shared universal events are allowed to be.
+ *
+ * `withUniversalEvents` appended fourteen universal events to per-arena packs
+ * of five to twelve and the picker drew uniformly, so the five sparsest arenas
+ * (seapeaks, craterfield, burnscar, canopyweb, acousticforest) drew a generic
+ * event roughly three times in four — which is most of why they read
+ * interchangeably. The universal pool is now weighted down to a ~30% share
+ * regardless of how many authored events an arena has, so a thin arena is
+ * repetitive in its own voice rather than in nobody's.
+ */
+export const UNIVERSAL_EVENT_SHARE = 0.3;
+
 /** Merges the shared event pool into an arena's authored one. Never mutates the source. */
 function withUniversalEvents(flavor: ArenaFlavor): ArenaFlavor {
-    return { ...flavor, events: [...flavor.events, ...UNIVERSAL_EVENTS] };
+    const authoredWeight = flavor.events.reduce((sum, e) => sum + (e.weight ?? 1), 0) || 1;
+    // Solve `u / (authored + u) = share` for the total weight the universal
+    // pool should carry, then split it evenly across its members.
+    const universalTotal = authoredWeight * UNIVERSAL_EVENT_SHARE / (1 - UNIVERSAL_EVENT_SHARE);
+    const per = universalTotal / Math.max(1, UNIVERSAL_EVENTS.length);
+    return {
+        ...flavor,
+        events: [...flavor.events, ...UNIVERSAL_EVENTS.map(e => ({ ...e, weight: per }))],
+    };
 }

@@ -11,6 +11,8 @@ import { adjustRel } from '../relationships';
 import { addExcitement } from '../audience';
 import { RESPECT, ROMANCE, INTERVIEWS, INTERVIEW_ANGLES } from '../../data/balance';
 import { traitMod } from '../../data/traits';
+import { InterviewPersona } from '../../models/types';
+import { COLD_PERSONAS, WARM_PERSONAS } from '../../data/personas';
 
 /**
  * Caesar's couch, in three beats.
@@ -181,7 +183,7 @@ export function processInterviews(ctx: SimContext) {
             + t.attributes.charisma * INTERVIEWS.holdPerCharisma
             + (opened ? INTERVIEWS.holdOpenedBonus : -INTERVIEWS.holdOpenedBonus))));
 
-        let persona = scenario.strategy;
+        let persona = scenario.strategy as InterviewPersona;
         if (followUp) {
             ctx.logEvent(
                 followUp.question.split('{district}').join(String(t.district)),
@@ -195,7 +197,7 @@ export function processInterviews(ctx: SimContext) {
                 [t.id],
                 { important: held, category: 'interview' }
             );
-            if (!held) persona = PERSONA_DRIFT[scenario.strategy] ?? scenario.strategy;
+            if (!held) persona = (PERSONA_DRIFT[scenario.strategy] ?? scenario.strategy) as InterviewPersona;
         }
 
         // §4.4: Star-Crossed as strategy. A charismatic tribute with the
@@ -253,11 +255,12 @@ export function processInterviews(ctx: SimContext) {
     // promising a short Games has made a first impression on twenty-three
     // people, and it is not a warm one.
     cast.forEach(t => {
-        const hostile = t.interviewStrategy === 'The Ruthless Warrior' || t.interviewStrategy === 'The Arrogant Brute'
-            || t.interviewStrategy === 'The Silent Threat' || t.interviewStrategy === 'The Cold Strategist';
-        const warm = t.interviewStrategy === 'The Star-Crossed Lover' || t.interviewStrategy === 'The Humble Underdog'
-            || t.interviewStrategy === 'The Grieving Sibling' || t.interviewStrategy === 'The Reluctant Hero'
-            || t.interviewStrategy === 'The District Loyalist';
+        // §1.7: read from the shared persona tables rather than a fourth
+        // hand-typed copy of the same strings.
+        const hostile = !!t.interviewStrategy && COLD_PERSONAS.includes(t.interviewStrategy)
+            && t.interviewStrategy !== 'The Mysterious Enigma';
+        const warm = !!t.interviewStrategy && WARM_PERSONAS.includes(t.interviewStrategy)
+            && t.interviewStrategy !== 'The Charming Flirt' && t.interviewStrategy !== 'The Quirky Oddball';
         if (!hostile && !warm) return;
         cast.forEach(other => {
             if (other.id === t.id) return;
@@ -266,8 +269,9 @@ export function processInterviews(ctx: SimContext) {
         });
     });
 
-    const boldest = cast.filter(t => t.interviewStrategy === 'The Ruthless Warrior' || t.interviewStrategy === 'The Arrogant Brute'
-        || t.interviewStrategy === 'The Silent Threat' || t.interviewStrategy === 'The Cold Strategist');
+    const boldest = cast.filter(t => !!t.interviewStrategy
+        && COLD_PERSONAS.includes(t.interviewStrategy)
+        && t.interviewStrategy !== 'The Mysterious Enigma');
     if (boldest.length > 0) {
         ctx.logEvent(
             `The Capitol replays the threats all night. ${boldest.map(t => t.name).join(', ')} will walk into that arena with a target already painted on.`,

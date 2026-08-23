@@ -2,13 +2,13 @@ import { SignatureRule, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
-import { getZone, severEdge, edgeKey, depleteZone, depletionOf } from './map';
+import { getZone, reachableZones, severEdge, edgeKey, depleteZone, depletionOf } from './map';
 import { addZoneThreat, noteSighting } from './memory';
 import { startZoneEffect, hasEffect, severRandomEdge } from './zoneEffects';
 import { injure, openWound } from './wounds';
 import { clampTribute } from './vitals';
 import { rosterFor, engageMutt } from './mutts';
-import { BLEEDING, ESCALATION, MEMORY, PROC_SIGNATURE, SIGNATURE_RULES } from '../data/balance';
+import { ARENA_SIGNATURES, BLEEDING, ESCALATION, MEMORY, PROC_SIGNATURE, SIGNATURE_RULES } from '../data/balance';
 
 /**
  * Arena signature mechanics.
@@ -73,7 +73,7 @@ function clockworkSignature(ctx: SimContext, cycle: number, rng: RNG) {
     caught.forEach(t => {
         // Anyone who read the dial and moved early is simply not here; anyone
         // standing in it rolls to get clear at the last second.
-        if (rng.chance(0.25 + t.attributes.agility * 0.04)) {
+        if (rng.chance(ARENA_SIGNATURES.clock.dodgeBase + t.attributes.agility * ARENA_SIGNATURES.clock.dodgePerAgility)) {
             ctx.logEvent(`${t.name} is already moving when ${striking} goes off, and clears it.`, [t.id], { zone: striking, category: 'arena' });
             return;
         }
@@ -109,9 +109,9 @@ function vaultSignature(ctx: SimContext, cycle: number, rng: RNG) {
     );
     zones.forEach(z => startZoneEffect(ctx, z, 'fogbound', false));
     getAlive(ctx.state).forEach(t => {
-        if (!rng.chance(0.3)) return;
+        if (!rng.chance(ARENA_SIGNATURES.vault.stumbleChance)) return;
         applyDamage(ctx, t, 6, { cause: 'Walked into something in the dark', kind: 'arena' });
-        t.vitals.sanity -= 8;
+        t.vitals.sanity -= ARENA_SIGNATURES.vault.stumbleSanity;
         clampTribute(t);
         checkDeath(ctx, t, 'Walked into something in the dark');
     });
@@ -133,7 +133,7 @@ function tempestSignature(ctx: SimContext, cycle: number, rng: RNG) {
     const busiest = byPopulation[0];
     // A coin flip between "where the people are" and a genuinely random sector,
     // so the tide is threatening rather than perfectly predictable.
-    const target = rng.chance(0.6) ? busiest : rng.pick(zones);
+    const target = rng.chance(ARENA_SIGNATURES.tide.busiestChance) ? busiest : rng.pick(zones);
     if (hasEffect(ctx.state, target, 'flooded')) return;
 
     ctx.logEvent(
@@ -143,15 +143,15 @@ function tempestSignature(ctx: SimContext, cycle: number, rng: RNG) {
     );
     startZoneEffect(ctx, target, 'flooded', false);
     tributesIn(ctx, target).forEach(t => {
-        const swims = rng.chance(0.3 + t.attributes.strength * 0.05);
+        const swims = rng.chance(ARENA_SIGNATURES.tide.swimBase + t.attributes.strength * ARENA_SIGNATURES.tide.swimPerStrength);
         if (swims) {
             ctx.logEvent(`${t.name} gets above the waterline in ${target} with nothing worse than a soaking.`, [t.id], { zone: target, category: 'arena' });
-            t.vitals.fatigue += 15;
+            t.vitals.fatigue += ARENA_SIGNATURES.tide.swimFatigue;
             clampTribute(t);
             return;
         }
         applyDamage(ctx, t, 18, { cause: `Taken by the tide in ${target}`, kind: 'arena' });
-        t.vitals.fatigue += 25;
+        t.vitals.fatigue += ARENA_SIGNATURES.tide.caughtFatigue;
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
         checkDeath(ctx, t, `Taken by the tide in ${target}`);
@@ -206,9 +206,9 @@ function solarSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         { important: true, category: 'arena' }
     );
     exposed.forEach(t => {
-        t.vitals.thirst += 22;
-        t.vitals.fatigue += 12;
-        if (rng.chance(0.25)) {
+        t.vitals.thirst += ARENA_SIGNATURES.stalledSun.thirst;
+        t.vitals.fatigue += ARENA_SIGNATURES.stalledSun.fatigue;
+        if (rng.chance(ARENA_SIGNATURES.stalledSun.burnChance)) {
             injure(t, 'burned');
             applyDamage(ctx, t, 8, { cause: 'Burned alive under a stalled sun', kind: 'arena' });
         }
@@ -238,8 +238,8 @@ function frozenSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         const warm = t.inventory.some(i => i.warmth) || ctx.state.camps?.[t.id]?.shelter !== undefined;
         if (warm) return;
         applyDamage(ctx, t, 10, { cause: 'Froze to death in the open', kind: 'arena' });
-        t.vitals.fatigue += 18;
-        if (rng.chance(0.3)) injure(t, 'frostbitten');
+        t.vitals.fatigue += ARENA_SIGNATURES.freeze.fatigue;
+        if (rng.chance(ARENA_SIGNATURES.freeze.frostbiteChance)) injure(t, 'frostbitten');
         clampTribute(t);
         checkDeath(ctx, t, 'Froze to death in the open');
     });
@@ -266,7 +266,7 @@ function concreteSignature(ctx: SimContext, cycle: number, rng: RNG) {
         { important: true, zone: target, category: 'arena' }
     );
     tributesIn(ctx, target).forEach(t => {
-        if (rng.chance(0.35 + t.attributes.agility * 0.04)) {
+        if (rng.chance(ARENA_SIGNATURES.collapse.dodgeBase + t.attributes.agility * ARENA_SIGNATURES.collapse.dodgePerAgility)) {
             ctx.logEvent(`${t.name} is clear of ${target} before the floor goes.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
@@ -294,7 +294,7 @@ function toxicSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         const z = getZone(ctx.state.arena, n);
         return z?.terrain === 'wetland' || z?.terrain === 'water';
     });
-    if (zones.length === 0 || !rng.chance(0.5)) return;
+    if (zones.length === 0 || !rng.chance(ARENA_SIGNATURES.bog.fireChance)) return;
 
     const target = rng.pick(zones);
     if (hasEffect(ctx.state, target, 'contaminated')) return;
@@ -307,7 +307,7 @@ function toxicSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     tributesIn(ctx, target).forEach(t => {
         const covered = t.inventory.some(i => i.purifies) || rng.chance(t.attributes.intelligence * 0.05);
         if (covered) return;
-        t.vitals.sanity -= 22;
+        t.vitals.sanity -= ARENA_SIGNATURES.bog.sanity;
         injure(t, 'poisoned');
         applyDamage(ctx, t, 6, { cause: `Breathed the swamp gas in ${target}`, kind: 'arena' });
         clampTribute(t);
@@ -331,9 +331,9 @@ function ashfallSignature(ctx: SimContext, cycle: number, rng: RNG) {
     );
     getAlive(ctx.state).forEach(t => {
         const filtered = t.inventory.some(i => i.purifies);
-        t.vitals.fatigue += filtered ? 4 : 12;
-        t.vitals.thirst += 8;
-        if (!filtered && rng.chance(0.2)) {
+        t.vitals.fatigue += filtered ? ARENA_SIGNATURES.ashfall.filteredFatigue : ARENA_SIGNATURES.ashfall.unfilteredFatigue;
+        t.vitals.thirst += ARENA_SIGNATURES.ashfall.thirst;
+        if (!filtered && rng.chance(ARENA_SIGNATURES.ashfall.chokeChance)) {
             applyDamage(ctx, t, 7, { cause: 'Choked on volcanic ash', kind: 'arena' });
             injure(t, 'infected');
         }
@@ -368,8 +368,8 @@ function saltflatsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
             const rivals = exposed.filter(o => o.zone === z && o.allianceId !== observer.allianceId && o.id !== observer.id).length;
             if (rivals > 0) noteSighting(ctx.state, observer, z, rivals, 0);
         });
-        observer.vitals.thirst += 10;
-        if (rng.chance(0.2)) observer.vitals.sanity -= 6;
+        observer.vitals.thirst += ARENA_SIGNATURES.saltFlats.thirst;
+        if (rng.chance(ARENA_SIGNATURES.saltFlats.glareChance)) observer.vitals.sanity -= ARENA_SIGNATURES.saltFlats.glareSanity;
         clampTribute(observer);
     });
 }
@@ -383,7 +383,7 @@ function saltflatsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
  */
 function sporefieldsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     const zones = activeZones(ctx).filter(n => getZone(ctx.state.arena, n)?.terrain === 'forest');
-    if (zones.length === 0 || !rng.chance(0.55)) return;
+    if (zones.length === 0 || !rng.chance(ARENA_SIGNATURES.bloom.fireChance)) return;
 
     const target = rng.pick(zones);
     ctx.logEvent(
@@ -392,16 +392,16 @@ function sporefieldsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         { important: true, zone: target, category: 'arena' }
     );
     tributesIn(ctx, target).forEach(t => {
-        if (!rng.chance(0.7)) return;
+        if (!rng.chance(ARENA_SIGNATURES.bloom.eatChance)) return;
         // Knowing your fungi is the entire skill this arena tests.
-        const safe = rng.chance(0.4 + t.attributes.intelligence * 0.06);
+        const safe = rng.chance(ARENA_SIGNATURES.bloom.safeBase + t.attributes.intelligence * ARENA_SIGNATURES.bloom.safePerIntelligence);
         if (safe) {
             t.vitals.hunger = Math.max(0, t.vitals.hunger - 45);
             t.health = Math.min(100, t.health + 6);
             ctx.logEvent(`${t.name} eats well in ${target}, and picks right.`, [t.id], { zone: target, category: 'survival' });
         } else {
             injure(t, 'poisoned');
-            t.vitals.sanity -= 18;
+            t.vitals.sanity -= ARENA_SIGNATURES.bloom.poisonSanity;
             applyDamage(ctx, t, 14, { cause: `Poisoned by the bloom in ${target}`, kind: 'arena' });
             ctx.logEvent(`${t.name} eats well in ${target}, and picks wrong.`, [t.id], { important: true, zone: target, category: 'hazard' });
         }
@@ -999,6 +999,30 @@ function telegraphSignature(ctx: SimContext, rule: SignatureRule, cycle: number,
         [],
         { zone: named[0], category: 'arena' }
     );
+
+    // A2: the Scholar reads the arena rather than the tributes, and this is
+    // the one system that had no counter-play at all — a false telegraph
+    // fooled everybody equally. A Scholar standing in a zone that is genuinely
+    // about to go moves; a Scholar told a lie about a zone they are not
+    // standing in simply does not act on it.
+    const truth = upcoming;
+    getAlive(ctx.state).forEach(t => {
+        if (t.archetype !== 'scholar') return;
+        if (!truth.includes(t.zone)) return;
+        const escape = reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones || [])
+            .map(z => z.name)
+            .find(z => !truth.includes(z));
+        if (!escape) return;
+        t.objective = {
+            kind: 'reach', zone: escape, reason: 'shelter',
+            expires: (ctx.state.cycle ?? 0) + PROC_SIGNATURE.scholarForesightCycles,
+        };
+        ctx.logEvent(
+            `${t.name} has been reading ${t.zone} all day and does not need the announcement. They are already moving toward ${escape}.`,
+            [t.id],
+            { important: true, category: 'arena' }
+        );
+    });
 }
 
 function applySignaturePayload(ctx: SimContext, zones: string[], payload: SignatureRule['payload'], rng: RNG) {

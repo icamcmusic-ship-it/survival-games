@@ -1,5 +1,6 @@
 import React from 'react';
-import { Tribute } from '../models/types';
+import { GameState, Tribute } from '../models/types';
+import { RunProfileCard } from '../components/RunProfileCard';
 import { heightLabel } from '../engine/physique';
 import { prefsStore } from '../store/prefsStore';
 import { useStore } from '../store/createStore';
@@ -9,11 +10,13 @@ import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { Explainer } from '../components/Explainer';
 import { GamesProfile, calendarOf, ordinal, profileHeadline } from '../engine/gamesProfile';
 
-export function ReapingScreen({ tributes, arenaName, seed, profile, onReroll, onConfirm }: {
+export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, onReroll, onConfirm }: {
     tributes: Tribute[],
     arenaName: string,
     seed: string,
     profile?: GamesProfile,
+    /** §2.10: the whole run, for the profile card. */
+    gameState?: GameState,
     onReroll: () => void,
     onConfirm: () => void,
 }) {
@@ -44,6 +47,12 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, onReroll, on
                     have to show you in the arena.
                 </p>
             </div>
+
+            {/* §2.10: the run's identity in one place, before a single line of
+                chronicle has been written. The player used to piece this
+                together from scattered log lines, and two of these settings
+                (the multipliers and the district count) had no surface at all. */}
+            {gameState && <RunProfileCard gameState={gameState} />}
 
             {profile && (
                 <div className="panel p-4 space-y-2 animate-riseIn">

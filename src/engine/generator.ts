@@ -17,11 +17,14 @@ import { giveItem, mintItem } from './items';
 import { QUIRKS } from '../data/quirks';
 
 /** Weighted draw from the district's archetype table. */
-function pickArchetype(rng: RNG, district: number, careerBias = 0): ArchetypeId {
+function pickArchetype(rng: RNG, district: number, careerBias = 0, castShape?: string): ArchetypeId {
     // The cast shape can push the whole field toward or away from the academy
     // archetype — that is what makes a "career-heavy" year read differently on
-    // the roster screen from an "outer districts" one.
-    const weights = archetypeWeightsFor(district).map(([id, w]): [ArchetypeId, number] =>
+    // the roster screen from an "outer districts" one. A2 widens that from the
+    // single `careerBias` scalar to a per-shape weight row, so a no-pack year
+    // is visibly full of Ghosts and survivalists rather than merely short of
+    // Careers.
+    const weights = archetypeWeightsFor(district, castShape).map(([id, w]): [ArchetypeId, number] =>
         id === 'career' ? [id, Math.max(0, w + careerBias)] : [id, w]);
     const total = weights.reduce((sum, [, w]) => sum + w, 0);
     let roll = rng.nextFloat() * total;
@@ -214,12 +217,16 @@ export function generateTributes(
     const rng = new RNG(seed);
     const tributes: Tribute[] = [];
     // 2..16, matching the setup slider and the share-URL parser exactly.
-    // §8.5: districts 13-16 are the "expanded Games" outer territories — they
-    // borrow the name/legacy/craft tables of district ((d-1) % 12) + 1, so a
-    // 16-district reaping needs no new content tables to run.
+    // §1.1: districts 13-16 — the expanded Games outer territories — used to
+    // borrow the tables of district ((d-1) % 12) + 1, which meant District 13
+    // drew District 1's gemstone-and-finery names on a graphite-pit territory,
+    // District 14 inherited District 2's masonry surnames, and none of them
+    // had a legacy, a craft, an archetype weighting, a reaping crowd or a
+    // district token of their own. They are now authored rows like every other
+    // district; the modulo remains only as a guard for a table that somehow
+    // lacks an entry.
     const districtCount = Math.min(16, Math.max(2, config.districtCount));
-    // Table lookups for districts beyond the canonical twelve.
-    const tableDistrict = (d: number) => ((d - 1) % 12) + 1;
+    const tableDistrict = (d: number) => (DISTRICT_NAMES[d] ? d : ((d - 1) % 12) + 1);
 
     // Names must be unique across the whole cast — two tributes called "Amber"
     // made the chronicle feed and the kill log ambiguous.
@@ -229,14 +236,19 @@ export function generateTributes(
     // five of them). Prefer names exclusive to this district so the flavour
     // reads true, and so D1 drawing first never denies D11 its own Clover;
     // the shared names remain a fallback if an exclusive pool ever runs dry.
+    // §1.1: built from every authored pool rather than a hard-coded 1..12, so
+    // the exclusivity logic actually knows about the expanded territories.
+    // Previously a name shared between District 13 and District 6 counted as
+    // exclusive to District 6, and District 13's own names were invisible to
+    // the check entirely.
     const nameDistrictCounts = new Map<string, number>();
-    for (let d = 1; d <= 12; d++) {
+    Object.values(DISTRICT_NAMES).forEach(pools => {
         for (const g of ['Male', 'Female'] as const) {
-            for (const n of new Set(DISTRICT_NAMES[d][g])) {
+            for (const n of new Set(pools[g])) {
                 nameDistrictCounts.set(n, (nameDistrictCounts.get(n) ?? 0) + 1);
             }
         }
-    }
+    });
     const drawName = (district: number, gender: Gender): string => {
         // Pre-Games option: skip the flavour pools entirely and name every
         // tribute for their number — "District 7 Boy" — the way the books'
@@ -244,7 +256,7 @@ export function generateTributes(
         // district+gender pair is already unique across the cast, so this
         // never needs the used-name/disambiguation machinery below it.
         if (config.plainNames) return `District ${district} ${gender === 'Male' ? 'Boy' : 'Girl'}`;
-        const pool = DISTRICT_NAMES[((district - 1) % 12) + 1][gender];
+        const pool = DISTRICT_NAMES[tableDistrict(district)][gender];
         const available = pool.filter(n => !usedNames.has(n));
         const exclusive = available.filter(n => nameDistrictCounts.get(n) === 1);
         let name: string;
@@ -346,6 +358,27 @@ export function generateTributes(
             if (district === 6 || district === 8) {
                 attributes.agility += rng.nextInt(1, 2);
             }
+            // §1.1: the expanded territories get their own shaping rather than
+            // silently inheriting District 1-4's via the old modulo wrap.
+            if (district === 13) {
+                // Shell lines and assay benches: precise, careful, short of breath.
+                attributes.intelligence += rng.nextInt(1, 3);
+                attributes.stealth += rng.nextInt(0, 2);
+            }
+            if (district === 14) {
+                // Salt hauling and cold rooms. Hard work in bad conditions.
+                attributes.strength += rng.nextInt(1, 3);
+            }
+            if (district === 15) {
+                // Furnace floors: patience, heat tolerance, very steady hands.
+                attributes.intelligence += rng.nextInt(1, 2);
+                attributes.agility += rng.nextInt(0, 2);
+            }
+            if (district === 16) {
+                // Months on a rig: strong, self-sufficient, used to the dark.
+                attributes.strength += rng.nextInt(0, 2);
+                attributes.stealth += rng.nextInt(1, 2);
+            }
 
             // The cast shape leans on the age roll before it is clamped back
             // into the eligible band, so a "young field" really is younger
@@ -361,7 +394,7 @@ export function generateTributes(
             applyAgeProfile(attributes, age);
 
             // Archetype first: its variance *shape* feeds the personal roll.
-            const archetype = pickArchetype(rng, district, shape?.careerBias ?? 0);
+            const archetype = pickArchetype(rng, district, shape?.careerBias ?? 0, shape?.id);
             applyPersonalVariance(rng, attributes, archetype);
             if (shape?.talentBonus) {
                 (Object.keys(attributes) as Array<keyof Attributes>).forEach(k => {

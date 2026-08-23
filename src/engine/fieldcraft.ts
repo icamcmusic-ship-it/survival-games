@@ -1,5 +1,5 @@
 import { Item, Tribute, Trap } from '../models/types';
-import { BLEEDING, CRAFTING, EARNED_TRAIT_RULES, ENDGAME, HUNTING, POISONING, TRAPS } from '../data/balance';
+import { BLEEDING, CRAFTING, EARNED_TRAIT_RULES, ENDGAME, HUNTING, POISONING, TRAPS, STANCE_MODES } from '../data/balance';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { addZoneThreat, cycleOf, rattle } from './memory';
@@ -14,6 +14,7 @@ import { earnTrait } from './earnedTraits';
 import { awareness } from './stealth';
 import { traitMod } from '../data/traits';
 import { conditionOf, consumeOne, hasTool } from './items';
+import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 
 /**
  * Fieldcraft: traps, fire, shelter, camouflage and poison.
@@ -61,7 +62,7 @@ export function wantsToSetTrap(ctx: SimContext, t: Tribute): boolean {
     const field = ctx.state.tributes.filter(o => o.status === 'alive').length;
     const losing = field <= ENDGAME.fieldSize && endgameEdge(ctx.state, t) < ENDGAME.underdogEdge;
     // Otherwise: a tribute set on hunting has more urgent problems.
-    if (t.stance === 'Aggressive' && !losing) return false;
+    if (isAggressiveStance(t.stance) && !losing) return false;
     return true;
 }
 
@@ -124,8 +125,14 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     // Awareness is already the engine's "did you notice something you were not
     // meant to" roll — reusing it keeps spotting a tripline consistent with
     // spotting a person in cover.
+    // A1: a Fortified owner has been tending their ground. Their traps are
+    // better hidden and bite harder against anyone who walks onto it.
+    const fortifiedOwner = owner?.status === 'alive' && owner.stance === 'Fortified' && owner.zone === trap.zone;
+    const concealment = fortifiedOwner
+        ? Math.min(0.95, trap.concealment * STANCE_MODES.fortified.trapTriggerMultiplier)
+        : trap.concealment;
     const spotted = ctx.rng.chance(Math.max(0.05, Math.min(0.9, awareness(t) / 20)))
-        && !ctx.rng.chance(trap.concealment);
+        && !ctx.rng.chance(concealment);
 
     if (spotted) {
         // §6.2: spotting it is a decision point, not an automatic dismantle.
@@ -185,7 +192,8 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     }
 
     removeTrap(ctx, trap.id);
-    const damage = trap.kind === 'snare' ? TRAPS.snareDamage : TRAPS.deadfallDamage;
+    const damage = (trap.kind === 'snare' ? TRAPS.snareDamage : TRAPS.deadfallDamage)
+        * (fortifiedOwner ? STANCE_MODES.fortified.trapTriggerMultiplier : 1);
     // A trap whose owner is still breathing is a kill and credited as one —
     // that is the entire point of building the thing days earlier. A trap set by
     // someone who has since died is just part of the arena now: crediting a
@@ -461,9 +469,9 @@ export function attemptFieldcraft(ctx: SimContext, t: Tribute): boolean {
     // Cold, dark and exhaustion, in the order a person would actually feel them.
     // A fire is a beacon, so it is worth it when warmth or morale is the problem
     // and not when they are trying to disappear.
-    if (t.stance !== 'Evasive' && lightFire(ctx, t)) return true;
+    if (!isEvasiveStance(t.stance) && lightFire(ctx, t)) return true;
     if (buildShelter(ctx, t)) return true;
-    if (t.stance === 'Evasive' && applyCamouflage(ctx, t)) return true;
+    if (isEvasiveStance(t.stance) && applyCamouflage(ctx, t)) return true;
     if (wantsToSetTrap(ctx, t)) {
         setTrap(ctx, t);
         return true;
