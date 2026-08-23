@@ -451,6 +451,8 @@ export interface Tribute {
     traitAge?: Record<string, number>;
     /** §3.2: traits that have burned off or transformed, kept for the epilogue. */
     shedTraits?: string[];
+    /** §3.6: cycles of undisturbed healing banked per injury site. */
+    recoveryProgress?: Partial<Record<InjurySite, number>>;
     /** Ids of tributes this one has formed a protective bond with. See `growProtectorBond`. */
     protectorBonds?: string[];
     /**

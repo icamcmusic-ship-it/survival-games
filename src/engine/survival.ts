@@ -9,7 +9,7 @@ import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { sanityBandOf } from './sanityBands';
 import { decayIdleDrift } from './proficiency';
-import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding } from './wounds';
+import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding, tickWoundRecovery } from './wounds';
 import { rememberedThreat } from './memory';
 import { hasCamp } from './fieldcraft';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
@@ -594,6 +594,8 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         // Order matters: the wound costs health first, then gets its chance to
         // close. A fresh cut always draws blood before it starts to clot.
         tickBleeding(ctx, t);
+        // §3.6: and every other site gets its own slow, unassisted recovery.
+        tickWoundRecovery(ctx, t);
         applyNaturalRecovery(ctx, t, time, alliesPresent);
 
         clampTribute(t);

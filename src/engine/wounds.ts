@@ -52,6 +52,93 @@ export function healInjury(t: Tribute, site: Exclude<InjurySite, 'bleeding'>, st
     }
 }
 
+/**
+ * §3.6: per-site recovery, scarring, and what the rest of the field can see.
+ *
+ * Injury severity graded 0-3 and then never moved on its own: outside of bleed
+ * clotting, a graded leg either persisted untouched or was dressed. A body
+ * does neither. Each site now knits at its own rate — soft tissue faster than
+ * a head wound — and each site that was ever taken all the way to grade 3
+ * leaves a scar that does not heal at all.
+ *
+ * The visible half matters as much as the mechanical one: a tribute favouring
+ * a leg or an arm is *legible*, and `visiblePower` in stance.ts reads it, so a
+ * limp is now a reason somebody picks you.
+ */
+const RECOVERY_CYCLES: Partial<Record<InjurySite, number>> = {
+    // Cycles of not being re-injured before the site steps down one grade.
+    arms: 4,
+    legs: 5,
+    torso: 6,
+    head: 8,
+    burned: 5,
+    frostbitten: 4,
+    infected: 7,
+    poisoned: 5,
+};
+
+/**
+ * One cycle of the body doing its own work. Rest, food and a medic all help
+ * through the existing paths; this is the floor beneath them — the thing that
+ * happens whether or not anybody intervenes.
+ */
+export function tickWoundRecovery(ctx: SimContext, t: Tribute) {
+    t.recoveryProgress = t.recoveryProgress ?? {};
+    (Object.keys(RECOVERY_CYCLES) as InjurySite[]).forEach(site => {
+        const grade = injuryGrade(t, site);
+        if (grade <= 0) {
+            delete t.recoveryProgress![site];
+            return;
+        }
+        // §3.6: grade 3 is the threshold at which a wound stops being an
+        // injury and starts being a fact about this person.
+        if (grade >= MAX_INJURY_GRADE) {
+            t.scars = t.scars ?? {};
+            t.scars[site] = true;
+        }
+        // Starving and exhausted bodies do not knit. §3.5's interaction matrix
+        // says the same thing from the other end.
+        const stalled = t.vitals.hunger > VITALS.interactionHungerFrom
+            || t.vitals.fatigue > VITALS.interactionFatigueFrom;
+        if (stalled) return;
+        const needed = RECOVERY_CYCLES[site]!;
+        const progress = (t.recoveryProgress![site] ?? 0) + 1;
+        if (progress < needed) {
+            t.recoveryProgress![site] = progress;
+            return;
+        }
+        t.recoveryProgress![site] = 0;
+        // A scarred site never comes all the way back: it knits down to grade
+        // 1 and stops there, permanently.
+        const floor = t.scars?.[site] ? 1 : 0;
+        if (grade - 1 < floor) return;
+        healInjury(t, site as Exclude<InjurySite, 'bleeding'>, 1);
+        if (injuryGrade(t, site) === 0) {
+            ctx.logEvent(
+                `${t.name}'s ${site === 'burned' ? 'burns' : site === 'frostbitten' ? 'frostbite' : `${site} wound`} has closed over. It took as long as it took.`,
+                [t.id],
+                { category: 'survival' }
+            );
+        }
+    });
+    updateFavouring(t);
+}
+
+/**
+ * §3.6: the limb they are protecting, if any — the visible tell. Set from the
+ * worst of arms and legs, cleared when both drop below the threshold.
+ */
+export function updateFavouring(t: Tribute) {
+    const legs = injuryGrade(t, 'legs');
+    const arms = injuryGrade(t, 'arms');
+    const worst = Math.max(legs, arms);
+    if (worst < 2) {
+        delete t.favouring;
+        return;
+    }
+    t.favouring = legs >= arms ? 'legs' : 'arms';
+}
+
 /** Multiplier a site's grade puts on its per-cycle status damage. */
 export function gradeDamageScale(t: Tribute, site: InjurySite): number {
     return 1 + (injuryGrade(t, site) - 1) * BLEEDING.gradeDamageStep;

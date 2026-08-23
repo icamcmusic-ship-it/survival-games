@@ -1705,6 +1705,10 @@ export const MEMORY = {
 
 /** Stance selection: thresholds plus the hysteresis that stops thrashing. */
 export const STANCE = {
+    /** §3.6: how much a visible limp or guarded arm marks somebody as prey. */
+    visibleFavouringPenalty: 1.4,
+    /** §3.6: and how much old scarring reads as somebody who has survived worse. */
+    visibleScarBonus: 0.8,
     /**
      * How much of their apparent threat a tribute who played the training floor
      * quiet keeps hidden. The whole payoff of `trainingStrategy: 'conceal'`:
