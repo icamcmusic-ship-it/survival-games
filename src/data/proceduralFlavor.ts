@@ -1,5 +1,5 @@
 import { Arena, Terrain } from '../models/types';
-import { ArenaActions, ArenaEventDef, ArenaFlavor } from './arenaFlavor';
+import { ArenaActions, ArenaEventDef, ArenaFlavor, GENERIC_ARENA_FLAVOR } from './arenaFlavor';
 
 /**
  * ARENA-08: procedural arenas used to fall back on one of four pre-written
@@ -400,6 +400,111 @@ const HUNT_VARIANTS: ActionVariant[] = [
     ]},
 ];
 
+
+/**
+ * A1: the four conditional-stance pools, composed the same way as the others.
+ *
+ * A procedural arena has no hand-authored pack, so leaving these to the
+ * terrain-general generic set would have made every generated arena read
+ * identically the moment a tribute dug in or went scavenging — which is the
+ * exact failure `proceduralArenaFlavor` exists to fix for forage and hide.
+ */
+const FORTIFY_VARIANTS: ActionVariant[] = [
+    { tags: ['ruins'], lines: [
+        '{tribute} pulls a wall of fallen masonry across the open side of {zone} and settles behind it.',
+        '{tribute} finds the one doorway into {zone} that still closes, and closes it.',
+        '{tribute} works the rubble of {zone} into something with only one way in.',
+        '{tribute} has stopped passing through {zone}. They are living in it now, and they have opinions about the approaches.',
+    ]},
+    { tags: ['forest', 'wetland'], lines: [
+        '{tribute} weaves the undergrowth of {zone} into a wall nobody comes through quietly.',
+        '{tribute} lashes deadfall across the two easy paths into {zone} and leaves the hard one open on purpose.',
+        '{tribute} has spent long enough in {zone} to know which branch creaks. Now everyone else will find out too.',
+        '{tribute} sets another line in {zone}, tests it, and sets it again.',
+    ]},
+    { tags: ['highland', 'height'], lines: [
+        '{tribute} takes the high ground of {zone} properly: sightlines cleared, one approach, and rocks stacked where rocks are useful.',
+        '{tribute} holds the ridge in {zone} and turns the climb into a problem.',
+        '{tribute} has not come down off {zone} in days and no longer intends to.',
+        '{tribute} watches all three approaches to {zone} at once, which is why they chose it.',
+    ]},
+    { tags: ['water', 'open', 'cold', 'heat'], lines: [
+        '{tribute} banks what {zone} has into a berm and puts their back to it.',
+        '{tribute} makes {zone} costly to walk into and comfortable to wait in.',
+        '{tribute} has turned a stretch of {zone} into somewhere they own rather than somewhere they are hiding.',
+        '{tribute} checks their own work across {zone}, finds it holding, and settles back down.',
+    ]},
+];
+
+const SCAVENGE_VARIANTS: ActionVariant[] = [
+    { tags: ['ruins'], lines: [
+        '{tribute} goes through the ruins of {zone} the way looters do — fast, low, and in the places nobody thinks to look twice.',
+        '{tribute} pulls apart a collapsed room in {zone} and finds what fell behind it.',
+        '{tribute} works the debris in {zone} that somebody else already worked, and does it better.',
+        '{tribute} finds a cold camp in {zone} and takes everything the last occupant did not bother with.',
+    ]},
+    { tags: ['forest', 'wetland'], lines: [
+        '{tribute} follows the churn in the undergrowth of {zone} to where somebody dropped something.',
+        '{tribute} reads the broken stems across {zone} and finds where the fight ended.',
+        '{tribute} searches the ground of {zone} that has been picked over twice, and gets lucky the third time.',
+        '{tribute} strips a snagged pack out of the branches over {zone}.',
+    ]},
+    { tags: ['water'], lines: [
+        '{tribute} wades the shallows of {zone} feeling for whatever the current dropped there.',
+        '{tribute} drags something waterlogged out of {zone} and works out what it used to be.',
+        '{tribute} follows the shoreline of {zone} taking whatever the water left.',
+        '{tribute} finds a pack half-sunk in {zone} and empties it before it goes under for good.',
+    ]},
+    { tags: ['highland', 'open', 'cold', 'heat', 'height'], lines: [
+        '{tribute} crosses the open ground of {zone} picking up whatever the last people through it dropped.',
+        '{tribute} searches {zone} without much hope, and {zone} rewards it anyway.',
+        '{tribute} finds where somebody camped in {zone} and takes what was not worth carrying to them.',
+        '{tribute} works over a cannon site in {zone} while it is still warm.',
+    ]},
+];
+
+const SHADOW_VARIANTS: ActionVariant[] = [
+    { tags: ['forest', 'wetland'], lines: [
+        '{tribute} moves through the green of {zone} at exactly the pace of the footsteps ahead of them.',
+        '{tribute} stays a full turning behind, in the cover of {zone}, and does not close.',
+        '{tribute} lets the undergrowth of {zone} hold them where they are, watching.',
+        '{tribute} follows a broken trail through {zone} and does nothing about it. Not yet.',
+    ]},
+    { tags: ['ruins', 'eerie'], lines: [
+        '{tribute} keeps a wall of {zone} between themselves and the person they are following.',
+        '{tribute} counts the footsteps ahead through the empty rooms of {zone} and matches them.',
+        '{tribute} moves through {zone} in the gaps between somebody else\'s sounds.',
+        '{tribute} could close the distance in {zone} in a breath. They spend the hour not doing it.',
+    ]},
+    { tags: ['highland', 'open', 'water', 'cold', 'heat', 'height'], lines: [
+        '{tribute} hangs back across the open of {zone}, far enough to be nothing, close enough to be there.',
+        '{tribute} shadows a line across {zone} at a distance that has not changed in an hour.',
+        '{tribute} watches somebody cross {zone} without ever once looking behind them.',
+        '{tribute} keeps to the low ground of {zone} and lets the person ahead set the pace.',
+    ]},
+];
+
+const FLAIL_VARIANTS: ActionVariant[] = [
+    { tags: ['ruins', 'eerie'], lines: [
+        '{tribute} shouts once into the empty of {zone}, and the echo comes back and nothing else does.',
+        '{tribute} puts a fist through something in {zone} that did not deserve it.',
+        '{tribute} walks the middle of {zone} in the open, past caring who is watching.',
+        '{tribute} stops checking corners in {zone}. Checking corners stopped working days ago.',
+    ]},
+    { tags: ['forest', 'wetland', 'water'], lines: [
+        '{tribute} tears through {zone} without care for the noise, looking for anything at all.',
+        '{tribute} drinks from {zone} without checking it. They are past checking.',
+        '{tribute} crashes through {zone} at a pace nothing in their condition should manage.',
+        '{tribute} eats something out of {zone} they would not have touched on day one.',
+    ]},
+    { tags: ['highland', 'open', 'cold', 'heat', 'height', 'storm', 'toxic'], lines: [
+        '{tribute} crosses the open of {zone} without once looking for cover.',
+        '{tribute} sits down in the middle of {zone} and then gets up again, and neither was a decision.',
+        '{tribute} moves through {zone} like somebody who has already worked out how this ends.',
+        '{tribute} has nothing left in {zone} and does not slow down for it.',
+    ]},
+];
+
 const GENERIC_PROCEDURAL_ACTIONS: ArenaActions = {
     forage: [
         '{tribute} combs {zone} and turns up {item}.',
@@ -535,6 +640,13 @@ export function proceduralArenaFlavor(arena: Arena): ArenaFlavor {
         hide: pickActions(active, HIDE_VARIANTS, GENERIC_PROCEDURAL_ACTIONS.hide),
         hunt: pickActions(active, HUNT_VARIANTS, GENERIC_PROCEDURAL_ACTIONS.hunt),
         travel: GENERIC_PROCEDURAL_ACTIONS.travel,
+        // A1: the conditional stances get the same treatment. `actionPool`
+        // would fall back to the generic set without these, which would make
+        // every generated arena read identically the moment somebody dug in.
+        fortify: pickActions(active, FORTIFY_VARIANTS, GENERIC_ARENA_FLAVOR.actions.fortify ?? []),
+        scavenge: pickActions(active, SCAVENGE_VARIANTS, GENERIC_ARENA_FLAVOR.actions.scavenge ?? []),
+        shadow: pickActions(active, SHADOW_VARIANTS, GENERIC_ARENA_FLAVOR.actions.shadow ?? []),
+        flail: pickActions(active, FLAIL_VARIANTS, GENERIC_ARENA_FLAVOR.actions.flail ?? []),
     };
 
     return { ambient, actions, events };
