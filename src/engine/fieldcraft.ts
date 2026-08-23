@@ -1,5 +1,5 @@
 import { Item, Tribute, Trap } from '../models/types';
-import { BLEEDING, CRAFTING, ENDGAME, HUNTING, POISONING, TRAPS } from '../data/balance';
+import { BLEEDING, CRAFTING, EARNED_TRAIT_RULES, ENDGAME, HUNTING, POISONING, TRAPS } from '../data/balance';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { addZoneThreat, cycleOf, rattle } from './memory';
@@ -10,6 +10,7 @@ import { clampTribute } from './vitals';
 import { injure, openWound } from './wounds';
 import { arenaHasLaw } from './gamesProfile';
 import { profOf, trainProficiency } from './proficiency';
+import { earnTrait } from './earnedTraits';
 import { awareness } from './stealth';
 import { traitMod } from '../data/traits';
 import { conditionOf, consumeOne, hasTool } from './items';
@@ -139,6 +140,10 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
             if (ctx.rng.chance(Math.min(0.95, disarmChance))) {
                 removeTrap(ctx, trap.id);
                 trainProficiency(t, 'tracking');
+                // §8.9: enough of other people's mechanisms and you start to
+                // think in them.
+                t.trapsDisarmed = (t.trapsDisarmed ?? 0) + 1;
+                if (t.trapsDisarmed >= EARNED_TRAIT_RULES.trapwiseDisarms) earnTrait(ctx, t, 'Trapwise');
                 ctx.logEvent(
                     `${t.name} stops dead in ${t.zone}, crouches, and pulls apart a ${trap.kind} someone left for them.`,
                     owner ? [t.id, owner.id] : [t.id],
@@ -207,6 +212,8 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     );
     clampTribute(t);
     checkDeath(ctx, t, cause);
+    // §10.1: 'Trapper's Crown' — a kill the builder earned days earlier.
+    if (t.status === 'dead' && claimant) claimant.trapKills = (claimant.trapKills ?? 0) + 1;
 }
 
 function removeTrap(ctx: SimContext, id: string) {

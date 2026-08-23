@@ -86,6 +86,13 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const [showAdvanced, setShowAdvanced] = useState(false);
     const coins = useStore(gameStore, st => st.coins);
     const panem = useStore(gameStore, st => st.panem);
+    // §10.9: arenas this player has never run. Hand-authored arenas are keyed
+    // by display name in `arenasSeen` (procedural maps by mapId, so they never
+    // match here — the dice and the sealed pick carry no badge on purpose).
+    // Suppressed entirely for a brand-new book, where everything is new.
+    const seenArenas = new Set(panem.arenasSeen ?? []);
+    const unseenArena = (id: string, name: string) =>
+        panem.runs > 0 && id !== 'procedural' && id !== 'random-hidden' && !seenArenas.has(name);
     const [savedRun, setSavedRun] = useState(readSavedRun);
     // §2.1: the manual slots alongside the rolling autosave.
     const [slots, setSlots] = useState<Array<SlotSummary | null>>(() => gameActions.readSaveSlots());
@@ -230,7 +237,14 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     }`}
                                 >
                                     <div className="min-w-0">
-                                        <div className={`font-black uppercase text-base ${selected ? 'text-white' : 'text-[var(--ink)]'}`}>{a.name}</div>
+                                        <div className={`font-black uppercase text-base ${selected ? 'text-white' : 'text-[var(--ink)]'}`}>
+                                            {a.name}
+                                            {unseenArena(a.id, a.name) && (
+                                                <span className={`ml-2 align-middle font-mono text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 border ${selected ? 'text-[#c9b8a0] border-[#c9b8a0]' : 'text-[var(--red)] border-[var(--red)]'}`}>
+                                                    New to you
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className={`text-xs mt-0.5 ${selected ? 'text-[#c9b8a0]' : 'text-[var(--color-ink-500)]'}`}>{a.description}</div>
                                     {SIGNATURE_BLURBS[a.id] && (
                                         <div className={`text-[10px] mt-1 font-mono ${selected ? 'text-[var(--red)]' : 'text-[var(--color-ink-600)]'}`}>

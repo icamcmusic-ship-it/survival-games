@@ -9,6 +9,7 @@ import { assessZone } from './stance';
 import { adjustMutual, adjustRel, getRel, respectOf } from './relationships';
 import { addZoneThreat, cycleOf, ensureMemory, noteStoodBy, raiseSuspicion, rememberedThreat, swearVengeance } from './memory';
 import { areLovers, maintainPerformance } from './alliance';
+import { earnTrait } from './earnedTraits';
 import { giveItem, itemPhrase } from './items';
 import { fearOf } from './fear';
 import { clampTribute } from './vitals';
@@ -56,6 +57,12 @@ function declareTruce(ctx: SimContext, a: Tribute, b: Tribute) {
     // §11.1: a parley is a stage. A performer plays the negotiation warm.
     maintainPerformance(a, b.id, ROMANCE.performedUpkeep);
     maintainPerformance(b, a.id, ROMANCE.performedUpkeep);
+}
+
+/** §10.1: 'Toll Collector' — who this tribute has shaken down, deduplicated. */
+function noteExtortion(stronger: Tribute, weakerId: string) {
+    stronger.extortedIds = stronger.extortedIds ?? [];
+    if (!stronger.extortedIds.includes(weakerId)) stronger.extortedIds.push(weakerId);
 }
 
 /** Tears up a standing truce from both sides, so neither is still honouring it. */
@@ -211,9 +218,13 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
     const tRatio = assessZone(t, [t, other], ctx.state).ratio;
     const otherRatio = assessZone(other, [other, t], ctx.state).ratio;
 
-    // Anyone genuinely committed to a fight is not negotiating.
-    if (t.stance === 'Aggressive' && tRatio < PARLEY.confidentRatio) return null;
-    if (other.stance === 'Aggressive' && otherRatio < PARLEY.confidentRatio) return null;
+    // Anyone genuinely committed to a fight is not negotiating — except that
+    // a confident predator sometimes prefers the shakedown to the kill: the
+    // toll costs nothing and the crowd loves it. Without this valve the
+    // aggression-heavy endgame (§10.3) starved the extortion branch entirely.
+    const extortInstead = ctx.rng.chance(PARLEY.aggressiveExtortChance);
+    if (t.stance === 'Aggressive' && tRatio < PARLEY.confidentRatio && !extortInstead) return null;
+    if (other.stance === 'Aggressive' && otherRatio < PARLEY.confidentRatio && !extortInstead) return null;
 
     const mutualRegard = Math.min(getRel(t, other.id), getRel(other, t.id));
     const mutualFear = Math.max(fearOf(t, other.id), fearOf(other, t.id));
@@ -226,7 +237,11 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
         const weaker = tOutmatched ? t : other;
         const stronger = tOutmatched ? other : t;
         const payment = tributePayment(weaker);
-        if (!payment && ctx.rng.chance(PARLEY.tributeChance)) {
+        // §8.3 widened the item catalogue enough that empty hands went rare,
+        // which starved this branch — so the shakedown sometimes wants
+        // directions even from a tribute with something in their pack.
+        const wantsInfo = !payment || ctx.rng.chance(PARLEY.tollInfoPreferenceChance);
+        if (wantsInfo && ctx.rng.chance(PARLEY.tributeChance)) {
             // Nothing spare to hand over. Someone with empty hands is exactly
             // the tribute most likely to be shaken down, and they still have
             // the only thing everyone in an arena wants: where the bodies
@@ -240,6 +255,7 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
                 .sort((a, b) => b.threat - a.threat);
             const worst = known[0];
             if (worst) {
+                noteExtortion(stronger, weaker.id);
                 addZoneThreat(ctx.state, stronger, worst.zone, worst.threat);
                 adjustMutual(ctx.state, weaker, stronger, -PARLEY.tollInfoResentment);
                 addExcitement(stronger, PARLEY.tributeExcitement);
@@ -257,6 +273,7 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
             }
         }
         if (payment && ctx.rng.chance(PARLEY.tributeChance)) {
+            noteExtortion(stronger, weaker.id);
             weaker.inventory = weaker.inventory.filter(i => i !== payment);
             giveItem(stronger, payment);
             // Being extorted is not being befriended, and the crowd loves it.
@@ -342,6 +359,9 @@ export function resolveTruces(ctx: SimContext) {
             // sides of the record — leaving the mirror key on the other
             // tribute made save payloads accrete stale empty truce objects.
             if (!other || other.status !== 'alive' || t.status !== 'alive') {
+                // §10.1: 'Kept Word' — a truce that had been renewed at least
+                // once was still standing when one of its parties fell.
+                if ((t.truceRenewed?.[otherId] ?? 0) > 0) state.keptWordSeen = true;
                 delete t.truces![otherId];
                 if (other?.truces) {
                     delete other.truces[t.id];
@@ -368,6 +388,10 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
 
     // RENEW: it worked, and both of them know it.
     if (regard >= PARLEY.truceRenewMinRegard && ctx.rng.chance(PARLEY.truceRenewChance)) {
+        // §10.1: 'Kept Word' reads this — a truce that was renewed at least
+        // once and was still standing when one party died.
+        a.truceRenewed = { ...(a.truceRenewed ?? {}), [b.id]: (a.truceRenewed?.[b.id] ?? 0) + 1 };
+        b.truceRenewed = { ...(b.truceRenewed ?? {}), [a.id]: (b.truceRenewed?.[a.id] ?? 0) + 1 };
         declareTruce(ctx, a, b);
         adjustMutual(ctx.state, a, b, PARLEY.truceRegard);
         ctx.logEvent(
@@ -402,4 +426,7 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
         [a.id, b.id],
         { category: 'alliance' }
     );
+    // §8.9: a promise kept all the way down is a thing the field remembers.
+    earnTrait(ctx, a, 'Oathbound');
+    earnTrait(ctx, b, 'Oathbound');
 }

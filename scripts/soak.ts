@@ -252,7 +252,7 @@ for (let i = 0; i < 400; i++) {
     if (/would rather stop pretending otherwise/.test(l.text)) soloDepartures++;
     if (/it is two camps/.test(l.text)) schisms++;
     if (/stops taking cover in|stops making plans/.test(l.text)) resolveBreakdowns++;
-    if (/takes out the nightlock/.test(l.text)) nightlockDeaths++;
+    if (/takes out the nightlock|starts looking at the undergrowth instead/.test(l.text)) nightlockDeaths++;
     if (/without being asked. Neither of them mentions why|That is the whole conversation|settles up in|so they take it, all of it|pay what they can|I owe you one/.test(l.text)) debtsRepaid++;
     if (/while the pile stayed empty|It gets loud between|come back to an empty one|which is the one thing this group agreed/.test(l.text)) charterBreaches++;
     if (/plays it beautifully/.test(l.text)) performedBonds++;

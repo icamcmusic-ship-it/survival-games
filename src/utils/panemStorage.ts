@@ -1,6 +1,8 @@
 import { GameState, Tribute } from '../models/types';
 import { CareerTotals, evaluateAchievements, evaluateMetaAchievements, evaluateNearMisses, NearMiss } from '../data/achievements';
 import { Notable, runNotables } from './notables';
+import { ARENAS } from '../data/constants';
+import { ARENA_MUTTS } from '../data/mutts';
 import {
     STORAGE_KEYS, StorageSpec, asNum, asObjMap, asRecord, asStrArray, readStored, removeStored,
     writeStored,
@@ -77,6 +79,19 @@ export interface PanemRecords {
     districtCrowns?: Record<number, DistrictCrown>;
     /** S-4: distinct Quarter Quell ids this player has run, win or lose — for `meta-quell-collector`. */
     quellsSeen?: string[];
+    /** §10.1: distinct arena-law ids a victor has been crowned under. */
+    lawsWonUnder?: string[];
+    /** §10.1: distinct procedural biome ids a victor has been crowned in. */
+    biomesWon?: string[];
+    /** §10.1: every distinct mutt name ever witnessed attacking somebody. */
+    muttsSeen?: string[];
+    /** §10.9: every distinct arena (mapId ?? name) ever played, win or lose — the picker marks the rest as new. */
+    arenasSeen?: string[];
+    /** §10.1: victories brought home by the player's standing patron district. */
+    patronWins?: number;
+    /** §10.1: the district that won the most recent finished run, and how many consecutive runs it has now won. */
+    lastVictorDistrict?: number;
+    victorDistrictStreak?: number;
 }
 
 /** One district's victory, stamped so it reads as a specific thing that happened. */
@@ -250,6 +265,13 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
             districtCrowns: asObjMap<DistrictCrown>(r.districtCrowns),
             arenasWon: asStrArray(r.arenasWon),
             quellsSeen: asStrArray(r.quellsSeen),
+            lawsWonUnder: asStrArray(r.lawsWonUnder),
+            biomesWon: asStrArray(r.biomesWon),
+            muttsSeen: asStrArray(r.muttsSeen),
+            arenasSeen: asStrArray(r.arenasSeen),
+            patronWins: Math.max(0, asNum(r.patronWins, 0)),
+            lastVictorDistrict: Number.isFinite(asNum(r.lastVictorDistrict, NaN)) ? asNum(r.lastVictorDistrict, 0) : undefined,
+            victorDistrictStreak: Math.max(0, asNum(r.victorDistrictStreak, 0)),
         };
     },
 };
@@ -352,6 +374,45 @@ export function commitRun(state: GameState): RunOutcome {
         // generated maps into a handful of entries.
         const arenaKey = state.arena.mapId ?? state.arena.name;
         if (!records.arenasWon.includes(arenaKey)) records.arenasWon.push(arenaKey);
+
+        // §10.1: the collector shelves — which arena law this crown was won
+        // under, and which procedural biome the arena was built from.
+        if (state.arena.law) {
+            records.lawsWonUnder = records.lawsWonUnder ?? [];
+            if (!records.lawsWonUnder.includes(state.arena.law)) records.lawsWonUnder.push(state.arena.law);
+        }
+        if (state.arena.id.startsWith('procedural-')) {
+            const biome = state.arena.id.slice('procedural-'.length);
+            records.biomesWon = records.biomesWon ?? [];
+            if (!records.biomesWon.includes(biome)) records.biomesWon.push(biome);
+        }
+
+        // §10.1: patronage paying off, and the dynasty streak.
+        if (records.patronDistrict !== undefined && victor.district === records.patronDistrict) {
+            records.patronWins = (records.patronWins ?? 0) + 1;
+        }
+        records.victorDistrictStreak = records.lastVictorDistrict === victor.district
+            ? (records.victorDistrictStreak ?? 0) + 1
+            : 1;
+        records.lastVictorDistrict = victor.district;
+    } else {
+        // A wipeout is nobody's dynasty.
+        records.victorDistrictStreak = 0;
+        records.lastVictorDistrict = undefined;
+    }
+
+    // §10.9: the arena was played, victor or not — the picker reads this to
+    // mark what the player has never seen.
+    records.arenasSeen = records.arenasSeen ?? [];
+    const seenKey = state.arena.mapId ?? state.arena.name;
+    if (!records.arenasSeen.includes(seenKey)) records.arenasSeen.push(seenKey);
+
+    // §10.1: the bestiary — every mutt somebody met this run, by name.
+    if (state.muttsSeen && state.muttsSeen.length > 0) {
+        records.muttsSeen = records.muttsSeen ?? [];
+        state.muttsSeen.forEach(name => {
+            if (!records.muttsSeen!.includes(name)) records.muttsSeen!.push(name);
+        });
     }
 
     // S-4: a Quell counts toward `meta-quell-collector` whether or not it
@@ -363,6 +424,19 @@ export function commitRun(state: GameState): RunOutcome {
 
     // S-3: career-wide achievements read the updated records, so cumulative
     // counts and per-district completion unlock the moment they become true.
+    // §10.1: the hand-authored shelf and the canonical bestiary, measured
+    // against what actually exists rather than a hardcoded count.
+    const handAuthoredNames = ARENAS.map(a => a.name);
+    const canonicalMutts = new Set<string>();
+    Object.values(ARENA_MUTTS).forEach(list => list.forEach(m => canonicalMutts.add(m.name)));
+    // The most simultaneous bests held by one tribute right now (keyed by
+    // name + seed so two same-named tributes across runs don't merge).
+    const bestsByHolder = new Map<string, number>();
+    Object.values(records.bests).forEach(b => {
+        const key = `${b.name}|${b.seed}`;
+        bestsByHolder.set(key, (bestsByHolder.get(key) ?? 0) + 1);
+    });
+
     const totals: CareerTotals = {
         runs: records.runs,
         victors: records.victors,
@@ -370,6 +444,15 @@ export function commitRun(state: GameState): RunOutcome {
         crownedDistricts: Object.keys(records.districtCrowns ?? {}).map(Number),
         arenasWon: records.arenasWon ?? [],
         quellsSeen: records.quellsSeen ?? [],
+        lawsWonUnder: records.lawsWonUnder ?? [],
+        biomesWon: records.biomesWon ?? [],
+        handAuthoredWon: handAuthoredNames.filter(n => (records.arenasWon ?? []).includes(n)).length,
+        handAuthoredTotal: handAuthoredNames.length,
+        canonicalMuttsSeen: (records.muttsSeen ?? []).filter(n => canonicalMutts.has(n)).length,
+        canonicalMuttTotal: canonicalMutts.size,
+        patronWins: records.patronWins ?? 0,
+        dynastyStreak: records.victorDistrictStreak ?? 0,
+        maxSimultaneousBests: Math.max(0, ...bestsByHolder.values()),
     };
 
     const earned = [...evaluateAchievements(state), ...evaluateMetaAchievements(totals)];

@@ -236,6 +236,10 @@ export function reconcileAlliances(ctx: SimContext) {
                 members.reduce((sum, m) => sum + (m.id === t.id ? 0 : getRel(m, t.id)), 0);
             if (backingFor(challenger) > backingFor(leader) + ALLIANCES.coupBackingMargin && ctx.rng.chance(ALLIANCES.coupChance)) {
                 record.leaderId = challenger.id;
+                // §10.1: 'Mutiny' — deposals are counted on the state so the
+                // record survives the alliance itself dissolving later.
+                ctx.state.allianceDeposals = ctx.state.allianceDeposals ?? {};
+                ctx.state.allianceDeposals[id] = (ctx.state.allianceDeposals[id] ?? 0) + 1;
                 ctx.logEvent(
                     `${challenger.name} stops deferring to ${leader.name}, and nobody in the group argues. The pack has a new leader.`,
                     members.map(m => m.id),

@@ -8,6 +8,7 @@ import { depleteZone, getZone, hasForceField, severEdge } from './map';
 import { clampTribute } from './vitals';
 import { climateOf } from './climate';
 import { arenaHasLaw } from './gamesProfile';
+import { earnTrait } from './earnedTraits';
 
 /**
  * Zone effects: the arena in a state other than its printed one.
@@ -82,6 +83,14 @@ export function startZoneEffect(ctx: SimContext, zone: string, kind: ZoneEffectK
         severity,
     });
 
+    // §5.7: contamination meeting standing floodwater is carried downstream.
+    // Runs after the push so the zone already reads as contaminated — the
+    // spread can't circle back through a flooded neighbour and recurse.
+    if ((kind === 'contaminated' && list.some(e => e.kind === 'flooded'))
+        || (kind === 'flooded' && list.some(e => e.kind === 'contaminated'))) {
+        spreadContamination(ctx, zone);
+    }
+
     if (!announce) return;
     if (vocab?.label) {
         ctx.logEvent(`${vocab.label} takes hold of ${zone}, and it is not letting go on its own.`, [], { important: true, zone, category: 'hazard' });
@@ -132,12 +141,6 @@ function resolveEffectInteraction(ctx: SimContext, zone: string, incoming: ZoneE
         );
         startZoneEffect(ctx, zone, 'flooded', false);
         return true;
-    }
-
-    if ((incoming === 'contaminated' && has('flooded')) || (incoming === 'flooded' && has('contaminated'))) {
-        // Both effects stand — but the water carries the taint downstream.
-        spreadContamination(ctx, zone);
-        return false;
     }
 
     return false;
@@ -245,6 +248,9 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                 }
                 clampTribute(t);
                 checkDeath(ctx, t, `Caught in the fire in ${zoneName}`);
+                // §8.9: walking out of a burning sector leaves a mark that is
+                // not always a scar.
+                if (t.status === 'alive') earnTrait(ctx, t, 'Firetouched');
                 break;
 
             case 'flooded':
@@ -334,6 +340,12 @@ function spreadFire(ctx: SimContext, from: string) {
         if (!ctx.rng.chance(chance)) return;
 
         startZoneEffect(ctx, neighborName, 'burning', false);
+        // §10.1: 'Ashes to Ashes' — the chain runs one zone deeper than the
+        // fire it jumped from, and the run remembers its longest.
+        const parentChain = effectsIn(state, from).find(e => e.kind === 'burning')?.chainLength ?? 1;
+        const child = effectsIn(state, neighborName).find(e => e.kind === 'burning');
+        if (child) child.chainLength = Math.max(child.chainLength ?? 1, parentChain + 1);
+        state.fireChainMax = Math.max(state.fireChainMax ?? 1, parentChain + 1);
         ctx.logEvent(`The fire in ${from} jumps to ${neighborName}.`, [], { important: true, zone: neighborName, category: 'hazard' });
     });
 }

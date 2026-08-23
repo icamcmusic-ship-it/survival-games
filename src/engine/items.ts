@@ -140,6 +140,9 @@ function keepValue(t: Tribute, item: Item): number {
  * are full. Returns the items left behind so the caller can narrate it.
  */
 export function giveItem(t: Tribute, ...items: Item[]): Item[] {
+    // §10.1: 'Nothing but Hands' needs to know whether a weapon ever passed
+    // through these hands — set once, here, where every acquisition funnels.
+    if (items.some(i => i.type === 'weapon')) t.everCarriedWeapon = true;
     // Stackable consumables merge rather than each taking a slot — three loaves
     // of bread is one thing you are carrying, not three.
     items.forEach(item => {

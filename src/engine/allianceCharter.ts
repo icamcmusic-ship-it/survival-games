@@ -1,6 +1,6 @@
 import { Alliance, CharterRule, Tribute } from '../models/types';
 import { raiseSuspicion } from './memory';
-import { SUSPICION, CHARTER } from '../data/balance';
+import { SUSPICION, CHARTER, ENDGAME } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { allianceOf } from './alliance';
 import { adjustRel, getRel } from './relationships';
@@ -80,6 +80,12 @@ export function enforceCharters(ctx: SimContext) {
         const record = allianceOf(ctx.state, id);
         if (!record?.charter || members.length < 2) return;
 
+        // §10.1: 'Charter Kept' — a group of three or more standing at the
+        // final eight with terms agreed and never once broken.
+        if (members.length >= 3 && alive.length <= ENDGAME.fieldSize && (record.breaches ?? 0) === 0) {
+            ctx.state.charterKeptSeen = true;
+        }
+
         // §4.5: the endgame clause resolves as a scene, not a breach — a
         // pact honoured in full is the rarest and most valuable thing the
         // social layer can produce.
@@ -101,6 +107,7 @@ export function enforceCharters(ctx: SimContext) {
             const offender = findBreach(ctx, rule, record, members);
             if (!offender) return;
             if (!ctx.rng.chance(CHARTER.noticeChance)) return;
+            record.breaches = (record.breaches ?? 0) + 1;
 
             // Everybody else thinks less of them. Nobody draws a knife over it.
             members.forEach(m => {

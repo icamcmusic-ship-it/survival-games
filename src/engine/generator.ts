@@ -304,12 +304,18 @@ export function generateTributes(
             // their own — a fraction of the Career bonus, in the attribute
             // their actual work would plausibly build, so a hard-labour
             // district tribute is a survivable fight rather than a bye.
+            // §10.2: the Career head start is softened at the floor (0-2, not
+            // a guaranteed +1 in both stats) and every outer district's
+            // compensating bonus has a real floor of its own — the academy is
+            // still the favourite, but a stockyard tribute now arrives with
+            // the strength their work would actually have built.
             if (isCareer) {
-                attributes.strength += rng.nextInt(1, 2);
-                attributes.agility += rng.nextInt(1, 2);
+                attributes.strength += rng.nextInt(0, 2);
+                attributes.agility += rng.nextInt(0, 2);
             }
             if (district === 3) {
                 attributes.intelligence += rng.nextInt(2, 4);
+                attributes.agility += rng.nextInt(0, 1);
             }
             if (district === 7) {
                 attributes.strength += rng.nextInt(1, 3);
@@ -318,11 +324,27 @@ export function generateTributes(
                 attributes.stealth += rng.nextInt(2, 4);
                 attributes.agility += rng.nextInt(1, 2);
             }
-            if (district === 5 || district === 9 || district === 10) {
-                attributes.strength += rng.nextInt(0, 2);
+            if (district === 12) {
+                // A childhood hauling coal carts builds the same back a
+                // lumberyard does — the Seam's dead-last win rate was the
+                // one §10.2 outlier stealth alone could not close.
+                attributes.strength += rng.nextInt(1, 2);
+            }
+            if (district === 5 || district === 10) {
+                attributes.strength += rng.nextInt(1, 2);
+            }
+            if (district === 9) {
+                // Grain country: a childhood swinging a scythe is worth as
+                // much as District 7's axe work, and a life spent in
+                // head-high grain teaches a body how not to be seen.
+                attributes.strength += rng.nextInt(1, 3);
+                attributes.stealth += rng.nextInt(0, 2);
+            }
+            if (district === 9 || district === 10) {
+                attributes.agility += rng.nextInt(0, 2);
             }
             if (district === 6 || district === 8) {
-                attributes.agility += rng.nextInt(0, 2);
+                attributes.agility += rng.nextInt(1, 2);
             }
 
             // The cast shape leans on the age roll before it is clamped back

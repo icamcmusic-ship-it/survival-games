@@ -156,6 +156,10 @@ export function resolveMuttAttack(ctx: SimContext, t: Tribute, time: 'day' | 'ni
 
 /** The actual encounter, shared by a fresh sighting, a persistent re-attack, and a Gamemaker release. */
 export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
+    // §10.1: the run's bestiary — every mutt somebody actually met, by name,
+    // folded into the persistent records at the end of the run.
+    ctx.state.muttsSeen = ctx.state.muttsSeen ?? [];
+    if (!ctx.state.muttsSeen.includes(mutt.name)) ctx.state.muttsSeen.push(mutt.name);
     const packSize = ctx.rng.nextInt(mutt.packSize[0], mutt.packSize[1]);
 
     // Proximity dread lands whether or not the tribute gets touched.

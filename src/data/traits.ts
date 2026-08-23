@@ -326,6 +326,39 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         earned: true,
         mods: { odds: 2, combatPower: 1, excitement: 0.3, allianceAffinity: -0.2 },
     },
+    // §8.9: the second wave of earned traits — arcs the arena could already
+    // produce (fires survived, traps unpicked, promises kept) with no visible
+    // mark left on the person afterwards.
+    'Firetouched': {
+        info: 'Earned walking out of a burning sector. Fire holds no novelty for them now, and they read dry ground the way other people read faces.',
+        earned: true,
+        mods: { burnResist: 0.35, heatResist: 0.2, campSkill: 0.1 },
+    },
+    'Trapwise': {
+        info: 'Earned pulling apart other people\'s traps. They see the arena as a set of mechanisms now — and they build better ones themselves.',
+        earned: true,
+        mods: { trapSkill: 0.15, awareness: 0.8 },
+    },
+    'Waterborn': {
+        info: 'Earned in the current. Enough hard crossings and the water stops being an obstacle and starts being a road nobody else will take.',
+        earned: true,
+        mods: { water: 1.5, concealment: 0.04, fatigueDay: -1 },
+    },
+    'Silent Step': {
+        info: 'Earned by simply never being found. Days of moving unseen have made quiet a habit rather than an effort.',
+        earned: true,
+        mods: { concealment: 0.08, ambush: 0.04, nightMovement: 0.8 },
+    },
+    'Oathbound': {
+        info: 'Earned keeping a truce all the way to its end. The field knows their word holds, which is worth more than a weapon to the right ally.',
+        earned: true,
+        mods: { allianceAffinity: 0.15, treachery: -0.2, sponsorTrust: 1 },
+    },
+    'Vulture': {
+        info: 'Earned stripping the fallen. They are never short of supplies, and nobody wants to catch them at work.',
+        earned: true,
+        mods: { scavenge: 0.12, capacity: 1, sponsorTrust: -1 },
+    },
 };
 
 /** Everything the reaping can roll. Earned traits are excluded by definition. */

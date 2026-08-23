@@ -45,6 +45,7 @@ const alive = (state: GameState) => state.tributes.filter(t => t.status === 'ali
 /** Traits that can only be picked up in the arena. Mirrors `earnedTraits.ts`. */
 const EARNED_TRAIT_NAMES = [
     'Bloodied', 'Haunted', 'Hardened', 'Merciful', 'Marked', 'Starved', 'Venom-Wise', 'Feared',
+    'Firetouched', 'Trapwise', 'Waterborn', 'Silent Step', 'Oathbound', 'Vulture',
 ];
 const dead = (state: GameState) => state.tributes.filter(t => t.status === 'dead');
 
@@ -156,6 +157,12 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Not Who They Were',
         hint: 'Crown a victor who earned three or more traits in the arena that they did not walk in with.',
         test: (_s, v) => !!v && EARNED_TRAIT_NAMES.filter(name => v.traits.includes(name)).length >= 3,
+        nearMiss: (_s, v) => {
+            const n = v ? EARNED_TRAIT_NAMES.filter(name => v.traits.includes(name)).length : 0;
+            return v && n === 2
+                ? `${v.name} came home carrying 2 earned traits — one short of being someone else entirely`
+                : undefined;
+        },
     },
     {
         id: 'merciful',
@@ -168,6 +175,13 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Everyone Knows the Name',
         hint: 'See a single tribute reach five kills.',
         test: state => state.tributes.some(t => t.kills >= 5),
+        nearMiss: state => {
+            const best = state.tributes.reduce((a, t) => Math.max(a, t.kills), 0);
+            const holder = state.tributes.find(t => t.kills === best);
+            return best >= 3 && best < 5 && holder
+                ? `${holder.name} reached ${best} kills — ${5 - best} short of a name everyone knows`
+                : undefined;
+        },
     },
     {
         id: 'quarter-quell',
@@ -302,12 +316,24 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Grain Paid Back',
         hint: 'Crown a victor whose name was in the bowl for tesserae, year after year.',
         test: (_s, v) => !!v && (v.tesserae ?? 0) >= 3,
+        nearMiss: (_s, v) => {
+            const n = v?.tesserae ?? 0;
+            return v && n > 0 && n < 3
+                ? `${v.name} carried ${n} tessera slip${n === 1 ? '' : 's'} — ${3 - n} short of the grain paying back`
+                : undefined;
+        },
     },
     {
         id: 'crown-limping',
         name: 'Held Together With String',
         hint: 'Crown a victor carrying three or more standing injuries at the end.',
         test: (_s, v) => !!v && Object.values(v.injuries).filter(Boolean).length >= 3,
+        nearMiss: (_s, v) => {
+            const n = v ? Object.values(v.injuries).filter(Boolean).length : 0;
+            return v && n === 2
+                ? `${v.name} finished carrying 2 standing injuries — one short of held together with string`
+                : undefined;
+        },
     },
     {
         id: 'district-partners',
@@ -341,12 +367,21 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Everybody Owed Them',
         hint: 'Crown a victor that two or more tributes still owed when the Games ended.',
         test: (state, v) => !!v && state.tributes.filter(t => t.id !== v.id && (t.debts?.[v.id] ?? 0) > 0).length >= 2,
+        nearMiss: (state, v) => {
+            const n = v ? state.tributes.filter(t => t.id !== v.id && (t.debts?.[v.id] ?? 0) > 0).length : 0;
+            return v && n === 1
+                ? `one tribute still owed ${v.name} at the end — a second creditor short`
+                : undefined;
+        },
     },
     {
         id: 'camera-ready',
         name: 'Camera-Ready',
         hint: 'Crown a victor with two or more habits the cameras caught.',
         test: (_s, v) => !!v && (v.quirks?.length ?? 0) >= 2,
+        nearMiss: (_s, v) => v && (v.quirks?.length ?? 0) === 1
+            ? `${v.name} gave the cameras one habit to chew on — one short of camera-ready`
+            : undefined,
     },
     {
         id: 'capitol-darling',
@@ -361,6 +396,14 @@ export const ACHIEVEMENTS: Achievement[] = [
         test: state => state.cornucopiaHolder !== undefined
             && state.cornucopiaHeldSince !== undefined
             && (state.day - state.cornucopiaHeldSince) >= 5,
+        nearMiss: state => {
+            const held = state.cornucopiaHolder !== undefined && state.cornucopiaHeldSince !== undefined
+                ? state.day - state.cornucopiaHeldSince
+                : 0;
+            return held >= 3 && held < 5
+                ? `an alliance held the Cornucopia ${held} days running — ${5 - held} short of holding the horn`
+                : undefined;
+        },
     },
     {
         id: 'protector-victor',
@@ -402,6 +445,227 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'See a Quarter Quell end with no victor having killed anybody.',
         test: (state, v) => !!v && state.gamesProfile?.quell !== undefined && v.kills === 0,
     },
+    // §10.1: the third wave — the social machinery today's work added (truces
+    // renewed, extortion, charters, deposals, grudges) plus the arena's own
+    // set pieces, none of which had an achievement keyed to them.
+    {
+        id: 'kept-word',
+        name: 'Kept Word',
+        hint: 'See a truce declared, renewed, and still standing when one of its parties falls.',
+        test: state => state.keptWordSeen === true,
+    },
+    {
+        id: 'long-con',
+        name: 'The Long Con',
+        hint: 'Crown a victor who once held a performed bond for five cycles straight.',
+        test: (_s, v) => !!v && (v.maxPerformingStreak ?? 0) >= 5,
+        nearMiss: (_s, v) => {
+            const best = v?.maxPerformingStreak ?? 0;
+            return v && best >= 3 && best < 5
+                ? `${v.name} kept the act up for ${best} cycles — ${5 - best} short of the long con`
+                : undefined;
+        },
+    },
+    {
+        id: 'toll-collector',
+        name: 'Toll Collector',
+        hint: 'See one tribute extort payment out of three different people in a single Games.',
+        test: state => state.tributes.some(t => (t.extortedIds?.length ?? 0) >= 3),
+        nearMiss: state => {
+            const best = state.tributes.reduce((a, t) => Math.max(a, t.extortedIds?.length ?? 0), 0);
+            const holder = state.tributes.find(t => (t.extortedIds?.length ?? 0) === best);
+            return best === 2 && holder
+                ? `${holder.name} shook down 2 tributes — one short of a toll collector`
+                : undefined;
+        },
+    },
+    {
+        id: 'paid-in-full',
+        name: 'Paid in Full',
+        hint: 'See every debt in the arena settled before the field reaches four.',
+        test: state => state.paidInFullSeen === true,
+    },
+    {
+        id: 'mutiny',
+        name: 'Mutiny',
+        hint: 'See the same alliance depose its leader twice.',
+        test: state => Object.values(state.allianceDeposals ?? {}).some(n => n >= 2),
+        nearMiss: state => Object.values(state.allianceDeposals ?? {}).some(n => n === 1)
+            ? 'an alliance deposed its leader once — a second coup short of a mutiny'
+            : undefined,
+    },
+    {
+        id: 'charter-kept',
+        name: 'Charter Kept',
+        hint: 'See an alliance of three or more reach the final eight without a single charter breach.',
+        test: state => state.charterKeptSeen === true,
+    },
+    {
+        id: 'blood-feud',
+        name: 'Blood Feud',
+        hint: 'See one pair of tributes fight each other four separate times.',
+        test: state => state.tributes.some(t =>
+            Object.values(t.memory?.rivals ?? {}).some(r => r.fights >= 4)),
+        nearMiss: state => {
+            const best = state.tributes.reduce((a, t) =>
+                Math.max(a, ...Object.values(t.memory?.rivals ?? {}).map(r => r.fights), 0), 0);
+            return best === 3
+                ? 'a rivalry reached 3 fights — one more meeting short of a blood feud'
+                : undefined;
+        },
+    },
+    {
+        id: 'someone-elses-war',
+        name: "Someone Else's War",
+        hint: 'See a tribute sworn to vengeance die without ever reaching their target.',
+        test: state => dead(state).some(t =>
+            (t.memory?.vengeance ?? []).some(targetId => {
+                const target = state.tributes.find(o => o.id === targetId);
+                return !!target && (target.status === 'alive'
+                    || (target.dayOfDeath ?? 0) > (t.dayOfDeath ?? 0));
+            })),
+    },
+    {
+        id: 'both-mourned',
+        name: 'Both Mourned',
+        hint: 'See two tributes grieve the same death, then find each other.',
+        test: state => state.tributes.some(a => state.tributes.some(b => {
+            if (a.id >= b.id) return false;
+            const shared = (a.memory?.mourned ?? []).some(id => (b.memory?.mourned ?? []).includes(id));
+            if (!shared) return false;
+            return state.log.some(e => e.category === 'alliance'
+                && e.tributesInvolved.includes(a.id) && e.tributesInvolved.includes(b.id));
+        })),
+    },
+    {
+        id: 'ashes-to-ashes',
+        name: 'Ashes to Ashes',
+        hint: 'See a single fire chain its way across four sectors.',
+        test: state => (state.fireChainMax ?? 1) >= 4,
+        nearMiss: state => {
+            const best = state.fireChainMax ?? 1;
+            return best >= 2 && best < 4
+                ? `a fire ran ${best} zones deep — ${4 - best} short of a true conflagration`
+                : undefined;
+        },
+    },
+    {
+        id: 'cartographer',
+        name: 'Cartographer',
+        hint: 'See one tribute personally stand in every zone the arena has.',
+        test: state => {
+            const all = state.arena.zones.map(z => z.name);
+            return state.tributes.some(t => all.every(z => (t.visitedZones ?? []).includes(z)));
+        },
+        nearMiss: state => {
+            const all = state.arena.zones.map(z => z.name);
+            let bestName = '';
+            let bestMissing = Infinity;
+            state.tributes.forEach(t => {
+                const missing = all.filter(z => !(t.visitedZones ?? []).includes(z)).length;
+                if (missing < bestMissing) { bestMissing = missing; bestName = t.name; }
+            });
+            return bestMissing > 0 && bestMissing <= 2
+                ? `${bestName} walked all but ${bestMissing} zone${bestMissing === 1 ? '' : 's'} of the arena`
+                : undefined;
+        },
+    },
+    {
+        id: 'deep-water',
+        name: 'Deep Water',
+        hint: 'Crown a victor in a sprawling arena of thirteen zones or more.',
+        test: (state, v) => !!v && state.arena.zones.length >= 13,
+    },
+    {
+        id: 'pressure-cooker',
+        name: 'Pressure Cooker',
+        hint: 'Crown a victor in a cramped arena of eight zones or fewer.',
+        test: (state, v) => !!v && state.arena.zones.length <= 8,
+    },
+    {
+        id: 'ground-gave-out',
+        name: 'The Ground Gave Out',
+        hint: 'Watch the closing border take somebody.',
+        test: state => dead(state).some(t =>
+            /collapsing border|border closed/.test(t.causeOfDeath ?? '')),
+    },
+    {
+        id: 'held-the-horn',
+        name: 'Held the Horn',
+        hint: 'Hold the Cornucopia for six consecutive cycles.',
+        test: state => (state.maxHornHold ?? 0) >= 6,
+        nearMiss: state => {
+            const n = state.maxHornHold ?? 0;
+            return n >= 3 && n < 6
+                ? `the longest Cornucopia hold ran ${n} cycles — ${6 - n} short of Held the Horn`
+                : undefined;
+        },
+    },
+    {
+        id: 'trappers-crown',
+        name: "Trapper's Crown",
+        hint: 'Crown a victor whose traps did three of the killing for them.',
+        test: (_s, v) => !!v && (v.trapKills ?? 0) >= 3,
+        nearMiss: (_s, v) => {
+            const n = v?.trapKills ?? 0;
+            return v && n >= 1 && n < 3
+                ? `${v.name}'s traps took ${n} — ${3 - n} short of a trapper's crown`
+                : undefined;
+        },
+    },
+    {
+        id: 'apothecary',
+        name: 'Apothecary',
+        hint: 'See a tribute train their field medicine to mastery.',
+        test: state => state.tributes.some(t => (t.proficiencies?.medicine ?? 0) >= 4),
+        nearMiss: state => {
+            const best = state.tributes.reduce((a, t) => Math.max(a, t.proficiencies?.medicine ?? 0), 0);
+            return best >= 3 && best < 4
+                ? 'somebody\'s field medicine reached 3 — one level short of an apothecary'
+                : undefined;
+        },
+    },
+    {
+        id: 'full-kit',
+        name: 'Full Kit',
+        hint: 'See one tribute holding armour, a light, warmth and a water purifier all at once.',
+        test: state => state.tributes.some(t => t.fullKitSeen === true),
+    },
+    {
+        id: 'nothing-but-hands',
+        name: 'Nothing but Hands',
+        hint: 'Crown a victor who never once carried a weapon.',
+        test: (_s, v) => !!v && v.everCarriedWeapon !== true,
+    },
+    {
+        id: 'venom-kill',
+        name: 'Venom',
+        hint: 'See a poisoned blade finish what it started.',
+        test: state => dead(state).some(t =>
+            t.poisonedByWeapon === true && /poison/i.test(t.causeOfDeath ?? '')),
+    },
+    {
+        id: 'twelve-score',
+        name: 'Twelve',
+        hint: 'See the Gamemakers hand down a training score of twelve.',
+        test: state => state.tributes.some(t => t.trainingScore >= 12),
+        nearMiss: state => state.tributes.some(t => t.trainingScore === 11)
+            ? 'an eleven went up on the board — one short of the score nobody gets'
+            : undefined,
+    },
+    {
+        id: 'three-fingers',
+        name: 'Three Fingers',
+        hint: 'See a district give its tribute the salute.',
+        test: state => state.log.some(e => /three[- ]finger/i.test(e.text))
+            || state.tributes.some(t => /three[- ]finger|three fingers/i.test(t.reapingNote ?? '')),
+    },
+    {
+        id: 'the-token',
+        name: 'The Token',
+        hint: 'Crown a victor still carrying the one thing they brought from home.',
+        test: (_s, v) => !!v && v.token !== undefined,
+    },
 ];
 
 /**
@@ -421,6 +685,22 @@ export interface CareerTotals {
     arenasWon: string[];
     /** Distinct Quarter Quell ids this player has run, win or lose. */
     quellsSeen: string[];
+    /** §10.1: distinct arena-law ids a victor has been crowned under. */
+    lawsWonUnder?: string[];
+    /** §10.1: distinct procedural biome ids a victor has been crowned in. */
+    biomesWon?: string[];
+    /** §10.1: hand-authored arenas won, against the total that exist. */
+    handAuthoredWon?: number;
+    handAuthoredTotal?: number;
+    /** §10.1: canonical (hand-authored) mutts witnessed, against the bestiary's size. */
+    canonicalMuttsSeen?: number;
+    canonicalMuttTotal?: number;
+    /** §10.1: victories by the player's standing patron district. */
+    patronWins?: number;
+    /** §10.1: consecutive finished runs won by the same district, as of now. */
+    dynastyStreak?: number;
+    /** §10.1: the most simultaneous record-book bests held by one tribute. */
+    maxSimultaneousBests?: number;
 }
 
 export interface MetaAchievement {
@@ -484,6 +764,56 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         name: 'A Life\'s Work',
         hint: 'Finish one hundred Games.',
         test: t => t.runs >= 100,
+    },
+    // §10.1: the collector shelf — career-wide completions over the stored
+    // records that today's work started keeping (laws, biomes, the bestiary).
+    {
+        id: 'meta-law-abiding',
+        name: 'Law Abiding',
+        hint: 'Crown victors under all six of the arena laws.',
+        test: t => (t.lawsWonUnder?.length ?? 0) >= 6,
+    },
+    {
+        id: 'meta-every-biome',
+        name: 'Every Biome',
+        hint: 'Crown a victor in all eight of the Gamemakers\' procedural biomes.',
+        test: t => (t.biomesWon?.length ?? 0) >= 8,
+    },
+    {
+        id: 'meta-twenty-eight',
+        name: 'Twenty-Eight',
+        hint: 'Crown a victor in every hand-authored arena the Capitol has ever built.',
+        test: t => (t.handAuthoredTotal ?? 0) > 0 && (t.handAuthoredWon ?? 0) >= (t.handAuthoredTotal ?? Infinity),
+    },
+    {
+        id: 'meta-patrons-return',
+        name: "Patron's Return",
+        hint: 'See the district you patronise bring a victor home.',
+        test: t => (t.patronWins ?? 0) >= 1,
+    },
+    {
+        id: 'meta-dynasty',
+        name: 'The Dynasty',
+        hint: 'See one district win three Games in a row.',
+        test: t => (t.dynastyStreak ?? 0) >= 3,
+    },
+    {
+        id: 'meta-full-bestiary',
+        name: 'Full Bestiary',
+        hint: 'Witness every named mutt the Gamemakers have on file, across all your Games.',
+        test: t => (t.canonicalMuttTotal ?? 0) > 0 && (t.canonicalMuttsSeen ?? 0) >= (t.canonicalMuttTotal ?? Infinity),
+    },
+    {
+        id: 'meta-statistician',
+        name: 'Statistician',
+        hint: 'See one tribute hold five of the record book\'s bests at the same time.',
+        test: t => (t.maxSimultaneousBests ?? 0) >= 5,
+    },
+    {
+        id: 'meta-long-memory',
+        name: 'Long Memory',
+        hint: 'Finish five hundred Games.',
+        test: t => t.runs >= 500,
     },
 ];
 

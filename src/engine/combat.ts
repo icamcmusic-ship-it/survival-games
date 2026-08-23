@@ -2,7 +2,7 @@ import { DamageRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
-import { BLEEDING, COMBAT, DEBTS, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
 import { giveItem } from './items';
 import { rollAmbush } from './stealth';
@@ -358,6 +358,9 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     }
     if (weapon?.poison && ctx.rng.chance(COMBAT.poisonTransferChance) && !defender.injuries.poisoned) {
         injure(defender, 'poisoned');
+        // §10.1: 'Venom' — the mark of an envenomed blade, distinct from the
+        // arena's own poisons, so a later poison death reads as this weapon's.
+        defender.poisonedByWeapon = true;
         ctx.logEvent(
             `${defender.name} is grazed by ${attacker.name}'s poisoned dart and feels the venom spreading.`,
             [defender.id, attacker.id],
@@ -998,6 +1001,10 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             if (victim.inventory.length > 0) {
                 const spoils = victim.inventory;
                 victim.inventory = [];
+                // §8.9: stripping the fallen, done often enough, becomes who
+                // you are on camera.
+                killer.corpsesLooted = (killer.corpsesLooted ?? 0) + 1;
+                if (killer.corpsesLooted >= EARNED_TRAIT_RULES.vultureCorpses) earnTrait(ctx, killer, 'Vulture');
                 const dropped = giveItem(killer, ...spoils);
                 const taken = spoils.filter(i => !dropped.includes(i));
                 const lootNames = taken.map(i => i.name).join(', ');

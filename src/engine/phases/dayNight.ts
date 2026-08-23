@@ -2,12 +2,12 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ANTHEM, CRAFTING, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, SANITY_BANDS, SPONSORS, ZONE_EFFECTS } from '../../data/balance';
+import { ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, SANITY_BANDS, SPONSORS, ZONE_EFFECTS } from '../../data/balance';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting,
@@ -38,6 +38,7 @@ import { resolveBreakdowns, tickResolve } from '../resolve';
 import { resolveTruces } from '../parley';
 import { repayDebts, tickDistrictBonds } from '../debts';
 import { enforceCharters } from '../allianceCharter';
+import { earnTrait } from '../earnedTraits';
 import { gamemakerProfile } from '../../data/gamemakers';
 import { arenaHasLaw, arenaIsSilent, escalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
@@ -221,7 +222,34 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     repayDebts(ctx);
     tickDistrictBonds(ctx);
     enforceCharters(ctx);
-    getAlive(ctx.state).forEach(t => {
+    const board = getAlive(ctx.state);
+    // §10.1: 'Paid in Full' — debts existed, and none were still outstanding
+    // when the field first reached four. Sampled before the audit below so a
+    // debt still open this cycle counts as ever having existed.
+    const anyOutstanding = board.some(t => t.debts && Object.values(t.debts).some(d => d > 0));
+    if (anyOutstanding) ctx.state.debtsEverIncurred = true;
+    if (board.length <= 4 && board.length >= 2 && !ctx.state.finalFourDebtsChecked) {
+        ctx.state.finalFourDebtsChecked = true;
+        if (ctx.state.debtsEverIncurred && !anyOutstanding) ctx.state.paidInFullSeen = true;
+    }
+    board.forEach(t => {
+        // §10.1: the personal map — every zone they have stood in.
+        t.visitedZones = t.visitedZones ?? [];
+        if (!t.visitedZones.includes(t.zone)) t.visitedZones.push(t.zone);
+        // §8.9: cycles spent with no hostile in the zone. Enough of them in a
+        // row and quiet has become who they are.
+        const hostileHere = board.some(o => o.id !== t.id && o.zone === t.zone
+            && (o.allianceId === undefined || o.allianceId !== t.allianceId));
+        t.unseenStreak = hostileHere ? 0 : (t.unseenStreak ?? 0) + 1;
+        if (t.unseenStreak >= EARNED_TRAIT_RULES.silentStepCycles) earnTrait(ctx, t, 'Silent Step');
+        // §10.1: 'Full Kit' — armour, light, warmth and a purifier at once.
+        if (!t.fullKitSeen
+            && t.inventory.some(i => (i.armour ?? 0) > 0)
+            && t.inventory.some(i => i.light)
+            && t.inventory.some(i => i.warmth)
+            && t.inventory.some(i => i.purifies)) {
+            t.fullKitSeen = true;
+        }
         // Bloodlust cools. A kill on day 3 should not still be making someone
         // braver on day 8.
         if (t.momentum) t.momentum = Math.max(0, t.momentum - HUNTING.momentumDecayPerCycle);
@@ -247,6 +275,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         t.performingStreak = t.displayedRegard && Object.keys(t.displayedRegard).length > 0
             ? (t.performingStreak ?? 0) + 1
             : 0;
+        // §10.1: 'The Long Con' reads the high-water mark, not the live streak.
+        t.maxPerformingStreak = Math.max(t.maxPerformingStreak ?? 0, t.performingStreak);
         clampTribute(t);
     });
 
@@ -398,7 +428,10 @@ function buildCollapseOrder(ctx: SimContext): string[] {
 function computeCollapseOrder(ctx: SimContext): string[] {
     const allZoneNames = zoneNames(ctx.state.arena);
     const patternRng = new RNG(`${ctx.state.seed}-collapse-pattern`);
-    const pattern = patternRng.pick(['scattered', 'wall', 'ring'] as const);
+    // §10.5: two more endgame shapes beyond wall and ring — a spiral rotating
+    // in around the Cornucopia, and a split that takes one half of the arena
+    // before it starts on the half the horn stands in.
+    const pattern = patternRng.pick(['scattered', 'wall', 'ring', 'spiral', 'split'] as const);
 
     if (pattern === 'scattered') {
         // Deterministic per-seed but not the same order every run.
@@ -434,10 +467,49 @@ function computeCollapseOrder(ctx: SimContext): string[] {
         return [...allZoneNames].sort((a, b) => (distances.get(a) ?? 0) - (distances.get(b) ?? 0));
     }
 
-    // Ring: the perimeter goes first and the safe ground shrinks toward the
-    // Cornucopia, which is the shape most people mean by "shrinking circle".
+    if (pattern === 'split') {
+        // The arena severed into halves: every zone is assigned to whichever
+        // pole it sits nearer — the far pole (the edge furthest from the
+        // horn) or the Cornucopia itself. The far half is eaten first, then
+        // the collapse crosses the divide and works inward on the rest.
+        const fromCornucopia = bfsDistances(allZoneNames[0]);
+        const farPole = [...fromCornucopia.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? allZoneNames[0];
+        const fromFar = bfsDistances(farPole);
+        const farHalf = allZoneNames.filter(n =>
+            (fromFar.get(n) ?? Infinity) < (fromCornucopia.get(n) ?? Infinity));
+        const nearHalf = allZoneNames.filter(n => !farHalf.includes(n));
+        return [
+            ...farHalf.sort((a, b) => (fromFar.get(a) ?? 0) - (fromFar.get(b) ?? 0)),
+            ...nearHalf.sort((a, b) => (fromCornucopia.get(b) ?? 0) - (fromCornucopia.get(a) ?? 0)),
+        ];
+    }
+
+    // Ring and spiral both work outside-in over the same BFS rings.
     const distances = bfsDistances(allZoneNames[0]);
-    return [...allZoneNames].sort((a, b) => (distances.get(b) ?? 0) - (distances.get(a) ?? 0));
+    const outsideIn = [...allZoneNames].sort((a, b) => (distances.get(b) ?? 0) - (distances.get(a) ?? 0));
+    if (pattern === 'ring') return outsideIn;
+
+    // Spiral: the collapse rotates around the Cornucopia — within each ring
+    // the failing zone chains along adjacency from wherever the last one
+    // fell, so the border reads as a sweep rather than a whole ring at once.
+    const spiralOrder: string[] = [];
+    const rings = new Map<number, string[]>();
+    outsideIn.forEach(n => {
+        const d = distances.get(n) ?? 0;
+        rings.set(d, [...(rings.get(d) ?? []), n]);
+    });
+    let previous: string | undefined;
+    [...rings.keys()].sort((a, b) => b - a).forEach(d => {
+        const remaining = new Set(rings.get(d)!);
+        while (remaining.size > 0) {
+            const prevZone = previous ? getZone(ctx.state.arena, previous) : undefined;
+            const next = [...remaining].find(n => prevZone?.adjacent.includes(n)) ?? [...remaining][0];
+            spiralOrder.push(next);
+            remaining.delete(next);
+            previous = next;
+        }
+    });
+    return spiralOrder;
 }
 
 /**
@@ -521,9 +593,7 @@ function forceFinale(ctx: SimContext) {
     const active = ctx.state.arena.zones
         .map(z => z.name)
         .filter(name => !(ctx.state.collapsedZones ?? []).includes(name));
-    const horn = active.includes(ctx.state.arena.zones[0].name)
-        ? ctx.state.arena.zones[0].name
-        : active[active.length - 1] ?? ctx.state.arena.zones[0].name;
+    const horn = pickFinaleZone(ctx, active);
     if (ctx.state.finalistCycles === ESCALATION.finaleAfterFinalistCycles) {
         ctx.logEvent(
             `The arena starts taking everything else away. Water stops running, cover thins, and every route that is not toward ${horn} closes behind whoever walks it. `
@@ -558,6 +628,24 @@ function forceFinale(ctx: SimContext) {
     // the finalists on paper and let them wander past each other for three
     // hundred days.
     ctx.state.finaleZone = horn;
+}
+
+/**
+ * §10.5: where the Gamemakers convene the finale. Usually the Cornucopia —
+ * but some years the last fight is staged at the arena's own landmark
+ * instead: the law zone the whole run has orbited, or the high ground.
+ * Rolled once per run from the seed, so the choice is stable cycle to cycle.
+ */
+function pickFinaleZone(ctx: SimContext, active: string[]): string {
+    const horn = active.includes(ctx.state.arena.zones[0].name)
+        ? ctx.state.arena.zones[0].name
+        : active[active.length - 1] ?? ctx.state.arena.zones[0].name;
+    if (!new RNG(`${ctx.state.seed}-finale-stage`).chance(ESCALATION.altFinaleChance)) return horn;
+    const law = ctx.state.arena.lawZone;
+    if (law && active.includes(law) && law !== horn) return law;
+    const high = ctx.state.arena.zones.find(z =>
+        active.includes(z.name) && z.name !== horn && zoneFeatures(z).elevation);
+    return high?.name ?? horn;
 }
 
 /**
@@ -904,6 +992,11 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
     // itself, on top of whatever the destination terrain already costs.
     const cost = (dest ? travelCost(t, dest) : 1) + edgeTimeCost(ctx.state, t.zone, destName);
     applyEdgeToll(ctx, t, t.zone, destName);
+    // §8.9: a crossing into open water is a swim, whatever else it is.
+    if (dest?.terrain === 'water') {
+        t.waterCrossings = (t.waterCrossings ?? 0) + 1;
+        if (t.waterCrossings >= EARNED_TRAIT_RULES.waterbornCrossings) earnTrait(ctx, t, 'Waterborn');
+    }
     if (cost <= 1) return true;
     t.transit = { to: destName, remaining: cost - 1 };
     ctx.logEvent(

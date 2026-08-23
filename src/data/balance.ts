@@ -612,10 +612,12 @@ export const DESPERATION = {
      *  encounters at that field size are already combat through the stance and
      *  grudge branches, so the endgame's best beat almost never fired. */
     fieldSize: 10,
-    /** Odds an otherwise-peaceful meeting turns into a fight, at the threshold. */
-    baseHostility: 0.25,
-    /** Added per tribute below the threshold. */
-    perTributeBelow: 0.13,
+    /** Odds an otherwise-peaceful meeting turns into a fight, at the threshold.
+     *  §10.3: 0.25 -> 0.28, the other half of the zero-kill-victor nudge. */
+    baseHostility: 0.28,
+    /** Added per tribute below the threshold. §10.3: 0.13 -> 0.18 — the
+     *  endgame squeeze, nudged so fewer victors coast to a bloodless crown. */
+    perTributeBelow: 0.18,
     /** A bond this strong still holds when the numbers get ugly. */
     sparedBond: 30,
 } as const;
@@ -745,9 +747,31 @@ export const ESCALATION = {
      * cycles at finalist count without a resolution, both are herded to the
      * horn every cycle until it ends.
      */
-    finaleAfterFinalistCycles: 6,
+    finaleAfterFinalistCycles: 4,
     hazardMultiplierPerDay: 0.3,
     hazardCeiling: 0.35,
+    /**
+     * §10.5: odds the forced finale convenes somewhere other than the
+     * Cornucopia — the arena's law zone or its high ground — so the endgame
+     * set-piece is not always the same stage. Rolled once per run, seeded.
+     */
+    altFinaleChance: 0.35,
+} as const;
+
+/**
+ * §8.9: acquisition thresholds for the earned traits that key off counters
+ * rather than single events — how many times a tribute has to do the thing
+ * before the arena has visibly changed them.
+ */
+export const EARNED_TRAIT_RULES = {
+    /** Traps pulled apart before they read as Trapwise. */
+    trapwiseDisarms: 2,
+    /** Hard water crossings begun before they read as Waterborn. */
+    waterbornCrossings: 3,
+    /** Consecutive cycles with no hostile in their zone for Silent Step. */
+    silentStepCycles: 5,
+    /** Bodies stripped before the cameras call it what it is. */
+    vultureCorpses: 4,
 } as const;
 
 /**
@@ -777,9 +801,12 @@ export const VOLUNTEER = {
     outlyingChance: 0.015,
     /** A volunteer is of age: the floor their age is raised to. */
     minAge: 16,
-    /** Attribute points a trained Career volunteer adds over the reaped tribute. */
+    /** Attribute points a trained Career volunteer adds over the reaped tribute.
+     *  §10.2: the agility half dropped — the academy volunteer stacking +1/+1
+     *  on top of the district bonus was most of why D1/D2/D4 owned the win
+     *  column; strength alone keeps the volunteer visibly trained. */
     careerStrengthBonus: 1,
-    careerAgilityBonus: 1,
+    careerAgilityBonus: 0,
     /** The crowd notices someone who wanted this. */
     careerTrust: 6,
     careerExcitement: 8,
@@ -2650,6 +2677,12 @@ export const PARLEY = {
 
     /** Paying to be allowed to leave. */
     tributeChance: 0.6,
+    /**
+     * Chance a confident Aggressive party takes the toll instead of the
+     * fight. §10.3's aggression push had squeezed every negotiated outcome
+     * out of hostile meetings; this keeps the shakedown a living branch.
+     */
+    aggressiveExtortChance: 0.3,
     tributeResentment: 12,
     tributeExcitement: 8,
     tributeSanityCost: 8,
@@ -2664,6 +2697,14 @@ export const PARLEY = {
      */
     /** On `ZoneMemory.threat`'s own 0-6 scale, not a percentage. */
     tollInfoMinThreat: 1.5,
+    /**
+     * Chance the stronger party wants directions rather than the weaker's
+     * loose item even when there is one to take. The wider item catalogue
+     * (§8.3) made genuinely empty hands rare, which had quietly starved the
+     * information branch back to zero — knowledge is the toll a Career
+     * actually values once everyone is carrying something.
+     */
+    tollInfoPreferenceChance: 0.35,
     tollInfoResentment: 8,
     tollInfoSanityCost: 5,
 

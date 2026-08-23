@@ -372,6 +372,30 @@ export interface Tribute {
      * again at their death or in the victor's hands.
      */
     token?: string;
+    /** §10.1: the longest performing streak this tribute ever held, for 'The Long Con'. */
+    maxPerformingStreak?: number;
+    /** §10.1: tribute ids this one has extorted at a parley (item or information). */
+    extortedIds?: string[];
+    /** §10.1: set the first time a weapon enters their inventory, ever. */
+    everCarriedWeapon?: boolean;
+    /** §10.1: every zone this tribute has personally stood in. */
+    visitedZones?: string[];
+    /** §10.1: kills credited to this tribute's own traps. */
+    trapKills?: number;
+    /** §8.9: traps this tribute has successfully pulled apart. */
+    trapsDisarmed?: number;
+    /** §8.9: hard water crossings begun (destination terrain 'water'). */
+    waterCrossings?: number;
+    /** §8.9: consecutive cycles spent with no hostile in their zone. */
+    unseenStreak?: number;
+    /** §8.9: bodies this tribute has stripped for supplies. */
+    corpsesLooted?: number;
+    /** §10.1: they took a graze from a poisoned weapon at some point. */
+    poisonedByWeapon?: boolean;
+    /** §10.1: they held armour, light, warmth and a purifier all at once. */
+    fullKitSeen?: boolean;
+    /** §10.1: other tribute id -> times a truce with them was renewed. */
+    truceRenewed?: Record<string, number>;
 }
 
 /**
@@ -412,6 +436,8 @@ export interface Alliance {
      * missing: the only ways out used to be death, betrayal and pact expiry.
      */
     charter?: CharterRule[];
+    /** §10.1: charter breaches this group has logged, for 'Charter Kept'. */
+    breaches?: number;
 }
 
 /** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
@@ -450,6 +476,8 @@ export interface ZoneEffect {
     expiresCycle: number;
     /** 'burning' only: the cycle it is next eligible to spread to a neighbour. */
     nextSpreadCycle?: number;
+    /** 'burning' only: how many zones deep this particular fire chain runs (1 = the origin fire). */
+    chainLength?: number;
     /** Multiplier on this instance's per-tick damage/chance constants. Defaults to 1 where absent. */
     severity?: number;
 }
@@ -741,6 +769,8 @@ export interface GameState {
     weatherFront?: WeatherFront;
     /** Alliance id currently holding the Cornucopia. See `engine/zoneControl.ts`. */
     cornucopiaHolder?: string;
+    /** §10.1: the longest unbroken Cornucopia hold this run, in cycles. */
+    maxHornHold?: number;
     /** Cycle that holder's tenure began, or last paid out. */
     cornucopiaHeldSince?: number;
     /** Cycle an extended-darkness wildcard releases the arena on. */
@@ -874,6 +904,22 @@ export interface GameState {
     feastTheme?: 'weapons' | 'medical' | 'food' | 'district-gifts';
     /** §6.8: tribute who drew first blood (first tribute-dealt kill). */
     firstBloodId?: string;
+    /** §10.1: the longest single fire chain this run produced, in zones. */
+    fireChainMax?: number;
+    /** §10.1: a renewed truce was still standing when one of its parties died. */
+    keptWordSeen?: boolean;
+    /** §10.1: a 3+ alliance reached the final eight with a clean charter. */
+    charterKeptSeen?: boolean;
+    /** §10.1: alliance id -> leaders deposed by coup, kept even if the group later dissolves. */
+    allianceDeposals?: Record<string, number>;
+    /** §10.1: every distinct mutt name that has attacked someone this run. */
+    muttsSeen?: string[];
+    /** §10.1: a real debt has existed at some point this run (cycle-sampled). */
+    debtsEverIncurred?: boolean;
+    /** §10.1: guard so the final-four debt audit runs exactly once. */
+    finalFourDebtsChecked?: boolean;
+    /** §10.1: debts existed and every one was settled before the final four. */
+    paidInFullSeen?: boolean;
     /** §6.8: per-day odds snapshot — day -> tribute id -> shown win %. */
     oddsHistory?: Record<number, Record<string, number>>;
     /** §6.7: per-event Gamemaker usage, for cooldowns, escalating cost and overuse. */

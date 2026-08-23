@@ -26,6 +26,12 @@ const EARNED_LINES: Record<string, (t: Tribute) => string> = {
     'Venom-Wise': t => `${t.name} survives the venom, and spends the whole of the next day looking very carefully at everything they touch.`,
     'Marked': t => `${t.name} will not be caught like that twice. They will also, most likely, never take anyone's hand again.`,
     'Feared': t => `The name has gone round the arena. Nobody wants to be the one who finds ${t.name} first.`,
+    'Firetouched': t => `${t.name} walks out of the fire with their eyebrows singed off and their hands steady. They do not flinch at the smell of smoke any more.`,
+    'Trapwise': t => `${t.name} crouches over the sprung mechanism for a long moment, learning it. The arena's little machines have stopped being mysteries.`,
+    'Waterborn': t => `${t.name} comes ashore without gasping this time. The water has stopped arguing with them.`,
+    'Silent Step': t => `Nobody has laid eyes on ${t.name} in days. The commentators have started calling them a ghost, and they are not wrong about how it moves.`,
+    'Oathbound': t => `${t.name} kept the agreement to its last hour, and everyone watching knows it. In this arena, that is the rarest thing anyone owns.`,
+    'Vulture': t => `${t.name} works through the fallen tribute's pack with a practicality that unsettles even the Capitol. Waste, they seem to feel, is for people with sponsors.`,
 };
 
 /**
