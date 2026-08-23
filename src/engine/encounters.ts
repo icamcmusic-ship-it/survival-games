@@ -354,10 +354,18 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
  * still hold, but indifference cannot.
  */
 function isDesperate(ctx: SimContext, t: Tribute, other: Tribute): boolean {
-    const alive = ctx.state.tributes.filter(o => o.status === 'alive').length;
-    if (alive > DESPERATION.fieldSize) return false;
     const mutual = Math.min(getRel(t, other.id), getRel(other, t.id));
     if (mutual >= DESPERATION.sparedBond) return false;
+    // A1/§1.11: somebody actually *in* the Desperate stance does not need the
+    // field to have narrowed. That was the whole complaint — `desperationFights`
+    // measured 15 across 400 runs because desperation was a coin flip gated on
+    // an endgame field size rather than a state a tribute can be in. Now it is
+    // a state, and being in it is itself the reason the meeting goes this way.
+    if (t.stance === 'Desperate' || other.stance === 'Desperate') {
+        return ctx.rng.chance(DESPERATION.stanceHostility);
+    }
+    const alive = ctx.state.tributes.filter(o => o.status === 'alive').length;
+    if (alive > DESPERATION.fieldSize) return false;
     const chance = DESPERATION.baseHostility
         + Math.max(0, DESPERATION.fieldSize - alive) * DESPERATION.perTributeBelow;
     return ctx.rng.chance(Math.min(0.95, chance));
@@ -433,17 +441,20 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         adjustMutual(ctx.state, t, other, 5);
         maintainPerformance(t, other.id, ROMANCE.performedUpkeep);
         maintainPerformance(other, t.id, ROMANCE.performedUpkeep);
-    } else if (isAggressiveStance(t.stance) || isAggressiveStance(other.stance) || relationship < -10) {
-        // Even a hostile meeting can end in a negotiation rather than a fight,
-        // if neither of them likes the odds enough to start one.
-        if (!tryParley(ctx, t, other)) resolveCombat(ctx, t, other);
     } else if (isDesperate(ctx, t, other)) {
+        // Ordered ahead of the hostile-meeting branch on purpose: a tribute
+        // past caring is not going to be talked out of anything, so routing
+        // them through `tryParley` first would just describe them negotiating.
         ctx.logEvent(
             fill(ctx.pickText(ENCOUNTER_TEXTS.desperation), vars),
             [t.id, other.id],
             { important: true, category: 'combat' }
         );
         resolveCombat(ctx, t, other);
+    } else if (isAggressiveStance(t.stance) || isAggressiveStance(other.stance) || relationship < -10) {
+        // Even a hostile meeting can end in a negotiation rather than a fight,
+        // if neither of them likes the odds enough to start one.
+        if (!tryParley(ctx, t, other)) resolveCombat(ctx, t, other);
     } else if (tryParley(ctx, t, other)) {
         // Two wary strangers who talked their way out of it — the outcome the
         // encounter layer had no vocabulary for.

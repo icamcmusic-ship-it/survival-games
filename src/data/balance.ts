@@ -644,6 +644,14 @@ export const ENDGAME = {
 } as const;
 
 export const DESPERATION = {
+    /**
+     * A1/§1.11: chance a meeting involving somebody in the Desperate stance
+     * goes straight to violence, at any field size. Desperation used to be an
+     * endgame coin flip that fired 15 times across 400 runs; it is now a state
+     * with an entry condition, and this is what being in it means when you
+     * walk into somebody.
+     */
+    stanceHostility: 0.55,
     /** Field size at which the arithmetic starts to press on people. The old
      *  gate of 8 produced ~11 desperation fights across 240 runs — most
      *  encounters at that field size are already combat through the stance and

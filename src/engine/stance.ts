@@ -386,15 +386,25 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     const sig = buildSignals(ctx, t, occupants);
 
     const cycle = ctx.state.cycle ?? 0;
+    const ready = { ...(t.stanceReady ?? {}) };
     const available = STANCES.filter(s => {
         const pre = STANCE_PRECONDITIONS[s];
         if (!pre) return true;
         if (!pre(ctx, t, sig)) return false;
-        // Desperate is an emergency and is never locked out; everything else
-        // conditional waits out its cooldown before it may be re-entered.
-        if (s === 'Desperate' || s === t.stance) return true;
+        // The situation holds. Record that, and note whether it also held last
+        // cycle — entry latency is the mirror of the exit cooldown and is what
+        // stops a one-cycle flicker (a cannon two zones over, a quarry
+        // stepping briefly out of the next sector) yanking a tribute out of
+        // what they were doing and straight back again.
+        const heldLastCycle = (t.stanceReady?.[s] ?? -Infinity) >= cycle - 1;
+        ready[s] = cycle;
+        // Staying where they are needs no latency, and Desperate is an
+        // emergency: it is never delayed and never locked out.
+        if (s === t.stance || s === 'Desperate') return true;
+        if (!heldLastCycle) return false;
         return (t.stanceCooldown?.[s] ?? -Infinity) <= cycle;
     });
+    t.stanceReady = ready;
 
     const scores = Object.fromEntries(
         available.map(s => [s, STANCE_SCORERS[s](ctx, t, sig)])

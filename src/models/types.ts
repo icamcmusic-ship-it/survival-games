@@ -449,6 +449,16 @@ export interface Tribute {
      * immediately whatever the hold says.
      */
     stanceCooldown?: Partial<Record<Stance, number>>;
+    /**
+     * A1: the last cycle each conditional stance's precondition was true.
+     *
+     * Entry latency, the mirror of `stanceCooldown`'s exit lockout: a
+     * conditional stance may only be *entered* once its situation has held for
+     * two consecutive cycles, so a cannon two zones over or a quarry stepping
+     * briefly into the next sector cannot pull a tribute out of what they were
+     * doing for a single turn and then drop them back.
+     */
+    stanceReady?: Partial<Record<Stance, number>>;
 
     // ---- A2: archetype hook state ----
     /** A2: whether this tribute's once-per-run archetype signature has fired. */
