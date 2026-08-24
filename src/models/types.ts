@@ -1661,6 +1661,8 @@ export interface GameState {
      * it is a different beat from claiming your own.
      */
     feastPrizes?: Array<{ tributeId: string; label: string }>;
+    /** §13.3: the Undermere — cycle the bioluminescence comes back on. */
+    mossDimUntilCycle?: number;
     /** §10.1: the longest single fire chain this run produced, in zones. */
     fireChainMax?: number;
     /**

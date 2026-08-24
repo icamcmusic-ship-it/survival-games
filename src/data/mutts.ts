@@ -879,6 +879,127 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             homeZone: 'The Char Ridge',
         },
     ],
+    // ---- §13.3: rosters for the three new hand-authored arenas ----------
+    cabin: [
+        {
+            id: 'the-woodsman', name: 'The Woodsman',
+            // Siege: he is what the Woodshed and the Barn are *for*. Pinned to
+            // the outbuildings, which is the arena's whole tension — the fuel
+            // for the only warm room in the map is in his half of the property.
+            packSize: [1, 1], damage: 30, speed: 6,
+            inflicts: { bleeding: true, arms: true },
+            persistent: true,
+            role: 'siege',
+            homeZone: 'The Woodshed',
+            fearAura: 10,
+        },
+        {
+            id: 'draught-wisps', name: 'Draught Wisps',
+            // Small cold-elemental things that come in under the doors. They
+            // barely hurt; they take the heat out of a room.
+            packSize: [3, 7], damage: 5, speed: 8,
+            inflicts: { frostbitten: true },
+            role: 'swarm',
+            nocturnal: true,
+            fearAura: 4,
+        },
+        {
+            id: 'draft-horses', name: 'Panicked Draft Horses',
+            // Feral stock, terrified of the storm and of everyone in it. They
+            // do not hunt; they run somebody over on their way somewhere else.
+            packSize: [2, 4], damage: 16, speed: 7,
+            inflicts: { torso: true },
+            role: 'herder',
+        },
+        {
+            id: 'caller-in-the-storm', name: 'The Caller in the Storm',
+            // A familiar voice through the blizzard that is not anyone. It
+            // does no damage worth the name; it gets a door opened.
+            packSize: [1, 1], damage: 4, speed: 5,
+            fearAura: 16,
+            role: 'mimic',
+            nocturnal: true,
+        },
+    ],
+    magmatube: [
+        {
+            id: 'cinder-wyrms', name: 'Cinder Wyrms',
+            // Vent-dwellers: they come out of the heat, so they are only ever
+            // a problem where the mountain is already a problem.
+            packSize: [1, 3], damage: 24, speed: 8,
+            inflicts: { burned: true, bleeding: true },
+            role: 'ambusher',
+            terrainPreference: ['ruins', 'highland', 'open'],
+        },
+        {
+            id: 'the-glassblower', name: 'The Glassblower',
+            // Fused to the Antechamber. The price of the best ground in the
+            // arena, standing in the doorway of it.
+            packSize: [1, 1], damage: 34, speed: 7,
+            inflicts: { burned: true },
+            persistent: true,
+            role: 'siege',
+            homeZone: 'The Lava Lake Antechamber',
+            fearAura: 12,
+        },
+        {
+            id: 'sulfur-gnats', name: 'Sulfur Gnats',
+            // §7: the `parasite` role's first user. They do not kill anybody;
+            // they get inside a wound and let the medicine system decide.
+            packSize: [8, 20], damage: 3, speed: 9,
+            inflicts: { infected: true, poisoned: true },
+            role: 'parasite',
+        },
+        {
+            id: 'thermal-kestrels', name: 'Thermal Kestrels',
+            // They ride the updraught and put a tribute off a ledge, which in
+            // this arena means one level further down than they meant to go.
+            packSize: [2, 5], damage: 12, speed: 9,
+            role: 'herder',
+        },
+    ],
+    karst: [
+        {
+            id: 'glowmoss-weevils', name: 'Glowmoss Weevils',
+            // They eat the bioluminescence itself, which is the only reason
+            // anybody can see anything down here.
+            packSize: [6, 14], damage: 6, speed: 6,
+            inflicts: { infected: true },
+            role: 'swarm',
+        },
+        {
+            id: 'the-unseen', name: 'The Unseen',
+            // Hunts entirely by vibration, and is only eligible where there is
+            // no light — which in this arena is most of the map. A tribute it
+            // kills never actually sees it.
+            packSize: [1, 2], damage: 28, speed: 9,
+            inflicts: { bleeding: true },
+            role: 'ambusher',
+            fearAura: 14,
+            nocturnal: false,
+        },
+        {
+            id: 'chorus-newts', name: 'Chorus Newts',
+            // Harmless. A wall of amphibian noise in absolute dark that puts
+            // somebody through a passage they had not chosen.
+            packSize: [10, 24], damage: 2, speed: 5,
+            fearAura: 8,
+            role: 'herder',
+            terrainPreference: ['water', 'wetland', 'ruins', 'open', 'forest', 'highland'],
+        },
+        {
+            id: 'the-deep-listener', name: 'The Deep Listener',
+            // The arena's signature threat, pinned to the Black Gallery, and
+            // genuinely blind — it navigates by sound alone, which is why the
+            // Cathedral's acoustics are the most dangerous thing in the map.
+            packSize: [1, 1], damage: 38, speed: 6,
+            inflicts: { bleeding: true, torso: true },
+            persistent: true,
+            role: 'siege',
+            homeZone: 'The Black Gallery',
+            fearAura: 18,
+        },
+    ],
     craterfield: [
         {
             id: 'bog-adders', name: 'Bog Adders',

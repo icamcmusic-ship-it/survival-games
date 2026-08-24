@@ -1041,6 +1041,107 @@ export const ARENAS: Arena[] = [
             { name: 'The Tower', terrain: 'ruins', danger: 0.55, resources: 0.8, adjacent: ['The Spinning House', 'The Field of Stones'], features: { cover: 0.4, elevation: true, chokepoint: true } },
         ]
     },
+    // ---- §13.3: three hand-authored arenas -------------------------------
+    // Each is built against a shape the roster does not already have. The
+    // four existing winter arenas (frozen, glacier, floe, alpine) are all
+    // sprawling exterior wilderness; the four volcanic ones (ashfall,
+    // ashwaste, burnscar, craterfield) are all exterior; and the five
+    // underground ones (vault, warren, quarry, terraces, glacier's ice caves)
+    // are worked tunnels, a schedule, or lit from above. These are the
+    // interior winter siege, the descent, and true darkness.
+    {
+        id: 'cabin',
+        name: 'The Snowbound Homestead',
+        description: 'A homestead the drifts have half-buried, a working woodstove behind four thin walls, and a killing cold on the other side of the door. Whoever holds the hearth holds the only warm room within a day\'s walk.',
+        mutts: ['The Woodsman', 'Draught Wisps', 'Panicked Draft Horses', 'The Caller in the Storm'],
+        events: ['The Woodpile Runs Out', 'A Door Left Open', 'The Storm Breaks'],
+        // The Root Cellar is the only part of the property a parachute can
+        // reach through the storm — the hatch is the one gap in the drifts.
+        law: 'sponsorsFixedZone',
+        lawZone: 'The Root Cellar',
+        effectVocab: {
+            frozen: { label: 'A hearthless night' },
+            stripped: { label: 'The larder runs bare' },
+        },
+        // Breaking trail through chest-high drifts with no cover at all.
+        edgeRules: { 'The Snowed Road|Treeline Approach': { kind: 'tolled', toll: { fatigue: 9, woundChance: 0.15 } } },
+        zones: [
+            { name: 'The Cornucopia (Dooryard)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Porch', 'The Woodshed', 'The Frozen Well', 'The Barn'] },
+            { name: 'The Porch', terrain: 'ruins', danger: 0.5, resources: 0.2, adjacent: ['The Cornucopia (Dooryard)', 'Front Room'], features: { cover: 0.3, elevation: false, chokepoint: true, shelterQuality: 0.5 } },
+            // The interior: thin walls, a stove that can be lit, and no way in
+            // that is not watched from somewhere.
+            { name: 'Front Room', terrain: 'ruins', danger: 0.55, resources: 0.4, adjacent: ['The Porch', 'Kitchen', 'The Loft'], features: { cover: 0.55, elevation: false, chokepoint: false, shelterQuality: 0.95, acoustics: 0.8 } },
+            { name: 'Kitchen', terrain: 'ruins', danger: 0.45, resources: 0.65, adjacent: ['Front Room', 'The Root Cellar', 'The Back Door'], features: { cover: 0.5, elevation: false, chokepoint: false, shelterQuality: 0.95, acoustics: 0.8 } },
+            { name: 'The Root Cellar', terrain: 'ruins', danger: 0.4, resources: 0.9, adjacent: ['Kitchen'], features: { cover: 0.7, elevation: false, chokepoint: true, shelterQuality: 1, acoustics: 0.7 } },
+            { name: 'The Loft', terrain: 'ruins', danger: 0.35, resources: 0.3, adjacent: ['Front Room'], features: { cover: 0.4, elevation: true, chokepoint: true, shelterQuality: 0.9 } },
+            { name: 'The Woodshed', terrain: 'ruins', danger: 0.6, resources: 0.55, adjacent: ['The Cornucopia (Dooryard)', 'The Barn', 'The Back Door'], features: { cover: 0.45, elevation: false, chokepoint: false, shelterQuality: 0.6 } },
+            { name: 'The Barn', terrain: 'ruins', danger: 0.7, resources: 0.5, adjacent: ['The Cornucopia (Dooryard)', 'The Woodshed', 'Treeline Approach'], features: { cover: 0.5, elevation: false, chokepoint: false, shelterQuality: 0.7, acoustics: 1.3 } },
+            { name: 'The Back Door', terrain: 'open', danger: 0.65, resources: 0.15, adjacent: ['Kitchen', 'The Woodshed', 'The Frozen Well'], features: { cover: 0.15, elevation: false, chokepoint: true, shelterQuality: 0.15 } },
+            { name: 'The Frozen Well', terrain: 'water', danger: 0.5, resources: 0.45, adjacent: ['The Cornucopia (Dooryard)', 'The Back Door'], features: { cover: 0.1, elevation: false, chokepoint: false, waterSource: true, shelterQuality: 0.1 } },
+            { name: 'Treeline Approach', terrain: 'forest', danger: 0.75, resources: 0.6, adjacent: ['The Barn', 'The Snowed Road'], features: { cover: 0.75, elevation: false, chokepoint: false, shelterQuality: 0.35, acoustics: 0.65 } },
+            // The buried way out that isn't one.
+            { name: 'The Snowed Road', terrain: 'open', danger: 0.85, resources: 0.05, adjacent: ['Treeline Approach'], features: { cover: 0.05, elevation: false, chokepoint: false, shelterQuality: 0.05 } },
+        ]
+    },
+    {
+        id: 'magmatube',
+        name: 'The Throat of the Mountain',
+        description: 'Not a mountainside — the mountain\'s own throat. Obsidian tube walls, a red glow with no visible source, and a heat gradient that only goes one direction as you go down. The good loot is at the bottom. So is the lake.',
+        mutts: ['Cinder Wyrms', 'The Glassblower', 'Sulfur Gnats', 'Thermal Kestrels'],
+        events: ['The Deep Exhale', 'Glass Rain', 'The Lake Rises'],
+        law: 'noWaterExceptZone',
+        lawZone: 'The Condensation Cistern',
+        effectVocab: {
+            burning: { label: 'A vent flare' },
+            contaminated: { label: 'A sulfur choke' },
+        },
+        // The direct climb back up is sealed by rockfall: anyone who takes the
+        // shaft down is committed to finding The Long Way Round.
+        edgeRules: { 'Lower Throat|The Ember Shaft': { kind: 'oneWay', from: 'The Ember Shaft', to: 'Lower Throat' } },
+        zones: [
+            { name: 'The Cornucopia (Crater Rim)', terrain: 'highland', danger: 0.6, resources: 0.3, adjacent: ['The Ash-Choked Stair', 'The Outer Gallery'] },
+            { name: 'The Ash-Choked Stair', terrain: 'highland', danger: 0.55, resources: 0.15, adjacent: ['The Cornucopia (Crater Rim)', 'The Outer Gallery', 'The Steam Vents'], features: { cover: 0.2, elevation: true, chokepoint: true, acoustics: 1.45 } },
+            { name: 'The Outer Gallery', terrain: 'ruins', danger: 0.45, resources: 0.4, adjacent: ['The Cornucopia (Crater Rim)', 'The Ash-Choked Stair', 'The Condensation Cistern', 'The Bat Colony', 'The Long Way Round'] },
+            { name: 'The Condensation Cistern', terrain: 'water', danger: 0.5, resources: 0.55, adjacent: ['The Outer Gallery', 'The Sulfur Shelf'], features: { cover: 0.25, elevation: false, chokepoint: true, waterSource: true } },
+            { name: 'The Steam Vents', terrain: 'ruins', danger: 0.75, resources: 0.35, adjacent: ['The Ash-Choked Stair', 'The Sulfur Shelf', 'The Upper Throat'] },
+            { name: 'The Sulfur Shelf', terrain: 'highland', danger: 0.7, resources: 0.25, adjacent: ['The Condensation Cistern', 'The Steam Vents', 'The Bat Colony'] },
+            { name: 'The Bat Colony', terrain: 'forest', danger: 0.5, resources: 0.7, adjacent: ['The Outer Gallery', 'The Sulfur Shelf', 'The Upper Throat'], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 1.2 } },
+            { name: 'The Upper Throat', terrain: 'ruins', danger: 0.8, resources: 0.3, adjacent: ['The Steam Vents', 'The Bat Colony', 'The Ember Shaft'], features: { cover: 0.2, elevation: false, chokepoint: true, acoustics: 1.5 } },
+            { name: 'The Ember Shaft', terrain: 'highland', danger: 0.85, resources: 0.2, adjacent: ['The Upper Throat', 'Lower Throat'], features: { cover: 0.1, elevation: true, chokepoint: true } },
+            { name: 'Lower Throat', terrain: 'ruins', danger: 0.9, resources: 0.5, adjacent: ['The Ember Shaft', 'The Lava Lake Antechamber', 'The Long Way Round'] },
+            // Best resources, worst danger, and only one way back out of it.
+            { name: 'The Lava Lake Antechamber', terrain: 'open', danger: 1, resources: 0.95, adjacent: ['Lower Throat'], features: { cover: 0.15, elevation: false, chokepoint: true, acoustics: 1.5 } },
+            { name: 'The Long Way Round', terrain: 'ruins', danger: 0.65, resources: 0.35, adjacent: ['Lower Throat', 'The Outer Gallery'] },
+        ]
+    },
+    {
+        id: 'karst',
+        name: 'The Undermere',
+        description: 'No sky, and past the first gallery, no light either — only what a handful of glowing fungus throws, and the sound of water going somewhere in the dark. Rock this thick does not carry a cannon. Down here, you only know somebody is dead if you find them.',
+        mutts: ['Glowmoss Weevils', 'The Unseen', 'Chorus Newts', 'The Deep Listener'],
+        events: ['The Siphon Floods', 'The Moss Dims', 'The Roof Groans'],
+        // A distinct in-fiction reason from `vault`'s technological blackout:
+        // solid rock simply does not transmit the sound this deep.
+        law: 'noCannons',
+        effectVocab: {
+            flooded: { label: 'The siphon opens' },
+            contaminated: { label: 'A bad air pocket' },
+        },
+        // A steep, wet flowstone squeeze: a narrow crawl into a vast dark room.
+        edgeRules: { 'The Cathedral|The Weeping Wall': { kind: 'tolled', toll: { fatigue: 11 } } },
+        zones: [
+            { name: 'The Cornucopia (Sinkhole Floor)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Drip Gallery', 'The Glowmoss Hollow', 'The Bat Roost'], features: { cover: 0.2, elevation: false, chokepoint: false, acoustics: 1.4 } },
+            { name: 'The Drip Gallery', terrain: 'ruins', danger: 0.45, resources: 0.3, adjacent: ['The Cornucopia (Sinkhole Floor)', 'The Bone Passage', 'The Weeping Wall'], features: { cover: 0.35, elevation: false, chokepoint: false, acoustics: 1.45 } },
+            { name: 'The Glowmoss Hollow', terrain: 'forest', danger: 0.4, resources: 0.85, adjacent: ['The Cornucopia (Sinkhole Floor)', 'The Bat Roost', 'The Siphon Passage'], features: { cover: 0.6, elevation: false, chokepoint: false, acoustics: 0.75 } },
+            { name: 'The Bat Roost', terrain: 'forest', danger: 0.55, resources: 0.6, adjacent: ['The Cornucopia (Sinkhole Floor)', 'The Glowmoss Hollow', 'The Bone Passage'], features: { cover: 0.85, elevation: true, chokepoint: false, acoustics: 1.2 } },
+            { name: 'The Bone Passage', terrain: 'ruins', danger: 0.65, resources: 0.4, adjacent: ['The Drip Gallery', 'The Bat Roost', 'The Black Gallery'], features: { cover: 0.4, elevation: false, chokepoint: true, acoustics: 1.5 } },
+            { name: 'The Weeping Wall', terrain: 'water', danger: 0.6, resources: 0.45, adjacent: ['The Drip Gallery', 'The Cathedral', 'The Undermere'], features: { cover: 0.25, elevation: true, chokepoint: true, waterSource: true, acoustics: 1.1 } },
+            { name: 'The Cathedral', terrain: 'open', danger: 0.8, resources: 0.2, adjacent: ['The Weeping Wall', 'The Black Gallery'], features: { cover: 0.05, elevation: false, chokepoint: false, acoustics: 1.6 } },
+            { name: 'The Black Gallery', terrain: 'ruins', danger: 0.9, resources: 0.55, adjacent: ['The Bone Passage', 'The Cathedral', 'The Undermere'], features: { cover: 0.3, elevation: false, chokepoint: false, acoustics: 1.55 } },
+            { name: 'The Undermere', terrain: 'water', danger: 0.7, resources: 0.65, adjacent: ['The Weeping Wall', 'The Black Gallery', 'The Siphon Passage'], features: { cover: 0.2, elevation: false, chokepoint: false, waterSource: true, acoustics: 1.3 } },
+            { name: 'The Siphon Passage', terrain: 'wetland', danger: 0.75, resources: 0.3, adjacent: ['The Glowmoss Hollow', 'The Undermere'], features: { cover: 0.3, elevation: false, chokepoint: true, acoustics: 1.2 } },
+        ]
+    },
 ];
 
 /**

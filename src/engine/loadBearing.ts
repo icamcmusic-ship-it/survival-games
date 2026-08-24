@@ -93,7 +93,7 @@ export function collapseStructure(ctx: SimContext, zoneName: string) {
         const cause = `Buried in the collapse of ${zoneName}`;
         applyDamage(ctx, t, ctx.rng.nextInt(LOAD_BEARING.collapseDamageMin, LOAD_BEARING.collapseDamageMax), { cause, kind: 'arena' });
         openWound(t, BLEEDING.hazardSeverity);
-        if (ctx.rng.chance(LOAD_BEARING.collapseCrushChance)) injure(t, ctx.rng.chance(0.5) ? 'legs' : 'torso');
+        if (ctx.rng.chance(LOAD_BEARING.collapseCrushChance)) injure(t, ctx.rng.chance(LOAD_BEARING.collapseLegShare) ? 'legs' : 'torso');
         clampTribute(t);
         checkDeath(ctx, t, cause);
     });

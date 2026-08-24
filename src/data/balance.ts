@@ -1991,6 +1991,8 @@ export const LOAD_BEARING = {
     collapseDamageMin: 26,
     collapseDamageMax: 48,
     collapseCrushChance: 0.55,
+    /** Of the crush injuries, the share that are legs rather than torso. */
+    collapseLegShare: 0.5,
 } as const;
 
 export const CRAFTING = {
@@ -4952,5 +4954,34 @@ export const ARENA_SIGNATURES = {
         safeBase: 0.4,
         safePerIntelligence: 0.06,
         poisonSanity: 18,
+    },
+
+    /** §13.3: the Snowbound Homestead's hearth — the one warm room in the map. */
+    hearth: {
+        /** Odds the stove is actually going in an occupied interior zone. */
+        litChance: 0.75,
+        fatigueRelief: 14,
+        sanityRelief: 6,
+        /** A hearthless interior zone freezing over anyway. */
+        coldSnapChance: 0.18,
+    },
+    /** §13.3: the Throat of the Mountain — everything scales with depth. */
+    throat: {
+        thirstPerDepth: 3,
+        fatiguePerDepth: 2.5,
+        burnPerDepth: 0.02,
+        /** The deepest ground catching outright, and how deep counts as deep. */
+        flareChance: 0.12,
+        flareDepth: 4,
+    },
+    /** §13.3: the Undermere's absolute dark. */
+    undermere: {
+        darkSanity: 3,
+        darkFatigue: 4,
+        blindStumbleChance: 0.1,
+        stumbleDamage: 6,
+        mossDimChance: 0.06,
+        mossDimCycles: 3,
+        siphonChance: 0.5,
     },
 } as const;
