@@ -379,6 +379,142 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
             grantItem: 'dried-meat',
             feed: 25,
         },
+
+        // §7.2: the categories the universal pool never spoke in — discovery,
+        // relief, equipment, the body, memory, ordinary wildlife, the Capitol,
+        // and the near miss. None of these need an arena to be true in.
+        // Discovery: information, not damage.
+        {
+            text: '{tribute} finds a camp in {zone} — a cold fire ring, a flattened sleeping spot, and tracks leading out that are not old.',
+            escapeText: '{tribute} reads the abandoned camp in {zone} from a distance and does not walk into the middle of it.',
+            cause: 'Killed at a stranger\'s camp',
+            dodgeStat: 'intelligence',
+            damage: 5,
+            sanity: 8,
+        },
+        {
+            text: '{tribute} finds a body in {zone} the hovercraft has not collected yet, and has to decide what that means about who is nearby.',
+            escapeText: '{tribute} sees the shape in {zone} for what it is and leaves before finding out how it happened.',
+            cause: 'Killed beside the fallen',
+            dodgeStat: 'willpower',
+            damage: 4,
+            sanity: 16,
+        },
+        {
+            text: 'Somebody has scratched a message into the surface of {zone}, and {tribute} stops to read it when they should not have.',
+            escapeText: '{tribute} reads the scratched words in {zone} at a walk, without breaking stride.',
+            cause: 'Ambushed while reading',
+            dodgeStat: 'stealth',
+            damage: 10,
+            sanity: 6,
+        },
+        // Relief: the feed is relentlessly hostile; these are the exceptions.
+        {
+            text: 'The night over {zone} comes up clear, and for an hour the stars are just stars, and {tribute} lets them be.',
+            escapeText: '{tribute} keeps their eyes on the treeline of {zone} instead of the sky, which is the correct call and a small loss.',
+            cause: 'Caught stargazing',
+            heal: 6,
+            fatigue: -10,
+        },
+        {
+            text: 'Rain moves over {zone}, gentle for once, and {tribute} sits under real shelter listening to it and is briefly nowhere else.',
+            escapeText: '{tribute} hears the rain over {zone} start and gets what they own under cover first.',
+            cause: 'Died of exposure',
+            quench: 25,
+            heal: 4,
+        },
+        // Equipment: durability is modelled and almost never narrated.
+        {
+            text: 'A strap on {tribute}\'s pack lets go in {zone}, and half of what they own hits the ground at a bad moment.',
+            escapeText: '{tribute} feels the strap going in {zone} and re-ties it before it costs them anything.',
+            cause: 'Caught retrieving their gear',
+            dodgeStat: 'agility',
+            damage: 6,
+            fatigue: 10,
+        },
+        {
+            text: '{tribute}\'s boot finally comes apart in {zone}, and every step after it is a decision.',
+            escapeText: '{tribute} binds the failing boot in {zone} with wire and buys it another few days.',
+            cause: 'Ran down on a ruined foot',
+            dodgeStat: 'intelligence',
+            damage: 8,
+            fatigue: 18,
+        },
+        // The body: cheap, human, and it makes wear visible.
+        {
+            text: 'A cramp takes {tribute} mid-stride in {zone} and folds them up in the open for a full minute.',
+            escapeText: '{tribute} feels the muscle start to seize in {zone} and works it out before it drops them.',
+            cause: 'Caught helpless in the open',
+            dodgeStat: 'endurance',
+            damage: 8,
+            fatigue: 12,
+        },
+        {
+            text: 'An old injury {tribute} had stopped counting wakes up in {zone}, all at once, worse than it was.',
+            escapeText: '{tribute} feels the old injury complain in {zone} and eases off before it goes properly.',
+            cause: 'Finished by an old wound',
+            dodgeStat: 'endurance',
+            damage: 12,
+            fatigue: 10,
+        },
+        // Memory and the token: interior beats tied to what they carry.
+        {
+            text: 'A smell moves through {zone} — bread, or soap, or coal smoke — and for one bad moment {tribute} is home.',
+            escapeText: '{tribute} lets the smell in {zone} pass through them and keeps their eyes where they belong.',
+            cause: 'Lost in a memory',
+            dodgeStat: 'willpower',
+            damage: 3,
+            sanity: 10,
+        },
+        {
+            text: '{tribute} catches their own reflection in {zone} and takes a second too long to recognise it.',
+            escapeText: '{tribute} looks at their reflection in {zone}, decides it will do, and moves on.',
+            cause: 'Ambushed at the water',
+            dodgeStat: 'stealth',
+            damage: 8,
+            sanity: 12,
+        },
+        // Wildlife that is not a mutt: a real animal is a striking beat here.
+        {
+            text: 'A bird lands an arm\'s length from {tribute} in {zone} — an ordinary bird, unengineered, unafraid — and neither of them moves.',
+            escapeText: '{tribute} startles the bird off {zone} and regrets it immediately.',
+            cause: 'Distracted at the wrong moment',
+            heal: 3,
+        },
+        // Capitol intrusion: the audience, felt from inside.
+        {
+            text: 'A camera drone drops out of the canopy over {zone} and holds a metre from {tribute}\'s face, waiting for them to be interesting.',
+            escapeText: '{tribute} gives the drone over {zone} nothing at all, and it loses interest first.',
+            cause: 'Performed for the wrong audience',
+            dodgeStat: 'willpower',
+            damage: 2,
+            sanity: 10,
+        },
+        {
+            text: 'The anthem starts over {zone} and cuts off mid-bar, and the silence it leaves is somehow the worst sound the arena has made.',
+            escapeText: '{tribute} does not stop to wonder why the anthem died over {zone}, and keeps moving.',
+            cause: 'Stood still too long',
+            sanity: 12,
+            fatigue: 6,
+        },
+        // Near misses: tension without spending anyone.
+        {
+            text: 'Something passes {tribute}\'s head in {zone} close enough to part hair, and is buried in the bark behind them before the sound arrives.',
+            escapeText: '{tribute} is already dropping when the shot crosses {zone}, and it finds nothing.',
+            cause: 'Shot from cover',
+            dodgeStat: 'agility',
+            damage: 14,
+            bleeding: true,
+        },
+        {
+            text: '{tribute} feels the trigger line against their shin in {zone} — feels it, and stops, with the whole trap unsprung an inch away.',
+            escapeText: '{tribute} backs off the unsprung trap in {zone} one careful step at a time.',
+            cause: 'Killed by a trap',
+            dodgeStat: 'agility',
+            damage: 18,
+            bleeding: true,
+            sanity: 8,
+        },
     ],
 };
 

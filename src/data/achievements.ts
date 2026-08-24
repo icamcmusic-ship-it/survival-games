@@ -698,6 +698,51 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'Crown a victor still carrying the one thing they brought from home.',
         test: (_s, v) => !!v && v.token !== undefined,
     },
+
+    // §12.1: arena-class achievements added with the ninth-wave arenas. Each
+    // one keys off state the engine already tracks — no new bookkeeping.
+    {
+        id: 'against-the-law',
+        name: 'Against the Law',
+        hint: 'Crown a victor in an arena running three or more standing laws at once.',
+        test: (state, v) => !!v && ((state.arena.law ? 1 : 0) + (state.arena.laws?.length ?? 0)) >= 3,
+    },
+    {
+        id: 'never-left',
+        name: 'Never Left',
+        hint: 'Crown a victor who stood in three zones or fewer, start to finish.',
+        test: (_s, v) => !!v && (v.visitedZones ?? []).length > 0 && (v.visitedZones ?? []).length <= 3,
+        nearMiss: (_s, v) => (v && (v.visitedZones ?? []).length === 4)
+            ? `${v.name} won having stood in only four zones — one too many to have never left`
+            : undefined,
+    },
+    {
+        id: 'grand-cartography',
+        name: 'Cartography',
+        hint: 'See one tribute stand in every zone of a sprawling arena of twelve zones or more.',
+        // Extends `cartographer`: same walk, but only counted where the walk is long.
+        test: state => state.arena.zones.length >= 12
+            && state.tributes.some(t => state.arena.zones.every(z => (t.visitedZones ?? []).includes(z.name))),
+    },
+    {
+        id: 'full-bestiary',
+        name: 'Full Bestiary',
+        hint: 'Meet every mutt in one arena\'s roster in a single Games.',
+        test: state => {
+            // `muttsSeen` records engine encounters by name; the arena's
+            // `mutts` list is the same names as flavour. Procedural arenas
+            // carry their real roster on `muttRoster`.
+            const roster = state.arena.muttRoster?.map(m => m.name) ?? state.arena.mutts;
+            return roster.length >= 3 && roster.every(name => (state.muttsSeen ?? []).includes(name));
+        },
+        nearMiss: state => {
+            const roster = state.arena.muttRoster?.map(m => m.name) ?? state.arena.mutts;
+            const missing = roster.filter(name => !(state.muttsSeen ?? []).includes(name));
+            return roster.length >= 3 && missing.length === 1
+                ? `every mutt in the arena showed itself but one: ${missing[0]}`
+                : undefined;
+        },
+    },
 ];
 
 /**

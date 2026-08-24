@@ -361,7 +361,10 @@ const BASE_WEIGHTS: ArchetypeWeights = {
     zealot: 0.4,
     medic: 0.4,
     saboteur: 0.4,
-    beast: 0.25,
+    // §8.1: at 0.25 the sample was too thin to balance against (n=152 across
+    // 400 runs). Raised to match its peers so the survival-floor work can be
+    // measured rather than guessed at.
+    beast: 0.4,
     diplomat: 0.4,
     scholar: 0.4,
     ghost: 0.4,

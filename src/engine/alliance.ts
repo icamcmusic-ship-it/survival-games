@@ -151,10 +151,36 @@ export function assignRoles(members: Tribute[], leader: Tribute): Alliance['role
 function brandFor(ctx: SimContext, id: string, leader: Tribute, members: Tribute[]): string {
     if (id.startsWith('career-pack')) return 'the Career pack';
     const districts = [...new Set(members.map(m => m.district))].sort((a, b) => a - b);
+    const districtName = districts.length === 1
+        ? `the District ${districts[0]} bloc`
+        : `the ${districts.map(d => `${d}`).join('-')} compact`;
+    // §11.2: three patterns made every group in every run read the same. The
+    // pool now mixes member-derived brands with the ones the crowd invents —
+    // a Capitol audience does not wait for permission to nickname a gang.
     const patterns = [
+        // Member-derived: how the pack would introduce itself.
         `the ${leader.name} crew`,
-        districts.length === 1 ? `the District ${districts[0]} bloc` : `the ${districts.map(d => `${d}`).join('-')} compact`,
+        districtName,
         `${leader.name}'s ${members.length > 2 ? 'company' : 'pair'}`,
+        `the ${leader.name} pact`,
+        members.length >= 4 ? `${leader.name}'s ${members.length}` : `${leader.name} and company`,
+        `the ${districts.map(d => `${d}`).join(' and ')} alliance`,
+        // Crowd-invented: what the commentators started calling them and
+        // could not be stopped from calling them.
+        'the Outliers',
+        'the Quiet Table',
+        'the Long Odds',
+        'the Second Reaping',
+        'the Leftovers',
+        'the Night Shift',
+        'the Slow Knives',
+        'the Understudies',
+        'the Homesick',
+        'the Holdouts',
+        'the Cheap Seats',
+        `the ${leader.name} problem`,
+        'the Unsponsored',
+        'the Late Entries',
     ];
     return ctx.rng.pick(patterns);
 }
