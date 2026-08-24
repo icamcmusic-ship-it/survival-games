@@ -1361,6 +1361,54 @@ export const MOVEMENT = {
  * change their mind. These are tuned so a plan survives long enough to be
  * legible in the chronicle without outliving the situation that produced it.
  */
+/**
+ * §3.2: planning, commitment, exhaustion, dread and deception. The five pieces
+ * the individual decision layer was missing.
+ */
+/**
+ * §3.4: sleep owed, as distinct from being tired right now. Fatigue empties
+ * every night; this does not. Insomniac was an extreme of a system that did
+ * not exist.
+ */
+export const SLEEP = {
+    /** Fatigue below which a night counts as actual rest. */
+    restedFatigue: 55,
+    repaidPerGoodNight: 1.5,
+    accruedPerBadNight: 1,
+    /** Traits that wreck the night wreck the ledger faster. */
+    debtPerFatigueTrait: 0.05,
+    /** Debt at which the arena starts arriving through the edges of vision. */
+    deprivedAt: 4,
+    sanityPerCycle: 3,
+    lineChance: 0.18,
+} as const;
+
+export const PLANNING = {
+    /** Depth of the objective queue. Two is a person; three is a planner. */
+    queueDepth: 2,
+    /** Vitals at which a goal needs an errand run in front of it. */
+    prerequisiteThirst: 72,
+    prerequisiteHunger: 76,
+    /** Cycles of being torn the same way before the runner-up wins outright. */
+    snapCycles: 3,
+    /** Failed searches in one zone before the tribute stops trying it. */
+    exhaustionFailures: 3,
+    /** Tracking at which "there is nothing here" becomes "then I will set snares". */
+    exhaustionTrapSkill: 1.5,
+    /** Fear of one person that counts toward the aggregate. */
+    dreadPerTargetFloor: 25,
+    /** Share of the living field that has to frighten them for dread to max out. */
+    dreadSaturation: 0.6,
+    dreadCowedAt: 0.6,
+    /** §3.2: what it takes to lay a trail that is not where you went. */
+    falseTrailIntelligence: 6,
+    falseTrailSkill: 1.5,
+    falseTrailChance: 0.3,
+    falseTrailTraffic: 3,
+    /** Intelligence at which somebody reads the ground rather than the story. */
+    falseTrailSeeThrough: 8,
+} as const;
+
 export const OBJECTIVES = {
     /**
      * §3.3: stalking — following without engaging. Taken instead of a hunt by
@@ -1878,6 +1926,9 @@ export const STANCE = {
      * sit closer together than three did, so the margin that separated them
      * cleanly no longer does.
      */
+    /** §3.2: how far generalised dread pushes a tribute toward getting out. */
+    dreadEvasive: 5,
+    cowedAggression: 3,
     switchMargin: 1.1,
     /**
      * §1.7: how much the switch margin widens per recent stance change. The
@@ -2245,7 +2296,7 @@ export const ROMANCE = {
      * `performedSniff*` below so the strategy carries the risk that makes it a
      * strategy rather than free sponsor money.
      */
-    performedChance: 0.3,
+    performedChance: 0.24,
     /** Per-cycle odds a sharp observer in the same zone reads the act. */
     performedSniffChance: 0.22,
     /** Intelligence at or above which a tribute can read a performance at all. */

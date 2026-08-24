@@ -7,6 +7,7 @@ import { cyclesSinceContact, ensureMemory, rivalRecord } from './memory';
 import { getRel } from './relationships';
 import { fearOf } from './fear';
 import { massOf, visibleBulk } from './physique';
+import { dreadOf, isCowed } from './intent';
 import { traitMod } from '../data/traits';
 import { profOf } from './proficiency';
 import { hasBroken } from './resolve';
@@ -277,6 +278,9 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
     Aggressive: (ctx, t, sig) => {
         let s = 0;
         s += sig.arch.aggression * STANCE.archetypeWeight;
+        // ...and the same state read from the other end: somebody cowed does
+        // not go looking for anybody.
+        if (isCowed(ctx, t)) s -= STANCE.cowedAggression;
         s += sig.hasWeapon ? STANCE.weaponAggression : -STANCE.weaponAggression;
         s += (t.health - STANCE.aggressiveHealth) / STANCE.aggressiveHealthDivisor;
         if (t.isCareer) s += STANCE.careerAggression;
@@ -316,6 +320,13 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
     Evasive: (ctx, t, sig) => {
         let s = 0;
         s += sig.arch.caution * STANCE.archetypeWeight;
+        // §3.2: generalised fear. `memory.fear` is per-target and there was no
+        // aggregate at all — a tribute could be frightened of every living
+        // person and have no state that said so. Dread is not low resolve
+        // ("I cannot keep doing this"); it is "there is nowhere in here that
+        // is not one of them", and it changes the baseline rather than one
+        // decision.
+        s += dreadOf(ctx, t) * STANCE.dreadEvasive;
         s += (STANCE.evasiveHealth - t.health) / STANCE.evasiveHealthDivisor;
         if (sig.wounded) s += STANCE.woundedEvasive;
         if (!sig.hasWeapon) s += STANCE.unarmedEvasive;

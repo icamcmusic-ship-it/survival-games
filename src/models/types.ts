@@ -282,6 +282,12 @@ export interface TributeMemory {
     /** Zone name -> impression. */
     zones: Record<string, ZoneMemory>;
     /**
+     * §3.2: searches of a zone that turned up nothing. `barren` is a modifier
+     * on the next roll; this is what makes repeated failure a *decision* —
+     * leave, or stop foraging and start trapping.
+     */
+    forageFailures?: Record<string, number>;
+    /**
      * §4.3: what this tribute believes about *other people's* bonds, keyed
      * 'aId|bId' in both orders. Only the two participants in a scene used to
      * update anything, so nobody in the arena could ever learn the single most
@@ -517,6 +523,16 @@ export interface Tribute {
     objective?: Objective;
     /** §3.4: what they nearly did instead, and how close it was. */
     objectiveTension?: ObjectiveTension;
+    /**
+     * §3.2: the goal this tribute is working toward, behind whatever errand
+     * they are running first. Depth two — anything deeper is a planner rather
+     * than a person, and an arena is not a place three-step plans survive.
+     */
+    objectiveQueue?: Objective[];
+    /** §3.2: consecutive cycles torn the same way. Long enough, and they snap. */
+    tensionStreak?: number;
+    /** §3.4: sleep owed, as distinct from being tired right now. */
+    sleepDebt?: number;
     /**
      * §3.6: sites that will never fully come back. Written when a grade-3
      * injury heals; read by `visiblePower` (a tribute who favours an arm is

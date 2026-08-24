@@ -18,6 +18,7 @@ import { craftOf } from '../data/districts';
 import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
 import { earnTrait } from './earnedTraits';
+import { SLEEP } from '../data/balance';
 import { bodyLabel, driftCondition, hungerDrainMultiplier, starvationBuffer, waterNeedMultiplier } from './physique';
 import { arenaHasLaw, wildcardIs } from './gamesProfile';
 import { isEvasiveStance } from '../data/stances';
@@ -540,6 +541,36 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
                 `${t.name} misjudges a step they would have made easily three days ago and goes down hard. Exhaustion is its own hazard now.`,
                 [t.id],
                 { category: 'injury' }
+            );
+        }
+    }
+
+    // §3.4: sleep debt, as distinct from being tired right now.
+    //
+    // Fatigue is a gauge that empties every night; sleep owed is a ledger that
+    // does not. Insomniac is a good trait and there was no underlying system
+    // for it to be an extreme of — a tribute who has not properly slept in five
+    // days is a specific and well-documented kind of ruined, and none of it was
+    // representable. Debt accrues on nights spent short of real rest and is
+    // paid down only by a night that is actually restful; past the threshold it
+    // takes sanity rather than health, because that is what it does.
+    const restedThisCycle = ctx.state.phase === 'night'
+        && t.vitals.fatigue < SLEEP.restedFatigue
+        && !t.injuries.bleeding
+        && (hasCamp(ctx, t, 'shelter') || t.stance === 'Fortified');
+    if (ctx.state.phase === 'night') {
+        t.sleepDebt = Math.max(0, (t.sleepDebt ?? 0)
+            + (restedThisCycle ? -SLEEP.repaidPerGoodNight : SLEEP.accruedPerBadNight)
+            + traitMod(t, 'fatigueNight') * SLEEP.debtPerFatigueTrait);
+    }
+    if ((t.sleepDebt ?? 0) >= SLEEP.deprivedAt) {
+        t.vitals.sanity = Math.max(0, t.vitals.sanity - SLEEP.sanityPerCycle);
+        if (ctx.rng.chance(SLEEP.lineChance)) {
+            ctx.logEvent(
+                `${t.name} has not properly slept in days. Things at the edge of ${t.zone} keep moving when they are not looked at directly, `
+                + 'and they have stopped being certain which of them are real.',
+                [t.id],
+                { category: 'sanity' }
             );
         }
     }

@@ -7,7 +7,7 @@ import { QUIRKS } from '../data/quirks';
 import { SimContext } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
-import { addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy, raiseSuspicion } from './memory';
+import { cycleOf, addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy, raiseSuspicion } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { hasTruce, tryParley } from './parley';
 import { areLovers, maintainPerformance } from './alliance';
@@ -24,8 +24,9 @@ import { resolveMuttAttack as resolveMuttAttackImpl } from './mutts';
 import { hasEffect, severRandomEdge, startZoneEffect } from './zoneEffects';
 import { arenaHasLaw } from './gamesProfile';
 import { traitMod } from '../data/traits';
-import { QUALITY_BIAS } from '../data/balance';
+import { OBJECTIVES, QUALITY_BIAS } from '../data/balance';
 import { isAggressiveStance, isDefensiveStance, isEvasiveStance } from '../data/stances';
+import { exhaustedHere, freshGround, isBeingFollowed, layFalseTrail, noteForageFailure, noteForageSuccess } from './intent';
 
 export function fill(template: string, vars: Record<string, string>): string {
     return Object.entries(vars).reduce(
@@ -552,6 +553,9 @@ function attemptForage(
 ): boolean {
     if (!ctx.rng.chance(chance)) {
         depleteZone(ctx.state, t.zone, ZONES.depletionPerAttempt);
+        // §3.2: repeated failure in the same place is a fact about the place,
+        // and eventually a decision rather than a modifier. See `exhaustedHere`.
+        noteForageFailure(t, t.zone);
         return false;
     }
     // Foraging mostly turns up food and water, but the woods also hold things
@@ -569,6 +573,7 @@ function attemptForage(
     if (fresh.type === 'food' && fresh.spoilage !== undefined) fresh.spoilage += spoilageBonus(t);
     const dropped = giveItem(t, fresh);
     trainProficiency(t, 'forage', ctx);
+    noteForageSuccess(t, t.zone);
     // §3.10: anybody standing here watched them do it.
     observeProficiency(ctx, t, 'forage');
     depleteZone(ctx.state, t.zone, ZONES.depletionPerForage);
@@ -663,6 +668,37 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
                 [t.id],
                 { category: 'survival' }
             );
+        }
+    }
+
+    // §3.2: deception in movement. Tributes moved toward what they wanted and
+    // nothing else — nobody ever feinted or laid a false trail, despite
+    // `zoneTraffic` existing and being exactly the signal a false trail
+    // poisons. Somebody who knows they are being followed, and is good enough
+    // at this, spends the hour making the ground say the wrong thing.
+    if (isBeingFollowed(ctx, t)) layFalseTrail(ctx, t);
+
+    // §3.2: a tribute who has searched this zone four times and found nothing
+    // *decides*, rather than trying again at a slightly worse number.
+    const exhausted = exhaustedHere(ctx, t);
+    if (exhausted === 'trap' && attemptFieldcraft(ctx, t)) {
+        ctx.logEvent(
+            `${t.name} stops looking. There is nothing left in ${t.zone} to find by hand, so they set something that will do the looking for them.`,
+            [t.id],
+            { category: 'survival' }
+        );
+        return;
+    }
+    if (exhausted === 'leave') {
+        const elsewhere = freshGround(ctx, t);
+        if (elsewhere) {
+            t.objective = { kind: 'reach', zone: elsewhere, reason: 'forage', expires: cycleOf(ctx.state) + OBJECTIVES.reachCycles };
+            ctx.logEvent(
+                `${t.name} has been over ${t.zone} three times now and it has nothing. They stop pretending otherwise and start walking.`,
+                [t.id],
+                { category: 'travel' }
+            );
+            return;
         }
     }
 

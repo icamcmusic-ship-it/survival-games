@@ -231,6 +231,8 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         handedness: oneOf<Handedness>(r.handedness, HANDEDNESS, 'right'),
         conditionPressure: asNum(r.conditionPressure, 0),
         stanceChurn: asNum(r.stanceChurn, 0),
+        sleepDebt: asNum(r.sleepDebt, 0),
+        tensionStreak: asNum(r.tensionStreak, 0),
         woundedSide: r.woundedSide === 'left' || r.woundedSide === 'right' ? r.woundedSide : undefined,
         isCareer: asBool(r.isCareer, false),
         archetype: oneOf<Tribute['archetype']>(r.archetype, ARCHETYPES, 'wildcard'),
