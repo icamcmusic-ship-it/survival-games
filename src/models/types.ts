@@ -750,6 +750,37 @@ export interface Tribute {
     maxPerformingStreak?: number;
     /** §10.1: tribute ids this one has extorted at a parley (item or information). */
     extortedIds?: string[];
+    /** §12: tribute ids who have extorted *them*. The other side of the ledger. */
+    extortedByIds?: string[];
+
+    // ---- §12: state the new achievements read ----
+    /**
+     * §12: fights this tribute opened. Not fights they were in — fights they
+     * started, against somebody who had not attacked them first. 'Quiet Storm'
+     * is about a victor who never threw the first strike all run, which is a
+     * different claim from a low kill count.
+     */
+    fightsOpened?: number;
+    /** §12: times they dropped below the near-death line and came back off it. */
+    lowHealthRecoveries?: number;
+    /** §12: weather fronts this tribute stood in and walked out of. */
+    stormsSurvived?: number;
+    /** §12: they took over an alliance whose original leader had died. */
+    tookOverAllianceLead?: boolean;
+    /** §12: zone effects started by something this tribute personally did. */
+    zoneEffectsCaused?: number;
+    /** §12: times they knowingly walked into a zone under an active effect. */
+    walkedIntoEffect?: number;
+    /** §12: how many traits they were reaped with, so shedding one is visible. */
+    startingTraitCount?: number;
+    /** §12: the lowest their resolve has ever been, for the recovery achievements. */
+    minResolve?: number;
+    /**
+     * §12: they have shared a zone with another living tribute at some point
+     * after the bloodbath ended. 'The Unwitnessed' is the run where this stays
+     * false — a victor nobody ever stood next to.
+     */
+    metAnybodyAfterBloodbath?: boolean;
     /** §10.1: set the first time a weapon enters their inventory, ever. */
     /**
      * §3.4: betrayals this tribute has *committed* against someone who trusted

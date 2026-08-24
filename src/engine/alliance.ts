@@ -5,6 +5,7 @@ import { SimContext, getAlive } from './context';
 import { cycleOf, noteFormerAllies } from './memory';
 import { adjustRel, getRel } from './relationships';
 import { pactOath, pactStrictness, rollPact } from './alliancePact';
+import { noteTookOverLead } from './runRecords';
 
 /**
  * Alliance structure.
@@ -306,6 +307,9 @@ function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]
     const install = (next: Tribute, line: string) => {
         record.leaderId = next.id;
         record.successorId = undefined;
+        // §12: 'Understudy' — they are running this group because the person
+        // who was running it is dead.
+        noteTookOverLead(next);
         ctx.logEvent(line, members.map(m => m.id), { important: true, category: 'alliance' });
     };
 

@@ -2013,6 +2013,15 @@ export const LEGENDARY_ITEMS = {
     killsToEarnAName: 2,
 } as const;
 
+/**
+ * §12: thresholds the per-run achievement bookkeeping reads. See
+ * `engine/runRecords.ts`.
+ */
+export const RUN_RECORDS = {
+    /** Health below which a tribute counts as having been on the floor. */
+    nearDeathHealth: 5,
+} as const;
+
 export const CRAFTING = {
     /** A blade below this condition is worth an hour with a whetstone. */
     sharpenBelowCondition: 0.7,

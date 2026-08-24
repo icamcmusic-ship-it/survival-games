@@ -33,6 +33,7 @@ import { tickPersistentMutts } from '../mutts';
 import { hasEffect, restockCornucopia, rollAmbientZoneEffects, startZoneEffect, tickForceField, tickZoneEffects } from '../zoneEffects';
 import { tickStructuralFatigue } from '../loadBearing';
 import { tickEpithets } from '../epithets';
+import { noteEffectCaused, tickRunRecords } from '../runRecords';
 import { climateOf } from '../climate';
 import { tributeOdds } from '../odds';
 import { runArenaSignature } from '../arenaSignature';
@@ -272,6 +273,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     tickTraps(ctx);
     // §11.5: and whether anybody has become known for something this cycle.
     tickEpithets(ctx);
+    // §12: the per-run shapes the achievement table asks about.
+    tickRunRecords(ctx);
     decayTraffic(ctx.state);
     // §9.7: a lie about the map is only a lie once somebody stands in the zone
     // and finds out. Tested before memories decay, while the invented threat
@@ -898,6 +901,8 @@ function tickCampConsequences(ctx: SimContext) {
                 { important: true, zone: t.zone, category: 'hazard' }
             );
             startZoneEffect(ctx, t.zone, 'burning');
+            // §12: their campfire, their wildfire.
+            noteEffectCaused(t);
         }
 
         // §6.5: rain and camouflage do not coexist.

@@ -117,6 +117,11 @@ export const DISTRICT_LEGACY: Record<number, DistrictLegacy> = {
         'Barley Nim',
         'Rye Ostergaard',
         'Silo Prentiss',
+        // §12: four more for 9, on the same grain vocabulary.
+        'Bushel Farrow',
+        'Glean Hollis',
+        'Threshold Vance',
+        'Winnow Attercliffe',
     ] },
     10: { industry: 'Livestock',     tier: 'thin',      mentors: [
         'Dalton Rein',
@@ -144,6 +149,13 @@ export const DISTRICT_LEGACY: Record<number, DistrictLegacy> = {
         'Pitcairn Rowe',
         'Galena Voss',
         'Slate Merrow',
+        // §12: the report proposed four more for 12, following the existing
+        // grounded-and-plain convention for an outer district (the mining
+        // vocabulary rather than an ornate Career one).
+        'Seamus Delving',
+        'Anthracite Rowe',
+        'Marrow Pitt',
+        'Culm Ashby',
     ] },
     // §1.1: the expanded Games. `GameConfig.districtCount` is documented as
     // 2-16 and the setup slider allows it, but 13-16 had no row in any of the
@@ -182,6 +194,11 @@ export const DISTRICT_LEGACY: Record<number, DistrictLegacy> = {
         'Cullet Vasari',
         'Prism Okonkwo',
         'Lehr Bastian',
+        // §12: four more for 15, on the glassworks vocabulary.
+        'Cullet Ashgrove',
+        'Furnace Dray',
+        'Annealer Voss',
+        'Batchhouse Kell',
     ] },
     16: { industry: 'Deepwater drilling',     tier: 'forgotten', mentors: [
         'Derrick Vaunt',

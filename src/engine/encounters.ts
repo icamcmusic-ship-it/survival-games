@@ -8,6 +8,7 @@ import { SimContext } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone, zoneFeatures } from './map';
 import { collapseStructure, isLoadBearing } from './loadBearing';
+import { noteEffectCaused } from './runRecords';
 import type { SanityBand } from './sanityBands';
 import { isSeptic, syncInfectedFlag, treatInfection } from './infection';
 import { tradeReputations } from './notoriety';
@@ -249,10 +250,19 @@ export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDe
         ctx.state.eventChains = ctx.state.eventChains ?? {};
         ctx.state.eventChains[t.id] = event.chain;
     }
-    if (event.startsZoneEffect) startZoneEffect(ctx, t.zone, event.startsZoneEffect);
+    // §12: an effect that exists because of something this tribute did is
+    // credited to them — 'Scorched Earth' is about causing the arena to change
+    // state, not about surviving somebody else's fire.
+    if (event.startsZoneEffect) {
+        startZoneEffect(ctx, t.zone, event.startsZoneEffect);
+        noteEffectCaused(t);
+    }
     // §7: consequences the flat stat block cannot express.
     if (event.special === 'collapse') collapseStructure(ctx, t.zone);
-    if (event.special === 'startsQuaking') startZoneEffect(ctx, t.zone, 'quaking');
+    if (event.special === 'startsQuaking') {
+        startZoneEffect(ctx, t.zone, 'quaking');
+        noteEffectCaused(t);
+    }
     if (event.severesRoute) {
         const cut = severRandomEdge(ctx, t.zone);
         if (cut) {

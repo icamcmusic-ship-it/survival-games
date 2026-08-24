@@ -115,9 +115,14 @@ function declareTruce(ctx: SimContext, a: Tribute, b: Tribute) {
 }
 
 /** §10.1: 'Toll Collector' — who this tribute has shaken down, deduplicated. */
-function noteExtortion(stronger: Tribute, weakerId: string) {
+function noteExtortion(stronger: Tribute, weaker: Tribute) {
     stronger.extortedIds = stronger.extortedIds ?? [];
-    if (!stronger.extortedIds.includes(weakerId)) stronger.extortedIds.push(weakerId);
+    if (!stronger.extortedIds.includes(weaker.id)) stronger.extortedIds.push(weaker.id);
+    // §12: the other side of the ledger. 'Grey Market' is about a victor who
+    // has been on both ends of this, which was previously unrepresentable —
+    // only the collector was ever recorded.
+    weaker.extortedByIds = weaker.extortedByIds ?? [];
+    if (!weaker.extortedByIds.includes(stronger.id)) weaker.extortedByIds.push(stronger.id);
 }
 
 /** Tears up a standing truce from both sides, so neither is still honouring it. */
@@ -371,7 +376,7 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
                 ? [lieAboutZone(ctx, weaker, stronger, { silent: true })].filter((z): z is string => !!z)
                 : shareZoneIntel(ctx, weaker, stronger, { silent: true });
             if (told.length > 0) {
-                noteExtortion(stronger, weaker.id);
+                noteExtortion(stronger, weaker);
                 trainProficiency(stronger, 'persuasion');
                 weaker.intelSold = (weaker.intelSold ?? 0) + 1;
                 // The worst place they know is thrown in on top: a warning is
@@ -394,7 +399,7 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
             }
         }
         if (payment && ctx.rng.chance(tollChance)) {
-            noteExtortion(stronger, weaker.id);
+            noteExtortion(stronger, weaker);
             trainProficiency(stronger, 'persuasion');
             weaker.inventory = weaker.inventory.filter(i => i !== payment);
             giveItem(stronger, payment);
