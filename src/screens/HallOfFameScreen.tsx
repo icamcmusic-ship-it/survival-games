@@ -3,6 +3,7 @@ import { HallOfFameEntry } from '../models/types';
 import { readHallOfFame, writeHallOfFame, clearHallOfFame } from '../utils/hofStorage';
 import { HofFilters, applyHofQuery, isFiltered, EMPTY_HOF_QUERY, HofQuery } from '../components/HofFilters';
 import { HofAggregates } from '../components/HofAggregates';
+import { HofCompare } from '../components/HofCompare';
 import { HofTransfer } from '../components/HofTransfer';
 import { Trophy, Trash2, Copy, Check, RotateCcw, Pin } from 'lucide-react';
 import { gameActions, gameStore } from '../store/gameStore';
@@ -13,6 +14,8 @@ export function HallOfFameScreen() {
     const [entries, setEntries] = useState<HallOfFameEntry[]>([]);
     const [query, setQuery] = useState<HofQuery>(EMPTY_HOF_QUERY);
     const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
+    // §2.3: two entries at a time — a comparison, not a multi-select.
+    const [compareIds, setCompareIds] = useState<string[]>([]);
     const [copiedSeed, setCopiedSeed] = useState<string | null>(null);
     const [confirmClear, setConfirmClear] = useState(false);
     const [confirmResetPanem, setConfirmResetPanem] = useState(false);
@@ -140,6 +143,11 @@ export function HallOfFameScreen() {
                 </>
             ) : (
                 <>
+                    {compareIds.length === 2 && (() => {
+                        const a = entries.find(e => e.id === compareIds[0]);
+                        const b = entries.find(e => e.id === compareIds[1]);
+                        return a && b ? <HofCompare a={a} b={b} onClear={() => setCompareIds([])} /> : null;
+                    })()}
                     <HofAggregates entries={entries} />
                     <HofFilters entries={entries} query={query} onChange={setQuery} resultCount={visible.length} />
                     <HofTransfer entries={entries} onImported={applyImport} />
@@ -239,6 +247,20 @@ export function HallOfFameScreen() {
                                                         title={`Run the ${entry.arenaName} Games again on seed ${entry.seed}`}
                                                     >
                                                         <RotateCcw className="w-3.5 h-3.5" /> Run these Games again
+                                                    </button>
+                                                    {/* §2.3: the archive stored each run's whole config so
+                                                        it could be relaunched, and there was no way to ask
+                                                        what was different about the one that went well. */}
+                                                    <button
+                                                        onClick={() => setCompareIds(ids => {
+                                                            if (ids.includes(entry.id)) return ids.filter(i => i !== entry.id);
+                                                            return [...ids, entry.id].slice(-2);
+                                                        })}
+                                                        className={`btn btn-sm ${compareIds.includes(entry.id) ? 'btn-primary' : ''}`}
+                                                        aria-pressed={compareIds.includes(entry.id)}
+                                                        title="Pick two runs to compare their settings and outcomes"
+                                                    >
+                                                        {compareIds.includes(entry.id) ? 'Comparing' : 'Compare'}
                                                     </button>
                                                     <button
                                                         onClick={() => {

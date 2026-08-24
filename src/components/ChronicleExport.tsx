@@ -38,8 +38,9 @@ export function ChronicleExport({ gameState, importantOnly = false }: {
                 onChange={e => setFormat(e.target.value as ChronicleFormat)}
                 className="field text-xs w-auto"
                 aria-label="Export format"
-                title="Markdown for a document, BBCode for a forum post, plain text for anything else"
+                title="A readable transcript is the one people actually share; Markdown for a document, BBCode for a forum post, plain text for anything else"
             >
+                <option value="prose">Readable transcript</option>
                 <option value="markdown">Markdown</option>
                 <option value="text">Plain text</option>
                 <option value="bbcode">BBCode</option>
