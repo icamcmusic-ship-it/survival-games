@@ -15,6 +15,7 @@ import { awareness } from './stealth';
 import { traitMod } from '../data/traits';
 import { conditionOf, consumeOne, hasTool } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
+import { sanityBandOf } from './sanityBands';
 
 /**
  * Fieldcraft: traps, fire, shelter, camouflage and poison.
@@ -117,6 +118,16 @@ export function setTrap(ctx: SimContext, t: Tribute) {
 export function checkTraps(ctx: SimContext, t: Tribute) {
     // A trap this tribute already found and chose to leave standing is a
     // known hazard they step around, not a fresh roll every cycle.
+    // §7: an owner steps over their own work because they remember it is
+    // there. A tribute in the `gone` sanity band does not reliably remember
+    // anything, including where they tied a wire at throat height four days
+    // ago. Rare, and the darkest edge case `trapKills` has.
+    const ownHere = trapsIn(ctx, t.zone).filter(tr => tr.ownerId === t.id);
+    if (ownHere.length > 0 && sanityBandOf(t) === 'gone' && ctx.rng.chance(TRAPS.ownSnareForgetChance)) {
+        springOwnTrap(ctx, t, ownHere[0]);
+        return;
+    }
+
     const here = trapsIn(ctx, t.zone).filter(tr => tr.ownerId !== t.id && !(tr.knownBy ?? []).includes(t.id));
     if (here.length === 0) return;
 
@@ -222,6 +233,32 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     checkDeath(ctx, t, cause);
     // §10.1: 'Trapper's Crown' — a kill the builder earned days earlier.
     if (t.status === 'dead' && claimant) claimant.trapKills = (claimant.trapKills ?? 0) + 1;
+}
+
+/**
+ * §7: a tribute walking into their own trap.
+ *
+ * Credited to `trapKills` like any other trap kill, deliberately — the owner
+ * and the victim are the same person, which is the whole reason the case is
+ * worth having. Nothing else in the simulation can produce a tribute killed
+ * by their own hands days after the fact.
+ */
+function springOwnTrap(ctx: SimContext, t: Tribute, trap: Trap) {
+    removeTrap(ctx, trap.id);
+    const cause = `Caught in their own ${trap.kind}`;
+    applyDamage(ctx, t, trap.kind === 'snare' ? TRAPS.snareDamage : TRAPS.deadfallDamage, { cause, kind: 'hazard' });
+    openWound(t, BLEEDING.combatSeverity);
+    if (trap.kind === 'snare') injure(t, 'legs');
+    ctx.logEvent(
+        trap.kind === 'snare'
+            ? `${t.name} walks into a snare in ${t.zone} tied with their own knot, at their own working height, by themselves, days ago. They do not appear to recognise it.`
+            : `${t.name} trips their own deadfall in ${t.zone}. They set it. They have not been able to hold on to that kind of thing for a while now.`,
+        [t.id],
+        { important: true, category: 'hazard' }
+    );
+    clampTribute(t);
+    checkDeath(ctx, t, cause);
+    if (t.status === 'dead') t.trapKills = (t.trapKills ?? 0) + 1;
 }
 
 function removeTrap(ctx: SimContext, id: string) {

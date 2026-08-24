@@ -4,6 +4,7 @@ import { ensureMemory } from '../memory';
 import { getRel } from '../relationships';
 import { RNG } from '../../utils/rng';
 import { EPILOGUE } from '../../data/balance';
+import { namedWeapons } from '../legendaryItems';
 
 /** Picks one variant, seeded so the same run always gives the same interview. */
 function pick(rng: RNG, variants: string[]): string {
@@ -179,6 +180,34 @@ export function processEpilogue(ctx: SimContext) {
                 `It's ${winner.token}. It went into the arena with me and it is going home with me. That was the whole deal I made with myself.`,
                 `${winner.token}. Someone put it in my hands in the goodbye room and told me to bring it back. So I did.`,
                 `Just ${winner.token}, Caesar. It is worth nothing. It is the only thing in that arena that was worth anything.`,
+            ])}'`,
+        });
+    }
+
+    // §11.5: the name the country gave them, put to them by the man who has
+    // been using it on air for a week.
+    if (winner.epithet) {
+        qas.push({
+            question: `Caesar Flickerman: 'By the fourth day, Panem had stopped saying "${winner.name} of District ${winner.district}" and started saying "${winner.epithet}". How does a person live with a name like that?'`,
+            answer: `${winner.name}: '${pick(rng, [
+                'I did not choose it, Caesar. I am not sure anybody who has one ever did.',
+                'It is not mine. It belongs to whoever was watching. They can keep it.',
+                'It fit the person I had to be in there. I am hoping it does not fit the one who came out.',
+                'I heard it for the first time from somebody who was trying to kill me. It has never sounded friendly since.',
+            ])}'`,
+        });
+    }
+
+    // §11.6: a weapon that earned a name of its own, and a line about it.
+    const legend = namedWeapons([winner])[0];
+    if (legend) {
+        qas.push({
+            question: `Caesar Flickerman: 'And this — the ${legend.item.name.toLowerCase()} the country has been calling ${legend.item.legendName}. There is a case being built for it in the Capitol as we speak.'`,
+            answer: `${winner.name}: '${pick(rng, [
+                `It is a ${legend.item.name.toLowerCase()}, Caesar. It was a ${legend.item.name.toLowerCase()} when I picked it up and it was a ${legend.item.name.toLowerCase()} the whole time. Everything else is what you all decided about it.`,
+                'Somebody else was holding it first. I would rather the case had their name on it.',
+                'I would like it not to have a name. I would like it to go back to being a tool that somebody left lying somewhere.',
+                'You can have it. I have carried it far enough.',
             ])}'`,
         });
     }

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ARENAS, STARTER_ARENA_IDS, DEFAULT_GAME_CONFIG } from '../data/constants';
+import { MUTATORS, applyMutator, dailyArenaId, dailyConfig, dailySeed, featuredArena, mutatorActive } from '../data/replayHooks';
 import { GameConfig } from '../models/types';
 import { Play, ChevronDown, ChevronRight, ArrowRight, History, Lock } from 'lucide-react';
-import { gameActions, gameStore, readSavedRun } from '../store/gameStore';
+import { gameActions, gameStore, readHallOfFame, readSavedRun } from '../store/gameStore';
 import type { SlotSummary } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
@@ -186,6 +187,20 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     };
 
     const trimmedSeed = seed.trim();
+    // §10: the three replay hooks. All three are pure functions of the date
+    // and the player's own records, so none of them needs storage of its own.
+    const todaySeed = dailySeed();
+    const isDaily = trimmedSeed === todaySeed;
+    const featured = featuredArena(panem.arenasSeen ?? []);
+    // §10.5: the archived victors seated for this run, if any.
+    const grudgeIds = useStore(gameStore, st => st.grudgeMatchIds);
+    const grudgeNames = useMemo(() => {
+        if (grudgeIds.length === 0) return [];
+        const archive = readHallOfFame();
+        return grudgeIds
+            .map(id => archive.find(e => e.id === id)?.winnerName)
+            .filter((n): n is string => n !== undefined);
+    }, [grudgeIds]);
     const start = () => {
         // Starting a new Games discards the saved run immediately, and the
         // resume card alone was not a guard on that destructive path.
@@ -285,6 +300,50 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     <p className="text-[10px] text-[var(--color-ink-500)]">
                         The same seed and arena always produce the same Games — share the link afterwards to let someone else watch the identical run.
                     </p>
+
+                    {/* §10.5: the Grudge Match, if the player has seated
+                        anybody from the archive. Shown here rather than only
+                        in the Hall of Fame because this is the screen where
+                        the run actually starts, and a seated victor changes
+                        what is about to happen. */}
+                    {grudgeIds.length > 0 && (
+                        <div className="panel-flush p-3 mt-2 flex items-center justify-between gap-3 flex-wrap">
+                            <div className="min-w-0">
+                                <div className="text-xs font-bold text-[var(--ink)]">
+                                    Grudge Match &mdash; {grudgeNames.join(' vs ')}
+                                </div>
+                                <div className="text-[10px] text-[var(--color-ink-500)] mt-0.5">
+                                    {grudgeIds.length === 1
+                                        ? 'One past victor will be reaped again into this Games. Pick a second in the Hall of Fame.'
+                                        : 'Both of them will be reaped again into this Games, into their own districts, carrying the traits they won with.'}
+                                </div>
+                            </div>
+                            <button onClick={() => gameActions.clearGrudgeMatch()} className="btn btn-ghost text-[11px] flex-none">
+                                Clear
+                            </button>
+                        </div>
+                    )}
+
+                    {/* §10.1: the shared daily. Personal seeds already replay
+                        exactly, so a daily needs no new plumbing at all — just
+                        one string derived from the UTC date, and everybody in
+                        the world is watching the same cast in the same arena
+                        and can compare what happened to theirs. */}
+                    <div className="panel-flush p-3 mt-2 flex items-center justify-between gap-3 flex-wrap">
+                        <div className="min-w-0">
+                            <div className="text-xs font-bold text-[var(--ink)]">Today&rsquo;s Games</div>
+                            <div className="text-[10px] text-[var(--color-ink-500)] mt-0.5">
+                                Everybody who plays the daily today gets the same arena and the same cast — <span className="font-mono">{todaySeed}</span>.
+                                {isDaily ? ' Loaded.' : ''}
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => { setSeed(todaySeed); setArenaId(dailyArenaId(todaySeed)); setConfig(dailyConfig()); }}
+                            className="btn btn-ghost text-[11px] flex-none"
+                        >
+                            {isDaily ? 'Reload daily' : 'Play the daily'}
+                        </button>
+                    </div>
                     {(() => {
                         // The Games profile is a pure function of the seed, so the
                         // temperament the player is committing to can be shown live.
@@ -345,8 +404,71 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     </label>
                 </div>
 
+                {/* §10.2: mutator bundles. Curated combinations of the sliders
+                    that are already there — no new mechanics — surfaced as
+                    named one-click toggles, so somebody chasing variety does
+                    not have to reassemble a spicy configuration by hand every
+                    time. Distinct from the presets above, which are the four
+                    coherent default shapes; a mutator is deliberately
+                    lopsided. */}
+                <div className="p-5 space-y-2">
+                    <span className="eyebrow">Mutators</span>
+                    <p className="text-[10px] text-[var(--color-ink-500)]">
+                        One click for a whole lopsided year. Nothing here is a new rule — each one is a combination of the settings below.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-2 mt-2">
+                        {MUTATORS.map(m => {
+                            const on = mutatorActive(config, m);
+                            return (
+                                <button
+                                    key={m.id}
+                                    onClick={() => setConfig(c => applyMutator(c, m))}
+                                    aria-pressed={on}
+                                    aria-label={`${m.name}${on ? ' — active' : ''}`}
+                                    className={`text-left p-3 border-2 transition-colors ${
+                                        on
+                                            ? 'border-[var(--red)] bg-[var(--paper-flush)]'
+                                            : 'border-[var(--line-soft)] hover:border-[var(--line)]'
+                                    }`}
+                                >
+                                    <div className="text-xs font-bold text-[var(--ink)]">
+                                        {m.name}
+                                        {on && <span className="ml-2 text-[10px] font-mono uppercase text-[var(--red)]">Active</span>}
+                                    </div>
+                                    <div className="text-[10px] text-[var(--color-ink-500)] mt-0.5">{m.blurb}</div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
                 <div className="p-5 space-y-1">
                     <span className="eyebrow">Select arena</span>
+                    {/* §10.3: the featured arena, rotating daily and preferring
+                        somewhere this player has never been. A forty-arena
+                        roster collapses into everybody's same five favourites
+                        without something pointing elsewhere, and the
+                        every-biome achievements ask a player to go somewhere
+                        new while giving them no help finding out where they
+                        have not been. */}
+                    {arenaUnlocked(featured.id, featured.name) && (
+                        <div className="panel-flush p-3 mt-2 flex items-center justify-between gap-3 flex-wrap">
+                            <div className="min-w-0">
+                                <div className="text-xs font-bold text-[var(--ink)]">
+                                    Featured today: {featured.name}
+                                    {featured.unseen && <span className="ml-2 text-[10px] text-[var(--red)] font-mono uppercase">New to you</span>}
+                                </div>
+                                <div className="text-[10px] text-[var(--color-ink-500)] mt-0.5">
+                                    {featured.unseen
+                                        ? 'One you have never run. The roster is wider than anybody\u2019s five favourites.'
+                                        : 'A different corner of the roster, rotating every day.'}
+                                </div>
+                            </div>
+                            <button onClick={() => setArenaId(featured.id)} className="btn btn-ghost text-[11px] flex-none">
+                                {arenaId === featured.id ? 'Selected' : 'Take me there'}
+                            </button>
+                        </div>
+                    )}
                     <div className="mt-2">
                         {arenaOptions.map(a => {
                             const selected = arenaId === a.id;

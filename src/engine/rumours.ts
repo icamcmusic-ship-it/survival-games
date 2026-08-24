@@ -28,16 +28,25 @@ import { cycleOf, ensureMemory } from './memory';
 import { adjustRel, getRel } from './relationships';
 import { raiseSuspicion } from './memory';
 import { depletionOf, getZone } from './map';
+import { ZONE_RUMOUR_CLAIMS } from '../data/flavorText';
 
 export type RumourKind = 'restock' | 'holed-up' | 'cache' | 'empty';
 
-/** What each kind claims, for the prose and for the check. */
-const CLAIMS: Record<RumourKind, (zone: string) => string> = {
-    restock: zone => `the Cornucopia stock at ${zone} came back early`,
-    'holed-up': zone => `somebody is dug in at ${zone} and well armed`,
-    cache: zone => `there is a cache nobody has found in ${zone}`,
-    empty: zone => `${zone} has been picked to the bone and is not worth the walk`,
-};
+/**
+ * §11.7: what each kind claims, drawn from a real pool.
+ *
+ * Each kind used to render through exactly one hard-coded sentence, so the
+ * whole social information layer said the same four things every run —
+ * repetition inside a single Games, which is the failure `test:flavor` guards
+ * every other pool against. `ZONE_RUMOUR_CLAIMS` carries a dozen phrasings
+ * per kind; the draw goes through `ctx.pickText` so the same claim is not
+ * said twice in a row.
+ */
+function claim(ctx: SimContext, kind: RumourKind, zone: string): string {
+    const pool = ZONE_RUMOUR_CLAIMS[kind];
+    const template = pool && pool.length > 0 ? ctx.pickText(pool) : `something about ${zone}`;
+    return template.split('{zone}').join(zone);
+}
 
 function pool(state: GameState) {
     if (!state.rumours) state.rumours = [];
@@ -135,7 +144,7 @@ export function mintTrueRumours(ctx: SimContext) {
     const witness = ctx.rng.pick(witnesses);
     heard(witness).push(rumour.id);
     ctx.logEvent(
-        `${witness.name} sees enough of ${pick.zone} from where they are to be sure of one thing: ${CLAIMS[pick.kind](pick.zone)}. `
+        `${witness.name} sees enough of ${pick.zone} from where they are to be sure of one thing: ${claim(ctx, pick.kind, pick.zone)}. `
         + 'It is the first genuinely useful thing anybody has had to say all day.',
         [witness.id],
         { category: 'travel', zone: pick.zone }
@@ -168,7 +177,7 @@ export function plantRumour(ctx: SimContext, planter: Tribute, listener: Tribute
     pool(state).push(rumour);
     tell(state, planter, listener, rumour.id);
     ctx.logEvent(
-        `${planter.name} mentions to ${listener.name}, as though it were an afterthought, that ${CLAIMS[rumour.kind](zone)}. `
+        `${planter.name} mentions to ${listener.name}, as though it were an afterthought, that ${claim(ctx, rumour.kind, zone)}. `
         + 'It is said well. There is no reason at all for it to be true.',
         [planter.id, listener.id],
         { category: 'alliance' }

@@ -177,6 +177,11 @@ const CLIMATES: Record<string, ClimateProfile> = {
     'procedural-dunes': SOLAR,
     'procedural-bayou': TOXIC,
     'procedural-ruinlands': MAGNETIC_FOG,
+    // §10.6: the four added biomes.
+    'procedural-steppe': SOLAR,
+    'procedural-saltmarsh': TEMPEST,
+    'procedural-boreal': QUARRY_DAMP,
+    'procedural-badlands': SOLAR,
     solar: SOLAR,
     saltflats: SOLAR,
     toxic: TOXIC,
@@ -193,6 +198,12 @@ const CLIMATES: Record<string, ClimateProfile> = {
     silkwood: TOXIC,
     nooneplace: PERPETUAL_DUSK,
     redcathedral: SOLAR,
+    // §13.3: the Snowbound Homestead is a winter arena whose whole argument is
+    // that the interior is different from the exterior — so it carries the
+    // full freezing profile, and the hearth signature is what buys it back.
+    cabin: FROZEN,
+    magmatube: FURNACE_HEAT,
+    karst: QUARRY_DAMP,
 };
 
 export function climateOf(arenaId: string): ClimateProfile | undefined {

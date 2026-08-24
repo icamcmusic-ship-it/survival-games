@@ -2,6 +2,9 @@
 export const SIGNATURE_BLURBS: Record<string, string> = {
     clockwork: 'The clock: one sector is struck every cycle, in strict rotation, telegraphed a cycle ahead.',
     vault: 'The schedule: every third cycle every light in the complex fails at once.',
+    cabin: 'The hearth: the stove in the interior rooms holds the cold off — as long as somebody is working the Woodshed to feed it.',
+    magmatube: 'The heat gradient: thirst, fatigue and burn risk all scale with how far down the throat a tribute has chosen to be.',
+    karst: 'The dark: past the lit zones there is no light at all, and the moss that provides it can fail arena-wide.',
     warren: 'The shifting: every fourth cycle a passage chokes shut; every eighth the mountain settles and reopens them all.',
     tempest: 'The tide: one sector floods every night, usually whichever one holds the most tributes.',
     canopy: 'The spans: a crossing parts every other cycle, permanently, and the map loses a route.',

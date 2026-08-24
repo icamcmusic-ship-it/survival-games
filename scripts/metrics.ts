@@ -19,8 +19,11 @@ import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig, GameState, Stance, Tribute } from '../src/models/types';
 import { STANCES } from '../src/data/stances';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
+import { legacyOf } from '../src/data/districts';
+import { TRAIT_DEFS } from '../src/data/traits';
+import { ARCHETYPES } from '../src/data/archetypes';
 
-const RUNS = 400;
+const RUNS = Number(process.env.METRICS_RUNS ?? 400);
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
 const configs: GameConfig[] = [
@@ -92,6 +95,22 @@ const earnedTraitWins: Record<string, number> = {};
 let traitsShed = 0;
 const archetypeDays: Record<string, number> = {};
 const archetypeKills: Record<string, number> = {};
+/**
+ * §8: per-archetype signature fire rate. `signatureFired` is already recorded
+ * per tribute and has never been aggregated anywhere, so nobody could say
+ * whether all fifteen archetypes' once-per-run set pieces actually fire at
+ * comparable rates or whether several are effectively theoretical.
+ */
+const archetypeSignatures: Record<string, number> = {};
+/**
+ * §8: win rate by district legacy tier. Nine of sixteen districts start with
+ * negative reputation and non-positive training merit — a deliberate design
+ * choice (it is the underdog engine), but nothing measured whether the
+ * `forgotten` tier is quietly suppressing who actually wins as opposed to
+ * merely who starts behind.
+ */
+const tierEntrants: Record<string, number> = {};
+const tierWins: Record<string, number> = {};
 let runs = 0, totalDays = 0;
 const runLengths: number[] = [];
 
@@ -212,6 +231,9 @@ for (let i = 0; i < RUNS; i++) {
         archetypeEntrants[t.archetype] = (archetypeEntrants[t.archetype] ?? 0) + 1;
         archetypeDays[t.archetype] = (archetypeDays[t.archetype] ?? 0) + t.daysSurvived;
         archetypeKills[t.archetype] = (archetypeKills[t.archetype] ?? 0) + t.kills;
+        if (t.signatureFired) archetypeSignatures[t.archetype] = (archetypeSignatures[t.archetype] ?? 0) + 1;
+        const tier = legacyOf(t.district).tier;
+        tierEntrants[tier] = (tierEntrants[tier] ?? 0) + 1;
     });
     const winner = state.tributes.find(t => t.status === 'alive');
     if (winner) {
@@ -226,6 +248,8 @@ for (let i = 0; i < RUNS; i++) {
         victorsByDistrict[winner.district] = (victorsByDistrict[winner.district] ?? 0) + 1;
         if (winner.isCareer) careerVictors++;
         archetypeWins[winner.archetype] = (archetypeWins[winner.archetype] ?? 0) + 1;
+        const winnerTier = legacyOf(winner.district).tier;
+        tierWins[winnerTier] = (tierWins[winnerTier] ?? 0) + 1;
         const reaped = reapingTraits.get(winner.id) ?? [];
         reaped.forEach(trait => { reapingTraitWins[trait] = (reapingTraitWins[trait] ?? 0) + 1; });
         winner.traits.filter(trait => !reaped.includes(trait)).forEach(trait => {
@@ -313,7 +337,25 @@ const topThreeDistrictShare = (() => {
  */
 const MIN_SAMPLE = 100;
 /** Entrants an archetype or trait needs before its win rate can fail a guard. */
-const GUARD_MIN_SAMPLE = 250;
+/**
+ * Entrants an archetype or trait needs before its win rate can fail a guard.
+ *
+ * It was 250, with a note singling out `beast` as too small to guard. The note
+ * was right and the number was wrong: at 400 runs a single victor moves a
+ * 334-entrant archetype by 0.3 percentage points, so *any* change that
+ * consumes a different number of RNG draws reshuffles all 400 runs and can
+ * swing a small archetype's rate by a factor of three without anything about
+ * that archetype having changed. Scholar was observed at 3.89%, 2.99%, 3.59%,
+ * 2.10% and 1.20% across commits that did not touch it; at 1600 runs the same
+ * two builds read 3.39% and 3.15%, which is the true difference.
+ *
+ * Raised so the guard only fires on populations large enough for it to
+ * reproduce. Everything smaller is still measured and printed — it is just not
+ * allowed to fail the build on a sample that cannot support the claim. Run
+ * `METRICS_RUNS=1600 npx tsx scripts/metrics.ts` to check a small archetype
+ * properly.
+ */
+const GUARD_MIN_SAMPLE = 500;
 function winRates(entrants: Record<string, number>, wins: Record<string, number>): Array<[string, number, number]> {
     return Object.keys(entrants)
         .filter(k => entrants[k] >= MIN_SAMPLE)
@@ -692,6 +734,99 @@ console.log('\nvictors by district:');
 console.log('\nboard samples:');
 console.log(`  carrying a weapon  ${pct(armedSamples, aliveSamples)}`);
 console.log(`  currently bleeding ${pct(bleedingSamples, aliveSamples)}`);
+/**
+ * §8: trait power level, measured rather than eyeballed.
+ *
+ * The audit could not answer "is any trait obviously over- or under-tuned"
+ * from a read of the tables, because a trait's power is the sum of several
+ * modifiers on several different scales. This is the same "measure, don't
+ * guess" move `test:flavor` applies to pool depth, applied to trait strength:
+ * bucket every numeric modifier by rough category, sum its magnitude per
+ * trait, and flag anything sitting well outside its own category's mean.
+ *
+ * Deliberately a report and not a guard. Modifier magnitude is a proxy for
+ * power, not a measurement of it — a 0.3 on `combatPower` and a 0.3 on
+ * `sanityRecovery` are not the same amount of game — so this is a shortlist
+ * for a human to look at, and failing the build on a proxy would be worse
+ * than not measuring at all.
+ */
+{
+    type Category = 'combat' | 'social' | 'survival';
+    const CATEGORY_OF: Record<string, Category> = {};
+    const put = (cat: Category, keys: string[]) => keys.forEach(k => { CATEGORY_OF[k] = cat; });
+    put('combat', ['combatPower', 'ambush', 'concealment', 'awareness', 'awarenessNight', 'targetDraw',
+        'evasion', 'killSanity', 'critChance', 'retreat', 'weaponAffinity', 'wrestle', 'ranged']);
+    put('social', ['allianceAffinity', 'treachery', 'betrayalResist', 'persuasion', 'sponsorAppeal',
+        'charmBonus', 'rapport', 'intimidation', 'romanceAffinity']);
+    put('survival', ['hungerDrain', 'thirstDrain', 'fatigueDay', 'fatigueNight', 'sanityDrain',
+        'sanityRecovery', 'bleedResist', 'poisonResist', 'burnResist', 'coldResist', 'heatResist',
+        'forage', 'medicine', 'water', 'climb', 'trapSkill', 'resolveDrift']);
+
+    const perTrait: Array<{ name: string; cat: Category; magnitude: number }> = [];
+    Object.entries(TRAIT_DEFS).forEach(([name, def]) => {
+        const totals: Record<Category, number> = { combat: 0, social: 0, survival: 0 };
+        Object.entries(def.mods ?? {}).forEach(([key, value]) => {
+            if (typeof value !== 'number') return;
+            const cat = CATEGORY_OF[key];
+            if (!cat) return;
+            // Normalised: the drain modifiers are flat points on a 0-100 vital
+            // and everything else is a 0-1-ish scalar, so a raw sum would say
+            // Camel is forty times the trait Ruthless is.
+            totals[cat] += Math.abs(value) / (Math.abs(value) > 1.5 ? 10 : 1);
+        });
+        const dominant = (Object.keys(totals) as Category[]).sort((a, b) => totals[b] - totals[a])[0];
+        const magnitude = totals.combat + totals.social + totals.survival;
+        if (magnitude > 0) perTrait.push({ name, cat: dominant, magnitude });
+    });
+
+    console.log('\ntrait power level by category (magnitude of combined numeric modifiers):');
+    (['combat', 'social', 'survival'] as Category[]).forEach(cat => {
+        const inCat = perTrait.filter(t => t.cat === cat);
+        if (inCat.length === 0) return;
+        const mean = inCat.reduce((sum, t) => sum + t.magnitude, 0) / inCat.length;
+        const sd = Math.sqrt(inCat.reduce((sum, t) => sum + (t.magnitude - mean) ** 2, 0) / inCat.length) || 1;
+        const outliers = inCat
+            .filter(t => Math.abs(t.magnitude - mean) > sd * 1.5)
+            .sort((a, b) => b.magnitude - a.magnitude);
+        console.log(`  ${cat.padEnd(9)} n=${String(inCat.length).padStart(2)}  mean ${mean.toFixed(2)}  sd ${sd.toFixed(2)}`);
+        outliers.forEach(t => console.log(
+            `      ${t.magnitude > mean ? 'hot ' : 'cold'} ${t.name.padEnd(18)} ${t.magnitude.toFixed(2)}`
+            + ` (${((t.magnitude - mean) / sd).toFixed(1)} sd)`));
+        if (outliers.length === 0) console.log('      no trait more than 1.5 sd from its category mean');
+    });
+}
+
+/**
+ * §8: does every archetype's once-per-run set piece actually fire? A signature
+ * that fires for one archetype in twenty is a design promise the player never
+ * sees kept, and it is invisible in a win-rate table.
+ */
+console.log('\narchetype signature fire rate (share of entrants whose set piece fired):');
+{
+    const rates = Object.keys(ARCHETYPES)
+        .map(id => [id, (archetypeSignatures[id] ?? 0) / Math.max(1, archetypeEntrants[id] ?? 0), archetypeEntrants[id] ?? 0] as const)
+        .sort((a, b) => b[1] - a[1]);
+    rates.forEach(([id, rate, n]) => console.log(
+        `  ${id.padEnd(12)} ${pct(rate * n, n).padStart(6)}  (n=${n})`));
+    const fired = rates.filter(r => r[2] >= GUARD_MIN_SAMPLE);
+    if (fired.length > 1) {
+        const best = fired[0], worst = fired[fired.length - 1];
+        console.log(`  spread: ${best[0]} ${pct(best[1] * best[2], best[2])} vs ${worst[0]} ${pct(worst[1] * worst[2], worst[2])}`);
+    }
+}
+
+/**
+ * §8: and who actually wins, by district legacy tier rather than by district.
+ * Over half the roster starts behind on purpose; this is the check that
+ * "starts behind" has not become "cannot win".
+ */
+console.log('\nwin rate by district legacy tier:');
+Object.keys(tierEntrants)
+    .sort((a, b) => (tierWins[b] ?? 0) / tierEntrants[b] - (tierWins[a] ?? 0) / tierEntrants[a])
+    .forEach(tier => console.log(
+        `  ${tier.padEnd(10)} ${pct(tierWins[tier] ?? 0, tierEntrants[tier]).padStart(6)}`
+        + `  (${tierWins[tier] ?? 0} of ${tierEntrants[tier]} entrants)`));
+
 console.log('');
 console.log('archetypes (n / win% / avg days / avg kills):');
 Object.keys(archetypeEntrants)

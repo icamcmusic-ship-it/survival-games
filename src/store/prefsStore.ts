@@ -63,6 +63,12 @@ export interface Prefs {
      * A hint strip shows once, on the first run, until it is dismissed.
      */
     seenShortcutHint: boolean;
+    /**
+     * §13.2: the in-fiction arena brief, logged as the tributes rise and
+     * immediately before the gong. Default on — it is what was asked for —
+     * but a player who would rather discover the map blind can turn it off.
+     */
+    arenaBriefingOnDrop: boolean;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -78,6 +84,7 @@ export const DEFAULT_PREFS: Prefs = {
     phasePacing: true,
     reduceMotion: false,
     seenShortcutHint: false,
+    arenaBriefingOnDrop: true,
 };
 
 export const PREFS_SPEC: StorageSpec<Prefs> = {
@@ -101,6 +108,7 @@ export const PREFS_SPEC: StorageSpec<Prefs> = {
             phasePacing: asBool(r.phasePacing, DEFAULT_PREFS.phasePacing),
             reduceMotion: asBool(r.reduceMotion, DEFAULT_PREFS.reduceMotion),
             seenShortcutHint: asBool(r.seenShortcutHint, DEFAULT_PREFS.seenShortcutHint),
+            arenaBriefingOnDrop: asBool(r.arenaBriefingOnDrop, DEFAULT_PREFS.arenaBriefingOnDrop),
         };
     },
 };

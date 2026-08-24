@@ -21,6 +21,8 @@ const notes: string[] = [];
 /** Every real `ZoneEffectKind`, for the effectVocab key check below. */
 const EFFECT_KINDS = new Set<string>([
     'burning', 'flooded', 'frozen', 'contaminated', 'fogbound', 'stripped', 'blooming', 'irradiated',
+    // §7: ground instability and infestation.
+    'quaking', 'swarming',
 ]);
 
 /** §5.12: authored events per arena, below which an arena reads as generic. */
@@ -192,6 +194,66 @@ if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has n
     });
     Object.keys(CLIMATE_LABELS).forEach(id => {
         if (!ids.includes(id)) problems.push(`${id}: CLIMATE_LABELS entry for an arena with no climate profile`);
+    });
+}
+
+/**
+ * §5.6: every stacked law combination is actually played, not merely declared.
+ *
+ * `arenaHasLaw` reads `law` and `laws` together, and three arenas now stack
+ * two or more. A stacked pair is exactly the kind of thing that is
+ * individually correct and jointly untested — `noCannons` plus `noSponsors`
+ * means a tribute can neither hear a death nor be sent anything, and nothing
+ * anywhere asserted that combination survives a full run. The cycle-rate check
+ * below exercises single laws; this exercises every combination the roster
+ * actually ships, by playing an arena that carries it to completion.
+ */
+{
+    const combos = new Map<string, { id: string; laws: ArenaLawId[] }>();
+    ARENAS.forEach(arena => {
+        const laws = [...new Set([...(arena.law ? [arena.law] : []), ...(arena.laws ?? [])])].sort();
+        if (laws.length < 2) return;
+        const key = laws.join('+');
+        if (!combos.has(key)) combos.set(key, { id: arena.id, laws });
+    });
+    if (combos.size === 0) {
+        notes.push('no arena stacks two or more laws — the stacked-law check has nothing to exercise');
+    }
+    combos.forEach(({ id, laws }, key) => {
+        const arena = ARENAS.find(a => a.id === id)!;
+        const seed = `stacked-law-${key}`;
+        const gamesProfile = gamesProfileFor(seed);
+        const tributes = generateTributes(seed, DEFAULT_GAME_CONFIG, arena.zones[0].name, gamesProfile.castShape);
+        const state = {
+            seed, arena, tributes, phase: 'day', day: 1, log: [], gamemakerMode: false,
+            config: DEFAULT_GAME_CONFIG, baseConfig: DEFAULT_GAME_CONFIG, gamesProfile,
+            logCounter: 0, feastsHeld: 0, cycle: 0,
+        } as unknown as GameState;
+        const sim = new Simulator(state);
+        const live = sim.getState();
+        let guard = 400;
+        while (guard-- > 0) {
+            if (!sim.processTurn()) break;
+        }
+        const finished = live.phase === 'ended' || live.phase === 'epilogue'
+            || live.tributes.filter(t => t.status === 'alive').length <= 1;
+        if (!finished) {
+            problems.push(`stacked laws ${key} (${id}): a full run did not resolve in ${400} turns`);
+            return;
+        }
+        // The laws have to have actually been in force, not merely declared.
+        // Asserted structurally rather than against the feed: several flavour
+        // pools mention parachutes in the abstract (an ally comparing what
+        // each of them has, the crowd noting that the gifts have stopped), and
+        // a text match on those is a false positive. `giftsReceived` is the
+        // count of things that actually landed in a hand.
+        if (laws.includes('noSponsors')) {
+            const fed = live.tributes.filter(t => (t.memory?.giftsReceived ?? 0) > 0);
+            if (fed.length > 0) {
+                problems.push(`stacked laws ${key} (${id}): ${fed.length} tribute(s) received a gift under noSponsors`);
+            }
+        }
+        notes.push(`stacked laws ${key}: played to completion in ${id} (${live.day} days, ${live.log.length} log lines)`);
     });
 }
 

@@ -3,10 +3,13 @@ import { ITEMS } from '../data/constants';
 import { BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ENCOUNTER_BRANCH, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES, STANCE_MODES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaActionKey, ArenaEventDef, actionPool, arenaFlavor } from '../data/arenaFlavor';
-import { QUIRKS } from '../data/quirks';
+import { QUIRKS, quirkLine } from '../data/quirks';
 import { SimContext } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
-import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
+import { depleteZone, depletionOf, effectiveResources, getZone, zoneFeatures } from './map';
+import { collapseStructure, isLoadBearing } from './loadBearing';
+import { noteEffectCaused } from './runRecords';
+import type { SanityBand } from './sanityBands';
 import { isSeptic, syncInfectedFlag, treatInfection } from './infection';
 import { tradeReputations } from './notoriety';
 import { tradeRumours } from './rumours';
@@ -247,7 +250,19 @@ export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDe
         ctx.state.eventChains = ctx.state.eventChains ?? {};
         ctx.state.eventChains[t.id] = event.chain;
     }
-    if (event.startsZoneEffect) startZoneEffect(ctx, t.zone, event.startsZoneEffect);
+    // §12: an effect that exists because of something this tribute did is
+    // credited to them — 'Scorched Earth' is about causing the arena to change
+    // state, not about surviving somebody else's fire.
+    if (event.startsZoneEffect) {
+        startZoneEffect(ctx, t.zone, event.startsZoneEffect);
+        noteEffectCaused(t);
+    }
+    // §7: consequences the flat stat block cannot express.
+    if (event.special === 'collapse') collapseStructure(ctx, t.zone);
+    if (event.special === 'startsQuaking') {
+        startZoneEffect(ctx, t.zone, 'quaking');
+        noteEffectCaused(t);
+    }
     if (event.severesRoute) {
         const cut = severRandomEdge(ctx, t.zone);
         if (cut) {
@@ -307,6 +322,22 @@ function requirementsHold(ctx: SimContext, t: Tribute, event: ArenaEventDef): bo
     if (need.effect && !hasEffect(ctx.state, t.zone, need.effect)) return false;
     if (need.time && ctx.state.phase !== need.time) return false;
     if (need.law && !arenaHasLaw(ctx.state, need.law)) return false;
+    // §7: preconditions that let a universal event be written once and still
+    // be specific — the zone's own interior, the arena's live weather, and
+    // the tribute's own state.
+    if (need.elevationOrChoke) {
+        const zone = getZone(ctx.state.arena, t.zone);
+        const f = zone ? zoneFeatures(zone) : undefined;
+        if (!f || !(f.elevation || f.chokepoint)) return false;
+    }
+    if (need.loadBearing && !isLoadBearing(ctx.state, t.zone)) return false;
+    if (need.storm && !ctx.state.weatherFront) return false;
+    if (need.stance && !need.stance.includes(t.stance)) return false;
+    if (need.trait && !t.traits.includes(need.trait)) return false;
+    if (need.sanityBand) {
+        const order: SanityBand[] = ['gone', 'unravelling', 'frayed', 'steady'];
+        if (order.indexOf(sanityBandOf(t)) > order.indexOf(need.sanityBand)) return false;
+    }
     if (need.minSurvivors !== undefined || need.maxSurvivors !== undefined) {
         const alive = ctx.state.tributes.filter(o => o.status === 'alive').length;
         if (need.minSurvivors !== undefined && alive < need.minSurvivors) return false;
@@ -687,7 +718,7 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         const quirk = QUIRKS.find(q => q.label === ctx.rng.pick(t.quirks!));
         if (quirk) {
             ctx.logEvent(
-                quirk.line.split('{name}').join(t.name).split('{zone}').join(t.zone),
+                quirkLine(quirk, ctx.pickText).split('{name}').join(t.name).split('{zone}').join(t.zone),
                 [t.id],
                 { category: 'survival' }
             );

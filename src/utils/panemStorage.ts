@@ -1,7 +1,7 @@
 import { GameState, Tribute } from '../models/types';
 import { CareerTotals, evaluateAchievements, evaluateMetaAchievements, evaluateNearMisses, NearMiss } from '../data/achievements';
 import { arenaLaws } from '../engine/gamesProfile';
-import { Notable, runNotables } from './notables';
+import { Notable, runDelta, runNotables } from './notables';
 import { ARENAS } from '../data/constants';
 import { ARENA_MUTTS } from '../data/mutts';
 import {
@@ -90,6 +90,31 @@ export interface PanemRecords {
     arenasSeen?: string[];
     /** §10.1: victories brought home by the player's standing patron district. */
     patronWins?: number;
+    /**
+     * §10.4: small cross-run continuity threads.
+     *
+     * District number -> a token and a quirk left behind by somebody from that
+     * district who died in an earlier Games. A later tribute reaped from the
+     * same district may carry it. Purely cosmetic — nothing mechanical reads
+     * either field — and the entire point: repeat play should feel like it is
+     * building something rather than resetting to zero every run.
+     */
+    heirlooms?: Record<number, { token: string; quirk?: string; fromName: string; run: number }>;
+    /**
+     * §10.7: the last few finished runs, newest first, so the end screen can
+     * say what was different about this one. Capped — this is a comparison
+     * window, not a history.
+     */
+    recentRuns?: Array<{
+        seed: string;
+        arenaName: string;
+        day: number;
+        victorName?: string;
+        victorDistrict?: number;
+        victorArchetype?: string;
+        victorKills?: number;
+        deaths: number;
+    }>;
     /** §10.1: the district that won the most recent finished run, and how many consecutive runs it has now won. */
     lastVictorDistrict?: number;
     victorDistrictStreak?: number;
@@ -285,6 +310,9 @@ function writePanem(records: PanemRecords): void {
     writeStored(PANEM_SPEC, records);
 }
 
+/** §10.7: how many finished runs the end-screen delta compares against. */
+export const RECENT_RUN_WINDOW = 8;
+
 export interface RunOutcome {
     /** The district this run crowned for the very first time, if any. */
     firstCrownDistrict?: number;
@@ -301,6 +329,12 @@ export interface RunOutcome {
     notables: Notable[];
     /** Achievements the run came close to but did not earn. See `data/achievements.ts`. */
     nearMisses: NearMiss[];
+    /**
+     * §10.7: how this Games compared with the player's own last few in the
+     * same arena. Empty on a first run, and on a run that was unremarkable
+     * against its own history — there is no value in "about the same".
+     */
+    delta: string[];
 }
 
 /**
@@ -313,6 +347,41 @@ export function commitRun(state: GameState): RunOutcome {
 
     records.runs += 1;
     if (victor) records.victors += 1;
+
+    // §10.4: what the fallen leave behind for their district. One tribute per
+    // district per run at most, and only somebody who actually died carrying
+    // something — a victor takes their token home, which is the whole point of
+    // a token, so they never leave one.
+    records.heirlooms = records.heirlooms ?? {};
+    state.tributes
+        .filter(t => t.status === 'dead' && t.token)
+        .forEach(t => {
+            const existing = records.heirlooms![t.district];
+            // The most recent loss is the one the district is still talking
+            // about, so a newer one displaces an older.
+            if (existing && existing.run >= records.runs) return;
+            records.heirlooms![t.district] = {
+                token: t.token!,
+                quirk: t.quirks?.[0],
+                fromName: t.name,
+                run: records.runs,
+            };
+        });
+
+    // §10.7: the comparison window the end screen's delta reads.
+    records.recentRuns = [
+        {
+            seed: state.seed,
+            arenaName: state.arena.name,
+            day: state.day,
+            victorName: victor?.name,
+            victorDistrict: victor?.district,
+            victorArchetype: victor?.archetype,
+            victorKills: victor?.kills,
+            deaths: state.tributes.filter(t => t.status === 'dead').length,
+        },
+        ...(records.recentRuns ?? []),
+    ].slice(0, RECENT_RUN_WINDOW);
 
     // The Head Gamemaker who ran these Games carries the result forward.
     const gmName = state.headGamemaker;
@@ -491,6 +560,7 @@ export function commitRun(state: GameState): RunOutcome {
         records,
         notables: runNotables(state, records),
         nearMisses: evaluateNearMisses(state, records.unlocked),
+        delta: runDelta(state, records),
     };
 }
 

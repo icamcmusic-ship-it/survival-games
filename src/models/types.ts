@@ -198,6 +198,19 @@ export interface Item {
     poison?: boolean;
     quality?: ItemQuality;
     /**
+     * §11.6: kills this specific weapon instance has taken. Every weapon
+     * generates as a category instance — a sword is a sword — so nothing about
+     * an object ever accumulated. Blood does.
+     */
+    bloodDrawn?: number;
+    /**
+     * §11.6: the name this weapon earned by drawing blood more than once.
+     * Never rolled at the Cornucopia or by a sponsor; only ever earned in
+     * somebody's hand, which is what makes it a different kind of noun from
+     * everything in `ITEMS`.
+     */
+    legendName?: string;
+    /**
      * Stackable consumables. `undefined` means a single indivisible thing; a
      * number is how many are left in the stack. Food, water and medical
      * supplies stack; a sword does not.
@@ -725,10 +738,54 @@ export interface Tribute {
      * again at their death or in the victor's hands.
      */
     token?: string;
+    /**
+     * §10.5: this tribute is an archived victor reaped again — the arena they
+     * won, for the reaping copy and the chronicle. Set only by a Grudge Match.
+     */
+    veteranOf?: string;
+    /**
+     * §11.5: an epithet earned in the arena, distinct from the birth name
+     * rolled at the reaping. Awarded once and never replaced — the first thing
+     * a tribute becomes known for is the thing they stay known for.
+     */
+    epithet?: string;
+    /** Cycle the epithet was awarded, for the chronicle and the epilogue. */
+    epithetCycle?: number;
     /** §10.1: the longest performing streak this tribute ever held, for 'The Long Con'. */
     maxPerformingStreak?: number;
     /** §10.1: tribute ids this one has extorted at a parley (item or information). */
     extortedIds?: string[];
+    /** §12: tribute ids who have extorted *them*. The other side of the ledger. */
+    extortedByIds?: string[];
+
+    // ---- §12: state the new achievements read ----
+    /**
+     * §12: fights this tribute opened. Not fights they were in — fights they
+     * started, against somebody who had not attacked them first. 'Quiet Storm'
+     * is about a victor who never threw the first strike all run, which is a
+     * different claim from a low kill count.
+     */
+    fightsOpened?: number;
+    /** §12: times they dropped below the near-death line and came back off it. */
+    lowHealthRecoveries?: number;
+    /** §12: weather fronts this tribute stood in and walked out of. */
+    stormsSurvived?: number;
+    /** §12: they took over an alliance whose original leader had died. */
+    tookOverAllianceLead?: boolean;
+    /** §12: zone effects started by something this tribute personally did. */
+    zoneEffectsCaused?: number;
+    /** §12: times they knowingly walked into a zone under an active effect. */
+    walkedIntoEffect?: number;
+    /** §12: how many traits they were reaped with, so shedding one is visible. */
+    startingTraitCount?: number;
+    /** §12: the lowest their resolve has ever been, for the recovery achievements. */
+    minResolve?: number;
+    /**
+     * §12: they have shared a zone with another living tribute at some point
+     * after the bloodbath ended. 'The Unwitnessed' is the run where this stays
+     * false — a victor nobody ever stood next to.
+     */
+    metAnybodyAfterBloodbath?: boolean;
     /** §10.1: set the first time a weapon enters their inventory, ever. */
     /**
      * §3.4: betrayals this tribute has *committed* against someone who trusted
@@ -772,6 +829,12 @@ export interface Tribute {
     zoneHeld?: number;
     /** The zone `zoneHeld` is counting, so a move resets it rather than lying. */
     zoneHeldName?: string;
+    /**
+     * §5.1: which level of a vertical zone they are standing on. Undefined
+     * everywhere else, which is every zone in every arena that does not
+     * declare `ZoneFeatures.vertical`.
+     */
+    zoneLevel?: ZoneLevel;
     /**
      * Shadowing: who they are one zone behind, and for how many consecutive
      * cycles the target has failed to notice them. Three in a row converts to
@@ -1103,7 +1166,22 @@ export interface RivalRecord {
 export type ZoneEffectKind =
     | 'burning' | 'flooded' | 'frozen' | 'contaminated' | 'fogbound' | 'stripped'
     | 'blooming'      // temporary abundance — forage and morale both lift
-    | 'irradiated';   // permanent, and it creeps
+    | 'irradiated'    // permanent, and it creeps
+    /**
+     * §7: ground instability. Not an arena's authored collapse event — a
+     * standing condition any `highland` or `ruins` zone can carry, in any
+     * arena, that makes footing a running risk and eventually drops somebody
+     * a level (the "Ground Give" beat). Distinct from `stripped`, which is
+     * about what the zone has left; this is about whether it holds.
+     */
+    | 'quaking'
+    /**
+     * §7: a vermin/insect infestation as an environmental condition rather
+     * than a mutt instance. Closer to `blooming`'s inverse than to the
+     * `swarm` mutt role: nothing attacks anybody, but forage and rest are
+     * both worse for as long as the zone is crawling.
+     */
+    | 'swarming';
 
 export interface ZoneEffect {
     kind: ZoneEffectKind;
@@ -1147,8 +1225,11 @@ export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetl
  * - `siege`: forced `persistent`, and re-attacks pin to its original zone rather than roaming.
  * - `mimic`: formalizes "Faces of the Fallen" — always eligible for that beat, never rolls it by chance.
  * - `swarm`: damage scales up with how many tributes are present in the zone.
+ * - `parasite`: does not kill on contact — it attaches or infects, and the
+ *   death (if there is one) resolves later through the ordinary vitals and
+ *   medicine path. This is the mechanical hook the infection axis hangs off.
  */
-export type MuttRole = 'ambusher' | 'herder' | 'scavenger' | 'siege' | 'mimic' | 'swarm';
+export type MuttRole = 'ambusher' | 'herder' | 'scavenger' | 'siege' | 'mimic' | 'swarm' | 'parasite';
 
 /**
  * A mutt archetype, not a mutt instance.
@@ -1227,7 +1308,27 @@ export interface ZoneFeatures {
      * Scales exposure ticks and derives from terrain and cover when absent.
      */
     shelterQuality?: number;
+    /**
+     * §5.2: how far sound carries out of, and inside, this zone. 1 is
+     * ordinary ground; above 1 is a canyon or a vault that throws every
+     * footfall around (noise travels further, stealth is harder); below 1 is
+     * deep timber, moss or snow that swallows it. Any arena may set it
+     * locally rather than the effect living inside one hand-authored map.
+     * Derived from terrain and cover when absent (see `zoneFeatures`).
+     */
+    acoustics?: number;
+    /**
+     * §5.1: this zone has an inside with a height to it — a shaft, a gallery
+     * over a gallery, a rooftop above a street. Tributes in it stand at
+     * `upper` or `lower` and two on different levels are not in the same
+     * place. Absent (the default, and every existing arena) means the zone is
+     * flat and nothing changes. See `engine/verticality.ts`.
+     */
+    vertical?: boolean;
 }
+
+/** §5.1: where inside a vertical zone a tribute is standing. */
+export type ZoneLevel = 'upper' | 'lower';
 
 export interface Zone {
     name: string;
@@ -1337,6 +1438,24 @@ export interface Arena {
     laws?: ArenaLawId[];
     /** The zone a law's "except here"/"only here" clause refers to (`noWaterExceptZone`, `sponsorsFixedZone`). */
     lawZone?: string;
+    /**
+     * §5.7: what this arena's Cornucopia leans toward when it restocks.
+     *
+     * `cornucopiaRefills` governs the *timing* of a restock and nothing else,
+     * so the one universally-recognisable location in every arena dropped
+     * identical anonymous supply in all thirty-seven of them. Item ids listed
+     * here bias what actually lands — a volcanic arena's horn toward
+     * fire-resistant kit, a flooded one's toward water gear — tying the hub
+     * back into the arena's own identity. Absent means no bias, which is what
+     * every arena did before this existed.
+     */
+    restockBias?: string[];
+    /**
+     * §5: the off-season skin this run is wearing, if any — a purely cosmetic
+     * alternate dressing on the same zone graph and the same mechanics. Set at
+     * run creation from the seed; see `data/offSeason.ts`.
+     */
+    offSeason?: string;
     /** Multiplier on sponsor-gift frequency for this arena. Defaults to 1. */
     sponsorMultiplier?: number;
     /** Per-arena renaming/retuning of the six zone-effect primitives. Absent kinds use the engine defaults. */
@@ -1634,8 +1753,63 @@ export interface GameState {
      * it is a different beat from claiming your own.
      */
     feastPrizes?: Array<{ tributeId: string; label: string }>;
+    /**
+     * §13.2: whether to log the in-fiction arena brief as the tributes rise.
+     * Copied off the player's prefs at run creation rather than read from the
+     * store inside the engine — the engine has never imported the UI layer and
+     * must not start, and a resumed save should brief the way it originally
+     * did. Undefined means on, so every save from before this existed is
+     * unchanged in behaviour.
+     */
+    arenaBriefingOnDrop?: boolean;
+    /**
+     * §10.5: names of archived victors reaped again into this run. Set at
+     * creation by a Grudge Match; read by the reaping copy.
+     */
+    veteransSeated?: string[];
+    /** §13.3: the Undermere — cycle the bioluminescence comes back on. */
+    mossDimUntilCycle?: number;
     /** §10.1: the longest single fire chain this run produced, in zones. */
     fireChainMax?: number;
+    /**
+     * §5.8: structural fatigue per `ruins` zone, 0-1.
+     *
+     * A shared engine primitive rather than one more hand-authored collapse
+     * event: time spent standing in a ruin and violence done inside it both
+     * load the structure, and a loaded structure is what the universal
+     * "Load-Bearing" event fires out of. Any arena with `ruins` terrain gets
+     * it for free; nothing has to opt in.
+     */
+    structuralFatigue?: Record<string, number>;
+    /**
+     * §5.5: camps abandoned in a hurry, keyed by zone. A zone somebody fled
+     * used to reset to its ambient state the moment they left; this is the
+     * trace they did not have time to pick up, discoverable by anyone who
+     * comes through after.
+     */
+    abandonedCamps?: Array<{
+        zone: string;
+        /** Who left it, so the finder learns something about who is where. */
+        ownerId: string;
+        ownerName: string;
+        cycle: number;
+        /** Item ids left behind, minted for whoever finds them. */
+        items: string[];
+        /** Set once somebody has found it — it is not found twice. */
+        foundBy?: string;
+    }>;
+    /**
+     * §5.4: the extreme this run's weather is drifting toward, and how far
+     * along that drift is. Weather used to be an independent roll every
+     * cycle; a run now has a season.
+     */
+    climateDrift?: { toward: 'heat' | 'cold' | 'wet' | 'dry'; progress: number };
+    /** §5.3: consecutive cycles the audience's excitement has sat flat. */
+    excitementFlatCycles?: number;
+    /** §5.3: last cycle's excitement total, so "flat" can mean unchanged. */
+    lastExcitementTotal?: number;
+    /** §7: tributes poisoned at the feast, and who tampered with the supplies. */
+    feastTampering?: Array<{ byId: string; cycle: number }>;
     /** §10.1: a renewed truce was still standing when one of its parties died. */
     /**
      * §4.6: love triangles, as their own tracked shape.

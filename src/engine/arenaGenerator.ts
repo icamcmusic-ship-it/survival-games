@@ -22,7 +22,7 @@ interface Biome {
 // exhausted its pool mid-generation just came out smaller and reused the
 // same handful of names on every large roll. Pools are now sized well past
 // 16 per biome, and every terrain with a written pool is actually reachable.
-// §5.1/§8.4: eight biomes (four new — tundra, dunes, bayou, ruinlands), and
+// §5.1/§8.4/§10.6: twelve biomes, and
 // every terrain pool holds at least eight names, so even a 16-zone sprawl
 // never runs a pool dry and two same-biome arenas rarely share a map.
 const BIOMES: Biome[] = [
@@ -138,7 +138,75 @@ const BIOMES: Biome[] = [
             ruins: ['The Gutted Mall', 'Rust Yard', 'The Fallen Library', 'Tenement Maze', 'The Hollow Factory', 'Subway Concourse', 'The Collapsed Theatre', 'Bank Vault Row'],
         },
     },
+    // §10.6: four more, widening the infinite-replay pool specifically. Each
+    // is chosen against a shape the eight above do not already cover: an open
+    // grass sea (nothing here was flat and green), a tidal salt marsh (the
+    // bayou is fresh and still, the archipelago is open sea), a northern
+    // conifer forest (the tundra is treeless by definition), and eroded rock
+    // canyon (the dunes are sand, which behaves nothing like stone).
+    {
+        id: 'steppe',
+        namePrefixes: ['Steppe', 'Grassland', 'Openhand'],
+        description: 'A grass sea with nothing standing in it for a day\'s walk in any direction. There is food everywhere and cover nowhere, and the wind carries sound further than anybody expects.',
+        terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins'],
+        zoneNames: {
+            open: ['The Grass Sea', 'Windrow Flats', 'The Burn Line', 'Antelope Common', 'The Long Green', 'Hare Flats', 'The Standing Hay', 'Horizon Reach'],
+            forest: ['The Windbreak', 'River Cottonwoods', 'The Lone Copse', 'Shelterbelt Row', 'The Thorn Line', 'Aspen Island', 'The Planted Rows', 'Coyote Brush'],
+            water: ['The Slow River', 'Cattle Ford', 'The Ox-Bow Bend', 'Kingfisher Cut', 'The Alkali Creek', 'Watering Hole', 'The Spring Line', 'Reed Crossing'],
+            wetland: ['The Prairie Pothole', 'Snipe Marsh', 'The Wet Meadow', 'Sedge Flats', 'The Buffalo Wallow', 'Frog Slough', 'The Seasonal Lake', 'Crane Ground'],
+            highland: ['The Lone Butte', 'Wind Ridge', 'The Grass Shoulder', 'Hawk Rise', 'The Escarpment', 'Kurgan Mound', 'The Bluff Line', 'Signal Knoll'],
+            ruins: ['The Sod House', 'Abandoned Rail Halt', 'The Grain Elevator', 'Fence Line Ruin', 'The Dead Homestead', 'Windmill Skeleton', 'The Stock Pens', 'Boundary Stones'],
+        },
+    },
+    {
+        id: 'saltmarsh',
+        namePrefixes: ['Saltmarsh', 'Tidal', 'Estuary'],
+        description: 'A tidal estuary that is a different map twice a day. Channels that were waist-deep at dawn are mud by noon, and the ground you crossed on is not there when you come back.',
+        terrains: ['wetland', 'water', 'open', 'forest', 'highland', 'ruins'],
+        zoneNames: {
+            open: ['The Mudflats', 'Cockle Strand', 'The Wrack Line', 'Sandpiper Flat', 'The Drying Beds', 'Salt Common', 'The Bare Scar', 'Curlew Ground'],
+            forest: ['The Salt-Killed Wood', 'Alder Fringe', 'The Wind-Pruned Stand', 'Sea Buckthorn Break', 'The Drowned Copse', 'Tamarisk Line', 'The Dune Pines', 'Grey Willow Scrub'],
+            water: ['The Main Channel', 'Tide Race', 'The Deep Creek', 'Shellfish Beds', 'The Bore Run', 'Eel Channel', 'The Turning Pool', 'Seal Reach'],
+            wetland: ['The Samphire Beds', 'Sinking Saltings', 'The Creek Maze', 'Cordgrass Flats', 'The Quaking Ooze', 'Brackish Fen', 'The Grey Marsh', 'Tidepool Terraces'],
+            highland: ['The Sea Wall', 'Shingle Bank', 'The Old Dyke', 'Beacon Rise', 'The Spit Head', 'Dune Ridge', 'The Pilot Station', 'Harbour Bluff'],
+            ruins: ['The Drowned Saltworks', 'Beached Hulk', 'The Oyster Sheds', 'Tide Mill', 'The Broken Groyne', 'Ferry Steps', 'The Sunken Bath House', 'Customs Post'],
+        },
+    },
+    {
+        id: 'boreal',
+        namePrefixes: ['Boreal', 'Taiga', 'Deepwood'],
+        description: 'Black spruce to the edge of the world, standing in water that never fully drains. It is not cold enough to kill outright, and there are more mosquitoes than there have ever been tributes.',
+        terrains: ['forest', 'wetland', 'water', 'open', 'highland', 'ruins'],
+        zoneNames: {
+            open: ['The Burn Scar', 'Lichen Barrens', 'The Cut Line', 'Blueberry Flats', 'The Blowdown', 'Moose Meadow', 'The Old Clearcut', 'Firebreak Row'],
+            forest: ['The Black Spruce', 'Deadfall Tangle', 'The Pine Dark', 'Birch Stand', 'The Moss Floor', 'Windthrow Wood', 'The Endless Trees', 'Lynx Thicket'],
+            water: ['The Cold Lake', 'Portage Narrows', 'The Beaver Flowage', 'Rapids Chute', 'The Tea-Coloured River', 'Loon Bay', 'The Ice-Out Shallows', 'Otter Run'],
+            wetland: ['The Muskeg', 'Sphagnum Sink', 'The Black Fen', 'Tamarack Bog', 'The Floating Mat', 'Mosquito Flats', 'The Sucking Moss', 'Alder Swale'],
+            highland: ['The Granite Dome', 'Fire Tower Hill', 'The Esker Ridge', 'Raven Rock', 'The Glacial Shoulder', 'Wolf Lookout', 'The Bald Knob', 'Windfall Rise'],
+            ruins: ['The Logging Camp', 'Trapper\'s Cabin', 'The Flooded Sawmill', 'Portage Cache', 'The Collapsed Bunkhouse', 'Fire Lookout Shell', 'The Rail Spur', 'Fur Post'],
+        },
+    },
+    {
+        id: 'badlands',
+        namePrefixes: ['Badland', 'Canyon', 'Breaks'],
+        description: 'Rock the water has been cutting for longer than Panem has existed. Every route is a gully, every gully looks like every other gully, and the sky is a strip.',
+        terrains: ['highland', 'open', 'ruins', 'water', 'forest', 'wetland'],
+        zoneNames: {
+            open: ['The Gravel Pan', 'Sage Flat', 'The Alluvial Fan', 'Bentonite Barrens', 'The Wash Bottom', 'Rattler Flat', 'The Grey Prairie', 'Sun Terrace'],
+            forest: ['The Juniper Break', 'Cottonwood Bottom', 'The Pinyon Bench', 'Chokecherry Draw', 'The Scrub Oak Cut', 'Sagebrush Sea', 'The Willow Bar', 'Ponderosa Rim'],
+            water: ['The Silt River', 'Cutbank Bend', 'The Muddy Shallows', 'Seep Spring', 'The Plunge Pool', 'Quicksand Ford', 'The Flash Channel', 'Cottonwood Crossing'],
+            wetland: ['The Alkali Seep', 'Cattail Sink', 'The Mud Spring', 'Salt Cedar Bottom', 'The Slick Wash', 'Buffalo Wallow Flats', 'The Sump', 'Tule Bottom'],
+            highland: ['The Hoodoo Ranks', 'Knife Ridge', 'The Slot Canyon', 'Coyote Rim', 'The Layer Cake Wall', 'Eagle Bench', 'The Chimney Rocks', 'Sunset Overlook'],
+            ruins: ['The Fossil Quarry', 'Homestead Dugout', 'The Bone Diggings', 'Stage Station', 'The Collapsed Adit', 'Petroglyph Wall', 'The Dry Reservoir', 'Cavalry Redoubt'],
+        },
+    },
 ];
+
+/**
+ * §10.6: how many procedural biomes exist, exported so `meta-every-biome`
+ * counts the roster it has rather than the one it shipped against.
+ */
+export const PROCEDURAL_BIOME_COUNT = BIOMES.length;
 
 const TERRAIN_PROFILES: Record<Terrain, { danger: [number, number]; resources: [number, number] }> = {
     open: { danger: [0.4, 0.7], resources: [0.1, 0.4] },
@@ -534,6 +602,22 @@ const EFFECT_VOCAB_BY_BIOME: Record<string, Array<NonNullable<Arena['effectVocab
     ruinlands: [
         { contaminated: { label: 'a leak from something pre-war', severityMult: 1.15 } },
         { fogbound: { label: 'a concrete-dust whiteout' } },
+    ],
+    steppe: [
+        { burning: { label: 'a grass fire running with the wind', severityMult: 1.25, durationMult: 0.8 } },
+        { swarming: { label: 'a locust year', severityMult: 1.2 } },
+    ],
+    saltmarsh: [
+        { flooded: { label: 'the tide coming in over the saltings', severityMult: 1.2 } },
+        { fogbound: { label: 'a haar off the estuary', durationMult: 1.4 } },
+    ],
+    boreal: [
+        { swarming: { label: 'the blackfly hatch', severityMult: 1.3 } },
+        { burning: { label: 'a crown fire in the spruce', severityMult: 1.35, durationMult: 0.9 } },
+    ],
+    badlands: [
+        { quaking: { label: 'the gully wall letting go', severityMult: 1.2 } },
+        { flooded: { label: 'a flash flood down the wash', severityMult: 1.4, durationMult: 0.6 } },
     ],
 };
 

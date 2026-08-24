@@ -178,6 +178,24 @@ export function EndScreen({
                         </div>
                     )}
 
+                    {/* §10.7: how this one compared with the player's own last
+                        few in the same arena. Every other panel here is about
+                        this run in isolation or about a personal best, and
+                        neither of those is how a repeat player experiences
+                        progress — what they want to know is whether this one
+                        went differently, and which way. */}
+                    {outcome && outcome.delta && outcome.delta.length > 0 && (
+                        <div className="md:col-span-2 panel p-5 space-y-2"
+                            style={{ borderColor: 'var(--cat-travel)', borderWidth: '3px' }}>
+                            <span className="eyebrow" style={{ color: 'var(--cat-travel)' }}>
+                                What changed since last time
+                            </span>
+                            {outcome.delta.map(line => (
+                                <p key={line} className="text-sm text-[var(--color-ink-200)] leading-relaxed">{line}</p>
+                            ))}
+                        </div>
+                    )}
+
                     {/* The record book only ever reacted to a personal best. Most of
                         what makes a run memorable is not a record — it is the two or
                         three unusual things that happened, measured against this

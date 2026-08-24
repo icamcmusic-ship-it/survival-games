@@ -1,5 +1,7 @@
 import { GameState, Tribute } from '../models/types';
 import { arenaFlavor } from './arenaFlavor';
+import { legacyOf } from './districts';
+import { PROCEDURAL_BIOME_COUNT } from '../engine/arenaGenerator';
 
 /**
  * REPLAY-04: achievements as a discovery layer, not a points system.
@@ -821,6 +823,132 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'Crown a victor who sent somebody to a zone they knew was a lie.',
         test: (_s, v) => !!v && (v.liedTo?.length ?? 0) > 0,
     },
+
+    // ---- §12: sixteen more, checked against every existing id -----------
+    // Each is phrased as a thing the simulation can do that nothing in the
+    // existing table already asks for. Where one came close to an existing
+    // entry the angle was changed rather than the wording — 'Quiet Storm' is
+    // about who threw the first punch, which is a different claim from
+    // 'Bloodless Crown' (no kills at all) or 'Merciful' (sparing opponents).
+    {
+        id: 'quiet-storm',
+        name: 'Quiet Storm',
+        hint: 'Crown a victor who never once opened a fight. Killing in self-defence is fine.',
+        test: (_s, v) => !!v && (v.fightsOpened ?? 0) === 0,
+        nearMiss: (_s, v) => (v && (v.fightsOpened ?? 0) === 1)
+            ? `${v.name} opened exactly one fight all run — one short of never`
+            : undefined,
+    },
+    {
+        id: 'boomerang',
+        name: 'Boomerang',
+        hint: 'Crown a victor who was betrayed by an ally and won anyway.',
+        test: (_s, v) => !!v && (v.memory?.timesBetrayed ?? 0) > 0,
+    },
+    {
+        id: 'hairsbreadth',
+        name: 'Hairsbreadth',
+        hint: 'Crown a victor who fell below five health three separate times and got back up each time.',
+        test: (_s, v) => !!v && (v.lowHealthRecoveries ?? 0) >= 3,
+        nearMiss: (_s, v) => (v && (v.lowHealthRecoveries ?? 0) === 2)
+            ? `${v.name} came off the floor twice — one short`
+            : undefined,
+    },
+    {
+        id: 'grey-market',
+        name: 'Grey Market',
+        hint: 'Crown a victor who extorted somebody, was extorted themselves, and brokered a truce.',
+        test: (_s, v) => !!v
+            && (v.extortedIds?.length ?? 0) > 0
+            && (v.extortedByIds?.length ?? 0) > 0
+            && (v.brokeredTruces?.length ?? 0) > 0,
+    },
+    {
+        id: 'foul-weather',
+        name: 'Foul Weather Friend',
+        hint: 'Crown a victor who stood in three separate Gamemaker storm fronts and walked out of all three.',
+        test: (_s, v) => !!v && (v.stormsSurvived ?? 0) >= 3,
+        nearMiss: (_s, v) => (v && (v.stormsSurvived ?? 0) === 2)
+            ? `${v.name} rode out two fronts — one short`
+            : undefined,
+    },
+    {
+        id: 'homecoming',
+        name: 'Homecoming',
+        hint: 'Crown a victor reaped from a forgotten-tier district.',
+        test: (_s, v) => !!v && legacyOf(v.district).tier === 'forgotten',
+    },
+    {
+        id: 'understudy',
+        name: 'Understudy',
+        hint: 'Crown a victor who took over an alliance after its original leader died.',
+        test: (_s, v) => !!v && v.tookOverAllianceLead === true,
+    },
+    {
+        id: 'scorched-earth',
+        name: 'Scorched Earth',
+        hint: 'See one tribute personally set three zones burning, flooding or worse through their own actions.',
+        test: state => state.tributes.some(t => (t.zoneEffectsCaused ?? 0) >= 3),
+        nearMiss: state => {
+            const best = Math.max(0, ...state.tributes.map(t => t.zoneEffectsCaused ?? 0));
+            return best === 2 ? 'somebody changed the state of two zones by their own hand — one short' : undefined;
+        },
+    },
+    {
+        id: 'unread',
+        name: 'Unread',
+        hint: 'Crown a victor the sponsors never sent a single thing.',
+        test: (_s, v) => !!v && (v.memory?.giftsReceived ?? 0) === 0,
+    },
+    {
+        id: 'second-wind',
+        name: 'Second Wind',
+        hint: 'Crown a victor whose mind went all the way and came back.',
+        // `sanityScarred` is written on the first visit to the `gone` band and
+        // never cleared, so a living victor carrying it is exactly "went down
+        // there once and did not stay".
+        test: (_s, v) => !!v && v.sanityScarred === true,
+    },
+    {
+        id: 'the-quiet-one',
+        name: 'The Quiet One',
+        hint: 'Crown a victor the chronicle mentions by name fewer than ten times all run.',
+        test: (state, v) => !!v && state.log.filter(e => e.tributesInvolved.includes(v.id)).length < 10,
+    },
+    {
+        id: 'storm-chaser',
+        name: 'Storm Chaser',
+        hint: 'Crown a victor who walked into a sector under an active zone effect three times and survived each one.',
+        test: (_s, v) => !!v && (v.walkedIntoEffect ?? 0) >= 3,
+    },
+    {
+        id: 'the-tally',
+        name: 'The Tally',
+        hint: 'Crown a victor whose district partner died in the bloodbath itself, and who outlasted the whole field alone.',
+        test: (state, v) => !!v && state.tributes.some(o =>
+            o.id !== v.id && o.district === v.district && o.status === 'dead' && o.diedInBloodbath === true),
+    },
+    {
+        id: 'clean-slate',
+        name: 'Clean Slate',
+        hint: 'Crown a victor who gained no traits in the arena and lost none — exactly who they went in as.',
+        test: (_s, v) => !!v
+            && !v.traits.some(t => EARNED_TRAIT_NAMES.includes(t))
+            && v.startingTraitCount !== undefined
+            && v.traits.length === v.startingTraitCount,
+    },
+    {
+        id: 'borrowed-time',
+        name: 'Borrowed Time',
+        hint: 'Crown a victor whose will to keep going dropped under ten and came back up.',
+        test: (_s, v) => !!v && (v.minResolve ?? 100) < 10 && (v.resolve ?? 0) >= 10,
+    },
+    {
+        id: 'the-unwitnessed',
+        name: 'The Unwitnessed',
+        hint: 'Crown a victor who never once stood in the same sector as another living tribute after the bloodbath.',
+        test: (_s, v) => !!v && v.metAnybodyAfterBloodbath !== true,
+    },
 ];
 
 /**
@@ -931,8 +1059,11 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
     {
         id: 'meta-every-biome',
         name: 'Every Biome',
-        hint: 'Crown a victor in all eight of the Gamemakers\' procedural biomes.',
-        test: t => (t.biomesWon?.length ?? 0) >= 8,
+        // §10.6: the biome roster went from eight to twelve, and an
+        // achievement that counts a roster has to count the roster it has
+        // rather than the one it shipped against.
+        hint: 'Crown a victor in all twelve of the Gamemakers\' procedural biomes.',
+        test: t => (t.biomesWon?.length ?? 0) >= PROCEDURAL_BIOME_COUNT,
     },
     {
         id: 'meta-twenty-eight',

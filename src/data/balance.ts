@@ -580,6 +580,22 @@ export const PROFICIENCY = {
      */
     earlyBand: 2,
     earlyGainMultiplier: 1.9,
+    /**
+     * §8: the top of the curve, which the audit read as too easy to reach.
+     *
+     * The measured number it was reading — `peakProficiency` — is the single
+     * highest proficiency observed across every tribute in a 400-run soak,
+     * not an average run's outcome, and at 5.58 against a cap of 6 it says
+     * nobody has ever actually maxed anything. So the cap is not the problem.
+     * The last band is, though: `diminishingPerLevel` alone still lets a
+     * specialist walk the final point in under a day of hard use, which makes
+     * the difference between "expert" and "the best anyone has ever been at
+     * this" a matter of a few more forage rolls. Gains inside the last band
+     * are cut hard, so the ceiling is approached asymptotically and the top
+     * of the scale stays somewhere almost nobody gets to.
+     */
+    nearCapBand: 1,
+    nearCapGainMultiplier: 0.35,
     /** §3.9: the visible bands, in prose and on the tribute sheet. */
     competentBand: 2,
     skilledBand: 3.5,
@@ -1487,6 +1503,12 @@ export const STEALTH = {
     tricksterAmbushBonus: 0.12,
     /** §5.2: concealment/ambush per unit of zone cover above the 0.35 baseline. */
     coverGradeScale: 0.5,
+    /**
+     * §5.2: how hard a zone's own acoustics push on concealment. A canyon at
+     * 1.35 costs a hider roughly a third of a cover grade; deep timber at
+     * 0.7 hands about half of one back.
+     */
+    acousticsScale: 1.2,
     /** §5.2: ambush chance lost against a zone with commanding high ground. */
     elevationAmbushPenalty: 0.1,
     /** §5.2: ambush chance gained where the ways in and out bottleneck. */
@@ -1810,6 +1832,15 @@ export const MUTTS = {
     /** `swarm` role: extra damage multiplier per additional tribute present in the zone, beyond the first. */
     swarmDamagePerAlly: 0.25,
     swarmDamageCap: 2.5,
+    /**
+     * §7: the `parasite` role. It barely hurts and it does not kill — the
+     * damage is a fraction of what its stat block would otherwise land, and
+     * the real cost is what it leaves behind for the infection system to
+     * resolve over the following days.
+     */
+    parasiteDamageShare: 0.3,
+    parasiteInfectChance: 0.55,
+    parasiteSanityLoss: 6,
 } as const;
 
 export const ZONE_EFFECTS = {
@@ -1894,6 +1925,35 @@ export const ZONE_EFFECTS = {
     irradiatedSanityLoss: 3,
     irradiatedCreepChance: 0.06,
 
+    /**
+     * §7: ground instability. A quaking zone is a running footing risk that
+     * escalates — once it has been shaking for `quakingGiveAfter` cycles the
+     * "Ground Give" beat is live, and anyone still standing there can be
+     * dropped a level. `quakingTerrain` is the only ground it can take hold
+     * on: rock that can slide, and structure that can fail.
+     */
+    quakingDuration: 4,
+    quakingTerrain: ['highland', 'ruins'] as const,
+    quakingFootingChance: 0.14,
+    quakingFootingDamage: 7,
+    quakingFatigue: 5,
+    quakingSanityLoss: 3,
+    /** Cycles of shaking before the ground can actually give way under somebody. */
+    quakingGiveAfter: 2,
+    quakingGiveChance: 0.1,
+    quakingGiveDamage: 34,
+
+    /**
+     * §7: infestation. Nothing attacks; the zone is simply not somewhere a
+     * person can forage or sleep. The inverse of `blooming`, and the reason
+     * the `swarm` mutt role is not the same thing.
+     */
+    swarmingDuration: 3,
+    swarmingResourcePenalty: 0.5,
+    swarmingFatigue: 7,
+    swarmingSanityLoss: 5,
+    swarmingInfectChance: 0.07,
+
     /** Contamination: a toxin in the ground or the air, zone-scoped. */
     contaminatedPoisonChance: 0.1,
     contaminatedSanityLoss: 4,
@@ -1921,6 +1981,8 @@ export const ZONE_EFFECTS = {
     ambientContaminateChance: 0.02,
     ambientFogChance: 0.03,
     ambientSeverChance: 0.012,
+    ambientQuakeChance: 0.025,
+    ambientSwarmChance: 0.025,
 
     /**
      * §7.1: the force field at the arena's border zones. Discovery is common
@@ -1933,6 +1995,106 @@ export const ZONE_EFFECTS = {
     forceFieldExploitIntellect: 8,
     forceFieldExploitChance: 0.05,
     forceFieldExploitHungerRelief: 25,
+} as const;
+
+/**
+ * §5.8: the shared load-bearing primitive. See `engine/loadBearing.ts` — this
+ * is the one place the seven hand-authored "___ Collapse" events' common
+ * mechanic is tuned.
+ */
+export const LOAD_BEARING = {
+    /** Load added per occupant, per cycle, to a `ruins` zone. */
+    perOccupantCycle: 0.05,
+    /** Load added by a fight resolving inside one. Violence is loud. */
+    perCombat: 0.14,
+    /** Fatigue at which the collapse beat becomes eligible at all. */
+    liveAt: 0.55,
+    /** Recovery per empty cycle, and the floor it never settles back below. */
+    settlePerCycle: 0.03,
+    settleFloor: 0.15,
+    /** What the structure does to whoever is under it. */
+    collapseDamageMin: 26,
+    collapseDamageMax: 48,
+    collapseCrushChance: 0.55,
+    /** Of the crush injuries, the share that are legs rather than torso. */
+    collapseLegShare: 0.5,
+} as const;
+
+/**
+ * §11.5: when the country decides it has a name for somebody. Deliberately
+ * demanding — an epithet everybody gets is not an epithet.
+ */
+export const EPITHET_RULES = {
+    killsForBloody: 3,
+    unseenCyclesForGhost: 12,
+    daysForEnduring: 6,
+} as const;
+
+/**
+ * §11.6: how much blood a weapon has to draw before the country gives it a
+ * name. Two: once is a weapon doing its job, twice is a pattern.
+ */
+export const LEGENDARY_ITEMS = {
+    killsToEarnAName: 2,
+} as const;
+
+/**
+ * §12: thresholds the per-run achievement bookkeeping reads. See
+ * `engine/runRecords.ts`.
+ */
+export const RUN_RECORDS = {
+    /** Health below which a tribute counts as having been on the floor. */
+    nearDeathHealth: 5,
+} as const;
+
+/**
+ * §5.5: traces left by somebody who fled a zone they had made camp in. See
+ * `engine/abandonedCamps.ts`.
+ */
+export const ABANDONED_CAMPS = {
+    /** Odds a fleeing tribute drops something they were carrying. */
+    dropCarriedChance: 0.45,
+    /** Odds the camp itself yields salvage on top of that. */
+    campSalvageChance: 0.6,
+    salvage: ['rope', 'wire', 'matches', 'bandages', 'club'] as const,
+    /** Cycles a cold camp stays findable before the arena takes it back. */
+    lifetimeCycles: 6,
+    findBase: 0.25,
+    findPerIntelligence: 0.04,
+} as const;
+
+/**
+ * §10.5: what an archived victor brings back into the arena with them. See
+ * `engine/veterans.ts` — deliberately a small edge in the two places a second
+ * Games actually differs (the crowd already knows them, and they have been
+ * here), not a stat package that makes the Grudge Match a foregone conclusion.
+ */
+export const VETERANS = {
+    maxPerRun: 2,
+    maxTraits: 6,
+    reputationBonus: 18,
+    minTrainingScore: 7,
+    resolveBonus: 12,
+    keepsEpithetChance: 0.75,
+} as const;
+
+/**
+ * §5.1: moving up and down inside a single zone. See `engine/verticality.ts`.
+ * Down is where the resources and the danger are, and the descent is the part
+ * that hurts — which is the decision the whole mechanic exists to create.
+ */
+export const VERTICALITY = {
+    /** Need past which a tribute will risk the descent. */
+    descendHunger: 55,
+    descendThirst: 55,
+    /** Health below which somebody at the bottom climbs back out. */
+    retreatHealth: 45,
+    /** Odds a tribute who wants to change level actually does so this cycle. */
+    changeLevelChance: 0.55,
+    descendFatigue: 6,
+    climbFatigue: 12,
+    descendFallChance: 0.12,
+    fallDamage: 24,
 } as const;
 
 export const CRAFTING = {
@@ -2057,6 +2219,12 @@ export const TRAPS = {
     knownTrapThreat: 0.4,
     /** Per-cycle odds a standing trap simply rots, slips or is sprung by weather. */
     rotChancePerCycle: 0.09,
+    /**
+     * §7: odds a tribute in the `gone` sanity band walks into one of their own
+     * traps rather than stepping over it. Deliberately small — this is the
+     * arena's cruellest single outcome and it should stay rare.
+     */
+    ownSnareForgetChance: 0.16,
 } as const;
 
 /** Applying venom to a blade — the Trickster's other unspoken speciality. */
@@ -2187,6 +2355,21 @@ export const MEMORY = {
     rivalAvoidWeight: 2.0,
     /** Weight of remembered barrenness when scoring a destination. */
     barrenWeight: 1.2,
+    /**
+     * §11.1: who can read a regrowth curve. Either enough forage proficiency
+     * to have watched ground come back before, or enough intelligence to work
+     * it out from first principles.
+     */
+    regrowthReadForage: 2.5,
+    regrowthReadIntelligence: 7,
+    /**
+     * How stripped ground has to have been before a tribute bothers timing a
+     * return to it. Below this the zone was never really picked over and the
+     * whole calculation is noise.
+     */
+    regrowthMinBarren: 0.45,
+    /** Pull toward ground a tribute reckons has grown back, once it is due. */
+    regrowthPull: 1.2,
 } as const;
 
 /** Stance selection: thresholds plus the hysteresis that stops thrashing. */
@@ -2802,7 +2985,16 @@ export const ROMANCE = {
      * `performedSniff*` below so the strategy carries the risk that makes it a
      * strategy rather than free sponsor money.
      */
-    performedChance: 0.24,
+    /**
+     * Retuned again. At 0.24 the combined genuine-plus-performed system
+     * produced star-crossed lovers in 20.8% of runs against a 10-15% design
+     * goal — passing its regression guard by a point and a bit, which meant
+     * any change that reshuffled the RNG stream pushed it over. 0.12 lands the
+     * combined rate at 13.5%, inside the goal for the first time, and the
+     * performed bond still fires ~24 times per 400-run soak, so the mechanic
+     * ships (the complaint it was raised to fix was 1-2 firings in 240 runs).
+     */
+    performedChance: 0.12,
     /** Per-cycle odds a sharp observer in the same zone reads the act. */
     performedSniffChance: 0.22,
     /** Intelligence at or above which a tribute can read a performance at all. */
@@ -3369,6 +3561,14 @@ export const WILDCARD = {
     extraDisruptionSpacingCycles: 5,
     /** No extra disruptions before this day — the opening days are busy enough. */
     extraDisruptionEarliestDay: 4,
+    /**
+     * §5.3: excitement as a driver of *when*, not only of how hard. A run
+     * whose audience total has not moved for `flatlineCycles` pulls the next
+     * scheduled calendar beat this many days forward.
+     */
+    flatlineCycles: 4,
+    flatlineTolerance: 8,
+    flatlinePullForwardDays: 1,
 } as const;
 
 export const GAMEMAKER = {
@@ -3756,6 +3956,12 @@ export const PREGAMES = {
     paradeTrustPerPull: 4,
     paradeReputationPerPull: 3,
     paradeExcitementPerPull: 7,
+    /**
+     * §10.4: odds a district that lost somebody carrying a token in an earlier
+     * Games sends that token back in with a later tribute. Deliberately not
+     * every year — a thread you notice is worth more than a rule you expect.
+     */
+    heirloomChance: 0.45,
 } as const;
 
 export const TRAINING = {
@@ -4459,6 +4665,17 @@ export const WEATHER_FRONT = {
     maxCycles: 6,
     /** How many zones back a front remembers, so it does not pace on the spot. */
     memoryZones: 2,
+    /**
+     * §5.4: how hard the run's season pulls a new front toward its own
+     * extreme. Base is the bias on day one; the late term is added on top as
+     * the run approaches `driftFullByDay`, so the arena reads as a season
+     * settling in rather than as four independent coins.
+     */
+    driftBaseBias: 0.3,
+    driftLateBias: 0.5,
+    driftFullByDay: 9,
+    /** Drift progress past which the feed names the season out loud. */
+    driftSettledAt: 0.5,
 } as const;
 
 /**
@@ -4681,6 +4898,15 @@ export const PRE_ARENA = {
     feastStealPackChance: 0.4,
     /** Feast: sanity cost of watching your own named pack walk away. */
     feastPackLostSanity: 12,
+    /**
+     * §7 "The Tamper": a tribute alone over the unclaimed feast packs, with
+     * something to put in them. Base odds plus their own appetite for it, so
+     * a Diplomat with an antidote in their bag is not the same coin as a
+     * Saboteur with a venom vial.
+     */
+    feastTamperBaseChance: 0.12,
+    feastTamperPerTreachery: 0.25,
+    feastTamperDamage: 16,
 } as const;
 
 export const EDGE_TOLL = {
@@ -4792,8 +5018,20 @@ export const ARCHETYPE_HOOKS = {
     /** Beast: the sound. */
     roarFear: 12,
     roarSanity: 9,
-    /** Diplomat: an agreement between two people who are not them. */
-    brokeredTruceCycles: 10,
+    /**
+     * §8: Diplomat — an agreement between two people who are not them.
+     *
+     * Ten cycles is most of a run: two tributes had to coexist for five days
+     * without the arena, an alliance or their own tempers intervening before
+     * the Diplomat was credited with anything, so `trucesBrokeredHeld` was
+     * effectively unreachable and the archetype's whole signature identity
+     * paid out approximately never. Their narrative angle is that they are
+     * good at this, so the term they negotiate is now a realistic one and the
+     * payoff is a thing that happens. Still well above the four cycles an
+     * ordinary two-party truce runs — a Diplomat's word is worth more, it is
+     * just no longer worth more than anybody survives.
+     */
+    brokeredTruceCycles: 6,
     accordGratitude: 18,
     /** Ghost: sponsor credit for going unfilmed, and the crowd's answer to it. */
     ghostTrustPerCycle: 0.4,
@@ -4879,5 +5117,34 @@ export const ARENA_SIGNATURES = {
         safeBase: 0.4,
         safePerIntelligence: 0.06,
         poisonSanity: 18,
+    },
+
+    /** §13.3: the Snowbound Homestead's hearth — the one warm room in the map. */
+    hearth: {
+        /** Odds the stove is actually going in an occupied interior zone. */
+        litChance: 0.75,
+        fatigueRelief: 14,
+        sanityRelief: 6,
+        /** A hearthless interior zone freezing over anyway. */
+        coldSnapChance: 0.18,
+    },
+    /** §13.3: the Throat of the Mountain — everything scales with depth. */
+    throat: {
+        thirstPerDepth: 3,
+        fatiguePerDepth: 2.5,
+        burnPerDepth: 0.02,
+        /** The deepest ground catching outright, and how deep counts as deep. */
+        flareChance: 0.12,
+        flareDepth: 4,
+    },
+    /** §13.3: the Undermere's absolute dark. */
+    undermere: {
+        darkSanity: 3,
+        darkFatigue: 4,
+        blindStumbleChance: 0.1,
+        stumbleDamage: 6,
+        mossDimChance: 0.06,
+        mossDimCycles: 3,
+        siphonChance: 0.5,
     },
 } as const;

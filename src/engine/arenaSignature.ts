@@ -9,6 +9,8 @@ import { injure, openWound } from './wounds';
 import { clampTribute } from './vitals';
 import { rosterFor, engageMutt } from './mutts';
 import { strengthCapForAge } from './physique';
+import { hasTool } from './items';
+import { isUnlitZone } from './map';
 import { ARENA_SIGNATURES, BLEEDING, ESCALATION, MEMORY, PROC_SIGNATURE, SIGNATURE_RULES } from '../data/balance';
 
 /**
@@ -1697,7 +1699,167 @@ export function runDeclarativeSignature(ctx: SimContext, rule: SignatureRule, cy
     applySignaturePayload(ctx, zones, rule.payload, rng);
 }
 
+
+/**
+ * §13.3: the Snowbound Homestead's hearth.
+ *
+ * The arena is one warm room and a killing exterior. The stove in the
+ * interior zones can be lit and fed from the Woodshed; while it burns, cold
+ * exposure in that zone is locally suppressed and everybody sheltering there
+ * gets some of the night back. Lose the Woodshed — or simply stop feeding
+ * it — and the inside of the house stops being meaningfully different from
+ * the outside of it. Nobody has to author "the fire goes out": it goes out
+ * because the fuel is somewhere a person has to go and get.
+ */
+const HEARTH_ZONES = ['Front Room', 'Kitchen'];
+function cabinSignature(ctx: SimContext, _cycle: number, rng: RNG) {
+    const collapsed = ctx.state.collapsedZones ?? [];
+    const woodshed = 'The Woodshed';
+    // Somebody has to be standing in the fuel store, or have been recently.
+    // Somebody has to be working the fuel store: standing in it, or holding
+    // the ground next door to it. The stove is only as reliable as the
+    // Woodshed, which is the whole argument of the arena.
+    const stocked = !collapsed.includes(woodshed)
+        && getAlive(ctx.state).some(t => t.zone === woodshed || t.zone === 'The Cornucopia (Dooryard)' || t.zone === 'The Back Door');
+
+    HEARTH_ZONES.filter(z => !collapsed.includes(z)).forEach(zone => {
+        const present = tributesIn(ctx, zone);
+        if (present.length === 0) return;
+        if (!stocked || !rng.chance(ARENA_SIGNATURES.hearth.litChance)) {
+            // A hearthless night: the interior is only walls, and walls are
+            // not warmth. Expressed through the existing effect vocabulary,
+            // which this arena renames for exactly this beat.
+            if (rng.chance(ARENA_SIGNATURES.hearth.coldSnapChance)) startZoneEffect(ctx, zone, 'frozen');
+            return;
+        }
+        present.forEach(t => {
+            t.vitals.fatigue = Math.max(0, t.vitals.fatigue - ARENA_SIGNATURES.hearth.fatigueRelief);
+            t.vitals.sanity = Math.min(100, t.vitals.sanity + ARENA_SIGNATURES.hearth.sanityRelief);
+            clampTribute(t);
+        });
+        // The stove ends the freeze it was lit against.
+        ctx.logEvent(
+            `The stove in ${zone} is still going. ${present.map(t => t.name).join(', ')} ${present.length > 1 ? 'are' : 'is'} the only ${present.length > 1 ? 'people' : 'person'} warm anywhere on this property, and everyone outside can see the smoke.`,
+            present.map(t => t.id),
+            { zone, category: 'survival' }
+        );
+    });
+}
+
+/**
+ * §13.3: the Throat of the Mountain's heat gradient.
+ *
+ * Depth is the mechanic. Every cycle the mountain breathes out, and what that
+ * costs scales with how far down a tribute has chosen to be — the deep zones
+ * are where the supplies are and where the air is not survivable for long.
+ * This is what makes the one-way Ember Shaft a real decision rather than a
+ * map quirk: the descent pays, and the descent is hard to undo.
+ */
+const THROAT_DEPTH: Record<string, number> = {
+    'The Cornucopia (Crater Rim)': 0,
+    'The Ash-Choked Stair': 1,
+    'The Outer Gallery': 1,
+    'The Condensation Cistern': 1,
+    'The Steam Vents': 2,
+    'The Sulfur Shelf': 2,
+    'The Bat Colony': 2,
+    'The Upper Throat': 3,
+    'The Ember Shaft': 3,
+    'The Long Way Round': 3,
+    'Lower Throat': 4,
+    'The Lava Lake Antechamber': 5,
+};
+function magmatubeSignature(ctx: SimContext, _cycle: number, rng: RNG) {
+    const collapsed = ctx.state.collapsedZones ?? [];
+    getAlive(ctx.state).forEach(t => {
+        const depth = THROAT_DEPTH[t.zone] ?? 0;
+        if (depth === 0 || collapsed.includes(t.zone)) return;
+        t.vitals.thirst += ARENA_SIGNATURES.throat.thirstPerDepth * depth;
+        t.vitals.fatigue += ARENA_SIGNATURES.throat.fatiguePerDepth * depth;
+        if (!t.injuries.burned && rng.chance(ARENA_SIGNATURES.throat.burnPerDepth * depth)) {
+            injure(t, 'burned');
+            ctx.logEvent(
+                `${t.name} puts a hand on the wall of ${t.zone} without thinking about it first. This far down, the wall is not something you touch.`,
+                [t.id],
+                { important: true, category: 'injury' }
+            );
+        }
+        clampTribute(t);
+        checkDeath(ctx, t, `Cooked alive in ${t.zone}`);
+    });
+    // The deepest ground occasionally flares outright.
+    const deep = Object.entries(THROAT_DEPTH)
+        .filter(([z, d]) => d >= ARENA_SIGNATURES.throat.flareDepth && !collapsed.includes(z) && !hasEffect(ctx.state, z, 'burning'))
+        .map(([z]) => z);
+    if (deep.length > 0 && rng.chance(ARENA_SIGNATURES.throat.flareChance)) {
+        startZoneEffect(ctx, rng.pick(deep), 'burning');
+    }
+}
+
+/**
+ * §13.3: the Undermere's dark.
+ *
+ * Not a schedule (that is the Vault) and not lit from above (that is the
+ * glacier). Most of this arena has no light source at all except the fungus,
+ * so a tribute without a light in an unlit zone is fighting, foraging and
+ * navigating blind — modelled as a standing awareness cost, plus the arena's
+ * headline event when the moss itself fails.
+ */
+function karstSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    const collapsed = ctx.state.collapsedZones ?? [];
+    const dimmed = (ctx.state.mossDimUntilCycle ?? -1) >= cycle;
+
+    getAlive(ctx.state).forEach(t => {
+        if (collapsed.includes(t.zone)) return;
+        // The same lighting table the mutt roster reads, so the arena's own
+        // dark and its ambusher's eligibility cannot drift apart.
+        const lit = !dimmed && !isUnlitZone(ctx.state.arena, t.zone);
+        if (lit || hasTool(t, 'light')) return;
+        t.vitals.sanity -= ARENA_SIGNATURES.undermere.darkSanity;
+        t.vitals.fatigue += ARENA_SIGNATURES.undermere.darkFatigue;
+        if (rng.chance(ARENA_SIGNATURES.undermere.blindStumbleChance)) {
+            applyDamage(ctx, t, ARENA_SIGNATURES.undermere.stumbleDamage, { cause: `Lost in the dark under ${t.zone}`, kind: 'arena' });
+            ctx.logEvent(
+                `${t.name} walks into something in the dark of ${t.zone} that turns out to be the floor arriving early.`,
+                [t.id],
+                { category: 'hazard' }
+            );
+        }
+        clampTribute(t);
+        checkDeath(ctx, t, `Lost in the dark under ${t.zone}`);
+    });
+
+    // THE MOSS DIMS: the bioluminescence fails arena-wide for a stretch, and
+    // the two reliably-lit zones stop being reliably lit.
+    if (!dimmed && rng.chance(ARENA_SIGNATURES.undermere.mossDimChance)) {
+        ctx.state.mossDimUntilCycle = cycle + ARENA_SIGNATURES.undermere.mossDimCycles;
+        ctx.logEvent(
+            'THE MOSS DIMS: every glowing thing in the Undermere goes out at once, the way a held breath goes out. There is now no light in this arena at all except what somebody is carrying.',
+            [],
+            { important: true, category: 'arena' }
+        );
+        return;
+    }
+
+    // THE SIPHON FLOODS: the crawl does not merely flood, it seals — a route
+    // taken off the map rather than a zone made dangerous.
+    if (cycle % 5 === 0 && !collapsed.includes('The Siphon Passage') && rng.chance(ARENA_SIGNATURES.undermere.siphonChance)) {
+        startZoneEffect(ctx, 'The Siphon Passage', 'flooded');
+        const cut = severRandomEdge(ctx, 'The Siphon Passage');
+        if (cut) {
+            ctx.logEvent(
+                `THE SIPHON FLOODS: the water under the Undermere finds a new way through and the crawl to ${cut} fills to the roof. It is not a hazard now. It is simply not there.`,
+                [],
+                { important: true, zone: 'The Siphon Passage', category: 'arena' }
+            );
+        }
+    }
+}
+
 const SIGNATURES: Record<string, Signature> = {
+    cabin: cabinSignature,
+    magmatube: magmatubeSignature,
+    karst: karstSignature,
     kelvin: kelvinSignature,
     silkwood: silkwoodSignature,
     nooneplace: nooneplaceSignature,

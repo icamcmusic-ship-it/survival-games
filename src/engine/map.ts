@@ -197,6 +197,7 @@ export function zoneFeatures(zone: Zone): ZoneFeatures {
             waterSource: zone.features.waterSource ?? derivedWater,
             shelterQuality: zone.features.shelterQuality
                 ?? Math.max(0, Math.min(1, BASE_SHELTER[zone.terrain] + zone.features.cover * 0.25)),
+            acoustics: zone.features.acoustics ?? derivedAcoustics(zone, zone.features.cover),
         };
     }
     const cover = Math.max(0, Math.min(1, BASE_COVER[zone.terrain] + (h - 0.5) * 0.3));
@@ -205,7 +206,53 @@ export function zoneFeatures(zone: Zone): ZoneFeatures {
         || (!elevation && h >= 0.62 && h <= 0.78);
     const shelterQuality = Math.max(0, Math.min(1,
         BASE_SHELTER[zone.terrain] + cover * 0.25 + (/cave|cavern|tunnel|vault|cellar|shaft|bunker|lodge|cabin|shack|hollow/i.test(zone.name) ? 0.2 : 0)));
-    return { cover, elevation, chokepoint, waterSource: derivedWater, shelterQuality };
+    return { cover, elevation, chokepoint, waterSource: derivedWater, shelterQuality, acoustics: derivedAcoustics(zone, cover) };
+}
+
+/**
+ * §5.2: how far sound carries here, when the arena has not said.
+ *
+ * Hard, enclosed, empty ground throws every footfall around it — a canyon, a
+ * vault, a tunnel. Deep cover swallows it: timber, moss, reeds, snow. Any
+ * arena may override this per zone via `ZoneFeatures.acoustics` rather than
+ * the effect existing only inside one hand-authored map.
+ */
+function derivedAcoustics(zone: Zone, cover: number): number {
+    const hard = /canyon|gorge|ravine|gallery|hall|vault|tunnel|shaft|cathedral|chamber|cistern|spire|cliff|throat|stair/i.test(zone.name)
+        || zone.terrain === 'ruins' || zone.terrain === 'highland';
+    const base = hard ? 1.35 : 1;
+    // Cover is the muffler: full cover takes a third off whatever the ground
+    // would otherwise carry.
+    return Math.max(0.55, Math.min(1.6, base - cover * 0.35));
+}
+
+/**
+ * §13.3: zones that carry no light source of their own.
+ *
+ * A property of the two hand-authored arenas built around absence of light,
+ * rather than of zones in general — so it is a small table here rather than a
+ * flag on `Zone` that thirty-eight arenas would have to answer. An `ambusher`
+ * mutt written for the dark is eligible in one of these at noon, and the
+ * arena's own signature reads the same list, so the two cannot drift apart.
+ */
+const UNLIT_ZONES: Record<string, (zone: string) => boolean> = {
+    // The Undermere. Everything except the sinkhole floor (open to the sky
+    // through the collapse that made it) and the fungus-rich hollow.
+    karst: zone => zone !== 'The Cornucopia (Sinkhole Floor)' && zone !== 'The Glowmoss Hollow',
+};
+
+export function isUnlitZone(arena: Arena, zone: string): boolean {
+    const rule = UNLIT_ZONES[arena.id];
+    return rule !== undefined && rule(zone);
+}
+
+/**
+ * §5.2: the acoustics of a zone by name, for the stealth and encounter
+ * layers. Defaults to 1 for anything that has not been derived or authored.
+ */
+export function zoneAcoustics(arena: Arena, zoneName: string): number {
+    const zone = getZone(arena, zoneName);
+    return zone ? (zoneFeatures(zone).acoustics ?? 1) : 1;
 }
 
 /**
@@ -469,8 +516,13 @@ export function effectiveResources(state: GameState, zone: Zone | undefined): nu
     // §5.2: a bloom is the one effect that gives. It lifts the zone's yield
     // for as long as it lasts, on top of whatever depletion has taken —
     // stripped ground that blooms is worth foraging again, briefly.
-    const blooming = (state.zoneEffects?.[zone.name] ?? []).some(e => e.kind === 'blooming');
-    return blooming ? Math.min(1, base + ZONE_EFFECTS.bloomingResourceLift) : base;
+    const effects = state.zoneEffects?.[zone.name] ?? [];
+    const blooming = effects.some(e => e.kind === 'blooming');
+    const lifted = blooming ? Math.min(1, base + ZONE_EFFECTS.bloomingResourceLift) : base;
+    // §7: an infestation is the bloom's inverse — nothing here is worth
+    // eating while the zone is crawling, however much of it there is.
+    const swarming = effects.some(e => e.kind === 'swarming');
+    return swarming ? lifted * ZONE_EFFECTS.swarmingResourcePenalty : lifted;
 }
 
 export function depleteZone(state: GameState, zoneName: string, amount: number) {

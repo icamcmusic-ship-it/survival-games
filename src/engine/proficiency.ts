@@ -140,7 +140,13 @@ export function trainProficiency(t: Tribute, skill: Proficiency, ctx?: SimContex
     // The first two levels come fast — that is where real skill acquisition
     // lives — and the diminishing term still binds everything above it.
     const early = current < PROFICIENCY.earlyBand ? PROFICIENCY.earlyGainMultiplier : 1;
-    const gain = PROFICIENCY.gainPerUse * pressure * early * Math.pow(1 - PROFICIENCY.diminishingPerLevel, current);
+    // §8: and the mirror at the top. Inside the last band the gain is cut
+    // hard, so the ceiling is approached asymptotically — the difference
+    // between an expert and the best anybody has ever been at this should not
+    // be a few more forage rolls.
+    const nearCap = current > PROFICIENCY.max - PROFICIENCY.nearCapBand ? PROFICIENCY.nearCapGainMultiplier : 1;
+    const gain = PROFICIENCY.gainPerUse * pressure * early * nearCap
+        * Math.pow(1 - PROFICIENCY.diminishingPerLevel, current);
     const next = Math.min(PROFICIENCY.max, current + gain);
     // Rounded so the value stays legible in a tooltip and in save files.
     t.proficiencies[skill] = Math.round(next * 100) / 100;

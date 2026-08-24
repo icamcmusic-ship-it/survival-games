@@ -169,6 +169,20 @@ export function PlaybackPopover({
                             />
                             Reduce motion
                         </label>
+                        {/* §13.2: the Gamemakers' opening notes on the arena,
+                            logged as the tributes rise. On by default; off for
+                            anyone who would rather read the map blind. Takes
+                            effect on the next run, since it is snapshotted onto
+                            the run at creation. */}
+                        <label className="flex items-center gap-2 cursor-pointer text-xs text-[var(--color-ink-300)]">
+                            <input
+                                type="checkbox"
+                                checked={prefs.arenaBriefingOnDrop}
+                                onChange={e => setPrefs({ arenaBriefingOnDrop: e.target.checked })}
+                                className="accent-[var(--red)]"
+                            />
+                            Brief the arena on arrival (next run)
+                        </label>
                     </div>
                 </div>
             )}

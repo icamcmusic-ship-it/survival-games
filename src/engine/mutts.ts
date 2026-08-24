@@ -6,7 +6,7 @@ import { giveItem } from './items';
 import { SimContext, getAlive } from './context';
 import { isActive, isDowned } from './downed';
 import { applyDamage, checkDeath } from './combat';
-import { getZone, reachableZones, severedEdgeSet } from './map';
+import { getZone, isUnlitZone, reachableZones, severedEdgeSet } from './map';
 import { addZoneThreat, ensureMemory, cycleOf, rattle } from './memory';
 import { hasEffect } from './zoneEffects';
 import { injure, openWound } from './wounds';
@@ -91,7 +91,15 @@ export function eligibleMutts(ctx: SimContext, t: Tribute, time: 'day' | 'night'
         switch (m.role) {
             case 'ambusher':
                 // Only shows itself in the dark or under cover of fog.
-                if (time !== 'night' && !(zone && hasEffect(ctx.state, zone.name, 'fogbound'))) return false;
+                //
+                // §13.3: "dark" is not only the time of day. An arena whose
+                // zones have no light source at all is dark at noon, and an
+                // ambusher written for one ("The Unseen" hunts by vibration in
+                // the Undermere and its victims never see it) would otherwise
+                // have been eligible for half the run in a cave.
+                if (time !== 'night'
+                    && !(zone && hasEffect(ctx.state, zone.name, 'fogbound'))
+                    && !(zone && isUnlitZone(ctx.state.arena, zone.name))) return false;
                 break;
             case 'scavenger':
                 // Only interested in a zone where a cannon just fired.
@@ -206,6 +214,28 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
             ctx.logEvent(`${mutt.name} drives ${t.name} out of ${from} and into ${dest.name}.`, [t.id], { important: true, category: 'mutt' });
         }
         clampTribute(t);
+        return;
+    }
+
+    // §7: `parasite` does not kill on contact. It attaches, or it infects,
+    // and the death — if there is one — resolves days later through the
+    // ordinary vitals and medicine path. This is the mechanical hook the
+    // infection axis hangs off: a parasite encounter is not a fight a tribute
+    // can lose, it is a decision they now have to make about a wound.
+    if (mutt.role === 'parasite') {
+        applyDamage(ctx, t, Math.round(scaledDamage(ctx, mutt) * MUTTS.parasiteDamageShare), { cause: `Infested by ${mutt.name}`, kind: 'mutt' });
+        applyMuttInjuries(t, mutt);
+        // Whatever it carries is now in them, whether or not the bite was.
+        if (!t.injuries.infected && ctx.rng.chance(MUTTS.parasiteInfectChance)) injure(t, 'infected');
+        t.vitals.sanity -= MUTTS.parasiteSanityLoss;
+        addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
+        ctx.logEvent(
+            `${mutt.name} get into ${t.name}'s sleeves and collar in ${t.zone}, and out again, and it is a full minute before ${t.name} finds where they got in.`,
+            [t.id],
+            { important: true, category: 'mutt' }
+        );
+        clampTribute(t);
+        checkDeath(ctx, t, `Infested by ${mutt.name}`);
         return;
     }
 

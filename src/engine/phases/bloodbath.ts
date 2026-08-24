@@ -13,6 +13,7 @@ import { getRel, setRel } from '../relationships';
 import { noteContact, noteSighting } from '../memory';
 import { addFear } from '../fear';
 import { wildcardIs } from '../gamesProfile';
+import { arenaBriefingLog } from '../arenaBriefingLog';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -156,6 +157,11 @@ export function processBloodbath(ctx: SimContext) {
             { category: 'system' }
         );
     }
+
+    // §13.2: the Gamemakers' own opening notes on the arena, in-fiction, at
+    // the moment the tributes actually rise into it — immediately before the
+    // gong, and only if the player has left the briefing on.
+    if (ctx.state.arenaBriefingOnDrop !== false) arenaBriefingLog(ctx);
 
     ctx.logEvent(
         `The gong sounds. ${alive.length} tributes come off their plates at once.`,
