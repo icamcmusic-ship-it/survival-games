@@ -1,5 +1,5 @@
 import { Item, Tribute, TruceReason } from '../models/types';
-import { COMPOSURE, PARLEY, PROFICIENCY, RESPECT, ROMANCE } from '../data/balance';
+import { COMPOSURE, INTEL, PARLEY, PROFICIENCY, RESPECT, ROMANCE } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { PARLEY_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
@@ -7,7 +7,7 @@ import { traitMod } from '../data/traits';
 import { SimContext, getAlive } from './context';
 import { assessZone } from './stance';
 import { adjustMutual, adjustRel, getRel, respectOf } from './relationships';
-import { addZoneThreat, cycleOf, ensureMemory, noteStoodBy, raiseSuspicion, rememberedThreat, swearVengeance } from './memory';
+import { addZoneThreat, cycleOf, ensureMemory, lieAboutZone, noteStoodBy, raiseSuspicion, rememberedThreat, shareZoneIntel, swearVengeance } from './memory';
 import { areLovers, maintainPerformance } from './alliance';
 import { earnTrait } from './earnedTraits';
 import { giveItem, itemPhrase } from './items';
@@ -327,15 +327,34 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
             // stronger party walks away knowing what the weaker one learned
             // the hard way — and it is why the extortion branch is reachable
             // at all now that most of its candidates carry nothing.
+            //
+            // §9.7: and it is a real transfer now rather than a line claiming
+            // one. It used to require the weaker party to know somewhere that
+            // had already frightened them — which is the wrong gate entirely,
+            // because the tribute with nothing in their pack is usually the
+            // one who has been keeping their head down and knows where the
+            // water is, not the one who has been watching people die. Anything
+            // they know is currency. Whether it is *true* is up to them.
             const known = Object.keys(ensureMemory(weaker).zones)
                 .map(zone => ({ zone, threat: rememberedThreat(ctx.state, weaker, zone) }))
                 .filter(z => z.threat >= PARLEY.tollInfoMinThreat)
                 .sort((a, b) => b.threat - a.threat);
             const worst = known[0];
-            if (worst) {
+            // A frightened tribute buying their life is exactly the person most
+            // tempted to buy it with a story — and the stronger party has no
+            // way to check until they are standing in it.
+            const lieChance = INTEL.lieChanceBase
+                + Math.max(0, treacheryOf(weaker)) * INTEL.lieChancePerTreachery;
+            const told = ctx.rng.chance(lieChance)
+                ? [lieAboutZone(ctx, weaker, stronger, { silent: true })].filter((z): z is string => !!z)
+                : shareZoneIntel(ctx, weaker, stronger, { silent: true });
+            if (told.length > 0) {
                 noteExtortion(stronger, weaker.id);
                 trainProficiency(stronger, 'persuasion');
-                addZoneThreat(ctx.state, stronger, worst.zone, worst.threat);
+                weaker.intelSold = (weaker.intelSold ?? 0) + 1;
+                // The worst place they know is thrown in on top: a warning is
+                // the cheapest thing anyone in an arena can hand over.
+                if (worst) addZoneThreat(ctx.state, stronger, worst.zone, worst.threat);
                 adjustMutual(ctx.state, weaker, stronger, -PARLEY.tollInfoResentment);
                 addExcitement(stronger, PARLEY.tributeExcitement);
                 weaker.vitals.sanity -= PARLEY.tollInfoSanityCost;
@@ -343,7 +362,8 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
                 clampTribute(stronger);
                 ctx.logEvent(
                     fill(ctx.pickText(PARLEY_TEXTS.tributeInformation), {
-                        weak: weaker.name, strong: stronger.name, zone: weaker.zone, told: worst.zone,
+                        weak: weaker.name, strong: stronger.name, zone: weaker.zone,
+                        told: worst ? worst.zone : told.join(' and '),
                     }),
                     [weaker.id, stronger.id],
                     { important: true, category: 'alliance' }

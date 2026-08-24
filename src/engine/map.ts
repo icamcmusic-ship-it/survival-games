@@ -1,9 +1,10 @@
-import { Arena, GameState, Tribute, Zone, ZoneFeatures } from '../models/types';
+import { Arena, EdgeRule, GameState, Tribute, Zone, ZoneFeatures, attr } from '../models/types';
 import { traitMod } from '../data/traits';
-import { BLEEDING, EDGE_TOLL, ZONE_EFFECTS, ZONES } from '../data/balance';
+import { BLEEDING, EDGE_RULES, EDGE_TOLL, ZONE_EFFECTS, ZONES } from '../data/balance';
 import { injuryGrade, openWound } from './wounds';
 import { chokepointModifier, climbModifier, massOf } from './physique';
-import { SimContext } from './context';
+import { SimContext, getAlive } from './context';
+import { resolveCombat } from './combat';
 
 export function zoneNames(arena: Arena): string[] {
     return arena.zones.map(z => z.name);
@@ -46,8 +47,14 @@ export function travelCost(t: Tribute, dest: Zone): number {
  * a specific edge.
  */
 export function applyEdgeToll(ctx: SimContext, t: Tribute, from: string, to: string) {
-    const rule = ctx.state.arena.edgeRules?.[edgeKey(from, to)];
-    if (!rule || rule.kind !== 'tolled' || !rule.toll) return;
+    const key = edgeKey(from, to);
+    const rule = ctx.state.arena.edgeRules?.[key];
+    if (!rule) return;
+    // §5.5: this is the one moment a crossing is real, so it is where the
+    // wearing kinds wear and where a garrison gets its say.
+    if (rule.kind === 'collapsing' || rule.kind === 'oneWayAfter') countCrossing(ctx, t, from, to, rule);
+    if (rule.kind === 'contested') runGarrison(ctx, t, from, to);
+    if (rule.kind !== 'tolled' || !rule.toll) return;
     if (rule.toll.fatigue) {
         // §11.6: the same rope costs different bodies differently — a heavy
         // frame hauls more of itself up it, and a bad limb pays again.
@@ -78,6 +85,67 @@ export function applyEdgeToll(ctx: SimContext, t: Tribute, from: string, to: str
     if (rule.toll.timeCost) {
         t.vitals.fatigue = Math.min(100, t.vitals.fatigue + rule.toll.timeCost * EDGE_TOLL.recoveryFatiguePerCycle);
     }
+}
+
+/**
+ * §5.5: a crossing over a `collapsing` or `oneWayAfter` edge, counted. The
+ * counting is the mechanic — a rope bridge is only interesting because every
+ * tribute who uses it spends part of it, and the last one over is the one who
+ * hears it go.
+ */
+function countCrossing(ctx: SimContext, t: Tribute, from: string, to: string, rule: EdgeRule) {
+    const state = ctx.state;
+    const key = edgeKey(from, to);
+    state.edgeCrossings = state.edgeCrossings ?? {};
+    const made = (state.edgeCrossings[key] ?? 0) + 1;
+    state.edgeCrossings[key] = made;
+    if (rule.kind === 'collapsing' && made >= (rule.crossings ?? EDGE_RULES.defaultCrossings)) {
+        // Severing rather than book-keeping a zero: every other part of the
+        // engine already understands a severed edge, and this one is permanent.
+        severEdge(state, from, to);
+        ctx.logEvent(
+            `The crossing between ${from} and ${to} gives way behind ${t.name}. Whatever was holding it has finished letting go — nobody is coming that way again.`,
+            [t.id],
+            { important: true, zone: to, category: 'arena' }
+        );
+    }
+    if (rule.kind === 'oneWayAfter' && made === (rule.after ?? EDGE_RULES.defaultAfter) && rule.from && rule.to) {
+        ctx.logEvent(
+            `The way between ${rule.from} and ${rule.to} has been worn into a one-way thing: down is still possible, back up is not.`,
+            [t.id],
+            { important: true, zone: rule.to, category: 'arena' }
+        );
+    }
+}
+
+/**
+ * §5.5: a `contested` edge with somebody sitting on it. Structurally the pass
+ * is open — the cost is the people at the far end of it, who either catch the
+ * crosser or merely make them run.
+ */
+function runGarrison(ctx: SimContext, t: Tribute, from: string, to: string) {
+    const state = ctx.state;
+    const holder = state.garrisonedEdges?.[edgeKey(from, to)];
+    if (!holder || holder === t.allianceId) return;
+    const intercept = EDGE_RULES.garrisonInterceptBase - attr(t, 'stealth') * EDGE_RULES.garrisonInterceptPerStealth;
+    const guards = getAlive(state)
+        .filter(g => g.allianceId === holder && g.id !== t.id && (g.zone === to || g.zone === from));
+    if (guards.length > 0 && ctx.rng.chance(intercept)) {
+        const guard = guards.find(g => g.zone === to) ?? guards[0];
+        ctx.logEvent(
+            `${t.name} comes through the pass between ${from} and ${to} and finds ${guard.name} already standing in it.`,
+            [t.id, guard.id],
+            { important: true, zone: guard.zone, category: 'combat' }
+        );
+        resolveCombat(ctx, guard, t);
+        return;
+    }
+    t.vitals.fatigue = Math.min(100, t.vitals.fatigue + EDGE_RULES.forcedCrossingFatigue);
+    ctx.logEvent(
+        `${t.name} goes through the held ground between ${from} and ${to} at a dead run, and is past it before anyone can put a hand out.`,
+        [t.id],
+        { zone: to, category: 'travel' }
+    );
 }
 
 /** §11.6: extra transit cycles a tolled edge adds on top of terrain cost. */
@@ -169,36 +237,73 @@ export function hasForceField(arena: Arena, zoneName: string): boolean {
 }
 
 /**
+ * §5.5: everything traversal needs to answer for the state-dependent edge
+ * kinds — the run's crossing counts, and (where there is one) the specific
+ * tribute doing the walking. Both optional: omitting them asks for the graph
+ * as a stranger sees it.
+ */
+export interface EdgeContext {
+    state?: GameState;
+    tribute?: Tribute;
+}
+
+/**
  * Whether an edge can be crossed from `a` to `b` right now, per `Arena.edgeRules`.
  * `oneWay` only allows its declared direction; `timeGated` only allows its
  * declared time (open when `time` isn't supplied — a caller that doesn't
  * track time of day gets the ungated graph rather than a silent block).
  * `tolled` edges are always passable — the toll itself is a fatigue/wound
  * cost applied where a crossing actually commits (`beginMove` in dayNight.ts),
- * not a reachability question.
+ * not a reachability question. So is `contested`: an occupied pass is walkable,
+ * it is just expensive, and the garrison is resolved at the crossing.
+ *
+ * §5.5: the remaining kinds are not pure over arena data — `collapsing` and
+ * `oneWayAfter` read how often the edge has been used, `hidden` reads who is
+ * asking — so traversal takes an optional `EdgeContext`. Callers that have
+ * neither get the conservative graph rather than a wrong one.
  */
-function edgeAllowed(arena: Arena, a: string, b: string, time?: 'day' | 'night'): boolean {
-    const rule = arena.edgeRules?.[edgeKey(a, b)];
+function edgeAllowed(arena: Arena, a: string, b: string, time?: 'day' | 'night', who?: EdgeContext): boolean {
+    const key = edgeKey(a, b);
+    const rule = arena.edgeRules?.[key];
     if (!rule) return true;
     switch (rule.kind) {
         case 'oneWay': return rule.from === a && rule.to === b;
         case 'timeGated': return time === undefined || rule.gatedTime === undefined || rule.gatedTime === time;
+        case 'collapsing': return crossingsLeft(who?.state, key, rule) > 0;
+        case 'oneWayAfter':
+            return crossingsMade(who?.state, key) < (rule.after ?? EDGE_RULES.defaultAfter)
+                || (rule.from === a && rule.to === b);
+        // §5.5: a way nobody has found is a way nobody can walk. Without a
+        // traveller to ask — pathfinding, AI planning, an arena signature
+        // reading its own map — the conservative answer is "shut", so nothing
+        // routes a stranger through a passage they have never heard of.
+        case 'hidden': return !!who?.tribute?.knownEdges?.includes(key);
         default: return true;
     }
+}
+
+/** Crossings already made over an edge this run. */
+function crossingsMade(state: GameState | undefined, key: string): number {
+    return state?.edgeCrossings?.[key] ?? 0;
+}
+
+/** §5.5: crossings a `collapsing` edge has left in it. */
+function crossingsLeft(state: GameState | undefined, key: string, rule: EdgeRule): number {
+    return (rule.crossings ?? EDGE_RULES.defaultCrossings) - crossingsMade(state, key);
 }
 
 // Zones reachable in one move from `from`, excluding collapsed ones.
 // Empty when every neighbour is collapsed or severed — a tribute walled into
 // a dead end holds position (and takes the border-collapse pressure that is
 // already meant to punish that) rather than teleporting across the arena.
-export function reachableZones(arena: Arena, from: string, collapsed: string[], severed?: Set<string>, time?: 'day' | 'night'): Zone[] {
+export function reachableZones(arena: Arena, from: string, collapsed: string[], severed?: Set<string>, time?: 'day' | 'night', who?: EdgeContext): Zone[] {
     const active = arena.zones.filter(z => !collapsed.includes(z.name));
     const current = getZone(arena, from);
     if (!current) return active;
     return active.filter(z =>
         current.adjacent.includes(z.name)
         && !(severed && severed.has(edgeKey(from, z.name)))
-        && edgeAllowed(arena, from, z.name, time));
+        && edgeAllowed(arena, from, z.name, time, who));
 }
 
 /** Builds the severed-edge set once per cycle, for callers that need to pass it repeatedly. */
@@ -258,6 +363,7 @@ export function nextHopToward(
     collapsed: string[],
     severed?: Set<string>,
     time?: 'day' | 'night',
+    who?: EdgeContext,
 ): string | undefined {
     if (from === target) return undefined;
     const blocked = new Set(collapsed);
@@ -265,7 +371,7 @@ export function nextHopToward(
     // route is actually walked the other way (neighbor -> name, from the
     // destination out to `from`) — `edgeAllowed` is checked in the direction
     // a tribute would actually cross it, `neighbor -> name`, not the BFS's own.
-    const cut = (a: string, b: string) => (!!severed && severed.has(edgeKey(a, b))) || !edgeAllowed(arena, b, a, time);
+    const cut = (a: string, b: string) => (!!severed && severed.has(edgeKey(a, b))) || !edgeAllowed(arena, b, a, time, who);
     // Breadth-first from the destination outwards, so the first time the search
     // touches one of `from`'s neighbours we have a shortest route and that
     // neighbour is the step to take.
@@ -294,10 +400,10 @@ export function nextHopToward(
 }
 
 /** Shortest number of hops from `from` to `target` over the adjacency graph, or undefined if unreachable. */
-export function hopsTo(arena: Arena, from: string, target: string, collapsed: string[], severed?: Set<string>, time?: 'day' | 'night'): number | undefined {
+export function hopsTo(arena: Arena, from: string, target: string, collapsed: string[], severed?: Set<string>, time?: 'day' | 'night', who?: EdgeContext): number | undefined {
     if (from === target) return 0;
     const blocked = new Set(collapsed);
-    const cut = (a: string, b: string) => (!!severed && severed.has(edgeKey(a, b))) || !edgeAllowed(arena, a, b, time);
+    const cut = (a: string, b: string) => (!!severed && severed.has(edgeKey(a, b))) || !edgeAllowed(arena, a, b, time, who);
     const visited = new Set<string>([from]);
     let frontier = [from];
     let hops = 0;
@@ -411,4 +517,126 @@ export function regenerateZones(ctx: SimContext) {
             );
         }
     });
+}
+
+/**
+ * §5.5: hidden ways, and who knows about them.
+ *
+ * A hidden edge is worth more than any weapon in the arena — it is a route
+ * out of a zone nobody else can follow you through. Finding one takes
+ * standing still long enough to look: a tribute who has held the ground for a
+ * cycle, with a head on them, may notice where the wall stops being a wall.
+ * Called once per cycle.
+ */
+export function tickHiddenEdges(ctx: SimContext) {
+    const state = ctx.state;
+    const rules = state.arena.edgeRules;
+    if (!rules) return;
+    const hidden = Object.entries(rules).filter(([, r]) => r.kind === 'hidden').map(([key]) => key);
+    if (hidden.length === 0) return;
+
+    const alive = getAlive(state);
+    for (const t of alive) {
+        const settled = t.zoneHeldName === t.zone && (t.zoneHeld ?? 0) >= EDGE_RULES.discoverSettledCycles;
+        if (!settled) continue;
+        for (const key of hidden) {
+            if (t.knownEdges?.includes(key)) continue;
+            const [a, b] = key.split('|');
+            if (t.zone !== a && t.zone !== b) continue;
+            const chance = EDGE_RULES.discoverBase
+                + attr(t, 'intelligence') * EDGE_RULES.discoverPerIntelligence
+                + traitMod(t, 'awareness') * EDGE_RULES.discoverPerAwareness;
+            if (!ctx.rng.chance(chance)) continue;
+            learnEdge(t, key);
+            const other = t.zone === a ? b : a;
+            ctx.logEvent(
+                `${t.name} finds the way out of ${t.zone} that is not on anybody's map — a seam, a gap, a stair — and it comes out in ${other}.`,
+                [t.id],
+                { important: true, zone: t.zone, category: 'arena' }
+            );
+        }
+    }
+
+    // §9.7: and knowledge travels. Allies sharing a camp talk, and a route
+    // nobody else can walk is the single best thing an outer-district tribute
+    // has to put on the table.
+    for (const teller of alive) {
+        if (!teller.knownEdges || teller.knownEdges.length === 0 || !teller.allianceId) continue;
+        for (const listener of alive) {
+            if (listener.id === teller.id || listener.allianceId !== teller.allianceId || listener.zone !== teller.zone) continue;
+            for (const key of teller.knownEdges) {
+                if (listener.knownEdges?.includes(key)) continue;
+                if (!ctx.rng.chance(EDGE_RULES.tellAllyChance)) continue;
+                tellAllyAboutEdge(ctx, teller, listener, key);
+            }
+        }
+    }
+}
+
+/** Records that a tribute knows a hidden edge, without duplicating it. */
+function learnEdge(t: Tribute, key: string) {
+    t.knownEdges = t.knownEdges ?? [];
+    if (!t.knownEdges.includes(key)) t.knownEdges.push(key);
+}
+
+/**
+ * §9.7: one tribute hands another a hidden way. Exported so the wider
+ * information-trading work (parley, camp talk) can spend a route as currency
+ * rather than re-deriving what "telling somebody" means.
+ */
+export function tellAllyAboutEdge(ctx: SimContext, teller: Tribute, listener: Tribute, key: string) {
+    if (listener.knownEdges?.includes(key)) return;
+    learnEdge(listener, key);
+    teller.sharedIntelWith = teller.sharedIntelWith ?? [];
+    if (!teller.sharedIntelWith.includes(listener.id)) teller.sharedIntelWith.push(listener.id);
+    const [a, b] = key.split('|');
+    ctx.logEvent(
+        `${teller.name} tells ${listener.name} how to get from ${a} to ${b} without going the long way. It is the most valuable thing either of them owns.`,
+        [teller.id, listener.id],
+        { zone: listener.zone, category: 'alliance' }
+    );
+}
+
+/**
+ * §5.5: garrisons. An alliance dug in on a chokepoint owns the `contested`
+ * edges that touch it — which is what turns "we are camped at the bridge"
+ * from a description into a toll booth. Claims lapse the moment nobody is
+ * actually standing there. Called once per cycle.
+ */
+export function tickGarrisons(ctx: SimContext) {
+    const state = ctx.state;
+    const rules = state.arena.edgeRules;
+    if (!rules) return;
+    const contested = Object.entries(rules).filter(([, r]) => r.kind === 'contested').map(([key]) => key);
+    if (contested.length === 0) return;
+    const alive = getAlive(state);
+    state.garrisonedEdges = state.garrisonedEdges ?? {};
+
+    for (const key of contested) {
+        const [a, b] = key.split('|');
+        const holder = [a, b]
+            .filter(name => {
+                const zone = getZone(state.arena, name);
+                return !!zone && zoneFeatures(zone).chokepoint;
+            })
+            .flatMap(name => alive.filter(t => t.zone === name && t.allianceId))
+            .find(t => (t.fortifiedCycles ?? 0) >= EDGE_RULES.garrisonHoldCycles
+                || (t.zoneHeldName === t.zone && (t.zoneHeld ?? 0) >= EDGE_RULES.garrisonHoldCycles));
+        const current = state.garrisonedEdges[key];
+        if (holder && holder.allianceId !== current) {
+            state.garrisonedEdges[key] = holder.allianceId!;
+            ctx.logEvent(
+                `${holder.name}'s people have settled onto the ground between ${a} and ${b}. Anybody who wants through it now has to ask them.`,
+                [holder.id],
+                { important: true, zone: holder.zone, category: 'alliance' }
+            );
+        } else if (!holder && current) {
+            delete state.garrisonedEdges[key];
+            ctx.logEvent(
+                `Nobody is holding the ground between ${a} and ${b} any more. The pass is just a pass again.`,
+                [],
+                { zone: a, category: 'arena' }
+            );
+        }
+    }
 }

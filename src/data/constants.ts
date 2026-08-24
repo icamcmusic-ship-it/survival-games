@@ -748,9 +748,11 @@ export const ARENAS: Arena[] = [
             burning: { label: 'a hedge alight', severityMult: 1.25, durationMult: 0.7 },
         },
         edgeRules: {
-            // No 'hidden' edge kind exists — the passage into the True Centre
-            // is approximated as night-gated: it is only ever found in the dark.
-            'The False Centre|The True Centre': { kind: 'timeGated', gatedTime: 'night' },
+            // §5.5: the passage out of the False Centre is genuinely hidden.
+            // Nobody walks it until they have stood in the false one long
+            // enough to work out which wall is not a wall — the Long Alley is
+            // still the honest way in, and it is the long way round.
+            'The False Centre|The True Centre': { kind: 'hidden' },
             // The Gardener's Gate is locked after dark. House rules.
             "The Gardener's Gate|The Outer Ring": { kind: 'timeGated', gatedTime: 'day' },
             "The Canal Walk|The Gardener's Gate": { kind: 'timeGated', gatedTime: 'day' },
@@ -788,6 +790,10 @@ export const ARENAS: Arena[] = [
         edgeRules: {
             // The drop from the roof to the yard is survivable. The climb back is not on offer.
             'The Cornucopia (The Yard)|The Roof': { kind: 'oneWay', from: 'The Roof', to: 'The Cornucopia (The Yard)' },
+            // §5.5: the locker rows are the school's toll gate. A group dug in
+            // there owns the way between the gym wing and the spine, and
+            // everyone else comes through at a run or comes through fighting.
+            'Lockers|Main Corridor': { kind: 'contested' },
         },
         zones: [
             { name: 'The Cornucopia (The Yard)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['Main Corridor', 'The Gymnasium', 'The Playing Field', 'The Roof'] },
@@ -799,8 +805,8 @@ export const ARENAS: Arena[] = [
             { name: 'The Library', terrain: 'ruins', danger: 0.3, resources: 0.5, adjacent: ['Main Corridor', 'The Auditorium'], features: { cover: 0.85, elevation: false, chokepoint: false } },
             { name: 'Science Block', terrain: 'ruins', danger: 0.75, resources: 0.55, adjacent: ['Main Corridor', 'The Boiler Room', 'The Roof'] },
             { name: 'The Boiler Room', terrain: 'ruins', danger: 0.85, resources: 0.3, adjacent: ['The Cafeteria', 'Science Block', 'The Flooded Pool'], features: { cover: 0.6, elevation: false, chokepoint: true } },
-            // No 'contested' edge kind exists — the locker rows are modelled
-            // as a chokepoint feature on the zone itself.
+            // Narrow enough to hold with two people — see the `contested`
+            // edge above.
             { name: 'Lockers', terrain: 'ruins', danger: 0.65, resources: 0.45, adjacent: ['Main Corridor', 'The Gymnasium'], features: { cover: 0.7, elevation: false, chokepoint: true } },
             { name: 'The Auditorium', terrain: 'ruins', danger: 0.55, resources: 0.35, adjacent: ['Main Corridor', 'The Library'], features: { cover: 0.75, elevation: false, chokepoint: false } },
             { name: 'The Flooded Pool', terrain: 'water', danger: 0.7, resources: 0.4, adjacent: ['The Gymnasium', 'The Boiler Room'] },
@@ -859,6 +865,12 @@ export const ARENAS: Arena[] = [
             contaminated: { label: 'an egg field', durationMult: 1.25 },
             stripped: { label: 'spun over' },
         },
+        edgeRules: {
+            // §5.5: the bridge is silk, and silk is a consumable. Three
+            // crossings is what the span has in it; the fourth tribute to want
+            // the Crag has to go the long way round the Ridge Path.
+            "Broodmother's Crag|The Silk Bridge": { kind: 'collapsing', crossings: 3 },
+        },
         zones: [
             { name: 'The Cornucopia (The Clearing)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Low Wood', 'The Silk Bridge', 'The Ridge Path'] },
             { name: 'The Low Wood', terrain: 'forest', danger: 0.45, resources: 0.7, adjacent: ['The Cornucopia (The Clearing)', 'The Sink', 'Web Hollow', 'The Old Burn'], features: { cover: 0.85, elevation: false, chokepoint: false } },
@@ -892,11 +904,10 @@ export const ARENAS: Arena[] = [
             irradiated: { label: 'wrongness', durationMult: 1.5 },
         },
         edgeRules: {
-            // The corridor to the Exit is 'hidden': it is only there sometimes,
-            // and it re-hides behind you. No hidden edge kind exists, so this
-            // approximates it as timeGated — and under noNight the gate never
-            // actually shuts, which suits a door that only pretends to be rare.
-            'Exit|The Long Hall': { kind: 'timeGated', gatedTime: 'day' },
+            // §5.5: the corridor to the Exit is hidden, which is the only
+            // honest way to model a door that is only there for the person who
+            // has already noticed it. Nobody else can follow them down it.
+            'Exit|The Long Hall': { kind: 'hidden' },
         },
         zones: [
             { name: 'The Cornucopia (Reception)', terrain: 'open', danger: 0.5, resources: 0.35, adjacent: ['The Yellow Halls', 'Office Level', 'The Long Hall'] },
@@ -934,7 +945,10 @@ export const ARENAS: Arena[] = [
             'Rim Pinyon|The Bright Angel Descent': { kind: 'tolled', toll: { timeCost: 1 } },
             'The Bright Angel Descent|Upper Bench': { kind: 'tolled', toll: { timeCost: 1 } },
             'Lower Bench|The South Rim': { kind: 'tolled', toll: { timeCost: 1 } },
-            'The Butte|The South Rim': { kind: 'tolled', toll: { itemCost: true, fatigue: 8 } },
+            // §5.5: the rope up the Butte is the same rope every time, and it
+            // is not getting better. Two crossings, then it is a dead end in
+            // the sky with nobody in it — or somebody.
+            'The Butte|The South Rim': { kind: 'collapsing', crossings: 2 },
         },
         zones: [
             { name: 'The Cornucopia (The North Rim)', terrain: 'highland', danger: 0.55, resources: 0.3, adjacent: ['Rim Pinyon', 'The Bright Angel Descent'], features: { cover: 0.2, elevation: true, chokepoint: false } },
@@ -999,6 +1013,12 @@ export const ARENAS: Arena[] = [
             blooming: { label: 'the wood is generous' },
             fogbound: { label: 'the telling mist' },
             irradiated: { label: 'a bad bargain' },
+        },
+        edgeRules: {
+            // §5.5: the Tower's stair is a bargain like everything else here.
+            // It is a stair twice; after that it only goes up, and whoever is
+            // in the best-stocked room in the wood is in it for good.
+            'The Spinning House|The Tower': { kind: 'oneWayAfter', from: 'The Spinning House', to: 'The Tower', after: 2 },
         },
         zones: [
             { name: 'The Cornucopia (The Clearing)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Path', 'The Deep Wood', 'The Field of Stones'] },
