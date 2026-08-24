@@ -1118,9 +1118,11 @@ export const ARENAS: Arena[] = [
             { name: 'The Condensation Cistern', terrain: 'water', danger: 0.5, resources: 0.55, adjacent: ['The Outer Gallery', 'The Sulfur Shelf'], features: { cover: 0.25, elevation: false, chokepoint: true, waterSource: true } },
             { name: 'The Steam Vents', terrain: 'ruins', danger: 0.75, resources: 0.35, adjacent: ['The Ash-Choked Stair', 'The Sulfur Shelf', 'The Upper Throat'] },
             { name: 'The Sulfur Shelf', terrain: 'highland', danger: 0.7, resources: 0.25, adjacent: ['The Condensation Cistern', 'The Steam Vents', 'The Bat Colony'] },
-            { name: 'The Bat Colony', terrain: 'forest', danger: 0.5, resources: 0.7, adjacent: ['The Outer Gallery', 'The Sulfur Shelf', 'The Upper Throat'], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 1.2 } },
+            { name: 'The Bat Colony', terrain: 'forest', danger: 0.5, resources: 0.7, adjacent: ['The Outer Gallery', 'The Sulfur Shelf', 'The Upper Throat'], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 1.2, vertical: true } },
             { name: 'The Upper Throat', terrain: 'ruins', danger: 0.8, resources: 0.3, adjacent: ['The Steam Vents', 'The Bat Colony', 'The Ember Shaft'], features: { cover: 0.2, elevation: false, chokepoint: true, acoustics: 1.5 } },
-            { name: 'The Ember Shaft', terrain: 'highland', danger: 0.85, resources: 0.2, adjacent: ['The Upper Throat', 'Lower Throat'], features: { cover: 0.1, elevation: true, chokepoint: true } },
+            // §5.1: one named place with a height to it — the descent happens inside
+            // this zone rather than between two of them.
+            { name: 'The Ember Shaft', terrain: 'highland', danger: 0.85, resources: 0.2, adjacent: ['The Upper Throat', 'Lower Throat'], features: { cover: 0.1, elevation: true, chokepoint: true, vertical: true } },
             { name: 'Lower Throat', terrain: 'ruins', danger: 0.9, resources: 0.5, adjacent: ['The Ember Shaft', 'The Lava Lake Antechamber', 'The Long Way Round'] },
             // Best resources, worst danger, and only one way back out of it.
             { name: 'The Lava Lake Antechamber', terrain: 'open', danger: 1, resources: 0.95, adjacent: ['Lower Throat'], features: { cover: 0.15, elevation: false, chokepoint: true, acoustics: 1.5 } },
@@ -1151,7 +1153,9 @@ export const ARENAS: Arena[] = [
             { name: 'The Bat Roost', terrain: 'forest', danger: 0.55, resources: 0.6, adjacent: ['The Cornucopia (Sinkhole Floor)', 'The Glowmoss Hollow', 'The Bone Passage'], features: { cover: 0.85, elevation: true, chokepoint: false, acoustics: 1.2 } },
             { name: 'The Bone Passage', terrain: 'ruins', danger: 0.65, resources: 0.4, adjacent: ['The Drip Gallery', 'The Bat Roost', 'The Black Gallery'], features: { cover: 0.4, elevation: false, chokepoint: true, acoustics: 1.5 } },
             { name: 'The Weeping Wall', terrain: 'water', danger: 0.6, resources: 0.45, adjacent: ['The Drip Gallery', 'The Cathedral', 'The Undermere'], features: { cover: 0.25, elevation: true, chokepoint: true, waterSource: true, acoustics: 1.1 } },
-            { name: 'The Cathedral', terrain: 'open', danger: 0.8, resources: 0.2, adjacent: ['The Weeping Wall', 'The Black Gallery'], features: { cover: 0.05, elevation: false, chokepoint: false, acoustics: 1.6 } },
+            // §5.1: the flowstone squeeze comes in high; the floor is a long way
+            // under it, and in the dark that is two different places.
+            { name: 'The Cathedral', terrain: 'open', danger: 0.8, resources: 0.2, adjacent: ['The Weeping Wall', 'The Black Gallery'], features: { cover: 0.05, elevation: false, chokepoint: false, acoustics: 1.6, vertical: true } },
             { name: 'The Black Gallery', terrain: 'ruins', danger: 0.9, resources: 0.55, adjacent: ['The Bone Passage', 'The Cathedral', 'The Undermere'], features: { cover: 0.3, elevation: false, chokepoint: false, acoustics: 1.55 } },
             { name: 'The Undermere', terrain: 'water', danger: 0.7, resources: 0.65, adjacent: ['The Weeping Wall', 'The Black Gallery', 'The Siphon Passage'], features: { cover: 0.2, elevation: false, chokepoint: false, waterSource: true, acoustics: 1.3 } },
             { name: 'The Siphon Passage', terrain: 'wetland', danger: 0.75, resources: 0.3, adjacent: ['The Glowmoss Hollow', 'The Undermere'], features: { cover: 0.3, elevation: false, chokepoint: true, acoustics: 1.2 } },

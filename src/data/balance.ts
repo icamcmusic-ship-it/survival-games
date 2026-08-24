@@ -2078,6 +2078,25 @@ export const VETERANS = {
     keepsEpithetChance: 0.75,
 } as const;
 
+/**
+ * §5.1: moving up and down inside a single zone. See `engine/verticality.ts`.
+ * Down is where the resources and the danger are, and the descent is the part
+ * that hurts — which is the decision the whole mechanic exists to create.
+ */
+export const VERTICALITY = {
+    /** Need past which a tribute will risk the descent. */
+    descendHunger: 55,
+    descendThirst: 55,
+    /** Health below which somebody at the bottom climbs back out. */
+    retreatHealth: 45,
+    /** Odds a tribute who wants to change level actually does so this cycle. */
+    changeLevelChance: 0.55,
+    descendFatigue: 6,
+    climbFatigue: 12,
+    descendFallChance: 0.12,
+    fallDamage: 24,
+} as const;
+
 export const CRAFTING = {
     /** A blade below this condition is worth an hour with a whetstone. */
     sharpenBelowCondition: 0.7,

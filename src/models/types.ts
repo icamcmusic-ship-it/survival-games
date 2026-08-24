@@ -830,6 +830,12 @@ export interface Tribute {
     /** The zone `zoneHeld` is counting, so a move resets it rather than lying. */
     zoneHeldName?: string;
     /**
+     * §5.1: which level of a vertical zone they are standing on. Undefined
+     * everywhere else, which is every zone in every arena that does not
+     * declare `ZoneFeatures.vertical`.
+     */
+    zoneLevel?: ZoneLevel;
+    /**
      * Shadowing: who they are one zone behind, and for how many consecutive
      * cycles the target has failed to notice them. Three in a row converts to
      * a free ambush — the payoff `unseenStreak` never had.
@@ -1311,7 +1317,18 @@ export interface ZoneFeatures {
      * Derived from terrain and cover when absent (see `zoneFeatures`).
      */
     acoustics?: number;
+    /**
+     * §5.1: this zone has an inside with a height to it — a shaft, a gallery
+     * over a gallery, a rooftop above a street. Tributes in it stand at
+     * `upper` or `lower` and two on different levels are not in the same
+     * place. Absent (the default, and every existing arena) means the zone is
+     * flat and nothing changes. See `engine/verticality.ts`.
+     */
+    vertical?: boolean;
 }
+
+/** §5.1: where inside a vertical zone a tribute is standing. */
+export type ZoneLevel = 'upper' | 'lower';
 
 export interface Zone {
     name: string;

@@ -33,6 +33,7 @@ import { tickPersistentMutts } from '../mutts';
 import { hasEffect, restockCornucopia, rollAmbientZoneEffects, startZoneEffect, tickForceField, tickZoneEffects } from '../zoneEffects';
 import { tickStructuralFatigue } from '../loadBearing';
 import { tickAbandonedCamps } from '../abandonedCamps';
+import { enterVerticalZone, samePlace, tickVerticality } from '../verticality';
 import { tickEpithets } from '../epithets';
 import { noteEffectCaused, tickRunRecords } from '../runRecords';
 import { climateOf } from '../climate';
@@ -141,7 +142,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         craft(ctx, t);
 
         // What they can see from where they stand, before they decide anything.
-        const here = currentAlive.filter(o => o.status === 'alive' && o.zone === t.zone);
+        // §5.1: two tributes on different levels of the same shaft are not in
+        // the same place, and do not run into each other.
+        const here = currentAlive.filter(o => o.status === 'alive' && samePlace(ctx.state.arena, t, o));
         const hostiles = here.filter(o => o.id !== t.id && o.allianceId !== t.allianceId).length;
         noteSighting(ctx.state, t, t.zone, hostiles, depletionOf(ctx.state, t.zone));
         // §4.4/§5.9: if this is the group's scout, that sighting belongs to
@@ -272,6 +275,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     maintainBounty(ctx);
     maintainMovingArena(ctx);
     tickTraps(ctx);
+    // §5.1: who has gone up or down inside their own zone this cycle.
+    tickVerticality(ctx);
     // §5.5: who left a camp standing this cycle, and who walked into one.
     tickAbandonedCamps(ctx);
     // §11.5: and whether anybody has become known for something this cycle.
@@ -1292,6 +1297,8 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
 
     const oldZone = t.zone;
     t.zone = newZone;
+    // §5.1: you arrive at the rim of a shaft, not at the bottom of it.
+    enterVerticalZone(ctx.state.arena, t);
     noteTraffic(ctx.state, oldZone, newZone);
     if (isEvasiveStance(t.stance)) {
         ctx.logEvent(`${t.name} slips out of ${oldZone} without a sound.`, [t.id], { zone: newZone, category: 'travel' });
@@ -1351,7 +1358,7 @@ function resolveEncounters(
         // Only encounter others in the SAME ZONE — and only those who actually
         // notice each other. A tribute who has gone to ground in heavy cover is
         // simply not found this cycle, which is what stealth buys them.
-        const inZone = shuffled.filter(o => o.id !== t.id && !acted.has(o.id) && o.status === 'alive' && o.zone === t.zone);
+        const inZone = shuffled.filter(o => o.id !== t.id && !acted.has(o.id) && o.status === 'alive' && samePlace(ctx.state.arena, t, o));
         const alliesOf = (o: Tribute) => inZone.filter(x => x.allianceId !== undefined && x.allianceId === o.allianceId).length;
         const others = inZone.filter(o =>
             isNoticed(ctx, o, t, zone, alliesOf(o)) || isNoticed(ctx, t, o, zone, alliesOf(t)));
