@@ -392,10 +392,6 @@ function attendanceChance(
     let chance = FEAST.baseAttendChance;
     const arch = ARCHETYPES[t.archetype];
 
-    // §6.4: your own name is on one of those packs, and staying away does not
-    // mean it stays there — somebody else will carry it out. That pulls about
-    // as hard as an ally standing at the table, which is what the weight says.
-    if (namedPack) chance += FEAST.allyDrawWeight;
 
     chance += arch.aggression * FEAST.aggressionDraw;
     chance -= arch.caution * FEAST.aggressionDraw;
@@ -406,6 +402,16 @@ function attendanceChance(
     // bores the well-equipped; a banquet pulls hardest on empty stomachs.
     // balance-exempt: same wounded band the deterrent line above already uses
     const wounded = t.health < 50 || t.injuries.bleeding || t.injuries.infected || t.injuries.poisoned;
+    // §6.4: your own name is on one of those packs, and staying away does not
+    // mean it stays there — somebody else carries it out. That pulls as hard
+    // as an ally standing at the table, but only on somebody it is worth
+    // something to: a tribute who needs what is in it, or whose token they
+    // took off them at the reaping and pinned to the flap. A well-fed tribute
+    // with nothing from home on that table can still, sensibly, stay away.
+    // balance-exempt: same hunger band the food-theme draw below already uses
+    if (namedPack && (wounded || !!t.token || t.vitals.hunger > 40)) {
+        chance += FEAST.allyDrawWeight;
+    }
     if (theme === 'medical' && wounded) chance += FEAST.woundedDeterrent + FEAST.medicalThemeWoundedDraw;
     if (theme === 'weapons') {
         chance += t.inventory.some(i => i.type === 'weapon')

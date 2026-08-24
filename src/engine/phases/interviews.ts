@@ -136,8 +136,7 @@ type SpokenAngle = 'defiance' | 'grief' | 'alliance-signal' | 'target-callout';
  */
 function pickSpokenAngle(ctx: SimContext, t: Tribute): SpokenAngle | undefined {
     const cold = !!t.interviewStrategy && COLD_PERSONAS.includes(t.interviewStrategy);
-    const weights: Array<[SpokenAngle | undefined, number]> = [
-        [undefined, 1],
+    const angles: Array<[SpokenAngle, number]> = [
         ['defiance',
             (t.reputation < INTERVIEW_ANGLES.districtLoyalist.lowReputation ? INTERVIEW_ANGLES.districtLoyalist.lowReputationBonus : 0)
             + (t.traits.includes('Ruthless') ? INTERVIEW_ANGLES.grievingSibling.ruthless * -1 : 0)
@@ -157,6 +156,11 @@ function pickSpokenAngle(ctx: SimContext, t: Tribute): SpokenAngle | undefined {
             + (cold ? INTERVIEW_ANGLES.ruthlessWarrior.bloodthirsty : 0)
             + (t.traits.includes('Pacifist') ? INTERVIEW_ANGLES.ruthlessWarrior.pacifist : 0)],
     ];
+    // Most tributes answer the question they were asked and sit back down: the
+    // ordinary interview is weighted against the four angles as a body, not
+    // against each of them separately, which is the difference between an
+    // angle being a beat and an angle being what everybody does.
+    const weights: Array<[SpokenAngle | undefined, number]> = [[undefined, angles.length], ...angles];
     const floored = weights.map(([angle, w]) => [angle, Math.max(INTERVIEW_ANGLES.minWeight, w)] as [SpokenAngle | undefined, number]);
     let roll = ctx.rng.nextFloat() * floored.reduce((sum, [, w]) => sum + w, 0);
     for (const [angle, w] of floored) {

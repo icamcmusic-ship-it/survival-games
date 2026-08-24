@@ -89,6 +89,14 @@ export function goDown(ctx: SimContext, t: Tribute, cause: string, byId?: string
  * a tribute who bled out days after the blow that felled them carried a cause
  * that never mentioned whose blow it was. So the last thing that happened to
  * them is written down as the thing that actually killed them.
+ *
+ * The `Killed by <name>` prefix is not decoration either. It is the
+ * convention `killTribute` writes for every tribute-dealt death, and
+ * everything that classifies a cause afterwards keys off it — the metrics
+ * script buckets anything it does not recognise as an arena hazard, so a
+ * downed tribute finished by a person read as death by scenery and moved
+ * two regression indicators at once. Elaborate after the prefix, never
+ * before it.
  */
 function finish(ctx: SimContext, t: Tribute, cause: string, killer?: Tribute) {
     delete t.downed;
@@ -136,7 +144,7 @@ export function tickDowned(ctx: SimContext) {
                 [t.id],
                 { important: true, category: 'death' }
             );
-            bleedOut(ctx, t, name => `Finished off after ${name} left them for dead`, t.downed!.cause);
+            bleedOut(ctx, t, name => `Killed by ${name}, who left them for dead`, t.downed!.cause);
             return;
         }
 
@@ -194,7 +202,7 @@ export function tickDowned(ctx: SimContext) {
                 const witnesses = here.filter(o => o.id !== decider.id);
                 if (ctx.rng.chance(Math.max(0, Math.min(1, chance)))) {
                     decider.finishedDowned = [...(decider.finishedDowned ?? []), t.id];
-                    finish(ctx, t, `Killed while unconscious by ${decider.name}`, decider);
+                    finish(ctx, t, `Killed by ${decider.name} while they lay unconscious`, decider);
                     // Finishing the helpless is not fighting, and the zone knows it.
                     witnesses.forEach(w => {
                         addFear(w, decider.id, DOWNED.executeFear);
@@ -232,7 +240,7 @@ export function tickDowned(ctx: SimContext) {
             );
             bleedOut(
                 ctx, t,
-                name => `Bled out in ${failedRescuer.name}'s hands from wounds dealt by ${name}`,
+                name => `Killed by ${name} — bled out in ${failedRescuer.name}'s hands`,
                 'Bled out during a rescue attempt',
             );
             return;
@@ -254,6 +262,6 @@ export function tickDowned(ctx: SimContext) {
                 { important: true, category: 'death' }
             );
         }
-        bleedOut(ctx, t, name => `Bled out from wounds dealt by ${name}`, marker.cause);
+        bleedOut(ctx, t, name => `Killed by ${name} — bled out where they fell`, marker.cause);
     });
 }

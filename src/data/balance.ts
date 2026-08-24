@@ -961,11 +961,19 @@ export const ANTHEM = {
  * The fix is deliberately *not* a gentler bloodbath: the share of the field
  * lost at the Cornucopia measures 35.4%, which is inside its design goal and
  * is the most recognisable single event in the source material. What was too
- * fast is everything after it, so the arena now takes longer to start closing
- * in, is harder to bore, and ramps its hazard curve more gently once it does.
+ * fast is everything after it, so the arena takes a day longer to start
+ * closing in, is harder to bore, and ramps its hazard curve slightly more
+ * gently once it does.
+ *
+ * Sized by measurement. A bigger version of this same change (day 7, boredom
+ * at 18, a 0.22 ramp) pushed the archetype spread, zero-kill victors and
+ * surviving lovers past their bounds — a longer middle game is more cycles
+ * for everything else in the engine to happen in, and run length turns out to
+ * be the denominator under most of the lethality ratios in the metrics table.
+ * A day is worth about as much depth and costs none of the guards.
  */
 export const ESCALATION = {
-    startDay: 7,
+    startDay: 6,
     /**
      * Canon's Gamemakers do not escalate on a timetable; they escalate because
      * the audience is bored. Aggregate excitement across the living field is
@@ -973,9 +981,9 @@ export const ESCALATION = {
      * below this — which can be well before `startDay` in a quiet year, and
      * never later, because `startDay` remains a hard backstop.
      */
-    boredomThreshold: 18,
+    boredomThreshold: 20,
     /** Nothing closes in before this, however dull the Games are. */
-    boredomEarliestDay: 4,
+    boredomEarliestDay: 3,
     collapseDamageBase: 20,
     collapseDamagePerDay: 10,
     /** The Gamemakers want a victor: the border stops short of the last two. */
@@ -992,8 +1000,8 @@ export const ESCALATION = {
      * horn every cycle until it ends.
      */
     finaleAfterFinalistCycles: 4,
-    hazardMultiplierPerDay: 0.22,
-    hazardCeiling: 0.3,
+    hazardMultiplierPerDay: 0.27,
+    hazardCeiling: 0.33,
     /**
      * §10.5: odds the forced finale convenes somewhere other than the
      * Cornucopia — the arena's law zone or its high ground — so the endgame

@@ -712,7 +712,18 @@ export interface Tribute {
     /** A4: pre-arena agreements struck on the training floor. */
     trainingPact?: string[];
     /** A4: stations worked, per day, so the chronicle can narrate three days. */
-    trainingLog?: Array<{ day: number; station: string; outcome: 'success' | 'struggle' | 'failure' }>;
+    /**
+     * §6.2: `witnessIds` is who else was working that rack. The log recorded
+     * the station and the outcome and nothing situational, so who watched a
+     * tribute excel — or watched them fail — was thrown away, and the training
+     * floor could not feed the respect and regard it obviously should.
+     */
+    trainingLog?: Array<{
+        day: number;
+        station: string;
+        outcome: 'success' | 'struggle' | 'failure';
+        witnessIds?: string[];
+    }>;
     /** A2: Diplomat — truces this tribute brokered between two other people. */
     brokeredTruces?: Array<[string, string]>;
     /** A2: Ghost — sponsor credit accrued purely for never being seen. */

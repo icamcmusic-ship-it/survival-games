@@ -181,7 +181,7 @@ type StationOutcome = 'success' | 'struggle' | 'failure';
  * entry type is owned elsewhere, and an entry carrying `witnessIds` is still
  * assignable to it, so the extra column costs nothing at any existing reader.
  */
-type TrainingLogEntry = NonNullable<Tribute['trainingLog']>[number] & { witnessIds?: string[] };
+type TrainingLogEntry = NonNullable<Tribute['trainingLog']>[number];
 
 /**
  * A4(a): a station attempt with a visible outcome.
