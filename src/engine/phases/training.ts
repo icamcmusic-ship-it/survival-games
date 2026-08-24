@@ -1,12 +1,12 @@
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
-import { Attributes, Proficiency, Tribute } from '../../models/types';
+import { Attributes, Proficiency, TrainingPact, Tribute } from '../../models/types';
 import {
     TRAINING_STATIONS, TRAINING_VERDICTS, INTIMIDATION_TEXTS,
     TRAINING_ALTERCATION, TRAINING_EVENING, TRAINING_FAILURE, TRAINING_MINGLE,
     TRAINING_OBSERVATION, TRAINING_STRUGGLE, TRAINING_TEAMUP,
 } from '../../data/flavorText';
-import { FEAR, PREGAMES, TRAINING, TRAINING_FLOOR, TRAINING_SCORE } from '../../data/balance';
+import { FEAR, PREGAMES, PRE_ARENA, RESPECT, TRAINING, TRAINING_FLOOR, TRAINING_SCORE } from '../../data/balance';
 import { addFear, reduceFear } from '../fear';
 import { strengthCapForAge } from '../generator';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../../data/districts';
@@ -175,6 +175,15 @@ function fillLine(template: string, vars: Record<string, string>): string {
 type StationOutcome = 'success' | 'struggle' | 'failure';
 
 /**
+ * §6.2: one training-log entry, with the room attached.
+ *
+ * Written as an intersection rather than by widening the declared field: the
+ * entry type is owned elsewhere, and an entry carrying `witnessIds` is still
+ * assignable to it, so the extra column costs nothing at any existing reader.
+ */
+type TrainingLogEntry = NonNullable<Tribute['trainingLog']>[number];
+
+/**
  * A4(a): a station attempt with a visible outcome.
  *
  * The gain used to be unconditional — three days at a station always worked,
@@ -190,6 +199,7 @@ function attemptStation(
     station: string,
     day: number,
     floor: Tribute[],
+    witnesses: Tribute[],
 ): StationOutcome {
     const craft = craftOf(t.district);
     let chance = TRAINING.stationBaseSuccess
@@ -217,7 +227,15 @@ function attemptStation(
         for (let i = 0; i < steps; i++) trainProficiency(t, skill);
     }
 
-    t.trainingLog = [...(t.trainingLog ?? []), { day: day + 1, station, outcome }];
+    // §6.2: who else was standing at that station. The log recorded the work
+    // and never the room, so a tribute's three days read as a solitary
+    // training montage — and nothing downstream could ask the one question
+    // that matters about a training floor, which is who saw it.
+    const entry: TrainingLogEntry = {
+        day: day + 1, station, outcome,
+        witnessIds: witnesses.filter(w => w.id !== t.id).map(w => w.id),
+    };
+    t.trainingLog = [...(t.trainingLog ?? []), entry];
 
     if (outcome === 'success') {
         ctx.logEvent(
@@ -260,6 +278,50 @@ function attemptStation(
         if (o.isCareer || o.archetype === 'career') reduceFear(o, t.id, TRAINING.failureCareerFearDrop);
     });
     return outcome;
+}
+
+/**
+ * §6.2: the room revises, from what it actually watched.
+ *
+ * `attemptStation` already moves the whole floor's respect — everybody hears
+ * about a spectacular failure by the evening. This is the closer read: the
+ * five people standing at the same rack saw the work itself, and they revise
+ * harder for it. Two tributes who spent a day failing at the same thing come
+ * away with something the rest of the floor does not have, which is the other
+ * half of why a shared station is worth simulating at all.
+ */
+function runWitnessRevisions(
+    ctx: SimContext,
+    groups: Map<keyof Attributes, Tribute[]>,
+    outcomes: Map<string, StationOutcome>,
+    stationNames: Map<keyof Attributes, string>,
+) {
+    groups.forEach((group, attr) => {
+        if (group.length < 2) return;
+        group.forEach(t => {
+            const outcome = outcomes.get(t.id);
+            if (outcome === 'success') {
+                // Watching skilled work done properly, from a metre away.
+                group.forEach(w => { if (w.id !== t.id) adjustRespect(w, t.id, RESPECT.witnessCompetence); });
+                return;
+            }
+            if (outcome === undefined) return;
+            group.forEach(w => {
+                // Ordered so each struggling pair is counted once.
+                if (w.id <= t.id) return;
+                const theirs = outcomes.get(w.id);
+                if (theirs !== 'struggle' && theirs !== 'failure') return;
+                adjustMutual(ctx.state, t, w, TRAINING.mingleWarmth);
+                noteContact(ctx.state, t, w);
+                if (!ctx.rng.chance(TRAINING.observationLineChance)) return;
+                ctx.logEvent(
+                    `${t.name} and ${w.name} spend the afternoon failing at the ${stationNames.get(attr) ?? 'same station'} in front of each other, and by the end of it neither is pretending otherwise.`,
+                    [t.id, w.id],
+                    { category: 'training' }
+                );
+            });
+        });
+    });
 }
 
 /**
@@ -349,8 +411,8 @@ function runFloorSocial(
                 if (a.trainingPact?.includes(b.id)) continue;
                 if (!ctx.rng.chance(TRAINING.pactChance)) continue;
 
-                a.trainingPact = [...(a.trainingPact ?? []), b.id];
-                b.trainingPact = [...(b.trainingPact ?? []), a.id];
+                strikePact(a, b, day + 1);
+                recordPactTerms(ctx, a, b, day + 1);
                 adjustMutual(ctx.state, a, b, TRAINING.pactWarmth);
                 ctx.logEvent(
                     fillLine(ctx.pickText(TRAINING_TEAMUP), { tribute: a.name, other: b.name, station }),
@@ -359,6 +421,78 @@ function runFloorSocial(
                 );
             }
         }
+    });
+}
+
+/**
+ * §6.2: a pre-agreement, with the terms it was actually struck on.
+ *
+ * The flat `trainingPact` id list is still written exactly as before —
+ * bloodbath.ts and proficiency.ts both read it, and neither needs to know any
+ * of this. Alongside it goes the same agreement as an object: struck on a
+ * given day, meant to a given degree, and lapsing. Terms and confidence are
+ * finalised after the broadcast (`settlePacts`), because half of what a
+ * tribute is agreeing to depends on a number neither of them has seen yet.
+ */
+function strikePact(a: Tribute, b: Tribute, day: number) {
+    a.trainingPact = [...(a.trainingPact ?? []), b.id];
+    b.trainingPact = [...(b.trainingPact ?? []), a.id];
+}
+
+/**
+ * A pact with real terms, as opposed to a handshake on the way to lunch. Rolled
+ * per agreement; the ones that fail the roll stay in the flat list and nowhere
+ * else, which is precisely what a handshake is worth.
+ */
+function recordPactTerms(ctx: SimContext, a: Tribute, b: Tribute, day: number) {
+    if (!ctx.rng.chance(PRE_ARENA.pactTermsChance)) return;
+    [[a, b], [b, a]].forEach(([x, y]) => {
+        if (x.trainingPacts?.some(p => p.withId === y.id)) return;
+        x.trainingPacts = [...(x.trainingPacts ?? []), {
+            withId: y.id,
+            // Provisional: settled once the scores are read out.
+            kind: 'non-aggression',
+            confidence: PRE_ARENA.pactConfidenceDay1 + (day - 1) * PRE_ARENA.pactConfidencePerDay,
+            day,
+            expiresCycle: PRE_ARENA.pactExpiryCycles,
+        }];
+    });
+}
+
+/**
+ * §6.2: the scores are read out, and every agreement on the floor is quietly
+ * repriced. A day-three pact with somebody who then scored a ten is a very
+ * different object from a day-one handshake with somebody who scored a three,
+ * and this is where the two stop being the same row.
+ */
+function settlePacts(cast: Tribute[]) {
+    const byId = new Map(cast.map(t => [t.id, t]));
+    cast.forEach(t => {
+        t.trainingPacts = (t.trainingPacts ?? []).map(pact => {
+            const other = byId.get(pact.withId);
+            const scoreRead = other
+                ? (other.trainingScore - TRAINING.solidVerdictScore) * PRE_ARENA.pactConfidencePerScorePoint
+                : 0;
+            const confidence = Math.max(0, Math.min(1, pact.confidence + scoreRead));
+            const bothCareer = !!other && (t.isCareer || t.archetype === 'career')
+                && (other.isCareer || other.archetype === 'career');
+            // Terms follow conviction. Two Careers who agreed on day one are
+            // agreeing about the Cornucopia and nothing else; two tributes who
+            // have watched each other for three days and mean it are agreeing
+            // to walk out of the bloodbath together.
+            const kind: TrainingPact['kind'] = bothCareer ? 'cornucopia-rush'
+                : confidence >= PRE_ARENA.pactConfidenceDay1 + PRE_ARENA.pactConfidencePerDay * 2 ? 'arena-alliance'
+                : confidence >= PRE_ARENA.pactConfidenceDay1 + PRE_ARENA.pactConfidencePerDay ? 'share-supplies'
+                : 'non-aggression';
+            return {
+                ...pact,
+                kind,
+                confidence,
+                // Nobody says out loud that the agreement has an end date. It
+                // does: how long it runs is how much they meant it.
+                expiresCycle: Math.round(PRE_ARENA.pactExpiryCycles + confidence * PRE_ARENA.pactExpiryPerConfidence),
+            };
+        });
     });
 }
 
@@ -429,6 +563,9 @@ function declareCareerPact(ctx: SimContext, cast: Tribute[]) {
     careers.forEach(a => careers.forEach(b => {
         if (a.id === b.id || a.trainingPact?.includes(b.id)) return;
         a.trainingPact = [...(a.trainingPact ?? []), b.id];
+        // The pack's terms are not a secret and never were: they are agreeing
+        // about the first ninety seconds of the Games.
+        recordPactTerms(ctx, a, b, TRAINING.careerPactDay);
     }));
     ctx.logEvent(
         `The Careers find each other before the first rotation is over — ${careers.map(c => `${c.name} (D${c.district})`).join(', ')} — `
@@ -442,6 +579,134 @@ function declareCareerPact(ctx: SimContext, cast: Tribute[]) {
         careers.forEach(c => addFear(o, c.id, TRAINING.careerPactFear));
     });
 }
+
+/**
+ * §6.2: the private session, which existed here only as the number it
+ * produced.
+ *
+ * Fifteen minutes, one room, twenty bored people on a balcony with a table of
+ * food behind them, and the last chance anybody gets to change what the
+ * country thinks of them before the gong. `stunt` is what they did; `landed`
+ * and `botched` are how the room took it, because the same idea is a legend or
+ * an embarrassment depending on whether it comes off.
+ */
+interface SessionAttempt { stunt: string; landed: string; botched: string; }
+
+const PRIVATE_SESSION_ATTEMPTS: SessionAttempt[] = [
+    {
+        stunt: '{tribute} works the {station} in silence and then, without being asked, does the whole sequence again blindfolded.',
+        landed: 'The Head Gamemaker puts his glass down for it, which is the only review anybody in that room understands.',
+        botched: 'They lose the sequence halfway, stand there in the blindfold listening to nothing, and have to take it off themselves.',
+    },
+    {
+        stunt: '{tribute} asks for the dummies to be moved to the far wall before they will begin.',
+        landed: 'They hit every one of them from a distance the panel had to lean forward to judge, and two of the Gamemakers do exactly that.',
+        botched: 'The distance was a bluff and everybody in the room can see it inside a minute.',
+    },
+    {
+        stunt: '{tribute} spends eleven of their fifteen minutes building something at the {station} and refuses to say what it is.',
+        landed: 'It is a snare, and it takes a hundred-kilo weighted dummy off the floor and leaves it swinging. The room goes quiet in a way it has not all day.',
+        botched: 'It is a snare, and it collapses under its own weight in front of them. Somebody on the balcony laughs before they can stop themselves.',
+    },
+    {
+        stunt: '{tribute} climbs the {station} rig to the ceiling and works from up there for the rest of the session.',
+        landed: 'Nobody on the balcony can see them properly, which is the entire demonstration, and at least one Gamemaker understands that.',
+        botched: 'A trainer has to talk them down, which the panel watches all the way through in silence.',
+    },
+    {
+        stunt: '{tribute} takes the heaviest thing at the {station} and carries it the length of the hall without setting it down.',
+        landed: 'It is not clever and it is not meant to be. Two of the panel are still watching when they finally put it down.',
+        botched: 'Their grip goes at the halfway mark and the noise it makes on the tiles is the loudest thing in the session.',
+    },
+    {
+        stunt: '{tribute} lays out every edible plant in the arena catalogue in order of how long it takes to kill you.',
+        landed: 'The one Gamemaker who actually knows the catalogue checks the order twice and finds no fault in it.',
+        botched: 'The order is wrong in two places, and one of the two is the kind of wrong that ends a Games on the first afternoon.',
+    },
+    {
+        stunt: '{tribute} asks a trainer to come at them properly, and then asks again when the first attempt is too gentle.',
+        landed: 'The second attempt puts the trainer on the mat inside four seconds, and the panel notices that they did not enjoy it.',
+        botched: 'The second attempt puts *them* on the mat, and they get up slower than a room like that forgives.',
+    },
+    {
+        stunt: '{tribute} sets a fire at the {station} with wet tinder and no flint, and talks the panel through it while they do it.',
+        landed: 'It catches. They put it out themselves, thank the room, and leave four minutes early.',
+        botched: 'It never catches, and they keep talking long after everybody has stopped pretending to listen.',
+    },
+    {
+        stunt: '{tribute} throws one knife, badly, and then spends the rest of the session doing nothing but throwing that same knife.',
+        landed: 'By the twentieth throw it is going in the same handspan every time, and the panel has watched the whole arc of it.',
+        botched: 'By the twentieth throw it is going nowhere near, and the panel has watched the whole arc of that too.',
+    },
+    {
+        stunt: '{tribute} paints themselves into the wall of the hall with what they took off the camouflage bench.',
+        landed: 'It takes the panel a genuine moment to find them again, and Gamemakers do not enjoy being made to look for things.',
+        botched: 'It takes the panel no time at all, and one of them says so, loudly, to somebody else.',
+    },
+    {
+        stunt: '{tribute} works the {station} with one arm strapped to their side.',
+        landed: 'They finish the drill anyway, which tells the balcony something more useful about them than the drill would have.',
+        botched: 'They do not finish the drill, and the strap comes off in front of everybody.',
+    },
+    {
+        stunt: '{tribute} says nothing at all, does the {station} drill exactly as trained, and stands still until dismissed.',
+        landed: 'It is the most disciplined thing the panel has seen all afternoon, and one of them writes for a long time.',
+        botched: 'It is the fourteenth time the panel has seen that drill today and their faces do not trouble to hide it.',
+    },
+    {
+        stunt: '{tribute} opens by asking the Gamemakers what they would like to see.',
+        landed: 'It is such an odd thing to be asked that somebody actually answers, and then watches them do it.',
+        botched: 'Nobody answers. They have to fill fifteen minutes after that, and they fill it badly.',
+    },
+    {
+        stunt: '{tribute} runs the whole gauntlet at the {station} and then, breathing hard, runs it again immediately.',
+        landed: 'The second run is faster than the first. The panel notes the number rather than the trick.',
+        botched: 'The second run ends with them on their knees at the halfway mark, and the room lets them stay there.',
+    },
+];
+
+/**
+ * The rare ones — the sessions that get talked about for a decade. Two of
+ * these are not demonstrations of skill at all; they are a tribute telling a
+ * roomful of Gamemakers exactly what they think of them, which is its own kind
+ * of score.
+ */
+const UNFORGETTABLE_SESSIONS: SessionAttempt[] = [
+    {
+        stunt: '{tribute} waits until the panel has turned to the roast pig behind them, and then puts an arrow through the apple in its mouth.',
+        landed: 'The arrow is still humming in the wall when they bow — a small, precise, entirely insolent bow — and walk out without being dismissed.',
+        botched: 'The arrow is still humming in the wall when they bow — a small, precise, entirely insolent bow — and walk out without being dismissed.',
+    },
+    {
+        stunt: '{tribute} paints the face of last year\'s victor across the whole floor of the hall in what they took off the camouflage bench, and stands in the middle of it.',
+        landed: 'Nobody on that balcony says a word. Several of them look at the door instead.',
+        botched: 'Nobody on that balcony says a word. Several of them look at the door instead.',
+    },
+    {
+        stunt: '{tribute} throws the spear over the panel\'s heads and into the wall behind them, then apologises for their aim in a voice nobody believes.',
+        landed: 'The Head Gamemaker holds their eye for four full seconds before writing anything down at all.',
+        botched: 'The Head Gamemaker holds their eye for four full seconds before writing anything down at all.',
+    },
+    {
+        stunt: '{tribute} takes the {station} apart, uses the pieces to build something the trainers do not have a name for, and demonstrates it on a dummy.',
+        landed: 'The dummy comes apart. So, briefly, does the balcony\'s composure.',
+        botched: 'The dummy comes apart. So, briefly, does the balcony\'s composure.',
+    },
+    {
+        stunt: '{tribute} stands in front of the panel and recites the names of every tribute their district has lost, in order, for the full fifteen minutes.',
+        landed: 'They get to the end of the list with time to spare, and use it to stand there in silence. Not one Gamemaker interrupts.',
+        botched: 'They get to the end of the list with time to spare, and use it to stand there in silence. Not one Gamemaker interrupts.',
+    },
+];
+
+/** Everybody else: fifteen minutes, competently used, politely received. */
+const ROUTINE_SESSIONS = [
+    'They show the panel the {station} work they have been doing all week, and the panel thanks them for it.',
+    'They do what they came to do at the {station}, neatly and without flourish, and are dismissed on time.',
+    'They give the panel fifteen minutes of solid, unremarkable work at the {station}. Somebody on the balcony is refilling a glass throughout.',
+    'They work the {station} exactly as trained. Two Gamemakers are talking to each other by the end of it.',
+    'They keep to the {station} and to what they know, which is the sensible thing to do and reads as exactly that.',
+];
 
 const DAY_HEADLINES = [
     'DAY ONE ON THE TRAINING FLOOR. The doors open on twenty-four people who have never been in a room like this and will never be in one again.',
@@ -490,10 +755,21 @@ export function processTraining(ctx: SimContext) {
         const stationNames = new Map<keyof Attributes, string>();
         ATTRS.forEach(attr => stationNames.set(attr, ctx.rng.pick(TRAINING_STATIONS[attr])));
 
+        // §6.2: the room, before anybody works in it. Who is standing where is
+        // decided first so a station attempt can record its own witnesses.
+        const groups = new Map<keyof Attributes, Tribute[]>();
         cast.forEach(t => {
             const attr = stationsToday.get(t.id)!;
-            attemptStation(ctx, t, attr, stationNames.get(attr)!, day, cast);
+            groups.set(attr, [...(groups.get(attr) ?? []), t]);
         });
+
+        const outcomes = new Map<string, StationOutcome>();
+        cast.forEach(t => {
+            const attr = stationsToday.get(t.id)!;
+            outcomes.set(t.id, attemptStation(
+                ctx, t, attr, stationNames.get(attr)!, day, cast, groups.get(attr) ?? []));
+        });
+        runWitnessRevisions(ctx, groups, outcomes, stationNames);
         // The Careers form theirs on day one and make sure the room sees it —
         // which is most of where the pack's menace comes from in the source
         // material. Leaving it to the ordinary station pairing meant the pack
@@ -522,6 +798,15 @@ export function processTraining(ctx: SimContext) {
     // broadcast, which is how the source material orders it.
     const stunts: Tribute[] = [];
     cast.forEach(t => {
+        // §6.2: what they chose to show them. A tribute shows the panel the
+        // thing they spent three days on — which is why the station choice up
+        // on the floor is a decision with a consequence rather than colour.
+        const worked = (Object.entries(
+            (t.trainingLog ?? []).reduce<Record<string, number>>((counts, e) => {
+                counts[e.station] = (counts[e.station] ?? 0) + 1;
+                return counts;
+            }, {})) as Array<[string, number]>).sort((a, b) => b[1] - a[1]);
+        const showStation = worked[0]?.[0] ?? ctx.rng.pick(TRAINING_STATIONS.strength);
         const totalStats = Object.values(t.attributes).reduce((a, b) => a + b, 0);
         const bestSkill = Math.max(
             profOf(t, 'melee'), profOf(t, 'ranged'), profOf(t, 'forage'), profOf(t, 'tracking'));
@@ -546,6 +831,29 @@ export function processTraining(ctx: SimContext) {
             score += TRAINING.stuntBonus;
             stunts.push(t);
         }
+
+        // §6.2: the session itself. Most tributes go in, do the thing they are
+        // best at, and are thanked politely; a third of them try something,
+        // and trying something in front of a bored panel is a swing in both
+        // directions. A concealer, by definition, tries nothing.
+        const showcaseAttr = ATTRS.reduce((best, a) => t.attributes[a] > t.attributes[best] ? a : best, ATTRS[0]);
+        const attempted = stunt
+            || (t.trainingStrategy !== 'conceal' && ctx.rng.chance(PRE_ARENA.privateSessionStuntChance));
+        // Landing it is harder than landing the same thing on the floor: this
+        // is the last session of a long day in front of a panel that has
+        // already watched twenty of them and started on the wine. The two
+        // subtractions are that room — the width of the band between "got
+        // through it" and "did not", and three days' accumulated impatience.
+        const landed = stunt || ctx.rng.chance(
+            TRAINING.stationBaseSuccess
+            + t.attributes[showcaseAttr] * TRAINING.stationPerAttributePoint
+            - TRAINING.stationStruggleBand
+            - TRAINING.stationFatiguePerDay * TRAINING.days);
+        const attempt = attempted
+            ? ctx.rng.pick(stunt ? UNFORGETTABLE_SESSIONS : PRIVATE_SESSION_ATTEMPTS)
+            : undefined;
+        if (attempted && !stunt) score += landed ? PRE_ARENA.privateSessionSwing : -PRE_ARENA.privateSessionSwing;
+
         score = Math.min(TRAINING_SCORE.baseCeiling, Math.max(TRAINING_SCORE.baseFloor, score));
 
         // Elite band: 9-12, each step exponentially harder than the last.
@@ -557,15 +865,27 @@ export function processTraining(ctx: SimContext) {
         }
 
         t.trainingScore = score;
+        const reaction = attempt
+            ? fillLine(landed ? attempt.landed : attempt.botched, { tribute: t.name, station: showStation })
+            : fillLine(ctx.pickText(ROUTINE_SESSIONS), { tribute: t.name, station: showStation });
+        t.privateSession = {
+            station: showStation,
+            stunt: attempt ? fillLine(attempt.stunt, { tribute: t.name, station: showStation }) : 'nothing the floor had not already seen them do',
+            reaction,
+            score,
+        };
+        if (attempt) {
+            ctx.logEvent(
+                `Behind the doors of the private session, ${t.privateSession.stunt} ${reaction}`,
+                [t.id],
+                { important: stunt, category: 'training' }
+            );
+        }
     });
 
-    stunts.forEach(t => {
-        ctx.logEvent(
-            `Behind the doors of the private session, ${t.name} does something the Gamemakers were not expecting, at a moment when half of them had stopped watching. Nobody in that room will forget it.`,
-            [t.id],
-            { important: true, category: 'training' }
-        );
-    });
+    // §6.2: the agreements struck on the floor are repriced against the board
+    // the whole cast has now seen.
+    settlePacts(cast);
 
     // ---- 4. The broadcast ----
     ctx.logEvent(

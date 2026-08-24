@@ -1,4 +1,5 @@
 import { GameState, Tribute } from '../models/types';
+import { arenaFlavor } from './arenaFlavor';
 
 /**
  * REPLAY-04: achievements as a discovery layer, not a points system.
@@ -742,6 +743,68 @@ export const ACHIEVEMENTS: Achievement[] = [
                 ? `every mutt in the arena showed itself but one: ${missing[0]}`
                 : undefined;
         },
+    },
+
+    // §12.1: the downed state's own achievements. All three are about the
+    // decision the rescue window creates, which is the only thing in this
+    // simulation that asks a tribute what kind of person they are while
+    // somebody is lying at their feet.
+    {
+        id: 'brought-back',
+        name: 'Brought Back',
+        hint: 'Crown a victor who was left for dead and pulled back by an ally.',
+        test: (_s, v) => !!v && v.revivedBy !== undefined,
+    },
+    {
+        id: 'left-them-standing',
+        name: 'Left Them Standing',
+        hint: 'See one tribute stand over three helpless rivals and walk away from all three.',
+        test: state => state.tributes.some(t => (t.sparedDowned?.length ?? 0) >= 3),
+        nearMiss: state => {
+            const best = Math.max(0, ...state.tributes.map(t => t.sparedDowned?.length ?? 0));
+            return best === 2 ? 'somebody spared two helpless rivals — one short of a pattern' : undefined;
+        },
+    },
+    {
+        id: 'found-first',
+        name: 'Found First',
+        hint: 'See one tribute be the first to reach a downed ally three times over.',
+        test: state => state.tributes.some(t => (t.reachedDownedFirst ?? 0) >= 3),
+    },
+    {
+        id: 'every-door',
+        name: 'Every Door',
+        hint: 'Trigger every one of an arena\'s once-only events in a single Games.',
+        test: state => {
+            const once = arenaFlavor(state.arena.id, state.arena).events
+                .filter(e => e.oncePerRun && e.id)
+                .map(e => e.id as string);
+            return once.length >= 2 && once.every(id => (state.firedEvents ?? []).includes(id));
+        },
+        nearMiss: state => {
+            const once = arenaFlavor(state.arena.id, state.arena).events
+                .filter(e => e.oncePerRun && e.id)
+                .map(e => e.id as string);
+            const missing = once.filter(id => !(state.firedEvents ?? []).includes(id));
+            return once.length >= 2 && missing.length === 1
+                ? 'every one of the arena\'s once-only events fired but one'
+                : undefined;
+        },
+    },
+    {
+        // §9.7: the outer-district counterweight, made visible. A tribute who
+        // wins on what they knew rather than what they carried is the whole
+        // argument for making map knowledge tradeable.
+        id: 'word-of-mouth',
+        name: 'Word of Mouth',
+        hint: 'Crown a victor who traded honest map knowledge with three different tributes.',
+        test: (_s, v) => !!v && (v.sharedIntelWith?.length ?? 0) >= 3,
+    },
+    {
+        id: 'poisoned-well',
+        name: 'The Poisoned Well',
+        hint: 'Crown a victor who sent somebody to a zone they knew was a lie.',
+        test: (_s, v) => !!v && (v.liedTo?.length ?? 0) > 0,
     },
 ];
 

@@ -82,6 +82,44 @@ ARENAS.forEach(arena => {
     Object.keys(arena.effectVocab ?? {}).forEach(kind => {
         if (!EFFECT_KINDS.has(kind)) problems.push(`${arena.id}: effectVocab key '${kind}' is not a ZoneEffectKind`);
     });
+    // §5.5: the same failure mode as a bad `lawZone`, and a wider one now that
+    // there are seven edge kinds. An `edgeRules` key is `edgeKey(a, b)` — the
+    // two zone names sorted and joined — and nothing ever checked that either
+    // half names a real zone, that the two are actually adjacent, or that a
+    // directional rule's `from`/`to` are the endpoints it claims. Every one of
+    // those mistakes is silent: the rule simply never matches an edge anybody
+    // walks, and the arena plays as though it were never written.
+    Object.entries(arena.edgeRules ?? {}).forEach(([key, rule]) => {
+        const parts = key.split('|');
+        if (parts.length !== 2) {
+            problems.push(`${arena.id}: edgeRules key '${key}' is not 'zone|zone'`);
+            return;
+        }
+        const [a, b] = parts;
+        if (!names.has(a) || !names.has(b)) {
+            problems.push(`${arena.id}: edgeRules key '${key}' names a zone the arena does not have`);
+            return;
+        }
+        if ([a, b].join('|') !== [a, b].slice().sort().join('|')) {
+            problems.push(`${arena.id}: edgeRules key '${key}' is not in edgeKey order (sorted) — it will never match`);
+        }
+        const za = arena.zones.find(z => z.name === a);
+        if (za && !za.adjacent.includes(b)) {
+            problems.push(`${arena.id}: edgeRules key '${key}' rules an edge that does not exist in the adjacency graph`);
+        }
+        if (rule.kind === 'oneWay' || rule.kind === 'oneWayAfter') {
+            const ends = new Set([a, b]);
+            if (!rule.from || !rule.to || !ends.has(rule.from) || !ends.has(rule.to) || rule.from === rule.to) {
+                problems.push(`${arena.id}: edgeRules '${key}' is ${rule.kind} but its from/to are not the two endpoints`);
+            }
+        }
+        if (rule.kind === 'timeGated' && !rule.gatedTime) {
+            problems.push(`${arena.id}: edgeRules '${key}' is timeGated with no gatedTime — it gates nothing`);
+        }
+        if (rule.kind === 'tolled' && !rule.toll) {
+            problems.push(`${arena.id}: edgeRules '${key}' is tolled with no toll — it charges nothing`);
+        }
+    });
     // §5.12: an arena's mutt roster must cover the terrain it is made of, or
     // whole zones are mechanically toothless. `terrainPreference` is a hard
     // filter (engine/mutts), so an uncovered terrain is not "rarely dangerous",

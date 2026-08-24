@@ -272,6 +272,15 @@ export interface ZoneMemory {
     rivals: number;
     /** How picked-over the tribute believes the ground is (0-1). */
     barren: number;
+    /**
+     * §9.7: this impression was told to them rather than seen. Hearsay is
+     * exactly as usable as first-hand knowledge right up until it turns out to
+     * have been a lie, which is the entire reason information is worth
+     * trading — and worth poisoning.
+     */
+    hearsay?: boolean;
+    /** §9.7: who told them, so a lie has an author to be furious with. */
+    toldById?: string;
 }
 
 /**
@@ -608,8 +617,12 @@ export interface Tribute {
      * kills and the training reveal; read by recruitment and truce restraint.
      */
     respects?: Record<string, number>;
-    /** §4.4: the angle they took with Caesar — a showmance is a strategy chosen before the arena. */
-    interviewAngle?: 'showmance';
+    /**
+     * §4.4/§6.3: the angle they took with Caesar. A showmance is a strategy
+     * chosen before the arena; so is publicly inviting allies, so is naming
+     * the person you intend to kill in front of the whole country.
+     */
+    interviewAngle?: 'showmance' | 'defiance' | 'grief' | 'alliance-signal' | 'target-callout';
     /**
      * §7.1: tessera claims — extra name-slips taken for grain, one per family
      * mouth per year. Decided at generation from district poverty and age.
@@ -699,7 +712,18 @@ export interface Tribute {
     /** A4: pre-arena agreements struck on the training floor. */
     trainingPact?: string[];
     /** A4: stations worked, per day, so the chronicle can narrate three days. */
-    trainingLog?: Array<{ day: number; station: string; outcome: 'success' | 'struggle' | 'failure' }>;
+    /**
+     * §6.2: `witnessIds` is who else was working that rack. The log recorded
+     * the station and the outcome and nothing situational, so who watched a
+     * tribute excel — or watched them fail — was thrown away, and the training
+     * floor could not feed the respect and regard it obviously should.
+     */
+    trainingLog?: Array<{
+        day: number;
+        station: string;
+        outcome: 'success' | 'struggle' | 'failure';
+        witnessIds?: string[];
+    }>;
     /** A2: Diplomat — truces this tribute brokered between two other people. */
     brokeredTruces?: Array<[string, string]>;
     /** A2: Ghost — sponsor credit accrued purely for never being seen. */
@@ -708,6 +732,115 @@ export interface Tribute {
     retainersHonoured?: number;
     /** §1.2: truces this Diplomat brokered that ran their full term. */
     trucesBrokeredHeld?: number;
+
+    // ---- §9.1: the downed state and the rescue window ----
+    /**
+     * §9.1: at zero health and not dead yet.
+     *
+     * The health scale used to be binary at the bottom — alive, or dead with a
+     * `causeOfDeath` — so there was no moment between the killing blow and the
+     * cannon for anything to happen in. A downed tribute keeps
+     * `status === 'alive'` on purpose: they are not a corpse, every existing
+     * roster filter still counts them, and the systems that must treat them
+     * differently ask `isDowned()` rather than reading a third status value
+     * that four hundred call sites would have to learn about.
+     */
+    downed?: {
+        /** Cycle they went down, for the feed and for grief timing. */
+        sinceCycle: number;
+        /** Cycles left before the wound finishes the job unaided. */
+        cyclesLeft: number;
+        /** What put them here — the cause recorded if nobody reaches them. */
+        cause: string;
+        /** Who put them here, when it was a person. */
+        byId?: string;
+    };
+    /** §9.1: they have been down once already. Nobody gets the window twice. */
+    everDowned?: boolean;
+    /** §9.1: who pulled them back from it. */
+    revivedBy?: string;
+    /** §9.1: downed tributes this one stood over and chose to walk away from. */
+    sparedDowned?: string[];
+    /** §9.1: downed tributes this one finished where they lay. */
+    finishedDowned?: string[];
+    /** §9.1: times this tribute was the first to reach a downed ally. */
+    reachedDownedFirst?: number;
+
+    // ---- §5.5 / §9.7: what they know about the map, and who they told ----
+    /**
+     * §5.5: `hidden` edges this tribute has personally found or been told
+     * about, by `edgeKey`. A hidden edge is impassable to everyone who does not
+     * know it is there, which makes the knowledge itself the most valuable
+     * thing in an arena that has one.
+     */
+    knownEdges?: string[];
+    /** §9.7: tribute ids this one has handed honest map intelligence to. */
+    sharedIntelWith?: string[];
+    /** §9.7: tribute ids this one has deliberately misdirected about the map. */
+    liedTo?: string[];
+    /** §9.7: times this tribute's map intelligence was bought at a parley. */
+    intelSold?: number;
+
+    // ---- §6.2 / §6.3: the pre-arena phases, with teeth ----
+    /**
+     * §6.2: pre-arena agreements with terms, rather than a bare id list.
+     * `trainingPact` above is kept in step as the flat id list every existing
+     * reader already uses; this is the same agreement with its conditions
+     * attached, which is what makes a day-one handshake and a day-three
+     * alliance struck after watching somebody score a ten different objects.
+     */
+    trainingPacts?: TrainingPact[];
+    /**
+     * §6.2: the private session with the Gamemakers — the single most
+     * memorable pre-arena scene in the source material, which existed here
+     * only as the number it produced.
+     */
+    privateSession?: {
+        /** What they chose to show them. */
+        station: string;
+        /** What they actually did with it. */
+        stunt: string;
+        /** How the room took it. */
+        reaction: string;
+        /** The score it produced, mirrored into `trainingScore`. */
+        score: number;
+    };
+    /**
+     * §6.2: a concealed tribute's cover has been blown — the first time they
+     * fight for real, everybody who sees it revises their estimate at once.
+     */
+    concealRevealed?: boolean;
+    /**
+     * §6.3: how far the tribute's arena behaviour has fallen short of the
+     * persona they sold Caesar. Accumulates while they play against type and
+     * is spent as crowd backlash on sponsor trust.
+     */
+    personaBacklash?: number;
+    /** §6.3: the rival they named on air, for 'target-callout'. */
+    interviewCalloutId?: string;
+    /** §6.4: whose named feast pack they walked away with, if not their own. */
+    feastPrizeTaken?: string;
+}
+
+/**
+ * §6.2: a pre-arena agreement, with the terms it was actually struck on.
+ *
+ * `trainingPact` was a flat string array — no terms, no confidence, no expiry
+ * — so a pact sworn on day one between two frightened strangers and a pact
+ * struck on day three after watching somebody score a ten were the same
+ * object, and both lasted forever.
+ */
+export interface TrainingPact {
+    /** The other party. */
+    withId: string;
+    /** What was actually agreed. */
+    kind: 'arena-alliance' | 'non-aggression' | 'share-supplies' | 'cornucopia-rush';
+    /** 0-1: how much they meant it when they shook on it. */
+    confidence: number;
+    /** Training day it was struck, 1-3. A later pact is a better-informed one. */
+    day: number;
+    /** Cycle in the Games it lapses on its own terms. */
+    expiresCycle: number;
 }
 
 /**
@@ -1028,10 +1161,21 @@ export type ArenaLawId =
 
 /** A traversal rule layered on top of plain adjacency for one edge. Keyed by `edgeKey(a,b)` on `Arena.edgeRules`. */
 export interface EdgeRule {
-    kind: 'oneWay' | 'tolled' | 'timeGated';
-    /** 'oneWay' only: the one direction this edge may be crossed. */
+    /**
+     * §5.5: three kinds were not enough to express what a route can be. A
+     * rope bridge frays (`collapsing`); a slope you scrambled down ices over
+     * behind you (`oneWayAfter`); a pass an alliance is sitting on has to be
+     * fought through (`contested`); and a way nobody has found yet is worth
+     * more than any of them (`hidden`).
+     */
+    kind: 'oneWay' | 'tolled' | 'timeGated' | 'collapsing' | 'oneWayAfter' | 'contested' | 'hidden';
+    /** 'oneWay'/'oneWayAfter': the one direction this edge may be crossed. */
     from?: string;
     to?: string;
+    /** 'collapsing' only: crossings it has left in it before it is gone for good. */
+    crossings?: number;
+    /** 'oneWayAfter' only: crossings after which `from`->`to` is the only way. */
+    after?: number;
     /** 'tolled' only: an extra cost paid to cross, on top of normal travel cost.
      *  §11.6: `itemCost` consumes one carried non-weapon item (rope burned on
      *  the climb, a pack lost to the current); `timeCost` adds extra transit
@@ -1372,6 +1516,28 @@ export interface GameState {
     feastTheme?: 'weapons' | 'medical' | 'food' | 'district-gifts';
     /** §6.8: tribute who drew first blood (first tribute-dealt kill). */
     firstBloodId?: string;
+    /**
+     * §5.5: crossings made per edge, by `edgeKey`. A `collapsing` edge counts
+     * down to nothing against this; an `oneWayAfter` edge reads it to decide
+     * whether the slope has iced over yet.
+     */
+    edgeCrossings?: Record<string, number>;
+    /**
+     * §5.5: `contested` edges an alliance has actually garrisoned, by
+     * `edgeKey` -> alliance id. Set by a group dug in on one side of it;
+     * anybody else pays a combat check to come through.
+     */
+    garrisonedEdges?: Record<string, string>;
+    /** §9.1: tributes who bled out with an ally standing one zone away. */
+    diedWithinReach?: number;
+    /** §9.7: map intelligence handed over at a parley or in camp, honest or not. */
+    intelTrades?: number;
+    /**
+     * §6.4: this feast's named packs — `tributeId` is whose name is on it.
+     * A pack with somebody else's name on it is still worth taking, and taking
+     * it is a different beat from claiming your own.
+     */
+    feastPrizes?: Array<{ tributeId: string; label: string }>;
     /** §10.1: the longest single fire chain this run produced, in zones. */
     fireChainMax?: number;
     /** §10.1: a renewed truce was still standing when one of its parties died. */

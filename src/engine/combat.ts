@@ -1,10 +1,11 @@
-import { DamageRecord, Item, Tribute } from '../models/types';
+import { DamageRecord, Item, Tribute, attr } from '../models/types';
 import { forceStance } from './stance';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { BLEEDING, COMBAT, DEBTS, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
+import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
 import { rollAmbush } from './stealth';
@@ -43,6 +44,52 @@ function pickEnvironmentalDeathPool(victim: Tribute, witness: Tribute | undefine
 
 /** Damage kinds a worn piece of armour can actually do anything about. */
 const ARMOURED_DAMAGE: DamageRecord['kind'][] = ['tribute', 'mutt', 'hazard', 'arena', 'gamemaker'];
+
+/**
+ * §9.1: wounds that leave a body somebody could still reach in time.
+ *
+ * Thirst and starvation are excluded on purpose — there is no rescue fiction
+ * in an ally arriving to find someone who has run out of water two days ago,
+ * and a downed window there would only be a delay dressed up as a scene.
+ */
+const DOWNABLE_DAMAGE: DamageRecord['kind'][] = ['tribute', 'mutt', 'arena', 'hazard'];
+
+/**
+ * §9.1: the killing blow, resolved as either a cannon or a window.
+ *
+ * Every combat path used to call `killTribute` directly the moment health hit
+ * zero, bypassing `checkDeath` entirely — so hooking `checkDeath` alone would
+ * have left the mercy unreachable from the one place it most belongs. This is
+ * the same decision `checkDeath` makes, with the weapon prose kept intact for
+ * the deaths that still land.
+ */
+function strikeDown(ctx: SimContext, victim: Tribute, killer: Tribute, weapon?: Item) {
+    if (!victim.downed && shouldGoDown(ctx, victim)) {
+        goDown(ctx, victim, victim.lastDamage?.cause || `Killed by ${killer.name}`, killer.id);
+        return;
+    }
+    killTribute(ctx, victim, killer, { weapon });
+}
+
+/** §9.1: whether this killing blow should open the window instead of closing it. */
+function shouldGoDown(ctx: SimContext, t: Tribute): boolean {
+    if (t.everDowned) return false;
+    // The bloodbath is the one place the arena is not interested in a second act.
+    if (ctx.state.phase === 'bloodbath') return false;
+    const record = t.lastDamage;
+    if (!record || !DOWNABLE_DAMAGE.includes(record.kind)) return false;
+    // Once the field is down to finalists the Gamemakers stop allowing it.
+    // The living field, counted as the endgame counts it: somebody already in
+    // the window is not somebody the Gamemakers are still running Games for.
+    // `checkDeath` reaches here before the death lands, so `t` is included —
+    // strictly above the floor is the guard that keeps a downed tribute out
+    // of a final two, which `checkDualVictory` has no other defence against.
+    const standing = ctx.state.tributes.filter(o => o.status === 'alive' && !o.downed).length;
+    if (standing <= DOWNED.finalistFloor) return false;
+    const chance = Math.min(DOWNED.maxChance,
+        DOWNED.baseChance + attr(t, 'endurance') * DOWNED.perEndurance);
+    return ctx.rng.chance(chance);
+}
 
 /**
  * A weighted draw from a list, for the places combat has to make a choice that
@@ -96,6 +143,16 @@ export function applyDamage(
     // tribute killed earlier in the same pass silently overwrites the damage
     // record their obituary was built from.
     if (t.status !== 'alive') return false;
+
+    // §9.1: while they are in the rescue window they are out of the damage
+    // system entirely. This reads like a bug until you follow the callers:
+    // `applyStatusDamage` (survival.ts) puts bleeding, infection, venom,
+    // thirst, starvation, exhaustion and frostbite through here every single
+    // cycle, and a downed tribute sits at exactly 0 health — so any damage
+    // that landed at all would kill them on the next status tick and the
+    // window would be zero cycles wide in practice. `tickDowned` owns their
+    // ending: rescue, execution, or the clock running out.
+    if (isDowned(t)) return false;
 
     // Armour. Only against things that hit you — a padded vest does nothing
     // about thirst, venom already in the blood, or an infected wound.
@@ -192,7 +249,16 @@ export function selfInflictedDeath(ctx: SimContext, t: Tribute, cause: string) {
 /** Kills the tribute if the last wound finished them, attributing it correctly. */
 export function checkDeath(ctx: SimContext, t: Tribute, fallbackCause?: string) {
     if (t.health > 0 || t.status !== 'alive') return;
+    // §9.1: a tribute in the rescue window is at zero health on purpose.
+    // `tickDowned` owns their ending; nothing else may fire the cannon.
+    if (t.downed) return;
     const record = t.lastDamage;
+    // The funnel every death goes through is the only honest place to decide
+    // that this one is not a death yet.
+    if (shouldGoDown(ctx, t)) {
+        goDown(ctx, t, record?.cause || fallbackCause || 'Died of their wounds', record?.sourceId);
+        return;
+    }
     // Aliveness decides whether the killer gets credit for the kill, not
     // whether they get credit for the wound — a mutual kill still has a true
     // obituary even though the killer dropped in the same exchange.
@@ -493,6 +559,9 @@ export function resolveCombat(
     damageMultiplier: number = 1,
 ) {
     if (t1.status === 'dead' || t2.status === 'dead') return;
+    // §9.1: nobody in the rescue window is a combat opponent. Whatever happens
+    // to them where they lie is `tickDowned`'s decision, not a duel's.
+    if (isDowned(t1) || isDowned(t2)) return;
 
     // Star-crossed lovers refuse to fight each other!
     if (areLovers(t1, t2)) {
@@ -530,7 +599,7 @@ export function resolveCombat(
             { important: true, category: 'combat' }
         );
         if (t2.health <= 0) {
-            killTribute(ctx, t2, t1, { weapon: opener });
+            strikeDown(ctx, t2, t1, opener);
             [t1, t2].forEach(t => { if (t.status === 'alive') dropBrokenWeapons(t); });
             return;
         }
@@ -564,7 +633,7 @@ export function resolveCombat(
     let round = 0;
     let ended = false;
 
-    while (round < maxRounds && t1.status === 'alive' && t2.status === 'alive') {
+    while (round < maxRounds && isActive(t1) && isActive(t2)) {
         round++;
         const w1 = bestWeapon(t1);
         const w2 = bestWeapon(t2);
@@ -596,7 +665,7 @@ export function resolveCombat(
                 { category: 'combat' }
             );
             if (loser.health <= 0) {
-                killTribute(ctx, loser, winner, { weapon });
+                strikeDown(ctx, loser, winner, weapon);
                 ended = true;
                 break;
             }
@@ -628,7 +697,7 @@ export function resolveCombat(
                 const parting = bestWeapon(stayer);
                 landHit(ctx, stayer, fleer, 2, parting);
                 if (fleer.health <= 0) {
-                    killTribute(ctx, fleer, stayer, { weapon: parting });
+                    strikeDown(ctx, fleer, stayer, parting);
                     ended = true;
                     break;
                 }
@@ -649,7 +718,7 @@ export function resolveCombat(
         }
     }
 
-    if (!ended && t1.status === 'alive' && t2.status === 'alive') {
+    if (!ended && isActive(t1) && isActive(t2)) {
         ctx.logEvent(
             fill(ctx.pickText(DUEL_TEXTS.mutualBreak), { t1: t1.name, t2: t2.name, zone: t1.zone }),
             [t1.id, t2.id],
@@ -675,7 +744,7 @@ export function resolveCombat(
  * is what makes the Career pack frightening instead of decorative.
  */
 export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
-    const fighters = participants.filter(t => t.status === 'alive');
+    const fighters = participants.filter(isActive);
     if (fighters.length < 3) {
         if (fighters.length === 2) resolveCombat(ctx, fighters[0], fighters[1]);
         return;
@@ -777,8 +846,8 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     let rounds = 0;
     while (rounds < COMBAT.maxGroupRounds) {
         rounds++;
-        const left = packSide.filter(t => t.status === 'alive' && t.zone === zone);
-        const right = otherSide.filter(t => t.status === 'alive' && t.zone === zone);
+        const left = packSide.filter(t => isActive(t) && t.zone === zone);
+        const right = otherSide.filter(t => isActive(t) && t.zone === zone);
         if (left.length === 0 || right.length === 0) break;
 
         const attackers = ctx.rng.chance(left.length / (left.length + right.length)) ? left : right;
@@ -822,14 +891,14 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             landHit(ctx, lead, target, edge, weapon);
             attackers.forEach(a => noteContact(ctx.state, a, target));
             if (target.health <= 0) {
-                killTribute(ctx, target, lead, { weapon });
+                strikeDown(ctx, target, lead, weapon);
                 continue;
             }
         } else {
             // The outnumbered side lands one anyway — desperation cuts.
             landHit(ctx, target, lead, -edge, bestWeapon(target));
             if (lead.health <= 0) {
-                killTribute(ctx, lead, target, { weapon: bestWeapon(target) });
+                strikeDown(ctx, lead, target, bestWeapon(target));
                 continue;
             }
         }
@@ -839,9 +908,9 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         // at a flat penalty. Without this a six-strong pack dealt exactly one
         // blow per round — the same as a duel, only slightly harder — which
         // left the Career pack largely decorative.
-        let targetDown = target.status !== 'alive';
+        let targetDown = !isActive(target);
         for (const a of attackers) {
-            if (targetDown || a.id === lead.id || a.status !== 'alive') continue;
+            if (targetDown || a.id === lead.id || !isActive(a)) continue;
             const supportWeapon = bestWeapon(a);
             const supportEdge = combatPower(ctx, a, supportWeapon, 0, target)
                 - combatPower(ctx, target, bestWeapon(target), 0, a)
@@ -850,7 +919,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             noteGroupFight(a, target);
             landHit(ctx, a, target, supportEdge, supportWeapon);
             if (target.health <= 0) {
-                killTribute(ctx, target, a, { weapon: supportWeapon });
+                strikeDown(ctx, target, a, supportWeapon);
                 targetDown = true;
             }
         }
@@ -861,7 +930,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         // — not `lead` for everyone, which had the lead computing fear of
         // themselves.
         const breaking = [...left, ...right].filter(t =>
-            t.status === 'alive' && wantsToRetreat(
+            isActive(t) && wantsToRetreat(
                 ctx, t,
                 defenders.includes(t) ? Math.max(1, advantage) : 0,
                 rounds,
@@ -927,7 +996,7 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
     let rounds = 0;
     while (rounds < COMBAT.maxGroupRounds) {
         rounds++;
-        const standing = fighters.filter(t => t.status === 'alive' && t.zone === zone && !withdrawn.has(t.id));
+        const standing = fighters.filter(t => isActive(t) && t.zone === zone && !withdrawn.has(t.id));
         if (standing.length < 2) break;
 
         // Each round, one pairing resolves — weighted toward whoever is most
@@ -960,14 +1029,14 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
             - combatPower(ctx, target, bestWeapon(target), 0, attacker);
         if (edge > 0) {
             landHit(ctx, attacker, target, edge, weapon);
-            if (target.health <= 0) { killTribute(ctx, target, attacker, { weapon }); continue; }
+            if (target.health <= 0) { strikeDown(ctx, target, attacker, weapon); continue; }
         } else {
             landHit(ctx, target, attacker, -edge, bestWeapon(target));
-            if (attacker.health <= 0) { killTribute(ctx, attacker, target, { weapon: bestWeapon(target) }); continue; }
+            if (attacker.health <= 0) { strikeDown(ctx, attacker, target, bestWeapon(target)); continue; }
         }
 
         const breaking = standing.filter(t =>
-            t.status === 'alive' && wantsToRetreat(ctx, t, 1, rounds, t.id === attacker.id ? target : attacker));
+            isActive(t) && wantsToRetreat(ctx, t, 1, rounds, t.id === attacker.id ? target : attacker));
         if (breaking.length > 0) {
             breaking.forEach(t => {
                 forceStance(t, 'Evasive');
