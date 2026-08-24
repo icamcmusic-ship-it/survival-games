@@ -273,6 +273,53 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         respects: asNumMap(r.respects),
         debts: asNumMap(r.debts),
         districtBondNoted: asBool(r.districtBondNoted, false),
+
+        // §1.1/§1.7: the lifetime ledger — the write-once flags and the
+        // monotonic counters that exactly one achievement, earned trait or
+        // epilogue beat reads at the end of the run.
+        //
+        // These were the one family of optional fields the normaliser did not
+        // materialise, on the reasoning that every read site already says
+        // `?? 0` / `=== true`. That is true today and is exactly the shape
+        // that breaks quietly: `undefined` reads as falsy either way, so a
+        // resumed pre-migration save either replays a one-shot beat it has
+        // already fired or skips it forever, and neither shows up as an error.
+        // Defaulting them here makes the resumed tribute indistinguishable
+        // from one that has played the whole run in this build.
+        fullKitSeen: asBool(r.fullKitSeen, false),
+        everCarriedWeapon: asBool(r.everCarriedWeapon, false),
+        poisonedByWeapon: asBool(r.poisonedByWeapon, false),
+        everDowned: asBool(r.everDowned, false),
+        sanityScarred: asBool(r.sanityScarred, false),
+        signatureFired: asBool(r.signatureFired, false),
+        volunteered: asBool(r.volunteered, false),
+        waterCrossings: asNum(r.waterCrossings, 0),
+        corpsesLooted: asNum(r.corpsesLooted, 0),
+        unseenStreak: asNum(r.unseenStreak, 0),
+        trapKills: asNum(r.trapKills, 0),
+        trapsDisarmed: asNum(r.trapsDisarmed, 0),
+        performingStreak: asNum(r.performingStreak, 0),
+        maxPerformingStreak: asNum(r.maxPerformingStreak, 0),
+        ghostTrust: asNum(r.ghostTrust, 0),
+        retainersHonoured: asNum(r.retainersHonoured, 0),
+        trucesBrokeredHeld: asNum(r.trucesBrokeredHeld, 0),
+        zoneHeld: asNum(r.zoneHeld, 0),
+        fortifiedCycles: asNum(r.fortifiedCycles, 0),
+        paradeBuzz: asNum(r.paradeBuzz, 0),
+        objectiveQueue: Array.isArray(r.objectiveQueue)
+            ? (r.objectiveQueue as unknown[]).map(normalizeObjective)
+            : [],
+        visitedZones: asStrArray(r.visitedZones),
+        extortedIds: asStrArray(r.extortedIds),
+        retainerPaidBy: asStrArray(r.retainerPaidBy),
+        trainingPact: asStrArray(r.trainingPact),
+        shedTraits: asStrArray(r.shedTraits),
+        scars: asObjMap<boolean>(r.scars),
+        recoveryProgress: asObjMap<number>(r.recoveryProgress),
+        traitAge: asNumMap(r.traitAge),
+        truceRenewed: asNumMap(r.truceRenewed),
+        stanceCooldown: asObjMap<number>(r.stanceCooldown),
+        stanceReady: asObjMap<number>(r.stanceReady),
         bleedSeverity: clamp(asNum(r.bleedSeverity, r.injuries && asBool((asRecord(r.injuries) ?? {}).bleeding, false) ? 1 : 0), 0, 3),
         momentum: asNum(r.momentum, 0),
         rattled: asNum(r.rattled, 0),

@@ -585,6 +585,16 @@ export interface Tribute {
      * 0 is close enough to touch the horn; 1 is the far edge of the ring.
      * Decided at the reaping so it can be shown on the tribute sheet, and read
      * only by the bloodbath.
+     *
+     * §1.5: it is not cosmetic, and the four rolls it feeds pull against each
+     * other on purpose. A close plate raises the odds of running *at* the horn
+     * (`fightChance`), wins the race to the good steel (`reachScore`), and is
+     * the reason a runner gets caught from behind (`runDownChance`); it also
+     * decides who spent the sixty seconds on the plates staring at whom
+     * (`plateNeighbourRange`). Measured over 300 runs, the close third dies in
+     * the bloodbath 39.4% of the time against the far third's 29.4%, and comes
+     * out armed 40.4% against 11.6% — that is the trade, not a wash: the horn
+     * arms you and the horn is where the dying happens.
      */
     platePosition?: number;
     /** Who dressed them for the Capitol. Set at the Remake Center. */

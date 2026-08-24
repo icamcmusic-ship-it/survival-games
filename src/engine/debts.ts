@@ -98,8 +98,11 @@ export function tickRetainers(ctx: SimContext) {
                 t.sponsorTrust = Math.min(100, t.sponsorTrust + DEBTS.retainerTrustPerCycle);
             }
         });
-        // §10.1: a contract kept to the end is the Mercenary's version of a
-        // charter kept, and the achievement layer can finally see it.
+        // §10.1/§1.7: the high-water mark of clients on the books at once —
+        // the Mercenary's version of a charter kept. Read by the 'On Retainer'
+        // achievement; for four releases it was written here and read nowhere,
+        // which is exactly the write-once-read-never shape the lifetime-ledger
+        // audit was looking for.
         t.retainersHonoured = Math.max(t.retainersHonoured ?? 0, honoured);
     });
 }

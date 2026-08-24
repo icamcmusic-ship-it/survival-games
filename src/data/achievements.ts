@@ -491,6 +491,21 @@ export const ACHIEVEMENTS: Achievement[] = [
         },
     },
     {
+        // §1.7: `retainersHonoured` was the one field in the lifetime-ledger
+        // audit that was genuinely dead — written every cycle by
+        // `tickRetainers`, whose own comment says "the achievement layer can
+        // finally see it", and then read by nothing at all. This is the read
+        // site that comment was describing. It measures what the field
+        // actually holds: the most clients on the books at one time.
+        id: 'on-retainer',
+        name: 'On Retainer',
+        hint: 'Crown a victor who had two tributes paying for their protection at the same time.',
+        test: (_s, v) => !!v && (v.retainersHonoured ?? 0) >= 2,
+        nearMiss: (_s, v) => (v && (v.retainersHonoured ?? 0) === 1)
+            ? `${v.name} worked one contract — a second client at the same time would have made it a business`
+            : undefined,
+    },
+    {
         id: 'paid-in-full',
         name: 'Paid in Full',
         hint: 'See every debt in the arena settled before the field reaches four.',

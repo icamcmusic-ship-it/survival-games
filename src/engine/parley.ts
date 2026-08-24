@@ -487,6 +487,10 @@ export function resolveTruces(ctx: SimContext) {
                 // a line; it is also, unambiguously, a promise kept.
                 if (other && t.status === 'alive' && other.status !== 'alive') {
                     state.keptWordSeen = true;
+                    // §1.4: the single most common way a truce ends, and it
+                    // also never reached the broker. A promise that outlived
+                    // one of the people who made it was kept by definition.
+                    creditBroker(ctx, t, other, 'outlived');
                     ctx.logEvent(
                         `The agreement between ${t.name} and ${other.name} ends the way most of them do: `
                         + `${other.name} is dead, and ${t.name} never once broke it.`,
@@ -521,22 +525,30 @@ export function resolveTruces(ctx: SimContext) {
  * its full term is the Diplomat's kill: it pays in the currency they actually
  * play for, which is the Capitol's regard.
  */
-function creditBroker(ctx: SimContext, a: Tribute, b: Tribute) {
+type BrokerOutcome = 'lapsed' | 'renewed' | 'outlived';
+
+function creditBroker(ctx: SimContext, a: Tribute, b: Tribute, outcome: BrokerOutcome = 'lapsed') {
     getAlive(ctx.state).forEach(broker => {
+        if (broker.id === a.id || broker.id === b.id) return;
         const held = broker.brokeredTruces?.some(([x, y]) =>
             (x === a.id && y === b.id) || (x === b.id && y === a.id));
         if (!held) return;
         broker.trucesBrokeredHeld = (broker.trucesBrokeredHeld ?? 0) + 1;
         broker.sponsorTrust = Math.min(100, broker.sponsorTrust + PARLEY.brokerHeldTrust);
         addExcitement(broker, PARLEY.brokerHeldExcitement);
-        adjustRel(a, broker.id, PARLEY.brokerHeldRegard);
-        adjustRel(b, broker.id, PARLEY.brokerHeldRegard);
-        ctx.logEvent(
-            `${a.name} and ${b.name} part without a shot fired, and the agreement that held them apart was ${broker.name}'s. `
-            + 'The Capitol notices who does that; it is the rarest kind of work anyone does in there.',
-            [broker.id, a.id, b.id],
-            { important: true, category: 'alliance' }
-        );
+        // A living counterparty can think better of the broker; a dead one
+        // cannot, and writing to their ledger would be writing to a corpse.
+        if (a.status === 'alive') adjustRel(a, broker.id, PARLEY.brokerHeldRegard);
+        if (b.status === 'alive') adjustRel(b, broker.id, PARLEY.brokerHeldRegard);
+        const line = outcome === 'renewed'
+            ? `${a.name} and ${b.name} sit down and agree to it all over again. `
+                + `The words were ${broker.name}'s the first time and they are still holding, which is more than most things in here do.`
+            : outcome === 'outlived'
+                ? `Whatever else the arena did to ${a.name} and ${b.name}, it never got them to break the agreement ${broker.name} talked them into. `
+                    + 'One of them is dead now and it held to the end anyway.'
+                : `${a.name} and ${b.name} part without a shot fired, and the agreement that held them apart was ${broker.name}'s. `
+                    + 'The Capitol notices who does that; it is the rarest kind of work anyone does in there.';
+        ctx.logEvent(line, [broker.id, a.id, b.id], { important: true, category: 'alliance' });
     });
 }
 
@@ -561,6 +573,14 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
         trainProficiency(b, 'persuasion');
         declareTruce(ctx, a, b);
         adjustMutual(ctx.state, a, b, PARLEY.truceRegard);
+        // §1.4: a renewal is the *strongest* evidence a brokered agreement is
+        // working — both parties have now chosen it twice — and it was the one
+        // ending that paid the broker nothing. Credit was wired to LAPSE only,
+        // so across 400 runs the Diplomat's signature payoff fired once: the
+        // two commoner endings (renewal, and one party dying with the promise
+        // intact) both returned before ever reaching it. Only a *broken* truce
+        // should pay its broker nothing.
+        creditBroker(ctx, a, b, 'renewed');
         ctx.logEvent(
             fill(ctx.pickText(PARLEY_TEXTS.truceRenewed), { t1: a.name, t2: b.name }),
             [a.id, b.id],

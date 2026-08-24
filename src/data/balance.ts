@@ -1166,8 +1166,14 @@ export const ENCOUNTERS = {
     maxBrawlSize: 5,
     /** Chance a tribute wanders rather than holding position. */
     wanderChance: 0.5,
-    /** Depletion at which a forage attempt reports the ground picked clean. */
-    strippedZoneNotice: 0.55,
+    /**
+     * Depletion at which a forage attempt reports the ground picked clean.
+     * §1.6: lowered with the zone-economy retune — the notice is the only
+     * on-screen signal that the system exists, and at 0.55 it was firing
+     * later than the point where the yield had already stopped being worth
+     * the walk.
+     */
+    strippedZoneNotice: 0.45,
 } as const;
 
 /** Multi-round duels: how long they last and when someone breaks off. */
@@ -1890,12 +1896,29 @@ export const INVENTORY = {
 export const ZONES = {
     /** A fishing net in still water, added to the forage chance. */
     fishingBonus: 0.25,
-    /** Fraction of a zone's remaining yield consumed by one successful forage. */
-    depletionPerForage: 0.13,
+    /**
+     * How much depletion one successful forage adds to a zone.
+     *
+     * §1.6: the zone economy was correctly modelled and almost never
+     * load-bearing. At 0.13 taken against 0.085 grown back, a single forager
+     * netted +0.045 a cycle — and `wanderChance` means sustained pressure on
+     * one zone is rare — so across 400 runs the median zone sat at 0.12
+     * depletion, only 0.6% ever reached the floor, and the "picked clean"
+     * notice fired ten times. Foraging out a zone was a system nobody could
+     * observe, let alone plan around.
+     *
+     * These three numbers are the whole knob. Taking more per visit and
+     * growing back slower makes two tributes camped in the same forest a
+     * decision — `movement.ts` scores a destination on `effectiveResources`,
+     * so stripped ground actually pushes people off it — while the regen rate
+     * stays high enough that an abandoned zone is worth returning to within a
+     * few days, which is the property the soak asserts.
+     */
+    depletionPerForage: 0.2,
     /** Smaller drain even when a forage comes up empty — the ground is picked over. */
-    depletionPerAttempt: 0.03,
+    depletionPerAttempt: 0.05,
     /** Fraction of lost yield that grows back each cycle. */
-    regenPerCycle: 0.085,
+    regenPerCycle: 0.06,
     /** Depletion can never take a zone below this share of its printed yield. */
     minYieldFraction: 0.1,
     /** Base forage odds before zone yield and archetype are added. */

@@ -411,7 +411,32 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     return power;
 }
 
-/** Per-round retreat check. Nobody has to fight to the death. */
+/**
+ * Per-round retreat check. Nobody has to fight to the death.
+ *
+ * §1.3: `opponentEdge` is *the power differential from `t`'s point of view* —
+ * positive means the person in front of them is winning. That is one number
+ * with one meaning, and it now is at every call site.
+ *
+ * It was not. The duel loop passed the real differential (`±edge`), the group
+ * brawl passed a headcount proxy (`max(1, advantage)` to the outnumbered side
+ * and a flat `0` to the pack), and the free-for-all passed a constant `1` to
+ * everyone in the zone. So the same tribute in the same fight got a different
+ * answer depending on which loop happened to be resolving it, and the
+ * chokepoint penalty below — which subtracts from the same `chance` the
+ * losing bonus adds to — was arbitrating against a different quantity in each
+ * path. In the pack case it was worse than inconsistent: an attacker was
+ * hard-coded to `0`, so a lead who was *losing* to a stronger lone defender
+ * could never earn `retreatLosingBonus` at all, and the numbers advantage the
+ * group maths had already priced into `edge` was then counted a second time as
+ * a headcount.
+ *
+ * The fix is not a new rule, it is deleting two of the three conventions: the
+ * group and free-for-all paths now hand over the same resolved `edge` the
+ * damage roll used, signed per combatant. The numbers advantage still reaches
+ * this function — `combatPower` folds it into `edge` — it just is not also
+ * substituted for it.
+ */
 function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, roundsFought: number, opponent?: Tribute): boolean {
     // §7: once the Gamemakers have forced the finale, there is nowhere to
     // retreat *to* — the arena has been drained down to the horn. Without
@@ -604,7 +629,14 @@ export function resolveCombat(
             return;
         }
         // Being jumped is a reason to leave, not to settle in.
-        if (noRetreatRounds < 1 && wantsToRetreat(ctx, t2, damage / 10, 1, t1)) {
+        // §1.3: the differential the victim is actually facing, on the same
+        // scale every other retreat check uses — the ambush bonus is spent on
+        // the opening blow and does not carry into the second round, so what
+        // they weigh is the standing fight, plus how much that first hit hurt.
+        const ambushEdge = combatPower(ctx, t1, opener, 0, t2)
+            - combatPower(ctx, t2, bestWeapon(t2), 0, t1)
+            + damage / 10;
+        if (noRetreatRounds < 1 && wantsToRetreat(ctx, t2, ambushEdge, 1, t1)) {
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.retreat), { fleer: t2.name, stayer: t1.name, zone: t1.zone }),
                 [t2.id, t1.id],
@@ -929,12 +961,17 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         // The opponent each combatant weighs is whoever leads the *other* side
         // — not `lead` for everyone, which had the lead computing fear of
         // themselves.
-        const breaking = [...left, ...right].filter(t =>
-            isActive(t) && wantsToRetreat(
-                ctx, t,
-                defenders.includes(t) ? Math.max(1, advantage) : 0,
-                rounds,
-                attackers.includes(t) ? target : lead));
+        // §1.3: everyone weighs the *same* exchange that just happened, from
+        // their own side of it. `edge` is the lead's advantage over the
+        // target and already carries the numbers bonus, so the pack reads
+        // `-edge` and the outnumbered side reads `+edge`. Anyone standing in
+        // the zone who is on neither side of this particular exchange has no
+        // differential to weigh and reads 0.
+        const breaking = [...left, ...right].filter(t => {
+            if (!isActive(t)) return false;
+            const perceived = attackers.includes(t) ? -edge : defenders.includes(t) ? edge : 0;
+            return wantsToRetreat(ctx, t, perceived, rounds, attackers.includes(t) ? target : lead);
+        });
         if (breaking.length > 0) {
             breaking.forEach(t => forceStance(t, 'Evasive'));
             ctx.logEvent(
@@ -1035,8 +1072,14 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
             if (attacker.health <= 0) { strikeDown(ctx, attacker, target, bestWeapon(target)); continue; }
         }
 
-        const breaking = standing.filter(t =>
-            isActive(t) && wantsToRetreat(ctx, t, 1, rounds, t.id === attacker.id ? target : attacker));
+        // §1.3: same convention as the pack brawl. The two who actually traded
+        // blows weigh the differential they just felt; a bystander scattering
+        // out of the melee was not in a fight and has none to weigh.
+        const breaking = standing.filter(t => {
+            if (!isActive(t)) return false;
+            const perceived = t.id === attacker.id ? -edge : t.id === target.id ? edge : 0;
+            return wantsToRetreat(ctx, t, perceived, rounds, t.id === attacker.id ? target : attacker);
+        });
         if (breaking.length > 0) {
             breaking.forEach(t => {
                 forceStance(t, 'Evasive');

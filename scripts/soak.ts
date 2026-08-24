@@ -276,7 +276,11 @@ for (let i = 0; i < 400; i++) {
     if (/is put out of the group/.test(l.text)) expulsions++;
     if (/takes the .* job off them|account for it in front of everyone/.test(l.text)) hearings++;
     if (/never once broke it/.test(l.text)) trucesOutlived++;
-    if (/the agreement that held them apart was/.test(l.text)) brokeredHeld++;
+    // §1.4: all three beats that pay a broker. This matcher used to name only
+    // the LAPSE line, which is why the counter read 1 across 400 runs even
+    // after the other endings started crediting the broker — the metric was
+    // measuring one ending, not the mechanic.
+    if (/the agreement that held them apart was|and they are still holding|never got them to break the agreement/.test(l.text)) brokeredHeld++;
     if (/have done this before/.test(l.text)) feuds++;
     if (/not one of them has a friend in it/.test(l.text)) freeForAlls++;
     if (/walks the other way|there is no pack this year/.test(l.text)) careerDefections++;
@@ -663,7 +667,16 @@ console.log(`psychology: fear entries=${fearFelt} peakProficiency=${bestProficie
 console.log(`intentions: objectives formed=${objectivesFormed}`);
 console.log(`social: exoticBetrayals=${exoticBetrayals} merges=${merges} leaderChanges=${leadershipChanges} feuds=${feuds} freeForAlls=${freeForAlls}`);
 console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDefections=${careerDefections} cacheContributions=${cacheContributions}`);
+// §1.4: the truce ledger has to close. renew + lapse + turn + break + held
+// only ever accounted for ~40% of the truces struck; the missing majority is
+// `trucesOutlived` — a truce ended by one party dying — which was a real,
+// logged, achievement-granting ending that no counter here named, so the
+// mechanic read as "251 formed, 102 resolved, 149 vanished".
+const truceEndings = trucesRenewed + trucesLapsed + trucesTurned + trucesBroken + trucesOutlived;
 console.log(`truces2: outlived=${trucesOutlived} brokeredHeld=${brokeredHeld}`);
+console.log(`truce ledger: struck=${trucesStruck} accountedEndings=${truceEndings} `
+  + `(renewed=${trucesRenewed} lapsed=${trucesLapsed} turned=${trucesTurned} broken=${trucesBroken} outlivedByDeath=${trucesOutlived}) `
+  + `stillStandingAtEnd=${trucesStruck - truceEndings}`);
 console.log(`politics: factionActions=${factionActions} expulsions=${expulsions} hearings=${hearings}`);
 console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} paidInInformation=${tributesPaidInformation} truces=${trucesStruck} trucesHeld=${trucesHeld} trucesBroken=${trucesBroken} trucesRenewed=${trucesRenewed} trucesLapsed=${trucesLapsed} trucesTurned=${trucesTurned} soloDepartures=${soloDepartures} schisms=${schisms}`);
 console.log(`bonds: debtsRepaid=${debtsRepaid} charterBreaches=${charterBreaches} performed=${performedBonds} districtPairs=${districtBonds}`);
