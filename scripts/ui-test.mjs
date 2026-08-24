@@ -70,8 +70,10 @@ await step('locked arenas are shown but not selectable', async () => {
   if (!(await starter.first().isEnabled())) throw new Error('a starter arena was not selectable');
 });
 
-await step('vanilla games toggle is settable', async () => {
-  const toggle = page.getByText(/^Vanilla Games$/);
+// §2.1: promoted out of the advanced list and renamed — it is the single most
+// important flag for anyone trying to understand what a slider does.
+await step('plain rules toggle is settable', async () => {
+  const toggle = page.getByText(/^Plain Rules — your sliders, nothing else$/);
   await toggle.click();
   await page.waitForTimeout(100);
   await toggle.click();

@@ -1,4 +1,5 @@
 import { Tribute, attr } from '../models/types';
+import { forceStance } from './stance';
 import { MOTIVES, RESOLVE } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { ensureMemory, cyclesSinceContact } from './memory';
@@ -173,7 +174,7 @@ export function resolveBreakdowns(ctx: SimContext) {
         const armed = t.inventory.some(i => i.type === 'weapon');
         if (hostile && armed && ctx.rng.chance(RESOLVE.surrenderChance)) {
             t.inventory = t.inventory.filter(i => i.type !== 'weapon');
-            t.stance = 'Defensive';
+            forceStance(t, 'Defensive');
             t.stanceHeld = 0;
             ctx.logEvent(
                 `${t.name} looks at ${hostile.name} across ${t.zone}, and puts everything they are carrying that can cut on the ground between them. Whatever happens next, they are done doing it armed.`,
@@ -201,7 +202,7 @@ export function resolveBreakdowns(ctx: SimContext) {
         if (!isEvasiveStance(t.stance) && ctx.rng.chance(0.5)) {
             // Walking into the open. Not a death wish exactly — an end to
             // caring which way it goes.
-            t.stance = 'Aggressive';
+            forceStance(t, 'Aggressive');
             t.stanceHeld = 0;
             adjustResolve(t, RESOLVE.breakdownRebound);
             ctx.logEvent(
@@ -219,7 +220,7 @@ export function resolveBreakdowns(ctx: SimContext) {
         // asymmetry is what makes the bottom of the scale reachable at all: a
         // rebound on every breakdown put a floor under resolve well above the
         // point where a tribute could ever make the last choice.
-        t.stance = 'Defensive';
+        forceStance(t, 'Defensive');
         t.stanceHeld = 0;
         t.objective = { kind: 'hold', zone: t.zone, expires: (ctx.state.cycle ?? 0) + 2 };
         adjustResolve(t, -RESOLVE.sittingDownPenalty);

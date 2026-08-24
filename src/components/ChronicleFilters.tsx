@@ -54,13 +54,29 @@ export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: 
                         <option key={t.id} value={t.id}>{t.name} (D{t.district}){t.status === 'dead' ? ' †' : ''}</option>
                     ))}
                 </select>
+                {/* §2.2: the pair mode. 'Both' answers the question a feud or a
+                    romance actually creates — show me every line these two are
+                    in together — which the union-only pair filter could not. */}
+                <select
+                    value={f.filterPairMode}
+                    onChange={e => setChronicle({ filterPairMode: e.target.value as 'either' | 'both' })}
+                    className="field text-xs w-auto"
+                    aria-label="Combine the two tribute filters with either or both"
+                    disabled={!f.filterTributeId || !f.filterTributeId2}
+                    title={!f.filterTributeId || !f.filterTributeId2
+                        ? 'Pick two tributes to choose how they combine'
+                        : 'Either: lines involving one or the other. Both: only lines they are in together.'}
+                >
+                    <option value="either">…or</option>
+                    <option value="both">…and</option>
+                </select>
                 <select
                     value={f.filterTributeId2 ?? ''}
                     onChange={e => setChronicle({ filterTributeId2: e.target.value || null })}
                     className="field text-xs w-auto"
-                    aria-label="Or a second tribute — events involving either are shown"
+                    aria-label="A second tribute — combined with the first by the and/or control"
                 >
-                    <option value="">…or anyone</option>
+                    <option value="">…anyone</option>
                     {roster.map(t => (
                         <option key={t.id} value={t.id}>{t.name} (D{t.district}){t.status === 'dead' ? ' †' : ''}</option>
                     ))}

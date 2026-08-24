@@ -12,6 +12,8 @@ import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
 import { SIGNATURE_BLURBS } from '../data/signatureBlurbs';
 import { readStoredConfig, writeStoredConfig } from '../utils/prefsStorage';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
+import { CLIMATE_LABELS, LAW_LABELS, lawsOf, lengthEstimate, terrainMix } from '../data/arenaBriefing';
+import { ARENA_MUTTS } from '../data/mutts';
 
 function randomSeed() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -53,6 +55,35 @@ const PRESETS: Array<{ name: string; blurb: string; config: PresetConfig }> = [
     },
 ];
 
+/**
+ * §2.1: the diff between the live config and a preset, in words.
+ *
+ * Presets were four unlabelled buttons: the only way to find out what one did
+ * was to click it and watch the sliders jump, which also destroyed whatever the
+ * player had set up. Showing the change first makes them a choice.
+ */
+const PRESET_FIELD_LABELS: Record<(typeof PRESET_KEYS)[number], string> = {
+    districtCount: 'districts',
+    hazardRate: 'hazards',
+    betrayalRate: 'betrayal',
+    sponsorGenerosity: 'sponsors',
+    enableFeast: 'the feast',
+    enableSanity: 'sanity',
+};
+
+function presetDelta(current: GameConfig, preset: PresetConfig): string[] {
+    const out: string[] = [];
+    PRESET_KEYS.forEach(k => {
+        const from = current[k];
+        const to = preset[k];
+        if (from === to) return;
+        const label = PRESET_FIELD_LABELS[k];
+        if (typeof to === 'boolean') out.push(`${to ? 'enables' : 'disables'} ${label}`);
+        else out.push(`${label} ${from} → ${to}`);
+    });
+    return out.length > 0 ? out : ['no change'];
+}
+
 function ConfigSlider({ label, hint, value, min, max, step, format, onChange }: {
     label: string, hint?: string, value: number, min: number, max: number, step: number,
     format: (v: number) => string, onChange: (v: number) => void
@@ -73,6 +104,49 @@ function ConfigSlider({ label, hint, value, min, max, step, format, onChange }: 
                 className="w-full accent-[var(--red)] cursor-pointer"
             />
             {hint && <p className="text-[10px] text-[var(--color-ink-500)]">{hint}</p>}
+        </div>
+    );
+}
+
+/**
+ * §2.1: everything about an arena a player is entitled to know before they
+ * commit to it. Rendered under the selected entry in the picker.
+ *
+ * The sealed draw deliberately has none of this — the whole point of that entry
+ * is that nothing about the arena is knowable until the tributes are on the
+ * plates — so it returns null rather than briefing an arena it does not have.
+ */
+function ArenaBriefing({ arenaId }: { arenaId: string }) {
+    const arena = ARENAS.find(a => a.id === arenaId);
+    if (!arena) return null;
+    const laws = lawsOf(arena);
+    const mutts = ARENA_MUTTS[arena.id] ?? [];
+    const climate = CLIMATE_LABELS[arena.id];
+    const row = (label: string, value: React.ReactNode) => (
+        <div className="flex gap-3 text-[11px]">
+            <span className="eyebrow flex-none w-20 pt-px">{label}</span>
+            <span className="text-[var(--color-ink-200)] min-w-0">{value}</span>
+        </div>
+    );
+    return (
+        <div className="panel-flush p-3 mt-3 space-y-1.5 bg-[var(--paper-flush)]">
+            {row('Ground', `${arena.zones.length} sectors — ${terrainMix(arena)}`)}
+            {climate && row('Climate', climate)}
+            {row('Laws', laws.length === 0
+                ? 'None. The Games run on the standard rules.'
+                : (
+                    <span>
+                        {laws.map(id => (
+                            <span key={id} className="block">
+                                <strong className="text-[var(--ink)]">{LAW_LABELS[id].name}</strong>
+                                {' — '}{LAW_LABELS[id].detail}
+                                {(id === 'sponsorsFixedZone' || id === 'noWaterExceptZone') && arena.lawZone
+                                    ? ` (${arena.lawZone})` : ''}
+                            </span>
+                        ))}
+                    </span>
+                ))}
+            {mutts.length > 0 && row('Mutts', mutts.map(m => m.name).join(', '))}
         </div>
     );
 }
@@ -232,6 +306,45 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     })()}
                 </div>
 
+                {/* §2.1: "Plain Rules" — promoted out of the advanced list.
+                    The temperament draw, the wildcard calendar and the Quell are
+                    the whole reason two runs on identical sliders are not the same
+                    run, so this is the single most important flag for anybody
+                    trying to understand the game, and it was a checkbox in a
+                    stack of checkboxes. */}
+                <div className="p-5">
+                    <label
+                        className={`flex items-start gap-3 cursor-pointer group p-4 border-2 transition-colors ${
+                            config.vanillaRules
+                                ? 'border-[var(--red)] bg-[var(--paper-flush)]'
+                                : 'border-[var(--line)] hover:bg-[var(--paper-flush)]'
+                        }`}
+                    >
+                        <div className={`w-5 h-5 border-2 flex items-center justify-center transition-colors flex-none mt-0.5 ${
+                            config.vanillaRules ? 'bg-[var(--red)] border-[var(--ink)]' : 'bg-[var(--paper-panel)] border-[var(--line)]'
+                        }`}>
+                            {config.vanillaRules && <div className="w-2 h-2 bg-white" />}
+                        </div>
+                        <div>
+                            <div className="font-black text-[var(--ink)] text-sm uppercase">
+                                Plain Rules — your sliders, nothing else
+                            </div>
+                            <div className="text-xs text-[var(--color-ink-500)] mt-0.5">
+                                Off, the Capitol adds a temperament to your seed, a wildcard calendar and a chance of a
+                                Quarter Quell — which is why two runs on identical settings are never the same year.
+                                On, none of that happens: the Games run on exactly what you set here, and a slider you
+                                move is the only thing that changed.
+                            </div>
+                        </div>
+                        <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={!!config.vanillaRules}
+                            onChange={(e) => setConfig(c => ({ ...c, vanillaRules: e.target.checked }))}
+                        />
+                    </label>
+                </div>
+
                 <div className="p-5 space-y-1">
                     <span className="eyebrow">Select arena</span>
                     <div className="mt-2">
@@ -282,6 +395,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                             ⚙ {SIGNATURE_BLURBS[a.id]}
                                         </div>
                                     )}
+                                    {/* §2.1: the briefing. Picking an arena used to be a
+                                        choice made blind — no zone graph, no law, no
+                                        climate, no mutt kit until the bloodbath — and none
+                                        of that is secret once the run starts. */}
+                                    {selected && unlocked && <ArenaBriefing arenaId={a.id} />}
                                     </div>
                                     {selected ? (
                                         <span className="flex-none text-[var(--red)] font-mono text-[11px] font-extrabold uppercase tracking-wider">Selected</span>
@@ -356,33 +474,6 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     </label>
                 </div>
 
-                {/* §Special requests: "Vanilla Games". The temperament draw, the
-                    wildcard calendar and the Quell are the reason two runs on the
-                    same sliders are not the same run — and the reason a player
-                    cannot test a slider. This turns all three off. */}
-                <div className="p-5 pt-0">
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                        <div className={`w-5 h-5 border-2 flex items-center justify-center transition-colors flex-none ${
-                            config.vanillaRules ? 'bg-[var(--red)] border-[var(--ink)]' : 'bg-[var(--paper-panel)] border-[var(--line)]'
-                        }`}>
-                            {config.vanillaRules && <div className="w-2 h-2 bg-white" />}
-                        </div>
-                        <div>
-                            <div className="font-black text-[var(--ink)] text-sm uppercase">Vanilla Games</div>
-                            <div className="text-xs text-[var(--color-ink-500)]">
-                                No temperament, no wildcard calendar, no Quarter Quell. The Games run on exactly the
-                                settings above and nothing else — the plainest possible year, and the only way to see
-                                what a slider actually does.
-                            </div>
-                        </div>
-                        <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={!!config.vanillaRules}
-                            onChange={(e) => setConfig(c => ({ ...c, vanillaRules: e.target.checked }))}
-                        />
-                    </label>
-                </div>
 
                 {/* §6.2: the standing patronage — a persistent sink for Capitol
                     Coins. Survives across runs via the Panem records. */}
@@ -454,6 +545,25 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                         );
                                     })}
                                 </div>
+                                {/* §2.1: what each preset would actually change. Four
+                                    presets existed and a player could not see which
+                                    sliders any of them moved without clicking one and
+                                    watching, or diffing them by hand. */}
+                                <div className="space-y-1 pt-1">
+                                    {PRESETS.map(p => {
+                                        const deltas = presetDelta(config, p.config);
+                                        const active = PRESET_KEYS.every(k => config[k] === p.config[k]);
+                                        return (
+                                            <div key={p.name} className="text-[10px] leading-snug">
+                                                <span className="font-mono font-extrabold uppercase text-[var(--ink)]">{p.name}</span>
+                                                <span className="text-[var(--color-ink-500)]">
+                                                    {' — '}
+                                                    {active ? 'exactly what is set now.' : deltas.join(', ') + '.'}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                             <ConfigSlider
                                 label="Districts"
@@ -513,6 +623,17 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* §2.1: the simulation knows its own distribution — a 400-run soak
+                puts the mean around seven days with a two-day spread — and the
+                player was told nothing about how long the thing they were about
+                to start would run. Deliberately a range: a forecast, not a
+                promise. The cast itself can still be re-drawn on the reaping
+                screen without losing the arena. */}
+            <div className="text-center text-[11px] text-[var(--color-ink-500)] -mb-4">
+                {config.districtCount * 2} tributes · this configuration {lengthEstimate(config.districtCount, config.hazardRate, config.betrayalRate)}
+                {' · '}you can re-draw the cast at the reaping without losing the arena
             </div>
 
             <button onClick={start} className="btn btn-primary w-full py-4 text-sm">

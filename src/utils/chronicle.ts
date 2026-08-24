@@ -53,7 +53,7 @@ export function chronicleMarkdown(state: GameState, filter: boolean | ChronicleF
  * unreadable as a plain-text file. Plain text drops every marker; BBCode is
  * what the fan communities this genre lives in use.
  */
-export type ChronicleFormat = 'markdown' | 'text' | 'bbcode';
+export type ChronicleFormat = 'markdown' | 'text' | 'bbcode' | 'prose';
 
 export function chronicleText(
     state: GameState,
@@ -61,6 +61,7 @@ export function chronicleText(
     format: ChronicleFormat = 'markdown',
 ): string {
     if (format === 'markdown') return chronicleMarkdown(state, filter);
+    if (format === 'prose') return chronicleProse(state, filter);
 
     const f: ChronicleFilter = typeof filter === 'boolean' ? { importantOnly: filter } : filter;
     const logs = state.log.filter(l =>
@@ -99,8 +100,67 @@ export function chronicleText(
     return lines.join('\n');
 }
 
-const EXTENSION: Record<ChronicleFormat, string> = { markdown: 'md', text: 'txt', bbcode: 'bbcode.txt' };
-const MIME: Record<ChronicleFormat, string> = { markdown: 'text/markdown', text: 'text/plain', bbcode: 'text/plain' };
+/**
+ * §2.3: the chronicle as something a person would actually read.
+ *
+ * The three existing formats are all *transcripts* — a bulleted or tagged dump
+ * of every line, with the phase headers as scaffolding. That is the right shape
+ * for an archive and the wrong shape for the thing people actually share about
+ * a simulator like this, which is a story. Prose keeps the day structure as
+ * headings, drops the bullets and the markers, and joins each phase's lines
+ * into paragraphs — the engine's flavour text is written in whole sentences, so
+ * it reads as continuous narration the moment it stops being a list.
+ */
+export function chronicleProse(state: GameState, filter: boolean | ChronicleFilter = false): string {
+    const f: ChronicleFilter = typeof filter === 'boolean' ? { importantOnly: filter } : filter;
+    const logs = state.log.filter(l =>
+        (!f.importantOnly || l.important)
+        && (!f.tributeId || l.tributesInvolved.includes(f.tributeId)));
+    const winner = state.tributes.find(t => t.status === 'alive');
+    const subject = f.tributeId ? state.tributes.find(t => t.id === f.tributeId) : undefined;
+
+    const out: string[] = [];
+    out.push(subject
+        ? `${subject.name} of District ${subject.district}, in the ${state.arena.name}.`
+        : `The ${state.arena.name} Games.`);
+    out.push('');
+    out.push(
+        `${state.tributes.length} tributes went in. `
+        + (winner
+            ? `${winner.name} of District ${winner.district} came out, ${state.day} days later.`
+            : state.phase === 'ended'
+                ? `Nobody came out. The arena took all ${state.tributes.length} of them across ${state.day} days.`
+                : 'It has not finished yet.')
+        + ` (Seed ${state.seed} — the same seed replays the same Games.)`
+    );
+
+    let currentKey = '';
+    let paragraph: string[] = [];
+    const flush = () => {
+        if (paragraph.length === 0) return;
+        out.push('', paragraph.join(' '));
+        paragraph = [];
+    };
+    logs.forEach(log => {
+        const key = log.day === 0
+            ? log.phase.charAt(0).toUpperCase() + log.phase.slice(1)
+            : `Day ${log.day}, ${log.phase}`;
+        if (key !== currentKey) {
+            flush();
+            currentKey = key;
+            out.push('', key, '-'.repeat(key.length));
+        }
+        // A blank line every few sentences: one wall of text is no more
+        // readable than a wall of bullets.
+        paragraph.push(log.text);
+        if (paragraph.length >= 4) flush();
+    });
+    flush();
+    return out.join('\n');
+}
+
+const EXTENSION: Record<ChronicleFormat, string> = { markdown: 'md', text: 'txt', bbcode: 'bbcode.txt', prose: 'prose.txt' };
+const MIME: Record<ChronicleFormat, string> = { markdown: 'text/markdown', text: 'text/plain', bbcode: 'text/plain', prose: 'text/plain' };
 
 export function downloadChronicleAs(
     state: GameState,

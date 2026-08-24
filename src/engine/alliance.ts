@@ -1,9 +1,10 @@
 import { Alliance, GameState, Item, Tribute } from '../models/types';
-import { ALLIANCES } from '../data/balance';
+import { ALLIANCES, ROMANCE } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
-import { SimContext } from './context';
+import { SimContext, getAlive } from './context';
 import { cycleOf } from './memory';
 import { adjustRel, getRel } from './relationships';
+import { pactOath, pactStrictness, rollPact } from './alliancePact';
 
 /**
  * Alliance structure.
@@ -166,13 +167,9 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
     // recruitment and pact expiry; falling in love should not read like a
     // Career pack signing articles.
     const isLoversBond = id.startsWith('lovers-');
-    const roll = ctx.rng.nextFloat();
-    const pact: Alliance['pact'] = isLoversBond ? 'no-pact'
-        : roll < ALLIANCES.pactFinalEightChance
-            ? 'until-the-final-eight'
-            : roll < ALLIANCES.pactFinalEightChance + ALLIANCES.pactToTheEndChance
-                ? 'to-the-end'
-                : 'no-pact';
+    // §4.1: rolled against the *live* field, so a small-field run cannot swear
+    // to a deadline it is already past.
+    const pact: Alliance['pact'] = isLoversBond ? { kind: 'no-pact' } : rollPact(ctx.rng, ctx.state, members);
 
     const leader = pickLeader(members);
     const record: Alliance = {
@@ -186,6 +183,8 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         campZone: leader.zone,
         sharedCache: [],
         pact,
+        pactSwornField: getAlive(ctx.state).length,
+        cacheContributions: {},
         charter: isLoversBond ? [] : rollCharter(ctx.rng, members),
         // §4.4: lovers are not an organisation and do not get assigned jobs.
         roles: isLoversBond ? undefined : assignRoles(members, leader),
@@ -209,11 +208,10 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         }
     }
 
-    if (pact !== 'no-pact') {
+    const oath = pactOath(pact, targetId => ctx.state.tributes.find(t => t.id === targetId)?.name ?? 'them');
+    if (oath) {
         ctx.logEvent(
-            pact === 'until-the-final-eight'
-                ? `${members.map(m => m.name).join(' and ')} shake on it: they run together until the final eight, and after that all bets are off.`
-                : `${members.map(m => m.name).join(' and ')} swear to see it through to the end, whatever the end turns out to look like.`,
+            `${members.map(m => m.name).join(' and ')} shake on it: they ${oath}.`,
             members.map(m => m.id),
             { important: true, category: 'alliance' }
         );
@@ -235,7 +233,6 @@ export function mergeAllianceRecords(ctx: SimContext, keepId: string, absorbedId
     delete records[absorbedId];
     if (!keep) return registerAlliance(ctx, keepId, members);
 
-    const strictness: Record<Alliance['pact'], number> = { 'no-pact': 0, 'until-the-final-eight': 1, 'to-the-end': 2 };
     keep.memberIds = members.map(m => m.id);
     const merged = pickLeader(members);
     keep.leaderId = merged.id;
@@ -245,7 +242,12 @@ export function mergeAllianceRecords(ctx: SimContext, keepId: string, absorbedId
     if (absorbed) {
         keep.sharedCache = [...keep.sharedCache, ...absorbed.sharedCache].slice(0, ALLIANCES.cacheMaxSize);
         keep.formedCycle = Math.min(keep.formedCycle, absorbed.formedCycle);
-        if (strictness[absorbed.pact] > strictness[keep.pact]) keep.pact = absorbed.pact;
+        if (pactStrictness(absorbed.pact) > pactStrictness(keep.pact)) {
+            keep.pact = absorbed.pact;
+            keep.pactSwornField = absorbed.pactSwornField;
+        }
+        // §4.2: a merge pools two ledgers of who fed whom.
+        keep.cacheContributions = { ...(absorbed.cacheContributions ?? {}), ...(keep.cacheContributions ?? {}) };
     }
     return keep;
 }
@@ -352,6 +354,10 @@ export function contributeToCache(ctx: SimContext, record: Alliance, members: Tr
         if (!spare) return;
         m.inventory.splice(m.inventory.indexOf(spare), 1);
         record.sharedCache.push(spare);
+        // §4.2: the cache is a political object. Who fed the group is a claim
+        // when it splits, and a reason for the quartermaster to play favourites.
+        record.cacheContributions = record.cacheContributions ?? {};
+        record.cacheContributions[m.id] = (record.cacheContributions[m.id] ?? 0) + spare.value;
         ctx.logEvent(
             `${m.name} adds their ${spare.name} to the group's stash in ${record.campZone ?? m.zone}.`,
             [m.id],
@@ -370,4 +376,48 @@ export function emptyCache(record: Alliance): Item[] {
     const spoils = record.sharedCache;
     record.sharedCache = [];
     return spoils;
+}
+
+/**
+ * §4.3: a performed bond is a claim, and claims can be tested.
+ *
+ * The Star-Crossed-as-strategy idea only becomes a strategy if it can fail.
+ * Before this, a performer collected the sponsor benefit of a devotion they did
+ * not feel with no exposure at all — the act was invisible to everyone in the
+ * arena and everyone in the Capitol, forever. Two things can now catch it: a
+ * sharp tribute standing close enough to watch them not mean it, and the
+ * cameras themselves once the pair are excited enough to be worth watching
+ * closely. Both are far more dangerous to the performer than being alone.
+ */
+export function sniffPerformances(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    alive.forEach(performer => {
+        const shown = Object.keys(performer.displayedRegard ?? {});
+        if (shown.length === 0) return;
+        shown.forEach(targetId => {
+            const target = alive.find(o => o.id === targetId);
+            if (!target) return;
+            const observers = alive.filter(o =>
+                o.id !== performer.id && o.zone === performer.zone
+                && o.attributes.intelligence >= ROMANCE.performedSniffIntelligence);
+            const crowdWatching = performer.excitementRating >= ROMANCE.performedExposedExcitement;
+            if (observers.length === 0 && !crowdWatching) return;
+            if (!ctx.rng.chance(ROMANCE.performedSniffChance)) return;
+
+            const witness = observers[0];
+            // The Capitol paid for a love story and is being sold a rehearsal.
+            performer.sponsorTrust = Math.max(0, performer.sponsorTrust - ROMANCE.performedExposedTrust);
+            if (performer.displayedRegard) delete performer.displayedRegard[targetId];
+            adjustRel(target, performer.id, -ROMANCE.performedExposedRegard);
+            ctx.logEvent(
+                witness
+                    ? `${witness.name} watches ${performer.name} say it again and, this time, hears the rehearsal in it. `
+                      + `Whatever is between ${performer.name} and ${target.name}, one half of it is a performance — and now three people know.`
+                    : `The cameras are close enough on ${performer.name} to catch the half-second before the line lands. `
+                      + `Panem sees it at the same moment ${target.name} does.`,
+                witness ? [performer.id, target.id, witness.id] : [performer.id, target.id],
+                { important: true, category: 'betrayal' }
+            );
+        });
+    });
 }

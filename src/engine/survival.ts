@@ -18,6 +18,8 @@ import { craftOf } from '../data/districts';
 import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
 import { earnTrait } from './earnedTraits';
+import { SLEEP } from '../data/balance';
+import { bodyLabel, driftCondition, hungerDrainMultiplier, starvationBuffer, waterNeedMultiplier } from './physique';
 import { arenaHasLaw, wildcardIs } from './gamesProfile';
 import { isEvasiveStance } from '../data/stances';
 
@@ -109,6 +111,11 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     const stamina = (attr(t, 'endurance') - 5) * VITALS.endurancePerPoint;
     fatigue += fatigue > 0 ? -stamina : -stamina * VITALS.enduranceRecoveryShare;
 
+    // §3.1: the body itself. A bigger skeleton burns more whatever is wrapped
+    // around it, and soft tissue is water the arena keeps asking for back.
+    hunger *= hungerDrainMultiplier(t);
+    thirst *= waterNeedMultiplier(t);
+
     // Traits, as one table read rather than a growing chain of includes().
     hunger += traitMod(t, 'hungerDrain');
     thirst += traitMod(t, 'thirstDrain');
@@ -184,7 +191,10 @@ function reliefFor(t: Tribute, cause: 'hunger' | 'thirst' | 'fatigue' | 'bleedin
 
 /** Untreated wounds and empty canteens, each attributed to what caused them. */
 function applyStatusDamage(ctx: SimContext, t: Tribute) {
-    if (t.vitals.hunger > VITALS.starvingThreshold) {
+    // §3.1: condition is a starvation buffer. A Padded tribute goes hungry for
+    // longer before the arena starts taking health for it; a Wasted one has
+    // spent that buffer already, which is precisely when they most need it.
+    if (t.vitals.hunger > VITALS.starvingThreshold + starvationBuffer(t)) {
         if (applyDamage(ctx, t, VITALS.starvingDamage, { cause: 'Died of starvation', kind: 'status' })) {
             reliefFor(t, 'hunger');
         }
@@ -535,8 +545,63 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
         }
     }
 
+    // §3.4: sleep debt, as distinct from being tired right now.
+    //
+    // Fatigue is a gauge that empties every night; sleep owed is a ledger that
+    // does not. Insomniac is a good trait and there was no underlying system
+    // for it to be an extreme of — a tribute who has not properly slept in five
+    // days is a specific and well-documented kind of ruined, and none of it was
+    // representable. Debt accrues on nights spent short of real rest and is
+    // paid down only by a night that is actually restful; past the threshold it
+    // takes sanity rather than health, because that is what it does.
+    const restedThisCycle = ctx.state.phase === 'night'
+        && t.vitals.fatigue < SLEEP.restedFatigue
+        && !t.injuries.bleeding
+        && (hasCamp(ctx, t, 'shelter') || t.stance === 'Fortified');
+    if (ctx.state.phase === 'night') {
+        t.sleepDebt = Math.max(0, (t.sleepDebt ?? 0)
+            + (restedThisCycle ? -SLEEP.repaidPerGoodNight : SLEEP.accruedPerBadNight)
+            + traitMod(t, 'fatigueNight') * SLEEP.debtPerFatigueTrait);
+    }
+    if ((t.sleepDebt ?? 0) >= SLEEP.deprivedAt) {
+        t.vitals.sanity = Math.max(0, t.vitals.sanity - SLEEP.sanityPerCycle);
+        if (ctx.rng.chance(SLEEP.lineChance)) {
+            ctx.logEvent(
+                `${t.name} has not properly slept in days. Things at the edge of ${t.zone} keep moving when they are not looked at directly, `
+                + 'and they have stopped being certain which of them are real.',
+                [t.id],
+                { category: 'sanity' }
+            );
+        }
+    }
+
+    // §3.1: the body over the run. Frame never moves; condition does, and it
+    // is the one physical arc a player can actually watch happen.
+    const drifted = driftCondition(t);
+    if (drifted === 'lost') {
+        ctx.logEvent(
+            `${t.name} is visibly less of themselves than they were — ${bodyLabel(t)} now, and the cold is going to find that out first.`,
+            [t.id],
+            { category: 'survival' }
+        );
+    } else if (drifted === 'gained') {
+        ctx.logEvent(
+            `Days of actually eating have put something back on ${t.name}. ${bodyLabel(t)[0].toUpperCase()}${bodyLabel(t).slice(1)}, and moving like it.`,
+            [t.id],
+            { category: 'survival' }
+        );
+    }
+
     // Sanity residue: the bottom band abandons things, and the first visit
     // down there leaves a permanent mark.
+    // §1.3: the scar, as an ongoing state rather than a one-off deduction.
+    // Whatever they are from here on is capped below where they started, and
+    // the nights cost more than they used to.
+    if (t.sanityScarred) {
+        t.vitals.sanity = Math.min(t.vitals.sanity, SANITY_BANDS.scarredSanityCeiling);
+        if (ctx.state.phase === 'night') t.vitals.sanity = Math.max(0, t.vitals.sanity - SANITY_BANDS.scarredNightSanity);
+    }
+
     const band = sanityBandOf(t);
     if (band === 'gone') {
         if (!t.sanityScarred) {

@@ -63,6 +63,7 @@ function ScreenFallback() {
 import { CommandPalette } from './components/CommandPalette';
 import { TributeModal } from './components/TributeModal';
 import { useStore } from './store/createStore';
+import { prefsStore } from './store/prefsStore';
 import { DEFAULT_GAME_CONFIG } from './data/constants';
 
 export default function App() {
@@ -80,6 +81,14 @@ export default function App() {
     : null;
   const isReplayedRun = useStore(gameStore, s => s.isReplayedRun);
   const [showSettings, setShowSettings] = React.useState(false);
+
+  // §2.4: the in-app reduced-motion preference, mirrored onto <html> so the
+  // stylesheet's own reduced-motion rules apply to it as well as to the OS
+  // media query — one set of declarations, two ways to reach them.
+  const reduceMotion = useStore(prefsStore, p => p.reduceMotion);
+  useEffect(() => {
+    document.documentElement.dataset.reduceMotion = reduceMotion ? 'true' : 'false';
+  }, [reduceMotion]);
 
   // Replay sharing: ?seed=...&arena=...&districtCount=... boots straight into that exact run.
   // The router is started from the same effect, and only after this has run:

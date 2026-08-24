@@ -519,6 +519,23 @@ export const PROFICIENCY = {
      */
     persuasionRenewWeight: 0.06,
     persuasionRestraintWeight: 0.05,
+    /**
+     * §3.3: teaching. An alliance with a medic and a member sitting on
+     * medicine:5 could not transfer a single point of it.
+     */
+    teachMinLevel: 3,
+    teachMinGap: 1.5,
+    teachChance: 0.12,
+    teachGain: 0.35,
+    teachRespectWeight: 2,
+    /**
+     * §3.3: skills can be lost. A shattered arm took a combat penalty and left
+     * every point of melee proficiency intact, so a healed arm restored a
+     * fighter exactly as they were.
+     */
+    skillLossGrade: 3,
+    skillLossPerCycle: 0.25,
+    skillLossFloor: 0.5,
 } as const;
 
 /**
@@ -681,6 +698,14 @@ export const SANITY_BANDS = {
     /** Crossing the bottom band leaves a permanent mark (once per run). */
     scarStealthLoss: 1,
     /**
+     * §1.3: the mark is permanent in the one way that matters — a tribute who
+     * has been all the way down never fully comes back up. Sanity is capped
+     * here for the rest of the run, so 'steady' is somewhere they used to live.
+     */
+    scarredSanityCeiling: 78,
+    /** ...and the nights are worse, permanently. */
+    scarredNightSanity: 2,
+    /**
      * §11.4: low sanity makes noise. A tribute far enough gone (or already
      * carrying stealth damage from breakdowns) can blow their own cover at
      * night — a scream, a dropped pot, a fire fed too high — and everyone
@@ -758,8 +783,64 @@ export const PHYSIQUE = {
     /** Melee power per cm of reach advantage over the neutral height. */
     reachPerCm: 0.06,
     maxReachBonus: 2.5,
-    /** Mass rating per build, used for knockdowns, grappling and cold. */
+    /**
+     * §3.1: mass is now the sum of two ratings rather than one table lookup.
+     * Frame is the skeleton (fixed); condition is the soft tissue (mutable).
+     * `massByBuild` remains for saves written before the split, where only the
+     * legacy single-axis build survives.
+     */
     massByBuild: { Frail: -2, Slight: -1, Average: 0, Athletic: 1, Stocky: 2, Muscular: 2.5 },
+    massByFrame: { Narrow: -1.6, Spare: -0.8, Even: 0, Broad: 0.9, Heavy: 1.8 },
+    massByCondition: { Wasted: -1.2, Lean: -0.4, Conditioned: 0, Padded: 0.6, Bulky: 1.2 },
+    /** Frame index, for the axis reads that want an ordinal rather than a mass. */
+    frameOrder: { Narrow: 0, Spare: 1, Even: 2, Broad: 3, Heavy: 4 },
+    conditionOrder: { Wasted: 0, Lean: 1, Conditioned: 2, Padded: 3, Bulky: 4 },
+    /**
+     * §3.1: what each axis buys and costs, per step away from the middle of
+     * its scale. Frame raises reach, carry, grapple resistance and the damage
+     * floor while costing concealment, chokepoint passage, climb speed and
+     * hunger drain. Condition raises insulation, starvation buffer and injury
+     * absorption while costing agility, heat tolerance and water need.
+     */
+    framePerStep: {
+        grappleResist: 0.09,
+        damageFloor: 0.6,
+        concealment: 0.07,
+        chokepoint: 0.08,
+        climb: 0.05,
+        hungerDrain: 0.035,
+    },
+    conditionPerStep: {
+        insulation: 0.06,
+        starvationBuffer: 4,
+        injuryAbsorb: 0.025,
+        agility: 0.28,
+        heatTolerance: 0.06,
+        waterNeed: 0.03,
+    },
+    /** Reach, in cm-equivalents, from limb length rather than standing height. */
+    limbReachCm: { long: 6, even: 0, compact: -5 },
+    /** Chokepoints, burrows and climbs, per limb ratio. */
+    limbChokepoint: { long: -0.1, even: 0, compact: 0.08 },
+    limbClimb: { long: -0.05, even: 0, compact: 0.1 },
+    /**
+     * §3.1: condition drift. Pressure accumulates while past the starvation
+     * line and unwinds on a full belly; a full step of condition costs (or
+     * buys back) `conditionStepPressure` of it.
+     */
+    starvingHunger: 70,
+    fedHunger: 25,
+    conditionPressurePerStarvingCycle: 1,
+    conditionPressurePerFedCycle: 0.6,
+    conditionStepPressure: 6,
+    /** How much a frame reads as threatening across a zone, per step. */
+    visibleFramePerStep: 0.5,
+    /** ...and how little of that a hollowed-out condition takes back. */
+    visibleConditionPerStep: 0.2,
+    /** A wound on the dominant side costs this much more than the other one. */
+    dominantSideMultiplier: 1.5,
+    /** Growth spurt: a young tribute on a big frame reads as future, not present. */
+    spurtMaxAge: 14,
     /** Carry slots added per point of mass — a Frail twelve-year-old carries less. */
     capacityPerMass: 0.5,
     /** Cold resistance per point of mass. */
@@ -1280,6 +1361,54 @@ export const MOVEMENT = {
  * change their mind. These are tuned so a plan survives long enough to be
  * legible in the chronicle without outliving the situation that produced it.
  */
+/**
+ * §3.2: planning, commitment, exhaustion, dread and deception. The five pieces
+ * the individual decision layer was missing.
+ */
+/**
+ * §3.4: sleep owed, as distinct from being tired right now. Fatigue empties
+ * every night; this does not. Insomniac was an extreme of a system that did
+ * not exist.
+ */
+export const SLEEP = {
+    /** Fatigue below which a night counts as actual rest. */
+    restedFatigue: 55,
+    repaidPerGoodNight: 1.5,
+    accruedPerBadNight: 1,
+    /** Traits that wreck the night wreck the ledger faster. */
+    debtPerFatigueTrait: 0.05,
+    /** Debt at which the arena starts arriving through the edges of vision. */
+    deprivedAt: 4,
+    sanityPerCycle: 3,
+    lineChance: 0.18,
+} as const;
+
+export const PLANNING = {
+    /** Depth of the objective queue. Two is a person; three is a planner. */
+    queueDepth: 2,
+    /** Vitals at which a goal needs an errand run in front of it. */
+    prerequisiteThirst: 72,
+    prerequisiteHunger: 76,
+    /** Cycles of being torn the same way before the runner-up wins outright. */
+    snapCycles: 3,
+    /** Failed searches in one zone before the tribute stops trying it. */
+    exhaustionFailures: 3,
+    /** Tracking at which "there is nothing here" becomes "then I will set snares". */
+    exhaustionTrapSkill: 1.5,
+    /** Fear of one person that counts toward the aggregate. */
+    dreadPerTargetFloor: 25,
+    /** Share of the living field that has to frighten them for dread to max out. */
+    dreadSaturation: 0.6,
+    dreadCowedAt: 0.6,
+    /** §3.2: what it takes to lay a trail that is not where you went. */
+    falseTrailIntelligence: 6,
+    falseTrailSkill: 1.5,
+    falseTrailChance: 0.3,
+    falseTrailTraffic: 3,
+    /** Intelligence at which somebody reads the ground rather than the story. */
+    falseTrailSeeThrough: 8,
+} as const;
+
 export const OBJECTIVES = {
     /**
      * §3.3: stalking — following without engaging. Taken instead of a hunt by
@@ -1330,6 +1459,8 @@ export const OBJECTIVES = {
     /** Ground worth standing on: good forage and no bad memories. */
     holdMinResources: 0.5,
     holdMaxThreat: 0.4,
+    /** §4.3: how much a believed bond to somebody present deters a hunter. */
+    avengerDeterrent: 0.05,
 } as const;
 
 /**
@@ -1738,7 +1869,21 @@ export const ZONES = {
 } as const;
 
 /** What tributes remember, and how fast they forget it. */
+/** §1.2: thresholds for the victor's interview reading the run's own ledgers. */
+export const EPILOGUE = {
+    /** Sponsor credit earned purely by being unfindable, worth Caesar asking about. */
+    ghostTrustNotable: 12,
+} as const;
+
 export const MEMORY = {
+    /**
+     * §3.4: how badly a dissociating tribute misremembers a place. `Blank` is
+     * the share of zones whose remembered threat reads as nothing at all;
+     * `invent` is the share that read as terrible with no cause.
+     */
+    dissociationBlankShare: 0.3,
+    dissociationInventShare: 0.2,
+    dissociationInventedThreat: 4,
     /** Threat impression added to a zone by a death witnessed there. */
     deathThreat: 1.0,
     /** Threat added by a death only heard as a cannon (location known from the sky). */
@@ -1781,7 +1926,20 @@ export const STANCE = {
      * sit closer together than three did, so the margin that separated them
      * cleanly no longer does.
      */
+    /** §3.2: how far generalised dread pushes a tribute toward getting out. */
+    dreadEvasive: 3,
+    cowedAggression: 1.5,
     switchMargin: 1.1,
+    /**
+     * §1.7: how much the switch margin widens per recent stance change. The
+     * score-only hysteresis left a worst-case tribute changing stance on half
+     * of their cycles; this gives the machinery a memory of its own churn.
+     */
+    churnMarginPerSwitch: 2.2,
+    churnDecayPerCycle: 0.25,
+    churnMax: 4,
+    /** Extra cycles of hold per unit of accumulated churn. */
+    churnHoldPerSwitch: 1,
     /** Health fractions that pull a tribute toward each stance. */
     evasiveHealth: 40,
     cautiousEvasiveHealth: 55,
@@ -1796,7 +1954,13 @@ export const STANCE = {
      * to force the issue and the Gamemakers will make sure somebody does.
      */
     endgameFieldSize: 5,
-    endgameAggression: 1.4,
+    /**
+     * §1.7: a victor who never killed anybody is usually a victor the arena
+     * handed the crown to — the last few were never in the same place at the
+     * same time. The endgame push was too small to reliably close that gap, so
+     * a third of all victors finished with a clean sheet.
+     */
+    endgameAggression: 4.2,
     /** §3.2: momentum's pull toward Aggressive (was an undeclared 0.35). */
     momentumAggressionWeight: 0.25,
     /** §3.2: the reasons Defensive exists — a ward, claimed ground, a built camp. */
@@ -2015,6 +2179,9 @@ export const STANCE_MODES = {
 
 /** Relationship graph: bounds, decay, and the deltas life in the arena applies. */
 export const RELATIONSHIPS = {
+    /** §4.3: how far a third party's read on a pair can go, either way. */
+    perceivedBondMax: 100,
+    perceivedBondPerScene: 18,
     /** §4.9: two people who both loved the victim, grieving in the same
      *  place, bond over it. */
     sharedGriefBond: 6,
@@ -2128,7 +2295,23 @@ export const ROMANCE = {
      * alliance formation gained its same-zone gate: fewer organic alliances
      * means less sustained contact for the streak to build on.
      */
-    performedChance: 0.13,
+    /**
+     * §4.3: Star-Crossed-as-strategy is one of the best ideas in the social
+     * layer, and at 0.13 behind these gates it fired in roughly 5% of runs —
+     * effectively it did not ship. Raised substantially, and paired with
+     * `performedSniff*` below so the strategy carries the risk that makes it a
+     * strategy rather than free sponsor money.
+     */
+    performedChance: 0.24,
+    /** Per-cycle odds a sharp observer in the same zone reads the act. */
+    performedSniffChance: 0.22,
+    /** Intelligence at or above which a tribute can read a performance at all. */
+    performedSniffIntelligence: 7,
+    /** ...and what the crowd does about it once somebody says it out loud. */
+    performedExposedTrust: 22,
+    performedExposedRegard: 30,
+    /** Excitement above which the cameras are close enough to catch it too. */
+    performedExposedExcitement: 55,
     /**
      * Regard the smitten party needs. Deliberately below `threshold`: a
      * performed bond does not need the mutual devotion a real one does, only
@@ -2180,7 +2363,14 @@ export const ROMANCE = {
      * and performedChance 0.08) lands the combined system at ~11%, inside
      * the 10%-15% design goal.
      */
-    chancePerCycle: 0.02,
+    /**
+     * §4.3: retuned again when the performed bond was raised from 0.13 to a
+     * rate that actually ships. Genuine and performed bonds both mint the
+     * Star-Crossed trait, so they share one budget — the design goal is a
+     * 10-15% lover-run rate with a far larger *share* of it performed, not a
+     * larger total. Genuine romance gives up the room the performance takes.
+     */
+    chancePerCycle: 0.002,
     /**
      * Per-day decay on that chance. Keeps the romance rate a property of the
      * cast rather than a property of how long the Games happened to run.
@@ -2354,11 +2544,62 @@ export const ALLIANCES = {
     careerMaxOptOuts: 2,
     careerEarlyCollapseChance: 0.06,
 
-    /** Pacts, declared at formation. A scheduled split is a telegraphed betrayal. */
-    pactFinalEightChance: 0.35,
-    pactToTheEndChance: 0.25,
-    /** Field size at which an 'until-the-final-eight' pact comes due. */
+    /**
+     * §4.1: pacts, declared at formation. A scheduled split is a telegraphed
+     * betrayal, which is the point — but the deadline has to be *reachable*.
+     * `pactKindWeights` picks the shape; the field-threshold shape then rolls
+     * its number relative to the live field, so it can never be a deadline the
+     * group is already past. `finalEightSize` remains the ceremonial default
+     * for a full 24-tribute field and the anchor for the charter's
+     * split-at-eight clause.
+     */
+    pactChanceAtAll: 0.6,
+    pactKindWeights: {
+        'until-field': 8,
+        'to-the-end': 6,
+        'until-day': 3,
+        'until-event': 4,
+        'until-goal': 2,
+    },
+    /** Field thresholds a pact may name, filtered to `n <= field - pactThresholdSlack`. */
+    pactFieldThresholds: [16, 12, 10, 8, 6, 4, 2],
+    /** How far in the future a field threshold must be to be worth swearing to. */
+    pactThresholdSlack: 2,
+    /** Days a `until-day` pact runs for, before clamping to the run's length. */
+    pactDayHorizon: 7,
+    /** Health at or below which a member counts as "badly hurt" for a pact. */
+    pactHurtHealth: 35,
+    /** Field size at which the charter's split-at-eight clause comes due. */
     finalEightSize: 8,
+    /**
+     * The dissolution ceremony ("the field is down to four…") only reads as
+     * ceremony if the field actually came down. Below this much attrition
+     * since the pact was sworn, the group just quietly goes its own way.
+     */
+    pactCeremonyAttrition: 6,
+
+    /**
+     * §4.2: politics inside the group.
+     *
+     * A faction forms when two or more members' suspicion of the same third
+     * party is all above `factionSuspicion`. `factionHeat*` decides whether it
+     * ends in a coup, a walk-out, or nothing at all.
+     */
+    factionSuspicion: 14,
+    factionMinMembers: 2,
+    factionHeatPerCycle: 6,
+    factionCoupHeat: 24,
+    factionSplitHeat: 12,
+    factionCoupRegard: -14,
+    /** A second breach of the same clause by the same member is a hearing. */
+    hearingBreachCount: 2,
+    hearingExpelChance: 0.45,
+    hearingDemoteChance: 0.3,
+    expulsionRegardCost: 18,
+    /** A member who fed the group has a claim on the cache when it splits. */
+    cacheClaimShare: 0.5,
+    /** The leader names an heir once the group is this big. */
+    successorMinSize: 3,
 
     /** Pooled supplies: what a member will contribute, and what a thief takes. */
     cacheContributeSurplus: 2,
@@ -2406,6 +2647,22 @@ export const RIVALRY = {
     rematchResolve: 0.08,
     /** Fights after which the pair reads as a genuine feud in the chronicle. */
     feudAtFights: 2,
+    /**
+     * §4.3: the way down. A rivalry that only ever escalated meant two
+     * tributes who fought twice and then survived a mutt attack together were
+     * enemies for the rest of the run by arithmetic.
+     */
+    coolingCycles: 3,
+    coolingPerWindow: 0.34,
+    coolingSharedDanger: 1.2,
+    sharedDangerHealth: 55,
+    coolingFear: 4,
+    reconcileRegard: 14,
+    /** Fights that make a rival's death a loss rather than a relief. */
+    grievableFights: 2,
+    /** Somebody else finishing the person you had promised yourself. */
+    stolenKillSanity: 8,
+    stolenKillRegard: 12,
 } as const;
 
 /** Sponsor economy. */
@@ -2660,6 +2917,8 @@ export const GENERATION = {
      * alias again; 0 would decouple them entirely).
      */
     buildFrameWeight: 0.6,
+    /** §3.1: roughly one tribute in ten leads with the other hand. */
+    leftHandedShare: 0.11,
     /** Baseline sponsor trust before reputation modifiers. */
     baseSponsorTrust: 50,
     trustSpread: 12,
@@ -3276,6 +3535,17 @@ export const RESOLVE = {
  * truce restraint.
  */
 export const RESPECT = {
+    /** §3.3: watching somebody do skilled work properly, in front of you. */
+    witnessCompetence: 1.5,
+    /** What survives a reconciliation even when the liking does not. */
+    reconcile: 3,
+    /** §4.3: how much being rated buys you in somebody else's target list. */
+    targetReluctanceDivisor: 50,
+    targetReluctanceMax: 0.12,
+    /** Respect at which a warning from this person is information, not noise. */
+    credibilityThreshold: 6,
+    /** ...and below which even your own group stops acting on what you say. */
+    dismissedThreshold: -4,
     max: 100,
     /** Respect earned by everyone watching a clean kill. */
     witnessKill: 6,
@@ -3353,6 +3623,14 @@ export const PARLEY = {
     tollInfoResentment: 8,
     tollInfoSanityCost: 5,
 
+    /** §4.3: health at which "we are both too hurt for this" stops being true. */
+    truceHealedHealth: 70,
+    /** Kills that make a third party a threat worth agreeing about. */
+    truceThreatKills: 2,
+    /** §1.2: what a brokered truce running its full term pays its broker. */
+    brokerHeldTrust: 8,
+    brokerHeldExcitement: 12,
+    brokerHeldRegard: 6,
     /** An explicit, expiring non-aggression pact. */
     truceChance: 0.4,
     truceCycles: 4,
@@ -3428,6 +3706,14 @@ export const DEBTS = {
 
     /** Turning on a creditor: multiplier on betrayal willingness, per point owed. */
     betrayalResistPerPoint: 0.3,
+    /**
+     * §1.2: turning on a *paying client*. A contract holds harder than a
+     * favour — a mercenary who knifes the person who hired them is a mercenary
+     * nobody else in the arena will ever hire.
+     */
+    retainerBetrayalResist: 0.45,
+    retainerRegardPerCycle: 2,
+    retainerTrustPerCycle: 1,
     minBetrayalMultiplier: 0.25,
 
     /** Settling up. */

@@ -10,8 +10,11 @@ import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/
 import { adjustRel, getRel, trustOf } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, raiseSuspicion, suspicionOf } from '../memory';
 import { respectOf } from '../relationships';
+import { sniffPerformances } from '../alliance';
 import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
+import { resolveDuePacts } from '../alliancePact';
+import { runAlliancePolitics, wasExpelled } from '../alliancePolitics';
 import { betrayalReluctance } from '../debts';
 import { addExcitement } from '../audience';
 import { traitMod } from '../../data/traits';
@@ -382,29 +385,9 @@ export function processAlliances(ctx: SimContext) {
         }
     }
 
-    // 3a. Pacts coming due. A group that agreed to split at the final eight
-    // has a public deadline, and the audience has been watching it approach.
-    const remaining = getAlive(ctx.state).length;
-    if (remaining <= ALLIANCES.finalEightSize) {
-        const byId = new Map<string, Tribute[]>();
-        getAlive(ctx.state).forEach(t => {
-            if (!t.allianceId) return;
-            if (!byId.has(t.allianceId)) byId.set(t.allianceId, []);
-            byId.get(t.allianceId)!.push(t);
-        });
-        byId.forEach((members, id) => {
-            const record = allianceOf(ctx.state, id);
-            if (!record || record.pact !== 'until-the-final-eight' || members.length < 2) return;
-            record.pact = 'no-pact';
-            ctx.logEvent(
-                `The field is down to ${remaining}. ${members.map(m => m.name).join(' and ')} agreed this was where it ended, ` +
-                `and none of them pretends otherwise. The alliance dissolves exactly as promised.`,
-                members.map(m => m.id),
-                { important: true, category: 'alliance' }
-            );
-            members.forEach(m => { delete m.allianceId; });
-        });
-    }
+    // 3a. Pacts coming due. Every shape of ending — a field threshold, a day,
+    // the feast, the last Career, the first bad wound — resolves in one place.
+    resolveDuePacts(ctx);
 
     // 3b. Mergers: two duos who trust each other become a four.
     //
@@ -445,6 +428,8 @@ export function processAlliances(ctx: SimContext) {
         candidates.forEach(candidate => {
             if (candidate.allianceId) return;
             if (members.length >= maxSize) return;
+            // §4.2: a group does not hand back the place it threw somebody out of.
+            if (wasExpelled(allianceOf(ctx.state, id), candidate.id)) return;
 
             // Both directions have to hold: the group has to want them, and
             // they have to want the group.
@@ -502,6 +487,10 @@ export function processAlliances(ctx: SimContext) {
 
     // 5. Structure upkeep: prune the dead, re-elect leaders, pool supplies.
     reconcileAlliances(ctx);
+    // 5a. §4.2: the interior — blocs, coups, walk-outs and named heirs.
+    runAlliancePolitics(ctx);
+    // 5b. §4.3: performed bonds are claims, and somebody sharp is watching.
+    sniffPerformances(ctx);
     Object.values(ctx.state.alliances ?? {}).forEach(record => {
         const members = membersOf(ctx.state, record.id);
         if (members.length < 2) return;

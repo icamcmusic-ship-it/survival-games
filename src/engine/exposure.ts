@@ -7,7 +7,7 @@ import { getZone, zoneFeatures } from './map';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { clampTribute } from './vitals';
-import { massOf } from './physique';
+import { heatBurden, insulation, massOf } from './physique';
 import { traitMod } from '../data/traits';
 
 /**
@@ -72,7 +72,9 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     const heatScale = profile.thirst ? Math.max(0, 1 - traitMod(t, 'heatResist')) : 1;
     if (profile.fatigue) t.vitals.fatigue += Math.round(amount(profile.fatigue) * heatScale);
     if (profile.sanity) t.vitals.sanity -= amount(profile.sanity);
-    if (profile.thirst) t.vitals.thirst += Math.round(amount(profile.thirst) * heatScale);
+    // §3.1: a well-padded tribute suffers in the heat in a way a lean one does
+    // not, and pays for it in water.
+    if (profile.thirst) t.vitals.thirst += Math.round(amount(profile.thirst) * heatScale * (1 + heatBurden(t)));
     if (profile.hunger) t.vitals.hunger += amount(profile.hunger);
     if (profile.quench) t.vitals.thirst = Math.max(0, t.vitals.thirst - amount(profile.quench));
 
@@ -82,7 +84,9 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
         Math.max(0, 1 - traitMod(t, key));
     const frostbiteChance = profile.frostbite
         ? profile.frostbite * scale * resist('coldResist')
-            * Math.max(0.4, 1 - massOf(t) * PHYSIQUE.frostbiteResistPerMass)
+            // §3.1: mass is insulation, and so is condition specifically —
+            // the soft tissue starvation strips first.
+            * Math.max(0.4, 1 - massOf(t) * PHYSIQUE.frostbiteResistPerMass - insulation(t))
             // §11.5: warmth gear does the thing it is famous for.
             * (hasTool(t, 'warmth') ? TOOLS.warmthFrostbiteMultiplier : 1)
         : 0;

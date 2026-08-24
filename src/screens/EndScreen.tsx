@@ -4,6 +4,7 @@ import { EventFeed } from '../components/EventFeed';
 import { ReplayScrubber } from '../components/ReplayScrubber';
 import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { ChronicleExport } from '../components/ChronicleExport';
+import { VictorArc } from '../components/VictorArc';
 import { TributeModal } from '../components/TributeModal';
 import { Trophy, MapPin, Swords, Skull, RotateCcw } from 'lucide-react';
 import { META_ACHIEVEMENTS, ACHIEVEMENTS } from '../data/achievements';
@@ -152,6 +153,30 @@ export function EndScreen({
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
+                    {/* §2.3: the debrief opened with cause-of-death counts. The run's
+                        actual story — the price they carried, what the arena made of
+                        them, who they lost — was all on the state and nowhere on the
+                        page. It goes first now, because it is the thing a player came
+                        back to the page to read. */}
+                    {winner && <VictorArc gameState={gameState} victor={winner} />}
+
+                    {/* §2.3: near misses are the strongest replay hook already in the
+                        codebase — "2 short of a toll collector" is a better reason to
+                        press New Simulation than anything else on this page — and they
+                        were the third panel down in default styling. */}
+                    {outcome && outcome.nearMisses && outcome.nearMisses.length > 0 && (
+                        <div className="md:col-span-2 panel p-5 space-y-2"
+                            style={{ borderColor: 'var(--cat-sponsor)', borderWidth: '3px' }}>
+                            <span className="eyebrow" style={{ color: 'var(--cat-sponsor)' }}>So close — go again</span>
+                            {outcome.nearMisses.map(m => (
+                                <div key={m.id} className="panel-flush p-2.5">
+                                    <div className="text-sm font-bold text-[var(--ink)]">{m.name}</div>
+                                    <div className="text-[11px] text-[var(--color-ink-500)]">{m.detail}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     {/* The record book only ever reacted to a personal best. Most of
                         what makes a run memorable is not a record — it is the two or
                         three unusual things that happened, measured against this
@@ -164,18 +189,6 @@ export function EndScreen({
                             </span>
                             {outcome.notables.map(n => (
                                 <p key={n.text} className="text-sm text-[var(--color-ink-200)] leading-relaxed">{n.text}</p>
-                            ))}
-                        </div>
-                    )}
-
-                    {outcome && outcome.nearMisses && outcome.nearMisses.length > 0 && (
-                        <div className="md:col-span-2 panel p-5 space-y-2">
-                            <span className="eyebrow">So close</span>
-                            {outcome.nearMisses.map(m => (
-                                <div key={m.id} className="panel-flush p-2.5">
-                                    <div className="text-sm font-bold text-[var(--ink)]">{m.name}</div>
-                                    <div className="text-[11px] text-[var(--color-ink-500)]">{m.detail}</div>
-                                </div>
                             ))}
                         </div>
                     )}

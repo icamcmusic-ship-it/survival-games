@@ -6,6 +6,8 @@ import { cycleOf, cyclesSinceContact, ensureMemory, rememberedBarren, remembered
 import { getZone, hopsTo, nextHopToward, severedEdgeSet, zoneFeatures } from './map';
 import { fearOf } from './fear';
 import { breakTruce, breaksTruce, hasTruce } from './parley';
+import { perceivedBond, targetReluctance } from './rapport';
+import { prerequisiteFor, pressTension, queueGoal } from './intent';
 import { areLovers } from './alliance';
 import { getRel } from './relationships';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
@@ -129,6 +131,25 @@ export function isObjectiveValid(ctx: SimContext, t: Tribute): boolean {
             return t.zone === objective.from;
         default:
             return false;
+    }
+}
+
+/**
+ * §3.2: whether a queued goal is still something this tribute could go and do.
+ * Deliberately looser than `isObjectiveValid` — a plan is allowed to be a
+ * little stale, it is only not allowed to be impossible.
+ */
+function isObjectiveReachable(ctx: SimContext, t: Tribute, goal: Objective): boolean {
+    const collapsed = ctx.state.collapsedZones ?? [];
+    const living = (id: string) => ctx.state.tributes.find(o => o.id === id && o.status === 'alive');
+    switch (goal.kind) {
+        case 'hunt':
+        case 'stalk': return !!living(goal.targetId);
+        case 'protect': return !!living(goal.wardId);
+        case 'reach': return !collapsed.includes(goal.zone) && t.zone !== goal.zone;
+        case 'hold':
+        case 'wait': return !collapsed.includes(goal.zone);
+        default: return false;
     }
 }
 
@@ -345,9 +366,22 @@ function chooseObjective(
                 // trait that claimed to be hard to notice (Unremarkable) had
                 // no read site anywhere in the targeting layer, which is why
                 // it was the worst trait in the game.
-                return winnable + loot + grudge - fearOf(t, o.id)
+                // §4.3: you go after the person you rate *last*. Respect is
+                // not liking — a tribute can loathe somebody and still leave
+                // them until there is no choice, because the person they are
+                // most afraid of losing to is the person they rate. This is
+                // the read `respects` was written for and never got.
+                return (winnable + loot + grudge - fearOf(t, o.id)
                     + traitMod(o, 'targetDraw')
-                    + targetPreferenceScore(t, o, hops);
+                    + targetPreferenceScore(t, o, hops)
+                    // §4.3: and who is going to come looking. A hunter who has
+                    // watched somebody else pull this tribute out of a fire has
+                    // learned that killing them buys a second enemy — which is
+                    // exactly what third-party inference is *for*.
+                    - visible.reduce((worst, ally) => Math.max(worst,
+                        ally.id === o.id ? 0 : perceivedBond(t, o.id, ally.id)), 0)
+                        * OBJECTIVES.avengerDeterrent
+                    ) * targetReluctance(t, o.id);
             };
             const best = (pool: Tribute[]) =>
                 pool.reduce((top, o) => (score(o) > score(top) ? o : top));
@@ -475,7 +509,29 @@ function nearestZoneMatching(
  * recomputed every cycle is just a mood with extra steps.
  */
 export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
-    if (isObjectiveValid(ctx, t)) return;
+    if (isObjectiveValid(ctx, t)) {
+        // §3.2: being torn is now cumulative. Three cycles pulled the same two
+        // ways and the runner-up wins outright, loudly — the tension system
+        // voiced itself once and then had no way to ever resolve.
+        const snapped = pressTension(ctx, t);
+        if (snapped) {
+            t.objective = snapped;
+            announce(ctx, t, snapped);
+        }
+        return;
+    }
+
+    // §3.2: the errand is done; the thing it was in service of is still there.
+    // This is the whole of the planning horizon — a tribute who went for water
+    // so they could set up on the chokepoint now goes and does that, instead of
+    // re-deriving their life from scratch against the state of this instant.
+    const queued = t.objectiveQueue?.shift();
+    if (t.objectiveQueue?.length === 0) t.objectiveQueue = undefined;
+    if (queued && isObjectiveReachable(ctx, t, queued)) {
+        t.objective = { ...queued, expires: cycleOf(ctx.state) + OBJECTIVES.reachCycles } as Objective;
+        announce(ctx, t, t.objective);
+        return;
+    }
 
     const previous = t.objective;
     const chosenTier = { tier: 0 };
@@ -505,6 +561,14 @@ export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
         t.objectiveTension.voiced = true;
     } else {
         t.objectiveTension = undefined;
+    }
+
+    // §3.2: a goal the tribute cannot currently serve gets an errand put in
+    // front of it and is remembered rather than discarded.
+    const prerequisite = prerequisiteFor(ctx, t, next);
+    if (prerequisite) {
+        queueGoal(t, next);
+        next = prerequisite;
     }
 
     t.objective = next;

@@ -6,7 +6,8 @@ import { SimContext } from './context';
 import { cyclesSinceContact, ensureMemory, rivalRecord } from './memory';
 import { getRel } from './relationships';
 import { fearOf } from './fear';
-import { massOf } from './physique';
+import { massOf, visibleBulk } from './physique';
+import { dreadOf, isCowed } from './intent';
 import { traitMod } from '../data/traits';
 import { profOf } from './proficiency';
 import { hasBroken } from './resolve';
@@ -26,7 +27,10 @@ import { inventoryValue } from './items';
  */
 function visiblePower(o: Tribute, observer?: Tribute): number {
     let power = STANCE.visibleBase
-        + massOf(o) * STANCE.visibleMassWeight
+        // §3.1: threat assessment at distance is mostly skeleton. A big frame
+        // gone hollow still reads dangerous across a zone, which is exactly
+        // the read `visibleBulk` encodes.
+        + (massOf(o) + visibleBulk(o)) * STANCE.visibleMassWeight
         + (o.inventory.some(i => i.type === 'weapon') ? STANCE.visibleWeaponBonus : 0)
         - (o.injuries.bleeding ? STANCE.visibleBleedingPenalty : 0)
         - (o.injuries.legs ? STANCE.visibleLegPenalty : 0)
@@ -274,6 +278,9 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
     Aggressive: (ctx, t, sig) => {
         let s = 0;
         s += sig.arch.aggression * STANCE.archetypeWeight;
+        // ...and the same state read from the other end: somebody cowed does
+        // not go looking for anybody.
+        if (isCowed(ctx, t)) s -= STANCE.cowedAggression;
         s += sig.hasWeapon ? STANCE.weaponAggression : -STANCE.weaponAggression;
         s += (t.health - STANCE.aggressiveHealth) / STANCE.aggressiveHealthDivisor;
         if (t.isCareer) s += STANCE.careerAggression;
@@ -313,6 +320,13 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
     Evasive: (ctx, t, sig) => {
         let s = 0;
         s += sig.arch.caution * STANCE.archetypeWeight;
+        // §3.2: generalised fear. `memory.fear` is per-target and there was no
+        // aggregate at all — a tribute could be frightened of every living
+        // person and have no state that said so. Dread is not low resolve
+        // ("I cannot keep doing this"); it is "there is nowhere in here that
+        // is not one of them", and it changes the baseline rather than one
+        // decision.
+        s += dreadOf(ctx, t) * STANCE.dreadEvasive;
         s += (STANCE.evasiveHealth - t.health) / STANCE.evasiveHealthDivisor;
         if (sig.wounded) s += STANCE.woundedEvasive;
         if (!sig.hasWeapon) s += STANCE.unarmedEvasive;
@@ -407,8 +421,34 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
  * whatever the hold says — a tribute who healed past 25 health is not still
  * Desperate for two more cycles.
  */
+/**
+ * §1.7: a stance imposed by an event rather than chosen by the scorer.
+ *
+ * Combat forces Evasive when somebody breaks off, vengeance forces Aggressive
+ * when somebody watches a friend die, and a resolve collapse forces Defensive.
+ * All three wrote `t.stance` directly, which meant they bypassed every piece of
+ * the hysteresis machinery — and they are the actual source of the surviving
+ * thrash: a vengeful tribute in a running fight alternated Aggressive/Evasive
+ * on every cycle, one forced set each way, with the scorer never consulted.
+ *
+ * Forced changes stay authoritative (they are story beats, not noise), but they
+ * now count toward churn like any other change, and a tribute who is already
+ * being whipsawed is left where they are. Somebody who has flipped three times
+ * in four cycles is not going to be talked into a fourth by the same fight.
+ */
+export function forceStance(t: Tribute, stance: Stance) {
+    if (t.stance === stance) { t.stanceHeld = 0; return; }
+    if ((t.stanceChurn ?? 0) >= STANCE.churnMax) return;
+    t.stance = stance;
+    t.stanceHeld = 0;
+    t.stanceChurn = Math.min(STANCE.churnMax, (t.stanceChurn ?? 0) + 1);
+}
+
 export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) {
     const sig = buildSignals(ctx, t, occupants);
+    // Churn decays every cycle a tribute is scored, so the widened margin is a
+    // brake on oscillation rather than a permanent tax on ever changing again.
+    t.stanceChurn = Math.max(0, (t.stanceChurn ?? 0) - STANCE.churnDecayPerCycle);
 
     const cycle = ctx.state.cycle ?? 0;
     const ready = { ...(t.stanceReady ?? {}) };
@@ -463,7 +503,15 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         || sig.ratio > STANCE.outmatchedRatio * STANCE.emergencyRatioFactor
         || !stillValid;
 
-    const hold = STANCE_PROFILES[t.stance]?.minHold ?? STANCE.minHold;
+    // §1.7: churn extends the hold as well as the margin. Aggressive/Evasive
+    // is the pair that survived the score-only hysteresis, because a rival
+    // stepping in and out of the zone genuinely swings both scores by more
+    // than any fixed margin — the gap is real, it is just re-litigated every
+    // cycle. The answer to that is commitment, not a bigger threshold: a
+    // tribute who has already changed their mind twice holds what they have
+    // for an extra cycle unless they are actually in danger.
+    const hold = (STANCE_PROFILES[t.stance]?.minHold ?? STANCE.minHold)
+        + Math.floor((t.stanceChurn ?? 0) * STANCE.churnHoldPerSwitch);
     if (!emergency && t.stanceHeld < hold) {
         t.stanceHeld += 1;
         return;
@@ -475,7 +523,13 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     // scorers every single cycle for the rest of their short life. The margin
     // is skipped only when the incumbent stance is no longer available, where
     // there is no incumbent score to compare against.
-    if (stillValid && bestScore < (scores[t.stance] ?? -Infinity) + STANCE.switchMargin) {
+    // §1.7: the margin widens with recent churn. A tribute who has changed
+    // stance twice in the last few cycles is, by revealed behaviour, sitting
+    // between two near-equal scorers — and the right answer there is to make
+    // the third change genuinely expensive rather than to keep letting the
+    // noise win. Decayed below, so a settled tribute pays nothing for it.
+    const margin = STANCE.switchMargin * (1 + (t.stanceChurn ?? 0) * STANCE.churnMarginPerSwitch);
+    if (stillValid && bestScore < (scores[t.stance] ?? -Infinity) + margin) {
         t.stanceHeld += 1;
         return;
     }
@@ -487,6 +541,7 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     }
     t.stance = bestStance;
     t.stanceHeld = 0;
+    t.stanceChurn = Math.min(STANCE.churnMax, (t.stanceChurn ?? 0) + 1);
     if (bestStance !== 'Fortified') t.fortifiedCycles = 0;
     if (!isEvasiveStance(bestStance) && bestStance !== 'Shadowing') t.shadowing = undefined;
 }

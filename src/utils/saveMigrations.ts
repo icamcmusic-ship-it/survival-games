@@ -12,10 +12,18 @@
  * So a deserialised tribute is normalised *once*, here, on the way in.
  */
 import {
-    Alliance, Attributes, Build, EventLog, GameConfig, GameState, Gender, Injuries, Item,
+    Alliance, AlliancePact, Attributes, Build, Condition, EventLog, Frame, Handedness, LimbRatio, GameConfig, GameState, Gender, Injuries, Item,
     Objective, Stance, Tribute, TributeMemory, Vitals,
 } from '../models/types';
 import { DEFAULT_GAME_CONFIG } from '../data/constants';
+import { ALLIANCES } from '../data/balance';
+import { conditionOf, frameOf } from '../engine/physique';
+
+/** §3.1: the two body axes, for save normalisation. */
+const FRAMES: Frame[] = ['Narrow', 'Spare', 'Even', 'Broad', 'Heavy'];
+const CONDITIONS: Condition[] = ['Wasted', 'Lean', 'Conditioned', 'Padded', 'Bulky'];
+const LIMB_RATIOS: LimbRatio[] = ['long', 'even', 'compact'];
+const HANDEDNESS: Handedness[] = ['left', 'right'];
 import {
     StorageSpec, STORAGE_KEYS, asBool, asNum, asNumMap, asObjMap, asRecord, asStr, asStrArray,
 } from './storage';
@@ -214,6 +222,18 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         age: clamp(asNum(r.age, 16), 1, 99),
         heightCm: asNum(r.heightCm, 165),
         build: oneOf<Build>(r.build, BUILDS, 'Average'),
+        // §3.1: a pre-§3.1 save has only the single-axis `build`. `frameOf`
+        // and `conditionOf` know how to read the legacy ladder, so the two
+        // axes are derived here once rather than guarded at every read site.
+        frame: oneOf<Frame>(r.frame, FRAMES, frameOf({ build: oneOf<Build>(r.build, BUILDS, 'Average') } as Tribute)),
+        condition: oneOf<Condition>(r.condition, CONDITIONS, conditionOf({ build: oneOf<Build>(r.build, BUILDS, 'Average') } as Tribute)),
+        limbRatio: oneOf<LimbRatio>(r.limbRatio, LIMB_RATIOS, 'even'),
+        handedness: oneOf<Handedness>(r.handedness, HANDEDNESS, 'right'),
+        conditionPressure: asNum(r.conditionPressure, 0),
+        stanceChurn: asNum(r.stanceChurn, 0),
+        sleepDebt: asNum(r.sleepDebt, 0),
+        tensionStreak: asNum(r.tensionStreak, 0),
+        woundedSide: r.woundedSide === 'left' || r.woundedSide === 'right' ? r.woundedSide : undefined,
         isCareer: asBool(r.isCareer, false),
         archetype: oneOf<Tribute['archetype']>(r.archetype, ARCHETYPES, 'wildcard'),
         attributes: normalizeAttributes(r.attributes),
@@ -245,6 +265,7 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         sanityStealthLoss: asNum(r.sanityStealthLoss, 0),
         resolve: clamp(asNum(r.resolve, 70), 0, 100),
         truces: asNumMap(r.truces),
+        truceReason: asObjMap(r.truceReason) as Tribute['truceReason'],
         displayedRegard: asNumMap(r.displayedRegard),
         // §4.1: the second stored relationship axis (professional esteem).
         // Saves from before it existed load as an empty map and the axis
@@ -304,6 +325,37 @@ function normalizeLog(raw: unknown): EventLog[] {
     });
 }
 
+/**
+ * §4.1: the pact union, from anything a save might hold.
+ *
+ * Pre-§4.1 saves store one of three strings; the field-threshold shape is the
+ * one that carries the old 'until-the-final-eight' meaning forwards without
+ * changing what those groups agreed to.
+ */
+function migratePact(raw: unknown): AlliancePact {
+    if (typeof raw === 'string') {
+        if (raw === 'to-the-end') return { kind: 'to-the-end' };
+        if (raw === 'until-the-final-eight') return { kind: 'until-field', threshold: ALLIANCES.finalEightSize };
+        return { kind: 'no-pact' };
+    }
+    const rec = asRecord(raw);
+    const kind = rec ? asStr(rec.kind, 'no-pact') : 'no-pact';
+    switch (kind) {
+        case 'to-the-end': return { kind: 'to-the-end' };
+        case 'until-field': return { kind: 'until-field', threshold: asNum(rec!.threshold, ALLIANCES.finalEightSize) };
+        case 'until-day': return { kind: 'until-day', day: asNum(rec!.day, 1) };
+        case 'until-event': return {
+            kind: 'until-event',
+            event: oneOf(rec!.event, ['feast', 'first-blood', 'career-pack-falls', 'arena-closes', 'first-hurt'], 'feast'),
+        };
+        case 'until-goal': {
+            const targetId = asStr(rec!.targetId, '');
+            return targetId ? { kind: 'until-goal', goal: 'kill-target', targetId } : { kind: 'no-pact' };
+        }
+        default: return { kind: 'no-pact' };
+    }
+}
+
 function normalizeAlliances(raw: unknown): Record<string, Alliance> | undefined {
     const rec = asRecord(raw);
     if (!rec) return undefined;
@@ -322,7 +374,10 @@ function normalizeAlliances(raw: unknown): Record<string, Alliance> | undefined 
             sharedCache: Array.isArray(a.sharedCache)
                 ? a.sharedCache.map(normalizeItem).filter((i): i is Item => i !== null)
                 : [],
-            pact: oneOf(a.pact, ['to-the-end', 'until-the-final-eight', 'no-pact'], 'no-pact'),
+            // §4.1: pacts became a discriminated union. A pre-§4.1 save holds
+            // the old string; 'until-the-final-eight' maps onto the shape that
+            // now expresses it, and anything unrecognised lapses to no pact.
+            pact: migratePact(a.pact),
         };
     });
     return out;

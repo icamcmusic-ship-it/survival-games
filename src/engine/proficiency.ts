@@ -3,7 +3,9 @@ import { DRIFT, PROFICIENCY } from '../data/balance';
 import { craftOf } from '../data/districts';
 import { strengthCapForAge } from './physique';
 import { isAggressiveStance } from '../data/stances';
-import { SimContext } from './context';
+import { SimContext, getAlive } from './context';
+import { witnessCompetence } from './rapport';
+import { injuryGrade } from './wounds';
 import { fill } from './encounters';
 
 /**
@@ -151,6 +153,11 @@ export function trainProficiency(t: Tribute, skill: Proficiency, ctx?: SimContex
             ctx.logEvent(fill(ctx.pickText(BAND_LINES[after][skill] ?? BAND_LINES[after].default), {
                 tribute: t.name,
             }), [t.id], { category: 'survival' });
+            // §3.3: proficiency was invisible to everybody else in the arena.
+            // Watching somebody dress a wound competently, or read ground and
+            // be right, tells you something no attribute sheet in there can —
+            // and it is exactly what `respects` is supposed to hold.
+            witnessCompetence(ctx, t);
         }
     }
     return t.proficiencies[skill]!;
@@ -250,5 +257,95 @@ export function decayIdleDrift(t: Tribute): void {
         const dec = Math.min(held, DRIFT.decayPerIdleCycle);
         t.attributeDrift![attr] = Math.round((held - dec) * 100) / 100;
         t.attributes[attr] = Math.round((t.attributes[attr] - dec) * 100) / 100;
+    });
+}
+
+/**
+ * §3.3: teaching.
+ *
+ * Proficiencies only ever went up, and only ever for the person doing the work.
+ * An alliance with a medic role and a member sitting on `medicine: 5` could not
+ * transfer a single point of it — and the training-floor pacts (`trainingPact`)
+ * already establish that tributes share knowledge *before* the arena, so
+ * nothing carrying it afterwards was a hole rather than a design choice.
+ *
+ * Deliberately narrow: same zone, a real gap in the skill, and a teacher who is
+ * actually good at it. The student gains slowly; the teacher gains standing,
+ * which for the archetypes that live on being useful rather than dangerous is
+ * the only currency they have.
+ */
+export function teachSkills(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    alive.forEach(teacher => {
+        if (!teacher.allianceId) return;
+        const students = alive.filter(o =>
+            o.id !== teacher.id && o.allianceId === teacher.allianceId && o.zone === teacher.zone);
+        if (students.length === 0) return;
+
+        const skill = (Object.keys(teacher.proficiencies ?? {}) as Proficiency[])
+            .sort((a, b) => profOf(teacher, b) - profOf(teacher, a))[0];
+        if (!skill || profOf(teacher, skill) < PROFICIENCY.teachMinLevel) return;
+
+        const student = students
+            .filter(o => profOf(teacher, skill) - profOf(o, skill) >= PROFICIENCY.teachMinGap)
+            .sort((a, b) => profOf(a, skill) - profOf(b, skill))[0];
+        if (!student) return;
+        if (!ctx.rng.chance(PROFICIENCY.teachChance)) return;
+
+        student.proficiencies = student.proficiencies ?? {};
+        const gained = Math.min(PROFICIENCY.max, profOf(student, skill) + PROFICIENCY.teachGain);
+        student.proficiencies[skill] = Math.round(gained * 100) / 100;
+        // Being the person who knows things is the whole of what this buys.
+        witnessCompetence(ctx, teacher, PROFICIENCY.teachRespectWeight);
+        ctx.logEvent(
+            `${teacher.name} shows ${student.name} how it is actually done — ${TEACH_PHRASE[skill]} — and makes them do it twice more `
+            + 'before letting them stop. It is the only thing anybody in there gives away for free.',
+            [teacher.id, student.id],
+            { category: 'survival' }
+        );
+    });
+}
+
+const TEACH_PHRASE: Record<Proficiency, string> = {
+    melee: 'where the weight of a blade actually wants to go',
+    ranged: 'how to breathe out before the release, not during it',
+    tracking: 'which of those marks is a day old and which is an hour',
+    forage: 'the three things on that bush that mean do not',
+    medicine: 'how to pack a wound so it stops instead of merely looking packed',
+    persuasion: 'what to say first, and what to leave for them to say',
+};
+
+/**
+ * §3.3: skills can be lost.
+ *
+ * A tribute with a shattered arm took a combat penalty and kept every point of
+ * melee proficiency they had ever earned, so the moment the arm healed they
+ * were exactly who they were before it broke. Grade-3 damage to the limb a
+ * skill runs through takes the skill down with it — slowly, and not all the
+ * way, because the knowledge is still in there somewhere.
+ */
+export function decaySkillsUnderInjury(ctx: SimContext) {
+    getAlive(ctx.state).forEach(t => {
+        if (!t.proficiencies) return;
+        const armGrade = injuryGrade(t, 'arms');
+        const legGrade = injuryGrade(t, 'legs');
+        if (armGrade < PROFICIENCY.skillLossGrade && legGrade < PROFICIENCY.skillLossGrade) return;
+        const affected: Proficiency[] = [];
+        if (armGrade >= PROFICIENCY.skillLossGrade) affected.push('melee', 'ranged', 'medicine');
+        if (legGrade >= PROFICIENCY.skillLossGrade) affected.push('tracking', 'forage');
+        affected.forEach(skill => {
+            const held = profOf(t, skill);
+            if (held <= PROFICIENCY.skillLossFloor) return;
+            const next = Math.max(PROFICIENCY.skillLossFloor, held - PROFICIENCY.skillLossPerCycle);
+            t.proficiencies![skill] = Math.round(next * 100) / 100;
+            if (Math.floor(next) < Math.floor(held)) {
+                ctx.logEvent(
+                    `${t.name} reaches for something they used to be able to do and finds it is not there any more. `
+                    + 'The arm will heal. Whether the rest of it comes back is a different question.',
+                    [t.id],
+                    { category: 'injury' }
+                );
+            }
+        });
     });
 }

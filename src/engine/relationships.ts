@@ -1,6 +1,8 @@
 import { GameState, Tribute } from '../models/types';
+import { forceStance } from './stance';
+import { noteRivalDeath } from './rapport';
 import { RNG } from '../utils/rng';
-import { DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, SUSPICION } from '../data/balance';
+import { DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, RIVALRY, SUSPICION } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
 import { clampTribute } from './vitals';
@@ -198,8 +200,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 const personal = wereAllied || isLover || isPartner || bond >= RELATIONSHIPS.vengeanceBond;
                 if (personal || now <= RELATIONSHIPS.vengeanceThreshold) {
                     swearVengeance(other, killer.id);
-                    other.stance = 'Aggressive';
-                    other.stanceHeld = 0;
+                    forceStance(other, 'Aggressive');
                     ctx.logEvent(
                         fill(ctx.pickText(VENGEANCE_TEXTS), { mourner: other.name, victim: victim.name, killer: killer.name }),
                         [other.id, killer.id, victim.id],
@@ -232,6 +233,14 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                     { important: true, category: 'sanity' }
                 );
             }
+        } else if (ensureMemory(other).vengeance.includes(victim.id)) {
+            // §4.3: the fourth kind of loss. Grief for an ally, a district
+            // partner and a lover were all separate beats; a rival's death was
+            // relief or nothing — which misses the more interesting reading. A
+            // tribute who organised their whole run around one person, and
+            // then hears somebody else's cannon fire it, has lost the thing
+            // that was holding them together.
+            noteRivalDeath(ctx, other, victim, killer);
         } else if (bond <= RELATIONSHIPS.enemyBond) {
             other.vitals.sanity += RELATIONSHIPS.reliefSanity;
             clampTribute(other);

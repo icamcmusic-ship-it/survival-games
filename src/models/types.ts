@@ -217,7 +217,47 @@ export interface Item {
     fishing?: boolean;
 }
 
+/**
+ * §3.1: the legacy single-axis body.
+ *
+ * Retained as a *derived* display alias (`bodyLabel` computes it from the two
+ * real axes below) so old saves, the roster's public record and the disclosure
+ * rules keep working unchanged.
+ */
 export type Build = 'Frail' | 'Slight' | 'Average' | 'Athletic' | 'Stocky' | 'Muscular';
+
+/**
+ * §3.1: bodies, on two axes instead of one.
+ *
+ * `massOf()` returned a signed scalar from a six-entry table and `reachBonus()`
+ * read height. That was the entire physical model: six builds on a single axis,
+ * rolled as a blend of a random frame and strength/2.
+ *
+ * Frame is skeleton. It is fixed at the reaping, correlates with height, and
+ * decides reach, carry capacity, how hard you are to move, and how dangerous
+ * you look from across a zone. Condition is soft tissue. It is *mutable*, it
+ * degrades as the run goes on, and it decides insulation, starvation buffer,
+ * injury absorption — against agility, heat tolerance and water requirement.
+ *
+ * The two pull in different directions, which is what makes the 5x5 grid worth
+ * having: Narrow/Lean is a whippet, Broad/Padded is a solid well-fed frame, and
+ * Heavy/Wasted is a big frame gone hollow — still intimidating, no longer able
+ * to back it up. A tribute who has been starving for six days walks Padded ->
+ * Lean -> Wasted and loses their cold resistance and their starvation buffer at
+ * exactly the moment they need both, while their reach is unchanged.
+ */
+export type Frame = 'Narrow' | 'Spare' | 'Even' | 'Broad' | 'Heavy';
+export type Condition = 'Wasted' | 'Lean' | 'Conditioned' | 'Padded' | 'Bulky';
+
+/**
+ * §3.1: limb length relative to height, independent of it. Long-limbed buys
+ * reach and costs you every chokepoint and burrow in the arena; compact is the
+ * opposite trade, and the better climber.
+ */
+export type LimbRatio = 'long' | 'even' | 'compact';
+
+/** §3.1: which hand. Makes `favouring` and arm scars asymmetric. */
+export type Handedness = 'left' | 'right';
 
 /**
  * What a tribute has personally learned about a place. Nobody in the arena has
@@ -241,6 +281,19 @@ export interface ZoneMemory {
 export interface TributeMemory {
     /** Zone name -> impression. */
     zones: Record<string, ZoneMemory>;
+    /**
+     * §3.2: searches of a zone that turned up nothing. `barren` is a modifier
+     * on the next roll; this is what makes repeated failure a *decision* —
+     * leave, or stop foraging and start trapping.
+     */
+    forageFailures?: Record<string, number>;
+    /**
+     * §4.3: what this tribute believes about *other people's* bonds, keyed
+     * 'aId|bId' in both orders. Only the two participants in a scene used to
+     * update anything, so nobody in the arena could ever learn the single most
+     * useful thing available by looking: who would come for whom.
+     */
+    perceivedBonds?: Record<string, number>;
     /** Ids this tribute has sworn to kill, most recent first. */
     vengeance: string[];
     /** Ids that have personally betrayed them. */
@@ -303,7 +356,20 @@ export interface Tribute {
     name: string;
     age: number;
     heightCm: number;
+    /** §3.1: derived display alias for `frame` + `condition`. */
     build: Build;
+    /** §3.1: skeleton. Fixed at the reaping. */
+    frame: Frame;
+    /** §3.1: soft tissue. Degrades under starvation, rebuilds when fed. */
+    condition: Condition;
+    limbRatio: LimbRatio;
+    handedness: Handedness;
+    /**
+     * §3.1: cycles spent on the wrong side of the starvation line, and the
+     * driver of condition loss. Rebuilding runs the other way on a full belly,
+     * which is why this is signed rather than a counter.
+     */
+    conditionPressure?: number;
     isCareer: boolean;
     archetype: ArchetypeId;
     attributes: Attributes;
@@ -371,6 +437,17 @@ export interface Tribute {
      * a shared camp and shared supplies rather than an agreement not to fight.
      */
     truces?: Record<string, number>;
+    /**
+     * §4.3: *why* each standing truce exists.
+     *
+     * A truce that expires on a cycle counter is a truce that overwhelmingly
+     * just lapses — 90% of the 218 truces in a 400-run soak evaporated without
+     * resolving into anything, which makes keeping your word a lottery ticket
+     * rather than a choice. A truce made because you were both bleeding should
+     * come due when you both stop bleeding; one made against a common threat
+     * should come due when the threat does. `resolveTruces` reads this.
+     */
+    truceReason?: Record<string, TruceReason>;
     /**
      * Displayed regard: what a tribute is *performing* toward someone, as
      * distinct from `relationships`, which is what they actually feel.
@@ -447,6 +524,16 @@ export interface Tribute {
     /** §3.4: what they nearly did instead, and how close it was. */
     objectiveTension?: ObjectiveTension;
     /**
+     * §3.2: the goal this tribute is working toward, behind whatever errand
+     * they are running first. Depth two — anything deeper is a planner rather
+     * than a person, and an arena is not a place three-step plans survive.
+     */
+    objectiveQueue?: Objective[];
+    /** §3.2: consecutive cycles torn the same way. Long enough, and they snap. */
+    tensionStreak?: number;
+    /** §3.4: sleep owed, as distinct from being tired right now. */
+    sleepDebt?: number;
+    /**
      * §3.6: sites that will never fully come back. Written when a grade-3
      * injury heals; read by `visiblePower` (a tribute who favours an arm is
      * read as weaker) and by the epilogue.
@@ -457,7 +544,21 @@ export interface Tribute {
      * shoulder. Set alongside the severity grade, cleared when the site heals
      * below grade 2, and visible to anyone who can see them.
      */
+    /**
+     * §1.7: how much this tribute has been flip-flopping lately. Rises on
+     * every stance change and decays each cycle; the switch margin scales with
+     * it, so a tribute who has already changed their mind twice needs a much
+     * bigger reason to do it a third time. This is the piece the score-only
+     * hysteresis was missing — it had no memory of its own churn.
+     */
+    stanceChurn?: number;
     favouring?: InjurySite;
+    /**
+     * §3.1: which arm took it. `injuries.arms` is one site, so handedness had
+     * nothing to bite on; recording the side makes a ruined weapon hand a
+     * genuinely different injury from a ruined shield side.
+     */
+    woundedSide?: Handedness;
     /**
      * §3.2: cycles a trait has been carried, keyed by trait name. Drives trait
      * decay and the evolution chains in `engine/traitArcs.ts` — a trait is a
@@ -603,6 +704,10 @@ export interface Tribute {
     brokeredTruces?: Array<[string, string]>;
     /** A2: Ghost — sponsor credit accrued purely for never being seen. */
     ghostTrust?: number;
+    /** §1.2: most clients this Mercenary has had alive and paid-for at once. */
+    retainersHonoured?: number;
+    /** §1.2: truces this Diplomat brokered that ran their full term. */
+    trucesBrokeredHeld?: number;
 }
 
 /**
@@ -631,11 +736,30 @@ export interface Alliance {
     /** Pooled supplies: a reason to stay, and a thing worth stealing. */
     sharedCache: Item[];
     /**
-     * What they agreed out loud. A pact to split at the final eight is a
-     * scheduled, telegraphed betrayal — the audience can see it coming, which
-     * is exactly what makes it land.
+     * What they agreed out loud. A telegraphed, scheduled betrayal the
+     * audience can watch approaching is one of the best things the alliance
+     * layer can produce — but it used to be a single hard-coded threshold
+     * ("the final eight"), which is wrong for every field of eight or fewer.
+     * With `districtCount` legal from 2, that was a third of all legal setups
+     * dissolving their pacts on the cycle after they swore them. See
+     * `AlliancePact` and `rollPact` in `engine/alliance.ts`.
      */
-    pact: 'to-the-end' | 'until-the-final-eight' | 'no-pact';
+    pact: AlliancePact;
+    /**
+     * §4.2: a bloc inside the group. Formed when two members' suspicion of a
+     * third correlates; acts as a coup, a mass defection or a quiet split.
+     */
+    factions?: Faction[];
+    /** §4.2: breaches logged per member, so a *second* one is a hearing. */
+    breachesBy?: Record<string, string[]>;
+    /** §4.2: who put what into the cache. A claim, when the group splits. */
+    cacheContributions?: Record<string, number>;
+    /** §4.2: named heir. Makes killing the leader a different calculation. */
+    successorId?: string;
+    /** §4.2: members thrown out, so they are not simply re-recruited. */
+    expelledIds?: string[];
+    /** The field size when the pact was sworn, so ceremony can scale to it. */
+    pactSwornField?: number;
     /**
      * §4.4: who does what inside the group. Assigned on formation from
      * attributes, so a coup and a betrayal both have somewhere to land: the
@@ -653,6 +777,61 @@ export interface Alliance {
     /** §10.1: charter breaches this group has logged, for 'Charter Kept'. */
     breaches?: number;
 }
+
+/**
+ * §4.1: what an alliance agreed about its own ending.
+ *
+ * The old three-way string union could express exactly one deadline, at a
+ * constant field size of eight. That constant is larger than the *entire
+ * field* in any run with four districts or fewer, so a third of every alliance
+ * formed in a small field was registered and dissolved on the next alliance
+ * phase, ceremonial line and all. The threshold is now rolled relative to the
+ * live field (`rollPact`), and the union carries the other four kinds of
+ * ending people actually agree to.
+ */
+export type AlliancePact =
+    | { kind: 'to-the-end' }
+    | { kind: 'no-pact' }
+    /** Dissolve when the field is down to `threshold` or fewer. */
+    | { kind: 'until-field'; threshold: number }
+    /** "We run together through the first week." */
+    | { kind: 'until-day'; day: number }
+    /** Tied to something the Capitol or the arena is going to do anyway. */
+    | { kind: 'until-event'; event: PactEvent }
+    /** An alliance of convenience against somebody specific. */
+    | { kind: 'until-goal'; goal: 'kill-target'; targetId: string };
+
+/**
+ * Scheduled or conditional endings. `feast` and `arena-closes` have a visible
+ * countdown on the state; `career-pack-falls` and `first-hurt` might never
+ * come due at all, which is what makes agreeing to them a gamble.
+ */
+export type PactEvent = 'feast' | 'first-blood' | 'career-pack-falls' | 'arena-closes' | 'first-hurt';
+
+/**
+ * §4.2: two or more members who have privately agreed the leadership is a
+ * problem. Substrate is `memory.suspicion`, which is already per-pair: when
+ * several members' suspicion of the same person correlates above a threshold,
+ * that is a faction whether anybody says so or not.
+ */
+export interface Faction {
+    memberIds: string[];
+    /** Who they have decided is the liability. Usually the leader. */
+    againstId: string;
+    formedCycle: number;
+    /** How hard they have hardened. Drives coup vs. split vs. nothing. */
+    heat: number;
+}
+
+/**
+ * §4.3: why two people who are not friends agreed not to kill each other.
+ *
+ *   mutual-threat  a third party neither can take alone;
+ *   both-wounded   neither can afford a fight right now;
+ *   brokered       a Diplomat talked them into it and is standing there;
+ *   extortion      one of them paid, and the peace lasts as long as the fee.
+ */
+export type TruceReason = 'mutual-threat' | 'both-wounded' | 'brokered' | 'extortion';
 
 /** §4.4: a job inside an alliance, held by exactly one member. */
 export type AllianceRole = 'quartermaster' | 'scout' | 'muscle' | 'medic';

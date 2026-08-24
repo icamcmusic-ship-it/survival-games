@@ -9,6 +9,7 @@ import { ARENA_FLAVOR, GENERIC_ARENA_FLAVOR, PROCEDURAL_FLAVOR_PACKS } from '../
 import { DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { ArenaLawId, GameState } from '../src/models/types';
 import { ARENA_MUTTS } from '../src/data/mutts';
+import { CLIMATE_LABELS } from '../src/data/arenaBriefing';
 import { Simulator } from '../src/engine/simulator';
 import { generateTributes } from '../src/engine/generator';
 import { gamesProfileFor } from '../src/engine/gamesProfile';
@@ -134,6 +135,27 @@ Object.entries({ ...ARENA_FLAVOR, ...PROCEDURAL_FLAVOR_PACKS }).forEach(([id, fl
 });
 
 if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has no events');
+
+/**
+ * §2.1: the setup screen's arena briefing lives in `data/` so the cold-start
+ * path never imports the engine, which means the climate label table is a
+ * parallel copy of `engine/climate.ts`'s `CLIMATES` keys. This is what keeps
+ * the two in step: an arena with a climate profile and no label would quietly
+ * be briefed as temperate when it is not.
+ */
+{
+    const climateSource = readFileSync(join('src', 'engine', 'climate.ts'), 'utf8');
+    const table = climateSource.slice(climateSource.indexOf('const CLIMATES'), climateSource.indexOf('export function climateOf'));
+    const ids = [...table.matchAll(/^\s+'?([\w-]+)'?:/gm)].map(m => m[1]);
+    ids.forEach(id => {
+        if (!CLIMATE_LABELS[id]) {
+            problems.push(`${id}: has a climate profile but no CLIMATE_LABELS entry (data/arenaBriefing.ts)`);
+        }
+    });
+    Object.keys(CLIMATE_LABELS).forEach(id => {
+        if (!ids.includes(id)) problems.push(`${id}: CLIMATE_LABELS entry for an arena with no climate profile`);
+    });
+}
 
 /**
  * §1.10: cycles must advance at the same rate under every arena law.

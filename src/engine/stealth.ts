@@ -3,6 +3,7 @@ import { zoneFeatures } from './map';
 import { CRAFTING, INVENTORY, STANCE_MODES, STEALTH } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { traitMod } from '../data/traits';
+import { concealmentModifier } from './physique';
 import { encumbranceOf, hasTool } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 
@@ -78,6 +79,10 @@ export function concealment(
     if (t.injuries.bleeding) value -= STEALTH.bleedingPenalty;
     // §3.3: a full pack is a loud pack.
     value -= encumbranceOf(t) * INVENTORY.encumbranceStealthPenaltyMax;
+    // §3.1: a big frame is a big thing to put behind a rock. Skeleton, not
+    // soft tissue — starving down does not make you smaller across the
+    // shoulders, which is the whole point of splitting the two axes.
+    value += concealmentModifier(t) * STEALTH.coverGradeScale;
     // Traits that change how well someone disappears into the ground.
     value += traitMod(t, 'concealment');
     if (hasTool(t, 'light')) value -= STEALTH.lightConcealmentPenalty;

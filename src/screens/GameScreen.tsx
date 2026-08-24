@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { EventCategory, GameState } from '../models/types';
+import { EventCategory, GameState, Phase } from '../models/types';
 import { ArenaMap } from '../components/ArenaMap';
+import { ZoneDossier } from '../components/ZoneDossier';
 import { TributeModal } from '../components/TributeModal';
 import { EventFeed, FeedLine, VISIBLE_CAP, tierOf } from '../components/EventFeed';
 import { ChronicleFilters } from '../components/ChronicleFilters';
@@ -17,7 +18,7 @@ import { GamemakerEventType, gamemakerCooldownRemaining, gamemakerEventCost } fr
 import { gameActions, gameStore } from '../store/gameStore';
 import { pathForView } from '../store/router';
 import { chronicleStore, filtersActive, setChronicle, toggleMutedGroup } from '../store/chronicleStore';
-import { prefsStore } from '../store/prefsStore';
+import { prefsStore, setPrefs } from '../store/prefsStore';
 import { playAnthem, playCannon, playParachute, unlockAudio } from '../utils/sound';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 
@@ -36,11 +37,35 @@ const SPEED_DELAY: Record<Exclude<Speed, 'manual'>, number> = { '1x': 1200, '5x'
 const MAX_PACING_MULTIPLIER = 3;
 const LINES_PER_MULTIPLIER_STEP = 6;
 
-function pacedDelay(speed: Exclude<Speed, 'manual'>, linesThisPhase: number): number {
+/**
+ * §2.2: and pacing also follows *which* phase it is.
+ *
+ * Playback was one speed for the whole run. The bloodbath is the densest and
+ * most consequential ninety seconds in the Games and the training days are
+ * three narrated rotations most viewers want to skim; giving them the same
+ * wall-clock treatment is the coarseness the request names. Off by preference
+ * for anyone who wants a flat tape.
+ */
+const PHASE_PACING: Partial<Record<Phase, number>> = {
+    bloodbath: 2.2,
+    feast: 1.8,
+    epilogue: 1.6,
+    interviews: 0.75,
+    training: 0.6,
+    reaping: 0.75,
+};
+
+function pacedDelay(
+    speed: Exclude<Speed, 'manual'>,
+    linesThisPhase: number,
+    phase: Phase,
+    phasePacing: boolean,
+): number {
     const base = SPEED_DELAY[speed];
     if (speed === 'auto') return base;
     const multiplier = Math.min(MAX_PACING_MULTIPLIER, 1 + linesThisPhase / LINES_PER_MULTIPLIER_STEP);
-    return Math.round(base * multiplier);
+    const perPhase = phasePacing ? (PHASE_PACING[phase] ?? 1) : 1;
+    return Math.round(base * multiplier * perPhase);
 }
 
 type StageTab = 'chronicle' | 'map' | 'standings';
@@ -246,7 +271,7 @@ export function GameScreen({
         }
         const holdForDeath = newLines.some(l => tierOf(l) === 'headline') ? 2 : 0;
         const effectiveSpeed = speed === 'manual' ? '5x' : speed;
-        const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(effectiveSpeed, beatCount + holdForDeath));
+        const timer = setTimeout(() => nextPhaseRef.current(), pacedDelay(effectiveSpeed, beatCount + holdForDeath, gameState.phase, prefs.phasePacing));
         return () => clearTimeout(timer);
     }, [speed, playUntil, isOver, filters.pauseOnDeath, filters.followedId, prefs, runProgress, gameState.phase, gameState.day, gameState.log.length, gameState.log, gameState.tributes]);
 
@@ -362,7 +387,7 @@ export function GameScreen({
             } else if (key === '0') {
                 setChronicle({
                     mutedGroups: [], density: 'everything', searchText: '',
-                    filterTributeId: null, filterTributeId2: null, filterDay: null, selectedZone: null,
+                    filterTributeId: null, filterTributeId2: null, filterPairMode: 'either', filterDay: null, selectedZone: null,
                 });
                 announceShortcut('All chronicle filters reset');
             }
@@ -381,7 +406,12 @@ export function GameScreen({
         return gameState.log.filter(log => {
             if (filters.selectedZone && log.zone !== filters.selectedZone) return false;
             if (mutedCategories.has(log.category)) return false;
-            if ((filters.filterTributeId || filters.filterTributeId2)
+            // §2.2: 'both' is the relationship read — every line the two of them
+            // are in together — which the union-only filter could not ask for.
+            if (filters.filterPairMode === 'both' && filters.filterTributeId && filters.filterTributeId2) {
+                if (!log.tributesInvolved.includes(filters.filterTributeId)
+                    || !log.tributesInvolved.includes(filters.filterTributeId2)) return false;
+            } else if ((filters.filterTributeId || filters.filterTributeId2)
                 && !(filters.filterTributeId && log.tributesInvolved.includes(filters.filterTributeId))
                 && !(filters.filterTributeId2 && log.tributesInvolved.includes(filters.filterTributeId2))) return false;
             if (filters.filterDay !== null && log.day !== filters.filterDay) return false;
@@ -486,6 +516,28 @@ export function GameScreen({
                 onDismissNotice={() => setPauseNotice(null)}
                 arenaSealed={arenaSealed}
             />
+
+            {/* §2.4: the keyboard map is genuinely good and completely
+                undiscoverable unless you already know to press ?. Shown once,
+                on the first run, and never again after it is dismissed. */}
+            {!prefs.seenShortcutHint && (
+                <div className="panel-flush px-4 py-2 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+                    <span className="eyebrow flex-none">Keyboard</span>
+                    <span className="text-[var(--color-ink-300)]">
+                        <kbd className="font-mono font-bold text-[var(--ink)]">space</kbd> advance
+                        {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">[</kbd>/<kbd className="font-mono font-bold text-[var(--ink)]">]</kbd> speed
+                        {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">m</kbd> map
+                        {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">i</kbd> standings
+                        {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">?</kbd> all of them
+                    </span>
+                    <button
+                        onClick={() => setPrefs({ seenShortcutHint: true })}
+                        className="btn btn-sm btn-ghost ml-auto flex-none"
+                    >
+                        Got it
+                    </button>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* ================= STAGE ================= */}
@@ -655,7 +707,12 @@ export function GameScreen({
                                 ) : !filters.selectedZone ? (
                                     <div className="empty-state">Select a sector to isolate everything that happened there.</div>
                                 ) : (
-                                    <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+                                    <div className="space-y-2">
+                                    {/* §2.2: the map showed positions and nothing else.
+                                        zoneDeaths, zoneTraffic, zoneDepletionPeak and
+                                        zoneEffects were all on the state with no surface. */}
+                                    <ZoneDossier gameState={gameState} zone={filters.selectedZone} />
+                                    <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-1 custom-scrollbar">
                                         {sectorLogRows.length === 0 ? (
                                             <div className="empty-state">Nothing has happened in this sector yet.</div>
                                         ) : (
@@ -663,6 +720,7 @@ export function GameScreen({
                                                 <FeedLine key={l.id} log={l} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} />
                                             ))
                                         )}
+                                    </div>
                                     </div>
                                 )}
                             </div>
@@ -769,6 +827,7 @@ export function GameScreen({
                         setChronicle({
                             filterTributeId: selectedTribute.id,
                             filterTributeId2: null,
+                            filterPairMode: 'either',
                             filterDay: null,
                             searchText: '',
                         });
