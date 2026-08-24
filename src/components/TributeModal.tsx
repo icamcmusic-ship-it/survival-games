@@ -213,12 +213,14 @@ function StoryPanel({ tribute }: { tribute: Tribute }) {
     );
 }
 
-export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }: {
+export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, onCompare }: {
     tribute: Tribute;
     gameState: GameState;
     onClose: () => void;
     /** U-3: jump the chronicle to this tribute's story (their death sits on top). */
     onShowInChronicle?: () => void;
+    /** §2.3: start a side-by-side comparison against another tribute. */
+    onCompare?: (id: string) => void;
 }) {
     const units = useStore(prefsStore, p => p.units);
     const arenaSealed = !!gameState.arenaHidden && !canSeeArena(disclosureFor(gameState.phase));
@@ -579,6 +581,34 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                     </div>
                 )}
 
+                {/* §2.3: comparison, from the sheet a reader is already
+                    looking at. The moment somebody wants this is the moment a
+                    rivalry sharpens, which is a moment they are on one of the
+                    two sheets. */}
+                {onCompare && (
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                        <label className="eyebrow" htmlFor="compare-with">Compare with</label>
+                        <select
+                            id="compare-with"
+                            className="field text-xs w-auto"
+                            defaultValue=""
+                            onChange={e => { if (e.target.value) onCompare(e.target.value); }}
+                        >
+                            <option value="">pick a tribute…</option>
+                            {[...gameState.tributes]
+                                .filter(t => t.id !== tribute.id)
+                                .sort((a, b) => Number(a.status === 'dead') - Number(b.status === 'dead')
+                                    || a.district - b.district
+                                    || a.name.localeCompare(b.name))
+                                .map(t => (
+                                    <option key={t.id} value={t.id}>
+                                        {t.name} (D{t.district}){t.status === 'dead' ? ' †' : ''}
+                                    </option>
+                                ))}
+                        </select>
+                    </div>
+                )}
+
                 {/* A5: four tabs instead of fifteen sections in one column. */}
                 <div className="seg mb-4 w-full" role="tablist" aria-label="Tribute sheet sections">
                     {TABS.map(([id, label]) => (
@@ -758,6 +788,28 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                                             </span>
                                         ))}
                                 </div>
+                                {/* §3.1: which wound has turned, and how far. The
+                                    grade line reads differently from a fresh
+                                    injury on purpose — a septic site is the one
+                                    thing on this sheet that gets worse on its
+                                    own, and a reader needs to be able to see
+                                    that before it kills someone. */}
+                                {Object.entries(tribute.woundInfection ?? {}).filter(([, g]) => (g ?? 0) > 0).length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {Object.entries(tribute.woundInfection ?? {})
+                                            .filter(([, g]) => (g ?? 0) > 0)
+                                            .map(([site, g]) => (
+                                                <span
+                                                    key={site}
+                                                    className="chip"
+                                                    style={{ borderColor: 'var(--cat-hazard)', color: 'var(--cat-hazard)' }}
+                                                    title="An untreated wound that has gone bad. Needs medical supplies, not a dressing — and it deepens on its own."
+                                                >
+                                                    {['', 'infected', 'festering', 'septic'][Math.min(3, g ?? 0)]} {site}
+                                                </span>
+                                            ))}
+                                    </div>
+                                )}
                                 {BODY_SITES.some(site => severityOf(tribute, site) > 0) && (
                                     <dl className="grid grid-cols-[auto_1fr] gap-x-2 text-xs text-[var(--color-ink-400)]">
                                         {BODY_SITES.filter(site => severityOf(tribute, site) > 0).map(site => (

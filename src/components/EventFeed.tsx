@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { EventCategory, EventLog, Tribute } from '../models/types';
+import { EventCategory, EventLog, GameState, Tribute } from '../models/types';
+import { copyMoment } from '../utils/chronicle';
 import { categoryMeta } from '../ui/eventStyles';
+import { prefsStore } from '../store/prefsStore';
+import { useStore } from '../store/createStore';
 
 /** Cap on rendered rows before older entries collapse behind a "show earlier" control (UX-04). */
 export const VISIBLE_CAP = 200;
@@ -198,7 +201,7 @@ function withTributeLinks(
     });
 }
 
-export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTribute, stripZone, continuation = false }: {
+export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTribute, stripZone, continuation = false, revealed = false, gameState }: {
     log: EventLog;
     showTag?: boolean;
     animate?: boolean;
@@ -210,8 +213,39 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
     stripZone?: string;
     /** Not the first line of its beat: render as an indented continuation. */
     continuation?: boolean;
+    /**
+     * §2.5: the run is over, so nothing is a spoiler any more. Set by the
+     * chronicle and the end screen; the live sidebar leaves it false.
+     */
+    revealed?: boolean;
+    /** §2.6: needed for the seed and the Games number on a shared moment. */
+    gameState?: GameState;
 }) {
     const meta = categoryMeta(log.category);
+    const spoilerSafe = useStore(prefsStore, p => p.spoilerSafe);
+
+    // §2.5: watching, rather than replaying. A death is still an event on the
+    // timeline — hiding it entirely would leave the feed making no sense — but
+    // the line that names who and how is held back, so a second person can
+    // watch a shared seed without being told the ending three days early.
+    if (spoilerSafe && !revealed && (log.category === 'death' || log.category === 'kill')) {
+        return (
+            <div
+                className={`feed-item ${animate ? 'animate-riseIn' : ''} is-important`}
+                style={{ ['--cat' as string]: meta.color }}
+            >
+                {showTag && (
+                    <span className="feed-tag">
+                        <span className="cat-glyph mr-1" aria-hidden="true">{meta.glyph}</span>
+                        {meta.label}
+                    </span>
+                )}
+                <span className="italic text-[var(--color-ink-500)]">
+                    A cannon. Hidden while spoiler-safe viewing is on.
+                </span>
+            </div>
+        );
+    }
 
     if (cast && (log.category === 'death' || log.category === 'kill')) {
         // The victim is the involved tribute who actually died — for a kill the
@@ -239,7 +273,38 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
                 </span>
             )}
             {withTributeLinks(text, cast, log.tributesInvolved, onSelectTribute)}
+            {/* §2.6: the single-moment share. Only on the lines worth sharing
+                on their own — the `important` flag already identifies exactly
+                those — so the feed does not grow a button per line. */}
+            {log.important && gameState && <MomentShare gameState={gameState} log={log} />}
         </div>
+    );
+}
+
+/**
+ * §2.6: "copy this moment".
+ *
+ * The whole-chronicle export produces a document; this produces the one line
+ * somebody actually wants to paste into a message, with the day, the phase and
+ * the seed attached — a moment out of context is just a sentence, and the seed
+ * is what turns it into something the reader can go and watch for themselves.
+ */
+function MomentShare({ gameState, log }: { gameState: GameState; log: EventLog }) {
+    const [state, setState] = useState<'idle' | 'ok' | 'fail'>('idle');
+    return (
+        <button
+            type="button"
+            className="feed-share"
+            title="Copy this moment, with the seed"
+            aria-label={state === 'ok' ? 'Moment copied' : 'Copy this moment'}
+            onClick={async e => {
+                e.stopPropagation();
+                setState(await copyMoment(gameState, log) ? 'ok' : 'fail');
+                window.setTimeout(() => setState('idle'), 1600);
+            }}
+        >
+            {state === 'ok' ? 'copied' : state === 'fail' ? 'copy failed' : 'copy'}
+        </button>
     );
 }
 
@@ -297,7 +362,7 @@ function AnthemCard({ day, fallen }: { day: number; fallen: Tribute[] }) {
 }
 
 /** One rendered beat: a zone-tagged header (when it earns one) plus its lines. */
-function BeatBlock({ beat, showTags, cast, onSelectTribute, newIds, hideZones }: {
+function BeatBlock({ beat, showTags, cast, onSelectTribute, newIds, hideZones, revealed, gameState }: {
     beat: Beat;
     showTags: boolean;
     cast?: Tribute[];
@@ -305,6 +370,10 @@ function BeatBlock({ beat, showTags, cast, onSelectTribute, newIds, hideZones }:
     newIds: Set<string>;
     /** §1.9: a sealed arena must not name its sectors in the beat headers. */
     hideZones?: boolean;
+    /** §2.5: the run is over — nothing here is a spoiler any more. */
+    revealed?: boolean;
+    /** §2.6: for the per-moment share. */
+    gameState?: GameState;
 }) {
     // A beat header earns its row when there is a scene to anchor: a place
     // and more than a single line, or a place and a multi-party cast.
@@ -326,6 +395,8 @@ function BeatBlock({ beat, showTags, cast, onSelectTribute, newIds, hideZones }:
                     onSelectTribute={onSelectTribute}
                     stripZone={showHeader ? beat.zone : undefined}
                     continuation={showHeader && i > 0}
+                    revealed={revealed}
+                    gameState={gameState}
                 />
             ))}
         </div>
@@ -333,7 +404,7 @@ function BeatBlock({ beat, showTags, cast, onSelectTribute, newIds, hideZones }:
 }
 
 /** One "Day N — Phase" section: beats, plus its quiet lines behind a disclosure. */
-function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTribute, newIds, preGamesCollapsed, hideZones }: {
+function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTribute, newIds, preGamesCollapsed, hideZones, revealed, gameState }: {
     sectionKey: string;
     entries: EventLog[];
     density: FeedDensity;
@@ -344,6 +415,14 @@ function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTr
     /** Day-0 ceremony sections default to headlines with an expander (§pacing). */
     preGamesCollapsed: boolean;
     hideZones?: boolean;
+    /**
+     * §2.5: the run has finished, so spoiler-safe viewing stops suppressing
+     * anything. The live sidebar leaves this false; the post-run chronicle and
+     * the debrief set it.
+     */
+    revealed?: boolean;
+    /** §2.6: for the per-moment share on important lines. */
+    gameState?: GameState;
 }) {
     const [showQuiet, setShowQuiet] = useState(false);
     const [showCeremony, setShowCeremony] = useState(false);
@@ -387,6 +466,8 @@ function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTr
                         onSelectTribute={onSelectTribute}
                         newIds={newIds}
                         hideZones={hideZones}
+                        revealed={revealed}
+                        gameState={gameState}
                     />
                 ))}
                 {hidden > 0 && !expanded && (
@@ -411,7 +492,7 @@ function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTr
     );
 }
 
-export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaultExpanded = false, density = 'everything', hideZones = false }: {
+export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaultExpanded = false, density = 'everything', hideZones = false, revealed = false, gameState }: {
     logs: EventLog[];
     showTags?: boolean;
     cast?: Tribute[];
@@ -437,6 +518,14 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
      * arena named its sectors in the chronicle anyway.
      */
     hideZones?: boolean;
+    /**
+     * §2.5: the run has finished, so spoiler-safe viewing stops suppressing
+     * anything. The live sidebar leaves this false; the post-run chronicle and
+     * the debrief set it.
+     */
+    revealed?: boolean;
+    /** §2.6: for the per-moment share on important lines. */
+    gameState?: GameState;
 }) {
     const [expanded, setExpanded] = useState(defaultExpanded);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -518,6 +607,8 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
                     onSelectTribute={onSelectTribute}
                     newIds={newIds}
                     hideZones={hideZones}
+                    revealed={revealed}
+                    gameState={gameState}
                     preGamesCollapsed={entries[0]?.day === 0 && CEREMONY_PHASES.has(entries[0]?.phase ?? '') && density === 'everything'}
                 />
             ))}

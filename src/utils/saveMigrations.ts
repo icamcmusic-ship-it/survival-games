@@ -16,7 +16,7 @@ import {
     Objective, Stance, Tribute, TributeMemory, Vitals,
 } from '../models/types';
 import { DEFAULT_GAME_CONFIG } from '../data/constants';
-import { ALLIANCES } from '../data/balance';
+import { ALLIANCES, BLOC_TREATY } from '../data/balance';
 import { conditionOf, frameOf } from '../engine/physique';
 
 /** §3.1: the two body axes, for save normalisation. */
@@ -153,6 +153,11 @@ function normalizeMemory(raw: unknown): TributeMemory {
         stoodBy: asStrArray(r.stoodBy),
         contactStreak: asNumMap(r.contactStreak),
         suspicion: asNumMap(r.suspicion),
+        // §3.5: the reputation-by-hearsay ledger.
+        notoriety: asNumMap(r.notoriety),
+        // §4.7: which claims this tribute believes, and who told them each.
+        heardRumours: asStrArray(r.heardRumours),
+        rumourSource: asObjMap<string>(r.rumourSource),
     };
 }
 
@@ -272,7 +277,79 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         // rebuilds from play.
         respects: asNumMap(r.respects),
         debts: asNumMap(r.debts),
+        // §4.4: the material-loan ledger. Entries are validated rather than
+        // coerced — a half-formed loan record would leave a lender resenting
+        // a borrower over an item with no name.
+        loans: Object.fromEntries(
+            Object.entries(asRecord(r.loans) ?? {}).flatMap(([lenderId, value]) => {
+                const l = asRecord(value);
+                if (!l) return [];
+                const itemId = asStr(l.itemId, '');
+                if (!itemId) return [];
+                return [[lenderId, {
+                    itemId,
+                    itemName: asStr(l.itemName, itemId),
+                    sinceCycle: asNum(l.sinceCycle, 0),
+                }]] as Array<[string, { itemId: string; itemName: string; sinceCycle: number }]>;
+            })
+        ),
         districtBondNoted: asBool(r.districtBondNoted, false),
+
+        // §1.1/§1.7: the lifetime ledger — the write-once flags and the
+        // monotonic counters that exactly one achievement, earned trait or
+        // epilogue beat reads at the end of the run.
+        //
+        // These were the one family of optional fields the normaliser did not
+        // materialise, on the reasoning that every read site already says
+        // `?? 0` / `=== true`. That is true today and is exactly the shape
+        // that breaks quietly: `undefined` reads as falsy either way, so a
+        // resumed pre-migration save either replays a one-shot beat it has
+        // already fired or skips it forever, and neither shows up as an error.
+        // Defaulting them here makes the resumed tribute indistinguishable
+        // from one that has played the whole run in this build.
+        fullKitSeen: asBool(r.fullKitSeen, false),
+        everCarriedWeapon: asBool(r.everCarriedWeapon, false),
+        // §3.4: the two contradiction-arc counters.
+        betrayalsCommitted: asNum(r.betrayalsCommitted, 0),
+        finishingBlows: asNum(r.finishingBlows, 0),
+        poisonedByWeapon: asBool(r.poisonedByWeapon, false),
+        everDowned: asBool(r.everDowned, false),
+        sanityScarred: asBool(r.sanityScarred, false),
+        signatureFired: asBool(r.signatureFired, false),
+        volunteered: asBool(r.volunteered, false),
+        waterCrossings: asNum(r.waterCrossings, 0),
+        corpsesLooted: asNum(r.corpsesLooted, 0),
+        unseenStreak: asNum(r.unseenStreak, 0),
+        trapKills: asNum(r.trapKills, 0),
+        trapsDisarmed: asNum(r.trapsDisarmed, 0),
+        performingStreak: asNum(r.performingStreak, 0),
+        maxPerformingStreak: asNum(r.maxPerformingStreak, 0),
+        ghostTrust: asNum(r.ghostTrust, 0),
+        retainersHonoured: asNum(r.retainersHonoured, 0),
+        trucesBrokeredHeld: asNum(r.trucesBrokeredHeld, 0),
+        zoneHeld: asNum(r.zoneHeld, 0),
+        fortifiedCycles: asNum(r.fortifiedCycles, 0),
+        paradeBuzz: asNum(r.paradeBuzz, 0),
+        objectiveQueue: Array.isArray(r.objectiveQueue)
+            ? (r.objectiveQueue as unknown[]).map(normalizeObjective)
+            : [],
+        visitedZones: asStrArray(r.visitedZones),
+        extortedIds: asStrArray(r.extortedIds),
+        retainerPaidBy: asStrArray(r.retainerPaidBy),
+        trainingPact: asStrArray(r.trainingPact),
+        shedTraits: asStrArray(r.shedTraits),
+        scars: asObjMap<boolean>(r.scars),
+        recoveryProgress: asObjMap<number>(r.recoveryProgress),
+        // §3.1: the per-site infection record and its incubation clock. A save
+        // from before infection existed resumes with clean wounds rather than
+        // undefined ones, and `syncInfectedFlag` reconciles the whole-body
+        // `injuries.infected` flag against it on the first tick.
+        woundInfection: asObjMap<number>(r.woundInfection),
+        woundAge: asObjMap<number>(r.woundAge),
+        traitAge: asNumMap(r.traitAge),
+        truceRenewed: asNumMap(r.truceRenewed),
+        stanceCooldown: asObjMap<number>(r.stanceCooldown),
+        stanceReady: asObjMap<number>(r.stanceReady),
         bleedSeverity: clamp(asNum(r.bleedSeverity, r.injuries && asBool((asRecord(r.injuries) ?? {}).bleeding, false) ? 1 : 0), 0, 3),
         momentum: asNum(r.momentum, 0),
         rattled: asNum(r.rattled, 0),
@@ -286,8 +363,14 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
             ? { to: transit.to, remaining: asNum(transit.remaining, 1) }
             : undefined,
         proficiencies: asObjMap<number>(r.proficiencies),
+        // §3.2: per-weapon familiarity. A save from before it existed resumes
+        // with every weapon cold, which is the honest reading — the engine has
+        // no record of what they have been swinging.
+        weaponFamiliarity: asNumMap(r.weaponFamiliarity),
         objective: normalizeObjective(r.objective),
         protectorBonds: asStrArray(r.protectorBonds),
+        // §3.7: the ex-ally ledger, which the cold-war decay curve reads.
+        formerAllies: asStrArray(r.formerAllies),
         quirks: asStrArray(r.quirks),
         injurySeverity: asObjMap<number>(r.injurySeverity),
         platePosition: clamp(asNum(r.platePosition, 0.5), 0, 1),
@@ -435,6 +518,82 @@ export function normalizeGameState(raw: unknown): GameState | null {
         camps: asObjMap(r.camps),
         activeMutts: Array.isArray(r.activeMutts) ? (r.activeMutts as GameState['activeMutts']) : [],
         sponsorBlocBudgets: asNumMap(r.sponsorBlocBudgets),
+        // §4.6: love triangles. Entries are validated rather than coerced — a
+        // triangle missing one of its three ids would have the detector
+        // permanently unable to re-form it and the ticker permanently unable
+        // to resolve it.
+        // §4.1: bloc treaties, validated the same way — a treaty missing one
+        // of its two alliance ids would suppress combat against nothing.
+        // §4.3: shared vengeance. A pact needs a target and at least two
+        // members to mean anything; anything short of that is a private grudge
+        // and is already recorded as one in `memory.vengeance`.
+        // §4.7: the rumour pool. A claim with no id or no zone cannot be
+        // checked by standing in it, which is the only thing a rumour is for.
+        rumours: Array.isArray(r.rumours)
+            ? (r.rumours as unknown[]).flatMap(entry => {
+                const e = asRecord(entry);
+                if (!e) return [];
+                const id = asStr(e.id, '');
+                const zone = asStr(e.zone, '');
+                const kind = e.kind;
+                if (!id || !zone) return [];
+                if (kind !== 'restock' && kind !== 'holed-up' && kind !== 'cache' && kind !== 'empty') return [];
+                return [{
+                    id, kind, zone,
+                    aboutId: typeof e.aboutId === 'string' ? e.aboutId : undefined,
+                    isTrue: asBool(e.isTrue, true),
+                    plantedById: typeof e.plantedById === 'string' ? e.plantedById : undefined,
+                    bornCycle: asNum(e.bornCycle, 0),
+                    exposed: asBool(e.exposed, false),
+                }];
+            })
+            : [],
+        vengeancePacts: Array.isArray(r.vengeancePacts)
+            ? (r.vengeancePacts as unknown[]).flatMap(entry => {
+                const e = asRecord(entry);
+                if (!e) return [];
+                const targetId = asStr(e.targetId, '');
+                const memberIds = asStrArray(e.memberIds);
+                if (!targetId || memberIds.length < 2) return [];
+                return [{
+                    targetId,
+                    memberIds,
+                    sworn: asNum(e.sworn, 0),
+                    overWhomId: typeof e.overWhomId === 'string' ? e.overWhomId : undefined,
+                }];
+            })
+            : [],
+        blocTreaties: Array.isArray(r.blocTreaties)
+            ? (r.blocTreaties as unknown[]).flatMap(entry => {
+                const e = asRecord(entry);
+                if (!e) return [];
+                const aId = asStr(e.aId, '');
+                const bId = asStr(e.bId, '');
+                if (!aId || !bId || aId === bId) return [];
+                return [{
+                    aId, bId,
+                    until: asNum(e.until, 0),
+                    sworn: asNum(e.sworn, 0),
+                    fieldFloor: asNum(e.fieldFloor, BLOC_TREATY.dissolveFieldSize),
+                }];
+            })
+            : [],
+        loveTriangles: Array.isArray(r.loveTriangles)
+            ? (r.loveTriangles as unknown[]).flatMap(entry => {
+                const e = asRecord(entry);
+                if (!e) return [];
+                const apexId = asStr(e.apexId, '');
+                const aId = asStr(e.aId, '');
+                const bId = asStr(e.bId, '');
+                if (!apexId || !aId || !bId) return [];
+                return [{
+                    apexId, aId, bId,
+                    formedCycle: asNum(e.formedCycle, 0),
+                    heat: asNum(e.heat, 0),
+                    resolved: asBool(e.resolved, false),
+                }];
+            })
+            : [],
     };
 }
 

@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
+import { ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, RESOLVE, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
@@ -19,6 +19,7 @@ import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { areLovers, leaderFor } from '../alliance';
 import { decayFear } from '../fear';
+import { decayNotoriety, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
 import { runStanceBeats } from '../stanceBeats';
 import { runArchetypeSignatures, tickGhosts } from '../archetypeHooks';
@@ -39,12 +40,16 @@ import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
 import { tickPersona } from '../persona';
 import { resolveTruces } from '../parley';
-import { repayDebts, tickDistrictBonds, tickRetainers } from '../debts';
+import { offerLoans, repayDebts, settleLoans, tickDistrictBonds, tickRetainers } from '../debts';
 import { reconcileRivals } from '../rapport';
 import { decaySkillsUnderInjury, teachSkills } from '../proficiency';
 import { enforceCharters } from '../allianceCharter';
 import { earnTrait } from '../earnedTraits';
 import { tickTraitArcs } from '../traitArcs';
+import { detectTriangles, forceTriangleChoice, tickTriangles } from '../triangles';
+import { proposeBlocTreaties, tickBlocTreaties } from '../blocTreaty';
+import { formVengeancePacts, tickVengeancePacts } from '../vengeancePact';
+import { checkRumours, mintTrueRumours, shareRumoursInCamp } from '../rumours';
 import { gamemakerProfile } from '../../data/gamemakers';
 import { arenaHasLaw, arenaIsSilent, escalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
@@ -219,6 +224,15 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // 4a-ii. §3.2: and whether this cycle changed who they are. Traits decay,
     // collide and evolve here, after everything that could have earned one.
     tickTraitArcs(ctx);
+    // §4.6: detect the shape, then let it build. Detection first so a triangle
+    // that forms this cycle starts accruing on the next one rather than
+    // arriving with heat already on it.
+    detectTriangles(ctx);
+    tickTriangles(ctx);
+    // §4.6: the feast is one pressure point; the field closing is the other,
+    // and it is the one that always arrives. A triangle cannot survive into a
+    // final handful of tributes without somebody addressing it.
+    if (getAlive(ctx.state).length <= RESOLVE.endgameFieldSize) forceTriangleChoice(ctx);
 
     // 4b. The arena's own rule — the clock, the tide, the blackout schedule.
     // Runs after movement and encounters so it acts on where tributes actually
@@ -262,16 +276,40 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayAllianceTrust(ctx.state);
     decayFear(ctx.state);
     decaySuspicion(ctx.state);
+    // §3.5: the two contactless channels — the sky, and the zone next door —
+    // then the decay, so a name nobody has heard again fades. Ordered after
+    // `decayFear` for the same reason: this cycle's belief is built on top of
+    // what survived last cycle's forgetting, not underneath it.
+    spreadNotoriety(ctx);
+    decayNotoriety(ctx.state);
     // §9.7: and knowledge moves. After the discovery pass above, so a lie found
     // out this cycle is not immediately papered over by a fresh trade.
     tickIntelSharing(ctx);
     resolveTruces(ctx);
+    // §4.1: the bloc layer, alongside the pair layer. Proposed before it is
+    // ticked so a treaty sworn this cycle is not immediately assessed against
+    // the clock it was just given.
+    proposeBlocTreaties(ctx);
+    tickBlocTreaties(ctx);
+    // §4.3: the shared grudge. Formed before it is ticked, so a pact sworn
+    // this cycle is not immediately assessed for whether anybody has quit it.
+    formVengeancePacts(ctx);
+    tickVengeancePacts(ctx);
+    // §4.7: the world says a true thing about itself, and anybody who walked
+    // somewhere on somebody's word finds out whether the word was good.
+    mintTrueRumours(ctx);
+    shareRumoursInCamp(ctx);
+    checkRumours(ctx);
     // Obligations come due, district partners grow into each other, and any
     // group that agreed terms is held to them.
     repayDebts(ctx);
     tickDistrictBonds(ctx);
     // §1.2: a contract has an upkeep. The Mercenary's ledger is finally read.
     tickRetainers(ctx);
+    // §4.4: the light ledger. Offered before it is settled, so a loan made
+    // this cycle is not immediately assessed for being overdue.
+    offerLoans(ctx);
+    settleLoans(ctx);
     // §4.3: rivalry has a way down as well as a way up.
     reconcileRivals(ctx);
     // §3.3: knowledge moves between allies, and a ruined limb takes some with it.

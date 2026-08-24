@@ -2,6 +2,7 @@ import { Tribute, attr } from '../models/types';
 import { forceStance } from './stance';
 import { MOTIVES, RESOLVE } from '../data/balance';
 import { SimContext, getAlive } from './context';
+import { agedResolveDecay } from './physique';
 import { ensureMemory, cyclesSinceContact } from './memory';
 import { clampTribute } from './vitals';
 import { selfInflictedDeath } from './combat';
@@ -92,6 +93,12 @@ export function tickResolve(ctx: SimContext) {
 
         // Winning something — anything — is the strongest restorative there is.
         if ((t.momentum ?? 0) > 0) delta += RESOLVE.momentumBonus;
+
+        // §3.3: the old half of the age curve. Four more reapings' worth of
+        // knowing exactly what this is, and it costs — but only under
+        // sustained tension. A quiet run does not wear an older tribute down
+        // any faster than a younger one; carrying it does.
+        delta -= agedResolveDecay(t.age, t.tensionStreak ?? 0);
 
         // Traits: some people are simply harder to put out.
         delta += traitMod(t, 'resolveDrift');

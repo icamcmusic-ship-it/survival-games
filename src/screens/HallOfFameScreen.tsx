@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { HallOfFameEntry } from '../models/types';
-import { readHallOfFame, writeHallOfFame, clearHallOfFame } from '../utils/hofStorage';
+import { readHallOfFame, writeHallOfFame, clearHallOfFame, serializeHallOfFame } from '../utils/hofStorage';
 import { HofFilters, applyHofQuery, isFiltered, EMPTY_HOF_QUERY, HofQuery } from '../components/HofFilters';
 import { HofAggregates } from '../components/HofAggregates';
 import { HofCompare } from '../components/HofCompare';
@@ -20,6 +20,18 @@ export function HallOfFameScreen() {
     const [confirmClear, setConfirmClear] = useState(false);
     const [confirmResetPanem, setConfirmResetPanem] = useState(false);
     const [confirmResetAll, setConfirmResetAll] = useState(false);
+    /**
+     * §2.7: bulk selection.
+     *
+     * The archive holds up to 50 runs and every action on it was single-entry:
+     * pin one, delete the lot, or nothing in between. A player pruning a
+     * season's worth of runs had to open and confirm each one, and there was
+     * no way to export a chosen handful — only all of them. This is a separate
+     * axis from `compareIds`, which is deliberately capped at two because a
+     * comparison of five runs is a table, not a comparison.
+     */
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
 
     useEffect(() => {
         setEntries(readHallOfFame());
@@ -61,6 +73,52 @@ export function HallOfFameScreen() {
         setConfirmResetAll(false);
         setConfirmResetPanem(false);
         setConfirmClear(false);
+    };
+
+    const toggleSelected = (id: string) => setSelectedIds(ids =>
+        ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]);
+
+    /** Everything the current filters are showing — not the whole archive. */
+    const selectAllVisible = () => setSelectedIds(visible.map(e => e.id));
+    const clearSelection = () => setSelectedIds([]);
+
+    /**
+     * §2.7: delete the selection. Pinned entries are deliberately *not*
+     * exempt — a pin protects against the archive's own eviction cap, which is
+     * automatic, not against the player deliberately choosing the entry. The
+     * confirmation names how many are pinned so the choice is informed.
+     */
+    const deleteSelected = () => {
+        const next = entries.filter(e => !selectedIds.includes(e.id));
+        writeHallOfFame(next);
+        setEntries(readHallOfFame());
+        setSelectedIds([]);
+        setConfirmDeleteSelected(false);
+        setCompareIds(ids => ids.filter(id => next.some(e => e.id === id)));
+        if (expandedEntryId && !next.some(e => e.id === expandedEntryId)) setExpandedEntryId(null);
+    };
+
+    /** §2.7: pin or unpin the whole selection in one write. */
+    const setSelectedPinned = (pinned: boolean) => {
+        const next = entries.map(e =>
+            selectedIds.includes(e.id) ? { ...e, pinned: pinned || undefined } : e);
+        writeHallOfFame(next);
+        setEntries(readHallOfFame());
+    };
+
+    /** §2.7: export just the selection, in the same envelope a full export uses. */
+    const exportSelected = () => {
+        const chosen = entries.filter(e => selectedIds.includes(e.id));
+        if (chosen.length === 0) return;
+        const blob = new Blob([serializeHallOfFame(chosen)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `hall-of-fame-${chosen.length}-selected.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
     };
 
     /** Imports are persisted immediately: a merge the player can't see survive a reload is worse than no merge. */
@@ -166,6 +224,56 @@ export function HallOfFameScreen() {
                         )}
                     </div>
 
+                    {/* §2.7: bulk actions. Everything here operates on the
+                        current selection, and "select all" means everything the
+                        filters are currently showing rather than the whole
+                        archive — otherwise filtering to District 12 and hitting
+                        select-all would quietly stage 50 records for deletion. */}
+                    {visible.length > 1 && (
+                        <div className="panel-flush p-3 flex flex-wrap items-center gap-2 text-xs">
+                            <button
+                                onClick={selectedIds.length === visible.length ? clearSelection : selectAllVisible}
+                                className="btn btn-sm btn-ghost"
+                            >
+                                {selectedIds.length === visible.length ? 'Select none' : `Select all ${visible.length} shown`}
+                            </button>
+                            <span className="text-[var(--color-ink-500)]" role="status">
+                                {selectedIds.length === 0 ? 'Nothing selected' : `${selectedIds.length} selected`}
+                            </span>
+                            {selectedIds.length > 0 && (
+                                <>
+                                    <span className="text-[var(--line-soft)]" aria-hidden="true">·</span>
+                                    <button onClick={() => setSelectedPinned(true)} className="btn btn-sm">
+                                        <Pin className="w-3.5 h-3.5" /> Pin
+                                    </button>
+                                    <button onClick={() => setSelectedPinned(false)} className="btn btn-sm btn-ghost">
+                                        Unpin
+                                    </button>
+                                    <button onClick={exportSelected} className="btn btn-sm btn-ghost">
+                                        Export selected
+                                    </button>
+                                    {confirmDeleteSelected ? (
+                                        <span className="flex items-center gap-2">
+                                            <span className="text-[var(--red)] font-semibold">
+                                                Delete {selectedIds.length}
+                                                {(() => {
+                                                    const pinned = entries.filter(e => selectedIds.includes(e.id) && e.pinned).length;
+                                                    return pinned > 0 ? `, ${pinned} of them pinned` : '';
+                                                })()}?
+                                            </span>
+                                            <button onClick={deleteSelected} className="btn btn-sm btn-primary">Delete</button>
+                                            <button onClick={() => setConfirmDeleteSelected(false)} className="btn btn-sm btn-ghost">Cancel</button>
+                                        </span>
+                                    ) : (
+                                        <button onClick={() => setConfirmDeleteSelected(true)} className="btn btn-sm btn-ghost">
+                                            <Trash2 className="w-3.5 h-3.5" /> Delete selected
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    )}
+
                     {visible.length === 0 ? (
                         <div className="empty-state">
                             No records match {isFiltered(query) ? 'those filters' : 'your search'}.
@@ -184,8 +292,22 @@ export function HallOfFameScreen() {
                                     : [];
 
                                 return (
-                                    <div key={entry.id} className="panel p-5 space-y-4 animate-riseIn">
+                                    <div
+                                        key={entry.id}
+                                        className={`panel p-5 space-y-4 animate-riseIn ${selectedIds.includes(entry.id) ? 'ring-2 ring-[var(--red)]' : ''}`}
+                                    >
                                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                            <div className="min-w-0 flex items-start gap-3">
+                                                {/* §2.7: a 44px target, because this is the
+                                                    control a player uses forty times in a row. */}
+                                                <label className="flex items-center justify-center w-11 h-11 -m-2 cursor-pointer flex-none">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIds.includes(entry.id)}
+                                                        onChange={() => toggleSelected(entry.id)}
+                                                        aria-label={`Select the ${entry.arenaName} run${entry.noVictor ? '' : ` won by ${entry.winnerName}`}`}
+                                                    />
+                                                </label>
                                             <div className="min-w-0">
                                                 <h3 className="display-title text-2xl">
                                                     {entry.noVictor ? 'No victor' : entry.winnerName}
@@ -203,6 +325,7 @@ export function HallOfFameScreen() {
                                                         {entry.winnerTraits.map(t => <span key={t} className="chip">{t}</span>)}
                                                     </div>
                                                 )}
+                                            </div>
                                             </div>
 
                                             <div className="flex flex-wrap gap-2.5 items-center">

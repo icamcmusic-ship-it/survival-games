@@ -129,6 +129,100 @@ export const BLEEDING = {
 } as const;
 
 /**
+ * §3.1: infection — a wound that was never dealt with going bad.
+ *
+ * Tuned so that a tribute who camps, eats and knows what they are doing mostly
+ * does not get sick, and a tribute walking an open grade-3 wound through a
+ * wetland on an empty stomach mostly does. The `worsenChance` is the number
+ * that makes it lethal rather than annoying: it is the only status in the game
+ * that deepens on its own.
+ */
+export const INFECTION = {
+    /**
+     * Wound grade at or above which a site can turn at all.
+     *
+     * This is 1 — any open wound — rather than the 2 it was first written as,
+     * and the reason is worth recording. `injure()` only raises a site's grade
+     * when the *same* site is hit again, so grade 2 is genuinely rare: across
+     * 60 full runs, 36 site-cycles out of 56,105 sat at grade 2 or worse
+     * against 9,552 at grade 1. Gating on grade 2 made infection fire six
+     * times in 400 runs — a system that exists and never matters, which is the
+     * exact failure this pass was supposed to fix elsewhere. Depth still
+     * matters, through `perGradeAbove`; it is a weight, not a gate.
+     */
+    minWoundGrade: 1,
+    /** Cycles a wound must go untended before the first roll. */
+    incubationCycles: 4,
+    /** Per-cycle odds once incubated, before every term below. */
+    baseChance: 0.035,
+    perGradeAbove: 0.05,
+    /** Filth and exposure. */
+    wetlandBonus: 0.05,
+    /** Cover above which a damp zone counts as somewhere a wound rots. */
+    dankCover: 0.6,
+    dankBonus: 0.04,
+    contaminatedBonus: 0.09,
+    starvingBonus: 0.05,
+    exhaustedBonus: 0.04,
+    /** Somewhere dry to lie down is most of field medicine. */
+    shelterRelief: 0.05,
+    /** Knowing what a wound needs — the medicine station's payoff. */
+    perMedicinePoint: 0.02,
+    hardyRelief: 0.04,
+    maxChance: 0.3,
+
+    /** Grades an infection runs through; the top one is terminal. */
+    maxGrade: 3,
+    /** Odds an untreated infection deepens a grade this cycle. */
+    worsenChance: 0.24,
+
+    /** The drain: what sepsis takes that is not health. */
+    fatiguePerCycle: 2.5,
+    sanityPerCycle: 1.5,
+    /** Health taken per cycle once it reaches the top grade. */
+    septicDamage: 9,
+    feverLineChance: 0.12,
+
+    /** Treatment: a real medical item, one grade at a time. */
+    treatBaseChance: 0.4,
+    treatPerMedicine: 0.16,
+    treatPerIntelligence: 0.02,
+    treatAllyBonus: 0.15,
+    treatMaxChance: 0.9,
+} as const;
+
+/**
+ * §3.5: notoriety — reputation travelling without direct contact.
+ *
+ * Deliberately slow. The whole design claim is that a name accumulates over a
+ * run out of things nobody actually witnessed, so any single channel has to be
+ * nearly negligible and it is the sum over days that produces a reputation.
+ * `perKillFromSky` applies every cycle to every living tribute, so a
+ * three-kill Career is worth ~0.36 a cycle to the whole field — a name by day
+ * four, not by lunchtime on day one.
+ */
+export const NOTORIETY = {
+    max: 100,
+    /** Per kill, per cycle, from the nightly broadcast alone. */
+    perKillFromSky: 0.12,
+    /** Added when the believer is one zone from where the bodies are. */
+    proximityBonus: 0.6,
+    /** What a name is worth once somebody has actually met the person. */
+    perKnownKill: 14,
+    /** How far a meeting drags the rumour toward the truth, either way. */
+    witnessCorrection: 0.5,
+    /** Share of a ledger that survives being passed on at a meeting. */
+    gossipShare: 0.6,
+    decayPerCycle: 0.15,
+    /** Cycles a sighting supports a belief about where somebody is. */
+    beliefLifetime: 4,
+    /** Weight on the retreat roll — smaller than fear, which is first-hand. */
+    retreatWeight: 0.1,
+    /** Weight on how much a zone is avoided for who is believed to be in it. */
+    avoidWeight: 6,
+} as const;
+
+/**
  * Drinking from the arena itself.
  *
  * Thirst drains 15 a cycle and the only relief was a Water Canteen out of the
@@ -505,6 +599,29 @@ export const PROFICIENCY = {
     /** Combat power added per point of the relevant weapon proficiency. */
     combatWeight: 0.7,
     /** Power bonus for a weapon this tribute's district actually raises children on. */
+    /**
+     * §3.2: per-weapon familiarity — the grain below the melee/ranged buckets.
+     *
+     * `melee` covers a sword, an axe, a mace and a trident alike, so six days
+     * of spear work transferred wholesale to a bow the moment one turned up.
+     * Familiarity is tracked per item id: an unfamiliar weapon costs power
+     * until the tribute has actually swung it a few times, and a weapon they
+     * have carried all run is worth more than the same weapon in a stranger's
+     * hands.
+     *
+     * Deliberately smaller than `affinityItemBonus`, and it stacks with it —
+     * growing up with a gaff is worth more than a week's practice, which is
+     * the right ordering.
+     */
+    /** Uses at which a weapon stops being new in the hand. */
+    familiarUses: 3,
+    /** Uses past which no further familiarity accrues. */
+    familiarCap: 12,
+    /** Power per use, up to the cap. */
+    familiarPerUse: 0.18,
+    /** Power lost for swinging something genuinely cold. */
+    unfamiliarPenalty: 1.2,
+    /** A district-affinity weapon is never unfamiliar — they grew up with it. */
     affinityItemBonus: 2.2,
     /** Smaller bonus for a weapon merely of a familiar class. */
     affinityClassBonus: 1.1,
@@ -1047,6 +1164,38 @@ export const EARNED_TRAIT_RULES = {
     /** Cycles a Skittish tribute must hold high resolve before the fear burns off. */
     skittishShedCycles: 5,
     skittishShedResolve: 70,
+
+    /**
+     * §3.4: two more contradiction arcs, on the same rule shape as
+     * Pacifist + Bloodied -> Broken.
+     *
+     * A trait that has been violated enough times converts rather than sitting
+     * inertly next to its opposite. Loyal is not a thing you can still be
+     * called after the second time you have sold out someone who trusted you;
+     * Merciful is not a thing you can still be called after the third time you
+     * chose to close it on somebody who was already finished.
+     */
+    /**
+     * Breaches of faith before Loyal wears through into Treacherous.
+     *
+     * The review proposed this at a second betrayal, by analogy with
+     * Merciful's third finishing blow. Measured, that threshold is
+     * unreachable: Loyal carries `treachery: -0.3`, which makes its holder the
+     * least likely person in the arena to break faith at all, and across 120
+     * runs no Loyal tribute ever did it twice — 890 site-cycles at one breach,
+     * zero at two. So it is one, and the counter it reads was widened to cover
+     * every way of breaking faith with somebody who trusted you (an alliance
+     * betrayal, a broken truce, turning on someone the hour a truce lapses)
+     * rather than only `applyBetrayalFallout`.
+     *
+     * That is the right reading anyway. Merciful's third blow is a habit
+     * forming; a Loyal tribute selling out one person who trusted them is
+     * already the whole arc, and asking for it twice is asking for a
+     * coincidence rather than a character.
+     */
+    loyalBreaksAt: 1,
+    /** Finishing blows before Merciful wears through into Ruthless. */
+    mercifulBreaksAt: 3,
 } as const;
 
 /**
@@ -1125,6 +1274,47 @@ export const QUALITY_BIAS = {
     improvised: -0.35,
 } as const;
 
+/**
+ * §1.8: the encounter-branch dials, migrated out of `encounters.ts`.
+ *
+ * The meeting resolver is one long `else if` chain, and the thresholds that
+ * decide which branch a meeting takes — how thirsty is "in need", how warm is
+ * "friendly", how cold is "hostile" — were bare literals inside the conditions.
+ * They are the shape of every social encounter in the game and were the third
+ * densest patch of balance debt. Values unchanged.
+ */
+export const ENCOUNTER_BRANCH = {
+    /** Vitals at which an ally's need is visible enough to act on. */
+    needThirst: 40,
+    needHunger: 40,
+    /** How much a shared ration actually restores. */
+    sharedWaterRelief: 40,
+    sharedFoodRelief: 40,
+    /** Vitals above which the giver was genuinely going without — the debt only
+     *  lands when the gift cost the giver something. */
+    givingCostsThirst: 30,
+    givingCostsHunger: 30,
+    /** Regard at or above which a meeting is warm enough to share a meal. */
+    friendlyRegard: 20,
+    /** Regard at or below which a meeting starts from hostility. */
+    hostileRegard: -10,
+    /** Hunger a shared meal takes off both parties, and the regard it buys. */
+    sharedMealRelief: 10,
+    sharedMealRegard: 5,
+    /** Split between the two flavours of an uneventful meeting. */
+    peacefulRatherThanFriendly: 0.5,
+    /** Sanity a friendly meeting restores. */
+    friendlySanity: 10,
+
+    /** A breakdown: hallucinate, lose an edge, or drop something. */
+    breakdownHallucinate: 0.4,
+    breakdownRuinStealth: 0.7,
+    breakdownSanityCost: 5,
+    /** Lifetime cap on stealth a breakdown can strip, and the per-episode bite. */
+    breakdownStealthCap: 2,
+    breakdownStealthLoss: 2,
+} as const;
+
 export const ENCOUNTERS = {
     /** T-5: dodge penalty per grade of leg injury (was a flat 2 boolean). */
     legsDodgePenaltyPerGrade: 1.25,
@@ -1166,8 +1356,14 @@ export const ENCOUNTERS = {
     maxBrawlSize: 5,
     /** Chance a tribute wanders rather than holding position. */
     wanderChance: 0.5,
-    /** Depletion at which a forage attempt reports the ground picked clean. */
-    strippedZoneNotice: 0.55,
+    /**
+     * Depletion at which a forage attempt reports the ground picked clean.
+     * §1.6: lowered with the zone-economy retune — the notice is the only
+     * on-screen signal that the system exists, and at 0.55 it was firing
+     * later than the point where the yield had already stopped being worth
+     * the walk.
+     */
+    strippedZoneNotice: 0.45,
 } as const;
 
 /** Multi-round duels: how long they last and when someone breaks off. */
@@ -1426,6 +1622,33 @@ export const SLEEP = {
     deprivedAt: 4,
     sanityPerCycle: 3,
     lineChance: 0.18,
+
+    /**
+     * §3.8: what sleep debt costs besides sanity.
+     *
+     * The ledger accrued correctly and then only ever bought one thing — a
+     * sanity tick and an occasional hallucination line — which made it a
+     * second, slower sanity drain rather than its own mechanic. Sleep
+     * deprivation is not primarily a mood; it is a decline in the quality of
+     * every decision, and these are the three places this simulation actually
+     * makes decisions a tired person makes worse.
+     *
+     * All three scale with debt *past* `deprivedAt`, so an ordinary bad night
+     * still costs nothing but the sanity it always did.
+     */
+    /** Forage odds lost per point of debt past the threshold: you walk past things. */
+    foragePenaltyPerPoint: 0.02,
+    /** Odds per point of debt of fumbling something out of the pack. */
+    dropChancePerPoint: 0.025,
+    maxDropChance: 0.2,
+    /**
+     * Extra cycles a tired tribute holds a stance they should have left. Not a
+     * penalty to the decision itself — they read the situation the same way,
+     * they are just slower to act on it, which is what exhaustion actually
+     * does to reaction time.
+     */
+    stanceHoldPerPoint: 0.4,
+    maxStanceHold: 3,
 } as const;
 
 export const PLANNING = {
@@ -1890,12 +2113,29 @@ export const INVENTORY = {
 export const ZONES = {
     /** A fishing net in still water, added to the forage chance. */
     fishingBonus: 0.25,
-    /** Fraction of a zone's remaining yield consumed by one successful forage. */
-    depletionPerForage: 0.13,
+    /**
+     * How much depletion one successful forage adds to a zone.
+     *
+     * §1.6: the zone economy was correctly modelled and almost never
+     * load-bearing. At 0.13 taken against 0.085 grown back, a single forager
+     * netted +0.045 a cycle — and `wanderChance` means sustained pressure on
+     * one zone is rare — so across 400 runs the median zone sat at 0.12
+     * depletion, only 0.6% ever reached the floor, and the "picked clean"
+     * notice fired ten times. Foraging out a zone was a system nobody could
+     * observe, let alone plan around.
+     *
+     * These three numbers are the whole knob. Taking more per visit and
+     * growing back slower makes two tributes camped in the same forest a
+     * decision — `movement.ts` scores a destination on `effectiveResources`,
+     * so stripped ground actually pushes people off it — while the regen rate
+     * stays high enough that an abandoned zone is worth returning to within a
+     * few days, which is the property the soak asserts.
+     */
+    depletionPerForage: 0.2,
     /** Smaller drain even when a forage comes up empty — the ground is picked over. */
-    depletionPerAttempt: 0.03,
+    depletionPerAttempt: 0.05,
     /** Fraction of lost yield that grows back each cycle. */
-    regenPerCycle: 0.085,
+    regenPerCycle: 0.06,
     /** Depletion can never take a zone below this share of its printed yield. */
     minYieldFraction: 0.1,
     /** Base forage odds before zone yield and archetype are added. */
@@ -2282,6 +2522,88 @@ export const RELATIONSHIPS = {
     reliefSanity: 6,
     enemyBond: -35,
 
+    /**
+     * §4.5: a third backstory tie — shared hardship rather than shared standing.
+     *
+     * The existing three all key on status: same district, same academy, close
+     * in age. Two of those are Career-flavoured and the third is thin, so an
+     * outer-district pair from different districts started at a wall of zeroes
+     * with nothing to hang a story on. "We trained together" is the wrong hook
+     * for District 9 and 11.
+     *
+     * This one keys on circumstance instead: two tributes who have both been
+     * signing for tesserae for years recognise something in each other that
+     * has nothing to do with where they are from. It fires across districts
+     * (that is the point) and only for the genuinely poor, so it never
+     * competes with the district-partner bond.
+     */
+    /**
+     * Tesserae both must have taken before the shared-hardship tie exists.
+     *
+     * This is 7, not the 4 it was first written as, and the reason is a metric
+     * rather than a judgement. At 4 the tie applied to a large share of
+     * cross-district pairs and pushed `runs with star-crossed lovers` from
+     * 21.5% to 29.8%, breaching the 22% regression guard — regard is what
+     * romance is gated on, so a broad +12 across the outer districts is a
+     * romance generator whether or not that is what it is for.
+     *
+     * Raising the floor rather than shrinking the bond is the right lever:
+     * halving the magnitude instead brought lovers only to 23% and knocked two
+     * *other* guards (archetype and reaping-trait win spread) out of range. The
+     * tie should be a strong signal about a few specific pairs, not a weak one
+     * about most of the field. At 7 it lands on ~3.5 pairs per cast, 1.3% of
+     * cross-district pairs, and every guard holds.
+     */
+    hardshipTesseraeFloor: 7,
+    hardshipBase: 12,
+    hardshipSpread: 5,
+    /** Extra when both are deep in it — the tie scales with how bad it was. */
+    hardshipPerExtraSlip: 1.2,
+    hardshipMaxBonus: 8,
+
+    /**
+     * §3.7: the cold war. An alliance that ended without a betrayal leaves two
+     * people who are not allies and are also not strangers, and the ordinary
+     * decay rate walked them back to nothing in a few cycles as though the
+     * six days had not happened.
+     */
+    /** Multiplier on the decay rate for a pair who were allies and parted cleanly. */
+    exAllyDecayShare: 0.4,
+    /** Regard an ex-ally bond will not decay below. Shared history is not erasable. */
+    exAllyFloor: 12,
+    /** Odds that relief at an enemy's cannon is visible enough to narrate. */
+    reliefLineChance: 0.4,
+
+    /**
+     * §1.8: the reaping-table and fallout dials, migrated out of the engine.
+     *
+     * These were the twelve highest-density undeclared sites in the codebase —
+     * the file where balance is hardest to tune was also the file where the
+     * numbers were hardest to find. Nothing here changes value.
+     */
+    /** Archetype treachery/caution above which a pair starts wary of each other. */
+    warinessTreachery: 0.2,
+    warinessCaution: 0.2,
+    /** Age at or below which a protective archetype cannot stay neutral. */
+    wardAge: 13,
+    /** Alliance affinity an older tribute needs before a young one moves them. */
+    wardAffinity: 0.15,
+    /** Grief intensity above which a close loss leaves a permanent mark. */
+    hauntedIntensity: 0.5,
+    /** Grief intensity above which an ordinary mourning gets its own line. */
+    griefLineIntensity: 0.45,
+    /** Sponsor trust the crowd hands back for visibly grieving, per intensity point. */
+    griefTrustPerIntensity: 6,
+    /** Sponsor trust at which a tribute counts as a crowd favourite for kill fallout. */
+    favouriteTrust: 75,
+    /** What putting a favourite down costs the killer, and pays them in spectacle. */
+    favouriteKillTrustCost: 12,
+    favouriteKillExcitement: 25,
+    /** Betrayal fallout on the person who took the knife, and on the one who held it. */
+    betrayalSanityCost: 15,
+    betrayalExcitement: 30,
+    betrayalTrustCost: 8,
+
     /** Betrayal: what turning on an ally costs, socially. */
     betrayalDirectPenalty: 70,
     /** Everyone else in the alliance sees it happen. */
@@ -2324,6 +2646,139 @@ export const PROTECTOR_BOND = {
     /** Bond required, on the same relationship scale romance uses. */
     threshold: 70,
     chancePerCycle: 0.18,
+} as const;
+
+/**
+ * §4.6: love triangles.
+ *
+ * Thresholds are set so a triangle is a real configuration rather than any
+ * three people with warm feelings — both rivals genuinely attached, and the
+ * apex warm enough to both that the choice is a choice. Jealousy accrues only
+ * while the rivals can see each other, which is what keeps it a story rather
+ * than a background subtraction.
+ */
+/**
+ * §4.1: pack-to-pack treaties.
+ *
+ * Rarer than an individual truce by design — it needs two real groups, both
+ * with somebody who speaks for them, standing in the same place, and a
+ * membership that does not already hate the other side. `dissolveFieldSize` is
+ * the one that matters: two packs holding a non-aggression pact into the final
+ * handful is an arithmetic problem, and the treaty has to know that about
+ * itself rather than waiting for somebody to break it.
+ */
+/**
+ * §4.3: vengeance pacts.
+ *
+ * Gated on a genuinely shared loss and real mutual regard, so it stays the
+ * rare, dramatic version of a mechanic that already fires ~3,000 times a soak
+ * privately. `abandonRegard` is what makes it breakable from the inside: a
+ * pact between two people who have stopped liking each other is not a pact.
+ */
+/**
+ * §4.7: the rumour pool.
+ *
+ * Kept small and short-lived on purpose. A rumour is worth having because it
+ * is checkable, and a pool that never turns over is a pool where every claim
+ * has already been found out. `lurePull` is modest against the other terms in
+ * `movement.ts` — a rumour changes where somebody looks first, not what they
+ * are willing to do.
+ */
+export const RUMOURS = {
+    /** Claims in circulation at once. */
+    poolCap: 8,
+    /** Cycles before a claim is too stale for anybody to act on. */
+    lifetime: 6,
+    /** Odds the world mints a true one this cycle. */
+    trueMintChance: 0.3,
+    /** Cycles somebody must have held a zone before "dug in there" is true. */
+    holedUpCycles: 2,
+    /** Depletion at which "picked to the bone" is true. */
+    emptyDepletion: 0.6,
+
+    /** Odds one believed claim is passed on at a given meeting. */
+    passOnChance: 0.8,
+    /** Odds two co-located allies talk at all in a given cycle. */
+    campShareChance: 0.4,
+    /** Odds somebody invents one at a meeting, and the regard above which they will not. */
+    plantChance: 0.12,
+    plantMaxRegard: 20,
+    /** Share of plants that are a lure rather than a warning-off. */
+    plantLureShare: 0.6,
+
+    /** Destination scoring. */
+    lurePull: 8,
+    warningPush: 10,
+
+    /** What it costs to be found out, planted versus merely repeated. */
+    plantedRegardCost: 28,
+    plantedSuspicion: 30,
+    repeatedRegardCost: 8,
+    repeatedSuspicion: 10,
+} as const;
+
+export const VENGEANCE_PACT = {
+    /** Regard both need before they will swear anything together. */
+    minRegard: 25,
+    /** Regard below which one of them is treated as having walked away from it. */
+    abandonRegard: 0,
+    chance: 0.35,
+    regard: 12,
+    resolve: 8,
+    excitement: 18,
+    /** Cycles the shared hunt objective is renewed for each cycle it stands. */
+    objectiveCycles: 4,
+    /** Resolve for finishing it themselves, and for somebody else taking it. */
+    paidResolve: 12,
+    stolenResolve: 10,
+    /** What walking away from a shared oath costs with the person you swore it to. */
+    abandonPenalty: 25,
+} as const;
+
+export const BLOC_TREATY = {
+    /** Members each side needs before it is a bloc rather than a pair. */
+    minBlocSize: 2,
+    /** Average cross-membership regard needed before the groups will talk. */
+    minCrossRegard: -5,
+    baseChance: 0.18,
+    perPersuasion: 0.06,
+    cycles: 6,
+    /** Field size at or below which two packs stop being able to afford it. */
+    dissolveFieldSize: 7,
+    excitement: 15,
+    /** What a killing across the line costs, member to member, both ways. */
+    breachRegard: 25,
+} as const;
+
+export const TRIANGLES = {
+    /** Regard a rival needs toward the apex to count as attached. */
+    suitorRegard: 45,
+    /** Regard the apex needs toward both, so this is a choice and not two crushes. */
+    apexWarmth: 20,
+    /** What a declared Star-Crossed bond is worth against unspoken regard. */
+    declaredBondRegard: 85,
+
+    /** Per-cycle, while the two rivals are in the same place. */
+    jealousyRegardPerCycle: 2.5,
+    excitementPerCycle: 3,
+    /** Cycles of that before it is worth a line. */
+    jealousyLineHeat: 3,
+
+    /**
+     * Heat before the apex can be made to choose at all.
+     *
+     * Heat only accrues while all three are in the same place, which is
+     * genuinely uncommon, so this is 2 rather than the 4 it started at — at 4
+     * the choice fired three times in 400 runs and the beat the whole feature
+     * exists for effectively did not ship.
+     */
+    choiceMinHeat: 2,
+    chosenRegard: 15,
+    passedOverRegard: 30,
+    passedOverSanity: 12,
+    choiceExcitement: 30,
+    /** Odds the one who was not chosen takes it the way the arena invites. */
+    vengeanceChance: 0.35,
 } as const;
 
 export const ROMANCE = {
@@ -2646,6 +3101,29 @@ export const ALLIANCES = {
     /** The leader names an heir once the group is this big. */
     successorMinSize: 3,
 
+    /**
+     * §4.2: succession, as a rule the charter names rather than an implicit
+     * reassignment.
+     *
+     * `leaderChanges` fired 181 times across a 400-run soak, so this is one of
+     * the most frequent events in the alliance layer — and the most common
+     * cause of it, the leader simply dying, ignored the named heir entirely
+     * and re-ran `pickLeader` from scratch. The heir was honoured by the coup
+     * path and the expulsion path and nowhere else, which meant naming one
+     * changed nothing in the case it exists for.
+     *
+     * A succession now resolves as one of three beats: the heir takes it
+     * uncontested, the group's own preference takes it instead, or — the
+     * failure mode worth having — the two are close enough that neither can
+     * claim it and the alliance comes apart along the line between them.
+     */
+    /** Backing margin below which a succession is genuinely contested. */
+    successionContestMargin: 15,
+    /** Odds a contested succession splits the group rather than resolving. */
+    successionSplitChance: 0.45,
+    /** Regard the losing side of a contested succession loses for the winner. */
+    successionLoserRegard: 14,
+
     /** Pooled supplies: what a member will contribute, and what a thief takes. */
     cacheContributeSurplus: 2,
     cacheMaxSize: 8,
@@ -2742,6 +3220,46 @@ export const SPONSOR_MARKET = {
      *  covered and sit on their purses for a while. */
     coveredCycles: 4,
     coveredGiftMultiplier: 0.35,
+} as const;
+
+/**
+ * §1.8: the parachute need-weighting table, migrated out of `sponsors.ts`.
+ *
+ * `needWeight` is the function that decides which item a tribute actually
+ * receives, and every divisor and bonus in it was a bare literal — eleven
+ * undeclared sites in one 25-line function, and the second-densest patch of
+ * balance debt in the engine. A designer retuning "how badly does thirst
+ * outrank hunger" had to read the engine to find out that it was `/12` against
+ * `/14`. Values are unchanged.
+ */
+export const GIFT_NEED = {
+    /** Vitals divisors: a smaller number means that need shouts louder. */
+    thirstDivisor: 12,
+    hungerDivisor: 14,
+    purifierThirstDivisor: 20,
+    warmthFatigueDivisor: 25,
+    /** Medical: the specific answer to a specific injury outranks a general one. */
+    bleedingOrInfected: 6,
+    matchedAntidote: 8,
+    matchedOintment: 6,
+    /** Health below which a wound starts pulling medical weight, and how fast. */
+    woundedBelowHealth: 70,
+    woundedPerTenHealth: 10,
+    /** A weapon matters far more to someone holding nothing. */
+    weaponWhenArmed: 0.2,
+    weaponWhenUnarmed: 3,
+    /** The crowd arms a tribute it has watched fight — capped, so it is not a snowball. */
+    weaponPerKillCap: 3,
+    /** Armour is for someone who has already been hit. */
+    armourWhenHurt: 2,
+    armourWhenWhole: 0.5,
+    lightBonus: 0.5,
+    /** A second copy of something already carried is nearly worthless. */
+    duplicateMultiplier: 0.35,
+    /** Floor so no item is ever strictly impossible to draw. */
+    minWeight: 0.05,
+    /** Value floor for the fallback gift pool when a tier's own pool is empty. */
+    fallbackItemValue: 20,
 } as const;
 
 export const SPONSORS = {
@@ -2917,6 +3435,34 @@ export const GENERATION = {
      */
     strengthCapAtMinAge: 5,
     strengthCapPerYear: 1,
+
+    /**
+     * §3.3: the age curve, as a curve rather than one retreat modifier.
+     *
+     * Age was on every roster sheet and did three things: it capped strength,
+     * it added `Math.max(0, 17 - age) * retreatYouthWeight` to the urge to
+     * break off, and it made the youngest tributes hungrier. So the twelve
+     * year old was a weaker, twitchier version of the eighteen year old, which
+     * is a spread of one number rather than two kinds of person.
+     *
+     * The trade is now real in both directions. The young recover from a night
+     * faster than anyone — they are twelve, that is what twelve does — but the
+     * strength ceiling above holds them well below the top of the field. The
+     * oldest start nearest their physical peak and stay there, and pay for it
+     * in `resolve`: they have had four more reapings to think about this, and
+     * sustained tension wears them down measurably faster.
+     *
+     * `agePivot` is the hinge — below it a tribute is on the young side of the
+     * curve, above it the old side — and both effects scale with distance from
+     * it, so a 15-year-old is barely either.
+     */
+    agePivot: 15,
+    /** Share of a night's fatigue recovery added back, per year under the pivot. */
+    youthRecoveryPerYear: 0.09,
+    /** Extra resolve decay per cycle, per year over the pivot, while under tension. */
+    agedResolveDecayPerYear: 0.22,
+    /** Tension streak at which the age penalty on resolve starts to bite. */
+    agedResolveTensionFrom: 2,
     /**
      * §3.1: the endurance and willpower age curves.
      *
@@ -3726,6 +4272,43 @@ export const PARLEY = {
     /** Cycles the striker commits to hunting the person they let walk. */
     truceTurnHuntCycles: 3,
 
+    /**
+     * §3.6: bluffing at the table.
+     *
+     * The negotiation layer already models lying about *places* — a frightened
+     * tribute buying their life with directions to somewhere that is not
+     * dangerous. What it could not model is lying about *yourself*: the thing
+     * anybody outmatched in a clearing actually does, which is to imply there
+     * is more kit in the pack than there is, or that somebody is coming.
+     *
+     * Resolved as a contest, not a roll against a constant: the bluffer's
+     * persuasion and charisma against the mark's intelligence and tracking —
+     * reading people is the same faculty as reading ground. And the cost of
+     * being caught is deliberately steeper than an honest refusal would have
+     * been, because that is the whole shape of the decision: a bluff is a bet
+     * that turns a bad position into a survivable one or a much worse one.
+     */
+    /** Odds an outmatched tribute reaches for it at all, before temperament. */
+    bluffChance: 0.3,
+    /** Treachery makes it easier to reach for; this scales that. */
+    bluffTreacheryWeight: 0.35,
+    /** The contest. */
+    bluffBase: 0.4,
+    bluffPerPersuasion: 0.1,
+    bluffPerCharisma: 0.03,
+    bluffPerMarkIntelligence: 0.035,
+    bluffPerMarkTracking: 0.05,
+    bluffMaxChance: 0.85,
+    bluffMinChance: 0.08,
+    /** Regard lost by the mark when the bluff works and they later think about it. */
+    bluffSuccessSuspicion: 12,
+    /** Being caught: worse than never having tried. */
+    bluffCaughtRegard: 22,
+    bluffCaughtSuspicion: 30,
+    bluffCaughtExcitement: 18,
+    /** Sanity the bluffer spends holding a lie together in front of an armed stranger. */
+    bluffSanityCost: 4,
+
     /** Both armed, neither willing to move first. */
     standoffChance: 0.4,
     standoffPerFear: 0.004,
@@ -3751,6 +4334,30 @@ export const DEBTS = {
 
     /** Turning on a creditor: multiplier on betrayal willingness, per point owed. */
     betrayalResistPerPoint: 0.3,
+    /**
+     * §4.4: material loans — the ledger below the life-debt.
+     *
+     * `savedInFight` is worth 2 on a scale that caps at 3, because somebody
+     * stepped in front of a blade for you. There was nothing beneath that, so
+     * "you are still carrying my knife" had to be modelled as either a
+     * life-debt (absurd) or as nothing at all, which is what it was. This is
+     * the second texture: small, specific, and it goes bad slowly rather than
+     * binding anybody to anything.
+     */
+    /** Odds an ally with a spare weapon lends it to an unarmed one. */
+    loanChance: 0.3,
+    /** Cycles before an unreturned loan starts costing the borrower regard. */
+    loanPatience: 4,
+    /** Regard the lender loses for the borrower per cycle once patience runs out. */
+    loanResentmentPerCycle: 1.5,
+    /** What giving it back is worth to both of them. */
+    loanReturnedRegard: 6,
+    /** What walking off with it costs, once the borrower plainly is not returning it. */
+    loanDefaultRegard: 10,
+    loanDefaultSuspicion: 14,
+    /** Cycles after which an unreturned loan is simply theft. */
+    loanDefaultCycles: 8,
+
     /**
      * §1.2: turning on a *paying client*. A contract holds harder than a
      * favour — a mercenary who knifes the person who hired them is a mercenary

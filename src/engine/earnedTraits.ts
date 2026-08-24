@@ -37,10 +37,26 @@ const EARNED_LINES: Record<string, (t: Tribute) => string> = {
 /**
  * Grants an earned trait if this tribute can carry it. Returns true if it
  * actually landed, so callers can avoid double-narrating.
+ *
+ * §3.4: `converted` exists for `traitArcs.ts` and nothing else.
+ *
+ * The `earned` flag answers "may an ambient path in the arena hand this trait
+ * out?", and for a reaping trait like Ruthless or Treacherous the answer is
+ * no — you do not spontaneously become treacherous, you are dealt it. But a
+ * *conversion* is not an ambient grant: the arc has already established that
+ * this specific person has done a specific thing enough times that the trait
+ * they were carrying is no longer true of them. Gating that on `earned` meant
+ * Merciful -> Ruthless and Loyal -> Treacherous rolled back silently every
+ * cycle they were eligible — 25,821 site-cycles across 120 runs, zero
+ * conversions — because neither target is an earnable trait.
+ *
+ * Everything else still applies: they must be alive, and `traitFits` still has
+ * the final say, so a conversion cannot produce a contradictory sheet either.
  */
-export function earnTrait(ctx: SimContext, t: Tribute, trait: string): boolean {
+export function earnTrait(ctx: SimContext, t: Tribute, trait: string, converted = false): boolean {
     if (t.status !== 'alive') return false;
-    if (!TRAIT_DEFS[trait]?.earned) return false;
+    if (!converted && !TRAIT_DEFS[trait]?.earned) return false;
+    if (!TRAIT_DEFS[trait]) return false;
     if (!traitFits(t.traits, trait)) return false;
 
     t.traits.push(trait);

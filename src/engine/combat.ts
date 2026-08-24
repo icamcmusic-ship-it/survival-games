@@ -4,7 +4,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -14,10 +14,12 @@ import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgain
 import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { injure, injuryGrade, openWound } from './wounds';
-import { profOf, trainProficiency, weaponAffinity, weaponProficiency } from './proficiency';
+import { isUnfamiliar, noteWeaponUse, profOf, trainProficiency, weaponAffinity, weaponHandling, weaponProficiency } from './proficiency';
 import { addFear, fearFraction, reduceFear } from './fear';
+import { notorietyFraction, witnessReputation } from './notoriety';
 import { areLovers } from './alliance';
 import { hasTruce } from './parley';
+import { noteBlocKill, underBlocTreaty } from './blocTreaty';
 import { dominantSideCost, grappleResistance, injuryAbsorption, reachBonus } from './physique';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
@@ -64,6 +66,15 @@ const DOWNABLE_DAMAGE: DamageRecord['kind'][] = ['tribute', 'mutt', 'arena', 'ha
  * the deaths that still land.
  */
 function strikeDown(ctx: SimContext, victim: Tribute, killer: Tribute, weapon?: Item) {
+    // §4.1: if their two groups had an agreement, this ends it for everybody
+    // on both sides at once.
+    noteBlocKill(ctx, killer, victim);
+    // §3.4: a blow landed on somebody who was already finished is a choice, and
+    // it is the one the Merciful -> Ruthless arc counts. Recorded before the
+    // downed branch so it counts the decision, not the outcome.
+    if (victim.downed || victim.health <= COMBAT.finishingHealthThreshold) {
+        killer.finishingBlows = (killer.finishingBlows ?? 0) + 1;
+    }
     if (!victim.downed && shouldGoDown(ctx, victim)) {
         goDown(ctx, victim, victim.lastDamage?.cause || `Killed by ${killer.name}`, killer.id);
         return;
@@ -347,6 +358,9 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         // from the training centre. A trident is a fishing tool to District 4
         // and an awkward three-pronged spear to everybody else.
         power += weaponAffinity(t, weapon);
+        // §3.2: and how long it has actually been in their hands. Affinity is
+        // where they are from; handling is what they have done this week.
+        power += weaponHandling(t, weapon);
     } else {
         // Bare hands are a grapple, and a grapple is decided by mass, reach and
         // whether they have ever done this before. §3.1: frame is what makes
@@ -411,7 +425,32 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     return power;
 }
 
-/** Per-round retreat check. Nobody has to fight to the death. */
+/**
+ * Per-round retreat check. Nobody has to fight to the death.
+ *
+ * §1.3: `opponentEdge` is *the power differential from `t`'s point of view* —
+ * positive means the person in front of them is winning. That is one number
+ * with one meaning, and it now is at every call site.
+ *
+ * It was not. The duel loop passed the real differential (`±edge`), the group
+ * brawl passed a headcount proxy (`max(1, advantage)` to the outnumbered side
+ * and a flat `0` to the pack), and the free-for-all passed a constant `1` to
+ * everyone in the zone. So the same tribute in the same fight got a different
+ * answer depending on which loop happened to be resolving it, and the
+ * chokepoint penalty below — which subtracts from the same `chance` the
+ * losing bonus adds to — was arbitrating against a different quantity in each
+ * path. In the pack case it was worse than inconsistent: an attacker was
+ * hard-coded to `0`, so a lead who was *losing* to a stronger lone defender
+ * could never earn `retreatLosingBonus` at all, and the numbers advantage the
+ * group maths had already priced into `edge` was then counted a second time as
+ * a headcount.
+ *
+ * The fix is not a new rule, it is deleting two of the three conventions: the
+ * group and free-for-all paths now hand over the same resolved `edge` the
+ * damage roll used, signed per combatant. The numbers advantage still reaches
+ * this function — `combatPower` folds it into `edge` — it just is not also
+ * substituted for it.
+ */
 function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, roundsFought: number, opponent?: Tribute): boolean {
     // §7: once the Gamemakers have forced the finale, there is nowhere to
     // retreat *to* — the arena has been drained down to the horn. Without
@@ -452,6 +491,10 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     // Who they are fighting, not just how badly it is going: a tribute who has
     // watched this particular person kill wants out long before the numbers say so.
     if (opponent) chance += fearFraction(t, opponent.id) * FEAR.retreatWeight;
+    // §3.5: and what they have merely *heard* about them, which is weaker than
+    // having seen it but is the reason a name works on somebody who has never
+    // met the person carrying it.
+    if (opponent) chance += notorietyFraction(t, opponent.id) * NOTORIETY.retreatWeight;
     // §5.2: a chokepoint has nowhere to run to — breaking off is harder to
     // choose when the exit is a bottleneck the opponent can watch.
     const zoneHere = getZone(ctx.state.arena, t.zone);
@@ -478,6 +521,27 @@ function dropBrokenWeapons(t: Tribute) {
 
 /** Applies one landed hit, including venom, wounds and the grudge it earns. */
 function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: number, weapon?: Item, multiplier = 1) {
+    // §3.2: a landed blow is a swing that taught them something about this
+    // particular weapon. Recorded here rather than at the pick-up so carrying
+    // a bow you never fire never makes you an archer.
+    //
+    // The first swing with something cold gets a line, once — otherwise the
+    // cost is a number nobody can see, and the whole point is that a reader
+    // should understand why the tribute who just traded up is fighting worse.
+    if (isUnfamiliar(attacker, weapon) && (attacker.weaponFamiliarity?.[weapon!.id] ?? 0) === 0) {
+        ctx.logEvent(
+            `${attacker.name} swings the ${weapon!.name} and it does not go where they meant it to. `
+            + 'It is a good weapon. It is not their weapon, not yet.',
+            [attacker.id],
+            { category: 'combat' }
+        );
+    }
+    noteWeaponUse(attacker, weapon);
+    // §3.5: they are looking right at each other. Whatever either of them had
+    // heard about the other is now measured against the person in front of
+    // them, in both directions.
+    witnessReputation(defender, attacker);
+    witnessReputation(attacker, defender);
     const raw = (COMBAT.baseHitDamage + edge * COMBAT.damagePerPowerPoint + ctx.rng.nextInt(-3, 4)) * multiplier;
     const damage = Math.round(Math.max(COMBAT.minRoundDamage, Math.min(COMBAT.maxRoundDamage * multiplier, raw)));
 
@@ -604,7 +668,14 @@ export function resolveCombat(
             return;
         }
         // Being jumped is a reason to leave, not to settle in.
-        if (noRetreatRounds < 1 && wantsToRetreat(ctx, t2, damage / 10, 1, t1)) {
+        // §1.3: the differential the victim is actually facing, on the same
+        // scale every other retreat check uses — the ambush bonus is spent on
+        // the opening blow and does not carry into the second round, so what
+        // they weigh is the standing fight, plus how much that first hit hurt.
+        const ambushEdge = combatPower(ctx, t1, opener, 0, t2)
+            - combatPower(ctx, t2, bestWeapon(t2), 0, t1)
+            + damage / 10;
+        if (noRetreatRounds < 1 && wantsToRetreat(ctx, t2, ambushEdge, 1, t1)) {
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.retreat), { fleer: t2.name, stayer: t1.name, zone: t1.zone }),
                 [t2.id, t1.id],
@@ -770,8 +841,12 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     // meetings and evaporated in a brawl was not much of an agreement. Either
     // party can still break it, but that happens face to face in `tryParley`,
     // not as a side-effect of the sides being drawn.
+    // §4.1: and a treaty between their two groups holds here as well, for the
+    // same reason and one better — neither of these two agreed to it
+    // personally, which is exactly what makes it a treaty. Breaking it is
+    // still available; it just costs both blocs rather than one person.
     const isBonded = (a: Tribute, b: Tribute) =>
-        areLovers(a, b) || hasTruce(ctx.state, a, b.id);
+        areLovers(a, b) || hasTruce(ctx.state, a, b.id) || underBlocTreaty(ctx.state, a, b);
     const partnerOf = (a: Tribute) => fighters.find(o => o.id !== a.id && isBonded(a, o));
 
     const packSide: Tribute[] = [];
@@ -929,12 +1004,17 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         // The opponent each combatant weighs is whoever leads the *other* side
         // — not `lead` for everyone, which had the lead computing fear of
         // themselves.
-        const breaking = [...left, ...right].filter(t =>
-            isActive(t) && wantsToRetreat(
-                ctx, t,
-                defenders.includes(t) ? Math.max(1, advantage) : 0,
-                rounds,
-                attackers.includes(t) ? target : lead));
+        // §1.3: everyone weighs the *same* exchange that just happened, from
+        // their own side of it. `edge` is the lead's advantage over the
+        // target and already carries the numbers bonus, so the pack reads
+        // `-edge` and the outnumbered side reads `+edge`. Anyone standing in
+        // the zone who is on neither side of this particular exchange has no
+        // differential to weigh and reads 0.
+        const breaking = [...left, ...right].filter(t => {
+            if (!isActive(t)) return false;
+            const perceived = attackers.includes(t) ? -edge : defenders.includes(t) ? edge : 0;
+            return wantsToRetreat(ctx, t, perceived, rounds, attackers.includes(t) ? target : lead);
+        });
         if (breaking.length > 0) {
             breaking.forEach(t => forceStance(t, 'Evasive'));
             ctx.logEvent(
@@ -1014,7 +1094,8 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
         // Lovers never turn on each other, and a standing truce holds in the
         // melee the same way it does anywhere else.
         const targets = standing.filter(t =>
-            t.id !== attacker.id && !areLovers(attacker, t) && !hasTruce(ctx.state, attacker, t.id));
+            t.id !== attacker.id && !areLovers(attacker, t) && !hasTruce(ctx.state, attacker, t.id)
+            && !underBlocTreaty(ctx.state, attacker, t));
         if (targets.length === 0) break;
         // The wounded are still likeliest to draw the blow — a hurt tribute is
         // the obvious opening — but "likeliest" is now a weight rather than a
@@ -1035,8 +1116,14 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
             if (attacker.health <= 0) { strikeDown(ctx, attacker, target, bestWeapon(target)); continue; }
         }
 
-        const breaking = standing.filter(t =>
-            isActive(t) && wantsToRetreat(ctx, t, 1, rounds, t.id === attacker.id ? target : attacker));
+        // §1.3: same convention as the pack brawl. The two who actually traded
+        // blows weigh the differential they just felt; a bystander scattering
+        // out of the melee was not in a fight and has none to weigh.
+        const breaking = standing.filter(t => {
+            if (!isActive(t)) return false;
+            const perceived = t.id === attacker.id ? -edge : t.id === target.id ? edge : 0;
+            return wantsToRetreat(ctx, t, perceived, rounds, t.id === attacker.id ? target : attacker);
+        });
         if (breaking.length > 0) {
             breaking.forEach(t => {
                 forceStance(t, 'Evasive');

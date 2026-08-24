@@ -62,7 +62,10 @@ function transformTrait(ctx: SimContext, t: Tribute, from: string[], to: string,
         t.shedTraits = [...(t.shedTraits ?? []), trait];
         if (t.traitAge) delete t.traitAge[trait];
     });
-    if (!earnTrait(ctx, t, to)) {
+    // §3.4: `converted` — the arc has already decided, so the `earned` gate
+    // (which governs ambient grants, not conversions) does not apply. See the
+    // comment on `earnTrait`.
+    if (!earnTrait(ctx, t, to, true)) {
         // The successor could not land (an incompatibility the table knows
         // about that this rule does not). Put the tribute back the way they
         // were rather than leaving them with neither.
@@ -91,6 +94,34 @@ function tickOne(ctx: SimContext, t: Tribute) {
     if (transformTrait(ctx, t, ['Pacifist', 'Bloodied'], 'Broken',
         `${t.name} said, on Caesar's couch, that they would not do this. The Capitol has the tape. Something in how they hold themselves has given up arguing with it.`)) {
         return;
+    }
+
+    // §3.4: the same shape, two more pairs. Both are a trait describing a
+    // person's account of themselves, and a counter recording how many times
+    // the arena has disproved it. The distinction from a plain decay rule is
+    // that nothing is merely lost — what they were converts into what they
+    // have become, which is the part a reader can follow.
+    //
+    // Loyal is not a thing anybody can still call you after the second time
+    // you have sold out somebody who trusted you.
+    if (t.traits.includes('Loyal')
+        && (t.betrayalsCommitted ?? 0) >= EARNED_TRAIT_RULES.loyalBreaksAt) {
+        if (transformTrait(ctx, t, ['Loyal'], 'Treacherous',
+            `${t.name} gave their word and then went back on it, and everybody who was standing near enough saw. `
+            + 'Whatever they used to be to the people who trusted them, they are not that any more, and they know it before anyone tells them.')) {
+            return;
+        }
+    }
+
+    // Mercy is not a body count, it is a decision, and this is the third time
+    // they have made it the other way with somebody already finished in front
+    // of them.
+    if (t.traits.includes('Merciful')
+        && (t.finishingBlows ?? 0) >= EARNED_TRAIT_RULES.mercifulBreaksAt) {
+        if (transformTrait(ctx, t, ['Merciful'], 'Ruthless',
+            `${t.name} does not hesitate over this one at all. There was a version of them that would have, and it did not survive the week.`)) {
+            return;
+        }
     }
 
     // --- evolution ------------------------------------------------------

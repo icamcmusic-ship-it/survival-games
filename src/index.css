@@ -113,6 +113,94 @@
     --cat-system: #6b6155;
 }
 
+/* ============================================================================
+   §2.1 — alternative category palettes.
+
+   Event category is one of the app's real information channels, and in the
+   default palette it is carried by twenty distinct hues. The chronicle already
+   pairs every category with a glyph (see `ui/eventStyles.ts`), so colour is
+   reinforcement rather than the only signal — but twenty hues is twenty hues,
+   and several of the pairs that matter most (kill against combat, betrayal
+   against romance, travel against loot) collapse toward each other under
+   red-green deficiency, which is the commonest form by an order of magnitude.
+
+   Rather than trying to find twenty hues that survive that — which is not
+   possible, and would wreck the poster palette to attempt — these two modes
+   change what colour is *for*:
+
+     colourblind  colour encodes the five filter GROUPS (violence, arena,
+                  social, supply, ceremony) rather than the twenty categories,
+                  using five hues drawn from the Okabe-Ito set, which is
+                  designed to hold up under all three common deficiencies.
+                  Within a group, lightness separates the categories for anyone
+                  who can see it, and the glyph does the rest for anyone who
+                  cannot. Five well-separated hues beats twenty crowded ones.
+
+     contrast     colour stops carrying category at all. Everything is near-ink
+                  on paper at maximum legibility, and the glyph is the whole
+                  signal. For low vision rather than for colour vision.
+
+   Both are set from Settings and applied as `data-palette` on <html>.
+   ========================================================================== */
+
+:root[data-palette='colourblind'] {
+    /* Violence — vermillion. */
+    --cat-death: #7a2600;
+    --cat-kill: #9c3100;
+    --cat-combat: #b93c00;
+    --cat-injury: #d15a1e;
+    /* Arena — blue. */
+    --cat-hazard: #00426d;
+    --cat-mutt: #005489;
+    --cat-travel: #0067a8;
+    --cat-arena: #2b7fb8;
+    --cat-gamemaker: #003a5e;
+    /* Social — reddish purple. */
+    --cat-alliance: #6d2f66;
+    --cat-betrayal: #8e4585;
+    --cat-romance: #a85b9e;
+    --cat-sanity: #57254f;
+    /* Supply — bluish green. */
+    --cat-sponsor: #00543f;
+    --cat-loot: #006b52;
+    --cat-survival: #1c8468;
+    /* Ceremony — orange/ochre. */
+    --cat-training: #6f4800;
+    --cat-interview: #8a5a00;
+    --cat-feast: #a56e05;
+    --cat-system: #5a3a00;
+}
+
+:root[data-palette='contrast'] {
+    --cat-death: #140a06;
+    --cat-kill: #140a06;
+    --cat-combat: #140a06;
+    --cat-injury: #140a06;
+    --cat-hazard: #140a06;
+    --cat-mutt: #140a06;
+    --cat-alliance: #140a06;
+    --cat-betrayal: #140a06;
+    --cat-romance: #140a06;
+    --cat-sponsor: #140a06;
+    --cat-loot: #140a06;
+    --cat-survival: #140a06;
+    --cat-travel: #140a06;
+    --cat-sanity: #140a06;
+    --cat-arena: #140a06;
+    --cat-gamemaker: #140a06;
+    --cat-training: #140a06;
+    --cat-interview: #140a06;
+    --cat-feast: #140a06;
+    --cat-system: #140a06;
+    /* With hue carrying nothing, the glyph has to be unmissable. */
+    --line-soft: #6b5c42;
+}
+
+:root[data-palette='contrast'] .cat-glyph {
+    font-weight: 700;
+    opacity: 1;
+}
+
 html,
 body,
 #root {
@@ -670,6 +758,45 @@ html[data-reduce-motion='true'] {
         to { background-position: -200% 0; }
     }
 
+    /* §2.6: the per-moment share. Present but quiet — it earns its pixels only
+       when the reader is already looking at that line, so it does not turn the
+       feed into a column of buttons. Always reachable by keyboard, and always
+       visible at coarse-pointer sizes where hover does not exist. */
+    .feed-share {
+        margin-left: 0.5rem;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--color-ink-500);
+        border-bottom: 1px dotted var(--line-soft);
+        opacity: 0;
+        transition: opacity 120ms ease;
+    }
+
+    .feed-item:hover .feed-share,
+    .feed-item:focus-within .feed-share,
+    .feed-share:focus-visible {
+        opacity: 1;
+    }
+
+    .feed-share:hover {
+        color: var(--red);
+        border-bottom-color: var(--red);
+    }
+
+    @media (hover: none) {
+        /* No hover to reveal it, and a 44px target rather than a 9px one. */
+        .feed-share {
+            opacity: 1;
+            display: inline-block;
+            min-height: 44px;
+            line-height: 44px;
+            padding-inline: 0.5rem;
+        }
+    }
+
     .cat-glyph {
         font-family: var(--font-mono);
         font-size: 0.6875rem;
@@ -724,4 +851,119 @@ input[type="range"]:focus-visible {
 .feed-section {
     content-visibility: auto;
     contain-intrinsic-size: auto 480px;
+}
+
+
+/* ============================================================================
+   §2.8 — print.
+
+   The record book is the one view in this app somebody would genuinely want on
+   paper: it is the list of who won what, across every run they have played, and
+   it is the natural thing to hand to somebody or keep. Printing it produced
+   twelve pages of app chrome and a black background that emptied a cartridge.
+
+   The rules are: hide everything that is not the book, put ink on white, unwind
+   the poster treatment (offset shadows and hard borders print as smears), let
+   the sections break sensibly, and spell out anything the page was conveying
+   with colour alone.
+   ========================================================================== */
+
+@media print {
+    /* Ink on white regardless of the on-screen palette. */
+    :root,
+    :root[data-palette='colourblind'],
+    :root[data-palette='contrast'] {
+        --paper: #ffffff;
+        --paper-panel: #ffffff;
+        --paper-flush: #ffffff;
+        --ink: #000000;
+        --ink-soft: #222222;
+        --line: #000000;
+        --line-soft: #bbbbbb;
+        --shadow-ink: none;
+        --shadow-ink-sm: none;
+    }
+
+    html,
+    body,
+    #root {
+        background: #ffffff !important;
+        color: #000000 !important;
+    }
+
+    /* Chrome that has no meaning on paper. */
+    nav,
+    .print-hide,
+    .btn,
+    .seg,
+    .masthead-ghost,
+    .feed-share {
+        display: none !important;
+    }
+
+    /* When a record book is on the page, it is the only thing on the page. */
+    body:has(.record-book) #root > *:not(:has(.record-book)) {
+        display: none !important;
+    }
+
+    .record-book {
+        border: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        max-width: none !important;
+    }
+
+    /* The poster treatment is for screens. On paper it is toner. */
+    .panel,
+    .panel-flush,
+    .stat-tile,
+    .chip {
+        box-shadow: none !important;
+        background: #ffffff !important;
+        border-color: #999999 !important;
+    }
+
+    /* A record split across a page break is a record nobody can read. */
+    .record-book section,
+    .record-book .panel-flush,
+    .record-book .stat-tile,
+    .record-book li {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .record-book h3,
+    .record-book h4,
+    .panel-title {
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+
+    /* Locked and unlocked are distinguished on screen by colour and an icon;
+       on a mono printer only the icon survives, so say it in words. */
+    .record-book [data-locked='true'] .achievement-name::after {
+        content: ' (not yet earned)';
+        font-style: italic;
+        font-weight: 400;
+    }
+
+    /* A scroll container prints as whatever fitted in its viewport, which for
+       the achievements list is about six of sixty. */
+    .print-unclip,
+    .record-book .overflow-y-auto,
+    .record-book .max-h-72,
+    .record-book .max-h-64 {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    /* Dimming reads as nothing on paper; the "(not yet earned)" suffix does
+       the work instead. */
+    .record-book .opacity-55 {
+        opacity: 1 !important;
+    }
+
+    @page {
+        margin: 18mm 16mm;
+    }
 }

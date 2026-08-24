@@ -5,6 +5,8 @@ import { PARLEY_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
 import { SimContext, getAlive } from './context';
+import { tradeReputations } from './notoriety';
+import { tradeRumours } from './rumours';
 import { assessZone } from './stance';
 import { adjustMutual, adjustRel, getRel, respectOf } from './relationships';
 import { addZoneThreat, cycleOf, ensureMemory, lieAboutZone, noteStoodBy, raiseSuspicion, rememberedThreat, shareZoneIntel, swearVengeance } from './memory';
@@ -215,6 +217,15 @@ function truceBreakChance(ctx: SimContext, t: Tribute, other: Tribute): number {
  */
 export function breakTruce(ctx: SimContext, breaker: Tribute, victim: Tribute) {
     clearTruce(breaker, victim);
+    // §3.4: this counts on the same ledger as an alliance betrayal. The
+    // Loyal -> Treacherous arc turns on "how many times have you broken faith
+    // with somebody who trusted you", and a truce is exactly that — a promise
+    // given to somebody who then stood down because of it. Counting only
+    // `applyBetrayalFallout` made the threshold unreachable: across 120 runs
+    // exactly three tributes ever committed two alliance betrayals, and a
+    // Loyal tribute (treachery -0.3) is the least likely person in the arena
+    // to be one of them, so the arc could never fire.
+    breaker.betrayalsCommitted = (breaker.betrayalsCommitted ?? 0) + 1;
     adjustRel(victim, breaker.id, -PARLEY.truceBreakRegard);
     // Going back on your word costs you with the person you did it to, and with
     // everyone watching from the Capitol who was told there was an agreement.
@@ -289,7 +300,18 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
     // branch was gated shut by the same condition that creates its
     // opportunity. An asymmetric hostile meeting now reaches the extortion
     // block first and only falls through to the knife afterwards.
-    const shakedownOnTheTable = tOutmatched !== otherOutmatched;
+    let shakedownOnTheTable = tOutmatched !== otherOutmatched;
+
+    // §3.6: the bluff. Before anybody hands anything over, the party who knows
+    // they lose gets to try talking their way out of being the party who knows
+    // they lose — by implying there is more in the pack than there is, or that
+    // somebody is on their way. It is the one move available to a tribute with
+    // nothing, and the negotiation layer had no vocabulary for it.
+    if (shakedownOnTheTable) {
+        const weaker = tOutmatched ? t : other;
+        const stronger = tOutmatched ? other : t;
+        if (attemptBluff(ctx, weaker, stronger)) shakedownOnTheTable = false;
+    }
 
     // Anyone genuinely committed to a fight is not negotiating — except that
     // a confident predator sometimes prefers the shakedown to the kill: the
@@ -413,6 +435,13 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
         trainProficiency(t, 'persuasion');
         trainProficiency(other, 'persuasion');
         declareTruce(ctx, t, other);
+        // §3.5: two people who have just agreed not to kill each other talk,
+        // and what each of them has heard about the rest of the field partly
+        // becomes what the other has heard. This is the channel that gets a
+        // name across the map to somebody who will never meet its owner.
+        tradeReputations(t, other);
+        // §4.7: and the claims about the arena, some of which are true.
+        tradeRumours(ctx, t, other);
         // Agreeing to something and keeping it is the seed of a real bond —
         // and §1.4, a negotiation somebody actually talked their way through
         // leaves both parties thinking better of the other than a shrug does.
@@ -487,6 +516,10 @@ export function resolveTruces(ctx: SimContext) {
                 // a line; it is also, unambiguously, a promise kept.
                 if (other && t.status === 'alive' && other.status !== 'alive') {
                     state.keptWordSeen = true;
+                    // §1.4: the single most common way a truce ends, and it
+                    // also never reached the broker. A promise that outlived
+                    // one of the people who made it was kept by definition.
+                    creditBroker(ctx, t, other, 'outlived');
                     ctx.logEvent(
                         `The agreement between ${t.name} and ${other.name} ends the way most of them do: `
                         + `${other.name} is dead, and ${t.name} never once broke it.`,
@@ -521,23 +554,104 @@ export function resolveTruces(ctx: SimContext) {
  * its full term is the Diplomat's kill: it pays in the currency they actually
  * play for, which is the Capitol's regard.
  */
-function creditBroker(ctx: SimContext, a: Tribute, b: Tribute) {
+type BrokerOutcome = 'lapsed' | 'renewed' | 'outlived';
+
+function creditBroker(ctx: SimContext, a: Tribute, b: Tribute, outcome: BrokerOutcome = 'lapsed') {
     getAlive(ctx.state).forEach(broker => {
+        if (broker.id === a.id || broker.id === b.id) return;
         const held = broker.brokeredTruces?.some(([x, y]) =>
             (x === a.id && y === b.id) || (x === b.id && y === a.id));
         if (!held) return;
         broker.trucesBrokeredHeld = (broker.trucesBrokeredHeld ?? 0) + 1;
         broker.sponsorTrust = Math.min(100, broker.sponsorTrust + PARLEY.brokerHeldTrust);
         addExcitement(broker, PARLEY.brokerHeldExcitement);
-        adjustRel(a, broker.id, PARLEY.brokerHeldRegard);
-        adjustRel(b, broker.id, PARLEY.brokerHeldRegard);
+        // A living counterparty can think better of the broker; a dead one
+        // cannot, and writing to their ledger would be writing to a corpse.
+        if (a.status === 'alive') adjustRel(a, broker.id, PARLEY.brokerHeldRegard);
+        if (b.status === 'alive') adjustRel(b, broker.id, PARLEY.brokerHeldRegard);
+        const line = outcome === 'renewed'
+            ? `${a.name} and ${b.name} sit down and agree to it all over again. `
+                + `The words were ${broker.name}'s the first time and they are still holding, which is more than most things in here do.`
+            : outcome === 'outlived'
+                ? `Whatever else the arena did to ${a.name} and ${b.name}, it never got them to break the agreement ${broker.name} talked them into. `
+                    + 'One of them is dead now and it held to the end anyway.'
+                : `${a.name} and ${b.name} part without a shot fired, and the agreement that held them apart was ${broker.name}'s. `
+                    + 'The Capitol notices who does that; it is the rarest kind of work anyone does in there.';
+        ctx.logEvent(line, [broker.id, a.id, b.id], { important: true, category: 'alliance' });
+    });
+}
+
+/**
+ * §3.6: misrepresenting your own position at the table.
+ *
+ * Distinct from `lieAboutZone`, which sells the mark a false *place*. This is
+ * the bluff about *yourself* — the knife you do not have, the allies who are
+ * not coming — and it is the move anybody outmatched in a clearing actually
+ * reaches for.
+ *
+ * Contested rather than rolled against a constant: talking is persuasion and
+ * charisma, seeing through it is intelligence and tracking, because reading a
+ * person and reading ground are the same faculty. Returns true when the mark
+ * buys it, in which case the caller stops treating this as a shakedown at all.
+ *
+ * Getting caught costs more than an honest refusal would have: the mark now
+ * knows exactly what they are dealing with, holds it against them past this
+ * conversation, and the shakedown proceeds anyway. That asymmetry is the
+ * decision — a bluff turns a bad position into a survivable one or a much
+ * worse one, and never into a neutral one.
+ */
+function attemptBluff(ctx: SimContext, bluffer: Tribute, mark: Tribute): boolean {
+    // Somebody has to be the sort of person who tries it.
+    const nerve = PARLEY.bluffChance + Math.max(0, treacheryOf(bluffer)) * PARLEY.bluffTreacheryWeight;
+    if (!ctx.rng.chance(nerve)) return false;
+
+    const odds = Math.max(PARLEY.bluffMinChance, Math.min(PARLEY.bluffMaxChance,
+        PARLEY.bluffBase
+        + profOf(bluffer, 'persuasion') * PARLEY.bluffPerPersuasion
+        + (bluffer.attributes.charisma - 5) * PARLEY.bluffPerCharisma
+        - (mark.attributes.intelligence - 5) * PARLEY.bluffPerMarkIntelligence
+        - profOf(mark, 'tracking') * PARLEY.bluffPerMarkTracking));
+
+    bluffer.vitals.sanity -= PARLEY.bluffSanityCost;
+    clampTribute(bluffer);
+    trainProficiency(bluffer, 'persuasion');
+
+    // What they claim. Allies if they have anyone at all to name; otherwise
+    // the pack, which is the lie available to somebody entirely alone.
+    const claimsAllies = getAlive(ctx.state).some(o => o.id !== bluffer.id && o.id !== mark.id
+        && getRel(bluffer, o.id) > 0);
+
+    if (ctx.rng.chance(odds)) {
+        // It lands. The mark does not know they have been had — but something
+        // about the conversation sits wrong afterwards, which is what
+        // suspicion is for.
+        raiseSuspicion(mark, bluffer.id, PARLEY.bluffSuccessSuspicion);
         ctx.logEvent(
-            `${a.name} and ${b.name} part without a shot fired, and the agreement that held them apart was ${broker.name}'s. `
-            + 'The Capitol notices who does that; it is the rarest kind of work anyone does in there.',
-            [broker.id, a.id, b.id],
+            claimsAllies
+                ? `${bluffer.name} mentions, without emphasis, that the others are a few minutes behind them. `
+                    + `${mark.name} looks at the treeline for slightly too long and decides this is not worth finding out about.`
+                : `${bluffer.name} lets their hand rest on the pack as though there were something in it worth reaching for. `
+                    + `${mark.name} does not call it, and the moment passes.`,
+            [bluffer.id, mark.id],
             { important: true, category: 'alliance' }
         );
-    });
+        return true;
+    }
+
+    // Caught. Worse than never having tried.
+    adjustRel(mark, bluffer.id, -PARLEY.bluffCaughtRegard);
+    raiseSuspicion(mark, bluffer.id, PARLEY.bluffCaughtSuspicion);
+    addExcitement(mark, PARLEY.bluffCaughtExcitement);
+    ctx.logEvent(
+        claimsAllies
+            ? `${bluffer.name} says the others are close. ${mark.name} has been watching this zone since dawn and knows exactly how alone ${bluffer.name} is. `
+                + 'Whatever was going to happen here is going to happen with that in the air now.'
+            : `${bluffer.name} reaches for the pack like there is something in it. ${mark.name} watches the hand, not the pack, and sees it. `
+                + 'It is a worse position than the one they started in.',
+        [bluffer.id, mark.id],
+        { important: true, category: 'betrayal' }
+    );
+    return false;
 }
 
 function treacheryOf(t: Tribute): number {
@@ -561,6 +675,14 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
         trainProficiency(b, 'persuasion');
         declareTruce(ctx, a, b);
         adjustMutual(ctx.state, a, b, PARLEY.truceRegard);
+        // §1.4: a renewal is the *strongest* evidence a brokered agreement is
+        // working — both parties have now chosen it twice — and it was the one
+        // ending that paid the broker nothing. Credit was wired to LAPSE only,
+        // so across 400 runs the Diplomat's signature payoff fired once: the
+        // two commoner endings (renewal, and one party dying with the promise
+        // intact) both returned before ever reaching it. Only a *broken* truce
+        // should pay its broker nothing.
+        creditBroker(ctx, a, b, 'renewed');
         ctx.logEvent(
             fill(ctx.pickText(PARLEY_TEXTS.truceRenewed), { t1: a.name, t2: b.name }),
             [a.id, b.id],
@@ -575,6 +697,10 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
     const turnChance = PARLEY.truceTurnChance
         + Math.max(0, treacheryOf(striker)) * PARLEY.truceTurnTreacheryWeight;
     if (ctx.rng.chance(Math.min(0.6, turnChance))) {
+        // Turning the moment a truce lapses breaks no promise — which is
+        // exactly the sort of technicality that is still, to the person it is
+        // done to, being sold out by somebody they had an understanding with.
+        striker.betrayalsCommitted = (striker.betrayalsCommitted ?? 0) + 1;
         striker.objective = { kind: 'hunt', targetId: target.id, expires: cycleOf(ctx.state) + PARLEY.truceTurnHuntCycles };
         adjustRel(target, striker.id, -PARLEY.truceBreakRegard);
         raiseSuspicion(target, striker.id, PARLEY.truceBreakSuspicion);

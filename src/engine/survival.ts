@@ -12,6 +12,7 @@ import { decayIdleDrift } from './proficiency';
 import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding, tickWoundRecovery } from './wounds';
 import { rememberedThreat } from './memory';
 import { hasCamp } from './fieldcraft';
+import { applySepsisDrain, isSeptic, tickInfection, treatInfection } from './infection';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
 import { fill } from './encounters';
 import { craftOf } from '../data/districts';
@@ -19,7 +20,7 @@ import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
 import { earnTrait } from './earnedTraits';
 import { SLEEP } from '../data/balance';
-import { bodyLabel, driftCondition, hungerDrainMultiplier, starvationBuffer, waterNeedMultiplier } from './physique';
+import { bodyLabel, driftCondition, hungerDrainMultiplier, starvationBuffer, waterNeedMultiplier, youthRecoveryMultiplier } from './physique';
 import { arenaHasLaw, wildcardIs } from './gamesProfile';
 import { isEvasiveStance } from '../data/stances';
 
@@ -111,6 +112,12 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     const stamina = (attr(t, 'endurance') - 5) * VITALS.endurancePerPoint;
     fatigue += fatigue > 0 ? -stamina : -stamina * VITALS.enduranceRecoveryShare;
 
+    // §3.3: the young half of the age curve. A recovering night goes further
+    // for a younger body; a draining day is unchanged, so this is a faster
+    // bounce rather than a flat endurance bonus. The strength ceiling in
+    // `strengthCapForAge` is what they pay for it.
+    if (fatigue < 0) fatigue *= youthRecoveryMultiplier(t.age);
+
     // §3.1: the body itself. A bigger skeleton burns more whatever is wrapped
     // around it, and soft tissue is water the arena keeps asking for back.
     hunger *= hungerDrainMultiplier(t);
@@ -187,6 +194,29 @@ function reliefFor(t: Tribute, cause: 'hunger' | 'thirst' | 'fatigue' | 'bleedin
         case 'burned': healInjury(t, 'burned'); break;
         case 'frostbitten': healInjury(t, 'frostbitten'); break;
     }
+}
+
+/**
+ * §3.8: sleep debt past the deprivation threshold, as a plain number the three
+ * cost sites below share. Zero for anyone who is merely tired.
+ */
+export function sleepDeprivation(t: Tribute): number {
+    return Math.max(0, (t.sleepDebt ?? 0) - SLEEP.deprivedAt);
+}
+
+/** §3.8: forage odds a sleep-deprived tribute gives away by not seeing things. */
+export function sleepForagePenalty(t: Tribute): number {
+    return sleepDeprivation(t) * SLEEP.foragePenaltyPerPoint;
+}
+
+/** §3.8: odds this cycle that something goes out of the pack unnoticed. */
+export function sleepDropChance(t: Tribute): number {
+    return Math.min(SLEEP.maxDropChance, sleepDeprivation(t) * SLEEP.dropChancePerPoint);
+}
+
+/** §3.8: extra cycles a tired tribute is slow to leave a stance. */
+export function sleepStanceHold(t: Tribute): number {
+    return Math.min(SLEEP.maxStanceHold, Math.floor(sleepDeprivation(t) * SLEEP.stanceHoldPerPoint));
 }
 
 /** Untreated wounds and empty canteens, each attributed to what caused them. */
@@ -330,6 +360,11 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
 
 /** Eating, drinking, and working through whatever medical supplies they have. */
 function consumeSupplies(ctx: SimContext, t: Tribute) {
+    // §3.1: a septic wound gets worked on before anything else, because it is
+    // the thing that is actually killing them. Unlike every other use of a
+    // medical item this does not clear the status — it buys one grade, and a
+    // bad infection is several days of supplies.
+    if (isSeptic(t)) treatInfection(ctx, t);
     // §4.5: a protector bond changes behaviour, not just numbers. A protector
     // standing with a hungrier ward hands the food over before eating.
     if ((t.protectorBonds?.length ?? 0) > 0 && t.vitals.hunger < 70) {
@@ -564,6 +599,19 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
             + traitMod(t, 'fatigueNight') * SLEEP.debtPerFatigueTrait);
     }
     if ((t.sleepDebt ?? 0) >= SLEEP.deprivedAt) {
+        // §3.8: the pack costs something to keep hold of. A tribute who has
+        // not slept properly in days loses things out of it — quietly, and
+        // usually the thing they will want next.
+        if (t.inventory.length > 0 && ctx.rng.chance(sleepDropChance(t))) {
+            const idx = ctx.rng.nextInt(0, t.inventory.length - 1);
+            const lost = t.inventory.splice(idx, 1)[0];
+            ctx.logEvent(
+                `${t.name} does not notice their ${lost.name} going. It is somewhere back along the last few hours, `
+                + 'and they could not tell you which of them.',
+                [t.id],
+                { category: 'loot' }
+            );
+        }
         t.vitals.sanity = Math.max(0, t.vitals.sanity - SLEEP.sanityPerCycle);
         if (ctx.rng.chance(SLEEP.lineChance)) {
             ctx.logEvent(
@@ -665,7 +713,14 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         applyWearAndTear(ctx, t);
         if (t.status !== 'alive') return;
 
+        // §3.1: wounds turn before the arena bills for them. An untreated
+        // grade-2 site that has been sitting long enough can go septic here,
+        // and an already-septic one can deepen — the one status in the game
+        // that gets worse on its own.
+        tickInfection(ctx, t);
         applyStatusDamage(ctx, t);
+        applySepsisDrain(ctx, t);
+        if (t.status !== 'alive') { checkDeath(ctx, t); return; }
         consumeSupplies(ctx, t);
         // Order matters: the wound costs health first, then gets its chance to
         // close. A fresh cut always draws blood before it starts to clot.

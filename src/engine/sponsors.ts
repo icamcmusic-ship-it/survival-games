@@ -1,7 +1,7 @@
 import { SimContext, getAlive } from './context';
 import { profOf } from './proficiency';
 import { ITEMS } from '../data/constants';
-import { COMPOSURE, QUELL_MECHANICS, SPONSORS, SPONSOR_MARKET, PROFICIENCY } from '../data/balance';
+import { COMPOSURE, GIFT_NEED, QUELL_MECHANICS, SPONSORS, SPONSOR_MARKET, PROFICIENCY } from '../data/balance';
 import { composureOf } from './composure';
 import { SPONSOR_TEXTS } from '../data/flavorText';
 import { drawFromBloc } from './sponsorBlocs';
@@ -76,26 +76,30 @@ const TIER_FLOORS = [20, 35, 50, 65];
  */
 export function needWeight(t: Tribute, item: Item): number {
     let weight = 1;
-    if (item.type === 'water') weight += t.vitals.thirst / 12;
-    if (item.type === 'food') weight += t.vitals.hunger / 14;
+    if (item.type === 'water') weight += t.vitals.thirst / GIFT_NEED.thirstDivisor;
+    if (item.type === 'food') weight += t.vitals.hunger / GIFT_NEED.hungerDivisor;
     if (item.type === 'medical') {
-        if (t.injuries.bleeding || t.injuries.infected) weight += 6;
-        if (t.injuries.poisoned && item.id === 'antidote') weight += 8;
-        if (t.injuries.burned && item.id === 'ointment') weight += 6;
-        weight += Math.max(0, (70 - t.health) / 10);
+        if (t.injuries.bleeding || t.injuries.infected) weight += GIFT_NEED.bleedingOrInfected;
+        if (t.injuries.poisoned && item.id === 'antidote') weight += GIFT_NEED.matchedAntidote;
+        if (t.injuries.burned && item.id === 'ointment') weight += GIFT_NEED.matchedOintment;
+        weight += Math.max(0, (GIFT_NEED.woundedBelowHealth - t.health) / GIFT_NEED.woundedPerTenHealth);
     }
     if (item.type === 'weapon') {
-        weight += t.inventory.some(i => i.type === 'weapon') ? 0.2 : 3;
+        weight += t.inventory.some(i => i.type === 'weapon')
+            ? GIFT_NEED.weaponWhenArmed
+            : GIFT_NEED.weaponWhenUnarmed;
         // A tribute the crowd has watched fight gets sent something to fight with.
-        weight += Math.min(3, t.kills);
+        weight += Math.min(GIFT_NEED.weaponPerKillCap, t.kills);
     }
-    if (item.type === 'armour') weight += t.health < 70 ? 2 : 0.5;
-    if (item.warmth) weight += t.vitals.fatigue / 25;
-    if (item.purifies) weight += t.vitals.thirst / 20;
-    if (item.light) weight += 0.5;
+    if (item.type === 'armour') {
+        weight += t.health < GIFT_NEED.woundedBelowHealth ? GIFT_NEED.armourWhenHurt : GIFT_NEED.armourWhenWhole;
+    }
+    if (item.warmth) weight += t.vitals.fatigue / GIFT_NEED.warmthFatigueDivisor;
+    if (item.purifies) weight += t.vitals.thirst / GIFT_NEED.purifierThirstDivisor;
+    if (item.light) weight += GIFT_NEED.lightBonus;
     // Nobody parachutes a second one of something they are already carrying.
-    if (t.inventory.some(i => i.id === item.id)) weight *= 0.35;
-    return Math.max(0.05, weight);
+    if (t.inventory.some(i => i.id === item.id)) weight *= GIFT_NEED.duplicateMultiplier;
+    return Math.max(GIFT_NEED.minWeight, weight);
 }
 
 export function pickNeededGift(ctx: SimContext, t: Tribute, pool: Item[]): Item {
@@ -152,7 +156,7 @@ export function processSponsors(ctx: SimContext) {
         const pool = ITEMS.filter(i => i.value > floor);
         // Clone: pushing the shared ITEMS entry let one tribute's combat
         // durability loss propagate to every future copy of that item.
-        const candidates = pool.length > 0 ? pool : ITEMS.filter(i => i.value > 20);
+        const candidates = pool.length > 0 ? pool : ITEMS.filter(i => i.value > GIFT_NEED.fallbackItemValue);
         const gift = mintItem(ctx.rng, pickNeededGift(ctx, t, candidates), QUALITY_BIAS.parachute);
         // §9.4: somebody specific pays for this. When every purse that would
         // back this tribute is empty, the parachute does not come.

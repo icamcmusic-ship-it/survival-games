@@ -343,6 +343,26 @@ export interface TributeMemory {
      * (0-100). Raised by witnessed betrayals and charter breaches; decays.
      */
     suspicion?: Record<string, number>;
+    /**
+     * §3.5: what this tribute has *heard* about each other tribute, 0-100.
+     *
+     * Distinct from `fear`, which is what they have seen. Notoriety is built
+     * from the nightly sky, from cannons in the next zone, and from talk at
+     * every peaceable meeting — so the field's biggest killer becomes a name
+     * to somebody who has never laid eyes on them. It is belief, not fact: it
+     * can settle on the wrong person, and meeting them is what corrects it.
+     * See `engine/notoriety.ts`.
+     */
+    notoriety?: Record<string, number>;
+    /** §4.7: ids of the rumours this tribute currently believes. */
+    heardRumours?: string[];
+    /**
+     * §4.7: who told them each one. Not who *started* it — that is the whole
+     * distinction between a rumour and a lie, and it is why finding out a
+     * claim was false costs the person who repeated it rather than the person
+     * who invented it.
+     */
+    rumourSource?: Record<string, string>;
 }
 
 /** Where a tribute's most recent wound actually came from. */
@@ -482,6 +502,20 @@ export interface Tribute {
      * creditor and unlocks a repayment beat. See `engine/debts.ts`.
      */
     debts?: Record<string, number>;
+    /**
+     * §4.4: things lent, not things owed.
+     *
+     * `debts` is created by `stoodBy` — somebody took a real risk for you —
+     * and it is priced accordingly: it resists betrayal hard and it is one of
+     * the heaviest relationships in the model. That left nothing at all below
+     * it. A tribute who lent an ally their spare knife on Tuesday and has not
+     * got it back has a real, small, specific grievance, and alliance
+     * economics had no way to express it.
+     *
+     * Keyed by lender id. Settled by giving the thing back; it sours into
+     * ordinary resentment, and eventually into theft, if it is not.
+     */
+    loans?: Record<string, { itemId: string; itemName: string; sinceCycle: number }>;
     /** Guards the one-off "both still standing, both from the same district" beat. */
     districtBondNoted?: boolean;
     /**
@@ -526,6 +560,16 @@ export interface Tribute {
     /** §5.3: a slow traversal in progress — a crossing or a climb. The tribute
      *  stays in their origin zone until `remaining` cycles have been spent. */
     transit?: { to: string; remaining: number };
+    /**
+     * §3.2: hands-on familiarity with each specific weapon, keyed by item id.
+     *
+     * `proficiencies` tracks melee and ranged as two buckets, so a tribute who
+     * had spent six days with a spear read as exactly as dangerous the moment
+     * they picked up a sword. This is the finer grain underneath: it accrues
+     * on use, decays on nothing, and makes swapping kit a real cost rather
+     * than a free re-skin of the same numbers.
+     */
+    weaponFamiliarity?: Record<string, number>;
     /** Skills that improve with successful use. See `Proficiency`. */
     proficiencies?: Partial<Record<Proficiency, number>>;
     /** What they are currently trying to do. See `Objective`. */
@@ -561,6 +605,23 @@ export interface Tribute {
      * hysteresis was missing — it had no memory of its own churn.
      */
     stanceChurn?: number;
+    /**
+     * §3.1: infection, per wound site, graded 1-3.
+     *
+     * Distinct from `injuries.infected`, which is the whole-body flag every
+     * other system reads and which can also be set from outside (a scavenger
+     * mutt, a contaminated zone). This is the record of *which* neglected
+     * wound turned and how far it has gone — the state that lets an untreated
+     * grade-2 cut become the thing that kills someone on day nine, rather than
+     * sitting inertly at grade 2 forever. See `engine/infection.ts`.
+     */
+    woundInfection?: Partial<Record<InjurySite, number>>;
+    /**
+     * §3.1: cycles each open site has gone without closing or being dressed.
+     * The incubation clock — an infection that landed with the blow would just
+     * be a second damage type, so a wound has to be *neglected* first.
+     */
+    woundAge?: Partial<Record<InjurySite, number>>;
     favouring?: InjurySite;
     /**
      * §3.1: which arm took it. `injuries.arms` is one site, so handedness had
@@ -579,12 +640,34 @@ export interface Tribute {
     /** §3.6: cycles of undisturbed healing banked per injury site. */
     recoveryProgress?: Partial<Record<InjurySite, number>>;
     /** Ids of tributes this one has formed a protective bond with. See `growProtectorBond`. */
+    /**
+     * §3.7: people this tribute was in an alliance with that ended *without*
+     * anybody being betrayed — a pact clause running out, a Career pack simply
+     * coming apart. Ordinary bond decay walks a dissolved alliance back to
+     * stranger's odds in a few cycles, which is the wrong ending for it: they
+     * carried each other's water for six days. An ex-ally pair decays slower
+     * and floors above zero, so they are never quite strangers again.
+     *
+     * Deliberately not written by the betrayal or expulsion paths. Those have
+     * their own, much colder, machinery.
+     */
+    formerAllies?: string[];
     protectorBonds?: string[];
     /**
      * How far their launch plate landed from the mouth of the Cornucopia, 0-1.
      * 0 is close enough to touch the horn; 1 is the far edge of the ring.
      * Decided at the reaping so it can be shown on the tribute sheet, and read
      * only by the bloodbath.
+     *
+     * §1.5: it is not cosmetic, and the four rolls it feeds pull against each
+     * other on purpose. A close plate raises the odds of running *at* the horn
+     * (`fightChance`), wins the race to the good steel (`reachScore`), and is
+     * the reason a runner gets caught from behind (`runDownChance`); it also
+     * decides who spent the sixty seconds on the plates staring at whom
+     * (`plateNeighbourRange`). Measured over 300 runs, the close third dies in
+     * the bloodbath 39.4% of the time against the far third's 29.4%, and comes
+     * out armed 40.4% against 11.6% — that is the trade, not a wash: the horn
+     * arms you and the horn is where the dying happens.
      */
     platePosition?: number;
     /** Who dressed them for the Capitol. Set at the Remake Center. */
@@ -647,6 +730,19 @@ export interface Tribute {
     /** §10.1: tribute ids this one has extorted at a parley (item or information). */
     extortedIds?: string[];
     /** §10.1: set the first time a weapon enters their inventory, ever. */
+    /**
+     * §3.4: betrayals this tribute has *committed* against someone who trusted
+     * them. `memory.timesBetrayed` counts the other direction. Read by the
+     * Loyal -> Treacherous arc, which needs to know what they have done rather
+     * than what was done to them.
+     */
+    betrayalsCommitted?: number;
+    /**
+     * §3.4: killing blows landed on someone who was already finished. Read by
+     * the Merciful -> Ruthless arc — it is not the body count that wears
+     * mercy off, it is how many times they chose to close it.
+     */
+    finishingBlows?: number;
     everCarriedWeapon?: boolean;
     /** §10.1: every zone this tribute has personally stood in. */
     visitedZones?: string[];
@@ -1541,6 +1637,78 @@ export interface GameState {
     /** §10.1: the longest single fire chain this run produced, in zones. */
     fireChainMax?: number;
     /** §10.1: a renewed truce was still standing when one of its parties died. */
+    /**
+     * §4.6: love triangles, as their own tracked shape.
+     *
+     * Two overlapping romances that happen to share a member were previously
+     * two independent pairs, and the simulation had no idea they were the same
+     * story. A triangle has beats a pair does not — the jealousy that is
+     * legible in the feed long before anything happens, and the forced choice
+     * at a pressure point — and none of them are expressible as "these two
+     * records both mention Cato".
+     */
+    loveTriangles?: Array<{
+        /** The one both of them are attached to. */
+        apexId: string;
+        aId: string;
+        bId: string;
+        formedCycle: number;
+        /** Cycles the two rivals have spent visibly aware of each other. */
+        heat: number;
+        /** Set once the apex has been made to choose. */
+        resolved?: boolean;
+    }>;
+    /**
+     * §4.1: standing non-aggression between two whole alliances.
+     *
+     * A truce is between two people; this is between two groups, agreed by
+     * whoever speaks for each, binding on members who were not at the table,
+     * and dissolving for reasons about the blocs rather than about any pair.
+     * See `engine/blocTreaty.ts`.
+     */
+    blocTreaties?: Array<{
+        aId: string;
+        bId: string;
+        /** Cycle it lapses on its own. */
+        until: number;
+        sworn: number;
+        /** Field size at or below which the arithmetic ends it early. */
+        fieldFloor: number;
+    }>;
+    /**
+     * §4.3: vengeance sworn together — a kill-target objective held by more
+     * than one tribute at once. Distinct from the individual grudge in
+     * `memory.vengeance`, which is private and which two people who lost the
+     * same person each held separately with no idea the other one had it.
+     * See `engine/vengeancePact.ts`.
+     */
+    vengeancePacts?: Array<{
+        targetId: string;
+        memberIds: string[];
+        sworn: number;
+        /** Who they both lost, when the engine could identify them. */
+        overWhomId?: string;
+    }>;
+    /**
+     * §4.7: the rumour pool — claims in circulation about the arena, each of
+     * which is either so or not. Distinct from the zone-threat hearsay in
+     * `memory.ts`, which trades numbers about places; a rumour is a
+     * proposition with a subject, and it can be checked by standing in it.
+     * See `engine/rumours.ts`.
+     */
+    rumours?: Array<{
+        id: string;
+        kind: 'restock' | 'holed-up' | 'cache' | 'empty';
+        zone: string;
+        /** The tribute a 'holed-up' claim is about, when there is one. */
+        aboutId?: string;
+        isTrue: boolean;
+        /** Set when somebody made it up, as opposed to it being observed. */
+        plantedById?: string;
+        bornCycle: number;
+        /** Set once somebody has stood in it and found it false. */
+        exposed?: boolean;
+    }>;
     keptWordSeen?: boolean;
     /** §10.1: a 3+ alliance reached the final eight with a clean charter. */
     charterKeptSeen?: boolean;

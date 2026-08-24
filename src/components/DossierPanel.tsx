@@ -11,6 +11,7 @@ import { ordinal } from '../engine/gamesProfile';
 import { Explainer } from './Explainer';
 import { OddsSparkline } from './OddsSparkline';
 import { chronicleStore, setChronicle, toggleSection } from '../store/chronicleStore';
+import { prefsStore } from '../store/prefsStore';
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 
@@ -71,6 +72,7 @@ export function DossierPanel({
     onGamemakerEvent: (type: GamemakerEventType, targetId?: string) => void;
 }) {
     const followedId = useStore(chronicleStore, s => s.followedId);
+    const spoilerSafe = useStore(prefsStore, p => p.spoilerSafe);
     const coins = useStore(gameStore, s => s.coins);
     const bets = useStore(gameStore, s => s.bets);
     const [oddsExpanded, setOddsExpanded] = useState(false);
@@ -288,7 +290,20 @@ export function DossierPanel({
             </Section>
 
             {/* ---------- odds board ---------- */}
-            {!isOver && oddsLadder.length > 1 && (
+            {/* §2.5: the odds board is the other half of the spoiler problem.
+                A viewer watching a shared seed for the first time can read the
+                ending off a ladder that has one tribute at 62% — so while
+                spoiler-safe viewing is on, it waits for the epilogue like
+                everything else. */}
+            {spoilerSafe && !isOver && oddsLadder.length > 1 && (
+                <Section id="odds" title="Odds board">
+                    <p className="text-xs text-[var(--color-ink-500)]">
+                        Hidden while spoiler-safe viewing is on. The board gives the shape of the ending away
+                        long before the arena does; it comes back at the epilogue.
+                    </p>
+                </Section>
+            )}
+            {!spoilerSafe && !isOver && oddsLadder.length > 1 && (
                 <Section id="odds" title="Odds board">
                     {/* The Explainer is a button, so it cannot live inside the
                         accordion's own header button — it sits at the top of the

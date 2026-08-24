@@ -2,7 +2,7 @@ import { Alliance, GameState, Item, Tribute } from '../models/types';
 import { ALLIANCES, ROMANCE } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext, getAlive } from './context';
-import { cycleOf } from './memory';
+import { cycleOf, noteFormerAllies } from './memory';
 import { adjustRel, getRel } from './relationships';
 import { pactOath, pactStrictness, rollPact } from './alliancePact';
 
@@ -278,6 +278,94 @@ export function mergeAllianceRecords(ctx: SimContext, keepId: string, absorbedId
     return keep;
 }
 
+
+/**
+ * §4.2: who takes over, and what it costs when that is not obvious.
+ *
+ * Three outcomes, in ascending order of how badly it goes:
+ *
+ *  - **uncontested** — there is a named heir and the group has no stronger
+ *    preference. The charter did its job and nobody has to have an argument
+ *    about it in front of a body.
+ *  - **passed over** — the group plainly backs somebody else. The heir does
+ *    not get it, which is its own quiet humiliation and its own grudge.
+ *  - **contested** — the two are close enough that neither can claim it, and
+ *    the group splits along the line between them. This is the failure mode
+ *    worth having: an alliance that survives its leader is not guaranteed to
+ *    survive the question of who replaces them.
+ */
+function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]) {
+    const backingFor = (t: Tribute) =>
+        members.reduce((sum, m) => sum + (m.id === t.id ? 0 : getRel(m, t.id)), 0);
+
+    const heir = record.successorId
+        ? members.find(m => m.id === record.successorId)
+        : undefined;
+    const favourite = pickLeader(members);
+
+    const install = (next: Tribute, line: string) => {
+        record.leaderId = next.id;
+        record.successorId = undefined;
+        ctx.logEvent(line, members.map(m => m.id), { important: true, category: 'alliance' });
+    };
+
+    // No heir was ever named, or they did not outlive the leader either.
+    if (!heir) {
+        install(favourite,
+            `With the leader gone and nothing agreed about what happens next, ${favourite.name} takes charge of what is left of the group. `
+            + 'Nobody objects out loud, which is not the same as nobody objecting.');
+        return;
+    }
+
+    if (heir.id === favourite.id) {
+        install(heir,
+            `${heir.name} was named for this and steps into it without anyone needing to say so. `
+            + 'It is the only part of the morning that goes the way it was supposed to.');
+        return;
+    }
+
+    const gap = backingFor(favourite) - backingFor(heir);
+
+    // Close enough that neither of them can simply have it.
+    if (gap < ALLIANCES.successionContestMargin) {
+        if (ctx.rng.chance(ALLIANCES.successionSplitChance)) {
+            const withHeir = members.filter(m =>
+                m.id === heir.id || (m.id !== favourite.id && getRel(m, heir.id) >= getRel(m, favourite.id)));
+            const withFavourite = members.filter(m => !withHeir.includes(m));
+            // A split needs two real groups; otherwise it is one person leaving.
+            if (withHeir.length >= 2 && withFavourite.length >= 2) {
+                const splinterId = `alliance-succession-${record.id}-${cycleOf(ctx.state)}`;
+                withHeir.forEach(m => { m.allianceId = splinterId; });
+                record.memberIds = withFavourite.map(m => m.id);
+                record.leaderId = favourite.id;
+                record.successorId = undefined;
+                withHeir.forEach(a => withFavourite.forEach(b => {
+                    adjustRel(a, b.id, -ALLIANCES.successionLoserRegard);
+                    adjustRel(b, a.id, -ALLIANCES.successionLoserRegard);
+                }));
+                ctx.logEvent(
+                    `The leader named ${heir.name}; the group would rather have ${favourite.name}; and there is nobody left `
+                    + 'with the standing to settle it. By the afternoon there are two camps and neither of them is going to be the one that apologises.',
+                    members.map(m => m.id),
+                    { important: true, category: 'alliance' }
+                );
+                return;
+            }
+        }
+        install(heir,
+            `${heir.name} was named, ${favourite.name} is what the group would have chosen, and the argument goes on long enough `
+            + 'that having been named turns out to be the only thing anybody can point at. It is not a mandate.');
+        adjustRel(favourite, heir.id, -ALLIANCES.successionLoserRegard);
+        return;
+    }
+
+    // The group is not close on it at all: the heir is simply passed over.
+    install(favourite,
+        `The leader named ${heir.name}. The group, without ever putting it to a vote, follows ${favourite.name} instead. `
+        + `${heir.name} does not make anything of it, and does not forget it either.`);
+    adjustRel(heir, favourite.id, -ALLIANCES.successionLoserRegard);
+}
+
 /**
  * Per-cycle upkeep on the structure itself: prune the dead, re-elect when the
  * leader is gone or has lost the room, and drop records nobody belongs to.
@@ -291,6 +379,10 @@ export function reconcileAlliances(ctx: SimContext) {
             // A one-person alliance is not an alliance. This also cleans up the
             // id left on a lone survivor, which otherwise persisted and showed
             // up in the UI as a standing pack of one.
+            // §3.7: a pack that has simply come apart — the last two members
+            // separated, or died down to one — still leaves whoever is left
+            // holding six days of having been in it with somebody.
+            noteFormerAllies(membersOf(ctx.state, id));
             members.forEach(m => { delete m.allianceId; });
             delete records[id];
             return;
@@ -301,13 +393,12 @@ export function reconcileAlliances(ctx: SimContext) {
 
         const leader = members.find(m => m.id === record.leaderId);
         if (!leader) {
-            const replacement = pickLeader(members);
-            record.leaderId = replacement.id;
-            ctx.logEvent(
-                `With the leader gone, ${replacement.name} takes charge of what is left of the group.`,
-                members.map(m => m.id),
-                { category: 'alliance' }
-            );
+            // §4.2: the succession. This used to re-run `pickLeader` from
+            // scratch, which quietly made `successorId` decorative in exactly
+            // the case it exists for — the coup path and the expulsion path
+            // both honoured the named heir, and the commonest cause of a
+            // leadership change by a wide margin, the leader dying, did not.
+            resolveSuccession(ctx, record, members);
             return;
         }
 

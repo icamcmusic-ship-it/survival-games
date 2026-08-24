@@ -43,6 +43,58 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                     </button>
                 </div>
 
+                {/* §2.1: category colour is a real information channel, and it
+                    is the one that breaks first. The chronicle already pairs
+                    every category with a glyph, so these modes change what
+                    colour is *for* rather than removing it. */}
+                <div className="space-y-1.5">
+                    <span className="eyebrow">Category colour</span>
+                    <div className="seg w-fit flex-wrap">
+                        {([
+                            ['default', 'Full colour', 'Twenty hues, one per event category.'],
+                            ['colourblind', 'Colourblind-safe', 'Five hues, one per category group; the glyph carries the category.'],
+                            ['contrast', 'High contrast', 'No colour coding at all — maximum legibility, glyph only.'],
+                        ] as const).map(([id, label, hint]) => (
+                            <button
+                                key={id}
+                                onClick={() => setPrefs({ palette: id })}
+                                aria-pressed={prefs.palette === id}
+                                className="seg-item"
+                                title={hint}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    <p className="text-xs text-[var(--color-ink-500)]">
+                        {prefs.palette === 'colourblind'
+                            ? 'Colour now groups events (violence, arena, social, supply, ceremony). The glyph beside each line still names the exact category.'
+                            : prefs.palette === 'contrast'
+                                ? 'Every category draws in ink. The glyph beside each line is the only category signal, which is the point.'
+                                : 'One hue per category, reinforced by the glyph beside each line.'}
+                    </p>
+                </div>
+
+                {/* §2.5: watching a shared seed with somebody who has not seen
+                    it. Suppresses the two things that give the ending away —
+                    death and kill text, and the odds board — until the run is
+                    over. */}
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={prefs.spoilerSafe}
+                        onChange={e => setPrefs({ spoilerSafe: e.target.checked })}
+                        className="mt-1"
+                    />
+                    <span>
+                        <span className="block text-sm">Spoiler-safe viewing</span>
+                        <span className="block text-xs text-[var(--color-ink-500)]">
+                            Hides death and kill text and the odds board until the epilogue, so a shared run can be watched
+                            by somebody seeing it for the first time.
+                        </span>
+                    </span>
+                </label>
+
                 <div className="space-y-1.5">
                     <span className="eyebrow">Units</span>
                     <div className="seg w-fit">

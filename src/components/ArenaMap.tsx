@@ -39,12 +39,20 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
 
             {view === 'graph' && (
                 <div className="panel-flush p-2">
+                    {/* §2.10: the graph has a floor on its rendered width (see
+                        GRAPH_MIN_WIDTH_PX) so a zone stays a 44px touch target
+                        on a phone. Below that it scrolls sideways in here
+                        rather than shrinking — the same rule the rest of the
+                        app applies to wide content, and the reason the page
+                        body still does not scroll horizontally. */}
+                    <div className="overflow-x-auto custom-scrollbar">
                     <ArenaGraph
                         gameState={gameState}
                         selectedZone={selectedZone}
                         onSelectZone={onSelectZone}
                         tributes={tributes}
                     />
+                    </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 px-2 pb-1 text-[10px] text-[var(--color-ink-500)] font-mono uppercase tracking-wider">
                         <span>Lines · routes between sectors</span>
                         <span style={{ color: 'var(--red)' }}>Thick/red · traffic this cycle</span>

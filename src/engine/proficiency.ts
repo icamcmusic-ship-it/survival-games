@@ -79,6 +79,42 @@ export function weaponAffinity(t: Tribute, weapon?: Item): number {
     return 0;
 }
 
+/**
+ * §3.2: how well this specific weapon sits in this specific hand.
+ *
+ * `weaponProficiency` below reads the melee/ranged bucket; this reads the
+ * weapon. A tribute six days into a spear is not automatically six days into a
+ * bow, and until now they were — which made picking up whatever the feast put
+ * on the table a strictly free upgrade. Now a swap costs, briefly, and a
+ * weapon carried all run is worth keeping.
+ *
+ * A weapon from the district's own trade is never cold: they grew up with it,
+ * which is what `affinityItems` means.
+ */
+export function weaponHandling(t: Tribute, weapon?: Item): number {
+    if (!weapon) return 0;
+    const uses = t.weaponFamiliarity?.[weapon.id] ?? 0;
+    const homegrown = craftOf(t.district).affinityItems.includes(weapon.id);
+    if (uses < PROFICIENCY.familiarUses && !homegrown) return -PROFICIENCY.unfamiliarPenalty;
+    return Math.min(PROFICIENCY.familiarCap, uses) * PROFICIENCY.familiarPerUse;
+}
+
+/** Records one swing with a specific weapon. Monotonic, capped at the ceiling. */
+export function noteWeaponUse(t: Tribute, weapon?: Item) {
+    if (!weapon) return;
+    t.weaponFamiliarity = t.weaponFamiliarity ?? {};
+    const uses = t.weaponFamiliarity[weapon.id] ?? 0;
+    if (uses >= PROFICIENCY.familiarCap) return;
+    t.weaponFamiliarity[weapon.id] = uses + 1;
+}
+
+/** True when this weapon is still new in their hands — for prose. */
+export function isUnfamiliar(t: Tribute, weapon?: Item): boolean {
+    if (!weapon) return false;
+    if (craftOf(t.district).affinityItems.includes(weapon.id)) return false;
+    return (t.weaponFamiliarity?.[weapon.id] ?? 0) < PROFICIENCY.familiarUses;
+}
+
 /** Current level, tolerating states saved before proficiencies existed. */
 export function profOf(t: Tribute, skill: Proficiency): number {
     return t.proficiencies?.[skill] ?? 0;

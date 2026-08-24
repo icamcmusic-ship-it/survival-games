@@ -4,7 +4,7 @@ import { PanemRecords, RECORD_DEFS } from '../utils/panemStorage';
 import { DISTRICT_LEGACY, legacyOf } from '../data/districts';
 import { ARCHETYPES } from '../data/archetypes';
 import { ArchetypeId } from '../models/types';
-import { Trophy, Lock, Check, Crown } from 'lucide-react';
+import { Trophy, Lock, Check, Crown, Printer } from 'lucide-react';
 
 const DISTRICT_NUMBERS = Object.keys(DISTRICT_LEGACY).map(Number).sort((a, b) => a - b);
 
@@ -43,9 +43,22 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
     }
 
     return (
-        <div className="panel p-5 space-y-5">
+        <div className="panel p-5 space-y-5 record-book">
             <div className="flex items-baseline justify-between gap-3 flex-wrap">
                 <h3 className="panel-title">Your Panem</h3>
+                {/* §2.8: the record book is the one thing in here somebody
+                    would want on paper — the list of who won what, across every
+                    run. `@media print` in index.css strips the app chrome and
+                    lays this out as a document; this is the button that starts
+                    it, and it is print-hidden itself. */}
+                <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="btn btn-sm btn-ghost print-hide ml-auto"
+                    title="Print the record book, or save it as a PDF"
+                >
+                    <Printer className="w-3.5 h-3.5" /> Print
+                </button>
                 <span className="text-[11px] font-mono text-[var(--color-ink-500)]">
                     {panem.runs} Games finished · {panem.victors} crowned ·{' '}
                     {seen.length}/{allAchievements.length} seen
@@ -141,21 +154,25 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
 
             <section>
                 <div className="eyebrow mb-2">Things these Games can do</div>
-                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-2 custom-scrollbar print-unclip">
                     {seen.map(a => (
-                        <div key={a.id} className="panel-flush p-2.5 flex items-start gap-2.5">
+                        <div key={a.id} className="panel-flush p-2.5 flex items-start gap-2.5" data-locked="false">
                             <Check className="w-3.5 h-3.5 mt-0.5 flex-none" style={{ color: 'var(--cat-alliance)' }} />
                             <div className="min-w-0">
-                                <div className="text-sm font-bold text-[var(--ink)]">{a.name}</div>
+                                <div className="text-sm font-bold text-[var(--ink)] achievement-name">{a.name}</div>
                                 <div className="text-[11px] text-[var(--color-ink-500)]">{a.hint}</div>
                             </div>
                         </div>
                     ))}
+                    {/* §2.8: `data-locked` is what the print stylesheet reads to
+                        spell out "not yet earned" — on a mono printer the lock
+                        icon and the dimmed text are indistinguishable from the
+                        checked, undimmed version above. */}
                     {unseen.map(a => (
-                        <div key={a.id} className="panel-flush p-2.5 flex items-start gap-2.5 opacity-55">
+                        <div key={a.id} className="panel-flush p-2.5 flex items-start gap-2.5 opacity-55" data-locked="true">
                             <Lock className="w-3.5 h-3.5 mt-0.5 flex-none text-[var(--color-ink-500)]" />
                             <div className="min-w-0">
-                                <div className="text-sm font-bold text-[var(--color-ink-400)]">{a.name}</div>
+                                <div className="text-sm font-bold text-[var(--color-ink-400)] achievement-name">{a.name}</div>
                                 <div className="text-[11px] text-[var(--color-ink-500)]">{a.hint}</div>
                             </div>
                         </div>

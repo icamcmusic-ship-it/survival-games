@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import { Arena, GameState, Tribute } from '../models/types';
+import { GameState, Tribute } from '../models/types';
 import { edgeKey, effectiveResources } from '../engine/map';
+import { GRAPH_MIN_WIDTH_PX, NODE_HIT_R, NODE_R, VIEW_W, VIEW_H, layoutZones } from './arenaLayout';
 
 /**
  * The arena as a graph, which is what it has always actually been.
@@ -12,90 +13,6 @@ import { edgeKey, effectiveResources } from '../engine/map';
  * could not anticipate the collapse closing a route. All the information was
  * there; none of it was drawn.
  */
-
-const NODE_R = 26;
-const VIEW_W = 720;
-const VIEW_H = 460;
-
-interface Point { x: number; y: number }
-
-/**
- * Deterministic force-directed layout.
- *
- * Seeded from the zone order rather than `Math.random`, so the same arena always
- * draws the same shape — a map that rearranged itself on every render would be
- * unreadable, and the arenas are small enough that a fixed iteration count
- * settles well within a frame.
- */
-function layoutZones(arena: Arena): Record<string, Point> {
-    const zones = arena.zones;
-    const n = zones.length;
-    const positions: Record<string, Point> = {};
-
-    // Start on a circle: a decent opening guess for a small planar-ish graph,
-    // and one that never starts two nodes on top of each other.
-    zones.forEach((z, i) => {
-        const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
-        positions[z.name] = {
-            x: VIEW_W / 2 + Math.cos(angle) * (VIEW_W * 0.32),
-            y: VIEW_H / 2 + Math.sin(angle) * (VIEW_H * 0.34),
-        };
-    });
-
-    const IDEAL = 150;
-    for (let step = 0; step < 320; step++) {
-        const cooling = 1 - step / 320;
-
-        zones.forEach(a => {
-            const pa = positions[a.name];
-            let dx = 0;
-            let dy = 0;
-
-            zones.forEach(b => {
-                if (a.name === b.name) return;
-                const pb = positions[b.name];
-                const vx = pa.x - pb.x;
-                const vy = pa.y - pb.y;
-                const dist = Math.max(1, Math.hypot(vx, vy));
-                // Everything pushes everything apart...
-                const repel = (IDEAL * IDEAL) / (dist * dist);
-                dx += (vx / dist) * repel * 6;
-                dy += (vy / dist) * repel * 6;
-                // ...and adjacency pulls the connected pairs back together.
-                if (a.adjacent.includes(b.name)) {
-                    const pull = (dist - IDEAL) / IDEAL;
-                    dx -= (vx / dist) * pull * 26;
-                    dy -= (vy / dist) * pull * 26;
-                }
-            });
-
-            // A gentle pull to the middle keeps disconnected zones on screen.
-            dx += (VIEW_W / 2 - pa.x) * 0.012;
-            dy += (VIEW_H / 2 - pa.y) * 0.012;
-
-            pa.x += dx * cooling * 0.12;
-            pa.y += dy * cooling * 0.12;
-        });
-    }
-
-    // Fit to the viewport with room for the labels under each node.
-    const xs = zones.map(z => positions[z.name].x);
-    const ys = zones.map(z => positions[z.name].y);
-    const minX = Math.min(...xs); const maxX = Math.max(...xs);
-    const minY = Math.min(...ys); const maxY = Math.max(...ys);
-    const pad = NODE_R + 34;
-    const spanX = Math.max(1, maxX - minX);
-    const spanY = Math.max(1, maxY - minY);
-    const scale = Math.min((VIEW_W - pad * 2) / spanX, (VIEW_H - pad * 2) / spanY);
-
-    zones.forEach(z => {
-        const p = positions[z.name];
-        p.x = pad + (p.x - minX) * scale;
-        p.y = pad + (p.y - minY) * scale;
-    });
-
-    return positions;
-}
 
 const TERRAIN_ICONS: Record<string, string> = {
     open: '🏳️', forest: '🌲', water: '🌊', highland: '⛰️', ruins: '🏚️', wetland: '🥀',
@@ -149,6 +66,9 @@ export function ArenaGraph({ gameState, selectedZone, onSelectZone, tributes }: 
     return (
         <svg
             viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+            // §2.10: never shrink below the width at which a zone is a 44px
+            // touch target. Past that the wrapper scrolls instead.
+            style={{ minWidth: GRAPH_MIN_WIDTH_PX }}
             className="w-full h-auto select-none"
             role="img"
             aria-label={`Map of ${arena.name}: ${arena.zones.length} sectors and the routes between them`}
@@ -219,6 +139,13 @@ export function ArenaGraph({ gameState, selectedZone, onSelectZone, tributes }: 
                         }}
                         style={{ cursor: 'pointer' }}
                     >
+                        {/* §2.10: the touch target, larger than anything drawn.
+                            The visible node is 52 units across; a finger needs
+                            72, and `GRAPH_MIN_WIDTH_PX` guarantees that maps to
+                            at least 44 CSS pixels however narrow the viewport
+                            gets. Sized under the measured minimum node
+                            separation so two targets never overlap. */}
+                        <circle cx={p.x} cy={p.y} r={NODE_HIT_R} fill="transparent" stroke="none" />
                         {/* Forage stock drawn as a ring around the node: the arc is the
                             stock, the faint full circle behind it is the printed potential. */}
                         <circle cx={p.x} cy={p.y} r={NODE_R + 5} fill="none" stroke="var(--line-soft)" strokeWidth={3} />

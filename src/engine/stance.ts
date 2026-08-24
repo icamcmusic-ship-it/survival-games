@@ -3,6 +3,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { FEAR, STANCE, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
 import { STANCES, STANCE_PROFILES, isEvasiveStance } from '../data/stances';
 import { SimContext } from './context';
+import { sleepStanceHold } from './survival';
 import { cyclesSinceContact, ensureMemory, rivalRecord } from './memory';
 import { getRel } from './relationships';
 import { fearOf } from './fear';
@@ -510,8 +511,13 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     // cycle. The answer to that is commitment, not a bigger threshold: a
     // tribute who has already changed their mind twice holds what they have
     // for an extra cycle unless they are actually in danger.
+    // §3.8: and sleep debt extends it again. A tired tribute reads the board
+    // the same way — the scores below are untouched — they are simply slower
+    // to act on what they have read, which is what exhaustion does to
+    // reaction time rather than to judgement.
     const hold = (STANCE_PROFILES[t.stance]?.minHold ?? STANCE.minHold)
-        + Math.floor((t.stanceChurn ?? 0) * STANCE.churnHoldPerSwitch);
+        + Math.floor((t.stanceChurn ?? 0) * STANCE.churnHoldPerSwitch)
+        + sleepStanceHold(t);
     if (!emergency && t.stanceHeld < hold) {
         t.stanceHeld += 1;
         return;

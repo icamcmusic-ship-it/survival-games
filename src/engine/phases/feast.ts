@@ -1,3 +1,4 @@
+import { forceTriangleChoice } from '../triangles';
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { GameState, Item, Tribute } from '../../models/types';
@@ -144,6 +145,10 @@ function claimPacks(
 }
 
 export function processFeast(ctx: SimContext) {
+    // §4.6: the feast is the arena's own pressure point — everybody in one
+    // place, wanting the same things — which makes it exactly where a triangle
+    // stops being something anyone can go on not addressing.
+    forceTriangleChoice(ctx);
     ctx.rng = new RNG(`${ctx.state.seed}-${ctx.state.day}-feast`);
     // §1.10: a feast *replaces* that day's day-phase, and it was the one phase
     // that never advanced the cycle counter. Everything counted in cycles —

@@ -152,6 +152,61 @@ await step('proceed advances phases', async () => {
   }
 });
 
+// §2.9: the contextual first-run hints. Four phases in, a first run has
+// produced a death and usually an alliance, so at least one mark should have
+// fired — and it must be dismissible without taking the feed with it.
+await step('contextual first-run hint appears and dismisses', async () => {
+  // Scoped by the data hook rather than role=note: the death interstitial in
+  // the feed is also role="note", and it is far commoner.
+  const note = page.locator('[data-coach-mark]');
+  if (await note.count() === 0) return; // a very quiet opening; not a failure
+  await note.first().getByRole('button', { name: /dismiss this hint/i }).click();
+  await page.waitForTimeout(150);
+});
+
+// §2.6: the per-moment share, on the lines flagged important.
+await step('a moment can be copied on its own', async () => {
+  const share = page.locator('.feed-share').first();
+  if (await share.count() === 0) throw new Error('no per-moment share affordance on any important line');
+  await share.click();
+  await page.waitForTimeout(150);
+});
+
+// §2.3: two tribute sheets side by side, mid-run.
+await step('two tributes can be compared side by side', async () => {
+  await page.locator('button[aria-label^="Open"], .panel button').filter({ hasText: /D\d+/ }).first().click();
+  await page.getByRole('dialog').first().waitFor();
+  const select = page.locator('#compare-with');
+  if (await select.count() === 0) throw new Error('no compare control on the tribute sheet');
+  const other = await select.locator('option').nth(1).getAttribute('value');
+  await select.selectOption(other);
+  const compare = page.locator('[role=dialog][aria-label*="compared with"]');
+  await compare.waitFor();
+  // The between-them block is the reason this is a view rather than two modals.
+  await compare.getByText('Between them').waitFor();
+  await page.screenshot({ path: `${shots}/compare.png` });
+  await compare.getByRole('button', { name: /close comparison/i }).click();
+  await page.waitForTimeout(150);
+});
+
+// §2.1: the alternative palettes, applied as a stamp on <html>.
+await step('category palette can be switched', async () => {
+  await page.getByRole('button', { name: /open settings/i }).first().click();
+  await page.getByRole('button', { name: 'Colourblind-safe' }).click();
+  if (await page.evaluate(() => document.documentElement.getAttribute('data-palette')) !== 'colourblind') {
+    throw new Error('colourblind palette did not apply to <html>');
+  }
+  await page.getByRole('button', { name: 'High contrast' }).click();
+  if (await page.evaluate(() => document.documentElement.getAttribute('data-palette')) !== 'contrast') {
+    throw new Error('contrast palette did not apply to <html>');
+  }
+  await page.getByRole('button', { name: 'Full colour' }).click();
+  if (await page.evaluate(() => document.documentElement.getAttribute('data-palette')) !== null) {
+    throw new Error('default palette left a stale data-palette on <html>');
+  }
+  await page.getByRole('button', { name: /close settings/i }).click();
+});
+
 await step('filters panel mutes categories', async () => {
   // A6: density is on the chronicle tab header now, not two clicks into a drawer.
   await page.getByRole('button', { name: /^headlines$/i }).click();
