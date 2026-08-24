@@ -58,6 +58,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'frozen',
+        // §5.7: the Frozen Wasteland's horn leans toward warmth.
+        restockBias: ['sleeping-bag', 'thermal-cloak', 'matches', 'lamb-stew'],
         name: 'The Frozen Wasteland',
         description: 'Lethal cold and blizzards. Finding shelter and warmth is as important as fighting.',
         mutts: ['Ice Wolves', 'Snow Camouflage Snakes', 'Frostbite Beetles', 'Snowblind Owls'],
@@ -117,6 +119,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'toxic',
+        // §5.7: a bog arena's drop is what makes its water and air survivable.
+        restockBias: ['tablets', 'antidote', 'charcoal-filter', 'iodine'],
         name: 'The Toxic Swamps',
         description: 'Hallucinogenic gas and poison risk. The water is mostly undrinkable without purification.',
         mutts: ['Venomous Toads', 'Leech Swarms', 'Camouflaged Crocodiles', 'Bloatflies'],
@@ -143,6 +147,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'solar',
+        // §5.7: in a desert the drop is water and shade, in that order.
+        restockBias: ['canteen', 'waterskin', 'tablets', 'iodine'],
         name: 'The Solar Desert',
         description: 'Extreme heat, severe water scarcity, and deadly solar flares. Shade is a premium.',
         mutts: ['Sand Vipers', 'Mirage Scorpions', 'Burrowing Centipedes', 'Glass Hawks'],
@@ -193,6 +199,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'tempest',
+        // §5.7: a flooded arena's horn leans toward water gear.
+        restockBias: ['net', 'fishing-kit', 'rope', 'waterskin'],
         name: 'The Tempest Reach',
         description: 'A drowned coastline under a storm the Gamemakers refuse to switch off. The tide takes a different zone every night.',
         mutts: ['Squall Serpents', 'Barnacle Crabs', 'Drowned Gulls', 'Surge Eels'],
@@ -1051,6 +1059,8 @@ export const ARENAS: Arena[] = [
     // interior winter siege, the descent, and true darkness.
     {
         id: 'cabin',
+        // §5.7: a snowbound homestead's drop is cold-weather kit and food.
+        restockBias: ['sleeping-bag', 'thermal-cloak', 'lamb-stew', 'hardtack', 'matches'],
         name: 'The Snowbound Homestead',
         description: 'A homestead the drifts have half-buried, a working woodstove behind four thin walls, and a killing cold on the other side of the door. Whoever holds the hearth holds the only warm room within a day\'s walk.',
         mutts: ['The Woodsman', 'Draught Wisps', 'Panicked Draft Horses', 'The Caller in the Storm'],
@@ -1085,6 +1095,9 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'magmatube',
+        // §5.7: the horn in a volcano leans toward what keeps a person
+        // alive in one — burn kit, water, and something to filter the air.
+        restockBias: ['ointment', 'tablets', 'canteen', 'thermal-cloak', 'charcoal-filter'],
         name: 'The Throat of the Mountain',
         description: 'Not a mountainside — the mountain\'s own throat. Obsidian tube walls, a red glow with no visible source, and a heat gradient that only goes one direction as you go down. The good loot is at the bottom. So is the lake.',
         mutts: ['Cinder Wyrms', 'The Glassblower', 'Sulfur Gnats', 'Thermal Kestrels'],
@@ -1116,6 +1129,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'karst',
+        // §5.7: in a cave with no light, light is the supply drop.
+        restockBias: ['lantern', 'glow-stick', 'rope', 'tablets', 'iodine'],
         name: 'The Undermere',
         description: 'No sky, and past the first gallery, no light either — only what a handful of glowing fungus throws, and the sound of water going somewhere in the dark. Rock this thick does not carry a cannon. Down here, you only know somebody is dead if you find them.',
         mutts: ['Glowmoss Weevils', 'The Unseen', 'Chorus Newts', 'The Deep Listener'],

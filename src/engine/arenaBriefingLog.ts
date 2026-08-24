@@ -57,7 +57,8 @@ export function arenaBriefingLog(ctx: SimContext) {
     if (ctx.state.arenaHidden) return;
 
     const lines: string[] = [];
-    lines.push(`GAMEMAKER LOG — ARENA BRIEF — ${arena.name.toUpperCase()}`);
+    lines.push(`GAMEMAKER LOG — ARENA BRIEF — ${arena.name.toUpperCase()}`
+        + (arena.offSeason ? ` (${arena.offSeason.toUpperCase()})` : ''));
 
     const laws = lawsOf(arena);
     const lawText = laws.length > 0

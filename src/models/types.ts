@@ -1416,6 +1416,24 @@ export interface Arena {
     laws?: ArenaLawId[];
     /** The zone a law's "except here"/"only here" clause refers to (`noWaterExceptZone`, `sponsorsFixedZone`). */
     lawZone?: string;
+    /**
+     * §5.7: what this arena's Cornucopia leans toward when it restocks.
+     *
+     * `cornucopiaRefills` governs the *timing* of a restock and nothing else,
+     * so the one universally-recognisable location in every arena dropped
+     * identical anonymous supply in all thirty-seven of them. Item ids listed
+     * here bias what actually lands — a volcanic arena's horn toward
+     * fire-resistant kit, a flooded one's toward water gear — tying the hub
+     * back into the arena's own identity. Absent means no bias, which is what
+     * every arena did before this existed.
+     */
+    restockBias?: string[];
+    /**
+     * §5: the off-season skin this run is wearing, if any — a purely cosmetic
+     * alternate dressing on the same zone graph and the same mechanics. Set at
+     * run creation from the seed; see `data/offSeason.ts`.
+     */
+    offSeason?: string;
     /** Multiplier on sponsor-gift frequency for this arena. Defaults to 1. */
     sponsorMultiplier?: number;
     /** Per-arena renaming/retuning of the six zone-effect primitives. Absent kinds use the engine defaults. */

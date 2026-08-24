@@ -9,6 +9,9 @@ import { depleteZone, getZone, hasForceField, severEdge } from './map';
 import { clampTribute } from './vitals';
 import { climateOf } from './climate';
 import { arenaHasLaw } from './gamesProfile';
+import { ITEMS } from '../data/constants';
+import { QUALITY_BIAS } from '../data/balance';
+import { giveItem, itemPhrase, mintItem } from './items';
 import { earnTrait } from './earnedTraits';
 
 /**
@@ -672,9 +675,28 @@ export function dropSupplies(ctx: SimContext) {
     if (next >= current) return;
     state.zoneDepletion[cornucopia.name] = next;
 
+    // §5.7: what comes down, not just when. An arena that declares a
+    // `restockBias` drops kit that belongs to it — anybody standing at the
+    // horn when it lands takes one — so the hub reads as this arena's hub
+    // rather than as the same anonymous crates in all thirty-seven.
+    const bias = state.arena.restockBias ?? [];
+    const takers = state.tributes.filter(t => t.status === 'alive' && t.zone === cornucopia.name);
+    let flavourNote = '';
+    if (bias.length > 0 && takers.length > 0) {
+        const granted: string[] = [];
+        takers.forEach(t => {
+            const def = ITEMS.find(i => i.id === ctx.rng.pick(bias));
+            if (!def) return;
+            const minted = mintItem(ctx.rng, def, QUALITY_BIAS.hornMouth);
+            giveItem(t, minted);
+            granted.push(`${t.name} takes ${itemPhrase(minted)}`);
+        });
+        if (granted.length > 0) flavourNote = ` ${granted.join('; ')}.`;
+    }
+
     ctx.logEvent(
-        `A supply drop lands over the Cornucopia. Everyone in range of it just recalculated the risk.`,
-        [],
+        `A supply drop lands over the Cornucopia. Everyone in range of it just recalculated the risk.${flavourNote}`,
+        takers.map(t => t.id),
         { important: true, zone: cornucopia.name, category: 'arena' }
     );
 }

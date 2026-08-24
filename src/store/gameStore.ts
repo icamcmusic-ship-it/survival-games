@@ -15,6 +15,7 @@ import { createStore } from './createStore';
 import { PanemRecords, RunOutcome, clearPanem, commitRun, readPanem, setPatronDistrict } from '../utils/panemStorage';
 import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
+import { offSeasonFor } from '../data/offSeason';
 
 /**
  * PERF: the engine is loaded on demand.
@@ -690,6 +691,14 @@ export const gameActions = {
         // shallow clone gives this run its own zone objects (arenaLawOverride
         // below, and the Moving Arena Quell later, both write to them).
         const arena = { ...baseArena, zones: baseArena.zones.map(z => ({ ...z })) };
+        // §5: the off-season skin. Strictly cosmetic — it rewrites the
+        // description and nothing else, so the same seed still plays the same
+        // Games; the arena simply does not read the way it did last time.
+        const skin = offSeasonFor(safeSeed, arena);
+        if (skin) {
+            arena.description = skin.description;
+            arena.offSeason = skin.label;
+        }
         if (gamesProfile.quell?.arenaLawOverride) {
             arena.law = gamesProfile.quell.arenaLawOverride;
             // 'sponsorsFixedZone' and 'noWaterExceptZone' both compare a

@@ -1,6 +1,7 @@
 import { SimContext } from './context';
 import { ITEMS } from '../data/constants';
 import { legacyOf, LegacyTier } from '../data/districts';
+import { arenaHasLaw } from './gamesProfile';
 import { MENTOR_PARACHUTE_TEXTS, MENTOR_PLEA_FAILED_TEXTS, MENTOR_POINTED_TEXTS, MENTOR_WITHHELD_TEXTS } from '../data/flavorText';
 import { giveItem, itemPhrase } from './items';
 import { cycleOf, ensureMemory } from './memory';
@@ -158,6 +159,12 @@ function selfCorrected(t: Tribute): boolean {
 
 export function processMentorPleas(ctx: SimContext, alive: Tribute[]): Set<string> {
     const helped = new Set<string>();
+    // §5.1 `noSponsors`: a communications blackout is a blackout. The law was
+    // enforced in `sponsors.ts` and nowhere else, so a mentor's parachute went
+    // on landing in arenas where nothing is supposed to reach anybody — which
+    // is the exact class of individually-correct, jointly-untested behaviour
+    // §5.6's stacked-law check exists to find, and is how this was found.
+    if (arenaHasLaw(ctx.state, 'noSponsors')) return helped;
     const cycle = cycleOf(ctx.state);
     alive.forEach(t => {
         const mentor = t.mentorLegacy;
