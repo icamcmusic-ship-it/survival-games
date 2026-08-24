@@ -29,6 +29,10 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   Prints the training-score distribution and a behaviour summary.
 - `npm run test:arenas` — structural check on the hand-authored arenas: zone
   graphs connected and symmetric, every arena backed by its own flavour pack,
+  every arena carrying at least twelve of its own authored events (below that it
+  spends most of a run speaking in the shared universal voice rather than its
+  own), every climate profile in `engine/climate.ts` carrying a matching label in
+  `data/arenaBriefing.ts` so the setup screen's briefing cannot silently drift,
   and every terrain an arena is made of covered by at least one mutt that can
   appear on it — `terrainPreference` is a hard filter, so an uncovered terrain
   is a permanently mutt-free zone rather than a merely quiet one.
@@ -43,9 +47,9 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   more than two districts at once (`Sable` was in five).
 - `npm run test:flavor` — flavour-pool depth. A run averages ~650 log lines and
   swears ~10 vengeance oaths, so a 10-entry pool repeats itself inside a single
-  Games as a matter of arithmetic. The remaining thin pools are recorded as a
-  writing backlog; the check fails if that count rises or any pool drops below
-  eight. Topping a pool up is always allowed.
+  Games as a matter of arithmetic. The backlog is now empty: every pool is at or
+  above the 12-entry target and the allowance is zero, so a new thin pool fails
+  the build rather than joining a list. Topping a pool up is always allowed.
 - `npm run test:knobs` — fails the build on a knob declared in `data/balance.ts`
   that nothing in `src/` reads, so a dead dial cannot silently absorb tuning
   effort.
@@ -114,6 +118,42 @@ running in parallel:
   classmates, age gaps), bonds decay without contact, deaths propagate grief and
   vengeance to everyone who cared, and betrayal dents the numbers whether or not
   the fight that follows resolves.
+- **Bodies** (`engine/physique.ts`) are two independent axes rather than one
+  adjective. *Frame* is skeleton — fixed at the reaping, correlated with height,
+  and worth reach, carry capacity, grapple resistance and how dangerous you look
+  across a zone, against concealment, chokepoint passage, climb speed and hunger
+  drain. *Condition* is soft tissue — mutable, and worth cold insulation, a
+  starvation buffer and injury absorption, against agility, heat tolerance and
+  water. The two pull opposite ways, and condition *degrades*: a tribute who has
+  been starving for six days walks Padded → Lean → Wasted and loses their
+  insulation and their buffer at exactly the moment they need both, while their
+  reach and their intimidation value are unchanged. Limb-length ratio and
+  handedness sit alongside them, so a ruined weapon hand is a different injury
+  from a ruined shield side.
+- **Alliance pacts** (`engine/alliancePact.ts`) are a union rather than a
+  constant: dissolve at a field size, on a day, at the feast, when the Career
+  pack falls, when one of them is badly hurt, or when a named target is dead.
+  The field threshold is rolled against the *live* field with a two-death slack,
+  so a small-field run can never swear to a deadline it is already past — and
+  the dissolution ceremony only fires once the field has actually fallen far
+  enough to earn it.
+- **Alliance politics** (`engine/alliancePolitics.ts`) is the interior a group
+  was missing. Factions are *detected* from per-pair suspicion rather than
+  declared, and resolve as a coup or a walk-out; a second breach of the same
+  charter clause by the same member is a hearing that expels, demotes or
+  forgives; and a cache-contribution ledger gives a departing member a claim.
+- **Rapport** (`engine/rapport.ts`) covers the three things the social graph
+  could not do: third-party inference (everyone standing in the zone updates
+  their model of a pair, which is the most useful thing anyone in an arena can
+  learn by looking), reconciliation (rivalry cools with quiet time and much
+  faster with shared survival), and respect as a real currency — who you go
+  after last, and whose report your group actually acts on.
+- **Intent** (`engine/intent.ts`) gives the decision layer a two-deep objective
+  queue (an errand can be put in front of a goal without discarding the goal),
+  a way for sustained tension to resolve, a decision at the end of repeated
+  foraging failure rather than a modifier, an aggregate `dread` distinct from
+  resolve, and deception in movement — a false trail that poisons `zoneTraffic`
+  and everyone else's zone memory.
 - **Zone economy** (`engine/map.ts`) makes forage a finite stock that depletes
   and regrows, so a resource-rich zone is a prize other tributes can strip.
 - **Balance** (`data/balance.ts`) holds every tunable number the engine reads —
