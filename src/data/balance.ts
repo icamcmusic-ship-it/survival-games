@@ -2537,8 +2537,24 @@ export const RELATIONSHIPS = {
      * (that is the point) and only for the genuinely poor, so it never
      * competes with the district-partner bond.
      */
-    /** Tesserae both must have taken before the shared-hardship tie exists. */
-    hardshipTesseraeFloor: 4,
+    /**
+     * Tesserae both must have taken before the shared-hardship tie exists.
+     *
+     * This is 7, not the 4 it was first written as, and the reason is a metric
+     * rather than a judgement. At 4 the tie applied to a large share of
+     * cross-district pairs and pushed `runs with star-crossed lovers` from
+     * 21.5% to 29.8%, breaching the 22% regression guard — regard is what
+     * romance is gated on, so a broad +12 across the outer districts is a
+     * romance generator whether or not that is what it is for.
+     *
+     * Raising the floor rather than shrinking the bond is the right lever:
+     * halving the magnitude instead brought lovers only to 23% and knocked two
+     * *other* guards (archetype and reaping-trait win spread) out of range. The
+     * tie should be a strong signal about a few specific pairs, not a weak one
+     * about most of the field. At 7 it lands on ~3.5 pairs per cast, 1.3% of
+     * cross-district pairs, and every guard holds.
+     */
+    hardshipTesseraeFloor: 7,
     hardshipBase: 12,
     hardshipSpread: 5,
     /** Extra when both are deep in it — the tie scales with how bad it was. */
