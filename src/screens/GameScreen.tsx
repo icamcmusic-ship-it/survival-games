@@ -3,6 +3,8 @@ import { EventCategory, GameState, Phase } from '../models/types';
 import { ArenaMap } from '../components/ArenaMap';
 import { ZoneDossier } from '../components/ZoneDossier';
 import { TributeModal } from '../components/TributeModal';
+import { TributeCompare } from '../components/TributeCompare';
+import { CoachMarks } from '../components/CoachMark';
 import { EventFeed, FeedLine, VISIBLE_CAP, tierOf } from '../components/EventFeed';
 import { ChronicleFilters } from '../components/ChronicleFilters';
 import { BroadcastBar } from '../components/BroadcastBar';
@@ -97,6 +99,8 @@ export function GameScreen({
     const arenaSealed = !!gameState.arenaHidden && !canSeeArena(disclosureFor(gameState.phase));
     const filters = useStore(chronicleStore, s => s);
     const [selectedTributeId, setSelectedTributeId] = useState<string | null>(null);
+    /** §2.3: the second half of a side-by-side comparison, when one is open. */
+    const [compareTributeId, setCompareTributeId] = useState<string | null>(null);
     const [speed, setSpeed] = useState<Speed>('manual');
     const coins = useStore(gameStore, s => s.coins);
     const runProgress = useStore(gameStore, s => s.runProgress);
@@ -197,6 +201,9 @@ export function GameScreen({
     const deadCount = gameState.tributes.length - aliveCount;
     const isOver = gameState.phase === 'ended';
 
+    const compareTribute = compareTributeId
+        ? gameState.tributes.find(t => t.id === compareTributeId) ?? null
+        : null;
     const selectedTribute = selectedTributeId
         ? gameState.tributes.find(t => t.id === selectedTributeId) ?? null
         : null;
@@ -741,6 +748,11 @@ export function GameScreen({
                                     ↓ Jump to newest
                                 </button>
                             )}
+                            {/* §2.9: one line, once, at the moment the thing
+                                first happens — above the feed rather than
+                                inside it, so it does not become a log entry
+                                the reader has to scroll past forever. */}
+                            <CoachMarks gameState={gameState} />
                             <div
                                 ref={chronicleRef}
                                 onScroll={(e) => setScrolledAway(!nearBottom(e.currentTarget))}
@@ -819,11 +831,25 @@ export function GameScreen({
 
             {showHelp && <HelpOverlay onClose={() => setShowHelp(false)} />}
 
-            {selectedTribute && (
+            {/* §2.3: a comparison replaces the sheet rather than stacking on
+                top of it — two modals deep is not a comparison, it is two
+                modals. */}
+            {selectedTribute && compareTribute && (
+                <TributeCompare
+                    a={selectedTribute}
+                    b={compareTribute}
+                    gameState={gameState}
+                    onClose={() => { setCompareTributeId(null); setSelectedTributeId(null); }}
+                    onSwap={() => setCompareTributeId(null)}
+                />
+            )}
+
+            {selectedTribute && !compareTribute && (
                 <TributeModal
                     tribute={selectedTribute}
                     gameState={gameState}
-                    onClose={() => setSelectedTributeId(null)}
+                    onCompare={setCompareTributeId}
+                    onClose={() => { setSelectedTributeId(null); setCompareTributeId(null); }}
                     onShowInChronicle={() => {
                         setChronicle({
                             filterTributeId: selectedTribute.id,

@@ -213,12 +213,14 @@ function StoryPanel({ tribute }: { tribute: Tribute }) {
     );
 }
 
-export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }: {
+export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, onCompare }: {
     tribute: Tribute;
     gameState: GameState;
     onClose: () => void;
     /** U-3: jump the chronicle to this tribute's story (their death sits on top). */
     onShowInChronicle?: () => void;
+    /** §2.3: start a side-by-side comparison against another tribute. */
+    onCompare?: (id: string) => void;
 }) {
     const units = useStore(prefsStore, p => p.units);
     const arenaSealed = !!gameState.arenaHidden && !canSeeArena(disclosureFor(gameState.phase));
@@ -576,6 +578,34 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                                 Show in chronicle
                             </button>
                         )}
+                    </div>
+                )}
+
+                {/* §2.3: comparison, from the sheet a reader is already
+                    looking at. The moment somebody wants this is the moment a
+                    rivalry sharpens, which is a moment they are on one of the
+                    two sheets. */}
+                {onCompare && (
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                        <label className="eyebrow" htmlFor="compare-with">Compare with</label>
+                        <select
+                            id="compare-with"
+                            className="field text-xs w-auto"
+                            defaultValue=""
+                            onChange={e => { if (e.target.value) onCompare(e.target.value); }}
+                        >
+                            <option value="">pick a tribute…</option>
+                            {[...gameState.tributes]
+                                .filter(t => t.id !== tribute.id)
+                                .sort((a, b) => Number(a.status === 'dead') - Number(b.status === 'dead')
+                                    || a.district - b.district
+                                    || a.name.localeCompare(b.name))
+                                .map(t => (
+                                    <option key={t.id} value={t.id}>
+                                        {t.name} (D{t.district}){t.status === 'dead' ? ' †' : ''}
+                                    </option>
+                                ))}
+                        </select>
                     </div>
                 )}
 

@@ -404,7 +404,7 @@ function BeatBlock({ beat, showTags, cast, onSelectTribute, newIds, hideZones, r
 }
 
 /** One "Day N — Phase" section: beats, plus its quiet lines behind a disclosure. */
-function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTribute, newIds, preGamesCollapsed, hideZones }: {
+function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTribute, newIds, preGamesCollapsed, hideZones, revealed, gameState }: {
     sectionKey: string;
     entries: EventLog[];
     density: FeedDensity;
@@ -466,6 +466,8 @@ function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTr
                         onSelectTribute={onSelectTribute}
                         newIds={newIds}
                         hideZones={hideZones}
+                        revealed={revealed}
+                        gameState={gameState}
                     />
                 ))}
                 {hidden > 0 && !expanded && (
