@@ -205,6 +205,8 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} smiles through the whole answer like someone reading a letter, and the Capitol decides it has to know who wrote it.",
             "{tribute} says they made a promise, declines to repeat it, and lets the room spend all night guessing.",
             "The love story lands because {tribute} plainly wishes it were nobody's business, and everyone can see it costing them to share.",
+            "{tribute} is asked what they will do if it comes down to the two of them, and takes long enough answering that the answer is the pause.",
+            "{tribute} mentions, almost as an aside, that they have already decided how this ends for them, and the room goes very quiet working out what that means.",
         ],
         failure: [
             "{tribute} tries to act heartbroken, but it lands as calculated and cheap.",
@@ -217,6 +219,8 @@ export const INTERVIEW_SCENARIOS = [
             "Somebody in the audience calls out a name as a joke, and {tribute} flinches in a way that unravels the whole account.",
             "{tribute} waits for the sympathetic sigh before finishing sentences, and the audience notices being conducted.",
             "The heartbreak is word-perfect, which is the problem — the Capitol has heard this exact heartbreak before.",
+            "{tribute} calls the beloved by a slightly different name in the second answer than in the first, and the Capitol is nothing if not attentive.",
+            "{tribute} performs the love story at exactly the volume of a person who has rehearsed it, and Caesar moves the interview on early.",
         ],
         charismaBuff: 1,
         trustMultiplier: 1.5
@@ -234,6 +238,8 @@ export const INTERVIEW_SCENARIOS = [
             "Caesar asks about fear and {tribute} looks at him like the word was mispronounced.",
             "{tribute} handles the interview like a weapons check: brief, thorough, everything where they left it.",
             "{tribute} says the quiet part plainly — they are here to win, not to be liked — and the Capitol likes them for it.",
+            "{tribute} is asked who they are afraid of and answers with a number instead of a name — twenty-three — and the room laughs before it understands.",
+            "{tribute} describes what they intend to do in the arena in the flat, procedural voice of somebody describing a job, and it is far worse than a threat.",
         ],
         failure: [
             "{tribute} tries to be intimidating and comes off as a try-hard.",
@@ -246,6 +252,8 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} threatens the wrong tribute — one the Capitol adores — and the boos arrive before the sentence ends.",
             "Every boast is borrowed; the room has heard them all from bigger tributes in better years.",
             "{tribute} tries to loom on a couch, which has never once worked, and does not work now.",
+            "{tribute} promises carnage in a voice that cracks on the second syllable of it.",
+            "{tribute} lists what they will do to the field and gets an eight in training the next morning, and the Capitol does the arithmetic in public.",
         ],
         charismaBuff: 0,
         trustMultiplier: 1.2
@@ -263,6 +271,8 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} asks Caesar one small, polite question back, and the reversal is so guileless it wins the segment.",
             "The plainness reads as nerve by the end: {tribute} has nothing to perform, and performs nothing, flawlessly.",
             "{tribute} says they are not the story, and names three tributes who are, and by doing so becomes the story.",
+            "{tribute} thanks the stylist, the escort and the woman who did the hems, by name, and forgets to mention themselves at all.",
+            "Asked about their odds, {tribute} says they are probably about right, and the honesty of it lands harder than any boast in the whole evening.",
         ],
         failure: [
             "{tribute} comes across as too small and too soft to see out the first hour.",
@@ -275,6 +285,8 @@ export const INTERVIEW_SCENARIOS = [
             "The humility curdles into apology, and sponsors do not fund apologies.",
             "{tribute} shrinks half an inch with every question, and by the buzzer the couch looks empty.",
             "Caesar hands {tribute} three openings to sell themselves and watches all three go unused.",
+            "{tribute} works the humility so hard it curdles into a bid, and the front row can hear the bid.",
+            "{tribute} says they are nobody four times in six minutes, and by the fourth the Capitol has agreed with them.",
         ],
         charismaBuff: 1,
         trustMultiplier: 1.3
@@ -292,6 +304,8 @@ export const INTERVIEW_SCENARIOS = [
             "The segment ends with the Capitol knowing less about {tribute} than it did going in, which they will discuss for days.",
             "{tribute} smiles at precisely one question and it is not the question anyone expected, and the bookmakers argue all night about which it was.",
             "Every non-answer is polite, complete, and empty. It is a kind of craftsmanship, and the room applauds it as such.",
+            "{tribute} answers three questions with three sentences and leaves the country arguing about what the second one meant.",
+            "Asked directly what their plan is, {tribute} says 'yes', and Caesar decides not to follow up.",
         ],
         failure: [
             "{tribute} is so quiet that the interview becomes painfully awkward.",
@@ -304,6 +318,8 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} forgets which questions they already declined and refuses one they had answered, and the act shows its seams.",
             "Caesar, an old professional, simply out-waits {tribute}, and the room watches the mystery blink first.",
             "The cryptic answers arrive a half-beat late every time, which makes them sound rehearsed, which makes them sound like nothing.",
+            "{tribute} withholds so much that there is visibly nothing being withheld.",
+            "The mystery act runs out somewhere around the fourth question and what is left is a frightened sixteen-year-old in a good jacket.",
         ],
         charismaBuff: 0,
         trustMultiplier: 1.1
@@ -321,6 +337,8 @@ export const INTERVIEW_SCENARIOS = [
             "Every answer ends a syllable early, so the room leans in. {tribute} never once finishes a thought, and it is somehow perfect television.",
             "{tribute} borrows Caesar's own catchphrase, improves it, and hands it back. The clip loops all night.",
             "The wink is deployed exactly once, at exactly the right moment, and half the Capitol claims it personally.",
+            "{tribute} makes Caesar laugh so hard he loses his place in the cards, which has happened four times in thirty years.",
+            "{tribute} turns a question about weaponry into a question about the interviewer's tailoring and gets away with it completely.",
         ],
         failure: [
             "{tribute} tries to be charming and completely misreads the room.",
@@ -333,6 +351,8 @@ export const INTERVIEW_SCENARIOS = [
             "Caesar plays along at half-speed, which is his way of ending a bit, and {tribute} does not read the signal.",
             "The routine needs laughter to breathe and the room gives it smiles instead, and it suffocates politely.",
             "{tribute} winks at the camera a fourth time, and the fourth one costs them everything the first three earned.",
+            "{tribute} tries a line on the front row that would have worked on a different front row.",
+            "The charm is doing the work of the answer, and about halfway through the room notices there was no answer.",
         ],
         charismaBuff: 2,
         trustMultiplier: 1.4
@@ -350,6 +370,8 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} ranks the other tributes out loud, in order, and dares the wings to disagree. Nobody in the wings disagrees.",
             "{tribute} treats Caesar as an equal and everyone else as scenery, and it lands as confidence rather than contempt. Barely. But it lands.",
             "{tribute} promises the Capitol a short Games, 'out of respect for your time,' and the room roars.",
+            "{tribute} is asked whether they have any weaknesses and appears, genuinely, to think about it for a while.",
+            "{tribute} names the two tributes they consider a real problem, on air, and both of them go up in the odds by morning.",
         ],
         failure: [
             "{tribute} insults the Capitol audience and is met with dead silence and boos.",
@@ -362,6 +384,8 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} declares themselves the obvious victor in a room that has already fallen for somebody else, and feels it turn.",
             "The swagger is upholstery over panic, and one sharp question puts a hand straight through it.",
             "{tribute} mocks a twelve-year-old tribute by name, and whatever the strategy was, it dies right there.",
+            "{tribute} bellows something about the Careers and gets a look from the Careers.",
+            "{tribute}'s boast requires a fact that the whole country can check, and the whole country checks it.",
         ],
         charismaBuff: -1,
         trustMultiplier: 0.8
@@ -379,6 +403,8 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} names their interview outfit, introduces it to the audience, and thanks it. The audience applauds the outfit.",
             "Half the answers make no sense and the other half make too much, and the Capitol has never been able to resist that ratio.",
             "{tribute} asks the sponsors for one specific, absurd item, deadpan. By morning, three patrons have pledged it.",
+            "{tribute} answers a question about survival strategy with a long, precise account of something they once did to a chicken, and it is somehow reassuring.",
+            "{tribute} asks Caesar a question back, gets an answer, and thanks him for it, and the interview never fully recovers its shape.",
         ],
         failure: [
             "{tribute} mumbles incoherently. Caesar has to change the subject quickly.",
@@ -391,6 +417,8 @@ export const INTERVIEW_SCENARIOS = [
             "The oddness reads as nerves wearing a costume, and the costume slips mid-segment.",
             "{tribute} repeats the strange thing louder when it does not land, which is the oldest way to bury it.",
             "The audience wants to be baffled on purpose, and cannot shake the feeling that nobody here is doing anything on purpose.",
+            "The bit that worked in the corridor does not work under the lights, and {tribute} keeps going with it anyway.",
+            "{tribute} is odd in a way the room reads as unwell rather than interesting, and the applause is the polite kind.",
         ],
         charismaBuff: 1,
         trustMultiplier: 1.2
@@ -408,6 +436,8 @@ export const INTERVIEW_SCENARIOS = [
             "Every word {tribute} does spend lands like it was budgeted, and the room starts saving them up.",
             "The interview produces eleven words and four separate headlines.",
             "{tribute} thanks the audience at the end — quietly, correctly — and the ordinary courtesy is somehow the most unnerving thing all night.",
+            "{tribute} gives eleven words across the whole interview and the Capitol replays all eleven of them until morning.",
+            "Asked whether they have anything to say to the other tributes, {tribute} looks into the camera and says nothing at all for four seconds.",
         ],
         failure: [
             "{tribute} tries to be quietly menacing and just comes across as somebody with nothing to say.",
@@ -420,6 +450,8 @@ export const INTERVIEW_SCENARIOS = [
             "Caesar stops feeding the silence and starts working around it, which is how the segment quietly ends without them.",
             "The threat needs one demonstration — a look, a line — and it never comes, and the room files {tribute} under absent.",
             "By the buzzer the quiet reads as stage fright with a haircut, and the sponsors saw the real thing earlier tonight.",
+            "{tribute}'s silence reads as a person who cannot think of anything, because that is what it is.",
+            "{tribute} tries to be unnerving and lands on uncomfortable, and Caesar spends the last minute rescuing them.",
         ],
         charismaBuff: 0,
         trustMultiplier: 1.15
@@ -437,6 +469,8 @@ export const INTERVIEW_SCENARIOS = [
             "The story is thirty seconds long and completely unadorned, and the applause takes twice that to fade.",
             "{tribute} makes one promise, small and specific and keepable, and the room believes it more than any vow of victory.",
             "Caesar reaches for the handkerchief and {tribute} does not need it, and that — the not needing — is what the room remembers.",
+            "{tribute} says the name once, at the end, and then will not say anything else, and the applause takes a long time to start.",
+            "{tribute} explains, very steadily, exactly how many name-slips were in that bowl and whose they were, and nobody in the room enjoys the arithmetic.",
         ],
         failure: [
             "{tribute} breaks down mid-answer and cannot recover the thread. Caesar is kind about it, which somehow makes it worse.",
@@ -449,6 +483,8 @@ export const INTERVIEW_SCENARIOS = [
             "The tears come at the wrong line — a small one, an odd one — and the room is confused instead of moved.",
             "Caesar's gentleness makes it worse: handled with care, {tribute} closes completely, and the minutes run out on silence.",
             "{tribute} asks the room for nothing, twice, and the room, relieved, gives exactly that.",
+            "{tribute} reaches for the grief and finds the performance of it instead, and the difference is audible.",
+            "The story lands and then {tribute} keeps going past the end of it, and the room watches it go from a loss to a strategy.",
         ],
         charismaBuff: 0,
         trustMultiplier: 1.35
@@ -466,6 +502,8 @@ export const INTERVIEW_SCENARIOS = [
             "The answers arrive pre-structured — first, second, third — and by the buzzer the room is taking notes.",
             "{tribute} treats each question as a resource-allocation problem and allocates flawlessly, including the charm, which is measured out in exact doses.",
             "Caesar tries to rattle the machine and the machine thanks him for the data.",
+            "{tribute} corrects Caesar on a point of Games history, politely and correctly, and the Capitol makes a note.",
+            "{tribute} explains what they think the field's biggest mistake will be and declines, reasonably, to explain what they intend to do about it.",
         ],
         failure: [
             "{tribute} comes across as a spreadsheet with a pulse, and the room's attention drifts within a minute.",
@@ -478,6 +516,8 @@ export const INTERVIEW_SCENARIOS = [
             "Asked what happens when the plan meets fear, {tribute} has clearly never budgeted for the question.",
             "Every answer is optimal and none of them are memorable, and the segment evaporates on contact.",
             "The plan is genuinely good, and {tribute} explains enough of it that it stops being one.",
+            "{tribute} talks about the arena like a problem set and the room stops caring whether they solve it.",
+            "{tribute}'s analysis is good and their delivery has the warmth of a train timetable, and the sponsors go elsewhere.",
         ],
         charismaBuff: 0,
         trustMultiplier: 1.1
@@ -495,6 +535,8 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} speaks to the other tributes directly for a moment — no threat, just acknowledgment — and the wings go still.",
             "'I did not choose this' is a whine in most mouths. In {tribute}'s it is a fact, laid on the table, with weight.",
             "{tribute} promises to do the necessary and no more than the necessary, and the room hears something it almost never hears here: a limit.",
+            "Asked whether they want to win, {tribute} says they want to go home, which is not the same sentence and the room hears that.",
+            "{tribute} says they will not be the first to raise a hand out there, and manages to make it sound like a decision rather than a weakness.",
         ],
         failure: [
             "The reluctance reads as self-pity instead of honesty, and the room's sympathy curdles fast.",
@@ -507,6 +549,8 @@ export const INTERVIEW_SCENARIOS = [
             "One flash of real anger at the Games surfaces mid-answer, and the segment is cut short in a way everyone notices.",
             "{tribute} keeps saying what they are not — not a killer, not a volunteer, not a star — and the interview ends with only negatives on the board.",
             "The honesty is real and shapeless, and shapeless does not survive a three-minute format.",
+            "{tribute} says they do not want to hurt anybody and then cannot say what they will do instead.",
+            "The reluctance stops reading as decency somewhere around the third answer and starts reading as an absence of a plan.",
         ],
         charismaBuff: 1,
         trustMultiplier: 1.25
@@ -524,6 +568,8 @@ export const INTERVIEW_SCENARIOS = [
             "The district is in every answer like an accent, and by the buzzer the Capitol can hear it too.",
             "{tribute} says winning would belong to District {district} before it belonged to them, and the room believes the ordering.",
             "Caesar asks what home smells like, off his own cards, and {tribute}'s answer makes twelve districts homesick at once.",
+            "{tribute} speaks for six minutes about their district and does not use the word 'I' once.",
+            "{tribute} sends a message home in the district's own idiom, and half of Panem does not understand it and the right half does.",
         ],
         failure: [
             "The district pride reads as rehearsed, a line delivered rather than meant, and the room can tell the difference.",
@@ -536,6 +582,8 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute}'s district pride comes out defensive tonight, guarding against an attack no one had made, until they had.",
             "Caesar asks what they will do for themselves, just themselves, if they win — and the silence goes on long enough to become the answer.",
             "The message to home is lovely and long, and the Capitol, which is not home, checks its programme halfway through.",
+            "{tribute} praises their district in the Capitol's words instead of the district's, and both audiences notice.",
+            "The loyalty is real and the delivery is a recitation, and the room has heard the recitation before.",
         ],
         charismaBuff: 0,
         trustMultiplier: 1.2
@@ -553,6 +601,8 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} makes three predictions about the Games, each absurd, and delivers them with such relish that the betting shops price them anyway.",
             "The chaos has rhythm tonight — swerve, land, swerve — and the room stops bracing and starts dancing along.",
             "{tribute} ends the segment a full minute early, on a high note, on purpose, and walking off becomes the biggest laugh of the night.",
+            "{tribute} does something in the last ten seconds that nobody in the production booth planned for, and it is the clip of the night.",
+            "{tribute} answers every question truthfully and in a completely different register each time, and by the end nobody can predict anything about them.",
         ],
         failure: [
             "The unpredictability just reads as unfocused, and the segment goes nowhere in particular.",
@@ -565,6 +615,8 @@ export const INTERVIEW_SCENARIOS = [
             "The unpredictability turns inward mid-segment, and {tribute} contradicts their own persona in a way even they seem surprised by.",
             "One joke lands early and {tribute} spends the rest of the interview chasing it, which is the one predictable thing they do all night.",
             "The room needed a thread, any thread. {tribute} hands it confetti.",
+            "{tribute} swings at three different angles in one interview and lands none of them.",
+            "The unpredictability reads, by the fourth answer, as somebody who has not decided who they are, which is exactly what it is.",
         ],
         charismaBuff: 1,
         trustMultiplier: 1.15
