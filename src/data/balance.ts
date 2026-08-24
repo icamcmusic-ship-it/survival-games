@@ -1927,8 +1927,8 @@ export const STANCE = {
      * cleanly no longer does.
      */
     /** §3.2: how far generalised dread pushes a tribute toward getting out. */
-    dreadEvasive: 5,
-    cowedAggression: 3,
+    dreadEvasive: 3,
+    cowedAggression: 1.5,
     switchMargin: 1.1,
     /**
      * §1.7: how much the switch margin widens per recent stance change. The
@@ -1954,7 +1954,13 @@ export const STANCE = {
      * to force the issue and the Gamemakers will make sure somebody does.
      */
     endgameFieldSize: 5,
-    endgameAggression: 1.4,
+    /**
+     * §1.7: a victor who never killed anybody is usually a victor the arena
+     * handed the crown to — the last few were never in the same place at the
+     * same time. The endgame push was too small to reliably close that gap, so
+     * a third of all victors finished with a clean sheet.
+     */
+    endgameAggression: 4.2,
     /** §3.2: momentum's pull toward Aggressive (was an undeclared 0.35). */
     momentumAggressionWeight: 0.25,
     /** §3.2: the reasons Defensive exists — a ward, claimed ground, a built camp. */

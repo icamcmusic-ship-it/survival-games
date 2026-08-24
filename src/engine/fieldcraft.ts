@@ -259,15 +259,24 @@ export function tickTraps(ctx: SimContext) {
         // existed and knew nothing about each other.
         const destroyer = (['burning', 'flooded'] as const).find(k => hasEffect(ctx.state, trap.zone, k));
         if (destroyer) {
-            if (owner.zone === trap.zone) {
-                ctx.logEvent(
-                    destroyer === 'burning'
+            // §1.4: this used to be narrated only when the owner happened to be
+            // standing in the zone, which is why a real and rather good
+            // interaction between two systems fired 21 times across 400 runs as
+            // far as anybody watching could tell. The feed is a broadcast, not
+            // one tribute's point of view — the cameras are on the trap whether
+            // or not its owner is.
+            const present = owner.zone === trap.zone;
+            ctx.logEvent(
+                destroyer === 'burning'
+                    ? present
                         ? `${owner.name}'s trap in ${trap.zone} is so much ash. Whatever else the fire took, it took that.`
-                        : `The water in ${trap.zone} lifts ${owner.name}'s trap clean off its anchor and carries it away.`,
-                    [owner.id],
-                    { category: 'survival' }
-                );
-            }
+                        : `The fire in ${trap.zone} takes ${owner.name}'s trap with everything else. ${owner.name} is two sectors away and does not know yet.`
+                    : present
+                        ? `The water in ${trap.zone} lifts ${owner.name}'s trap clean off its anchor and carries it away.`
+                        : `The water in ${trap.zone} lifts ${owner.name}'s trap clean off its anchor. ${owner.name} will come back for it and find bare ground.`,
+                [owner.id],
+                { category: 'survival' }
+            );
             return;
         }
 
