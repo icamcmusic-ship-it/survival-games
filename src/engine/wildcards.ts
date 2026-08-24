@@ -31,8 +31,19 @@ export function fireScheduledWildcard(ctx: SimContext) {
     const calendar = calendarOf(profile);
     const fired = ctx.state.firedWildcards ?? (ctx.state.firedWildcards = []);
 
+    // §5.3: excitement drives *frequency*, not only intensity.
+    //
+    // `audience.ts` documents excitement as the metric the Gamemakers escalate
+    // on, and everything downstream of it made the arena harsher — never
+    // sooner. A run that has gone quiet is the exact case where the Capitol
+    // reaches for the schedule: a flatlining audience pulls the next scheduled
+    // beat forward rather than waiting for its day, so a slow run is rewarded
+    // with intervention instead of merely with worse numbers when something
+    // finally does happen.
+    const pullForward = excitementFlatlined(ctx) ? WILDCARD.flatlinePullForwardDays : 0;
+
     calendar.forEach((wildcard, index) => {
-        if (wildcard.day === 0 || ctx.state.day < wildcard.day) return;
+        if (wildcard.day === 0 || ctx.state.day < wildcard.day - pullForward) return;
         if (fired.includes(index)) return;
         fired.push(index);
         ctx.state.lastWildcardCycle = cycleOf(ctx.state);
@@ -77,6 +88,24 @@ function fireExtraDisruption(ctx: SimContext) {
     ctx.rng = rng;
     ctx.logEvent(pick.onFire, [], { important: true, category: 'gamemaker' });
     resolveWildcard(ctx, { kind: pick.kind, name: pick.name, announcement: '', day: state.day });
+}
+
+/**
+ * §5.3: has the audience gone flat, as opposed to merely low?
+ *
+ * Low excitement is a quiet field, which is a legitimate way for a Games to
+ * be. A flat one is a Games that has stopped moving in either direction —
+ * nothing has changed for several cycles running — and that is what a
+ * Gamemaker actually reacts to. Tracked on the state as a run of unchanged
+ * totals so a save resumes mid-flatline rather than resetting the count.
+ */
+function excitementFlatlined(ctx: SimContext): boolean {
+    const state = ctx.state;
+    const total = Math.round(getAlive(state).reduce((sum, t) => sum + t.excitementRating, 0));
+    const moved = Math.abs(total - (state.lastExcitementTotal ?? total)) > WILDCARD.flatlineTolerance;
+    state.lastExcitementTotal = total;
+    state.excitementFlatCycles = moved ? 0 : (state.excitementFlatCycles ?? 0) + 1;
+    return (state.excitementFlatCycles ?? 0) >= WILDCARD.flatlineCycles;
 }
 
 function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {

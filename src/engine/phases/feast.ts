@@ -405,6 +405,16 @@ export function processFeast(ctx: SimContext) {
     ctx.state.feastPrizes = undefined;
     ctx.state.feastTampering = undefined;
 
+    // Anybody who died in the row above is not still standing at the table.
+    // `shuffled` is built by pushing tributes back while they are alive, but
+    // the final `claimPacks` pass runs after the fighting and can itself kill
+    // somebody (§7's tampered pack is the case that surfaced this) — and the
+    // branches below hand the survivor food and fifty health, which on a
+    // corpse produced a dead tribute at full health.
+    const standing = shuffled.filter(t => t.status === 'alive');
+    shuffled.length = 0;
+    shuffled.push(...standing);
+
     if (shuffled.length > 1) {
         ctx.logEvent(
             `${shuffled.map(t => t.name).join(' and ')} take what they can carry and back away from the Cornucopia without settling it.`,

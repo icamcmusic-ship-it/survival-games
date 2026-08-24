@@ -51,10 +51,13 @@ export function tickEpithets(ctx: SimContext) {
         // Then absence, which the Ghost archetype and the stealth build both
         // spend a whole run buying and which nothing ever named.
         if ((t.unseenStreak ?? 0) >= EPITHET_RULES.unseenCyclesForGhost) { award(ctx, t, 'unseen'); return; }
-        // Then survival past the point anybody expected: down once and back,
-        // or a signature moment that landed.
-        if (t.everDowned && t.revivedBy === undefined) { award(ctx, t, 'enduring'); return; }
-        if (t.signatureFired && t.daysSurvived >= EPITHET_RULES.daysForEnduring) award(ctx, t, 'enduring');
+        // Then survival past the point anybody expected. Deliberately narrow:
+        // being pulled out of the rescue window is common, and a name the
+        // country gives half the field is not a name. It has to be somebody
+        // who went down, got up unaided, and then kept going for days.
+        if (t.everDowned && t.revivedBy === undefined && t.daysSurvived >= EPITHET_RULES.daysForEnduring) {
+            award(ctx, t, 'enduring');
+        }
     });
 }
 

@@ -2017,8 +2017,8 @@ export const LOAD_BEARING = {
  */
 export const EPITHET_RULES = {
     killsForBloody: 3,
-    unseenCyclesForGhost: 8,
-    daysForEnduring: 5,
+    unseenCyclesForGhost: 12,
+    daysForEnduring: 6,
 } as const;
 
 /**
@@ -2036,6 +2036,22 @@ export const LEGENDARY_ITEMS = {
 export const RUN_RECORDS = {
     /** Health below which a tribute counts as having been on the floor. */
     nearDeathHealth: 5,
+} as const;
+
+/**
+ * §5.5: traces left by somebody who fled a zone they had made camp in. See
+ * `engine/abandonedCamps.ts`.
+ */
+export const ABANDONED_CAMPS = {
+    /** Odds a fleeing tribute drops something they were carrying. */
+    dropCarriedChance: 0.45,
+    /** Odds the camp itself yields salvage on top of that. */
+    campSalvageChance: 0.6,
+    salvage: ['rope', 'wire', 'matches', 'bandages', 'club'] as const,
+    /** Cycles a cold camp stays findable before the arena takes it back. */
+    lifetimeCycles: 6,
+    findBase: 0.25,
+    findPerIntelligence: 0.04,
 } as const;
 
 export const CRAFTING = {
@@ -3487,6 +3503,14 @@ export const WILDCARD = {
     extraDisruptionSpacingCycles: 5,
     /** No extra disruptions before this day — the opening days are busy enough. */
     extraDisruptionEarliestDay: 4,
+    /**
+     * §5.3: excitement as a driver of *when*, not only of how hard. A run
+     * whose audience total has not moved for `flatlineCycles` pulls the next
+     * scheduled calendar beat this many days forward.
+     */
+    flatlineCycles: 4,
+    flatlineTolerance: 8,
+    flatlinePullForwardDays: 1,
 } as const;
 
 export const GAMEMAKER = {
@@ -4577,6 +4601,17 @@ export const WEATHER_FRONT = {
     maxCycles: 6,
     /** How many zones back a front remembers, so it does not pace on the spot. */
     memoryZones: 2,
+    /**
+     * §5.4: how hard the run's season pulls a new front toward its own
+     * extreme. Base is the bias on day one; the late term is added on top as
+     * the run approaches `driftFullByDay`, so the arena reads as a season
+     * settling in rather than as four independent coins.
+     */
+    driftBaseBias: 0.3,
+    driftLateBias: 0.5,
+    driftFullByDay: 9,
+    /** Drift progress past which the feed names the season out loud. */
+    driftSettledAt: 0.5,
 } as const;
 
 /**

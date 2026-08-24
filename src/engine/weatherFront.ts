@@ -71,6 +71,56 @@ const FRONTS: ExposureProfile[] = [
     },
 ];
 
+/**
+ * §5.4: a run's weather has a season, not a die roll per cycle.
+ *
+ * Every front used to be an independent uniform draw from the four profiles,
+ * so a run could go rain, freeze, dust, fog in four cycles and read as noise
+ * rather than as weather. A run now has a direction it is drifting in, rolled
+ * once from the seed, and the drift deepens as the run goes on: an early front
+ * is close to a fair draw, and a late one is very likely to be the extreme the
+ * run has been heading toward the whole time.
+ *
+ * The drift is stored on the state rather than recomputed, so a resumed save
+ * carries the same season it started with.
+ */
+const DRIFT_TARGETS = ['wet', 'cold', 'dry', 'heat'] as const;
+/** Which front profile each drift direction pulls toward. Index into `FRONTS`. */
+const DRIFT_FRONT: Record<typeof DRIFT_TARGETS[number], number> = {
+    wet: 0,    // driving rain
+    cold: 1,   // hard freeze
+    dry: 2,    // scouring dust
+    heat: 3,   // sour fog off hot ground
+};
+
+function driftOf(ctx: SimContext, rng: RNG) {
+    if (!ctx.state.climateDrift) {
+        ctx.state.climateDrift = { toward: rng.pick([...DRIFT_TARGETS]), progress: 0 };
+    }
+    const drift = ctx.state.climateDrift;
+    // Progress is the run's own length, capped — by the endgame the season is
+    // fully established and the arena has committed to what it is doing.
+    drift.progress = Math.min(1, ctx.state.day / WEATHER_FRONT.driftFullByDay);
+    return drift;
+}
+
+/** The profile a new front takes, biased by how far the season has drifted. */
+function driftedKind(ctx: SimContext, rng: RNG): number {
+    const drift = driftOf(ctx, rng);
+    const target = DRIFT_FRONT[drift.toward];
+    return rng.chance(WEATHER_FRONT.driftBaseBias + drift.progress * WEATHER_FRONT.driftLateBias)
+        ? target
+        : rng.nextInt(0, FRONTS.length - 1);
+}
+
+/** §5.4: how a settled season reads in the feed. */
+const SEASON_NOTE: Record<typeof DRIFT_TARGETS[number], string> = {
+    wet: 'Everything about this year has been getting wetter, and this is not the last of it.',
+    cold: 'Every front this year has come in colder than the last one, and this is no exception.',
+    dry: 'The arena has been drying out all week and the wind has started carrying the ground with it.',
+    heat: 'It has been getting hotter every day of these Games, and the air has finally gone sour with it.',
+};
+
 /** Human-readable name of whatever is currently blowing through. */
 export function frontName(front: WeatherFront): string {
     return FRONTS[front.kind % FRONTS.length].name;
@@ -148,7 +198,7 @@ export function tickWeatherFront(ctx: SimContext) {
     if (ctx.state.day < WEATHER_FRONT.earliestDay) return;
     if (!rng.chance(WEATHER_FRONT.spawnChance)) return;
 
-    const kind = rng.nextInt(0, FRONTS.length - 1);
+    const kind = driftedKind(ctx, rng);
     const start = rng.pick(active);
     ctx.state.weatherFront = {
         kind,
@@ -156,8 +206,13 @@ export function tickWeatherFront(ctx: SimContext) {
         crossed: [],
         expiresCycle: cycle + rng.nextInt(WEATHER_FRONT.minCycles, WEATHER_FRONT.maxCycles),
     };
+    // §5.4: once the season is established, say so — a front is a die roll
+    // until the third one lands the same way, and then it is a summer.
+    const drift = ctx.state.climateDrift;
+    const settled = drift && drift.progress >= WEATHER_FRONT.driftSettledAt && DRIFT_FRONT[drift.toward] === kind;
     ctx.logEvent(
-        `A front builds on the edge of the arena: ${FRONTS[kind].name}, coming in over ${start}. It will not stay there.`,
+        `A front builds on the edge of the arena: ${FRONTS[kind].name}, coming in over ${start}. It will not stay there.`
+        + (settled ? ` ${SEASON_NOTE[drift!.toward]}` : ''),
         [],
         { important: true, zone: start, category: 'arena' }
     );

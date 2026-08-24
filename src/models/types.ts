@@ -1761,6 +1761,8 @@ export interface GameState {
     climateDrift?: { toward: 'heat' | 'cold' | 'wet' | 'dry'; progress: number };
     /** §5.3: consecutive cycles the audience's excitement has sat flat. */
     excitementFlatCycles?: number;
+    /** §5.3: last cycle's excitement total, so "flat" can mean unchanged. */
+    lastExcitementTotal?: number;
     /** §7: tributes poisoned at the feast, and who tampered with the supplies. */
     feastTampering?: Array<{ byId: string; cycle: number }>;
     /** §10.1: a renewed truce was still standing when one of its parties died. */
