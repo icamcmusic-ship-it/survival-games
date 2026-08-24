@@ -948,8 +948,32 @@ export const ANTHEM = {
     reactionChance: 0.5,
 } as const;
 
+/**
+ * §10.1: the middle game is where every long-running system in this engine
+ * was supposed to pay off, and it was too short to.
+ *
+ * Traits evolve (`traitArcs`), proficiencies grow toward a cap of 6,
+ * `attributeDrift` accumulates, condition degrades and rivalries escalate
+ * through `RivalRecord` — and at an average run of seven to nine days almost
+ * none of that had room to complete. Nearly half of all runs never saw a
+ * feast at all.
+ *
+ * The fix is deliberately *not* a gentler bloodbath: the share of the field
+ * lost at the Cornucopia measures 35.4%, which is inside its design goal and
+ * is the most recognisable single event in the source material. What was too
+ * fast is everything after it, so the arena takes a day longer to start
+ * closing in, is harder to bore, and ramps its hazard curve slightly more
+ * gently once it does.
+ *
+ * Sized by measurement. A bigger version of this same change (day 7, boredom
+ * at 18, a 0.22 ramp) pushed the archetype spread, zero-kill victors and
+ * surviving lovers past their bounds — a longer middle game is more cycles
+ * for everything else in the engine to happen in, and run length turns out to
+ * be the denominator under most of the lethality ratios in the metrics table.
+ * A day is worth about as much depth and costs none of the guards.
+ */
 export const ESCALATION = {
-    startDay: 5,
+    startDay: 6,
     /**
      * Canon's Gamemakers do not escalate on a timetable; they escalate because
      * the audience is bored. Aggregate excitement across the living field is
@@ -957,7 +981,7 @@ export const ESCALATION = {
      * below this — which can be well before `startDay` in a quiet year, and
      * never later, because `startDay` remains a hard backstop.
      */
-    boredomThreshold: 22,
+    boredomThreshold: 20,
     /** Nothing closes in before this, however dull the Games are. */
     boredomEarliestDay: 3,
     collapseDamageBase: 20,
@@ -976,8 +1000,8 @@ export const ESCALATION = {
      * horn every cycle until it ends.
      */
     finaleAfterFinalistCycles: 4,
-    hazardMultiplierPerDay: 0.3,
-    hazardCeiling: 0.35,
+    hazardMultiplierPerDay: 0.27,
+    hazardCeiling: 0.33,
     /**
      * §10.5: odds the forced finale convenes somewhere other than the
      * Cornucopia — the arena's law zone or its high ground — so the endgame
@@ -3880,6 +3904,178 @@ export const MENTOR_DRAMA = {
  * the base; a heavy frame hauls itself up the same rope for more, and a bad
  * leg pays again.
  */
+/**
+ * §9.1: the downed state and the rescue window.
+ *
+ * The health scale was binary at the bottom — a tribute was alive, or dead
+ * with a cause attached — so the most dramatic moment available to this
+ * simulation, the one where somebody is lying at your feet and you decide,
+ * simply had nowhere to happen. These are the numbers that govern who gets
+ * that window, how long it stays open, and what closes it.
+ */
+export const DOWNED = {
+    /** Base chance a killing blow puts them down instead of finishing them. */
+    baseChance: 0.42,
+    /** Added to that chance per point of endurance. */
+    perEndurance: 0.03,
+    /** Ceiling on the combined chance, so a killing blow is always a real risk. */
+    maxChance: 0.7,
+    /** Cycles the window stays open before the wound finishes the job. */
+    baseCycles: 2,
+    /** Endurance at or above which the body buys itself one more cycle. */
+    toughEndurance: 7,
+    /** Field size at or below which the Gamemakers stop allowing the mercy. */
+    finalistFloor: 3,
+    /** Health a successful rescue brings them back on. */
+    reviveHealth: 22,
+    /** Base chance an ally's rescue attempt works at all. */
+    rescueBase: 0.3,
+    /** Added per point of the rescuer's medicine proficiency. */
+    rescuePerMedicine: 0.14,
+    /** Added per point of the rescuer's intelligence. */
+    rescuePerIntelligence: 0.02,
+    /** A medical item in the rescuer's pack, spent on the attempt. */
+    rescueItemBonus: 0.25,
+    /** Fatigue the rescuer pays for the attempt, successful or not. */
+    rescueFatigue: 12,
+    /** Sanity the rescued tribute recovers from not having died alone. */
+    rescueSanityRelief: 14,
+    /** Sanity a failed rescue costs the ally who was holding them. */
+    failedRescueSanity: 18,
+    /** Relationship the rescued tribute owes their rescuer. */
+    rescueBond: 30,
+    /** Base chance an enemy standing over them finishes it. */
+    executeBase: 0.55,
+    /** Shifted by the killer's aggression and mercy traits. */
+    executePerAggression: 0.3,
+    /** Fear every witness gains toward somebody who finished a helpless tribute. */
+    executeFear: 22,
+    /** Respect a witness loses for it. Killing the helpless is not fighting. */
+    executeRespect: 8,
+    /** Sanity the executioner pays on top of the ordinary kill toll. */
+    executeSanity: 10,
+    /** Respect a witness gains for somebody who walked away from it. */
+    spareRespect: 14,
+    /** Relationship the spared tribute feels toward whoever let them live. */
+    spareGratitude: 35,
+} as const;
+
+/**
+ * §5.5: the edge kinds beyond one-way, tolled and time-gated.
+ *
+ * `EdgeRule` described three things a route could be. These are the numbers
+ * for the four it could not: a crossing that wears out, a slope that ices over
+ * behind you, a pass somebody is sitting on, and a way nobody has found.
+ */
+export const EDGE_RULES = {
+    /** Chance a tribute standing at a hidden edge notices it at all, per cycle. */
+    discoverBase: 0.08,
+    /** Added per point of intelligence. */
+    discoverPerIntelligence: 0.02,
+    /** Added per point of awareness from traits and stance. */
+    discoverPerAwareness: 0.03,
+    /** Cycles a tribute must have held the zone before a hidden way opens up to them. */
+    discoverSettledCycles: 1,
+    /** Chance an ally is simply told about a hidden edge each cycle they share a camp. */
+    tellAllyChance: 0.35,
+    /** Crossings a `collapsing` edge has by default when its rule omits a count. */
+    defaultCrossings: 3,
+    /** Crossings after which an `oneWayAfter` edge sets, when its rule omits one. */
+    defaultAfter: 2,
+    /** Chance a garrisoned `contested` edge actually intercepts a crosser. */
+    garrisonInterceptBase: 0.65,
+    /** Reduced per point of the crosser's stealth. */
+    garrisonInterceptPerStealth: 0.05,
+    /** Fatigue a forced crossing costs even when nobody catches them. */
+    forcedCrossingFatigue: 8,
+    /** Cycles an alliance must hold a chokepoint zone before it counts as garrisoned. */
+    garrisonHoldCycles: 2,
+} as const;
+
+/**
+ * §9.7: map knowledge as a thing you can hand over, sell, or poison.
+ *
+ * `memory.zones` was per-tribute and unshareable, which left the outer
+ * districts with nothing to trade against Career combat power. Telling
+ * somebody where the water is — or telling them wrong — is the counterweight.
+ */
+export const INTEL = {
+    /** Chance allies sharing a camp trade honest map knowledge in a cycle. */
+    shareChance: 0.3,
+    /** Zones handed over in one exchange. */
+    zonesPerShare: 2,
+    /** Chance a treacherous tribute poisons what they hand over instead. */
+    lieChanceBase: 0.12,
+    /** Added per point of the teller's treachery bias. */
+    lieChancePerTreachery: 0.35,
+    /**
+     * Threat a lie invents about a zone that is actually safe.
+     *
+     * On `ZoneMemory.threat`'s own 0-6 scale, not the 0-100 one the
+     * relationship knobs above use — `addZoneThreat` caps at 6 and the soak
+     * asserts the bound, so a value written straight into the slot has to
+     * respect it. Four is 'somebody died there', which is exactly the story
+     * a liar wants told about ground they want kept empty.
+     */
+    lieThreat: 4,
+    /** Relationship lost when a lie is found out. */
+    lieDiscoveredCost: 45,
+    /** Chance per cycle a tribute standing in a lied-about zone works it out. */
+    lieDiscoveryChance: 0.4,
+    /** Relationship gained by the receiver of genuinely useful intelligence. */
+    honestIntelBond: 12,
+    /** Sponsor trust a tribute earns for visibly brokering knowledge on camera. */
+    intelSponsorTrust: 4,
+    /** Cycles a piece of hearsay stays trusted before it decays faster than sight. */
+    hearsayDecayMultiplier: 1.8,
+} as const;
+
+/**
+ * §6.2/§6.3/§6.4: depth in the three pre-arena and mid-arena set pieces —
+ * the private session, the persona the crowd holds them to, and a feast with
+ * names on the packs.
+ */
+export const PRE_ARENA = {
+    /** Chance a training pact is struck with real terms rather than a handshake. */
+    pactTermsChance: 0.6,
+    /** Base confidence in a pact struck on training day 1. */
+    pactConfidenceDay1: 0.35,
+    /** Added per training day it is struck after the first. */
+    pactConfidencePerDay: 0.18,
+    /** Added when the other party scored well and it is public knowledge. */
+    pactConfidencePerScorePoint: 0.03,
+    /** Cycles into the Games a pact lapses on its own terms, by default. */
+    pactExpiryCycles: 8,
+    /** Extra cycles a high-confidence pact runs for. */
+    pactExpiryPerConfidence: 10,
+    /** Private session: score swing a spectacular stunt is worth. */
+    privateSessionSwing: 2,
+    /** Private session: chance a tribute does something the room will remember. */
+    privateSessionStuntChance: 0.35,
+    /** Respect every tribute gains toward a concealed tribute when the cover breaks. */
+    concealRevealRespect: 22,
+    /** Fear every witness gains at the same moment. */
+    concealRevealFear: 18,
+    /** Sponsor trust the reveal is worth — the crowd loves being wrong-footed. */
+    concealRevealTrust: 10,
+    /** Backlash accrued per cycle a tribute plays against the persona they sold. */
+    backlashPerCycle: 1.6,
+    /** Backlash at which the crowd says so out loud and sponsor trust pays for it. */
+    backlashThreshold: 12,
+    /** Sponsor trust lost when the backlash lands. */
+    backlashTrustCost: 14,
+    /** Excitement a tribute who lives up to their persona is worth instead. */
+    personaHeldExcitement: 8,
+    /** Feast: cycles of head start the first arrivals get to set up in. */
+    feastEarlyArrivalEdge: 1,
+    /** Feast: ambush advantage an early arrival carries into the first exchange. */
+    feastEarlyAmbushBonus: 0.18,
+    /** Feast: chance a tribute takes a pack with somebody else's name on it. */
+    feastStealPackChance: 0.4,
+    /** Feast: sanity cost of watching your own named pack walk away. */
+    feastPackLostSanity: 12,
+} as const;
+
 export const EDGE_TOLL = {
     /** Extra fatigue per point of mass (build) on top of the printed toll. */
     fatiguePerMass: 1.2,

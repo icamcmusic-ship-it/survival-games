@@ -1,5 +1,6 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
-import { FEAR, HUNTING, MEMORY, RELATIONSHIPS, SANITY_BANDS, SUSPICION } from '../data/balance';
+import { FEAR, HUNTING, INTEL, MEMORY, RELATIONSHIPS, SANITY_BANDS, SUSPICION } from '../data/balance';
+import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
 import { addFear } from './fear';
 import { getZone } from './map';
@@ -98,9 +99,13 @@ export function shareScoutSighting(state: GameState, scout: Tribute, zone: strin
 }
 
 /** Adds dread to a tribute's impression of a place. */
+/** The ceiling every zone impression's dread is held under. */
+// balance-exempt: the range ZoneMemory.threat is defined over, asserted by the soak
+const MEMORY_THREAT_CAP = 6;
+
 export function addZoneThreat(state: GameState, t: Tribute, zone: string, amount: number) {
     const slot = zoneSlot(t, zone);
-    slot.threat = Math.min(6, slot.threat + amount);
+    slot.threat = Math.min(MEMORY_THREAT_CAP, slot.threat + amount);
     slot.seen = Math.max(slot.seen, cycleOf(state));
 }
 
@@ -142,10 +147,23 @@ function distortion(t: Tribute, zone: string): number {
     return ((hash >>> 0) % 1000) / 1000;
 }
 
+/**
+ * §9.7: how old a piece of knowledge *feels*.
+ *
+ * Something you were told ages faster than something you saw. That is not
+ * cynicism about tellers, it is that hearsay was already second-hand when it
+ * arrived — the teller's own sighting was some cycles stale before they opened
+ * their mouth — and it is the honest counterweight to intel being tradeable at
+ * all. Traded knowledge is real knowledge with a shorter shelf life.
+ */
+function hearsayAge(slot: ZoneMemory, age: number): number {
+    return slot.hearsay ? age * INTEL.hearsayDecayMultiplier : age;
+}
+
 /** Threat as remembered now, faded by however many cycles have passed. */
 export function rememberedThreat(state: GameState, t: Tribute, zone: string): number {
     const slot = ensureMemory(t).zones[zone];
-    const age = slot ? Math.max(0, cycleOf(state) - slot.seen) : 0;
+    const age = slot ? hearsayAge(slot, Math.max(0, cycleOf(state) - slot.seen)) : 0;
     const real = slot ? slot.threat * Math.pow(MEMORY.threatDecay, age) : 0;
     if (!memoryUnreliable(t)) return real;
 
@@ -161,7 +179,7 @@ export function rememberedThreat(state: GameState, t: Tribute, zone: string): nu
 export function rememberedRivals(state: GameState, t: Tribute, zone: string): number {
     const slot = ensureMemory(t).zones[zone];
     if (!slot) return 0;
-    if (cycleOf(state) - slot.seen > MEMORY.sightingLifetime) return 0;
+    if (hearsayAge(slot, cycleOf(state) - slot.seen) > MEMORY.sightingLifetime) return 0;
     return slot.rivals;
 }
 
@@ -169,7 +187,7 @@ export function rememberedRivals(state: GameState, t: Tribute, zone: string): nu
 export function rememberedBarren(state: GameState, t: Tribute, zone: string): number {
     const slot = ensureMemory(t).zones[zone];
     if (!slot) return 0;
-    const age = Math.max(0, cycleOf(state) - slot.seen);
+    const age = hearsayAge(slot, Math.max(0, cycleOf(state) - slot.seen));
     return slot.barren * Math.pow(0.75, age);
 }
 
@@ -356,9 +374,259 @@ export function decayMemories(state: GameState) {
         if (t.status !== 'alive') return;
         const mem = ensureMemory(t);
         Object.values(mem.zones).forEach(slot => {
-            slot.threat *= MEMORY.threatDecay;
+            // §9.7: what you were told fades faster than what you saw.
+            slot.threat *= Math.pow(MEMORY.threatDecay, hearsayAge(slot, 1));
             if (slot.threat < 0.02) slot.threat = 0;
         });
+    });
+}
+
+/* ------------------------------------------------------------------ *
+ * §9.7: map knowledge as an object — tradeable, sellable, poisonable.
+ *
+ * `zones` has always been the one thing in this simulation that is earned
+ * purely by walking about, and it has always been locked inside the skull that
+ * earned it. That is a straight loss for the outer districts: a Career pack
+ * arrives able to take anything it can see, and a tribute from Eleven who knows
+ * which two clearings still have water arrives with nothing to bargain with,
+ * despite holding the single thing the pack cannot take by force.
+ *
+ * Making the map tradeable gives them a currency. Making it *poisonable* is
+ * what stops that currency being free money: intel a Career takes at knifepoint
+ * is intel they have no way of verifying until they are standing in it.
+ * ------------------------------------------------------------------ */
+
+/** Local clamp — relationships.ts imports this module, so it cannot be imported back. */
+function nudgeRel(t: Tribute, otherId: string, delta: number) {
+    const next = (t.relationships[otherId] || 0) + delta;
+    t.relationships[otherId] = Math.max(RELATIONSHIPS.min, Math.min(RELATIONSHIPS.max, Math.round(next * 10) / 10));
+}
+
+/** Treachery bias, archetype plus whatever the Treacherous trait adds. */
+function treacheryOf(t: Tribute): number {
+    return ARCHETYPES[t.archetype].treachery + traitMod(t, 'treachery');
+}
+
+/** Whether `t` would sooner die than misdirect `other`. Loyalty is the one brake. */
+function genuinelyLoyalTo(t: Tribute, other: Tribute): boolean {
+    return (t.relationships[other.id] || 0) >= RELATIONSHIPS.stickyMagnitude;
+}
+
+/** Impressions worth handing over, best first. */
+function tradeableZones(state: GameState, teller: Tribute, listener: Tribute): string[] {
+    const cycle = cycleOf(state);
+    const tellerMem = ensureMemory(teller);
+    const listenerMem = ensureMemory(listener);
+    return Object.keys(tellerMem.zones)
+        .filter(zone => {
+            // You cannot sell what you no longer reliably know.
+            const slot = tellerMem.zones[zone];
+            if (cycle - slot.seen > MEMORY.sightingLifetime) return false;
+            // Nor is it worth anything to somebody who was there yesterday.
+            const held = listenerMem.zones[zone];
+            return !held || held.hearsay || cycle - held.seen > MEMORY.sightingLifetime;
+        })
+        .map(zone => ({
+            zone,
+            novel: listenerMem.zones[zone] === undefined,
+            // What makes an impression worth having: quiet ground with
+            // something still on it. Threat and rivals are worth knowing too,
+            // but a warning is cheap and directions to water are not.
+            worth: (1 - rememberedBarren(state, teller, zone)) * MEMORY.barrenWeight
+                - rememberedThreat(state, teller, zone)
+                - rememberedRivals(state, teller, zone) * MEMORY.rivalAvoidWeight,
+        }))
+        .sort((a, b) => (Number(b.novel) - Number(a.novel)) || (b.worth - a.worth))
+        .map(entry => entry.zone);
+}
+
+/** Copies one of the teller's impressions into the listener, flagged as told. */
+function writeHearsay(state: GameState, teller: Tribute, listener: Tribute, zone: string,
+                      threat: number, rivals: number, barren: number) {
+    const slot = zoneSlot(listener, zone);
+    slot.seen = cycleOf(state);
+    // Clamped to the same 0-6 band `addZoneThreat` enforces. Hearsay is the
+    // only path that writes a threat straight into a slot rather than
+    // accumulating one, so it is the only path that could put a tribute's
+    // memory outside the range every reader of it assumes.
+    slot.threat = Math.max(0, Math.min(MEMORY_THREAT_CAP, threat));
+    slot.rivals = Math.max(0, rivals);
+    slot.barren = Math.max(0, Math.min(1, barren));
+    slot.hearsay = true;
+    slot.toldById = teller.id;
+}
+
+/**
+ * §9.7: an honest exchange. The teller hands over the most useful things they
+ * know that the listener does not, and both of them are worth more to each
+ * other afterwards — which is precisely the trade the outer districts have to
+ * offer and the Careers do not.
+ */
+export function shareZoneIntel(ctx: SimContext, teller: Tribute, listener: Tribute,
+                               opts: { maxZones?: number; silent?: boolean } = {}): string[] {
+    const state = ctx.state;
+    const limit = opts.maxZones ?? INTEL.zonesPerShare;
+    const zones = tradeableZones(state, teller, listener).slice(0, limit);
+    if (zones.length === 0) return [];
+
+    zones.forEach(zone => writeHearsay(state, teller, listener, zone,
+        rememberedThreat(state, teller, zone),
+        rememberedRivals(state, teller, zone),
+        rememberedBarren(state, teller, zone)));
+
+    teller.sharedIntelWith = teller.sharedIntelWith ?? [];
+    if (!teller.sharedIntelWith.includes(listener.id)) teller.sharedIntelWith.push(listener.id);
+    nudgeRel(teller, listener.id, INTEL.honestIntelBond);
+    nudgeRel(listener, teller.id, INTEL.honestIntelBond);
+    // The Capitol has always paid better for a broker than for a brawler.
+    // balance-exempt: 100 is the sponsorTrust ceiling, not a tunable.
+    teller.sponsorTrust = Math.min(100, teller.sponsorTrust + INTEL.intelSponsorTrust);
+    noteContact(state, teller, listener);
+    state.intelTrades = (state.intelTrades ?? 0) + 1;
+
+    // The caller sometimes owns the scene itself — a parley paid in directions
+    // is one beat, not two.
+    if (opts.silent) return zones;
+    ctx.logEvent(
+        `${teller.name} scratches the shape of the arena into the dirt for ${listener.name} — `
+        + `${zones.join(' and ')}, and what is waiting in each. It is the only thing they own that `
+        + 'nobody has been able to take off them, and they are spending it deliberately.',
+        [teller.id, listener.id],
+        { category: 'alliance', zone: teller.zone }
+    );
+    return zones;
+}
+
+/**
+ * §9.7: the poisoned version, indistinguishable from the honest one until the
+ * listener is standing in it. Two shapes, both of which move somebody: a safe
+ * clearing described as a killing ground, or stripped ground described as
+ * plenty. The first keeps them away from something the teller wants; the
+ * second sends them somewhere that will cost them a day.
+ */
+export function lieAboutZone(ctx: SimContext, teller: Tribute, listener: Tribute,
+                             opts: { silent?: boolean } = {}): string | undefined {
+    const state = ctx.state;
+    const listenerMem = ensureMemory(listener);
+    const tellerMem = ensureMemory(teller);
+
+    // A quiet zone the listener has no opinion about is the cleanest lie
+    // available: nothing they already believe has to be argued with.
+    const quiet = state.arena.zones
+        .filter(z => (state.zoneDeaths?.[z.name] ?? 0) === 0
+            && rememberedThreat(state, teller, z.name) === 0
+            && listenerMem.zones[z.name] === undefined);
+    if (quiet.length > 0) {
+        const zone = ctx.rng.pick(quiet).name;
+        writeHearsay(state, teller, listener, zone, INTEL.lieThreat, 0, 0);
+        noteLie(state, teller, listener);
+        if (opts.silent) return zone;
+        ctx.logEvent(
+            `${teller.name} tells ${listener.name}, quite steadily, what they saw in ${zone}. `
+            + 'None of it happened. It is a good enough account that neither of them blinks.',
+            [teller.id, listener.id],
+            { category: 'alliance', zone: teller.zone }
+        );
+        return zone;
+    }
+
+    // Otherwise: ground the teller has personally stripped, sold as untouched.
+    const stripped = Object.keys(tellerMem.zones)
+        .filter(zone => rememberedBarren(state, teller, zone) > 0);
+    if (stripped.length === 0) return undefined;
+    const zone = ctx.rng.pick(stripped);
+    writeHearsay(state, teller, listener, zone, 0, 0, 0);
+    noteLie(state, teller, listener);
+    if (opts.silent) return zone;
+    ctx.logEvent(
+        `${teller.name} mentions to ${listener.name} that ${zone} is barely touched. `
+        + `${teller.name} picked it clean themselves, two days ago.`,
+        [teller.id, listener.id],
+        { category: 'alliance', zone: teller.zone }
+    );
+    return zone;
+}
+
+function noteLie(state: GameState, teller: Tribute, listener: Tribute) {
+    teller.liedTo = teller.liedTo ?? [];
+    if (!teller.liedTo.includes(listener.id)) teller.liedTo.push(listener.id);
+    noteContact(state, teller, listener);
+}
+
+/**
+ * Whether standing here contradicts what they were told.
+ *
+ * Deliberately checked against the world rather than against a stored copy of
+ * the claim: a tribute does not remember the exact words, they notice that the
+ * clearing they were warned off is empty, or that the rich ground they were
+ * sent to has nothing left in it.
+ */
+function lieIsExposed(t: Tribute, zone: string, slot: ZoneMemory, state: GameState): boolean {
+    if (slot.threat >= INTEL.lieThreat) return (state.zoneDeaths?.[zone] ?? 0) === 0;
+    return (ensureMemory(t).forageFailures?.[zone] ?? 0) > 0;
+}
+
+/**
+ * §9.7: per-cycle — somebody works out they were sold a story.
+ *
+ * This is the whole reason lying is a decision rather than a free action. The
+ * teller gains a real advantage for as long as it holds, and loses far more
+ * than the trade was worth the moment the listener walks into the evidence.
+ */
+export function checkIntelLies(ctx: SimContext) {
+    const state = ctx.state;
+    const byId = new Map(state.tributes.map(t => [t.id, t] as const));
+    state.tributes.forEach(t => {
+        if (t.status !== 'alive') return;
+        const slot = ensureMemory(t).zones[t.zone];
+        if (!slot?.hearsay || !slot.toldById) return;
+        const teller = byId.get(slot.toldById);
+        // Note: a teller who both lied to and levelled with the same person
+        // can have an honest impression caught by this. That is not a defect
+        // worth fixing — it is what being caught out once does to everything
+        // else you were told by the same mouth.
+        if (!teller || !teller.liedTo?.includes(t.id)) return;
+        if (!lieIsExposed(t, t.zone, slot, state)) return;
+        if (!ctx.rng.chance(INTEL.lieDiscoveryChance)) return;
+
+        delete ensureMemory(t).zones[t.zone];
+        nudgeRel(t, teller.id, -INTEL.lieDiscoveredCost);
+        raiseSuspicion(t, teller.id, SUSPICION.perWitnessedBetrayal);
+        const severe = (t.relationships[teller.id] || 0) <= -RELATIONSHIPS.stickyMagnitude;
+        if (severe) swearVengeance(t, teller.id);
+        ctx.logEvent(
+            `${t.name} stands in ${t.zone} and looks at it properly, and the account ${teller.name} gave `
+            + `does not survive the looking. ${severe ? `${t.name} starts working out where ${teller.name} sleeps.`
+                : `${t.name} says nothing about it to anyone, and files it.`}`,
+            [t.id, teller.id],
+            { important: true, category: 'betrayal', zone: t.zone }
+        );
+    });
+}
+
+/**
+ * §9.7: per-cycle — allies camped together talk about the map.
+ *
+ * Most of this is honest and unremarkable, which is the point: the group's
+ * knowledge pools, and holding ground finally buys something. The share of it
+ * that is not honest is the teller's treachery, and nothing else.
+ */
+export function tickIntelSharing(ctx: SimContext) {
+    const state = ctx.state;
+    const alive = state.tributes.filter(t => t.status === 'alive');
+    alive.forEach(teller => {
+        if (teller.allianceId === undefined) return;
+        const mates = alive.filter(o => o.id !== teller.id
+            && o.allianceId === teller.allianceId && o.zone === teller.zone);
+        if (mates.length === 0) return;
+        if (!ctx.rng.chance(INTEL.shareChance)) return;
+        const listener = ctx.rng.pick(mates);
+        const lieChance = INTEL.lieChanceBase + Math.max(0, treacheryOf(teller)) * INTEL.lieChancePerTreachery;
+        if (!genuinelyLoyalTo(teller, listener) && ctx.rng.chance(lieChance)) {
+            lieAboutZone(ctx, teller, listener);
+            return;
+        }
+        shareZoneIntel(ctx, teller, listener);
     });
 }
 

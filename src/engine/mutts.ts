@@ -4,6 +4,7 @@ import { ITEMS } from '../data/constants';
 import { BLEEDING, MEMORY, MUTTS, POISONING, QUELL_MECHANICS, HUNTING } from '../data/balance';
 import { giveItem } from './items';
 import { SimContext, getAlive } from './context';
+import { isActive, isDowned } from './downed';
 import { applyDamage, checkDeath } from './combat';
 import { getZone, reachableZones, severedEdgeSet } from './map';
 import { addZoneThreat, ensureMemory, cycleOf, rattle } from './memory';
@@ -156,6 +157,14 @@ export function resolveMuttAttack(ctx: SimContext, t: Tribute, time: 'day' | 'ni
 
 /** The actual encounter, shared by a fresh sighting, a persistent re-attack, and a Gamemaker release. */
 export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
+    // §9.1: mutts do not attack the already-down. Not squeamishness — the
+    // damage pipeline is a no-op on a downed tribute, so an engagement here
+    // achieves nothing except narrating a chase and a mauling that did not
+    // happen, and it would count toward the run's bestiary for a meeting
+    // neither party could have had. Guarded here rather than at each caller
+    // because the persistent-mutt tick, the encounter pass and the arena
+    // signatures all reach this function.
+    if (isDowned(t)) return;
     // §10.1: the run's bestiary — every mutt somebody actually met, by name,
     // folded into the persistent records at the end of the run.
     ctx.state.muttsSeen = ctx.state.muttsSeen ?? [];
@@ -288,7 +297,10 @@ export function tickPersistentMutts(ctx: SimContext) {
     survivors.forEach(active => {
         if (active.arenaId !== state.arena.id) return;
         const target = state.tributes.find(o => o.id === active.targetId);
-        if (!target || target.status !== 'alive') return;
+        // A downed tribute is still `status === 'alive'`, so this needs the
+        // stronger test: whatever is tracking them loses interest in prey that
+        // has stopped moving, rather than announcing it has found them again.
+        if (!target || !isActive(target)) return;
         if (!ctx.rng.chance(MUTTS.persistentReattackChance)) return;
 
         const mutt = rosterFor(ctx).find(m => m.id === active.muttId);

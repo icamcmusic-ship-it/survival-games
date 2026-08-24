@@ -7,10 +7,10 @@ import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SU
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
-    addZoneThreat, advanceCycle, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting, shareScoutSighting } from '../memory';
+    addZoneThreat, advanceCycle, checkIntelLies, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { isNoticed } from '../stealth';
@@ -22,6 +22,7 @@ import { decayFear } from '../fear';
 import { updateStance } from '../stance';
 import { runStanceBeats } from '../stanceBeats';
 import { runArchetypeSignatures, tickGhosts } from '../archetypeHooks';
+import { isActive, isDowned, tickDowned } from '../downed';
 import { processSpoilage, processVitals } from '../survival';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
@@ -36,6 +37,7 @@ import { runGamemakerSignature } from '../gamemakerAgency';
 import { tickWeatherFront } from '../weatherFront';
 import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
+import { tickPersona } from '../persona';
 import { resolveTruces } from '../parley';
 import { repayDebts, tickDistrictBonds, tickRetainers } from '../debts';
 import { reconcileRivals } from '../rapport';
@@ -106,6 +108,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     const isEscalated = collapseBorders(ctx, time);
     const collapsed = ctx.state.collapsedZones || [];
     const severed = severedEdgeSet(ctx.state);
+    // §5.5: who is sitting on which pass, settled before anybody tries to walk
+    // through one — a claim made by digging in last cycle is live this cycle.
+    tickGarrisons(ctx);
 
     // 1-2. Spoilage, then vitals, exposure, wounds and supplies.
     processSpoilage(ctx);
@@ -119,7 +124,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // moving, but they still meet whatever is waiting in the new zone.
     const crossed = new Set<string>();
     currentAlive.forEach(t => {
-        if (t.status !== 'alive') return;
+        // §9.1: a tribute bleeding out on the floor does not craft, choose a
+        // stance, form an intention or walk anywhere. `tickDowned` is the only
+        // thing that resolves them.
+        if (!isActive(t)) return;
 
         craft(ctx, t);
 
@@ -166,7 +174,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // movement loop tested whichever zone the array order happened to leave
     // them in at that moment.
     currentAlive.forEach(t => {
-        if (t.status !== 'alive') return;
+        if (!isActive(t)) return;
         checkTraps(ctx, t);
     });
 
@@ -197,9 +205,16 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // cycles, independent of the ordinary per-cycle mutt roll.
     tickPersistentMutts(ctx);
 
+    // §9.1: the rescue window. Runs after movement and encounters because the
+    // whole question it asks is who is standing in the zone by the end of the
+    // cycle — the ally who got there in time, the enemy who got there first,
+    // or nobody at all.
+    tickDowned(ctx);
+
     // 4a. Whether anyone has stopped wanting to win. Resolve drifts on what
     // this cycle actually did to them, then the ones who have run out act on it.
     tickResolve(ctx);
+    tickPersona(ctx);
     resolveBreakdowns(ctx);
     // 4a-ii. §3.2: and whether this cycle changed who they are. Traits decay,
     // collide and evolve here, after everything that could have earned one.
@@ -220,6 +235,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // 5. Cycle upkeep: the arena restocks, memories fade, bonds cool, the
     // crowd's attention wanders.
     regenerateZones(ctx);
+    // §5.5: a way nobody has found yet is the most valuable thing in an arena
+    // that has one. Run in upkeep, after this cycle's movement has settled
+    // `zoneHeld`, so finding one takes actually having sat somewhere.
+    tickHiddenEdges(ctx);
     // Fire spreads, floods drown stragglers, and whatever else is happening to
     // the ground itself lands after this cycle's movement has resolved.
     tickWeatherFront(ctx);
@@ -234,11 +253,18 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     maintainMovingArena(ctx);
     tickTraps(ctx);
     decayTraffic(ctx.state);
+    // §9.7: a lie about the map is only a lie once somebody stands in the zone
+    // and finds out. Tested before memories decay, while the invented threat
+    // the liar planted is still there to be contradicted.
+    checkIntelLies(ctx);
     decayMemories(ctx.state);
     decayRelationships(ctx.state);
     decayAllianceTrust(ctx.state);
     decayFear(ctx.state);
     decaySuspicion(ctx.state);
+    // §9.7: and knowledge moves. After the discovery pass above, so a lie found
+    // out this cycle is not immediately papered over by a fresh trade.
+    tickIntelSharing(ctx);
     resolveTruces(ctx);
     // Obligations come due, district partners grow into each other, and any
     // group that agreed terms is held to them.
@@ -1131,7 +1157,9 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         } else if (!leader || t.id !== leader.id) {
             return;
         } else {
-            const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed, time);
+            // §5.5: the leader is the one doing the navigating, so hidden ways
+            // they know are open to the whole group and ways they do not are not.
+            const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed, time, { state: ctx.state, tribute: t });
             if (options.length === 0) return;
 
             // The group follows whatever its leader has decided to do; only when the
@@ -1167,7 +1195,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         }
     }
 
-    const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed, time);
+    const options = reachableZones(ctx.state.arena, t.zone, collapsed, severed, time, { state: ctx.state, tribute: t });
     if (options.length === 0) return;
 
     // A tribute who has decided to be somewhere goes there, by the shortest
@@ -1189,7 +1217,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         // target closes ground faster than somebody drifting, which is most of
         // what makes Hunting frightening to be the subject of.
         if (t.stance === 'Hunting' && !t.transit) {
-            const onward = reachableZones(ctx.state.arena, t.zone, collapsed, severed, time);
+            const onward = reachableZones(ctx.state.arena, t.zone, collapsed, severed, time, { state: ctx.state, tribute: t });
             const second = objectiveStep(ctx, t, onward);
             if (second && second.name !== t.zone && beginMove(ctx, t, second.name)) {
                 const midpoint = t.zone;
@@ -1236,7 +1264,9 @@ function resolveEncounters(
     const shuffled = ctx.rng.shuffle(currentAlive);
 
     shuffled.forEach(t => {
-        if (acted.has(t.id) || t.status === 'dead') return;
+        // §9.1: the arena does not spring traps on, or send mutts after, a
+        // tribute who is already down. Whoever is standing over them decides.
+        if (acted.has(t.id) || t.status === 'dead' || isDowned(t)) return;
 
         const zone = getZone(ctx.state.arena, t.zone);
         const zoneDanger = zone ? 0.5 + zone.danger : 1; // 0.5x-1.5x from zone danger
