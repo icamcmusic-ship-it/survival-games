@@ -939,6 +939,17 @@ export const ROMANCE_TEXTS = [
     'ROMANCE: {t1} and {t2} of District {district} have started finishing each other\'s watches, sentences and rations. The Capitol has a word for this and is using it constantly.',
     'ROMANCE: Whatever {t1} and {t2} of District {district} agreed on, they agreed on it quietly and neither has looked at the odds since.',
     'ROMANCE: {t1} and {t2} of District {district} both know exactly how this arithmetic ends. They have decided to be in love for the part before that.',
+    // §1.6: topped up past the repetition floor. A run averages ~650 log
+    // lines; a ten-entry pool repeats inside a single Games, and the
+    // training pools are re-read many times inside one phase.
+    'ROMANCE: {t1} and {t2} of District {district} have stopped calculating. Everyone in the Capitol can see the exact moment it happened, on tape, twice an hour.',
+    'ROMANCE: Whatever this is between {t1} and {t2} of District {district}, both of them know what the arena does with it, and neither has stepped back.',
+    'ROMANCE: {t1} gives {t2} of District {district} the last of the water and lies about having had some. The cameras catch the lie and love it.',
+    'ROMANCE: The odds on {t1} and {t2} of District {district} move together now, which the bookmakers hate and the audience adores.',
+    'ROMANCE: {t2} of District {district} falls asleep mid-sentence and {t1} does not wake them for the watch. It is the most dangerous thing either has done all week.',
+    "ROMANCE: Caesar Flickerman uses the word 'doomed' about {t1} and {t2} of District {district} and the studio audience makes a sound like weather.",
+    'ROMANCE: {t1} and {t2} of District {district} have started talking about after, out loud, where the microphones are. Nobody in the sponsor rooms corrects them.',
+    'ROMANCE: There is no version of the rules where this ends well for {t1} and {t2} of District {district}. They appear to have read the rules and continued anyway.',
 ];
 
 /**
@@ -958,6 +969,17 @@ export const PROTECTOR_BOND_TEXTS = [
     'BOND: Asked by a camera what {younger} is to them, {older} says "mine" and does not elaborate. The broadcast runs it twice.',
     'BOND: {older} teaches {younger} the same three things over and over — water, cover, when to run — because those are the three that keep working.',
     'BOND: There is a version of this where {older} leaves {younger} behind and is better off for it. {older} has evidently stopped considering that version.',
+    // §1.6: topped up past the repetition floor. A run averages ~650 log
+    // lines; a ten-entry pool repeats inside a single Games, and the
+    // training pools are re-read many times inside one phase.
+    "BOND: {older} has started checking {younger}'s knots and re-tying them without saying anything about it.",
+    'BOND: When the cannon went this morning, {older} looked for {younger} before they looked for cover. Everyone watching noticed.',
+    'BOND: {younger} has started saving the better half of everything for {older}, who has started refusing it, which is its own conversation.',
+    'BOND: {older} lies about how much water is left. {younger} is going to work that out eventually, and not tonight.',
+    'BOND: The odds on {younger} moved four points the day {older} started walking beside them. Nobody in the Capitol thinks that is sentiment.',
+    'BOND: {older} has begun narrating the arena to {younger} — what that sound was, why that ground is wrong — like somebody handing over a trade.',
+    'BOND: There is nothing in this for {older}, and the broadcast keeps saying so, and {older} keeps doing it.',
+    'BOND: {younger} asked {older} once whether they were going to have to fight each other. {older} has not answered yet.',
 ];
 
 
@@ -1062,6 +1084,18 @@ export const SPONSOR_TEXTS = [
     'The sponsors have seen enough. {item} comes down to {tribute} in {zone}.',
     "Silver against the arena sky over {zone}: a parachute for {tribute}. Inside, {item}.",
     "It costs somebody in the Capitol a fortune, and it drifts down into {zone} like it weighs nothing. {tribute} opens it: {item}.",
+    // §1.6: topped up past the repetition floor. A run averages ~650 log
+    // lines; a ten-entry pool repeats inside a single Games, and the
+    // training pools are re-read many times inside one phase.
+    '{tribute} does not look up until the parachute is already down in {zone}. {item}, and nothing else in the sky.',
+    'The chime comes twice over {zone} before {tribute} trusts it. {item}, and it is not a trick.',
+    'A parachute clips a branch on the way into {zone} and lands badly. {tribute} gets {item} out of it undamaged, which is luck.',
+    'Somebody watched {tribute} do something in {zone} and reached for a chequebook. {item}, delivered inside the hour.',
+    '{item} comes down into {zone} on silver. {tribute} looks at it for a long moment before touching it, the way people do when help is unfamiliar.',
+    'The parachute over {zone} is not the biggest one the Capitol has sent today, but it is the one with {item} in it, and it is for {tribute}.',
+    '{tribute} is given {item} by a city that will not be able to explain, afterwards, why it did that.',
+    'Silver over {zone}, and the sound of it. {tribute} has {item} before the canopy has finished settling.',
+    'A parachute comes down into {zone} addressed to nobody and lands nearest {tribute}. Inside: {item}.',
 ];
 
 /**
@@ -1080,6 +1114,17 @@ export const MENTOR_PARACHUTE_TEXTS = [
     "{mentor} {need}, and somewhere a patron finally signs. {item} reaches {tribute} in {zone} before dark.",
     'The chime over {zone} is {mentor} keeping a promise. Inside the parachute: {item}.',
     '{mentor} {need}, and has stopped waiting for the crowd. {item} comes down to {tribute} in {zone}.',
+    // §1.6: topped up past the repetition floor. A run averages ~650 log
+    // lines; a ten-entry pool repeats inside a single Games, and the
+    // training pools are re-read many times inside one phase.
+    '{mentor} {need}, and does not tell {tribute} what it cost. {item} comes down into {zone} regardless.',
+    'It takes {mentor} four rooms and one burned friendship. {item} reaches {tribute} in {zone} anyway.',
+    '{mentor} {need}. The parachute is small and the chime is short and {item} is exactly the right thing, which is the part that costs.',
+    'A patron finally says yes to {mentor} for reasons of their own. {tribute} finds {item} in {zone} and thanks nobody, because there is nobody there.',
+    '{mentor} {need} and stops being polite about it. Somewhere over {zone}, {item} is released.',
+    'The sponsor rooms have been treating {tribute} as a formality. {mentor} changes that this afternoon, and {item} lands in {zone} to prove it.',
+    '{mentor} has done this eleven times for eleven tributes. {item} goes down into {zone} the same way every time, and it has never once got easier.',
+    'There is an argument in a box above the arena that nobody broadcasts. It ends with {item} drifting into {zone} for {tribute}.',
 ];
 
 /** The mentor tried and the room said no. The audience only ever hears about the ones that land, otherwise. */
@@ -1094,6 +1139,17 @@ export const MENTOR_PLEA_FAILED_TEXTS = [
     '{mentor} spends the afternoon on {tribute} and gets three maybes, which in the sponsor rooms is a no said slowly.',
     "{mentor} leaves the sponsor lounge without looking at the screens. {tribute} will have to manage {zone} on what they are carrying.",
     "The pitch was good. The room agreed the pitch was good. Nothing comes down into {zone}, and {mentor} starts drafting tomorrow's.",
+    // §1.6: topped up past the repetition floor. A run averages ~650 log
+    // lines; a ten-entry pool repeats inside a single Games, and the
+    // training pools are re-read many times inside one phase.
+    '{mentor} is still talking when the room stands up. Nothing goes down into {zone} tonight.',
+    'The money that was going to {tribute} goes to somebody photogenic instead. {mentor} watches it drift into a different sector.',
+    "{mentor} asks once too often on {tribute}'s behalf, and the room remembers being asked rather than what was asked for.",
+    'Two patrons tell {mentor} they will think about {tribute}. Thinking about it is what the sponsor rooms do instead of saying no.',
+    '{mentor} runs the numbers for {tribute} out loud and a patron runs better ones back. Nothing reaches {zone}.',
+    'The screens in the lounge cut away from {zone} mid-sentence, and {mentor} loses the room with it.',
+    '{mentor} has nothing left to trade for {tribute} except a reputation, and starts wondering aloud what that is worth.',
+    'Somebody buys {mentor} a drink instead of buying {tribute} a parachute. {mentor} drinks it, which is the professional thing to do.',
 ];
 
 /**
@@ -1240,6 +1296,17 @@ export const RELIEF_TEXTS = [
     '{tribute} catches themselves whistling in {zone} and stops, appalled. {victim}\'s face was in the sky not an hour ago.',
     "{tribute} does not celebrate in {zone}. But they eat a full ration for the first time in days, and that is its own answer about {victim}.",
     "{tribute} says nothing when {victim}'s face shows over {zone}. They just unclench, slowly, from a shape they had forgotten they were holding.",
+    // §1.6: topped up past the repetition floor. A run averages ~650 log
+    // lines; a ten-entry pool repeats inside a single Games, and the
+    // training pools are re-read many times inside one phase.
+    '{tribute} walks the length of {zone} without checking the treeline once. It is the first time since the gong.',
+    'The anthem names {victim} and {tribute} has to sit down in {zone}, which is not grief, whatever it looks like on camera.',
+    '{tribute} had a plan for {victim} and now does not need it. Standing in {zone} with a plan and nowhere to put it is its own strange feeling.',
+    "{victim}'s face goes across the sky over {zone} and {tribute} counts to ten before believing it.",
+    '{tribute} takes the knife out from under their pillow of leaves in {zone}. {victim} was the reason it was there.',
+    'There is a version of {tribute} that would have mourned {victim}. That version did not make it past day three, and {tribute} in {zone} does not miss it much.',
+    "{tribute} says {victim}'s name out loud in {zone}, once, to see how it sounds now. It sounds like nothing.",
+    'The arena is exactly as dangerous as it was an hour ago. {tribute} in {zone} cannot make themselves believe that.',
 ];
 
 /** Multi-round duels: the exchanges between the opening and the ending. */
@@ -1426,6 +1493,17 @@ export const INTIMIDATION_TEXTS = [
     'Somebody asks {tribute} at breakfast how they got the {score}. {tribute} keeps eating, which is answer enough.',
     "The {score} sits over {tribute}'s name like a weather warning. The rest of the cast plans routes around it.",
     "That night, two separate tributes dream about {tribute}'s {score}. Neither mentions it at breakfast.",
+    // §1.6: topped up past the repetition floor. A run averages ~650 log
+    // lines; a ten-entry pool repeats inside a single Games, and the
+    // training pools are re-read many times inside one phase.
+    "The Gamemakers post {tribute}'s {score} without comment, which in the Training Centre reads as a comment.",
+    'A {score}. One mentor spends the evening explaining to a room of patrons why {tribute} is a better investment than they look.',
+    '{tribute} takes the {score} back to the twelfth floor and says nothing about it, and the silence travels further than the number.',
+    "Every alliance in the building has now had the conversation that starts \"what do we do about {tribute}\", and none of them has finished it.",
+    'The {score} is read out and somebody at the back of the room laughs, once, in the wrong way. {tribute} does not turn round.',
+    'By morning the {score} has become a story about {tribute} that is not true and is not far off.',
+    'Bookmakers reprice {tribute} inside an hour of the {score}. The tributes had already done it, for free, from the doorway.',
+    "{tribute}'s {score} is the number the other twenty-three of them will be doing arithmetic against for the rest of the week.",
 ];
 
 /**
@@ -2356,6 +2434,17 @@ export const TRAINING_TEAMUP: string[] = [
     '{tribute} and {other} decide, at the {station}, that two is better odds than one. Everybody who has ever decided that has been half right.',
     'Careers do this on day one and everybody else does it late and badly. {tribute} and {other} do it at the {station}, and mean it.',
     '{tribute} tells {other} where they will be standing when the plates go down. That is the whole of the arrangement.',
+    // §1.6: topped up past the repetition floor. A run averages ~650 log
+    // lines; a ten-entry pool repeats inside a single Games, and the
+    // training pools are re-read many times inside one phase.
+    '{tribute} and {other} work out at the {station} that they need exactly opposite things, which is the only durable basis for anything in here.',
+    'Nobody sees {tribute} and {other} agree at the {station}, which is how they intended it.',
+    '{other} asks {tribute} one question at the {station} and gets one answer, and that is the whole negotiation.',
+    '{tribute} and {other} rehearse the first ninety seconds at the {station} until it is boring. Boring is the point.',
+    'The agreement between {tribute} and {other} has one clause and it is about the second minute, not the first.',
+    '{tribute} names a landmark at the {station}. {other} repeats it back wrong, then right, and that is them done.',
+    '{tribute} and {other} have both been told by their mentors not to do this. They do it at the {station} anyway, quickly.',
+    'There is no trust between {tribute} and {other} at the {station}, only arithmetic, and the arithmetic holds for now.',
 ];
 
 /** Two people who came into this building already disliking each other. */
@@ -2394,6 +2483,19 @@ export const TRAINING_OBSERVATION: string[] = [
     'Day {day}, and {tribute} has stopped watching the weapons and started watching the faces.',
     '{tribute} sees {other} succeed at the {station} and files it under the only heading that matters this week.',
     'On day {day}, {tribute} works out that the most dangerous person in the room is not the one everyone is looking at.',
+    // §1.6: topped up past the repetition floor. A run averages ~650 log
+    // lines; a ten-entry pool repeats inside a single Games, and the
+    // training pools are re-read many times inside one phase.
+    'On day {day}, {tribute} spends the whole {station} rotation watching hands rather than faces. Hands lie less.',
+    '{tribute} logs {other} on day {day} not for what they can do but for what they refuse to try.',
+    '{tribute} learns more on day {day} from who {other} eats lunch with than from anything either of them does at the {station}.',
+    'By day {day}, {tribute} has ranked the room. They will be wrong about two of them, and right about the rest.',
+    '{other} catches {tribute} watching on day {day}. Neither of them says anything, and both of them note it.',
+    '{tribute} spends day {day} finding out which of them can go all day and which of them is fast for ten minutes.',
+    'The thing {tribute} notices about {other} at the {station} on day {day} is a limp that is not there when {other} thinks nobody is looking.',
+    'Day {day}: {tribute} stops trying to be good at the {station} and starts trying to be forgettable at it.',
+    '{tribute} watches the Careers correct each other on day {day} and learns the shape of the pack before it exists.',
+    'On day {day}, {tribute} writes nothing down, because writing it down is how you get caught knowing it.',
 ];
 
 /** The dining hall, the quarters, and the hours nobody trains in. */

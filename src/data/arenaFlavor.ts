@@ -260,6 +260,53 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
      * most repetitive one.
      */
     events: [
+        // §1.5: the universal pool is merged into every arena's own at
+        // UNIVERSAL_EVENT_WEIGHT, so its size is the floor on how generic a
+        // thin arena sounds. At nine entries it was doing far too much of the
+        // talking; these five are written to be true anywhere without being
+        // about anywhere in particular.
+        {
+            text: '{tribute} wakes in {zone} with no memory of lying down and no idea how long they were out.',
+            escapeText: '{tribute} catches themselves going under in {zone} and stands up rather than sitting down.',
+            cause: 'Died in their sleep',
+            dodgeStat: 'endurance',
+            damage: 8,
+            sanity: 14,
+            fatigue: -15,
+        },
+        {
+            text: 'Something in {zone} has been dead for several days and {tribute} has been drinking downstream of it.',
+            escapeText: '{tribute} walks the water in {zone} upstream far enough to find out what is in it.',
+            cause: 'Killed by fouled water',
+            dodgeStat: 'intelligence',
+            damage: 14,
+            infected: true,
+        },
+        {
+            text: 'A cannon goes off close enough to {zone} that {tribute} feels it in the ground, and there is nobody in sight.',
+            escapeText: '{tribute} is already moving when the cannon goes off near {zone}, and does not stop to wonder.',
+            cause: 'Died of fright',
+            dodgeStat: 'willpower',
+            damage: 4,
+            sanity: 18,
+        },
+        {
+            text: '{tribute} puts their weight on a hand in {zone} and something under the leaf litter goes through it.',
+            escapeText: '{tribute} clears the ground in {zone} with a stick before putting a hand anywhere near it.',
+            cause: 'Bled out from a hand wound',
+            dodgeStat: 'agility',
+            damage: 16,
+            bleeding: true,
+        },
+        {
+            text: 'The wind drops out of {zone} entirely, and in the silence {tribute} can hear somebody else breathing.',
+            escapeText: '{tribute} freezes in the silence of {zone} until whatever it was moves off.',
+            cause: 'Killed by an ambush',
+            dodgeStat: 'stealth',
+            damage: 6,
+            sanity: 12,
+            fatigue: 12,
+        },
         {
             text: '{tribute} is caught in a sudden rockfall in {zone} and is badly battered.',
             escapeText: '{tribute} hears the rock shift in {zone} and throws themselves clear.',
@@ -415,6 +462,34 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'The sector under {tribute} in {zone} begins to rotate, and the ground stops agreeing with the map.',
+                escapeText: '{tribute} feels the gears take up in {zone} and steps across the seam before it moves.',
+                cause: 'Crushed in the turning of a sector',
+                dodgeStat: 'agility',
+                damage: 30,
+                bleeding: true,
+            },
+            {
+                text: 'The bell over {zone} tolls once, and every mechanism in the sector answers it at the same instant. {tribute} is standing in one.',
+                escapeText: '{tribute} counts the hour in {zone} and is off the machinery before the bell finishes.',
+                cause: 'Killed by the clockwork',
+                dodgeStat: 'intelligence',
+                dodgeDifficulty: 7,
+                damage: 32,
+                bleeding: true,
+            },
+            {
+                text: 'The tide comes back into {zone} faster than it left, and it comes back over the machinery {tribute} is standing in.',
+                escapeText: '{tribute} reads the drawn-back tide in {zone} for what it is and gets to high ground.',
+                cause: 'Drowned on the turning tide',
+                dodgeStat: 'endurance',
+                damage: 26,
+                fatigue: 25,
+            },
             {
                 text: 'THE CLOCK TURNS: a wall of blood rain floods {zone}. {tribute} is left choking, half-blind and shaking.',
                 escapeText: '{tribute} reads the chimes right and clears {zone} seconds before the blood rain hits.',
@@ -577,6 +652,42 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'The wind across {zone} rises past the point where {tribute} can hear anything else, including what is behind them.',
+                escapeText: '{tribute} gets into the lee of something in {zone} before the wind takes the world away.',
+                cause: 'Lost in a whiteout',
+                dodgeStat: 'intelligence',
+                damage: 10,
+                frostbitten: true,
+                sanity: 14,
+            },
+            {
+                text: 'Meltwater under the crust in {zone} takes {tribute} to the thigh, and the wind finds them wet.',
+                escapeText: '{tribute} sounds the crust in {zone} and keeps to the blue ice.',
+                cause: 'Frozen through',
+                dodgeStat: 'intelligence',
+                damage: 18,
+                frostbitten: true,
+                fatigue: 20,
+            },
+            {
+                text: 'A pressure ridge in {zone} goes up like a wall being built, and {tribute} is on the wrong side of it.',
+                escapeText: '{tribute} hears the ridge start to build in {zone} and is clear of the line.',
+                cause: 'Crushed by a pressure ridge',
+                dodgeStat: 'agility',
+                damage: 34,
+                bleeding: true,
+            },
+            {
+                text: 'There is a windbreak in {zone} that somebody built and did not come back to, and {tribute} finds it before dark.',
+                escapeText: '{tribute} searches {zone} for shelter and finds nothing but level snow.',
+                cause: 'Died of exposure',
+                heal: 6,
+                fatigue: -20,
+            },
             {
                 text: 'A blizzard swallows {zone} whole. {tribute} loses hours to the whiteout and their fingers go dead grey.',
                 escapeText: '{tribute} digs in ahead of the blizzard in {zone} and rides it out.',
@@ -704,6 +815,43 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             travel: GENERIC_ACTIONS.travel,
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'A floor slab in {zone} has been holding on rebar alone for years, and it picks {tribute} to stop for.',
+                escapeText: '{tribute} tests the slab in {zone} and takes the stairs on the outside wall instead.',
+                cause: 'Crushed in a collapse',
+                dodgeStat: 'intelligence',
+                damage: 32,
+                bleeding: true,
+            },
+            {
+                text: 'The storm drain under {zone} fills in under a minute, and {tribute} is still in it.',
+                escapeText: '{tribute} hears the drain under {zone} start to run and is out of it before the water arrives.',
+                cause: 'Drowned in a storm drain',
+                dodgeStat: 'agility',
+                damage: 28,
+                fatigue: 25,
+            },
+            {
+                text: 'Rats come through {zone} in a single black wave, and {tribute} is between them and where they are going.',
+                escapeText: '{tribute} gets above the floor of {zone} and lets the wave go through underneath.',
+                cause: 'Killed by the rats',
+                dodgeStat: 'agility',
+                damage: 20,
+                infected: true,
+                sanity: 12,
+            },
+            {
+                text: 'Glass and old dust have been in the air of {zone} for eleven days, and tonight {tribute} cannot stop coughing.',
+                escapeText: '{tribute} keeps a wet cloth over their face in {zone} and breathes through it.',
+                cause: 'Killed by the dust',
+                dodgeStat: 'endurance',
+                damage: 12,
+                infected: true,
+                fatigue: 18,
+            },
             {
                 text: 'The floor of {zone} gives out under {tribute}. They fall two storeys into rubble and glass.',
                 escapeText: '{tribute} feels the concrete flex in {zone} and jumps clear before the floor drops.',
@@ -829,6 +977,43 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             travel: GENERIC_ACTIONS.travel,
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'The green haze over {zone} settles low enough to breathe, and {tribute} has been breathing it for an hour.',
+                escapeText: '{tribute} climbs above the haze line in {zone} and waits it out.',
+                cause: 'Killed by the haze',
+                dodgeStat: 'intelligence',
+                damage: 16,
+                poisoned: true,
+                sanity: 10,
+            },
+            {
+                text: 'Something enormous moves under the water beside {tribute} in {zone} and does not surface.',
+                escapeText: '{tribute} is out of the water in {zone} before whatever it is decides.',
+                cause: 'Taken under in the swamp',
+                dodgeStat: 'agility',
+                dodgeDifficulty: 7,
+                damage: 36,
+                bleeding: true,
+            },
+            {
+                text: 'The spores over {zone} glitter beautifully and get into everything {tribute} owns, including the wound.',
+                escapeText: '{tribute} seals the dressing before crossing {zone} and keeps the spores out of it.',
+                cause: 'Killed by spore infection',
+                dodgeStat: 'intelligence',
+                damage: 14,
+                infected: true,
+            },
+            {
+                text: 'The mud of {zone} is deeper than it reads, and it takes hold of {tribute} and lets go of nothing.',
+                escapeText: '{tribute} finds the firm line through {zone} by feel and follows it.',
+                cause: 'Drowned in the bog',
+                dodgeStat: 'strength',
+                damage: 22,
+                fatigue: 30,
+            },
             {
                 text: 'Hallucinogenic spores burst across {zone}. {tribute} spends the hour fighting things that are not there.',
                 escapeText: '{tribute} covers their face as the spore cloud rolls over {zone} and comes through it clear-headed.',
@@ -954,6 +1139,45 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             travel: GENERIC_ACTIONS.travel,
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'The sun over {zone} does not move, and by the third hour {tribute} has stopped sweating, which is worse.',
+                escapeText: '{tribute} lies up in what shade {zone} has and does not move until the light does.',
+                cause: 'Died of heatstroke',
+                dodgeStat: 'endurance',
+                damage: 20,
+                thirst: 25,
+                sanity: 12,
+            },
+            {
+                text: 'A dust devil crosses {zone} at walking pace and goes straight over {tribute}.',
+                escapeText: '{tribute} watches the dust devil cross {zone} and is not in its line.',
+                cause: 'Killed by the dust storm',
+                dodgeStat: 'agility',
+                damage: 22,
+                bleeding: true,
+            },
+            {
+                text: 'The city on the horizon of {zone} is not there, and {tribute} walks two hours toward it before admitting so.',
+                escapeText: '{tribute} takes a bearing off the sun in {zone} and does not trust the horizon.',
+                cause: 'Died of thirst',
+                dodgeStat: 'intelligence',
+                damage: 8,
+                thirst: 30,
+                fatigue: 25,
+                sanity: 14,
+            },
+            {
+                text: 'The sand of {zone} holds the day and gives it back all night. {tribute} sleeps on it once.',
+                escapeText: '{tribute} digs down through the hot sand of {zone} to the cool underneath.',
+                cause: 'Burned by the sand',
+                dodgeStat: 'intelligence',
+                damage: 14,
+                burned: true,
+                fatigue: 15,
+            },
             {
                 text: 'A solar flare lights up {zone}. {tribute} is caught in the open and their skin blisters within minutes.',
                 escapeText: '{tribute} makes the shade line in {zone} just before the solar flare hits.',
@@ -1082,6 +1306,49 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             travel: GENERIC_ACTIONS.travel,
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'The ash over {zone} builds on {tribute} while they sleep and is over their mouth before they wake.',
+                escapeText: '{tribute} rigs a canopy over the sleeping place in {zone} and wakes up under it, not under the ash.',
+                cause: 'Suffocated in the ashfall',
+                dodgeStat: 'intelligence',
+                damage: 20,
+                fatigue: 20,
+                sanity: 10,
+            },
+            {
+                text: 'The caldera floor under {zone} shudders once, and a fissure opens where {tribute} is standing.',
+                escapeText: '{tribute} is off the caldera floor of {zone} by the time the fissure finishes opening.',
+                cause: 'Fell into a fissure',
+                dodgeStat: 'agility',
+                damage: 34,
+                bleeding: true,
+            },
+            {
+                text: 'Everything in {zone} that has been standing still is grey now, including the thing that has been watching {tribute}.',
+                escapeText: '{tribute} keeps moving through {zone} and does not let the ash settle on them.',
+                cause: 'Killed from ambush in the ash',
+                dodgeStat: 'stealth',
+                damage: 18,
+                sanity: 14,
+            },
+            {
+                text: 'The sun comes up brown over {zone} and the light is wrong all day. {tribute} stops trusting what they see in it.',
+                escapeText: '{tribute} works by touch in the brown light of {zone} and trusts nothing else.',
+                cause: 'Lost in the ashfall',
+                dodgeStat: 'willpower',
+                damage: 6,
+                sanity: 18,
+            },
+            {
+                text: 'Under the ash of {zone}, where nobody has bothered to dig, {tribute} turns up a cache the fall buried whole.',
+                escapeText: '{tribute} digs {zone} over for an hour and turns up nothing but more ash.',
+                cause: 'Starved in the ashfall',
+                grantItem: 'dried-meat',
+                feed: 25,
+            },
             {
                 text: 'A pyroclastic gust rolls across {zone}. {tribute} is knocked flat and scorched through their clothes.',
                 escapeText: '{tribute} drops behind a lava ridge in {zone} as the gust passes overhead.',
@@ -2250,6 +2517,34 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'The fog under the bridge out of {zone} moves against the wind, and {tribute} is halfway across.',
+                escapeText: '{tribute} waits out the moving fog at the head of the bridge in {zone}.',
+                cause: 'Lost below the islands',
+                dodgeStat: 'willpower',
+                damage: 10,
+                sanity: 20,
+            },
+            {
+                text: 'A rope bridge out of {zone} has been fraying for eleven days and finishes while {tribute} is on it.',
+                escapeText: '{tribute} reads the fraying line on the bridge out of {zone} and does not put weight on it.',
+                cause: 'Fell from a rope bridge',
+                dodgeStat: 'agility',
+                damage: 36,
+                bleeding: true,
+                severesRoute: true,
+            },
+            {
+                text: 'The wind between the stacks of {zone} arrives as one blow rather than a gust, and it arrives on {tribute}.',
+                escapeText: '{tribute} crosses the gap in {zone} low and does not stand up in the wind.',
+                cause: 'Blown from the stacks',
+                dodgeStat: 'strength',
+                damage: 30,
+                bleeding: true,
+            },
             {
                 text: 'The bridge parts under {tribute} halfway to {zone} and drops them onto the rocks of the fog-line below.',
                 escapeText: '{tribute} feels the span sag toward {zone} and lunges the last metres as the ropes go.',
@@ -2395,6 +2690,35 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'The light over {zone} has not changed in eleven days, and tonight {tribute} stops being able to tell whether they have slept.',
+                escapeText: '{tribute} keeps a tally of the anthems in {zone} and holds on to what day it is.',
+                cause: 'Lost to the endless dusk',
+                dodgeStat: 'willpower',
+                damage: 6,
+                sanity: 20,
+                fatigue: 20,
+            },
+            {
+                text: 'A pitch-vent under {zone} flares, and the redwood above {tribute} goes up from the base.',
+                escapeText: '{tribute} smells the pitch-vent in {zone} before it goes and is away from the trunk.',
+                cause: 'Burned in a pitch fire',
+                dodgeStat: 'intelligence',
+                damage: 32,
+                burned: true,
+                startsZoneEffect: 'burning',
+            },
+            {
+                text: 'The false stars over {zone} go out one at a time, and {tribute} counts them until there is nothing to count.',
+                escapeText: '{tribute} does not look up in {zone}, which is the only defence anybody has found.',
+                cause: 'Died of fright under the false stars',
+                dodgeStat: 'willpower',
+                damage: 4,
+                sanity: 22,
+            },
             {
                 text: 'A pitch-vent under {zone} flares full height with {tribute} standing in its throat-warmth.',
                 escapeText: '{tribute} feels the ground breathe in under {zone} and is out of the flare radius when it lights.',
@@ -2541,6 +2865,35 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'The dead coral of {zone} opens {tribute} in nine places between one step and the next.',
+                escapeText: '{tribute} picks a line through the coral of {zone} and pays for it only in time.',
+                cause: 'Bled out on the coral',
+                dodgeStat: 'agility',
+                damage: 18,
+                bleeding: true,
+                infected: true,
+            },
+            {
+                text: 'An anemone field in {zone} ripples where there is no wind, and closes on the hand {tribute} put into it.',
+                escapeText: '{tribute} watches the anemone field in {zone} ripple and does not reach into it.',
+                cause: 'Killed by an anemone field',
+                dodgeStat: 'intelligence',
+                damage: 24,
+                poisoned: true,
+            },
+            {
+                text: 'The trench through {zone} holds the only shade in the arena, and something has been living in the shade {tribute} climbs down into.',
+                escapeText: '{tribute} looks into the trench in {zone} for a long moment and stays up on the flat.',
+                cause: 'Killed in the trenches',
+                dodgeStat: 'stealth',
+                dodgeDifficulty: 7,
+                damage: 30,
+                bleeding: true,
+            },
             {
                 text: 'A coral head the size of a house comes apart under {tribute} in {zone}, and everything it drops them onto is edged.',
                 escapeText: '{tribute} hears the fossil crack through {zone} and rides the collapse down its blunt side.',
@@ -2690,6 +3043,33 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'A conveyor in {zone} starts without being started, and {tribute} is standing on the belt.',
+                escapeText: '{tribute} is off the belt in {zone} before the line takes up.',
+                cause: 'Killed on the line',
+                dodgeStat: 'agility',
+                damage: 32,
+                bleeding: true,
+            },
+            {
+                text: 'The factory under {zone} changes gear, and every catwalk in the sector — including the one under {tribute} — drops six inches at once.',
+                escapeText: '{tribute} has a hand on the rail in {zone} when the factory changes gear.',
+                cause: 'Fell from a catwalk',
+                dodgeStat: 'agility',
+                damage: 34,
+                bleeding: true,
+            },
+            {
+                text: 'The furnace vent in {zone} opens on its schedule, which nobody has ever written down, and {tribute} is in front of it.',
+                escapeText: '{tribute} learns the furnace schedule in {zone} the cheap way, by watching it once from a distance.',
+                cause: 'Burned at the furnace',
+                dodgeStat: 'intelligence',
+                damage: 30,
+                burned: true,
+            },
             {
                 text: 'A piston {tribute} took for dead cycles once in {zone}, and the stroke catches them at the hip.',
                 escapeText: '{tribute} hears the valve open in {zone} and rolls off the piston bed as it fires.',
@@ -2835,6 +3215,34 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'The Ferris wheel over {zone} turns a quarter revolution against the wind, and a car comes off it above {tribute}.',
+                escapeText: '{tribute} hears the wheel over {zone} take up and is not underneath it.',
+                cause: 'Crushed under the wheel',
+                dodgeStat: 'agility',
+                damage: 34,
+                bleeding: true,
+            },
+            {
+                text: 'The music box in {zone} plays four bars and stops, and {tribute} works out that it is much closer than it was last night.',
+                escapeText: '{tribute} walks away from the music in {zone} without once turning round.',
+                cause: 'Died of fright on the midway',
+                dodgeStat: 'willpower',
+                damage: 6,
+                sanity: 22,
+            },
+            {
+                text: 'The mirror maze in {zone} shows {tribute} somebody standing behind them, and there is nobody standing behind them.',
+                escapeText: '{tribute} keeps one hand on the glass in {zone} and walks out the way they came.',
+                cause: 'Lost in the mirror maze',
+                dodgeStat: 'intelligence',
+                damage: 10,
+                sanity: 18,
+                fatigue: 15,
+            },
             {
                 text: 'The carousel in {zone} starts at full gallop with {tribute} on the platform, and the horses\' brass poles become a threshing floor.',
                 escapeText: '{tribute} hears the motor cough beneath {zone} and jumps the rail before the platform turns.',
@@ -2980,6 +3388,33 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'Every trail ever walked in {zone} is still printed in the ash, and one of them is fresh and behind {tribute}.',
+                escapeText: '{tribute} walks the hard ground through {zone} and leaves nothing for anyone to read.',
+                cause: 'Killed from ambush in the ash',
+                dodgeStat: 'stealth',
+                damage: 22,
+                bleeding: true,
+            },
+            {
+                text: 'A burned tree in {zone} that has been standing for a decade chooses the hour {tribute} passes under it to stop.',
+                escapeText: '{tribute} hears the burned trunk in {zone} give and is out from under it.',
+                cause: 'Crushed by a burned tree',
+                dodgeStat: 'stealth',
+                damage: 28,
+                bleeding: true,
+            },
+            {
+                text: 'The ash sea in {zone} is level for a reason, and {tribute} finds out what is under it to the chest.',
+                escapeText: '{tribute} probes ahead of themselves across {zone} and finds the buried edge before standing on it.',
+                cause: 'Swallowed by the ash',
+                dodgeStat: 'intelligence',
+                damage: 24,
+                fatigue: 30,
+            },
             {
                 text: 'The drift on the slope above {zone} lets go, and a slow grey wave rolls {tribute} under and packs itself around them.',
                 escapeText: '{tribute} reads the slope over {zone} starting to creep and swims off its line before it runs.',
@@ -3125,6 +3560,34 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'A road in {zone} gives out at the edge and takes six metres of rim with it, and {tribute} is on the six metres.',
+                escapeText: '{tribute} keeps to the inside of the road in {zone} and lets the rim go without them.',
+                cause: 'Fell from the quarry road',
+                dodgeStat: 'agility',
+                damage: 36,
+                bleeding: true,
+            },
+            {
+                text: 'The dredger below {zone} starts up, and everything on the pit wall above {tribute} comes loose at once.',
+                escapeText: '{tribute} gets into the cut of the wall in {zone} when the dredger takes up.',
+                cause: 'Buried in the pit',
+                dodgeStat: 'intelligence',
+                damage: 30,
+                bleeding: true,
+            },
+            {
+                text: 'The black water at the bottom of {zone} has never reflected the sky properly, and {tribute} drinks it anyway.',
+                escapeText: '{tribute} looks a long time at the black water in {zone} and stays thirsty.',
+                cause: 'Poisoned by the pit water',
+                dodgeStat: 'intelligence',
+                damage: 18,
+                poisoned: true,
+                quench: 25,
+            },
             {
                 text: 'The bench lip under {tribute} in {zone} calves off in one clean sheet and takes them down a level the hard way.',
                 escapeText: '{tribute} hears the crack run along {zone} and throws themselves at solid rock.',
@@ -3269,6 +3732,35 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'The ice under {zone} speaks, and the crevasse it has been planning opens along the line {tribute} is walking.',
+                escapeText: '{tribute} hears the ice under {zone} start and steps off the line before it opens.',
+                cause: 'Fell into a crevasse',
+                dodgeStat: 'intelligence',
+                damage: 36,
+                bleeding: true,
+            },
+            {
+                text: 'A meltwater channel under the surface of {zone} takes {tribute} in and runs under thirty metres of ice.',
+                escapeText: '{tribute} finds the moulin in {zone} by the sound and goes nowhere near it.',
+                cause: 'Drowned under the glacier',
+                dodgeStat: 'agility',
+                dodgeDifficulty: 7,
+                damage: 34,
+                frostbitten: true,
+            },
+            {
+                text: 'The blue light in the caves under {zone} is beautiful and steady and has no source, and {tribute} follows it too far.',
+                escapeText: '{tribute} marks the way back into the caves of {zone} and does not go past their own marks.',
+                cause: 'Lost in the ice caves',
+                dodgeStat: 'willpower',
+                damage: 10,
+                sanity: 18,
+                fatigue: 20,
+            },
             {
                 text: 'The snow bridge over a crevasse in {zone} keeps {tribute}\'s secret until mid-span.',
                 escapeText: '{tribute} probes the span in {zone}, dislikes the answer, and finds the long way round.',
@@ -3418,6 +3910,36 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'A lead opens across {zone} without a sound, and the plate {tribute} is standing on is suddenly its own island.',
+                escapeText: '{tribute} watches the plates in {zone} work against each other and stays off the seam.',
+                cause: 'Adrift on the pack ice',
+                dodgeStat: 'intelligence',
+                damage: 16,
+                frostbitten: true,
+                fatigue: 25,
+            },
+            {
+                text: 'Something passes under the thin plate {tribute} is crossing in {zone} as a travelling shadow, and it is not small.',
+                escapeText: '{tribute} is off the thin plate in {zone} before the shadow reaches it.',
+                cause: 'Taken under the ice',
+                dodgeStat: 'agility',
+                dodgeDifficulty: 7,
+                damage: 38,
+                bleeding: true,
+            },
+            {
+                text: 'The pack grinds plate on plate all night around {zone}, and by morning {tribute} has not slept and cannot stop shaking.',
+                escapeText: '{tribute} finds a plate in {zone} thick enough to be quiet and sleeps on it.',
+                cause: 'Frozen on the pack ice',
+                dodgeStat: 'endurance',
+                damage: 12,
+                frostbitten: true,
+                sanity: 12,
+            },
             {
                 text: 'The plate under {tribute} in {zone} splits without ceremony, and the black water takes them to the waist before the world reacts.',
                 escapeText: '{tribute} hears the shot-crack run under {zone} and is on the thick side of the split when it opens.',
@@ -3563,6 +4085,34 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'The cornice above {zone} finishes the account the sun has been working on all afternoon, and it comes down on {tribute}.',
+                escapeText: '{tribute} crosses under the cornice above {zone} early, before the sun gets to it.',
+                cause: 'Buried in an avalanche',
+                dodgeStat: 'intelligence',
+                damage: 36,
+                frostbitten: true,
+            },
+            {
+                text: 'The wind over the col above {zone} takes {tribute} off their line and puts them somewhere with no line at all.',
+                escapeText: '{tribute} waits for the lull on the col above {zone} and crosses in it.',
+                cause: 'Blown from the col',
+                dodgeStat: 'strength',
+                damage: 30,
+                bleeding: true,
+            },
+            {
+                text: 'The snow in {zone} is thigh-deep and it is four hours to anywhere, and {tribute} has been counting the last hour twice.',
+                escapeText: '{tribute} follows the wind crust across {zone} and stays on top of the snow.',
+                cause: 'Died of exhaustion in the snow',
+                dodgeStat: 'endurance',
+                damage: 10,
+                fatigue: 35,
+                frostbitten: true,
+            },
             {
                 text: 'The slope above {zone} fractures with a boom, and the mountain sends a winter\'s worth of snow through {tribute}\'s position.',
                 escapeText: '{tribute} feels {zone} settle underfoot with a whump and is off the loaded slope before it runs.',
@@ -3712,6 +4262,35 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
         },
         events: [
+            // §1.5: topped up toward the validator's own 12-event target. An
+            // arena under it spends most of its run speaking in the universal
+            // voice rather than its own, which is the whole point of a pack.
+            {
+                text: 'A cut step in {zone} is a step and a half, and {tribute} finds that out with their weight already committed.',
+                escapeText: '{tribute} reads the cut of the steps in {zone} and puts their weight where the stone is.',
+                cause: 'Fell from the terraces',
+                dodgeStat: 'agility',
+                damage: 32,
+                bleeding: true,
+            },
+            {
+                text: 'The seized cable car over {zone} finishes seizing, and the span comes down across the terrace {tribute} is on.',
+                escapeText: '{tribute} is off the terrace under the cable span in {zone} when the line finally gives.',
+                cause: 'Killed by the cable span',
+                dodgeStat: 'stealth',
+                damage: 34,
+                bleeding: true,
+                severesRoute: true,
+            },
+            {
+                text: 'Cloud comes up the mountain into {zone} from below, which is the wrong direction, and {tribute} is in it for hours.',
+                escapeText: '{tribute} watches the cloud come up into {zone} and gets above it in time.',
+                cause: 'Lost on the terraces',
+                dodgeStat: 'intelligence',
+                damage: 8,
+                fatigue: 28,
+                sanity: 14,
+            },
             {
                 text: 'The terrace wall above {tribute} in {zone} bellies out and lets a century of stacked stone down on them.',
                 escapeText: '{tribute} sees the wall of {zone} weeping fresh grit and is off the step before it comes down.',
@@ -4704,6 +5283,57 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
             travel: GENERIC_ACTIONS.travel,
         },
         events: [
+            // §1.5: see the note in the volcanic pack.
+            {
+                text: 'A branch the size of a roof beam comes out of the canopy over {zone} with no wind to explain it, and {tribute} is beneath it.',
+                escapeText: '{tribute} hears the canopy over {zone} start to give and is not underneath it.',
+                cause: 'Crushed under the canopy',
+                dodgeStat: 'stealth',
+                damage: 30,
+                bleeding: true,
+            },
+            {
+                text: 'The rain in {zone} does not stop for eleven hours, and {tribute} has nowhere in it that is dry.',
+                escapeText: '{tribute} rigs a lean-to in {zone} before the rain sets in and stays under it.',
+                cause: 'Died of exposure in the rain',
+                dodgeStat: 'intelligence',
+                damage: 10,
+                fatigue: 30,
+                sanity: 10,
+            },
+            {
+                text: 'Ants come through {zone} in a column half a metre wide and go over {tribute} rather than round.',
+                escapeText: '{tribute} sees the column coming through {zone} and moves camp without arguing about it.',
+                cause: 'Killed by a driver ant column',
+                dodgeStat: 'agility',
+                damage: 20,
+                infected: true,
+                sanity: 12,
+            },
+            {
+                text: 'The cut on {tribute} has been wet since the first day. In {zone} it turns, and it turns fast.',
+                escapeText: '{tribute} gets a fire going in {zone} long enough to dry a dressing properly.',
+                cause: 'Killed by a tropical infection',
+                dodgeStat: 'intelligence',
+                damage: 14,
+                infected: true,
+            },
+            {
+                text: "Something bright and small and entirely unbothered sits on {tribute}'s hand in {zone} for a moment.",
+                escapeText: '{tribute} keeps their hands to themselves in {zone}, which in here is the whole skill.',
+                cause: 'Killed by a poison-dart frog',
+                dodgeStat: 'intelligence',
+                dodgeDifficulty: 7,
+                damage: 18,
+                poisoned: true,
+            },
+            {
+                text: 'A fruiting tree in {zone} has dropped more than the birds can take, and {tribute} is standing under it.',
+                escapeText: '{tribute} works the fruiting tree in {zone} and finds every piece of it already gone.',
+                cause: 'Starved under the canopy',
+                grantItem: 'berries',
+                feed: 25,
+            },
             {
                 text: 'A flash flood tears through {zone}. {tribute} is swept into deadfall and pinned there until the water drops.',
                 escapeText: '{tribute} hears the flood coming through {zone} and climbs.',
@@ -4784,6 +5414,68 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
             travel: GENERIC_ACTIONS.travel,
         },
         events: [
+            // §1.5: procedural biomes carried five authored events each against
+            // a universal pool of nine, so a procedural run drew generic text
+            // the clear majority of the time — the arena the Gamemakers built
+            // this year sounded like every arena.
+            {
+                text: 'The pumice field in {zone} gives way under {tribute} like rotten ice, and what is underneath is still warm.',
+                escapeText: '{tribute} tests the pumice in {zone} with a boot heel and goes the long way round.',
+                cause: 'Swallowed by a pumice field',
+                dodgeStat: 'intelligence',
+                damage: 26,
+                burned: true,
+            },
+            {
+                text: 'A rockfall of cooled basalt comes off the caldera wall above {zone} with no warning, and {tribute} is under the chute.',
+                escapeText: '{tribute} hears the first stone go in {zone} and is out of the chute before the rest follow.',
+                cause: 'Crushed under basalt',
+                dodgeStat: 'agility',
+                damage: 30,
+                bleeding: true,
+            },
+            {
+                text: 'The air in the hollow of {zone} has no oxygen left in it. {tribute} is on their knees before they understand why.',
+                escapeText: '{tribute} notices the flame of their own fire guttering in {zone} and climbs out of the hollow.',
+                cause: 'Asphyxiated in a gas pocket',
+                dodgeStat: 'intelligence',
+                dodgeDifficulty: 7,
+                damage: 24,
+                fatigue: 25,
+            },
+            {
+                text: 'A crust of sulphur over a hot spring in {zone} holds {tribute} for exactly one step.',
+                escapeText: '{tribute} smells the sulphur crust in {zone} and keeps to the bare rock.',
+                cause: 'Boiled in a sulphur spring',
+                dodgeStat: 'stealth',
+                damage: 34,
+                burned: true,
+                poisoned: true,
+            },
+            {
+                text: 'Static off the ash column earths itself through {zone}, and {tribute} is the tallest thing standing in it.',
+                escapeText: '{tribute} flattens themselves in {zone} as the ash column starts throwing lightning.',
+                cause: 'Struck by volcanic lightning',
+                dodgeStat: 'intelligence',
+                damage: 28,
+                sanity: 15,
+            },
+            {
+                text: 'Rain falls through the ash column over {zone} and arrives as warm grey mud. {tribute} drinks it before they think.',
+                escapeText: '{tribute} lets the grey rain in {zone} run past and stays thirsty.',
+                cause: 'Poisoned by ashfall',
+                dodgeStat: 'intelligence',
+                damage: 10,
+                poisoned: true,
+                quench: 20,
+            },
+            {
+                text: 'The vent field in {zone} goes quiet, and in the quiet {tribute} finds a cache somebody cooked and abandoned.',
+                escapeText: '{tribute} works the vent field in {zone} over and turns up nothing but cinder.',
+                cause: 'Starved on the cinder fields',
+                grantItem: 'dried-meat',
+                feed: 30,
+            },
             {
                 text: 'A lava flow cuts across {zone}. {tribute} escapes with their boots melted through and their legs scorched.',
                 escapeText: '{tribute} reads the flow line in {zone} and gets clear of the lava in time.',
@@ -4860,6 +5552,65 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
             travel: GENERIC_ACTIONS.travel,
         },
         events: [
+            // §1.5: see the note in the volcanic pack — procedural arenas were
+            // speaking almost entirely in the universal voice.
+            {
+                text: 'The channel between the islets of {zone} runs the wrong way without warning and takes {tribute} with it.',
+                escapeText: '{tribute} watches the channel in {zone} turn over and waits it out on the rocks.',
+                cause: 'Drowned in the channel',
+                dodgeStat: 'strength',
+                damage: 30,
+                fatigue: 30,
+            },
+            {
+                text: 'Something with too many arms comes out of the kelp off {zone} and gets one of them around {tribute}.',
+                escapeText: '{tribute} sees the kelp move against the current off {zone} and swims wide of it.',
+                cause: 'Dragged under off the kelp beds',
+                dodgeStat: 'agility',
+                damage: 32,
+                bleeding: true,
+            },
+            {
+                text: 'The sandbar {tribute} is standing on in {zone} is not a sandbar. The tide has been coming in for an hour.',
+                escapeText: '{tribute} reads the tide line in {zone} and is off the bar before it goes under.',
+                cause: 'Cut off by the tide',
+                dodgeStat: 'intelligence',
+                damage: 22,
+                fatigue: 25,
+                sanity: 10,
+            },
+            {
+                text: 'Salt spray has been getting into the cut on {tribute} for two days, and in {zone} it stops being a cut.',
+                escapeText: '{tribute} finds fresh water in {zone} and washes the salt out before it turns.',
+                cause: 'Killed by a salt-fouled wound',
+                dodgeStat: 'intelligence',
+                damage: 12,
+                infected: true,
+            },
+            {
+                text: 'Lightning walks across the water toward {zone} and finds the wet sand {tribute} is lying on.',
+                escapeText: '{tribute} gets off the open sand of {zone} before the storm cell arrives over it.',
+                cause: 'Struck by lightning over open water',
+                dodgeStat: 'intelligence',
+                dodgeDifficulty: 7,
+                damage: 34,
+                sanity: 12,
+            },
+            {
+                text: 'The shellfish {tribute} pulls off the rocks of {zone} taste of nothing at all, which is the tell they miss.',
+                escapeText: '{tribute} looks hard at the shellfish on the rocks of {zone} and puts them back.',
+                cause: 'Killed by shellfish poisoning',
+                dodgeStat: 'intelligence',
+                damage: 16,
+                poisoned: true,
+                feed: 20,
+            },
+            {
+                text: 'A wreck surfaces on the low tide off {zone}, and {tribute} is the first one down to it.',
+                escapeText: '{tribute} works the wreck off {zone} and finds it picked clean years ago.',
+                cause: 'Drowned in the wreck',
+                grantItem: 'rope',
+            },
             {
                 text: 'A riptide off {zone} drags {tribute} out past the break. They fight back to shore with nothing left.',
                 escapeText: '{tribute} swims parallel to the shore of {zone} and slips the riptide.',
@@ -4935,6 +5686,66 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
             travel: GENERIC_ACTIONS.travel,
         },
         events: [
+            // §1.5: see the note in the volcanic pack.
+            {
+                text: 'The scree slope above {zone} lets go all at once, and {tribute} rides it most of the way down.',
+                escapeText: '{tribute} traverses the scree above {zone} one careful step at a time and it holds.',
+                cause: 'Carried away by a scree slide',
+                dodgeStat: 'agility',
+                damage: 30,
+                bleeding: true,
+            },
+            {
+                text: 'Cloud comes down over {zone} inside ten minutes and {tribute} cannot see their own boots in it.',
+                escapeText: '{tribute} watches the cloud coming up the valley into {zone} and is under cover first.',
+                cause: 'Lost in the cloud',
+                dodgeStat: 'intelligence',
+                damage: 8,
+                fatigue: 30,
+                sanity: 14,
+            },
+            {
+                text: 'The wind on the ridge above {zone} does not gust so much as lean, and it leans {tribute} off the line.',
+                escapeText: '{tribute} drops off the ridge above {zone} and takes the sheltered side instead.',
+                cause: 'Blown from the ridge',
+                dodgeStat: 'strength',
+                damage: 33,
+                bleeding: true,
+            },
+            {
+                text: 'A peat hag in {zone} takes {tribute} to the waist, and everything below the water is colder than it should be.',
+                escapeText: '{tribute} reads the change in the grass across {zone} and keeps to the dry line.',
+                cause: 'Died of exposure in the peat',
+                dodgeStat: 'intelligence',
+                damage: 14,
+                frostbitten: true,
+                fatigue: 25,
+            },
+            {
+                text: 'Something the size of a dog and far less friendly comes off the crag over {zone} at {tribute}, feet first.',
+                escapeText: '{tribute} keeps to the open in {zone}, and whatever is on the crag stays on the crag.',
+                cause: 'Killed on the high crags',
+                dodgeStat: 'agility',
+                damage: 26,
+                bleeding: true,
+            },
+            {
+                text: 'The burn running through {zone} is clean and cold and running off ground {tribute} has not seen.',
+                escapeText: '{tribute} follows the burn in {zone} up to a dead sheep and drinks nothing at all.',
+                cause: 'Killed by fouled water',
+                dodgeStat: 'intelligence',
+                quench: 55,
+                heal: 4,
+            },
+            {
+                text: 'Frost gets into {zone} overnight and into everything {tribute} owns with it.',
+                escapeText: '{tribute} builds the fire up in {zone} before the frost comes and keeps it in.',
+                cause: 'Frozen on the tops',
+                dodgeStat: 'endurance',
+                damage: 12,
+                frostbitten: true,
+                fatigue: 20,
+            },
             {
                 text: 'A rockslide comes down the scree above {zone}. {tribute} is caught at the edge of it and carried thirty metres.',
                 escapeText: '{tribute} hears the scree go above {zone} and gets behind a boulder.',

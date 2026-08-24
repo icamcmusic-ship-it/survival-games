@@ -20,12 +20,13 @@ import * as FLAVOR from '../src/data/flavorText';
 const POOL_TARGET = 12;
 /**
  * Pools still under the target. Lower this when you top one up; it is not
- * allowed to rise. As of this writing: INTIMIDATION_TEXTS,
- * MENTOR_PARACHUTE_TEXTS, MENTOR_PLEA_FAILED_TEXTS, PROTECTOR_BOND_TEXTS,
- * RELIEF_TEXTS, ROMANCE_TEXTS, SPONSOR_TEXTS, TRAINING_OBSERVATION and
- * TRAINING_TEAMUP all sit at 10.
+ * allowed to rise. §1.6 cleared the backlog — the nine pools that sat at 10
+ * (INTIMIDATION_TEXTS, MENTOR_PARACHUTE_TEXTS, MENTOR_PLEA_FAILED_TEXTS,
+ * PROTECTOR_BOND_TEXTS, RELIEF_TEXTS, ROMANCE_TEXTS, SPONSOR_TEXTS,
+ * TRAINING_OBSERVATION and TRAINING_TEAMUP) are all past the target now, so
+ * the allowance is zero and any new thin pool fails the build.
  */
-const KNOWN_THIN = 9;
+const KNOWN_THIN = 0;
 /** No pool may drop below this, backlog or not — it is repetition within a cycle. */
 const HARD_FLOOR = 8;
 
