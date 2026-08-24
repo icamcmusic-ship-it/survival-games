@@ -67,7 +67,7 @@ let dualVictories = 0;
 // Tribute-logic overhaul: every new system needs evidence it ran.
 let clots = 0, fieldDressings = 0, restRecoveries = 0, huntOrCraft = 0;
 // §3.1: infection — wounds turning, deepening, being treated, and killing.
-let sleepDrops = 0;
+let sleepDrops = 0, coldWeaponSwings = 0, loyalBroke = 0, mercyBroke = 0, pacifistBroke = 0;
 let woundsTurned = 0, sepsisDeepened = 0, sepsisTerminal = 0, sepsisTreated = 0, sepsisDeaths = 0, feverLines = 0;
 let zoneDrinks = 0, pursuits = 0, desperationFights = 0, fearFelt = 0;
 let bestProficiencySeen = 0;
@@ -279,6 +279,10 @@ for (let i = 0; i < 400; i++) {
     if (/is put out of the group/.test(l.text)) expulsions++;
     if (/takes the .* job off them|account for it in front of everyone/.test(l.text)) hearings++;
     if (/does not notice their .* going/.test(l.text)) sleepDrops++;
+    if (/not their weapon, not yet/.test(l.text)) coldWeaponSwings++;
+    if (/they are not that any more/.test(l.text)) loyalBroke++;
+    if (/it did not survive the week/.test(l.text)) mercyBroke++;
+    if (/given up arguing with it/.test(l.text)) pacifistBroke++;
     if (/started looking like a problem/.test(l.text)) woundsTurned++;
     if (/worse today — swollen/.test(l.text)) sepsisDeepened++;
     if (/gone dark and the heat of it/.test(l.text)) { sepsisDeepened++; sepsisTerminal++; }
@@ -684,6 +688,8 @@ console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDe
 // mechanic read as "251 formed, 102 resolved, 149 vanished".
 const truceEndings = trucesRenewed + trucesLapsed + trucesTurned + trucesBroken + trucesOutlived;
 console.log(`sleep: deprivedDrops=${sleepDrops}`);
+console.log(`weapons: coldSwings=${coldWeaponSwings}`);
+console.log(`traitArcs: pacifistToBroken=${pacifistBroke} loyalToTreacherous=${loyalBroke} mercifulToRuthless=${mercyBroke}`);
 console.log(`infection: woundsTurned=${woundsTurned} deepened=${sepsisDeepened} reachedTerminal=${sepsisTerminal} treated=${sepsisTreated} feverLines=${feverLines} sepsisDeaths=${sepsisDeaths}`);
 console.log(`truces2: outlived=${trucesOutlived} brokeredHeld=${brokeredHeld}`);
 console.log(`truce ledger: struck=${trucesStruck} accountedEndings=${truceEndings} `

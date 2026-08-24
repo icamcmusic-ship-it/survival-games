@@ -300,6 +300,11 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
     adjustRel(victim, betrayer.id, -RELATIONSHIPS.betrayalDirectPenalty);
     adjustRel(betrayer, victim.id, -RELATIONSHIPS.betrayalDirectPenalty / 2);
 
+    // §3.4: the other side of the ledger. `timesBetrayed` counts what was done
+    // to you; nothing counted what you did, which is what a Loyal tribute
+    // wearing through into a Treacherous one turns on.
+    betrayer.betrayalsCommitted = (betrayer.betrayalsCommitted ?? 0) + 1;
+
     const victimMem = ensureMemory(victim);
     victimMem.timesBetrayed += 1;
     if (!victimMem.betrayedBy.includes(betrayer.id)) victimMem.betrayedBy.push(betrayer.id);

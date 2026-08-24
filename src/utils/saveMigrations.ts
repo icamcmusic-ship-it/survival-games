@@ -288,6 +288,9 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         // from one that has played the whole run in this build.
         fullKitSeen: asBool(r.fullKitSeen, false),
         everCarriedWeapon: asBool(r.everCarriedWeapon, false),
+        // §3.4: the two contradiction-arc counters.
+        betrayalsCommitted: asNum(r.betrayalsCommitted, 0),
+        finishingBlows: asNum(r.finishingBlows, 0),
         poisonedByWeapon: asBool(r.poisonedByWeapon, false),
         everDowned: asBool(r.everDowned, false),
         sanityScarred: asBool(r.sanityScarred, false),
@@ -339,6 +342,10 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
             ? { to: transit.to, remaining: asNum(transit.remaining, 1) }
             : undefined,
         proficiencies: asObjMap<number>(r.proficiencies),
+        // §3.2: per-weapon familiarity. A save from before it existed resumes
+        // with every weapon cold, which is the honest reading — the engine has
+        // no record of what they have been swinging.
+        weaponFamiliarity: asNumMap(r.weaponFamiliarity),
         objective: normalizeObjective(r.objective),
         protectorBonds: asStrArray(r.protectorBonds),
         quirks: asStrArray(r.quirks),

@@ -526,6 +526,16 @@ export interface Tribute {
     /** §5.3: a slow traversal in progress — a crossing or a climb. The tribute
      *  stays in their origin zone until `remaining` cycles have been spent. */
     transit?: { to: string; remaining: number };
+    /**
+     * §3.2: hands-on familiarity with each specific weapon, keyed by item id.
+     *
+     * `proficiencies` tracks melee and ranged as two buckets, so a tribute who
+     * had spent six days with a spear read as exactly as dangerous the moment
+     * they picked up a sword. This is the finer grain underneath: it accrues
+     * on use, decays on nothing, and makes swapping kit a real cost rather
+     * than a free re-skin of the same numbers.
+     */
+    weaponFamiliarity?: Record<string, number>;
     /** Skills that improve with successful use. See `Proficiency`. */
     proficiencies?: Partial<Record<Proficiency, number>>;
     /** What they are currently trying to do. See `Objective`. */
@@ -674,6 +684,19 @@ export interface Tribute {
     /** §10.1: tribute ids this one has extorted at a parley (item or information). */
     extortedIds?: string[];
     /** §10.1: set the first time a weapon enters their inventory, ever. */
+    /**
+     * §3.4: betrayals this tribute has *committed* against someone who trusted
+     * them. `memory.timesBetrayed` counts the other direction. Read by the
+     * Loyal -> Treacherous arc, which needs to know what they have done rather
+     * than what was done to them.
+     */
+    betrayalsCommitted?: number;
+    /**
+     * §3.4: killing blows landed on someone who was already finished. Read by
+     * the Merciful -> Ruthless arc — it is not the body count that wears
+     * mercy off, it is how many times they chose to close it.
+     */
+    finishingBlows?: number;
     everCarriedWeapon?: boolean;
     /** §10.1: every zone this tribute has personally stood in. */
     visitedZones?: string[];

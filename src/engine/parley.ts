@@ -215,6 +215,15 @@ function truceBreakChance(ctx: SimContext, t: Tribute, other: Tribute): number {
  */
 export function breakTruce(ctx: SimContext, breaker: Tribute, victim: Tribute) {
     clearTruce(breaker, victim);
+    // §3.4: this counts on the same ledger as an alliance betrayal. The
+    // Loyal -> Treacherous arc turns on "how many times have you broken faith
+    // with somebody who trusted you", and a truce is exactly that — a promise
+    // given to somebody who then stood down because of it. Counting only
+    // `applyBetrayalFallout` made the threshold unreachable: across 120 runs
+    // exactly three tributes ever committed two alliance betrayals, and a
+    // Loyal tribute (treachery -0.3) is the least likely person in the arena
+    // to be one of them, so the arc could never fire.
+    breaker.betrayalsCommitted = (breaker.betrayalsCommitted ?? 0) + 1;
     adjustRel(victim, breaker.id, -PARLEY.truceBreakRegard);
     // Going back on your word costs you with the person you did it to, and with
     // everyone watching from the Capitol who was told there was an agreement.
@@ -595,6 +604,10 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
     const turnChance = PARLEY.truceTurnChance
         + Math.max(0, treacheryOf(striker)) * PARLEY.truceTurnTreacheryWeight;
     if (ctx.rng.chance(Math.min(0.6, turnChance))) {
+        // Turning the moment a truce lapses breaks no promise — which is
+        // exactly the sort of technicality that is still, to the person it is
+        // done to, being sold out by somebody they had an understanding with.
+        striker.betrayalsCommitted = (striker.betrayalsCommitted ?? 0) + 1;
         striker.objective = { kind: 'hunt', targetId: target.id, expires: cycleOf(ctx.state) + PARLEY.truceTurnHuntCycles };
         adjustRel(target, striker.id, -PARLEY.truceBreakRegard);
         raiseSuspicion(target, striker.id, PARLEY.truceBreakSuspicion);

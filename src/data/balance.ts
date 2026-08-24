@@ -568,6 +568,29 @@ export const PROFICIENCY = {
     /** Combat power added per point of the relevant weapon proficiency. */
     combatWeight: 0.7,
     /** Power bonus for a weapon this tribute's district actually raises children on. */
+    /**
+     * §3.2: per-weapon familiarity — the grain below the melee/ranged buckets.
+     *
+     * `melee` covers a sword, an axe, a mace and a trident alike, so six days
+     * of spear work transferred wholesale to a bow the moment one turned up.
+     * Familiarity is tracked per item id: an unfamiliar weapon costs power
+     * until the tribute has actually swung it a few times, and a weapon they
+     * have carried all run is worth more than the same weapon in a stranger's
+     * hands.
+     *
+     * Deliberately smaller than `affinityItemBonus`, and it stacks with it —
+     * growing up with a gaff is worth more than a week's practice, which is
+     * the right ordering.
+     */
+    /** Uses at which a weapon stops being new in the hand. */
+    familiarUses: 3,
+    /** Uses past which no further familiarity accrues. */
+    familiarCap: 12,
+    /** Power per use, up to the cap. */
+    familiarPerUse: 0.18,
+    /** Power lost for swinging something genuinely cold. */
+    unfamiliarPenalty: 1.2,
+    /** A district-affinity weapon is never unfamiliar — they grew up with it. */
     affinityItemBonus: 2.2,
     /** Smaller bonus for a weapon merely of a familiar class. */
     affinityClassBonus: 1.1,
@@ -1110,6 +1133,38 @@ export const EARNED_TRAIT_RULES = {
     /** Cycles a Skittish tribute must hold high resolve before the fear burns off. */
     skittishShedCycles: 5,
     skittishShedResolve: 70,
+
+    /**
+     * §3.4: two more contradiction arcs, on the same rule shape as
+     * Pacifist + Bloodied -> Broken.
+     *
+     * A trait that has been violated enough times converts rather than sitting
+     * inertly next to its opposite. Loyal is not a thing you can still be
+     * called after the second time you have sold out someone who trusted you;
+     * Merciful is not a thing you can still be called after the third time you
+     * chose to close it on somebody who was already finished.
+     */
+    /**
+     * Breaches of faith before Loyal wears through into Treacherous.
+     *
+     * The review proposed this at a second betrayal, by analogy with
+     * Merciful's third finishing blow. Measured, that threshold is
+     * unreachable: Loyal carries `treachery: -0.3`, which makes its holder the
+     * least likely person in the arena to break faith at all, and across 120
+     * runs no Loyal tribute ever did it twice — 890 site-cycles at one breach,
+     * zero at two. So it is one, and the counter it reads was widened to cover
+     * every way of breaking faith with somebody who trusted you (an alliance
+     * betrayal, a broken truce, turning on someone the hour a truce lapses)
+     * rather than only `applyBetrayalFallout`.
+     *
+     * That is the right reading anyway. Merciful's third blow is a habit
+     * forming; a Loyal tribute selling out one person who trusted them is
+     * already the whole arc, and asking for it twice is asking for a
+     * coincidence rather than a character.
+     */
+    loyalBreaksAt: 1,
+    /** Finishing blows before Merciful wears through into Ruthless. */
+    mercifulBreaksAt: 3,
 } as const;
 
 /**

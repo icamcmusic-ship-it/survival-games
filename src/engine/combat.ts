@@ -14,7 +14,7 @@ import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgain
 import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { injure, injuryGrade, openWound } from './wounds';
-import { profOf, trainProficiency, weaponAffinity, weaponProficiency } from './proficiency';
+import { isUnfamiliar, noteWeaponUse, profOf, trainProficiency, weaponAffinity, weaponHandling, weaponProficiency } from './proficiency';
 import { addFear, fearFraction, reduceFear } from './fear';
 import { areLovers } from './alliance';
 import { hasTruce } from './parley';
@@ -64,6 +64,12 @@ const DOWNABLE_DAMAGE: DamageRecord['kind'][] = ['tribute', 'mutt', 'arena', 'ha
  * the deaths that still land.
  */
 function strikeDown(ctx: SimContext, victim: Tribute, killer: Tribute, weapon?: Item) {
+    // §3.4: a blow landed on somebody who was already finished is a choice, and
+    // it is the one the Merciful -> Ruthless arc counts. Recorded before the
+    // downed branch so it counts the decision, not the outcome.
+    if (victim.downed || victim.health <= COMBAT.finishingHealthThreshold) {
+        killer.finishingBlows = (killer.finishingBlows ?? 0) + 1;
+    }
     if (!victim.downed && shouldGoDown(ctx, victim)) {
         goDown(ctx, victim, victim.lastDamage?.cause || `Killed by ${killer.name}`, killer.id);
         return;
@@ -347,6 +353,9 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         // from the training centre. A trident is a fishing tool to District 4
         // and an awkward three-pronged spear to everybody else.
         power += weaponAffinity(t, weapon);
+        // §3.2: and how long it has actually been in their hands. Affinity is
+        // where they are from; handling is what they have done this week.
+        power += weaponHandling(t, weapon);
     } else {
         // Bare hands are a grapple, and a grapple is decided by mass, reach and
         // whether they have ever done this before. §3.1: frame is what makes
@@ -503,6 +512,22 @@ function dropBrokenWeapons(t: Tribute) {
 
 /** Applies one landed hit, including venom, wounds and the grudge it earns. */
 function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: number, weapon?: Item, multiplier = 1) {
+    // §3.2: a landed blow is a swing that taught them something about this
+    // particular weapon. Recorded here rather than at the pick-up so carrying
+    // a bow you never fire never makes you an archer.
+    //
+    // The first swing with something cold gets a line, once — otherwise the
+    // cost is a number nobody can see, and the whole point is that a reader
+    // should understand why the tribute who just traded up is fighting worse.
+    if (isUnfamiliar(attacker, weapon) && (attacker.weaponFamiliarity?.[weapon!.id] ?? 0) === 0) {
+        ctx.logEvent(
+            `${attacker.name} swings the ${weapon!.name} and it does not go where they meant it to. `
+            + 'It is a good weapon. It is not their weapon, not yet.',
+            [attacker.id],
+            { category: 'combat' }
+        );
+    }
+    noteWeaponUse(attacker, weapon);
     const raw = (COMBAT.baseHitDamage + edge * COMBAT.damagePerPowerPoint + ctx.rng.nextInt(-3, 4)) * multiplier;
     const damage = Math.round(Math.max(COMBAT.minRoundDamage, Math.min(COMBAT.maxRoundDamage * multiplier, raw)));
 
