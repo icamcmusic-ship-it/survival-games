@@ -67,6 +67,9 @@ let dualVictories = 0;
 // Tribute-logic overhaul: every new system needs evidence it ran.
 let clots = 0, fieldDressings = 0, restRecoveries = 0, huntOrCraft = 0;
 // §3.1: infection — wounds turning, deepening, being treated, and killing.
+let trianglesFormed = 0, triangleJealousy = 0, triangleChoices = 0;
+let loansMade = 0, loansReturned = 0, loansDefaulted = 0;
+let successionHeir = 0, successionPassedOver = 0, successionSplit = 0, successionUnnamed = 0;
 let peakNotoriety = 0, notorietyWithoutContact = 0, strangersKnownByName = 0;
 let sleepDrops = 0, coldWeaponSwings = 0, bluffsLanded = 0, bluffsCaught = 0, loyalBroke = 0, mercyBroke = 0, pacifistBroke = 0;
 let woundsTurned = 0, sepsisDeepened = 0, sepsisTerminal = 0, sepsisTreated = 0, sepsisDeaths = 0, feverLines = 0;
@@ -273,6 +276,16 @@ for (let i = 0; i < 400; i++) {
     if (/empties the group's stash|and watches them go|keeps their hand over the pocket|hears it, and keeps walking/.test(l.text)) exoticBetrayals++;
     if (/run as one/.test(l.text)) merges++;
     if (/takes charge of what is left|stops deferring to/.test(l.text)) leadershipChanges++;
+    if (/going to be able to go on being polite/.test(l.text)) trianglesFormed++;
+    if (/neither of them has said a word about why/.test(l.text)) triangleJealousy++;
+    if (/makes the choice in front of both of them/.test(l.text)) triangleChoices++;
+    if (/both of them hear the word/.test(l.text)) loansMade++;
+    if (/back without being asked for it/.test(l.text)) loansReturned++;
+    if (/stopped thinking of the .* as lent/.test(l.text)) loansDefaulted++;
+    if (/was named for this and steps into it|only thing anybody can point at/.test(l.text)) successionHeir++;
+    if (/without ever putting it to a vote/.test(l.text)) successionPassedOver++;
+    if (/two camps and neither of them is going to be the one that apologises/.test(l.text)) successionSplit++;
+    if (/nothing agreed about what happens next/.test(l.text)) successionUnnamed++;
     // §4.1: pacts are a union of six shapes now, all sworn with `shake on it:`.
     if (/shake on it: they /.test(l.text)) pactsDeclared++;
     if (/agreed this was where it ended|keep their word without any ceremony/.test(l.text)) pactsHonoured++;
@@ -708,6 +721,9 @@ const truceEndings = trucesRenewed + trucesLapsed + trucesTurned + trucesBroken 
 console.log(`sleep: deprivedDrops=${sleepDrops}`);
 console.log(`weapons: coldSwings=${coldWeaponSwings}`);
 console.log(`bluffs: landed=${bluffsLanded} caught=${bluffsCaught}`);
+console.log(`triangles: formed=${trianglesFormed} jealousyBeats=${triangleJealousy} forcedChoices=${triangleChoices}`);
+console.log(`loans: made=${loansMade} returned=${loansReturned} defaulted=${loansDefaulted}`);
+console.log(`succession: toNamedHeir=${successionHeir} heirPassedOver=${successionPassedOver} splitTheGroup=${successionSplit} noHeirNamed=${successionUnnamed}`);
 console.log(`notoriety: peak=${Math.round(peakNotoriety)} ledgerEntriesWithoutContact=${notorietyWithoutContact} strangersKnownByName=${strangersKnownByName}`);
 console.log(`traitArcs: pacifistToBroken=${pacifistBroke} loyalToTreacherous=${loyalBroke} mercifulToRuthless=${mercyBroke}`);
 console.log(`infection: woundsTurned=${woundsTurned} deepened=${sepsisDeepened} reachedTerminal=${sepsisTerminal} treated=${sepsisTreated} feverLines=${feverLines} sepsisDeaths=${sepsisDeaths}`);

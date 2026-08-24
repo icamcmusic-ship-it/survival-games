@@ -112,6 +112,18 @@ export function seedBackstoryRelationships(tributes: Tribute[], rng: RNG) {
                 value -= RELATIONSHIPS.careerRivalPenalty;
             }
 
+            // §4.5: shared hardship, which is not the same as shared standing.
+            // Two people who have been signing for tesserae since they were
+            // twelve know something about each other on sight, and it crosses
+            // district lines — which is exactly what the existing three ties
+            // could not do for an outer-district pair.
+            const slips = Math.min(a.tesserae ?? 0, b.tesserae ?? 0);
+            if (a.district !== b.district && slips >= RELATIONSHIPS.hardshipTesseraeFloor) {
+                const depth = Math.min(RELATIONSHIPS.hardshipMaxBonus,
+                    (slips - RELATIONSHIPS.hardshipTesseraeFloor) * RELATIONSHIPS.hardshipPerExtraSlip);
+                value += spread(RELATIONSHIPS.hardshipBase + depth, RELATIONSHIPS.hardshipSpread);
+            }
+
             if (a.archetype === b.archetype) value += RELATIONSHIPS.archetypeKinship;
             if (ARCHETYPES[a.archetype].treachery > RELATIONSHIPS.warinessTreachery
                 && ARCHETYPES[b.archetype].caution > RELATIONSHIPS.warinessCaution) {

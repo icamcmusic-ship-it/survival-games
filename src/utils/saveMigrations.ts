@@ -274,6 +274,22 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         // rebuilds from play.
         respects: asNumMap(r.respects),
         debts: asNumMap(r.debts),
+        // §4.4: the material-loan ledger. Entries are validated rather than
+        // coerced — a half-formed loan record would leave a lender resenting
+        // a borrower over an item with no name.
+        loans: Object.fromEntries(
+            Object.entries(asRecord(r.loans) ?? {}).flatMap(([lenderId, value]) => {
+                const l = asRecord(value);
+                if (!l) return [];
+                const itemId = asStr(l.itemId, '');
+                if (!itemId) return [];
+                return [[lenderId, {
+                    itemId,
+                    itemName: asStr(l.itemName, itemId),
+                    sinceCycle: asNum(l.sinceCycle, 0),
+                }]] as Array<[string, { itemId: string; itemName: string; sinceCycle: number }]>;
+            })
+        ),
         districtBondNoted: asBool(r.districtBondNoted, false),
 
         // §1.1/§1.7: the lifetime ledger — the write-once flags and the
@@ -499,6 +515,26 @@ export function normalizeGameState(raw: unknown): GameState | null {
         camps: asObjMap(r.camps),
         activeMutts: Array.isArray(r.activeMutts) ? (r.activeMutts as GameState['activeMutts']) : [],
         sponsorBlocBudgets: asNumMap(r.sponsorBlocBudgets),
+        // §4.6: love triangles. Entries are validated rather than coerced — a
+        // triangle missing one of its three ids would have the detector
+        // permanently unable to re-form it and the ticker permanently unable
+        // to resolve it.
+        loveTriangles: Array.isArray(r.loveTriangles)
+            ? (r.loveTriangles as unknown[]).flatMap(entry => {
+                const e = asRecord(entry);
+                if (!e) return [];
+                const apexId = asStr(e.apexId, '');
+                const aId = asStr(e.aId, '');
+                const bId = asStr(e.bId, '');
+                if (!apexId || !aId || !bId) return [];
+                return [{
+                    apexId, aId, bId,
+                    formedCycle: asNum(e.formedCycle, 0),
+                    heat: asNum(e.heat, 0),
+                    resolved: asBool(e.resolved, false),
+                }];
+            })
+            : [],
     };
 }
 

@@ -493,6 +493,20 @@ export interface Tribute {
      * creditor and unlocks a repayment beat. See `engine/debts.ts`.
      */
     debts?: Record<string, number>;
+    /**
+     * §4.4: things lent, not things owed.
+     *
+     * `debts` is created by `stoodBy` — somebody took a real risk for you —
+     * and it is priced accordingly: it resists betrayal hard and it is one of
+     * the heaviest relationships in the model. That left nothing at all below
+     * it. A tribute who lent an ally their spare knife on Tuesday and has not
+     * got it back has a real, small, specific grievance, and alliance
+     * economics had no way to express it.
+     *
+     * Keyed by lender id. Settled by giving the thing back; it sours into
+     * ordinary resentment, and eventually into theft, if it is not.
+     */
+    loans?: Record<string, { itemId: string; itemName: string; sinceCycle: number }>;
     /** Guards the one-off "both still standing, both from the same district" beat. */
     districtBondNoted?: boolean;
     /**
@@ -1614,6 +1628,27 @@ export interface GameState {
     /** §10.1: the longest single fire chain this run produced, in zones. */
     fireChainMax?: number;
     /** §10.1: a renewed truce was still standing when one of its parties died. */
+    /**
+     * §4.6: love triangles, as their own tracked shape.
+     *
+     * Two overlapping romances that happen to share a member were previously
+     * two independent pairs, and the simulation had no idea they were the same
+     * story. A triangle has beats a pair does not — the jealousy that is
+     * legible in the feed long before anything happens, and the forced choice
+     * at a pressure point — and none of them are expressible as "these two
+     * records both mention Cato".
+     */
+    loveTriangles?: Array<{
+        /** The one both of them are attached to. */
+        apexId: string;
+        aId: string;
+        bId: string;
+        formedCycle: number;
+        /** Cycles the two rivals have spent visibly aware of each other. */
+        heat: number;
+        /** Set once the apex has been made to choose. */
+        resolved?: boolean;
+    }>;
     keptWordSeen?: boolean;
     /** §10.1: a 3+ alliance reached the final eight with a clean charter. */
     charterKeptSeen?: boolean;

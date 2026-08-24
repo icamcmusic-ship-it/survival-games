@@ -2523,6 +2523,29 @@ export const RELATIONSHIPS = {
     enemyBond: -35,
 
     /**
+     * §4.5: a third backstory tie — shared hardship rather than shared standing.
+     *
+     * The existing three all key on status: same district, same academy, close
+     * in age. Two of those are Career-flavoured and the third is thin, so an
+     * outer-district pair from different districts started at a wall of zeroes
+     * with nothing to hang a story on. "We trained together" is the wrong hook
+     * for District 9 and 11.
+     *
+     * This one keys on circumstance instead: two tributes who have both been
+     * signing for tesserae for years recognise something in each other that
+     * has nothing to do with where they are from. It fires across districts
+     * (that is the point) and only for the genuinely poor, so it never
+     * competes with the district-partner bond.
+     */
+    /** Tesserae both must have taken before the shared-hardship tie exists. */
+    hardshipTesseraeFloor: 4,
+    hardshipBase: 12,
+    hardshipSpread: 5,
+    /** Extra when both are deep in it — the tie scales with how bad it was. */
+    hardshipPerExtraSlip: 1.2,
+    hardshipMaxBonus: 8,
+
+    /**
      * §3.7: the cold war. An alliance that ended without a betrayal leaves two
      * people who are not allies and are also not strangers, and the ordinary
      * decay rate walked them back to nothing in a few cycles as though the
@@ -2607,6 +2630,46 @@ export const PROTECTOR_BOND = {
     /** Bond required, on the same relationship scale romance uses. */
     threshold: 70,
     chancePerCycle: 0.18,
+} as const;
+
+/**
+ * §4.6: love triangles.
+ *
+ * Thresholds are set so a triangle is a real configuration rather than any
+ * three people with warm feelings — both rivals genuinely attached, and the
+ * apex warm enough to both that the choice is a choice. Jealousy accrues only
+ * while the rivals can see each other, which is what keeps it a story rather
+ * than a background subtraction.
+ */
+export const TRIANGLES = {
+    /** Regard a rival needs toward the apex to count as attached. */
+    suitorRegard: 45,
+    /** Regard the apex needs toward both, so this is a choice and not two crushes. */
+    apexWarmth: 20,
+    /** What a declared Star-Crossed bond is worth against unspoken regard. */
+    declaredBondRegard: 85,
+
+    /** Per-cycle, while the two rivals are in the same place. */
+    jealousyRegardPerCycle: 2.5,
+    excitementPerCycle: 3,
+    /** Cycles of that before it is worth a line. */
+    jealousyLineHeat: 3,
+
+    /**
+     * Heat before the apex can be made to choose at all.
+     *
+     * Heat only accrues while all three are in the same place, which is
+     * genuinely uncommon, so this is 2 rather than the 4 it started at — at 4
+     * the choice fired three times in 400 runs and the beat the whole feature
+     * exists for effectively did not ship.
+     */
+    choiceMinHeat: 2,
+    chosenRegard: 15,
+    passedOverRegard: 30,
+    passedOverSanity: 12,
+    choiceExcitement: 30,
+    /** Odds the one who was not chosen takes it the way the arena invites. */
+    vengeanceChance: 0.35,
 } as const;
 
 export const ROMANCE = {
@@ -2928,6 +2991,29 @@ export const ALLIANCES = {
     cacheClaimShare: 0.5,
     /** The leader names an heir once the group is this big. */
     successorMinSize: 3,
+
+    /**
+     * §4.2: succession, as a rule the charter names rather than an implicit
+     * reassignment.
+     *
+     * `leaderChanges` fired 181 times across a 400-run soak, so this is one of
+     * the most frequent events in the alliance layer — and the most common
+     * cause of it, the leader simply dying, ignored the named heir entirely
+     * and re-ran `pickLeader` from scratch. The heir was honoured by the coup
+     * path and the expulsion path and nowhere else, which meant naming one
+     * changed nothing in the case it exists for.
+     *
+     * A succession now resolves as one of three beats: the heir takes it
+     * uncontested, the group's own preference takes it instead, or — the
+     * failure mode worth having — the two are close enough that neither can
+     * claim it and the alliance comes apart along the line between them.
+     */
+    /** Backing margin below which a succession is genuinely contested. */
+    successionContestMargin: 15,
+    /** Odds a contested succession splits the group rather than resolving. */
+    successionSplitChance: 0.45,
+    /** Regard the losing side of a contested succession loses for the winner. */
+    successionLoserRegard: 14,
 
     /** Pooled supplies: what a member will contribute, and what a thief takes. */
     cacheContributeSurplus: 2,
@@ -4139,6 +4225,30 @@ export const DEBTS = {
 
     /** Turning on a creditor: multiplier on betrayal willingness, per point owed. */
     betrayalResistPerPoint: 0.3,
+    /**
+     * §4.4: material loans — the ledger below the life-debt.
+     *
+     * `savedInFight` is worth 2 on a scale that caps at 3, because somebody
+     * stepped in front of a blade for you. There was nothing beneath that, so
+     * "you are still carrying my knife" had to be modelled as either a
+     * life-debt (absurd) or as nothing at all, which is what it was. This is
+     * the second texture: small, specific, and it goes bad slowly rather than
+     * binding anybody to anything.
+     */
+    /** Odds an ally with a spare weapon lends it to an unarmed one. */
+    loanChance: 0.3,
+    /** Cycles before an unreturned loan starts costing the borrower regard. */
+    loanPatience: 4,
+    /** Regard the lender loses for the borrower per cycle once patience runs out. */
+    loanResentmentPerCycle: 1.5,
+    /** What giving it back is worth to both of them. */
+    loanReturnedRegard: 6,
+    /** What walking off with it costs, once the borrower plainly is not returning it. */
+    loanDefaultRegard: 10,
+    loanDefaultSuspicion: 14,
+    /** Cycles after which an unreturned loan is simply theft. */
+    loanDefaultCycles: 8,
+
     /**
      * §1.2: turning on a *paying client*. A contract holds harder than a
      * favour — a mercenary who knifes the person who hired them is a mercenary

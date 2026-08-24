@@ -3,7 +3,7 @@ import { DEBTS } from '../data/balance';
 import { DEBT_TEXTS } from '../data/flavorText';
 import { SimContext, getAlive } from './context';
 import { adjustMutual, adjustRel, getRel } from './relationships';
-import { noteStoodBy } from './memory';
+import { cycleOf, noteStoodBy, raiseSuspicion } from './memory';
 import { witnessKindness } from './rapport';
 import { giveItem } from './items';
 import { addExcitement } from './audience';
@@ -196,5 +196,121 @@ export function tickDistrictBonds(ctx: SimContext) {
                 { important: true, category: 'alliance' }
             );
         }
+    });
+}
+
+/**
+ * §4.4: the ledger below the life-debt.
+ *
+ * `incurDebt` above prices somebody taking a real risk for you. Nothing priced
+ * the far commoner, far smaller thing: an ally handing over their spare knife
+ * because you have nothing, and then the days going by. That is not a debt in
+ * the `stoodBy` sense — nobody is bound by it, it will not stop a betrayal —
+ * but it is a specific grievance with a name and an object attached, which is
+ * exactly the texture alliance economics was missing underneath the weight of
+ * a life owed.
+ *
+ * Three beats: it is lent, it is given back, or it quietly becomes theft.
+ */
+export function offerLoans(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    alive.forEach(lender => {
+        if (!lender.allianceId) return;
+        // Only a genuine spare. Nobody lends the weapon they are holding.
+        const weapons = lender.inventory.filter(i => i.type === 'weapon');
+        if (weapons.length < 2) return;
+        const borrower = alive.find(o =>
+            o.id !== lender.id
+            && o.allianceId === lender.allianceId
+            && o.zone === lender.zone
+            && !o.inventory.some(i => i.type === 'weapon')
+            && !(o.loans ?? {})[lender.id]);
+        if (!borrower || !ctx.rng.chance(DEBTS.loanChance)) return;
+
+        // The worse of the two, obviously. Lending is not the same as giving.
+        const spare = weapons.reduce((worst, w) => (w.value < worst.value ? w : worst));
+        lender.inventory = lender.inventory.filter(i => i !== spare);
+        giveItem(borrower, spare);
+        borrower.loans = borrower.loans ?? {};
+        borrower.loans[lender.id] = { itemId: spare.id, itemName: spare.name, sinceCycle: cycleOf(ctx.state) };
+        ctx.logEvent(
+            `${lender.name} hands ${borrower.name} the spare ${spare.name}. "Until you find your own," they say, `
+            + 'and both of them hear the word "until".',
+            [lender.id, borrower.id],
+            { category: 'alliance' }
+        );
+    });
+}
+
+/**
+ * One cycle of loans being settled, resented, or written off.
+ *
+ * Returning is voluntary and mostly happens once the borrower has armed
+ * themselves properly — which is the honest model: nobody gives back the only
+ * weapon they have, and everybody means to give it back eventually.
+ */
+export function settleLoans(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    const byId = new Map(ctx.state.tributes.map(t => [t.id, t] as const));
+    const cycle = cycleOf(ctx.state);
+
+    alive.forEach(borrower => {
+        if (!borrower.loans) return;
+        Object.entries(borrower.loans).forEach(([lenderId, loan]) => {
+            const lender = byId.get(lenderId);
+            const held = borrower.inventory.find(i => i.id === loan.itemId);
+
+            // A dead lender is not owed anything, and neither is a lender the
+            // borrower has already parted ways with entirely.
+            if (!lender || lender.status !== 'alive') {
+                delete borrower.loans![lenderId];
+                return;
+            }
+            // They no longer have it — lost, traded, taken off them. Nothing
+            // to give back and no grudge worth modelling for it.
+            if (!held) {
+                delete borrower.loans![lenderId];
+                return;
+            }
+
+            const age = cycle - loan.sinceCycle;
+
+            // Giving it back: they have found something better, and they are
+            // standing in front of the person who lent it to them.
+            const armedElsewhere = borrower.inventory.some(i => i.type === 'weapon' && i.id !== loan.itemId);
+            if (armedElsewhere && borrower.zone === lender.zone) {
+                borrower.inventory = borrower.inventory.filter(i => i !== held);
+                giveItem(lender, held);
+                delete borrower.loans![lenderId];
+                adjustMutual(ctx.state, borrower, lender, DEBTS.loanReturnedRegard);
+                ctx.logEvent(
+                    `${borrower.name} gives ${lender.name} their ${loan.itemName} back without being asked for it. `
+                    + 'It is a small thing and neither of them treats it as one.',
+                    [borrower.id, lender.id],
+                    { category: 'alliance' }
+                );
+                return;
+            }
+
+            // It has been long enough that it is not a loan any more.
+            if (age >= DEBTS.loanDefaultCycles) {
+                delete borrower.loans![lenderId];
+                adjustRel(lender, borrower.id, -DEBTS.loanDefaultRegard);
+                raiseSuspicion(lender, borrower.id, DEBTS.loanDefaultSuspicion);
+                ctx.logEvent(
+                    `${lender.name} has stopped thinking of the ${loan.itemName} as lent. `
+                    + `${borrower.name} has not mentioned it in days, and that is its own kind of answer.`,
+                    [lender.id, borrower.id],
+                    { category: 'alliance' }
+                );
+                return;
+            }
+
+            // The slow sour in between.
+            if (age >= DEBTS.loanPatience) {
+                adjustRel(lender, borrower.id, -DEBTS.loanResentmentPerCycle);
+            }
+        });
+        if (borrower.loans && Object.keys(borrower.loans).length === 0) delete borrower.loans;
     });
 }
