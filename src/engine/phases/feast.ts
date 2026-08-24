@@ -3,18 +3,25 @@ import { RNG } from '../../utils/rng';
 import { GameState, Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
-import { FEAST } from '../../data/balance';
+import { FEAST, PRE_ARENA, TRAINING_FLOOR } from '../../data/balance';
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { FEAST_TEXTS } from '../../data/flavorText';
 import { clampTribute } from '../vitals';
 import { giveItem, itemPhrase } from '../items';
-import { getRel } from '../relationships';
+import { adjustRel, getRel } from '../relationships';
+import { addFear } from '../fear';
 import { advanceCycle, hasVengeanceAgainst, noteSighting } from '../memory';
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 import { hopsTo, severedEdgeSet } from '../map';
 import { pickNeededGift } from '../sponsors';
 import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
+
+/**
+ * The global attribute ceiling, borrowed as a normaliser: arrival order needs
+ * speed as a fraction of the fastest anybody can be, not as raw points.
+ */
+const TRIBUTE_ATTRIBUTE_CEILING = TRAINING_FLOOR.attributeCeiling;
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -38,6 +45,28 @@ export function announceFeastTheme(ctx: SimContext) {
     const rng = new RNG(`${ctx.state.seed}-feast-theme-${ctx.state.day}`);
     ctx.state.feastTheme = rng.pick(FEAST_THEMES);
     ctx.logEvent(THEME_ANNOUNCEMENTS[ctx.state.feastTheme], [], { important: true, category: 'feast' });
+    nameFeastPrizes(ctx);
+}
+
+/**
+ * §6.4: one pack per living tribute, with their name on it.
+ *
+ * The feast's whole hold over the cast in the source material is that the
+ * table is personal — it is not loot, it is *your* pack, and everybody knows
+ * which one is yours. Here it was an anonymous pile that produced a `pickNeededGift`
+ * roll for whoever survived the scrum, so declining cost nothing and arriving
+ * meant nothing in particular. Named packs are what make both of those
+ * decisions have a shape.
+ */
+function nameFeastPrizes(ctx: SimContext) {
+    ctx.state.feastPrizes = getAlive(ctx.state).map(t => ({
+        tributeId: t.id,
+        // The token is the cruel touch and the Gamemakers know it: the one
+        // thing from home, packed by people who took it off them at the reaping.
+        label: t.token
+            ? `a pack marked ${t.name.toUpperCase()}, D${t.district} — and pinned to the flap, ${t.token}`
+            : `a pack marked ${t.name.toUpperCase()}, D${t.district}`,
+    }));
 }
 
 /** The loot pool the announced theme actually lays out. */
@@ -48,6 +77,70 @@ function themedPool(theme: GameState['feastTheme']): Item[] {
         case 'food': return ITEMS.filter(i => i.type === 'food' || i.type === 'water');
         default: return ITEMS;
     }
+}
+
+/**
+ * §6.4: the packs come off the table, and it matters whose they were.
+ *
+ * Claiming your own is a small, grim relief. Taking one with somebody else's
+ * name on it is a different act entirely — it is theft from a named person who
+ * is going to arrive and find the gap — and the two used to be the same
+ * `giveItem` call with the same sentence attached.
+ */
+function claimPacks(
+    ctx: SimContext,
+    arrivals: Tribute[],
+    cornucopia: string,
+    themedGift: (t: Tribute) => Item,
+    claimed: Set<string>,
+) {
+    arrivals.forEach(t => {
+        if (t.status !== 'alive') return;
+        const prizes = ctx.state.feastPrizes ?? [];
+        const own = prizes.find(p => p.tributeId === t.id);
+        const others = prizes.filter(p => p.tributeId !== t.id);
+        const takeSomebodyElses = others.length > 0
+            && (!own || ctx.rng.chance(PRE_ARENA.feastStealPackChance));
+        const prize = takeSomebodyElses ? ctx.rng.pick(others) : own;
+        if (!prize) return;
+
+        ctx.state.feastPrizes = prizes.filter(p => p !== prize);
+        claimed.add(t.id);
+        const minted = themedGift(t);
+        giveItem(t, minted);
+        t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
+        t.vitals.thirst = Math.max(0, t.vitals.thirst - 40);
+        clampTribute(t);
+
+        if (!takeSomebodyElses) {
+            ctx.logEvent(
+                `${t.name} finds ${prize.label} and takes it off the table without looking up — ${itemPhrase(minted)}.`,
+                [t.id],
+                { zone: cornucopia, category: 'feast' }
+            );
+            return;
+        }
+
+        const victim = ctx.state.tributes.find(o => o.id === prize.tributeId);
+        t.feastPrizeTaken = prize.tributeId;
+        ctx.logEvent(
+            `${t.name} takes ${prize.label}. It is not theirs and they take it anyway — ${itemPhrase(minted)} — and the Capitol will have that on three cameras.`,
+            victim ? [t.id, victim.id] : [t.id],
+            { important: true, zone: cornucopia, category: 'feast' }
+        );
+        if (!victim || victim.status !== 'alive') return;
+        // Finding the space where your own name should have been is worse than
+        // never having been offered anything.
+        victim.vitals.sanity = Math.max(0, victim.vitals.sanity - PRE_ARENA.feastPackLostSanity);
+        clampTribute(victim);
+        adjustRel(victim, t.id, -PRE_ARENA.feastPackLostSanity);
+        addFear(victim, t.id, PRE_ARENA.feastPackLostSanity);
+        ctx.logEvent(
+            `${victim.name} works out, from the gap in the row and the name still printed beside it, that ${t.name} has walked off with the one thing on that table that was theirs.`,
+            [victim.id, t.id],
+            { important: true, zone: cornucopia, category: 'sanity' }
+        );
+    });
 }
 
 export function processFeast(ctx: SimContext) {
@@ -76,8 +169,13 @@ export function processFeast(ctx: SimContext) {
     const themedGift = (t: Tribute) =>
         mintItem(ctx.rng, theme === 'district-gifts' ? pickNeededGift(ctx, t, ITEMS) : pickNeededGift(ctx, t, tablePool), QUALITY_BIAS.feast);
 
+    // §6.4: a feast announced before packs were named, or one called straight
+    // into `processFeast` by a wildcard, still gets its table set properly.
+    if (!ctx.state.feastPrizes || ctx.state.feastPrizes.length === 0) nameFeastPrizes(ctx);
+
     const decliners = [] as typeof alive;
     const strandedFar = [] as typeof alive;
+    const hopsOut = new Map<string, number>();
     const collapsed = ctx.state.collapsedZones ?? [];
     const severed = severedEdgeSet(ctx.state);
     alive.forEach(t => {
@@ -88,12 +186,14 @@ export function processFeast(ctx: SimContext) {
             strandedFar.push(t);
             return;
         }
+        hopsOut.set(t.id, hops);
         // Desperation still overrides everything — a starving tribute goes.
         if (t.vitals.hunger > FEAST.desperateHunger || t.vitals.thirst > FEAST.desperateThirst) {
             attendees.push(t);
             return;
         }
-        if (ctx.rng.chance(attendanceChance(t, alive, theme))) attendees.push(t);
+        const named = (ctx.state.feastPrizes ?? []).some(p => p.tributeId === t.id);
+        if (ctx.rng.chance(attendanceChance(t, alive, theme, named))) attendees.push(t);
         else decliners.push(t);
     });
 
@@ -139,9 +239,44 @@ export function processFeast(ctx: SimContext) {
         return;
     }
 
+    // §6.4: nobody arrives at the same instant, and everything about the feast
+    // reads differently if you are the one already standing over the table.
+    // Distance first, then how fast they cross it: a tribute one zone out
+    // cannot be beaten there by a sprinter two zones out, but two tributes the
+    // same distance out arrive in the order their legs decide.
+    const arrivalKey = (t: Tribute) => (hopsOut.get(t.id) ?? 0)
+        - (t.attributes.agility + t.attributes.endurance) / (2 * TRIBUTE_ATTRIBUTE_CEILING);
+    const ordered = [...attendees].sort((a, b) => arrivalKey(a) - arrivalKey(b));
+    const firstIn = arrivalKey(ordered[0]);
+    const early = new Set(ordered
+        .filter(t => arrivalKey(t) < firstIn + PRE_ARENA.feastEarlyArrivalEdge)
+        .map(t => t.id));
+    const latecomers = ordered.filter(t => !early.has(t.id));
+
+    const claimed = new Set<string>();
+    if (latecomers.length > 0) {
+        ctx.logEvent(
+            `${ordered.filter(t => early.has(t.id)).map(t => t.name).join(', ')} reach the Cornucopia first and have the table to themselves for a while — long enough to read the names on it and choose where to stand.`,
+            [...early],
+            { important: true, zone: cornucopia, category: 'feast' }
+        );
+    }
+    // The head start is spent on the packs: whoever is there first decides
+    // which of them are still on the table when everybody else arrives.
+    claimPacks(ctx, ordered.filter(t => early.has(t.id)), cornucopia, themedGift, claimed);
+    if (latecomers.length > 0) {
+        ctx.logEvent(
+            `${latecomers.map(t => t.name).join(', ')} come in late, into a clearing that is already occupied and a table that has already been gone through.`,
+            latecomers.map(t => t.id),
+            { zone: cornucopia, category: 'feast' }
+        );
+    }
+
     const shuffled = ctx.rng.shuffle(attendees);
     // Everyone at the table sees everyone else at the table.
     attendees.forEach(t => noteSighting(ctx.state, t, cornucopia, attendees.length - 1, 0));
+    // The early arrival's advantage is spent once, on whoever they meet first.
+    const edgeSpent = new Set<string>();
 
     // Bounded, for the same reason as the bloodbath: an unkillable pairing
     // (mutual draws, or star-crossed lovers) must not spin forever.
@@ -173,12 +308,30 @@ export function processFeast(ctx: SimContext) {
             continue;
         }
 
-        resolveCombat(ctx, t1, t2);
+        // §6.4: an early arrival meeting a latecomer is not a fair exchange.
+        // They chose the ground, they have had their hands free, and they see
+        // them coming across open ground — which lands as the opening blow.
+        const ambusher = early.has(t1.id) && !early.has(t2.id) && !edgeSpent.has(t1.id) ? t1
+            : early.has(t2.id) && !early.has(t1.id) && !edgeSpent.has(t2.id) ? t2
+            : undefined;
+        if (ambusher) {
+            edgeSpent.add(ambusher.id);
+            const late = ambusher === t1 ? t2 : t1;
+            resolveCombat(ctx, ambusher, late, false, false, 0, 1 + PRE_ARENA.feastEarlyAmbushBonus);
+        } else {
+            resolveCombat(ctx, t1, t2);
+        }
         // A draw usually means they break off rather than immediately
         // re-engaging the same opponent.
         if (t1.status === 'alive' && ctx.rng.chance(0.55)) shuffled.push(t1);
         if (t2.status === 'alive' && ctx.rng.chance(0.55)) shuffled.push(t2);
     }
+
+    // Whoever is still standing goes through what is left of the row — the
+    // latecomers' own packs, if nobody took them while they were walking.
+    claimPacks(ctx, attendees.filter(t => t.status === 'alive' && !claimed.has(t.id)), cornucopia, themedGift, claimed);
+    // The table is withdrawn with the unclaimed packs still on it.
+    ctx.state.feastPrizes = undefined;
 
     if (shuffled.length > 1) {
         ctx.logEvent(
@@ -188,7 +341,9 @@ export function processFeast(ctx: SimContext) {
         );
         shuffled.splice(1).forEach(t => {
             // Their own district pack: the thing they actually need, per the
-            // same need arithmetic the sponsor stream uses.
+            // same need arithmetic the sponsor stream uses. A tribute who has
+            // already been through the row takes nothing twice.
+            if (claimed.has(t.id)) return;
             const minted = themedGift(t);
             giveItem(t, minted);
             t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
@@ -200,10 +355,13 @@ export function processFeast(ctx: SimContext) {
 
     else if (shuffled.length === 1) {
         const winner = shuffled[0];
-        // Their own pack, plus whichever of the unclaimed ones suits them best.
+        // Their own pack, plus whichever of the unclaimed ones suits them best
+        // — or, if they already went through the row before the fighting
+        // started, just the one still lying there when it finished.
         const item1 = themedGift(winner);
         const item2 = themedGift(winner);
-        giveItem(winner, item1, item2);
+        if (claimed.has(winner.id)) giveItem(winner, item1);
+        else giveItem(winner, item1, item2);
         winner.health = Math.min(100, winner.health + 50);
         winner.vitals.hunger = 0;
         winner.vitals.thirst = 0;
@@ -225,9 +383,19 @@ export function processFeast(ctx: SimContext) {
  * tribute who had sworn to kill someone would happily skip the one event that
  * guarantees the target's location.
  */
-function attendanceChance(t: Tribute, alive: Tribute[], theme: NonNullable<GameState['feastTheme']> = 'district-gifts'): number {
+function attendanceChance(
+    t: Tribute,
+    alive: Tribute[],
+    theme: NonNullable<GameState['feastTheme']> = 'district-gifts',
+    namedPack: boolean = false,
+): number {
     let chance = FEAST.baseAttendChance;
     const arch = ARCHETYPES[t.archetype];
+
+    // §6.4: your own name is on one of those packs, and staying away does not
+    // mean it stays there — somebody else will carry it out. That pulls about
+    // as hard as an ally standing at the table, which is what the weight says.
+    if (namedPack) chance += FEAST.allyDrawWeight;
 
     chance += arch.aggression * FEAST.aggressionDraw;
     chance -= arch.caution * FEAST.aggressionDraw;

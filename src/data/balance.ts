@@ -4000,8 +4000,16 @@ export const INTEL = {
     lieChanceBase: 0.12,
     /** Added per point of the teller's treachery bias. */
     lieChancePerTreachery: 0.35,
-    /** Threat a lie invents about a zone that is actually safe. */
-    lieThreat: 40,
+    /**
+     * Threat a lie invents about a zone that is actually safe.
+     *
+     * On `ZoneMemory.threat`'s own 0-6 scale, not the 0-100 one the
+     * relationship knobs above use — `addZoneThreat` caps at 6 and the soak
+     * asserts the bound, so a value written straight into the slot has to
+     * respect it. Four is 'somebody died there', which is exactly the story
+     * a liar wants told about ground they want kept empty.
+     */
+    lieThreat: 4,
     /** Relationship lost when a lie is found out. */
     lieDiscoveredCost: 45,
     /** Chance per cycle a tribute standing in a lied-about zone works it out. */

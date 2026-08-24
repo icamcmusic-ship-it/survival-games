@@ -22,6 +22,7 @@ import { decayFear } from '../fear';
 import { updateStance } from '../stance';
 import { runStanceBeats } from '../stanceBeats';
 import { runArchetypeSignatures, tickGhosts } from '../archetypeHooks';
+import { isActive, isDowned, tickDowned } from '../downed';
 import { processSpoilage, processVitals } from '../survival';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
@@ -36,6 +37,7 @@ import { runGamemakerSignature } from '../gamemakerAgency';
 import { tickWeatherFront } from '../weatherFront';
 import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
+import { tickPersona } from '../persona';
 import { resolveTruces } from '../parley';
 import { repayDebts, tickDistrictBonds, tickRetainers } from '../debts';
 import { reconcileRivals } from '../rapport';
@@ -122,7 +124,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // moving, but they still meet whatever is waiting in the new zone.
     const crossed = new Set<string>();
     currentAlive.forEach(t => {
-        if (t.status !== 'alive') return;
+        // §9.1: a tribute bleeding out on the floor does not craft, choose a
+        // stance, form an intention or walk anywhere. `tickDowned` is the only
+        // thing that resolves them.
+        if (!isActive(t)) return;
 
         craft(ctx, t);
 
@@ -169,7 +174,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // movement loop tested whichever zone the array order happened to leave
     // them in at that moment.
     currentAlive.forEach(t => {
-        if (t.status !== 'alive') return;
+        if (!isActive(t)) return;
         checkTraps(ctx, t);
     });
 
@@ -200,9 +205,16 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // cycles, independent of the ordinary per-cycle mutt roll.
     tickPersistentMutts(ctx);
 
+    // §9.1: the rescue window. Runs after movement and encounters because the
+    // whole question it asks is who is standing in the zone by the end of the
+    // cycle — the ally who got there in time, the enemy who got there first,
+    // or nobody at all.
+    tickDowned(ctx);
+
     // 4a. Whether anyone has stopped wanting to win. Resolve drifts on what
     // this cycle actually did to them, then the ones who have run out act on it.
     tickResolve(ctx);
+    tickPersona(ctx);
     resolveBreakdowns(ctx);
     // 4a-ii. §3.2: and whether this cycle changed who they are. Traits decay,
     // collide and evolve here, after everything that could have earned one.
@@ -1252,7 +1264,9 @@ function resolveEncounters(
     const shuffled = ctx.rng.shuffle(currentAlive);
 
     shuffled.forEach(t => {
-        if (acted.has(t.id) || t.status === 'dead') return;
+        // §9.1: the arena does not spring traps on, or send mutts after, a
+        // tribute who is already down. Whoever is standing over them decides.
+        if (acted.has(t.id) || t.status === 'dead' || isDowned(t)) return;
 
         const zone = getZone(ctx.state.arena, t.zone);
         const zoneDanger = zone ? 0.5 + zone.danger : 1; // 0.5x-1.5x from zone danger

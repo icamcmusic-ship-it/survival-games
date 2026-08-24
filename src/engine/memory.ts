@@ -99,9 +99,13 @@ export function shareScoutSighting(state: GameState, scout: Tribute, zone: strin
 }
 
 /** Adds dread to a tribute's impression of a place. */
+/** The ceiling every zone impression's dread is held under. */
+// balance-exempt: the range ZoneMemory.threat is defined over, asserted by the soak
+const MEMORY_THREAT_CAP = 6;
+
 export function addZoneThreat(state: GameState, t: Tribute, zone: string, amount: number) {
     const slot = zoneSlot(t, zone);
-    slot.threat = Math.min(6, slot.threat + amount);
+    slot.threat = Math.min(MEMORY_THREAT_CAP, slot.threat + amount);
     slot.seen = Math.max(slot.seen, cycleOf(state));
 }
 
@@ -441,9 +445,13 @@ function writeHearsay(state: GameState, teller: Tribute, listener: Tribute, zone
                       threat: number, rivals: number, barren: number) {
     const slot = zoneSlot(listener, zone);
     slot.seen = cycleOf(state);
-    slot.threat = threat;
-    slot.rivals = rivals;
-    slot.barren = barren;
+    // Clamped to the same 0-6 band `addZoneThreat` enforces. Hearsay is the
+    // only path that writes a threat straight into a slot rather than
+    // accumulating one, so it is the only path that could put a tribute's
+    // memory outside the range every reader of it assumes.
+    slot.threat = Math.max(0, Math.min(MEMORY_THREAT_CAP, threat));
+    slot.rivals = Math.max(0, rivals);
+    slot.barren = Math.max(0, Math.min(1, barren));
     slot.hearsay = true;
     slot.toldById = teller.id;
 }

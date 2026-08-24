@@ -1,6 +1,7 @@
 import { SimContext, getAlive } from './context';
 import { Tribute } from '../models/types';
 import { areLovers } from './alliance';
+import { isActive } from './downed';
 import { wildcardIs } from './gamesProfile';
 import { QUELL_MECHANICS } from '../data/balance';
 
@@ -26,7 +27,12 @@ import { QUELL_MECHANICS } from '../data/balance';
  *    the Games at all.
  */
 export function checkDualVictory(ctx: SimContext): [Tribute, Tribute] | undefined {
-    const alive = getAlive(ctx.state);
+    // §9.1: belt and braces against the downed state. `tickDowned` re-checks
+    // `DOWNED.finalistFloor` every cycle precisely so a tribute bleeding out
+    // can never be one of the last two — but the endgame is the one place
+    // where being wrong crowns somebody who is lying face down, so the
+    // victory check counts people who are actually standing.
+    const alive = getAlive(ctx.state).filter(isActive);
     if (alive.length !== 2) return undefined;
     const [a, b] = alive;
 
