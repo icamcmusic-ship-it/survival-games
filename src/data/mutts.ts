@@ -975,4 +975,399 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             persistent: true,
         },
     ],
+    culdesac: [
+        {
+            id: 'family-dogs', name: 'The Family Dogs',
+            // They do not want to hurt anyone. They want everyone back indoors,
+            // where the houses can see them.
+            packSize: [3, 5], damage: 14, speed: 8,
+            inflicts: { bleeding: true },
+            terrainPreference: ['open', 'forest'],
+            persistent: true,
+            role: 'herder',
+        },
+        {
+            id: 'meter-reader', name: 'The Meter Reader',
+            // Whatever it is, it wears a hi-vis vest and it never leaves the
+            // substation, and the rails are live because it keeps them that way.
+            packSize: [1, 1], damage: 32, speed: 5,
+            inflicts: { burned: true },
+            fearAura: 9,
+            role: 'siege',
+            homeZone: 'The Substation',
+        },
+        {
+            id: 'wasps-in-the-eaves', name: 'Wasps in the Eaves',
+            // Every house has a nest, and ransacking is what wakes them.
+            packSize: [4, 9], damage: 5, speed: 7,
+            inflicts: { poisoned: true },
+            terrainPreference: ['ruins'],
+        },
+        {
+            id: 'something-in-the-pool', name: 'Something in the Pool',
+            // The filter runs all night for a reason.
+            packSize: [1, 1], damage: 22, speed: 7,
+            terrainPreference: ['water'],
+            nocturnal: true,
+            fearAura: 11,
+        },
+    ],
+    labyrinth: [
+        {
+            id: 'the-topiary', name: 'The Topiary',
+            // Clipped green shapes that are never in the same attitude twice.
+            // They only move when nothing can see them move.
+            packSize: [1, 3], damage: 21, speed: 6,
+            inflicts: { bleeding: true },
+            terrainPreference: ['forest', 'open'],
+            fearAura: 8,
+            role: 'ambusher',
+        },
+        {
+            id: 'hounds-in-the-hedge', name: 'The Hounds in the Hedge',
+            // Heard, never cornered. They do not want to kill anyone; they
+            // want everyone deeper in. No terrain preference: the maze is
+            // everywhere, and so are they.
+            packSize: [2, 4], damage: 6, speed: 9,
+            persistent: true,
+            role: 'herder',
+        },
+        {
+            id: 'the-gardener', name: 'The Gardener',
+            // Somebody has to do the clipping. It borrows faces to do it with.
+            packSize: [1, 1], damage: 10, speed: 5,
+            fearAura: 14,
+            role: 'mimic',
+        },
+        {
+            id: 'canal-eels', name: 'Canal Eels',
+            packSize: [2, 4], damage: 14, speed: 7,
+            inflicts: { bleeding: true },
+            terrainPreference: ['water'],
+        },
+    ],
+    ashgrove: [
+        {
+            id: 'the-register', name: 'The Register',
+            // It calls names in a corridor voice, and it knows which names to
+            // call in which voices. It barely needs to touch anyone.
+            packSize: [1, 1], damage: 2, speed: 6,
+            fearAura: 15,
+            role: 'mimic',
+        },
+        {
+            id: 'lab-escapees', name: 'Lab Escapees',
+            // Whatever year nine was breeding when the school emptied, it kept
+            // breeding. Indoors only; daylight means nothing in a corridor.
+            packSize: [2, 4], damage: 12, speed: 6,
+            inflicts: { poisoned: true },
+            terrainPreference: ['ruins'],
+        },
+        {
+            id: 'pool-filter-thing', name: 'Something in the Pool Filter',
+            // The pool flooded years ago and the filter kept running. It never
+            // leaves the water, and the water never leaves the pool.
+            packSize: [1, 1], damage: 32, speed: 5,
+            inflicts: { bleeding: true },
+            terrainPreference: ['water'],
+            fearAura: 8,
+            role: 'siege',
+            homeZone: 'The Flooded Pool',
+        },
+        {
+            id: 'field-dogs', name: 'The Field Dogs',
+            // They den in the scrub past the running track and work the open
+            // ground after dark, and they remember faces.
+            packSize: [2, 5], damage: 15, speed: 8,
+            inflicts: { bleeding: true },
+            terrainPreference: ['open', 'forest'],
+            nocturnal: true,
+            persistent: true,
+        },
+    ],
+    kelvin: [
+        {
+            id: 'the-dogs-that-were-left', name: 'The Dogs That Were Left',
+            // The station's sled team, four winters feral. They know the ground
+            // and they do not stand down.
+            packSize: [4, 6], damage: 16, speed: 8,
+            inflicts: { bleeding: true },
+            terrainPreference: ['open'],
+            persistent: true,
+            nocturnal: true,
+        },
+        {
+            id: 'under-the-ice', name: 'Under the Ice',
+            // Nobody has seen all of it. One strike out of black water.
+            packSize: [1, 1], damage: 32, speed: 7,
+            inflicts: { bleeding: true },
+            terrainPreference: ['water'],
+            role: 'ambusher',
+            fearAura: 10,
+        },
+        {
+            id: 'the-contamination', name: 'The Contamination',
+            // Whatever the lab was culturing when the freezers died. It moves
+            // through the modules as a film, not a shape.
+            packSize: [3, 7], damage: 6, speed: 3,
+            inflicts: { infected: true },
+            terrainPreference: ['ruins'],
+            role: 'swarm',
+            fearAura: 6,
+        },
+        {
+            id: 'whiteout', name: 'Whiteout',
+            // Not an animal. Weather with intent: it does not maul you, it
+            // moves you, and you find out where when it lifts.
+            packSize: [1, 1], damage: 4, speed: 5,
+            terrainPreference: ['open', 'highland'],
+            role: 'herder',
+            fearAura: 11,
+        },
+    ],
+    silkwood: [
+        {
+            id: 'trap-door-spiders', name: 'Trap-Door Spiders',
+            // The ground itself, until it opens. Speed is the whole animal.
+            packSize: [1, 2], damage: 20, speed: 10,
+            inflicts: { poisoned: true },
+            terrainPreference: ['forest', 'wetland'],
+            role: 'ambusher',
+        },
+        {
+            id: 'the-drift', name: 'The Drift',
+            // Spiderlings on the air, in the thousands. Barely a wound each;
+            // the numbers and the crawling are the weapon.
+            packSize: [5, 10], damage: 3, speed: 5,
+            inflicts: { poisoned: true },
+            terrainPreference: ['forest'],
+            role: 'swarm',
+            fearAura: 8,
+        },
+        {
+            id: 'the-broodmother', name: 'The Broodmother',
+            // There is one. She does not leave the crag, and she does not
+            // need to.
+            packSize: [1, 1], damage: 34, speed: 6,
+            inflicts: { poisoned: true, bleeding: true },
+            role: 'siege',
+            homeZone: "Broodmother's Crag",
+            fearAura: 15,
+        },
+        {
+            id: 'wolf-spiders', name: 'Wolf Spiders',
+            // The ones that hunt instead of waiting. No terrain preference:
+            // after dark the whole wood is theirs, the burn included.
+            packSize: [2, 3], damage: 15, speed: 9,
+            inflicts: { poisoned: true },
+            nocturnal: true,
+            persistent: true,
+        },
+        {
+            id: 'the-wrapped', name: 'The Wrapped',
+            // Silk-bound shapes that look like people. Most of them are old
+            // meals hung as lures. One of them is not.
+            packSize: [1, 1], damage: 10, speed: 4,
+            role: 'mimic',
+            fearAura: 14,
+            terrainPreference: ['forest', 'ruins'],
+        },
+    ],
+    nooneplace: [
+        {
+            id: 'the-hum', name: 'The Hum',
+            // Not a creature. The building's own note, arriving in person.
+            // No terrain preference: it is already everywhere.
+            packSize: [1, 1], damage: 1, speed: 2,
+            role: 'swarm',
+            fearAura: 12,
+        },
+        {
+            id: 'something-in-the-hall-behind-you', name: 'Something In The Hall Behind You',
+            // Never seen. Not once, by anyone, and not by the cameras either.
+            packSize: [1, 1], damage: 18, speed: 8,
+            role: 'ambusher',
+            persistent: true,
+            fearAura: 10,
+        },
+        {
+            id: 'the-others', name: 'The Others',
+            // Tributes, apparently. Standing in rooms, apparently. They do
+            // not attack so much as fail, on inspection, to be people.
+            packSize: [1, 2], damage: 2, speed: 3,
+            role: 'mimic',
+            fearAura: 14,
+        },
+        {
+            id: 'wall-walkers', name: 'Wall-Walkers',
+            // Nocturnal, in an arena where night never comes. They are in the
+            // walls of the office levels right now, waiting for a dark that
+            // the noNight law has permanently cancelled. This is deliberate:
+            // they are never eligible, and the tributes are welcome to know it.
+            packSize: [2, 4], damage: 14, speed: 7,
+            terrainPreference: ['ruins'],
+            nocturnal: true,
+            fearAura: 8,
+        },
+        {
+            id: 'the-filing', name: 'The Filing',
+            // What actually comes out of the office levels: cabinets that were
+            // standing somewhere else a moment ago, drawers first.
+            packSize: [1, 2], damage: 15, speed: 6,
+            terrainPreference: ['ruins'],
+            role: 'ambusher',
+            fearAura: 6,
+        },
+    ],
+    redcathedral: [
+        {
+            id: 'condors', name: 'Condors',
+            // They do not hunt. They wait, and they are never wrong about where.
+            packSize: [2, 4], damage: 10, speed: 7,
+            inflicts: { bleeding: true },
+            terrainPreference: ['highland', 'open'],
+            fearAura: 8,
+            role: 'scavenger',
+        },
+        {
+            id: 'rattlers-in-the-talus', name: 'Rattlers in the Talus',
+            packSize: [1, 2], damage: 12, speed: 9,
+            inflicts: { poisoned: true },
+            terrainPreference: ['open', 'highland'],
+        },
+        {
+            id: 'cliff-cats', name: 'Cliff Cats',
+            // Built for ledges nobody else can use, and only after dark.
+            packSize: [1, 2], damage: 20, speed: 10,
+            inflicts: { bleeding: true },
+            terrainPreference: ['highland', 'ruins'],
+            nocturnal: true,
+            role: 'ambusher',
+        },
+        {
+            id: 'thing-in-the-seeps', name: 'The Thing in the Seeps',
+            // The reason the free water off the river is not free.
+            packSize: [1, 1], damage: 30, speed: 5,
+            inflicts: { infected: true },
+            terrainPreference: ['water'],
+            fearAura: 12,
+            role: 'siege',
+            homeZone: 'The Seeps',
+        },
+        {
+            id: 'pinyon-jays', name: 'Pinyon Jays',
+            // A blue mob that costs little blood and all of your position.
+            packSize: [5, 9], damage: 4, speed: 8,
+            terrainPreference: ['forest'],
+            fearAura: 4,
+            role: 'swarm',
+        },
+    ],
+    menagerie: [
+        {
+            id: 'raptors', name: 'Raptors',
+            // First off the schedule: fast, out of the sun, gone again.
+            packSize: [1, 3], damage: 14, speed: 10,
+            inflicts: { bleeding: true },
+            terrainPreference: ['open', 'wetland'],
+            role: 'ambusher',
+        },
+        {
+            id: 'the-troop', name: 'The Troop',
+            packSize: [5, 8], damage: 7, speed: 8,
+            terrainPreference: ['forest'],
+            fearAura: 6,
+            role: 'swarm',
+        },
+        {
+            id: 'constrictors-and-vipers', name: 'Constrictors & Vipers',
+            packSize: [1, 2], damage: 13, speed: 6,
+            inflicts: { poisoned: true },
+            terrainPreference: ['ruins', 'wetland'],
+        },
+        {
+            id: 'the-bears', name: 'The Bears',
+            packSize: [1, 2], damage: 26, speed: 6,
+            inflicts: { bleeding: true },
+            terrainPreference: ['open', 'forest'],
+            persistent: true,
+            fearAura: 8,
+        },
+        {
+            id: 'the-herd', name: 'The Herd',
+            // Elephants do not eat you. They move you, and they choose where.
+            packSize: [3, 6], damage: 18, speed: 5,
+            terrainPreference: ['open'],
+            role: 'herder',
+        },
+        {
+            id: 'the-cats', name: 'The Cats',
+            packSize: [1, 2], damage: 24, speed: 9,
+            inflicts: { bleeding: true },
+            terrainPreference: ['open', 'forest', 'ruins'],
+            nocturnal: true,
+            persistent: true,
+            fearAura: 12,
+        },
+        {
+            id: 'quarantine', name: 'Quarantine',
+            // Contents unlisted. No terrain preference: whatever the Capitol
+            // was making in there, it is comfortable everywhere — including
+            // the water, which none of the rest of the roster covers.
+            packSize: [1, 1], damage: 28, speed: 8,
+            inflicts: { infected: true },
+            persistent: true,
+            fearAura: 15,
+            role: 'mimic',
+        },
+    ],
+    storywood: [
+        {
+            id: 'the-wolf', name: 'The Wolf',
+            // Singular. It talks, and no terrain preference: the wolf goes
+            // where the story needs it — which also covers every terrain the
+            // roster would otherwise miss.
+            packSize: [1, 1], damage: 24, speed: 9,
+            inflicts: { bleeding: true },
+            persistent: true,
+            fearAura: 14,
+            role: 'mimic',
+        },
+        {
+            id: 'the-bramble', name: 'The Bramble',
+            // Not an animal. The hedge itself, and it does not chase because
+            // it does not need to.
+            packSize: [1, 1], damage: 22, speed: 4,
+            inflicts: { bleeding: true },
+            terrainPreference: ['forest'],
+            fearAura: 8,
+            role: 'siege',
+            homeZone: 'The Bramble',
+        },
+        {
+            id: 'ravens', name: 'Ravens',
+            packSize: [3, 7], damage: 5, speed: 8,
+            terrainPreference: ['forest', 'open'],
+            fearAura: 6,
+            role: 'scavenger',
+        },
+        {
+            id: 'something-in-the-millpond', name: 'Something in the Millpond',
+            packSize: [1, 1], damage: 20, speed: 7,
+            inflicts: { infected: true },
+            terrainPreference: ['water'],
+            nocturnal: true,
+            fearAura: 9,
+            role: 'ambusher',
+        },
+        {
+            id: 'the-sisters', name: 'The Sisters',
+            // They keep the houses. They are very pleased to have visitors.
+            packSize: [2, 3], damage: 16, speed: 6,
+            inflicts: { poisoned: true },
+            terrainPreference: ['ruins'],
+            fearAura: 11,
+            role: 'ambusher',
+        },
+    ],
 };

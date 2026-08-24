@@ -218,6 +218,27 @@ export const SIGNATURE_RULES = {
     burnscarBurnChance: 0.3,
     burnscarSeverChance: 0.5,
     craterfieldDodgeBase: 0.35,
+    // The ninth-wave arenas.
+    culdesacNamedSanity: 8,
+    culdesacRestlessChance: 0.25,
+    culdesacRestlessFatigue: 6,
+    labyrinthQuietBias: 0.7,
+    labyrinthDodgeBase: 0.55,
+    labyrinthFalseChance: 0.35,
+    ashgroveDodgeBase: 0.4,
+    ashgroveEscapeFatigue: 8,
+    ashgroveSessionSanity: 10,
+    kelvinFailureCycle: 14,
+    kelvinColdFatigue: 10,
+    kelvinFrostbiteChance: 0.2,
+    silkwoodSilkFatigue: 4,
+    nooneplaceSlipSanity: 8,
+    redcathedralDodgeBase: 0.3,
+    redcathedralClearFatigue: 12,
+    redcathedralCaughtFatigue: 20,
+    storywoodGingerbreadSanity: 15,
+    storywoodAxeSanity: 18,
+    storywoodWellSanity: 30,
 } as const;
 
 /**

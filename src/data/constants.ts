@@ -697,7 +697,330 @@ export const ARENAS: Arena[] = [
             { name: 'Slick Crater Wall', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Deep Craters', 'Stagnant Pool Marsh'] },
             { name: 'The Old Ammo Dump', terrain: 'ruins', danger: 0.7, resources: 0.4, adjacent: ['Rusted Convoy Road', 'Vine-Choked Bunker'] },
         ]
-    }
+    },
+    {
+        id: 'culdesac',
+        name: 'The Cul-de-Sac',
+        description: 'Sixty-two identical houses on a loop road. The lawns are cut, the porch lights work, and the delivery trucks keep coming. The Capitol built somewhere normal, and now it has to be ransacked.',
+        mutts: ['The Family Dogs', 'The Meter Reader', 'Wasps in the Eaves', 'Something in the Pool'],
+        events: ['The Neighbourhood Watch', 'Gas Leak', 'The Sprinklers'],
+        law: 'cornucopiaRefills',
+        // The arena's utilities are its hazards: sprinklers instead of fog, a
+        // garden left too long instead of a bloom, larders instead of forage.
+        effectVocab: {
+            stripped: { label: 'picked clean' },
+            fogbound: { label: 'the sprinklers' },
+            blooming: { label: 'a garden gone over' },
+        },
+        edgeRules: {
+            // A six-foot fence: easy to drop off, nothing to climb back up.
+            'Back Gardens|The Cut-Through': { kind: 'oneWay', from: 'The Cut-Through', to: 'Back Gardens' },
+            // The substation is crossed on the live rails or not at all.
+            'The Loading Bay|The Substation': { kind: 'tolled', toll: { woundChance: 0.15 } },
+            'The Storm Creek|The Substation': { kind: 'tolled', toll: { woundChance: 0.15 } },
+        },
+        zones: [
+            { name: 'The Cornucopia (Loop Road)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['Number 14', 'Number 27', 'The Show Home', 'The Green', 'The Loading Bay'] },
+            { name: 'Number 14', terrain: 'ruins', danger: 0.45, resources: 0.6, adjacent: ['The Cornucopia (Loop Road)', 'Number 27', 'Back Gardens'], features: { cover: 0.8, elevation: false, chokepoint: true } },
+            { name: 'Number 27', terrain: 'ruins', danger: 0.55, resources: 0.55, adjacent: ['The Cornucopia (Loop Road)', 'Number 14', 'The Cut-Through'], features: { cover: 0.8, elevation: false, chokepoint: true } },
+            { name: 'The Show Home', terrain: 'ruins', danger: 0.4, resources: 0.65, adjacent: ['The Cornucopia (Loop Road)', 'The Green', 'The Pool Complex'], features: { cover: 0.75, elevation: false, chokepoint: false } },
+            { name: 'The Cut-Through', terrain: 'forest', danger: 0.5, resources: 0.5, adjacent: ['Number 27', 'The Green', 'Back Gardens', 'The Storm Creek'], features: { cover: 0.85, elevation: false, chokepoint: true } },
+            { name: 'The Green', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Cornucopia (Loop Road)', 'The Show Home', 'The Cut-Through', 'The Pool Complex'] },
+            { name: 'Back Gardens', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['Number 14', 'The Cut-Through', 'The Storm Creek'], features: { cover: 0.9, elevation: false, chokepoint: false } },
+            { name: 'The Pool Complex', terrain: 'water', danger: 0.6, resources: 0.4, adjacent: ['The Show Home', 'The Green', 'The Loading Bay'] },
+            { name: 'The Storm Creek', terrain: 'water', danger: 0.5, resources: 0.5, adjacent: ['The Cut-Through', 'Back Gardens', 'The Substation'] },
+            { name: 'The Loading Bay', terrain: 'open', danger: 0.65, resources: 0.55, adjacent: ['The Cornucopia (Loop Road)', 'The Pool Complex', 'The Substation'] },
+            { name: 'The Substation', terrain: 'ruins', danger: 0.85, resources: 0.2, adjacent: ['The Storm Creek', 'The Loading Bay'], features: { cover: 0.4, elevation: false, chokepoint: true } },
+        ]
+    },
+    {
+        id: 'labyrinth',
+        name: 'The Green Labyrinth',
+        description: 'Nine metres of yew in every direction. It was this shape yesterday. The hedges eat the cannon fire, the walls move on rails, and the map itself is the antagonist.',
+        mutts: ['The Topiary', 'The Hounds in the Hedge', 'The Gardener', 'Canal Eels'],
+        events: ['The Shift', 'The Sound of Shears', 'Petals Out of Season'],
+        law: 'noCannons',
+        // Yew burns fast and mean, and the mist between the walls is the
+        // maze's own weather.
+        effectVocab: {
+            fogbound: { label: 'the hedge mist' },
+            stripped: { label: 'cut back' },
+            burning: { label: 'a hedge alight', severityMult: 1.25, durationMult: 0.7 },
+        },
+        edgeRules: {
+            // No 'hidden' edge kind exists — the passage into the True Centre
+            // is approximated as night-gated: it is only ever found in the dark.
+            'The False Centre|The True Centre': { kind: 'timeGated', gatedTime: 'night' },
+            // The Gardener's Gate is locked after dark. House rules.
+            "The Gardener's Gate|The Outer Ring": { kind: 'timeGated', gatedTime: 'day' },
+            "The Canal Walk|The Gardener's Gate": { kind: 'timeGated', gatedTime: 'day' },
+        },
+        zones: [
+            { name: 'The Cornucopia (Fountain Court)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Outer Ring', 'The Parterre', 'The Canal Walk'] },
+            { name: 'The Outer Ring', terrain: 'forest', danger: 0.45, resources: 0.5, adjacent: ['The Cornucopia (Fountain Court)', 'The North Spiral', 'The South Spiral', "The Gardener's Gate"], features: { cover: 0.85, elevation: false, chokepoint: false } },
+            { name: 'The North Spiral', terrain: 'forest', danger: 0.55, resources: 0.45, adjacent: ['The Outer Ring', 'The Long Alley', 'The False Centre'], features: { cover: 0.9, elevation: false, chokepoint: true } },
+            { name: 'The South Spiral', terrain: 'forest', danger: 0.55, resources: 0.45, adjacent: ['The Outer Ring', 'The Dead End', 'The Topiary Garden'], features: { cover: 0.9, elevation: false, chokepoint: true } },
+            // One way in, the same way out. The maze's oubliette.
+            { name: 'The Dead End', terrain: 'forest', danger: 0.7, resources: 0.25, adjacent: ['The South Spiral'], features: { cover: 0.95, elevation: false, chokepoint: true } },
+            { name: 'The Long Alley', terrain: 'forest', danger: 0.5, resources: 0.4, adjacent: ['The North Spiral', 'The Parterre', 'The True Centre'], features: { cover: 0.8, elevation: false, chokepoint: true } },
+            { name: 'The Parterre', terrain: 'open', danger: 0.4, resources: 0.6, adjacent: ['The Cornucopia (Fountain Court)', 'The Long Alley', 'The Canal Walk'] },
+            { name: 'The Canal Walk', terrain: 'water', danger: 0.5, resources: 0.55, adjacent: ['The Cornucopia (Fountain Court)', 'The Parterre', "The Gardener's Gate"] },
+            { name: 'The Topiary Garden', terrain: 'forest', danger: 0.75, resources: 0.4, adjacent: ['The South Spiral', 'The False Centre'], features: { cover: 0.8, elevation: false, chokepoint: false } },
+            { name: 'The False Centre', terrain: 'forest', danger: 0.65, resources: 0.3, adjacent: ['The North Spiral', 'The Topiary Garden', 'The True Centre'], features: { cover: 0.85, elevation: false, chokepoint: true } },
+            { name: 'The True Centre', terrain: 'open', danger: 0.35, resources: 0.7, adjacent: ['The Long Alley', 'The False Centre'] },
+            { name: "The Gardener's Gate", terrain: 'open', danger: 0.55, resources: 0.45, adjacent: ['The Outer Ring', 'The Canal Walk'], features: { cover: 0.3, elevation: false, chokepoint: true } },
+        ]
+    },
+    {
+        id: 'ashgrove',
+        name: 'Ashgrove Secondary',
+        description: 'An abandoned school. The bell still rings; nothing else about it works. Tight corridors, hard chokepoints, and a timetable posted in the main corridor that everyone would do well to read.',
+        mutts: ['The Register', 'Lab Escapees', 'Something in the Pool Filter', 'The Field Dogs'],
+        events: ['The Bell', 'The Chemistry Store', 'The Boiler'],
+        // Parachutes cannot get through a roof: gifts land in the yard or not at all.
+        law: 'sponsorsFixedZone',
+        lawZone: 'The Cornucopia (The Yard)',
+        effectVocab: {
+            contaminated: { label: 'the chemistry store' },
+            fogbound: { label: 'smoke in the corridor' },
+            frozen: { label: 'the failed heating' },
+        },
+        edgeRules: {
+            // The drop from the roof to the yard is survivable. The climb back is not on offer.
+            'The Cornucopia (The Yard)|The Roof': { kind: 'oneWay', from: 'The Roof', to: 'The Cornucopia (The Yard)' },
+        },
+        zones: [
+            { name: 'The Cornucopia (The Yard)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['Main Corridor', 'The Gymnasium', 'The Playing Field', 'The Roof'] },
+            // The spine of the school: every wing hangs off it, and everyone
+            // has to use it.
+            { name: 'Main Corridor', terrain: 'ruins', danger: 0.7, resources: 0.25, adjacent: ['The Cornucopia (The Yard)', 'The Cafeteria', 'The Library', 'Lockers', 'Science Block', 'The Auditorium'], features: { cover: 0.4, elevation: false, chokepoint: true } },
+            { name: 'The Gymnasium', terrain: 'ruins', danger: 0.5, resources: 0.4, adjacent: ['The Cornucopia (The Yard)', 'Lockers', 'The Flooded Pool'], features: { cover: 0.5, elevation: false, chokepoint: false } },
+            { name: 'The Cafeteria', terrain: 'ruins', danger: 0.45, resources: 0.7, adjacent: ['Main Corridor', 'The Boiler Room'] },
+            { name: 'The Library', terrain: 'ruins', danger: 0.3, resources: 0.5, adjacent: ['Main Corridor', 'The Auditorium'], features: { cover: 0.85, elevation: false, chokepoint: false } },
+            { name: 'Science Block', terrain: 'ruins', danger: 0.75, resources: 0.55, adjacent: ['Main Corridor', 'The Boiler Room', 'The Roof'] },
+            { name: 'The Boiler Room', terrain: 'ruins', danger: 0.85, resources: 0.3, adjacent: ['The Cafeteria', 'Science Block', 'The Flooded Pool'], features: { cover: 0.6, elevation: false, chokepoint: true } },
+            // No 'contested' edge kind exists — the locker rows are modelled
+            // as a chokepoint feature on the zone itself.
+            { name: 'Lockers', terrain: 'ruins', danger: 0.65, resources: 0.45, adjacent: ['Main Corridor', 'The Gymnasium'], features: { cover: 0.7, elevation: false, chokepoint: true } },
+            { name: 'The Auditorium', terrain: 'ruins', danger: 0.55, resources: 0.35, adjacent: ['Main Corridor', 'The Library'], features: { cover: 0.75, elevation: false, chokepoint: false } },
+            { name: 'The Flooded Pool', terrain: 'water', danger: 0.7, resources: 0.4, adjacent: ['The Gymnasium', 'The Boiler Room'] },
+            // The field edge has gone over to scrub and bramble — the arena's
+            // only green cover.
+            { name: 'The Playing Field', terrain: 'forest', danger: 0.4, resources: 0.65, adjacent: ['The Cornucopia (The Yard)'] },
+            { name: 'The Roof', terrain: 'open', danger: 0.8, resources: 0.15, adjacent: ['Science Block', 'The Cornucopia (The Yard)'], features: { cover: 0.2, elevation: true, chokepoint: true } },
+        ]
+    },
+    {
+        id: 'kelvin',
+        name: 'Station Kelvin-9',
+        description: 'A polar research station abandoned mid-season, and the ice shelf it stands on. The generator has eleven days of fuel in it. The Games have more than eleven days in them.',
+        mutts: ['The Dogs That Were Left', 'Under the Ice', 'The Contamination', 'Whiteout'],
+        events: ['The Fuel Gauge', 'The Generator Coughs', 'The Silence'],
+        // Nothing outdoors will take a flame, and the station's heaters answer
+        // to the generator, not to matches.
+        law: 'fireImpossible',
+        effectVocab: {
+            frozen: { label: 'the cold got in' },
+            stripped: { label: 'stores broken open' },
+            irradiated: { label: 'the isotope store' },
+        },
+        edgeRules: {
+            // Crossing the lead means meltwater to the waist either side of it.
+            'Fuel Farm|The Open Lead': { kind: 'tolled', toll: { fatigue: 8, woundChance: 0.08 } },
+            'The Ice Shelf|The Open Lead': { kind: 'tolled', toll: { fatigue: 8, woundChance: 0.08 } },
+            // The ridge line to the mast is not survivable in the dark.
+            'Comms Mast|The Ridge': { kind: 'timeGated', gatedTime: 'day' },
+        },
+        zones: [
+            { name: 'The Cornucopia (The Apron)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Generator Hall', 'Habitation Ring', 'The Ice Shelf', 'Fuel Farm'] },
+            { name: 'Generator Hall', terrain: 'ruins', danger: 0.5, resources: 0.35, adjacent: ['The Cornucopia (The Apron)', 'Habitation Ring', 'Fuel Farm'], features: { cover: 0.6, elevation: false, chokepoint: true } },
+            { name: 'Habitation Ring', terrain: 'ruins', danger: 0.4, resources: 0.55, adjacent: ['The Cornucopia (The Apron)', 'Generator Hall', 'The Mess', 'Laboratory Module'] },
+            // The one real larder on a map that is otherwise snow.
+            { name: 'The Mess', terrain: 'ruins', danger: 0.35, resources: 0.85, adjacent: ['Habitation Ring', 'Laboratory Module'] },
+            { name: 'Laboratory Module', terrain: 'ruins', danger: 0.55, resources: 0.5, adjacent: ['Habitation Ring', 'The Mess', 'The Isotope Store'] },
+            { name: 'The Isotope Store', terrain: 'ruins', danger: 0.9, resources: 0.4, adjacent: ['Laboratory Module', 'The Ridge'], features: { cover: 0.5, elevation: false, chokepoint: true } },
+            { name: 'Comms Mast', terrain: 'highland', danger: 0.7, resources: 0.15, adjacent: ['The Ridge', 'The Ice Shelf'], features: { cover: 0.1, elevation: true, chokepoint: false } },
+            { name: 'The Ice Shelf', terrain: 'open', danger: 0.65, resources: 0.1, adjacent: ['The Cornucopia (The Apron)', 'Comms Mast', 'The Open Lead'] },
+            { name: 'The Open Lead', terrain: 'water', danger: 0.8, resources: 0.45, adjacent: ['The Ice Shelf', 'Fuel Farm'] },
+            { name: 'Fuel Farm', terrain: 'open', danger: 0.5, resources: 0.4, adjacent: ['The Cornucopia (The Apron)', 'Generator Hall', 'The Open Lead'] },
+            { name: 'The Ridge', terrain: 'highland', danger: 0.75, resources: 0.1, adjacent: ['The Isotope Store', 'Comms Mast'], features: { cover: 0.1, elevation: true, chokepoint: true } },
+        ]
+    },
+    {
+        id: 'silkwood',
+        name: 'The Silk Wood',
+        description: 'An old-growth wood strung tree to tree with silk. You will notice the silk before you notice the spiders. Not much before.',
+        mutts: ['Trap-Door Spiders', 'The Drift', 'The Broodmother', 'Wolf Spiders', 'The Wrapped'],
+        events: ['The Re-Spin', 'The Wood Goes Quiet', 'A Bite You Don\'t Feel'],
+        // Nothing in this wood is medicine, and everything in it is venom.
+        law: 'noHealing',
+        effectVocab: {
+            fogbound: { label: 'the drift silk' },
+            contaminated: { label: 'an egg field', durationMult: 1.25 },
+            stripped: { label: 'spun over' },
+        },
+        zones: [
+            { name: 'The Cornucopia (The Clearing)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Low Wood', 'The Silk Bridge', 'The Ridge Path'] },
+            { name: 'The Low Wood', terrain: 'forest', danger: 0.45, resources: 0.7, adjacent: ['The Cornucopia (The Clearing)', 'The Sink', 'Web Hollow', 'The Old Burn'], features: { cover: 0.85, elevation: false, chokepoint: false } },
+            { name: 'The Sink', terrain: 'wetland', danger: 0.65, resources: 0.5, adjacent: ['The Low Wood', 'Web Hollow'] },
+            { name: "Broodmother's Crag", terrain: 'highland', danger: 0.95, resources: 0.35, adjacent: ['The Silk Bridge', 'The Ridge Path', 'The Nursery'], features: { cover: 0.3, elevation: true, chokepoint: true } },
+            { name: 'The Silk Bridge', terrain: 'forest', danger: 0.6, resources: 0.4, adjacent: ['The Cornucopia (The Clearing)', "Broodmother's Crag", 'Deadfall Slope'], features: { cover: 0.5, elevation: true, chokepoint: true } },
+            { name: 'Deadfall Slope', terrain: 'forest', danger: 0.55, resources: 0.55, adjacent: ['The Silk Bridge', "The Collector's Lodge", 'The Old Burn'] },
+            { name: "The Collector's Lodge", terrain: 'ruins', danger: 0.4, resources: 0.65, adjacent: ['Deadfall Slope', 'The Old Burn'], features: { cover: 0.7, elevation: false, chokepoint: true } },
+            // The one spider-free ground in the arena: nothing to eat here and
+            // nothing eating anyone either.
+            { name: 'The Old Burn', terrain: 'open', danger: 0.2, resources: 0.15, adjacent: ['The Low Wood', 'Deadfall Slope', "The Collector's Lodge"] },
+            { name: 'Web Hollow', terrain: 'forest', danger: 0.75, resources: 0.6, adjacent: ['The Low Wood', 'The Sink', 'The Nursery'], features: { cover: 0.9, elevation: false, chokepoint: false } },
+            { name: 'The Ridge Path', terrain: 'highland', danger: 0.5, resources: 0.2, adjacent: ['The Cornucopia (The Clearing)', "Broodmother's Crag"] },
+            { name: 'The Nursery', terrain: 'forest', danger: 0.9, resources: 0.75, adjacent: ["Broodmother's Crag", 'Web Hollow'], features: { cover: 0.8, elevation: false, chokepoint: true } },
+        ]
+    },
+    {
+        id: 'nooneplace',
+        name: 'The Nooneplace',
+        description: 'Halls, offices, stairs, carpet, hum. It goes on. That is the whole of it. It goes on.',
+        mutts: ['The Hum', 'Something In The Hall Behind You', 'The Others', 'Wall-Walkers', 'The Filing'],
+        events: ['A Door You Already Went Through', 'The Lights, For One Second', 'The Exit Sign'],
+        // The heaviest law stack in the game: no cannon reaches in here, no
+        // parachute lands, and the lights never change. There is no outside
+        // for any of those things to come from.
+        law: 'noCannons',
+        laws: ['noSponsors', 'noNight'],
+        effectVocab: {
+            fogbound: { label: 'the hum' },
+            stripped: { label: 'emptied' },
+            irradiated: { label: 'wrongness', durationMult: 1.5 },
+        },
+        edgeRules: {
+            // The corridor to the Exit is 'hidden': it is only there sometimes,
+            // and it re-hides behind you. No hidden edge kind exists, so this
+            // approximates it as timeGated — and under noNight the gate never
+            // actually shuts, which suits a door that only pretends to be rare.
+            'Exit|The Long Hall': { kind: 'timeGated', gatedTime: 'day' },
+        },
+        zones: [
+            { name: 'The Cornucopia (Reception)', terrain: 'open', danger: 0.5, resources: 0.35, adjacent: ['The Yellow Halls', 'Office Level', 'The Long Hall'] },
+            { name: 'The Yellow Halls', terrain: 'open', danger: 0.55, resources: 0.2, adjacent: ['The Cornucopia (Reception)', 'The Carpet', 'The Stairwell', 'The Long Hall'] },
+            // The carpet is damp. It is always damp. It is genuinely a wetland.
+            { name: 'The Carpet', terrain: 'wetland', danger: 0.5, resources: 0.4, adjacent: ['The Yellow Halls', 'Office Level', 'The Room With The Chair'] },
+            { name: 'Office Level', terrain: 'ruins', danger: 0.45, resources: 0.6, adjacent: ['The Cornucopia (Reception)', 'The Carpet', 'The Stairwell'], features: { cover: 0.7, elevation: false, chokepoint: false } },
+            { name: 'The Stairwell', terrain: 'ruins', danger: 0.6, resources: 0.15, adjacent: ['The Yellow Halls', 'Office Level', 'Sub-Level'], features: { cover: 0.4, elevation: true, chokepoint: true } },
+            { name: 'Sub-Level', terrain: 'ruins', danger: 0.7, resources: 0.45, adjacent: ['The Stairwell', 'The Flooded Floor', 'The Room With The Chair'] },
+            { name: 'The Flooded Floor', terrain: 'water', danger: 0.75, resources: 0.4, adjacent: ['Sub-Level', 'The Long Hall'] },
+            { name: 'The Room With The Chair', terrain: 'ruins', danger: 0.85, resources: 0.1, adjacent: ['The Carpet', 'Sub-Level'], features: { cover: 0.2, elevation: false, chokepoint: true } },
+            { name: 'The Long Hall', terrain: 'open', danger: 0.6, resources: 0.15, adjacent: ['The Cornucopia (Reception)', 'The Yellow Halls', 'The Flooded Floor', 'Exit'] },
+            { name: 'Exit', terrain: 'open', danger: 0.3, resources: 0.1, adjacent: ['The Long Hall'], features: { cover: 0.1, elevation: false, chokepoint: true } },
+        ]
+    },
+    {
+        id: 'redcathedral',
+        name: 'The Red Cathedral',
+        description: 'A mile-deep canyon. Water at the bottom, shade at the top, and no way to hold both — the rim and the river sit a stone\'s throw apart and days of climbing between them.',
+        mutts: ['Condors', 'Rattlers in the Talus', 'Cliff Cats', 'The Thing in the Seeps', 'Pinyon Jays'],
+        events: ['The Flash', 'The Temperature Swing', 'The False Route'],
+        law: 'noWaterExceptZone',
+        lawZone: 'The River',
+        // The desert-heat vocabulary: a flood here is over in minutes, and what
+        // it leaves behind is ground scraped down to rock.
+        effectVocab: {
+            flooded: { label: 'the flash', durationMult: 0.6 },
+            stripped: { label: 'scoured' },
+            blooming: { label: 'after the rain' },
+        },
+        // Every rim-to-bench edge costs an extra cycle: descent is a commute,
+        // not a step. The Butte is a rope climb — you leave the rope behind.
+        edgeRules: {
+            'The Bright Angel Descent|The Cornucopia (The North Rim)': { kind: 'tolled', toll: { timeCost: 1 } },
+            'Rim Pinyon|The Bright Angel Descent': { kind: 'tolled', toll: { timeCost: 1 } },
+            'The Bright Angel Descent|Upper Bench': { kind: 'tolled', toll: { timeCost: 1 } },
+            'Lower Bench|The South Rim': { kind: 'tolled', toll: { timeCost: 1 } },
+            'The Butte|The South Rim': { kind: 'tolled', toll: { itemCost: true, fatigue: 8 } },
+        },
+        zones: [
+            { name: 'The Cornucopia (The North Rim)', terrain: 'highland', danger: 0.55, resources: 0.3, adjacent: ['Rim Pinyon', 'The Bright Angel Descent'], features: { cover: 0.2, elevation: true, chokepoint: false } },
+            { name: 'Rim Pinyon', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['The Cornucopia (The North Rim)', 'The Bright Angel Descent'] },
+            // The only stair between two worlds. Everyone who wants water
+            // walks it, and everyone knows everyone walks it.
+            { name: 'The Bright Angel Descent', terrain: 'highland', danger: 0.7, resources: 0.1, adjacent: ['The Cornucopia (The North Rim)', 'Rim Pinyon', 'Upper Bench'], features: { cover: 0.15, elevation: true, chokepoint: true } },
+            { name: 'Upper Bench', terrain: 'open', danger: 0.5, resources: 0.35, adjacent: ['The Bright Angel Descent', 'The Slot', 'Cliff Dwellings'] },
+            { name: 'The Slot', terrain: 'highland', danger: 0.85, resources: 0.15, adjacent: ['Upper Bench', 'The Wash'], features: { cover: 0.6, elevation: false, chokepoint: true } },
+            { name: 'Cliff Dwellings', terrain: 'ruins', danger: 0.45, resources: 0.6, adjacent: ['Upper Bench', 'Lower Bench'], features: { cover: 0.7, elevation: true, chokepoint: true } },
+            { name: 'Lower Bench', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Cliff Dwellings', 'The Wash', 'The River', 'The Seeps', 'The South Rim'] },
+            { name: 'The Wash', terrain: 'open', danger: 0.75, resources: 0.25, adjacent: ['The Slot', 'Lower Bench', 'The River'] },
+            // The one legal drink in the arena, and everybody knows it.
+            { name: 'The River', terrain: 'water', danger: 0.65, resources: 0.55, adjacent: ['The Wash', 'Lower Bench'] },
+            { name: 'The Seeps', terrain: 'water', danger: 0.7, resources: 0.4, adjacent: ['Lower Bench'], features: { cover: 0.5, elevation: false, chokepoint: true } },
+            { name: 'The South Rim', terrain: 'highland', danger: 0.5, resources: 0.25, adjacent: ['Lower Bench', 'The Butte'], features: { cover: 0.2, elevation: true, chokepoint: false } },
+            // A dead end in the sky. Getting up costs the rope; there is no
+            // second rope for getting down.
+            { name: 'The Butte', terrain: 'highland', danger: 0.4, resources: 0.2, adjacent: ['The South Rim'], features: { cover: 0.3, elevation: true, chokepoint: true } },
+        ]
+    },
+    {
+        id: 'menagerie',
+        name: 'The Menagerie',
+        description: 'A zoo, opening. The keeper\'s release schedule is posted at the gate, and it is accurate — every enclosure in the park opens on time, in order, and everyone knows exactly when.',
+        mutts: ['Raptors', 'The Troop', 'Constrictors & Vipers', 'The Bears', 'The Herd', 'The Cats', 'Quarantine'],
+        events: ['The Schedule', 'Feeding Time', 'Ahead of Schedule'],
+        law: 'cornucopiaRefills',
+        effectVocab: {
+            stripped: { label: 'cleaned out' },
+            contaminated: { label: 'the reptile house', durationMult: 1.2 },
+            blooming: { label: 'the arboretum' },
+        },
+        zones: [
+            { name: 'The Cornucopia (The Plaza)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Feed Store', 'Big Cat Terrace', 'The Aviary', 'Elephant Paddock', 'Keeper\'s Yard'] },
+            // The larder everything in the park can smell. The refill law is
+            // this zone's whole personality.
+            { name: 'The Feed Store', terrain: 'ruins', danger: 0.7, resources: 0.9, adjacent: ['The Cornucopia (The Plaza)', 'Keeper\'s Yard'], features: { cover: 0.5, elevation: false, chokepoint: true } },
+            { name: 'Big Cat Terrace', terrain: 'open', danger: 0.75, resources: 0.25, adjacent: ['The Cornucopia (The Plaza)', 'The Primate Wood', 'Bear Moat'], features: { cover: 0.3, elevation: true, chokepoint: false } },
+            { name: 'The Primate Wood', terrain: 'forest', danger: 0.55, resources: 0.6, adjacent: ['Big Cat Terrace', 'The Arboretum', 'Reptile House'] },
+            { name: 'Reptile House', terrain: 'ruins', danger: 0.8, resources: 0.3, adjacent: ['The Primate Wood', 'The Aquarium'], features: { cover: 0.6, elevation: false, chokepoint: true } },
+            { name: 'The Aviary', terrain: 'wetland', danger: 0.5, resources: 0.5, adjacent: ['The Cornucopia (The Plaza)', 'Elephant Paddock', 'The Aquarium'] },
+            { name: 'Elephant Paddock', terrain: 'open', danger: 0.45, resources: 0.4, adjacent: ['The Cornucopia (The Plaza)', 'The Aviary', 'The Perimeter Fence'] },
+            { name: 'The Aquarium', terrain: 'ruins', danger: 0.6, resources: 0.35, adjacent: ['Reptile House', 'The Aviary', 'Bear Moat'], features: { cover: 0.55, elevation: false, chokepoint: true } },
+            { name: 'Bear Moat', terrain: 'water', danger: 0.7, resources: 0.45, adjacent: ['Big Cat Terrace', 'The Aquarium', 'Quarantine'] },
+            { name: 'The Arboretum', terrain: 'forest', danger: 0.3, resources: 0.8, adjacent: ['The Primate Wood', 'Keeper\'s Yard'] },
+            { name: 'Keeper\'s Yard', terrain: 'ruins', danger: 0.4, resources: 0.55, adjacent: ['The Cornucopia (The Plaza)', 'The Feed Store', 'The Arboretum', 'Quarantine'] },
+            { name: 'The Perimeter Fence', terrain: 'open', danger: 0.5, resources: 0.15, adjacent: ['Elephant Paddock', 'Quarantine'] },
+            // Unlisted contents. Last on the schedule for a reason.
+            { name: 'Quarantine', terrain: 'ruins', danger: 0.9, resources: 0.5, adjacent: ['Bear Moat', 'Keeper\'s Yard', 'The Perimeter Fence'], features: { cover: 0.4, elevation: false, chokepoint: true } },
+        ]
+    },
+    {
+        id: 'storywood',
+        name: 'The Story Wood',
+        description: 'A forest of fairytale cottages, every chimney smoking, every door unlocked. Every one of them opens. Every one of them costs something. The wood is always slightly colder than it should be.',
+        mutts: ['The Wolf', 'The Bramble', 'Ravens', 'Something in the Millpond', 'The Sisters'],
+        events: ['The Bargain', 'The Telling Mist', 'The Path'],
+        // The only medicine in this arena is a bargain, never an item.
+        law: 'noHealing',
+        effectVocab: {
+            blooming: { label: 'the wood is generous' },
+            fogbound: { label: 'the telling mist' },
+            irradiated: { label: 'a bad bargain' },
+        },
+        zones: [
+            { name: 'The Cornucopia (The Clearing)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Path', 'The Deep Wood', 'The Field of Stones'] },
+            // The one honest road in the arena: low danger, and it goes
+            // exactly where it says.
+            { name: 'The Path', terrain: 'forest', danger: 0.2, resources: 0.3, adjacent: ['The Cornucopia (The Clearing)', 'The Woodcutter\'s Cottage', 'Grandmother\'s Cottage'] },
+            { name: 'The Deep Wood', terrain: 'forest', danger: 0.7, resources: 0.6, adjacent: ['The Cornucopia (The Clearing)', 'The Gingerbread House', 'The Spinning House', 'The Bramble'], features: { cover: 0.8, elevation: false, chokepoint: false } },
+            { name: 'The Gingerbread House', terrain: 'ruins', danger: 0.75, resources: 0.85, adjacent: ['The Deep Wood', 'The Bramble'], features: { cover: 0.6, elevation: false, chokepoint: true } },
+            { name: 'The Woodcutter\'s Cottage', terrain: 'ruins', danger: 0.4, resources: 0.5, adjacent: ['The Path', 'The Millpond'] },
+            { name: 'The Spinning House', terrain: 'ruins', danger: 0.6, resources: 0.4, adjacent: ['The Deep Wood', 'The Tower'], features: { cover: 0.5, elevation: false, chokepoint: true } },
+            { name: 'The Millpond', terrain: 'water', danger: 0.6, resources: 0.5, adjacent: ['The Woodcutter\'s Cottage', 'The Well'] },
+            { name: 'The Well', terrain: 'water', danger: 0.65, resources: 0.3, adjacent: ['The Millpond', 'The Field of Stones', 'Grandmother\'s Cottage'], features: { cover: 0.2, elevation: false, chokepoint: true } },
+            { name: 'Grandmother\'s Cottage', terrain: 'ruins', danger: 0.5, resources: 0.55, adjacent: ['The Path', 'The Well'] },
+            { name: 'The Bramble', terrain: 'forest', danger: 0.9, resources: 0.45, adjacent: ['The Deep Wood', 'The Gingerbread House'], features: { cover: 0.9, elevation: false, chokepoint: true } },
+            { name: 'The Field of Stones', terrain: 'open', danger: 0.45, resources: 0.2, adjacent: ['The Cornucopia (The Clearing)', 'The Well', 'The Tower'] },
+            // The Tower's bargain (locking somebody in) has no transit
+            // machinery to hang on, so the Tower pays out in resources
+            // instead: the best-stocked room in the wood, at the top of the
+            // most obvious climb.
+            { name: 'The Tower', terrain: 'ruins', danger: 0.55, resources: 0.8, adjacent: ['The Spinning House', 'The Field of Stones'], features: { cover: 0.4, elevation: true, chokepoint: true } },
+        ]
+    },
 ];
 
 /**
