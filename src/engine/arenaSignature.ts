@@ -10,6 +10,7 @@ import { clampTribute } from './vitals';
 import { rosterFor, engageMutt } from './mutts';
 import { strengthCapForAge } from './physique';
 import { hasTool } from './items';
+import { isUnlitZone } from './map';
 import { ARENA_SIGNATURES, BLEEDING, ESCALATION, MEMORY, PROC_SIGNATURE, SIGNATURE_RULES } from '../data/balance';
 
 /**
@@ -1804,14 +1805,15 @@ function magmatubeSignature(ctx: SimContext, _cycle: number, rng: RNG) {
  * navigating blind — modelled as a standing awareness cost, plus the arena's
  * headline event when the moss itself fails.
  */
-const LIT_ZONES = ['The Cornucopia (Sinkhole Floor)', 'The Glowmoss Hollow'];
 function karstSignature(ctx: SimContext, cycle: number, rng: RNG) {
     const collapsed = ctx.state.collapsedZones ?? [];
     const dimmed = (ctx.state.mossDimUntilCycle ?? -1) >= cycle;
 
     getAlive(ctx.state).forEach(t => {
         if (collapsed.includes(t.zone)) return;
-        const lit = !dimmed && LIT_ZONES.includes(t.zone);
+        // The same lighting table the mutt roster reads, so the arena's own
+        // dark and its ambusher's eligibility cannot drift apart.
+        const lit = !dimmed && !isUnlitZone(ctx.state.arena, t.zone);
         if (lit || hasTool(t, 'light')) return;
         t.vitals.sanity -= ARENA_SIGNATURES.undermere.darkSanity;
         t.vitals.fatigue += ARENA_SIGNATURES.undermere.darkFatigue;

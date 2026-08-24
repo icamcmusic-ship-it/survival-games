@@ -1832,6 +1832,15 @@ export const MUTTS = {
     /** `swarm` role: extra damage multiplier per additional tribute present in the zone, beyond the first. */
     swarmDamagePerAlly: 0.25,
     swarmDamageCap: 2.5,
+    /**
+     * §7: the `parasite` role. It barely hurts and it does not kill — the
+     * damage is a fraction of what its stat block would otherwise land, and
+     * the real cost is what it leaves behind for the infection system to
+     * resolve over the following days.
+     */
+    parasiteDamageShare: 0.3,
+    parasiteInfectChance: 0.55,
+    parasiteSanityLoss: 6,
 } as const;
 
 export const ZONE_EFFECTS = {

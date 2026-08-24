@@ -227,6 +227,26 @@ function derivedAcoustics(zone: Zone, cover: number): number {
 }
 
 /**
+ * §13.3: zones that carry no light source of their own.
+ *
+ * A property of the two hand-authored arenas built around absence of light,
+ * rather than of zones in general — so it is a small table here rather than a
+ * flag on `Zone` that thirty-eight arenas would have to answer. An `ambusher`
+ * mutt written for the dark is eligible in one of these at noon, and the
+ * arena's own signature reads the same list, so the two cannot drift apart.
+ */
+const UNLIT_ZONES: Record<string, (zone: string) => boolean> = {
+    // The Undermere. Everything except the sinkhole floor (open to the sky
+    // through the collapse that made it) and the fungus-rich hollow.
+    karst: zone => zone !== 'The Cornucopia (Sinkhole Floor)' && zone !== 'The Glowmoss Hollow',
+};
+
+export function isUnlitZone(arena: Arena, zone: string): boolean {
+    const rule = UNLIT_ZONES[arena.id];
+    return rule !== undefined && rule(zone);
+}
+
+/**
  * §5.2: the acoustics of a zone by name, for the stealth and encounter
  * layers. Defaults to 1 for anything that has not been derived or authored.
  */
