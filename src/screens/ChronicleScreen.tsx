@@ -8,6 +8,7 @@ import { TributeModal } from '../components/TributeModal';
 import { ChronicleFilters } from '../components/ChronicleFilters';
 import { chronicleStore, setChronicle } from '../store/chronicleStore';
 import { useStore } from '../store/createStore';
+import { prefsStore } from '../store/prefsStore';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -99,11 +100,13 @@ function writeDeepLink(page: Page | undefined) {
  * category stripe from the existing `--cat-*` variables, and the prose at
  * reading size rather than the 13px the sidebar feed uses.
  */
-function BeatCard({ beat, cast, onSelectTribute, showZone }: {
+function BeatCard({ beat, cast, onSelectTribute, showZone, revealed }: {
     beat: Beat;
     cast: Tribute[];
     onSelectTribute: (id: string) => void;
     showZone: boolean;
+    /** §2.5: false while the run is still going and spoiler-safe is on. */
+    revealed: boolean;
 }) {
     const meta = categoryMeta(beat.logs[0].category);
     const people = [...beat.cast]
@@ -139,9 +142,14 @@ function BeatCard({ beat, cast, onSelectTribute, showZone }: {
             <div className="chronicle-prose space-y-1.5">
                 {beat.logs.map(log => (
                     <p key={log.id} className={log.important ? 'font-semibold text-[var(--ink)]' : 'text-[var(--color-ink-200)]'}>
-                        {showZone && beat.zone && log.zone === beat.zone
-                            ? stripZoneClause(log.text, beat.zone)
-                            : log.text}
+                        {/* §2.5: the chronicle page is reachable mid-run, so it
+                            has to respect spoiler-safe viewing too — held back
+                            only while the run is still going. */}
+                        {!revealed && (log.category === 'death' || log.category === 'kill')
+                            ? <span className="italic text-[var(--color-ink-500)]">A cannon. Hidden while spoiler-safe viewing is on.</span>
+                            : showZone && beat.zone && log.zone === beat.zone
+                                ? stripZoneClause(log.text, beat.zone)
+                                : log.text}
                     </p>
                 ))}
             </div>
@@ -154,6 +162,10 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     const [selectedTributeId, setSelectedTributeId] = useState<string | null>(null);
     const [showFilters, setShowFilters] = useState(false);
     const arenaSealed = !!gameState.arenaHidden && !canSeeArena(disclosureFor(gameState.phase));
+    // §2.5: once the run has ended there is nothing left to spoil, so the
+    // suppression lifts on its own rather than needing to be switched off.
+    const spoilerSafe = useStore(prefsStore, p => p.spoilerSafe);
+    const revealed = !spoilerSafe || gameState.phase === 'ended';
 
     const mutedCategories = useMemo(() => {
         const muted = new Set<EventCategory>();
@@ -311,6 +323,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                                 cast={gameState.tributes}
                                 onSelectTribute={setSelectedTributeId}
                                 showZone={!arenaSealed && !PRE_ARENA_PHASES.has(page.phase)}
+                                revealed={revealed}
                             />
                         ))}
                     </div>

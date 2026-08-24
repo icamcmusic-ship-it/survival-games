@@ -717,7 +717,7 @@ export function GameScreen({
                                             <div className="empty-state">Nothing has happened in this sector yet.</div>
                                         ) : (
                                             sectorLogRows.map(l => (
-                                                <FeedLine key={l.id} log={l} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} />
+                                                <FeedLine key={l.id} log={l} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} gameState={gameState} />
                                             ))
                                         )}
                                     </div>
@@ -755,6 +755,7 @@ export function GameScreen({
                                         onSelectTribute={setSelectedTributeId}
                                         density={filters.density}
                                         hideZones={arenaSealed}
+                                        gameState={gameState}
                                     />
                                 ) : (
                                     <div className="empty-state">

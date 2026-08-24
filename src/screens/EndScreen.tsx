@@ -148,7 +148,8 @@ export function EndScreen({
                         <ChronicleExport gameState={gameState} />
                     </div>
                     <div className="max-h-[620px] overflow-y-auto pr-2 custom-scrollbar">
-                        <EventFeed logs={gameState.log} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} defaultExpanded />
+                        {/* §2.5: the run is over. Nothing in here is a spoiler any more. */}
+                        <EventFeed logs={gameState.log} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} defaultExpanded revealed gameState={gameState} />
                     </div>
                 </div>
             ) : (

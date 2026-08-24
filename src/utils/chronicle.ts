@@ -1,4 +1,4 @@
-import { GameState } from '../models/types';
+import { EventLog, GameState } from '../models/types';
 
 /**
  * SIDE-level export: a run produces ~900 lines of genuinely readable prose and
@@ -238,6 +238,46 @@ export async function copyChronicle(
 ): Promise<boolean> {
     try {
         await navigator.clipboard.writeText(chronicleText(state, filter, format));
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/** 74th, 71st, 103rd — the suffix the Capitol would use. */
+function ordinal(n: number): string {
+    const rem100 = n % 100;
+    if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+    return `${n}${['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+}
+
+/**
+ * §2.6: one line, on its own.
+ *
+ * `ChronicleExport` handles the whole record and a per-tribute cut of it, both
+ * of which are documents. What had no affordance at all was the single moment
+ * — the line somebody actually wants to paste into a message — even though
+ * `EventCategory` and the `important` flag already identify exactly which
+ * lines those are.
+ *
+ * Carries the day, the phase and the seed, because a moment out of context is
+ * just a sentence, and the seed is what makes it a thing somebody else can go
+ * and watch.
+ */
+export function momentText(state: GameState, log: EventLog): string {
+    const when = log.day === 0
+        ? log.phase.charAt(0).toUpperCase() + log.phase.slice(1)
+        : `Day ${log.day}, ${log.phase}`;
+    const games = state.gamesProfile?.gamesNumber
+        ? `the ${ordinal(state.gamesProfile.gamesNumber)} Hunger Games`
+        : 'the Hunger Games';
+    return `"${log.text}"\n\n— ${when}, ${games} (seed ${state.seed})`;
+}
+
+/** Copies one moment. Returns false when the clipboard is unavailable. */
+export async function copyMoment(state: GameState, log: EventLog): Promise<boolean> {
+    try {
+        await navigator.clipboard.writeText(momentText(state, log));
         return true;
     } catch {
         return false;
