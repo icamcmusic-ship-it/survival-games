@@ -129,6 +129,69 @@ export const BLEEDING = {
 } as const;
 
 /**
+ * §3.1: infection — a wound that was never dealt with going bad.
+ *
+ * Tuned so that a tribute who camps, eats and knows what they are doing mostly
+ * does not get sick, and a tribute walking an open grade-3 wound through a
+ * wetland on an empty stomach mostly does. The `worsenChance` is the number
+ * that makes it lethal rather than annoying: it is the only status in the game
+ * that deepens on its own.
+ */
+export const INFECTION = {
+    /**
+     * Wound grade at or above which a site can turn at all.
+     *
+     * This is 1 — any open wound — rather than the 2 it was first written as,
+     * and the reason is worth recording. `injure()` only raises a site's grade
+     * when the *same* site is hit again, so grade 2 is genuinely rare: across
+     * 60 full runs, 36 site-cycles out of 56,105 sat at grade 2 or worse
+     * against 9,552 at grade 1. Gating on grade 2 made infection fire six
+     * times in 400 runs — a system that exists and never matters, which is the
+     * exact failure this pass was supposed to fix elsewhere. Depth still
+     * matters, through `perGradeAbove`; it is a weight, not a gate.
+     */
+    minWoundGrade: 1,
+    /** Cycles a wound must go untended before the first roll. */
+    incubationCycles: 4,
+    /** Per-cycle odds once incubated, before every term below. */
+    baseChance: 0.035,
+    perGradeAbove: 0.05,
+    /** Filth and exposure. */
+    wetlandBonus: 0.05,
+    /** Cover above which a damp zone counts as somewhere a wound rots. */
+    dankCover: 0.6,
+    dankBonus: 0.04,
+    contaminatedBonus: 0.09,
+    starvingBonus: 0.05,
+    exhaustedBonus: 0.04,
+    /** Somewhere dry to lie down is most of field medicine. */
+    shelterRelief: 0.05,
+    /** Knowing what a wound needs — the medicine station's payoff. */
+    perMedicinePoint: 0.02,
+    hardyRelief: 0.04,
+    maxChance: 0.3,
+
+    /** Grades an infection runs through; the top one is terminal. */
+    maxGrade: 3,
+    /** Odds an untreated infection deepens a grade this cycle. */
+    worsenChance: 0.24,
+
+    /** The drain: what sepsis takes that is not health. */
+    fatiguePerCycle: 2.5,
+    sanityPerCycle: 1.5,
+    /** Health taken per cycle once it reaches the top grade. */
+    septicDamage: 9,
+    feverLineChance: 0.12,
+
+    /** Treatment: a real medical item, one grade at a time. */
+    treatBaseChance: 0.4,
+    treatPerMedicine: 0.16,
+    treatPerIntelligence: 0.02,
+    treatAllyBonus: 0.15,
+    treatMaxChance: 0.9,
+} as const;
+
+/**
  * Drinking from the arena itself.
  *
  * Thirst drains 15 a cycle and the only relief was a Water Canteen out of the
@@ -1473,6 +1536,33 @@ export const SLEEP = {
     deprivedAt: 4,
     sanityPerCycle: 3,
     lineChance: 0.18,
+
+    /**
+     * §3.8: what sleep debt costs besides sanity.
+     *
+     * The ledger accrued correctly and then only ever bought one thing — a
+     * sanity tick and an occasional hallucination line — which made it a
+     * second, slower sanity drain rather than its own mechanic. Sleep
+     * deprivation is not primarily a mood; it is a decline in the quality of
+     * every decision, and these are the three places this simulation actually
+     * makes decisions a tired person makes worse.
+     *
+     * All three scale with debt *past* `deprivedAt`, so an ordinary bad night
+     * still costs nothing but the sanity it always did.
+     */
+    /** Forage odds lost per point of debt past the threshold: you walk past things. */
+    foragePenaltyPerPoint: 0.02,
+    /** Odds per point of debt of fumbling something out of the pack. */
+    dropChancePerPoint: 0.025,
+    maxDropChance: 0.2,
+    /**
+     * Extra cycles a tired tribute holds a stance they should have left. Not a
+     * penalty to the decision itself — they read the situation the same way,
+     * they are just slower to act on it, which is what exhaustion actually
+     * does to reaction time.
+     */
+    stanceHoldPerPoint: 0.4,
+    maxStanceHold: 3,
 } as const;
 
 export const PLANNING = {
@@ -3053,6 +3143,34 @@ export const GENERATION = {
      */
     strengthCapAtMinAge: 5,
     strengthCapPerYear: 1,
+
+    /**
+     * §3.3: the age curve, as a curve rather than one retreat modifier.
+     *
+     * Age was on every roster sheet and did three things: it capped strength,
+     * it added `Math.max(0, 17 - age) * retreatYouthWeight` to the urge to
+     * break off, and it made the youngest tributes hungrier. So the twelve
+     * year old was a weaker, twitchier version of the eighteen year old, which
+     * is a spread of one number rather than two kinds of person.
+     *
+     * The trade is now real in both directions. The young recover from a night
+     * faster than anyone — they are twelve, that is what twelve does — but the
+     * strength ceiling above holds them well below the top of the field. The
+     * oldest start nearest their physical peak and stay there, and pay for it
+     * in `resolve`: they have had four more reapings to think about this, and
+     * sustained tension wears them down measurably faster.
+     *
+     * `agePivot` is the hinge — below it a tribute is on the young side of the
+     * curve, above it the old side — and both effects scale with distance from
+     * it, so a 15-year-old is barely either.
+     */
+    agePivot: 15,
+    /** Share of a night's fatigue recovery added back, per year under the pivot. */
+    youthRecoveryPerYear: 0.09,
+    /** Extra resolve decay per cycle, per year over the pivot, while under tension. */
+    agedResolveDecayPerYear: 0.22,
+    /** Tension streak at which the age penalty on resolve starts to bite. */
+    agedResolveTensionFrom: 2,
     /**
      * §3.1: the endurance and willpower age curves.
      *

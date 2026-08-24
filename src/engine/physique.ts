@@ -308,6 +308,32 @@ export function heightLabel(heightCm: number, units: 'imperial' | 'metric' = 'im
 }
 
 /** The most raw strength a tribute of this age can possibly have. */
+/**
+ * §3.3: how much faster a young body gets a night back.
+ *
+ * Returns a multiplier on the *recovery* half of the fatigue tick only — it
+ * never makes a young tribute tire more slowly, which would just be a flat
+ * buff. Paired with `strengthCapForAge` above it, which is the price: the
+ * twelve year old sleeps it off and still cannot lift what the eighteen year
+ * old can.
+ */
+export function youthRecoveryMultiplier(age: number): number {
+    const under = Math.max(0, GENERATION.agePivot - age);
+    return 1 + under * GENERATION.youthRecoveryPerYear;
+}
+
+/**
+ * §3.3: the other side of the curve — extra resolve decay per cycle for an
+ * older tribute who has been under sustained tension. Zero for anyone at or
+ * below the pivot, and zero for anyone whose run has been quiet: this is the
+ * cost of *carrying* it, not of being eighteen.
+ */
+export function agedResolveDecay(age: number, tensionStreak: number): number {
+    if (tensionStreak < GENERATION.agedResolveTensionFrom) return 0;
+    const over = Math.max(0, age - GENERATION.agePivot);
+    return over * GENERATION.agedResolveDecayPerYear;
+}
+
 export function strengthCapForAge(age: number): number {
     return Math.min(10, GENERATION.strengthCapAtMinAge + (age - GENERATION.minAge) * GENERATION.strengthCapPerYear);
 }

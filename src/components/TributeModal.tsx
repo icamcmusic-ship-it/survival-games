@@ -758,6 +758,28 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                                             </span>
                                         ))}
                                 </div>
+                                {/* §3.1: which wound has turned, and how far. The
+                                    grade line reads differently from a fresh
+                                    injury on purpose — a septic site is the one
+                                    thing on this sheet that gets worse on its
+                                    own, and a reader needs to be able to see
+                                    that before it kills someone. */}
+                                {Object.entries(tribute.woundInfection ?? {}).filter(([, g]) => (g ?? 0) > 0).length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {Object.entries(tribute.woundInfection ?? {})
+                                            .filter(([, g]) => (g ?? 0) > 0)
+                                            .map(([site, g]) => (
+                                                <span
+                                                    key={site}
+                                                    className="chip"
+                                                    style={{ borderColor: 'var(--cat-hazard)', color: 'var(--cat-hazard)' }}
+                                                    title="An untreated wound that has gone bad. Needs medical supplies, not a dressing — and it deepens on its own."
+                                                >
+                                                    {['', 'infected', 'festering', 'septic'][Math.min(3, g ?? 0)]} {site}
+                                                </span>
+                                            ))}
+                                    </div>
+                                )}
                                 {BODY_SITES.some(site => severityOf(tribute, site) > 0) && (
                                     <dl className="grid grid-cols-[auto_1fr] gap-x-2 text-xs text-[var(--color-ink-400)]">
                                         {BODY_SITES.filter(site => severityOf(tribute, site) > 0).map(site => (

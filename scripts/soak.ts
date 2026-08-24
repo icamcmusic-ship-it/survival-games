@@ -66,6 +66,9 @@ let victorPctSum = 0, victorPctCount = 0, fieldPctSum = 0, fieldPctCount = 0;
 let dualVictories = 0;
 // Tribute-logic overhaul: every new system needs evidence it ran.
 let clots = 0, fieldDressings = 0, restRecoveries = 0, huntOrCraft = 0;
+// §3.1: infection — wounds turning, deepening, being treated, and killing.
+let sleepDrops = 0;
+let woundsTurned = 0, sepsisDeepened = 0, sepsisTerminal = 0, sepsisTreated = 0, sepsisDeaths = 0, feverLines = 0;
 let zoneDrinks = 0, pursuits = 0, desperationFights = 0, fearFelt = 0;
 let bestProficiencySeen = 0;
 // Relationships and alliances.
@@ -275,6 +278,12 @@ for (let i = 0; i < 400; i++) {
     if (/simply stop pretending|the group is two groups now/.test(l.text)) factionActions++;
     if (/is put out of the group/.test(l.text)) expulsions++;
     if (/takes the .* job off them|account for it in front of everyone/.test(l.text)) hearings++;
+    if (/does not notice their .* going/.test(l.text)) sleepDrops++;
+    if (/started looking like a problem/.test(l.text)) woundsTurned++;
+    if (/worse today — swollen/.test(l.text)) sepsisDeepened++;
+    if (/gone dark and the heat of it/.test(l.text)) { sepsisDeepened++; sepsisTerminal++; }
+    if (/cleans it out properly|cleans the .* out with the/.test(l.text)) sepsisTreated++;
+    if (/running a fever they cannot sweat out/.test(l.text)) feverLines++;
     if (/never once broke it/.test(l.text)) trucesOutlived++;
     // §1.4: all three beats that pay a broker. This matcher used to name only
     // the LAPSE line, which is why the counter read 1 across 400 runs even
@@ -413,6 +422,7 @@ for (let i = 0; i < 400; i++) {
       if (t.allianceId) note('dead tribute still in an alliance');
       if (t.dayOfDeath === undefined) note('dead tribute without dayOfDeath');
       if (!t.causeOfDeath) note('dead tribute without cause of death');
+      if (/Died of sepsis/.test(t.causeOfDeath ?? '')) sepsisDeaths++;
       if (t.health !== 0) note(`dead tribute health ${t.health}`);
 
       // --- Cause of death must name the real source, not a guessed one. ---
@@ -673,6 +683,8 @@ console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDe
 // logged, achievement-granting ending that no counter here named, so the
 // mechanic read as "251 formed, 102 resolved, 149 vanished".
 const truceEndings = trucesRenewed + trucesLapsed + trucesTurned + trucesBroken + trucesOutlived;
+console.log(`sleep: deprivedDrops=${sleepDrops}`);
+console.log(`infection: woundsTurned=${woundsTurned} deepened=${sepsisDeepened} reachedTerminal=${sepsisTerminal} treated=${sepsisTreated} feverLines=${feverLines} sepsisDeaths=${sepsisDeaths}`);
 console.log(`truces2: outlived=${trucesOutlived} brokeredHeld=${brokeredHeld}`);
 console.log(`truce ledger: struck=${trucesStruck} accountedEndings=${truceEndings} `
   + `(renewed=${trucesRenewed} lapsed=${trucesLapsed} turned=${trucesTurned} broken=${trucesBroken} outlivedByDeath=${trucesOutlived}) `

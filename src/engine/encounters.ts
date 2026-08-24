@@ -7,6 +7,8 @@ import { QUIRKS } from '../data/quirks';
 import { SimContext } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
+import { isSeptic, syncInfectedFlag, treatInfection } from './infection';
+import { sleepForagePenalty } from './survival';
 import { cycleOf, addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy, raiseSuspicion } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { hasTruce, tryParley } from './parley';
@@ -374,11 +376,21 @@ export function resolveMuttAttack(ctx: SimContext, t: Tribute, time: 'day' | 'ni
  */
 function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute) {
     if (needer.injuries.bleeding || needer.injuries.infected || needer.injuries.burned) {
+        // §3.1: sepsis is not something an ally fixes by handing over a kit.
+        // It has its own treatment path — one grade per successful attempt,
+        // better with an ally holding the wound open than alone — so a septic
+        // tribute routes there first and the blanket patch-up below only
+        // handles the fresh injuries it was written for.
+        if (isSeptic(needer) && treatInfection(ctx, needer, giver)) {
+            incurDebt(needer, giver, DEBTS.patchedUp, ctx);
+            return;
+        }
         const medIdx = giver.inventory.findIndex(i => i.type === 'medical');
         if (medIdx >= 0) {
             const item = giver.inventory.splice(medIdx, 1)[0];
             healInjury(needer, 'infected');
             healInjury(needer, 'burned');
+            syncInfectedFlag(needer);
             clearBleeding(needer);
             needer.health = Math.min(100, needer.health + 15);
             trainProficiency(giver, 'medicine');
@@ -638,7 +650,10 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         // §3.4: steady hands find food; shaking ones miss it.
         + composureOf(t) * COMPOSURE.forageWeight
         // §3.5: a tribute who is unravelling stops trusting what they pick.
-        - (sanityBandOf(t) === 'unravelling' || sanityBandOf(t) === 'gone' ? SANITY_BANDS.unravellingForagePenalty : 0);
+        - (sanityBandOf(t) === 'unravelling' || sanityBandOf(t) === 'gone' ? SANITY_BANDS.unravellingForagePenalty : 0)
+        // §3.8: sleep debt, finally spending. Someone who has not properly
+        // slept in days walks past the things they are looking for.
+        - sleepForagePenalty(t);
 
     // §6.4: anyone holding a clean blade and something to coat it with takes
     // the opportunity — nightlock spoils, and a poisoned edge is the outer

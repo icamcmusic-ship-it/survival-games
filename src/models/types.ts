@@ -561,6 +561,23 @@ export interface Tribute {
      * hysteresis was missing — it had no memory of its own churn.
      */
     stanceChurn?: number;
+    /**
+     * §3.1: infection, per wound site, graded 1-3.
+     *
+     * Distinct from `injuries.infected`, which is the whole-body flag every
+     * other system reads and which can also be set from outside (a scavenger
+     * mutt, a contaminated zone). This is the record of *which* neglected
+     * wound turned and how far it has gone — the state that lets an untreated
+     * grade-2 cut become the thing that kills someone on day nine, rather than
+     * sitting inertly at grade 2 forever. See `engine/infection.ts`.
+     */
+    woundInfection?: Partial<Record<InjurySite, number>>;
+    /**
+     * §3.1: cycles each open site has gone without closing or being dressed.
+     * The incubation clock — an infection that landed with the blow would just
+     * be a second damage type, so a wound has to be *neglected* first.
+     */
+    woundAge?: Partial<Record<InjurySite, number>>;
     favouring?: InjurySite;
     /**
      * §3.1: which arm took it. `injuries.arms` is one site, so handedness had

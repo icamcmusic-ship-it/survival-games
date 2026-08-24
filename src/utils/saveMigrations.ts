@@ -316,6 +316,12 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         shedTraits: asStrArray(r.shedTraits),
         scars: asObjMap<boolean>(r.scars),
         recoveryProgress: asObjMap<number>(r.recoveryProgress),
+        // §3.1: the per-site infection record and its incubation clock. A save
+        // from before infection existed resumes with clean wounds rather than
+        // undefined ones, and `syncInfectedFlag` reconciles the whole-body
+        // `injuries.infected` flag against it on the first tick.
+        woundInfection: asObjMap<number>(r.woundInfection),
+        woundAge: asObjMap<number>(r.woundAge),
         traitAge: asNumMap(r.traitAge),
         truceRenewed: asNumMap(r.truceRenewed),
         stanceCooldown: asObjMap<number>(r.stanceCooldown),

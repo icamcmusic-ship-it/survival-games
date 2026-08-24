@@ -4,6 +4,7 @@ import { SimContext } from './context';
 import { profOf, trainProficiency, observeProficiency } from './proficiency';
 import { traitMod } from '../data/traits';
 import { isAggressiveStance } from '../data/stances';
+import { noteWoundTended, sepsisGrade } from './infection';
 
 /**
  * Bleeding, and what a tribute can do about it.
@@ -120,7 +121,14 @@ export function tickWoundRecovery(ctx: SimContext, t: Tribute) {
         t.recoveryProgress![site] = 0;
         // A scarred site never comes all the way back: it knits down to grade
         // 1 and stops there, permanently.
-        const floor = t.scars?.[site] ? 1 : 0;
+        //
+        // §3.1: so does a septic one, for as long as it is septic. This is the
+        // interaction that makes infection lethal rather than decorative —
+        // without it the ordinary recovery pass quietly closed infected wounds
+        // on its own schedule, the infection record went with them, and sepsis
+        // could never reach the grade that kills. An infected wound does not
+        // knit shut; it has to be treated first.
+        const floor = (t.scars?.[site] || sepsisGrade(t, site) > 0) ? 1 : 0;
         if (grade - 1 < floor) return;
         healInjury(t, site as Exclude<InjurySite, 'bleeding'>, 1);
         if (injuryGrade(t, site) === 0) {
@@ -252,6 +260,10 @@ function dressChance(medic: Tribute, isAlly: boolean): number {
 export function attemptFieldDressing(ctx: SimContext, patient: Tribute, medic: Tribute = patient): boolean {
     const severity = bleedSeverity(patient);
     if (severity <= 0) return false;
+    // §3.1: a dressing is attention paid to the wound, so it restarts the
+    // neglect clock on every open site whether or not the roll lands. It
+    // deliberately does *not* touch an infection that has already taken hold —
+    // that needs a medical kit and several days, not a bandage.
 
     const isAlly = medic.id !== patient.id;
     if (!ctx.rng.chance(dressChance(medic, isAlly))) {
@@ -268,6 +280,13 @@ export function attemptFieldDressing(ctx: SimContext, patient: Tribute, medic: T
     trainProficiency(medic, 'medicine', ctx);
     // §3.10: field medicine is the most watchable skill in the arena.
     observeProficiency(ctx, medic, 'medicine');
+    // §3.1: a wound that has been cleaned and bound is not a neglected wound.
+    // The incubation clock restarts on every open site, but only on a dressing
+    // that actually landed — fumbling with a bandage is not care. It does not
+    // touch an infection that has already taken hold; that needs a medical kit
+    // and several days, which is the whole distinction the infection axis is
+    // there to draw.
+    (['arms', 'legs', 'torso', 'head', 'burned'] as InjurySite[]).forEach(site => noteWoundTended(patient, site));
     const next = Math.max(0, severity - BLEEDING.dressSeverityDrop);
     if (next <= 0) {
         clearBleeding(patient);
