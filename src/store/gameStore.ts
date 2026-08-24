@@ -14,6 +14,7 @@ import type { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
 import { PanemRecords, RunOutcome, clearPanem, commitRun, readPanem, setPatronDistrict } from '../utils/panemStorage';
 import type { SponsorResult } from '../engine/playerSponsor';
+import { readPrefs } from './prefsStore';
 
 /**
  * PERF: the engine is loaded on demand.
@@ -733,6 +734,10 @@ export const gameActions = {
             log: [],
             gamemakerMode,
             arenaHidden,
+            // §13.2: snapshotted at creation so the engine never reaches into
+            // the prefs store, and so a resumed run briefs the way it did the
+            // first time.
+            arenaBriefingOnDrop: readPrefs().arenaBriefingOnDrop,
             config: configForProfile(config, gamesProfile),
             baseConfig: config,
             gamesProfile,

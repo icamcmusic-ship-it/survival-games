@@ -1661,6 +1661,15 @@ export interface GameState {
      * it is a different beat from claiming your own.
      */
     feastPrizes?: Array<{ tributeId: string; label: string }>;
+    /**
+     * §13.2: whether to log the in-fiction arena brief as the tributes rise.
+     * Copied off the player's prefs at run creation rather than read from the
+     * store inside the engine — the engine has never imported the UI layer and
+     * must not start, and a resumed save should brief the way it originally
+     * did. Undefined means on, so every save from before this existed is
+     * unchanged in behaviour.
+     */
+    arenaBriefingOnDrop?: boolean;
     /** §13.3: the Undermere — cycle the bioluminescence comes back on. */
     mossDimUntilCycle?: number;
     /** §10.1: the longest single fire chain this run produced, in zones. */
