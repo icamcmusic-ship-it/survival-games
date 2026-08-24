@@ -5,12 +5,14 @@ import { HofFilters, applyHofQuery, isFiltered, EMPTY_HOF_QUERY, HofQuery } from
 import { HofAggregates } from '../components/HofAggregates';
 import { HofCompare } from '../components/HofCompare';
 import { HofTransfer } from '../components/HofTransfer';
-import { Trophy, Trash2, Copy, Check, RotateCcw, Pin } from 'lucide-react';
+import { Trophy, Trash2, Copy, Check, RotateCcw, Pin, Swords } from 'lucide-react';
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { PanemRecordBook } from '../components/PanemRecordBook';
 
 export function HallOfFameScreen() {
+    // §10.5: which archived victors are currently seated for the next run.
+    const grudgeIds = useStore(gameStore, st => st.grudgeMatchIds);
     const [entries, setEntries] = useState<HallOfFameEntry[]>([]);
     const [query, setQuery] = useState<HofQuery>(EMPTY_HOF_QUERY);
     const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
@@ -374,6 +376,22 @@ export function HallOfFameScreen() {
                                                     {/* §2.3: the archive stored each run's whole config so
                                                         it could be relaunched, and there was no way to ask
                                                         what was different about the one that went well. */}
+                                                    {/* §10.5: the Grudge Match. The archive already
+                                                        stores everything needed to put a past victor
+                                                        back on a plate — name, district, the traits
+                                                        they won with — and the only thing that could
+                                                        be done with it was to re-run their own Games. */}
+                                                    {!entry.noVictor && (
+                                                        <button
+                                                            onClick={() => gameActions.toggleGrudgeMatch(entry.id)}
+                                                            className={`btn btn-sm ${grudgeIds.includes(entry.id) ? 'btn-primary' : ''}`}
+                                                            aria-pressed={grudgeIds.includes(entry.id)}
+                                                            title={`Reap ${entry.winnerName} again into your next Games`}
+                                                        >
+                                                            <Swords className="w-3.5 h-3.5" />
+                                                            {grudgeIds.includes(entry.id) ? 'In the Grudge Match' : 'Grudge Match'}
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={() => setCompareIds(ids => {
                                                             if (ids.includes(entry.id)) return ids.filter(i => i !== entry.id);

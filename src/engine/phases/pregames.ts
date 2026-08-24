@@ -45,6 +45,21 @@ export function processPreGames(ctx: SimContext) {
     const cast = getAlive(ctx.state);
     const districts = [...new Set(cast.map(t => t.district))].sort((a, b) => a - b);
 
+    // ---- §10.5: victors reaped again ----
+    // Announced before anything else, because it changes how the whole
+    // broadcast reads: a field with a past victor in it is not an ordinary
+    // reaping and the Capitol would not pretend otherwise.
+    (ctx.state.veteransSeated ?? []).forEach(name => {
+        const vet = cast.find(t => t.name === name);
+        if (!vet) return;
+        ctx.logEvent(
+            `${vet.name} of District ${vet.district} walks onto the stage for the second time. `
+            + `They won the ${vet.veteranOf} Games. There is a rule against this, or there was, and nobody in the Capitol is discussing it tonight.`,
+            [vet.id],
+            { important: true, category: 'system' }
+        );
+    });
+
     // ---- 0. The Head Gamemaker ----
     const headGamemaker = ctx.rng.pick(HEAD_GAMEMAKERS);
     ctx.state.headGamemaker = headGamemaker.name;
@@ -52,7 +67,30 @@ export function processPreGames(ctx: SimContext) {
     // REPLAY-10: they have a record in this player's Panem, and the broadcast
     // brings it up — which is what makes the country continuous between runs
     // rather than a series of unrelated Games.
-    const record = readPanem().gamemakerRecords?.[headGamemaker.name];
+    const panem = readPanem();
+    // §10.4: the small continuity thread. Somebody from this district died in
+    // an earlier Games carrying something from home, and the district sent it
+    // back in. Purely cosmetic — nothing mechanical reads a token or a quirk —
+    // and that is the point: repeat play should feel like it is accumulating
+    // rather than resetting, without the accumulation becoming a power curve.
+    Object.entries(panem.heirlooms ?? {}).forEach(([district, heirloom]) => {
+        const candidates = cast.filter(t => t.district === Number(district) && !t.veteranOf);
+        if (candidates.length === 0) return;
+        if (!ctx.rng.chance(PREGAMES.heirloomChance)) return;
+        const heir = ctx.rng.pick(candidates);
+        heir.token = heirloom.token;
+        if (heirloom.quirk && !(heir.quirks ?? []).includes(heirloom.quirk)) {
+            heir.quirks = [...(heir.quirks ?? []), heirloom.quirk];
+        }
+        ctx.logEvent(
+            `${heir.name} carries ${heirloom.token} out of the goodbye room in District ${district}. `
+            + `It belonged to ${heirloom.fromName}, who did not bring it home, and District ${district} has been keeping it for somebody.`,
+            [heir.id],
+            { important: true, category: 'system' }
+        );
+    });
+
+    const record = panem.gamemakerRecords?.[headGamemaker.name];
     if (record && record.games > 0) {
         const avgDays = (record.totalDays / record.games).toFixed(1);
         ctx.logEvent(

@@ -2054,6 +2054,21 @@ export const ABANDONED_CAMPS = {
     findPerIntelligence: 0.04,
 } as const;
 
+/**
+ * §10.5: what an archived victor brings back into the arena with them. See
+ * `engine/veterans.ts` — deliberately a small edge in the two places a second
+ * Games actually differs (the crowd already knows them, and they have been
+ * here), not a stat package that makes the Grudge Match a foregone conclusion.
+ */
+export const VETERANS = {
+    maxPerRun: 2,
+    maxTraits: 6,
+    reputationBonus: 18,
+    minTrainingScore: 7,
+    resolveBonus: 12,
+    keepsEpithetChance: 0.75,
+} as const;
+
 export const CRAFTING = {
     /** A blade below this condition is worth an hour with a whetstone. */
     sharpenBelowCondition: 0.7,
@@ -3898,6 +3913,12 @@ export const PREGAMES = {
     paradeTrustPerPull: 4,
     paradeReputationPerPull: 3,
     paradeExcitementPerPull: 7,
+    /**
+     * §10.4: odds a district that lost somebody carrying a token in an earlier
+     * Games sends that token back in with a later tribute. Deliberately not
+     * every year — a thread you notice is worth more than a rule you expect.
+     */
+    heirloomChance: 0.45,
 } as const;
 
 export const TRAINING = {

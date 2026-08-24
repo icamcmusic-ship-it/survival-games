@@ -253,3 +253,70 @@ export function runNotables(state: GameState, records: PanemRecords): Notable[] 
 
     return notables.sort((a, b) => b.weight - a.weight).slice(0, 3);
 }
+
+/**
+ * §10.7: the post-run delta — how this Games compared with the player's own
+ * last few in the same arena.
+ *
+ * Every other panel on the end screen is about this run in isolation, or about
+ * a personal best. Neither of those is how a repeat player actually experiences
+ * progress: what they want to know is whether this one went differently from
+ * the last ones, and in which direction. The per-run stats already existed and
+ * simply reset every time; this turns them into a felt sense of a series.
+ *
+ * Compares against runs in the same arena where there are any, and against the
+ * whole recent window where there are not — a first run in a new arena is
+ * still worth situating.
+ */
+export function runDelta(state: GameState, records: PanemRecords): string[] {
+    // `recentRuns[0]` is this run, written by `commitRun` immediately before
+    // the outcome is assembled, so the comparison set excludes it.
+    const history = (records.recentRuns ?? []).slice(1);
+    if (history.length === 0) return [];
+
+    const sameArena = history.filter(r => r.arenaName === state.arena.name);
+    const pool = sameArena.length > 0 ? sameArena : history;
+    const scope = sameArena.length > 0 ? `your last ${sameArena.length} in ${state.arena.name}` : `your last ${history.length} Games`;
+    const out: string[] = [];
+
+    const victor = state.tributes.find(t => t.status === 'alive');
+    const mean = (pick: (r: typeof pool[number]) => number | undefined) => {
+        const values = pool.map(pick).filter((v): v is number => typeof v === 'number');
+        return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : undefined;
+    };
+
+    const avgDays = mean(r => r.day);
+    if (avgDays !== undefined && Math.abs(state.day - avgDays) >= 1.5) {
+        out.push(state.day > avgDays
+            ? `Longer than usual: ${state.day} days against an average of ${avgDays.toFixed(1)} across ${scope}.`
+            : `Shorter than usual: ${state.day} days against an average of ${avgDays.toFixed(1)} across ${scope}.`);
+    }
+
+    const deaths = state.tributes.filter(t => t.status === 'dead').length;
+    const avgDeaths = mean(r => r.deaths);
+    if (avgDeaths !== undefined && Math.abs(deaths - avgDeaths) >= 2) {
+        out.push(deaths > avgDeaths
+            ? `Bloodier: ${deaths} dead against ${avgDeaths.toFixed(1)} across ${scope}.`
+            : `Quieter: ${deaths} dead against ${avgDeaths.toFixed(1)} across ${scope}.`);
+    }
+
+    if (victor) {
+        const seenArchetypes = new Set(pool.map(r => r.victorArchetype).filter(Boolean));
+        if (seenArchetypes.size > 0 && !seenArchetypes.has(victor.archetype)) {
+            out.push(`A kind of victor you have not crowned lately — no ${victor.archetype} has won in ${scope}.`);
+        }
+        const districts = pool.map(r => r.victorDistrict).filter((d): d is number => typeof d === 'number');
+        const streak = districts.length > 0 && districts.every(d => d === districts[0]);
+        if (streak && victor.district !== districts[0]) {
+            out.push(`District ${districts[0]} had won every one of ${scope}. District ${victor.district} just broke that.`);
+        }
+        const avgKills = mean(r => r.victorKills);
+        if (avgKills !== undefined && Math.abs(victor.kills - avgKills) >= 2) {
+            out.push(victor.kills > avgKills
+                ? `A harder crown: ${victor.kills} kills against ${avgKills.toFixed(1)} for your recent victors.`
+                : `A cleaner crown: ${victor.kills} kills against ${avgKills.toFixed(1)} for your recent victors.`);
+        }
+    }
+
+    return out;
+}

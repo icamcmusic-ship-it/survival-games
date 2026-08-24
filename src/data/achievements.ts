@@ -1,6 +1,7 @@
 import { GameState, Tribute } from '../models/types';
 import { arenaFlavor } from './arenaFlavor';
 import { legacyOf } from './districts';
+import { PROCEDURAL_BIOME_COUNT } from '../engine/arenaGenerator';
 
 /**
  * REPLAY-04: achievements as a discovery layer, not a points system.
@@ -1058,8 +1059,11 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
     {
         id: 'meta-every-biome',
         name: 'Every Biome',
-        hint: 'Crown a victor in all eight of the Gamemakers\' procedural biomes.',
-        test: t => (t.biomesWon?.length ?? 0) >= 8,
+        // §10.6: the biome roster went from eight to twelve, and an
+        // achievement that counts a roster has to count the roster it has
+        // rather than the one it shipped against.
+        hint: 'Crown a victor in all twelve of the Gamemakers\' procedural biomes.',
+        test: t => (t.biomesWon?.length ?? 0) >= PROCEDURAL_BIOME_COUNT,
     },
     {
         id: 'meta-twenty-eight',

@@ -15,6 +15,8 @@ import { createStore } from './createStore';
 import { PanemRecords, RunOutcome, clearPanem, commitRun, readPanem, setPatronDistrict } from '../utils/panemStorage';
 import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
+import { seatVeterans } from '../engine/veterans';
+import { VETERANS } from '../data/balance';
 import { offSeasonFor } from '../data/offSeason';
 
 /**
@@ -84,6 +86,13 @@ export interface GameStoreState {
     lastRunOutcome: RunOutcome | null;
     /** Non-null while `runToEnd()` is fast-forwarding, for the progress readout. */
     runProgress: RunProgress | null;
+    /**
+     * §10.5: Hall of Fame entry ids picked for a Grudge Match — up to two past
+     * victors who will be reaped again into the next run started. Held in the
+     * store rather than threaded through `startGame`'s signature, which is
+     * called from five places that have nothing to do with this.
+     */
+    grudgeMatchIds: string[];
 }
 
 /** Live counters for the Run-to-End progress readout. */
@@ -279,6 +288,7 @@ export const gameStore = createStore<GameStoreState>({
     hofSaved: false,
     panem: readPanem(),
     lastRunOutcome: null,
+    grudgeMatchIds: [],
     runProgress: null,
 });
 
@@ -523,6 +533,20 @@ export const gameActions = {
      * arena and which settings had produced it. An entry now carries both, so
      * "run it again" is a button.
      */
+    /** §10.5: toggle an archived victor into or out of the Grudge Match. */
+    toggleGrudgeMatch(id: string) {
+        const current = gameStore.getState().grudgeMatchIds;
+        gameStore.setState({
+            grudgeMatchIds: current.includes(id)
+                ? current.filter(i => i !== id)
+                : [...current, id].slice(-VETERANS.maxPerRun),
+        });
+    },
+
+    clearGrudgeMatch() {
+        gameStore.setState({ grudgeMatchIds: [] });
+    },
+
     replayHallOfFameEntry(entry: HallOfFameEntry): Promise<void> {
         const arenaId = entry.arenaId
             ?? ARENAS.find(a => a.name === entry.arenaName)?.id
@@ -734,6 +758,19 @@ export const gameActions = {
             });
         }
 
+        // §10.5: the Grudge Match. Two archived victors are grafted onto the
+        // field the seed already produced, so the run still replays exactly —
+        // what the archive supplies is identity, not a different roll.
+        const grudge = gameStore.getState().grudgeMatchIds;
+        let veterans: string[] = [];
+        if (grudge.length > 0) {
+            const archive = readHallOfFame();
+            const picked = grudge
+                .map(id => archive.find(e => e.id === id))
+                .filter((e): e is HallOfFameEntry => e !== undefined);
+            if (picked.length > 0) veterans = seatVeterans(safeSeed, tributes, picked);
+        }
+
         const initialState: GameState = {
             seed: safeSeed,
             arena,
@@ -752,6 +789,7 @@ export const gameActions = {
             gamesProfile,
             logCounter: 0,
             feastsHeld: 0,
+            veteransSeated: veterans.length > 0 ? veterans : undefined,
         };
 
         gameStore.setState({

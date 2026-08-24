@@ -177,6 +177,11 @@ const CLIMATES: Record<string, ClimateProfile> = {
     'procedural-dunes': SOLAR,
     'procedural-bayou': TOXIC,
     'procedural-ruinlands': MAGNETIC_FOG,
+    // §10.6: the four added biomes.
+    'procedural-steppe': SOLAR,
+    'procedural-saltmarsh': TEMPEST,
+    'procedural-boreal': QUARRY_DAMP,
+    'procedural-badlands': SOLAR,
     solar: SOLAR,
     saltflats: SOLAR,
     toxic: TOXIC,

@@ -739,6 +739,11 @@ export interface Tribute {
      */
     token?: string;
     /**
+     * §10.5: this tribute is an archived victor reaped again — the arena they
+     * won, for the reaping copy and the chronicle. Set only by a Grudge Match.
+     */
+    veteranOf?: string;
+    /**
      * §11.5: an epithet earned in the arena, distinct from the birth name
      * rolled at the reaping. Awarded once and never replaced — the first thing
      * a tribute becomes known for is the thing they stay known for.
@@ -1740,6 +1745,11 @@ export interface GameState {
      * unchanged in behaviour.
      */
     arenaBriefingOnDrop?: boolean;
+    /**
+     * §10.5: names of archived victors reaped again into this run. Set at
+     * creation by a Grudge Match; read by the reaping copy.
+     */
+    veteransSeated?: string[];
     /** §13.3: the Undermere — cycle the bioluminescence comes back on. */
     mossDimUntilCycle?: number;
     /** §10.1: the longest single fire chain this run produced, in zones. */
