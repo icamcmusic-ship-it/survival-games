@@ -89,9 +89,13 @@
     /* Event category colours — one hue per kind of thing that can happen. */
     --cat-death: #8f0f1a;
     --cat-kill: #b3401b;
-    --cat-combat: #c1791a;
-    --cat-injury: #a15a2e;
-    --cat-hazard: #8a6a1f;
+    /* §2.4: hazard and injury were 1.04:1 against each other — the same colour
+       to any eye — and combat sat at 2.98:1 against the paper, under the 3:1
+       floor for a non-text mark. Retuned so all three clear 4.3:1 on paper and
+       separate by hue as well as by their glyphs (orange / red / olive). */
+    --cat-combat: #a4600f;
+    --cat-injury: #993122;
+    --cat-hazard: #6d6512;
     --cat-mutt: #6b3fa0;
     --cat-alliance: #2f7a4f;
     --cat-betrayal: #a11d4a;
@@ -205,6 +209,33 @@ body {
     }
 }
 
+
+/* §2.4: the same rules, opted into from inside the app.
+   Plenty of people want reduced motion here without having found the system
+   switch, so the Playback popover sets data-reduce-motion on <html> and it
+   lands on exactly the same declarations the media query does. */
+html[data-reduce-motion='true'] {
+    scroll-behavior: auto;
+
+    .animate-fadeIn,
+    .animate-riseIn,
+    .animate-pulseSoft {
+        animation: none;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .btn:active:not(:disabled) {
+        transform: none;
+    }
+}
 @layer components {
     /* ---------- masthead: the gold hero band every screen opens with ---------- */
     .masthead {

@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GameState, Tribute } from '../models/types';
 import {
-    Heart, MapPin, Settings, Skull, Star, Swords, TrendingDown, TrendingUp, Minus, Users,
+    Brain, Heart, MapPin, Settings, Skull, Star, Swords, TrendingDown, TrendingUp, Minus, Users,
 } from 'lucide-react';
 import { ESCALATION, GAMEMAKER_COSTS } from '../data/balance';
 import { GamemakerEventType } from '../engine/gamemaker';
 import { objectiveLabel } from '../engine/objectives';
-import { oddsFactors } from '../engine/odds';
+import { oddsFactors, tributeOdds } from '../engine/odds';
 import { ordinal } from '../engine/gamesProfile';
 import { Explainer } from './Explainer';
 import { OddsSparkline } from './OddsSparkline';
@@ -84,14 +84,38 @@ export function DossierPanel({
      */
     const prevHealth = useRef<Record<string, number>>({});
     const [healthDelta, setHealthDelta] = useState<Record<string, number>>({});
+    // §2.2: the tile showed current state, and the interesting thing about a
+    // tribute mid-run is the derivative — a tribute at 60 health who was at 90
+    // an hour ago is a different story from one who has climbed there. Health
+    // already had this; sanity and the odds line did not, and both move for
+    // reasons a viewer wants to go and look up.
+    const prevSanity = useRef<Record<string, number>>({});
+    const [sanityDelta, setSanityDelta] = useState<Record<string, number>>({});
+    const prevOdds = useRef<Record<string, number>>({});
+    const [oddsDelta, setOddsDelta] = useState<Record<string, number>>({});
     useEffect(() => {
         const deltas: Record<string, number> = {};
+        const sanity: Record<string, number> = {};
+        const odds: Record<string, number> = {};
+        const board = gameState.tributes.filter(o => o.status === 'alive');
         gameState.tributes.forEach(t => {
             const before = prevHealth.current[t.id];
             const now = t.status === 'alive' ? t.health : 0;
             if (before !== undefined && before !== now) deltas[t.id] = now - before;
             prevHealth.current[t.id] = now;
+
+            const sanityNow = t.status === 'alive' ? Math.round(t.vitals.sanity) : 0;
+            const sanityBefore = prevSanity.current[t.id];
+            if (sanityBefore !== undefined && sanityBefore !== sanityNow) sanity[t.id] = sanityNow - sanityBefore;
+            prevSanity.current[t.id] = sanityNow;
+
+            const oddsNow = t.status === 'alive' ? tributeOdds(t, board).pct : 0;
+            const oddsBefore = prevOdds.current[t.id];
+            if (oddsBefore !== undefined && Math.abs(oddsBefore - oddsNow) >= 1) odds[t.id] = oddsNow - oddsBefore;
+            prevOdds.current[t.id] = oddsNow;
         });
+        if (Object.keys(sanity).length > 0) setSanityDelta(sanity);
+        if (Object.keys(odds).length > 0) setOddsDelta(odds);
         if (Object.keys(deltas).length > 0) setHealthDelta(deltas);
         // Recomputed at phase boundaries, not on every render, so the deltas
         // describe the cycle just played rather than flickering to zero.
@@ -188,8 +212,45 @@ export function DossierPanel({
                                                         )}
                                                     </span>
                                                     <span className="flex items-center gap-1"><Swords className="w-3 h-3" /> {t.kills}</span>
+                                                    {/* §2.2: sanity and the odds line, with the
+                                                        direction they moved in last cycle. */}
+                                                    <span className="flex items-center gap-1" title={`Sanity ${Math.round(t.vitals.sanity)}`}>
+                                                        <Brain className="w-3 h-3 text-[var(--cat-sanity)]" /> {Math.round(t.vitals.sanity)}
+                                                        {!!sanityDelta[t.id] && (
+                                                            <span
+                                                                className="font-bold"
+                                                                style={{ color: sanityDelta[t.id] > 0 ? 'var(--cat-alliance)' : 'var(--cat-death)' }}
+                                                                title={`${sanityDelta[t.id] > 0 ? 'Steadied' : 'Frayed'} ${Math.abs(sanityDelta[t.id])} last cycle`}
+                                                            >
+                                                                {sanityDelta[t.id] > 0 ? '↑' : '↓'}{Math.abs(sanityDelta[t.id])}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    {!!oddsDelta[t.id] && (
+                                                        <span
+                                                            className="flex items-center gap-1 font-bold"
+                                                            style={{ color: oddsDelta[t.id] > 0 ? 'var(--cat-alliance)' : 'var(--cat-death)' }}
+                                                            title={`The book moved ${oddsDelta[t.id] > 0 ? 'toward' : 'away from'} ${t.name} last cycle`}
+                                                        >
+                                                            {oddsDelta[t.id] > 0 ? '▲' : '▼'}{Math.abs(oddsDelta[t.id])}%
+                                                        </span>
+                                                    )}
                                                     <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3 text-[var(--cat-travel)]" /> {arenaSealed ? '❓' : t.zone}</span>
-                                                    <span className="w-full truncate text-[var(--red)]">{objectiveLabel(gameState, t)}</span>
+                                                    {/* §2.2: intentions, not coordinates — and
+                                                        `objectiveTension.margin` is a free tension
+                                                        indicator the tile never surfaced. */}
+                                                    <span className="w-full truncate text-[var(--red)]">
+                                                        {objectiveLabel(gameState, t)}
+                                                        {t.objectiveTension && (
+                                                            <span
+                                                                className="ml-1 font-bold not-italic"
+                                                                style={{ color: 'var(--cat-sanity)' }}
+                                                                title={`Torn — they nearly ${objectiveLabel(gameState, { ...t, objective: t.objectiveTension.runnerUp }).toLowerCase()} instead`}
+                                                            >
+                                                                ⟂ torn
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                 </>
                                             )}
                                         </span>

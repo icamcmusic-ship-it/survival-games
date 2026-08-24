@@ -32,6 +32,13 @@ export interface ChronicleState {
     filterTributeId: string | null;
     /** A second tribute, OR semantics: "every kill involving Cato or Clove". */
     filterTributeId2: string | null;
+    /**
+     * §2.2: how the two tribute filters combine. 'either' is the original
+     * union; 'both' is the one the UI could not express — every line involving
+     * Marvel *and* Rue, which is exactly the question a feud or a romance
+     * creates and the only way to read a relationship out of a 650-line feed.
+     */
+    filterPairMode: 'either' | 'both';
     filterDay: number | null;
     selectedZone: string | null;
     /** §2.12: the one pinned tribute the feed, dossier and brakes foreground. */
@@ -51,6 +58,7 @@ function initialState(): ChronicleState {
         searchText: '',
         filterTributeId: null,
         filterTributeId2: null,
+        filterPairMode: 'either',
         filterDay: null,
         selectedZone: null,
         followedId: null,
@@ -110,6 +118,7 @@ export function resetChronicleFilters(): void {
         searchText: '',
         filterTributeId: null,
         filterTributeId2: null,
+        filterPairMode: 'either',
         filterDay: null,
         selectedZone: null,
     });

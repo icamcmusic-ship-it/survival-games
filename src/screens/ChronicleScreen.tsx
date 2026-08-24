@@ -168,7 +168,12 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
         return gameState.log.filter(log => {
             if (filters.selectedZone && log.zone !== filters.selectedZone) return false;
             if (mutedCategories.has(log.category)) return false;
-            if ((filters.filterTributeId || filters.filterTributeId2)
+            // §2.2: 'both' is the relationship read — every line the two of them
+            // are in together — which the union-only filter could not ask for.
+            if (filters.filterPairMode === 'both' && filters.filterTributeId && filters.filterTributeId2) {
+                if (!log.tributesInvolved.includes(filters.filterTributeId)
+                    || !log.tributesInvolved.includes(filters.filterTributeId2)) return false;
+            } else if ((filters.filterTributeId || filters.filterTributeId2)
                 && !(filters.filterTributeId && log.tributesInvolved.includes(filters.filterTributeId))
                 && !(filters.filterTributeId2 && log.tributesInvolved.includes(filters.filterTributeId2))) return false;
             if (filters.filterDay !== null && log.day !== filters.filterDay) return false;
@@ -403,6 +408,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                         setChronicle({
                             filterTributeId: selectedTribute.id,
                             filterTributeId2: null,
+                            filterPairMode: 'either',
                             filterDay: null,
                             searchText: '',
                         });

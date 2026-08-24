@@ -140,6 +140,36 @@ export function PlaybackPopover({
                             </label>
                         ))}
                     </div>
+
+                    {/* §2.2: playback was one speed for the whole run. The
+                        bloodbath is the densest ninety seconds in the Games and
+                        the training days are three rotations most viewers skim;
+                        giving them the same wall-clock treatment is the
+                        coarseness this fixes. Off for anyone who wants a flat tape. */}
+                    <div className="space-y-1 pt-1 border-t-2 border-[var(--line-soft)]">
+                        <span className="eyebrow">Pacing</span>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs text-[var(--color-ink-300)]">
+                            <input
+                                type="checkbox"
+                                checked={prefs.phasePacing}
+                                onChange={e => setPrefs({ phasePacing: e.target.checked })}
+                                className="accent-[var(--red)]"
+                            />
+                            Slow the bloodbath, skim the quiet days
+                        </label>
+                        {/* §2.4: reduced motion, honoured here as well as from
+                            the OS setting — plenty of people have the preference
+                            without having found the system switch. */}
+                        <label className="flex items-center gap-2 cursor-pointer text-xs text-[var(--color-ink-300)]">
+                            <input
+                                type="checkbox"
+                                checked={prefs.reduceMotion}
+                                onChange={e => setPrefs({ reduceMotion: e.target.checked })}
+                                className="accent-[var(--red)]"
+                            />
+                            Reduce motion
+                        </label>
+                    </div>
                 </div>
             )}
         </div>

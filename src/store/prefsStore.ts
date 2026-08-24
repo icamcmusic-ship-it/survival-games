@@ -22,6 +22,22 @@ export interface Prefs {
     pauseOnSponsor: boolean;
     /** Pause whenever the followed tribute is involved in an event. */
     pauseOnFollowed: boolean;
+    /**
+     * §2.2: pace each phase to what it is worth watching. Playback was one
+     * speed for the whole run, and most viewers want the bloodbath slow and
+     * the quiet day cycles fast.
+     */
+    phasePacing: boolean;
+    /**
+     * §2.4: honour the viewer's own reduced-motion setting rather than only
+     * the OS media query, so it can be turned on here as well.
+     */
+    reduceMotion: boolean;
+    /**
+     * §2.4: the keyboard map is good and undiscoverable outside the ? panel.
+     * A hint strip shows once, on the first run, until it is dismissed.
+     */
+    seenShortcutHint: boolean;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -31,6 +47,9 @@ export const DEFAULT_PREFS: Prefs = {
     pauseOnAlliance: false,
     pauseOnSponsor: false,
     pauseOnFollowed: false,
+    phasePacing: true,
+    reduceMotion: false,
+    seenShortcutHint: false,
 };
 
 export const PREFS_SPEC: StorageSpec<Prefs> = {
@@ -47,6 +66,9 @@ export const PREFS_SPEC: StorageSpec<Prefs> = {
             pauseOnAlliance: asBool(r.pauseOnAlliance, DEFAULT_PREFS.pauseOnAlliance),
             pauseOnSponsor: asBool(r.pauseOnSponsor, DEFAULT_PREFS.pauseOnSponsor),
             pauseOnFollowed: asBool(r.pauseOnFollowed, DEFAULT_PREFS.pauseOnFollowed),
+            phasePacing: asBool(r.phasePacing, DEFAULT_PREFS.phasePacing),
+            reduceMotion: asBool(r.reduceMotion, DEFAULT_PREFS.reduceMotion),
+            seenShortcutHint: asBool(r.seenShortcutHint, DEFAULT_PREFS.seenShortcutHint),
         };
     },
 };
