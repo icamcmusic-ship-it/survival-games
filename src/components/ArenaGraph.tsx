@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { GameState, Tribute } from '../models/types';
 import { edgeKey, effectiveResources } from '../engine/map';
-import { NODE_R, VIEW_W, VIEW_H, layoutZones } from './arenaLayout';
+import { GRAPH_MIN_WIDTH_PX, NODE_HIT_R, NODE_R, VIEW_W, VIEW_H, layoutZones } from './arenaLayout';
 
 /**
  * The arena as a graph, which is what it has always actually been.
@@ -66,6 +66,9 @@ export function ArenaGraph({ gameState, selectedZone, onSelectZone, tributes }: 
     return (
         <svg
             viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+            // §2.10: never shrink below the width at which a zone is a 44px
+            // touch target. Past that the wrapper scrolls instead.
+            style={{ minWidth: GRAPH_MIN_WIDTH_PX }}
             className="w-full h-auto select-none"
             role="img"
             aria-label={`Map of ${arena.name}: ${arena.zones.length} sectors and the routes between them`}
@@ -136,6 +139,13 @@ export function ArenaGraph({ gameState, selectedZone, onSelectZone, tributes }: 
                         }}
                         style={{ cursor: 'pointer' }}
                     >
+                        {/* §2.10: the touch target, larger than anything drawn.
+                            The visible node is 52 units across; a finger needs
+                            72, and `GRAPH_MIN_WIDTH_PX` guarantees that maps to
+                            at least 44 CSS pixels however narrow the viewport
+                            gets. Sized under the measured minimum node
+                            separation so two targets never overlap. */}
+                        <circle cx={p.x} cy={p.y} r={NODE_HIT_R} fill="transparent" stroke="none" />
                         {/* Forage stock drawn as a ring around the node: the arc is the
                             stock, the faint full circle behind it is the printed potential. */}
                         <circle cx={p.x} cy={p.y} r={NODE_R + 5} fill="none" stroke="var(--line-soft)" strokeWidth={3} />

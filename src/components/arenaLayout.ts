@@ -13,6 +13,28 @@
 import { Arena } from '../models/types';
 
 export const NODE_R = 26;
+/**
+ * §2.10: the transparent touch target around each node, in viewBox units.
+ *
+ * The drawn circle is `NODE_R`; this is what a finger has to hit. It is sized
+ * against `GRAPH_MIN_WIDTH_PX` below so that the target clears 44 CSS pixels at
+ * the smallest width the graph is ever rendered at, and against the measured
+ * minimum node separation (78.5 units on the densest 13-zone arenas) so two
+ * targets can never overlap.
+ */
+export const NODE_HIT_R = 36;
+/**
+ * §2.10: the floor on the graph's rendered width.
+ *
+ * The SVG was `w-full h-auto` with a 720-unit viewBox, so on a 360px phone it
+ * scaled to 0.46 and a 52-unit node drew as a 24px target — a little over half
+ * the 44px minimum, on the app's most spatial control. Node count is not the
+ * cause but it is why the nodes cannot simply be drawn bigger: at 13 zones
+ * there is no room. Below this width the map scrolls horizontally inside its
+ * own container instead of shrinking further, which is the same rule the rest
+ * of the app already applies to wide content.
+ */
+export const GRAPH_MIN_WIDTH_PX = 460;
 export const VIEW_W = 720;
 export const VIEW_H = 460;
 
@@ -131,6 +153,40 @@ export function layoutZones(arena: Arena): Record<string, Point> {
         p.x = pad + (p.x - minX) * scale;
         p.y = pad + (p.y - minY) * scale;
     });
+
+    // §2.10: minimum node separation, on the final drawn coordinates.
+    //
+    // The force pass keeps nodes comfortably apart *on average* — 78.5 units
+    // at 12-14 zones — but the worst case across all 49 arenas was 56.6, and
+    // what a finger needs is decided by the worst case, not the average. Two
+    // touch targets that overlap mean a tap can land on the wrong zone, which
+    // on a map whose whole job is "where is everybody" is the one failure that
+    // actually loses information.
+    //
+    // Runs before the caption pass, because separating nodes is the coarser
+    // move and often resolves a caption collision on its own; the caption pass
+    // then cleans up what is left.
+    const MIN_SEPARATION = NODE_HIT_R * 2 + 2;
+    for (let pass = 0; pass < 80; pass++) {
+        let moved = false;
+        for (let i = 0; i < zones.length; i++) {
+            for (let j = i + 1; j < zones.length; j++) {
+                const pa = positions[zones[i].name], pb = positions[zones[j].name];
+                const vx = pb.x - pa.x, vy = pb.y - pa.y;
+                const dist = Math.hypot(vx, vy);
+                if (dist >= MIN_SEPARATION) continue;
+                moved = true;
+                // Two nodes exactly on top of each other have no direction to
+                // separate along; push them apart on x so the next pass has one.
+                const ux = dist < 0.001 ? 1 : vx / dist;
+                const uy = dist < 0.001 ? 0 : vy / dist;
+                const push = (MIN_SEPARATION - dist) / 2;
+                pa.x -= ux * push; pa.y -= uy * push;
+                pb.x += ux * push; pb.y += uy * push;
+            }
+        }
+        if (!moved) break;
+    }
 
     // §1.9: caption de-collision, on the final drawn coordinates.
     //

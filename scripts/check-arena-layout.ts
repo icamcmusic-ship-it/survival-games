@@ -21,10 +21,20 @@
 import { ARENAS } from '../src/data/constants';
 import { generateArena } from '../src/engine/arenaGenerator';
 import { Arena } from '../src/models/types';
-import { NODE_R, labelBox, layoutZones, Point } from '../src/components/arenaLayout';
+import {
+    GRAPH_MIN_WIDTH_PX, NODE_HIT_R, NODE_R, VIEW_W, labelBox, layoutZones, Point,
+} from '../src/components/arenaLayout';
 
 /** Node circles must not overlap. */
 const MIN_SEPARATION = NODE_R * 2;
+/**
+ * §2.10: and neither may the touch targets, which are larger than the circles.
+ * The graph scales its 720-unit viewBox to whatever width it is given, with a
+ * floor at `GRAPH_MIN_WIDTH_PX`, so this is the worst case a finger ever sees.
+ */
+const MIN_SCALE = GRAPH_MIN_WIDTH_PX / VIEW_W;
+/** WCAG 2.5.8's minimum, in CSS pixels. */
+const MIN_TOUCH_PX = 44;
 /** No arena may draw a caption on top of another caption. */
 const MAX_LABEL_COLLISIONS = 0;
 
@@ -94,7 +104,24 @@ measured.forEach(m => {
     if (m.labelCollisions > MAX_LABEL_COLLISIONS) {
         problems.push(`${m.id} (${m.n} zones): ${m.labelCollisions} overlapping zone captions`);
     }
+    // Two touch targets that overlap mean a tap can land on the wrong zone.
+    if (m.minSep < NODE_HIT_R * 2) {
+        problems.push(`${m.id} (${m.n} zones): closest nodes ${m.minSep}px apart — touch targets (${NODE_HIT_R * 2}px) overlap`);
+    }
 });
+
+// §2.10: the target must clear 44 CSS pixels at the narrowest the graph is
+// ever drawn. This is a property of the constants rather than of any one
+// arena, so it is asserted once — but it is asserted here because it is the
+// same trade-off as the layout: bigger nodes need more room, and the 13-zone
+// arenas are what decides how much room there is.
+const touchPx = Math.round(NODE_HIT_R * 2 * MIN_SCALE * 10) / 10;
+if (touchPx < MIN_TOUCH_PX) {
+    problems.push(
+        `zone touch target is ${touchPx}px at the minimum graph width `
+        + `(${GRAPH_MIN_WIDTH_PX}px) — under the ${MIN_TOUCH_PX}px minimum`
+    );
+}
 
 const bucket = (lo: number, hi: number) => measured.filter(m => m.n >= lo && m.n <= hi);
 const avg = (rows: Measure[], pick: (m: Measure) => number) =>
@@ -113,3 +140,4 @@ if (problems.length) {
     process.exit(1);
 }
 console.log(`\n${measured.length} arenas laid out; every node pair at least ${MIN_SEPARATION}px apart and no caption overlaps.`);
+console.log(`zone touch target: ${touchPx}px at the ${GRAPH_MIN_WIDTH_PX}px minimum graph width (floor ${MIN_TOUCH_PX}px).`);
