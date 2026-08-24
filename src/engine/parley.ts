@@ -5,6 +5,7 @@ import { PARLEY_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
 import { SimContext, getAlive } from './context';
+import { tradeReputations } from './notoriety';
 import { assessZone } from './stance';
 import { adjustMutual, adjustRel, getRel, respectOf } from './relationships';
 import { addZoneThreat, cycleOf, ensureMemory, lieAboutZone, noteStoodBy, raiseSuspicion, rememberedThreat, shareZoneIntel, swearVengeance } from './memory';
@@ -298,7 +299,18 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
     // branch was gated shut by the same condition that creates its
     // opportunity. An asymmetric hostile meeting now reaches the extortion
     // block first and only falls through to the knife afterwards.
-    const shakedownOnTheTable = tOutmatched !== otherOutmatched;
+    let shakedownOnTheTable = tOutmatched !== otherOutmatched;
+
+    // §3.6: the bluff. Before anybody hands anything over, the party who knows
+    // they lose gets to try talking their way out of being the party who knows
+    // they lose — by implying there is more in the pack than there is, or that
+    // somebody is on their way. It is the one move available to a tribute with
+    // nothing, and the negotiation layer had no vocabulary for it.
+    if (shakedownOnTheTable) {
+        const weaker = tOutmatched ? t : other;
+        const stronger = tOutmatched ? other : t;
+        if (attemptBluff(ctx, weaker, stronger)) shakedownOnTheTable = false;
+    }
 
     // Anyone genuinely committed to a fight is not negotiating — except that
     // a confident predator sometimes prefers the shakedown to the kill: the
@@ -422,6 +434,11 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
         trainProficiency(t, 'persuasion');
         trainProficiency(other, 'persuasion');
         declareTruce(ctx, t, other);
+        // §3.5: two people who have just agreed not to kill each other talk,
+        // and what each of them has heard about the rest of the field partly
+        // becomes what the other has heard. This is the channel that gets a
+        // name across the map to somebody who will never meet its owner.
+        tradeReputations(t, other);
         // Agreeing to something and keeping it is the seed of a real bond —
         // and §1.4, a negotiation somebody actually talked their way through
         // leaves both parties thinking better of the other than a shrug does.
@@ -559,6 +576,79 @@ function creditBroker(ctx: SimContext, a: Tribute, b: Tribute, outcome: BrokerOu
                     + 'The Capitol notices who does that; it is the rarest kind of work anyone does in there.';
         ctx.logEvent(line, [broker.id, a.id, b.id], { important: true, category: 'alliance' });
     });
+}
+
+/**
+ * §3.6: misrepresenting your own position at the table.
+ *
+ * Distinct from `lieAboutZone`, which sells the mark a false *place*. This is
+ * the bluff about *yourself* — the knife you do not have, the allies who are
+ * not coming — and it is the move anybody outmatched in a clearing actually
+ * reaches for.
+ *
+ * Contested rather than rolled against a constant: talking is persuasion and
+ * charisma, seeing through it is intelligence and tracking, because reading a
+ * person and reading ground are the same faculty. Returns true when the mark
+ * buys it, in which case the caller stops treating this as a shakedown at all.
+ *
+ * Getting caught costs more than an honest refusal would have: the mark now
+ * knows exactly what they are dealing with, holds it against them past this
+ * conversation, and the shakedown proceeds anyway. That asymmetry is the
+ * decision — a bluff turns a bad position into a survivable one or a much
+ * worse one, and never into a neutral one.
+ */
+function attemptBluff(ctx: SimContext, bluffer: Tribute, mark: Tribute): boolean {
+    // Somebody has to be the sort of person who tries it.
+    const nerve = PARLEY.bluffChance + Math.max(0, treacheryOf(bluffer)) * PARLEY.bluffTreacheryWeight;
+    if (!ctx.rng.chance(nerve)) return false;
+
+    const odds = Math.max(PARLEY.bluffMinChance, Math.min(PARLEY.bluffMaxChance,
+        PARLEY.bluffBase
+        + profOf(bluffer, 'persuasion') * PARLEY.bluffPerPersuasion
+        + (bluffer.attributes.charisma - 5) * PARLEY.bluffPerCharisma
+        - (mark.attributes.intelligence - 5) * PARLEY.bluffPerMarkIntelligence
+        - profOf(mark, 'tracking') * PARLEY.bluffPerMarkTracking));
+
+    bluffer.vitals.sanity -= PARLEY.bluffSanityCost;
+    clampTribute(bluffer);
+    trainProficiency(bluffer, 'persuasion');
+
+    // What they claim. Allies if they have anyone at all to name; otherwise
+    // the pack, which is the lie available to somebody entirely alone.
+    const claimsAllies = getAlive(ctx.state).some(o => o.id !== bluffer.id && o.id !== mark.id
+        && getRel(bluffer, o.id) > 0);
+
+    if (ctx.rng.chance(odds)) {
+        // It lands. The mark does not know they have been had — but something
+        // about the conversation sits wrong afterwards, which is what
+        // suspicion is for.
+        raiseSuspicion(mark, bluffer.id, PARLEY.bluffSuccessSuspicion);
+        ctx.logEvent(
+            claimsAllies
+                ? `${bluffer.name} mentions, without emphasis, that the others are a few minutes behind them. `
+                    + `${mark.name} looks at the treeline for slightly too long and decides this is not worth finding out about.`
+                : `${bluffer.name} lets their hand rest on the pack as though there were something in it worth reaching for. `
+                    + `${mark.name} does not call it, and the moment passes.`,
+            [bluffer.id, mark.id],
+            { important: true, category: 'alliance' }
+        );
+        return true;
+    }
+
+    // Caught. Worse than never having tried.
+    adjustRel(mark, bluffer.id, -PARLEY.bluffCaughtRegard);
+    raiseSuspicion(mark, bluffer.id, PARLEY.bluffCaughtSuspicion);
+    addExcitement(mark, PARLEY.bluffCaughtExcitement);
+    ctx.logEvent(
+        claimsAllies
+            ? `${bluffer.name} says the others are close. ${mark.name} has been watching this zone since dawn and knows exactly how alone ${bluffer.name} is. `
+                + 'Whatever was going to happen here is going to happen with that in the air now.'
+            : `${bluffer.name} reaches for the pack like there is something in it. ${mark.name} watches the hand, not the pack, and sees it. `
+                + 'It is a worse position than the one they started in.',
+        [bluffer.id, mark.id],
+        { important: true, category: 'betrayal' }
+    );
+    return false;
 }
 
 function treacheryOf(t: Tribute): number {

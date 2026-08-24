@@ -153,6 +153,8 @@ function normalizeMemory(raw: unknown): TributeMemory {
         stoodBy: asStrArray(r.stoodBy),
         contactStreak: asNumMap(r.contactStreak),
         suspicion: asNumMap(r.suspicion),
+        // §3.5: the reputation-by-hearsay ledger.
+        notoriety: asNumMap(r.notoriety),
     };
 }
 
@@ -348,6 +350,8 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         weaponFamiliarity: asNumMap(r.weaponFamiliarity),
         objective: normalizeObjective(r.objective),
         protectorBonds: asStrArray(r.protectorBonds),
+        // §3.7: the ex-ally ledger, which the cold-war decay curve reads.
+        formerAllies: asStrArray(r.formerAllies),
         quirks: asStrArray(r.quirks),
         injurySeverity: asObjMap<number>(r.injurySeverity),
         platePosition: clamp(asNum(r.platePosition, 0.5), 0, 1),

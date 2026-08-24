@@ -635,6 +635,21 @@ export function tickIntelSharing(ctx: SimContext) {
  * rivalry on day 10 if the two never met again. Strong bonds and deep hatreds
  * fade at half speed — those are the ones that define a run.
  */
+/**
+ * §3.7: records that these two were allies and it ended cleanly. Called only
+ * from the dissolution paths — a betrayal or an expulsion is a different thing
+ * entirely and has its own machinery.
+ */
+export function noteFormerAllies(members: Tribute[]) {
+    members.forEach(a => {
+        members.forEach(b => {
+            if (a.id === b.id) return;
+            a.formerAllies = a.formerAllies ?? [];
+            if (!a.formerAllies.includes(b.id)) a.formerAllies.push(b.id);
+        });
+    });
+}
+
 export function decayRelationships(state: GameState) {
     const alive = state.tributes.filter(t => t.status === 'alive');
     alive.forEach(t => {
@@ -642,10 +657,19 @@ export function decayRelationships(state: GameState) {
             const value = t.relationships[otherId];
             if (value === 0) return;
             if (cyclesSinceContact(state, t, otherId) <= RELATIONSHIPS.contactWindow) return;
-            const rate = Math.abs(value) >= RELATIONSHIPS.stickyMagnitude
+            let rate = Math.abs(value) >= RELATIONSHIPS.stickyMagnitude
                 ? RELATIONSHIPS.decayPerCycle / 2
                 : RELATIONSHIPS.decayPerCycle;
-            const next = value > 0 ? Math.max(0, value - rate) : Math.min(0, value + rate);
+            // §3.7: the cold war. A pair who were in an alliance together and
+            // parted without a betrayal decay slower and stop above zero —
+            // whatever they are to each other now, it is not what they were to
+            // each other before they met.
+            const wasAllied = (t.formerAllies ?? []).includes(otherId);
+            if (wasAllied) rate *= RELATIONSHIPS.exAllyDecayShare;
+            const floor = wasAllied && value > 0 ? RELATIONSHIPS.exAllyFloor : 0;
+            const next = value > 0
+                ? Math.max(Math.min(value, floor), value - rate)
+                : Math.min(0, value + rate);
             t.relationships[otherId] = Math.round(next * 10) / 10;
         });
     });

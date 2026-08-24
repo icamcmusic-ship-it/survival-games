@@ -4,7 +4,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -16,6 +16,7 @@ import { adjustRel, getRel, propagateDeathFallout } from './relationships';
 import { injure, injuryGrade, openWound } from './wounds';
 import { isUnfamiliar, noteWeaponUse, profOf, trainProficiency, weaponAffinity, weaponHandling, weaponProficiency } from './proficiency';
 import { addFear, fearFraction, reduceFear } from './fear';
+import { notorietyFraction, witnessReputation } from './notoriety';
 import { areLovers } from './alliance';
 import { hasTruce } from './parley';
 import { dominantSideCost, grappleResistance, injuryAbsorption, reachBonus } from './physique';
@@ -486,6 +487,10 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     // Who they are fighting, not just how badly it is going: a tribute who has
     // watched this particular person kill wants out long before the numbers say so.
     if (opponent) chance += fearFraction(t, opponent.id) * FEAR.retreatWeight;
+    // §3.5: and what they have merely *heard* about them, which is weaker than
+    // having seen it but is the reason a name works on somebody who has never
+    // met the person carrying it.
+    if (opponent) chance += notorietyFraction(t, opponent.id) * NOTORIETY.retreatWeight;
     // §5.2: a chokepoint has nowhere to run to — breaking off is harder to
     // choose when the exit is a bottleneck the opponent can watch.
     const zoneHere = getZone(ctx.state.arena, t.zone);
@@ -528,6 +533,11 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
         );
     }
     noteWeaponUse(attacker, weapon);
+    // §3.5: they are looking right at each other. Whatever either of them had
+    // heard about the other is now measured against the person in front of
+    // them, in both directions.
+    witnessReputation(defender, attacker);
+    witnessReputation(attacker, defender);
     const raw = (COMBAT.baseHitDamage + edge * COMBAT.damagePerPowerPoint + ctx.rng.nextInt(-3, 4)) * multiplier;
     const damage = Math.round(Math.max(COMBAT.minRoundDamage, Math.min(COMBAT.maxRoundDamage * multiplier, raw)));
 

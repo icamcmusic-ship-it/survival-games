@@ -1,10 +1,11 @@
 import { Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { FEAR, MEMORY, MOVEMENT } from '../data/balance';
+import { FEAR, MEMORY, MOVEMENT, NOTORIETY } from '../data/balance';
 import { SimContext } from './context';
 import { effectiveResources, zoneFeatures } from './map';
 import { ensureMemory, hasVengeanceAgainst, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { fearInZone } from './fear';
+import { notorietyInZone } from './notoriety';
 import { traitMod } from '../data/traits';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 
@@ -70,6 +71,9 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         // butcher their district partner will not walk into that person's zone
         // however good the foraging is, and no amount of generic zone-threat
         // captured that before.
+        // §3.5: a zone is also avoided for who is *said* to be in it, not only
+        // for who has been watched working there.
+        score -= notorietyInZone(state, t, z.name) * NOTORIETY.avoidWeight;
         const dreaded = fearInZone(state, t, z.name) / FEAR.max;
         if (dreaded > 0) {
             // Unless they are the one doing the hunting: a target's menace is a

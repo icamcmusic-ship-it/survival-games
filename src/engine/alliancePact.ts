@@ -1,3 +1,4 @@
+import { noteFormerAllies } from './memory';
 import { Alliance, AlliancePact, GameState, PactEvent, Tribute } from '../models/types';
 import { ALLIANCES } from '../data/balance';
 import { RNG } from '../utils/rng';
@@ -238,6 +239,10 @@ export function resolveDuePacts(ctx: SimContext) {
             members.map(m => m.id),
             { important: true, category: 'alliance' }
         );
+        // §3.7: they kept their word and walked away from each other. That is
+        // not the same as never having met, and the ordinary decay rate treats
+        // it as though it were.
+        noteFormerAllies(members);
         members.forEach(m => { delete m.allianceId; });
     });
 }

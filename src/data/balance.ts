@@ -192,6 +192,37 @@ export const INFECTION = {
 } as const;
 
 /**
+ * §3.5: notoriety — reputation travelling without direct contact.
+ *
+ * Deliberately slow. The whole design claim is that a name accumulates over a
+ * run out of things nobody actually witnessed, so any single channel has to be
+ * nearly negligible and it is the sum over days that produces a reputation.
+ * `perKillFromSky` applies every cycle to every living tribute, so a
+ * three-kill Career is worth ~0.36 a cycle to the whole field — a name by day
+ * four, not by lunchtime on day one.
+ */
+export const NOTORIETY = {
+    max: 100,
+    /** Per kill, per cycle, from the nightly broadcast alone. */
+    perKillFromSky: 0.12,
+    /** Added when the believer is one zone from where the bodies are. */
+    proximityBonus: 0.6,
+    /** What a name is worth once somebody has actually met the person. */
+    perKnownKill: 14,
+    /** How far a meeting drags the rumour toward the truth, either way. */
+    witnessCorrection: 0.5,
+    /** Share of a ledger that survives being passed on at a meeting. */
+    gossipShare: 0.6,
+    decayPerCycle: 0.15,
+    /** Cycles a sighting supports a belief about where somebody is. */
+    beliefLifetime: 4,
+    /** Weight on the retreat roll — smaller than fear, which is first-hand. */
+    retreatWeight: 0.1,
+    /** Weight on how much a zone is avoided for who is believed to be in it. */
+    avoidWeight: 6,
+} as const;
+
+/**
  * Drinking from the arena itself.
  *
  * Thirst drains 15 a cycle and the only relief was a Water Canteen out of the
@@ -2490,6 +2521,17 @@ export const RELATIONSHIPS = {
     /** An enemy's death is a relief — a small sanity refund. */
     reliefSanity: 6,
     enemyBond: -35,
+
+    /**
+     * §3.7: the cold war. An alliance that ended without a betrayal leaves two
+     * people who are not allies and are also not strangers, and the ordinary
+     * decay rate walked them back to nothing in a few cycles as though the
+     * six days had not happened.
+     */
+    /** Multiplier on the decay rate for a pair who were allies and parted cleanly. */
+    exAllyDecayShare: 0.4,
+    /** Regard an ex-ally bond will not decay below. Shared history is not erasable. */
+    exAllyFloor: 12,
     /** Odds that relief at an enemy's cannon is visible enough to narrate. */
     reliefLineChance: 0.4,
 
@@ -4034,6 +4076,43 @@ export const PARLEY = {
     truceTurnTreacheryWeight: 0.5,
     /** Cycles the striker commits to hunting the person they let walk. */
     truceTurnHuntCycles: 3,
+
+    /**
+     * §3.6: bluffing at the table.
+     *
+     * The negotiation layer already models lying about *places* — a frightened
+     * tribute buying their life with directions to somewhere that is not
+     * dangerous. What it could not model is lying about *yourself*: the thing
+     * anybody outmatched in a clearing actually does, which is to imply there
+     * is more kit in the pack than there is, or that somebody is coming.
+     *
+     * Resolved as a contest, not a roll against a constant: the bluffer's
+     * persuasion and charisma against the mark's intelligence and tracking —
+     * reading people is the same faculty as reading ground. And the cost of
+     * being caught is deliberately steeper than an honest refusal would have
+     * been, because that is the whole shape of the decision: a bluff is a bet
+     * that turns a bad position into a survivable one or a much worse one.
+     */
+    /** Odds an outmatched tribute reaches for it at all, before temperament. */
+    bluffChance: 0.3,
+    /** Treachery makes it easier to reach for; this scales that. */
+    bluffTreacheryWeight: 0.35,
+    /** The contest. */
+    bluffBase: 0.4,
+    bluffPerPersuasion: 0.1,
+    bluffPerCharisma: 0.03,
+    bluffPerMarkIntelligence: 0.035,
+    bluffPerMarkTracking: 0.05,
+    bluffMaxChance: 0.85,
+    bluffMinChance: 0.08,
+    /** Regard lost by the mark when the bluff works and they later think about it. */
+    bluffSuccessSuspicion: 12,
+    /** Being caught: worse than never having tried. */
+    bluffCaughtRegard: 22,
+    bluffCaughtSuspicion: 30,
+    bluffCaughtExcitement: 18,
+    /** Sanity the bluffer spends holding a lie together in front of an armed stranger. */
+    bluffSanityCost: 4,
 
     /** Both armed, neither willing to move first. */
     standoffChance: 0.4,

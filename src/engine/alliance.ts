@@ -2,7 +2,7 @@ import { Alliance, GameState, Item, Tribute } from '../models/types';
 import { ALLIANCES, ROMANCE } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext, getAlive } from './context';
-import { cycleOf } from './memory';
+import { cycleOf, noteFormerAllies } from './memory';
 import { adjustRel, getRel } from './relationships';
 import { pactOath, pactStrictness, rollPact } from './alliancePact';
 
@@ -291,6 +291,10 @@ export function reconcileAlliances(ctx: SimContext) {
             // A one-person alliance is not an alliance. This also cleans up the
             // id left on a lone survivor, which otherwise persisted and showed
             // up in the UI as a standing pack of one.
+            // §3.7: a pack that has simply come apart — the last two members
+            // separated, or died down to one — still leaves whoever is left
+            // holding six days of having been in it with somebody.
+            noteFormerAllies(membersOf(ctx.state, id));
             members.forEach(m => { delete m.allianceId; });
             delete records[id];
             return;

@@ -19,6 +19,7 @@ import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { areLovers, leaderFor } from '../alliance';
 import { decayFear } from '../fear';
+import { decayNotoriety, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
 import { runStanceBeats } from '../stanceBeats';
 import { runArchetypeSignatures, tickGhosts } from '../archetypeHooks';
@@ -262,6 +263,12 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayAllianceTrust(ctx.state);
     decayFear(ctx.state);
     decaySuspicion(ctx.state);
+    // §3.5: the two contactless channels — the sky, and the zone next door —
+    // then the decay, so a name nobody has heard again fades. Ordered after
+    // `decayFear` for the same reason: this cycle's belief is built on top of
+    // what survived last cycle's forgetting, not underneath it.
+    spreadNotoriety(ctx);
+    decayNotoriety(ctx.state);
     // §9.7: and knowledge moves. After the discovery pass above, so a lie found
     // out this cycle is not immediately papered over by a fresh trade.
     tickIntelSharing(ctx);

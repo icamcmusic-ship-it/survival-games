@@ -16,7 +16,7 @@ import { generateTributes, strengthCapForAge } from '../src/engine/generator';
 import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG, traitsConflict } from '../src/data/constants';
-import { ALLIANCES, FEAR, GENERATION, HUNTING, PROFICIENCY, RELATIONSHIPS, ZONES } from '../src/data/balance';
+import { ALLIANCES, FEAR, GENERATION, HUNTING, NOTORIETY, PROFICIENCY, RELATIONSHIPS, ZONES } from '../src/data/balance';
 import { carryCapacity } from '../src/engine/items';
 import { oddsScore, tributeOdds } from '../src/engine/odds';
 import { GameConfig, GameState, Stance } from '../src/models/types';
@@ -67,7 +67,8 @@ let dualVictories = 0;
 // Tribute-logic overhaul: every new system needs evidence it ran.
 let clots = 0, fieldDressings = 0, restRecoveries = 0, huntOrCraft = 0;
 // §3.1: infection — wounds turning, deepening, being treated, and killing.
-let sleepDrops = 0, coldWeaponSwings = 0, loyalBroke = 0, mercyBroke = 0, pacifistBroke = 0;
+let peakNotoriety = 0, notorietyWithoutContact = 0, strangersKnownByName = 0;
+let sleepDrops = 0, coldWeaponSwings = 0, bluffsLanded = 0, bluffsCaught = 0, loyalBroke = 0, mercyBroke = 0, pacifistBroke = 0;
 let woundsTurned = 0, sepsisDeepened = 0, sepsisTerminal = 0, sepsisTreated = 0, sepsisDeaths = 0, feverLines = 0;
 let zoneDrinks = 0, pursuits = 0, desperationFights = 0, fearFelt = 0;
 let bestProficiencySeen = 0;
@@ -280,6 +281,8 @@ for (let i = 0; i < 400; i++) {
     if (/takes the .* job off them|account for it in front of everyone/.test(l.text)) hearings++;
     if (/does not notice their .* going/.test(l.text)) sleepDrops++;
     if (/not their weapon, not yet/.test(l.text)) coldWeaponSwings++;
+    if (/decides this is not worth finding out about|does not call it, and the moment passes/.test(l.text)) bluffsLanded++;
+    if (/knows exactly how alone|watches the hand, not the pack/.test(l.text)) bluffsCaught++;
     if (/they are not that any more/.test(l.text)) loyalBroke++;
     if (/it did not survive the week/.test(l.text)) mercyBroke++;
     if (/given up arguing with it/.test(l.text)) pacifistBroke++;
@@ -402,6 +405,21 @@ for (let i = 0; i < 400; i++) {
     if (!t.memory) note('tribute without memory');
     if (t.reputation === undefined) note('tribute without a reputation baseline');
     if (!t.interviewStrategy) note('tribute never got an interview persona');
+
+    // §3.5: notoriety must stay in bounds, and — the point of the mechanic —
+    // it has to reach people who have never met its subject. A ledger entry
+    // for somebody this tribute has no contact record with is exactly the
+    // "reputation travelled without contact" case.
+    Object.entries(t.memory?.notoriety ?? {}).forEach(([otherId, n]) => {
+      if (!Number.isFinite(n)) note('non-finite notoriety');
+      if (n < 0 || n > NOTORIETY.max) note(`notoriety out of bounds: ${n}`);
+      if (otherId === t.id) note('tribute is notorious to themselves');
+      peakNotoriety = Math.max(peakNotoriety, n);
+      if (t.memory?.lastContact?.[otherId] === undefined) {
+        if (n >= NOTORIETY.max * 0.15) strangersKnownByName++;
+        notorietyWithoutContact++;
+      }
+    });
 
     // --- Relationship bounds: grief, betrayal and decay must all stay inside them. ---
     Object.entries(t.relationships).forEach(([otherId, r]) => {
@@ -689,6 +707,8 @@ console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDe
 const truceEndings = trucesRenewed + trucesLapsed + trucesTurned + trucesBroken + trucesOutlived;
 console.log(`sleep: deprivedDrops=${sleepDrops}`);
 console.log(`weapons: coldSwings=${coldWeaponSwings}`);
+console.log(`bluffs: landed=${bluffsLanded} caught=${bluffsCaught}`);
+console.log(`notoriety: peak=${Math.round(peakNotoriety)} ledgerEntriesWithoutContact=${notorietyWithoutContact} strangersKnownByName=${strangersKnownByName}`);
 console.log(`traitArcs: pacifistToBroken=${pacifistBroke} loyalToTreacherous=${loyalBroke} mercifulToRuthless=${mercyBroke}`);
 console.log(`infection: woundsTurned=${woundsTurned} deepened=${sepsisDeepened} reachedTerminal=${sepsisTerminal} treated=${sepsisTreated} feverLines=${feverLines} sepsisDeaths=${sepsisDeaths}`);
 console.log(`truces2: outlived=${trucesOutlived} brokeredHeld=${brokeredHeld}`);

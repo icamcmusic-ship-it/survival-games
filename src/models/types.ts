@@ -343,6 +343,17 @@ export interface TributeMemory {
      * (0-100). Raised by witnessed betrayals and charter breaches; decays.
      */
     suspicion?: Record<string, number>;
+    /**
+     * §3.5: what this tribute has *heard* about each other tribute, 0-100.
+     *
+     * Distinct from `fear`, which is what they have seen. Notoriety is built
+     * from the nightly sky, from cannons in the next zone, and from talk at
+     * every peaceable meeting — so the field's biggest killer becomes a name
+     * to somebody who has never laid eyes on them. It is belief, not fact: it
+     * can settle on the wrong person, and meeting them is what corrects it.
+     * See `engine/notoriety.ts`.
+     */
+    notoriety?: Record<string, number>;
 }
 
 /** Where a tribute's most recent wound actually came from. */
@@ -606,6 +617,18 @@ export interface Tribute {
     /** §3.6: cycles of undisturbed healing banked per injury site. */
     recoveryProgress?: Partial<Record<InjurySite, number>>;
     /** Ids of tributes this one has formed a protective bond with. See `growProtectorBond`. */
+    /**
+     * §3.7: people this tribute was in an alliance with that ended *without*
+     * anybody being betrayed — a pact clause running out, a Career pack simply
+     * coming apart. Ordinary bond decay walks a dissolved alliance back to
+     * stranger's odds in a few cycles, which is the wrong ending for it: they
+     * carried each other's water for six days. An ex-ally pair decays slower
+     * and floors above zero, so they are never quite strangers again.
+     *
+     * Deliberately not written by the betrayal or expulsion paths. Those have
+     * their own, much colder, machinery.
+     */
+    formerAllies?: string[];
     protectorBonds?: string[];
     /**
      * How far their launch plate landed from the mouth of the Cornucopia, 0-1.
