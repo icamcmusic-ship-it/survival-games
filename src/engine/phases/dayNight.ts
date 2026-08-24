@@ -37,7 +37,7 @@ import { tickWeatherFront } from '../weatherFront';
 import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
 import { resolveTruces } from '../parley';
-import { repayDebts, tickDistrictBonds } from '../debts';
+import { repayDebts, tickDistrictBonds, tickRetainers } from '../debts';
 import { enforceCharters } from '../allianceCharter';
 import { earnTrait } from '../earnedTraits';
 import { tickTraitArcs } from '../traitArcs';
@@ -242,6 +242,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // group that agreed terms is held to them.
     repayDebts(ctx);
     tickDistrictBonds(ctx);
+    // §1.2: a contract has an upkeep. The Mercenary's ledger is finally read.
+    tickRetainers(ctx);
     enforceCharters(ctx);
     const board = getAlive(ctx.state);
     // §10.1: 'Paid in Full' — debts existed, and none were still outstanding

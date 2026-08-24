@@ -1,5 +1,5 @@
 import { Alliance, GameState, Item, Tribute } from '../models/types';
-import { ALLIANCES } from '../data/balance';
+import { ALLIANCES, ROMANCE } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext, getAlive } from './context';
 import { cycleOf } from './memory';
@@ -376,4 +376,48 @@ export function emptyCache(record: Alliance): Item[] {
     const spoils = record.sharedCache;
     record.sharedCache = [];
     return spoils;
+}
+
+/**
+ * §4.3: a performed bond is a claim, and claims can be tested.
+ *
+ * The Star-Crossed-as-strategy idea only becomes a strategy if it can fail.
+ * Before this, a performer collected the sponsor benefit of a devotion they did
+ * not feel with no exposure at all — the act was invisible to everyone in the
+ * arena and everyone in the Capitol, forever. Two things can now catch it: a
+ * sharp tribute standing close enough to watch them not mean it, and the
+ * cameras themselves once the pair are excited enough to be worth watching
+ * closely. Both are far more dangerous to the performer than being alone.
+ */
+export function sniffPerformances(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    alive.forEach(performer => {
+        const shown = Object.keys(performer.displayedRegard ?? {});
+        if (shown.length === 0) return;
+        shown.forEach(targetId => {
+            const target = alive.find(o => o.id === targetId);
+            if (!target) return;
+            const observers = alive.filter(o =>
+                o.id !== performer.id && o.zone === performer.zone
+                && o.attributes.intelligence >= ROMANCE.performedSniffIntelligence);
+            const crowdWatching = performer.excitementRating >= ROMANCE.performedExposedExcitement;
+            if (observers.length === 0 && !crowdWatching) return;
+            if (!ctx.rng.chance(ROMANCE.performedSniffChance)) return;
+
+            const witness = observers[0];
+            // The Capitol paid for a love story and is being sold a rehearsal.
+            performer.sponsorTrust = Math.max(0, performer.sponsorTrust - ROMANCE.performedExposedTrust);
+            if (performer.displayedRegard) delete performer.displayedRegard[targetId];
+            adjustRel(target, performer.id, -ROMANCE.performedExposedRegard);
+            ctx.logEvent(
+                witness
+                    ? `${witness.name} watches ${performer.name} say it again and, this time, hears the rehearsal in it. `
+                      + `Whatever is between ${performer.name} and ${target.name}, one half of it is a performance — and now three people know.`
+                    : `The cameras are close enough on ${performer.name} to catch the half-second before the line lands. `
+                      + `Panem sees it at the same moment ${target.name} does.`,
+                witness ? [performer.id, target.id, witness.id] : [performer.id, target.id],
+                { important: true, category: 'betrayal' }
+            );
+        });
+    });
 }

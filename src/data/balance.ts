@@ -681,6 +681,14 @@ export const SANITY_BANDS = {
     /** Crossing the bottom band leaves a permanent mark (once per run). */
     scarStealthLoss: 1,
     /**
+     * §1.3: the mark is permanent in the one way that matters — a tribute who
+     * has been all the way down never fully comes back up. Sanity is capped
+     * here for the rest of the run, so 'steady' is somewhere they used to live.
+     */
+    scarredSanityCeiling: 78,
+    /** ...and the nights are worse, permanently. */
+    scarredNightSanity: 2,
+    /**
      * §11.4: low sanity makes noise. A tribute far enough gone (or already
      * carrying stealth damage from breakdowns) can blow their own cover at
      * night — a scream, a dropped pot, a fire fed too high — and everyone
@@ -1794,7 +1802,21 @@ export const ZONES = {
 } as const;
 
 /** What tributes remember, and how fast they forget it. */
+/** §1.2: thresholds for the victor's interview reading the run's own ledgers. */
+export const EPILOGUE = {
+    /** Sponsor credit earned purely by being unfindable, worth Caesar asking about. */
+    ghostTrustNotable: 12,
+} as const;
+
 export const MEMORY = {
+    /**
+     * §3.4: how badly a dissociating tribute misremembers a place. `Blank` is
+     * the share of zones whose remembered threat reads as nothing at all;
+     * `invent` is the share that read as terrible with no cause.
+     */
+    dissociationBlankShare: 0.3,
+    dissociationInventShare: 0.2,
+    dissociationInventedThreat: 4,
     /** Threat impression added to a zone by a death witnessed there. */
     deathThreat: 1.0,
     /** Threat added by a death only heard as a cannon (location known from the sky). */
@@ -2194,7 +2216,23 @@ export const ROMANCE = {
      * alliance formation gained its same-zone gate: fewer organic alliances
      * means less sustained contact for the streak to build on.
      */
-    performedChance: 0.13,
+    /**
+     * §4.3: Star-Crossed-as-strategy is one of the best ideas in the social
+     * layer, and at 0.13 behind these gates it fired in roughly 5% of runs —
+     * effectively it did not ship. Raised substantially, and paired with
+     * `performedSniff*` below so the strategy carries the risk that makes it a
+     * strategy rather than free sponsor money.
+     */
+    performedChance: 0.36,
+    /** Per-cycle odds a sharp observer in the same zone reads the act. */
+    performedSniffChance: 0.22,
+    /** Intelligence at or above which a tribute can read a performance at all. */
+    performedSniffIntelligence: 7,
+    /** ...and what the crowd does about it once somebody says it out loud. */
+    performedExposedTrust: 22,
+    performedExposedRegard: 30,
+    /** Excitement above which the cameras are close enough to catch it too. */
+    performedExposedExcitement: 55,
     /**
      * Regard the smitten party needs. Deliberately below `threshold`: a
      * performed bond does not need the mutual devotion a real one does, only
@@ -2246,7 +2284,14 @@ export const ROMANCE = {
      * and performedChance 0.08) lands the combined system at ~11%, inside
      * the 10%-15% design goal.
      */
-    chancePerCycle: 0.02,
+    /**
+     * §4.3: retuned again when the performed bond was raised from 0.13 to a
+     * rate that actually ships. Genuine and performed bonds both mint the
+     * Star-Crossed trait, so they share one budget — the design goal is a
+     * 10-15% lover-run rate with a far larger *share* of it performed, not a
+     * larger total. Genuine romance gives up the room the performance takes.
+     */
+    chancePerCycle: 0.002,
     /**
      * Per-day decay on that chance. Keeps the romance rate a property of the
      * cast rather than a property of how long the Games happened to run.
@@ -3472,6 +3517,14 @@ export const PARLEY = {
     tollInfoResentment: 8,
     tollInfoSanityCost: 5,
 
+    /** §4.3: health at which "we are both too hurt for this" stops being true. */
+    truceHealedHealth: 70,
+    /** Kills that make a third party a threat worth agreeing about. */
+    truceThreatKills: 2,
+    /** §1.2: what a brokered truce running its full term pays its broker. */
+    brokerHeldTrust: 8,
+    brokerHeldExcitement: 12,
+    brokerHeldRegard: 6,
     /** An explicit, expiring non-aggression pact. */
     truceChance: 0.4,
     truceCycles: 4,
@@ -3547,6 +3600,14 @@ export const DEBTS = {
 
     /** Turning on a creditor: multiplier on betrayal willingness, per point owed. */
     betrayalResistPerPoint: 0.3,
+    /**
+     * §1.2: turning on a *paying client*. A contract holds harder than a
+     * favour — a mercenary who knifes the person who hired them is a mercenary
+     * nobody else in the arena will ever hire.
+     */
+    retainerBetrayalResist: 0.45,
+    retainerRegardPerCycle: 2,
+    retainerTrustPerCycle: 1,
     minBetrayalMultiplier: 0.25,
 
     /** Settling up. */

@@ -425,6 +425,17 @@ export interface Tribute {
      */
     truces?: Record<string, number>;
     /**
+     * §4.3: *why* each standing truce exists.
+     *
+     * A truce that expires on a cycle counter is a truce that overwhelmingly
+     * just lapses — 90% of the 218 truces in a 400-run soak evaporated without
+     * resolving into anything, which makes keeping your word a lottery ticket
+     * rather than a choice. A truce made because you were both bleeding should
+     * come due when you both stop bleeding; one made against a common threat
+     * should come due when the threat does. `resolveTruces` reads this.
+     */
+    truceReason?: Record<string, TruceReason>;
+    /**
      * Displayed regard: what a tribute is *performing* toward someone, as
      * distinct from `relationships`, which is what they actually feel.
      *
@@ -670,6 +681,10 @@ export interface Tribute {
     brokeredTruces?: Array<[string, string]>;
     /** A2: Ghost — sponsor credit accrued purely for never being seen. */
     ghostTrust?: number;
+    /** §1.2: most clients this Mercenary has had alive and paid-for at once. */
+    retainersHonoured?: number;
+    /** §1.2: truces this Diplomat brokered that ran their full term. */
+    trucesBrokeredHeld?: number;
 }
 
 /**
@@ -784,6 +799,16 @@ export interface Faction {
     /** How hard they have hardened. Drives coup vs. split vs. nothing. */
     heat: number;
 }
+
+/**
+ * §4.3: why two people who are not friends agreed not to kill each other.
+ *
+ *   mutual-threat  a third party neither can take alone;
+ *   both-wounded   neither can afford a fight right now;
+ *   brokered       a Diplomat talked them into it and is standing there;
+ *   extortion      one of them paid, and the peace lasts as long as the fee.
+ */
+export type TruceReason = 'mutual-threat' | 'both-wounded' | 'brokered' | 'extortion';
 
 /** §4.4: a job inside an alliance, held by exactly one member. */
 export type AllianceRole = 'quartermaster' | 'scout' | 'muscle' | 'medic';

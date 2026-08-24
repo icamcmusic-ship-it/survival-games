@@ -563,6 +563,14 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
 
     // Sanity residue: the bottom band abandons things, and the first visit
     // down there leaves a permanent mark.
+    // §1.3: the scar, as an ongoing state rather than a one-off deduction.
+    // Whatever they are from here on is capped below where they started, and
+    // the nights cost more than they used to.
+    if (t.sanityScarred) {
+        t.vitals.sanity = Math.min(t.vitals.sanity, SANITY_BANDS.scarredSanityCeiling);
+        if (ctx.state.phase === 'night') t.vitals.sanity = Math.max(0, t.vitals.sanity - SANITY_BANDS.scarredNightSanity);
+    }
+
     const band = sanityBandOf(t);
     if (band === 'gone') {
         if (!t.sanityScarred) {

@@ -263,6 +263,7 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         sanityStealthLoss: asNum(r.sanityStealthLoss, 0),
         resolve: clamp(asNum(r.resolve, 70), 0, 100),
         truces: asNumMap(r.truces),
+        truceReason: asObjMap(r.truceReason) as Tribute['truceReason'],
         displayedRegard: asNumMap(r.displayedRegard),
         // §4.1: the second stored relationship axis (professional esteem).
         // Saves from before it existed load as an empty map and the axis

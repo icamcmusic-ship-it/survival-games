@@ -70,7 +70,7 @@ let zoneDrinks = 0, pursuits = 0, desperationFights = 0, fearFelt = 0;
 let bestProficiencySeen = 0;
 // Relationships and alliances.
 let exoticBetrayals = 0, merges = 0, leadershipChanges = 0, pactsDeclared = 0, pactsHonoured = 0;
-let factionActions = 0, expulsions = 0, hearings = 0;
+let factionActions = 0, expulsions = 0, hearings = 0, trucesOutlived = 0, brokeredHeld = 0;
 let feuds = 0, freeForAlls = 0, careerDefections = 0, cacheContributions = 0;
 // Intentions and fieldcraft.
 let objectivesFormed = 0, trapsSet = 0, trapsTriggered = 0;
@@ -275,6 +275,8 @@ for (let i = 0; i < 400; i++) {
     if (/simply stop pretending|the group is two groups now/.test(l.text)) factionActions++;
     if (/is put out of the group/.test(l.text)) expulsions++;
     if (/takes the .* job off them|account for it in front of everyone/.test(l.text)) hearings++;
+    if (/never once broke it/.test(l.text)) trucesOutlived++;
+    if (/the agreement that held them apart was/.test(l.text)) brokeredHeld++;
     if (/have done this before/.test(l.text)) feuds++;
     if (/not one of them has a friend in it/.test(l.text)) freeForAlls++;
     if (/walks the other way|there is no pack this year/.test(l.text)) careerDefections++;
@@ -661,6 +663,7 @@ console.log(`psychology: fear entries=${fearFelt} peakProficiency=${bestProficie
 console.log(`intentions: objectives formed=${objectivesFormed}`);
 console.log(`social: exoticBetrayals=${exoticBetrayals} merges=${merges} leaderChanges=${leadershipChanges} feuds=${feuds} freeForAlls=${freeForAlls}`);
 console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDefections=${careerDefections} cacheContributions=${cacheContributions}`);
+console.log(`truces2: outlived=${trucesOutlived} brokeredHeld=${brokeredHeld}`);
 console.log(`politics: factionActions=${factionActions} expulsions=${expulsions} hearings=${hearings}`);
 console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} paidInInformation=${tributesPaidInformation} truces=${trucesStruck} trucesHeld=${trucesHeld} trucesBroken=${trucesBroken} trucesRenewed=${trucesRenewed} trucesLapsed=${trucesLapsed} trucesTurned=${trucesTurned} soloDepartures=${soloDepartures} schisms=${schisms}`);
 console.log(`bonds: debtsRepaid=${debtsRepaid} charterBreaches=${charterBreaches} performed=${performedBonds} districtPairs=${districtBonds}`);

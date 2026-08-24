@@ -1,5 +1,5 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
-import { FEAR, HUNTING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
+import { FEAR, HUNTING, MEMORY, RELATIONSHIPS, SANITY_BANDS, SUSPICION } from '../data/balance';
 import { traitMod } from '../data/traits';
 import { addFear } from './fear';
 import { getZone } from './map';
@@ -98,12 +98,57 @@ export function addZoneThreat(state: GameState, t: Tribute, zone: string, amount
     slot.seen = Math.max(slot.seen, cycleOf(state));
 }
 
+/**
+ * §1.3/§3.4: whether this tribute's recollection can be trusted at all.
+ *
+ * `sanityScarred` set a flag, took one point of stealth, printed a genuinely
+ * good line — "something in {name} goes quiet and does not come back" — and
+ * then did nothing whatsoever for the rest of the run. A permanent mark that is
+ * neither permanent nor a mark.
+ *
+ * This is the consequence it was always describing. Dissociation is not a stat
+ * penalty; it is not knowing whether the thing you remember happened. A scarred
+ * tribute (or one currently in the bottom band) misremembers *places* — a zone
+ * that killed two people reads as safe ground, a zone they were never touched
+ * in reads as somewhere terrible happened. That is far more interesting than a
+ * modifier and it costs almost nothing, because the whole decision layer
+ * already routes through remembered threat rather than truth.
+ */
+export function memoryUnreliable(t: Tribute): boolean {
+    return !!t.sanityScarred || t.vitals.sanity <= SANITY_BANDS.gone;
+}
+
+/**
+ * Deterministic per-tribute-per-zone distortion, in [0, 1).
+ *
+ * Deliberately *not* an RNG draw: a corrupted memory has to be stable, or the
+ * tribute flickers between believing a zone is safe and believing it is not,
+ * which reads as noise rather than as damage. It also means this consumes no
+ * seeded draws and cannot change a replay.
+ */
+function distortion(t: Tribute, zone: string): number {
+    let hash = 2166136261;
+    const key = `${t.id}:${zone}`;
+    for (let i = 0; i < key.length; i++) {
+        hash ^= key.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    return ((hash >>> 0) % 1000) / 1000;
+}
+
 /** Threat as remembered now, faded by however many cycles have passed. */
 export function rememberedThreat(state: GameState, t: Tribute, zone: string): number {
     const slot = ensureMemory(t).zones[zone];
-    if (!slot) return 0;
-    const age = Math.max(0, cycleOf(state) - slot.seen);
-    return slot.threat * Math.pow(MEMORY.threatDecay, age);
+    const age = slot ? Math.max(0, cycleOf(state) - slot.seen) : 0;
+    const real = slot ? slot.threat * Math.pow(MEMORY.threatDecay, age) : 0;
+    if (!memoryUnreliable(t)) return real;
+
+    // Two failure modes, both real: a place that hurt them reads as nothing,
+    // and a place nothing happened reads as the worst ground in the arena.
+    const d = distortion(t, zone);
+    if (d < MEMORY.dissociationBlankShare) return 0;
+    if (d > 1 - MEMORY.dissociationInventShare) return Math.max(real, MEMORY.dissociationInventedThreat);
+    return real;
 }
 
 /** Rivals believed to be in a zone, or 0 once the sighting has gone stale. */

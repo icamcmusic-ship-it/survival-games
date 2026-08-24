@@ -181,7 +181,8 @@ const SIGNATURES: Record<string, Signature> = {
         giveItem(t, fee);
         t.retainerPaidBy = [...(t.retainerPaidBy ?? []), client.id];
         say(ctx, t, 'mercenaryContract', [t.id, client.id], { client: client.name, fee: fee.name });
-        grantTruce(ctx, t, client, ARCHETYPE_HOOKS.contractTruceCycles);
+        // §4.3: a retainer is peace bought, and it lasts as long as the fee.
+        grantTruce(ctx, t, client, ARCHETYPE_HOOKS.contractTruceCycles, 'extortion');
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
         return true;
     },
@@ -253,7 +254,7 @@ const SIGNATURES: Record<string, Signature> = {
         const here = getAlive(ctx.state).filter(o => o.id !== t.id && o.zone === t.zone);
         if (here.length < 2) return false;
         const [a, b] = here;
-        grantTruce(ctx, a, b, ARCHETYPE_HOOKS.brokeredTruceCycles);
+        grantTruce(ctx, a, b, ARCHETYPE_HOOKS.brokeredTruceCycles, 'brokered');
         t.brokeredTruces = [...(t.brokeredTruces ?? []), [a.id, b.id]];
         say(ctx, t, 'diplomatAccord', [t.id, a.id, b.id], { first: a.name, second: b.name });
         adjustRel(a, t.id, ARCHETYPE_HOOKS.accordGratitude);

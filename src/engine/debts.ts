@@ -50,8 +50,54 @@ export function clearDebt(debtor: Tribute, creditorId: string) {
  */
 export function betrayalReluctance(betrayer: Tribute, victimId: string): number {
     const owed = debtTo(betrayer, victimId);
-    if (owed <= 0) return 1;
-    return Math.max(DEBTS.minBetrayalMultiplier, 1 - owed * DEBTS.betrayalResistPerPoint);
+    // §1.2: a retainer is a debt with a receipt.
+    //
+    // `retainerPaidBy` was written by the Mercenary's signature and then read
+    // by nothing at all — the archetype's entire identity ("the price of their
+    // company, and who has paid it") was recorded and never charged, so paying
+    // a mercenary bought you precisely nothing enforceable. It buys this: a
+    // contract holds harder than a favour, because a mercenary who turns on a
+    // paying client is a mercenary nobody else will ever hire.
+    const paid = betrayer.retainerPaidBy?.filter(id => id === victimId).length ?? 0;
+    if (owed <= 0 && paid <= 0) return 1;
+    return Math.max(
+        DEBTS.minBetrayalMultiplier,
+        1 - owed * DEBTS.betrayalResistPerPoint - paid * DEBTS.retainerBetrayalResist
+    );
+}
+
+/** §1.2: everyone who has ever paid for this tribute's company. */
+export function clientsOf(t: Tribute): string[] {
+    return [...new Set(t.retainerPaidBy ?? [])];
+}
+
+/**
+ * §1.2: a contract has an upkeep, and honouring it pays.
+ *
+ * A mercenary standing between a paying client and the arena is the archetype
+ * working; the Capitol loves a professional, and the client's regard is bought
+ * rather than felt. Run once a cycle from the alliance phase.
+ */
+export function tickRetainers(ctx: SimContext) {
+    getAlive(ctx.state).forEach(t => {
+        const clients = clientsOf(t);
+        if (clients.length === 0) return;
+        let honoured = 0;
+        clients.forEach(id => {
+            const client = getAlive(ctx.state).find(o => o.id === id);
+            if (!client) return;
+            honoured += 1;
+            // The regard is contractual, not warm — it is the client's, and it
+            // stops the moment the fee stops.
+            adjustRel(client, t.id, DEBTS.retainerRegardPerCycle);
+            if (client.zone === t.zone) {
+                t.sponsorTrust = Math.min(100, t.sponsorTrust + DEBTS.retainerTrustPerCycle);
+            }
+        });
+        // §10.1: a contract kept to the end is the Mercenary's version of a
+        // charter kept, and the achievement layer can finally see it.
+        t.retainersHonoured = Math.max(t.retainersHonoured ?? 0, honoured);
+    });
 }
 
 /**

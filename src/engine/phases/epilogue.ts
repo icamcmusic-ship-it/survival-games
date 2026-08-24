@@ -3,6 +3,7 @@ import { EpilogueQA, EventLog, Tribute } from '../../models/types';
 import { ensureMemory } from '../memory';
 import { getRel } from '../relationships';
 import { RNG } from '../../utils/rng';
+import { EPILOGUE } from '../../data/balance';
 
 /** Picks one variant, seeded so the same run always gives the same interview. */
 function pick(rng: RNG, variants: string[]): string {
@@ -278,6 +279,40 @@ export function processEpilogue(ctx: SimContext) {
             'Nobody sent me anything, Caesar, and somewhere around day three I stopped expecting them to. After that it got easier, oddly.',
             'I am not sure anyone in the Capitol knew my name until the third day. By then I had already worked out how to feed myself.',
         ])}'`
+        });
+    }
+
+    // §1.2: what the arena took off them.
+    //
+    // `traitArcs` sheds and transforms traits all run — 278 of them across a
+    // 400-run soak — and records every one on `shedTraits` with a type comment
+    // saying it is "kept for the epilogue". The epilogue never read it. This is
+    // the beat that field was written for: the victor is asked about the person
+    // who walked in, and has to account for the difference.
+    const shed = [...new Set(winner.shedTraits ?? [])];
+    if (shed.length > 0) {
+        const lost = shed[shed.length - 1];
+        qas.push({
+            question: `Caesar Flickerman: 'The girl — the boy — we interviewed before the Games was ${lost.toLowerCase()}. Panem watched that go. When did you notice?'`,
+            answer: `${winner.name}: '${pick(rng, [
+                `I did not notice. That is the part nobody tells you. You do not feel ${lost.toLowerCase()} stop being true about you — you just find yourself somewhere it never was.`,
+                `Somewhere around the middle, I think. I remember reaching for it and it was not there, and I did not stop walking.`,
+                `${shed.length > 1 ? `${shed.length} things, Caesar, if we are counting. ` : ''}I would like them back. I do not think that is on offer.`,
+            ])}'`
+        });
+    }
+
+    // §1.2: the Ghost's ledger. `ghostTrust` counted exactly how much of this
+    // victor's standing with the Capitol was earned by being unfindable, and
+    // nothing ever asked the question the number answers.
+    if ((winner.ghostTrust ?? 0) >= EPILOGUE.ghostTrustNotable) {
+        qas.push({
+            question: "Caesar Flickerman: 'We had almost no footage of you. Sponsors backed you anyway — a great many of them. What do you make of that?'",
+            answer: `${winner.name}: '${pick(rng, [
+                'They were not backing me. They were backing the shape of somebody they could not see, and I let them.',
+                'I have thought about that. I think being unwatchable is the only advantage that arena hands out for free, and I took it with both hands.',
+                'You wanted a story and I would not give you one. Turns out that is a story.',
+            ])}'`
         });
     }
 

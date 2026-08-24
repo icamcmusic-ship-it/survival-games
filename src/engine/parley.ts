@@ -1,10 +1,10 @@
-import { Item, Tribute } from '../models/types';
+import { Item, Tribute, TruceReason } from '../models/types';
 import { COMPOSURE, PARLEY, PROFICIENCY, RESPECT, ROMANCE } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { PARLEY_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
-import { SimContext } from './context';
+import { SimContext, getAlive } from './context';
 import { assessZone } from './stance';
 import { adjustMutual, adjustRel, getRel, respectOf } from './relationships';
 import { addZoneThreat, cycleOf, ensureMemory, noteStoodBy, raiseSuspicion, rememberedThreat, swearVengeance } from './memory';
@@ -59,16 +59,54 @@ export function hasTruce(state: { cycle?: number }, t: Tribute, otherId: string)
  * two people who are not them — needs a way to write a truce that
  * `declareTruce`'s parley-local shape does not offer.
  */
-export function grantTruce(ctx: SimContext, a: Tribute, b: Tribute, cycles: number) {
+export function grantTruce(ctx: SimContext, a: Tribute, b: Tribute, cycles: number, reason: TruceReason = 'brokered') {
     const until = cycleOf(ctx.state) + cycles;
     a.truces = { ...(a.truces ?? {}), [b.id]: until };
     b.truces = { ...(b.truces ?? {}), [a.id]: until };
+    a.truceReason = { ...(a.truceReason ?? {}), [b.id]: reason };
+    b.truceReason = { ...(b.truceReason ?? {}), [a.id]: reason };
+}
+
+/**
+ * §4.3: has the reason this truce exists stopped being true?
+ *
+ * This is what turns a truce from a cycle counter into an agreement about
+ * something. Two tributes who shook hands because they were both bleeding are
+ * done the moment they both stop; two who shook hands against a Career pack are
+ * done when the pack is. Returning true here brings the resolution scene
+ * forward — it never extends a truce past its cycle count.
+ */
+function reasonSpent(ctx: SimContext, a: Tribute, b: Tribute): boolean {
+    const reason = a.truceReason?.[b.id] ?? b.truceReason?.[a.id];
+    switch (reason) {
+        case 'both-wounded':
+            return a.health >= PARLEY.truceHealedHealth && b.health >= PARLEY.truceHealedHealth
+                && !a.injuries.bleeding && !b.injuries.bleeding;
+        case 'mutual-threat': {
+            const pair = new Set([a.id, b.id]);
+            return !getAlive(ctx.state).some(o =>
+                !pair.has(o.id) && (o.isCareer || o.kills >= PARLEY.truceThreatKills));
+        }
+        case 'extortion':
+        case 'brokered':
+        default:
+            return false;
+    }
 }
 
 function declareTruce(ctx: SimContext, a: Tribute, b: Tribute) {
     const until = cycleOf(ctx.state) + PARLEY.truceCycles;
     a.truces = { ...(a.truces ?? {}), [b.id]: until };
     b.truces = { ...(b.truces ?? {}), [a.id]: until };
+    // §4.3: a truce is about something. Which of the two obvious reasons it is
+    // decides when it comes due — not a cycle counter that means nothing to
+    // either of them.
+    const reason: TruceReason = (a.health < PARLEY.truceHealedHealth && b.health < PARLEY.truceHealedHealth)
+        || a.injuries.bleeding || b.injuries.bleeding
+        ? 'both-wounded'
+        : 'mutual-threat';
+    a.truceReason = { ...(a.truceReason ?? {}), [b.id]: reason };
+    b.truceReason = { ...(b.truceReason ?? {}), [a.id]: reason };
     // §11.1: a parley is a stage. A performer plays the negotiation warm.
     maintainPerformance(a, b.id, ROMANCE.performedUpkeep);
     maintainPerformance(b, a.id, ROMANCE.performedUpkeep);
@@ -84,6 +122,8 @@ function noteExtortion(stronger: Tribute, weakerId: string) {
 function clearTruce(a: Tribute, b: Tribute) {
     if (a.truces) delete a.truces[b.id];
     if (b.truces) delete b.truces[a.id];
+    if (a.truceReason) delete a.truceReason[b.id];
+    if (b.truceReason) delete b.truceReason[a.id];
 }
 
 /**
@@ -409,8 +449,11 @@ export function resolveTruces(ctx: SimContext) {
     state.tributes.forEach(t => {
         if (!t.truces) return;
         Object.entries(t.truces).forEach(([otherId, until]) => {
-            if (cycle < until) return;
             const other = byId.get(otherId);
+            // §4.3: expiry is the earlier of the clock and the reason. A truce
+            // whose reason has evaporated resolves now rather than idling out
+            // its counter, which is what turned 90% of all truces into silence.
+            if (cycle < until && !(other && other.status === 'alive' && reasonSpent(ctx, t, other))) return;
             // A dead counterparty leaves nothing to resolve. Clear both
             // sides of the record — leaving the mirror key on the other
             // tribute made save payloads accrete stale empty truce objects.
@@ -418,7 +461,21 @@ export function resolveTruces(ctx: SimContext) {
                 // §10.1: 'Kept Word' — a truce that had been renewed at least
                 // once was still standing when one of its parties fell.
                 if ((t.truceRenewed?.[otherId] ?? 0) > 0) state.keptWordSeen = true;
+                // §1.4: this was the silent exit — the single largest way a
+                // truce ended, and the one the Record never mentioned. A
+                // promise that outlived one of the people who made it is worth
+                // a line; it is also, unambiguously, a promise kept.
+                if (other && t.status === 'alive' && other.status !== 'alive') {
+                    state.keptWordSeen = true;
+                    ctx.logEvent(
+                        `The agreement between ${t.name} and ${other.name} ends the way most of them do: `
+                        + `${other.name} is dead, and ${t.name} never once broke it.`,
+                        [t.id, other.id],
+                        { category: 'alliance' }
+                    );
+                }
                 delete t.truces![otherId];
+                if (t.truceReason) delete t.truceReason[otherId];
                 if (other?.truces) {
                     delete other.truces[t.id];
                     if (Object.keys(other.truces).length === 0) delete other.truces;
@@ -431,6 +488,35 @@ export function resolveTruces(ctx: SimContext) {
             resolveTrucePair(ctx, t, other);
         });
         if (t.truces && Object.keys(t.truces).length === 0) delete t.truces;
+    });
+}
+
+/**
+ * §1.2: the Diplomat's ledger, finally read.
+ *
+ * `brokeredTruces` was written by the Diplomat's signature and consulted in
+ * exactly one place — to dissolve those truces when the Diplomat died. Nothing
+ * ever counted them, credited them, or surfaced them, which is a large part of
+ * why the archetype sits at the bottom of the table. A brokered truce that runs
+ * its full term is the Diplomat's kill: it pays in the currency they actually
+ * play for, which is the Capitol's regard.
+ */
+function creditBroker(ctx: SimContext, a: Tribute, b: Tribute) {
+    getAlive(ctx.state).forEach(broker => {
+        const held = broker.brokeredTruces?.some(([x, y]) =>
+            (x === a.id && y === b.id) || (x === b.id && y === a.id));
+        if (!held) return;
+        broker.trucesBrokeredHeld = (broker.trucesBrokeredHeld ?? 0) + 1;
+        broker.sponsorTrust = Math.min(100, broker.sponsorTrust + PARLEY.brokerHeldTrust);
+        addExcitement(broker, PARLEY.brokerHeldExcitement);
+        adjustRel(a, broker.id, PARLEY.brokerHeldRegard);
+        adjustRel(b, broker.id, PARLEY.brokerHeldRegard);
+        ctx.logEvent(
+            `${a.name} and ${b.name} part without a shot fired, and the agreement that held them apart was ${broker.name}'s. `
+            + 'The Capitol notices who does that; it is the rarest kind of work anyone does in there.',
+            [broker.id, a.id, b.id],
+            { important: true, category: 'alliance' }
+        );
     });
 }
 
@@ -482,6 +568,15 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
     }
 
     // LAPSE: kept to the end. The arena takes note, and so does the feed.
+    //
+    // §1.4: 'Kept Word' used to need a *renewed* truce still standing when one
+    // party died, which across 400 runs happened 11 times against 218 truces —
+    // an achievement gated on a coincidence. A truce that ran its full declared
+    // term without either side breaking it is a kept word by any reading, and
+    // it is the reading a player would use.
+    ctx.state.keptWordSeen = true;
+    // §1.2: and if somebody else talked them into it, they get the credit.
+    creditBroker(ctx, a, b);
     ctx.logEvent(
         fill(ctx.pickText(PARLEY_TEXTS.truceLapsed), { t1: a.name, t2: b.name }),
         [a.id, b.id],
