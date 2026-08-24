@@ -32,6 +32,7 @@ import {
 import { tickPersistentMutts } from '../mutts';
 import { hasEffect, restockCornucopia, rollAmbientZoneEffects, startZoneEffect, tickForceField, tickZoneEffects } from '../zoneEffects';
 import { tickStructuralFatigue } from '../loadBearing';
+import { tickEpithets } from '../epithets';
 import { climateOf } from '../climate';
 import { tributeOdds } from '../odds';
 import { runArenaSignature } from '../arenaSignature';
@@ -269,6 +270,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     maintainBounty(ctx);
     maintainMovingArena(ctx);
     tickTraps(ctx);
+    // §11.5: and whether anybody has become known for something this cycle.
+    tickEpithets(ctx);
     decayTraffic(ctx.state);
     // §9.7: a lie about the map is only a lie once somebody stands in the zone
     // and finds out. Tested before memories decay, while the invented threat

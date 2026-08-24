@@ -3,7 +3,7 @@ import { ITEMS } from '../data/constants';
 import { BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ENCOUNTER_BRANCH, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES, STANCE_MODES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaActionKey, ArenaEventDef, actionPool, arenaFlavor } from '../data/arenaFlavor';
-import { QUIRKS } from '../data/quirks';
+import { QUIRKS, quirkLine } from '../data/quirks';
 import { SimContext } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone, zoneFeatures } from './map';
@@ -708,7 +708,7 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         const quirk = QUIRKS.find(q => q.label === ctx.rng.pick(t.quirks!));
         if (quirk) {
             ctx.logEvent(
-                quirk.line.split('{name}').join(t.name).split('{zone}').join(t.zone),
+                quirkLine(quirk, ctx.pickText).split('{name}').join(t.name).split('{zone}').join(t.zone),
                 [t.id],
                 { category: 'survival' }
             );

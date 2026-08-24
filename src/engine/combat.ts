@@ -11,6 +11,8 @@ import { enforceCapacity, giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone, zoneFeatures } from './map';
 import { loadFromViolence } from './loadBearing';
+import { bloodOnTheBlade } from './legendaryItems';
+import { displayName } from './epithets';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
 import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
@@ -1195,6 +1197,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     if (killer) {
         const killerAlive = killer.status === 'alive';
         if (killerAlive) killer.kills += 1;
+        // §11.6: the object remembers, whoever is holding it next.
+        if (killerAlive) bloodOnTheBlade(ctx, weapon, killer);
         // §6.8: the first tribute-dealt kill of the Games — the side-bet book
         // settles 'first blood' off this.
         if (ctx.state.firstBloodId === undefined) ctx.state.firstBloodId = killer.id;
@@ -1207,9 +1211,10 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         // split/join, not replace: `replace` with a string pattern only
         // substitutes the FIRST match, so templates naming {victim} twice
         // printed a raw placeholder into the feed.
+        // §11.5: once the country has a name for somebody, the feed uses it.
         const text = template
-            .split('{killer}').join(killer.name)
-            .split('{victim}').join(victim.name);
+            .split('{killer}').join(displayName(killer))
+            .split('{victim}').join(displayName(victim));
 
         // Everything below only matters for a killer who is still around to
         // feel it, carry loot, or wear out gear.

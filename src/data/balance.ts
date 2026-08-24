@@ -1995,6 +1995,24 @@ export const LOAD_BEARING = {
     collapseLegShare: 0.5,
 } as const;
 
+/**
+ * §11.5: when the country decides it has a name for somebody. Deliberately
+ * demanding — an epithet everybody gets is not an epithet.
+ */
+export const EPITHET_RULES = {
+    killsForBloody: 3,
+    unseenCyclesForGhost: 8,
+    daysForEnduring: 5,
+} as const;
+
+/**
+ * §11.6: how much blood a weapon has to draw before the country gives it a
+ * name. Two: once is a weapon doing its job, twice is a pattern.
+ */
+export const LEGENDARY_ITEMS = {
+    killsToEarnAName: 2,
+} as const;
+
 export const CRAFTING = {
     /** A blade below this condition is worth an hour with a whetstone. */
     sharpenBelowCondition: 0.7,

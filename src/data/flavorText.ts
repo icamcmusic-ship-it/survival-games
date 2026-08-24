@@ -2530,3 +2530,168 @@ export const TRAINING_EVENING: Record<string, string[]> = {
         'On the last evening the escorts hand out the schedule for tomorrow and every single tribute reads it twice.',
     ],
 };
+
+/**
+ * §11.7: the content half of the rumour system.
+ *
+ * `engine/rumours.ts` models a claim about a zone that can be true or false,
+ * passed hand to hand independently of whoever started it — but every claim
+ * rendered through exactly one sentence per kind, so the whole social
+ * information layer said the same four things all run. This is the flavour
+ * category the game had no equivalent of: zone descriptions are fixed at
+ * generation, and until the rumour system landed nothing was ever *said* about
+ * a zone by another tribute.
+ *
+ * Templates take {zone}. Written to be sayable by a person rather than
+ * narrated, because that is what they are: one tribute's account of somewhere
+ * they may or may not have been.
+ */
+export const ZONE_RUMOUR_CLAIMS: Record<string, string[]> = {
+    restock: [
+        'the horn at {zone} came back stocked overnight',
+        'there was a drop on {zone} and nobody has been in to take it',
+        'the Gamemakers refilled {zone} early, before anybody was watching',
+        'somebody saw a chute go down over {zone} and never saw anybody come out with it',
+        '{zone} has been restocked and the people who would know are all dead',
+        'there is fresh supply sitting out in the open at {zone}',
+        'they put more in at {zone} on the second night and it is still there',
+        '{zone} got a second delivery, which is not something they usually do',
+        'the crates at {zone} are not the crates that were at {zone} on day one',
+        'whatever went into {zone} last night went in quietly and has not come out',
+        '{zone} was resupplied and the only person who saw it is not talking',
+        'there is more at {zone} now than there was at the bloodbath',
+    ],
+    'holed-up': [
+        'somebody is dug in at {zone} and they are well armed',
+        'there is a pack sitting on {zone} and they are not moving off it',
+        '{zone} is held. Whoever is holding it has a bow and the patience for it',
+        'somebody has been on {zone} for three days and has made it their own',
+        'there is a fortified position at {zone} and the approaches are all watched',
+        'the Careers are on {zone}, or somebody who fights like them is',
+        'somebody at {zone} has traps out past the treeline of it',
+        '{zone} has one person in it who has killed twice and intends to keep the ground',
+        'do not go into {zone} from the low side; they are watching the low side',
+        'there is a camp on {zone} with a fire, which tells you how safe they feel',
+        'somebody big is on {zone} and has been for long enough to know the ground',
+        '{zone} is somebody\'s house now and they are at home',
+    ],
+    cache: [
+        'there is a cache nobody has found in {zone}',
+        'somebody buried a pack in {zone} and then died before they could come back for it',
+        'there is a stash in {zone} under the loose ground, if you know where to look',
+        '{zone} has supplies in it that were put there on purpose and left',
+        'somebody has been hiding what they cannot carry in {zone}',
+        'there is food in {zone} and it is not growing there',
+        'a tribute who is dead now had a cache in {zone} and never told anybody',
+        'there is a pack in {zone} that has been sitting untouched since the second day',
+        'the good ground in {zone} is not the obvious ground, and there is a reason for that',
+        'somebody dropped a full pack running out of {zone} and nobody has been back',
+        'there is something worth having in {zone} and it is not on the surface',
+        'whoever camped in {zone} left more behind than they meant to',
+    ],
+    empty: [
+        '{zone} has been picked to the bone and is not worth the walk',
+        'there is nothing left in {zone}. Three people have already been through it',
+        '{zone} is stripped. Do not spend a day getting there',
+        'the ground in {zone} has been worked over twice and gives nothing now',
+        '{zone} is bare. Whatever was in it went days ago',
+        'you will find nothing in {zone} but other people\'s bootprints',
+        '{zone} is finished. It was good ground once',
+        'there is not a berry left in {zone} and I would know',
+        'somebody has been living in {zone} and there is nothing in it any more',
+        '{zone} looks better from a distance than it is',
+        'do not bother with {zone}. It is a long walk to an empty room',
+        '{zone} has been cleaned out, and by somebody thorough',
+    ],
+};
+
+/**
+ * §11.5: earned epithets — a new category of proper noun.
+ *
+ * A tribute's name is fixed at the reaping, and the birth-name pools in
+ * `names.ts` are the only name content the game has. An epithet is the other
+ * kind: something a tribute is called *because of what they did here*, awarded
+ * in-run off fame and notoriety and picked up by the commentary and the
+ * interview couch. Takes {district} and {zone} where the epithet references
+ * one; see `engine/epithets.ts` for which trigger awards which pool.
+ */
+export const EPITHETS = {
+    /** A run of kills, close together. */
+    bloody: [
+        'the One the Careers Left Alone',
+        'District {district}\'s Last Word',
+        'the Quiet Blade of District {district}',
+        'the Reason for the Short Week',
+        'the One Who Kept Count',
+        'the Butcher of {zone}',
+        'the Second Gong',
+        'the One They Stopped Naming',
+    ],
+    /** A long stretch nobody laid eyes on them. */
+    unseen: [
+        'the Ghost of {zone}',
+        'the Long Walker',
+        'the One Nobody Found',
+        'the Absence in District {district}\'s Column',
+        'the Tribute the Cameras Lost',
+        'the Quiet One from {district}',
+        'the One Who Was Never There',
+        'the Missing Name',
+    ],
+    /** Survived something they had no business surviving. */
+    enduring: [
+        'the One Who Would Not Fall',
+        'the Standing Stone of District {district}',
+        'the One the Arena Gave Up On',
+        'the One Who Came Back Up',
+        'the Last Argument from {district}',
+        'the One Who Outlasted {zone}',
+        'the Unfinished',
+        'the One They Wrote Off',
+    ],
+} as const;
+
+/**
+ * §11.6: legendary items — the other new proper noun.
+ *
+ * Every weapon in the game generates as a category instance: a sword is a
+ * sword, and the only thing distinguishing two of them is `ItemQuality`. A
+ * weapon that has drawn blood more than once in a run earns a name of its own
+ * and a line in the epilogue, which is a kind of noun the game does not
+ * otherwise have. Distinct from the mundane generation path in `items.ts`:
+ * these are never rolled at the Cornucopia, only earned in somebody's hand.
+ */
+export const LEGENDARY_ITEM_NAMES: string[] = [
+    'Second Chance',
+    'The Debt',
+    'Widow\'s Reach',
+    'The Understudy',
+    'Ninth Hour',
+    'The Long Answer',
+    'Nobody\'s',
+    'The Inheritance',
+    'Quiet Sunday',
+    'The Argument',
+    'Last Tuesday',
+    'The Favour',
+    'Threadbare',
+    'The Short Way',
+    'Anthem',
+    'The Standing Debt',
+];
+
+/** How the epilogue introduces a weapon that earned a name. */
+export const LEGENDARY_ITEM_TEXTS: string[] = [
+    '{item} went into the arena as an ordinary {base} and came out of it with a name. It killed for {owner}, and before {owner} it killed for somebody else.',
+    'Somewhere in the Capitol somebody is already calling it {item}. It is a {base}. It has been a {base} the whole time. It has also been the last thing three people saw.',
+    'The {base} {owner} finished with had drawn blood often enough by the end that the commentators stopped calling it a {base} and started calling it {item}.',
+    '{item}: a {base}, taken off a body, carried by {owner}, and by the end of the week better known than most of the tributes in the field.',
+    'They will put {item} in a case in the Capitol and the card under it will say {base}, which is true and is not the whole of it.',
+    'By the fourth day nobody was describing {owner}\'s weapon by what it was. They were describing it by what it had done, and it had a name for that: {item}.',
+    '{item} outlived the person who brought it into the arena, and the person who took it off them, and finished the week in {owner}\'s hand.',
+    'The {base} is unremarkable. {item} is not. They are the same object, and the difference is entirely what happened in between.',
+    '{owner} never named it. Everybody else did. {item} is what the country settled on, and it stuck.',
+    'A {base} that has killed once is a weapon. {item} had killed more than once by the third day, which is how a thing gets a name in here.',
+    '{item} came out of the horn as anonymous as everything else in it. It is not anonymous now, and neither is {owner}.',
+    'There is a {base} in the Capitol tonight with a name on it. It is called {item}, and it belonged, at the end, to {owner}.',
+];
