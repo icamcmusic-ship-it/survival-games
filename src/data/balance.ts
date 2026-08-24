@@ -580,6 +580,22 @@ export const PROFICIENCY = {
      */
     earlyBand: 2,
     earlyGainMultiplier: 1.9,
+    /**
+     * §8: the top of the curve, which the audit read as too easy to reach.
+     *
+     * The measured number it was reading — `peakProficiency` — is the single
+     * highest proficiency observed across every tribute in a 400-run soak,
+     * not an average run's outcome, and at 5.58 against a cap of 6 it says
+     * nobody has ever actually maxed anything. So the cap is not the problem.
+     * The last band is, though: `diminishingPerLevel` alone still lets a
+     * specialist walk the final point in under a day of hard use, which makes
+     * the difference between "expert" and "the best anyone has ever been at
+     * this" a matter of a few more forage rolls. Gains inside the last band
+     * are cut hard, so the ceiling is approached asymptotically and the top
+     * of the scale stays somewhere almost nobody gets to.
+     */
+    nearCapBand: 1,
+    nearCapGainMultiplier: 0.35,
     /** §3.9: the visible bands, in prose and on the tribute sheet. */
     competentBand: 2,
     skilledBand: 3.5,
@@ -2280,6 +2296,15 @@ export const MEMORY = {
     rivalAvoidWeight: 2.0,
     /** Weight of remembered barrenness when scoring a destination. */
     barrenWeight: 1.2,
+    /**
+     * §11.1: who can read a regrowth curve. Either enough forage proficiency
+     * to have watched ground come back before, or enough intelligence to work
+     * it out from first principles.
+     */
+    regrowthReadForage: 2.5,
+    regrowthReadIntelligence: 7,
+    /** Pull toward ground a tribute reckons has grown back, once it is due. */
+    regrowthPull: 2.2,
 } as const;
 
 /** Stance selection: thresholds plus the hysteresis that stops thrashing. */
@@ -4894,8 +4919,20 @@ export const ARCHETYPE_HOOKS = {
     /** Beast: the sound. */
     roarFear: 12,
     roarSanity: 9,
-    /** Diplomat: an agreement between two people who are not them. */
-    brokeredTruceCycles: 10,
+    /**
+     * §8: Diplomat — an agreement between two people who are not them.
+     *
+     * Ten cycles is most of a run: two tributes had to coexist for five days
+     * without the arena, an alliance or their own tempers intervening before
+     * the Diplomat was credited with anything, so `trucesBrokeredHeld` was
+     * effectively unreachable and the archetype's whole signature identity
+     * paid out approximately never. Their narrative angle is that they are
+     * good at this, so the term they negotiate is now a realistic one and the
+     * payoff is a thing that happens. Still well above the four cycles an
+     * ordinary two-party truce runs — a Diplomat's word is worth more, it is
+     * just no longer worth more than anybody survives.
+     */
+    brokeredTruceCycles: 6,
     accordGratitude: 18,
     /** Ghost: sponsor credit for going unfilmed, and the crowd's answer to it. */
     ghostTrustPerCycle: 0.4,

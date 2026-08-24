@@ -1,5 +1,6 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
-import { FEAR, HUNTING, INTEL, MEMORY, RELATIONSHIPS, SANITY_BANDS, SUSPICION } from '../data/balance';
+import { FEAR, HUNTING, INTEL, MEMORY, RELATIONSHIPS, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
+import { profOf } from './proficiency';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
 import { addFear } from './fear';
@@ -189,6 +190,49 @@ export function rememberedBarren(state: GameState, t: Tribute, zone: string): nu
     if (!slot) return 0;
     const age = hearsayAge(slot, Math.max(0, cycleOf(state) - slot.seen));
     return slot.barren * Math.pow(0.75, age);
+}
+
+/**
+ * §11.1: when a tribute reckons a stripped zone will be worth working again.
+ *
+ * `rememberedBarren` decays their impression at a fixed rate, but that is
+ * forgetting, not knowledge — nothing in the simulation understood that the
+ * arena regrows what nobody is stripping, so the deepest thing a tribute could
+ * do with depletion was avoid it forever. A tribute who actually knows how
+ * ground recovers can do the useful thing instead: leave, let it come back,
+ * and be standing in it on the day it does.
+ *
+ * The reckoning is a skill. It needs forage proficiency (they have watched
+ * ground come back before) or plain intelligence (they can work it out), and
+ * it is only as good as the impression it is computed from — a tribute
+ * working off three-day-old hearsay gets a three-day-old answer, which is
+ * exactly right.
+ *
+ * Returns the cycle they believe the zone is due, or undefined if they have no
+ * usable impression or are not the sort of person who thinks this way.
+ */
+export function regrowthDueCycle(state: GameState, t: Tribute, zone: string): number | undefined {
+    const slot = ensureMemory(t).zones[zone];
+    if (!slot || slot.barren <= 0) return undefined;
+    const reads = profOf(t, 'forage') >= MEMORY.regrowthReadForage
+        || t.attributes.intelligence >= MEMORY.regrowthReadIntelligence;
+    if (!reads) return undefined;
+    // Their own estimate of how long the ground needs, from what they saw and
+    // the rate the arena actually restocks at. Deliberately computed from the
+    // real constant: a tribute who can read ground reads it correctly, and the
+    // error in their answer comes from the age of their impression instead.
+    const cycles = Math.ceil(slot.barren / Math.max(0.001, ZONES.regenPerCycle));
+    return slot.seen + cycles;
+}
+
+/**
+ * §11.1: true when a tribute reckons a zone they stripped has had long enough.
+ * Read by movement, where it cancels the barren penalty that would otherwise
+ * keep them away from ground that is worth returning to.
+ */
+export function reckonsRegrown(state: GameState, t: Tribute, zone: string): boolean {
+    const due = regrowthDueCycle(state, t, zone);
+    return due !== undefined && cycleOf(state) >= due;
 }
 
 /**

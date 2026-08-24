@@ -3,7 +3,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { FEAR, MEMORY, MOVEMENT, NOTORIETY } from '../data/balance';
 import { SimContext } from './context';
 import { effectiveResources, zoneFeatures } from './map';
-import { ensureMemory, hasVengeanceAgainst, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
+import { ensureMemory, hasVengeanceAgainst, reckonsRegrown, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { fearInZone } from './fear';
 import { notorietyInZone } from './notoriety';
 import { rumourPull } from './rumours';
@@ -65,8 +65,15 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
             if (hunted.length > 0 && rivals > 0) score += 4;
         }
 
-        // Ground they believe they already stripped is not worth walking back to.
-        score -= rememberedBarren(state, t, z.name) * MEMORY.barrenWeight;
+        // Ground they believe they already stripped is not worth walking back
+        // to — unless they can read the regrowth curve and reckon it has had
+        // long enough. §11.1: this is what turns depletion from a permanent
+        // "do not return" flag into a boom-bust cycle a canny tribute can time.
+        if (reckonsRegrown(state, t, z.name)) {
+            score += MEMORY.regrowthPull;
+        } else {
+            score -= rememberedBarren(state, t, z.name) * MEMORY.barrenWeight;
+        }
 
         // Fear of a *person*, not of a place. A tribute who watched someone
         // butcher their district partner will not walk into that person's zone
