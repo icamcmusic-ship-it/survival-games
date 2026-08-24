@@ -898,7 +898,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             // their trust, and it is what romance is actually gated on. If they
             // were in real trouble and you were not, it is also a debt.
             else if (other.health < COMBAT.savedHealthThreshold && t.health > other.health) {
-                incurDebt(other, t, DEBTS.savedInFight);
+                incurDebt(other, t, DEBTS.savedInFight, ctx);
             } else {
                 noteStoodBy(t, other.id);
             }

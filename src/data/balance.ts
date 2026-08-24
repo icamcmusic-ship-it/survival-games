@@ -519,6 +519,23 @@ export const PROFICIENCY = {
      */
     persuasionRenewWeight: 0.06,
     persuasionRestraintWeight: 0.05,
+    /**
+     * §3.3: teaching. An alliance with a medic and a member sitting on
+     * medicine:5 could not transfer a single point of it.
+     */
+    teachMinLevel: 3,
+    teachMinGap: 1.5,
+    teachChance: 0.12,
+    teachGain: 0.35,
+    teachRespectWeight: 2,
+    /**
+     * §3.3: skills can be lost. A shattered arm took a combat penalty and left
+     * every point of melee proficiency intact, so a healed arm restored a
+     * fighter exactly as they were.
+     */
+    skillLossGrade: 3,
+    skillLossPerCycle: 0.25,
+    skillLossFloor: 0.5,
 } as const;
 
 /**
@@ -1394,6 +1411,8 @@ export const OBJECTIVES = {
     /** Ground worth standing on: good forage and no bad memories. */
     holdMinResources: 0.5,
     holdMaxThreat: 0.4,
+    /** §4.3: how much a believed bond to somebody present deters a hunter. */
+    avengerDeterrent: 0.05,
 } as const;
 
 /**
@@ -2103,6 +2122,9 @@ export const STANCE_MODES = {
 
 /** Relationship graph: bounds, decay, and the deltas life in the arena applies. */
 export const RELATIONSHIPS = {
+    /** §4.3: how far a third party's read on a pair can go, either way. */
+    perceivedBondMax: 100,
+    perceivedBondPerScene: 18,
     /** §4.9: two people who both loved the victim, grieving in the same
      *  place, bond over it. */
     sharedGriefBond: 6,
@@ -2223,7 +2245,7 @@ export const ROMANCE = {
      * `performedSniff*` below so the strategy carries the risk that makes it a
      * strategy rather than free sponsor money.
      */
-    performedChance: 0.36,
+    performedChance: 0.3,
     /** Per-cycle odds a sharp observer in the same zone reads the act. */
     performedSniffChance: 0.22,
     /** Intelligence at or above which a tribute can read a performance at all. */
@@ -2568,6 +2590,22 @@ export const RIVALRY = {
     rematchResolve: 0.08,
     /** Fights after which the pair reads as a genuine feud in the chronicle. */
     feudAtFights: 2,
+    /**
+     * §4.3: the way down. A rivalry that only ever escalated meant two
+     * tributes who fought twice and then survived a mutt attack together were
+     * enemies for the rest of the run by arithmetic.
+     */
+    coolingCycles: 3,
+    coolingPerWindow: 0.34,
+    coolingSharedDanger: 1.2,
+    sharedDangerHealth: 55,
+    coolingFear: 4,
+    reconcileRegard: 14,
+    /** Fights that make a rival's death a loss rather than a relief. */
+    grievableFights: 2,
+    /** Somebody else finishing the person you had promised yourself. */
+    stolenKillSanity: 8,
+    stolenKillRegard: 12,
 } as const;
 
 /** Sponsor economy. */
@@ -3440,6 +3478,17 @@ export const RESOLVE = {
  * truce restraint.
  */
 export const RESPECT = {
+    /** §3.3: watching somebody do skilled work properly, in front of you. */
+    witnessCompetence: 1.5,
+    /** What survives a reconciliation even when the liking does not. */
+    reconcile: 3,
+    /** §4.3: how much being rated buys you in somebody else's target list. */
+    targetReluctanceDivisor: 50,
+    targetReluctanceMax: 0.12,
+    /** Respect at which a warning from this person is information, not noise. */
+    credibilityThreshold: 6,
+    /** ...and below which even your own group stops acting on what you say. */
+    dismissedThreshold: -4,
     max: 100,
     /** Respect earned by everyone watching a clean kill. */
     witnessKill: 6,

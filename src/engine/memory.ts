@@ -3,6 +3,7 @@ import { FEAR, HUNTING, MEMORY, RELATIONSHIPS, SANITY_BANDS, SUSPICION } from '.
 import { traitMod } from '../data/traits';
 import { addFear } from './fear';
 import { getZone } from './map';
+import { believes } from './rapport';
 import { SimContext } from './context';
 import { arenaIsSilent } from './gamesProfile';
 
@@ -87,6 +88,11 @@ export function shareScoutSighting(state: GameState, scout: Tribute, zone: strin
     if (record?.roles?.scout !== scout.id) return;
     state.tributes.forEach(mate => {
         if (mate.id === scout.id || mate.status !== 'alive' || mate.allianceId !== scout.allianceId) return;
+        // §4.3: a report is only information if you rate the person giving it.
+        // A scout the group has written off is a scout the group does not act
+        // on, which is the whole reason professional esteem is a separate
+        // number from liking.
+        if (!believes(mate, scout)) return;
         noteSighting(state, mate, zone, rivals, barren);
     });
 }

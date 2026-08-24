@@ -381,7 +381,7 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
             clearBleeding(needer);
             needer.health = Math.min(100, needer.health + 15);
             trainProficiency(giver, 'medicine');
-            incurDebt(needer, giver, DEBTS.patchedUp);
+            incurDebt(needer, giver, DEBTS.patchedUp, ctx);
             ctx.logEvent(`${giver.name} presses their ${item.name} into ${needer.name}'s hands and helps patch them up.`, [needer.id, giver.id], { important: true, category: 'alliance' });
             return;
         }
@@ -390,7 +390,7 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
         // gives an alliance a medical reason to exist as well as a tactical one.
         if (needer.injuries.bleeding && attemptFieldDressing(ctx, needer, giver)) {
             adjustMutual(ctx.state, needer, giver, 8);
-            incurDebt(needer, giver, DEBTS.patchedUp);
+            incurDebt(needer, giver, DEBTS.patchedUp, ctx);
             return;
         }
     }
@@ -401,7 +401,7 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
             needer.vitals.thirst = Math.max(0, needer.vitals.thirst - 40);
             // Handing over water you might need yourself is a real risk, and it
             // is what romance is gated on rather than mere proximity.
-            if (giver.vitals.thirst > 30) incurDebt(needer, giver, DEBTS.gaveSupplies);
+            if (giver.vitals.thirst > 30) incurDebt(needer, giver, DEBTS.gaveSupplies, ctx);
             ctx.logEvent(`${giver.name} hands ${needer.name} their ${item.name} without being asked.`, [needer.id, giver.id], { category: 'alliance' });
             return;
         }
@@ -411,7 +411,7 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
         if (foodIdx >= 0) {
             const item = giver.inventory.splice(foodIdx, 1)[0];
             needer.vitals.hunger = Math.max(0, needer.vitals.hunger - 40);
-            if (giver.vitals.hunger > 30) incurDebt(needer, giver, DEBTS.gaveSupplies);
+            if (giver.vitals.hunger > 30) incurDebt(needer, giver, DEBTS.gaveSupplies, ctx);
             ctx.logEvent(`${giver.name} hands ${needer.name} their ${item.name} without being asked.`, [needer.id, giver.id], { category: 'alliance' });
         }
     }

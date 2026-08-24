@@ -281,6 +281,13 @@ export interface ZoneMemory {
 export interface TributeMemory {
     /** Zone name -> impression. */
     zones: Record<string, ZoneMemory>;
+    /**
+     * §4.3: what this tribute believes about *other people's* bonds, keyed
+     * 'aId|bId' in both orders. Only the two participants in a scene used to
+     * update anything, so nobody in the arena could ever learn the single most
+     * useful thing available by looking: who would come for whom.
+     */
+    perceivedBonds?: Record<string, number>;
     /** Ids this tribute has sworn to kill, most recent first. */
     vengeance: string[];
     /** Ids that have personally betrayed them. */

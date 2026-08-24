@@ -38,6 +38,8 @@ import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
 import { resolveTruces } from '../parley';
 import { repayDebts, tickDistrictBonds, tickRetainers } from '../debts';
+import { reconcileRivals } from '../rapport';
+import { decaySkillsUnderInjury, teachSkills } from '../proficiency';
 import { enforceCharters } from '../allianceCharter';
 import { earnTrait } from '../earnedTraits';
 import { tickTraitArcs } from '../traitArcs';
@@ -244,6 +246,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     tickDistrictBonds(ctx);
     // §1.2: a contract has an upkeep. The Mercenary's ledger is finally read.
     tickRetainers(ctx);
+    // §4.3: rivalry has a way down as well as a way up.
+    reconcileRivals(ctx);
+    // §3.3: knowledge moves between allies, and a ruined limb takes some with it.
+    teachSkills(ctx);
+    decaySkillsUnderInjury(ctx);
     enforceCharters(ctx);
     const board = getAlive(ctx.state);
     // §10.1: 'Paid in Full' — debts existed, and none were still outstanding

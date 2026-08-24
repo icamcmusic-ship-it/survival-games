@@ -4,6 +4,7 @@ import { DEBT_TEXTS } from '../data/flavorText';
 import { SimContext, getAlive } from './context';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { noteStoodBy } from './memory';
+import { witnessKindness } from './rapport';
 import { giveItem } from './items';
 import { addExcitement } from './audience';
 import { clampTribute } from './vitals';
@@ -30,8 +31,11 @@ export function debtTo(t: Tribute, creditorId: string): number {
 }
 
 /** Records that `creditor` did something for `debtor` that has to be answered. */
-export function incurDebt(debtor: Tribute, creditor: Tribute, amount: number) {
+export function incurDebt(debtor: Tribute, creditor: Tribute, amount: number, ctx?: SimContext) {
     if (debtor.id === creditor.id) return;
+    // §4.3: the people standing there learn something too — who would come for
+    // whom, which is the most dangerous piece of information in an arena.
+    if (ctx) witnessKindness(ctx, creditor, debtor);
     debtor.debts = debtor.debts ?? {};
     debtor.debts[creditor.id] = Math.min(DEBTS.max, debtTo(debtor, creditor.id) + amount);
     // The creditor knows what they did, even if nobody says so.

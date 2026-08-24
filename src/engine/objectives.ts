@@ -6,6 +6,7 @@ import { cycleOf, cyclesSinceContact, ensureMemory, rememberedBarren, remembered
 import { getZone, hopsTo, nextHopToward, severedEdgeSet, zoneFeatures } from './map';
 import { fearOf } from './fear';
 import { breakTruce, breaksTruce, hasTruce } from './parley';
+import { perceivedBond, targetReluctance } from './rapport';
 import { areLovers } from './alliance';
 import { getRel } from './relationships';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
@@ -345,9 +346,22 @@ function chooseObjective(
                 // trait that claimed to be hard to notice (Unremarkable) had
                 // no read site anywhere in the targeting layer, which is why
                 // it was the worst trait in the game.
-                return winnable + loot + grudge - fearOf(t, o.id)
+                // §4.3: you go after the person you rate *last*. Respect is
+                // not liking — a tribute can loathe somebody and still leave
+                // them until there is no choice, because the person they are
+                // most afraid of losing to is the person they rate. This is
+                // the read `respects` was written for and never got.
+                return (winnable + loot + grudge - fearOf(t, o.id)
                     + traitMod(o, 'targetDraw')
-                    + targetPreferenceScore(t, o, hops);
+                    + targetPreferenceScore(t, o, hops)
+                    // §4.3: and who is going to come looking. A hunter who has
+                    // watched somebody else pull this tribute out of a fire has
+                    // learned that killing them buys a second enemy — which is
+                    // exactly what third-party inference is *for*.
+                    - visible.reduce((worst, ally) => Math.max(worst,
+                        ally.id === o.id ? 0 : perceivedBond(t, o.id, ally.id)), 0)
+                        * OBJECTIVES.avengerDeterrent
+                    ) * targetReluctance(t, o.id);
             };
             const best = (pool: Tribute[]) =>
                 pool.reduce((top, o) => (score(o) > score(top) ? o : top));

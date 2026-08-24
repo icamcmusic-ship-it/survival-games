@@ -229,6 +229,17 @@ export function runAlliancePolitics(ctx: SimContext) {
         resolveFactions(ctx, record, members);
         nameSuccessor(ctx, record, members);
     });
+    // A walk-out can leave the group it left behind with one person in it, and
+    // a one-person alliance is not an alliance — the same invariant
+    // `reconcileAlliances` keeps, re-established here because politics runs
+    // after it.
+    Object.values(records).forEach(record => {
+        const left = membersOf(ctx.state, record.id);
+        if (left.length >= 2) return;
+        left.forEach(m => { delete m.allianceId; });
+        delete records[record.id];
+    });
+
     // A splinter group needs a record of its own, or it is an id on two
     // tributes and nothing else — exactly the bug the Alliance record fixed.
     getAlive(ctx.state).forEach(t => {
