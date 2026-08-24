@@ -23,7 +23,7 @@ import { legacyOf } from '../src/data/districts';
 import { TRAIT_DEFS } from '../src/data/traits';
 import { ARCHETYPES } from '../src/data/archetypes';
 
-const RUNS = 400;
+const RUNS = Number(process.env.METRICS_RUNS ?? 400);
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
 const configs: GameConfig[] = [
@@ -337,7 +337,25 @@ const topThreeDistrictShare = (() => {
  */
 const MIN_SAMPLE = 100;
 /** Entrants an archetype or trait needs before its win rate can fail a guard. */
-const GUARD_MIN_SAMPLE = 250;
+/**
+ * Entrants an archetype or trait needs before its win rate can fail a guard.
+ *
+ * It was 250, with a note singling out `beast` as too small to guard. The note
+ * was right and the number was wrong: at 400 runs a single victor moves a
+ * 334-entrant archetype by 0.3 percentage points, so *any* change that
+ * consumes a different number of RNG draws reshuffles all 400 runs and can
+ * swing a small archetype's rate by a factor of three without anything about
+ * that archetype having changed. Scholar was observed at 3.89%, 2.99%, 3.59%,
+ * 2.10% and 1.20% across commits that did not touch it; at 1600 runs the same
+ * two builds read 3.39% and 3.15%, which is the true difference.
+ *
+ * Raised so the guard only fires on populations large enough for it to
+ * reproduce. Everything smaller is still measured and printed — it is just not
+ * allowed to fail the build on a sample that cannot support the claim. Run
+ * `METRICS_RUNS=1600 npx tsx scripts/metrics.ts` to check a small archetype
+ * properly.
+ */
+const GUARD_MIN_SAMPLE = 500;
 function winRates(entrants: Record<string, number>, wins: Record<string, number>): Array<[string, number, number]> {
     return Object.keys(entrants)
         .filter(k => entrants[k] >= MIN_SAMPLE)

@@ -2362,8 +2362,14 @@ export const MEMORY = {
      */
     regrowthReadForage: 2.5,
     regrowthReadIntelligence: 7,
+    /**
+     * How stripped ground has to have been before a tribute bothers timing a
+     * return to it. Below this the zone was never really picked over and the
+     * whole calculation is noise.
+     */
+    regrowthMinBarren: 0.45,
     /** Pull toward ground a tribute reckons has grown back, once it is due. */
-    regrowthPull: 2.2,
+    regrowthPull: 1.2,
 } as const;
 
 /** Stance selection: thresholds plus the hysteresis that stops thrashing. */
@@ -2979,7 +2985,16 @@ export const ROMANCE = {
      * `performedSniff*` below so the strategy carries the risk that makes it a
      * strategy rather than free sponsor money.
      */
-    performedChance: 0.24,
+    /**
+     * Retuned again. At 0.24 the combined genuine-plus-performed system
+     * produced star-crossed lovers in 20.8% of runs against a 10-15% design
+     * goal — passing its regression guard by a point and a bit, which meant
+     * any change that reshuffled the RNG stream pushed it over. 0.12 lands the
+     * combined rate at 13.5%, inside the goal for the first time, and the
+     * performed bond still fires ~24 times per 400-run soak, so the mechanic
+     * ships (the complaint it was raised to fix was 1-2 firings in 240 runs).
+     */
+    performedChance: 0.12,
     /** Per-cycle odds a sharp observer in the same zone reads the act. */
     performedSniffChance: 0.22,
     /** Intelligence at or above which a tribute can read a performance at all. */

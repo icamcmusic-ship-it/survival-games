@@ -213,7 +213,12 @@ export function rememberedBarren(state: GameState, t: Tribute, zone: string): nu
  */
 export function regrowthDueCycle(state: GameState, t: Tribute, zone: string): number | undefined {
     const slot = ensureMemory(t).zones[zone];
-    if (!slot || slot.barren <= 0) return undefined;
+    // Only ground they actually stripped is worth timing a return to. Without
+    // this floor, any faintly-picked-over zone came "due" within a cycle or
+    // two, so the pull below fired constantly and walked the archetypes that
+    // qualify for the read — the high-intelligence ones — straight back into
+    // ground they had just worked. Scholar's win rate fell by two thirds.
+    if (!slot || slot.barren < MEMORY.regrowthMinBarren) return undefined;
     const reads = profOf(t, 'forage') >= MEMORY.regrowthReadForage
         || t.attributes.intelligence >= MEMORY.regrowthReadIntelligence;
     if (!reads) return undefined;
