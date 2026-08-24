@@ -116,6 +116,11 @@ export function breaksTruce(ctx: SimContext, t: Tribute, other: Tribute): boolea
     // §4.1: and so is professional esteem — you do not cross someone you rate.
     chance *= Math.max(0.3, 1 - Math.max(0, respectOf(t, other.id)) / RESPECT.truceRestraintDivisor);
     if (ensureMemory(t).betrayedBy.length > 0) chance *= PARLEY.truceBreakBetrayedRestraint;
+    // §8: the other party's persuasion. Someone who is good at this does not
+    // only talk you into an agreement, they keep talking you out of leaving
+    // it — which is the read site persuasion was missing, and the reason a
+    // charisma build's investment stopped paying the moment the truce existed.
+    chance *= Math.max(0.35, 1 - profOf(other, 'persuasion') * PROFICIENCY.persuasionRestraintWeight);
 
     return breakChanceOf(ctx, chance);
 }
@@ -438,11 +443,16 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
     const regard = Math.min(getRel(a, b.id), getRel(b, a.id));
 
     // RENEW: it worked, and both of them know it.
-    if (regard >= PARLEY.truceRenewMinRegard && ctx.rng.chance(PARLEY.truceRenewChance)) {
+    // §8: whichever of them is better at this carries the renewal.
+    const renewTalker = Math.max(profOf(a, 'persuasion'), profOf(b, 'persuasion'));
+    const renewChance = PARLEY.truceRenewChance + renewTalker * PROFICIENCY.persuasionRenewWeight;
+    if (regard >= PARLEY.truceRenewMinRegard && ctx.rng.chance(renewChance)) {
         // §10.1: 'Kept Word' reads this — a truce that was renewed at least
         // once and was still standing when one party died.
         a.truceRenewed = { ...(a.truceRenewed ?? {}), [b.id]: (a.truceRenewed?.[b.id] ?? 0) + 1 };
         b.truceRenewed = { ...(b.truceRenewed ?? {}), [a.id]: (b.truceRenewed?.[a.id] ?? 0) + 1 };
+        trainProficiency(a, 'persuasion');
+        trainProficiency(b, 'persuasion');
         declareTruce(ctx, a, b);
         adjustMutual(ctx.state, a, b, PARLEY.truceRegard);
         ctx.logEvent(

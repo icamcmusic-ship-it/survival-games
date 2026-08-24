@@ -169,10 +169,11 @@ function applyVitalInteractions(ctx: SimContext, t: Tribute) {
  * simply refire next cycle — the Gamemakers keeping the show's ending alive,
  * narratively, rather than the arena freezing a health bar.
  */
-function reliefFor(t: Tribute, cause: 'hunger' | 'thirst' | 'bleeding' | 'infected' | 'poisoned' | 'burned' | 'frostbitten') {
+function reliefFor(t: Tribute, cause: 'hunger' | 'thirst' | 'fatigue' | 'bleeding' | 'infected' | 'poisoned' | 'burned' | 'frostbitten') {
     switch (cause) {
         case 'hunger': t.vitals.hunger = Math.min(t.vitals.hunger, VITALS.starvingThreshold - 5); break;
         case 'thirst': t.vitals.thirst = Math.min(t.vitals.thirst, VITALS.dehydratedThreshold - 5); break;
+        case 'fatigue': t.vitals.fatigue = Math.min(t.vitals.fatigue, VITALS.exhaustedThreshold - 5); break;
         case 'bleeding': clearBleeding(t); break;
         case 'infected': healInjury(t, 'infected'); break;
         case 'poisoned': healInjury(t, 'poisoned'); break;
@@ -198,6 +199,16 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
     if (t.vitals.thirst > VITALS.dehydratedThreshold) {
         if (applyDamage(ctx, t, VITALS.dehydratedDamage, { cause: 'Died of dehydration', kind: 'status' })) {
             reliefFor(t, 'thirst');
+        }
+    }
+    // §7: the body failing rather than the will. Distinct from the nightlock
+    // and border-walk endings, which are a tribute deciding to stop — this is
+    // one who has not decided anything and cannot go on anyway. Fatigue was
+    // the only vital with a cap and no terminal state, so exhaustion never
+    // appeared in a death breakdown at all.
+    if (t.vitals.fatigue > VITALS.exhaustedThreshold) {
+        if (applyDamage(ctx, t, VITALS.exhaustedDamage, { cause: 'Collapsed from exhaustion', kind: 'status' })) {
+            reliefFor(t, 'fatigue');
         }
     }
     if (t.injuries.bleeding) {

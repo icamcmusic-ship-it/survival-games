@@ -38,6 +38,7 @@ export function tickZoneControl(ctx: SimContext) {
     if (collapsed.includes(zone)) {
         ctx.state.cornucopiaHolder = undefined;
         ctx.state.cornucopiaHeldSince = undefined;
+        ctx.state.cornucopiaPaidAt = undefined;
         return;
     }
 
@@ -66,6 +67,7 @@ export function tickZoneControl(ctx: SimContext) {
         }
         ctx.state.cornucopiaHolder = undefined;
         ctx.state.cornucopiaHeldSince = undefined;
+        ctx.state.cornucopiaPaidAt = undefined;
         return;
     }
 
@@ -75,6 +77,7 @@ export function tickZoneControl(ctx: SimContext) {
     if (previous !== id) {
         ctx.state.cornucopiaHolder = id;
         ctx.state.cornucopiaHeldSince = cycle;
+        ctx.state.cornucopiaPaidAt = cycle;
         ctx.logEvent(
             `${members.map(m => m.name).join(', ')} are camped on ${zone} and not moving. `
             + `${previous ? 'The horn has changed hands.' : 'The horn belongs to somebody now.'}`,
@@ -92,9 +95,13 @@ export function tickZoneControl(ctx: SimContext) {
     // Held across cycles: this is where it starts paying.
     const heldFor = cycle - (ctx.state.cornucopiaHeldSince ?? cycle);
     // §10.1: the longest unbroken hold this run produced, for 'Held the Horn'.
+    // This counts the whole tenure. The payout below now runs off its own
+    // clock, so collecting the rent no longer erases the record of how long
+    // the rent has been collected for — which is what capped `maxHornHold` at
+    // `payoutEveryCycles` and made both horn achievements unwinnable.
     if (heldFor > (ctx.state.maxHornHold ?? 0)) ctx.state.maxHornHold = heldFor;
-    if (heldFor < ZONE_CONTROL.payoutEveryCycles) return;
-    ctx.state.cornucopiaHeldSince = cycle;
+    if (cycle - (ctx.state.cornucopiaPaidAt ?? cycle) < ZONE_CONTROL.payoutEveryCycles) return;
+    ctx.state.cornucopiaPaidAt = cycle;
 
     const record = allianceOf(ctx.state, id);
     const roster = record ? membersOf(ctx.state, id) : members;

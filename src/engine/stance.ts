@@ -213,9 +213,27 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
     // point is that leaving costs them something they made.
     Fortified: (ctx, t, sig) => {
         if ((t.zoneHeld ?? 0) < STANCE_MODES.fortified.holdCycles) return false;
-        if (!sig.chokepoint && !sig.elevation) return false;
+        // §8: the "something built" clause used to accept only a trap or a
+        // finished shelter, and Fortified fired in one cycle in a thousand.
+        // Measured funnel across 120 runs: 13.6% of alive-cycles have held the
+        // same zone long enough, 23% of those are on a chokepoint or high
+        // ground — and only 15% of *those* had a trap or a shelter, so the
+        // stance was available in 0.48% of cycles before the score ranking
+        // even looked at it. A fire and a camouflaged camp are work done on
+        // ground too, and cost exactly the same thing to walk away from.
+        // Defensible ground, or ground they have made defensible. Requiring
+        // both was two rare gates in series: only 23% of long-held positions
+        // are a chokepoint or high ground, and only 15% of *those* had
+        // anything built on them, which put the stance's ceiling at 0.5% of
+        // cycles before scoring. Either half is a real reason to stay put and
+        // a real thing to lose by leaving.
         const camp = ctx.state.camps?.[t.id];
-        return sig.ownTrapsHere > 0 || camp?.shelter !== undefined;
+        return sig.chokepoint
+            || sig.elevation
+            || sig.ownTrapsHere > 0
+            || camp?.shelter !== undefined
+            || camp?.fire !== undefined
+            || camp?.camouflage !== undefined;
     },
 
     // Sticky on the way out: a tribute who has been Desperate stays Desperate

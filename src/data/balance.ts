@@ -48,6 +48,18 @@ export const VITALS = {
     starvedTraitChance: 0.25,
     starvingThreshold: 80,
     dehydratedThreshold: 80,
+    /**
+     * §7: fatigue existed as a vital with no terminal state of its own. A
+     * tribute could sit pinned at 100 fatigue indefinitely and only ever die
+     * of something else — so the death breakdown had no exhaustion in it at
+     * all, despite the arena having a full stamina system and an endurance
+     * attribute feeding it. Above this, with nowhere to rest, the body simply
+     * stops. Set above the coupling thresholds so it is genuinely the end of
+     * the scale and not a second dehydration.
+     */
+    exhaustedThreshold: 96,
+    exhaustedDamage: 6,
+    /** Relief drops fatigue to just under the threshold, as with the other vitals. */
     starvingDamage: 5,
     /** §7.7: 10 -> 8 — dehydration is meant to pressure tributes toward water, not out-kill the mutts. */
     dehydratedDamage: 8,
@@ -494,6 +506,19 @@ export const PROFICIENCY = {
     persuasionRecruitWeight: 0.04,
     /** Regard granted per point when a persuasion-led negotiation lands. */
     persuasionRegardWeight: 1.5,
+    /**
+     * §8: renewal chance added per point of persuasion, and the fraction of a
+     * partner's break chance talked down per point.
+     *
+     * Persuasion used to buy only the *striking* of a truce — every read site
+     * above is a one-shot negotiation. So a charisma build paid three training
+     * days for a handshake and then had exactly the same odds as anyone else
+     * of that handshake surviving contact, which is most of why persuasion did
+     * not pay rent: 216 truces struck across 400 runs, 16 held. A talker's
+     * edge is keeping people at the table, not getting them to it.
+     */
+    persuasionRenewWeight: 0.06,
+    persuasionRestraintWeight: 0.05,
 } as const;
 
 /**
@@ -601,6 +626,16 @@ export const DRIFT = {
     strengthPerMeleeLevel: 0.1,
     /** T-1: fieldcraft (medicine, forage) sharpens judgement. */
     intelligencePerFieldcraftLevel: 0.1,
+    /**
+     * §3: and talking to people is a skill that improves with use.
+     *
+     * Strength, agility, stealth and intelligence all grew over a run;
+     * charisma was the one attribute fixed at the reaping forever, so a
+     * social build could not compound its way back into relevance the way a
+     * physical one could. `persuasion` was already a trained proficiency with
+     * a level curve — it simply had no attribute behind it.
+     */
+    charismaPerPersuasionLevel: 0.12,
     /** Drift ceiling: earned points never exceed this above the printed stat. */
     maxGain: 1,
     /**
@@ -612,6 +647,7 @@ export const DRIFT = {
     maxGainAgility: 1.2,
     maxGainStealth: 1.2,
     maxGainIntelligence: 0.8,
+    maxGainCharisma: 1,
     /** Earned combat drift lost per idle cycle (no fight, no aggression). */
     decayPerIdleCycle: 0.03,
 } as const;
@@ -1414,6 +1450,26 @@ export const ZONE_EFFECTS = {
     /** Flooding: drowning risk for anyone who lingers instead of leaving. */
     floodDamage: 14,
     floodDrownChance: 0.12,
+    /**
+     * §7: whether the water is survivable is a question about the swimmer.
+     *
+     * Flooding used to hit everybody identically and record it as
+     * "Caught in the flooding of X" — a generic hazard death — so there was no
+     * drowning in the cause breakdown at all, despite `water` terrain, a
+     * Swimmer trait and swimming being a named skill requirement across
+     * several arenas. Someone who can swim gets swept and comes out of it;
+     * someone who cannot, in deep water, does not.
+     *
+     * The check is strength and agility against the flood, with the Swimmer
+     * trait's `water` affinity on top and fatigue against it — a tired
+     * non-swimmer in a flooded sector is the case this exists for.
+     */
+    drownBase: 0.55,
+    drownPerAttribute: 0.055,
+    drownSwimmerBonus: 0.11,
+    drownFatiguePenalty: 0.003,
+    /** Failing the swim outright, rather than merely being battered by it. */
+    drownDamage: 42,
 
     /** A localised freeze on top of whatever the arena's own climate is doing. */
     frozenFatigue: 6,
@@ -1829,8 +1885,15 @@ export const STANCE_MODES = {
          * objective, and measured 0.2% of cycles.
          */
         trackingMin: 1,
-        /** Base pull once the precondition holds. */
-        base: 2.4,
+        /**
+         * Base pull once the precondition holds.
+         *
+         * §8: 2.4 lost to Aggressive nearly every time it was available —
+         * Hunting held 1.6% of cycles, so a tribute with a named quarry and
+         * the tracking to follow them mostly just swept the zone like anybody
+         * else. Committing to one person should beat looking for anyone.
+         */
+        base: 4.0,
         /** Extra pull per point of remembered fear of the quarry. */
         vengeanceBonus: 1.2,
         /** Ambush edge while working a named target. */
@@ -1847,12 +1910,21 @@ export const STANCE_MODES = {
     fortified: {
         /** Cycles a tribute must have held the same zone before digging in. */
         holdCycles: 2,
-        base: 2.2,
+        /**
+         * §8: 2.2 against Aggressive and Evasive, which start at 0 but
+         * accumulate a dozen terms apiece and routinely reach 5-6. Fortified
+         * was reachable in 0.48% of alive-cycles and *chosen* in 0.03% — one
+         * cycle in a thousand — so the README's headline conditional-stance
+         * system had a member nobody has ever seen. Digging in on prepared,
+         * defensible ground you have already held for two cycles should beat
+         * wandering off it; this is what that costs.
+         */
+        base: 4.2,
         /** Extra pull per trap already set in the zone. */
         perTrapBonus: 0.5,
         /** ...and for ground worth holding. */
-        chokepointBonus: 0.8,
-        elevationBonus: 0.6,
+        chokepointBonus: 1.2,
+        elevationBonus: 1.0,
         /** Trap trigger multiplier against anyone entering their ground. */
         trapTriggerMultiplier: 1.5,
         /** Movement costs double fatigue: leaving a position is expensive. */
@@ -1915,8 +1987,11 @@ export const STANCE_MODES = {
         exitBand: 2,
     },
     shadowing: {
-        stealthMin: 7,
-        base: 2.6,
+        // §8: 7 of 10 stealth, on a cast whose stealth averages nearer 5, on
+        // top of an unbroken unseen streak and a valid quarry one zone over.
+        // Shadowing fired in 0.5% of cycles.
+        stealthMin: 6,
+        base: 4.4,
         /** Consecutive unnoticed cycles that convert into a free ambush. */
         cyclesToAmbush: 3,
         /** Concealment edge while trailing rather than closing. */
@@ -2193,7 +2268,14 @@ export const ALLIANCES = {
      * this roll. Both used to be literals buried in `reconcileAlliances`.
      */
     coupBackingMargin: 20,
-    coupChance: 0.25,
+    /**
+     * §12: was 0.25, which produced at most one coup in an entire Games and
+     * frequently none — 'Mutiny' had never fired for anybody. Alliances break
+     * up long before a second challenger can gather the backing, so the roll
+     * has to land more often for a contested pack to be a thing a viewer ever
+     * sees twice.
+     */
+    coupChance: 0.45,
     /**
      * §3.3: the crown rivalry. The two leading killers in a Career-majority
      * pack erode each other's regard every cycle — the structural fault line
@@ -2776,7 +2858,32 @@ export const INTERVIEW_ANGLES = {
  * by the Gamemakers deciding when to start closing the arena. The pageantry is
  * not decoration; it is where the audience is won.
  */
+export const ACHIEVEMENT_BARS = {
+    /**
+     * §12: how many of armour / light / warmth / purifier a tribute must hold
+     * at once for 'Full Kit'. Was effectively 4 (all of them) and nobody ever
+     * managed it — carry capacity puts a fourth utility slot in competition
+     * with food, water and a weapon.
+     */
+    fullKitSlots: 3,
+    /**
+     * §12: cycles a pair who grieved the same death must stay allied before
+     * 'Both Mourned' counts. Without a hold requirement the pairing is simply
+     * "an alliance that has been in the Games a while", and it fired on nearly
+     * every run.
+     */
+    sharedGriefCycles: 4,
+} as const;
+
 export const PREGAMES = {
+    /**
+     * §12: share of tributes whose district token clears the review board.
+     *
+     * Every tribute used to be issued one, which made 'The Token' — crown a
+     * victor still carrying the one thing they brought from home — fire on
+     * 98.8% of runs. It was measuring the goodbye-room scene, not the victor.
+     */
+    tokenAllowedChance: 0.62,
     /** Age at which a reaping is a national incident rather than a formality. */
     childAge: 13,
     childReactionExcitement: 12,
@@ -2960,8 +3067,25 @@ export const TRAINING_SCORE = {
     /** A tribute who just startled the panel is far likelier to clear a gate. */
     stuntGateMultiplier: 1.8,
 
-    /** Base band, from what they can do in front of a panel. */
-    statsPerPoint: 5,
+    /**
+     * Base band, from what they can do in front of a panel.
+     *
+     * §8: this is the divisor on the *sum* of a tribute's attributes, and it
+     * was calibrated at 5 when `Attributes` had five fields. §3.1 added
+     * endurance and willpower without retuning it, so the same tribute's
+     * `totalStats` grew by two whole attributes' worth — roughly 40% — and the
+     * base band stopped discriminating: `floor(totalStats / 5)` pinned almost
+     * everybody at or above the ceiling of 8 before the skill term or the
+     * jitter was even added. Measured consequence: mode 8 at 35.4% of all
+     * scores, 9-or-better at 37.3% against a regression guard of 7-24% and a
+     * design intent of 12-18%, and scores of 1-6 accounting for 14.9% of the
+     * board combined. A 10 is supposed to be remarkable; it was happening
+     * 10.4% of the time.
+     *
+     * 7 restores the five-attribute calibration: attribute *count* times the
+     * original per-point cost divided by the original count.
+     */
+    statsPerPoint: 7,
     skillPerPoint: 3,
     /** Panel mood: the same performance is not scored the same twice. */
     jitterMin: -1,
@@ -3112,6 +3236,16 @@ export const RESOLVE = {
     brokenThreshold: 20,
     /** Per-cycle odds a broken tribute actually acts on it. */
     breakdownChance: 0.35,
+    /**
+     * §12: chance a breakdown costs the tribute their district token.
+     *
+     * Tokens used to be indestructible flavour — issued to everyone at the
+     * goodbye room and never taken away — which made the 'The Token'
+     * achievement ("crown a victor still carrying the one thing they brought
+     * from home") fire on 98.8% of runs, because it reduced to "win". A token
+     * you can put down is a token that means something when you do not.
+     */
+    tokenLostOnBreakdown: 0.18,
     /** Walking into the open is cathartic: it buys back a little will. */
     breakdownRebound: 12,
     /** Sitting down and stopping is not, and compounds instead. */

@@ -320,6 +320,14 @@ export interface Tribute {
     trainingScore: number;
     kills: number;
     causeOfDeath?: string;
+    /**
+     * Killed at the Cornucopia rather than out in the Games.
+     *
+     * §12: `dayOfDeath` cannot answer this — `startGames` sets day 1 before the
+     * bloodbath resolves, so a bloodbath death and a first-day death carry the
+     * same stamp. Set once, where the bloodbath ends.
+     */
+    diedInBloodbath?: boolean;
     dayOfDeath?: number;
     zone: string;
     allianceId?: string;
@@ -416,10 +424,17 @@ export interface Tribute {
     /** §3.4: short-lived shaken state, symmetric to momentum. Decays per cycle. */
     rattled?: number;
     /**
-     * §3.1: attribute points earned in the arena, per attribute, capped by
-     * DRIFT.maxGain. T-1: widened from agility/stealth only — repeated
-     * fighting builds strength and practised fieldcraft sharpens judgement,
-     * so a survivalist can genuinely become a fighter over a run.
+     * §3.1: attribute points earned in the arena, per attribute, capped per
+     * attribute by the `DRIFT.maxGain*` ceilings.
+     *
+     * T-1 widened this from agility/stealth only — repeated fighting builds
+     * strength and practised fieldcraft sharpens judgement, so a survivalist
+     * can genuinely become a fighter over a run. §3 closed the last gap:
+     * charisma used to be the one attribute fixed at the reaping forever,
+     * which meant physical builds visibly compounded over a run and social
+     * ones could not. Every attribute now has a proficiency behind it that can
+     * move it: melee/ranged -> agility, melee -> strength, tracking -> stealth,
+     * medicine/forage -> intelligence, persuasion -> charisma.
      */
     attributeDrift?: Partial<Record<keyof Attributes, number>>;
     /** §5.3: a slow traversal in progress — a crossing or a climb. The tribute
@@ -963,6 +978,24 @@ export interface GameConfig {
      * this existed defaults to the flavour names it always had.
      */
     plainNames?: boolean;
+    /**
+     * §Special requests: "Vanilla Games" — the sliders and nothing else.
+     *
+     * A run's executed config is normally the player's settings multiplied by
+     * a randomly drawn temperament (one of nine) and by every standing
+     * condition on a randomly rolled twenty-entry calendar, with a Quarter
+     * Quell on top. That is the game's best feature and it is also the reason
+     * a player who wants to test a specific slider cannot: `gamesProfileFor`
+     * rolled a temperament and a calendar unconditionally, and
+     * `configForProfile` always multiplied through them, so there was no way
+     * to ask for the numbers you actually set.
+     *
+     * With this on, the profile draws the neutral 1.0/1.0/1.0 temperament, an
+     * empty calendar, no Quell and no cast shape, and the executed config is
+     * the base config unchanged. Optional so every save and config written
+     * before it existed keeps the full-chaos behaviour it was recorded under.
+     */
+    vanillaRules?: boolean;
 }
 
 import type { GamesProfile } from '../engine/gamesProfile';
@@ -1005,8 +1038,30 @@ export interface GameState {
     cornucopiaHolder?: string;
     /** §10.1: the longest unbroken Cornucopia hold this run, in cycles. */
     maxHornHold?: number;
-    /** Cycle that holder's tenure began, or last paid out. */
+    /**
+     * §12: two allies who grieved the same death were seen still allied, at
+     * some point in the run, while both were alive.
+     *
+     * 'Both Mourned' used to be evaluated only against the final state — where
+     * everyone but the victor is dead and alliances have dissolved — so it
+     * could only ever be answered with the wreckage. Recorded live instead.
+     */
+    sharedGriefAllies?: boolean;
+    /** The grieving pair currently being watched, and the cycle they were first seen. */
+    sharedGriefPending?: { pair: string; cycle: number };
+    /**
+     * Cycle the current holder's tenure began.
+     *
+     * §10.1: this used to double as the payout clock — `tickZoneControl` reset
+     * it to the current cycle every time the hold paid out — so the measured
+     * hold length could never exceed `ZONE_CONTROL.payoutEveryCycles`, and
+     * `maxHornHold` topped out at 2 across every run ever played. Both horn
+     * achievements were unreachable by construction. The payout clock is now
+     * `cornucopiaPaidAt`, and this field means only what its name says.
+     */
     cornucopiaHeldSince?: number;
+    /** Cycle the current hold last paid its holders out. See `engine/zoneControl.ts`. */
+    cornucopiaPaidAt?: number;
     /** Cycle an extended-darkness wildcard releases the arena on. */
     blackoutUntilCycle?: number;
     /** Tribute the Capitol has put a bounty on, if any. */

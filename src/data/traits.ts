@@ -222,8 +222,13 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { unarmedPower: 4, retreat: -0.05 },
     },
     'Butcher': {
+        // §8: `meleePower: 2.5` made this the single strongest thing on the
+        // reaping table by a wide margin — an 11.4% win rate against a field
+        // mean near 5%, and the top end of the trait spread the balance
+        // indicators guard. It is still the best blade trait; it is no longer
+        // worth more than every other reaping trait combined.
         info: 'Handy with a blade for reasons that predate the arena. A real edge with melee weapons.',
-        mods: { meleePower: 2.5, killSanity: -0.3 },
+        mods: { meleePower: 1.7, killSanity: -0.3 },
     },
     'Strategist': {
         info: 'Picks their moment. Improves their odds, fights only on favourable ground, and sets better traps.',
@@ -238,8 +243,13 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { retreat: -0.08 },
     },
     'Ruthless': {
-        info: 'Feels nothing afterwards. A kill costs them almost no sanity, and they will not hesitate over an unfair one.',
-        mods: { killSanity: -0.8, treachery: 0.15 },
+        // §8: the worst reaping trait in the game at 2.2%, and structurally so
+        // — it carried no upside at all beyond a sanity saving, while its
+        // `treachery` actively drew retaliation. What the flavour promises is
+        // someone who does not hesitate, so it now buys the thing hesitation
+        // costs: a finishing edge, and a will that does not waver.
+        info: 'Feels nothing afterwards. A kill costs them almost no sanity, they finish what they start, and they will not hesitate over an unfair one.',
+        mods: { killSanity: -0.8, treachery: 0.15, combatPower: 0.9, resolveDrift: 0.15 },
     },
 
     // ---- other people --------------------------------------------------

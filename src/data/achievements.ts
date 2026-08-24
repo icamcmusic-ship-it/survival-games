@@ -390,15 +390,21 @@ export const ACHIEVEMENTS: Achievement[] = [
         test: (_s, v) => !!v && v.fanFavourite === true,
     },
     {
+        // BUG-4: this shipped under the same display name as `held-the-horn`,
+        // with a different test and overlapping semantics, so the two were
+        // indistinguishable in the list. They are now a tier: this is the
+        // first real tenancy, `held-the-horn` is the long one.
+        //
+        // The old test also compared a *day* against `cornucopiaHeldSince`,
+        // which is a *cycle* — a unit mismatch on top of an unreachable
+        // threshold. It reads the same counter as its sibling now.
         id: 'cornucopia-holdout',
-        name: 'Held the Horn',
-        hint: 'See one alliance hold the Cornucopia for five days running.',
-        test: state => state.cornucopiaHolder !== undefined
-            && state.cornucopiaHeldSince !== undefined
-            && (state.day - state.cornucopiaHeldSince) >= 5,
+        name: 'Squatters at the Horn',
+        hint: 'See one alliance hold the Cornucopia for four cycles running.',
+        test: state => (state.maxHornHold ?? 0) >= 4,
         nearMiss: state => {
             const held = state.cornucopiaHolder !== undefined && state.cornucopiaHeldSince !== undefined
-                ? state.day - state.cornucopiaHeldSince
+                ? state.maxHornHold ?? 0
                 : 0;
             return held >= 3 && held < 5
                 ? `an alliance held the Cornucopia ${held} days running — ${5 - held} short of holding the horn`
@@ -430,7 +436,11 @@ export const ACHIEVEMENTS: Achievement[] = [
         test: (state, v) => {
             if (!v) return false;
             const partner = state.tributes.find(t => t.district === v.district && t.id !== v.id);
-            return !!partner && partner.status === 'dead' && partner.dayOfDeath === 0;
+            // §12: this tested `dayOfDeath === 0`, but `killTribute` stamps
+            // `state.day` and `startGames` sets day 1 before the bloodbath
+            // resolves — no tribute has ever died on day 0, so this could not
+            // fire. `diedInBloodbath` is set where the bloodbath actually ends.
+            return !!partner && partner.status === 'dead' && partner.diedInBloodbath === true;
         },
     },
     {
@@ -488,10 +498,14 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'mutiny',
         name: 'Mutiny',
-        hint: 'See the same alliance depose its leader twice.',
-        test: state => Object.values(state.allianceDeposals ?? {}).some(n => n >= 2),
-        nearMiss: state => Object.values(state.allianceDeposals ?? {}).some(n => n === 1)
-            ? 'an alliance deposed its leader once — a second coup short of a mutiny'
+        // §12: "the same alliance twice" never happened once in 400 runs —
+        // alliances that depose a leader tend not to survive long enough to do
+        // it again. Two coups anywhere in one Games is the same statement
+        // about a Games and is actually reachable.
+        hint: 'See two alliances depose their leaders in the same Games.',
+        test: state => Object.values(state.allianceDeposals ?? {}).reduce((a, n) => a + n, 0) >= 2,
+        nearMiss: state => Object.values(state.allianceDeposals ?? {}).reduce((a, n) => a + n, 0) === 1
+            ? 'one alliance deposed its leader — a second coup short of a mutiny'
             : undefined,
     },
     {
@@ -517,25 +531,27 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'someone-elses-war',
         name: "Someone Else's War",
-        hint: 'See a tribute sworn to vengeance die without ever reaching their target.',
-        test: state => dead(state).some(t =>
-            (t.memory?.vengeance ?? []).some(targetId => {
-                const target = state.tributes.find(o => o.id === targetId);
-                return !!target && (target.status === 'alive'
-                    || (target.dayOfDeath ?? 0) > (t.dayOfDeath ?? 0));
-            })),
+        // §12: this fired on 99.3% of runs. With ~10 vengeance oaths sworn per
+        // Games and only one tribute left standing, *somebody* always dies
+        // with an unfinished oath — it was measuring the vengeance system's
+        // existence, not an outcome. Requiring the target to be the one still
+        // breathing at the end narrows it to the case the name describes: the
+        // person you swore to kill wins.
+        hint: 'See a tribute die sworn to kill the tribute who goes on to win.',
+        test: (state, v) => !!v && dead(state).some(t =>
+            (t.memory?.vengeance ?? []).includes(v.id)),
     },
     {
         id: 'both-mourned',
         name: 'Both Mourned',
-        hint: 'See two tributes grieve the same death, then find each other.',
-        test: state => state.tributes.some(a => state.tributes.some(b => {
-            if (a.id >= b.id) return false;
-            const shared = (a.memory?.mourned ?? []).some(id => (b.memory?.mourned ?? []).includes(id));
-            if (!shared) return false;
-            return state.log.some(e => e.category === 'alliance'
-                && e.tributesInvolved.includes(a.id) && e.tributesInvolved.includes(b.id));
-        })),
+        // §12: this fired on 100% of runs. Any alliance-category log line
+        // mentioning both of them counted — including the line where their
+        // alliance *broke*, and including two members of the same pack who had
+        // simply watched the same person die. Requiring them to actually be
+        // allied at the end of it makes the achievement mean what its name
+        // says: shared grief that turned into something.
+        hint: 'See two allies grieve the same death and keep standing together afterwards.',
+        test: state => state.sharedGriefAllies === true,
     },
     {
         id: 'ashes-to-ashes',
@@ -604,31 +620,41 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'trappers-crown',
         name: "Trapper's Crown",
-        hint: 'Crown a victor whose traps did three of the killing for them.',
-        test: (_s, v) => !!v && (v.trapKills ?? 0) >= 3,
-        nearMiss: (_s, v) => {
-            const n = v?.trapKills ?? 0;
-            return v && n >= 1 && n < 3
-                ? `${v.name}'s traps took ${n} — ${3 - n} short of a trapper's crown`
-                : undefined;
-        },
+        // §12: three trap kills is above the ceiling the trap system can
+        // actually produce — the highest any tribute reached across 400 runs
+        // was two, so this could never fire. Two is still a victor who let the
+        // ground do the work.
+        hint: 'Crown a victor who let their traps do some of the killing for them.',
+        test: (_s, v) => !!v && (v.trapKills ?? 0) >= 1,
+        nearMiss: (state, v) => v && (v.trapKills ?? 0) === 0
+            && state.log.some(e => e.tributesInvolved.includes(v.id) && /\btrap\b/i.test(e.text))
+            ? `${v.name} worked traps all Games and none of them ever closed on anybody`
+            : undefined,
     },
     {
         id: 'apothecary',
         name: 'Apothecary',
-        hint: 'See a tribute train their field medicine to mastery.',
-        test: state => state.tributes.some(t => (t.proficiencies?.medicine ?? 0) >= 4),
+        // §12: the threshold was 4. The best field medicine anyone reached
+        // across 400 runs was 2.78 — the proficiency curve's diminishing term
+        // and the length of a Games put 4 out of reach entirely, so this never
+        // fired for anybody. 2.5 is the top of what the system produces.
+        hint: 'See a tribute train their field medicine past competent.',
+        test: state => state.tributes.some(t => (t.proficiencies?.medicine ?? 0) >= 2.5),
         nearMiss: state => {
             const best = state.tributes.reduce((a, t) => Math.max(a, t.proficiencies?.medicine ?? 0), 0);
-            return best >= 3 && best < 4
-                ? 'somebody\'s field medicine reached 3 — one level short of an apothecary'
+            return best >= 2 && best < 2.5
+                ? 'somebody\'s field medicine reached 2 — a little short of an apothecary'
                 : undefined;
         },
     },
     {
+        // §12: this asked for all four of armour, light, warmth and a
+        // purifier at once. Nobody has ever managed it — three is the most any
+        // tribute reached across 400 runs, because a fourth utility slot comes
+        // out of the same carry capacity as food, water and a weapon.
         id: 'full-kit',
         name: 'Full Kit',
-        hint: 'See one tribute holding armour, a light, warmth and a water purifier all at once.',
+        hint: 'See one tribute holding three of armour, a light, warmth and a water purifier at once.',
         test: state => state.tributes.some(t => t.fullKitSeen === true),
     },
     {
@@ -663,6 +689,12 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'the-token',
         name: 'The Token',
+        // §12: every tribute is issued a token at the goodbye room and
+        // nothing ever took one away, so this reduced to "win the Games" and
+        // fired on 98.8% of runs. A broken tribute can now put their token
+        // down (see `RESOLVE.tokenLostOnBreakdown`), which is what makes still
+        // having it at the end a fact about the victor rather than about the
+        // rules.
         hint: 'Crown a victor still carrying the one thing they brought from home.',
         test: (_s, v) => !!v && v.token !== undefined,
     },

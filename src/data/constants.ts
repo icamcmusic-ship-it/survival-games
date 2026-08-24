@@ -13,6 +13,24 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
 
 export const BUILDS: Build[] = ['Frail', 'Slight', 'Average', 'Athletic', 'Stocky', 'Muscular'];
 
+/**
+ * §Special requests: the arenas a brand-new account can pick from.
+ *
+ * Every other hand-authored arena unlocks the first time the player actually
+ * plays it — which `panem.arenasSeen` has always recorded, for the "New to
+ * you" badge. Inverting that badge into a gate needs no new plumbing and no
+ * new storage key, and because `clearPanem` already wipes `arenasSeen`,
+ * "resetting Panem loses your unlocks" falls out for free.
+ *
+ * The sealed draw ("Random Arena (Hidden)") is never gated: it is the way a
+ * player reaches the arenas they have not unlocked yet, so the roster can
+ * always grow. Locked arenas are shown, not hidden — a player should be able
+ * to see what is out there.
+ */
+export const STARTER_ARENA_IDS: readonly string[] = [
+    'clockwork', 'frozen', 'concrete', 'toxic', 'solar', 'ashfall',
+] as const;
+
 export const ARENAS: Arena[] = [
     {
         id: 'clockwork',

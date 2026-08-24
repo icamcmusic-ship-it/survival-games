@@ -255,14 +255,26 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
     beast: {
         id: 'beast',
         name: 'Beast',
+        // §8: the worst archetype in the game at 2.0%, below the regression
+        // guard. It is meant to be a tribute who needs nobody, and it was
+        // built as one — `allianceAffinity: -0.4` and `caution: -0.25` — but
+        // with nothing to survive alone *on*. A body that keeps going is what
+        // makes solitude playable, so the bias now buys endurance rather than
+        // only reach.
         description: 'A tribute the arena made rather than a district. Unarmed and terrifying; no capacity for company at all.',
-        statBias: { strength: 3, intelligence: -2 },
+        statBias: { strength: 3, endurance: 2, intelligence: -2 },
         preferredTraits: ['Brute', 'Bloodthirsty'],
         aggression: 0.35,
         allianceAffinity: -0.4,
         treachery: 0.1,
-        caution: -0.25,
-        stanceBias: { Aggressive: 0.7, Hunting: 0.5, Desperate: 0.5, Defensive: -0.6 },
+        // §8: `caution: -0.25` on top of a front-loaded risk curve and a -0.6
+        // Defensive bias made this a tribute that ran at the first thing it
+        // saw and was dead by day 2.6 — the shortest life and the lowest win
+        // rate of any archetype, under the regression guard. An animal is not
+        // reckless; it is unsociable. It keeps every bit of that, and stops
+        // being unable to back off a fight it is losing.
+        caution: -0.05,
+        stanceBias: { Aggressive: 0.7, Hunting: 0.5, Desperate: 0.5, Defensive: -0.2 },
         objectiveBias: { hunt: 0.5 },
         targetPreference: 'nearest',
         riskCurve: 'front-loaded',

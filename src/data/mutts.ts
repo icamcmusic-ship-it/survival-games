@@ -137,6 +137,16 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [5, 10], damage: 3, speed: 6,
             terrainPreference: ['wetland', 'water', 'forest', 'ruins'],
         },
+        {
+            id: 'sump-waders', name: 'Sump Waders',
+            // Long-legged and heron-patient. They cross the open ground on
+            // foot between the pools, which is the only reason the Causeway
+            // has teeth at all.
+            packSize: [1, 3], damage: 12, speed: 8,
+            inflicts: { bleeding: true },
+            role: 'herder',
+            terrainPreference: ['open', 'wetland', 'water'],
+        },
     ],
     solar: [
         {
@@ -500,6 +510,15 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { bleeding: true },
             terrainPreference: ['ruins', 'open'],
         },
+        {
+            id: 'loft-swine', name: 'Loft Swine',
+            // Stock that got into the feed lofts generations ago and never
+            // left. They are the reason the best-provisioned room in the
+            // building was never actually safe.
+            packSize: [2, 5], damage: 15, speed: 6,
+            inflicts: { bleeding: true },
+            terrainPreference: ['forest', 'ruins', 'open'],
+        },
     ],
     carnival: [
         {
@@ -604,6 +623,15 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { poisoned: true },
             terrainPreference: ['highland', 'open'],
         },
+        {
+            id: 'silt-hounds', name: 'Silt Hounds',
+            // Bred for the settling ponds and the scrub that grew back over
+            // the spoil. They work the soft ground the climbing mutts cannot.
+            packSize: [2, 4], damage: 14, speed: 7,
+            inflicts: { infected: true },
+            role: 'herder',
+            terrainPreference: ['wetland', 'forest', 'water'],
+        },
     ],
     glacier: [
         {
@@ -683,6 +711,7 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             // of the trees, onto the open snow.
             packSize: [3, 5], damage: 17, speed: 8,
             inflicts: { bleeding: true },
+            role: 'herder',
             terrainPreference: ['forest', 'open', 'highland'],
         },
         {
@@ -709,6 +738,16 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [2, 5], damage: 9, speed: 5,
             terrainPreference: ['open', 'highland', 'wetland'],
         },
+        {
+            id: 'tarn-lurker', name: 'The Tarn Lurker',
+            // Something long was put in the meltwater tarn and something long
+            // is still in it. It comes up through the drowned station house
+            // when the ice thins.
+            packSize: [1, 1], damage: 26, speed: 6,
+            inflicts: { bleeding: true },
+            fearAura: 7,
+            terrainPreference: ['water', 'ruins'],
+        },
     ],
     terraces: [
         {
@@ -726,6 +765,7 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             // does the rest.
             packSize: [2, 4], damage: 16, speed: 8,
             inflicts: { bleeding: true },
+            role: 'herder',
             terrainPreference: ['open', 'highland', 'forest'],
         },
         {
@@ -745,6 +785,15 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [1, 3], damage: 13, speed: 7,
             inflicts: { poisoned: true },
             terrainPreference: ['ruins', 'highland', 'forest'],
+        },
+        {
+            id: 'flume-eels', name: 'Flume Eels',
+            // The irrigation flumes still run, and the things living in them
+            // have learned that a tribute kneeling to drink is at exactly the
+            // right height.
+            packSize: [3, 6], damage: 9, speed: 8,
+            inflicts: { bleeding: true, infected: true },
+            terrainPreference: ['water', 'wetland'],
         },
     ],
 

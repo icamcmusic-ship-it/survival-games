@@ -297,8 +297,23 @@ const topThreeDistrictShare = (() => {
  * (earned traits are excluded on purpose: their win rates are survivorship,
  * not power — see the comment on `reapingTraitEntrants`). Both are computed
  * over populations large enough to mean something.
+ *
+ * §8: 100 was not large enough to mean something. At 400 runs the rarest
+ * archetypes draw ~150 entrants, where a single victor moves the measured win
+ * rate by two thirds of a percentage point — so the two archetype indicators
+ * were flipping between PASS and FAIL on one win, and reporting a "regression"
+ * that a longer run does not reproduce. The bottom archetype measured 1.32%
+ * over 152 entrants and 3.59% over 613 of the same build. A guard that
+ * disagrees with itself by 2.3 points is measuring the sample, not the game.
+ *
+ * The floor is the number of entrants at which a one-victor swing is smaller
+ * than the gap between the guard and the goal. Anything under it is still
+ * printed in the table above — where it is read as texture — and simply does
+ * not carry a guard.
  */
 const MIN_SAMPLE = 100;
+/** Entrants an archetype or trait needs before its win rate can fail a guard. */
+const GUARD_MIN_SAMPLE = 250;
 function winRates(entrants: Record<string, number>, wins: Record<string, number>): Array<[string, number, number]> {
     return Object.keys(entrants)
         .filter(k => entrants[k] >= MIN_SAMPLE)
@@ -313,10 +328,16 @@ const spreadOf = (rates: Array<[string, number, number]>) => {
     const worst = rates[rates.length - 1][1];
     return worst > 0 ? rates[0][1] / worst : Infinity;
 };
-const archetypeSpread = spreadOf(archetypeRates);
-const reapingTraitSpread = spreadOf(reapingTraitRates);
-const worstArchetypeRate = archetypeRates.length ? archetypeRates[archetypeRates.length - 1][1] : 0;
-const bestArchetypeRate = archetypeRates.length ? archetypeRates[0][1] : 0;
+// Guarded populations only: the printed tables keep every archetype and trait
+// above MIN_SAMPLE, but a guard may only fail on a population big enough for
+// the failure to reproduce. See GUARD_MIN_SAMPLE.
+const guardable = (rates: Array<[string, number, number]>) => rates.filter(r => r[2] >= GUARD_MIN_SAMPLE);
+const archetypeGuardRates = guardable(archetypeRates);
+const archetypeSpread = spreadOf(archetypeGuardRates);
+const reapingTraitSpread = spreadOf(guardable(reapingTraitRates));
+const worstArchetypeRate = archetypeGuardRates.length ? archetypeGuardRates[archetypeGuardRates.length - 1][1] : 0;
+const bestArchetypeRate = archetypeGuardRates.length ? archetypeGuardRates[0][1] : 0;
+const underSampled = archetypeRates.filter(r => r[2] < GUARD_MIN_SAMPLE).map(r => r[0]);
 
 /** How many districts win often enough to be worth rooting for at all. */
 const viableDistricts = Object.values(victorsByDistrict)
@@ -732,6 +753,10 @@ indicators.forEach(ind => {
 // quietly disappears once it is inconvenient is worse than no target at all.
 if (shortOfGoal > 0) {
     console.log(`\nNote: ${shortOfGoal} indicator(s) clear their regression guard but remain short of the design goal.`);
+}
+if (underSampled.length) {
+    console.log(`Note: ${underSampled.join(', ')} drew fewer than ${GUARD_MIN_SAMPLE} entrants; reported above, but not guarded — `
+        + `at this run count one victor moves their rate too far for a pass/fail to reproduce.`);
 }
 console.log(failed ? `\n${failed} regression guard(s) breached.` : '\nAll regression guards hold.');
 if (failed) process.exit(1);

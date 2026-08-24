@@ -175,7 +175,41 @@ function rollCalendar(rng: RNG): Wildcard[] {
  * silently swap the run's Quell out from under its already-locked-in arena.
  * `null` explicitly pins to "no Quell"; `undefined` (the default) draws normally.
  */
-export function gamesProfileFor(seed: string, forceQuell = false, pinnedQuell?: Quell | null): GamesProfile {
+export function gamesProfileFor(
+    seed: string,
+    forceQuell = false,
+    pinnedQuell?: Quell | null,
+    vanillaRules = false,
+): GamesProfile {
+    // §Special requests: "Vanilla Games". Every modifier this function exists
+    // to roll is skipped — the neutral temperament, an empty calendar, no
+    // Quell, no cast shape — so `configForProfile` has nothing to multiply the
+    // player's sliders by and the run executes on the numbers they set.
+    // Deliberately an early return rather than a set of branches: the point is
+    // that no draw happens at all, and the RNG streams stay untouched.
+    if (vanillaRules) {
+        const plain = GAMES_TEMPERAMENTS.find(t => t.id === 'standard') ?? GAMES_TEMPERAMENTS[0];
+        const ordinary = CAST_SHAPES.find(c => c.id === 'ordinary') ?? CAST_SHAPES[0];
+        return {
+            gamesNumber: new RNG(`${seed}-games-profile`).nextInt(60, 140),
+            temperament: plain,
+            // `wildcard` and `castShape` are not optional on the profile and are
+            // read unguarded in a dozen places, so vanilla gets the neutral
+            // member of each rather than a hole: a headline that announces
+            // nothing, and a reaping that is simply a reaping. The calendar is
+            // genuinely empty, which is what `configForProfile` and every
+            // `wildcardIs` caller actually read.
+            wildcard: {
+                kind: 'nothing',
+                name: 'a Games by the book',
+                announcement: 'The Capitol announces no special conditions this year. The rules are the rules, and that is the whole broadcast.',
+                day: 0,
+            },
+            calendar: [],
+            castShape: ordinary,
+            quell: undefined,
+        };
+    }
     const quell = pinnedQuell !== undefined ? pinnedQuell ?? undefined : drawQuell(new RNG(`${seed}-quell`), forceQuell);
     const quellBeats = quell ? quellWildcards(quell) : [];
     const rng = new RNG(`${seed}-games-profile`);
@@ -208,6 +242,8 @@ export function gamesProfileFor(seed: string, forceQuell = false, pinnedQuell?: 
  * by this year's temperament and by any standing wildcard condition.
  */
 export function configForProfile(base: GameConfig, profile: GamesProfile): GameConfig {
+    // §Special requests: "Vanilla Games" — the player's sliders, verbatim.
+    if (base.vanillaRules) return { ...base };
     const t = { ...profile.temperament, ...profile.quell?.temperamentOverride };
     let sponsorGenerosity = base.sponsorGenerosity * t.sponsorGenerosity;
     let hazardRate = base.hazardRate * t.hazardRate;

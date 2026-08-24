@@ -156,6 +156,34 @@ export function applyDamage(
     return finalistSave;
 }
 
+/**
+ * A death nobody else landed: the tribute ended it themselves.
+ *
+ * §BUG-3: both self-inflicted endings (nightlock, the border walk) used to
+ * write `t.health = 0` directly and then call `checkDeath` with a fallback
+ * cause. `checkDeath` only reaches for the fallback when `lastDamage` is
+ * empty — and it never is, because it still holds whatever hurt them last,
+ * hours or days earlier. So a tribute who took the nightlock was buried under
+ * "Died of dehydration", and if that stale record carried a `sourceId` the
+ * tribute who scratched them a week ago was credited with the kill. Measured
+ * across 300 runs: 36 nightlock deaths, 0 of them recorded as nightlock, and
+ * one false kill credit. That broke the obituary, the victor's kill count and
+ * the nightlock-ending achievement at once.
+ *
+ * Overwriting the record with a sourceless `status` wound is the whole fix:
+ * the cause is now the true one and no killer can be found for it. This does
+ * *not* go through `applyDamage`, deliberately — the finalist-protection
+ * clamp there exists to stop the arena wiping the field out, and a tribute
+ * choosing to stop is not the arena.
+ */
+export function selfInflictedDeath(ctx: SimContext, t: Tribute, cause: string) {
+    if (t.status !== 'alive') return;
+    t.lastDamage = { cause, kind: 'status', cycle: cycleOf(ctx.state), amount: t.health };
+    t.health = 0;
+    clampTribute(t);
+    checkDeath(ctx, t, cause);
+}
+
 /** Kills the tribute if the last wound finished them, attributing it correctly. */
 export function checkDeath(ctx: SimContext, t: Tribute, fallbackCause?: string) {
     if (t.health > 0 || t.status !== 'alive') return;

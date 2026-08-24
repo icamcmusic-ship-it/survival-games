@@ -28,12 +28,24 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   mechanic (vengeance, group combat, retreat, grief) silently never fires.
   Prints the training-score distribution and a behaviour summary.
 - `npm run test:arenas` — structural check on the hand-authored arenas: zone
-  graphs connected and symmetric, every arena backed by its own flavour pack.
+  graphs connected and symmetric, every arena backed by its own flavour pack,
+  and every terrain an arena is made of covered by at least one mutt that can
+  appear on it — `terrainPreference` is a hard filter, so an uncovered terrain
+  is a permanently mutt-free zone rather than a merely quiet one.
   It also scans the source for seeded shuffles written as
   `sort(() => rng() - 0.5)`, which is deterministic within one JS engine but
   consumes a different number of RNG draws in another — so a same-process
   replay test can never catch it, and the Share URL silently stops replaying
   the same Games in a different browser.
+- `npm run test:names` — reaping-pool guard: every district pool carries a full
+  stock (districts 13-16 once shipped at 30 entries per gender against the
+  original twelve's 100), no pool repeats itself, and no name is resident in
+  more than two districts at once (`Sable` was in five).
+- `npm run test:flavor` — flavour-pool depth. A run averages ~650 log lines and
+  swears ~10 vengeance oaths, so a 10-entry pool repeats itself inside a single
+  Games as a matter of arithmetic. The remaining thin pools are recorded as a
+  writing backlog; the check fails if that count rises or any pool drops below
+  eight. Topping a pool up is always allowed.
 - `npm run test:knobs` — fails the build on a knob declared in `data/balance.ts`
   that nothing in `src/` reads, so a dead dial cannot silently absorb tuning
   effort.

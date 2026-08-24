@@ -118,6 +118,7 @@ export function trainProficiency(t: Tribute, skill: Proficiency, ctx?: SimContex
             : attr === 'agility' ? DRIFT.maxGainAgility
             : attr === 'stealth' ? DRIFT.maxGainStealth
             : attr === 'intelligence' ? DRIFT.maxGainIntelligence
+            : attr === 'charisma' ? DRIFT.maxGainCharisma
             : DRIFT.maxGain;
         const drift = (attr: keyof Tribute['attributes'], per: number) => {
             const held = t.attributeDrift![attr] ?? 0;
@@ -137,6 +138,8 @@ export function trainProficiency(t: Tribute, skill: Proficiency, ctx?: SimContex
         // sharpens judgement.
         if (skill === 'melee') drift('strength', DRIFT.strengthPerMeleeLevel);
         if (skill === 'medicine' || skill === 'forage') drift('intelligence', DRIFT.intelligencePerFieldcraftLevel);
+        // §3: charisma was the only attribute that could not grow in the arena.
+        if (skill === 'persuasion') drift('charisma', DRIFT.charismaPerPersuasionLevel);
     }
     // §3.9: crossing into a named band is a visible thing about a person, and
     // the only part of the proficiency system a viewer can see without a

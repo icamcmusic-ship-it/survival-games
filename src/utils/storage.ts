@@ -241,6 +241,25 @@ export function removeStored<T>(spec: StorageSpec<T>): void {
     (spec.legacyKeys ?? []).forEach(k => safeRemove(store, k));
 }
 
+/**
+ * Everything this app has ever written, gone.
+ *
+ * `clearPanem` removes exactly one of the nine canonical keys, so what the
+ * Hall of Fame offered as a reset left coins, the Hall of Fame archive, prefs,
+ * feed filters, the last config and all three save slots standing — eight of
+ * nine. A player asking to start over means start over.
+ *
+ * Legacy key names are swept too: a reset that leaves a pre-migration payload
+ * behind is a reset that undoes itself on the next load.
+ */
+export function clearAllStoredData(): void {
+    const store = getBackend();
+    (Object.keys(STORAGE_KEYS) as Array<keyof typeof STORAGE_KEYS>).forEach(name => {
+        safeRemove(store, STORAGE_KEYS[name]);
+        (LEGACY_KEYS[name] ?? []).forEach(legacy => safeRemove(store, legacy));
+    });
+}
+
 function safeRemove(store: StorageBackend, key: string): void {
     try {
         store.removeItem(key);

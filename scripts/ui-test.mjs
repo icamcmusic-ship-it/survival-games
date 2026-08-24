@@ -53,8 +53,28 @@ await step('empty seed is accepted (falls back to random)', async () => {
   await page.locator('#seed-input').fill('   ');
 });
 
-await step('procedural arena selectable', async () => {
-  await page.getByText(/procedural arena/i).click();
+// The explicit "Procedural Arena" entry is no longer in the picker — the
+// generator still backs the sealed draw, which is what this now selects.
+await step('sealed random arena selectable', async () => {
+  await page.getByRole('button', { name: /random arena \(hidden\)/i }).click();
+});
+
+// §Special requests: arenas are unlocked by playing them. A cold profile can
+// pick the starters and the sealed draw; everything else is visible, disabled,
+// and says so.
+await step('locked arenas are shown but not selectable', async () => {
+  const locked = page.getByRole('button', { name: /undiscovered arena — locked/i });
+  if (await locked.count() === 0) throw new Error('expected at least one locked arena on a cold profile');
+  if (await locked.first().isEnabled()) throw new Error('a locked arena was selectable');
+  const starter = page.getByRole('button', { name: /^The Clockwork Island/i });
+  if (!(await starter.first().isEnabled())) throw new Error('a starter arena was not selectable');
+});
+
+await step('vanilla games toggle is settable', async () => {
+  const toggle = page.getByText(/^Vanilla Games$/);
+  await toggle.click();
+  await page.waitForTimeout(100);
+  await toggle.click();
 });
 
 await step('start game reaches reaping', async () => {

@@ -2,6 +2,7 @@ import { InterviewPersona, GameState, GameConfig, HallOfFameEntry } from '../mod
 import { Bet, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind } from '../utils/saveMigrations';
 import { SIDE_BETS } from '../data/balance';
 import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
+import { clearAllStoredData } from '../utils/storage';
 import { readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
 import { readStored, removeStored, tryWriteStored, writeStored } from '../utils/storage';
 import { snapshotState } from '../utils/snapshot';
@@ -619,6 +620,39 @@ export const gameActions = {
         gameStore.setState({ panem: readPanem() });
     },
 
+    /**
+     * Everything, not just the record book.
+     *
+     * `resetPanem` clears exactly one of the nine storage keys. A player who
+     * asks to erase their account and finds their coins, Hall of Fame, prefs,
+     * feed filters, last config and three save slots still there has not been
+     * given a reset, they have been given a misleading button. This clears all
+     * nine, re-seeds coins to the starting stake, and rehydrates the store from
+     * the now-empty backend so no screen is left holding pre-reset data.
+     */
+    resetEverything() {
+        gameActions.refundOpenBets();
+        cancelRunToEnd();
+        clearRewind();
+        clearAllStoredData();
+        writeCoins(STARTING_COINS);
+        gameStore.setState({
+            gameState: null,
+            simulator: null,
+            view: 'setup',
+            coins: STARTING_COINS,
+            bets: {},
+            sideBets: [],
+            betWonMessage: null,
+            isReplayedRun: false,
+            betsResolved: false,
+            hofSaved: false,
+            panem: readPanem(),
+            lastRunOutcome: null,
+            runProgress: null,
+        });
+    },
+
     async startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false, forceQuell = false, pinnedQuellId?: string | null) {
         // Abandoning a run mid-wager used to silently pocket the player's coins.
         gameActions.refundOpenBets();
@@ -638,7 +672,7 @@ export const gameActions = {
         // HallOfFameEntry.quellId. `undefined` (no replay, or an entry that
         // predates Quells) falls through to the ordinary seeded draw.
         const pinnedQuell = pinnedQuellId === undefined ? undefined : (pinnedQuellId === null ? null : QUELLS.find(q => q.id === pinnedQuellId) ?? null);
-        const gamesProfile = gamesProfileFor(safeSeed, forceQuell, pinnedQuell);
+        const gamesProfile = gamesProfileFor(safeSeed, forceQuell, pinnedQuell, config.vanillaRules === true);
         // 'random-hidden': a real arena, still resolved deterministically from
         // the seed (a shared seed reproduces the same Games) — the pick just
         // isn't the player's to make, and its identity stays out of the UI
@@ -734,7 +768,7 @@ export const gameActions = {
         // Quell is pinned to whatever it already was, though — the arena is
         // already locked in (law and all), so a reroll can't silently swap
         // the run's Quell out from under it.
-        const gamesProfile = gamesProfileFor(newSeed, false, gameState.gamesProfile?.quell ?? null);
+        const gamesProfile = gamesProfileFor(newSeed, false, gameState.gamesProfile?.quell ?? null, gameState.baseConfig.vanillaRules === true);
         const config = configForProfile(gameState.baseConfig, gamesProfile);
         const tributes = generateTributes(newSeed, config, gameState.arena.zones[0].name, gamesProfile.castShape, gamesProfile.quell);
         const newState: GameState = {

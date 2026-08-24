@@ -15,6 +15,8 @@
     "test:undeclared-knobs": "tsx scripts/check-undeclared-knobs.ts",
     "test:metrics": "tsx scripts/metrics.ts",
     "test:arenas": "tsx scripts/validate-arenas.ts",
+    "test:names": "tsx scripts/check-names.ts",
+    "test:flavor": "tsx scripts/check-flavor-pools.ts",
     "test:ui": "node scripts/ui-test.mjs"
   },
   "dependencies": {

@@ -81,15 +81,24 @@ ARENAS.forEach(arena => {
     Object.keys(arena.effectVocab ?? {}).forEach(kind => {
         if (!EFFECT_KINDS.has(kind)) problems.push(`${arena.id}: effectVocab key '${kind}' is not a ZoneEffectKind`);
     });
-    // §5.12: an arena's mutt roster should cover the terrain it is made of, or
-    // whole zones are mechanically toothless. Reported rather than fatal —
-    // some arenas deliberately keep one horror and one habitat for it.
+    // §5.12: an arena's mutt roster must cover the terrain it is made of, or
+    // whole zones are mechanically toothless. `terrainPreference` is a hard
+    // filter (engine/mutts), so an uncovered terrain is not "rarely dangerous",
+    // it is a permanent safe haven — which is why this is fatal, not a note.
+    // (This check was dead for its whole life: it read `m.terrains`, a field
+    // that does not exist, so `uncovered` was unconditionally empty.)
     const roster = ARENA_MUTTS[arena.id] ?? [];
     if (roster.length > 0) {
-        const covered = new Set(roster.flatMap(m => m.terrains ?? []));
-        const uncovered = [...new Set(arena.zones.map(z => z.terrain))]
-            .filter(terrain => roster.some(m => m.terrains) && !covered.has(terrain));
-        if (uncovered.length > 0) notes.push(`${arena.id}: no mutt eligible on ${uncovered.join(', ')}`);
+        // A mutt with no `terrainPreference` at all is eligible everywhere, so
+        // its presence alone covers the whole arena.
+        const universal = roster.some(m => !m.terrainPreference || m.terrainPreference.length === 0);
+        const covered = new Set(roster.flatMap(m => m.terrainPreference ?? []));
+        const uncovered = universal
+            ? []
+            : [...new Set(arena.zones.map(z => z.terrain))].filter(terrain => !covered.has(terrain));
+        if (uncovered.length > 0) {
+            problems.push(`${arena.id}: no mutt eligible on ${uncovered.join(', ')} — those zones are mutt-proof forever`);
+        }
     }
 });
 

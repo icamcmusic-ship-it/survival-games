@@ -3,7 +3,7 @@ import { MOTIVES, RESOLVE } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { ensureMemory, cyclesSinceContact } from './memory';
 import { clampTribute } from './vitals';
-import { checkDeath } from './combat';
+import { selfInflictedDeath } from './combat';
 import { getZone } from './map';
 import { traitMod } from '../data/traits';
 import { getRel } from './relationships';
@@ -135,8 +135,6 @@ export function resolveBreakdowns(ctx: SimContext) {
 
         if ((carried || canFind) && resolveOf(t) <= RESOLVE.nightlockThreshold && ctx.rng.chance(RESOLVE.nightlockChance)) {
             if (carried) t.inventory = t.inventory.filter(i => i !== carried);
-            t.health = 0;
-            clampTribute(t);
             ctx.logEvent(
                 carried
                     ? `${t.name} sits down in ${t.zone}, takes out the nightlock, and does not hurry over it. `
@@ -146,7 +144,7 @@ export function resolveBreakdowns(ctx: SimContext) {
                 [t.id],
                 { important: true, category: 'death' }
             );
-            checkDeath(ctx, t, 'Took the nightlock rather than keep playing');
+            selfInflictedDeath(ctx, t, 'Took the nightlock rather than keep playing');
             return;
         }
 
@@ -156,15 +154,13 @@ export function resolveBreakdowns(ctx: SimContext) {
         if (ctx.state.escalationDay !== undefined
             && resolveOf(t) <= RESOLVE.nightlockThreshold
             && ctx.rng.chance(RESOLVE.borderWalkChance)) {
-            t.health = 0;
-            clampTribute(t);
             ctx.logEvent(
                 `${t.name} walks toward the edge of the arena in ${t.zone} at an ordinary pace, like someone going home. `
                 + `The commentators fall over each other explaining it as disorientation. It is not disorientation.`,
                 [t.id],
                 { important: true, category: 'death' }
             );
-            checkDeath(ctx, t, 'Walked into the arena border rather than keep playing');
+            selfInflictedDeath(ctx, t, 'Walked into the arena border rather than keep playing');
             return;
         }
 
@@ -185,6 +181,21 @@ export function resolveBreakdowns(ctx: SimContext) {
                 { important: true, category: 'sanity' }
             );
             return;
+        }
+
+        // §12: the token goes first. Before a broken tribute changes how they
+        // are playing, they can stop carrying the thing they came in with —
+        // the smallest and most legible surrender available to them, and the
+        // one that makes keeping it all the way to a crown worth anything.
+        if (t.token && ctx.rng.chance(RESOLVE.tokenLostOnBreakdown)) {
+            const token = t.token;
+            t.token = undefined;
+            ctx.logEvent(
+                `${t.name} takes out ${token} in ${t.zone}, looks at it for a while, and leaves it on the ground. `
+                + `Whoever it was supposed to be a promise to is not watching any more, and they have decided they cannot carry it and this both.`,
+                [t.id],
+                { important: true, category: 'sanity' }
+            );
         }
 
         if (!isEvasiveStance(t.stance) && ctx.rng.chance(0.5)) {
