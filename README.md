@@ -27,7 +27,11 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   obituary names the source that actually landed the killing blow, and no
   mechanic (vengeance, group combat, retreat, grief) silently never fires.
   Prints the training-score distribution and a behaviour summary.
-- `npm run test:arenas` — structural check on the hand-authored arenas: zone
+- `npm run test:arenas` — structural check on the hand-authored arenas: every
+  distinct stacked-law combination the roster ships played to completion and
+  asserted to have actually been in force (this found `noSponsors` being
+  enforced in `sponsors.ts` and nowhere else, so a mentor's parachute went on
+  landing in the two arenas where nothing is supposed to reach anybody), zone
   graphs connected and symmetric, every arena backed by its own flavour pack,
   every arena carrying at least twelve of its own authored events (below that it
   spends most of a run speaking in the shared universal voice rather than its
@@ -50,6 +54,16 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   Games as a matter of arithmetic. The backlog is now empty: every pool is at or
   above the 12-entry target and the allowance is zero, so a new thin pool fails
   the build rather than joining a list. Topping a pool up is always allowed.
+  It also prints — and guards — the four content surfaces that are not flat
+  `string[]` exports and were therefore invisible to the global floor: per-arena
+  authored event pools, interview scenarios bucketed per persona (all thirteen
+  are at the target, and the guard is the target rather than the hard floor),
+  per-quirk line variants, and the four conditional-stance action pools
+  (`fortify`/`scavenge`/`shadow`/`flail`), which `test:arenas` never checked
+  because it only knew the original five. That last one found a real backlog —
+  most arenas that author them author four entries against a generic fallback of
+  twelve, which makes an authored pool *worse* than none — so it ratchets the way
+  the global allowance does and can only shrink.
 - `npm run test:knobs` — fails the build on a knob declared in `data/balance.ts`
   that nothing in `src/` reads, so a dead dial cannot silently absorb tuning
   effort.
@@ -65,6 +79,15 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   predate the check so it fails only on new drift. Migrate some of them and the
   check tells you to shrink the baseline with
   `npx tsx scripts/check-undeclared-knobs.ts --write-baseline`.
+- `npm run test:metrics` — the softer question the soak cannot ask: is the
+  simulation producing the *shape* of outcome the design wants? Alongside the
+  win-rate tables it reports three things that used to be guesswork: trait power
+  level (every numeric modifier bucketed by category, magnitude summed per trait,
+  anything more than 1.5sd off its category mean flagged — a proxy for power, so
+  a report rather than a guard), per-archetype signature fire rate (fourteen
+  archetypes fire between 40% and 60%; Ghost fires at 19.8%), and win rate by
+  district legacy tier, which is the check that "starts behind on purpose" has
+  not quietly become "cannot win".
 - `npm run test:ui` — Chromium smoke test covering every screen, control and
   keyboard shortcut; fails on any console or page error. Needs `npm run dev`
   running on port 3000.
@@ -155,7 +178,32 @@ running in parallel:
   resolve, and deception in movement — a false trail that poisons `zoneTraffic`
   and everyone else's zone memory.
 - **Zone economy** (`engine/map.ts`) makes forage a finite stock that depletes
-  and regrows, so a resource-rich zone is a prize other tributes can strip.
+  and regrows, so a resource-rich zone is a prize other tributes can strip. A
+  tribute who can read ground — enough forage proficiency to have watched it
+  come back before, or enough intelligence to work it out — reckons when a
+  stripped zone is *due*, and movement pulls them back toward it instead of
+  penalising it, which is what turns depletion from a permanent "do not return"
+  flag into a boom-bust cycle worth learning.
+- **Zone interiors** are three shared primitives rather than three hand-authored
+  gimmicks. `ZoneFeatures.acoustics` is how far sound carries out of a zone —
+  derived from terrain and cover, overridable by any arena, and read by the
+  stealth layer, so a canyon gives a hider away and deep timber does not.
+  `ZoneFeatures.vertical` (`engine/verticality.ts`) gives a zone an inside with a
+  height to it: tributes stand at `upper` or `lower`, two on different levels are
+  not in the same place and do not meet, and the descent costs fatigue and
+  carries a fall risk. `engine/loadBearing.ts` is structural fatigue — occupation
+  and combat noise load any `ruins` zone in any arena, and past a threshold the
+  universal "Load-Bearing" event can bring it down on everybody in it. All three
+  are inert in an arena that declares nothing.
+- **Weather** has a season (`engine/weatherFront.ts`). Every front used to be an
+  independent uniform draw, so a run could go rain, freeze, dust, fog in four
+  cycles and read as noise. A run rolls a direction it drifts in and the bias
+  toward that extreme deepens as the run goes on; once it is established the
+  feed names it.
+- **Traces** persist (`engine/abandonedCamps.ts`). A zone somebody fled used to
+  reset to its ambient state the instant they were out of it. A camp left
+  standing is a real object now: findable, carrying salvage, and telling whoever
+  finds it where a living person was and that they left fast.
 - **Balance** (`data/balance.ts`) holds every tunable number the engine reads —
   vitals drains, damage, thresholds, decay rates, gate probabilities — so
   balancing a run means editing one file. Both directions of that claim are
@@ -174,6 +222,14 @@ running in parallel:
   characters rather than four bias scalars: a target preference, a risk curve,
   an objective bias, declared antipathies, and one signature set piece per run.
   Fifteen of them, weighted per district and by the year's cast shape.
+- **Names earned in the arena** are their own layer. A tribute's birth name comes
+  from `data/names.ts` and is fixed at the reaping; an *epithet*
+  (`engine/epithets.ts`) is what the country calls them for what they did here —
+  awarded once, off a kill streak, a long unseen streak, or surviving past the
+  point anybody expected, and used by the kill feed and the victor's interview.
+  A weapon that draws blood twice earns a name of its own
+  (`engine/legendaryItems.ts`) and keeps it when it changes hands, which is a
+  kind of proper noun the game did not otherwise have.
 - **Districts** (`data/districts.ts`) carry a Games record. A tribute from a
   storied district arrives with a mentor who has stood on the podium and a
   crowd that already expects them to do well; a tribute from a forgotten one
