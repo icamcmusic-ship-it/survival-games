@@ -2,7 +2,7 @@ import { Arena, GameState, Tribute, Zone, ZoneFeatures } from '../models/types';
 import { traitMod } from '../data/traits';
 import { BLEEDING, EDGE_TOLL, ZONE_EFFECTS, ZONES } from '../data/balance';
 import { injuryGrade, openWound } from './wounds';
-import { massOf } from './physique';
+import { chokepointModifier, climbModifier, massOf } from './physique';
 import { SimContext } from './context';
 
 export function zoneNames(arena: Arena): string[] {
@@ -30,9 +30,12 @@ export function travelCost(t: Tribute, dest: Zone): number {
         return (traitMod(t, 'water') > 0 ? 1 : 2) + limping;
     }
     if (dest.terrain === 'highland') {
-        return (traitMod(t, 'highland') > 0 ? 1 : 2) + limping;
+        return Math.max(1, (traitMod(t, 'highland') > 0 ? 1 : 2) + limping - Math.round(climbModifier(t)));
     }
-    return 1 + limping;
+    // §3.1: chokepoints, burrows and steep ground. A broad frame pays to get
+    // through a gap; long limbs pay again, and a compact tribute climbs.
+    const shape = dest.terrain === 'ruins' ? climbModifier(t) : chokepointModifier(t);
+    return Math.max(1, Math.round(1 + limping - shape));
 }
 
 /**

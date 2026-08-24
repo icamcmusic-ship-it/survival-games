@@ -758,8 +758,64 @@ export const PHYSIQUE = {
     /** Melee power per cm of reach advantage over the neutral height. */
     reachPerCm: 0.06,
     maxReachBonus: 2.5,
-    /** Mass rating per build, used for knockdowns, grappling and cold. */
+    /**
+     * §3.1: mass is now the sum of two ratings rather than one table lookup.
+     * Frame is the skeleton (fixed); condition is the soft tissue (mutable).
+     * `massByBuild` remains for saves written before the split, where only the
+     * legacy single-axis build survives.
+     */
     massByBuild: { Frail: -2, Slight: -1, Average: 0, Athletic: 1, Stocky: 2, Muscular: 2.5 },
+    massByFrame: { Narrow: -1.6, Spare: -0.8, Even: 0, Broad: 0.9, Heavy: 1.8 },
+    massByCondition: { Wasted: -1.2, Lean: -0.4, Conditioned: 0, Padded: 0.6, Bulky: 1.2 },
+    /** Frame index, for the axis reads that want an ordinal rather than a mass. */
+    frameOrder: { Narrow: 0, Spare: 1, Even: 2, Broad: 3, Heavy: 4 },
+    conditionOrder: { Wasted: 0, Lean: 1, Conditioned: 2, Padded: 3, Bulky: 4 },
+    /**
+     * §3.1: what each axis buys and costs, per step away from the middle of
+     * its scale. Frame raises reach, carry, grapple resistance and the damage
+     * floor while costing concealment, chokepoint passage, climb speed and
+     * hunger drain. Condition raises insulation, starvation buffer and injury
+     * absorption while costing agility, heat tolerance and water need.
+     */
+    framePerStep: {
+        grappleResist: 0.09,
+        damageFloor: 0.6,
+        concealment: 0.07,
+        chokepoint: 0.08,
+        climb: 0.05,
+        hungerDrain: 0.035,
+    },
+    conditionPerStep: {
+        insulation: 0.06,
+        starvationBuffer: 4,
+        injuryAbsorb: 0.025,
+        agility: 0.28,
+        heatTolerance: 0.06,
+        waterNeed: 0.03,
+    },
+    /** Reach, in cm-equivalents, from limb length rather than standing height. */
+    limbReachCm: { long: 6, even: 0, compact: -5 },
+    /** Chokepoints, burrows and climbs, per limb ratio. */
+    limbChokepoint: { long: -0.1, even: 0, compact: 0.08 },
+    limbClimb: { long: -0.05, even: 0, compact: 0.1 },
+    /**
+     * §3.1: condition drift. Pressure accumulates while past the starvation
+     * line and unwinds on a full belly; a full step of condition costs (or
+     * buys back) `conditionStepPressure` of it.
+     */
+    starvingHunger: 70,
+    fedHunger: 25,
+    conditionPressurePerStarvingCycle: 1,
+    conditionPressurePerFedCycle: 0.6,
+    conditionStepPressure: 6,
+    /** How much a frame reads as threatening across a zone, per step. */
+    visibleFramePerStep: 0.5,
+    /** ...and how little of that a hollowed-out condition takes back. */
+    visibleConditionPerStep: 0.2,
+    /** A wound on the dominant side costs this much more than the other one. */
+    dominantSideMultiplier: 1.5,
+    /** Growth spurt: a young tribute on a big frame reads as future, not present. */
+    spurtMaxAge: 14,
     /** Carry slots added per point of mass — a Frail twelve-year-old carries less. */
     capacityPerMass: 0.5,
     /** Cold resistance per point of mass. */
@@ -1782,6 +1838,16 @@ export const STANCE = {
      * cleanly no longer does.
      */
     switchMargin: 1.1,
+    /**
+     * §1.7: how much the switch margin widens per recent stance change. The
+     * score-only hysteresis left a worst-case tribute changing stance on half
+     * of their cycles; this gives the machinery a memory of its own churn.
+     */
+    churnMarginPerSwitch: 2.2,
+    churnDecayPerCycle: 0.25,
+    churnMax: 4,
+    /** Extra cycles of hold per unit of accumulated churn. */
+    churnHoldPerSwitch: 1,
     /** Health fractions that pull a tribute toward each stance. */
     evasiveHealth: 40,
     cautiousEvasiveHealth: 55,
@@ -2711,6 +2777,8 @@ export const GENERATION = {
      * alias again; 0 would decouple them entirely).
      */
     buildFrameWeight: 0.6,
+    /** §3.1: roughly one tribute in ten leads with the other hand. */
+    leftHandedShare: 0.11,
     /** Baseline sponsor trust before reputation modifiers. */
     baseSponsorTrust: 50,
     trustSpread: 12,

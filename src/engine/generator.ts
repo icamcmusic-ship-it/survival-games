@@ -1,6 +1,6 @@
 import { RNG } from '../utils/rng';
-import { Tribute, Attributes, Build, GameConfig, ArchetypeId, Gender } from '../models/types';
-import { TRAITS, BUILDS, DEFAULT_GAME_CONFIG, traitFits } from '../data/constants';
+import { Tribute, Attributes, GameConfig, ArchetypeId, Gender, Handedness, LimbRatio } from '../models/types';
+import { TRAITS, DEFAULT_GAME_CONFIG, traitFits } from '../data/constants';
 import { ARCHETYPES, archetypeWeightsFor } from '../data/archetypes';
 import { GENERATION, TESSERAE, VOLUNTEER } from '../data/balance';
 import { DISTRICT_NAMES } from '../data/names';
@@ -65,6 +65,7 @@ function drawReapingAge(rng: RNG, district: number): number {
 }
 
 export { strengthCapForAge } from './physique';
+import { rollBody } from './physique';
 
 /**
  * §3.1: build is a second axis, not a strength alias. An independent frame
@@ -73,13 +74,8 @@ export { strengthCapForAge } from './physique';
  * tribute both exist, and `massOf` (cold, being moved, carry capacity) reads
  * information the strength stat does not already carry.
  */
-function rollBuild(rng: RNG, strength: number): Build {
-    const frame = rng.nextInt(0, BUILDS.length - 1);
-    const idx = Math.round(
-        frame * GENERATION.buildFrameWeight
-        + (strength / 2) * (1 - GENERATION.buildFrameWeight)
-    );
-    return BUILDS[Math.min(BUILDS.length - 1, Math.max(0, idx))];
+function rollBuild(rng: RNG, strength: number, heightCm: number) {
+    return rollBody(max => rng.nextInt(0, max), strength, heightCm);
 }
 
 /**
@@ -458,7 +454,11 @@ export function generateTributes(
             const heightCm = gender === 'Male'
                 ? rng.nextInt(148 + (age - GENERATION.minAge) * 4, 168 + (age - GENERATION.minAge) * 4)
                 : rng.nextInt(142 + (age - GENERATION.minAge) * 4, 160 + (age - GENERATION.minAge) * 4);
-            const build = rollBuild(rng, attributes.strength);
+            const { frame, condition, build } = rollBuild(rng, attributes.strength, heightCm);
+            // §3.1: limb length is independent of standing height, and
+            // handedness is what makes a scarred arm asymmetric.
+            const limbRatio = rng.pick<LimbRatio>(['long', 'even', 'compact']);
+            const handedness: Handedness = rng.chance(GENERATION.leftHandedShare) ? 'left' : 'right';
 
             // Reputation: the trust level the crowd keeps drifting back toward.
             // A district's Games record travels with its tributes — the crowd
@@ -479,6 +479,10 @@ export function generateTributes(
                 age,
                 heightCm,
                 build,
+                frame,
+                condition,
+                limbRatio,
+                handedness,
                 isCareer,
                 archetype,
                 attributes,

@@ -4,6 +4,7 @@ import { sanityBandOf } from '../engine/sanityBands';
 import { resolveOf } from '../engine/resolve';
 import { fearOf } from '../engine/fear';
 import { STANCE_PROFILES } from '../data/stances';
+import { bodyLabel, isGrowingInto } from '../engine/physique';
 
 /**
  * A5: the plain-English sentence that goes above every number.
@@ -24,15 +25,6 @@ const STANCE_PHRASE: Record<string, string> = {
     Desperate: 'past caring',
     Scavenging: 'picking over what other people left',
     Shadowing: 'following somebody who has not noticed',
-};
-
-const BUILD_PHRASE: Record<string, string> = {
-    Frail: 'Slight and easily overlooked',
-    Slight: 'Small and fast',
-    Average: 'Unremarkable to look at',
-    Athletic: 'Quick and well-made',
-    Stocky: 'Solid and hard to move',
-    Muscular: 'Big, and visibly so',
 };
 
 /** The vital in the worst shape, phrased as a person would say it. */
@@ -66,7 +58,12 @@ export function summarySentence(gameState: GameState, t: Tribute): string {
             + `${t.kills > 0 ? `, having taken ${t.kills} with them` : ''}.`;
     }
 
-    const build = BUILD_PHRASE[t.build] ?? 'Ordinary';
+    // §3.1: two axes, so the sentence can say what the run has done to them.
+    // A tribute who walked in Padded and is now Wasted is a different body,
+    // and this is where the audience hears about it.
+    const phrase = bodyLabel(t);
+    const build = `${phrase.charAt(0).toUpperCase()}${phrase.slice(1)}`
+        + (isGrowingInto(t) ? ', and nowhere near grown into it yet' : '');
     const stance = STANCE_PHRASE[t.stance] ?? STANCE_PROFILES[t.stance]?.label.toLowerCase() ?? 'moving';
     const opener = `${t.name}, ${t.age}, of District ${t.district}. ${build} and ${stance}`;
 

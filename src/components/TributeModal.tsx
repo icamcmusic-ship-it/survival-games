@@ -3,7 +3,7 @@ import { GameState, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { FeedLine } from './EventFeed';
 import { fearOf } from '../engine/fear';
-import { heightLabel } from '../engine/physique';
+import { bodyLabel, heightLabel, isGrowingInto } from '../engine/physique';
 import { pactLabel } from '../engine/alliancePact';
 import { prefsStore } from '../store/prefsStore';
 import { HUNTING, PROFICIENCY, ROMANCE, SUSPICION } from '../data/balance';
@@ -488,7 +488,11 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                 <details className="panel-flush px-3 py-2 mb-4 text-xs text-[var(--color-ink-400)]">
                     <summary className="cursor-pointer eyebrow">Dossier</summary>
                     <p className="mt-2 leading-relaxed">
-                        {tribute.age} years old · {heightLabel(tribute.heightCm, units)} · {tribute.build} build
+                        {tribute.age} years old · {heightLabel(tribute.heightCm, units)} · {bodyLabel(tribute)}
+                        {tribute.limbRatio && tribute.limbRatio !== 'even'
+                            ? ` · ${tribute.limbRatio === 'long' ? 'long-limbed' : 'compact'}` : ''}
+                        {tribute.handedness === 'left' ? ' · left-handed' : ''}
+                        {isGrowingInto(tribute) ? ' · still growing into it' : ''}
                         {tribute.platePosition !== undefined && (
                             <> · plate {tribute.platePosition < 0.34 ? 'close to the horn' : tribute.platePosition < 0.67 ? 'mid-ring' : 'on the far edge of the ring'}</>
                         )}

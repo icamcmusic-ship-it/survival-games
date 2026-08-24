@@ -1,4 +1,5 @@
 import { GameState, Tribute } from '../models/types';
+import { forceStance } from './stance';
 import { RNG } from '../utils/rng';
 import { DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, SUSPICION } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
@@ -198,8 +199,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 const personal = wereAllied || isLover || isPartner || bond >= RELATIONSHIPS.vengeanceBond;
                 if (personal || now <= RELATIONSHIPS.vengeanceThreshold) {
                     swearVengeance(other, killer.id);
-                    other.stance = 'Aggressive';
-                    other.stanceHeld = 0;
+                    forceStance(other, 'Aggressive');
                     ctx.logEvent(
                         fill(ctx.pickText(VENGEANCE_TEXTS), { mourner: other.name, victim: victim.name, killer: killer.name }),
                         [other.id, killer.id, victim.id],

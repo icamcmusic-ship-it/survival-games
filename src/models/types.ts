@@ -217,7 +217,47 @@ export interface Item {
     fishing?: boolean;
 }
 
+/**
+ * §3.1: the legacy single-axis body.
+ *
+ * Retained as a *derived* display alias (`bodyLabel` computes it from the two
+ * real axes below) so old saves, the roster's public record and the disclosure
+ * rules keep working unchanged.
+ */
 export type Build = 'Frail' | 'Slight' | 'Average' | 'Athletic' | 'Stocky' | 'Muscular';
+
+/**
+ * §3.1: bodies, on two axes instead of one.
+ *
+ * `massOf()` returned a signed scalar from a six-entry table and `reachBonus()`
+ * read height. That was the entire physical model: six builds on a single axis,
+ * rolled as a blend of a random frame and strength/2.
+ *
+ * Frame is skeleton. It is fixed at the reaping, correlates with height, and
+ * decides reach, carry capacity, how hard you are to move, and how dangerous
+ * you look from across a zone. Condition is soft tissue. It is *mutable*, it
+ * degrades as the run goes on, and it decides insulation, starvation buffer,
+ * injury absorption — against agility, heat tolerance and water requirement.
+ *
+ * The two pull in different directions, which is what makes the 5x5 grid worth
+ * having: Narrow/Lean is a whippet, Broad/Padded is a solid well-fed frame, and
+ * Heavy/Wasted is a big frame gone hollow — still intimidating, no longer able
+ * to back it up. A tribute who has been starving for six days walks Padded ->
+ * Lean -> Wasted and loses their cold resistance and their starvation buffer at
+ * exactly the moment they need both, while their reach is unchanged.
+ */
+export type Frame = 'Narrow' | 'Spare' | 'Even' | 'Broad' | 'Heavy';
+export type Condition = 'Wasted' | 'Lean' | 'Conditioned' | 'Padded' | 'Bulky';
+
+/**
+ * §3.1: limb length relative to height, independent of it. Long-limbed buys
+ * reach and costs you every chokepoint and burrow in the arena; compact is the
+ * opposite trade, and the better climber.
+ */
+export type LimbRatio = 'long' | 'even' | 'compact';
+
+/** §3.1: which hand. Makes `favouring` and arm scars asymmetric. */
+export type Handedness = 'left' | 'right';
 
 /**
  * What a tribute has personally learned about a place. Nobody in the arena has
@@ -303,7 +343,20 @@ export interface Tribute {
     name: string;
     age: number;
     heightCm: number;
+    /** §3.1: derived display alias for `frame` + `condition`. */
     build: Build;
+    /** §3.1: skeleton. Fixed at the reaping. */
+    frame: Frame;
+    /** §3.1: soft tissue. Degrades under starvation, rebuilds when fed. */
+    condition: Condition;
+    limbRatio: LimbRatio;
+    handedness: Handedness;
+    /**
+     * §3.1: cycles spent on the wrong side of the starvation line, and the
+     * driver of condition loss. Rebuilding runs the other way on a full belly,
+     * which is why this is signed rather than a counter.
+     */
+    conditionPressure?: number;
     isCareer: boolean;
     archetype: ArchetypeId;
     attributes: Attributes;
@@ -457,7 +510,21 @@ export interface Tribute {
      * shoulder. Set alongside the severity grade, cleared when the site heals
      * below grade 2, and visible to anyone who can see them.
      */
+    /**
+     * §1.7: how much this tribute has been flip-flopping lately. Rises on
+     * every stance change and decays each cycle; the switch margin scales with
+     * it, so a tribute who has already changed their mind twice needs a much
+     * bigger reason to do it a third time. This is the piece the score-only
+     * hysteresis was missing — it had no memory of its own churn.
+     */
+    stanceChurn?: number;
     favouring?: InjurySite;
+    /**
+     * §3.1: which arm took it. `injuries.arms` is one site, so handedness had
+     * nothing to bite on; recording the side makes a ruined weapon hand a
+     * genuinely different injury from a ruined shield side.
+     */
+    woundedSide?: Handedness;
     /**
      * §3.2: cycles a trait has been carried, keyed by trait name. Drives trait
      * decay and the evolution chains in `engine/traitArcs.ts` — a trait is a

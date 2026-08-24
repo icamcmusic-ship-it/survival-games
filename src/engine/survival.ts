@@ -18,6 +18,7 @@ import { craftOf } from '../data/districts';
 import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
 import { earnTrait } from './earnedTraits';
+import { bodyLabel, driftCondition, hungerDrainMultiplier, starvationBuffer, waterNeedMultiplier } from './physique';
 import { arenaHasLaw, wildcardIs } from './gamesProfile';
 import { isEvasiveStance } from '../data/stances';
 
@@ -109,6 +110,11 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     const stamina = (attr(t, 'endurance') - 5) * VITALS.endurancePerPoint;
     fatigue += fatigue > 0 ? -stamina : -stamina * VITALS.enduranceRecoveryShare;
 
+    // §3.1: the body itself. A bigger skeleton burns more whatever is wrapped
+    // around it, and soft tissue is water the arena keeps asking for back.
+    hunger *= hungerDrainMultiplier(t);
+    thirst *= waterNeedMultiplier(t);
+
     // Traits, as one table read rather than a growing chain of includes().
     hunger += traitMod(t, 'hungerDrain');
     thirst += traitMod(t, 'thirstDrain');
@@ -184,7 +190,10 @@ function reliefFor(t: Tribute, cause: 'hunger' | 'thirst' | 'fatigue' | 'bleedin
 
 /** Untreated wounds and empty canteens, each attributed to what caused them. */
 function applyStatusDamage(ctx: SimContext, t: Tribute) {
-    if (t.vitals.hunger > VITALS.starvingThreshold) {
+    // §3.1: condition is a starvation buffer. A Padded tribute goes hungry for
+    // longer before the arena starts taking health for it; a Wasted one has
+    // spent that buffer already, which is precisely when they most need it.
+    if (t.vitals.hunger > VITALS.starvingThreshold + starvationBuffer(t)) {
         if (applyDamage(ctx, t, VITALS.starvingDamage, { cause: 'Died of starvation', kind: 'status' })) {
             reliefFor(t, 'hunger');
         }
@@ -533,6 +542,23 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
                 { category: 'injury' }
             );
         }
+    }
+
+    // §3.1: the body over the run. Frame never moves; condition does, and it
+    // is the one physical arc a player can actually watch happen.
+    const drifted = driftCondition(t);
+    if (drifted === 'lost') {
+        ctx.logEvent(
+            `${t.name} is visibly less of themselves than they were — ${bodyLabel(t)} now, and the cold is going to find that out first.`,
+            [t.id],
+            { category: 'survival' }
+        );
+    } else if (drifted === 'gained') {
+        ctx.logEvent(
+            `Days of actually eating have put something back on ${t.name}. ${bodyLabel(t)[0].toUpperCase()}${bodyLabel(t).slice(1)}, and moving like it.`,
+            [t.id],
+            { category: 'survival' }
+        );
     }
 
     // Sanity residue: the bottom band abandons things, and the first visit

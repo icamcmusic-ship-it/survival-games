@@ -1,4 +1,5 @@
 import { DamageRecord, Item, Tribute } from '../models/types';
+import { forceStance } from './stance';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
@@ -16,7 +17,7 @@ import { profOf, trainProficiency, weaponAffinity, weaponProficiency } from './p
 import { addFear, fearFraction, reduceFear } from './fear';
 import { areLovers } from './alliance';
 import { hasTruce } from './parley';
-import { reachBonus } from './physique';
+import { dominantSideCost, grappleResistance, injuryAbsorption, reachBonus } from './physique';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
@@ -106,6 +107,10 @@ export function applyDamage(
             wearArmour(t, absorbed * QUALITY.armourWearPerPoint);
         }
     }
+    // §3.1: soft tissue between a blade and the parts that matter. Condition,
+    // not frame — and it is the first thing the run takes off a starving
+    // tribute, so a long run strips the padding before it strips the health.
+    if (ARMOURED_DAMAGE.includes(record.kind)) amount *= 1 - injuryAbsorption(t);
     amount = Math.max(1, Math.round(amount));
 
     // §7: the Gamemakers want a victor, not an empty arena.
@@ -278,8 +283,9 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         power += weaponAffinity(t, weapon);
     } else {
         // Bare hands are a grapple, and a grapple is decided by mass, reach and
-        // whether they have ever done this before.
-        power += reachBonus(t) + traitMod(t, 'unarmedPower');
+        // whether they have ever done this before. §3.1: frame is what makes
+        // somebody hard to move, independent of how well fed they are.
+        power += reachBonus(t) + grappleResistance(t) * COMBAT.limbPowerPenaltyPerGrade + traitMod(t, 'unarmedPower');
     }
     power += traitMod(t, 'combatPower');
 
@@ -288,7 +294,10 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
 
     // Injury and status penalties
     // T-5: a shattered arm is not a bruised one — penalties scale with grade.
-    power -= injuryGrade(t, 'arms') * COMBAT.limbPowerPenaltyPerGrade;
+    // §3.1: a left-handed tribute with a ruined left arm is far worse off than
+    // a right-handed one with the same wound.
+    power -= injuryGrade(t, 'arms') * COMBAT.limbPowerPenaltyPerGrade
+        * dominantSideCost(t, 'arms', t.woundedSide);
     power -= injuryGrade(t, 'legs') * COMBAT.limbPowerPenaltyPerGrade;
     if (t.injuries.poisoned) power -= 3;
     if (t.injuries.burned) power -= 1;
@@ -858,7 +867,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
                 rounds,
                 attackers.includes(t) ? target : lead));
         if (breaking.length > 0) {
-            breaking.forEach(t => { t.stance = 'Evasive'; t.stanceHeld = 0; });
+            breaking.forEach(t => forceStance(t, 'Evasive'));
             ctx.logEvent(
                 fill(ctx.pickText(breaking.length === 1 ? GROUP_COMBAT_TEXTS.scatterSolo : GROUP_COMBAT_TEXTS.scatter), { names: breaking.map(t => t.name).join(', '), zone }),
                 breaking.map(t => t.id),
@@ -961,8 +970,7 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
             t.status === 'alive' && wantsToRetreat(ctx, t, 1, rounds, t.id === attacker.id ? target : attacker));
         if (breaking.length > 0) {
             breaking.forEach(t => {
-                t.stance = 'Evasive';
-                t.stanceHeld = 0;
+                forceStance(t, 'Evasive');
                 // Only the pair who actually traded blows record who they fled
                 // from; a bystander scattering out of the melee was not in a
                 // fight with either of them.

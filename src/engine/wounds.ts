@@ -30,6 +30,16 @@ const MAX_INJURY_GRADE = 3;
 
 export function injure(t: Tribute, site: Exclude<InjurySite, 'bleeding'>, severity = 1) {
     const current = injuryGrade(t, site);
+    // §3.1: an arm wound lands on a side. Deterministic from the tribute's own
+    // id so it never consumes an RNG draw (which would change every seeded
+    // replay), and biased toward the hand they actually lead with — the arm
+    // you put out is the arm that gets opened.
+    if (site === 'arms' && !t.woundedSide) {
+        const lead = t.handedness ?? 'right';
+        t.woundedSide = t.id.charCodeAt(t.id.length - 1) % 3 === 0
+            ? (lead === 'left' ? 'right' : 'left')
+            : lead;
+    }
     t.injuries[site] = true;
     t.injurySeverity = t.injurySeverity ?? {};
     t.injurySeverity[site] = Math.min(MAX_INJURY_GRADE, Math.max(current + 1, severity));
