@@ -166,8 +166,11 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { ambush: 0.06, concealment: 0.05, retreat: -0.02 },
     },
     'Clumsy': {
-        info: 'Heavy-footed. Markedly worse at opening a fight from cover, and easier to hear coming.',
-        mods: { ambush: -0.12, concealment: -0.08 },
+        info: 'Heavy-footed. Markedly worse at opening a fight from cover, and easier to hear coming — but a lifetime of falling badly teaches a body how to land.',
+        // §8.2: the last pure-penalty trait in the file after Insomniac got its
+        // upside. Same treatment: the penalty stays, and the compensation is
+        // the thing a clumsy person genuinely has — practice at getting hurt.
+        mods: { ambush: -0.12, concealment: -0.08, bleedResist: 0.15 },
     },
     'Climber': {
         info: 'Goes up when cornered. Favours high ground, and is much harder to corner on it.',

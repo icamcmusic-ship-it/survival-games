@@ -84,6 +84,10 @@ export const CLIMATE_LABELS: Record<string, string> = {
     'procedural-rainforest': 'Wet, warm and foul. Open water here is not safe to drink.',
     'procedural-bayou': 'Wet, warm and foul. Open water here is not safe to drink.',
     tempest: 'Storm-bound. The weather is the arena, and it does not stall for long.',
+    kelvin: 'Freezing. Nights take health directly, and a fire is the difference.',
+    silkwood: 'Wet, warm and foul. Open water here is not safe to drink.',
+    nooneplace: 'Perpetual dusk. It has been the last minute before dark for eleven days.',
+    redcathedral: 'Desert heat. Water is the whole game and there is not much of it.',
     'procedural-archipelago': 'Storm-bound. The weather is the arena, and it does not stall for long.',
 };
 

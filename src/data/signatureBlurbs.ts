@@ -28,4 +28,13 @@ export const SIGNATURE_BLURBS: Record<string, string> = {
     acousticforest: 'The note: the wind finds a grove\'s resonant frequency, and it comes apart into flying timber at once.',
     burnscar: 'The flash: heat-triggered pods go off like shrapnel, torching the brush and seeding thorn barriers in the same instant.',
     craterfield: 'The pod: the vines\' fruit is rigged like a mine, and somebody in the field is about to find out.',
+    culdesac: 'The Watch: every third dusk the streetlights come on and every occupied house names whoever is inside — indoors is the only place it can see.',
+    labyrinth: 'The Shift: every second cycle the walls slide on their rails — two paths close, old ones reopen, and every map in every head goes wrong at once.',
+    ashgrove: 'The bell: every cycle one wing goes into session and its doors lock — the rotation is posted in the main corridor, two periods ahead, for anyone who reads it.',
+    kelvin: 'The load: the generator runs on eleven days of fuel, warns twice, and then stops — after that, warmth is whatever you are carrying.',
+    silkwood: 'The re-spin: every night the wood closes one road, permanently, and the map funnels everyone toward the Nursery.',
+    nooneplace: 'It does not match: the halls quietly stop agreeing with the map, worse the further your mind has slipped — and the Exit works, once per visit, on everything except letting you leave.',
+    redcathedral: 'The flash: a flood runs the drainage one zone per cycle — Slot, Wash, River — and only the people standing in it hear it coming.',
+    menagerie: 'The schedule: the enclosures open on a posted timetable, in order, and the park gets one hunter louder every other cycle.',
+    storywood: 'The bargain: every cottage door opens and pays out exactly what it promises — health, sanity, a full belly — for a price the wood never negotiates.',
 };

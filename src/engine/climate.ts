@@ -189,6 +189,10 @@ const CLIMATES: Record<string, ClimateProfile> = {
     acousticforest: MAGNETIC_FOG,
     burnscar: ASHEN,
     craterfield: TOXIC,
+    kelvin: FROZEN,
+    silkwood: TOXIC,
+    nooneplace: PERPETUAL_DUSK,
+    redcathedral: SOLAR,
 };
 
 export function climateOf(arenaId: string): ClimateProfile | undefined {
