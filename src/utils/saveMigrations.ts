@@ -12,10 +12,11 @@
  * So a deserialised tribute is normalised *once*, here, on the way in.
  */
 import {
-    Alliance, Attributes, Build, EventLog, GameConfig, GameState, Gender, Injuries, Item,
+    Alliance, AlliancePact, Attributes, Build, EventLog, GameConfig, GameState, Gender, Injuries, Item,
     Objective, Stance, Tribute, TributeMemory, Vitals,
 } from '../models/types';
 import { DEFAULT_GAME_CONFIG } from '../data/constants';
+import { ALLIANCES } from '../data/balance';
 import {
     StorageSpec, STORAGE_KEYS, asBool, asNum, asNumMap, asObjMap, asRecord, asStr, asStrArray,
 } from './storage';
@@ -304,6 +305,37 @@ function normalizeLog(raw: unknown): EventLog[] {
     });
 }
 
+/**
+ * §4.1: the pact union, from anything a save might hold.
+ *
+ * Pre-§4.1 saves store one of three strings; the field-threshold shape is the
+ * one that carries the old 'until-the-final-eight' meaning forwards without
+ * changing what those groups agreed to.
+ */
+function migratePact(raw: unknown): AlliancePact {
+    if (typeof raw === 'string') {
+        if (raw === 'to-the-end') return { kind: 'to-the-end' };
+        if (raw === 'until-the-final-eight') return { kind: 'until-field', threshold: ALLIANCES.finalEightSize };
+        return { kind: 'no-pact' };
+    }
+    const rec = asRecord(raw);
+    const kind = rec ? asStr(rec.kind, 'no-pact') : 'no-pact';
+    switch (kind) {
+        case 'to-the-end': return { kind: 'to-the-end' };
+        case 'until-field': return { kind: 'until-field', threshold: asNum(rec!.threshold, ALLIANCES.finalEightSize) };
+        case 'until-day': return { kind: 'until-day', day: asNum(rec!.day, 1) };
+        case 'until-event': return {
+            kind: 'until-event',
+            event: oneOf(rec!.event, ['feast', 'first-blood', 'career-pack-falls', 'arena-closes', 'first-hurt'], 'feast'),
+        };
+        case 'until-goal': {
+            const targetId = asStr(rec!.targetId, '');
+            return targetId ? { kind: 'until-goal', goal: 'kill-target', targetId } : { kind: 'no-pact' };
+        }
+        default: return { kind: 'no-pact' };
+    }
+}
+
 function normalizeAlliances(raw: unknown): Record<string, Alliance> | undefined {
     const rec = asRecord(raw);
     if (!rec) return undefined;
@@ -322,7 +354,10 @@ function normalizeAlliances(raw: unknown): Record<string, Alliance> | undefined 
             sharedCache: Array.isArray(a.sharedCache)
                 ? a.sharedCache.map(normalizeItem).filter((i): i is Item => i !== null)
                 : [],
-            pact: oneOf(a.pact, ['to-the-end', 'until-the-final-eight', 'no-pact'], 'no-pact'),
+            // §4.1: pacts became a discriminated union. A pre-§4.1 save holds
+            // the old string; 'until-the-final-eight' maps onto the shape that
+            // now expresses it, and anything unrecognised lapses to no pact.
+            pact: migratePact(a.pact),
         };
     });
     return out;

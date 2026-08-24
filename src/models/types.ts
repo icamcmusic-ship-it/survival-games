@@ -631,11 +631,30 @@ export interface Alliance {
     /** Pooled supplies: a reason to stay, and a thing worth stealing. */
     sharedCache: Item[];
     /**
-     * What they agreed out loud. A pact to split at the final eight is a
-     * scheduled, telegraphed betrayal — the audience can see it coming, which
-     * is exactly what makes it land.
+     * What they agreed out loud. A telegraphed, scheduled betrayal the
+     * audience can watch approaching is one of the best things the alliance
+     * layer can produce — but it used to be a single hard-coded threshold
+     * ("the final eight"), which is wrong for every field of eight or fewer.
+     * With `districtCount` legal from 2, that was a third of all legal setups
+     * dissolving their pacts on the cycle after they swore them. See
+     * `AlliancePact` and `rollPact` in `engine/alliance.ts`.
      */
-    pact: 'to-the-end' | 'until-the-final-eight' | 'no-pact';
+    pact: AlliancePact;
+    /**
+     * §4.2: a bloc inside the group. Formed when two members' suspicion of a
+     * third correlates; acts as a coup, a mass defection or a quiet split.
+     */
+    factions?: Faction[];
+    /** §4.2: breaches logged per member, so a *second* one is a hearing. */
+    breachesBy?: Record<string, string[]>;
+    /** §4.2: who put what into the cache. A claim, when the group splits. */
+    cacheContributions?: Record<string, number>;
+    /** §4.2: named heir. Makes killing the leader a different calculation. */
+    successorId?: string;
+    /** §4.2: members thrown out, so they are not simply re-recruited. */
+    expelledIds?: string[];
+    /** The field size when the pact was sworn, so ceremony can scale to it. */
+    pactSwornField?: number;
     /**
      * §4.4: who does what inside the group. Assigned on formation from
      * attributes, so a coup and a betrayal both have somewhere to land: the
@@ -652,6 +671,51 @@ export interface Alliance {
     charter?: CharterRule[];
     /** §10.1: charter breaches this group has logged, for 'Charter Kept'. */
     breaches?: number;
+}
+
+/**
+ * §4.1: what an alliance agreed about its own ending.
+ *
+ * The old three-way string union could express exactly one deadline, at a
+ * constant field size of eight. That constant is larger than the *entire
+ * field* in any run with four districts or fewer, so a third of every alliance
+ * formed in a small field was registered and dissolved on the next alliance
+ * phase, ceremonial line and all. The threshold is now rolled relative to the
+ * live field (`rollPact`), and the union carries the other four kinds of
+ * ending people actually agree to.
+ */
+export type AlliancePact =
+    | { kind: 'to-the-end' }
+    | { kind: 'no-pact' }
+    /** Dissolve when the field is down to `threshold` or fewer. */
+    | { kind: 'until-field'; threshold: number }
+    /** "We run together through the first week." */
+    | { kind: 'until-day'; day: number }
+    /** Tied to something the Capitol or the arena is going to do anyway. */
+    | { kind: 'until-event'; event: PactEvent }
+    /** An alliance of convenience against somebody specific. */
+    | { kind: 'until-goal'; goal: 'kill-target'; targetId: string };
+
+/**
+ * Scheduled or conditional endings. `feast` and `arena-closes` have a visible
+ * countdown on the state; `career-pack-falls` and `first-hurt` might never
+ * come due at all, which is what makes agreeing to them a gamble.
+ */
+export type PactEvent = 'feast' | 'first-blood' | 'career-pack-falls' | 'arena-closes' | 'first-hurt';
+
+/**
+ * §4.2: two or more members who have privately agreed the leadership is a
+ * problem. Substrate is `memory.suspicion`, which is already per-pair: when
+ * several members' suspicion of the same person correlates above a threshold,
+ * that is a faction whether anybody says so or not.
+ */
+export interface Faction {
+    memberIds: string[];
+    /** Who they have decided is the liability. Usually the leader. */
+    againstId: string;
+    formedCycle: number;
+    /** How hard they have hardened. Drives coup vs. split vs. nothing. */
+    heat: number;
 }
 
 /** §4.4: a job inside an alliance, held by exactly one member. */

@@ -5,7 +5,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
 import { BLEEDING, COMBAT, DEBTS, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
 import { clampTribute } from './vitals';
-import { giveItem } from './items';
+import { enforceCapacity, giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone, zoneFeatures } from './map';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
@@ -998,6 +998,12 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     const { weapon, cause } = opts;
     if (victim.status === 'dead') return;
     victim.status = 'dead';
+    // Carry capacity can shrink under a tribute — losing the Backpack is the
+    // usual way — and only the per-cycle upkeep in `dayNight` repairs the
+    // overflow. A tribute who dies in between freezes that violation in place
+    // forever, which is how a corpse ends up holding six weapons on a capacity
+    // of five. Settle it here, at the last moment the body is still theirs.
+    enforceCapacity(victim);
     victim.health = 0;
     victim.dayOfDeath = ctx.state.day;
 

@@ -1,9 +1,10 @@
 import { Alliance, GameState, Item, Tribute } from '../models/types';
 import { ALLIANCES } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
-import { SimContext } from './context';
+import { SimContext, getAlive } from './context';
 import { cycleOf } from './memory';
 import { adjustRel, getRel } from './relationships';
+import { pactOath, pactStrictness, rollPact } from './alliancePact';
 
 /**
  * Alliance structure.
@@ -166,13 +167,9 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
     // recruitment and pact expiry; falling in love should not read like a
     // Career pack signing articles.
     const isLoversBond = id.startsWith('lovers-');
-    const roll = ctx.rng.nextFloat();
-    const pact: Alliance['pact'] = isLoversBond ? 'no-pact'
-        : roll < ALLIANCES.pactFinalEightChance
-            ? 'until-the-final-eight'
-            : roll < ALLIANCES.pactFinalEightChance + ALLIANCES.pactToTheEndChance
-                ? 'to-the-end'
-                : 'no-pact';
+    // §4.1: rolled against the *live* field, so a small-field run cannot swear
+    // to a deadline it is already past.
+    const pact: Alliance['pact'] = isLoversBond ? { kind: 'no-pact' } : rollPact(ctx.rng, ctx.state, members);
 
     const leader = pickLeader(members);
     const record: Alliance = {
@@ -186,6 +183,8 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         campZone: leader.zone,
         sharedCache: [],
         pact,
+        pactSwornField: getAlive(ctx.state).length,
+        cacheContributions: {},
         charter: isLoversBond ? [] : rollCharter(ctx.rng, members),
         // §4.4: lovers are not an organisation and do not get assigned jobs.
         roles: isLoversBond ? undefined : assignRoles(members, leader),
@@ -209,11 +208,10 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         }
     }
 
-    if (pact !== 'no-pact') {
+    const oath = pactOath(pact, targetId => ctx.state.tributes.find(t => t.id === targetId)?.name ?? 'them');
+    if (oath) {
         ctx.logEvent(
-            pact === 'until-the-final-eight'
-                ? `${members.map(m => m.name).join(' and ')} shake on it: they run together until the final eight, and after that all bets are off.`
-                : `${members.map(m => m.name).join(' and ')} swear to see it through to the end, whatever the end turns out to look like.`,
+            `${members.map(m => m.name).join(' and ')} shake on it: they ${oath}.`,
             members.map(m => m.id),
             { important: true, category: 'alliance' }
         );
@@ -235,7 +233,6 @@ export function mergeAllianceRecords(ctx: SimContext, keepId: string, absorbedId
     delete records[absorbedId];
     if (!keep) return registerAlliance(ctx, keepId, members);
 
-    const strictness: Record<Alliance['pact'], number> = { 'no-pact': 0, 'until-the-final-eight': 1, 'to-the-end': 2 };
     keep.memberIds = members.map(m => m.id);
     const merged = pickLeader(members);
     keep.leaderId = merged.id;
@@ -245,7 +242,12 @@ export function mergeAllianceRecords(ctx: SimContext, keepId: string, absorbedId
     if (absorbed) {
         keep.sharedCache = [...keep.sharedCache, ...absorbed.sharedCache].slice(0, ALLIANCES.cacheMaxSize);
         keep.formedCycle = Math.min(keep.formedCycle, absorbed.formedCycle);
-        if (strictness[absorbed.pact] > strictness[keep.pact]) keep.pact = absorbed.pact;
+        if (pactStrictness(absorbed.pact) > pactStrictness(keep.pact)) {
+            keep.pact = absorbed.pact;
+            keep.pactSwornField = absorbed.pactSwornField;
+        }
+        // §4.2: a merge pools two ledgers of who fed whom.
+        keep.cacheContributions = { ...(absorbed.cacheContributions ?? {}), ...(keep.cacheContributions ?? {}) };
     }
     return keep;
 }
@@ -352,6 +354,10 @@ export function contributeToCache(ctx: SimContext, record: Alliance, members: Tr
         if (!spare) return;
         m.inventory.splice(m.inventory.indexOf(spare), 1);
         record.sharedCache.push(spare);
+        // §4.2: the cache is a political object. Who fed the group is a claim
+        // when it splits, and a reason for the quartermaster to play favourites.
+        record.cacheContributions = record.cacheContributions ?? {};
+        record.cacheContributions[m.id] = (record.cacheContributions[m.id] ?? 0) + spare.value;
         ctx.logEvent(
             `${m.name} adds their ${spare.name} to the group's stash in ${record.campZone ?? m.zone}.`,
             [m.id],

@@ -2354,11 +2354,62 @@ export const ALLIANCES = {
     careerMaxOptOuts: 2,
     careerEarlyCollapseChance: 0.06,
 
-    /** Pacts, declared at formation. A scheduled split is a telegraphed betrayal. */
-    pactFinalEightChance: 0.35,
-    pactToTheEndChance: 0.25,
-    /** Field size at which an 'until-the-final-eight' pact comes due. */
+    /**
+     * §4.1: pacts, declared at formation. A scheduled split is a telegraphed
+     * betrayal, which is the point — but the deadline has to be *reachable*.
+     * `pactKindWeights` picks the shape; the field-threshold shape then rolls
+     * its number relative to the live field, so it can never be a deadline the
+     * group is already past. `finalEightSize` remains the ceremonial default
+     * for a full 24-tribute field and the anchor for the charter's
+     * split-at-eight clause.
+     */
+    pactChanceAtAll: 0.6,
+    pactKindWeights: {
+        'until-field': 8,
+        'to-the-end': 6,
+        'until-day': 3,
+        'until-event': 4,
+        'until-goal': 2,
+    },
+    /** Field thresholds a pact may name, filtered to `n <= field - pactThresholdSlack`. */
+    pactFieldThresholds: [16, 12, 10, 8, 6, 4, 2],
+    /** How far in the future a field threshold must be to be worth swearing to. */
+    pactThresholdSlack: 2,
+    /** Days a `until-day` pact runs for, before clamping to the run's length. */
+    pactDayHorizon: 7,
+    /** Health at or below which a member counts as "badly hurt" for a pact. */
+    pactHurtHealth: 35,
+    /** Field size at which the charter's split-at-eight clause comes due. */
     finalEightSize: 8,
+    /**
+     * The dissolution ceremony ("the field is down to four…") only reads as
+     * ceremony if the field actually came down. Below this much attrition
+     * since the pact was sworn, the group just quietly goes its own way.
+     */
+    pactCeremonyAttrition: 6,
+
+    /**
+     * §4.2: politics inside the group.
+     *
+     * A faction forms when two or more members' suspicion of the same third
+     * party is all above `factionSuspicion`. `factionHeat*` decides whether it
+     * ends in a coup, a walk-out, or nothing at all.
+     */
+    factionSuspicion: 14,
+    factionMinMembers: 2,
+    factionHeatPerCycle: 6,
+    factionCoupHeat: 24,
+    factionSplitHeat: 12,
+    factionCoupRegard: -14,
+    /** A second breach of the same clause by the same member is a hearing. */
+    hearingBreachCount: 2,
+    hearingExpelChance: 0.45,
+    hearingDemoteChance: 0.3,
+    expulsionRegardCost: 18,
+    /** A member who fed the group has a claim on the cache when it splits. */
+    cacheClaimShare: 0.5,
+    /** The leader names an heir once the group is this big. */
+    successorMinSize: 3,
 
     /** Pooled supplies: what a member will contribute, and what a thief takes. */
     cacheContributeSurplus: 2,

@@ -4,6 +4,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { FeedLine } from './EventFeed';
 import { fearOf } from '../engine/fear';
 import { heightLabel } from '../engine/physique';
+import { pactLabel } from '../engine/alliancePact';
 import { prefsStore } from '../store/prefsStore';
 import { HUNTING, PROFICIENCY, ROMANCE, SUSPICION } from '../data/balance';
 import { bandLabel } from '../engine/proficiency';
@@ -40,13 +41,6 @@ const TABS: Array<[ModalTab, string]> = [
     ['social', 'Social'],
     ['story', 'Story'],
 ];
-
-/** A wound's rate, not merely its existence. */
-const PACT_LABELS: Record<string, string> = {
-    'to-the-end': 'To the end',
-    'until-the-final-eight': 'Until the final eight',
-    'no-pact': 'Nothing agreed',
-};
 
 const BLEED_LABELS: Record<number, string> = {
     1: 'bleeding (slight)', 2: 'bleeding (steady)', 3: 'bleeding (severe)',
@@ -878,12 +872,13 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle }:
                                 <div className="flex justify-between gap-2">
                                     <span className="text-[var(--color-ink-500)]">Pact</span>
                                     <Explainer
-                                        label={<span className="text-[var(--color-ink-200)] font-bold">{PACT_LABELS[alliance.pact]}</span>}
+                                        label={<span className="text-[var(--color-ink-200)] font-bold">{pactLabel(alliance.pact, id => gameState.tributes.find(o => o.id === id)?.name ?? 'them')}</span>}
                                         title="Alliance pact"
                                     >
-                                        What the group agreed out loud when it formed. A pact to split at the final
-                                        eight is a scheduled betrayal — everyone can see it coming, which is what
-                                        makes it land when it arrives.
+                                        What the group agreed out loud when it formed — a field size, a day, the
+                                        feast, or the death of somebody specific. A pact with a deadline is a
+                                        scheduled betrayal: everyone can see it coming, which is what makes it
+                                        land when it arrives.
                                     </Explainer>
                                 </div>
                                 {alliance.campZone && (

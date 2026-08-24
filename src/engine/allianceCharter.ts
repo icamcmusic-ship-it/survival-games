@@ -1,8 +1,9 @@
 import { Alliance, CharterRule, Tribute } from '../models/types';
 import { raiseSuspicion } from './memory';
-import { SUSPICION, CHARTER, ENDGAME } from '../data/balance';
+import { SUSPICION, CHARTER, ENDGAME, ALLIANCES } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { allianceOf } from './alliance';
+import { noteBreach } from './alliancePolitics';
 import { adjustRel, getRel } from './relationships';
 import { RNG } from '../utils/rng';
 import { isAggressiveStance } from '../data/stances';
@@ -90,13 +91,21 @@ export function enforceCharters(ctx: SimContext) {
         // §4.5: the endgame clause resolves as a scene, not a breach — a
         // pact honoured in full is the rarest and most valuable thing the
         // social layer can produce.
-        if (record.charter.includes('split-at-eight') && alive.length <= 8) {
+        // §4.1: the same relative-threshold fix the pact layer got. A clause
+        // that reads "we stop at eight" in a 24-tribute field is a scheduled
+        // parting; in a field of eight it is a clause that was already true
+        // when they signed it. It only comes due once the field has actually
+        // fallen that far *since* the group formed.
+        const splitAt = Math.min(ENDGAME.fieldSize, Math.max(2, record.pactSwornField
+            ? record.pactSwornField - ALLIANCES.pactThresholdSlack
+            : ENDGAME.fieldSize));
+        if (record.charter.includes('split-at-eight') && alive.length <= splitAt) {
             members.forEach(m => { delete m.allianceId; });
             members.forEach(m => members.forEach(o => {
                 if (o.id !== m.id) adjustRel(m, o.id, CHARTER.breachRegardCost);
             }));
             ctx.logEvent(
-                `${members.map(m => m.name).join(', ')} count the cannons and stop at eight. The terms were the terms: they divide what is in the cache, and walk away from each other without a word being broken.`,
+                `${members.map(m => m.name).join(', ')} count the cannons and stop at ${alive.length}. The terms were the terms: they divide what is in the cache, and walk away from each other without a word being broken.`,
                 members.map(m => m.id),
                 { important: true, category: 'alliance' }
             );
@@ -122,6 +131,12 @@ export function enforceCharters(ctx: SimContext) {
                 members.map(m => m.id),
                 { important: true, category: 'alliance' }
             );
+
+            // §4.2: 222 breaches across a 400-run soak, and the only
+            // consequence was a scalar going up. A *second* breach of the same
+            // clause by the same person is a scene: the group sits them down
+            // and decides to expel, demote or forgive.
+            noteBreach(ctx, record, offender, rule, members);
 
             // §4.5: renegotiation — a breach can produce a new, harsher
             // clause instead of only fallout. The group closes the loophole
