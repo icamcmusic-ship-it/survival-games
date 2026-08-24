@@ -1,6 +1,6 @@
 import { Terrain, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES, STANCE_MODES } from '../data/balance';
+import { BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ENCOUNTER_BRANCH, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES, STANCE_MODES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaActionKey, ArenaEventDef, actionPool, arenaFlavor } from '../data/arenaFlavor';
 import { QUIRKS } from '../data/quirks';
@@ -395,24 +395,24 @@ function shareAllianceSupplies(ctx: SimContext, needer: Tribute, giver: Tribute)
             return;
         }
     }
-    if (needer.vitals.thirst > 40) {
+    if (needer.vitals.thirst > ENCOUNTER_BRANCH.needThirst) {
         const waterIdx = giver.inventory.findIndex(i => i.type === 'water');
         if (waterIdx >= 0) {
             const item = giver.inventory.splice(waterIdx, 1)[0];
-            needer.vitals.thirst = Math.max(0, needer.vitals.thirst - 40);
+            needer.vitals.thirst = Math.max(0, needer.vitals.thirst - ENCOUNTER_BRANCH.sharedWaterRelief);
             // Handing over water you might need yourself is a real risk, and it
             // is what romance is gated on rather than mere proximity.
-            if (giver.vitals.thirst > 30) incurDebt(needer, giver, DEBTS.gaveSupplies, ctx);
+            if (giver.vitals.thirst > ENCOUNTER_BRANCH.givingCostsThirst) incurDebt(needer, giver, DEBTS.gaveSupplies, ctx);
             ctx.logEvent(`${giver.name} hands ${needer.name} their ${item.name} without being asked.`, [needer.id, giver.id], { category: 'alliance' });
             return;
         }
     }
-    if (needer.vitals.hunger > 40) {
+    if (needer.vitals.hunger > ENCOUNTER_BRANCH.needHunger) {
         const foodIdx = giver.inventory.findIndex(i => i.type === 'food');
         if (foodIdx >= 0) {
             const item = giver.inventory.splice(foodIdx, 1)[0];
-            needer.vitals.hunger = Math.max(0, needer.vitals.hunger - 40);
-            if (giver.vitals.hunger > 30) incurDebt(needer, giver, DEBTS.gaveSupplies, ctx);
+            needer.vitals.hunger = Math.max(0, needer.vitals.hunger - ENCOUNTER_BRANCH.sharedFoodRelief);
+            if (giver.vitals.hunger > ENCOUNTER_BRANCH.givingCostsHunger) incurDebt(needer, giver, DEBTS.gaveSupplies, ctx);
             ctx.logEvent(`${giver.name} hands ${needer.name} their ${item.name} without being asked.`, [needer.id, giver.id], { category: 'alliance' });
         }
     }
@@ -498,17 +498,17 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
             // tryParley returns null here only when one of them has just gone
             // back on their word. The knife is the point of doing that.
             resolveCombat(ctx, t, other);
-        } else if (relationship > 20) {
+        } else if (relationship > ENCOUNTER_BRANCH.friendlyRegard) {
             // Still on good terms underneath the agreement: they eat together.
-            t.vitals.hunger = Math.max(0, t.vitals.hunger - 10);
-            other.vitals.hunger = Math.max(0, other.vitals.hunger - 10);
-            adjustMutual(ctx.state, t, other, 5);
+            t.vitals.hunger = Math.max(0, t.vitals.hunger - ENCOUNTER_BRANCH.sharedMealRelief);
+            other.vitals.hunger = Math.max(0, other.vitals.hunger - ENCOUNTER_BRANCH.sharedMealRelief);
+            adjustMutual(ctx.state, t, other, ENCOUNTER_BRANCH.sharedMealRegard);
         }
-    } else if (relationship > 20) {
+    } else if (relationship > ENCOUNTER_BRANCH.friendlyRegard) {
         ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.shareResources), vars), [t.id, other.id], { category: 'alliance' });
-        t.vitals.hunger = Math.max(0, t.vitals.hunger - 10);
-        other.vitals.hunger = Math.max(0, other.vitals.hunger - 10);
-        adjustMutual(ctx.state, t, other, 5);
+        t.vitals.hunger = Math.max(0, t.vitals.hunger - ENCOUNTER_BRANCH.sharedMealRelief);
+        other.vitals.hunger = Math.max(0, other.vitals.hunger - ENCOUNTER_BRANCH.sharedMealRelief);
+        adjustMutual(ctx.state, t, other, ENCOUNTER_BRANCH.sharedMealRegard);
         maintainPerformance(t, other.id, ROMANCE.performedUpkeep);
         maintainPerformance(other, t.id, ROMANCE.performedUpkeep);
     } else if (isDesperate(ctx, t, other)) {
@@ -521,18 +521,18 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
             { important: true, category: 'combat' }
         );
         resolveCombat(ctx, t, other);
-    } else if (isAggressiveStance(t.stance) || isAggressiveStance(other.stance) || relationship < -10) {
+    } else if (isAggressiveStance(t.stance) || isAggressiveStance(other.stance) || relationship < ENCOUNTER_BRANCH.hostileRegard) {
         // Even a hostile meeting can end in a negotiation rather than a fight,
         // if neither of them likes the odds enough to start one.
         if (!tryParley(ctx, t, other)) resolveCombat(ctx, t, other);
     } else if (tryParley(ctx, t, other)) {
         // Two wary strangers who talked their way out of it — the outcome the
         // encounter layer had no vocabulary for.
-    } else if (ctx.rng.chance(0.5)) {
+    } else if (ctx.rng.chance(ENCOUNTER_BRANCH.peacefulRatherThanFriendly)) {
         ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.peaceful), vars), [t.id, other.id], { category: 'survival' });
     } else {
         ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.friendly), vars), [t.id, other.id], { category: 'alliance' });
-        t.vitals.sanity = Math.min(100, t.vitals.sanity + 10);
+        t.vitals.sanity = Math.min(100, t.vitals.sanity + ENCOUNTER_BRANCH.friendlySanity);
         other.vitals.sanity = Math.min(100, other.vitals.sanity + 10);
         adjustMutual(ctx.state, t, other, 10);
     }
@@ -803,23 +803,22 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
 export function handleInsanity(ctx: SimContext, t: Tribute) {
     const roll = ctx.rng.nextFloat();
     const vars = { tribute: t.name, zone: t.zone };
-    if (roll < 0.4) {
+    if (roll < ENCOUNTER_BRANCH.breakdownHallucinate) {
         ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.hallucination), vars), [t.id], { important: true, category: 'sanity' });
-        t.vitals.sanity -= 5;
-    } else if (roll < 0.7) {
+        t.vitals.sanity -= ENCOUNTER_BRANCH.breakdownSanityCost;
+    } else if (roll < ENCOUNTER_BRANCH.breakdownRuinStealth) {
         // A generated identity stat should not ratchet toward zero every time
         // sanity dips below the breakdown threshold — cap the lifetime damage
         // a breakdown can do to it.
         const lost = t.sanityStealthLoss ?? 0;
-        const SANITY_STEALTH_LOSS_CAP = 2;
-        const loss = Math.min(2, SANITY_STEALTH_LOSS_CAP - lost);
+        const loss = Math.min(ENCOUNTER_BRANCH.breakdownStealthLoss, ENCOUNTER_BRANCH.breakdownStealthCap - lost);
         if (loss > 0) {
             ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.ruinStealth), vars), [t.id], { important: true, category: 'sanity' });
             t.attributes.stealth = Math.max(0, t.attributes.stealth - loss);
             t.sanityStealthLoss = lost + loss;
         } else {
             ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.hallucination), vars), [t.id], { important: true, category: 'sanity' });
-            t.vitals.sanity -= 5;
+            t.vitals.sanity -= ENCOUNTER_BRANCH.breakdownSanityCost;
         }
     } else if (t.inventory.length > 0) {
         const itemIdx = ctx.rng.nextInt(0, t.inventory.length - 1);

@@ -1125,6 +1125,47 @@ export const QUALITY_BIAS = {
     improvised: -0.35,
 } as const;
 
+/**
+ * §1.8: the encounter-branch dials, migrated out of `encounters.ts`.
+ *
+ * The meeting resolver is one long `else if` chain, and the thresholds that
+ * decide which branch a meeting takes — how thirsty is "in need", how warm is
+ * "friendly", how cold is "hostile" — were bare literals inside the conditions.
+ * They are the shape of every social encounter in the game and were the third
+ * densest patch of balance debt. Values unchanged.
+ */
+export const ENCOUNTER_BRANCH = {
+    /** Vitals at which an ally's need is visible enough to act on. */
+    needThirst: 40,
+    needHunger: 40,
+    /** How much a shared ration actually restores. */
+    sharedWaterRelief: 40,
+    sharedFoodRelief: 40,
+    /** Vitals above which the giver was genuinely going without — the debt only
+     *  lands when the gift cost the giver something. */
+    givingCostsThirst: 30,
+    givingCostsHunger: 30,
+    /** Regard at or above which a meeting is warm enough to share a meal. */
+    friendlyRegard: 20,
+    /** Regard at or below which a meeting starts from hostility. */
+    hostileRegard: -10,
+    /** Hunger a shared meal takes off both parties, and the regard it buys. */
+    sharedMealRelief: 10,
+    sharedMealRegard: 5,
+    /** Split between the two flavours of an uneventful meeting. */
+    peacefulRatherThanFriendly: 0.5,
+    /** Sanity a friendly meeting restores. */
+    friendlySanity: 10,
+
+    /** A breakdown: hallucinate, lose an edge, or drop something. */
+    breakdownHallucinate: 0.4,
+    breakdownRuinStealth: 0.7,
+    breakdownSanityCost: 5,
+    /** Lifetime cap on stealth a breakdown can strip, and the per-episode bite. */
+    breakdownStealthCap: 2,
+    breakdownStealthLoss: 2,
+} as const;
+
 export const ENCOUNTERS = {
     /** T-5: dodge penalty per grade of leg injury (was a flat 2 boolean). */
     legsDodgePenaltyPerGrade: 1.25,
@@ -2304,6 +2345,38 @@ export const RELATIONSHIPS = {
     /** An enemy's death is a relief — a small sanity refund. */
     reliefSanity: 6,
     enemyBond: -35,
+    /** Odds that relief at an enemy's cannon is visible enough to narrate. */
+    reliefLineChance: 0.4,
+
+    /**
+     * §1.8: the reaping-table and fallout dials, migrated out of the engine.
+     *
+     * These were the twelve highest-density undeclared sites in the codebase —
+     * the file where balance is hardest to tune was also the file where the
+     * numbers were hardest to find. Nothing here changes value.
+     */
+    /** Archetype treachery/caution above which a pair starts wary of each other. */
+    warinessTreachery: 0.2,
+    warinessCaution: 0.2,
+    /** Age at or below which a protective archetype cannot stay neutral. */
+    wardAge: 13,
+    /** Alliance affinity an older tribute needs before a young one moves them. */
+    wardAffinity: 0.15,
+    /** Grief intensity above which a close loss leaves a permanent mark. */
+    hauntedIntensity: 0.5,
+    /** Grief intensity above which an ordinary mourning gets its own line. */
+    griefLineIntensity: 0.45,
+    /** Sponsor trust the crowd hands back for visibly grieving, per intensity point. */
+    griefTrustPerIntensity: 6,
+    /** Sponsor trust at which a tribute counts as a crowd favourite for kill fallout. */
+    favouriteTrust: 75,
+    /** What putting a favourite down costs the killer, and pays them in spectacle. */
+    favouriteKillTrustCost: 12,
+    favouriteKillExcitement: 25,
+    /** Betrayal fallout on the person who took the knife, and on the one who held it. */
+    betrayalSanityCost: 15,
+    betrayalExcitement: 30,
+    betrayalTrustCost: 8,
 
     /** Betrayal: what turning on an ally costs, socially. */
     betrayalDirectPenalty: 70,
@@ -2765,6 +2838,46 @@ export const SPONSOR_MARKET = {
      *  covered and sit on their purses for a while. */
     coveredCycles: 4,
     coveredGiftMultiplier: 0.35,
+} as const;
+
+/**
+ * §1.8: the parachute need-weighting table, migrated out of `sponsors.ts`.
+ *
+ * `needWeight` is the function that decides which item a tribute actually
+ * receives, and every divisor and bonus in it was a bare literal — eleven
+ * undeclared sites in one 25-line function, and the second-densest patch of
+ * balance debt in the engine. A designer retuning "how badly does thirst
+ * outrank hunger" had to read the engine to find out that it was `/12` against
+ * `/14`. Values are unchanged.
+ */
+export const GIFT_NEED = {
+    /** Vitals divisors: a smaller number means that need shouts louder. */
+    thirstDivisor: 12,
+    hungerDivisor: 14,
+    purifierThirstDivisor: 20,
+    warmthFatigueDivisor: 25,
+    /** Medical: the specific answer to a specific injury outranks a general one. */
+    bleedingOrInfected: 6,
+    matchedAntidote: 8,
+    matchedOintment: 6,
+    /** Health below which a wound starts pulling medical weight, and how fast. */
+    woundedBelowHealth: 70,
+    woundedPerTenHealth: 10,
+    /** A weapon matters far more to someone holding nothing. */
+    weaponWhenArmed: 0.2,
+    weaponWhenUnarmed: 3,
+    /** The crowd arms a tribute it has watched fight — capped, so it is not a snowball. */
+    weaponPerKillCap: 3,
+    /** Armour is for someone who has already been hit. */
+    armourWhenHurt: 2,
+    armourWhenWhole: 0.5,
+    lightBonus: 0.5,
+    /** A second copy of something already carried is nearly worthless. */
+    duplicateMultiplier: 0.35,
+    /** Floor so no item is ever strictly impossible to draw. */
+    minWeight: 0.05,
+    /** Value floor for the fallback gift pool when a tier's own pool is empty. */
+    fallbackItemValue: 20,
 } as const;
 
 export const SPONSORS = {

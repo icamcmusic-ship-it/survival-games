@@ -113,7 +113,8 @@ export function seedBackstoryRelationships(tributes: Tribute[], rng: RNG) {
             }
 
             if (a.archetype === b.archetype) value += RELATIONSHIPS.archetypeKinship;
-            if (ARCHETYPES[a.archetype].treachery > 0.2 && ARCHETYPES[b.archetype].caution > 0.2) {
+            if (ARCHETYPES[a.archetype].treachery > RELATIONSHIPS.warinessTreachery
+                && ARCHETYPES[b.archetype].caution > RELATIONSHIPS.warinessCaution) {
                 value -= RELATIONSHIPS.archetypeKinship;
             }
 
@@ -123,7 +124,7 @@ export function seedBackstoryRelationships(tributes: Tribute[], rng: RNG) {
             // A protector cannot look at a twelve-year-old and feel nothing.
             const younger = a.age < b.age ? a : b;
             const older = a.age < b.age ? b : a;
-            if (younger.age <= 13 && ARCHETYPES[older.archetype].allianceAffinity > 0.15) {
+            if (younger.age <= RELATIONSHIPS.wardAge && ARCHETYPES[older.archetype].allianceAffinity > RELATIONSHIPS.wardAffinity) {
                 adjustRel(older, younger.id, RELATIONSHIPS.ageAffinity * 2);
             }
 
@@ -176,7 +177,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
             other.vitals.sanity -= sanityHit * Math.max(0, 1 - traitMod(other, 'griefResist'));
             addExcitement(other, Math.round(10 + intensity * 25));
             // The crowd rewards visible grief.
-            other.sponsorTrust += Math.round(intensity * 6);
+            other.sponsorTrust += Math.round(intensity * RELATIONSHIPS.griefTrustPerIntensity);
             ensureMemory(other).mourned.push(victim.id);
             mourners.push(other);
             // §3.4: grief is also a bad day in the arena, not only a slow gauge.
@@ -210,7 +211,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
             }
 
             // Watching someone you were actually close to die does not wash off.
-            if ((isLover || wereAllied) && intensity > 0.5) earnTrait(ctx, other, 'Haunted');
+            if ((isLover || wereAllied) && intensity > RELATIONSHIPS.hauntedIntensity) earnTrait(ctx, other, 'Haunted');
 
             if (isLover) {
                 ctx.logEvent(
@@ -226,7 +227,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                     killer && killer.id !== other.id ? [other.id, victim.id, killer.id] : [other.id, victim.id],
                     { important: true, category: 'sanity' }
                 );
-            } else if (intensity > 0.45) {
+            } else if (intensity > RELATIONSHIPS.griefLineIntensity) {
                 ctx.logEvent(
                     fill(ctx.pickText(GRIEF_TEXTS), { mourner: other.name, victim: victim.name, zone: other.zone }),
                     [other.id, victim.id],
@@ -244,7 +245,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
         } else if (bond <= RELATIONSHIPS.enemyBond) {
             other.vitals.sanity += RELATIONSHIPS.reliefSanity;
             clampTribute(other);
-            if (ctx.rng.chance(0.4)) {
+            if (ctx.rng.chance(RELATIONSHIPS.reliefLineChance)) {
                 ctx.logEvent(
                     fill(ctx.pickText(RELIEF_TEXTS), { tribute: other.name, victim: victim.name, zone: other.zone }),
                     [other.id, victim.id],
@@ -279,9 +280,9 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
     }
 
     // Sponsor reaction: putting down a crowd favourite is not a free action.
-    if (killer && (victim.fanFavourite || victim.sponsorTrust > 75)) {
-        killer.sponsorTrust -= 12;
-        addExcitement(killer, 25);
+    if (killer && (victim.fanFavourite || victim.sponsorTrust > RELATIONSHIPS.favouriteTrust)) {
+        killer.sponsorTrust -= RELATIONSHIPS.favouriteKillTrustCost;
+        addExcitement(killer, RELATIONSHIPS.favouriteKillExcitement);
         clampTribute(killer);
         ctx.logEvent(
             `The Capitol audience goes quiet. ${victim.name} was a favourite, and ${killer.name} just took them off the board.`,
@@ -304,11 +305,11 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
     if (!victimMem.betrayedBy.includes(betrayer.id)) victimMem.betrayedBy.push(betrayer.id);
     swearVengeance(victim, betrayer.id);
 
-    victim.vitals.sanity -= 15;
+    victim.vitals.sanity -= RELATIONSHIPS.betrayalSanityCost;
     earnTrait(ctx, victim, 'Marked');
-    addExcitement(betrayer, 30);
+    addExcitement(betrayer, RELATIONSHIPS.betrayalExcitement);
     // The Capitol loves the drama and distrusts the man.
-    betrayer.sponsorTrust -= 8;
+    betrayer.sponsorTrust -= RELATIONSHIPS.betrayalTrustCost;
     clampTribute(victim);
     clampTribute(betrayer);
 
