@@ -354,6 +354,15 @@ export interface TributeMemory {
      * See `engine/notoriety.ts`.
      */
     notoriety?: Record<string, number>;
+    /** §4.7: ids of the rumours this tribute currently believes. */
+    heardRumours?: string[];
+    /**
+     * §4.7: who told them each one. Not who *started* it — that is the whole
+     * distinction between a rumour and a lie, and it is why finding out a
+     * claim was false costs the person who repeated it rather than the person
+     * who invented it.
+     */
+    rumourSource?: Record<string, string>;
 }
 
 /** Where a tribute's most recent wound actually came from. */
@@ -1648,6 +1657,57 @@ export interface GameState {
         heat: number;
         /** Set once the apex has been made to choose. */
         resolved?: boolean;
+    }>;
+    /**
+     * §4.1: standing non-aggression between two whole alliances.
+     *
+     * A truce is between two people; this is between two groups, agreed by
+     * whoever speaks for each, binding on members who were not at the table,
+     * and dissolving for reasons about the blocs rather than about any pair.
+     * See `engine/blocTreaty.ts`.
+     */
+    blocTreaties?: Array<{
+        aId: string;
+        bId: string;
+        /** Cycle it lapses on its own. */
+        until: number;
+        sworn: number;
+        /** Field size at or below which the arithmetic ends it early. */
+        fieldFloor: number;
+    }>;
+    /**
+     * §4.3: vengeance sworn together — a kill-target objective held by more
+     * than one tribute at once. Distinct from the individual grudge in
+     * `memory.vengeance`, which is private and which two people who lost the
+     * same person each held separately with no idea the other one had it.
+     * See `engine/vengeancePact.ts`.
+     */
+    vengeancePacts?: Array<{
+        targetId: string;
+        memberIds: string[];
+        sworn: number;
+        /** Who they both lost, when the engine could identify them. */
+        overWhomId?: string;
+    }>;
+    /**
+     * §4.7: the rumour pool — claims in circulation about the arena, each of
+     * which is either so or not. Distinct from the zone-threat hearsay in
+     * `memory.ts`, which trades numbers about places; a rumour is a
+     * proposition with a subject, and it can be checked by standing in it.
+     * See `engine/rumours.ts`.
+     */
+    rumours?: Array<{
+        id: string;
+        kind: 'restock' | 'holed-up' | 'cache' | 'empty';
+        zone: string;
+        /** The tribute a 'holed-up' claim is about, when there is one. */
+        aboutId?: string;
+        isTrue: boolean;
+        /** Set when somebody made it up, as opposed to it being observed. */
+        plantedById?: string;
+        bornCycle: number;
+        /** Set once somebody has stood in it and found it false. */
+        exposed?: boolean;
     }>;
     keptWordSeen?: boolean;
     /** §10.1: a 3+ alliance reached the final eight with a clean charter. */

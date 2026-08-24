@@ -19,6 +19,7 @@ import { addFear, fearFraction, reduceFear } from './fear';
 import { notorietyFraction, witnessReputation } from './notoriety';
 import { areLovers } from './alliance';
 import { hasTruce } from './parley';
+import { noteBlocKill, underBlocTreaty } from './blocTreaty';
 import { dominantSideCost, grappleResistance, injuryAbsorption, reachBonus } from './physique';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
@@ -65,6 +66,9 @@ const DOWNABLE_DAMAGE: DamageRecord['kind'][] = ['tribute', 'mutt', 'arena', 'ha
  * the deaths that still land.
  */
 function strikeDown(ctx: SimContext, victim: Tribute, killer: Tribute, weapon?: Item) {
+    // §4.1: if their two groups had an agreement, this ends it for everybody
+    // on both sides at once.
+    noteBlocKill(ctx, killer, victim);
     // §3.4: a blow landed on somebody who was already finished is a choice, and
     // it is the one the Merciful -> Ruthless arc counts. Recorded before the
     // downed branch so it counts the decision, not the outcome.
@@ -837,8 +841,12 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     // meetings and evaporated in a brawl was not much of an agreement. Either
     // party can still break it, but that happens face to face in `tryParley`,
     // not as a side-effect of the sides being drawn.
+    // §4.1: and a treaty between their two groups holds here as well, for the
+    // same reason and one better — neither of these two agreed to it
+    // personally, which is exactly what makes it a treaty. Breaking it is
+    // still available; it just costs both blocs rather than one person.
     const isBonded = (a: Tribute, b: Tribute) =>
-        areLovers(a, b) || hasTruce(ctx.state, a, b.id);
+        areLovers(a, b) || hasTruce(ctx.state, a, b.id) || underBlocTreaty(ctx.state, a, b);
     const partnerOf = (a: Tribute) => fighters.find(o => o.id !== a.id && isBonded(a, o));
 
     const packSide: Tribute[] = [];
@@ -1086,7 +1094,8 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
         // Lovers never turn on each other, and a standing truce holds in the
         // melee the same way it does anywhere else.
         const targets = standing.filter(t =>
-            t.id !== attacker.id && !areLovers(attacker, t) && !hasTruce(ctx.state, attacker, t.id));
+            t.id !== attacker.id && !areLovers(attacker, t) && !hasTruce(ctx.state, attacker, t.id)
+            && !underBlocTreaty(ctx.state, attacker, t));
         if (targets.length === 0) break;
         // The wounded are still likeliest to draw the blow — a hurt tribute is
         // the obvious opening — but "likeliest" is now a weight rather than a

@@ -16,7 +16,7 @@ import {
     Objective, Stance, Tribute, TributeMemory, Vitals,
 } from '../models/types';
 import { DEFAULT_GAME_CONFIG } from '../data/constants';
-import { ALLIANCES } from '../data/balance';
+import { ALLIANCES, BLOC_TREATY } from '../data/balance';
 import { conditionOf, frameOf } from '../engine/physique';
 
 /** §3.1: the two body axes, for save normalisation. */
@@ -155,6 +155,9 @@ function normalizeMemory(raw: unknown): TributeMemory {
         suspicion: asNumMap(r.suspicion),
         // §3.5: the reputation-by-hearsay ledger.
         notoriety: asNumMap(r.notoriety),
+        // §4.7: which claims this tribute believes, and who told them each.
+        heardRumours: asStrArray(r.heardRumours),
+        rumourSource: asObjMap<string>(r.rumourSource),
     };
 }
 
@@ -519,6 +522,62 @@ export function normalizeGameState(raw: unknown): GameState | null {
         // triangle missing one of its three ids would have the detector
         // permanently unable to re-form it and the ticker permanently unable
         // to resolve it.
+        // §4.1: bloc treaties, validated the same way — a treaty missing one
+        // of its two alliance ids would suppress combat against nothing.
+        // §4.3: shared vengeance. A pact needs a target and at least two
+        // members to mean anything; anything short of that is a private grudge
+        // and is already recorded as one in `memory.vengeance`.
+        // §4.7: the rumour pool. A claim with no id or no zone cannot be
+        // checked by standing in it, which is the only thing a rumour is for.
+        rumours: Array.isArray(r.rumours)
+            ? (r.rumours as unknown[]).flatMap(entry => {
+                const e = asRecord(entry);
+                if (!e) return [];
+                const id = asStr(e.id, '');
+                const zone = asStr(e.zone, '');
+                const kind = e.kind;
+                if (!id || !zone) return [];
+                if (kind !== 'restock' && kind !== 'holed-up' && kind !== 'cache' && kind !== 'empty') return [];
+                return [{
+                    id, kind, zone,
+                    aboutId: typeof e.aboutId === 'string' ? e.aboutId : undefined,
+                    isTrue: asBool(e.isTrue, true),
+                    plantedById: typeof e.plantedById === 'string' ? e.plantedById : undefined,
+                    bornCycle: asNum(e.bornCycle, 0),
+                    exposed: asBool(e.exposed, false),
+                }];
+            })
+            : [],
+        vengeancePacts: Array.isArray(r.vengeancePacts)
+            ? (r.vengeancePacts as unknown[]).flatMap(entry => {
+                const e = asRecord(entry);
+                if (!e) return [];
+                const targetId = asStr(e.targetId, '');
+                const memberIds = asStrArray(e.memberIds);
+                if (!targetId || memberIds.length < 2) return [];
+                return [{
+                    targetId,
+                    memberIds,
+                    sworn: asNum(e.sworn, 0),
+                    overWhomId: typeof e.overWhomId === 'string' ? e.overWhomId : undefined,
+                }];
+            })
+            : [],
+        blocTreaties: Array.isArray(r.blocTreaties)
+            ? (r.blocTreaties as unknown[]).flatMap(entry => {
+                const e = asRecord(entry);
+                if (!e) return [];
+                const aId = asStr(e.aId, '');
+                const bId = asStr(e.bId, '');
+                if (!aId || !bId || aId === bId) return [];
+                return [{
+                    aId, bId,
+                    until: asNum(e.until, 0),
+                    sworn: asNum(e.sworn, 0),
+                    fieldFloor: asNum(e.fieldFloor, BLOC_TREATY.dissolveFieldSize),
+                }];
+            })
+            : [],
         loveTriangles: Array.isArray(r.loveTriangles)
             ? (r.loveTriangles as unknown[]).flatMap(entry => {
                 const e = asRecord(entry);

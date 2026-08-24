@@ -6,6 +6,7 @@ import { effectiveResources, zoneFeatures } from './map';
 import { ensureMemory, hasVengeanceAgainst, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { fearInZone } from './fear';
 import { notorietyInZone } from './notoriety';
+import { rumourPull } from './rumours';
 import { traitMod } from '../data/traits';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 
@@ -74,6 +75,9 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         // §3.5: a zone is also avoided for who is *said* to be in it, not only
         // for who has been watched working there.
         score -= notorietyInZone(state, t, z.name) * NOTORIETY.avoidWeight;
+        // §4.7: and whatever they have been told about the place. A believed
+        // cache pulls, a believed occupant pushes, and either can be a plant.
+        score += rumourPull(state, t, z.name);
         const dreaded = fearInZone(state, t, z.name) / FEAR.max;
         if (dreaded > 0) {
             // Unless they are the one doing the hunting: a target's menace is a

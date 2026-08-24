@@ -67,6 +67,9 @@ let dualVictories = 0;
 // Tribute-logic overhaul: every new system needs evidence it ran.
 let clots = 0, fieldDressings = 0, restRecoveries = 0, huntOrCraft = 0;
 // §3.1: infection — wounds turning, deepening, being treated, and killing.
+let rumoursPlanted = 0, rumoursCaughtPlanted = 0, rumoursCaughtRepeated = 0, rumoursDeadEnd = 0;
+let vengeancePacts = 0, vengeancePaid = 0, vengeanceStolen = 0, vengeanceAbandoned = 0;
+let treatiesSworn = 0, treatiesBroken = 0, treatiesLapsed = 0, treatiesOutgrown = 0;
 let trianglesFormed = 0, triangleJealousy = 0, triangleChoices = 0;
 let loansMade = 0, loansReturned = 0, loansDefaulted = 0;
 let successionHeir = 0, successionPassedOver = 0, successionSplit = 0, successionUnnamed = 0;
@@ -276,6 +279,18 @@ for (let i = 0; i < 400; i++) {
     if (/empties the group's stash|and watches them go|keeps their hand over the pocket|hears it, and keeps walking/.test(l.text)) exoticBetrayals++;
     if (/run as one/.test(l.text)) merges++;
     if (/takes charge of what is left|stops deferring to/.test(l.text)) leadershipChanges++;
+    if (/There is no reason at all for it to be true/.test(l.text)) rumoursPlanted++;
+    if (/looking them in the face, and knew/.test(l.text)) rumoursCaughtPlanted++;
+    if (/passed it on in good faith/.test(l.text)) rumoursCaughtRepeated++;
+    if (/cannot even remember now who told them/.test(l.text)) rumoursDeadEnd++;
+    if (/Neither of them is doing this alone any more|now has two people coming/.test(l.text)) vengeancePacts++;
+    if (/finish what they swore to finish/.test(l.text)) vengeancePaid++;
+    if (/somebody else has taken it off them/.test(l.text)) vengeanceStolen++;
+    if (/which of them was the one who could/.test(l.text)) vengeanceAbandoned++;
+    if (/anybody made on behalf of somebody else/.test(l.text)) treatiesSworn++;
+    if (/takes the agreement between the two groups with them/.test(l.text)) treatiesBroken++;
+    if (/Nobody renews it and nobody breaks it/.test(l.text)) treatiesLapsed++;
+    if (/an arithmetic problem rather than a moral one/.test(l.text)) treatiesOutgrown++;
     if (/going to be able to go on being polite/.test(l.text)) trianglesFormed++;
     if (/neither of them has said a word about why/.test(l.text)) triangleJealousy++;
     if (/makes the choice in front of both of them/.test(l.text)) triangleChoices++;
@@ -721,6 +736,9 @@ const truceEndings = trucesRenewed + trucesLapsed + trucesTurned + trucesBroken 
 console.log(`sleep: deprivedDrops=${sleepDrops}`);
 console.log(`weapons: coldSwings=${coldWeaponSwings}`);
 console.log(`bluffs: landed=${bluffsLanded} caught=${bluffsCaught}`);
+console.log(`rumours: planted=${rumoursPlanted} exposedAsPlant=${rumoursCaughtPlanted} exposedAsRepeated=${rumoursCaughtRepeated} untraceable=${rumoursDeadEnd}`);
+console.log(`vengeancePacts: sworn=${vengeancePacts} paidThemselves=${vengeancePaid} takenByAnother=${vengeanceStolen} abandoned=${vengeanceAbandoned}`);
+console.log(`blocTreaties: sworn=${treatiesSworn} brokenByAKilling=${treatiesBroken} lapsed=${treatiesLapsed} endedByTheField=${treatiesOutgrown}`);
 console.log(`triangles: formed=${trianglesFormed} jealousyBeats=${triangleJealousy} forcedChoices=${triangleChoices}`);
 console.log(`loans: made=${loansMade} returned=${loansReturned} defaulted=${loansDefaulted}`);
 console.log(`succession: toNamedHeir=${successionHeir} heirPassedOver=${successionPassedOver} splitTheGroup=${successionSplit} noHeirNamed=${successionUnnamed}`);

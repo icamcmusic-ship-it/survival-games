@@ -2641,6 +2641,99 @@ export const PROTECTOR_BOND = {
  * while the rivals can see each other, which is what keeps it a story rather
  * than a background subtraction.
  */
+/**
+ * §4.1: pack-to-pack treaties.
+ *
+ * Rarer than an individual truce by design — it needs two real groups, both
+ * with somebody who speaks for them, standing in the same place, and a
+ * membership that does not already hate the other side. `dissolveFieldSize` is
+ * the one that matters: two packs holding a non-aggression pact into the final
+ * handful is an arithmetic problem, and the treaty has to know that about
+ * itself rather than waiting for somebody to break it.
+ */
+/**
+ * §4.3: vengeance pacts.
+ *
+ * Gated on a genuinely shared loss and real mutual regard, so it stays the
+ * rare, dramatic version of a mechanic that already fires ~3,000 times a soak
+ * privately. `abandonRegard` is what makes it breakable from the inside: a
+ * pact between two people who have stopped liking each other is not a pact.
+ */
+/**
+ * §4.7: the rumour pool.
+ *
+ * Kept small and short-lived on purpose. A rumour is worth having because it
+ * is checkable, and a pool that never turns over is a pool where every claim
+ * has already been found out. `lurePull` is modest against the other terms in
+ * `movement.ts` — a rumour changes where somebody looks first, not what they
+ * are willing to do.
+ */
+export const RUMOURS = {
+    /** Claims in circulation at once. */
+    poolCap: 8,
+    /** Cycles before a claim is too stale for anybody to act on. */
+    lifetime: 6,
+    /** Odds the world mints a true one this cycle. */
+    trueMintChance: 0.3,
+    /** Cycles somebody must have held a zone before "dug in there" is true. */
+    holedUpCycles: 2,
+    /** Depletion at which "picked to the bone" is true. */
+    emptyDepletion: 0.6,
+
+    /** Odds one believed claim is passed on at a given meeting. */
+    passOnChance: 0.8,
+    /** Odds two co-located allies talk at all in a given cycle. */
+    campShareChance: 0.4,
+    /** Odds somebody invents one at a meeting, and the regard above which they will not. */
+    plantChance: 0.12,
+    plantMaxRegard: 20,
+    /** Share of plants that are a lure rather than a warning-off. */
+    plantLureShare: 0.6,
+
+    /** Destination scoring. */
+    lurePull: 8,
+    warningPush: 10,
+
+    /** What it costs to be found out, planted versus merely repeated. */
+    plantedRegardCost: 28,
+    plantedSuspicion: 30,
+    repeatedRegardCost: 8,
+    repeatedSuspicion: 10,
+} as const;
+
+export const VENGEANCE_PACT = {
+    /** Regard both need before they will swear anything together. */
+    minRegard: 25,
+    /** Regard below which one of them is treated as having walked away from it. */
+    abandonRegard: 0,
+    chance: 0.35,
+    regard: 12,
+    resolve: 8,
+    excitement: 18,
+    /** Cycles the shared hunt objective is renewed for each cycle it stands. */
+    objectiveCycles: 4,
+    /** Resolve for finishing it themselves, and for somebody else taking it. */
+    paidResolve: 12,
+    stolenResolve: 10,
+    /** What walking away from a shared oath costs with the person you swore it to. */
+    abandonPenalty: 25,
+} as const;
+
+export const BLOC_TREATY = {
+    /** Members each side needs before it is a bloc rather than a pair. */
+    minBlocSize: 2,
+    /** Average cross-membership regard needed before the groups will talk. */
+    minCrossRegard: -5,
+    baseChance: 0.18,
+    perPersuasion: 0.06,
+    cycles: 6,
+    /** Field size at or below which two packs stop being able to afford it. */
+    dissolveFieldSize: 7,
+    excitement: 15,
+    /** What a killing across the line costs, member to member, both ways. */
+    breachRegard: 25,
+} as const;
+
 export const TRIANGLES = {
     /** Regard a rival needs toward the apex to count as attached. */
     suitorRegard: 45,

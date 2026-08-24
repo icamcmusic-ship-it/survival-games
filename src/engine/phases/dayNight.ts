@@ -47,6 +47,9 @@ import { enforceCharters } from '../allianceCharter';
 import { earnTrait } from '../earnedTraits';
 import { tickTraitArcs } from '../traitArcs';
 import { detectTriangles, forceTriangleChoice, tickTriangles } from '../triangles';
+import { proposeBlocTreaties, tickBlocTreaties } from '../blocTreaty';
+import { formVengeancePacts, tickVengeancePacts } from '../vengeancePact';
+import { checkRumours, mintTrueRumours, shareRumoursInCamp } from '../rumours';
 import { gamemakerProfile } from '../../data/gamemakers';
 import { arenaHasLaw, arenaIsSilent, escalationShift, wildcardIs } from '../gamesProfile';
 import { mintItem } from '../items';
@@ -283,6 +286,20 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // out this cycle is not immediately papered over by a fresh trade.
     tickIntelSharing(ctx);
     resolveTruces(ctx);
+    // §4.1: the bloc layer, alongside the pair layer. Proposed before it is
+    // ticked so a treaty sworn this cycle is not immediately assessed against
+    // the clock it was just given.
+    proposeBlocTreaties(ctx);
+    tickBlocTreaties(ctx);
+    // §4.3: the shared grudge. Formed before it is ticked, so a pact sworn
+    // this cycle is not immediately assessed for whether anybody has quit it.
+    formVengeancePacts(ctx);
+    tickVengeancePacts(ctx);
+    // §4.7: the world says a true thing about itself, and anybody who walked
+    // somewhere on somebody's word finds out whether the word was good.
+    mintTrueRumours(ctx);
+    shareRumoursInCamp(ctx);
+    checkRumours(ctx);
     // Obligations come due, district partners grow into each other, and any
     // group that agreed terms is held to them.
     repayDebts(ctx);

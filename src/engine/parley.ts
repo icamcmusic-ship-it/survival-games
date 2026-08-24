@@ -6,6 +6,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
 import { SimContext, getAlive } from './context';
 import { tradeReputations } from './notoriety';
+import { tradeRumours } from './rumours';
 import { assessZone } from './stance';
 import { adjustMutual, adjustRel, getRel, respectOf } from './relationships';
 import { addZoneThreat, cycleOf, ensureMemory, lieAboutZone, noteStoodBy, raiseSuspicion, rememberedThreat, shareZoneIntel, swearVengeance } from './memory';
@@ -439,6 +440,8 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
         // becomes what the other has heard. This is the channel that gets a
         // name across the map to somebody who will never meet its owner.
         tradeReputations(t, other);
+        // §4.7: and the claims about the arena, some of which are true.
+        tradeRumours(ctx, t, other);
         // Agreeing to something and keeping it is the seed of a real bond —
         // and §1.4, a negotiation somebody actually talked their way through
         // leaves both parties thinking better of the other than a shrug does.

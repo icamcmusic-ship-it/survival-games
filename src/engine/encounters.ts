@@ -9,6 +9,7 @@ import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
 import { isSeptic, syncInfectedFlag, treatInfection } from './infection';
 import { tradeReputations } from './notoriety';
+import { tradeRumours } from './rumours';
 import { sleepForagePenalty } from './survival';
 import { cycleOf, addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy, raiseSuspicion } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
@@ -548,6 +549,8 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         // what they have heard. Whatever either of them knows about who is
         // doing the killing partly crosses over.
         tradeReputations(t, other);
+        // §4.7: and the claims about the arena, some of which are true.
+        tradeRumours(ctx, t, other);
         ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.friendly), vars), [t.id, other.id], { category: 'alliance' });
         t.vitals.sanity = Math.min(100, t.vitals.sanity + ENCOUNTER_BRANCH.friendlySanity);
         other.vitals.sanity = Math.min(100, other.vitals.sanity + 10);
