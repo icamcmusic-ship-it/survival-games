@@ -6,7 +6,9 @@ import { ArenaActionKey, ArenaEventDef, actionPool, arenaFlavor } from '../data/
 import { QUIRKS } from '../data/quirks';
 import { SimContext } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
-import { depleteZone, depletionOf, effectiveResources, getZone } from './map';
+import { depleteZone, depletionOf, effectiveResources, getZone, zoneFeatures } from './map';
+import { collapseStructure, isLoadBearing } from './loadBearing';
+import type { SanityBand } from './sanityBands';
 import { isSeptic, syncInfectedFlag, treatInfection } from './infection';
 import { tradeReputations } from './notoriety';
 import { tradeRumours } from './rumours';
@@ -248,6 +250,9 @@ export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDe
         ctx.state.eventChains[t.id] = event.chain;
     }
     if (event.startsZoneEffect) startZoneEffect(ctx, t.zone, event.startsZoneEffect);
+    // §7: consequences the flat stat block cannot express.
+    if (event.special === 'collapse') collapseStructure(ctx, t.zone);
+    if (event.special === 'startsQuaking') startZoneEffect(ctx, t.zone, 'quaking');
     if (event.severesRoute) {
         const cut = severRandomEdge(ctx, t.zone);
         if (cut) {
@@ -307,6 +312,22 @@ function requirementsHold(ctx: SimContext, t: Tribute, event: ArenaEventDef): bo
     if (need.effect && !hasEffect(ctx.state, t.zone, need.effect)) return false;
     if (need.time && ctx.state.phase !== need.time) return false;
     if (need.law && !arenaHasLaw(ctx.state, need.law)) return false;
+    // §7: preconditions that let a universal event be written once and still
+    // be specific — the zone's own interior, the arena's live weather, and
+    // the tribute's own state.
+    if (need.elevationOrChoke) {
+        const zone = getZone(ctx.state.arena, t.zone);
+        const f = zone ? zoneFeatures(zone) : undefined;
+        if (!f || !(f.elevation || f.chokepoint)) return false;
+    }
+    if (need.loadBearing && !isLoadBearing(ctx.state, t.zone)) return false;
+    if (need.storm && !ctx.state.weatherFront) return false;
+    if (need.stance && !need.stance.includes(t.stance)) return false;
+    if (need.trait && !t.traits.includes(need.trait)) return false;
+    if (need.sanityBand) {
+        const order: SanityBand[] = ['gone', 'unravelling', 'frayed', 'steady'];
+        if (order.indexOf(sanityBandOf(t)) > order.indexOf(need.sanityBand)) return false;
+    }
     if (need.minSurvivors !== undefined || need.maxSurvivors !== undefined) {
         const alive = ctx.state.tributes.filter(o => o.status === 'alive').length;
         if (need.minSurvivors !== undefined && alive < need.minSurvivors) return false;

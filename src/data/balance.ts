@@ -1487,6 +1487,12 @@ export const STEALTH = {
     tricksterAmbushBonus: 0.12,
     /** §5.2: concealment/ambush per unit of zone cover above the 0.35 baseline. */
     coverGradeScale: 0.5,
+    /**
+     * §5.2: how hard a zone's own acoustics push on concealment. A canyon at
+     * 1.35 costs a hider roughly a third of a cover grade; deep timber at
+     * 0.7 hands about half of one back.
+     */
+    acousticsScale: 1.2,
     /** §5.2: ambush chance lost against a zone with commanding high ground. */
     elevationAmbushPenalty: 0.1,
     /** §5.2: ambush chance gained where the ways in and out bottleneck. */
@@ -1894,6 +1900,35 @@ export const ZONE_EFFECTS = {
     irradiatedSanityLoss: 3,
     irradiatedCreepChance: 0.06,
 
+    /**
+     * §7: ground instability. A quaking zone is a running footing risk that
+     * escalates — once it has been shaking for `quakingGiveAfter` cycles the
+     * "Ground Give" beat is live, and anyone still standing there can be
+     * dropped a level. `quakingTerrain` is the only ground it can take hold
+     * on: rock that can slide, and structure that can fail.
+     */
+    quakingDuration: 4,
+    quakingTerrain: ['highland', 'ruins'] as const,
+    quakingFootingChance: 0.14,
+    quakingFootingDamage: 7,
+    quakingFatigue: 5,
+    quakingSanityLoss: 3,
+    /** Cycles of shaking before the ground can actually give way under somebody. */
+    quakingGiveAfter: 2,
+    quakingGiveChance: 0.1,
+    quakingGiveDamage: 34,
+
+    /**
+     * §7: infestation. Nothing attacks; the zone is simply not somewhere a
+     * person can forage or sleep. The inverse of `blooming`, and the reason
+     * the `swarm` mutt role is not the same thing.
+     */
+    swarmingDuration: 3,
+    swarmingResourcePenalty: 0.5,
+    swarmingFatigue: 7,
+    swarmingSanityLoss: 5,
+    swarmingInfectChance: 0.07,
+
     /** Contamination: a toxin in the ground or the air, zone-scoped. */
     contaminatedPoisonChance: 0.1,
     contaminatedSanityLoss: 4,
@@ -1921,6 +1956,8 @@ export const ZONE_EFFECTS = {
     ambientContaminateChance: 0.02,
     ambientFogChance: 0.03,
     ambientSeverChance: 0.012,
+    ambientQuakeChance: 0.025,
+    ambientSwarmChance: 0.025,
 
     /**
      * §7.1: the force field at the arena's border zones. Discovery is common
@@ -1933,6 +1970,27 @@ export const ZONE_EFFECTS = {
     forceFieldExploitIntellect: 8,
     forceFieldExploitChance: 0.05,
     forceFieldExploitHungerRelief: 25,
+} as const;
+
+/**
+ * §5.8: the shared load-bearing primitive. See `engine/loadBearing.ts` — this
+ * is the one place the seven hand-authored "___ Collapse" events' common
+ * mechanic is tuned.
+ */
+export const LOAD_BEARING = {
+    /** Load added per occupant, per cycle, to a `ruins` zone. */
+    perOccupantCycle: 0.05,
+    /** Load added by a fight resolving inside one. Violence is loud. */
+    perCombat: 0.14,
+    /** Fatigue at which the collapse beat becomes eligible at all. */
+    liveAt: 0.55,
+    /** Recovery per empty cycle, and the floor it never settles back below. */
+    settlePerCycle: 0.03,
+    settleFloor: 0.15,
+    /** What the structure does to whoever is under it. */
+    collapseDamageMin: 26,
+    collapseDamageMax: 48,
+    collapseCrushChance: 0.55,
 } as const;
 
 export const CRAFTING = {
@@ -2057,6 +2115,12 @@ export const TRAPS = {
     knownTrapThreat: 0.4,
     /** Per-cycle odds a standing trap simply rots, slips or is sprung by weather. */
     rotChancePerCycle: 0.09,
+    /**
+     * §7: odds a tribute in the `gone` sanity band walks into one of their own
+     * traps rather than stepping over it. Deliberately small — this is the
+     * arena's cruellest single outcome and it should stay rare.
+     */
+    ownSnareForgetChance: 0.16,
 } as const;
 
 /** Applying venom to a blade — the Trickster's other unspoken speciality. */
@@ -4681,6 +4745,15 @@ export const PRE_ARENA = {
     feastStealPackChance: 0.4,
     /** Feast: sanity cost of watching your own named pack walk away. */
     feastPackLostSanity: 12,
+    /**
+     * §7 "The Tamper": a tribute alone over the unclaimed feast packs, with
+     * something to put in them. Base odds plus their own appetite for it, so
+     * a Diplomat with an antidote in their bag is not the same coin as a
+     * Saboteur with a venom vial.
+     */
+    feastTamperBaseChance: 0.12,
+    feastTamperPerTreachery: 0.25,
+    feastTamperDamage: 16,
 } as const;
 
 export const EDGE_TOLL = {

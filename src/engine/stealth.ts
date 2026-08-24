@@ -74,6 +74,10 @@ export function concealment(
         // binary terrain check — a sparse ruin hides less than deep forest.
         const f = zoneFeatures(zone);
         value += (f.cover - 0.35) * STEALTH.coverGradeScale;
+        // §5.2: acoustics, as shared surface rather than one arena's gimmick.
+        // Ground that throws sound around (a canyon, a vault, a bare gallery)
+        // gives a hider away; ground that swallows it hides them further.
+        value -= ((f.acoustics ?? 1) - 1) * STEALTH.acousticsScale;
     }
 
     if (t.injuries.bleeding) value -= STEALTH.bleedingPenalty;

@@ -1103,7 +1103,22 @@ export interface RivalRecord {
 export type ZoneEffectKind =
     | 'burning' | 'flooded' | 'frozen' | 'contaminated' | 'fogbound' | 'stripped'
     | 'blooming'      // temporary abundance — forage and morale both lift
-    | 'irradiated';   // permanent, and it creeps
+    | 'irradiated'    // permanent, and it creeps
+    /**
+     * §7: ground instability. Not an arena's authored collapse event — a
+     * standing condition any `highland` or `ruins` zone can carry, in any
+     * arena, that makes footing a running risk and eventually drops somebody
+     * a level (the "Ground Give" beat). Distinct from `stripped`, which is
+     * about what the zone has left; this is about whether it holds.
+     */
+    | 'quaking'
+    /**
+     * §7: a vermin/insect infestation as an environmental condition rather
+     * than a mutt instance. Closer to `blooming`'s inverse than to the
+     * `swarm` mutt role: nothing attacks anybody, but forage and rest are
+     * both worse for as long as the zone is crawling.
+     */
+    | 'swarming';
 
 export interface ZoneEffect {
     kind: ZoneEffectKind;
@@ -1147,8 +1162,11 @@ export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetl
  * - `siege`: forced `persistent`, and re-attacks pin to its original zone rather than roaming.
  * - `mimic`: formalizes "Faces of the Fallen" — always eligible for that beat, never rolls it by chance.
  * - `swarm`: damage scales up with how many tributes are present in the zone.
+ * - `parasite`: does not kill on contact — it attaches or infects, and the
+ *   death (if there is one) resolves later through the ordinary vitals and
+ *   medicine path. This is the mechanical hook the infection axis hangs off.
  */
-export type MuttRole = 'ambusher' | 'herder' | 'scavenger' | 'siege' | 'mimic' | 'swarm';
+export type MuttRole = 'ambusher' | 'herder' | 'scavenger' | 'siege' | 'mimic' | 'swarm' | 'parasite';
 
 /**
  * A mutt archetype, not a mutt instance.
@@ -1227,6 +1245,15 @@ export interface ZoneFeatures {
      * Scales exposure ticks and derives from terrain and cover when absent.
      */
     shelterQuality?: number;
+    /**
+     * §5.2: how far sound carries out of, and inside, this zone. 1 is
+     * ordinary ground; above 1 is a canyon or a vault that throws every
+     * footfall around (noise travels further, stealth is harder); below 1 is
+     * deep timber, moss or snow that swallows it. Any arena may set it
+     * locally rather than the effect living inside one hand-authored map.
+     * Derived from terrain and cover when absent (see `zoneFeatures`).
+     */
+    acoustics?: number;
 }
 
 export interface Zone {
@@ -1636,6 +1663,43 @@ export interface GameState {
     feastPrizes?: Array<{ tributeId: string; label: string }>;
     /** §10.1: the longest single fire chain this run produced, in zones. */
     fireChainMax?: number;
+    /**
+     * §5.8: structural fatigue per `ruins` zone, 0-1.
+     *
+     * A shared engine primitive rather than one more hand-authored collapse
+     * event: time spent standing in a ruin and violence done inside it both
+     * load the structure, and a loaded structure is what the universal
+     * "Load-Bearing" event fires out of. Any arena with `ruins` terrain gets
+     * it for free; nothing has to opt in.
+     */
+    structuralFatigue?: Record<string, number>;
+    /**
+     * §5.5: camps abandoned in a hurry, keyed by zone. A zone somebody fled
+     * used to reset to its ambient state the moment they left; this is the
+     * trace they did not have time to pick up, discoverable by anyone who
+     * comes through after.
+     */
+    abandonedCamps?: Array<{
+        zone: string;
+        /** Who left it, so the finder learns something about who is where. */
+        ownerId: string;
+        ownerName: string;
+        cycle: number;
+        /** Item ids left behind, minted for whoever finds them. */
+        items: string[];
+        /** Set once somebody has found it — it is not found twice. */
+        foundBy?: string;
+    }>;
+    /**
+     * §5.4: the extreme this run's weather is drifting toward, and how far
+     * along that drift is. Weather used to be an independent roll every
+     * cycle; a run now has a season.
+     */
+    climateDrift?: { toward: 'heat' | 'cold' | 'wet' | 'dry'; progress: number };
+    /** §5.3: consecutive cycles the audience's excitement has sat flat. */
+    excitementFlatCycles?: number;
+    /** §7: tributes poisoned at the feast, and who tampered with the supplies. */
+    feastTampering?: Array<{ byId: string; cycle: number }>;
     /** §10.1: a renewed truce was still standing when one of its parties died. */
     /**
      * §4.6: love triangles, as their own tracked shape.

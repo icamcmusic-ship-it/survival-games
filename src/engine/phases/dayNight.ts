@@ -31,6 +31,7 @@ import {
 } from '../encounters';
 import { tickPersistentMutts } from '../mutts';
 import { hasEffect, restockCornucopia, rollAmbientZoneEffects, startZoneEffect, tickForceField, tickZoneEffects } from '../zoneEffects';
+import { tickStructuralFatigue } from '../loadBearing';
 import { climateOf } from '../climate';
 import { tributeOdds } from '../odds';
 import { runArenaSignature } from '../arenaSignature';
@@ -260,6 +261,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     tickSharedGrief(ctx);
     rollAmbientZoneEffects(ctx);
     tickZoneEffects(ctx);
+    // §5.8: occupation loads the arena's structures; empty ones settle back.
+    tickStructuralFatigue(ctx);
     // §7.1: the arena's edge is a thing tributes can find, touch, and use.
     tickForceField(ctx);
     restockCornucopia(ctx);

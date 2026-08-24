@@ -49,7 +49,21 @@ const DURATION_BY_KIND: Record<ZoneEffectKind, number> = {
     stripped: ZONE_EFFECTS.strippedDuration,
     blooming: ZONE_EFFECTS.bloomingDuration,
     irradiated: ZONE_EFFECTS.irradiatedDuration,
+    quaking: ZONE_EFFECTS.quakingDuration,
+    swarming: ZONE_EFFECTS.swarmingDuration,
 };
+
+/**
+ * §7: the cycle each active `quaking` instance started on, so the "Ground
+ * Give" beat can require that the ground has been shaking for a while rather
+ * than dropping somebody on the first tremor. Derived from the effect's own
+ * expiry so nothing new has to be persisted on the save.
+ */
+function quakingAge(ctx: SimContext, effect: ZoneEffect): number {
+    const vocab = ctx.state.arena.effectVocab?.quaking;
+    const full = Math.round(ZONE_EFFECTS.quakingDuration * (vocab?.durationMult ?? 1));
+    return full - (effect.expiresCycle - cycleOf(ctx.state));
+}
 
 /**
  * Starts (or refreshes) an effect on a zone. Refreshing rather than stacking —
@@ -108,6 +122,8 @@ export function startZoneEffect(ctx: SimContext, zone: string, kind: ZoneEffectK
         stripped: `${zone} is burned down to ash and bare rock. There is nothing left here worth finding.`,
         blooming: `Something has come good in ${zone} — fruit, fish, run-off water, all of it at once. It will not last, and everyone who can see it knows that.`,
         irradiated: `Whatever the Gamemakers have let loose in ${zone}, it is not going to lift. The ground itself is the hazard now, and the edge of it is moving.`,
+        quaking: `The ground under ${zone} starts moving and does not settle. Stone comes off the faces in handfuls, and nothing anyone stands on can be trusted twice.`,
+        swarming: `Something has hatched in ${zone} — a haze of it, in the air and the ground and everyone's sleeves. Nothing here is worth eating and nobody here is going to sleep.`,
     };
     ctx.logEvent(lines[kind], [], { important: true, zone, category: 'hazard' });
 }
@@ -340,6 +356,49 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                 checkDeath(ctx, t, `Poisoned by whatever is loose in ${zoneName}`);
                 break;
 
+            case 'quaking':
+                // §7: the footing risk first — a running cost of standing on
+                // ground that will not hold still.
+                t.vitals.fatigue += ZONE_EFFECTS.quakingFatigue * severity;
+                t.vitals.sanity -= ZONE_EFFECTS.quakingSanityLoss * severity;
+                if (ctx.rng.chance(ZONE_EFFECTS.quakingFootingChance * severity)) {
+                    applyDamage(ctx, t, Math.round(ZONE_EFFECTS.quakingFootingDamage * severity), { cause: `Fell on unstable ground in ${zoneName}`, kind: 'arena' });
+                    openWound(t, BLEEDING.hazardSeverity);
+                    ctx.logEvent(
+                        `${t.name} loses their footing as ${zoneName} shifts under them and goes down hard on the broken ground.`,
+                        [t.id],
+                        { important: true, category: 'hazard' }
+                    );
+                }
+                // §7 "Ground Give": ground that has been shaking long enough
+                // stops being a footing problem and becomes a fall.
+                if (quakingAge(ctx, effect) >= ZONE_EFFECTS.quakingGiveAfter
+                    && ctx.rng.chance(ZONE_EFFECTS.quakingGiveChance * severity)) {
+                    applyDamage(ctx, t, Math.round(ZONE_EFFECTS.quakingGiveDamage * severity), { cause: `Dropped a level when the ground gave way in ${zoneName}`, kind: 'arena' });
+                    openWound(t, BLEEDING.hazardSeverity);
+                    injure(t, 'legs');
+                    ctx.logEvent(
+                        `The floor of ${zoneName} gives out under ${t.name} all at once. They go down with it, a full level, in the dark and the dust.`,
+                        [t.id],
+                        { important: true, category: 'hazard' }
+                    );
+                }
+                clampTribute(t);
+                checkDeath(ctx, t, `Dropped a level when the ground gave way in ${zoneName}`);
+                break;
+
+            case 'swarming':
+                // §7: no attacker, no evasion roll — the zone is simply
+                // uninhabitable for as long as it is crawling.
+                t.vitals.fatigue += ZONE_EFFECTS.swarmingFatigue * severity;
+                t.vitals.sanity -= ZONE_EFFECTS.swarmingSanityLoss * severity;
+                if (!t.injuries.infected && ctx.rng.chance(ZONE_EFFECTS.swarmingInfectChance * severity)) {
+                    injure(t, 'infected');
+                    ctx.logEvent(`Something in the swarm over ${zoneName} has been at ${t.name}, and one of the bites has gone bad.`, [t.id], { important: true, category: 'injury' });
+                }
+                clampTribute(t);
+                break;
+
             case 'fogbound':
             case 'stripped':
                 // Fog is read by the stealth system directly (see hasFog below);
@@ -486,6 +545,21 @@ export function rollAmbientZoneEffects(ctx: SimContext) {
     const foggable = active.filter(z => !hasEffect(state, z.name, 'fogbound'));
     if (foggable.length > 0 && ctx.rng.chance(ZONE_EFFECTS.ambientFogChance)) {
         startZoneEffect(ctx, ctx.rng.pick(foggable).name, 'fogbound');
+    }
+
+    // §7: the ground itself going unstable. Only where there is rock to slide
+    // or structure to fail — a marsh does not quake, it just gets wetter.
+    const quakable = active.filter(z =>
+        (ZONE_EFFECTS.quakingTerrain as readonly Terrain[]).includes(z.terrain) && !hasEffect(state, z.name, 'quaking'));
+    if (quakable.length > 0 && ctx.rng.chance(ZONE_EFFECTS.ambientQuakeChance)) {
+        startZoneEffect(ctx, ctx.rng.pick(quakable).name, 'quaking');
+    }
+
+    // §7: an infestation hatching. Anywhere with something for it to hatch out
+    // of — and much likelier where the ground is already producing.
+    const swarmable = active.filter(z => z.terrain !== 'open' && !hasEffect(state, z.name, 'swarming'));
+    if (swarmable.length > 0 && ctx.rng.chance(ZONE_EFFECTS.ambientSwarmChance)) {
+        startZoneEffect(ctx, ctx.rng.pick(swarmable).name, 'swarming');
     }
 
     // A route giving out — a bridge, a tunnel, a crossing the arena decides to

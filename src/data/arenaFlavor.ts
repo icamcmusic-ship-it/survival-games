@@ -1,4 +1,5 @@
-import { Arena, ArenaLawId, Attributes, Terrain, ZoneEffectKind } from '../models/types';
+import { Arena, ArenaLawId, Attributes, Stance, Terrain, ZoneEffectKind } from '../models/types';
+import type { SanityBand } from '../engine/sanityBands';
 import { proceduralArenaFlavor } from './proceduralFlavor';
 
 /**
@@ -83,7 +84,32 @@ export interface ArenaEventDef {
         minSurvivors?: number;
         maxSurvivors?: number;
         law?: ArenaLawId;
+        /**
+         * §7: the zone's own interior, so "a fall" can be written once and be
+         * eligible in every arena that has anywhere to fall from — rather than
+         * thirty-seven arenas each authoring their own cliff.
+         */
+        elevationOrChoke?: boolean;
+        /** §7: only in a `ruins` zone the load-bearing primitive says is loaded. */
+        loadBearing?: boolean;
+        /** §7: only while a weather front is actually crossing the arena. */
+        storm?: boolean;
+        /** §7: only for a tribute standing in one of these stances. */
+        stance?: Stance[];
+        /** §7: only for a tribute carrying this trait (earned or reaped). */
+        trait?: string;
+        /** §7: only at or below this sanity band. See `engine/sanityBands.ts`. */
+        sanityBand?: SanityBand;
     };
+    /**
+     * §7: a mechanical consequence beyond the stat block above, dispatched by
+     * `applyArenaEvent`. Kept as a small closed union rather than a callback so
+     * the whole event table stays plain declarative data.
+     *
+     * - `collapse`: brings the zone's structure down on everyone in it.
+     * - `startsQuaking`: leaves the ground unstable behind the event.
+     */
+    special?: 'collapse' | 'startsQuaking';
     /** §7e: id of the event this one leads to, fired on the same tribute next cycle. */
     chain?: string;
     /** §7e: names everyone who saw it, whether or not the event itself touched them. */
@@ -7859,6 +7885,132 @@ const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         dodgeStat: 'intelligence',
         damage: 12,
         poisoned: true,
+    },
+
+    // ---- §7: new universal mechanics, usable in every arena -------------
+    // Each of these is a cause of death the game could not previously
+    // produce, written once against shared engine surface rather than
+    // thirty-seven times against thirty-seven hand-authored maps.
+    {
+        // A fall as its own tracked cause, distinct from combat and exposure.
+        // Eligible anywhere the zone's own interior says there is somewhere to
+        // fall from — every arena with highland terrain or a chokepoint.
+        id: 'the-drop',
+        text: 'The ledge {tribute} is working along in {zone} is narrower than it looked from the other end of it, and there is nothing under the outside edge at all.',
+        escapeText: '{tribute} gets a hand to the rock in {zone} and stops with half of one boot over the drop.',
+        cause: 'Fell',
+        dodgeStat: 'agility',
+        dodgeAlt: 'strength',
+        dodgeDifficulty: 7,
+        damage: 38,
+        bleeding: true,
+        requires: { elevationOrChoke: true },
+    },
+    {
+        // §5.8's shared load-bearing primitive, cashed out as a death.
+        id: 'load-bearing',
+        text: 'Something in {zone} that has been taking more weight than it was built for all week stops taking it. The rest of the structure finds out a half-second later.',
+        escapeText: '{tribute} hears the pitch of the stone in {zone} change and is out from under it before the rest comes down.',
+        cause: 'Buried in the collapse',
+        dodgeStat: 'agility',
+        dodgeAlt: 'intelligence',
+        dodgeDifficulty: 8,
+        damage: 20,
+        bleeding: true,
+        terrains: ['ruins'],
+        requires: { loadBearing: true },
+        zoneWide: true,
+        special: 'collapse',
+        weight: 1.4,
+    },
+    {
+        // The Wrong Berry: a rare allergic death, only reachable by a tribute
+        // hungry or desperate enough to eat something they do not know.
+        id: 'the-wrong-berry',
+        text: '{tribute} eats something in {zone} they have never seen before, and within a minute their throat has decided about it.',
+        escapeText: '{tribute} chews something unfamiliar in {zone}, thinks better of it, and spits it into the dirt.',
+        cause: 'Died of an allergic reaction',
+        dodgeStat: 'intelligence',
+        dodgeAlt: 'endurance',
+        dodgeDifficulty: 9,
+        damage: 32,
+        fatigue: 12,
+        requires: { trait: 'Starved' },
+        weight: 0.6,
+    },
+    {
+        // The same beat reached the other way — a Scavenging tribute eating
+        // what a picked-over zone gives them.
+        id: 'the-wrong-berry-scavenging',
+        text: 'There is nothing left in {zone} that {tribute} recognises, so they eat something they do not, and it does not agree with the decision.',
+        escapeText: '{tribute} tests an unfamiliar thing from {zone} on their lip first, the way somebody taught them, and throws it away.',
+        cause: 'Died of an allergic reaction',
+        dodgeStat: 'intelligence',
+        dodgeAlt: 'endurance',
+        dodgeDifficulty: 9,
+        damage: 30,
+        fatigue: 12,
+        requires: { stance: ['Scavenging'] },
+        weight: 0.6,
+    },
+    {
+        // Static Charge: a storm-front-only lightning death, deliberately
+        // separate from `clockwork`'s authored Lightning Barrage.
+        id: 'static-charge',
+        text: 'Everything metal {tribute} is carrying through {zone} starts to hum, and the hair on their arms stands straight up, and there is no time at all between that and the strike.',
+        escapeText: '{tribute} drops everything metal in {zone} and gets flat, and the strike goes into the ground eight metres away.',
+        cause: 'Struck',
+        dodgeStat: 'intelligence',
+        dodgeAlt: 'agility',
+        dodgeDifficulty: 9,
+        damage: 52,
+        burned: true,
+        requires: { storm: true },
+        witnesses: true,
+        weight: 0.7,
+    },
+    {
+        // Ground Give: the injury/death beat paired with the `quaking` effect.
+        id: 'ground-give',
+        text: '{zone} has not stopped moving for two days, and the part of it {tribute} is standing on stops being part of it.',
+        escapeText: '{tribute} feels {zone} go under them and throws themselves at ground that is still attached to something.',
+        cause: 'Dropped a level when the ground gave way',
+        dodgeStat: 'agility',
+        dodgeDifficulty: 8,
+        damage: 30,
+        bleeding: true,
+        requires: { effect: 'quaking' },
+        terrains: ['highland', 'ruins'],
+        zoneWide: true,
+    },
+    {
+        // The tremor that starts it, so `quaking` has a tribute-facing origin
+        // as well as an ambient one.
+        id: 'first-tremor',
+        text: 'The floor of {zone} shivers under {tribute} — once, and then again, and then it does not really stop.',
+        escapeText: '{tribute} rides out the first shudder through {zone} on their heels and keeps their feet.',
+        cause: 'Killed by falling rock',
+        dodgeStat: 'agility',
+        damage: 10,
+        bleeding: true,
+        terrains: ['highland', 'ruins'],
+        special: 'startsQuaking',
+        zoneWide: true,
+        weight: 0.8,
+    },
+    {
+        // Caught in their own snare. Only reachable in the `gone` sanity band:
+        // this is a tribute who no longer remembers where they set it.
+        id: 'own-snare',
+        text: '{tribute} walks into a snare in {zone} set at exactly the height of their own throat, tied with exactly their own knot, by exactly themselves, four days ago.',
+        escapeText: '{tribute} stops dead in {zone} in front of a snare they half-remember setting, and steps around it.',
+        cause: 'Caught in their own snare',
+        dodgeStat: 'intelligence',
+        dodgeDifficulty: 11,
+        damage: 40,
+        bleeding: true,
+        requires: { sanityBand: 'gone' },
+        weight: 0.5,
     },
 
     // ---- §7c: discovery -------------------------------------------------

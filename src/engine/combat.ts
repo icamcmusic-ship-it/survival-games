@@ -10,6 +10,7 @@ import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone, zoneFeatures } from './map';
+import { loadFromViolence } from './loadBearing';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
 import { incurDebt } from './debts';
 import { adjustRel, getRel, propagateDeathFallout } from './relationships';
@@ -635,6 +636,9 @@ export function resolveCombat(
 
     noteContact(ctx.state, t1, t2);
     noteFight(ctx.state, t1, t2);
+    // §5.8: a fight inside a ruin loads the structure. No arena opts in — the
+    // primitive reads the terrain and ignores everything that is not stone.
+    loadFromViolence(ctx.state, t1.zone);
     // A feud gets its own opening line once it is genuinely a feud.
     const priorFights = ensureMemory(t1).rivals?.[t2.id]?.fights ?? 0;
     if (priorFights > RIVALRY.feudAtFights) {

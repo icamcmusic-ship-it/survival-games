@@ -4,11 +4,15 @@ import { RNG } from '../../utils/rng';
 import { GameState, Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
-import { FEAST, PRE_ARENA, TRAINING_FLOOR } from '../../data/balance';
+import { FEAST, POISONING, PRE_ARENA, TRAINING_FLOOR } from '../../data/balance';
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { FEAST_TEXTS } from '../../data/flavorText';
 import { clampTribute } from '../vitals';
-import { giveItem, itemPhrase } from '../items';
+import { consumeOne, giveItem, itemPhrase } from '../items';
+import { applyDamage, checkDeath } from '../combat';
+import { injure } from '../wounds';
+import { traitMod } from '../../data/traits';
+import { cycleOf } from '../memory';
 import { adjustRel, getRel } from '../relationships';
 import { addFear } from '../fear';
 import { advanceCycle, hasVengeanceAgainst, noteSighting } from '../memory';
@@ -88,6 +92,45 @@ function themedPool(theme: GameState['feastTheme']): Item[] {
  * is going to arrive and find the gap — and the two used to be the same
  * `giveItem` call with the same sentence attached.
  */
+/**
+ * §7: "The Tamper" — poisoning the table before anybody else arrives.
+ *
+ * The feast's whole shape is a head start: whoever gets there first has the
+ * unclaimed packs to themselves for a while. Until now the only thing that
+ * head start could buy was more supplies. This is the other thing a person
+ * standing alone over somebody else's food can do with it, and it is the
+ * intersection of a social betrayal and a cause of death — the tamperer is
+ * usually two zones away by the time it resolves.
+ *
+ * Gated on a tribute who actually has something to do it with (a poison
+ * source in their pack) and on disposition, so it stays a character beat
+ * rather than a tax on arriving late.
+ */
+function tamperWithFeast(ctx: SimContext, early: Tribute[], cornucopia: string) {
+    const remaining = ctx.state.feastPrizes ?? [];
+    if (remaining.length === 0) return;
+    const candidates = early.filter(t =>
+        t.status === 'alive'
+        && POISONING.sources.some(id => t.inventory.some(i => i.id === id)));
+    if (candidates.length === 0) return;
+
+    const actor = candidates
+        .map(t => ({ t, appetite: ARCHETYPES[t.archetype].treachery + traitMod(t, 'treachery') }))
+        .sort((a, b) => b.appetite - a.appetite)[0];
+    if (!ctx.rng.chance(Math.min(0.9, PRE_ARENA.feastTamperBaseChance + actor.appetite * PRE_ARENA.feastTamperPerTreachery))) return;
+
+    const source = POISONING.sources.find(id => actor.t.inventory.some(i => i.id === id))!;
+    consumeOne(actor.t, i => i.id === source);
+    ctx.state.feastTampering = [...(ctx.state.feastTampering ?? []), { byId: actor.t.id, cycle: cycleOf(ctx.state) }];
+    // Deliberately not witnessed: the entire value of the act is that it is
+    // done while nobody who will eat it is standing there.
+    ctx.logEvent(
+        `${actor.t.name} has the table to themselves for a minute longer than anyone realises, and spends it working something out of their own pack into the packs that are left.`,
+        [actor.t.id],
+        { important: true, zone: cornucopia, category: 'betrayal' }
+    );
+}
+
 function claimPacks(
     ctx: SimContext,
     arrivals: Tribute[],
@@ -111,7 +154,27 @@ function claimPacks(
         giveItem(t, minted);
         t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
         t.vitals.thirst = Math.max(0, t.vitals.thirst - 40);
+
+        // §7: whoever tampered with the table is long gone; the pack is not.
+        const tampering = (ctx.state.feastTampering ?? []).find(x => x.byId !== t.id);
+        if (tampering && !t.injuries.poisoned) {
+            const tamperer = ctx.state.tributes.find(o => o.id === tampering.byId);
+            injure(t, 'poisoned');
+            const cause = tamperer ? `Poisoned at the feast by ${tamperer.name}` : 'Poisoned at the feast';
+            applyDamage(ctx, t, PRE_ARENA.feastTamperDamage, tamperer
+                ? { cause, sourceId: tamperer.id, kind: 'tribute' }
+                : { cause, kind: 'hazard' });
+            ctx.logEvent(
+                `${t.name} eats out of the pack they just took off the table in ${cornucopia}, and something in it is wrong. They work out roughly when, and never work out who.`,
+                [t.id],
+                { important: true, zone: cornucopia, category: 'betrayal' }
+            );
+            clampTribute(t);
+            checkDeath(ctx, t, cause);
+            if (t.status !== 'alive' && tamperer && tamperer.status === 'alive') tamperer.kills += 1;
+        }
         clampTribute(t);
+        if (t.status !== 'alive') return;
 
         if (!takeSomebodyElses) {
             ctx.logEvent(
@@ -269,6 +332,9 @@ export function processFeast(ctx: SimContext) {
     // The head start is spent on the packs: whoever is there first decides
     // which of them are still on the table when everybody else arrives.
     claimPacks(ctx, ordered.filter(t => early.has(t.id)), cornucopia, themedGift, claimed);
+    // §7: the head start's other use. Runs after the early arrivals have taken
+    // what they want and before anyone else reaches the table.
+    if (latecomers.length > 0) tamperWithFeast(ctx, ordered.filter(t => early.has(t.id)), cornucopia);
     if (latecomers.length > 0) {
         ctx.logEvent(
             `${latecomers.map(t => t.name).join(', ')} come in late, into a clearing that is already occupied and a table that has already been gone through.`,
@@ -337,6 +403,7 @@ export function processFeast(ctx: SimContext) {
     claimPacks(ctx, attendees.filter(t => t.status === 'alive' && !claimed.has(t.id)), cornucopia, themedGift, claimed);
     // The table is withdrawn with the unclaimed packs still on it.
     ctx.state.feastPrizes = undefined;
+    ctx.state.feastTampering = undefined;
 
     if (shuffled.length > 1) {
         ctx.logEvent(
