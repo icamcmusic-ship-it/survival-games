@@ -5198,3 +5198,203 @@ export const ARENA_SIGNATURES = {
         siphonChance: 0.5,
     },
 } as const;
+
+// ==== workstream A: tribute logic ====
+
+/**
+ * Decision transparency. The trace is a per-cycle record of what the stance
+ * table and the destination scorer actually weighed, kept small — last cycle
+ * only — so the tribute sheet can answer "why did they do that?" without the
+ * engine having to be re-run.
+ */
+export const DECISION_TRACE = {
+    /** Scored stance options and destinations kept per cycle. */
+    topN: 3,
+    /** Reasons kept per stance, ranked by absolute weight. */
+    reasonsPerStance: 3,
+} as const;
+
+/**
+ * Stance hysteresis, second pass. The score-only margin stops oscillation
+ * between the two big families but did nothing for a conditional stance
+ * whose whole value is *staying* in it: Fortified lost to a wandering
+ * Aggressive score the moment the numbers touched. An incumbent conditional
+ * stance now carries a small bonus while its situation still holds, so a
+ * challenger has to be clearly better rather than marginally better.
+ */
+export const STANCE_HOLD = {
+    /** Score added to a still-valid conditional incumbent before the compare. */
+    conditionalIncumbentBonus: 0.9,
+    /**
+     * Fortified for anybody with a camp and the supplies to sit in it — a
+     * fire, a shelter or a camouflaged position plus food and water is a
+     * position worth keeping whether or not the ground is a chokepoint.
+     */
+    fortifiedSuppliedKit: 10,
+    fortifiedCampBonus: 1.0,
+    fortifiedSuppliedBonus: 1.2,
+    /** A camp counts as held ground even before the hold counter says so. */
+    fortifiedCampHoldCycles: 1,
+    /**
+     * Shadowing for anybody currently tracking a rival in memory — a known
+     * recent sighting one zone over — not only the high-stealth builds.
+     */
+    shadowTrackingBonus: 1.6,
+    /** Cycles a sighting may be old and still count as "currently tracking". */
+    shadowSightingMaxAge: 2,
+    /** Stealth points below the floor that a tracked sighting can make up for. */
+    shadowStealthSlack: 4,
+} as const;
+
+/**
+ * §3: the standing goal — a third objective slot that survives errand
+ * interruptions across cycles. The two-deep queue holds one errand in front
+ * of one goal; a feast, a sworn hunt or the endgame reposition is a goal that
+ * should outlast several errands, and used to be re-derived from scratch
+ * every time one finished.
+ */
+export const STANDING_GOAL = {
+    /** A standing goal resumes when the fresh choice's priority tier is at or below this. */
+    resumeBelowTier: 45,
+    /** Cycles a standing goal may live before it is dropped as stale. */
+    maxCycles: 12,
+    /** Cycles of expiry granted each time the goal is picked back up. */
+    resumeCycles: 4,
+} as const;
+
+/**
+ * State-dependent risk tolerance, in roughly [-1, 1]. The archetype curve was
+ * the whole story; health, kit, day count and field size now move it too.
+ */
+export const RISK = {
+    /** Archetype temperament: aggression pushes up, effective caution pushes down. */
+    aggressionWeight: 0.6,
+    cautionWeight: 0.8,
+    /** Health at which the health term is neutral, and its weight per 100 points. */
+    healthPivot: 60,
+    healthWeight: 0.8,
+    /** A weapon in hand is the single biggest reason to take a chance. */
+    weaponBonus: 0.2,
+    /** Kit value at which "something to lose" starts weighing, and the weight per point. */
+    kitPivot: 20,
+    kitWeightPerPoint: 0.006,
+    kitMaxPenalty: 0.25,
+    /** Days into the run at which fatigue with the whole thing starts pushing caution. */
+    dayPivot: 6,
+    dayWeightPerDay: 0.03,
+    dayMaxPenalty: 0.2,
+    /** Field size at and below which the arithmetic says somebody has to force it. */
+    fieldPivot: 6,
+    fieldWeightPerTribute: 0.08,
+    fieldMaxBonus: 0.35,
+    /** How far the composite moves the stance, targeting, movement and retreat reads. */
+    stanceAggressionWeight: 1.4,
+    stanceEvasiveWeight: 1.2,
+    /** Hunt scoring: a cautious tribute leans harder on picking the weak. */
+    targetWeakWeight: 0.3,
+    /** Destination scoring: tolerant tributes read danger as opportunity. */
+    dangerWeight: 1.5,
+    /** Retreat roll: risk tolerance argues against breaking off. */
+    retreatWeight: 0.12,
+} as const;
+
+/**
+ * §5: learning about opponents. A per-rival "read" in [0, 1] on the memory
+ * record, improved by every meeting, fight and sighting, and used to blend
+ * the visible-power guess toward the truth for people they actually know.
+ */
+export const RIVAL_READ = {
+    perSighting: 0.08,
+    perMeeting: 0.15,
+    perFight: 0.25,
+    perWound: 0.1,
+    max: 1,
+    /** How much of the estimate the true figure replaces at a full read. */
+    blendWeight: 0.7,
+    /** A well-read rival does not regress toward "average tribute" as fast. */
+    staleResist: 0.6,
+} as const;
+
+/**
+ * §6: the watch rotation. An alliance sleeping in one zone posts a watch —
+ * the member with the best awareness, which is what a Light Sleeper is for —
+ * and the rest actually sleep.
+ */
+export const WATCH_ROTATION = {
+    /** Members co-located at nightfall needed to post a watch at all. */
+    minMembers: 2,
+    /** Health the sleepers recover on top of the ordinary ally-watch bonus. */
+    recoveryBonus: 2,
+    /** ...and again when the watcher is somebody who wakes at a snapped twig. */
+    lightSleeperBonus: 2,
+    /** Awareness at which the watcher counts as a real sentry. */
+    sentryAwareness: 6.5,
+    /** Sleep debt the sleepers pay down for a watched night. */
+    debtRepaid: 1,
+    /** The watcher's own night is shorter. */
+    watcherFatigue: 4,
+} as const;
+
+/** §7: injuries change the plan, not only the numbers. */
+export const INJURY_BEHAVIOUR = {
+    /** Destination penalty per extra cycle of traversal, per grade of leg injury. */
+    legsHopPenaltyPerGrade: 1.2,
+    /** A limping hunter drops quarry further than this many hops away. */
+    legsHuntMaxHops: 2,
+    /** Weapon-choice multiplier per grade of injury to the weapon hand. */
+    weaponHandPerGrade: 0.22,
+    /** ...and to the off hand, which still matters for a bow or a spear. */
+    offHandPerGrade: 0.1,
+    /** Two-handed weapons (bows, spears, axes) pay the off-hand cost too. */
+    twoHandedDamage: 14,
+} as const;
+
+/**
+ * §8: shock. A one-cycle status separate from sanity — a near-death moment
+ * that forces Evasive for the cycle after it, whatever the scorer says.
+ */
+export const SHOCK = {
+    /** Health line a single hit has to carry them under. */
+    healthLine: 30,
+    /** ...and the hit has to be big enough to be a moment, not a scratch. */
+    minHit: 12,
+    /** Cycles the status holds. */
+    cycles: 1,
+    lineChance: 0.7,
+} as const;
+
+/** §9: whom to avoid and whom to hunt is partly what the country calls them. */
+export const REPUTATION_TARGETING = {
+    /** Hunt-score penalty at full notoriety, scaled down by risk tolerance. */
+    notorietyDeterrent: 30,
+    /** An epithet is a prize to somebody who wants one and a warning to everyone else. */
+    epithetPrize: 12,
+    epithetDeterrent: 10,
+    /** Risk tolerance at which a named rival reads as a prize rather than a threat. */
+    prizeRiskAbove: 0.25,
+    /** What a heard-of name adds to how dangerous somebody looks across a zone. */
+    notorietyVisibleWeight: 2.5,
+    epithetVisibleBonus: 1,
+} as const;
+
+/** §10: what is worth keeping depends on where you are keeping it. */
+export const SITUATIONAL_KIT = {
+    coldWarmthBonus: 45,
+    coldFireBonus: 25,
+    dryWaterBonus: 45,
+    foulWaterPurifierBonus: 35,
+    /** Thirst multiplier at and above which the arena counts as dry. */
+    dryThirstMultiplier: 1.3,
+} as const;
+
+/** §11: the tribute side of the endgame — repositioning before the Gamemakers do it for them. */
+export const ENDGAME_POSITIONING = {
+    /** Field size at and below which the last few start moving deliberately. */
+    fieldSize: 4,
+    /** Priority tier of the reposition, between the feast and a sworn hunt. */
+    tier: 58,
+    /** Destination pull toward the horn or high ground once the field is this small. */
+    pullWeight: 3,
+    /** Edge above which the horn is the place to be; below it, high ground. */
+    hornEdge: 0,
+} as const;

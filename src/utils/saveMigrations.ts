@@ -13,7 +13,7 @@
  */
 import {
     Alliance, AlliancePact, Attributes, Build, Condition, EventLog, Frame, Handedness, LimbRatio, GameConfig, GameState, Gender, Injuries, Item,
-    Objective, Stance, Tribute, TributeMemory, Vitals,
+    Objective, Stance, StandingGoal, Tribute, TributeMemory, Vitals,
 } from '../models/types';
 import { DEFAULT_GAME_CONFIG } from '../data/constants';
 import { ALLIANCES, BLOC_TREATY } from '../data/balance';
@@ -174,7 +174,7 @@ function normalizeObjective(raw: unknown): Objective {
                 ? {
                     kind: 'reach',
                     zone: r.zone,
-                    reason: oneOf(r.reason, ['water', 'shelter', 'feast', 'ally', 'forage'], 'forage'),
+                    reason: oneOf(r.reason, ['water', 'shelter', 'feast', 'ally', 'forage', 'endgame'], 'forage'),
                     expires: asNum(r.expires, 0),
                 }
                 : { kind: 'survive' };
@@ -381,7 +381,33 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         quirks: asStrArray(r.quirks),
         injurySeverity: asObjMap<number>(r.injurySeverity),
         platePosition: clamp(asNum(r.platePosition, 0.5), 0, 1),
+        // ---- workstream A: tribute logic ----
+        // The trace is last-cycle-only and rebuilt on the next tick, so a save
+        // from before it existed simply resumes without one. The standing
+        // goal, shock and kit priorities are validated rather than trusted.
+        decisionTrace: undefined,
+        standingGoal: normalizeStandingGoal(r.standingGoal),
+        shock: (() => {
+            const s = asRecord(r.shock);
+            return s && typeof s.untilCycle === 'number'
+                ? { untilCycle: s.untilCycle, cause: asStr(s.cause, 'a near thing') }
+                : undefined;
+        })(),
+        kitPriorities: (() => {
+            const k = asRecord(r.kitPriorities);
+            return k ? { warmth: asBool(k.warmth, false), water: asBool(k.water, false), purifier: asBool(k.purifier, false) } : {};
+        })(),
     };
+}
+
+/** A §3: a standing goal is only kept when its inner objective survives normalisation. */
+function normalizeStandingGoal(raw: unknown): StandingGoal | undefined {
+    const g = asRecord(raw);
+    if (!g) return undefined;
+    const goal = normalizeObjective(g.goal);
+    if (goal.kind === 'survive') return undefined;
+    const reason = oneOf<StandingGoal['reason']>(g.reason, ['feast', 'avenge', 'endgame'], 'feast');
+    return { goal, reason, setCycle: asNum(g.setCycle, 0) };
 }
 
 function normalizeConfig(raw: unknown): GameConfig {

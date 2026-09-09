@@ -123,7 +123,9 @@ export type InjurySite = keyof Injuries;
 export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking' | 'persuasion';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
-export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage';
+export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'
+    /** Workstream A §11: the final-four reposition toward the horn or high ground. */
+    | 'endgame';
 
 /**
  * A standing intention, held across cycles.
@@ -996,6 +998,59 @@ export interface Tribute {
     interviewCalloutId?: string;
     /** §6.4: whose named feast pack they walked away with, if not their own. */
     feastPrizeTaken?: string;
+
+    // ---- workstream A: tribute logic ----
+    /**
+     * A §1: what the decision layer weighed last cycle — the top scored
+     * stances with their strongest reasons, the top scored destinations, and
+     * the objective candidates. Last cycle only; overwritten every cycle.
+     */
+    decisionTrace?: DecisionTrace;
+    /**
+     * A §3: the standing goal. A third objective slot behind the two-deep
+     * queue: a feast, a sworn hunt or the endgame reposition that survives
+     * errand interruptions across cycles until it completes or is invalidated.
+     */
+    standingGoal?: StandingGoal;
+    /**
+     * A §8: shock. A one-cycle status separate from sanity, set by a
+     * near-death moment (a single hit carrying them under the line, or a
+     * downed recovery). Forces Evasive for the cycle it holds.
+     */
+    shock?: { untilCycle: number; cause: string };
+    /**
+     * A §10: what the arena currently makes worth keeping, recomputed each
+     * cycle from the climate so `enforceCapacity` — which has no context —
+     * can weigh a cloak in the cold and a canteen in the dry.
+     */
+    kitPriorities?: { warmth?: boolean; water?: boolean; purifier?: boolean };
+}
+
+/** A §1: one weighed reason behind a stance score. */
+export interface TraceReason {
+    label: string;
+    weight: number;
+}
+
+/** A §1: the per-cycle decision trace. Small on purpose — last cycle only. */
+export interface DecisionTrace {
+    cycle: number;
+    /** Top scored stance options, best first, each with its strongest reasons. */
+    stances: Array<{ stance: Stance; score: number; reasons: TraceReason[] }>;
+    /** Top scored destinations from the wander scorer, if it ran this cycle. */
+    destinations?: Array<{ zone: string; score: number }>;
+    /** The objective candidates the cascade produced, chosen first, with their tiers. */
+    objectives?: Array<{ label: string; tier: number }>;
+    /** Set when the stance was imposed rather than scored. */
+    forced?: string;
+}
+
+/** A §3: a goal held behind the errand queue. */
+export interface StandingGoal {
+    goal: Objective;
+    /** Why it is standing: the chronicle names it when it is picked back up. */
+    reason: 'feast' | 'avenge' | 'endgame';
+    setCycle: number;
 }
 
 /**
@@ -1085,6 +1140,12 @@ export interface Alliance {
     charter?: CharterRule[];
     /** §10.1: charter breaches this group has logged, for 'Charter Kept'. */
     breaches?: number;
+    /**
+     * A §6: the night's watch. Set at nightfall for a group sleeping in one
+     * zone: who is awake, who is asleep, and the cycle it was posted, so the
+     * chronicle names it once rather than every night.
+     */
+    watch?: { cycle: number; zone: string; watcherId: string; sleeperIds: string[] };
 }
 
 /**
@@ -1162,6 +1223,12 @@ export interface RivalRecord {
     /** Times this tribute broke off rather than finish it. */
     timesFled: number;
     lastFightCycle: number;
+    /**
+     * A §5: how well this tribute has this person's measure, 0-1. Improves
+     * with every sighting, meeting and fight; read by the threat estimate to
+     * blend the visible-power guess toward the truth for known opponents.
+     */
+    read?: number;
 }
 
 /**

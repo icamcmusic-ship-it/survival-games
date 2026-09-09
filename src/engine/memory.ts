@@ -1,5 +1,5 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
-import { FEAR, HUNTING, INTEL, MEMORY, RELATIONSHIPS, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
+import { FEAR, HUNTING, INTEL, MEMORY, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
 import { profOf } from './proficiency';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
@@ -300,6 +300,33 @@ export function noteContact(state: GameState, a: Tribute, b: Tribute) {
     const cycle = cycleOf(state);
     ensureMemory(a).lastContact[b.id] = cycle;
     ensureMemory(b).lastContact[a.id] = cycle;
+    // A §5: a meeting is a lesson about the other person, both ways.
+    improveRead(a, b.id, RIVAL_READ.perMeeting);
+    improveRead(b, a.id, RIVAL_READ.perMeeting);
+}
+
+/**
+ * A §5: how well `t` has somebody's measure, 0-1.
+ *
+ * The threat estimate reads frame, a visible weapon and visible wounds, then
+ * regresses toward "average tribute" as the sighting goes stale. That is the
+ * right model of a stranger and the wrong model of somebody you have fought
+ * twice — the read is what accumulates across sightings, meetings and fights
+ * and lets `assessZone` blend the guess toward the truth for known people.
+ */
+export function readOf(t: Tribute, otherId: string): number {
+    return ensureMemory(t).rivals[otherId]?.read ?? 0;
+}
+
+export function improveRead(t: Tribute, otherId: string, amount: number) {
+    if (t.id === otherId || amount <= 0) return;
+    const record = rivalRecord(t, otherId);
+    record.read = Math.min(RIVAL_READ.max, Math.round(((record.read ?? 0) + amount) * 1000) / 1000);
+}
+
+/** A §5: a sighting across a zone is the weakest lesson, but it is one. */
+export function noteRivalSighting(t: Tribute, otherId: string) {
+    improveRead(t, otherId, RIVAL_READ.perSighting);
 }
 
 /** Cycles since these two last shared a scene, or Infinity if never. */
@@ -343,6 +370,8 @@ export function noteFight(state: GameState, a: Tribute, b: Tribute) {
         const record = rivalRecord(x, y.id);
         record.fights += 1;
         record.lastFightCycle = cycle;
+        // A §5: nothing teaches you what somebody can do like trading blows.
+        improveRead(x, y.id, RIVAL_READ.perFight);
     });
 }
 
@@ -385,6 +414,9 @@ export function noteFled(t: Tribute, otherId: string) {
 export function noteWound(attacker: Tribute, defender: Tribute) {
     rivalRecord(attacker, defender.id).woundsDealt += 1;
     rivalRecord(defender, attacker.id).woundsTaken += 1;
+    // A §5: a landed hit is information for both ends of it.
+    improveRead(attacker, defender.id, RIVAL_READ.perWound);
+    improveRead(defender, attacker.id, RIVAL_READ.perWound);
 }
 
 /**
