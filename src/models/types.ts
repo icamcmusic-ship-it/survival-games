@@ -504,7 +504,8 @@ export interface Tribute {
     /**
      * §11.1: consecutive cycles this tribute has been performing a bond
      * (displayedRegard non-empty). Resets when the act drops. Read by the
-     * chronicle and reserved for a future performance achievement.
+     * chronicle; `maxPerformingStreak` feeds 'The Long Con' and the live
+     * streak feeds 'Performed to the End'.
      */
     performingStreak?: number;
     /**
@@ -805,6 +806,22 @@ export interface Tribute {
     visitedZones?: string[];
     /** §10.1: kills credited to this tribute's own traps. */
     trapKills?: number;
+    /** Mutt encounters walked away from. Hardened is earned on the second. */
+    muttsSurvived?: number;
+    /** §11: cycles spent holding a named alliance role, for 'Quartermaster'. */
+    roleCycles?: number;
+    /** §11: took over an alliance as its named heir. */
+    succeededAsHeir?: boolean;
+    /** §11: structural collapses walked out of. */
+    collapsesSurvived?: number;
+    /** §11: forages that turned something up. */
+    forageSuccesses?: number;
+    /** §11: an infection treated back down from its terminal grade. */
+    terminalInfectionBeaten?: boolean;
+    /** §11: vertical-zone levels ever stood on. */
+    levelsStood?: ZoneLevel[];
+    /** Consecutive cycles at terminal-grade sepsis. Fatal at INFECTION.terminalCycles. */
+    septicCycles?: number;
     /** §8.9: traps this tribute has successfully pulled apart. */
     trapsDisarmed?: number;
     /** §8.9: hard water crossings begun (destination terrain 'water'). */
@@ -1612,6 +1629,8 @@ export interface GameState {
     lastFeastDay?: number;
     /** Feasts already held this run, used to space them out. */
     feastsHeld?: number;
+    /** The Feast Quell's one-time proclamation has been made. */
+    nightlyFeastProclaimed?: boolean;
     /**
      * Consecutive cycles the field has sat at finalist count without a victor.
      * Past ESCALATION.finaleAfterFinalistCycles, the Gamemakers force the
@@ -1841,6 +1860,8 @@ export interface GameState {
      * See `engine/blocTreaty.ts`.
      */
     blocTreaties?: Array<{
+        /** Cycle a member last decided the treaty did not bind them. Log de-dup only. */
+        strainedCycle?: number;
         aId: string;
         bId: string;
         /** Cycle it lapses on its own. */

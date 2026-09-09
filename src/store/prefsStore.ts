@@ -20,12 +20,16 @@ export type Units = 'imperial' | 'metric';
  * the glyph to carry it. See the `data-palette` blocks in index.css.
  */
 export type Palette = 'default' | 'colourblind' | 'contrast';
+/** §2: light or dark chrome. 'system' follows `prefers-color-scheme`. */
+export type Theme = 'system' | 'light' | 'dark';
 
 export interface Prefs {
     /** How heights (and any future measures) are formatted. */
     units: Units;
     /** §2.1: the category palette. */
     palette: Palette;
+    /** §2: dark mode. Independent of the category palette. */
+    theme: Theme;
     /**
      * §2.5: spoiler-safe viewing. Suppresses death and kill log text and the
      * odds board until the epilogue, so a shared seed can be watched by
@@ -74,6 +78,7 @@ export interface Prefs {
 export const DEFAULT_PREFS: Prefs = {
     units: 'imperial',
     palette: 'default',
+    theme: 'system',
     spoilerSafe: false,
     seenCoachMarks: [],
     muteAudio: false,
@@ -95,9 +100,11 @@ export const PREFS_SPEC: StorageSpec<Prefs> = {
         if (!r) return null;
         const units = asStr(r.units, DEFAULT_PREFS.units);
         const palette = asStr(r.palette, DEFAULT_PREFS.palette);
+        const theme = asStr(r.theme, DEFAULT_PREFS.theme);
         return {
             units: units === 'metric' ? 'metric' : 'imperial',
             palette: palette === 'colourblind' || palette === 'contrast' ? palette : 'default',
+            theme: theme === 'light' || theme === 'dark' ? theme : 'system',
             spoilerSafe: asBool(r.spoilerSafe, DEFAULT_PREFS.spoilerSafe),
             seenCoachMarks: asStrArray(r.seenCoachMarks),
             muteAudio: asBool(r.muteAudio, DEFAULT_PREFS.muteAudio),
@@ -123,6 +130,17 @@ export function setPrefs(patch: Partial<Prefs>): void {
     prefsStore.setState(patch);
     writeStored(PREFS_SPEC, prefsStore.getState());
     if ('palette' in patch) applyPalette(prefsStore.getState().palette);
+    if ('theme' in patch) applyTheme(prefsStore.getState().theme);
+}
+
+/**
+ * §2: dark mode is a stamp on <html> the same way the palette is. 'system'
+ * removes the stamp so the `prefers-color-scheme` block in index.css decides.
+ */
+export function applyTheme(theme: Theme): void {
+    if (typeof document === 'undefined') return;
+    if (theme === 'system') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', theme);
 }
 
 /**
@@ -146,4 +164,5 @@ export function resetPrefs(): void {
     prefsStore.setState({ ...DEFAULT_PREFS });
     writeStored(PREFS_SPEC, prefsStore.getState());
     applyPalette(DEFAULT_PREFS.palette);
+    applyTheme(DEFAULT_PREFS.theme);
 }

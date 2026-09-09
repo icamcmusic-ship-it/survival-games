@@ -1,3 +1,4 @@
+import { TRAIT_DEFS } from './traits';
 import { GameState, Tribute } from '../models/types';
 import { arenaFlavor } from './arenaFlavor';
 import { legacyOf } from './districts';
@@ -45,14 +46,139 @@ export interface NearMiss {
 
 const alive = (state: GameState) => state.tributes.filter(t => t.status === 'alive');
 
-/** Traits that can only be picked up in the arena. Mirrors `earnedTraits.ts`. */
-const EARNED_TRAIT_NAMES = [
-    'Bloodied', 'Haunted', 'Hardened', 'Merciful', 'Marked', 'Starved', 'Venom-Wise', 'Feared',
-    'Firetouched', 'Trapwise', 'Waterborn', 'Silent Step', 'Oathbound', 'Vulture',
-];
+/**
+ * Traits that can only be picked up in the arena. Derived from `TRAIT_DEFS`
+ * rather than hand-mirrored: the copy this used to be omitted `Broken` and
+ * `Hollow`, so a Pacifist who came home Broken did not count as changed by
+ * it, and a victor who transformed a trait could still take a Clean Slate.
+ */
+const EARNED_TRAIT_NAMES = Object.keys(TRAIT_DEFS).filter(name => TRAIT_DEFS[name].earned);
 const dead = (state: GameState) => state.tributes.filter(t => t.status === 'dead');
 
 export const ACHIEVEMENTS: Achievement[] = [
+    // §11: the additions — every one of them reads a field the state already
+    // keeps, or one the same change started keeping.
+    {
+        id: 'performed-to-the-end',
+        name: 'Performed to the End',
+        hint: 'Crown a victor still keeping up a performed bond when the cannon fired for the last time.',
+        test: (_s, v) => !!v && (v.performingStreak ?? 0) >= 5,
+    },
+    {
+        id: 'quartermaster',
+        name: 'Quartermaster',
+        hint: 'Crown a victor who held a named alliance role for ten cycles or more.',
+        test: (_s, v) => !!v && (v.roleCycles ?? 0) >= 10,
+        nearMiss: (_s, v) => (v && (v.roleCycles ?? 0) >= 6 && (v.roleCycles ?? 0) < 10)
+            ? `${v.name} held a role for ${v.roleCycles} cycles — ${10 - (v.roleCycles ?? 0)} short`
+            : undefined,
+    },
+    {
+        id: 'turncoat-twice',
+        name: 'Turncoat Twice',
+        hint: 'Crown a victor who broke faith with somebody who trusted them at least twice.',
+        test: (_s, v) => !!v && (v.betrayalsCommitted ?? 0) >= 2,
+    },
+    {
+        id: 'never-ate',
+        name: 'Never Ate',
+        hint: 'Crown a victor who never once foraged anything up.',
+        test: (_s, v) => !!v && (v.forageSuccesses ?? 0) === 0,
+    },
+    {
+        id: 'deadfall',
+        name: 'Deadfall',
+        hint: 'Crown a victor whose traps killed two or more tributes.',
+        test: (_s, v) => !!v && (v.trapKills ?? 0) >= 2,
+        nearMiss: (_s, v) => (v && v.trapKills === 1) ? `${v.name}'s traps took one — one short of a deadfall` : undefined,
+    },
+    {
+        id: 'fever-dream',
+        name: 'Fever Dream',
+        hint: 'Crown a victor who was treated back from a terminal-stage infection.',
+        test: (_s, v) => !!v && v.terminalInfectionBeaten === true,
+    },
+    {
+        id: 'both-levels',
+        name: 'Both Levels',
+        hint: 'Crown a victor who stood on both levels of a vertical zone.',
+        test: (_s, v) => !!v && (v.levelsStood?.includes('upper') ?? false) && (v.levelsStood?.includes('lower') ?? false),
+    },
+    {
+        id: 'load-bearing',
+        name: 'Load-Bearing',
+        hint: 'Crown a victor who walked out of a structural collapse.',
+        test: (_s, v) => !!v && (v.collapsesSurvived ?? 0) >= 1,
+    },
+    {
+        id: 'debtors-crown',
+        name: "The Debtor's Crown",
+        hint: 'Crown a victor who still owes somebody.',
+        test: (_s, v) => !!v && Object.values(v.debts ?? {}).some(d => d > 0),
+    },
+    {
+        id: 'one-wound',
+        name: 'One Wound',
+        hint: 'Crown a victor carrying exactly one scar.',
+        test: (_s, v) => !!v && Object.values(v.scars ?? {}).filter(Boolean).length === 1,
+    },
+    {
+        id: 'seen-everything',
+        name: 'Seen Everything',
+        hint: 'Crown a victor who stood in every zone of the arena.',
+        test: (s, v) => !!v && (v.visitedZones?.length ?? 0) >= s.arena.zones.length,
+        nearMiss: (s, v) => {
+            const n = v?.visitedZones?.length ?? 0;
+            const total = s.arena.zones.length;
+            return v && total - n > 0 && total - n <= 2
+                ? `${v.name} saw ${n} of ${total} zones — ${total - n} short of the whole arena`
+                : undefined;
+        },
+    },
+    {
+        id: 'arms-dealer',
+        name: 'Arms Dealer',
+        hint: 'Crown a victor who sold information three times or more.',
+        test: (_s, v) => !!v && (v.intelSold ?? 0) >= 3,
+    },
+    {
+        id: 'the-watcher',
+        name: 'The Watcher',
+        hint: 'Crown a victor with two or more kills who never once opened a fight.',
+        test: (_s, v) => !!v && (v.fightsOpened ?? 0) === 0 && v.kills >= 2,
+    },
+    {
+        id: 'front-loaded',
+        name: 'Front-Loaded',
+        hint: 'Crown a Career who never left the Cornucopia.',
+        test: (s, v) => !!v && v.isCareer
+            && (v.visitedZones?.length ?? 0) === 1
+            && v.visitedZones?.[0] === s.arena.zones[0]?.name,
+    },
+    {
+        id: 'weather-beaten',
+        name: 'Weather Beaten',
+        hint: 'Crown a victor who survived four or more storms.',
+        test: (_s, v) => !!v && (v.stormsSurvived ?? 0) >= 4,
+    },
+    {
+        id: 'heir-apparent',
+        name: 'Heir Apparent',
+        hint: 'Crown a victor who took over their alliance as its named heir.',
+        test: (_s, v) => !!v && v.succeededAsHeir === true,
+    },
+    {
+        id: 'nobodys-ally',
+        name: "Nobody's Ally",
+        hint: 'Crown a victor who met nobody at all after the bloodbath.',
+        test: (_s, v) => !!v && v.metAnybodyAfterBloodbath === false,
+    },
+    {
+        id: 'cold-hands',
+        name: 'Cold Hands',
+        hint: 'Crown a victor still carrying frostbite.',
+        test: (_s, v) => !!v && v.injuries.frostbitten === true,
+    },
     {
         id: 'bloodless-crown',
         name: 'Bloodless Crown',
@@ -984,6 +1110,12 @@ export interface CareerTotals {
     dynastyStreak?: number;
     /** §10.1: the most simultaneous record-book bests held by one tribute. */
     maxSimultaneousBests?: number;
+    /** §11: distinct Head Gamemakers who have run one of this player's Games. */
+    gamemakersSeen?: number;
+    gamemakerTotal?: number;
+    /** §11: the most crowned Games any one Head Gamemaker has run for this player. */
+    maxCrownsUnderOneGamemaker?: number;
+    quellTotal?: number;
 }
 
 export interface MetaAchievement {
@@ -994,6 +1126,37 @@ export interface MetaAchievement {
 }
 
 export const META_ACHIEVEMENTS: MetaAchievement[] = [
+    // §11: the collector shelf, extended.
+    {
+        id: 'meta-every-quell',
+        name: 'Every Quell',
+        hint: 'See every Quarter Quell on the books play out.',
+        test: t => t.quellTotal !== undefined && t.quellsSeen.length >= t.quellTotal,
+    },
+    {
+        id: 'meta-every-gamemaker',
+        name: 'Every Gamemaker',
+        hint: 'Have every Head Gamemaker run one of your Games.',
+        test: t => t.gamemakerTotal !== undefined && (t.gamemakersSeen ?? 0) >= t.gamemakerTotal,
+    },
+    {
+        id: 'meta-same-song',
+        name: 'Same Song',
+        hint: 'See the same Head Gamemaker crown two victors.',
+        test: t => (t.maxCrownsUnderOneGamemaker ?? 0) >= 2,
+    },
+    {
+        id: 'meta-thousand-deaths',
+        name: 'A Thousand Deaths',
+        hint: 'Watch a thousand tributes die.',
+        test: t => t.deaths >= 1000,
+    },
+    {
+        id: 'meta-ten-patron-crowns',
+        name: 'Ten Patron Crowns',
+        hint: 'Bring home ten victories for your patron district.',
+        test: t => (t.patronWins ?? 0) >= 10,
+    },
     {
         id: 'meta-ten-games',
         name: 'A Regular',

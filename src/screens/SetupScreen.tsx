@@ -739,8 +739,22 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     Enable sanity breakdowns
                                 </label>
                             </div>
-                            <button onClick={() => setConfig(DEFAULT_GAME_CONFIG)} className="btn btn-sm btn-ghost -ml-2">
-                                Reset to defaults
+                            <button
+                                onClick={() => setConfig(c => ({
+                                    ...c,
+                                    hazardRate: DEFAULT_GAME_CONFIG.hazardRate,
+                                    betrayalRate: DEFAULT_GAME_CONFIG.betrayalRate,
+                                    sponsorGenerosity: DEFAULT_GAME_CONFIG.sponsorGenerosity,
+                                    enableFeast: DEFAULT_GAME_CONFIG.enableFeast,
+                                    enableSanity: DEFAULT_GAME_CONFIG.enableSanity,
+                                }))}
+                                className="btn btn-sm btn-ghost -ml-2"
+                                title="Put the pacing sliders and toggles back. District count and naming are left as they are."
+                            >
+                                Reset sliders
+                            </button>
+                            <button onClick={() => setConfig(DEFAULT_GAME_CONFIG)} className="btn btn-sm btn-ghost" title="Every setting back to the defaults, district count and naming included.">
+                                Reset everything
                             </button>
                         </div>
                     )}

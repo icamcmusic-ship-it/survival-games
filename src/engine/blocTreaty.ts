@@ -32,6 +32,9 @@ import { adjustRel, getRel } from './relationships';
 import { cycleOf } from './memory';
 import { profOf, trainProficiency } from './proficiency';
 import { addExcitement } from './audience';
+import { RNG } from '../utils/rng';
+import { ARCHETYPES } from '../data/archetypes';
+import { traitMod } from '../data/traits';
 
 function treaties(state: GameState) {
     if (!state.blocTreaties) state.blocTreaties = [];
@@ -47,6 +50,48 @@ export function underBlocTreaty(state: GameState, a: Tribute, b: Tribute): boole
     if (!a.allianceId || !b.allianceId || a.allianceId === b.allianceId) return false;
     const key = treatyKey(a.allianceId, b.allianceId);
     return treaties(state).some(t => treatyKey(t.aId, t.bId) === key && cycleOf(state) < t.until);
+}
+
+/**
+ * §1.6: a treaty that cannot be broken is a wall, not an agreement. This is
+ * the breach roll `resolveGroupCombat` asks before it refuses to draw two
+ * treatied tributes onto opposite sides: one shared, deterministic roll per
+ * pair per cycle, weighted by the would-be breaker's treachery, by how thin
+ * the field has got, and by whether the other party is already hurt. A
+ * breach does not dissolve the treaty here — the killing that follows does,
+ * through `noteBlocKill`, which was unreachable while the block was absolute.
+ */
+export function blocTreatyHolds(ctx: SimContext, a: Tribute, b: Tribute): boolean {
+    const state = ctx.state;
+    if (!underBlocTreaty(state, a, b)) return false;
+    const [lo, hi] = a.id < b.id ? [a, b] : [b, a];
+    const roll = new RNG(`${state.seed}-bloc-breach-${cycleOf(state)}-${lo.id}-${hi.id}`).nextFloat();
+    const chanceLo = breachChance(state, lo, hi);
+    const chanceHi = breachChance(state, hi, lo);
+    const breaker = roll < chanceLo ? lo : roll < chanceLo + chanceHi ? hi : undefined;
+    if (!breaker) return true;
+    const victim = breaker === lo ? hi : lo;
+    const key = treatyKey(breaker.allianceId!, victim.allianceId!);
+    const treaty = treaties(state).find(t => treatyKey(t.aId, t.bId) === key);
+    if (treaty && treaty.strainedCycle !== cycleOf(state)) {
+        treaty.strainedCycle = cycleOf(state);
+        ctx.logEvent(
+            `${breaker.name} looks at ${victim.name} across ${breaker.zone} and decides the agreement was made by somebody else, on somebody else's behalf.`,
+            [breaker.id, victim.id],
+            { important: true, category: 'betrayal' }
+        );
+    }
+    return false;
+}
+
+function breachChance(state: GameState, t: Tribute, other: Tribute): number {
+    let chance = BLOC_TREATY.breachBase
+        + Math.max(0, ARCHETYPES[t.archetype].treachery + traitMod(t, 'treachery')) * BLOC_TREATY.breachTreacheryWeight;
+    const alive = state.tributes.filter(o => o.status === 'alive').length;
+    if (alive <= BLOC_TREATY.breachEndgameFieldSize) chance += BLOC_TREATY.breachEndgameBonus;
+    if (other.health < BLOC_TREATY.breachWoundedHealth) chance += BLOC_TREATY.breachWoundedBonus;
+    chance *= Math.max(0.1, 1 - Math.max(0, getRel(t, other.id)) / 100);
+    return Math.max(0, Math.min(BLOC_TREATY.breachMaxChance, chance));
 }
 
 /**

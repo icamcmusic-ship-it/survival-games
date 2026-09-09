@@ -130,6 +130,7 @@ export function noteForageFailure(t: Tribute, zone: string) {
 
 /** ...and that it paid, which resets the tribute's patience with the place. */
 export function noteForageSuccess(t: Tribute, zone: string) {
+    t.forageSuccesses = (t.forageSuccesses ?? 0) + 1;
     if (t.memory?.forageFailures) delete t.memory.forageFailures[zone];
 }
 

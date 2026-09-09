@@ -4,6 +4,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { gameActions } from '../store/gameStore';
 import { pathForView } from '../store/router';
 import { setChronicle } from '../store/chronicleStore';
+import { prefsStore, setPrefs } from '../store/prefsStore';
 
 /**
  * §2.2: one search across the whole run.
@@ -70,6 +71,11 @@ export function CommandPalette({ gameState, onSelectTribute }: {
                 { id: 'v-chronicle', kind: 'view', label: 'Go to the chronicle', run: () => go('chronicle') },
                 { id: 'v-roster', kind: 'view', label: 'Go to the roster', run: () => go('roster') },
                 { id: 'v-hof', kind: 'view', label: 'Go to the hall of fame', run: () => go('hallOfFame') },
+                {
+                    id: 'v-spoiler', kind: 'view',
+                    label: prefsStore.getState().spoilerSafe ? 'Turn spoiler-safe viewing off' : 'Turn spoiler-safe viewing on',
+                    run: () => setPrefs({ spoilerSafe: !prefsStore.getState().spoilerSafe }),
+                },
             ];
         }
 

@@ -45,6 +45,7 @@ export type TraitMod =
     | 'retreat'              // flat, 0-1 chance of breaking off
     | 'killSanity'           // multiplier offset on the sanity cost of a kill
     | 'fearGain'             // multiplier offset on fear picked up
+    | 'muttDamage'           // multiplier offset on damage taken from mutts (mutts.ts)
     // stance.ts
     | 'aggressionScore'      // flat, on the stance scoring scale
     // resolve.ts — the will to keep going, per cycle
@@ -337,9 +338,9 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { fearGain: -0.8, sanityDrain: 0.25, allianceAffinity: -0.4, retreat: -0.15, excitement: 0.2 },
     },
     'Hardened': {
-        info: 'Earned surviving a mutt. Whatever the Gamemakers send next, they have already met worse.',
+        info: 'Earned surviving the Gamemakers\' animals twice. Whatever they send next, they have already met worse — and they break off from it sooner.',
         earned: true,
-        mods: { fearGain: -0.4, sanityDrain: -0.2, combatPower: 1, resolveDrift: 1 },
+        mods: { fearGain: -0.4, sanityDrain: -0.2, combatPower: 1, resolveDrift: 1, retreat: 0.1, muttDamage: -0.35 },
     },
     'Merciful': {
         info: 'Earned by letting someone live who did not have to. The Capitol finds it fascinating; the arena finds it expensive.',

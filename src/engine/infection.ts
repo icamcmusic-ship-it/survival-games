@@ -178,10 +178,14 @@ export function applySepsisDrain(ctx: SimContext, t: Tribute) {
     if (worst.grade >= INFECTION.maxGrade) {
         // At the top grade it does take health directly, and this is the
         // ending the whole arc exists to reach: a wound nobody treated.
-        applyDamage(ctx, t, INFECTION.septicDamage, {
+        t.septicCycles = (t.septicCycles ?? 0) + 1;
+        const terminal = t.septicCycles >= INFECTION.terminalCycles;
+        applyDamage(ctx, t, terminal ? t.health : INFECTION.septicDamage, {
             cause: `Died of sepsis from an untreated ${siteWord(worst.site)}`,
             kind: 'status',
         });
+    } else {
+        t.septicCycles = 0;
     }
     if (t.status === 'alive' && ctx.rng.chance(INFECTION.feverLineChance)) {
         ctx.logEvent(
@@ -230,6 +234,7 @@ export function treatInfection(ctx: SimContext, t: Tribute, medic?: Tribute): bo
     }
 
     const next = worst.grade - 1;
+    if (worst.grade >= INFECTION.maxGrade) t.terminalInfectionBeaten = true;
     if (next <= 0) {
         delete t.woundInfection![worst.site];
         healInjury(t, 'infected');

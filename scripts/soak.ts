@@ -26,6 +26,11 @@ const problems: string[] = [];
 const note = (m: string) => { if (!problems.includes(m)) problems.push(m); };
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
+// Note on avgDays: this sweep and `metrics.ts` both count `state.day` at the
+// end of the run, but they sweep different configs. Two of the four here are
+// two- and three-district fields that end in a few days, which is why the
+// soak's average sits ~2 days under the metrics sweep's. Neither is wrong;
+// they are measuring different Games.
 const configs: GameConfig[] = [
   DEFAULT_GAME_CONFIG,
   { ...DEFAULT_GAME_CONFIG, districtCount: 2, hazardRate: 2.5, betrayalRate: 3, sponsorGenerosity: 0 },

@@ -65,6 +65,14 @@ ARENAS.forEach(arena => {
     // horror is a different game from one with five kinds of teeth. An arena
     // does still need at least one.
     if (arena.mutts.length < 1) problems.push(`${arena.id}: no mutts at all`);
+    // §1.11: `Arena.mutts` is flavour the engine ignores — it resolves mutts
+    // through ARENA_MUTTS — so it drifted with nothing to notice. Five arenas
+    // carried a roster mutt their briefing never named. Both lists must agree.
+    const briefingRoster = (ARENA_MUTTS[arena.id] ?? []).map(m => m.name);
+    arena.mutts.filter(m => !briefingRoster.includes(m)).forEach(m =>
+        problems.push(`${arena.id}: briefing names mutt "${m}" that is not in its ARENA_MUTTS roster`));
+    briefingRoster.filter(m => !arena.mutts.includes(m)).forEach(m =>
+        problems.push(`${arena.id}: roster mutt "${m}" is missing from the arena's mutts briefing`));
     if (arena.events.length < 3) problems.push(`${arena.id}: fewer than 3 signature events`);
 
     // §5.12: the checks the structural pass was missing. All three are things

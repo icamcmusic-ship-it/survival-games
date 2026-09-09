@@ -26,6 +26,9 @@ import { ARCHETYPES } from '../src/data/archetypes';
 const RUNS = Number(process.env.METRICS_RUNS ?? 400);
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
+// avgDays here runs ~2 days over the soak's: every config below is a
+// six-to-twelve-district field, where the soak also sweeps two- and
+// three-district Games that end fast. Same counter, different fields.
 const configs: GameConfig[] = [
     DEFAULT_GAME_CONFIG,
     { ...DEFAULT_GAME_CONFIG, districtCount: 6 },
@@ -755,7 +758,7 @@ console.log(`  currently bleeding ${pct(bleedingSamples, aliveSamples)}`);
     const CATEGORY_OF: Record<string, Category> = {};
     const put = (cat: Category, keys: string[]) => keys.forEach(k => { CATEGORY_OF[k] = cat; });
     put('combat', ['combatPower', 'ambush', 'concealment', 'awareness', 'awarenessNight', 'targetDraw',
-        'evasion', 'killSanity', 'critChance', 'retreat', 'weaponAffinity', 'wrestle', 'ranged']);
+        'evasion', 'killSanity', 'critChance', 'retreat', 'weaponAffinity', 'wrestle', 'ranged', 'muttDamage']);
     put('social', ['allianceAffinity', 'treachery', 'betrayalResist', 'persuasion', 'sponsorAppeal',
         'charmBonus', 'rapport', 'intimidation', 'romanceAffinity']);
     put('survival', ['hungerDrain', 'thirstDrain', 'fatigueDay', 'fatigueNight', 'sanityDrain',

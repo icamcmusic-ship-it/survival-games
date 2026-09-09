@@ -181,6 +181,12 @@ export const INFECTION = {
     sanityPerCycle: 1.5,
     /** Health taken per cycle once it reaches the top grade. */
     septicDamage: 9,
+    /**
+     * Cycles at the top grade before it is simply fatal. Nine health a cycle
+     * against field dressings and sponsor medicine produced one sepsis death
+     * in 400 runs; an untreated infection has to be able to end somebody.
+     */
+    terminalCycles: 3,
     feverLineChance: 0.12,
 
     /** Treatment: a real medical item, one grade at a time. */
@@ -254,6 +260,15 @@ export const INJURY_DAMAGE = {
 
 /** Climate pressure specific to a named arena id. */
 export const CLIMATE = {
+    /**
+     * §7: heatstroke. `heatResist` existed and nothing hot could kill; the
+     * arena's heat only ever took water and sleep. Once a tribute is both
+     * parched and spent under a heat profile, the body can simply stop.
+     */
+    heatstrokeThirst: 80,
+    heatstrokeFatigue: 75,
+    heatstrokeChance: 0.12,
+    heatstrokeDamage: 30,
     frozenFatigue: 10,
     frozenChipDamage: 5,
     frozenFrostbiteChance: 0.15,
@@ -1157,6 +1172,13 @@ export const EARNED_TRAIT_RULES = {
     silentStepCycles: 5,
     /** Bodies stripped before the cameras call it what it is. */
     vultureCorpses: 4,
+    /**
+     * Mutt encounters survived before Hardened. Awarded on the first one it
+     * was a death-marker rather than a trait: the holder had just taken a
+     * mauling, a rattle and an injury, and won at 3.65% against 12-23% for
+     * every other earned trait. Surviving twice is the thing that means it.
+     */
+    hardenedMuttSurvivals: 2,
 
     /**
      * §3.2: traits stop being one-way.
@@ -2541,7 +2563,7 @@ export const STANCE_MODES = {
     },
     fortified: {
         /** Cycles a tribute must have held the same zone before digging in. */
-        holdCycles: 2,
+        holdCycles: 1,
         /**
          * §8: 2.2 against Aggressive and Evasive, which start at 0 but
          * accumulate a dozen terms apiece and routinely reach 5-6. Fortified
@@ -2622,7 +2644,7 @@ export const STANCE_MODES = {
         // §8: 7 of 10 stealth, on a cast whose stealth averages nearer 5, on
         // top of an unbroken unseen streak and a valid quarry one zone over.
         // Shadowing fired in 0.5% of cycles.
-        stealthMin: 6,
+        stealthMin: 5,
         base: 4.4,
         /** Consecutive unnoticed cycles that convert into a free ambush. */
         cyclesToAmbush: 3,
@@ -2931,13 +2953,25 @@ export const BLOC_TREATY = {
     excitement: 15,
     /** What a killing across the line costs, member to member, both ways. */
     breachRegard: 25,
+    /**
+     * §1.6: the breach roll. A soak swore 88 treaties and broke none by a
+     * killing, because the treaty was an absolute block on drawing sides.
+     * Per pair per cycle, before treachery and circumstance.
+     */
+    breachBase: 0.03,
+    breachTreacheryWeight: 0.25,
+    breachEndgameFieldSize: 8,
+    breachEndgameBonus: 0.08,
+    breachWoundedHealth: 40,
+    breachWoundedBonus: 0.06,
+    breachMaxChance: 0.4,
 } as const;
 
 export const TRIANGLES = {
     /** Regard a rival needs toward the apex to count as attached. */
-    suitorRegard: 45,
+    suitorRegard: 38,
     /** Regard the apex needs toward both, so this is a choice and not two crushes. */
-    apexWarmth: 20,
+    apexWarmth: 15,
     /** What a declared Star-Crossed bond is worth against unspoken regard. */
     declaredBondRegard: 85,
 
@@ -2945,7 +2979,7 @@ export const TRIANGLES = {
     jealousyRegardPerCycle: 2.5,
     excitementPerCycle: 3,
     /** Cycles of that before it is worth a line. */
-    jealousyLineHeat: 3,
+    jealousyLineHeat: 1,
 
     /**
      * Heat before the apex can be made to choose at all.
@@ -3614,6 +3648,20 @@ export const FEAST = {
     weaponsThemeUnarmedDraw: 0.25,
     weaponsThemeArmedDeter: 0.1,
     foodThemeHungerDraw: 0.2,
+    /**
+     * The Capitol's own feast calendar. The Gamemakers call a feast once the
+     * field has thinned to this share of the cast (never below the floor), or
+     * once the run is overdue, and at most `maxFeasts` tables are laid in a
+     * normal year — Gamemaker-mode feasts count against the same cap, so the
+     * player cannot lay a fourth table by hand. Only ever consulted from the
+     * earliest day onward; the Feast Quell ignores the whole block.
+     */
+    maxFeasts: 2,
+    earliestDay: 3,
+    overdueDay: 6,
+    thinnedOutShare: 0.4,
+    thinnedOutFloor: 4,
+    callChance: 0.6,
 } as const;
 
 /** Tribute generation. */
@@ -4563,6 +4611,8 @@ export const DEBTS = {
     loanDefaultSuspicion: 14,
     /** Cycles after which an unreturned loan is simply theft. */
     loanDefaultCycles: 8,
+    /** What losing somebody's spare costs with them. Less than defaulting: it was not a choice. */
+    loanLostRegard: 4,
 
     /**
      * §1.2: turning on a *paying client*. A contract holds harder than a

@@ -65,6 +65,18 @@ export function maintainPerformance(t: Tribute, otherId: string, delta: number) 
     t.displayedRegard[otherId] = Math.max(-100, Math.min(100, t.displayedRegard[otherId] + delta));
 }
 
+/**
+ * Whether `o` counts as a rival to `t` for sighting, noise and firelight.
+ * Two loners both carry `allianceId === undefined`, so a bare
+ * `o.allianceId !== t.allianceId` reads them as allies — which meant a lone
+ * tribute's fire was only ever spotted by allied tributes and zone memory
+ * under-recorded rivals whenever two loners shared a zone.
+ */
+export function isHostileTo(t: Tribute, o: Tribute): boolean {
+    if (o.id === t.id) return false;
+    return o.allianceId === undefined || t.allianceId === undefined || o.allianceId !== t.allianceId;
+}
+
 export function areLovers(a: Tribute, b: Tribute): boolean {
     if (a.id === b.id) return false;
     if (!a.traits.includes('Star-Crossed') || !b.traits.includes('Star-Crossed')) return false;
@@ -306,6 +318,7 @@ function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]
 
     const install = (next: Tribute, line: string) => {
         record.leaderId = next.id;
+        if (heir && next.id === heir.id) next.succeededAsHeir = true;
         record.successorId = undefined;
         // §12: 'Understudy' — they are running this group because the person
         // who was running it is dead.

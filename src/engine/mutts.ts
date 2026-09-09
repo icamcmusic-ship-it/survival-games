@@ -1,7 +1,8 @@
+import { traitMod } from '../data/traits';
 import { Mutt, Tribute } from '../models/types';
 import { ARENA_MUTTS } from '../data/mutts';
 import { ITEMS } from '../data/constants';
-import { BLEEDING, MEMORY, MUTTS, POISONING, QUELL_MECHANICS, HUNTING } from '../data/balance';
+import { BLEEDING, EARNED_TRAIT_RULES, MEMORY, MUTTS, POISONING, QUELL_MECHANICS, HUNTING } from '../data/balance';
 import { giveItem } from './items';
 import { SimContext, getAlive } from './context';
 import { isActive, isDowned } from './downed';
@@ -253,6 +254,8 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     let damage = base;
     for (let i = 1; i < hits; i++) damage += base * Math.pow(MUTTS.packDamageFalloff, i);
     damage = Math.min(damage, base * MUTTS.packDamageCap);
+    // Hardened: having met worse is worth something against exactly this.
+    damage *= Math.max(0.2, 1 + traitMod(t, 'muttDamage'));
 
     applyDamage(ctx, t, Math.round(damage), { cause: `Torn apart by ${mutt.name}`, kind: 'mutt' });
     // §1.2: walking away from something with teeth leaves a mark that is not
@@ -283,8 +286,12 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     }
     clampTribute(t);
     checkDeath(ctx, t, `Torn apart by ${mutt.name}`);
-    // Surviving the Gamemakers' own animals recalibrates what frightens you.
-    if (t.status === 'alive') earnTrait(ctx, t, 'Hardened');
+    // Surviving the Gamemakers' own animals recalibrates what frightens you —
+    // the second time. See EARNED_TRAIT_RULES.hardenedMuttSurvivals.
+    if (t.status === 'alive') {
+        t.muttsSurvived = (t.muttsSurvived ?? 0) + 1;
+        if (t.muttsSurvived >= EARNED_TRAIT_RULES.hardenedMuttSurvivals) earnTrait(ctx, t, 'Hardened');
+    }
     // §6.4: venom comes off the arena's own animals. Fighting free of a
     // venomous mutt sometimes leaves a tribute holding the gland — the raw
     // material a blade gets coated with.

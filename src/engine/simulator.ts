@@ -14,9 +14,8 @@ import { GamemakerEventType, triggerGamemakerEvent as triggerGamemakerEventPhase
 import { checkDualVictory } from './victory';
 import { fireScheduledWildcard } from './wildcards';
 import { FEAST_TEXTS } from '../data/flavorText';
+import { FEAST } from '../data/balance';
 import { wildcardIs } from './gamesProfile';
-
-const MAX_FEASTS = 2;
 
 export class Simulator {
     private state: GameState;
@@ -137,29 +136,37 @@ export class Simulator {
             if (this.state.feastDay !== undefined) return;
             if (getAlive(this.state).length <= 2) return;
             this.state.feastDay = this.state.day + 1;
-            this.ctx.logEvent(
-                'THE CAPITOL: there will be a feast every night this year, and nothing else worth eating.',
-                [], { important: true, category: 'feast' }
-            );
-            announceFeastTheme(this.ctx);
+            // The proclamation is made once. `processFeast` clears `feastDay`
+            // after every table, so without the flag the "one-time" line and
+            // the theme announcement fired every single night of the Quell.
+            if (!this.state.nightlyFeastProclaimed) {
+                this.state.nightlyFeastProclaimed = true;
+                this.ctx.logEvent(
+                    'THE CAPITOL: there will be a feast every night this year, and nothing else worth eating.',
+                    [], { important: true, category: 'feast' }
+                );
+                announceFeastTheme(this.ctx);
+            } else {
+                announceFeastTheme(this.ctx, true);
+            }
             return;
         }
 
-        if ((this.state.feastsHeld ?? 0) >= MAX_FEASTS) return;
+        if ((this.state.feastsHeld ?? 0) >= FEAST.maxFeasts) return;
         // One already announced and not yet convened — re-announcing would push
         // the date back a day every night and the table would never be laid.
         if (this.state.feastDay !== undefined) return;
-        if (this.state.day < 3) return;
+        if (this.state.day < FEAST.earliestDay) return;
 
         const alive = getAlive(this.state).length;
         const total = this.state.tributes.length;
-        const thinnedOut = alive <= Math.max(4, Math.ceil(total * 0.4));
-        const overdue = this.state.day >= 6;
+        const thinnedOut = alive <= Math.max(FEAST.thinnedOutFloor, Math.ceil(total * FEAST.thinnedOutShare));
+        const overdue = this.state.day >= FEAST.overdueDay;
         if (!thinnedOut && !overdue) return;
         if (alive <= 2) return;
 
         const rng = new RNG(`${this.state.seed}-feast-call-${this.state.day}`);
-        if (!rng.chance(0.6)) return;
+        if (!rng.chance(FEAST.callChance)) return;
 
         // Announced a full day ahead: canon gives tributes the journey, and the
         // journey — driven by the 'feast' objective in the movement layer — is

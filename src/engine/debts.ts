@@ -260,16 +260,33 @@ export function settleLoans(ctx: SimContext) {
             const lender = byId.get(lenderId);
             const held = borrower.inventory.find(i => i.id === loan.itemId);
 
-            // A dead lender is not owed anything, and neither is a lender the
-            // borrower has already parted ways with entirely.
+            // A dead lender is not owed anything. The loan becomes an
+            // inheritance — and the borrower knows whose it was. Roughly 140
+            // of 200 loans a soak used to end here or in the branch below
+            // with no line at all, which read as the ledger simply losing them.
             if (!lender || lender.status !== 'alive') {
                 delete borrower.loans![lenderId];
+                if (held && lender) {
+                    ctx.logEvent(
+                        `${borrower.name} is still carrying ${lender.name}'s ${loan.itemName}. There is nobody left to give it back to, `
+                        + 'and they stop thinking of it as borrowed the same day they stop saying the name.',
+                        [borrower.id, lender.id],
+                        { category: 'alliance' }
+                    );
+                }
                 return;
             }
             // They no longer have it — lost, traded, taken off them. Nothing
-            // to give back and no grudge worth modelling for it.
+            // to give back, and the lender is owed an explanation they will
+            // not entirely believe.
             if (!held) {
                 delete borrower.loans![lenderId];
+                adjustRel(lender, borrower.id, -DEBTS.loanLostRegard);
+                ctx.logEvent(
+                    `${borrower.name} has to tell ${lender.name} that the ${loan.itemName} is gone. ${lender.name} nods, and files it.`,
+                    [borrower.id, lender.id],
+                    { category: 'alliance' }
+                );
                 return;
             }
 

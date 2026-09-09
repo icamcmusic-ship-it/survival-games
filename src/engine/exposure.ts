@@ -1,6 +1,6 @@
 import { Tribute } from '../models/types';
 import { injure } from './wounds';
-import { CRAFTING, PHYSIQUE, TOOLS } from '../data/balance';
+import { CLIMATE, CRAFTING, PHYSIQUE, TOOLS } from '../data/balance';
 import { hasTool } from './items';
 import { hasCamp } from './fieldcraft';
 import { getZone, zoneFeatures } from './map';
@@ -120,6 +120,23 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
 
     if (profile.damage) {
         applyDamage(ctx, t, amount(profile.damage), { cause: profile.cause, kind: 'climate' });
+    }
+    // §7: heatstroke. A heat profile is one that works by taking water; a
+    // tribute already parched and spent under it can collapse outright.
+    if (profile.thirst && t.status === 'alive'
+        && t.vitals.thirst >= CLIMATE.heatstrokeThirst && t.vitals.fatigue >= CLIMATE.heatstrokeFatigue
+        && ctx.rng.chance(CLIMATE.heatstrokeChance * scale * resist('heatResist'))) {
+        applyDamage(ctx, t, CLIMATE.heatstrokeDamage, { cause: `Heatstroke in ${profile.name}`, kind: 'climate' });
+        ctx.logEvent(
+            t.health <= 0
+                ? `${t.name} sits down in ${t.zone} to get their breath back and does not get up. The heat has finished what the thirst started.`
+                : `${t.name} stops sweating in ${t.zone}, which is the wrong thing to stop doing. They go down hard and come round slowly.`,
+            [t.id],
+            { important: true, category: 'hazard' }
+        );
+        clampTribute(t);
+        checkDeath(ctx, t, `Heatstroke in ${profile.name}`);
+        if (t.status !== 'alive') return true;
     }
 
     clampTribute(t);

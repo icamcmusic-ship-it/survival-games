@@ -123,7 +123,7 @@ export const ARENAS: Arena[] = [
         restockBias: ['tablets', 'antidote', 'charcoal-filter', 'iodine'],
         name: 'The Toxic Swamps',
         description: 'Hallucinogenic gas and poison risk. The water is mostly undrinkable without purification.',
-        mutts: ['Venomous Toads', 'Leech Swarms', 'Camouflaged Crocodiles', 'Bloatflies'],
+        mutts: ['Venomous Toads', 'Leech Swarms', 'Camouflaged Crocodiles', 'Bloatflies', 'Sump Waders'],
         events: ['Hallucinogenic Spores', 'Methane Explosion', 'Quicksand Sinkhole'],
         // The gas is this arena's whole premise — contamination hits harder
         // and hangs around longer here than anywhere.
@@ -430,7 +430,7 @@ export const ARENAS: Arena[] = [
         id: 'abattoir',
         name: 'The Industrial Abattoir',
         description: 'A multi-level automated factory that never fully shut down: rust-seized gears the size of rooms, conveyor lines that still run, crushing pistons on a schedule, and furnace halls that have not been cold in living memory.',
-        mutts: ['Hook Apes', 'Scald Rats', 'The Line Boss', 'Grinder Beetles'],
+        mutts: ['Hook Apes', 'Scald Rats', 'The Line Boss', 'Grinder Beetles', 'Loft Swine'],
         events: ['The Line Starts', 'Furnace Backdraft', 'Piston Cycle'],
         // Visually the most "watchable" arena — the Capitol likes the machinery.
         sponsorMultiplier: 1.1,
@@ -497,7 +497,7 @@ export const ARENAS: Arena[] = [
         id: 'quarry',
         name: 'The Vertical Quarry',
         description: 'A cylindrical open-pit mine, spiral roads cut into sheer stone, dropping bench by bench to a flooded black centre. The only ways down are the ways everyone else knows about.',
-        mutts: ['Bench Cats', 'Blast Bats', 'The Dredger', 'Scree Adders'],
+        mutts: ['Bench Cats', 'Blast Bats', 'The Dredger', 'Scree Adders', 'Silt Hounds'],
         events: ['Bench Collapse', 'Runaway Cart', 'The Pit Exhales'],
         // The only road down, and every step of it is exposed switchback.
         edgeRules: { 'The Middle Benches|The Spiral Road': { kind: 'tolled', toll: { fatigue: 6 } } },
@@ -565,7 +565,7 @@ export const ARENAS: Arena[] = [
         id: 'alpine',
         name: 'The Pine Forest & Avalanche Peaks',
         description: 'Steep alpine slopes, heavy timber below, bare rock and loaded snowfields above. Everything worth having is downhill; everything that can kill you is up, and it is all one loud noise from coming down.',
-        mutts: ['Timberline Wolves', 'The White Stag', 'Chough Flocks', 'Marmot Mutts'],
+        mutts: ['Timberline Wolves', 'The White Stag', 'Chough Flocks', 'Marmot Mutts', 'The Tarn Lurker'],
         events: ['Avalanche', 'Rockfall', 'Whiteout Front'],
         // The traverse to the summit snows is a knife's edge in crampon weather.
         edgeRules: { 'The Knife Ridge|The Summit Snows': { kind: 'tolled', toll: { fatigue: 8, woundChance: 0.1 } } },
@@ -586,7 +586,7 @@ export const ARENAS: Arena[] = [
         id: 'terraces',
         name: 'The Abandoned Terraced Mines',
         description: 'A mountain cut into dozens of stepped stone terraces by pre-Dark Days mining, riddled with open shaft mouths and strung with the rusted bones of a cable car system nobody has trusted in a century.',
-        mutts: ['Shaft Swifts', 'Terrace Jackals', 'The Foreman', 'Cable Spiders'],
+        mutts: ['Shaft Swifts', 'Terrace Jackals', 'The Foreman', 'Cable Spiders', 'Flume Eels'],
         events: ['Terrace Slip', 'The Cable Parts', 'Shaft Breath'],
         // Hand over hand along the counterweight cable to the winch house.
         edgeRules: { 'The Counterweight Span|The Winch House': { kind: 'tolled', toll: { fatigue: 7 } } },
