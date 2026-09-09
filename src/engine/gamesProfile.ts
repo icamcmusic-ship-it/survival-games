@@ -255,6 +255,9 @@ export function configForProfile(base: GameConfig, profile: GamesProfile): GameC
     for (const wildcard of calendarOf(profile)) {
         switch (wildcard.kind) {
             case 'no-feast': enableFeast = false; break;
+            // A Feast Quell with feasts disabled was labelled "The Feast Quell"
+            // and held zero feasts. The Quell is the rule; it overrides the slider.
+            case 'quell-feast-nightly': enableFeast = true; break;
             case 'sponsor-flood': sponsorGenerosity *= 1.7; break;
             case 'rule-change-no-allies': betrayalRate *= 2.5; break;
             case 'rule-change-allies': betrayalRate *= 0.5; break;

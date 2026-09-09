@@ -114,6 +114,125 @@
 }
 
 /* ============================================================================
+   §2 — dark mode.
+
+   The poster is cream paper and black ink; after dark the same poster is ink
+   paper and cream type. Every colour the chrome reads is a token, so this is
+   the token set swapped and nothing else. Settings stamps `data-theme` on
+   <html>; with no stamp the operating system's preference decides.
+   ========================================================================== */
+
+:root[data-theme='dark'] {
+    color-scheme: dark;
+    /* The cream-to-ink ramp, inverted: 950 is now the darkest surface. */
+    --color-ink-950: #17120d;
+    --color-ink-900: #1f1912;
+    --color-ink-850: #282018;
+    --color-ink-800: #3a2f22;
+    --color-ink-700: #5b4d38;
+    --color-ink-600: #7f6e51;
+    --color-ink-500: #a8956f;
+    --color-ink-400: #c9b891;
+    --color-ink-300: #dccbA6;
+    --color-ink-200: #ebdcbd;
+    --color-ink-100: #f5efe0;
+
+    --ink: #f5efe0;
+    --ink-soft: #dccba6;
+    --paper: #17120d;
+    --paper-panel: #1f1912;
+    --paper-flush: #282018;
+    --line: #f5efe0;
+    --line-soft: #4a3f2d;
+    --red: #ff6b73;
+    --red-deep: #d93a3f;
+    --red-on-ink: #ff6b73;
+    --gold: #e3ae27;
+    --gold-deep: #d2a124;
+    --gold-line: #b58a2a;
+    --shadow-ink: 6px 6px 0 var(--ink);
+    --shadow-ink-sm: 4px 4px 0 var(--ink);
+
+    /* Category hues lifted so every one clears 4.5:1 on the dark paper. */
+    --cat-death: #ff6b73;
+    --cat-kill: #f0895c;
+    --cat-combat: #e9a44a;
+    --cat-injury: #f08a78;
+    --cat-hazard: #cfc45a;
+    --cat-mutt: #b797e8;
+    --cat-alliance: #6fcf97;
+    --cat-betrayal: #f27aa6;
+    --cat-romance: #f29ac9;
+    --cat-sponsor: #5fd0bd;
+    --cat-loot: #7fb2f0;
+    --cat-survival: #c4b8a8;
+    --cat-travel: #8fa8e8;
+    --cat-sanity: #b49ae8;
+    --cat-arena: #cdb98e;
+    --cat-gamemaker: #ff8a7a;
+    --cat-training: #e6c05a;
+    --cat-interview: #ec9adc;
+    --cat-feast: #f0a95a;
+    --cat-system: #c4b8a8;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+    color-scheme: dark;
+    /* The cream-to-ink ramp, inverted: 950 is now the darkest surface. */
+    --color-ink-950: #17120d;
+    --color-ink-900: #1f1912;
+    --color-ink-850: #282018;
+    --color-ink-800: #3a2f22;
+    --color-ink-700: #5b4d38;
+    --color-ink-600: #7f6e51;
+    --color-ink-500: #a8956f;
+    --color-ink-400: #c9b891;
+    --color-ink-300: #dccbA6;
+    --color-ink-200: #ebdcbd;
+    --color-ink-100: #f5efe0;
+
+    --ink: #f5efe0;
+    --ink-soft: #dccba6;
+    --paper: #17120d;
+    --paper-panel: #1f1912;
+    --paper-flush: #282018;
+    --line: #f5efe0;
+    --line-soft: #4a3f2d;
+    --red: #ff6b73;
+    --red-deep: #d93a3f;
+    --red-on-ink: #ff6b73;
+    --gold: #e3ae27;
+    --gold-deep: #d2a124;
+    --gold-line: #b58a2a;
+    --shadow-ink: 6px 6px 0 var(--ink);
+    --shadow-ink-sm: 4px 4px 0 var(--ink);
+
+    /* Category hues lifted so every one clears 4.5:1 on the dark paper. */
+    --cat-death: #ff6b73;
+    --cat-kill: #f0895c;
+    --cat-combat: #e9a44a;
+    --cat-injury: #f08a78;
+    --cat-hazard: #cfc45a;
+    --cat-mutt: #b797e8;
+    --cat-alliance: #6fcf97;
+    --cat-betrayal: #f27aa6;
+    --cat-romance: #f29ac9;
+    --cat-sponsor: #5fd0bd;
+    --cat-loot: #7fb2f0;
+    --cat-survival: #c4b8a8;
+    --cat-travel: #8fa8e8;
+    --cat-sanity: #b49ae8;
+    --cat-arena: #cdb98e;
+    --cat-gamemaker: #ff8a7a;
+    --cat-training: #e6c05a;
+    --cat-interview: #ec9adc;
+    --cat-feast: #f0a95a;
+    --cat-system: #c4b8a8;
+}
+}
+
+/* ============================================================================
    §2.1 — alternative category palettes.
 
    Event category is one of the app's real information channels, and in the
@@ -172,26 +291,26 @@
 }
 
 :root[data-palette='contrast'] {
-    --cat-death: #140a06;
-    --cat-kill: #140a06;
-    --cat-combat: #140a06;
-    --cat-injury: #140a06;
-    --cat-hazard: #140a06;
-    --cat-mutt: #140a06;
-    --cat-alliance: #140a06;
-    --cat-betrayal: #140a06;
-    --cat-romance: #140a06;
-    --cat-sponsor: #140a06;
-    --cat-loot: #140a06;
-    --cat-survival: #140a06;
-    --cat-travel: #140a06;
-    --cat-sanity: #140a06;
-    --cat-arena: #140a06;
-    --cat-gamemaker: #140a06;
-    --cat-training: #140a06;
-    --cat-interview: #140a06;
-    --cat-feast: #140a06;
-    --cat-system: #140a06;
+    --cat-death: var(--ink);
+    --cat-kill: var(--ink);
+    --cat-combat: var(--ink);
+    --cat-injury: var(--ink);
+    --cat-hazard: var(--ink);
+    --cat-mutt: var(--ink);
+    --cat-alliance: var(--ink);
+    --cat-betrayal: var(--ink);
+    --cat-romance: var(--ink);
+    --cat-sponsor: var(--ink);
+    --cat-loot: var(--ink);
+    --cat-survival: var(--ink);
+    --cat-travel: var(--ink);
+    --cat-sanity: var(--ink);
+    --cat-arena: var(--ink);
+    --cat-gamemaker: var(--ink);
+    --cat-training: var(--ink);
+    --cat-interview: var(--ink);
+    --cat-feast: var(--ink);
+    --cat-system: var(--ink);
     /* With hue carrying nothing, the glyph has to be unmissable. */
     --line-soft: #6b5c42;
 }
@@ -871,8 +990,10 @@ input[type="range"]:focus-visible {
 @media print {
     /* Ink on white regardless of the on-screen palette. */
     :root,
+    :root[data-theme='dark'],
     :root[data-palette='colourblind'],
     :root[data-palette='contrast'] {
+        color-scheme: light;
         --paper: #ffffff;
         --paper-panel: #ffffff;
         --paper-flush: #ffffff;

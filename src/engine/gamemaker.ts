@@ -1,7 +1,8 @@
 import { SimContext, getAlive } from './context';
 import { ExposureProfile, applyExposure } from './exposure';
 import { getZone } from './map';
-import { GAMEMAKER, OBJECTIVES } from '../data/balance';
+import { FEAST, GAMEMAKER, OBJECTIVES } from '../data/balance';
+import { wildcardIs } from './gamesProfile';
 import { eligibleMutts, engageMutt, rosterFor } from './mutts';
 import { GameState, ZoneEffectKind } from '../models/types';
 import { dropSupplies, severRandomEdge, startZoneEffect } from './zoneEffects';
@@ -214,8 +215,25 @@ export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType,
         // trigger lets a caller keyed on (day, phase) call feasts forever — and
         // a tribute who declines every one of them never dies, so the Games
         // never end.
-        if (ctx.state.feastDay === ctx.state.day || ctx.state.lastFeastDay === ctx.state.day) {
+        if (ctx.state.feastDay !== undefined || ctx.state.lastFeastDay === ctx.state.day) {
             ctx.logEvent('GAMEMAKER: The tributes have already been called to the Cornucopia today. The table stays empty.', [], { category: 'gamemaker' });
+            return;
+        }
+        // The Capitol's cap applies to the player's horn as well: a normal
+        // year lays at most `FEAST.maxFeasts` tables however it is called.
+        if (!wildcardIs(ctx.state, 'quell-feast-nightly') && (ctx.state.feastsHeld ?? 0) >= FEAST.maxFeasts) {
+            ctx.logEvent('GAMEMAKER: The Capitol has laid its last table for these Games. The horn stays silent.', [], { category: 'gamemaker' });
+            return;
+        }
+        if (ctx.state.phase === 'day') {
+            // Called before the day has played out: setting the phase straight
+            // to 'feast' replaced the day (vitals, movement, encounters never
+            // ran) because the turn goes feast → night. Announce it a day out
+            // instead — the same journey the Capitol's own calendar gives the
+            // cast — and the night's end convenes it.
+            ctx.logEvent(`GAMEMAKER: A feast is announced at the Cornucopia — tomorrow, at dawn.`, [], { important: true, category: 'gamemaker' });
+            ctx.state.feastDay = ctx.state.day + 1;
+            announceFeastTheme(ctx);
             return;
         }
         ctx.logEvent(`GAMEMAKER: A feast is announced at the Cornucopia!`, [], { important: true, category: 'gamemaker' });

@@ -115,7 +115,10 @@ export function tickTriangles(ctx: SimContext) {
         // Jealousy only builds where the rivals can actually see each other
         // being rivals. Two people in love with the same person four zones
         // apart is not yet a triangle, it is two crushes.
-        const together = a.zone === b.zone && (apex.zone === a.zone || apex.zone === b.zone);
+        // Jealousy is between the two rivals; it does not need the apex in
+        // the room. Requiring all three in one place made this fire four
+        // times in 400 runs.
+        const together = a.zone === b.zone;
         if (!together) return true;
 
         tri.heat += 1;

@@ -75,6 +75,29 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                     </p>
                 </div>
 
+                {/* §2: dark mode. A newspaper-white page for a long read
+                    session is fatiguing; 'System' follows the OS setting. */}
+                <div className="space-y-1.5">
+                    <span className="eyebrow">Theme</span>
+                    <div className="seg w-fit flex-wrap">
+                        {([
+                            ['system', 'System', 'Follow the operating system\'s light or dark preference.'],
+                            ['light', 'Light', 'Cream paper and black ink, whatever the system says.'],
+                            ['dark', 'Dark', 'Ink paper and cream type, for long sessions after dark.'],
+                        ] as const).map(([id, label, hint]) => (
+                            <button
+                                key={id}
+                                onClick={() => setPrefs({ theme: id })}
+                                aria-pressed={prefs.theme === id}
+                                className="seg-item"
+                                title={hint}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 {/* §2.5: watching a shared seed with somebody who has not seen
                     it. Suppresses the two things that give the ending away —
                     death and kill text, and the odds board — until the run is

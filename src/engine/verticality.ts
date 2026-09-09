@@ -98,6 +98,8 @@ export function tickVerticality(ctx: SimContext) {
 
         const going: ZoneLevel = wantsDown ? 'lower' : 'upper';
         t.vitals.fatigue += going === 'lower' ? VERTICALITY.descendFatigue : VERTICALITY.climbFatigue;
+        t.levelsStood = t.levelsStood ?? [level];
+        if (!t.levelsStood.includes(going)) t.levelsStood.push(going);
 
         // Going down fast is how people get hurt; going up is slow and safe.
         if (going === 'lower' && ctx.rng.chance(VERTICALITY.descendFallChance)) {

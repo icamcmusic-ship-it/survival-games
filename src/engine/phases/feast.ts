@@ -46,10 +46,13 @@ const THEME_ANNOUNCEMENTS: Record<NonNullable<GameState['feastTheme']>, string> 
     'district-gifts': 'The announcement is specific: packs marked by district number, each holding the one thing its tribute needs most.',
 };
 
-export function announceFeastTheme(ctx: SimContext) {
+export function announceFeastTheme(ctx: SimContext, quietly = false) {
     const rng = new RNG(`${ctx.state.seed}-feast-theme-${ctx.state.day}`);
     ctx.state.feastTheme = rng.pick(FEAST_THEMES);
-    ctx.logEvent(THEME_ANNOUNCEMENTS[ctx.state.feastTheme], [], { important: true, category: 'feast' });
+    // The Feast Quell lays a table every night; after the first proclamation
+    // the theme is still rolled and the packs still named, but the Capitol
+    // does not re-read the announcement to a field that already knows it.
+    if (!quietly) ctx.logEvent(THEME_ANNOUNCEMENTS[ctx.state.feastTheme], [], { important: true, category: 'feast' });
     nameFeastPrizes(ctx);
 }
 

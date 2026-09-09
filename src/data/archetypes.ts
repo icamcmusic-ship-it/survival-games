@@ -172,7 +172,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: 0.25,
         stanceBias: { Evasive: 0.4, Scavenging: 0.5, Shadowing: 0.2 },
         objectiveBias: { survive: 0.3, flee: 0.2 },
-        targetPreference: 'weakest',
+        // The one target-preference no archetype used: an underdog does not pick
+        // fights by the odds, they pick the one person who has earned it.
+        targetPreference: 'rival',
         riskCurve: 'escalating',
         signature: 'underdogRefusal',
         hatesArchetypes: ['career'],

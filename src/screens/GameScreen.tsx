@@ -900,6 +900,7 @@ function HelpOverlay({ onClose }: { onClose: () => void }) {
                             ['I', 'Cycle reading density — everything, scenes, headlines'],
                             ...CATEGORY_GROUPS.slice(0, 9).map((g, i) => [String(i + 1), `Mute or unmute ${g.label.toLowerCase()} events`]),
                             ['0', 'Reset every chronicle filter'],
+                            ['Ctrl+K / ⌘K', 'Open the command palette — jump to a tribute, a zone or a log line, switch views, toggle spoiler-safe'],
                             ['?', 'Open this panel'],
                             ['Esc', 'Close a panel, clear the selected sector'],
                         ].map(([key, what]) => (

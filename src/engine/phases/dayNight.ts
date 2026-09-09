@@ -17,7 +17,7 @@ import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
-import { areLovers, leaderFor } from '../alliance';
+import { allianceRecords, areLovers, isHostileTo, leaderFor } from '../alliance';
 import { decayFear } from '../fear';
 import { decayNotoriety, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
@@ -145,7 +145,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         // §5.1: two tributes on different levels of the same shaft are not in
         // the same place, and do not run into each other.
         const here = currentAlive.filter(o => o.status === 'alive' && samePlace(ctx.state.arena, t, o));
-        const hostiles = here.filter(o => o.id !== t.id && o.allianceId !== t.allianceId).length;
+        const hostiles = here.filter(o => isHostileTo(t, o)).length;
         noteSighting(ctx.state, t, t.zone, hostiles, depletionOf(ctx.state, t.zone));
         // §4.4/§5.9: if this is the group's scout, that sighting belongs to
         // everybody wearing the same colours.
@@ -403,6 +403,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             : 0;
         // §10.1: 'The Long Con' reads the high-water mark, not the live streak.
         t.maxPerformingStreak = Math.max(t.maxPerformingStreak ?? 0, t.performingStreak);
+        // §11: cycles holding a named role in their group, for 'Quartermaster'.
+        const roles = t.allianceId ? allianceRecords(ctx.state)[t.allianceId]?.roles : undefined;
+        if (roles && Object.values(roles).includes(t.id)) t.roleCycles = (t.roleCycles ?? 0) + 1;
         clampTribute(t);
     });
 
@@ -794,8 +797,7 @@ function revealFires(ctx: SimContext) {
         if (!zone) return;
 
         const watchers = alive.filter(o =>
-            o.id !== t.id
-            && o.allianceId !== t.allianceId
+            isHostileTo(t, o)
             && zone.adjacent.includes(o.zone)
             && !severed.has(edgeKey(t.zone, o.zone)));
         if (watchers.length === 0) return;
@@ -831,8 +833,7 @@ function revealSmoke(ctx: SimContext) {
         if (!zone) return;
 
         const watchers = alive.filter(o =>
-            o.id !== t.id
-            && o.allianceId !== t.allianceId
+            isHostileTo(t, o)
             && zone.adjacent.includes(o.zone)
             && !severed.has(edgeKey(t.zone, o.zone))
             && ctx.rng.chance(CRAFTING.smokeRevealChance));
@@ -866,8 +867,7 @@ function revealNoisyBreakdowns(ctx: SimContext) {
         if (!zone) return;
 
         const hearers = alive.filter(o =>
-            o.id !== t.id
-            && o.allianceId !== t.allianceId
+            isHostileTo(t, o)
             && (o.zone === t.zone || (zone.adjacent.includes(o.zone) && !severed.has(edgeKey(t.zone, o.zone)))));
         if (hearers.length === 0) return;
 

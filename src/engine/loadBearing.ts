@@ -96,6 +96,7 @@ export function collapseStructure(ctx: SimContext, zoneName: string) {
         if (ctx.rng.chance(LOAD_BEARING.collapseCrushChance)) injure(t, ctx.rng.chance(LOAD_BEARING.collapseLegShare) ? 'legs' : 'torso');
         clampTribute(t);
         checkDeath(ctx, t, cause);
+        if (t.status === 'alive') t.collapsesSurvived = (t.collapsesSurvived ?? 0) + 1;
     });
     if (state.structuralFatigue) state.structuralFatigue[zoneName] = 0;
 }

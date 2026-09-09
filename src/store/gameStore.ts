@@ -823,8 +823,11 @@ export const gameActions = {
         const gamesProfile = gamesProfileFor(newSeed, false, gameState.gamesProfile?.quell ?? null, gameState.baseConfig.vanillaRules === true);
         const config = configForProfile(gameState.baseConfig, gamesProfile);
         const tributes = generateTributes(newSeed, config, gameState.arena.zones[0].name, gamesProfile.castShape, gamesProfile.quell);
+        // The log and its counter are carried over rather than wiped: nothing
+        // written before the reaping belongs to the cast that was drawn, and
+        // resetting the counter would let a rerolled run reuse log ids.
         const newState: GameState = {
-            ...gameState, seed: newSeed, tributes, log: [], logCounter: 0, gamesProfile, config,
+            ...gameState, seed: newSeed, tributes, gamesProfile, config,
         };
 
         gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Share2, Check } from 'lucide-react';
+import { Share2, Check, Copy } from 'lucide-react';
 import { GameConfig } from '../models/types';
 
 export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: { seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig, quellId: string | null }) {
@@ -7,6 +7,19 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: {
     // On copy failure the URL is shown in a selectable field so the player can
     // copy it by hand instead of being told "Copy failed" with nothing to copy.
     const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
+    const [seedCopied, setSeedCopied] = useState(false);
+
+    // §1.10: the seed as text, not only as a URL. The full seed (base plus
+    // any reroll suffix) is what every screen shows and what this copies.
+    const copySeed = async () => {
+        try {
+            await navigator.clipboard?.writeText(seed);
+            setSeedCopied(true);
+            setTimeout(() => setSeedCopied(false), 2000);
+        } catch {
+            /* clipboard unavailable — the seed is on screen in the chip */
+        }
+    };
 
     const buildUrl = () => {
         const params = new URLSearchParams({
@@ -77,14 +90,16 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: {
                     : <Share2 aria-hidden="true" className="w-3.5 h-3.5" />}
                 {status === 'copied' ? 'Copied' : status === 'failed' ? 'Copy failed' : 'Share'}
             </button>
-            {seed.includes('~') && (
-                <span
-                    className="chip"
-                    title={`This cast was rerolled. The full seed is ${seed}; the base seed alone (${seed.split('~')[0]}) replays the original cast.`}
-                >
-                    seed {seed}
-                </span>
-            )}
+            <button
+                onClick={copySeed}
+                className="chip"
+                title={seed.includes('~')
+                    ? `Copy the seed as text. This cast was rerolled: the full seed is ${seed}; the base seed alone (${seed.split('~')[0]}) replays the original cast.`
+                    : `Copy the seed ${seed} as text`}
+            >
+                {seedCopied ? <Check aria-hidden="true" className="w-3 h-3 inline" /> : <Copy aria-hidden="true" className="w-3 h-3 inline" />}
+                {' '}seed {seed}
+            </button>
             {fallbackUrl && (
                 <input
                     className="field text-xs w-52"

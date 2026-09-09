@@ -1,4 +1,6 @@
 import { GameState, Tribute } from '../models/types';
+import { HEAD_GAMEMAKERS } from '../data/gamemakers';
+import { QUELLS } from '../data/gamesProfile';
 import { CareerTotals, evaluateAchievements, evaluateMetaAchievements, evaluateNearMisses, NearMiss } from '../data/achievements';
 import { arenaLaws } from '../engine/gamesProfile';
 import { Notable, runDelta, runNotables } from './notables';
@@ -525,6 +527,10 @@ export function commitRun(state: GameState): RunOutcome {
         patronWins: records.patronWins ?? 0,
         dynastyStreak: records.victorDistrictStreak ?? 0,
         maxSimultaneousBests: Math.max(0, ...bestsByHolder.values()),
+        gamemakersSeen: Object.keys(records.gamemakerRecords ?? {}).length,
+        gamemakerTotal: HEAD_GAMEMAKERS.length,
+        maxCrownsUnderOneGamemaker: Math.max(0, ...Object.values(records.gamemakerRecords ?? {}).map(gm => gm.victors)),
+        quellTotal: QUELLS.length,
     };
 
     const earned = [...evaluateAchievements(state), ...evaluateMetaAchievements(totals)];

@@ -23,7 +23,7 @@ import { addFear, fearFraction, reduceFear } from './fear';
 import { notorietyFraction, witnessReputation } from './notoriety';
 import { areLovers } from './alliance';
 import { hasTruce } from './parley';
-import { noteBlocKill, underBlocTreaty } from './blocTreaty';
+import { blocTreatyHolds, noteBlocKill } from './blocTreaty';
 import { dominantSideCost, grappleResistance, injuryAbsorption, reachBonus } from './physique';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
@@ -860,7 +860,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     // personally, which is exactly what makes it a treaty. Breaking it is
     // still available; it just costs both blocs rather than one person.
     const isBonded = (a: Tribute, b: Tribute) =>
-        areLovers(a, b) || hasTruce(ctx.state, a, b.id) || underBlocTreaty(ctx.state, a, b);
+        areLovers(a, b) || hasTruce(ctx.state, a, b.id) || blocTreatyHolds(ctx, a, b);
     const partnerOf = (a: Tribute) => fighters.find(o => o.id !== a.id && isBonded(a, o));
 
     const packSide: Tribute[] = [];
@@ -1109,7 +1109,7 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
         // melee the same way it does anywhere else.
         const targets = standing.filter(t =>
             t.id !== attacker.id && !areLovers(attacker, t) && !hasTruce(ctx.state, attacker, t.id)
-            && !underBlocTreaty(ctx.state, attacker, t));
+            && !blocTreatyHolds(ctx, attacker, t));
         if (targets.length === 0) break;
         // The wounded are still likeliest to draw the blow — a hurt tribute is
         // the obvious opening — but "likeliest" is now a weight rather than a
