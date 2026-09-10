@@ -4,7 +4,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, PROFICIENCY, QUALITY, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -23,6 +23,7 @@ import { addFear, fearFraction, reduceFear } from './fear';
 import { notorietyFraction, witnessReputation } from './notoriety';
 import { areLovers } from './alliance';
 import { hasTruce } from './parley';
+import { riskTolerance } from './risk';
 import { blocTreatyHolds, noteBlocKill } from './blocTreaty';
 import { dominantSideCost, grappleResistance, injuryAbsorption, reachBonus } from './physique';
 import { addExcitement } from './audience';
@@ -124,11 +125,52 @@ function weightedPick<T>(ctx: SimContext, items: T[], weight: (item: T) => numbe
     return items[items.length - 1];
 }
 
+/**
+ * A §8: shock — a one-cycle state separate from sanity.
+ *
+ * Sanity is a slow ledger of everything the arena has done to somebody over a
+ * whole run. What it could not express is the thirty seconds after a blow that
+ * nearly took your head off: not madness, not a wound, just a body that has
+ * stopped taking instructions. Set by a single hit that takes a tribute
+ * through the line, and by coming round after being downed.
+ */
+export function enterShock(ctx: SimContext, t: Tribute, cause: string) {
+    if (t.status !== 'alive') return;
+    t.shock = { untilCycle: (ctx.state.cycle ?? 0) + SHOCK.cycles, cause };
+    if (ctx.rng.chance(SHOCK.lineChance)) {
+        ctx.logEvent(
+            `${t.name} comes out the other side of it standing, and that is all that can be said for them. `
+            + 'They are not hearing anything for a while.',
+            [t.id],
+            { category: 'injury' }
+        );
+    }
+}
+
+/** True while the shock is still on them. */
+export function inShock(ctx: SimContext, t: Tribute): boolean {
+    return t.shock !== undefined && (ctx.state.cycle ?? 0) < t.shock.untilCycle;
+}
+
 function bestWeapon(t: Tribute): Item | undefined {
     const weapons = t.inventory.filter(i => i.type === 'weapon');
     if (weapons.length === 0) return undefined;
-    // Condition counts: a battered sword can be the worse choice than a fresh knife.
-    return weapons.reduce((best, w) => (effectiveDamage(w) > effectiveDamage(best) ? w : best));
+    // Condition counts: a battered sword can be the worse choice than a fresh
+    // knife. A §7: so does which arm is open. `woundedSide` and `handedness`
+    // existed and nothing downstream of the damage roll read them — a tribute
+    // with their sword arm laid open picked the same greatsword as ever. A
+    // heavy weapon needs the hand that is gone; a light one does not.
+    const armGrade = injuryGrade(t, 'arms');
+    const leadHurt = armGrade > 0 && (t.woundedSide ?? 'right') === (t.handedness ?? 'right');
+    const penalty = (w: Item) => {
+        if (armGrade === 0) return 0;
+        const perGrade = leadHurt ? INJURY_BEHAVIOUR.weaponHandPerGrade : INJURY_BEHAVIOUR.offHandPerGrade;
+        // The heavier the weapon, the more of it the bad arm has to carry.
+        const heft = w.value >= INJURY_BEHAVIOUR.twoHandedDamage ? 2 : 1;
+        return effectiveDamage(w) * perGrade * armGrade * heft;
+    };
+    return weapons.reduce((best, w) =>
+        (effectiveDamage(w) - penalty(w) > effectiveDamage(best) - penalty(best) ? w : best));
 }
 
 /**
@@ -227,9 +269,17 @@ export function applyDamage(
         if (amount <= 0) return finalistSave;
     }
 
+    const before = t.health;
     t.health -= amount;
     t.lastDamage = { ...record, cycle: cycleOf(ctx.state), amount };
     clampTribute(t);
+    // A §8: one blow that takes somebody through the line puts them in shock
+    // for a cycle — a near-death that is not a wound and not a breakdown.
+    if (t.status === 'alive' && t.health > 0
+        && amount >= SHOCK.minHit
+        && before >= SHOCK.healthLine && t.health < SHOCK.healthLine) {
+        enterShock(ctx, t, record.cause);
+    }
     return finalistSave;
 }
 
@@ -488,7 +538,13 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
         + roundsFought * 0.05;
 
     if (opponentEdge > 0) chance += COMBAT.retreatLosingBonus;
+    // A §8: somebody in shock is not weighing anything. They break off.
+    if (inShock(ctx, t)) chance += COMBAT.retreatLosingBonus;
     chance += traitMod(t, 'retreat');
+    // A §4: the same composite the stance table reads. A tribute with nothing
+    // left to lose and a shrinking field stands; one with a full pack on day
+    // nine at half health takes the exit.
+    chance -= riskTolerance(ctx, t) * RISK.retreatWeight;
     if (t.isCareer) chance -= 0.1;
     if (isAggressiveStance(t.stance)) chance -= 0.12;
     if (isEvasiveStance(t.stance)) chance += 0.15;

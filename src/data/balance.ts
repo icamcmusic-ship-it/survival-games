@@ -2644,8 +2644,12 @@ export const STANCE_MODES = {
         // §8: 7 of 10 stealth, on a cast whose stealth averages nearer 5, on
         // top of an unbroken unseen streak and a valid quarry one zone over.
         // Shadowing fired in 0.5% of cycles.
+        // A §2: 5 rather than the original 6 — above-average stealth still,
+        // on a cast averaging nearer 5, but not the top decile. Dropping to 4
+        // bought another 0.6% of cycles at the cost of the stance meaning
+        // anything, so the floor stays where "the sneaky one" is true.
         stealthMin: 5,
-        base: 4.4,
+        base: 6.0,
         /** Consecutive unnoticed cycles that convert into a free ambush. */
         cyclesToAmbush: 3,
         /** Concealment edge while trailing rather than closing. */
@@ -5239,11 +5243,13 @@ export const STANCE_HOLD = {
      * Shadowing for anybody currently tracking a rival in memory — a known
      * recent sighting one zone over — not only the high-stealth builds.
      */
-    shadowTrackingBonus: 1.6,
+    shadowTrackingBonus: 2.2,
     /** Cycles a sighting may be old and still count as "currently tracking". */
     shadowSightingMaxAge: 2,
     /** Stealth points below the floor that a tracked sighting can make up for. */
     shadowStealthSlack: 4,
+    /** A §1: a trace reason below this magnitude is noise, not an explanation. */
+    traceReasonFloor: 0.05,
 } as const;
 
 /**

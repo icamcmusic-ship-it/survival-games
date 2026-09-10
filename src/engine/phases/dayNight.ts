@@ -45,6 +45,7 @@ import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
 import { tickPersona } from '../persona';
 import { resolveTruces } from '../parley';
+import { postWatches } from '../watch';
 import { offerLoans, repayDebts, settleLoans, tickDistrictBonds, tickRetainers } from '../debts';
 import { reconcileRivals } from '../rapport';
 import { decaySkillsUnderInjury, teachSkills } from '../proficiency';
@@ -303,6 +304,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // out this cycle is not immediately papered over by a fresh trade.
     tickIntelSharing(ctx);
     resolveTruces(ctx);
+    // A §6: who is awake. Posted at nightfall for every group sleeping in one
+    // place, so a Light Sleeper in the party is worth a better night for
+    // everybody else.
+    if (effectiveTime === 'night') postWatches(ctx);
     // §4.1: the bloc layer, alongside the pair layer. Proposed before it is
     // ticked so a treaty sworn this cycle is not immediately assessed against
     // the clock it was just given.

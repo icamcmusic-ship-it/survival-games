@@ -1,5 +1,5 @@
 import { Tribute, attr } from '../models/types';
-import { FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER } from '../data/balance';
+import { FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -589,6 +589,16 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
     // representable. Debt accrues on nights spent short of real rest and is
     // paid down only by a night that is actually restful; past the threshold it
     // takes sanity rather than health, because that is what it does.
+    // A §10: what this arena makes worth carrying, refreshed each cycle so
+    // `enforceCapacity` (which sees only the tribute) can weigh it.
+    const climate = climateOf(ctx.state.arena.id);
+    const cold = climate?.exposure?.(ctx.state.timeOfDay === 'night' ? 'night' : 'day')?.frostbite !== undefined;
+    t.kitPriorities = {
+        warmth: cold || undefined,
+        water: (climate?.drains?.thirstMultiplier ?? 1) >= SITUATIONAL_KIT.dryThirstMultiplier || undefined,
+        purifier: climate?.foulWater || undefined,
+    };
+
     const restedThisCycle = ctx.state.phase === 'night'
         && t.vitals.fatigue < SLEEP.restedFatigue
         && !t.injuries.bleeding

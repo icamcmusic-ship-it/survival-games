@@ -1,5 +1,5 @@
 import { Item, ItemQuality, Tribute } from '../models/types';
-import { INVENTORY, PHYSIQUE, QUALITY } from '../data/balance';
+import { INVENTORY, PHYSIQUE, QUALITY, SITUATIONAL_KIT } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { massOf } from './physique';
 import { traitMod } from '../data/traits';
@@ -130,6 +130,17 @@ function keepValue(t: Tribute, item: Item): number {
     if (item.type === 'medical') value += 20;
     if (item.type === 'water' && t.vitals.thirst > 40) value += 40;
     if (item.type === 'food' && t.vitals.hunger > 40) value += 40;
+    // A §10: what the *arena* makes worth keeping. `keepValue` has no context
+    // of its own, so the cycle pass stamps the climate's priorities onto the
+    // tribute and this reads them: a cloak is dead weight in a jungle and the
+    // difference between living and not in the Frozen Wasteland.
+    const priorities = t.kitPriorities;
+    if (priorities?.warmth) {
+        if (item.warmth === true) value += SITUATIONAL_KIT.coldWarmthBonus;
+        if (item.id === 'matches' || item.id === 'flint') value += SITUATIONAL_KIT.coldFireBonus;
+    }
+    if (priorities?.water && item.type === 'water') value += SITUATIONAL_KIT.dryWaterBonus;
+    if (priorities?.purifier && item.purifies === true) value += SITUATIONAL_KIT.foulWaterPurifierBonus;
     // A broken weapon is dead weight.
     if (item.durability !== undefined && item.durability <= 10) value -= 30;
     return value;
