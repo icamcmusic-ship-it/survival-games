@@ -41,6 +41,9 @@ export function HallOfFameScreen() {
 
     const visible = useMemo(() => applyHofQuery(entries, query), [entries, query]);
 
+    // §2: which entry is one click from replacing the player's current run.
+    const [confirmReplayId, setConfirmReplayId] = useState<string | null>(null);
+
     const copySeed = async (seed: string) => {
         try {
             await navigator.clipboard?.writeText(seed);
@@ -196,7 +199,18 @@ export function HallOfFameScreen() {
 
             {entries.length === 0 ? (
                 <>
-                    <div className="empty-state">Finish a simulation to crown your first victor.</div>
+                    {/* §2: an empty state that says what will fill it. "No
+                        records" tells a new player nothing about whether the
+                        page is worth coming back to. */}
+                    <div className="empty-state space-y-2">
+                        <p className="font-bold">Finish a simulation to crown your first victor.</p>
+                        <p className="text-xs text-[var(--color-ink-500)] max-w-prose mx-auto">
+                            Every finished Games is archived here with its victor, their district, the arena,
+                            how long it ran and the seed it was rolled from — so you can filter by arena or
+                            district, put two victors side by side, run the exact same Games again, or seat a
+                            past victor in a new one as a grudge match.
+                        </p>
+                    </div>
                     {/* Transfer stays available on an empty archive — restoring a backup is
                         exactly what a player with no records is most likely to want. */}
                     <HofTransfer entries={entries} onImported={applyImport} />
@@ -366,13 +380,33 @@ export function HallOfFameScreen() {
                                                             ? <><Check className="w-3.5 h-3.5 text-[var(--color-coin-400)]" /> Seed copied</>
                                                             : <><Copy className="w-3.5 h-3.5" /> Copy seed ({entry.seed})</>}
                                                     </button>
-                                                    <button
-                                                        onClick={() => { void gameActions.replayHallOfFameEntry(entry); }}
-                                                        className="btn btn-sm btn-primary"
-                                                        title={`Run the ${entry.arenaName} Games again on seed ${entry.seed}`}
-                                                    >
-                                                        <RotateCcw className="w-3.5 h-3.5" /> Run these Games again
-                                                    </button>
+                                                    {/* §2: replaying an archived run replaces whatever
+                                                        is in progress, autosave included, and it used to
+                                                        do that on one click with no warning. */}
+                                                    {confirmReplayId === entry.id ? (
+                                                        <span className="inline-flex items-center gap-2 panel-flush px-2 py-1">
+                                                            <span className="text-xs">
+                                                                This replaces the run in progress. Continue?
+                                                            </span>
+                                                            <button
+                                                                onClick={() => { setConfirmReplayId(null); void gameActions.replayHallOfFameEntry(entry); }}
+                                                                className="btn btn-sm btn-primary"
+                                                            >
+                                                                Replace it
+                                                            </button>
+                                                            <button onClick={() => setConfirmReplayId(null)} className="btn btn-sm btn-ghost">
+                                                                Keep mine
+                                                            </button>
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => setConfirmReplayId(entry.id)}
+                                                            className="btn btn-sm btn-primary"
+                                                            title={`Run the ${entry.arenaName} Games again on seed ${entry.seed}. This replaces any run in progress.`}
+                                                        >
+                                                            <RotateCcw className="w-3.5 h-3.5" /> Run these Games again
+                                                        </button>
+                                                    )}
                                                     {/* §2.3: the archive stored each run's whole config so
                                                         it could be relaunched, and there was no way to ask
                                                         what was different about the one that went well. */}

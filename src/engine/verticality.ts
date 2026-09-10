@@ -102,9 +102,14 @@ export function tickVerticality(ctx: SimContext) {
         if (!t.levelsStood.includes(going)) t.levelsStood.push(going);
 
         // Going down fast is how people get hurt; going up is slow and safe.
-        if (going === 'lower' && ctx.rng.chance(VERTICALITY.descendFallChance)) {
+        // §7: the descent fall was a flat roll — a tribute who had not slept in
+        // four days climbed down exactly as well as one who was fresh. It is
+        // fatigue that puts people off ladders.
+        const spent = Math.max(0, t.vitals.fatigue - VERTICALITY.fallFatiguePivot) / 100;
+        const fallChance = VERTICALITY.descendFallChance * (1 + spent * VERTICALITY.fallFatigueWeight);
+        if (going === 'lower' && ctx.rng.chance(fallChance)) {
             const cause = `Fell inside ${t.zone}`;
-            applyDamage(ctx, t, VERTICALITY.fallDamage, { cause, kind: 'arena' });
+            applyDamage(ctx, t, Math.round(VERTICALITY.fallDamage * (1 + spent)), { cause, kind: 'arena' });
             openWound(t, BLEEDING.hazardSeverity);
             injure(t, 'legs');
             ctx.logEvent(

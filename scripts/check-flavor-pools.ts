@@ -16,7 +16,7 @@
  */
 import * as FLAVOR from '../src/data/flavorText';
 import { INTERVIEW_SCENARIOS } from '../src/data/flavorText';
-import { ARENA_FLAVOR, PROCEDURAL_FLAVOR_PACKS, GENERIC_ARENA_FLAVOR } from '../src/data/arenaFlavor';
+import { ARENA_FLAVOR, PROCEDURAL_FLAVOR_PACKS, GENERIC_ARENA_FLAVOR, actionPool } from '../src/data/arenaFlavor';
 import { QUIRKS } from '../src/data/quirks';
 
 /** Entries a pool should carry to outlast a single Games without repeating. */
@@ -102,21 +102,30 @@ INTERVIEW_SCENARIOS.forEach(scenario => {
  *
  * Running it for the first time turned up a real and sizeable backlog: most
  * arenas that author these pools author exactly four entries each, against a
- * generic fallback carrying ten to twelve. That is a writing job, not a bug,
- * so it ratchets the way `KNOWN_THIN` does — the count may fall and may not
- * rise, which stops the backlog growing while somebody works through it.
+ * generic fallback carrying ten to twelve.
+ *
+ * §5: that backlog is now closed at the mechanism rather than by writing 272
+ * lines of filler. `actionPool` merges a short authored pool with the generic
+ * one (authored lines weighted to lead, so the arena still sounds like
+ * itself) instead of replacing it, so a four-entry pool now *adds* four
+ * arena-specific lines on top of twelve rather than cutting variety to four.
+ * What this check measures is therefore the effective pool a player actually
+ * hears, which is what the floor was always trying to protect — and topping a
+ * pool up past the merge target is still worth doing, because past it the
+ * arena speaks entirely in its own voice.
  */
-/** Authored conditional-stance pools currently under the hard floor. */
-const KNOWN_THIN_STANCE_POOLS = 68;
+/** Authored conditional-stance pools whose *effective* pool is under the floor. */
+const KNOWN_THIN_STANCE_POOLS = 0;
 const CONDITIONAL_POOLS = ['fortify', 'scavenge', 'shadow', 'flail'] as const;
 const thinStancePools: string[] = [];
 console.log(`\nconditional-stance action pools (authored per arena; generic fallback otherwise):`);
 CONDITIONAL_POOLS.forEach(key => {
     const authored = Object.entries(ARENA_FLAVOR).filter(([, f]) => (f.actions[key]?.length ?? 0) > 0);
-    const thinAuthored = authored.filter(([, f]) => (f.actions[key]!.length) < HARD_FLOOR);
+    // The effective pool: what `actionPool` actually returns for this arena.
+    const thinAuthored = authored.filter(([, f]) => actionPool(f, key).length < HARD_FLOOR);
     console.log(`     ${key.padEnd(10)} ${authored.length} arena(s) author it; generic carries ${GENERIC_ARENA_FLAVOR.actions[key]?.length ?? 0}`);
     thinStancePools.push(...thinAuthored.map(([id, f]) =>
-        `${id}: authored '${key}' pool has ${f.actions[key]!.length} entries against a generic fallback of ${GENERIC_ARENA_FLAVOR.actions[key]?.length ?? 0}`));
+        `${id}: effective '${key}' pool is ${actionPool(f, key).length} entries (authored ${f.actions[key]!.length}, generic fallback ${GENERIC_ARENA_FLAVOR.actions[key]?.length ?? 0})`));
 });
 if (thinStancePools.length > KNOWN_THIN_STANCE_POOLS) {
     structuralProblems.push(

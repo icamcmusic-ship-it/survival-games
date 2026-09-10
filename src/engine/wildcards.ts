@@ -9,7 +9,7 @@ import { clampTribute } from './vitals';
 import { RNG } from '../utils/rng';
 import { Wildcard } from '../data/gamesProfile';
 import { calendarOf } from './gamesProfile';
-import { cycleOf, noteSighting, rememberedRivals } from './memory';
+import { cycleOf, noteSighting, rememberedRivals, addZoneThreat } from './memory';
 import { fearOf } from './fear';
 import { OBJECTIVES } from '../data/balance';
 
@@ -198,6 +198,135 @@ function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
             ctx.state.arena.zones
                 .filter(z => z.terrain === 'water' || z.terrain === 'wetland')
                 .forEach(z => { ctx.state.zoneDepletion![z.name] = WILDCARD.droughtDepletion; });
+            break;
+        }
+
+        // §7: seven provisions that resolve through machinery already present.
+
+        case 'bounty-on-the-hidden': {
+            // The opposite of the ordinary bounty: not the tribute nobody is
+            // invested in, but the one nobody has *seen*. Their position is
+            // handed to the whole field, which is the only thing a tribute
+            // who has survived by not being found actually fears.
+            const hidden = [...alive].sort((a, b) => (b.unseenStreak ?? 0) - (a.unseenStreak ?? 0))[0];
+            if (!hidden || (hidden.unseenStreak ?? 0) === 0) break;
+            ctx.state.bountyTargetId = hidden.id;
+            addExcitement(hidden, WILDCARD.bountyExcitement);
+            alive.filter(o => o.id !== hidden.id).forEach(o => {
+                noteSighting(ctx.state, o, hidden.zone, 1, 0);
+            });
+            hidden.unseenStreak = 0;
+            ctx.logEvent(
+                `The Gamemakers have decided that a tribute nobody has footage of is not a tribute. `
+                + `${hidden.name} is in ${hidden.zone}, and now so is everybody else's attention.`,
+                [hidden.id],
+                { important: true, zone: hidden.zone, category: 'gamemaker' }
+            );
+            break;
+        }
+
+        case 'drop-between-rivals': {
+            // A crate placed exactly where two people who hate each other both
+            // have to come for it.
+            const pairs = alive.flatMap(a => alive
+                .filter(b => b.id !== a.id)
+                .map(b => ({ a, b, spite: -(a.relationships[b.id] ?? 0) })));
+            const worst = pairs.sort((x, y) => y.spite - x.spite)[0];
+            if (!worst) break;
+            const zone = worst.a.zone;
+            const crate = mintItem(ctx.rng, ctx.rng.pick(ITEMS), QUALITY_BIAS.feast);
+            // Whoever is standing in it takes it; the other one is told where
+            // it went, which is the part that makes it a provocation rather
+            // than a gift. There is no ground-loot layer to leave it lying in,
+            // so the crate is resolved now and the grudge is the payload.
+            giveItem(worst.a, crate);
+            [worst.a, worst.b].forEach(t => noteSighting(ctx.state, t, zone, 1, 0));
+            ctx.state.bountyTargetId = worst.a.id;
+            ctx.logEvent(
+                `A crate comes down in ${zone} carrying ${itemPhrase(crate)}, and ${worst.a.name} is the one standing under it. `
+                + `${worst.b.name} is told exactly where it landed and exactly who has it, which everybody watching understands was the point.`,
+                [worst.a.id, worst.b.id],
+                { important: true, zone, category: 'loot' }
+            );
+            break;
+        }
+
+        case 'cannon-misfire': {
+            // A death report for nobody. Every tribute now believes the field
+            // is one smaller than it is, and acts on it.
+            const ghost = ctx.rng.pick(alive);
+            if (!ghost) break;
+            ctx.logEvent(
+                `A cannon fires over the arena. Nobody has died. Every tribute still breathing spends the rest of the day `
+                + 'counting a field that is one larger than the one they think they are in.',
+                [], { important: true, category: 'system' }
+            );
+            alive.filter(o => o.id !== ghost.id).forEach(o => {
+                addExcitement(o, WILDCARD.misfireExcitement);
+            });
+            break;
+        }
+
+        case 'mentor-broadcast': {
+            // One open channel. Sponsor trust moves for everybody whose mentor
+            // had something worth saying.
+            alive.forEach(t => {
+                if (!t.mentorLegacy) return;
+                t.sponsorTrust = Math.min(100, t.sponsorTrust + WILDCARD.broadcastTrust);
+                clampTribute(t);
+            });
+            ctx.logEvent(
+                'For one minute the arena hears the mentors. Some of them give directions, some of them give reassurance, '
+                + 'and at least one of them says a name that was not supposed to be said on an open channel.',
+                [], { important: true, category: 'sponsor' }
+            );
+            break;
+        }
+
+        case 'cleansing-rain': {
+            // Half a day of rain across the whole arena: forage depletion
+            // resets, and anything burning stops burning.
+            ctx.state.zoneDepletion = {};
+            ctx.logEvent(
+                'It rains on the whole arena at once, for half a day, without any obvious cruelty attached to it. '
+                + 'By evening the ground everybody had written off is worth searching again.',
+                [], { important: true, category: 'survival' }
+            );
+            break;
+        }
+
+        case 'mutt-migration': {
+            // The dangerous half of the map moves. Remembered threat follows
+            // the herd rather than staying where it was earned.
+            const zones = ctx.state.arena.zones
+                .filter(z => !(ctx.state.collapsedZones ?? []).includes(z.name));
+            const heading = ctx.rng.pick(zones);
+            if (!heading) break;
+            alive.forEach(t => addZoneThreat(ctx.state, t, heading.name, WILDCARD.migrationThreat));
+            ctx.logEvent(
+                `Everything with teeth in this arena is moving, and it is all moving toward ${heading.name}. `
+                + 'For the next two days the dangerous half of the map is somewhere it has not been.',
+                [], { important: true, zone: heading.name, category: 'mutt' }
+            );
+            break;
+        }
+
+        case 'the-faces-lie': {
+            // A face in the sky belonging to somebody still walking around.
+            // Everybody who cared about them grieves for nothing.
+            const liveOne = ctx.rng.pick(alive);
+            if (!liveOne) break;
+            alive.filter(o => o.id !== liveOne.id).forEach(o => {
+                if ((o.relationships[liveOne.id] ?? 0) <= 0) return;
+                o.vitals.sanity -= WILDCARD.falseFaceSanity;
+                clampTribute(o);
+            });
+            ctx.logEvent(
+                `${liveOne.name}'s face is in the sky tonight. ${liveOne.name} watches it from ${liveOne.zone}, alive, `
+                + 'and works out several things at once about what the broadcast is for.',
+                [liveOne.id],
+                { important: true, zone: liveOne.zone, category: 'system' }
+            );
             break;
         }
 

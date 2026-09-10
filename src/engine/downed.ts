@@ -9,7 +9,7 @@ import { cycleOf } from './memory';
 import { adjustRel, adjustRespect } from './relationships';
 import { addFear } from './fear';
 import { hopsTo, severedEdgeSet } from './map';
-import { killTribute } from './combat';
+import { killTribute, enterShock } from './combat';
 
 /**
  * §9.1: the downed state and the rescue window.
@@ -160,9 +160,13 @@ export function tickDowned(ctx: SimContext) {
             // The kit is spent on the attempt, not on the outcome.
             const kit = consumeOne(rescuer, i => i.type === 'medical');
             if (ctx.rng.chance(rescueChance(rescuer, !!kit))) {
+                const cause = t.downed!.cause;
                 delete t.downed;
                 t.health = DOWNED.reviveHealth;
                 t.revivedBy = rescuer.id;
+                // A §8: nobody comes round from that and gets straight back to
+                // whatever they were doing.
+                enterShock(ctx, t, cause);
                 t.vitals.sanity += DOWNED.rescueSanityRelief;
                 adjustRel(t, rescuer.id, DOWNED.rescueBond);
                 adjustRel(rescuer, t.id, DOWNED.rescueBond);

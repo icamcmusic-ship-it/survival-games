@@ -8,7 +8,7 @@ import { FEAST, POISONING, PRE_ARENA, TRAINING_FLOOR } from '../../data/balance'
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { FEAST_TEXTS } from '../../data/flavorText';
 import { clampTribute } from '../vitals';
-import { consumeOne, giveItem, itemPhrase } from '../items';
+import { consumeOne, giveItem, itemPhrase, itemPoolFor } from '../items';
 import { applyDamage, checkDeath } from '../combat';
 import { injure } from '../wounds';
 import { traitMod } from '../../data/traits';
@@ -238,7 +238,9 @@ export function processFeast(ctx: SimContext) {
     ctx.state.feastTheme = undefined;
     const tablePool = themedPool(theme);
     const themedGift = (t: Tribute) =>
-        mintItem(ctx.rng, theme === 'district-gifts' ? pickNeededGift(ctx, t, ITEMS) : pickNeededGift(ctx, t, tablePool), QUALITY_BIAS.feast);
+        mintItem(ctx.rng, theme === 'district-gifts'
+            ? pickNeededGift(ctx, t, itemPoolFor(ctx.state, ITEMS))
+            : pickNeededGift(ctx, t, itemPoolFor(ctx.state, tablePool)), QUALITY_BIAS.feast);
 
     // §6.4: a feast announced before packs were named, or one called straight
     // into `processFeast` by a wildcard, still gets its table set properly.

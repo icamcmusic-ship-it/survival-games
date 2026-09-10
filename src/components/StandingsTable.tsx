@@ -30,6 +30,9 @@ const COLUMNS: Array<{ id: Column; label: string; numeric?: boolean; className?:
     { id: 'odds', label: 'Odds', numeric: true },
 ];
 
+/** §2: odds move below this are noise rather than a trend. */
+const TREND_EPSILON = 0.5;
+
 export function StandingsTable({
     gameState,
     onSelectTribute,
@@ -47,6 +50,17 @@ export function StandingsTable({
 }) {
     const [sort, setSort] = useState<{ column: Column; desc: boolean }>({ column: 'odds', desc: true });
     const [aliveOnly, setAliveOnly] = useState(false);
+
+    // §2: which way the line has moved on them since yesterday's close. The
+    // per-day odds snapshot already existed for the sparkline; the table could
+    // only ever show today's number, so a tribute quietly drifting out of
+    // contention looked identical to one who had just shortened.
+    const trend = useMemo(() => {
+        const history = gameState.oddsHistory ?? {};
+        const days = Object.keys(history).map(Number).sort((a, b) => a - b);
+        const previous = days.length > 0 ? history[days[days.length - 1]] : undefined;
+        return previous ?? {};
+    }, [gameState.oddsHistory]);
 
     const odds = useMemo(() => {
         const map: Record<string, number> = {};
@@ -109,7 +123,14 @@ export function StandingsTable({
                 <table className="w-full text-xs border-collapse">
                     <thead>
                         <tr>
-                            <th scope="col" className="p-1 w-6" />
+                            <th scope="col" className="sticky top-0 z-10 p-1 w-6" style={{ background: 'var(--paper)' }} />
+                            <th
+                                scope="col"
+                                className="sticky top-0 z-10 p-1 w-6 border-b-2 border-[var(--color-ink-800)]"
+                                style={{ background: 'var(--paper)' }}
+                            >
+                                <span className="eyebrow" title="Which way their odds have moved since yesterday">Trend</span>
+                            </th>
                             {COLUMNS.map(col => {
                                 const active = sort.column === col.id;
                                 return (
@@ -117,7 +138,10 @@ export function StandingsTable({
                                         key={col.id}
                                         scope="col"
                                         aria-sort={active ? (sort.desc ? 'descending' : 'ascending') : 'none'}
-                                        className={`p-1 text-left border-b-2 border-[var(--color-ink-800)] ${col.numeric ? 'text-right' : ''}`}
+                                        // §2: sticky, so the columns are still
+                                        // named twenty-four rows down.
+                                        className={`sticky top-0 z-10 p-1 text-left border-b-2 border-[var(--color-ink-800)] ${col.numeric ? 'text-right' : ''}`}
+                                        style={{ background: 'var(--paper)' }}
                                     >
                                         <button
                                             onClick={() => toggleSort(col.id)}
@@ -137,6 +161,11 @@ export function StandingsTable({
                         {rows.map(t => {
                             const dead = t.status === 'dead';
                             const accent = dead ? undefined : allianceAccent(t.allianceId);
+                            const was = trend[t.id];
+                            const now = odds[t.id];
+                            const drift = (was !== undefined && now !== undefined && !dead)
+                                ? now - was
+                                : undefined;
                             return (
                                 <tr
                                     key={t.id}
@@ -153,6 +182,21 @@ export function StandingsTable({
                                         >
                                             ★
                                         </button>
+                                    </td>
+                                    <td className="p-1 text-center font-mono">
+                                        {drift === undefined || Math.abs(drift) < TREND_EPSILON ? (
+                                            <span className="text-[var(--color-ink-600)]" title="No meaningful move since yesterday">–</span>
+                                        ) : drift > 0 ? (
+                                            <span
+                                                className="text-[var(--cat-alliance)]"
+                                                title={`Shortened ${drift.toFixed(1)} points since yesterday's close`}
+                                            >▲</span>
+                                        ) : (
+                                            <span
+                                                className="text-[var(--cat-death)]"
+                                                title={`Drifted ${Math.abs(drift).toFixed(1)} points since yesterday's close`}
+                                            >▼</span>
+                                        )}
                                     </td>
                                     <td className="p-1">
                                         <button

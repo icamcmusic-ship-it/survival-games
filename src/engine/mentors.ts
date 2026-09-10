@@ -262,6 +262,34 @@ export function processMentorPleas(ctx: SimContext, alive: Tribute[]): Set<strin
             [t.id],
             { important: true, category: 'sponsor' }
         );
+
+        // §4: mentor cross-talk. Two mentors whose tributes are in the same
+        // alliance are watching the same camp on the same screen, and the
+        // obvious thing for them to do — split the cost of one parachute
+        // between them so it lands sooner — was not expressible: every gift
+        // came from exactly one district's mentor to exactly one tribute.
+        const ally = ctx.state.tributes.find(o =>
+            o.status === 'alive'
+            && o.id !== t.id
+            && o.district !== t.district
+            && o.allianceId !== undefined && o.allianceId === t.allianceId
+            && o.zone === t.zone
+            && o.mentorLegacy !== undefined
+            && o.sponsorTrust >= MENTOR_TRUST_FLOOR);
+        if (ally && ctx.rng.chance(MENTOR_DRAMA.crossTalkChance)) {
+            const shared = itemForNeed(ctx, ally, urgentNeed(ally) ?? need);
+            giveItem(ally, shared);
+            ensureMemory(ally).giftsReceived += 1;
+            ally.sponsorTrust = Math.max(0, ally.sponsorTrust - MENTOR_TRUST_COST);
+            clampTribute(ally);
+            helped.add(ally.id);
+            ctx.logEvent(
+                `${mentor} and ${ally.mentorLegacy} have evidently been talking. The second parachute comes down beside the first, `
+                + `and ${ally.name} gets ${itemPhrase(shared)} out of a conversation happening a long way above their head.`,
+                [t.id, ally.id],
+                { important: true, category: 'sponsor', zone: t.zone }
+            );
+        }
     });
     return helped;
 }

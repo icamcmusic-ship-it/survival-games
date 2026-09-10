@@ -127,11 +127,18 @@ export function noteBreach(ctx: SimContext, record: Alliance, offender: Tribute,
     if (others.length === 0) return;
 
     const roll = ctx.rng.nextFloat();
-    if (roll < ALLIANCES.hearingExpelChance) {
+    // §4: the leader's style is the thumb on this scale. A tyrant throws
+    // people out; a democratic leader talks it round. Same hearing, and the
+    // difference between the two groups is visible from the outside.
+    const style = record.leaderStyle ?? 'democratic';
+    const expelChance = style === 'tyrant'
+        ? ALLIANCES.hearingExpelChance + ALLIANCES.tyrantExpelBonus
+        : Math.max(0, ALLIANCES.hearingExpelChance - ALLIANCES.democratExpelRelief);
+    if (roll < expelChance) {
         expel(ctx, record, offender, members, `${offender.name} has done it twice, and the second time nobody argues for them.`);
         return;
     }
-    if (roll < ALLIANCES.hearingExpelChance + ALLIANCES.hearingDemoteChance && record.roles) {
+    if (roll < expelChance + ALLIANCES.hearingDemoteChance && record.roles) {
         const held = (Object.keys(record.roles) as Array<keyof NonNullable<Alliance['roles']>>)
             .find(role => record.roles?.[role] === offender.id);
         if (held) {

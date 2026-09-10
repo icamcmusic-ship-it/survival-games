@@ -1,12 +1,14 @@
 import { Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { FEAR, MEMORY, MOVEMENT, NOTORIETY } from '../data/balance';
+import { FEAR, MEMORY, MOVEMENT, NOTORIETY, DECISION_TRACE, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, RISK } from '../data/balance';
 import { SimContext } from './context';
 import { effectiveResources, zoneFeatures } from './map';
 import { ensureMemory, hasVengeanceAgainst, reckonsRegrown, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { fearInZone } from './fear';
 import { notorietyInZone } from './notoriety';
 import { rumourPull } from './rumours';
+import { riskTolerance } from './risk';
+import { injuryGrade } from './wounds';
 import { traitMod } from '../data/traits';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 
@@ -43,6 +45,10 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
             score += MOVEMENT.shelterSeekWeight;
         }
         score += z.danger * (arch.aggression > 0 ? arch.aggression * 2 : -arch.caution * 2);
+        // A §4: and the state half of the same read. A tribute who is hurt,
+        // laden and late in the run avoids dangerous ground the same archetype
+        // would have walked into on day one.
+        score += z.danger * riskTolerance(ctx, t) * RISK.dangerWeight;
 
         // Remembered dread: bodies, ambushes and hazards leave a mark.
         const threat = rememberedThreat(state, t, z.name);
@@ -122,8 +128,37 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
             if (quarry?.status === 'alive' && quarry.zone === z.name) score += MOVEMENT.shadowFollowWeight;
         }
 
-        return { z, score: Math.max(0.1, score) };
+        // A §7: a tribute with their legs opened does not pick the far zone.
+        // `injurySeverity` graded leg wounds and the destination scorer never
+        // asked — a tribute on a grade-3 leg walked the map exactly like one
+        // who could run.
+        const legs = injuryGrade(t, 'legs');
+        if (legs > 0 && z.name !== t.zone) {
+            score -= legs * INJURY_BEHAVIOUR.legsHopPenaltyPerGrade;
+        }
+
+        // A §11: the last few pick their ground on purpose.
+        const fieldLeft = state.tributes.filter(o => o.status === 'alive').length;
+        if (fieldLeft <= ENDGAME_POSITIONING.fieldSize && fieldLeft > 1) {
+            const wantsTheHorn = riskTolerance(ctx, t) > ENDGAME_POSITIONING.hornEdge;
+            const isHorn = /cornucopia/i.test(z.name);
+            const isHigh = zoneFeatures(z).elevation === true;
+            if ((wantsTheHorn && isHorn) || (!wantsTheHorn && isHigh)) {
+                score += ENDGAME_POSITIONING.pullWeight;
+            }
+        }
+
+        const out = { z, score: Math.max(0.1, score) };
+        return out;
     });
+
+    // A §1: the top few destinations, for the tribute sheet's trace.
+    if (t.decisionTrace) {
+        t.decisionTrace.destinations = [...scored]
+            .sort((a, b) => b.score - a.score)
+            .slice(0, DECISION_TRACE.topN)
+            .map(o => ({ zone: o.z.name, score: Math.round(o.score * 100) / 100 }));
+    }
 
     let roll = ctx.rng.nextFloat() * scored.reduce((s, o) => s + o.score, 0);
     for (const o of scored) {

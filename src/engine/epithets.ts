@@ -57,7 +57,17 @@ export function tickEpithets(ctx: SimContext) {
         // who went down, got up unaided, and then kept going for days.
         if (t.everDowned && t.revivedBy === undefined && t.daysSurvived >= EPITHET_RULES.daysForEnduring) {
             award(ctx, t, 'enduring');
+            return;
         }
+        // §6: four more, each off a counter the run already keeps.
+        //
+        // Ordered after the three above deliberately: blood, absence and
+        // endurance are what the country notices first. These are what it
+        // notices about somebody it has had time to watch.
+        if ((t.sparedDowned?.length ?? 0) >= EPITHET_RULES.sparesForMerciful) { award(ctx, t, 'merciful'); return; }
+        if ((t.betrayalsCommitted ?? 0) + (t.faithBroken ?? 0) >= EPITHET_RULES.breaksForTurncoat) { award(ctx, t, 'turncoat'); return; }
+        if ((t.trapKills ?? 0) >= EPITHET_RULES.trapKillsForBuilder) { award(ctx, t, 'builder'); return; }
+        if ((t.fortifiedCycles ?? 0) >= EPITHET_RULES.cyclesForWarden) { award(ctx, t, 'warden'); }
     });
 }
 

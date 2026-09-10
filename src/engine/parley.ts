@@ -507,7 +507,24 @@ export function resolveTruces(ctx: SimContext) {
             // §4.3: expiry is the earlier of the clock and the reason. A truce
             // whose reason has evaporated resolves now rather than idling out
             // its counter, which is what turned 90% of all truces into silence.
-            if (cycle < until && !(other && other.status === 'alive' && reasonSpent(ctx, t, other))) return;
+            if (cycle < until && !(other && other.status === 'alive' && reasonSpent(ctx, t, other))) {
+                // §4: a truce visibly holding. It used to be narrated only when
+                // the two of them happened to meet in an encounter, which is
+                // why 273 truces produced 15 held beats — the agreement was
+                // real and almost entirely invisible. Two people standing in
+                // the same place and not doing anything about it is the whole
+                // point of the mechanic, and it is worth saying out loud.
+                if (other && other.status === 'alive' && t.status === 'alive'
+                    && other.zone === t.zone && t.id < other.id
+                    && ctx.rng.chance(PARLEY.quietHoldChance)) {
+                    ctx.logEvent(
+                        fill(ctx.pickText(PARLEY_TEXTS.truceHeld), { t1: t.name, t2: other.name, zone: t.zone }),
+                        [t.id, other.id],
+                        { category: 'alliance', zone: t.zone }
+                    );
+                }
+                return;
+            }
             // A dead counterparty leaves nothing to resolve. Clear both
             // sides of the record — leaving the mirror key on the other
             // tribute made save payloads accrete stale empty truce objects.

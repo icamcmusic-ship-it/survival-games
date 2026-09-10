@@ -1,10 +1,12 @@
-import { GameState, Stance, Tribute } from '../models/types';
+import { GameState, Stance, TraceReason, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { FEAR, STANCE, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
+import { DECISION_TRACE, FEAR, RISK, RIVAL_READ, STANCE, STANCE_HOLD, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
 import { STANCES, STANCE_PROFILES, isEvasiveStance } from '../data/stances';
 import { SimContext } from './context';
 import { sleepStanceHold } from './survival';
-import { cyclesSinceContact, ensureMemory, rivalRecord } from './memory';
+import { cycleOf, cyclesSinceContact, ensureMemory, readOf, rivalRecord } from './memory';
+import { riskTolerance } from './risk';
+import { inShock } from './combat';
 import { getRel } from './relationships';
 import { fearOf } from './fear';
 import { massOf, visibleBulk } from './physique';
@@ -67,6 +69,18 @@ function visiblePower(o: Tribute, observer?: Tribute): number {
  *
  * Returns the ratio of hostile power to the tribute's own, allies included.
  */
+/**
+ * A §5: what the observer converges on as their read approaches 1 — the
+ * things a stranger cannot see but somebody who has fought you knows: how
+ * hurt you actually are, and whether you can use what you are carrying.
+ */
+function combatEstimateTruth(o: Tribute): number {
+    return STANCE.visibleBase
+        + o.health / STANCE.staleAveragePower
+        + o.trainingScore * STANCE.trainingScoreWeight
+        + (o.inventory.some(i => i.type === 'weapon') ? STANCE.visibleWeaponBonus : 0);
+}
+
 export function assessZone(t: Tribute, occupants: Tribute[], state?: GameState) {
     const estimate = (o: Tribute) => {
         let power = visiblePower(o, t);
@@ -92,9 +106,22 @@ export function assessZone(t: Tribute, occupants: Tribute[], state?: GameState) 
         if (state) {
             const staleness = cyclesSinceContact(state, t, o.id);
             if (staleness > 2) {
-                const confidence = Math.max(STANCE.staleConfidenceFloor,
-                    1 - Math.min(4, staleness) * STANCE.staleConfidencePerCycle);
+                // A §5: a read earned over several meetings does not decay the
+                // way a glimpse does. Somebody you have fought twice stays
+                // legible across a gap that would reduce a stranger to the
+                // "average tribute" guess.
+                const read = readOf(t, o.id);
+                const decay = Math.min(4, staleness) * STANCE.staleConfidencePerCycle
+                    * (1 - read * RIVAL_READ.staleResist);
+                const confidence = Math.max(STANCE.staleConfidenceFloor, 1 - decay);
                 power = power * confidence + STANCE.staleAveragePower * (1 - confidence);
+            }
+            // ...and the estimate itself sharpens toward the truth for people
+            // whose measure they actually have.
+            const read = readOf(t, o.id);
+            if (read > 0) {
+                const truth = combatEstimateTruth(o);
+                power = power * (1 - read * RIVAL_READ.blendWeight) + truth * read * RIVAL_READ.blendWeight;
             }
         }
         return power;
@@ -165,12 +192,25 @@ function buildSignals(ctx: SimContext, t: Tribute, occupants: Tribute[]): Stance
 
     // Shadowing needs someone worth trailing: hostile, one zone over, and
     // currently unaware they are being trailed at all.
+    // A §2: Shadowing fired in 1.5% of cycles because it asked for 6 of 10
+    // stealth on a cast averaging nearer 5, on top of an unbroken unseen
+    // streak. Trailing somebody you already have the measure of is a
+    // different skill from trailing a stranger, so a tribute who has a read
+    // on the quarry — met them, fought them, watched them — qualifies at a
+    // lower stealth floor.
     let shadowTarget: Tribute | undefined;
-    if (t.attributes.stealth >= STANCE_MODES.shadowing.stealthMin && (t.unseenStreak ?? 0) > 0) {
+    const shadowFloor = STANCE_MODES.shadowing.stealthMin;
+    const trackedFloor = shadowFloor - STANCE_HOLD.shadowStealthSlack;
+    if (t.attributes.stealth >= trackedFloor && (t.unseenStreak ?? 0) > 0) {
+        const tracks = (o: Tribute) => readOf(t, o.id) > 0 || rivalRecord(t, o.id).fights > 0;
         const candidates = ctx.state.tributes.filter(o =>
             o.status === 'alive' && o.id !== t.id
             && (o.allianceId === undefined || o.allianceId !== t.allianceId)
-            && neighbours.includes(o.zone));
+            && (t.attributes.stealth >= shadowFloor || tracks(o))
+            // A §2: one zone over, or the same zone at a distance. Requiring
+            // the quarry to be strictly next door meant a shadow lost the
+            // stance the moment their mark walked into the same clearing.
+            && (neighbours.includes(o.zone) || o.zone === t.zone));
         // Trail the one they already have a reason to watch, else the nearest
         // one they can plausibly stay behind.
         shadowTarget = candidates.find(o => t.shadowing?.targetId === o.id)
@@ -238,7 +278,12 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
             || sig.ownTrapsHere > 0
             || camp?.shelter !== undefined
             || camp?.fire !== undefined
-            || camp?.camouflage !== undefined;
+            || camp?.camouflage !== undefined
+            // A §2: a camp and a pack worth defending is a reason to stay put
+            // in its own right. Requiring defensible *ground* on top of built
+            // work kept the stance at 2.8% of cycles.
+            || (sig.kit >= STANCE_HOLD.fortifiedSuppliedKit
+                && (t.zoneHeld ?? 0) >= STANCE_HOLD.fortifiedCampHoldCycles);
     },
 
     // Sticky on the way out: a tribute who has been Desperate stays Desperate
@@ -266,7 +311,7 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
     // steps out of the adjacent sector — otherwise a shadow drops the stance
     // and its accumulated count every time their target crosses a boundary.
     Shadowing: (_ctx, t, sig) =>
-        t.attributes.stealth >= STANCE_MODES.shadowing.stealthMin
+        t.attributes.stealth >= STANCE_MODES.shadowing.stealthMin - STANCE_HOLD.shadowStealthSlack
         && (!!sig.shadowTarget || (t.stance === 'Shadowing' && !!t.shadowing))
         && (t.unseenStreak ?? 0) > 0,
 };
@@ -293,6 +338,9 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         // and endgame bonuses had Aggressive at 43% of all cycles, and the
         // arena was flattening into a brawl.
         s += (t.momentum ?? 0) * STANCE.momentumAggressionWeight;
+        // A §4: risk tolerance is a composite of temperament *and* state —
+        // health, kit, how long the run has gone and how small the field is.
+        s += riskTolerance(ctx, t) * RISK.stanceAggressionWeight;
         // Hunger is a reason to hunt, now that hunting actually feeds you.
         if (t.vitals.hunger > STANCE.huntingHunger) s += STANCE.huntingHungerAggression;
         // The field narrowing is itself a reason to force the issue — somebody
@@ -320,6 +368,9 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
 
     Evasive: (ctx, t, sig) => {
         let s = 0;
+        // A §4: the mirror of the Aggressive term — an unwilling read of the
+        // board is what makes somebody break contact rather than take it.
+        s -= riskTolerance(ctx, t) * RISK.stanceEvasiveWeight;
         s += sig.arch.caution * STANCE.archetypeWeight;
         // §3.2: generalised fear. `memory.fear` is per-target and there was no
         // aggregate at all — a tribute could be frightened of every living
@@ -368,8 +419,16 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         if (t.objective?.kind === 'hold') s += STANCE.holdDefensive;
         if (t.objective?.kind === 'protect') s += STANCE.protectDefensive;
         if (t.allianceId) s += STANCE_MODES.fortified.alliedBonus;
+        // A §2: the two terms that make an ordinary camp worth defending. A
+        // tribute with a fire and a full pack has made somewhere to be, and
+        // the score should say so without needing a chokepoint as well.
+        const camp = ctx.state.camps?.[t.id];
+        if (camp?.fire !== undefined || camp?.camouflage !== undefined) s += STANCE_HOLD.fortifiedCampBonus;
+        if (sig.kit >= STANCE_HOLD.fortifiedSuppliedKit) s += STANCE_HOLD.fortifiedSuppliedBonus;
         s += sig.arch.caution * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
         s += sig.arch.stanceBias?.Fortified ?? 0;
+        // A §4: a cautious read of the board is a reason to dig in.
+        s -= riskTolerance(ctx, t) * RISK.stanceEvasiveWeight;
         return s;
     },
 
@@ -399,6 +458,15 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
     Shadowing: (ctx, t, sig) => {
         let s = STANCE_MODES.shadowing.base;
         s += (t.attributes.stealth - STANCE_MODES.shadowing.stealthMin) * STANCE_MODES.shadowing.perStealthPoint;
+        // A §2: trailing somebody whose measure you already have. A read that
+        // came from meetings and fights is exactly what makes a shadow
+        // confident enough to keep the distance rather than close it.
+        const quarry = sig.shadowTarget?.id ?? t.shadowing?.targetId;
+        if (quarry) {
+            const seenRecently = (ensureMemory(t).lastContact[quarry] ?? -Infinity)
+                >= cycleOf(ctx.state) - STANCE_HOLD.shadowSightingMaxAge;
+            if (readOf(t, quarry) > 0 || seenRecently) s += STANCE_HOLD.shadowTrackingBonus;
+        }
         // Already mid-trail: finishing what you started beats restarting it.
         if (t.shadowing?.targetId === sig.shadowTarget?.id) s += (t.shadowing?.cycles ?? 0) * STANCE_MODES.shadowing.perTrailCycle;
         if (sig.hasWeapon) s += STANCE_MODES.shadowing.armedBonus;
@@ -445,7 +513,71 @@ export function forceStance(t: Tribute, stance: Stance) {
     t.stanceChurn = Math.min(STANCE.churnMax, (t.stanceChurn ?? 0) + 1);
 }
 
+/**
+ * A §1: the strongest signals behind one stance's score, in words.
+ *
+ * Deliberately a reading of the same signal bundle the scorers consume rather
+ * than an instrumented copy of every `+=` in the table: the scorers are two
+ * hundred lines of weighted terms and threading a label through each one
+ * would double the file for a tooltip. These are the terms that actually
+ * decide the ranking in practice, which is what the question "why did they do
+ * that?" is really asking.
+ */
+function stanceReasons(ctx: SimContext, t: Tribute, sig: StanceSignals, stance: Stance): TraceReason[] {
+    const out: TraceReason[] = [];
+    const push = (label: string, weight: number) => {
+        if (Math.abs(weight) >= STANCE_HOLD.traceReasonFloor) out.push({ label, weight: Math.round(weight * 100) / 100 });
+    };
+    const risk = riskTolerance(ctx, t);
+
+    if (stance === 'Aggressive' || stance === 'Hunting') {
+        push('willing to take a fight', risk * RISK.stanceAggressionWeight);
+        push('armed', sig.hasWeapon ? STANCE.weaponAggression : -STANCE.weaponAggression);
+        if (sig.ratio > 0 && sig.ratio < STANCE.dominantRatio) push('holds the advantage here', STANCE.dominantAggression);
+        if (ensureMemory(t).vengeance.length > 0) push('owes somebody', STANCE.vengeanceAggression);
+        if ((t.momentum ?? 0) > 0) push('coming off a kill', (t.momentum ?? 0) * STANCE.momentumAggressionWeight);
+    } else if (stance === 'Evasive' || stance === 'Defensive') {
+        push('unwilling to take a fight', -risk * RISK.stanceEvasiveWeight);
+        push('temperament', sig.arch.caution * STANCE.archetypeWeight);
+        if (sig.ratio > STANCE.outmatchedRatio) push('outmatched in this zone', sig.ratio);
+        if (t.health < STANCE.evasiveHealth) push('hurt', (STANCE.evasiveHealth - t.health) / STANCE.evasiveHealthDivisor);
+    } else if (stance === 'Fortified') {
+        if (sig.ownTrapsHere > 0) push('their own traps are set here', sig.ownTrapsHere * STANCE_MODES.fortified.perTrapBonus);
+        if (sig.chokepoint) push('a chokepoint worth holding', STANCE_MODES.fortified.chokepointBonus);
+        if (sig.elevation) push('high ground', STANCE_MODES.fortified.elevationBonus);
+        const camp = ctx.state.camps?.[t.id];
+        if (camp?.fire !== undefined || camp?.camouflage !== undefined) push('a camp they built', STANCE_HOLD.fortifiedCampBonus);
+        if (sig.kit >= STANCE_HOLD.fortifiedSuppliedKit) push('supplies worth defending', STANCE_HOLD.fortifiedSuppliedBonus);
+    } else if (stance === 'Shadowing') {
+        push('stealth', (t.attributes.stealth - STANCE_MODES.shadowing.stealthMin) * STANCE_MODES.shadowing.perStealthPoint);
+        const quarry = sig.shadowTarget?.id ?? t.shadowing?.targetId;
+        if (quarry && readOf(t, quarry) > 0) push('has their quarry\'s measure', STANCE_HOLD.shadowTrackingBonus);
+        if (t.shadowing) push('already on the trail', (t.shadowing.cycles ?? 0) * STANCE_MODES.shadowing.perTrailCycle);
+    } else if (stance === 'Desperate') {
+        push('badly hurt', Math.max(0, STANCE_MODES.desperate.healthThreshold - t.health) * STANCE_MODES.desperate.perTenHealthBelow / 10);
+        if (sig.broken) push('past caring', STANCE_MODES.desperate.brokenBonus);
+        if (t.vitals.hunger > STANCE_MODES.desperate.vitalThreshold) push('starving', STANCE_MODES.desperate.vitalBonus);
+        if (t.vitals.thirst > STANCE_MODES.desperate.vitalThreshold) push('parched', STANCE_MODES.desperate.vitalBonus);
+    } else if (stance === 'Scavenging') {
+        if (!sig.hasWeapon) push('unarmed', STANCE_MODES.scavenging.unarmedBonus);
+        if (sig.cannonNearby) push('a cannon just went off nearby', STANCE_MODES.scavenging.cannonBonus);
+        push('travelling light', Math.max(0, STANCE_MODES.scavenging.inventoryValue - sig.kit) * STANCE_MODES.scavenging.perMissingValue);
+    }
+
+    return out
+        .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight))
+        .slice(0, DECISION_TRACE.reasonsPerStance);
+}
+
 export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) {
+    // A §8: shock outranks the scorer entirely. Somebody who nearly died this
+    // cycle is not choosing anything; they are getting away from it.
+    if (inShock(ctx, t)) {
+        forceStance(t, 'Evasive');
+        t.decisionTrace = { cycle: ctx.state.cycle ?? 0, stances: [], forced: `in shock — ${t.shock?.cause ?? 'a near miss'}` };
+        return;
+    }
+
     const sig = buildSignals(ctx, t, occupants);
     // Churn decays every cycle a tribute is scored, so the widened margin is a
     // brake on oscillation rather than a permanent tax on ever changing again.
@@ -476,6 +608,15 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         available.map(s => [s, STANCE_SCORERS[s](ctx, t, sig)])
     ) as Record<Stance, number>;
 
+    // A §2: hysteresis for the conditional stances specifically. Fortified and
+    // Shadowing are commitments whose *value* comes from having been held —
+    // prepared ground, an unbroken trail — so re-litigating them against a
+    // freshly-scored Evasive every cycle undervalues them by construction.
+    // The incumbent keeps a bonus for as long as its precondition holds.
+    if (STANCE_PROFILES[t.stance]?.conditional && scores[t.stance] !== undefined) {
+        scores[t.stance] += STANCE_HOLD.conditionalIncumbentBonus;
+    }
+
     // Trailing is a per-cycle commitment; drop it the moment the stance does.
     if (available.includes('Shadowing') && sig.shadowTarget) {
         t.shadowing = t.shadowing?.targetId === sig.shadowTarget.id
@@ -487,6 +628,17 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
 
     const ranked = (Object.entries(scores) as Array<[Stance, number]>).sort((a, b) => b[1] - a[1]);
     const [bestStance, bestScore] = ranked[0] ?? ['Defensive', 0];
+
+    // A §1: what the scorer actually saw, kept for one cycle so the tribute
+    // sheet can answer "why did they do that?" and the soak can audit it.
+    t.decisionTrace = {
+        cycle,
+        stances: ranked.slice(0, DECISION_TRACE.topN).map(([stance, score]) => ({
+            stance,
+            score: Math.round(score * 100) / 100,
+            reasons: stanceReasons(ctx, t, sig, stance),
+        })),
+    };
 
     // A conditional stance whose situation has passed is vacated at once — the
     // hold is a stability device, not a trap.

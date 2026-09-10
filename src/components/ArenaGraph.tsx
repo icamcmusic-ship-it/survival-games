@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { GameState, Tribute } from '../models/types';
+import { EdgeRule, GameState, Tribute } from '../models/types';
 import { edgeKey, effectiveResources } from '../engine/map';
 import { GRAPH_MIN_WIDTH_PX, NODE_HIT_R, NODE_R, VIEW_W, VIEW_H, layoutZones } from './arenaLayout';
 
@@ -16,6 +16,25 @@ import { GRAPH_MIN_WIDTH_PX, NODE_HIT_R, NODE_R, VIEW_W, VIEW_H, layoutZones } f
 
 const TERRAIN_ICONS: Record<string, string> = {
     open: '🏳️', forest: '🌲', water: '🌊', highland: '⛰️', ruins: '🏚️', wetland: '🥀',
+    // §10: the four terrains added in §10.
+    cave: '🕳️', ice: '🧊', desert: '🏜️', urban: '🏙️',
+};
+
+/**
+ * §5: the seven edge-rule kinds, as glyphs the map can carry and a legend can
+ * name. A rule the player cannot see is a rule they cannot plan around.
+ */
+const EDGE_GLYPHS: Record<EdgeRule['kind'], string> = {
+    oneWay: '→', tolled: '¤', timeGated: '◑', collapsing: '⧗', oneWayAfter: '⇥', contested: '⚔', hidden: '?',
+};
+const EDGE_LABELS: Record<EdgeRule['kind'], string> = {
+    oneWay: 'one way only',
+    tolled: 'costs something to cross',
+    timeGated: 'passable only at certain hours',
+    collapsing: 'a limited number of crossings left',
+    oneWayAfter: 'becomes one-way once enough people have crossed',
+    contested: 'somebody is holding it',
+    hidden: 'has to be found before it can be used',
 };
 
 const dangerLabel = (d: number) => (d >= 0.7 ? 'High risk' : d >= 0.4 ? 'Moderate' : 'Low risk');
@@ -33,6 +52,7 @@ export function ArenaGraph({ gameState, selectedZone, onSelectZone, tributes }: 
     const positions = useMemo(() => layoutZones(arena), [arena]);
     const collapsed = gameState.collapsedZones ?? [];
     const traffic = gameState.zoneTraffic ?? {};
+    const cutEdges = useMemo(() => new Set(gameState.severedEdges ?? []), [gameState.severedEdges]);
     // §2.9: `zoneDeaths` and `camps` have both been stored since they landed
     // and neither was ever drawn — the map showed structure and forage and
     // nothing about what has actually happened on it.
@@ -77,18 +97,42 @@ export function ArenaGraph({ gameState, selectedZone, onSelectZone, tributes }: 
             {edges.map(({ a, b, key }) => {
                 const pa = positions[a];
                 const pb = positions[b];
-                const severed = collapsed.includes(a) || collapsed.includes(b);
+                const outOfBounds = collapsed.includes(a) || collapsed.includes(b);
+                // §5: the seven edge-rule kinds were a rich mechanic the player
+                // could not see at all — a one-way pass, a bridge with three
+                // crossings left and an ordinary path all drew as the same
+                // line. And a route the Gamemakers cut used to be drawn as
+                // though it had never existed, when what the player needs to
+                // know is that it is *gone*.
+                const cut = cutEdges.has(key);
+                const rule = arena.edgeRules?.[key];
+                const severed = outOfBounds || cut;
+                const glyph = cut ? '✕' : rule ? EDGE_GLYPHS[rule.kind] : undefined;
+                const ruleLabel = cut ? 'destroyed' : rule ? EDGE_LABELS[rule.kind] : undefined;
                 const flow = traffic[key] ?? 0;
                 const intensity = flow / busiest;
                 return (
                     <g key={key}>
+                        {ruleLabel && <title>{`${a} ↔ ${b} — ${ruleLabel}`}</title>}
                         <line
                             x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y}
-                            stroke={severed ? 'var(--color-ink-700)' : flow > 0 ? 'var(--red)' : 'var(--line)'}
-                            strokeWidth={severed ? 1 : 1.5 + intensity * 5}
-                            strokeDasharray={severed ? '4 5' : undefined}
-                            opacity={severed ? 0.35 : flow > 0 ? 0.35 + intensity * 0.65 : 0.55}
+                            stroke={cut ? 'var(--cat-death)' : outOfBounds ? 'var(--color-ink-700)' : flow > 0 ? 'var(--red)' : 'var(--line)'}
+                            strokeWidth={severed ? 1.5 : 1.5 + intensity * 5}
+                            strokeDasharray={severed ? '4 5' : rule ? '7 3' : undefined}
+                            opacity={outOfBounds ? 0.35 : cut ? 0.7 : flow > 0 ? 0.35 + intensity * 0.65 : 0.55}
                         />
+                        {/* A cut route keeps its line and gets struck through,
+                            so "there used to be a way here" is legible. */}
+                        {glyph && (
+                            <text
+                                x={(pa.x + pb.x) / 2} y={(pa.y + pb.y) / 2 + 3}
+                                textAnchor="middle"
+                                style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 800 }}
+                                fill={cut ? 'var(--cat-death)' : 'var(--color-ink-500)'}
+                            >
+                                {glyph}
+                            </text>
+                        )}
                         {/* Traffic is also printed, because a thicker line is not a
                             readable quantity and colour alone is not an accessible one. */}
                         {flow >= 1 && !severed && (

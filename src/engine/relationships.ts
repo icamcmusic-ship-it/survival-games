@@ -5,6 +5,7 @@ import { RNG } from '../utils/rng';
 import { DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, RIVALRY, SUSPICION } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
+import { carryCapacity, giveItem } from './items';
 import { clampTribute } from './vitals';
 import { cyclesSinceContact, ensureMemory, hasStoodBy, raiseSuspicion, rattle, swearVengeance, noteContact } from './memory';
 import { areLovers } from './alliance';
@@ -163,9 +164,55 @@ const fill = (template: string, vars: Record<string, string>) =>
  * hated them exhales. The crowd notices when a favourite is put down. The old
  * code did exactly one of these things, for exactly one trait.
  */
+/**
+ * §4: what a death leaves to whoever was closest.
+ *
+ * Grief already propagated; the estate did not. A tribute whose only ally
+ * died standing next to them walked away from the body with nothing, and the
+ * dead tribute's grudges — the people they had sworn to get — died with them,
+ * which quietly meant that killing somebody's friend was safer than killing
+ * them. The nearest survivor who cared takes both: what is on the body, and
+ * who the body was owed by.
+ */
+function inheritFrom(ctx: SimContext, victim: Tribute, killer?: Tribute) {
+    const heir = ctx.state.tributes
+        .filter(o => o.status === 'alive' && o.id !== victim.id && o.zone === victim.zone)
+        .filter(o => getRel(o, victim.id) >= RELATIONSHIPS.inheritBond
+            || (o.allianceId !== undefined && o.allianceId === victim.allianceId))
+        .sort((a, b) => getRel(b, victim.id) - getRel(a, victim.id))[0];
+    if (!heir || heir.id === killer?.id) return;
+
+    // Their fight, now. Everybody the dead tribute had sworn to get.
+    const oaths = ensureMemory(victim).vengeance
+        .filter(id => id !== heir.id && ctx.state.tributes.some(o => o.id === id && o.status === 'alive'));
+    oaths.forEach(id => swearVengeance(heir, id));
+
+    // The kit is picked up where it fell, if there is room for it.
+    const estate = victim.inventory.filter(i => i.capacity === undefined);
+    const taken: string[] = [];
+    estate.forEach(item => {
+        if (heir.inventory.length >= carryCapacity(heir)) return;
+        giveItem(heir, item);
+        taken.push(item.name);
+    });
+    victim.inventory = victim.inventory.filter(i => !taken.includes(i.name));
+
+    if (taken.length === 0 && oaths.length === 0) return;
+    ctx.logEvent(
+        taken.length > 0 && oaths.length > 0
+            ? `${heir.name} takes what ${victim.name} was carrying, and the list of people ${victim.name} was not going to forgive. Both of them are heavier than they look.`
+            : taken.length > 0
+                ? `${heir.name} goes through what ${victim.name} left and takes ${taken.join(', ')}. Nobody who saw it thinks less of them for it.`
+                : `Whatever ${victim.name} had sworn, ${heir.name} heard it often enough to carry it on for them.`,
+        [heir.id, victim.id],
+        { category: 'alliance', zone: victim.zone }
+    );
+}
+
 export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?: Tribute) {
     const state = ctx.state;
     const mourners: Tribute[] = [];
+    inheritFrom(ctx, victim, killer);
 
     state.tributes.forEach(other => {
         if (other.status !== 'alive' || other.id === victim.id) return;

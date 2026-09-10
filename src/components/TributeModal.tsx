@@ -486,6 +486,56 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                     )}
                 </div>
 
+                {/* A §1: "why did they do that?" — the decision trace the
+                    stance and objective layers now leave behind. The engine
+                    always had the reasons; the sheet could only ever show the
+                    conclusion, so a tribute's behaviour read as arbitrary
+                    exactly when it was most carefully derived. */}
+                {tribute.status === 'alive' && tribute.decisionTrace && (
+                    <div className="panel-flush px-3 py-2 mb-4 text-xs">
+                        <span className="eyebrow">Why did they do that?</span>
+                        {tribute.decisionTrace.forced ? (
+                            <p className="mt-1.5 leading-relaxed text-[var(--color-ink-400)]">
+                                {tribute.name} is not choosing anything this cycle — {tribute.decisionTrace.forced}.
+                            </p>
+                        ) : (
+                            <>
+                                <p className="mt-1.5 leading-relaxed text-[var(--color-ink-400)]">
+                                    They went {tribute.stance.toLowerCase()}
+                                    {tribute.decisionTrace.stances[0]?.reasons.length
+                                        ? <> because {tribute.decisionTrace.stances[0].reasons.map(r => r.label).join(', ')}</>
+                                        : null}.
+                                    {tribute.decisionTrace.stances[1] && (
+                                        <> The other thing on the table was {tribute.decisionTrace.stances[1].stance.toLowerCase()}
+                                            {' '}({tribute.decisionTrace.stances[1].score} against {tribute.decisionTrace.stances[0]?.score}).</>
+                                    )}
+                                </p>
+                                {tribute.decisionTrace.objectives?.[0] && (
+                                    <p className="mt-1 leading-relaxed text-[var(--color-ink-500)]">
+                                        Intention: {tribute.decisionTrace.objectives[0].label.toLowerCase()}
+                                        {tribute.decisionTrace.objectives[1]
+                                            ? <>, over {tribute.decisionTrace.objectives[1].label.toLowerCase()}</>
+                                            : null}.
+                                    </p>
+                                )}
+                                {tribute.decisionTrace.destinations && tribute.decisionTrace.destinations.length > 1 && (
+                                    <p className="mt-1 leading-relaxed text-[var(--color-ink-500)]">
+                                        Ground they weighed: {tribute.decisionTrace.destinations
+                                            .map(d => `${d.zone} (${d.score})`).join(', ')}.
+                                    </p>
+                                )}
+                                {tribute.standingGoal && (
+                                    <p className="mt-1 leading-relaxed text-[var(--color-ink-500)]">
+                                        Still meaning to: {tribute.standingGoal.reason === 'feast' ? 'get to the feast'
+                                            : tribute.standingGoal.reason === 'avenge' ? 'settle a score'
+                                                : 'take the ground this ends on'}.
+                                    </p>
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
+
                 {/* A5: the demoted chip wall, as one collapsed dossier line. */}
                 <details className="panel-flush px-3 py-2 mb-4 text-xs text-[var(--color-ink-400)]">
                     <summary className="cursor-pointer eyebrow">Dossier</summary>

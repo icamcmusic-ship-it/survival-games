@@ -1,5 +1,6 @@
-import { Item, ItemQuality, Tribute } from '../models/types';
-import { INVENTORY, PHYSIQUE, QUALITY } from '../data/balance';
+import { GameState, Item, ItemQuality, Tribute } from '../models/types';
+import { arenaHasLaw } from './gamesProfile';
+import { INVENTORY, PHYSIQUE, QUALITY, SITUATIONAL_KIT } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { massOf } from './physique';
 import { traitMod } from '../data/traits';
@@ -92,6 +93,18 @@ export function wearArmour(t: Tribute, amount: number) {
     });
 }
 
+/**
+ * §5 `noWeapons`: the arena's own item pool. Every site that mints or drops
+ * something reads this rather than `ITEMS` directly, so an arena that declares
+ * the law simply has no blades in it — the horn, the feast table, a parachute
+ * and a forage roll all come up empty of them.
+ */
+export function itemPoolFor(state: GameState, pool: Item[]): Item[] {
+    if (!arenaHasLaw(state, 'noWeapons')) return pool;
+    const stripped = pool.filter(i => i.type !== 'weapon');
+    return stripped.length > 0 ? stripped : pool.filter(i => i.type === 'food' || i.type === 'water');
+}
+
 export function hasTool(t: Tribute, key: 'purifies' | 'light' | 'warmth' | 'fishing'): boolean {
     return t.inventory.some(i => i[key] === true);
 }
@@ -130,6 +143,17 @@ function keepValue(t: Tribute, item: Item): number {
     if (item.type === 'medical') value += 20;
     if (item.type === 'water' && t.vitals.thirst > 40) value += 40;
     if (item.type === 'food' && t.vitals.hunger > 40) value += 40;
+    // A §10: what the *arena* makes worth keeping. `keepValue` has no context
+    // of its own, so the cycle pass stamps the climate's priorities onto the
+    // tribute and this reads them: a cloak is dead weight in a jungle and the
+    // difference between living and not in the Frozen Wasteland.
+    const priorities = t.kitPriorities;
+    if (priorities?.warmth) {
+        if (item.warmth === true) value += SITUATIONAL_KIT.coldWarmthBonus;
+        if (item.id === 'matches' || item.id === 'flint') value += SITUATIONAL_KIT.coldFireBonus;
+    }
+    if (priorities?.water && item.type === 'water') value += SITUATIONAL_KIT.dryWaterBonus;
+    if (priorities?.purifier && item.purifies === true) value += SITUATIONAL_KIT.foulWaterPurifierBonus;
     // A broken weapon is dead weight.
     if (item.durability !== undefined && item.durability <= 10) value -= 30;
     return value;

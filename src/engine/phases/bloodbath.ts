@@ -2,17 +2,18 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
+import { traitMod } from '../../data/traits';
 import { ARCHETYPES } from '../../data/archetypes';
 import { ALLIANCES, BLOODBATH, QUALITY_BIAS, TRAINING } from '../../data/balance';
 import { registerAlliance } from '../alliance';
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { BLOODBATH_TEXTS } from '../../data/flavorText';
-import { giveItem, itemPhrase, mintItem } from '../items';
+import { giveItem, itemPhrase, mintItem, itemPoolFor } from '../items';
 import { personaThreat } from './alliances';
 import { getRel, setRel } from '../relationships';
 import { noteContact, noteSighting } from '../memory';
 import { addFear } from '../fear';
-import { wildcardIs } from '../gamesProfile';
+import { wildcardIs, arenaHasLaw } from '../gamesProfile';
 import { arenaBriefingLog } from '../arenaBriefingLog';
 
 const fill = (template: string, vars: Record<string, string>) =>
@@ -104,6 +105,9 @@ function reachScore(ctx: SimContext, t: Tribute): number {
 
 /** Weapons only. What is actually laid out at the mouth of the horn. */
 const HORN_WEAPONS = ITEMS.filter(i => i.type === 'weapon');
+// §5 `noWeapons`: an arena with nothing in it to pick up. The Quell already
+// did this through `quell-weapons-fixed`; as a law it is declarable by any
+// arena, and what the horn holds is everything except the blades.
 
 /**
  * 'The Cornucopia Forfeit': no weapons anywhere near the horn this year,
@@ -111,9 +115,12 @@ const HORN_WEAPONS = ITEMS.filter(i => i.type === 'weapon');
  * of the unfiltered `ITEMS`/`HORN_WEAPONS` when the Quell is standing.
  */
 function lootPool(ctx: SimContext): Item[] {
-    return wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? ITEMS.filter(i => i.type === 'food') : ITEMS;
+    const base = wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? ITEMS.filter(i => i.type === 'food') : ITEMS;
+    // §5 `noWeapons` composes with the Quell rather than overriding it.
+    return itemPoolFor(ctx.state, base);
 }
 function hornWeaponsPool(ctx: SimContext): Item[] {
+    if (arenaHasLaw(ctx.state, 'noWeapons')) return lootPool(ctx);
     return wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? lootPool(ctx) : HORN_WEAPONS;
 }
 
@@ -180,6 +187,19 @@ export function processBloodbath(ctx: SimContext) {
         // A plate in the horn's shadow is an invitation, and a plate on the far
         // edge of the ring is permission to leave.
         fightChance += (proximity - 0.5) * 2 * BLOODBATH.fightChanceProximity;
+        // §5: what the horn is shaped like changes who runs at it. A walled
+        // horn is a box — fewer take it on, and those who do are past talking
+        // themselves out of it. An island has to be swum or waded to, so it
+        // selects for whoever is at home in water rather than whoever is
+        // nearest.
+        const layout = ctx.state.arena.cornucopiaLayout ?? 'plate';
+        if (layout === 'walled') {
+            fightChance -= BLOODBATH.walledHornDeterrent;
+            if (t.isCareer || t.traits.includes('Bloodthirsty')) fightChance += BLOODBATH.walledHornCommitment;
+        } else if (layout === 'island') {
+            fightChance -= BLOODBATH.islandHornDeterrent;
+            fightChance += traitMod(t, 'water') * BLOODBATH.islandHornSwimmer;
+        }
         fightChance += (t.attributes.agility - 5) * BLOODBATH.fightChanceAgility;
         if (t.attributes.strength > 7) fightChance += 0.15;
         if (t.traits.includes('Bloodthirsty')) fightChance += 0.3;
@@ -388,6 +408,10 @@ function pickOpponentIndex(ctx: SimContext, attacker: Tribute, pool: Tribute[]):
         let weight = 1;
         weight += Math.max(0, -getRel(attacker, target.id)) * 0.03;
         weight += personaThreat(target) * 2;
+        // §8: the trait that claims nobody is looking at them. The bloodbath
+        // is a third of every run's deaths and it was reading everything about
+        // a target except how little anybody wanted to pick them.
+        weight += traitMod(target, 'targetDraw') * BLOODBATH.targetDrawWeight;
         // Careers hunt the weak first; that is the whole strategy.
         if (attacker.isCareer) weight += (10 - target.attributes.strength) * 0.15;
         weight *= Math.max(0.1, 1 - Math.max(0, getRel(attacker, target.id)) / 120);
