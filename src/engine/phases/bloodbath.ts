@@ -187,6 +187,19 @@ export function processBloodbath(ctx: SimContext) {
         // A plate in the horn's shadow is an invitation, and a plate on the far
         // edge of the ring is permission to leave.
         fightChance += (proximity - 0.5) * 2 * BLOODBATH.fightChanceProximity;
+        // §5: what the horn is shaped like changes who runs at it. A walled
+        // horn is a box — fewer take it on, and those who do are past talking
+        // themselves out of it. An island has to be swum or waded to, so it
+        // selects for whoever is at home in water rather than whoever is
+        // nearest.
+        const layout = ctx.state.arena.cornucopiaLayout ?? 'plate';
+        if (layout === 'walled') {
+            fightChance -= BLOODBATH.walledHornDeterrent;
+            if (t.isCareer || t.traits.includes('Bloodthirsty')) fightChance += BLOODBATH.walledHornCommitment;
+        } else if (layout === 'island') {
+            fightChance -= BLOODBATH.islandHornDeterrent;
+            fightChance += traitMod(t, 'water') * BLOODBATH.islandHornSwimmer;
+        }
         fightChance += (t.attributes.agility - 5) * BLOODBATH.fightChanceAgility;
         if (t.attributes.strength > 7) fightChance += 0.15;
         if (t.traits.includes('Bloodthirsty')) fightChance += 0.3;

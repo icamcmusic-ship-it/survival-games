@@ -9,6 +9,23 @@ const TERRAIN_ICONS: Record<string, string> = {
     cave: '🕳️', ice: '🧊', desert: '🏜️', urban: '🏙️',
 };
 
+/** §5: the map key. Kept beside the icons it explains so the two cannot drift. */
+const TERRAIN_LEGEND: Array<[string, string]> = [
+    ['🏳️', 'open ground'], ['🌲', 'forest'], ['🌊', 'water'], ['⛰️', 'high ground'],
+    ['🏚️', 'ruins'], ['🥀', 'wetland'], ['🕳️', 'caves'], ['🧊', 'ice'],
+    ['🏜️', 'desert'], ['🏙️', 'streets'],
+];
+const EDGE_LEGEND: Array<[string, string]> = [
+    ['→', 'one way only'],
+    ['¤', 'costs something to cross'],
+    ['◑', 'passable only at certain hours'],
+    ['⧗', 'a limited number of crossings left'],
+    ['⇥', 'becomes one-way once enough have crossed'],
+    ['⚔', 'somebody is holding it'],
+    ['?', 'has to be found before it can be used'],
+    ['✕', 'destroyed — there used to be a way here'],
+];
+
 const dangerLabel = (d: number) => (d >= 0.7 ? 'High risk' : d >= 0.4 ? 'Moderate' : 'Low risk');
 const dangerColor = (d: number) => (d >= 0.7 ? 'var(--cat-death)' : d >= 0.4 ? 'var(--cat-training)' : 'var(--cat-alliance)');
 
@@ -63,7 +80,30 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                         <span style={{ color: 'var(--cat-death)' }}>† · deaths here</span>
                         <span>⛺ · a camp stands here</span>
                         <span>Dashed · out of bounds</span>
+                        <span style={{ color: 'var(--cat-death)' }}>✕ · route destroyed</span>
                     </div>
+                    {/* §5: the arena's terrains and its edge rules, named. Both
+                        were real mechanics the map drew and never explained —
+                        a one-way pass and an ordinary path were the same line,
+                        and a terrain glyph was a picture of a thing with no
+                        key. */}
+                    <details className="px-2 pb-2">
+                        <summary className="eyebrow cursor-pointer">Map key</summary>
+                        <div className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2 text-[10px] text-[var(--color-ink-500)]">
+                            <div>
+                                <div className="eyebrow mb-1">Terrain</div>
+                                {TERRAIN_LEGEND.map(([icon, label]) => (
+                                    <div key={label}>{icon} · {label}</div>
+                                ))}
+                            </div>
+                            <div>
+                                <div className="eyebrow mb-1">Route rules</div>
+                                {EDGE_LEGEND.map(([glyph, label]) => (
+                                    <div key={label}>{glyph} · {label}</div>
+                                ))}
+                            </div>
+                        </div>
+                    </details>
                 </div>
             )}
 

@@ -2668,6 +2668,50 @@ export const ZONE_RUMOUR_CLAIMS: Record<string, string[]> = {
  * one; see `engine/epithets.ts` for which trigger awards which pool.
  */
 export const EPITHETS = {
+    /** §6: spared somebody who did not have to be spared, more than once. */
+    merciful: [
+        'the One Who Stopped',
+        'the Mercy of District {district}',
+        'the One Who Let Them Up',
+        'the Tribute Who Would Not Finish It',
+        'the Hand That Opened',
+        'the Kindness in {zone}',
+        'the One They Owe',
+        'the Reason Somebody Went Home',
+    ],
+    /** §6: broke faith with people who were counting on them, repeatedly. */
+    turncoat: [
+        'the Turncoat',
+        'the One Whose Word Was Weather',
+        'District {district}\'s Broken Promise',
+        'the Handshake in {zone}',
+        'the One Nobody Camps With Twice',
+        'the Second Knife',
+        'the One Who Was Always Leaving',
+        'the Friend Until',
+    ],
+    /** §6: killed more people with things they built than with things they held. */
+    builder: [
+        'the Builder',
+        'the One Who Waited in {zone}',
+        'the Wire of District {district}',
+        'the Patient One',
+        'the One Who Never Swung',
+        'the Quiet Engineer',
+        'the Trap-Setter',
+        'the One the Ground Worked For',
+    ],
+    /** §6: held one sector against everybody for long enough to own it. */
+    warden: [
+        'the Warden of {zone}',
+        'the One Who Would Not Move',
+        'the Wall of District {district}',
+        'the Keeper of {zone}',
+        'the One Who Held',
+        'the Last Address in {zone}',
+        'the Immovable',
+        'the One Who Made {zone} Theirs',
+    ],
     /** A run of kills, close together. */
     bloody: [
         'the One the Careers Left Alone',

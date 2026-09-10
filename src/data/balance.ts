@@ -1083,6 +1083,12 @@ export const BLOODBATH = {
     plateNeighbourFearPerPoint: 5,
     /** §8: how much `targetDraw` moves who gets picked in the scrum. */
     targetDrawWeight: 0.06,
+    /** §5: a walled horn is a killing box — fewer commit, and they commit harder. */
+    walledHornDeterrent: 0.18,
+    walledHornCommitment: 0.3,
+    /** §5: an island horn has to be crossed to, which selects for swimmers. */
+    islandHornDeterrent: 0.22,
+    islandHornSwimmer: 0.35,
 } as const;
 
 /**
@@ -2072,6 +2078,11 @@ export const EPITHET_RULES = {
     killsForBloody: 3,
     unseenCyclesForGhost: 12,
     daysForEnduring: 6,
+    /** §6: four more triggers, each off a counter the run already keeps. */
+    sparesForMerciful: 2,
+    breaksForTurncoat: 2,
+    trapKillsForBuilder: 2,
+    cyclesForWarden: 6,
 } as const;
 
 /**
@@ -2272,6 +2283,20 @@ export const TRAPS = {
      * arena's cruellest single outcome and it should stay rare.
      */
     ownSnareForgetChance: 0.16,
+    /** §6: strength needed to dig a pit worth falling into. */
+    pitStrength: 6,
+    /** §6: what each of the three new kinds does when it goes off. */
+    pitDamage: 26,
+    pitLegInjuryChance: 0.55,
+    pitBleedChance: 0.3,
+    stakeDamage: 18,
+    stakeBleedChance: 0.6,
+    /**
+     * A trip-wire hurts nobody at all — it has no damage or bleed dial for
+     * that reason. What it costs the person who walks into it is the knowledge
+     * that somebody now knows where they are.
+     */
+    tripwireRattle: 4,
 } as const;
 
 /** Applying venom to a blade — the Trickster's other unspoken speciality. */
@@ -4971,6 +4996,8 @@ export const EDGE_RULES = {
     forcedCrossingFatigue: 8,
     /** Cycles an alliance must hold a chokepoint zone before it counts as garrisoned. */
     garrisonHoldCycles: 2,
+    /** §5: per-cycle odds a severed route becomes passable again before the endgame. */
+    reopenChance: 0.08,
 } as const;
 
 /**

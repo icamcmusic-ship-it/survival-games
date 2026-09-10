@@ -188,7 +188,7 @@ function spreadContamination(ctx: SimContext, from: string) {
     });
 }
 
-function endZoneEffect(state: GameState, zone: string, kind: ZoneEffectKind) {
+export function endZoneEffect(state: GameState, zone: string, kind: ZoneEffectKind) {
     const list = state.zoneEffects?.[zone];
     if (!list) return;
     state.zoneEffects![zone] = list.filter(e => e.kind !== kind);

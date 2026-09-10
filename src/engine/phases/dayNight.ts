@@ -7,7 +7,7 @@ import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SU
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons, tickOpeningEdges } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, checkIntelLies, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
@@ -261,6 +261,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // §5.5: a way nobody has found yet is the most valuable thing in an arena
     // that has one. Run in upkeep, after this cycle's movement has settled
     // `zoneHeld`, so finding one takes actually having sat somewhere.
+    tickOpeningEdges(ctx);
     tickHiddenEdges(ctx);
     // Fire spreads, floods drown stragglers, and whatever else is happening to
     // the ground itself lands after this cycle's movement has resolved.

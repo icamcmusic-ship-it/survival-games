@@ -1324,7 +1324,14 @@ export interface ZoneEffect {
 /** A snare, deadfall or tripline left in a zone, waiting for whoever walks into it. */
 export interface Trap {
     id: string;
-    kind: 'snare' | 'deadfall';
+    /**
+     * §6: two kinds was one decision — do you have a line or not. A pit is
+     * work that pays off in a hole nobody climbs out of quickly; a trip-wire
+     * alarm hurts nobody and tells you exactly where somebody is, which is the
+     * more valuable of the two for anybody hiding; a poisoned stake is what a
+     * tribute with a venom gland and no intention of fighting builds.
+     */
+    kind: 'snare' | 'deadfall' | 'pit' | 'tripwire' | 'stake';
     zone: string;
     /** Who set it. They know it is there; nobody else does until they find it. */
     ownerId: string;
@@ -1591,6 +1598,18 @@ export interface Arena {
      * every arena did before this existed.
      */
     restockBias?: string[];
+    /**
+     * §5: what the mouth of the horn is actually shaped like.
+     *
+     * `restockBias` already said what this arena's horn holds; nothing said
+     * what it is to approach. An open plate is the classic bloodbath — a flat
+     * ring and a sprint. A walled horn is a killing box: fewer people commit,
+     * and the ones who do are committed. An island horn has to be crossed to,
+     * so the scramble is slower, wetter and much more selective about who
+     * bothers. Cosmetic default is 'plate', which is the behaviour every arena
+     * had before this existed.
+     */
+    cornucopiaLayout?: 'plate' | 'walled' | 'island';
     /**
      * §5: the off-season skin this run is wearing, if any — a purely cosmetic
      * alternate dressing on the same zone graph and the same mechanics. Set at

@@ -608,6 +608,36 @@ export function regenerateZones(ctx: SimContext) {
  * cycle, with a head on them, may notice where the wall stops being a wall.
  * Called once per cycle.
  */
+/**
+ * §5: geography that grows as well as shrinks.
+ *
+ * The map could only ever lose routes — `severEdge` and the border collapse
+ * both take ground away, and nothing in the engine had a way to give any back.
+ * That made every arena a monotonic funnel, which is the right shape for the
+ * endgame and the wrong one for the middle: a tide goes out, a fire burns a
+ * thicket through, a flood drops and leaves a ford. This restores a severed
+ * edge, once the thing that severed it has had time to pass.
+ */
+export function tickOpeningEdges(ctx: SimContext) {
+    const state = ctx.state;
+    const severed = state.severedEdges ?? [];
+    if (severed.length === 0) return;
+    // Not while the arena is closing: the border's cuts are permanent by
+    // design, and reopening them would undo the finale.
+    if (state.escalationDay !== undefined) return;
+    if (!ctx.rng.chance(EDGE_RULES.reopenChance)) return;
+
+    const key = ctx.rng.pick(severed);
+    const [a, b] = key.split('|');
+    if (!getZone(state.arena, a) || !getZone(state.arena, b)) return;
+    state.severedEdges = severed.filter(k => k !== key);
+    ctx.logEvent(
+        `The way between ${a} and ${b} is passable again — the water has dropped, or the burn has cooled, `
+        + 'or whatever came down has settled enough to climb. Nobody who wrote it off is going to find out quickly.',
+        [], { important: true, zone: a, category: 'arena' }
+    );
+}
+
 export function tickHiddenEdges(ctx: SimContext) {
     const state = ctx.state;
     const rules = state.arena.edgeRules;
