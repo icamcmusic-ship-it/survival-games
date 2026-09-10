@@ -1081,6 +1081,8 @@ export const BLOODBATH = {
     plateNeighbourFearScore: 9,
     /** Fear per training point over eight, felt across two metres of gravel. */
     plateNeighbourFearPerPoint: 5,
+    /** §8: how much `targetDraw` moves who gets picked in the scrum. */
+    targetDrawWeight: 0.06,
 } as const;
 
 /**
@@ -1506,6 +1508,10 @@ export const COMBAT = {
     /** Health below which an ally who fought beside you genuinely saved you. */
     savedHealthThreshold: 35,
     grudgeOnWound: 8,
+    /** §8: floor on a focus-fire weight, so a heavy targetDraw never zeroes it. */
+    minFocusWeight: 0.5,
+    /** ...and what an ally at your shoulder is worth against being picked. */
+    defendedWeight: 40,
 } as const;
 
 /**
@@ -3287,6 +3293,15 @@ export const ALLIANCES = {
      * A small chance somebody never joins at all, and a rare chance the whole
      * thing comes apart before the bloodbath is even over.
      */
+    // §8: the Career pack takes ~50% of all crowns against a design goal of
+    // 45%, and the obvious lever turns out to be the wrong one. Loosening the
+    // pack (opt-outs 0.24, early collapse 0.11) was measured over 400 runs and
+    // made it *worse*: the Career archetype's win rate went 7.9% -> 10.9% and
+    // the archetype spread 2.9x -> 4.1x, because a Career who walks away from
+    // the pack is a strong solo tribute who no longer shares a field with
+    // three rivals for the same crown. Cohesion is a tax on them, not a
+    // subsidy. Left where it was; the share has to come down from the other
+    // end, by making the outer districts better rather than the Careers worse.
     careerOptOutChance: 0.18,
     careerMaxOptOuts: 2,
     careerEarlyCollapseChance: 0.06,
@@ -5117,6 +5132,8 @@ export const ARCHETYPE_HOOKS = {
     triageBond: 20,
     /** Saboteur: one arena-scale act of vandalism. */
     sabotageTraps: 3,
+    /** §8: exits a zone can have and still be worth cutting somebody off in. */
+    sabotageStrandMaxExits: 2,
     /** Beast: the sound. */
     roarFear: 12,
     roarSanity: 9,
@@ -5140,7 +5157,10 @@ export const ARCHETYPE_HOOKS = {
     ghostTrustCap: 2.5,
     ghostExcitementDrain: 3,
     /** Ghost: named personally, at the field size where it stings. */
-    ghostNamingField: 8,
+    ghostNamingField: 12,
+    /** ...or a long enough stretch unseen that one kill does not disqualify them. */
+    ghostNamingUnseenCycles: 4,
+    ghostNamingMaxKills: 1,
     namingFear: 5,
 } as const;
 

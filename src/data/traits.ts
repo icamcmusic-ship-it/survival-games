@@ -43,6 +43,8 @@ export type TraitMod =
     | 'rangedPower'
     | 'unarmedPower'
     | 'retreat'              // flat, 0-1 chance of breaking off
+    | 'defended'             // flat, how much an ally's presence turns a blow aside
+    | 'wrestle'              // flat, added to grapple resistance
     | 'killSanity'           // multiplier offset on the sanity cost of a kill
     | 'fearGain'             // multiplier offset on fear picked up
     | 'muttDamage'           // multiplier offset on damage taken from mutts (mutts.ts)
@@ -110,12 +112,17 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { awareness: 1.2 },
     },
     'Hardy': {
-        info: 'Clots fast and keeps going. Takes markedly less damage from an open wound.',
-        mods: { bleedResist: 0.35, fatigueDay: -2 },
+        // §8: a pure-niche resist with an always-on rider, the way Frost-Born
+        // got one — something that is still true on a day nothing bleeds.
+        info: 'Clots fast and keeps going. Takes markedly less damage from an open wound, and simply keeps going when others are running out of it.',
+        mods: { bleedResist: 0.35, fatigueDay: -2, resolveDrift: 0.3 },
     },
     'Venom-Blooded': {
-        info: 'Something in them fights the venom. Far less likely to be poisoned by anything the arena serves.',
-        mods: { poisonResist: 0.5 },
+        // §8: same treatment — the resist is the headline, and knowing what is
+        // in a wound is the rider that fires whether or not the arena serves
+        // anything venomous this year.
+        info: 'Something in them fights the venom. Far less likely to be poisoned by anything the arena serves, and they know what a bad wound looks like.',
+        mods: { poisonResist: 0.5, medicine: 0.12 },
     },
     'Frost-Born': {
         info: 'Raised somewhere cold. Frostbite and freezing weather are much less likely to take hold, and a long night costs them less than it costs anyone else.',
@@ -196,8 +203,11 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
 
     // ---- eyes ----------------------------------------------------------
     'Eagle-Eyed': {
-        info: 'Sees the treeline. The strongest awareness bonus in the game — very hard to sneak up on.',
-        mods: { awareness: 2.5, rangedPower: 1.5 },
+        // §8: awareness alone was not saving anybody (4.23%). Seeing it coming
+        // is only worth something if it converts into not being there, so the
+        // trait now pays out on the way out as well as on the way in.
+        info: 'Sees the treeline. The strongest awareness bonus in the game — very hard to sneak up on, and the first to spot the way out.',
+        mods: { awareness: 2.5, rangedPower: 1.5, retreat: 0.08, targetDraw: -4 },
     },
     'Tracker': {
         info: 'Reads sign. Better at foraging, better at noticing people, and better at building traps.',
@@ -222,8 +232,14 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { rangedPower: 3, odds: 1 },
     },
     'Wrestler': {
-        info: 'Grew up settling things with their hands. Much more dangerous unarmed than anyone expects.',
-        mods: { unarmedPower: 4, retreat: -0.05 },
+        // §8: 3.13% and last of the reaping traits, because `unarmedPower: 4`
+        // is a large bonus to a situation that barely happens — 70% of the
+        // living field is carrying a weapon, so the trait was mostly a
+        // rounding error with a retreat penalty attached. Half of it converts
+        // into things that apply in every fight: being hard to put on the
+        // floor, and knowing when the hold has gone.
+        info: 'Grew up settling things with their hands. Dangerous unarmed, very hard to take down, and knows the exact moment a hold has gone.',
+        mods: { unarmedPower: 2, wrestle: 2, retreat: 0.06 },
     },
     'Butcher': {
         // §8: `meleePower: 2.5` made this the single strongest thing on the
@@ -258,8 +274,12 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
 
     // ---- other people --------------------------------------------------
     'Charismatic': {
-        info: 'Reads well on camera and in a clearing. Forms alliances more easily and holds sponsor trust all run.',
-        mods: { allianceAffinity: 0.2, sponsorTrust: 1.5, excitement: 0.2 },
+        // §8: the most-assigned trait in the game (n=841) at 4.40%, and partly
+        // archetype-confounded — it is handed to the soft archetypes. The
+        // honest fix is a survival hook rather than a bigger social number:
+        // people like them, so people put themselves in the way for them.
+        info: 'Reads well on camera and in a clearing. Forms alliances more easily, holds sponsor trust all run, and the people around them step in when it matters.',
+        mods: { allianceAffinity: 0.2, sponsorTrust: 1.5, excitement: 0.2, defended: 0.35 },
     },
     'Loyal': {
         info: 'Will not sell anyone out, and is hard to convince that anyone has sold them out.',

@@ -1,5 +1,6 @@
 import { ArchetypeId, Objective, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
+import { severRandomEdge } from './zoneEffects';
 import { ARCHETYPE_HOOKS, HUNTING } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { getRel, adjustMutual, adjustRel } from './relationships';
@@ -220,6 +221,38 @@ const SIGNATURES: Record<string, Signature> = {
     saboteurStrike: (ctx, t) => {
         const traps = (ctx.state.traps ?? []).filter(tr => tr.ownerId !== t.id);
         const caches = getAlive(ctx.state).filter(o => o.id !== t.id && o.inventory.some(i => i.type === 'food'));
+
+        // §8: the Saboteur's kill path. Springing somebody's traps and
+        // poisoning their bread is vandalism, and the archetype converted it
+        // into nothing — 48% of Saboteurs fired this and it never once put
+        // anybody in danger. Cutting the route out of an occupied zone does:
+        // whoever is standing in there is now standing in there with the
+        // border closing, and that is a death the archetype caused.
+        const stranding = others(ctx, t)
+            .map(o => ({ o, zone: getZone(ctx.state.arena, o.zone) }))
+            // Never a total isolation: the zone has to keep a way out, or the
+            // Saboteur is not cutting somebody off, they are deleting them —
+            // and a severed dead end quietly reshapes the whole map's traffic
+            // in favour of whoever is camped on the well-connected middle.
+            .find(({ o, zone }) => zone !== undefined
+                && zone.adjacent.length > 1
+                && zone.adjacent.length <= ARCHETYPE_HOOKS.sabotageStrandMaxExits
+                && o.zone !== t.zone);
+        if (stranding?.zone) {
+            const cut = severRandomEdge(ctx, stranding.zone.name);
+            if (cut) {
+                say(ctx, t, 'saboteurTraps', [t.id, stranding.o.id], { count: '1' });
+                ctx.logEvent(
+                    `${t.name} brings the way out of ${stranding.zone.name} down behind ${stranding.o.name}. `
+                    + `The route to ${cut} is not a route any more, and ${stranding.o.name} has not worked that out yet.`,
+                    [t.id, stranding.o.id],
+                    { important: true, category: 'gamemaker', zone: stranding.zone.name }
+                );
+                addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+                return true;
+            }
+        }
+
         if (traps.length === 0 && caches.length === 0) return false;
         if (traps.length > 0) {
             const sprung = traps.slice(0, ARCHETYPE_HOOKS.sabotageTraps);
@@ -268,6 +301,9 @@ const SIGNATURES: Record<string, Signature> = {
         const zone = getZone(ctx.state.arena, t.zone);
         const elsewhere = zoneNames(ctx.state.arena).find(z => z !== t.zone) ?? t.zone;
         say(ctx, t, 'scholarReading', [t.id], { read: zone?.name ?? t.zone, elsewhere });
+        // §8: and being right is now worth something. The next arena event
+        // that comes for them, they have already worked out — once.
+        t.arenaForeknowledge = true;
         // Being right about the arena is worth more than being strong in it.
         t.objective = {
             kind: 'reach', zone: elsewhere, reason: 'shelter',
@@ -282,8 +318,17 @@ const SIGNATURES: Record<string, Signature> = {
      * named personally by the Gamemakers — which is the last thing they want.
      */
     ghostNaming: (ctx, t) => {
+        // §8: this fired for 21% of Ghosts against 40-60% for every other
+        // archetype, because it asked for two rare things at once — surviving
+        // to the final eight *and* a completely clean sheet. The naming is
+        // about being unseen, not about being bloodless, so it now reads the
+        // thing that actually makes a Ghost a Ghost: a long unbroken stretch
+        // during which nobody has laid eyes on them. One kill, taken because
+        // somebody walked into them, does not make them visible.
         if (getAlive(ctx.state).length > ARCHETYPE_HOOKS.ghostNamingField) return false;
-        if (t.kills > 0) return false;
+        const unseen = (t.unseenStreak ?? 0) >= ARCHETYPE_HOOKS.ghostNamingUnseenCycles;
+        if (t.kills > ARCHETYPE_HOOKS.ghostNamingMaxKills && !unseen) return false;
+        if (!unseen && t.kills > 0) return false;
         say(ctx, t, 'ghostNaming', [t.id]);
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * 3);
         t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust * 2);

@@ -443,6 +443,12 @@ export function generateTributes(
             if (archetypeDef.preferredTraits.length > 0 && rng.chance(0.6)) {
                 traits.push(rng.pick(archetypeDef.preferredTraits));
             }
+            // §8: District 3 took 3.9% of crowns against the Careers' 51%, and
+            // the reason was structural rather than statistical: its craft is
+            // tracking and medicine, so it arrived with no way to kill anybody
+            // at all. Wire and mechanism is a kill path — theirs is the trap,
+            // and this is what lets them actually build one.
+            if (district === 3 && traitFits(traits, 'Trapper')) traits.push('Trapper');
             let traitAttempts = TRAITS.length * 4;
             while (traits.length < numTraits && traitAttempts-- > 0) {
                 const trait = rng.pick(TRAITS);

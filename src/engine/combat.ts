@@ -1006,8 +1006,20 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
 
         // Focus fire: the weakest defender, or a vengeance target if anyone has one.
         const sworn = defenders.find(d => attackers.some(a => hasVengeanceAgainst(a, d.id)));
+        // §8: focus fire is where most of the arena's deaths are decided, and
+        // it was the one place `targetDraw` — the whole of Unremarkable — did
+        // not apply. It does now, alongside `defended`: an ally standing next
+        // to somebody the group likes turns blows aside.
+        const drawOf = (d: Tribute) => {
+            const allyPresent = defenders.some(o => o.id !== d.id
+                && o.allianceId !== undefined && o.allianceId === d.allianceId);
+            return Math.max(COMBAT.minFocusWeight,
+                Math.max(1, 100 - d.health)
+                + traitMod(d, 'targetDraw')
+                - (allyPresent ? traitMod(d, 'defended') * COMBAT.defendedWeight : 0));
+        };
         const target = sworn ?? (ctx.rng.chance(COMBAT.focusFireChance)
-            ? defenders.reduce((weak, d) => (d.health < weak.health ? d : weak))
+            ? weightedPick(ctx, defenders, drawOf)
             : ctx.rng.pick(defenders));
 
         const lead = attackers.reduce((best, a) =>
@@ -1171,8 +1183,10 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
         // the obvious opening — but "likeliest" is now a weight rather than a
         // certainty, and a sworn grudge outranks pure opportunism.
         const target = weightedPick(ctx, targets, t =>
-            Math.max(1, 100 - t.health)
-            + (hasVengeanceAgainst(attacker, t.id) ? COMBAT.freeForAllVengeanceWeight : 0));
+            Math.max(COMBAT.minFocusWeight,
+                Math.max(1, 100 - t.health)
+                + traitMod(t, 'targetDraw')
+                + (hasVengeanceAgainst(attacker, t.id) ? COMBAT.freeForAllVengeanceWeight : 0)));
 
         noteFight(ctx.state, attacker, target);
         const weapon = bestWeapon(attacker);

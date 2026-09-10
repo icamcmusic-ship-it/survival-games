@@ -902,6 +902,14 @@ export interface Tribute {
     // ---- A2: archetype hook state ----
     /** A2: whether this tribute's once-per-run archetype signature has fired. */
     signatureFired?: boolean;
+    /**
+     * §8: the Scholar's foreknowledge, banked by their signature and spent the
+     * next time the arena tries to kill them. Their signature fired for 59% of
+     * Scholars and converted into nothing: it moved them one zone and gave
+     * them an excitement bump. Being right about the arena should be worth
+     * surviving it once.
+     */
+    arenaForeknowledge?: boolean;
     /** A2: Mercenary — the price of their company, and who has paid it. */
     retainerPaidBy?: string[];
     /** A4: pre-arena agreements struck on the training floor. */

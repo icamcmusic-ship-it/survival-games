@@ -2,6 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
+import { traitMod } from '../../data/traits';
 import { ARCHETYPES } from '../../data/archetypes';
 import { ALLIANCES, BLOODBATH, QUALITY_BIAS, TRAINING } from '../../data/balance';
 import { registerAlliance } from '../alliance';
@@ -388,6 +389,10 @@ function pickOpponentIndex(ctx: SimContext, attacker: Tribute, pool: Tribute[]):
         let weight = 1;
         weight += Math.max(0, -getRel(attacker, target.id)) * 0.03;
         weight += personaThreat(target) * 2;
+        // §8: the trait that claims nobody is looking at them. The bloodbath
+        // is a third of every run's deaths and it was reading everything about
+        // a target except how little anybody wanted to pick them.
+        weight += traitMod(target, 'targetDraw') * BLOODBATH.targetDrawWeight;
         // Careers hunt the weak first; that is the whole strategy.
         if (attacker.isCareer) weight += (10 - target.attributes.strength) * 0.15;
         weight *= Math.max(0.1, 1 - Math.max(0, getRel(attacker, target.id)) / 120);

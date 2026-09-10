@@ -95,6 +95,18 @@ function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: b
     // T-5: how well you get out of the way depends on how bad the leg is.
     const penalty = injuryGrade(t, 'legs') * ENCOUNTERS.legsDodgePenaltyPerGrade;
 
+    // §8: the Scholar worked this out days ago. Spent on the first arena
+    // event that would otherwise land, and only once per run.
+    if (t.arenaForeknowledge && !isBoon) {
+        t.arenaForeknowledge = false;
+        ctx.logEvent(
+            fill(`{tribute} is not where it happens. They worked out days ago what this place does, and they have been counting.`, vars),
+            [t.id],
+            { important: true, category: 'survival' }
+        );
+        return true;
+    }
+
     if (event.dodgeStat) {
         const roll = t.attributes[event.dodgeStat] + ctx.rng.nextInt(0, 4) - penalty;
         if (roll > difficulty) {
