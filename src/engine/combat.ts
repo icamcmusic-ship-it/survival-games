@@ -1022,6 +1022,30 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             ? weightedPick(ctx, defenders, drawOf)
             : ctx.rng.pick(defenders));
 
+        // §7: a brawl is not a firing line. Somebody swinging into a press of
+        // bodies, in the dark or with a bad arm, hits the wrong person — and
+        // in a big enough fight that is a way to die that nobody chose.
+        if (attackers.length >= COMBAT.friendlyFireMinAttackers
+            && ctx.rng.chance(COMBAT.friendlyFireChance)) {
+            const swinger = ctx.rng.pick(attackers);
+            const hit = ctx.rng.pick(attackers.filter(a => a.id !== swinger.id));
+            if (hit) {
+                const stray = Math.round(COMBAT.friendlyFireDamage
+                    * (ctx.state.timeOfDay === 'day' ? 1 : COMBAT.friendlyFireNightMultiplier));
+                const cause = `Struck by ${swinger.name} in the confusion of a group fight`;
+                applyDamage(ctx, hit, stray, { cause, kind: 'tribute', sourceId: swinger.id });
+                adjustRel(hit, swinger.id, -COMBAT.friendlyFireRegard);
+                ctx.logEvent(
+                    `${swinger.name} swings into the press and catches ${hit.name} instead. `
+                    + 'Everybody sees it. Nobody has time to say anything about it.',
+                    [swinger.id, hit.id],
+                    { important: true, category: 'combat' }
+                );
+                clampTribute(hit);
+                checkDeath(ctx, hit, cause);
+            }
+        }
+
         const lead = attackers.reduce((best, a) =>
             (combatPower(ctx, a, bestWeapon(a)) > combatPower(ctx, best, bestWeapon(best)) ? a : best));
         // A pack fight feeds the same rivalry ledger a duel does — the pair

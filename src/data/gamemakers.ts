@@ -36,7 +36,16 @@ export type GamemakerSignature =
     | 'close-the-border'   // Kestrel: impatience, expressed as geography
     | 'spare-the-young'    // Osric: a parachute to the youngest tribute alive
     | 'do-nothing'         // Haymes: conspicuously, and on the record
-    | 'grind';             // Ainsel: the arena itself, turned up a notch
+    | 'grind'              // Ainsel: the arena itself, turned up a notch
+    // §10: twenty Head Gamemakers shared seven behaviours, so most of them
+    // were a name and an opening line over somebody else's Games. Five more,
+    // each expressing something the engine could already do and nobody was
+    // doing on purpose.
+    | 'rig-the-feast'      // the table is laid for one tribute in particular
+    | 'favour-a-district'  // a house tribute, and everybody can see it
+    | 'punish-alliances'   // groups are the thing being discouraged this year
+    | 'flood-the-low'      // geography as an argument: the low ground goes
+    | 'hunt-the-favourite';// whoever the crowd loves gets the Gamemakers' attention
 
 export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
     {
@@ -171,8 +180,8 @@ export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
         boredomMultiplier: 1.45,
         hazardMultiplier: 1.2,
         openingLine: 'Head Gamemaker Drusus Hallow needs a memorable Games this year, for reasons the Capitol gossip columns spell out daily.',
-        signature: 'call-the-feast',
-        signatureLine: 'Drusus Hallow calls a feast on a day nobody expected one. The columnists agree it smells of desperation, and watch anyway.',
+        signature: 'rig-the-feast',
+        signatureLine: 'Drusus Hallow lays the table for one tribute in particular and lets the rest work out whose name is on it. The columnists call it desperate. They watch anyway.',
     },
     {
         name: 'Sabina Thorn',
@@ -180,8 +189,8 @@ export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
         boredomMultiplier: 0.65,
         hazardMultiplier: 0.9,
         openingLine: 'Head Gamemaker Sabina Thorn does not do spectacle. Her Games end the way winters end: slowly, and then all at once.',
-        signature: 'grind',
-        signatureLine: 'Sabina Thorn lets the arena tighten like frost taking a window. Nobody can name the moment it got worse.',
+        signature: 'punish-alliances',
+        signatureLine: 'Sabina Thorn has never believed in groups. Wherever tributes are camped together, the arena becomes markedly less comfortable about it.',
     },
     {
         name: 'Publius Gaunt',
@@ -189,8 +198,8 @@ export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
         boredomMultiplier: 0.85,
         hazardMultiplier: 1.0,
         openingLine: 'Head Gamemaker Publius Gaunt has outlasted four Presidents\' worth of fashions in arena design, and indulges none of them.',
-        signature: 'close-the-border',
-        signatureLine: 'Publius Gaunt closes the arena\'s edge the way he has closed forty arenas\' edges: early, evenly, and without comment.',
+        signature: 'flood-the-low',
+        signatureLine: 'Publius Gaunt opens the low ground the way he has opened forty arenas\' low ground: without comment, and without any particular hurry.',
     },
     {
         name: 'Livia Ash',
@@ -198,8 +207,8 @@ export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
         boredomMultiplier: 1.2,
         hazardMultiplier: 1.3,
         openingLine: 'Head Gamemaker Livia Ash\'s first arena burned for nine days. The Capitol still sells prints of it.',
-        signature: 'weather-front',
-        signatureLine: 'Livia Ash sends her weather in glowing. Whatever it technically is, everyone watching calls it fire.',
+        signature: 'hunt-the-favourite',
+        signatureLine: 'Livia Ash goes looking for whoever the crowd has decided it loves. Her first arena burned for nine days and she has never once been accused of sentiment.',
     },
     {
         name: 'Marcus Quill',
@@ -207,8 +216,8 @@ export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
         boredomMultiplier: 1.05,
         hazardMultiplier: 1.05,
         openingLine: 'Head Gamemaker Marcus Quill narrates his own Games in private, colleagues report, and edits the arena when the story sags.',
-        signature: 'release-mutts',
-        signatureLine: 'Marcus Quill decides the second act needs teeth, and sends them. The commentary desk receives his notes within the minute.',
+        signature: 'favour-a-district',
+        signatureLine: 'Marcus Quill has picked a district to be the story of this year, and the arena starts agreeing with him. The commentary desk receives his notes within the minute.',
     },
     {
         name: 'Cornelia Frost',

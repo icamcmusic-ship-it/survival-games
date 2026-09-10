@@ -1,5 +1,5 @@
 import { Tribute, attr } from '../models/types';
-import { FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
+import { POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -9,7 +9,7 @@ import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { sanityBandOf } from './sanityBands';
 import { decayIdleDrift } from './proficiency';
-import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding, tickWoundRecovery } from './wounds';
+import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding, tickWoundRecovery, injuryGrade } from './wounds';
 import { rememberedThreat } from './memory';
 import { hasCamp } from './fieldcraft';
 import { applySepsisDrain, isSeptic, tickInfection, treatInfection } from './infection';
@@ -598,6 +598,23 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
         water: (climate?.drains?.thirstMultiplier ?? 1) >= SITUATIONAL_KIT.dryThirstMultiplier || undefined,
         purifier: climate?.foulWater || undefined,
     };
+
+    // §7: the venom on your own blade. `poisonedByWeapon` was tracked and no
+    // death ever came of it, and the obvious one was missing: a tribute
+    // carrying a coated weapon with their hands already opened up is handling
+    // the poison, not just the handle.
+    const coated = t.inventory.find(i => i.type === 'weapon' && i.poison === true);
+    if (coated && injuryGrade(t, 'arms') > 0 && !t.injuries.poisoned
+        && ctx.rng.chance(POISONING.ownBladeChance * injuryGrade(t, 'arms'))) {
+        injure(t, 'poisoned');
+        t.poisonedByWeapon = true;
+        ctx.logEvent(
+            `${t.name} has been carrying the ${coated.name} in a hand that is already open to the weather. `
+            + 'Whatever they coated it with does not care whose blood it gets into.',
+            [t.id],
+            { important: true, category: 'injury' }
+        );
+    }
 
     const restedThisCycle = ctx.state.phase === 'night'
         && t.vitals.fatigue < SLEEP.restedFatigue

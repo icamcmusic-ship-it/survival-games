@@ -1158,6 +1158,8 @@ export const ESCALATION = {
      * set-piece is not always the same stage. Rolled once per run, seeded.
      */
     altFinaleChance: 0.35,
+    /** §7: what a chokepoint closing does over and above an open-ground collapse. */
+    chokepointCrushMultiplier: 2.2,
 } as const;
 
 /**
@@ -1512,6 +1514,12 @@ export const COMBAT = {
     minFocusWeight: 0.5,
     /** ...and what an ally at your shoulder is worth against being picked. */
     defendedWeight: 40,
+    /** §7: friendly fire — attackers needed before a swing can find the wrong body. */
+    friendlyFireMinAttackers: 3,
+    friendlyFireChance: 0.07,
+    friendlyFireDamage: 14,
+    friendlyFireNightMultiplier: 1.5,
+    friendlyFireRegard: 10,
 } as const;
 
 /**
@@ -1871,6 +1879,10 @@ export const MUTTS = {
     parasiteDamageShare: 0.3,
     parasiteInfectChance: 0.55,
     parasiteSanityLoss: 6,
+    /** §7: a pack big enough to be a direction rather than an attack. */
+    stampedeMinPack: 4,
+    stampedeChance: 0.18,
+    stampedeDamage: 26,
 } as const;
 
 export const ZONE_EFFECTS = {
@@ -2124,6 +2136,9 @@ export const VERTICALITY = {
     descendFatigue: 6,
     climbFatigue: 12,
     descendFallChance: 0.12,
+    /** §7: fatigue above which a descent starts going wrong, and how hard. */
+    fallFatiguePivot: 55,
+    fallFatigueWeight: 1.6,
     fallDamage: 24,
 } as const;
 
@@ -2273,6 +2288,8 @@ export const POISONING = {
      * nearly killed them — the second source path beyond forage.
      */
     muttGlandChance: 0.3,
+    /** §7: per grade of arm injury, odds your own coated blade gets into you. */
+    ownBladeChance: 0.04,
 } as const;
 
 /** What a tribute can physically carry. */
@@ -3666,6 +3683,14 @@ export const WILDCARD = {
     flatlineCycles: 4,
     flatlineTolerance: 8,
     flatlinePullForwardDays: 1,
+    /** §7: what a cannon that fires for nobody is worth to the field's nerves. */
+    misfireExcitement: 8,
+    /** §7: sponsor trust from one open minute of mentors. */
+    broadcastTrust: 10,
+    /** §7: remembered danger the migration carries with it. */
+    migrationThreat: 30,
+    /** §7: grieving somebody who turns out to be alive. */
+    falseFaceSanity: 10,
 } as const;
 
 export const GAMEMAKER = {
@@ -4763,6 +4788,16 @@ export const GAMEMAKER_AGENCY = {
     grindDepletion: 0.2,
     grindThirst: 12,
     grindFatigue: 10,
+    /** §10: a favoured district's tribute, and what the rest of the field makes of it. */
+    favouredTrust: 15,
+    favouredResentment: 8,
+    /** §10: what a year that discourages groups does to a camped alliance. */
+    punishAllianceDamage: 12,
+    punishAllianceSanity: 8,
+    /** §10: how much of the low ground goes under. */
+    floodLowZones: 3,
+    /** §10: remembered danger where the crowd's favourite just got the Capitol's attention. */
+    favouriteThreat: 25,
 } as const;
 
 /**

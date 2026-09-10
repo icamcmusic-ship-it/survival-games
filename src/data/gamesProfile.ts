@@ -115,6 +115,11 @@ export type WildcardKind =
     | 'blackout' | 'drought' | 'bounty'
     | 'quarter-quell-pairs' | 'quarter-quell-doubled'
     | 'nothing' | 'silent-arena' | 'crowd-revolt'
+    // §7: seven more provisions, each resolving through machinery that already
+    // exists — the memory layer, the supply drop, the anthem, sponsor trust,
+    // forage depletion and the mutt roster.
+    | 'bounty-on-the-hidden' | 'drop-between-rivals' | 'cannon-misfire'
+    | 'mentor-broadcast' | 'cleansing-rain' | 'mutt-migration' | 'the-faces-lie'
     // Quell-only standing conditions (see QUELLS below). Never drawn from the
     // ordinary WILDCARDS pool — gamesProfileFor injects them directly into a
     // run's calendar when the matching Quell is rolled, so they can never
@@ -249,6 +254,48 @@ export const WILDCARDS: WildcardDef[] = [
         announcement: 'A bounty has been placed on a tribute, to be announced once the Games are under way.',
         onFire: 'The Capitol names a tribute and attaches a number to them. Every sponsor in the city is now watching one person.',
         window: [3, 6], weight: 2,
+    },
+    {
+        kind: 'bounty-on-the-hidden', name: 'a bounty on whoever is hiding',
+        announcement: 'The Capitol has announced that this year it will not tolerate a tribute nobody has seen.',
+        onFire: 'The Gamemakers name the tribute the cameras have the least footage of, and tell the arena exactly where they are.',
+        window: [3, 7], weight: 2,
+    },
+    {
+        kind: 'drop-between-rivals', name: 'a provocative supply drop',
+        announcement: 'A supply drop is scheduled, and the Capitol has been unusually careful about where it will land.',
+        onFire: 'A crate comes down precisely between two tributes who want nothing to do with each other, and neither of them can afford to walk away from it.',
+        window: [2, 7], weight: 2,
+    },
+    {
+        kind: 'cannon-misfire', name: 'a cannon that fires for nobody',
+        announcement: 'The Capitol assures viewers that this year\'s cannon has been thoroughly tested.',
+        onFire: 'A cannon fires. Nobody has died. Every tribute in the arena spends the rest of the day working from a field one smaller than it is.',
+        window: [2, 8], weight: 2,
+    },
+    {
+        kind: 'mentor-broadcast', name: 'a mentors\' broadcast',
+        announcement: 'The mentors have been granted a single open channel into the arena this year.',
+        onFire: 'For one minute the arena hears its mentors. Some of them say something useful; some of them say a name.',
+        window: [2, 7], weight: 2,
+    },
+    {
+        kind: 'cleansing-rain', name: 'arena-wide rain',
+        announcement: 'The forecast for this arena includes weather the Gamemakers describe as generous.',
+        onFire: 'It rains across the whole arena for half a day, and everything that had been picked over starts putting itself back.',
+        window: [3, 8], weight: 2,
+    },
+    {
+        kind: 'mutt-migration', name: 'a mutt migration',
+        announcement: 'Something has been released into the arena that is not intended for any tribute in particular.',
+        onFire: 'The mutts are moving, all of them, in one direction. For two days the dangerous half of the map is somewhere else.',
+        window: [3, 8], weight: 2,
+    },
+    {
+        kind: 'the-faces-lie', name: 'a falsified anthem',
+        announcement: 'The Capitol reminds tributes that the nightly broadcast is the official record of these Games.',
+        onFire: 'A face appears in the sky belonging to somebody who is still walking around. The Capitol does not correct it.',
+        window: [3, 8], weight: 1,
     },
     {
         kind: 'quarter-quell-pairs', name: 'a Quarter Quell: district pairs',

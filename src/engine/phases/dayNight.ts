@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, RESOLVE, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
+import { BLEEDING, ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, RESOLVE, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
@@ -13,6 +13,7 @@ import {
     addZoneThreat, advanceCycle, checkIntelLies, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
+import { openWound } from '../wounds';
 import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
@@ -1014,9 +1015,29 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
 
         // §7.1: at the arena's own edge, the closing border is the force
         // field itself — the death reads as the wall, not abstract collapse.
+        // §7: a chokepoint is a different death from an open field. A pass, a
+        // bridge or a tunnel closing with somebody inside it does not herd
+        // them anywhere — there is nowhere for the walls to herd them to.
+        const zone = getZone(ctx.state.arena, trappedZone);
+        const inAChokepoint = zone !== undefined && zoneFeatures(zone).chokepoint === true;
         const cause = hasForceField(ctx.state.arena, trappedZone)
             ? `Driven into the force field as the border closed over ${trappedZone}`
-            : `Caught in the collapsing border of ${trappedZone}`;
+            : inAChokepoint
+                ? `Crushed as ${trappedZone} closed`
+                : `Caught in the collapsing border of ${trappedZone}`;
+        if (inAChokepoint && !finalists) {
+            applyDamage(ctx, t, Math.round(damage * ESCALATION.chokepointCrushMultiplier), { cause, kind: 'arena' });
+            openWound(t, BLEEDING.hazardSeverity);
+            ctx.logEvent(
+                `${trappedZone} is not somewhere anybody rides out a collapse. The walls of it come together with ${t.name} still inside, `
+                + 'and there is no version of that where they simply get pushed along in front of it.',
+                [t.id],
+                { important: true, zone: trappedZone, category: 'hazard' }
+            );
+            clampTribute(t);
+            checkDeath(ctx, t, cause);
+            if (t.status !== 'alive') return;
+        }
         applyDamage(ctx, t, damage, { cause, kind: 'arena' });
         ctx.logEvent(
             fill(ctx.pickText(BORDER_TEXTS.collapse), {

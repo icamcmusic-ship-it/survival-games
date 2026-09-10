@@ -254,6 +254,24 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     let damage = base;
     for (let i = 1; i < hits; i++) damage += base * Math.pow(MUTTS.packDamageFalloff, i);
     damage = Math.min(damage, base * MUTTS.packDamageCap);
+    // §7: a herd is not an attack, it is a direction. Everybody standing in
+    // the way of a big enough pack goes under it rather than being bitten by
+    // it, and that is a different death from being torn apart.
+    if (packSize >= MUTTS.stampedeMinPack && ctx.rng.chance(MUTTS.stampedeChance)) {
+        const cause = `Trampled in a ${mutt.name} stampede`;
+        applyDamage(ctx, t, MUTTS.stampedeDamage, { cause, kind: 'mutt' });
+        openWound(t, BLEEDING.hazardSeverity);
+        ctx.logEvent(
+            `${t.name} does not get hit by ${mutt.name} so much as gone over. The whole pack is moving in one direction `
+            + `through ${t.zone}, and ${t.name} is standing in it.`,
+            [t.id],
+            { important: true, zone: t.zone, category: 'mutt' }
+        );
+        clampTribute(t);
+        checkDeath(ctx, t, cause);
+        if (t.status !== 'alive') return;
+    }
+
     // Hardened: having met worse is worth something against exactly this.
     damage *= Math.max(0.2, 1 + traitMod(t, 'muttDamage'));
 
