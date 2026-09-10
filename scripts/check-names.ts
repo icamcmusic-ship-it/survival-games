@@ -82,6 +82,39 @@ mentorHomes.forEach((ds, name) => {
     if (clash.length) problems.push(`mentor '${name}' (district ${ds.join(', ')}) is also a reapable name in district ${clash.join(', ')}`);
 });
 
+/**
+ * §11: themed collisions.
+ *
+ * The residency cap catches a name living in five districts. It does not catch
+ * the subtler drift the pools are actually prone to: District 1's names are
+ * gems and luxury goods, District 4's are the sea, District 11's are growing
+ * things — and a gem name that has wandered into District 9 reads as an error
+ * even though it breaks no rule. Reported rather than enforced, because a
+ * borrowed name is sometimes a deliberate joke, and because the fix is a
+ * judgement call about tone rather than a mechanical one.
+ */
+// Exact matches only. A prefix test flags every name *derived* from a themed
+// root — District 15's Ashglass is a glassworks name that happens to start
+// with "Ash" — and a check that cries wolf is a check somebody silences.
+const THEMES: Array<{ home: number; label: string; names: string[] }> = [
+    { home: 1, label: 'gem and luxury names', names: ['Opal', 'Onyx', 'Pearl', 'Ruby', 'Jade', 'Topaz', 'Garnet', 'Velvet', 'Satin', 'Cashmere', 'Ivory', 'Sterling', 'Platinum', 'Crystal', 'Diamond', 'Emerald'] },
+    { home: 2, label: 'stone and arms names', names: ['Granite', 'Marble', 'Basalt', 'Slate', 'Brutus', 'Cato', 'Flint', 'Anvil', 'Forge', 'Shale'] },
+    { home: 4, label: 'sea names', names: ['Marina', 'Coral', 'Tide', 'Nerida', 'Finnick', 'Mags', 'Brine', 'Shoal', 'Reef', 'Undine', 'Kelp', 'Surf'] },
+    { home: 11, label: 'growing-season names', names: ['Rue', 'Thresh', 'Chaff', 'Seeder', 'Barley', 'Millet', 'Orchard', 'Harvest', 'Sorrel', 'Clover', 'Rye'] },
+    { home: 12, label: 'coal-seam names', names: ['Katniss', 'Gale', 'Prim', 'Hazelle', 'Seam', 'Ember', 'Cinder', 'Soot', 'Collier'] },
+];
+const themeNotes: string[] = [];
+THEMES.forEach(theme => {
+    districts.forEach(d => {
+        if (d === theme.home) return;
+        const strays = [...DISTRICT_NAMES[d].Male, ...DISTRICT_NAMES[d].Female]
+            .filter(n => theme.names.some(t => t.toLowerCase() === n.toLowerCase()));
+        if (strays.length > 0) {
+            themeNotes.push(`district ${d} carries ${theme.label} from district ${theme.home}: ${strays.join(', ')}`);
+        }
+    });
+});
+
 const mentorTotal = [...mentorHomes.keys()].length;
 
 const total = districts.reduce((sum, d) => sum + DISTRICT_NAMES[d].Male.length + DISTRICT_NAMES[d].Female.length, 0);
@@ -94,3 +127,9 @@ if (problems.length) {
 }
 console.log(`${total} names across ${districts.length} districts; ${shared} appear in more than one pool, none in more than ${MAX_DISTRICTS_PER_NAME}.`);
 console.log(`${mentorTotal} mentors across ${Object.keys(DISTRICT_LEGACY).length} districts; every pool at least ${MENTOR_POOL_TARGET} deep, none shared.`);
+if (themeNotes.length === 0) {
+    console.log('no themed names have wandered out of the district they belong to.');
+} else {
+    console.log(`\n${themeNotes.length} themed collision(s) — a note, not a failure:`);
+    themeNotes.forEach(n => console.log(` - ${n}`));
+}
