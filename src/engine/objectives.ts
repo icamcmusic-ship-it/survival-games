@@ -420,7 +420,16 @@ function chooseObjective(
                     ? visibility * REPUTATION_TARGETING.epithetPrize
                     : -(visibility * REPUTATION_TARGETING.notorietyDeterrent
                         + (named ? REPUTATION_TARGETING.epithetDeterrent : 0));
-                return (winnable + loot + weakness + grudge - fearOf(t, o.id) + reputation
+                // §4: whose word you would be stepping on. Attacking B when B
+                // has an agreement with my ally A is not a private matter
+                // between me and B — A gave their word, and it is A's word I
+                // would be making worthless.
+                const trucedWithAnAlly = visible.some(ally =>
+                    ally.id !== o.id
+                    && ally.allianceId !== undefined && ally.allianceId === t.allianceId
+                    && hasTruce(state, ally, o.id));
+                const thirdPartyCost = trucedWithAnAlly ? OBJECTIVES.thirdPartyTruceCost : 0;
+                return (winnable + loot + weakness + grudge - fearOf(t, o.id) + reputation - thirdPartyCost
                     + traitMod(o, 'targetDraw')
                     + targetPreferenceScore(t, o, hops)
                     // §4.3: and who is going to come looking. A hunter who has

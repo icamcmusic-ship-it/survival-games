@@ -97,6 +97,9 @@ let borderTelegraphs = 0, cornucopiaRestocks = 0, muttEncounters = 0;
 // Newer systems: each needs evidence it actually fired across the sweep.
 let standoffs = 0, tributesPaid = 0, tributesPaidInformation = 0, trucesStruck = 0;
 let trucesBroken = 0, soloDepartures = 0, trucesHeld = 0, schisms = 0;
+// §4: the beats this pass added — a coalition coming apart, an estate passing
+// to whoever was standing closest, and two mentors splitting a parachute.
+let fractures = 0, inheritances = 0, mentorCrossTalk = 0, watchesPosted = 0;
 let trucesRenewed = 0, trucesLapsed = 0, trucesTurned = 0;
 let resolveBreakdowns = 0, nightlockDeaths = 0;
 let debtsRepaid = 0, charterBreaches = 0, performedBonds = 0, districtBonds = 0;
@@ -147,8 +150,12 @@ for (let i = 0; i < 400; i++) {
     allianceCounts.forEach((n, id) => {
       maxAllianceSeen = Math.max(maxAllianceSeen, n);
       if (n >= 3 && !id.startsWith('career-pack')) organicTrios++;
-      if (n > ALLIANCES.maxSize && !id.startsWith('career-pack')) {
-        note(`alliance ${id} grew to ${n}, past the cap of ${ALLIANCES.maxSize}`);
+      // §4: a Career-heavy year lifts the ceiling for a grand coalition, which
+      // then fractures. The invariant is the lifted ceiling, not the base cap —
+      // anything past *that* is still a bug.
+      const cap = ALLIANCES.maxSize + ALLIANCES.grandCoalitionExtra;
+      if (n > cap && !id.startsWith('career-pack')) {
+        note(`alliance ${id} grew to ${n}, past the cap of ${cap}`);
       }
     });
     Object.entries(state.zoneDepletion ?? {}).forEach(([zone, value]) => {
@@ -287,7 +294,7 @@ for (let i = 0; i < 400; i++) {
     if (/There is no reason at all for it to be true/.test(l.text)) rumoursPlanted++;
     if (/looking them in the face, and knew/.test(l.text)) rumoursCaughtPlanted++;
     if (/passed it on in good faith/.test(l.text)) rumoursCaughtRepeated++;
-    if (/cannot even remember now who told them/.test(l.text)) rumoursDeadEnd++;
+    if (/cannot even remember now who told them|no way for anybody to find out it was never true/.test(l.text)) rumoursDeadEnd++;
     if (/Neither of them is doing this alone any more|now has two people coming/.test(l.text)) vengeancePacts++;
     if (/finish what they swore to finish/.test(l.text)) vengeancePaid++;
     if (/somebody else has taken it off them/.test(l.text)) vengeanceStolen++;
@@ -296,6 +303,10 @@ for (let i = 0; i < 400; i++) {
     if (/takes the agreement between the two groups with them/.test(l.text)) treatiesBroken++;
     if (/Nobody renews it and nobody breaks it/.test(l.text)) treatiesLapsed++;
     if (/an arithmetic problem rather than a moral one/.test(l.text)) treatiesOutgrown++;
+    if (/only ever an arrangement/.test(l.text)) fractures++;
+    if (/Both of them are heavier than they look|thinks less of them for it|heard it often enough to carry it on/.test(l.text)) inheritances++;
+    if (/have evidently been talking/.test(l.text)) mentorCrossTalk++;
+    if (/takes the first watch|takes the watch in/.test(l.text)) watchesPosted++;
     if (/going to be able to go on being polite/.test(l.text)) trianglesFormed++;
     if (/neither of them has said a word about why/.test(l.text)) triangleJealousy++;
     if (/makes the choice in front of both of them/.test(l.text)) triangleChoices++;
@@ -744,6 +755,7 @@ console.log(`bluffs: landed=${bluffsLanded} caught=${bluffsCaught}`);
 console.log(`rumours: planted=${rumoursPlanted} exposedAsPlant=${rumoursCaughtPlanted} exposedAsRepeated=${rumoursCaughtRepeated} untraceable=${rumoursDeadEnd}`);
 console.log(`vengeancePacts: sworn=${vengeancePacts} paidThemselves=${vengeancePaid} takenByAnother=${vengeanceStolen} abandoned=${vengeanceAbandoned}`);
 console.log(`blocTreaties: sworn=${treatiesSworn} brokenByAKilling=${treatiesBroken} lapsed=${treatiesLapsed} endedByTheField=${treatiesOutgrown}`);
+console.log(`§4: coalitionFractures=${fractures} inheritances=${inheritances} mentorCrossTalk=${mentorCrossTalk} watchesPosted=${watchesPosted}`);
 console.log(`triangles: formed=${trianglesFormed} jealousyBeats=${triangleJealousy} forcedChoices=${triangleChoices}`);
 console.log(`loans: made=${loansMade} returned=${loansReturned} defaulted=${loansDefaulted}`);
 console.log(`succession: toNamedHeir=${successionHeir} heirPassedOver=${successionPassedOver} splitTheGroup=${successionSplit} noHeirNamed=${successionUnnamed}`);

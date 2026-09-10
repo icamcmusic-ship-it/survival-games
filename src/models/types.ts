@@ -668,6 +668,13 @@ export interface Tribute {
      * their own, much colder, machinery.
      */
     formerAllies?: string[];
+    /**
+     * §4: cycles spent in the same group as each former ally. `formerAllies`
+     * was a flat set, so six days of sharing a camp and a fire read exactly
+     * like one cycle of standing next to each other before it fell apart.
+     * Re-forming reads this; a betrayal on the record cancels it.
+     */
+    sharedHistory?: Record<string, number>;
     protectorBonds?: string[];
     /**
      * How far their launch plate landed from the mouth of the Cornucopia, 0-1.
@@ -824,6 +831,16 @@ export interface Tribute {
     levelsStood?: ZoneLevel[];
     /** Consecutive cycles at terminal-grade sepsis. Fatal at INFECTION.terminalCycles. */
     septicCycles?: number;
+    /**
+     * §4: every way this tribute has gone back on somebody who was counting on
+     * them, beyond the alliance betrayals `betrayalsCommitted` counts: a
+     * charter clause broken, a vengeance pact walked away from, a downed ally
+     * left where they fell. The Loyal -> Treacherous arc reads this, because
+     * the arc gated on alliance betrayals alone could effectively never fire —
+     * Loyal carries `treachery: -0.3`, which makes its holder the least likely
+     * tribute in the arena to commit one.
+     */
+    faithBroken?: number;
     /** §8.9: traps this tribute has successfully pulled apart. */
     trapsDisarmed?: number;
     /** §8.9: hard water crossings begun (destination terrain 'water'). */
@@ -1141,6 +1158,21 @@ export interface Alliance {
     /** §10.1: charter breaches this group has logged, for 'Charter Kept'. */
     breaches?: number;
     /**
+     * §4: how this leader runs the group. Rolled from their temperament when
+     * the alliance forms and read at every hearing: a democratic leader puts
+     * it to the group and mostly forgives; a tyrant decides alone and mostly
+     * expels. Roles already existed; nothing said what having the leader's
+     * role actually meant.
+     */
+    leaderStyle?: 'democratic' | 'tyrant';
+    /**
+     * §4: what each member's ledger read when the charter was sworn, so
+     * 'no-looting-the-fallen' and 'share-intel' catch what somebody did
+     * *since* they agreed not to rather than what they had already done.
+     */
+    lootedAtCharter?: Record<string, number>;
+    intelSoldAtCharter?: Record<string, number>;
+    /**
      * A §6: the night's watch. Set at nightfall for a group sleeping in one
      * zone: who is awake, who is asleep, and the cycle it was posted, so the
      * chronicle names it once rather than every night.
@@ -1207,7 +1239,9 @@ export type TruceReason = 'mutual-threat' | 'both-wounded' | 'brokered' | 'extor
 export type AllianceRole = 'quartermaster' | 'scout' | 'muscle' | 'medic';
 
 /** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
-export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone' | 'split-at-eight';
+export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone' | 'split-at-eight'
+    // §4: three more, each with a breach the engine can actually detect.
+    | 'no-looting-the-fallen' | 'share-intel' | 'leader-decides-targets';
 
 /**
  * What happened between one specific pair, across the whole run.

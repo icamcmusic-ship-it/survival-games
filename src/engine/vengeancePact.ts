@@ -28,7 +28,7 @@ import { SimContext, getAlive } from './context';
 import { cycleOf, ensureMemory, hasVengeanceAgainst, swearVengeance } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { addExcitement } from './audience';
-import { adjustResolve } from './resolve';
+import { adjustResolve, resolveOf } from './resolve';
 
 function pacts(state: GameState) {
     if (!state.vengeancePacts) state.vengeancePacts = [];
@@ -147,9 +147,18 @@ export function tickVengeancePacts(ctx: SimContext) {
         }
 
         // Broken off: somebody has stopped, and the other one notices.
+        // §4: the original two conditions — vengeance cleared, or the two of
+        // them fallen out below zero regard — were both nearly unreachable, so
+        // a pact was in practice unbreakable from the inside (3 firings in 400
+        // runs). The third way out is the honest one: somebody who is too hurt
+        // or too far gone to keep carrying it puts it down.
+        const spent = (m: Tribute) => m.health < VENGEANCE_PACT.abandonHealth
+            || resolveOf(m) < VENGEANCE_PACT.abandonResolve;
         const quitter = members.find(m => !hasVengeanceAgainst(m, pact.targetId)
-            || getRel(m, members.find(o => o.id !== m.id)!.id) < VENGEANCE_PACT.abandonRegard);
+            || getRel(m, members.find(o => o.id !== m.id)!.id) < VENGEANCE_PACT.abandonRegard
+            || (spent(m) && ctx.rng.chance(VENGEANCE_PACT.abandonWhenSpentChance)));
         if (quitter) {
+            quitter.faithBroken = (quitter.faithBroken ?? 0) + 1;
             const others = members.filter(m => m.id !== quitter.id);
             others.forEach(m => adjustRel(m, quitter.id, -VENGEANCE_PACT.abandonPenalty));
             ctx.logEvent(

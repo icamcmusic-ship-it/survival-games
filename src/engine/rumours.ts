@@ -302,7 +302,26 @@ export function checkRumours(ctx: SimContext) {
         });
     });
 
-    // Retire what nobody can act on any more.
+    // Retire what nobody can act on any more. §4: a planted lie that simply
+    // aged out used to vanish silently — 99 planted, one untraceable beat in
+    // 400 runs — which meant the best possible outcome for a liar was also the
+    // only one the audience never saw. It is worth a line, and it is worth
+    // something to the person who got away with it.
+    const expiring = pool(state).filter(r =>
+        !r.exposed && cycleOf(state) - r.bornCycle >= RUMOURS.lifetime);
+    expiring.forEach(rumour => {
+        if (rumour.isTrue || rumour.plantedById === undefined) return;
+        const planter = byId.get(rumour.plantedById);
+        if (!planter || planter.status !== 'alive') return;
+        planter.reputation = Math.min(100, planter.reputation + RUMOURS.untraceableReputation);
+        ctx.logEvent(
+            `Whatever ${planter.name} said about ${rumour.zone} has stopped being repeated. Nobody went, nobody checked, `
+            + 'and there is now no way for anybody to find out it was never true.',
+            [planter.id],
+            { category: 'system' }
+        );
+    });
+
     state.rumours = pool(state).filter(r =>
         !r.exposed && cycleOf(state) - r.bornCycle < RUMOURS.lifetime);
 }

@@ -731,6 +731,31 @@ export function noteFormerAllies(members: Tribute[]) {
     });
 }
 
+/**
+ * §4: one cycle of having been in it together, banked on both sides. Called
+ * every cycle a group is still standing, so what a dissolution leaves behind
+ * is a length of shared history rather than a bare flag.
+ */
+export function noteSharedCycle(members: Tribute[]) {
+    members.forEach(a => {
+        a.sharedHistory = a.sharedHistory ?? {};
+        members.forEach(b => {
+            if (a.id === b.id) return;
+            a.sharedHistory![b.id] = Math.min(RELATIONSHIPS.sharedHistoryCap, (a.sharedHistory![b.id] ?? 0) + 1);
+        });
+    });
+}
+
+/**
+ * §4: how much two people's history together is worth to a fresh alliance,
+ * 0-1. A betrayal on the record wipes it — that is the whole point of having
+ * been betrayed by somebody specific.
+ */
+export function sharedHistoryOf(t: Tribute, otherId: string): number {
+    if (ensureMemory(t).betrayedBy.includes(otherId)) return 0;
+    return Math.min(1, (t.sharedHistory?.[otherId] ?? 0) / RELATIONSHIPS.sharedHistoryCap);
+}
+
 export function decayRelationships(state: GameState) {
     const alive = state.tributes.filter(t => t.status === 'alive');
     alive.forEach(t => {

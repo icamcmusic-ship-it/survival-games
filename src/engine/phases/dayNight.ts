@@ -17,7 +17,7 @@ import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
-import { allianceRecords, areLovers, isHostileTo, leaderFor } from '../alliance';
+import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor } from '../alliance';
 import { decayFear } from '../fear';
 import { decayNotoriety, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
@@ -311,6 +311,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // §4.1: the bloc layer, alongside the pair layer. Proposed before it is
     // ticked so a treaty sworn this cycle is not immediately assessed against
     // the clock it was just given.
+    // §4: an oversized coalition comes apart before anything else is decided.
+    fractureBlocs(ctx);
     proposeBlocTreaties(ctx);
     tickBlocTreaties(ctx);
     // §4.3: the shared grudge. Formed before it is ticked, so a pact sworn

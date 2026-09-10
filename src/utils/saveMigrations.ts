@@ -328,6 +328,7 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         forageSuccesses: asNum(r.forageSuccesses, 0),
         terminalInfectionBeaten: asBool(r.terminalInfectionBeaten, false),
         septicCycles: asNum(r.septicCycles, 0),
+        faithBroken: asNum(r.faithBroken, 0),
         trapsDisarmed: asNum(r.trapsDisarmed, 0),
         performingStreak: asNum(r.performingStreak, 0),
         maxPerformingStreak: asNum(r.maxPerformingStreak, 0),

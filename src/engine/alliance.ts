@@ -1,8 +1,9 @@
+import { ARCHETYPES } from '../data/archetypes';
 import { Alliance, GameState, Item, Tribute } from '../models/types';
 import { ALLIANCES, ROMANCE } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext, getAlive } from './context';
-import { cycleOf, noteFormerAllies } from './memory';
+import { cycleOf, noteFormerAllies, noteSharedCycle } from './memory';
 import { adjustRel, getRel } from './relationships';
 import { pactOath, pactStrictness, rollPact } from './alliancePact';
 import { noteTookOverLead } from './runRecords';
@@ -198,6 +199,17 @@ function brandFor(ctx: SimContext, id: string, leader: Tribute, members: Tribute
     return ctx.rng.pick(patterns);
 }
 
+/**
+ * §4: what kind of leader somebody is, from what kind of tribute they are.
+ * Deterministic — no RNG draw — so it survives a seeded replay and so two
+ * runs of the same seed put the same person in charge the same way.
+ */
+export function leaderStyleOf(leader: Tribute): 'democratic' | 'tyrant' {
+    const arch = ARCHETYPES[leader.archetype];
+    const hard = arch.aggression + arch.treachery - arch.allianceAffinity;
+    return hard > ALLIANCES.tyrantThreshold ? 'tyrant' : 'democratic';
+}
+
 export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]): Alliance {
     const records = allianceRecords(ctx.state);
     // Star-crossed lovers get the record — a camp, a leader for movement — but
@@ -225,6 +237,10 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         pactSwornField: getAlive(ctx.state).length,
         cacheContributions: {},
         charter: isLoversBond ? [] : rollCharter(ctx.rng, members),
+        leaderStyle: leaderStyleOf(leader),
+        // §4: the ledger baseline the counting clauses are measured against.
+        lootedAtCharter: Object.fromEntries(members.map(m => [m.id, m.corpsesLooted ?? 0])),
+        intelSoldAtCharter: Object.fromEntries(members.map(m => [m.id, m.intelSold ?? 0])),
         // §4.4: lovers are not an organisation and do not get assigned jobs.
         roles: isLoversBond ? undefined : assignRoles(members, leader),
     };
@@ -349,8 +365,14 @@ function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]
             const withHeir = members.filter(m =>
                 m.id === heir.id || (m.id !== favourite.id && getRel(m, heir.id) >= getRel(m, favourite.id)));
             const withFavourite = members.filter(m => !withHeir.includes(m));
-            // A split needs two real groups; otherwise it is one person leaving.
-            if (withHeir.length >= 2 && withFavourite.length >= 2) {
+            // A split needs two real groups; otherwise it is one person
+            // leaving. §4: "two real groups" meant four members at the moment
+            // a leader died, which put the whole beat at four firings in 400
+            // runs. Three is enough for the group to come apart — the pair
+            // keeps the camp, the odd one out keeps the grudge — and that is
+            // the story the mechanic exists to tell.
+            if (withHeir.length >= 1 && withFavourite.length >= 1
+                && withHeir.length + withFavourite.length >= ALLIANCES.successionSplitMinMembers) {
                 const splinterId = `alliance-succession-${record.id}-${cycleOf(ctx.state)}`;
                 withHeir.forEach(m => { m.allianceId = splinterId; });
                 record.memberIds = withFavourite.map(m => m.id);
@@ -387,6 +409,54 @@ function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]
  * Per-cycle upkeep on the structure itself: prune the dead, re-elect when the
  * leader is gone or has lost the room, and drop records nobody belongs to.
  */
+/**
+ * §4: the fracture.
+ *
+ * A bloc that got past the ordinary ceiling is not a stable object — it is a
+ * Career year's worth of people who all agreed to postpone the same problem.
+ * Once it is that big it comes apart on its own, loudly, along the line of
+ * who actually likes whom, rather than quietly shedding one member at a time.
+ */
+export function fractureBlocs(ctx: SimContext) {
+    const records = allianceRecords(ctx.state);
+    Object.entries(records).forEach(([id, record]) => {
+        if (id.startsWith('lovers-')) return;
+        const members = membersOf(ctx.state, id);
+        if (members.length < ALLIANCES.fractureSize) return;
+        if (!ctx.rng.chance(ALLIANCES.fractureChance)) return;
+
+        const leader = members.find(m => m.id === record.leaderId) ?? pickLeader(members);
+        // Who would still follow them, and who has been waiting to say so.
+        // Sorted by how much they actually back the leader, then cut in the
+        // middle: a bloc this size always contains two halves, and asking for
+        // an absolute regard floor on both sides meant the beat could never
+        // fire at all (0 fractures in 400 runs against 8-member packs).
+        const ranked = [...members]
+            .filter(m => m.id !== leader.id)
+            .sort((a, b) => getRel(b, leader.id) - getRel(a, leader.id));
+        const keep = Math.max(1, ranked.filter(m => getRel(m, leader.id) >= ALLIANCES.fractureLoyalRegard).length);
+        const loyal = [leader, ...ranked.slice(0, keep)];
+        const rest = ranked.slice(keep);
+        if (loyal.length < 2 || rest.length < 2) return;
+
+        const splinterId = `alliance-fracture-${id}-${cycleOf(ctx.state)}`;
+        rest.forEach(m => { m.allianceId = splinterId; });
+        record.memberIds = loyal.map(m => m.id);
+        record.leaderId = leader.id;
+        record.successorId = undefined;
+        loyal.forEach(a => rest.forEach(b => {
+            adjustRel(a, b.id, -ALLIANCES.fractureRegardCost);
+            adjustRel(b, a.id, -ALLIANCES.fractureRegardCost);
+        }));
+        ctx.logEvent(
+            `The big pack stops being one. ${leader.name} keeps ${loyal.filter(m => m.id !== leader.id).map(m => m.name).join(', ')}; `
+            + `${rest.map(m => m.name).join(', ')} walk off together. Everybody had known for days that a group that size was only ever an arrangement.`,
+            members.map(m => m.id),
+            { important: true, category: 'alliance' }
+        );
+    });
+}
+
 export function reconcileAlliances(ctx: SimContext) {
     const records = allianceRecords(ctx.state);
 
@@ -407,6 +477,8 @@ export function reconcileAlliances(ctx: SimContext) {
 
         const record = records[id];
         record.memberIds = members.map(m => m.id);
+        // §4: one more cycle of having been in it together, on both sides.
+        noteSharedCycle(members);
 
         const leader = members.find(m => m.id === record.leaderId);
         if (!leader) {

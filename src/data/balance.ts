@@ -1773,6 +1773,8 @@ export const OBJECTIVES = {
     holdMaxThreat: 0.4,
     /** §4.3: how much a believed bond to somebody present deters a hunter. */
     avengerDeterrent: 0.05,
+    /** §4: what attacking somebody your ally has a truce with costs on the board. */
+    thirdPartyTruceCost: 30,
 } as const;
 
 /**
@@ -2829,6 +2831,13 @@ export const RELATIONSHIPS = {
     trustDecayPerCycle: 1.5,
     lateGameTrustDecay: 4,
     lateGameAliveCount: 6,
+    /** §4: cycles of shared alliance history at which re-teaming is at full weight. */
+    sharedHistoryCap: 8,
+    /** ...and what a full history is worth to the odds of forming again. */
+    sharedHistoryFormWeight: 0.22,
+    sharedHistoryRecruitWeight: 0.18,
+    /** §4: regard at which a survivor counts as close enough to inherit. */
+    inheritBond: 30,
 } as const;
 
 /**
@@ -2924,6 +2933,8 @@ export const RUMOURS = {
     plantedSuspicion: 30,
     repeatedRegardCost: 8,
     repeatedSuspicion: 10,
+    /** §4: what getting clean away with a plant is worth to the planter. */
+    untraceableReputation: 3,
 } as const;
 
 export const VENGEANCE_PACT = {
@@ -2931,6 +2942,10 @@ export const VENGEANCE_PACT = {
     minRegard: 25,
     /** Regard below which one of them is treated as having walked away from it. */
     abandonRegard: 0,
+    /** §4: ...or they are simply too hurt or too far gone to keep carrying it. */
+    abandonHealth: 35,
+    abandonResolve: 30,
+    abandonWhenSpentChance: 0.08,
     chance: 0.35,
     regard: 12,
     resolve: 8,
@@ -2962,8 +2977,8 @@ export const BLOC_TREATY = {
      * killing, because the treaty was an absolute block on drawing sides.
      * Per pair per cycle, before treachery and circumstance.
      */
-    breachBase: 0.03,
-    breachTreacheryWeight: 0.25,
+    breachBase: 0.06,
+    breachTreacheryWeight: 0.35,
     breachEndgameFieldSize: 8,
     breachEndgameBonus: 0.08,
     breachWoundedHealth: 40,
@@ -3110,6 +3125,8 @@ export const ROMANCE = {
     contactGrowth: 5,
     /** Standing by someone is worth far more than standing near them. */
     stoodByGrowth: 14,
+    /** §4: regard a cross-district pair is credited toward the romance bar. */
+    crossDistrictRelief: 8,
 } as const;
 
 /** Alliance formation and dissolution. */
@@ -3351,12 +3368,39 @@ export const ALLIANCES = {
     successionContestMargin: 15,
     /** Odds a contested succession splits the group rather than resolving. */
     successionSplitChance: 0.45,
+    /** §4: members needed before a contested succession can split the group. */
+    successionSplitMinMembers: 3,
     /** Regard the losing side of a contested succession loses for the winner. */
     successionLoserRegard: 14,
 
     /** Pooled supplies: what a member will contribute, and what a thief takes. */
     cacheContributeSurplus: 2,
     cacheMaxSize: 8,
+    /** §4: need-based recruitment — health and vitals at which somebody needs a group. */
+    needyHealth: 55,
+    needyHunger: 60,
+    /** What the group having what they need is worth to a candidate's odds. */
+    needMedicPull: 0.16,
+    needSuppliesPull: 0.12,
+    /** ...and what the candidate having what the group needs is worth. */
+    needProviderPull: 0.12,
+    /** §4: combined hardness above which a leader runs the group as a tyrant. */
+    tyrantThreshold: 0.25,
+    /** How a tyrant's hearings differ from a democratic leader's. */
+    tyrantExpelBonus: 0.25,
+    democratExpelRelief: 0.15,
+    /** §4: living Careers at which a year is Career-heavy enough for a coalition. */
+    grandCoalitionCareers: 4,
+    /** Extra members the ceiling lifts by, and how long the year stays that way. */
+    grandCoalitionExtra: 2,
+    grandCoalitionUntilDay: 6,
+    /** Size at and above which a bloc is fracture-prone, and the odds per cycle. */
+    fractureSize: 7,
+    fractureChance: 0.45,
+    /** Regard toward the leader that keeps somebody on their side of the split. */
+    fractureLoyalRegard: 15,
+    /** What the split costs across the new line. */
+    fractureRegardCost: 12,
 } as const;
 
 /**
@@ -4571,6 +4615,8 @@ export const PARLEY = {
     standoffChance: 0.4,
     standoffPerFear: 0.004,
     standoffFatigue: 6,
+    /** §4: odds a truce holding in shared ground is narrated this cycle. */
+    quietHoldChance: 0.1,
 } as const;
 
 /**
@@ -4775,6 +4821,8 @@ export const MENTOR_DRAMA = {
     correctedBelow: 45,
     /** Cycles the lesson stays live before the mentor lets it drop. */
     lessonWindowCycles: 6,
+    /** §4: odds two allied districts' mentors split a parachute between them. */
+    crossTalkChance: 0.35,
 } as const;
 
 /**
