@@ -2238,8 +2238,18 @@ export const CRAFTING = {
  * so the numbers are deliberately modest.
  */
 export const TRAPS = {
+    /**
+     * §8: traps were not worth the turn they cost. Across 400 runs the whole
+     * field set 228 of them and triggered 145, the `deadfall` achievement
+     * (a victor whose traps killed two people) never fired once, and Trapper
+     * — the largest trait sample in the game — was its worst performer.
+     * Raised across the board: they last longer, they are harder to spot,
+     * they are attempted-disarmed less often, they hurt more when they go
+     * off, and an unsprung snare feeds its owner more reliably. A trap is now
+     * a real thing to walk into rather than a line of flavour text.
+     */
     /** Cycles before an unsprung trap rots, is found by the arena, or is stepped over. */
-    lifetime: 6,
+    lifetime: 8,
     /** How many a single tribute can have set at once. */
     maxPerTribute: 2,
     /** Base odds a build attempt produces a working trap. */
@@ -2250,16 +2260,24 @@ export const TRAPS = {
     trickeryBonus: 0.2,
 
     /** Concealment the trap is set with, rolled against a passer-by's awareness. */
-    baseConcealment: 0.45,
+    baseConcealment: 0.55,
     concealmentPerIntelligence: 0.03,
-    maxConcealment: 0.85,
+    maxConcealment: 0.9,
     /** Cover to hide a snare in, and open ground that will not. */
     coverConcealmentBonus: 0.12,
     openConcealmentPenalty: 0.15,
 
+    /**
+     * §8: how much trapSkill makes trap-setting a priority over the rest of
+     * fieldcraft. Below this a tribute sharpens, lights a fire and builds a
+     * shelter first (and, in practice, never got to the trap at all); at or
+     * above it, laying the trap is the thing they came to do.
+     */
+    prioritySkill: 0.2,
+
     /** Damage when someone walks into one. */
-    snareDamage: 12,
-    deadfallDamage: 34,
+    snareDamage: 20,
+    deadfallDamage: 46,
     /** Odds the victim is left bleeding. */
     snareBleedChance: 0.3,
     deadfallBleedChance: 0.6,
@@ -2267,7 +2285,7 @@ export const TRAPS = {
     snareLegInjuryChance: 0.45,
 
     /** Odds an unsprung snare catches an animal instead, feeding its owner. */
-    gameCatchChance: 0.22,
+    gameCatchChance: 0.35,
     gameFeed: 30,
 
     /**
@@ -2282,7 +2300,7 @@ export const TRAPS = {
     /** A botched disarm is a hand on the tripline. */
     failedDisarmTriggerChance: 0.45,
     /** Odds a spotter attempts the disarm at all rather than walking around it. */
-    attemptDisarmChance: 0.55,
+    attemptDisarmChance: 0.45,
     /** Dread filed against the zone by knowingly leaving a live trap in it. */
     knownTrapThreat: 0.4,
     /** Per-cycle odds a standing trap simply rots, slips or is sprung by weather. */
@@ -2296,7 +2314,7 @@ export const TRAPS = {
     /** §6: strength needed to dig a pit worth falling into. */
     pitStrength: 6,
     /** §6: what each of the three new kinds does when it goes off. */
-    pitDamage: 26,
+    pitDamage: 38,
     pitLegInjuryChance: 0.55,
     pitBleedChance: 0.3,
     stakeDamage: 18,
@@ -3794,6 +3812,14 @@ export const FEAST = {
 
 /** Tribute generation. */
 export const GENERATION = {
+    /**
+     * §8: odds a District 3 tribute is handed 'Trapper' at the reaping. Wire
+     * and mechanism is District 3's kill path (see generator.ts) and it used
+     * to be issued to every one of them, which quietly turned the trait's
+     * measured win rate into District 3's win rate. Rolled, so the trait table
+     * measures the trait.
+     */
+    districtThreeTrapperChance: 0.7,
     /** Age band that gets reaped. */
     minAge: 12,
     maxAge: 18,
@@ -3907,10 +3933,20 @@ export const TESSERAE = {
      * year. Storied districts feed their children; forgotten ones cannot.
      */
     ratePerTier: { storied: 0.05, strong: 0.15, modest: 0.45, thin: 0.75, forgotten: 1.1 } as Record<string, number>,
-    /** Hunger-drain multiplier improvement per tessera carried. */
-    resiliencePerTessera: 0.025,
+    /**
+     * Hunger-drain multiplier improvement per tessera carried.
+     *
+     * §8: this was the underdog bonus overshooting. `forgotten` takes 1.1
+     * tesserae per eligible year against `thin`'s 0.75 and `modest`'s 0.45, so
+     * a forgotten-district tribute sat on the resilience floor for the whole
+     * run — and the legacy ladder came out non-monotonic, with forgotten
+     * (4.6%) beating both modest (4.0%) and thin (3.3%) despite being the
+     * bottom of the prestige order. Rationing experience is still real; it is
+     * no longer worth more than a mentor who has stood on the podium.
+     */
+    resiliencePerTessera: 0.015,
     /** Floor on what rationing experience can buy. */
-    resilienceFloorFactor: 0.8,
+    resilienceFloorFactor: 0.88,
     /** Tesserae at or above this earn the reaping-day note. */
     notedAt: 3,
 } as const;

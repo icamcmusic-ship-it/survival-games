@@ -249,9 +249,19 @@ type StanceScorer = (ctx: SimContext, t: Tribute, sig: StanceSignals) => number;
 type StancePrecondition = (ctx: SimContext, t: Tribute, sig: StanceSignals) => boolean;
 
 export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> = {
-    Hunting: (_ctx, t) =>
-        t.objective?.kind === 'hunt'
-        && profOf(t, 'tracking') >= STANCE_MODES.hunting.trackingMin,
+    // §8: Hunting held 2.0% of cycles — the flagship aggressive-play stance,
+    // and the rarest thing in the game, rarer even than Desperate, which is a
+    // breakdown state. The base pull was already raised once; the binding
+    // constraint is this precondition, so it is the one that gives. A sworn
+    // grudge now waives the tracking floor: you do not need fieldcraft to hunt
+    // the one person you have promised yourself you will kill, and "committing
+    // to one person" is exactly what the stance is for.
+    Hunting: (_ctx, t) => {
+        if (t.objective?.kind !== 'hunt') return false;
+        if (profOf(t, 'tracking') >= STANCE_MODES.hunting.trackingMin) return true;
+        const quarry = t.objective.targetId;
+        return quarry !== undefined && ensureMemory(t).vengeance.includes(quarry);
+    },
 
     // Ground they chose, held long enough to have worked on, with something
     // built on it. A trap is the purest version; a shelter counts too — the

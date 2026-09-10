@@ -30,6 +30,18 @@ export interface ArchetypeDef {
     /** Who they go for when they have a choice. */
     targetPreference?: 'weakest' | 'strongest' | 'nearest' | 'richest' | 'rival';
     /**
+     * §8: how much the rest of the field wants this archetype dead, on the
+     * same hunt-scoring scale as the `targetDraw` trait modifier.
+     *
+     * Career measured 9.23% against a 5.0% field at n=1600 — the best win
+     * rate, the longest survival AND the most kills, dominant on every axis
+     * at once, which meant there was no trade-off left to tune. This is the
+     * trade-off: a tribute the whole arena has been told to be afraid of is
+     * the one everybody else agrees to deal with first. It is the only
+     * weakness that follows from what a Career actually is.
+     */
+    targetDraw?: number;
+    /**
      * How caution moves with the day count. `flat` never wavers, `escalating`
      * gets warier as the field narrows, `front-loaded` spends everything early
      * and settles afterwards.
@@ -61,7 +73,14 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // and the pack numbers bonus all at once. Trimmed here rather than in
         // the district table, since this is the piece that was genuinely
         // redundant with it.
-        statBias: { strength: 1, agility: 1 },
+        // §8: and the cost. A Career was fed, housed and drilled by an
+        // academy for ten years; nobody ever made them find their own dinner.
+        // The negative intelligence bias bites on foraging, water, trap-work,
+        // crafting and reading a zone — every part of the run that is not the
+        // fight — so the archetype that dominates the bloodbath is the one
+        // that struggles once the Cornucopia is picked clean. Deliberately not
+        // a combat nerf: the Career should still win the fight it picks.
+        statBias: { strength: 1, agility: 1, intelligence: -1 },
         preferredTraits: ['Bloodthirsty', 'Brute'],
         aggression: 0.25,
         allianceAffinity: 0.2,
@@ -70,6 +89,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         stanceBias: { Aggressive: 0.6, Hunting: 0.5, Evasive: -0.8 },
         objectiveBias: { hunt: 0.4, hold: 0.2 },
         targetPreference: 'weakest',
+        targetDraw: 5,
         riskCurve: 'front-loaded',
         signature: 'careerDeclaration',
         hatesArchetypes: ['underdog', 'ghost'],
@@ -79,7 +99,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'strategist',
         name: 'Strategist',
         description: 'Wins with the mind, not the blade. Picks fights only when the odds are stacked.',
-        statBias: { intelligence: 2, charisma: 1 },
+        // §8: 3.59% at n=1600, the worst of the fifteen. Counting the board
+        // is worth nothing if you cannot leave the fight you counted wrong.
+        statBias: { intelligence: 2, charisma: 1, agility: 1 },
         preferredTraits: ['Strategist', 'Eagle-Eyed'],
         aggression: -0.1,
         allianceAffinity: 0.15,
@@ -305,7 +327,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'scholar',
         name: 'Scholar',
         description: 'Reads the arena rather than the tributes. Knows what a zone is about to do a cycle before it does it.',
-        statBias: { intelligence: 3 },
+        // §8: 3.65% at n=1600. Reading the arena a cycle early is only worth
+        // something if you are not standing in the open while you do it.
+        statBias: { intelligence: 3, stealth: 1 },
         preferredTraits: ['Strategist', 'Eagle-Eyed'],
         aggression: -0.2,
         allianceAffinity: 0.1,

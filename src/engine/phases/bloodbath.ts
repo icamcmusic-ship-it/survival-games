@@ -1,3 +1,4 @@
+import { targetDrawOf } from '../targeting';
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Item, Tribute } from '../../models/types';
@@ -411,7 +412,7 @@ function pickOpponentIndex(ctx: SimContext, attacker: Tribute, pool: Tribute[]):
         // §8: the trait that claims nobody is looking at them. The bloodbath
         // is a third of every run's deaths and it was reading everything about
         // a target except how little anybody wanted to pick them.
-        weight += traitMod(target, 'targetDraw') * BLOODBATH.targetDrawWeight;
+        weight += targetDrawOf(target) * BLOODBATH.targetDrawWeight;
         // Careers hunt the weak first; that is the whole strategy.
         if (attacker.isCareer) weight += (10 - target.attributes.strength) * 0.15;
         weight *= Math.max(0.1, 1 - Math.max(0, getRel(attacker, target.id)) / 120);

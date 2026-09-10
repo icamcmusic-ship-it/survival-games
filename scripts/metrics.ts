@@ -851,6 +851,9 @@ if (profSamples > 0) {
 
 console.log('');
 console.log('reaping-assigned traits (n / win%) — the only set that can be balanced against itself:');
+console.log("  note: 'Trapper' is also issued to District 3 at the reaping (generator.ts), and archetype");
+console.log('  preferredTraits skew every other large sample here. A trait far off the field mean with a');
+console.log('  large n is as likely to be measuring who receives it as what it does.');
 reapingTraitRates.forEach(([trait, rate, n]) => {
     console.log(`  ${trait.padEnd(16)} ${String(n).padStart(5)}  ${(rate * 100).toFixed(2).padStart(6)}%`);
 });

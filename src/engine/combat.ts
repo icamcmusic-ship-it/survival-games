@@ -1,3 +1,4 @@
+import { targetDrawOf } from './targeting';
 import { DamageRecord, Item, Tribute, attr } from '../models/types';
 import { forceStance } from './stance';
 import { SimContext } from './context';
@@ -1015,7 +1016,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
                 && o.allianceId !== undefined && o.allianceId === d.allianceId);
             return Math.max(COMBAT.minFocusWeight,
                 Math.max(1, 100 - d.health)
-                + traitMod(d, 'targetDraw')
+                + targetDrawOf(d)
                 - (allyPresent ? traitMod(d, 'defended') * COMBAT.defendedWeight : 0));
         };
         const target = sworn ?? (ctx.rng.chance(COMBAT.focusFireChance)
@@ -1209,7 +1210,7 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
         const target = weightedPick(ctx, targets, t =>
             Math.max(COMBAT.minFocusWeight,
                 Math.max(1, 100 - t.health)
-                + traitMod(t, 'targetDraw')
+                + targetDrawOf(t)
                 + (hasVengeanceAgainst(attacker, t.id) ? COMBAT.freeForAllVengeanceWeight : 0)));
 
         noteFight(ctx.state, attacker, target);

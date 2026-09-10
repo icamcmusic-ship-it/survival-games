@@ -84,8 +84,11 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   win-rate tables it reports three things that used to be guesswork: trait power
   level (every numeric modifier bucketed by category, magnitude summed per trait,
   anything more than 1.5sd off its category mean flagged — a proxy for power, so
-  a report rather than a guard), per-archetype signature fire rate (fourteen
-  archetypes fire between 40% and 60%; Ghost fires at 19.8%), and win rate by
+  a report rather than a guard), per-archetype signature fire rate (all fifteen
+  archetypes now fire between 39% and 59% at 1,600 runs — the old note about
+  Ghost firing at 19.8% is long stale, Ghost is at 40%; the two at the bottom
+  of the band, Mercenary and Zealot, are there because they die fastest rather
+  than because their set piece is gated), and win rate by
   district legacy tier, which is the check that "starts behind on purpose" has
   not quietly become "cannot win".
 - `npm run test:ui` — Chromium smoke test covering every screen, control and
