@@ -49,6 +49,15 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   stock (districts 13-16 once shipped at 30 entries per gender against the
   original twelve's 100), no pool repeats itself, and no name is resident in
   more than two districts at once (`Sable` was in five).
+- `npm run test:achievements` — achievement coverage. Evaluates all 111
+  predicates against a few hundred real end-states (a crash test in itself:
+  they run over finished states with arbitrary optional fields missing), then
+  reports what the discovery layer actually hands out — entries that never
+  unlock, entries that fire on more than 60% of runs, how many land in the
+  usable 5-60% band, and any authored `rarity` label the measured rate
+  contradicts. Both failure modes matter: an unreachable entry is a promise the
+  game does not keep, and a near-automatic one is a participation ribbon on a
+  list that is supposed to be a menu.
 - `npm run test:flavor` — flavour-pool depth. A run averages ~650 log lines and
   swears ~10 vengeance oaths, so a 10-entry pool repeats itself inside a single
   Games as a matter of arithmetic. The backlog is now empty: every pool is at or

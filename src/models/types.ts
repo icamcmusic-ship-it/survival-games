@@ -609,6 +609,12 @@ export interface Tribute {
      */
     scars?: Partial<Record<InjurySite, boolean>>;
     /**
+     * §11: separate standing injuries this tribute has ever taken, counted at
+     * the moment a sound site stops being sound. `injuries` is the live state;
+     * this is the history, which is what 'Clean Getaway' is actually about.
+     */
+    woundsLogged?: number;
+    /**
      * §3.6: the observable consequence of a bad leg or arm — a limp, a guarded
      * shoulder. Set alongside the severity grade, cleared when the site heals
      * below grade 2, and visible to anyone who can see them.
@@ -716,6 +722,12 @@ export interface Tribute {
     motive?: 'family' | 'partner' | 'prove' | 'honour' | 'escape';
     /** §3.5: they went all the way down once; some of it never comes back. */
     sanityScarred?: boolean;
+    /**
+     * §11: set the first time a scarred tribute climbs back out of the `gone`
+     * band. `sanityScarred` records that they went down there; this records
+     * that they came back, which is the half 'Second Wind' is named for.
+     */
+    sanityRecovered?: boolean;
     /**
      * §4.1: professional esteem, per tribute id (0-100 scale deltas around 0).
      * Distinct from `relationships` (regard): you can rate someone as a

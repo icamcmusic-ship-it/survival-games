@@ -41,6 +41,12 @@ export function injure(t: Tribute, site: Exclude<InjurySite, 'bleeding'>, severi
             ? (lead === 'left' ? 'right' : 'left')
             : lead;
     }
+    // §11: 'Clean Getaway' promises a victor who never once logged a standing
+    // injury, but the only thing the end state can see is what they are still
+    // carrying at the cannon — 76.3% of victors walk out patched up, so the
+    // achievement fired on three runs in four. This is the counter that makes
+    // the hint's own claim testable.
+    if (!t.injuries[site]) t.woundsLogged = (t.woundsLogged ?? 0) + 1;
     t.injuries[site] = true;
     t.injurySeverity = t.injurySeverity ?? {};
     t.injurySeverity[site] = Math.min(MAX_INJURY_GRADE, Math.max(current + 1, severity));
@@ -172,6 +178,7 @@ export function bleedSeverity(t: Tribute): number {
 
 /** Opens (or worsens) a bleeding wound. A second cut does not stack forever. */
 export function openWound(t: Tribute, severity: number) {
+    if (!t.injuries.bleeding) t.woundsLogged = (t.woundsLogged ?? 0) + 1;
     t.injuries.bleeding = true;
     t.bleedSeverity = Math.min(
         BLEEDING.damageBySeverity.length - 1,

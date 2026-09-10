@@ -685,6 +685,14 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
     }
 
     const band = sanityBandOf(t);
+    // §11: 'Second Wind' promises a victor whose mind went all the way and
+    // came back. It used to test `sanityScarred` alone, which only records the
+    // going — true of 97.3% of victors — and the end state cannot stand in for
+    // the coming back either, because the endgame floors nearly every victor's
+    // sanity at 0 whatever happened in between. So the climb is recorded when
+    // it happens: scarred, then back out of the bottom band under their own
+    // steam, at any point in the run.
+    if (t.sanityScarred && band !== 'gone') t.sanityRecovered = true;
     if (band === 'gone') {
         if (!t.sanityScarred) {
             t.sanityScarred = true;

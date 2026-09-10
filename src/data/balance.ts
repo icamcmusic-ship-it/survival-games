@@ -4134,7 +4134,15 @@ export const ACHIEVEMENT_BARS = {
      * "an alliance that has been in the Games a while", and it fired on nearly
      * every run.
      */
-    sharedGriefCycles: 4,
+    sharedGriefCycles: 8,
+    /**
+     * §11: separate wounds a 'Clean Getaway' victor must have avoided. The
+     * test read `injuries` on the end state, which is what a victor is
+     * carrying at the cannon rather than what they took — 76.3% of them walk
+     * out of the arena patched up. Zero logged wounds all run is the thing
+     * the hint already promised.
+     */
+    cleanGetawayWounds: 0,
 } as const;
 
 export const PREGAMES = {
