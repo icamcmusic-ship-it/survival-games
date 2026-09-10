@@ -1,5 +1,5 @@
 import { ArenaLawId, GameConfig, GameState } from '../models/types';
-import { RNG } from '../utils/rng';
+import { RNG, baseSeedOf } from '../utils/rng';
 import {
     CAST_SHAPES, CastShape, CastShapeId, GAMES_TEMPERAMENTS, GamesTemperament,
     Quell, QUELLS, Wildcard, WildcardDef, WILDCARDS, WildcardKind,
@@ -210,7 +210,13 @@ export function gamesProfileFor(
             quell: undefined,
         };
     }
-    const quell = pinnedQuell !== undefined ? pinnedQuell ?? undefined : drawQuell(new RNG(`${seed}-quell`), forceQuell);
+    // BUG-1.1: the Quell is drawn from the BASE seed, not the composite one.
+    // `rerollCast` composes `base~SUFFIX` and deliberately pins the Quell it
+    // already had (the arena law is locked in by then) — but a replay of that
+    // composite seed from a share link or a typed seed has nothing to pin, and
+    // used to re-draw a different Quell entirely. Keying the draw off the base
+    // seed makes the reroll's pin and a cold replay agree by construction.
+    const quell = pinnedQuell !== undefined ? pinnedQuell ?? undefined : drawQuell(new RNG(`${baseSeedOf(seed)}-quell`), forceQuell);
     const quellBeats = quell ? quellWildcards(quell) : [];
     const rng = new RNG(`${seed}-games-profile`);
     const calendar = rollCalendar(rng);

@@ -740,8 +740,16 @@ export const gameActions = {
         const resolvedArenaId = arenaHidden
             ? new RNG(`${safeSeed}-random-arena`).pick([...ARENAS.map(a => a.id), 'procedural'])
             : arenaId;
+        // BUG-1.1: `procedural-<biome>` from a share link pins the biome — the
+        // old check only saw the `procedural` prefix, so the specific arena
+        // identity the link encoded was thrown away. `generateArena` itself
+        // keys off the base seed, so a rerolled cast (`base~SUFFIX`) replays
+        // the arena it was actually played on.
+        const proceduralBiome = resolvedArenaId.startsWith('procedural-')
+            ? resolvedArenaId.slice('procedural-'.length)
+            : undefined;
         const baseArena = resolvedArenaId.startsWith('procedural')
-            ? generateArena(safeSeed)
+            ? generateArena(safeSeed, proceduralBiome)
             : (ARENAS.find(a => a.id === resolvedArenaId) || ARENAS[0]);
         // Never mutate the shared ARENAS/generated-arena objects: a per-zone
         // shallow clone gives this run its own zone objects (arenaLawOverride

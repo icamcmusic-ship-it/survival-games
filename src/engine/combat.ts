@@ -1028,7 +1028,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         if (attackers.length >= COMBAT.friendlyFireMinAttackers
             && ctx.rng.chance(COMBAT.friendlyFireChance)) {
             const swinger = ctx.rng.pick(attackers);
-            const hit = ctx.rng.pick(attackers.filter(a => a.id !== swinger.id));
+            const hit = ctx.rng.pickOrUndefined(attackers.filter(a => a.id !== swinger.id));
             if (hit) {
                 const stray = Math.round(COMBAT.friendlyFireDamage
                     * (ctx.state.timeOfDay === 'day' ? 1 : COMBAT.friendlyFireNightMultiplier));

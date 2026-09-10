@@ -462,8 +462,14 @@ export const QUELLS: Quell[] = [
     },
     {
         id: 'doubled-reaping', name: 'The Doubled Reaping',
-        announcement: 'QUARTER QUELL: as a reminder that the Capitol can always ask for more, every district will send its full complement — forty-eight tributes will enter the arena.',
-        configOverride: { districtCount: 12 },
+        // BUG-1.2: this promised forty-eight tributes and overrode
+        // `districtCount` to 12 — the default — so it was a pure no-op that
+        // announced itself loudly. Forty-eight is also unreachable: districts
+        // reap two each and `districtCount` is clamped to 16, so 32 is the
+        // ceiling the model can express. The announcement now promises the
+        // number the override actually delivers.
+        announcement: 'QUARTER QUELL: as a reminder that the Capitol can always ask for more, four districts beyond the usual twelve will be called to the square — thirty-two tributes will enter the arena.',
+        configOverride: { districtCount: 16 },
         temperamentOverride: { hazardRate: 1.6, betrayalRate: 1.2, escalationShift: -3, sponsorGenerosity: 1 },
         weight: 2,
     },

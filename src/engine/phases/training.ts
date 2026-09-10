@@ -527,7 +527,7 @@ function observeFloor(
     // rather than as twenty-four silent bookkeeping updates.
     const watcher = ctx.rng.pick(cast);
     if (!ctx.rng.chance(TRAINING.observationLineChance)) return;
-    const subject = ctx.rng.pick(cast.filter(o => o.id !== watcher.id));
+    const subject = ctx.rng.pickOrUndefined(cast.filter(o => o.id !== watcher.id));
     if (!subject) return;
     const attr = stationsToday.get(subject.id) ?? 'strength';
     ctx.logEvent(

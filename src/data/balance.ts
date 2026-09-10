@@ -8,6 +8,16 @@
  * the engine.
  */
 
+/**
+ * §1.4: "the field is now small enough to force the issue" is one design
+ * concept, and it used to be written down twice — `STANCE.endgameFieldSize`
+ * and `RESOLVE.endgameFieldSize`, both 5, both live, free to drift apart while
+ * the knob test passed. Both now read this, so tuning the endgame tunes all of
+ * it. The two keys survive because each group is the documented surface a
+ * designer reads; what changed is that only one number exists behind them.
+ */
+export const ENDGAME_FIELD_SIZE = 5;
+
 /** Per-cycle vitals drain and the thresholds that start hurting a tribute. */
 export const VITALS = {
     /**
@@ -2498,7 +2508,7 @@ export const STANCE = {
      * Once the field is this small, hiding stops being a strategy: somebody has
      * to force the issue and the Gamemakers will make sure somebody does.
      */
-    endgameFieldSize: 5,
+    endgameFieldSize: ENDGAME_FIELD_SIZE,
     /**
      * §1.7: a victor who never killed anybody is usually a victor the arena
      * handed the crown to — the last few were never in the same place at the
@@ -4452,7 +4462,8 @@ export const RESOLVE = {
     deprivationPenalty: 2,
     deprivationThreshold: 70,
     endgamePenalty: 1.5,
-    endgameFieldSize: 5,
+    /** The same field size STANCE reads — see ENDGAME_FIELD_SIZE. */
+    endgameFieldSize: ENDGAME_FIELD_SIZE,
 
     /** Below this a tribute has stopped playing to win. */
     brokenThreshold: 20,

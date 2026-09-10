@@ -78,9 +78,11 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: {
                 // changes to "Copied", and a static label would silence that.
                 // §1.8: a rerolled cast composes its seed as `base~SUFFIX`,
                 // where the suffix is a non-seeded `Math.random()`. The share
-                // link encodes the composite verbatim, which replays correctly
-                // — but the UI elsewhere shows the base, so the displayed seed
-                // and the "real" one diverge. Say the composite out loud here.
+                // link encodes the composite verbatim. The arena and the Quell
+                // are resolved from the BASE seed (see `baseSeedOf`) and the
+                // link pins both explicitly, so the composite replays the same
+                // map, the same law and the same cast — but the UI elsewhere
+                // shows the base, so say the composite out loud here.
                 title={seed.includes('~')
                     ? `Copy a link that replays this exact rerolled cast. The full seed is ${seed} — the part after the ~ is what the reroll drew, and a link without it replays the original cast instead.`
                     : `Copy a link that replays seed ${seed}`}

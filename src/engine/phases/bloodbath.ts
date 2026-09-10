@@ -271,7 +271,7 @@ export function processBloodbath(ctx: SimContext) {
         const proximity = 1 - (t.platePosition ?? 0.5);
         const caught = BLOODBATH.runDownChance * proximity * Math.max(0.3, 1 - t.attributes.agility / 12);
         if (!ctx.rng.chance(caught)) return;
-        const hunter = ctx.rng.pick(hunters.filter(h => h.status === 'alive' && h.id !== t.id));
+        const hunter = ctx.rng.pickOrUndefined(hunters.filter(h => h.status === 'alive' && h.id !== t.id));
         if (!hunter) return;
         ctx.logEvent(
             `${t.name} turns for the treeline and does not get there. ${hunter.name} runs them down before they clear the ring of plates.`,
