@@ -66,6 +66,9 @@ export function BroadcastBar({
         return () => clearTimeout(id);
     }, [aliveCount]);
 
+    const [checkpointsOpen, setCheckpointsOpen] = useState(false);
+    const checkpoints = checkpointsOpen ? gameActions.checkpoints() : [];
+
     // §2.13: Undo said "Undo" with no indication of what it undoes.
     const undoLabel = gameActions.canStepBack()
         ? `Undo — back to ${gameState.day === 0 ? 'the previous phase' : `day ${gameState.day}`}`
@@ -91,15 +94,60 @@ export function BroadcastBar({
 
             {!isOver && (
                 <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                        onClick={() => gameActions.stepBack()}
-                        className="btn btn-sm"
-                        disabled={!gameActions.canStepBack()}
-                        title={undoLabel}
-                        aria-label={undoLabel}
-                    >
-                        <Undo2 className="w-4 h-4" />
-                    </button>
+                    <span className="relative">
+                        <button
+                            onClick={() => gameActions.stepBack()}
+                            className="btn btn-sm"
+                            disabled={!gameActions.canStepBack()}
+                            title={undoLabel}
+                            aria-label={undoLabel}
+                        >
+                            <Undo2 className="w-4 h-4" />
+                        </button>
+                        {/* §2: rewind was one step. Every phase of the run was
+                            already on the snapshot stack and there was no way
+                            to reach past the top of it. */}
+                        <button
+                            onClick={() => setCheckpointsOpen(o => !o)}
+                            className="btn btn-sm btn-ghost px-1"
+                            disabled={!gameActions.canStepBack()}
+                            aria-expanded={checkpointsOpen}
+                            aria-haspopup="menu"
+                            title="Jump back to any earlier point in the run"
+                            aria-label="Jump back to any earlier point in the run"
+                        >
+                            ▾
+                        </button>
+                        {checkpointsOpen && (
+                            <div
+                                role="menu"
+                                className="absolute left-0 top-full mt-1 z-30 panel p-1.5 max-h-64 overflow-y-auto custom-scrollbar min-w-[13rem]"
+                            >
+                                <div className="eyebrow px-1.5 pb-1">Jump back to</div>
+                                {checkpoints.length === 0 && (
+                                    <div className="px-1.5 py-1 text-xs text-[var(--color-ink-500)]">
+                                        Nothing to go back to yet.
+                                    </div>
+                                )}
+                                {checkpoints.map(c => (
+                                    <button
+                                        key={c.index}
+                                        role="menuitem"
+                                        className="btn btn-sm btn-ghost w-full justify-start text-left"
+                                        onClick={() => { gameActions.rewindTo(c.index); setCheckpointsOpen(false); }}
+                                    >
+                                        <span className="font-mono text-[10px] mr-2">
+                                            {c.day === 0 ? '—' : `d${c.day}`}
+                                        </span>
+                                        {c.phase}
+                                        <span className="ml-auto text-[10px] text-[var(--color-ink-500)]">
+                                            {c.alive} alive
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </span>
                     <button
                         onClick={onNextPhase}
                         className="btn btn-primary"
@@ -117,6 +165,15 @@ export function BroadcastBar({
                             Run to end
                         </button>
                     )}
+                    <span
+                        className="chip font-mono"
+                        title={speed === 'manual'
+                            ? 'Playback is manual — advance with space or the button'
+                            : `Playing automatically at ${speed}`}
+                    >
+                        {speed === 'manual' ? '⏸ manual' : `▶ ${speed}`}
+                        {playUntil ? ` · until ${playUntil}` : ''}
+                    </span>
                     <PlaybackPopover
                         speed={speed}
                         onSpeed={onSpeed}

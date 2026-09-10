@@ -629,6 +629,38 @@ export const gameActions = {
         persistRun();
     },
 
+    /**
+     * §2: the checkpoint list.
+     *
+     * Rewind was one step, which is enough to undo a misclick and not enough
+     * to answer "what if the feast had gone differently" — the snapshots for
+     * every phase of the run were already on the stack and there was simply no
+     * way to reach past the top one. Newest first, so index 0 is the same
+     * thing `stepBack` does.
+     */
+    checkpoints(): Array<{ index: number; day: number; phase: GameState['phase']; alive: number }> {
+        const { gameState, runProgress } = gameStore.getState();
+        if (!gameState || gameState.phase === 'ended' || runProgress) return [];
+        return rewindStack
+            .map((snap, i) => ({
+                index: rewindStack.length - 1 - i,
+                day: snap.day,
+                phase: snap.phase,
+                alive: snap.tributes.filter(t => t.status === 'alive').length,
+            }))
+            .reverse();
+    },
+
+    /** §2: jump back to one of them, discarding everything after it. */
+    rewindTo(index: number) {
+        if (!engine || !gameActions.canStepBack()) return;
+        if (index < 0 || index >= rewindStack.length) return;
+        const target = rewindStack[rewindStack.length - 1 - index];
+        rewindStack = rewindStack.slice(0, rewindStack.length - 1 - index);
+        gameStore.setState({ gameState: target, simulator: new engine.Simulator(target) });
+        persistRun();
+    },
+
     /** §6.2: spend coins to become the standing patron of one district. */
     patronDistrict(district: number): boolean {
         const { coins } = gameStore.getState();

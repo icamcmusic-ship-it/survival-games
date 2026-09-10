@@ -31,8 +31,47 @@ export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: 
     const roster = [...gameState.tributes].sort((a, b) => a.district - b.district || a.name.localeCompare(b.name));
     const days = [...new Set(gameState.log.map(l => l.day))].sort((a, b) => a - b);
 
+    // §2: the two filters people actually want on a phone, as one tap each.
+    // Everything below is reachable on a small screen only by scrolling
+    // through five selects and twenty category chips, which on a live run is
+    // the same as not being reachable.
+    const deathsOnly = f.mutedGroups.length === CATEGORY_GROUPS.length - 1
+        && !f.mutedGroups.includes('violence');
+    const followingHere = f.filterTributeId !== null && f.filterTributeId === f.followedId;
+
     return (
         <div className="panel-flush p-4 space-y-4 animate-fadeIn">
+            {/* ---------- quick chips ---------- */}
+            <div className="flex flex-wrap gap-2 items-center">
+                <span className="eyebrow flex-none">Quick</span>
+                <button
+                    className={deathsOnly ? 'chip chip-accent' : 'chip'}
+                    aria-pressed={deathsOnly}
+                    title="Show only the violent events — kills, deaths, combat and injury"
+                    onClick={() => setChronicle({
+                        mutedGroups: deathsOnly
+                            ? []
+                            : CATEGORY_GROUPS.map(g => g.id).filter(id => id !== 'violence'),
+                    })}
+                >
+                    Deaths only
+                </button>
+                <button
+                    className={followingHere ? 'chip chip-accent' : 'chip'}
+                    aria-pressed={followingHere}
+                    disabled={!f.followedId}
+                    title={f.followedId
+                        ? 'Show only the lines involving the tribute you are following'
+                        : 'Follow a tribute from the standings or their sheet first'}
+                    onClick={() => setChronicle({ filterTributeId: followingHere ? null : f.followedId })}
+                >
+                    My tribute
+                </button>
+                {filtersActive(f) && (
+                    <button onClick={resetChronicleFilters} className="chip">Clear</button>
+                )}
+            </div>
+
             {/* ---------- reading row ---------- */}
             <div className="flex flex-wrap gap-2 items-center">
                 <input

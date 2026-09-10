@@ -14,14 +14,18 @@ export function OddsSparkline({ history, tributeId, width = 34, height = 12 }: {
     width?: number;
     height?: number;
 }) {
-    const points = useMemo(() => {
-        if (!history) return [];
+    // §2: the day each point belongs to, kept alongside the value. Without it
+    // the line had no axis and no way to answer "when was that?" — a shape
+    // with no scale, which is exactly the chart people mistrust.
+    const series = useMemo(() => {
+        if (!history) return [] as Array<{ day: number; value: number }>;
         return Object.keys(history)
             .map(Number)
             .sort((a, b) => a - b)
-            .map(day => history[day]?.[tributeId])
-            .filter((v): v is number => typeof v === 'number');
+            .map(day => ({ day, value: history[day]?.[tributeId] }))
+            .filter((p): p is { day: number; value: number } => typeof p.value === 'number');
     }, [history, tributeId]);
+    const points = series.map(p => p.value);
 
     if (points.length < 2) return <span className="flex-none" style={{ width, height }} aria-hidden="true" />;
 
@@ -34,6 +38,15 @@ export function OddsSparkline({ history, tributeId, width = 34, height = 12 }: {
         .join(' ');
 
     const rising = points[points.length - 1] >= points[0];
+    // §2: the legend, as a title. A sparkline this size cannot carry printed
+    // axes without becoming illegible, so the scale is stated in words on
+    // hover and in the accessible name — day by day, high and low, and which
+    // way it ended.
+    const legend = series.map(p => `d${p.day} ${p.value.toFixed(0)}%`).join(' · ');
+    const summary = `Odds ${points[0].toFixed(0)}% on day ${series[0].day} to `
+        + `${points[points.length - 1].toFixed(0)}% on day ${series[series.length - 1].day}`
+        + ` (high ${max.toFixed(0)}%, low ${min.toFixed(0)}%)`;
+
     return (
         <svg
             width={width}
@@ -41,14 +54,28 @@ export function OddsSparkline({ history, tributeId, width = 34, height = 12 }: {
             viewBox={`0 0 ${width} ${height}`}
             className="flex-none"
             role="img"
-            aria-label={`Odds from ${points[0]}% to ${points[points.length - 1]}% over ${points.length} days`}
+            aria-label={summary}
         >
+            <title>{`${summary}\n${legend}`}</title>
+            {/* The baseline is the low of the series, so the line's height is
+                readable as "distance above their worst day". */}
+            <line
+                x1="0" y1={height - 0.5} x2={width} y2={height - 0.5}
+                stroke="var(--line-soft)" strokeWidth="1" vectorEffect="non-scaling-stroke"
+            />
             <polyline
                 points={path}
                 fill="none"
                 strokeWidth="1.5"
                 stroke={rising ? 'var(--cat-alliance)' : 'var(--cat-death)'}
                 vectorEffect="non-scaling-stroke"
+            />
+            {/* The latest point, marked, so "where are they now" is one glance. */}
+            <circle
+                cx={width}
+                cy={height - ((points[points.length - 1] - min) / span) * height}
+                r="1.5"
+                fill={rising ? 'var(--cat-alliance)' : 'var(--cat-death)'}
             />
         </svg>
     );

@@ -85,8 +85,33 @@ function presetDelta(current: GameConfig, preset: PresetConfig): string[] {
     return out.length > 0 ? out : ['no change'];
 }
 
-function ConfigSlider({ label, hint, value, min, max, step, format, onChange }: {
-    label: string, hint?: string, value: number, min: number, max: number, step: number,
+/**
+ * §2: what a dial actually does, in outcomes rather than multipliers.
+ *
+ * Every slider showed a bare `1.25×` — a multiplier on a number the player has
+ * never seen, against a baseline they have no way to know. These are read off
+ * a 400-run soak (avg ~7.5 days, ~24 tributes, roughly six hazard deaths and
+ * four betrayals a Games at 1×) and stated as the difference from default, so
+ * "hazards 1.5×" reads as "about three more hazard deaths per Games".
+ */
+function effectHint(kind: 'hazard' | 'betrayal' | 'sponsor', value: number): string {
+    const delta = value - 1;
+    if (Math.abs(delta) < 0.13) return 'About the usual for a Games.';
+    const more = delta > 0;
+    if (kind === 'hazard') {
+        const n = Math.max(1, Math.round(Math.abs(delta) * 6));
+        return `Roughly ${n} ${more ? 'more' : 'fewer'} hazard death${n === 1 ? '' : 's'} per Games.`;
+    }
+    if (kind === 'betrayal') {
+        const n = Math.max(1, Math.round(Math.abs(delta) * 4));
+        return `Roughly ${n} ${more ? 'more' : 'fewer'} alliance${n === 1 ? '' : 's'} ending badly per Games.`;
+    }
+    const n = Math.max(1, Math.round(Math.abs(delta) * 5));
+    return `Roughly ${n} ${more ? 'more' : 'fewer'} parachute${n === 1 ? '' : 's'} landing per Games.`;
+}
+
+function ConfigSlider({ label, hint, effect, value, min, max, step, format, onChange }: {
+    label: string, hint?: string, effect?: string, value: number, min: number, max: number, step: number,
     format: (v: number) => string, onChange: (v: number) => void
 }) {
     return (
@@ -105,6 +130,7 @@ function ConfigSlider({ label, hint, value, min, max, step, format, onChange }: 
                 className="w-full accent-[var(--red)] cursor-pointer"
             />
             {hint && <p className="text-[10px] text-[var(--color-ink-500)]">{hint}</p>}
+            {effect && <p className="text-[10px] text-[var(--color-ink-400)] font-mono">{effect}</p>}
         </div>
     );
 }
@@ -152,8 +178,23 @@ function ArenaBriefing({ arenaId }: { arenaId: string }) {
     );
 }
 
+/**
+ * §2: the four steps of setting up a Games, in the order the decisions are
+ * actually made. The seed sits above them because it is the run's identity
+ * rather than one of its settings.
+ */
+const SETUP_TABS: Array<[SetupTab, string, string]> = [
+    ['arena', 'Arena', 'Where these Games happen — the map, its laws and its weather.'],
+    ['rules', 'Rules', 'How lethal, how treacherous and how generous this year is.'],
+    ['cast', 'Cast', 'Who gets reaped and how they are named.'],
+    ['meta', 'Meta', 'Gamemaker mode, Quells, and the district you are backing.'],
+];
+
+type SetupTab = 'arena' | 'rules' | 'cast' | 'meta';
+
 export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig, forceQuell: boolean) => void }) {
     const [seed, setSeed] = useState(randomSeed());
+    const [tab, setTab] = useState<SetupTab>('arena');
     const [arenaId, setArenaId] = useState(ARENAS[0].id);
     const [gamemakerMode, setGamemakerMode] = useState(false);
     const [forceQuell, setForceQuell] = useState(false);
@@ -365,12 +406,36 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     })()}
                 </div>
 
+                {/* §2: the setup screen was one 780-line scroll of eight
+                    stacked panels, which meant the arena picker — the single
+                    most consequential choice on it — sat below three panels of
+                    dials most players never change. Grouped into four steps,
+                    in the order somebody actually makes the decisions. */}
+                <div className="p-5 pb-0">
+                    <div className="seg w-fit flex-wrap" role="tablist" aria-label="Setup sections">
+                        {SETUP_TABS.map(([id, label, blurb]) => (
+                            <button
+                                key={id}
+                                role="tab"
+                                aria-selected={tab === id}
+                                onClick={() => setTab(id)}
+                                className="seg-item"
+                                title={blurb}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 {/* §2.1: "Plain Rules" — promoted out of the advanced list.
                     The temperament draw, the wildcard calendar and the Quell are
                     the whole reason two runs on identical sliders are not the same
                     run, so this is the single most important flag for anybody
                     trying to understand the game, and it was a checkbox in a
                     stack of checkboxes. */}
+                {tab === 'rules' && (
+                    <div>
                 <div className="p-5">
                     <label
                         className={`flex items-start gap-3 cursor-pointer group p-4 border-2 transition-colors ${
@@ -403,6 +468,8 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         />
                     </label>
                 </div>
+                    </div>
+                )}
 
                 {/* §10.2: mutator bundles. Curated combinations of the sliders
                     that are already there — no new mechanics — surfaced as
@@ -411,6 +478,8 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     time. Distinct from the presets above, which are the four
                     coherent default shapes; a mutator is deliberately
                     lopsided. */}
+                {tab === 'rules' && (
+                    <div>
                 <div className="p-5 space-y-2">
                     <span className="eyebrow">Mutators</span>
                     <p className="text-[10px] text-[var(--color-ink-500)]">
@@ -441,7 +510,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         })}
                     </div>
                 </div>
+                    </div>
+                )}
 
+                {tab === 'arena' && (
+                    <div>
                 <div className="p-5 space-y-1">
                     <span className="eyebrow">Select arena</span>
                     {/* §10.3: the featured arena, rotating daily and preferring
@@ -535,7 +608,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         })}
                     </div>
                 </div>
+                    </div>
+                )}
 
+                {tab === 'meta' && (
+                    <div>
                 <div className="p-5">
                     <label className="flex items-center gap-3 cursor-pointer group">
                         <div className={`w-5 h-5 border-2 flex items-center justify-center transition-colors flex-none ${
@@ -550,7 +627,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         <input type="checkbox" className="sr-only" checked={gamemakerMode} onChange={(e) => setGamemakerMode(e.target.checked)} />
                     </label>
                 </div>
+                    </div>
+                )}
 
+                {tab === 'meta' && (
+                    <div>
                 <div className="p-5 pt-0">
                     <label className="flex items-center gap-3 cursor-pointer group">
                         <div className={`w-5 h-5 border-2 flex items-center justify-center transition-colors flex-none ${
@@ -573,7 +654,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         />
                     </label>
                 </div>
+                    </div>
+                )}
 
+                {tab === 'cast' && (
+                    <div>
                 <div className="p-5 pt-0">
                     <label className="flex items-center gap-3 cursor-pointer group">
                         <div className={`w-5 h-5 border-2 flex items-center justify-center transition-colors flex-none ${
@@ -595,10 +680,14 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         />
                     </label>
                 </div>
+                    </div>
+                )}
 
 
                 {/* §6.2: the standing patronage — a persistent sink for Capitol
                     Coins. Survives across runs via the Panem records. */}
+                {tab === 'meta' && (
+                    <div>
                 <div className="p-5 pt-0">
                     <div className="panel-flush p-4 space-y-2">
                         <div className="flex items-baseline justify-between flex-wrap gap-2">
@@ -634,7 +723,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         </div>
                     </div>
                 </div>
+                    </div>
+                )}
 
+                {tab === 'rules' && (
+                    <div>
                 <div className="p-5 space-y-3">
                     <button onClick={() => setShowAdvanced(v => !v)} className="btn btn-ghost btn-sm -ml-2">
                         {showAdvanced ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
@@ -698,6 +791,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             <ConfigSlider
                                 label="Hazard rate"
                                 hint="Frequency of arena events and mutt attacks."
+                                effect={effectHint('hazard', config.hazardRate)}
                                 value={config.hazardRate}
                                 min={0.25} max={2.5} step={0.25}
                                 format={(v) => `${v.toFixed(2)}×`}
@@ -706,6 +800,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             <ConfigSlider
                                 label="Alliance betrayal rate"
                                 hint="How readily allies turn on each other."
+                                effect={effectHint('betrayal', config.betrayalRate)}
                                 value={config.betrayalRate}
                                 min={0} max={3} step={0.25}
                                 format={(v) => `${v.toFixed(2)}×`}
@@ -714,6 +809,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             <ConfigSlider
                                 label="Sponsor generosity"
                                 hint="Chance of silver parachutes reaching popular tributes."
+                                effect={effectHint('sponsor', config.sponsorGenerosity)}
                                 value={config.sponsorGenerosity}
                                 min={0} max={3} step={0.25}
                                 format={(v) => `${v.toFixed(2)}×`}
@@ -759,6 +855,8 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         </div>
                     )}
                 </div>
+                    </div>
+                )}
             </div>
 
             {/* §2.1: the simulation knows its own distribution — a 400-run soak

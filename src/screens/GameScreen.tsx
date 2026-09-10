@@ -15,7 +15,8 @@ import { CATEGORY_GROUPS } from '../ui/eventStyles';
 import { tributeOdds } from '../engine/odds';
 import { Filter, Star } from 'lucide-react';
 import { GAMEMAKER_COSTS } from '../data/balance';
-import { evaluateInRunNearMisses } from '../data/achievements';
+import { evaluateInRunNearMisses, evaluateAchievements, ACHIEVEMENTS } from '../data/achievements';
+import { readPanem } from '../utils/panemStorage';
 import { GamemakerEventType, gamemakerCooldownRemaining, gamemakerEventCost } from '../engine/gamemaker';
 import { gameActions, gameStore } from '../store/gameStore';
 import { pathForView } from '../store/router';
@@ -83,6 +84,17 @@ type MobilePane = StageTab | 'tributes';
  * dossier column, each in its own file, over a filter state that lives in
  * `chronicleStore` so the standalone chronicle page reads the same one.
  */
+/**
+ * §2: how long the ticker waits for the feed to stop moving before it
+ * announces how much arrived. Long enough that one advance is one
+ * announcement rather than nine.
+ */
+const NEW_EVENT_SETTLE_MS = 1200;
+
+/** §2: how long an achievement toast stays up, and how many can stack. */
+const TOAST_MS = 6000;
+const TOAST_MAX = 3;
+
 export function GameScreen({
     gameState,
     onNextPhase,
@@ -487,6 +499,56 @@ export function GameScreen({
         return '';
     }, [gameState.log]);
 
+    // §2: the live ticker as a counted region. Announcing every rendered line
+    // drowns a screen reader in ambient scenery during auto-play (which is why
+    // the feed itself is deliberately not role="log"), and announcing nothing
+    // leaves a listener with no idea the run is moving. A periodic count is
+    // the honest middle: "eleven new events" tells you the shape of what you
+    // missed without reading nine days of weather at you.
+    const seenLogCount = useRef(gameState.log.length);
+    const [newEventCount, setNewEventCount] = useState(0);
+    useEffect(() => {
+        const unseen = gameState.log.length - seenLogCount.current;
+        if (unseen <= 0) {
+            seenLogCount.current = gameState.log.length;
+            return;
+        }
+        setNewEventCount(unseen);
+        const settle = setTimeout(() => {
+            seenLogCount.current = gameState.log.length;
+            setNewEventCount(0);
+        }, NEW_EVENT_SETTLE_MS);
+        return () => clearTimeout(settle);
+    }, [gameState.log.length]);
+
+    // §2: achievements, as they happen.
+    //
+    // Everything a run earns was banked silently and shown in one block on the
+    // end screen, which is the one moment the player is least able to connect
+    // it to what they were watching. Achievements are evaluated against the
+    // live state at each phase boundary and the newly-true ones are surfaced
+    // as they land. Nothing is *recorded* here — the end-of-run pass in
+    // `panemStorage` remains the only writer, so a toast can never award
+    // something a rewind then un-earns.
+    const [toasts, setToasts] = useState<Array<{ id: string; name: string; hint: string }>>([]);
+    const shownToasts = useRef<Set<string>>(new Set());
+    useEffect(() => {
+        if (isOver) return;
+        const already = new Set(readPanem().unlocked);
+        const live = evaluateAchievements(gameState).filter(id =>
+            !already.has(id) && !shownToasts.current.has(id));
+        if (live.length === 0) return;
+        live.forEach(id => shownToasts.current.add(id));
+        const fresh = live
+            .map(id => ACHIEVEMENTS.find(a => a.id === id))
+            .filter((a): a is NonNullable<typeof a> => !!a)
+            .map(a => ({ id: a.id, name: a.name, hint: a.hint }));
+        if (fresh.length === 0) return;
+        setToasts(prev => [...prev, ...fresh].slice(-TOAST_MAX));
+        const drop = setTimeout(() => setToasts(prev => prev.slice(fresh.length)), TOAST_MS);
+        return () => clearTimeout(drop);
+    }, [gameState.phase, gameState.day, isOver, gameState]);
+
     const urgentAnnouncement = useMemo(() => {
         const lastDeath = [...gameState.log]
             .reverse()
@@ -826,8 +888,25 @@ export function GameScreen({
             {/* Three live regions, outside the chronicle pane so they keep
                 announcing while the map is showing. */}
             <div aria-live="polite" className="sr-only">{latestHeadline}</div>
+            <div role="status" aria-live="polite" className="sr-only">
+                {newEventCount > 0 ? `${newEventCount} new event${newEventCount === 1 ? '' : 's'}` : ''}
+            </div>
             <div aria-live="assertive" className="sr-only">{urgentAnnouncement}</div>
             <div ref={shortcutHintRef} role="status" aria-live="polite" className="sr-only" />
+
+            {/* §2: in-run achievement toasts. Bottom-left so they never sit
+                under the sticky control bar or the mobile action row. */}
+            {toasts.length > 0 && (
+                <div className="fixed bottom-28 left-4 z-40 space-y-2 max-w-[18rem]" role="status" aria-live="polite">
+                    {toasts.map(t => (
+                        <div key={t.id} className="panel px-3 py-2 animate-fadeIn">
+                            <div className="eyebrow text-[var(--gold-deep)]">Achievement</div>
+                            <div className="font-bold text-sm">{t.name}</div>
+                            <div className="text-[11px] text-[var(--color-ink-500)]">{t.hint}</div>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {showHelp && <HelpOverlay onClose={() => setShowHelp(false)} />}
 
