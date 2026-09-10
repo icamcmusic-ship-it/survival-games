@@ -506,6 +506,12 @@ export function severRandomEdge(ctx: SimContext, zoneName: string): string | und
  * up the pressure everywhere at once, not background noise from day one.
  */
 export function rollAmbientZoneEffects(ctx: SimContext) {
+    // §5 `deadlyNight`: whatever this arena does to people, it does twice as
+    // often after dark. Applied as a multiplier on the ambient roll rather
+    // than a separate hazard, so it scales with everything the arena already is.
+    const darkMultiplier = arenaHasLaw(ctx.state, 'deadlyNight') && ctx.state.timeOfDay !== 'day'
+        ? ZONE_EFFECTS.deadlyNightMultiplier
+        : 1;
     const state = ctx.state;
     // Escalation is now audience-driven, so gate on whether the Gamemakers have
     // actually started rather than on the calendar.
@@ -519,13 +525,13 @@ export function rollAmbientZoneEffects(ctx: SimContext) {
     // Fire: catches in flammable terrain. More likely in a hot standing climate.
     const flammable = active.filter(z =>
         (ZONE_EFFECTS.flammableTerrain as readonly Terrain[]).includes(z.terrain) && !hasEffect(state, z.name, 'burning'));
-    if (flammable.length > 0 && ctx.rng.chance(ZONE_EFFECTS.ambientFireChance)) {
+    if (flammable.length > 0 && ctx.rng.chance(ZONE_EFFECTS.ambientFireChance * darkMultiplier)) {
         startZoneEffect(ctx, ctx.rng.pick(flammable).name, 'burning');
     }
 
     // Flooding: open water rising over its banks.
     const floodable = active.filter(z => (z.terrain === 'water' || z.terrain === 'wetland') && !hasEffect(state, z.name, 'flooded'));
-    if (floodable.length > 0 && ctx.rng.chance(ZONE_EFFECTS.ambientFloodChance)) {
+    if (floodable.length > 0 && ctx.rng.chance(ZONE_EFFECTS.ambientFloodChance * darkMultiplier)) {
         startZoneEffect(ctx, ctx.rng.pick(floodable).name, 'flooded');
     }
 

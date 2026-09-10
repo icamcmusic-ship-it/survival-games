@@ -1,5 +1,6 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
 import { FEAR, HUNTING, INTEL, MEMORY, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
+import { arenaHasLaw } from './gamesProfile';
 import { profOf } from './proficiency';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
@@ -365,6 +366,15 @@ export function rivalRecord(t: Tribute, otherId: string): RivalRecord {
 
 /** Records that these two have now fought, from both sides. */
 export function noteFight(state: GameState, a: Tribute, b: Tribute) {
+    // §5 `openMic`: in this arena nothing is private. Everybody alive learns
+    // where the fight was, which turns every exchange into an invitation and
+    // makes hiding after one impossible.
+    if (arenaHasLaw(state, 'openMic')) {
+        state.tributes.forEach(o => {
+            if (o.status !== 'alive' || o.id === a.id || o.id === b.id) return;
+            noteSighting(state, o, a.zone, 2, 0);
+        });
+    }
     const cycle = cycleOf(state);
     [[a, b], [b, a]].forEach(([x, y]) => {
         const record = rivalRecord(x, y.id);

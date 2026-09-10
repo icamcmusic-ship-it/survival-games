@@ -1,4 +1,5 @@
-import { Item, ItemQuality, Tribute } from '../models/types';
+import { GameState, Item, ItemQuality, Tribute } from '../models/types';
+import { arenaHasLaw } from './gamesProfile';
 import { INVENTORY, PHYSIQUE, QUALITY, SITUATIONAL_KIT } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { massOf } from './physique';
@@ -90,6 +91,18 @@ export function wearArmour(t: Tribute, amount: number) {
     worn.forEach(piece => {
         piece.durability = Math.max(0, (piece.durability ?? 0) - share);
     });
+}
+
+/**
+ * §5 `noWeapons`: the arena's own item pool. Every site that mints or drops
+ * something reads this rather than `ITEMS` directly, so an arena that declares
+ * the law simply has no blades in it — the horn, the feast table, a parachute
+ * and a forage roll all come up empty of them.
+ */
+export function itemPoolFor(state: GameState, pool: Item[]): Item[] {
+    if (!arenaHasLaw(state, 'noWeapons')) return pool;
+    const stripped = pool.filter(i => i.type !== 'weapon');
+    return stripped.length > 0 ? stripped : pool.filter(i => i.type === 'food' || i.type === 'water');
 }
 
 export function hasTool(t: Tribute, key: 'purifies' | 'light' | 'warmth' | 'fishing'): boolean {

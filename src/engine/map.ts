@@ -1,3 +1,4 @@
+import { arenaHasLaw } from './gamesProfile';
 import { Arena, EdgeRule, GameState, Tribute, Zone, ZoneFeatures, attr } from '../models/types';
 import { traitMod } from '../data/traits';
 import { BLEEDING, EDGE_RULES, EDGE_TOLL, ZONE_EFFECTS, ZONES } from '../data/balance';
@@ -32,6 +33,20 @@ export function travelCost(t: Tribute, dest: Zone): number {
     }
     if (dest.terrain === 'highland') {
         return Math.max(1, (traitMod(t, 'highland') > 0 ? 1 : 2) + limping - Math.round(climbModifier(t)));
+    }
+    // §10: the four terrains added in §10 each cost something specific.
+    // Ice is the slowest ground in the game for anybody who is hurt; a cave is
+    // a squeeze rather than a climb; desert is fast to cross and expensive to
+    // have crossed (the thirst is charged in the survival layer); streets are
+    // ordinary going for anybody who is not carrying half a camp.
+    if (dest.terrain === 'ice') {
+        return Math.max(1, 2 + limping * 2 - Math.round(chokepointModifier(t)));
+    }
+    if (dest.terrain === 'cave') {
+        return Math.max(1, 2 + limping - Math.round(chokepointModifier(t)));
+    }
+    if (dest.terrain === 'desert' || dest.terrain === 'urban') {
+        return Math.max(1, 1 + limping - Math.round(chokepointModifier(t)));
     }
     // §3.1: chokepoints, burrows and steep ground. A broad frame pays to get
     // through a gap; long limbs pay again, and a compact tribute climbs.
@@ -167,11 +182,17 @@ function nameHash(name: string): number {
 
 const BASE_COVER: Record<Zone['terrain'], number> = {
     forest: 0.8, wetland: 0.6, ruins: 0.6, highland: 0.35, water: 0.2, open: 0.1,
+    // §10: a cave is the best cover in the game and the worst place to be
+    // found in; a street is broken sightlines; ice and desert are nowhere to
+    // hide at all.
+    cave: 0.85, urban: 0.65, ice: 0.1, desert: 0.05,
 };
 
 /** §5.6: how much shelter each terrain's interior offers before cover adjusts it. */
 const BASE_SHELTER: Record<Zone['terrain'], number> = {
     forest: 0.6, wetland: 0.3, ruins: 0.7, highland: 0.25, water: 0.1, open: 0.1,
+    // §10: out of the weather entirely, or in none of it whatsoever.
+    cave: 0.9, urban: 0.75, ice: 0.05, desert: 0.05,
 };
 
 /** §5.6: names that read as a drinkable source even off water terrain. */
@@ -312,6 +333,13 @@ export interface EdgeContext {
 function edgeAllowed(arena: Arena, a: string, b: string, time?: 'day' | 'night', who?: EdgeContext): boolean {
     const key = edgeKey(a, b);
     const rule = arena.edgeRules?.[key];
+    // §5 `oneWayBorders`: an arena where the whole map is a current. Every
+    // unruled edge runs one way, decided by the zone order so it is stable
+    // for the run and identical on a replay — no RNG, no per-edge authoring.
+    if (!rule && who?.state !== undefined && arenaHasLaw(who.state, 'oneWayBorders')) {
+        const names = arena.zones.map(z => z.name);
+        return names.indexOf(a) <= names.indexOf(b);
+    }
     if (!rule) return true;
     switch (rule.kind) {
         case 'oneWay': return rule.from === a && rule.to === b;

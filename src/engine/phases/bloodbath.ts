@@ -8,12 +8,12 @@ import { ALLIANCES, BLOODBATH, QUALITY_BIAS, TRAINING } from '../../data/balance
 import { registerAlliance } from '../alliance';
 import { resolveCombat, resolveGroupCombat } from '../combat';
 import { BLOODBATH_TEXTS } from '../../data/flavorText';
-import { giveItem, itemPhrase, mintItem } from '../items';
+import { giveItem, itemPhrase, mintItem, itemPoolFor } from '../items';
 import { personaThreat } from './alliances';
 import { getRel, setRel } from '../relationships';
 import { noteContact, noteSighting } from '../memory';
 import { addFear } from '../fear';
-import { wildcardIs } from '../gamesProfile';
+import { wildcardIs, arenaHasLaw } from '../gamesProfile';
 import { arenaBriefingLog } from '../arenaBriefingLog';
 
 const fill = (template: string, vars: Record<string, string>) =>
@@ -105,6 +105,9 @@ function reachScore(ctx: SimContext, t: Tribute): number {
 
 /** Weapons only. What is actually laid out at the mouth of the horn. */
 const HORN_WEAPONS = ITEMS.filter(i => i.type === 'weapon');
+// §5 `noWeapons`: an arena with nothing in it to pick up. The Quell already
+// did this through `quell-weapons-fixed`; as a law it is declarable by any
+// arena, and what the horn holds is everything except the blades.
 
 /**
  * 'The Cornucopia Forfeit': no weapons anywhere near the horn this year,
@@ -112,9 +115,12 @@ const HORN_WEAPONS = ITEMS.filter(i => i.type === 'weapon');
  * of the unfiltered `ITEMS`/`HORN_WEAPONS` when the Quell is standing.
  */
 function lootPool(ctx: SimContext): Item[] {
-    return wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? ITEMS.filter(i => i.type === 'food') : ITEMS;
+    const base = wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? ITEMS.filter(i => i.type === 'food') : ITEMS;
+    // §5 `noWeapons` composes with the Quell rather than overriding it.
+    return itemPoolFor(ctx.state, base);
 }
 function hornWeaponsPool(ctx: SimContext): Item[] {
+    if (arenaHasLaw(ctx.state, 'noWeapons')) return lootPool(ctx);
     return wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? lootPool(ctx) : HORN_WEAPONS;
 }
 

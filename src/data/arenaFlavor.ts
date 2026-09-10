@@ -8705,11 +8705,28 @@ export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {
  */
 export function actionPool(flavor: ArenaFlavor, key: ArenaActionKey): string[] {
     const authored = flavor.actions[key];
-    if (authored && authored.length > 0) return authored;
-    const generic = GENERIC_ACTIONS[key];
-    if (generic && generic.length > 0) return generic;
-    return GENERIC_ACTIONS.rest;
+    const generic = GENERIC_ACTIONS[key] ?? GENERIC_ACTIONS.rest;
+    if (!authored || authored.length === 0) return generic;
+
+    // §5: an authored pool used to *replace* the generic one outright, which
+    // made a short authored pool actively worse than none at all — the four
+    // conditional-stance pools are authored at four entries against a generic
+    // twelve, so seventeen arenas were repeating themselves four ways round
+    // in their own voice instead of twelve ways round in a shared one. They
+    // are merged instead: the arena's own lines are what the arena sounds
+    // like, so they are weighted to lead, and the generic pool is what stops
+    // a run of nine days sounding like a loop.
+    const target = Math.max(GENERIC_ACTION_TARGET, authored.length);
+    if (authored.length >= target) return authored;
+    const filler = generic.filter(line => !authored.includes(line));
+    return [...authored, ...authored, ...filler];
 }
+
+/**
+ * §5: pool size at which an authored set stands on its own. Below it the
+ * generic pool is merged in behind it rather than discarded.
+ */
+const GENERIC_ACTION_TARGET = 8;
 
 /**
  * §1.3: how much of the pool the shared universal events are allowed to be.

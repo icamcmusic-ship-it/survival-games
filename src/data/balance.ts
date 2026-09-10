@@ -2037,6 +2037,8 @@ export const ZONE_EFFECTS = {
     forceFieldExploitIntellect: 8,
     forceFieldExploitChance: 0.05,
     forceFieldExploitHungerRelief: 25,
+    /** §5 `deadlyNight`: how much more often the arena turns on people after dark. */
+    deadlyNightMultiplier: 2,
 } as const;
 
 /**
@@ -2366,6 +2368,9 @@ export const ZONES = {
     /** Share of successful forages that turn up nightlock instead of a meal. */
     /** §6.4: raised 0.12 -> 0.16 so blade-poison material actually circulates. */
     nightlockChance: 0.16,
+    /** §10: what standing in the new terrains costs per cycle. */
+    desertThirstPerCycle: 6,
+    iceFatiguePerCycle: 4,
 } as const;
 
 /** What tributes remember, and how fast they forget it. */

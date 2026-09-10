@@ -681,7 +681,10 @@ function updateAudienceInterest(ctx: SimContext, time: 'day' | 'night') {
     const shift = escalationShift(ctx.state);
     const bored = ctx.state.day >= ESCALATION.boredomEarliestDay + Math.max(0, shift)
         && interest < threshold;
-    const scheduled = ctx.state.day >= ESCALATION.startDay + shift;
+    // §5 `shrinkingArena`: an arena built to close from the first morning.
+    // Declarable as a law rather than only reachable by a bored Gamemaker.
+    const alwaysClosing = arenaHasLaw(ctx.state, 'shrinkingArena');
+    const scheduled = alwaysClosing || ctx.state.day >= ESCALATION.startDay + shift;
     if (!bored && !scheduled) return;
 
     ctx.state.escalationDay = ctx.state.day;

@@ -1339,7 +1339,14 @@ export interface Trap {
     knownBy?: string[];
 }
 
-export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland';
+/**
+ * §10: four more first-class terrains. Each has its own band in the procedural
+ * generator, its own drains in the movement and survival layers, its own map
+ * colour and at least one mutt that will hunt on it — `test:arenas` treats an
+ * uncovered terrain as a permanently mutt-free zone rather than a quiet one.
+ */
+export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland'
+    | 'cave' | 'ice' | 'desert' | 'urban';
 
 /**
  * A behavioural archetype layered on top of a mutt's raw kit. Undefined means
@@ -1480,7 +1487,15 @@ export type ArenaLawId =
     | 'fireImpossible'      // fire cannot be lit anywhere in this arena
     // §5.1: an arena is allowed more than one of these now (`Arena.laws`).
     | 'noSponsors'         // communications blackout: no gift ever lands
-    | 'noHealing';         // medical items do nothing; rest is the only recovery
+    | 'noHealing'          // medical items do nothing; rest is the only recovery
+    // §5: six more. Each is enforced at exactly one site, the way the eight
+    // above are, and each is declarable by a hand-authored arena.
+    | 'noForage'           // nothing edible grows here; the horn is the only pantry
+    | 'deadlyNight'        // the dark is the hazard: night hazard rates double
+    | 'oneWayBorders'      // every edge runs one way, and the map is a current
+    | 'noWeapons'          // nothing in this arena is a weapon (also a Quell)
+    | 'shrinkingArena'     // the border starts closing from the first morning
+    | 'openMic';           // every fight is audible arena-wide
 
 /** A traversal rule layered on top of plain adjacency for one edge. Keyed by `edgeKey(a,b)` on `Arena.edgeRules`. */
 export interface EdgeRule {

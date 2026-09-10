@@ -614,6 +614,13 @@ function attemptForage(
     flavor: ReturnType<typeof arenaFlavor>,
     chance: number,
 ): boolean {
+    // §5 `noForage`: nothing edible grows here. Everything anybody eats in
+    // this arena came out of the horn, which makes the horn the only pantry
+    // and going back to it the only plan.
+    if (arenaHasLaw(ctx.state, 'noForage') && !/cornucopia/i.test(t.zone)) {
+        noteForageFailure(t, t.zone);
+        return false;
+    }
     if (!ctx.rng.chance(chance)) {
         depleteZone(ctx.state, t.zone, ZONES.depletionPerAttempt);
         // §3.2: repeated failure in the same place is a fact about the place,

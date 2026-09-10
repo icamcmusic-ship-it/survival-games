@@ -48,6 +48,30 @@ export const LAW_LABELS: Record<ArenaLawId, { name: string; detail: string }> = 
         name: 'No medicine',
         detail: 'Medical supplies do nothing. Rest is the only recovery there is.',
     },
+    noForage: {
+        name: 'Nothing grows',
+        detail: 'Nothing edible grows in this arena. Everything anybody eats came out of the horn.',
+    },
+    deadlyNight: {
+        name: 'The dark is the hazard',
+        detail: 'Whatever this arena does to people, it does twice as often after dark.',
+    },
+    oneWayBorders: {
+        name: 'One-way ground',
+        detail: 'The ground runs one way. Where you can go from here is not where you can come back from.',
+    },
+    noWeapons: {
+        name: 'No weapons',
+        detail: 'There is not a weapon in this arena. Whatever happens, happens with hands and terrain.',
+    },
+    shrinkingArena: {
+        name: 'Closing from the first morning',
+        detail: 'The border does not wait for the Gamemakers to get bored. It starts closing on day one.',
+    },
+    openMic: {
+        name: 'Open mic',
+        detail: 'Every fight in this arena is audible from every other sector. Nothing here is private.',
+    },
 };
 
 /**
@@ -105,6 +129,10 @@ const TERRAIN_LABELS: Record<Terrain, string> = {
     highland: 'high ground',
     ruins: 'ruins',
     wetland: 'wetland',
+    cave: 'cave systems',
+    ice: 'ice',
+    desert: 'desert',
+    urban: 'streets',
 };
 
 /** Every standing law on this arena, `law` and `laws` folded into one list. */

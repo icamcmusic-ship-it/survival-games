@@ -458,6 +458,8 @@ export const ARENAS: Arena[] = [
         // Broken glass floor to ceiling: crossing the maze costs blood as often as not.
         edgeRules: { 'The Carousel|The Mirror Maze': { kind: 'tolled', toll: { woundChance: 0.1 } } },
         // §5.5: widened to twelve zones — a park has more dark corners than this.
+        // §5: the Capitol dressed this one as an amusement park and did not put a single blade in it.
+        law: 'noWeapons',
         zones: [
             { name: 'The Cornucopia (The Midway)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Carousel', 'The Big Top', 'The Pine Dark'] },
             { name: 'The Carousel', terrain: 'ruins', danger: 0.65, resources: 0.3, adjacent: ['The Cornucopia (The Midway)', 'The Mirror Maze', 'The Duck Pond'] },
@@ -549,6 +551,8 @@ export const ARENAS: Arena[] = [
         events: ['The Lead Opens', 'Plate Collision', 'Black Water'],
         // Grease ice will hold a careful tribute. Mostly.
         edgeRules: { 'The Black Lead|The Grease Ice': { kind: 'tolled', toll: { fatigue: 7, woundChance: 0.08 } } },
+        // §5: nothing edible grows on pack ice. Everything anybody eats here came out of the horn.
+        law: 'noForage',
         zones: [
             { name: 'The Cornucopia (Ice Shelf)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Pack Ice', 'The Pressure Ridges', 'The Black Lead'] },
             { name: 'The Pack Ice', terrain: 'open', danger: 0.65, resources: 0.2, adjacent: ['The Cornucopia (Ice Shelf)', 'The Grease Ice', 'The Frozen Wreck'] },
@@ -655,6 +659,8 @@ export const ARENAS: Arena[] = [
         // Acoustic confusion runs through the same primitive fog does —
         // hearing nothing true is its own kind of blindness.
         effectVocab: { fogbound: { label: 'the wind-organ at full voice', severityMult: 1.3 } },
+        // §5: the arena's whole premise, finally a rule — in the Whispering Forest every fight is audible from every other sector.
+        law: 'openMic',
         zones: [
             { name: 'The Cornucopia (The Grove Floor)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Hollow Boughs', 'The Wind Throat', "Piper's Creek"] },
             { name: 'The Hollow Boughs', terrain: 'forest', danger: 0.4, resources: 0.7, adjacent: ['The Cornucopia (The Grove Floor)', 'The Needle Drift', 'The Deep Organ'] },
@@ -693,6 +699,8 @@ export const ARENAS: Arena[] = [
         description: 'A former military proving ground, pockmarked with deep overlapping craters flooded into stagnant ponds and choked by fast-growing vines. Unexploded ordnance sleeps under the root mats, and the vines have learned to grow something worse.',
         mutts: ['Bog Adders', 'Root-Mat Crawlers', 'The Salvage Hound'],
         events: ['Pressure Pod', 'Crater Collapse', 'Buried Ordnance'],
+        // §5: unexploded ordnance under a root mat is worse in the dark, when nobody can see where they are putting their feet.
+        law: 'deadlyNight',
         zones: [
             { name: 'The Cornucopia (The Motor Pool)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Shallow Craters', 'Rusted Convoy Road', 'The Root Mat Flat'] },
             { name: 'The Shallow Craters', terrain: 'wetland', danger: 0.55, resources: 0.4, adjacent: ['The Cornucopia (The Motor Pool)', 'The Deep Craters', 'The Fruiting Tangle'] },

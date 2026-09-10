@@ -1,5 +1,5 @@
 import { Tribute, attr } from '../models/types';
-import { POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
+import { ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -615,6 +615,13 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
             { important: true, category: 'injury' }
         );
     }
+
+    // §10: the new terrains' own drains. Desert takes water off anybody
+    // standing in it; ice takes heat; a cave takes neither and is the reason
+    // to be in one.
+    const here = getZone(ctx.state.arena, t.zone);
+    if (here?.terrain === 'desert') t.vitals.thirst += ZONES.desertThirstPerCycle;
+    if (here?.terrain === 'ice') t.vitals.fatigue += ZONES.iceFatiguePerCycle;
 
     const restedThisCycle = ctx.state.phase === 'night'
         && t.vitals.fatigue < SLEEP.restedFatigue

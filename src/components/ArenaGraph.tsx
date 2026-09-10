@@ -16,6 +16,8 @@ import { GRAPH_MIN_WIDTH_PX, NODE_HIT_R, NODE_R, VIEW_W, VIEW_H, layoutZones } f
 
 const TERRAIN_ICONS: Record<string, string> = {
     open: '🏳️', forest: '🌲', water: '🌊', highland: '⛰️', ruins: '🏚️', wetland: '🥀',
+    // §10: the four terrains added in §10.
+    cave: '🕳️', ice: '🧊', desert: '🏜️', urban: '🏙️',
 };
 
 const dangerLabel = (d: number) => (d >= 0.7 ? 'High risk' : d >= 0.4 ? 'Moderate' : 'Low risk');
