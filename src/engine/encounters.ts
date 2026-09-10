@@ -95,6 +95,18 @@ function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: b
     // T-5: how well you get out of the way depends on how bad the leg is.
     const penalty = injuryGrade(t, 'legs') * ENCOUNTERS.legsDodgePenaltyPerGrade;
 
+    // §8: the Scholar worked this out days ago. Spent on the first arena
+    // event that would otherwise land, and only once per run.
+    if (t.arenaForeknowledge && !isBoon) {
+        t.arenaForeknowledge = false;
+        ctx.logEvent(
+            fill(`{tribute} is not where it happens. They worked out days ago what this place does, and they have been counting.`, vars),
+            [t.id],
+            { important: true, category: 'survival' }
+        );
+        return true;
+    }
+
     if (event.dodgeStat) {
         const roll = t.attributes[event.dodgeStat] + ctx.rng.nextInt(0, 4) - penalty;
         if (roll > difficulty) {
@@ -602,6 +614,13 @@ function attemptForage(
     flavor: ReturnType<typeof arenaFlavor>,
     chance: number,
 ): boolean {
+    // §5 `noForage`: nothing edible grows here. Everything anybody eats in
+    // this arena came out of the horn, which makes the horn the only pantry
+    // and going back to it the only plan.
+    if (arenaHasLaw(ctx.state, 'noForage') && !/cornucopia/i.test(t.zone)) {
+        noteForageFailure(t, t.zone);
+        return false;
+    }
     if (!ctx.rng.chance(chance)) {
         depleteZone(ctx.state, t.zone, ZONES.depletionPerAttempt);
         // §3.2: repeated failure in the same place is a fact about the place,

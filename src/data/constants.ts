@@ -324,6 +324,8 @@ export const ARENAS: Arena[] = [
             fogbound: { label: 'a rolling blackout', durationMult: 1.5 },
             flooded: { label: 'a flood-valve release' },
         },
+        // §5: the horn is in a service bay with one way in. It is a killing box and it looks like one.
+        cornucopiaLayout: 'walled',
         zones: [
             { name: 'The Cornucopia (Atrium)', terrain: 'open', danger: 0.65, resources: 0.3, adjacent: ['Service Tunnels', 'The Hydroponics Bay', 'Reactor Level'] },
             { name: 'Service Tunnels', terrain: 'ruins', danger: 0.7, resources: 0.25, adjacent: ['The Cornucopia (Atrium)', 'The Cistern', 'Dormitory Block', 'The Ventilation Shafts'] },
@@ -350,6 +352,8 @@ export const ARENAS: Arena[] = [
         // No `lawZone` is deliberate: there is no exception, nowhere down
         // here has water at all — see the description above.
         law: 'noWaterExceptZone',
+        // §5: the horn is at the bottom of the shaft, walled by the workings themselves.
+        cornucopiaLayout: 'walled',
         zones: [
             { name: 'The Cornucopia (The Hub)', terrain: 'open', danger: 0.6, resources: 0.45, adjacent: ['The Choke', 'The Root Gardens', 'The Dust Flats'] },
             { name: 'The Choke', terrain: 'ruins', danger: 0.8, resources: 0.2, adjacent: ['The Cornucopia (The Hub)', 'The Old Workings', 'The Collapsed Galleries'] },
@@ -369,6 +373,8 @@ export const ARENAS: Arena[] = [
         events: ['Bridge Failure', 'Magnetic Squall', 'The Fog Rises'],
         // Nobody crosses the great bridge blind: after dark the fog owns it.
         edgeRules: { 'The Cornucopia (Anchor Isle)|The Long Span': { kind: 'timeGated', gatedTime: 'day' } },
+        // §5: the horn sits on its own sandbar. Getting to it is a crossing, not a sprint.
+        cornucopiaLayout: 'island',
         zones: [
             { name: 'The Cornucopia (Anchor Isle)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Long Span', 'The Fog Shallows', 'The Orchard Isle'] },
             { name: 'The Long Span', terrain: 'open', danger: 0.75, resources: 0.1, adjacent: ['The Cornucopia (Anchor Isle)', 'Lodestone Crag', 'Gullrock'], features: { cover: 0.05, elevation: true, chokepoint: true } },
@@ -413,6 +419,8 @@ export const ARENAS: Arena[] = [
         // §5.1: no fire, no fresh water, and nothing that cuts on coral heals
         // clean. The reef is the no-healing arena — rest is the only medicine.
         laws: ['noHealing'],
+        // §5: the horn is on the coral head, and everything between is water.
+        cornucopiaLayout: 'island',
         zones: [
             { name: 'The Cornucopia (Drained Basin)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Coral Razors', 'The Urchin Barrens', 'The Dry Kelp Forest'] },
             { name: 'The Coral Razors', terrain: 'ruins', danger: 0.8, resources: 0.25, adjacent: ['The Cornucopia (Drained Basin)', 'The Shelf Break', 'The Anemone Fields'] },
@@ -458,6 +466,8 @@ export const ARENAS: Arena[] = [
         // Broken glass floor to ceiling: crossing the maze costs blood as often as not.
         edgeRules: { 'The Carousel|The Mirror Maze': { kind: 'tolled', toll: { woundChance: 0.1 } } },
         // §5.5: widened to twelve zones — a park has more dark corners than this.
+        // §5: the Capitol dressed this one as an amusement park and did not put a single blade in it.
+        law: 'noWeapons',
         zones: [
             { name: 'The Cornucopia (The Midway)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Carousel', 'The Big Top', 'The Pine Dark'] },
             { name: 'The Carousel', terrain: 'ruins', danger: 0.65, resources: 0.3, adjacent: ['The Cornucopia (The Midway)', 'The Mirror Maze', 'The Duck Pond'] },
@@ -549,6 +559,10 @@ export const ARENAS: Arena[] = [
         events: ['The Lead Opens', 'Plate Collision', 'Black Water'],
         // Grease ice will hold a careful tribute. Mostly.
         edgeRules: { 'The Black Lead|The Grease Ice': { kind: 'tolled', toll: { fatigue: 7, woundChance: 0.08 } } },
+        // §5: nothing edible grows on pack ice. Everything anybody eats here came out of the horn.
+        law: 'noForage',
+        // §5: the shelf the horn stands on is separated from the pack ice by open leads.
+        cornucopiaLayout: 'island',
         zones: [
             { name: 'The Cornucopia (Ice Shelf)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Pack Ice', 'The Pressure Ridges', 'The Black Lead'] },
             { name: 'The Pack Ice', terrain: 'open', danger: 0.65, resources: 0.2, adjacent: ['The Cornucopia (Ice Shelf)', 'The Grease Ice', 'The Frozen Wreck'] },
@@ -655,6 +669,8 @@ export const ARENAS: Arena[] = [
         // Acoustic confusion runs through the same primitive fog does —
         // hearing nothing true is its own kind of blindness.
         effectVocab: { fogbound: { label: 'the wind-organ at full voice', severityMult: 1.3 } },
+        // §5: the arena's whole premise, finally a rule — in the Whispering Forest every fight is audible from every other sector.
+        law: 'openMic',
         zones: [
             { name: 'The Cornucopia (The Grove Floor)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Hollow Boughs', 'The Wind Throat', "Piper's Creek"] },
             { name: 'The Hollow Boughs', terrain: 'forest', danger: 0.4, resources: 0.7, adjacent: ['The Cornucopia (The Grove Floor)', 'The Needle Drift', 'The Deep Organ'] },
@@ -693,6 +709,8 @@ export const ARENAS: Arena[] = [
         description: 'A former military proving ground, pockmarked with deep overlapping craters flooded into stagnant ponds and choked by fast-growing vines. Unexploded ordnance sleeps under the root mats, and the vines have learned to grow something worse.',
         mutts: ['Bog Adders', 'Root-Mat Crawlers', 'The Salvage Hound'],
         events: ['Pressure Pod', 'Crater Collapse', 'Buried Ordnance'],
+        // §5: unexploded ordnance under a root mat is worse in the dark, when nobody can see where they are putting their feet.
+        law: 'deadlyNight',
         zones: [
             { name: 'The Cornucopia (The Motor Pool)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Shallow Craters', 'Rusted Convoy Road', 'The Root Mat Flat'] },
             { name: 'The Shallow Craters', terrain: 'wetland', danger: 0.55, resources: 0.4, adjacent: ['The Cornucopia (The Motor Pool)', 'The Deep Craters', 'The Fruiting Tangle'] },
@@ -845,6 +863,8 @@ export const ARENAS: Arena[] = [
             // The ridge line to the mast is not survivable in the dark.
             'Comms Mast|The Ridge': { kind: 'timeGated', gatedTime: 'day' },
         },
+        // §5: the horn stands inside the cold store, behind a single blast door.
+        cornucopiaLayout: 'walled',
         zones: [
             { name: 'The Cornucopia (The Apron)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Generator Hall', 'Habitation Ring', 'The Ice Shelf', 'Fuel Farm'] },
             { name: 'Generator Hall', terrain: 'ruins', danger: 0.5, resources: 0.35, adjacent: ['The Cornucopia (The Apron)', 'Habitation Ring', 'Fuel Farm'], features: { cover: 0.6, elevation: false, chokepoint: true } },
@@ -1111,6 +1131,8 @@ export const ARENAS: Arena[] = [
         // The direct climb back up is sealed by rockfall: anyone who takes the
         // shaft down is committed to finding The Long Way Round.
         edgeRules: { 'Lower Throat|The Ember Shaft': { kind: 'oneWay', from: 'The Ember Shaft', to: 'Lower Throat' } },
+        // §5: the crater rim closes around the horn on three sides.
+        cornucopiaLayout: 'walled',
         zones: [
             { name: 'The Cornucopia (Crater Rim)', terrain: 'highland', danger: 0.6, resources: 0.3, adjacent: ['The Ash-Choked Stair', 'The Outer Gallery'] },
             { name: 'The Ash-Choked Stair', terrain: 'highland', danger: 0.55, resources: 0.15, adjacent: ['The Cornucopia (Crater Rim)', 'The Outer Gallery', 'The Steam Vents'], features: { cover: 0.2, elevation: true, chokepoint: true, acoustics: 1.45 } },

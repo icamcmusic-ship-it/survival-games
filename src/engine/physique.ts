@@ -1,4 +1,5 @@
 import { Build, Condition, Frame, InjurySite, LimbRatio, Tribute } from '../models/types';
+import { traitMod } from '../data/traits';
 import { PHYSIQUE, GENERATION } from '../data/balance';
 
 /**
@@ -90,7 +91,11 @@ export function reachBonus(t: Tribute): number {
 
 /** How hard this tribute is to shove, trip, drag or pin. */
 export function grappleResistance(t: Tribute): number {
-    return frameStep(t) * PHYSIQUE.framePerStep.grappleResist;
+    // §8: Wrestler converts half its unarmed bonus into this — being hard to
+    // put on the floor applies in every fight, armed or not.
+    const trained = traitMod(t, 'wrestle');
+    return frameStep(t) * PHYSIQUE.framePerStep.grappleResist + trained;
+
 }
 
 /** Soft tissue between a blade and the parts that matter, 0-1 as a multiplier. */

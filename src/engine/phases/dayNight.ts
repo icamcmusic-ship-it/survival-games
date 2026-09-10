@@ -2,22 +2,23 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, RESOLVE, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
+import { BLEEDING, ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, RESOLVE, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons, tickOpeningEdges } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, checkIntelLies, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
+import { openWound } from '../wounds';
 import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
-import { allianceRecords, areLovers, isHostileTo, leaderFor } from '../alliance';
+import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor } from '../alliance';
 import { decayFear } from '../fear';
 import { decayNotoriety, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
@@ -45,6 +46,7 @@ import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
 import { tickPersona } from '../persona';
 import { resolveTruces } from '../parley';
+import { postWatches } from '../watch';
 import { offerLoans, repayDebts, settleLoans, tickDistrictBonds, tickRetainers } from '../debts';
 import { reconcileRivals } from '../rapport';
 import { decaySkillsUnderInjury, teachSkills } from '../proficiency';
@@ -259,6 +261,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // §5.5: a way nobody has found yet is the most valuable thing in an arena
     // that has one. Run in upkeep, after this cycle's movement has settled
     // `zoneHeld`, so finding one takes actually having sat somewhere.
+    tickOpeningEdges(ctx);
     tickHiddenEdges(ctx);
     // Fire spreads, floods drown stragglers, and whatever else is happening to
     // the ground itself lands after this cycle's movement has resolved.
@@ -303,9 +306,15 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // out this cycle is not immediately papered over by a fresh trade.
     tickIntelSharing(ctx);
     resolveTruces(ctx);
+    // A §6: who is awake. Posted at nightfall for every group sleeping in one
+    // place, so a Light Sleeper in the party is worth a better night for
+    // everybody else.
+    if (effectiveTime === 'night') postWatches(ctx);
     // §4.1: the bloc layer, alongside the pair layer. Proposed before it is
     // ticked so a treaty sworn this cycle is not immediately assessed against
     // the clock it was just given.
+    // §4: an oversized coalition comes apart before anything else is decided.
+    fractureBlocs(ctx);
     proposeBlocTreaties(ctx);
     tickBlocTreaties(ctx);
     // §4.3: the shared grudge. Formed before it is ticked, so a pact sworn
@@ -673,7 +682,10 @@ function updateAudienceInterest(ctx: SimContext, time: 'day' | 'night') {
     const shift = escalationShift(ctx.state);
     const bored = ctx.state.day >= ESCALATION.boredomEarliestDay + Math.max(0, shift)
         && interest < threshold;
-    const scheduled = ctx.state.day >= ESCALATION.startDay + shift;
+    // §5 `shrinkingArena`: an arena built to close from the first morning.
+    // Declarable as a law rather than only reachable by a bored Gamemaker.
+    const alwaysClosing = arenaHasLaw(ctx.state, 'shrinkingArena');
+    const scheduled = alwaysClosing || ctx.state.day >= ESCALATION.startDay + shift;
     if (!bored && !scheduled) return;
 
     ctx.state.escalationDay = ctx.state.day;
@@ -1007,9 +1019,29 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
 
         // §7.1: at the arena's own edge, the closing border is the force
         // field itself — the death reads as the wall, not abstract collapse.
+        // §7: a chokepoint is a different death from an open field. A pass, a
+        // bridge or a tunnel closing with somebody inside it does not herd
+        // them anywhere — there is nowhere for the walls to herd them to.
+        const zone = getZone(ctx.state.arena, trappedZone);
+        const inAChokepoint = zone !== undefined && zoneFeatures(zone).chokepoint === true;
         const cause = hasForceField(ctx.state.arena, trappedZone)
             ? `Driven into the force field as the border closed over ${trappedZone}`
-            : `Caught in the collapsing border of ${trappedZone}`;
+            : inAChokepoint
+                ? `Crushed as ${trappedZone} closed`
+                : `Caught in the collapsing border of ${trappedZone}`;
+        if (inAChokepoint && !finalists) {
+            applyDamage(ctx, t, Math.round(damage * ESCALATION.chokepointCrushMultiplier), { cause, kind: 'arena' });
+            openWound(t, BLEEDING.hazardSeverity);
+            ctx.logEvent(
+                `${trappedZone} is not somewhere anybody rides out a collapse. The walls of it come together with ${t.name} still inside, `
+                + 'and there is no version of that where they simply get pushed along in front of it.',
+                [t.id],
+                { important: true, zone: trappedZone, category: 'hazard' }
+            );
+            clampTribute(t);
+            checkDeath(ctx, t, cause);
+            if (t.status !== 'alive') return;
+        }
         applyDamage(ctx, t, damage, { cause, kind: 'arena' });
         ctx.logEvent(
             fill(ctx.pickText(BORDER_TEXTS.collapse), {

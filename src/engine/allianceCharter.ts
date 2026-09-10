@@ -32,11 +32,17 @@ const RULE_TEXT: Record<CharterRule, string> = {
     'no-hunting-alone': 'nobody goes out on their own',
     // §4.5: the endgame is finally expressible as a pact.
     'split-at-eight': 'when eight are left, this ends — everyone walks away clean',
+    'no-looting-the-fallen': 'nobody strips a body',
+    'share-intel': 'what one of us hears, all of us hear',
+    'leader-decides-targets': 'nobody picks a fight the leader has not picked',
 };
 
 /** Rolls the clauses a new alliance agrees to, from its members' natures. */
 export function rollCharter(rng: RNG, members: Tribute[]): CharterRule[] {
-    const pool: CharterRule[] = ['share-food', 'no-fighting', 'hold-the-camp', 'no-hunting-alone'];
+    const pool: CharterRule[] = [
+        'share-food', 'no-fighting', 'hold-the-camp', 'no-hunting-alone',
+        'no-looting-the-fallen', 'share-intel', 'leader-decides-targets',
+    ];
     const count = rng.chance(CHARTER.twoClauseChance) ? 2 : 1;
     const chosen: CharterRule[] = [];
     for (let i = 0; i < count; i++) {
@@ -118,6 +124,8 @@ export function enforceCharters(ctx: SimContext) {
             if (!offender) return;
             if (!ctx.rng.chance(CHARTER.noticeChance)) return;
             record.breaches = (record.breaches ?? 0) + 1;
+            // §4: a clause broken is a promise broken, and the trait arc counts it.
+            offender.faithBroken = (offender.faithBroken ?? 0) + 1;
 
             // Everybody else thinks less of them. Nobody draws a knife over it.
             members.forEach(m => {
@@ -181,6 +189,24 @@ function findBreach(ctx: SimContext, rule: CharterRule, record: Alliance, member
                 isAggressiveStance(m.stance)
                 && !members.some(o => o.id !== m.id && o.zone === m.zone));
         }
+        case 'no-looting-the-fallen': {
+            // Somebody has been through a body since the group agreed not to.
+            return members.find(m => (m.corpsesLooted ?? 0) > (record.lootedAtCharter?.[m.id] ?? 0));
+        }
+        case 'share-intel': {
+            // Selling what you heard, when the deal was that everybody hears it.
+            return members.find(m => (m.intelSold ?? 0) > (record.intelSoldAtCharter?.[m.id] ?? 0));
+        }
+        case 'leader-decides-targets': {
+            // Hunting somebody the leader is not hunting.
+            const leader = members.find(m => m.id === record.leaderId);
+            if (!leader) return undefined;
+            const sanctioned = leader.objective?.kind === 'hunt' ? leader.objective.targetId : undefined;
+            return members.find(m =>
+                m.id !== leader.id
+                && m.objective?.kind === 'hunt'
+                && m.objective.targetId !== sanctioned);
+        }
         default:
             return undefined;
     }
@@ -197,6 +223,12 @@ function breachLine(rule: CharterRule, offender: Tribute, members: Tribute[]): s
             return `${offender.name} was supposed to be at the camp. ${others} come back to an empty one and a very obvious conversation waiting to be had.`;
         case 'no-hunting-alone':
             return `${offender.name} went out hunting alone, which is the one thing this group agreed nobody would do. ${others} notice they are gone before they notice why.`;
+        case 'no-looting-the-fallen':
+            return `${offender.name} has been through somebody's pockets. ${others} agreed nobody would, and now they are looking at what came out of them.`;
+        case 'share-intel':
+            return `Whatever ${offender.name} knew, they sold it rather than said it. ${others} find out the way everybody finds these things out: late, and from somebody else.`;
+        case 'leader-decides-targets':
+            return `${offender.name} has picked their own fight. ${others} agreed that was not how this worked, and one of them says so out loud.`;
         default:
             return `${offender.name} breaks the terms.`;
     }

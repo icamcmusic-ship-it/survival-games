@@ -9,7 +9,14 @@ interface Biome {
     namePrefixes: string[];
     description: string;
     terrains: Terrain[];
-    zoneNames: Record<Terrain, string[]>;
+    /**
+     * §10: partial by design. A biome names the terrains it is actually made
+     * of; the four terrains added in §10 (cave, ice, desert, urban) belong to
+     * some biomes and not others, and requiring every biome to name every
+     * terrain would mean authoring dead pools the `terrains` array can never
+     * roll — which is the exact bug B3 below was fixing.
+     */
+    zoneNames: Partial<Record<Terrain, string[]>>;
 }
 
 // B3: every biome's zoneNames pool used to be 9-13 names spread across only
@@ -44,8 +51,9 @@ const BIOMES: Biome[] = [
         id: 'volcanic',
         namePrefixes: ['Volcanic', 'Cinder', 'Molten'],
         description: 'Black rock, ash storms, and rivers of magma. Water is scarce, burns are not.',
-        terrains: ['open', 'forest', 'wetland', 'highland', 'ruins', 'water'],
+        terrains: ['open', 'forest', 'wetland', 'highland', 'ruins', 'water', 'cave'],
         zoneNames: {
+            cave: ['The Lava Tube', 'Sulphur Gallery', 'The Blowhole', 'Cinder Cavern', 'The Drowned Vent', 'Basalt Throat', 'The Steam Gallery', 'Ash Chamber'],
             open: ['Ash Flats', 'Obsidian Plain', 'Cinder Wastes', 'Scorched Flat', 'The Pumice Field', 'Ember Basin', 'The Glass Barrens', 'Fissure Plain'],
             forest: ['Charred Woods', 'Blackened Grove', 'Smoldering Thicket', 'The Ash Orchard', 'Soot Pines', 'The Half-Burned Stand', 'Cinder Copse', 'The Widowmaker Snags'],
             water: ['Steam Vents', 'Boiling Spring', 'Mineral Pool', 'The Scalding Run', 'Geyser Field', 'The Warm Shallows', 'Acid Tarn', 'The Vapor Channel'],
@@ -86,8 +94,9 @@ const BIOMES: Biome[] = [
         id: 'tundra',
         namePrefixes: ['Tundra', 'Frostbound', 'White'],
         description: 'A treeless white plain under a sky the Gamemakers keep well below freezing. Warmth is the only currency that matters.',
-        terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins'],
+        terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins', 'ice'],
         zoneNames: {
+            ice: ['The Blue Ice Field', 'Crevasse Ground', 'The Glare Shelf', 'Pressure Ice', 'The Skating Flats', 'Hoar Sheet', 'The Bare Glacier', 'Meltwater Ice'],
             open: ['The Snowfields', 'Whiteout Flats', 'The Wind Scour', 'Caribou Plain', 'The Frost Heave', 'Blue Shadow Basin', 'The Drift Sea', 'Bone-Cold Barrens'],
             forest: ['The Krummholz', 'Frozen Spruce Stand', 'The Rime Wood', 'Snow-Bent Willows', 'The Last Timber', 'Hoarfrost Grove', 'The Buried Firs', 'Ptarmigan Thicket'],
             water: ['The Ice Lake', 'Aurora Tarn', 'The Black Polynya', 'Frozen River Braid', 'The Seal Hole', 'Glacier Melt Spring', 'The Slush Channel', 'Winterlock Lagoon'],
@@ -100,8 +109,9 @@ const BIOMES: Biome[] = [
         id: 'dunes',
         namePrefixes: ['Dune', 'Desert', 'Sunblasted'],
         description: 'An ocean of red sand under a sun that never blinks. Every shadow is contested, and the water is wherever you are not.',
-        terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins'],
+        terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins', 'desert'],
         zoneNames: {
+            desert: ['The Erg', 'Sunstroke Reach', 'The Glass Flats', 'Scour Basin', 'The Walking Dunes', 'Ash Sand Sea', 'The Blistered Pan', 'Thirst Corridor'],
             open: ['The Singing Dunes', 'Red Sand Sea', 'The Hardpan', 'Scorpion Flats', 'The Mirage Plain', 'Sun Anvil', 'The Cracked Basin', 'Bone Dust Reach'],
             forest: ['The Cactus Forest', 'Acacia Shade', 'The Thorn Break', 'Date Palm Stand', 'The Tamarisk Belt', 'Joshua Grove', 'The Dry Orchard', 'Saltbush Scrub'],
             water: ['The Hidden Oasis', 'Canyon Spring', 'The Last Well', 'Flash-Flood Wash', 'The Green Pool', 'Buried Cistern Lake', 'The Seep Line', 'Wadi Bend'],
@@ -128,8 +138,9 @@ const BIOMES: Biome[] = [
         id: 'ruinlands',
         namePrefixes: ['Ruined', 'Derelict', 'Rustbound'],
         description: 'A pre-Dark Days city gone back to weeds and rust. The buildings remember being taller, and none of them are done falling down.',
-        terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins'],
+        terrains: ['open', 'forest', 'water', 'wetland', 'highland', 'ruins', 'urban'],
         zoneNames: {
+            urban: ['The Tiled Concourse', 'Lamplit Arcade', 'The Shuttered Market', 'Collapsed Terrace Street', 'Gantry Walk', 'The Boarded Quarter', 'Cistern Steps', 'Tram Halt Row'],
             open: ['The Cracked Plaza', 'Parking Field', 'The Ashphalt Prairie', 'Stadium Floor', 'The Old Runway', 'Market Square', 'The Rubble Flats', 'Monument Green'],
             forest: ['The Street Forest', 'Rooftop Orchard Gone Wild', 'The Park Overgrowth', 'Ivy-Eaten Block', 'The Cemetery Pines', 'Greenhouse Jungle', 'The Median Wood', 'Courtyard Thicket'],
             water: ['The Flooded Metro', 'Reservoir Basin', 'The Canal Locks', 'Fountain Lake', 'The Burst Main', 'Drowned Underpass', 'The Water Treatment Pools', 'Riverwalk Channel'],
@@ -215,6 +226,12 @@ const TERRAIN_PROFILES: Record<Terrain, { danger: [number, number]; resources: [
     highland: { danger: [0.5, 0.9], resources: [0.1, 0.4] },
     ruins: { danger: [0.4, 0.8], resources: [0.2, 0.5] },
     wetland: { danger: [0.4, 0.8], resources: [0.3, 0.7] },
+    // §10: dark and sheltered, nothing grows; slick and exposed; empty and
+    // hot; picked over but full of things that were made rather than grown.
+    cave: { danger: [0.5, 0.85], resources: [0.05, 0.3] },
+    ice: { danger: [0.55, 0.9], resources: [0.05, 0.25] },
+    desert: { danger: [0.45, 0.8], resources: [0.05, 0.25] },
+    urban: { danger: [0.45, 0.8], resources: [0.25, 0.6] },
 };
 
 function range(rng: RNG, [min, max]: [number, number]): number {
@@ -495,6 +512,9 @@ const ARENA_NAME_SUFFIXES = [
 // from the arena's own seeded RNG so a shared seed reproduces them exactly.
 const PROC_LAWS: ArenaLawId[] = [
     'noCannons', 'cornucopiaRefills', 'sponsorsFixedZone', 'noNight', 'noWaterExceptZone', 'fireImpossible',
+    // §5: the six new laws are drawable here too, so a procedural year can be
+    // one of them without a hand-authored arena having to exist first.
+    'noForage', 'deadlyNight', 'oneWayBorders', 'noWeapons', 'shrinkingArena', 'openMic',
 ];
 
 function rollLaw(rng: RNG, zones: Zone[]): { law?: ArenaLawId; lawZone?: string } {

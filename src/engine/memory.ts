@@ -1,5 +1,6 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
-import { FEAR, HUNTING, INTEL, MEMORY, RELATIONSHIPS, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
+import { FEAR, HUNTING, INTEL, MEMORY, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
+import { arenaHasLaw } from './gamesProfile';
 import { profOf } from './proficiency';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
@@ -300,6 +301,33 @@ export function noteContact(state: GameState, a: Tribute, b: Tribute) {
     const cycle = cycleOf(state);
     ensureMemory(a).lastContact[b.id] = cycle;
     ensureMemory(b).lastContact[a.id] = cycle;
+    // A §5: a meeting is a lesson about the other person, both ways.
+    improveRead(a, b.id, RIVAL_READ.perMeeting);
+    improveRead(b, a.id, RIVAL_READ.perMeeting);
+}
+
+/**
+ * A §5: how well `t` has somebody's measure, 0-1.
+ *
+ * The threat estimate reads frame, a visible weapon and visible wounds, then
+ * regresses toward "average tribute" as the sighting goes stale. That is the
+ * right model of a stranger and the wrong model of somebody you have fought
+ * twice — the read is what accumulates across sightings, meetings and fights
+ * and lets `assessZone` blend the guess toward the truth for known people.
+ */
+export function readOf(t: Tribute, otherId: string): number {
+    return ensureMemory(t).rivals[otherId]?.read ?? 0;
+}
+
+export function improveRead(t: Tribute, otherId: string, amount: number) {
+    if (t.id === otherId || amount <= 0) return;
+    const record = rivalRecord(t, otherId);
+    record.read = Math.min(RIVAL_READ.max, Math.round(((record.read ?? 0) + amount) * 1000) / 1000);
+}
+
+/** A §5: a sighting across a zone is the weakest lesson, but it is one. */
+export function noteRivalSighting(t: Tribute, otherId: string) {
+    improveRead(t, otherId, RIVAL_READ.perSighting);
 }
 
 /** Cycles since these two last shared a scene, or Infinity if never. */
@@ -338,11 +366,22 @@ export function rivalRecord(t: Tribute, otherId: string): RivalRecord {
 
 /** Records that these two have now fought, from both sides. */
 export function noteFight(state: GameState, a: Tribute, b: Tribute) {
+    // §5 `openMic`: in this arena nothing is private. Everybody alive learns
+    // where the fight was, which turns every exchange into an invitation and
+    // makes hiding after one impossible.
+    if (arenaHasLaw(state, 'openMic')) {
+        state.tributes.forEach(o => {
+            if (o.status !== 'alive' || o.id === a.id || o.id === b.id) return;
+            noteSighting(state, o, a.zone, 2, 0);
+        });
+    }
     const cycle = cycleOf(state);
     [[a, b], [b, a]].forEach(([x, y]) => {
         const record = rivalRecord(x, y.id);
         record.fights += 1;
         record.lastFightCycle = cycle;
+        // A §5: nothing teaches you what somebody can do like trading blows.
+        improveRead(x, y.id, RIVAL_READ.perFight);
     });
 }
 
@@ -385,6 +424,9 @@ export function noteFled(t: Tribute, otherId: string) {
 export function noteWound(attacker: Tribute, defender: Tribute) {
     rivalRecord(attacker, defender.id).woundsDealt += 1;
     rivalRecord(defender, attacker.id).woundsTaken += 1;
+    // A §5: a landed hit is information for both ends of it.
+    improveRead(attacker, defender.id, RIVAL_READ.perWound);
+    improveRead(defender, attacker.id, RIVAL_READ.perWound);
 }
 
 /**
@@ -697,6 +739,31 @@ export function noteFormerAllies(members: Tribute[]) {
             if (!a.formerAllies.includes(b.id)) a.formerAllies.push(b.id);
         });
     });
+}
+
+/**
+ * §4: one cycle of having been in it together, banked on both sides. Called
+ * every cycle a group is still standing, so what a dissolution leaves behind
+ * is a length of shared history rather than a bare flag.
+ */
+export function noteSharedCycle(members: Tribute[]) {
+    members.forEach(a => {
+        a.sharedHistory = a.sharedHistory ?? {};
+        members.forEach(b => {
+            if (a.id === b.id) return;
+            a.sharedHistory![b.id] = Math.min(RELATIONSHIPS.sharedHistoryCap, (a.sharedHistory![b.id] ?? 0) + 1);
+        });
+    });
+}
+
+/**
+ * §4: how much two people's history together is worth to a fresh alliance,
+ * 0-1. A betrayal on the record wipes it — that is the whole point of having
+ * been betrayed by somebody specific.
+ */
+export function sharedHistoryOf(t: Tribute, otherId: string): number {
+    if (ensureMemory(t).betrayedBy.includes(otherId)) return 0;
+    return Math.min(1, (t.sharedHistory?.[otherId] ?? 0) / RELATIONSHIPS.sharedHistoryCap);
 }
 
 export function decayRelationships(state: GameState) {

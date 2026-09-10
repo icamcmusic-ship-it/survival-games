@@ -1,9 +1,12 @@
 import { GameState, Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { ENDGAME, MEMORY, MOVEMENT, OBJECTIVES } from '../data/balance';
+import { ENDGAME, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
 import { SimContext } from './context';
 import { cycleOf, cyclesSinceContact, ensureMemory, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet, zoneFeatures } from './map';
+import { notorietyFraction } from './notoriety';
+import { injuryGrade } from './wounds';
+import { riskTolerance } from './risk';
 import { fearOf } from './fear';
 import { breakTruce, breaksTruce, hasTruce } from './parley';
 import { perceivedBond, targetReluctance } from './rapport';
@@ -50,6 +53,7 @@ function announce(ctx: SimContext, t: Tribute, objective: Objective) {
                 feast: 'heading for the feast',
                 ally: 'trying to rejoin their allies',
                 forage: 'looking for anything to eat',
+                endgame: 'moving to where this ends',
             }[objective.reason];
             ctx.logEvent(
                 `${t.name} sets off for ${objective.zone}, ${why}.`,
@@ -296,6 +300,28 @@ function chooseObjective(
         }
     }
 
+    // 3b. A §11: the tribute side of the endgame. The Gamemakers already
+    //    strip the cover away once the field is down to the last few; nobody
+    //    on the floor did anything deliberate about it. The final four pick
+    //    ground on purpose — the horn if they fancy the fight, high ground if
+    //    they do not — rather than being herded onto it.
+    const fieldLeft = state.tributes.filter(o => o.status === 'alive').length;
+    if (!state.finaleZone && fieldLeft <= ENDGAME_POSITIONING.fieldSize && fieldLeft > 1) {
+        const wantsTheHorn = riskTolerance(ctx, t) > ENDGAME_POSITIONING.hornEdge;
+        const horn = active.find(z => /cornucopia/i.test(z.name));
+        const highGround = active
+            .filter(z => zoneFeatures(z).elevation)
+            .sort((a, b) => (hopsTo(state.arena, t.zone, a.name, collapsed, severedEdgeSet(state)) ?? 9)
+                - (hopsTo(state.arena, t.zone, b.name, collapsed, severedEdgeSet(state)) ?? 9))[0];
+        const destination = wantsTheHorn ? (horn ?? highGround) : (highGround ?? horn);
+        if (destination && destination.name !== t.zone) {
+            const o = offer(ENDGAME_POSITIONING.tier, {
+                kind: 'reach', zone: destination.name, reason: 'endgame', expires: expiry(OBJECTIVES.reachCycles),
+            });
+            if (o) return o;
+        }
+    }
+
     // 4. Somebody to kill. Either sworn, or simply the nearest rival a hunter
     //    has a live sighting of.
     const mem = ensureMemory(t);
@@ -354,6 +380,10 @@ function chooseObjective(
                     + (o.inventory.some(i => i.type === 'weapon') ? 0 : 30)
                     + (o.allianceId === undefined ? 15 : 0);
                 const loot = o.inventory.reduce((sum, i) => sum + i.value, 0) * 0.3;
+                // A §4: an unwilling tribute who hunts at all hunts the
+                // weakest thing on the board; a willing one does not need to.
+                const picky = Math.max(0, -riskTolerance(ctx, t)) * RISK.targetWeakWeight;
+                const weakness = (100 - o.health) * picky;
                 const grudge = Math.max(0, -getRel(t, o.id)) * 0.5;
                 // A2: whose board this is. The shared arithmetic above is
                 // "easiest kill worth the most loot", which is how everybody
@@ -362,6 +392,9 @@ function chooseObjective(
                 // pack, a Zealot wants whoever is hardest, and neither is
                 // expressible as another point of aggression.
                 const hops = hopsTo(state.arena, t.zone, o.zone, collapsed, severedEdgeSet(state)) ?? 4;
+                // A §7: nobody with their legs opened starts a manhunt across
+                // the map. The mark has to be close enough to walk to.
+                if (injuryGrade(t, 'legs') > 0 && hops > INJURY_BEHAVIOUR.legsHuntMaxHops) return -Infinity;
                 // §8c: how much the field wants this person at all. The only
                 // trait that claimed to be hard to notice (Unremarkable) had
                 // no read site anywhere in the targeting layer, which is why
@@ -371,7 +404,32 @@ function chooseObjective(
                 // them until there is no choice, because the person they are
                 // most afraid of losing to is the person they rate. This is
                 // the read `respects` was written for and never got.
-                return (winnable + loot + grudge - fearOf(t, o.id)
+                // A §9: a name is a deterrent and a prize at the same time.
+                // Notoriety and an earned epithet both say "this one has done
+                // something" — which puts most of the field off and draws
+                // exactly the tributes willing to take the risk.
+                const notorious = notorietyFraction(t, o.id);
+                const named = o.epithet !== undefined;
+                const boldEnough = riskTolerance(ctx, t) > REPUTATION_TARGETING.prizeRiskAbove;
+                // How visible that name is: notoriety is what travelled without
+                // anybody witnessing anything, an epithet is what the Capitol
+                // decided to call them out loud.
+                const visibility = notorious * REPUTATION_TARGETING.notorietyVisibleWeight
+                    + (named ? REPUTATION_TARGETING.epithetVisibleBonus : 0);
+                const reputation = boldEnough
+                    ? visibility * REPUTATION_TARGETING.epithetPrize
+                    : -(visibility * REPUTATION_TARGETING.notorietyDeterrent
+                        + (named ? REPUTATION_TARGETING.epithetDeterrent : 0));
+                // §4: whose word you would be stepping on. Attacking B when B
+                // has an agreement with my ally A is not a private matter
+                // between me and B — A gave their word, and it is A's word I
+                // would be making worthless.
+                const trucedWithAnAlly = visible.some(ally =>
+                    ally.id !== o.id
+                    && ally.allianceId !== undefined && ally.allianceId === t.allianceId
+                    && hasTruce(state, ally, o.id));
+                const thirdPartyCost = trucedWithAnAlly ? OBJECTIVES.thirdPartyTruceCost : 0;
+                return (winnable + loot + weakness + grudge - fearOf(t, o.id) + reputation - thirdPartyCost
                     + traitMod(o, 'targetDraw')
                     + targetPreferenceScore(t, o, hops)
                     // §4.3: and who is going to come looking. A hunter who has
@@ -533,9 +591,26 @@ export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
         return;
     }
 
+    // A §3: the standing goal — the third slot behind the two-deep errand
+    // queue. The queue is consumed by the next errand that comes along, so a
+    // goal that survives *more than one* interruption had nowhere to live: a
+    // tribute who set out for the feast and stopped twice for water simply
+    // forgot about the feast. This is picked back up whenever the cascade
+    // would otherwise settle for something unambitious.
+    const standing = resumeStandingGoal(ctx, t);
+
     const previous = t.objective;
     const chosenTier = { tier: 0 };
     let next = chooseObjective(ctx, t, here, undefined, chosenTier);
+
+    // ...and it only reasserts itself over something unambitious. A tribute
+    // fleeing a zone or dying of thirst has a better reason to be doing what
+    // they are doing than a goal they set four cycles ago.
+    if (standing && chosenTier.tier < STANDING_GOAL.resumeBelowTier) {
+        t.objective = standing;
+        announce(ctx, t, standing);
+        return;
+    }
 
     // §3.4: what they nearly did instead. The same cascade, run again with the
     // winner suppressed and its side-effecting branches disabled, which is the
@@ -572,12 +647,69 @@ export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
     }
 
     t.objective = next;
+    noteStandingGoal(ctx, t, next);
+
+    // A §1: what the cascade weighed, for the tribute sheet.
+    if (t.decisionTrace) {
+        const label = (o: Objective) => objectiveLabel(ctx.state, { ...t, objective: o });
+        t.decisionTrace.objectives = [
+            { label: label(next), tier: chosenTier.tier },
+            ...(runnerUp.kind !== 'survive' ? [{ label: label(runnerUp), tier: runnerTier.tier }] : []),
+        ];
+    }
 
     // Only narrate genuinely new intentions, and never the null one — a line
     // every time someone lapses back to "survive" would drown the feed.
     if (next.kind !== 'survive' && !sameObjective(previous, next)) {
         announce(ctx, t, next);
     }
+}
+
+/**
+ * A §3: record a goal worth coming back to.
+ *
+ * Only the three that are actually goals rather than errands: the feast is a
+ * scheduled appointment, a vengeance hunt is a promise, and the endgame
+ * reposition is the one piece of forward planning the final four do.
+ */
+function noteStandingGoal(ctx: SimContext, t: Tribute, chosen: Objective) {
+    const cycle = cycleOf(ctx.state);
+    const reason = chosen.kind === 'reach' && chosen.reason === 'feast' ? 'feast'
+        : chosen.kind === 'reach' && chosen.reason === 'endgame' ? 'endgame'
+            : chosen.kind === 'hunt' && ensureMemory(t).vengeance.includes(chosen.targetId) ? 'avenge'
+                : undefined;
+    if (!reason) return;
+    if (t.standingGoal?.reason === reason) return;
+    t.standingGoal = { goal: chosen, reason, setCycle: cycle };
+}
+
+/**
+ * A §3: is the standing goal still worth more than whatever the cascade is
+ * about to settle for? Expired, completed and impossible goals are dropped.
+ */
+function resumeStandingGoal(ctx: SimContext, t: Tribute): Objective | undefined {
+    const standing = t.standingGoal;
+    if (!standing) return undefined;
+    const cycle = cycleOf(ctx.state);
+
+    // Aged out, or the thing it was about is over.
+    const stale = cycle - standing.setCycle > STANDING_GOAL.maxCycles;
+    const feastOver = standing.reason === 'feast'
+        && ctx.state.feastDay === undefined && ctx.state.phase !== 'feast';
+    const quarry = standing.goal.kind === 'hunt' ? standing.goal.targetId : undefined;
+    const avenged = quarry !== undefined
+        && ctx.state.tributes.find(o => o.id === quarry)?.status !== 'alive';
+    if (stale || feastOver || avenged || !isObjectiveReachable(ctx, t, standing.goal)) {
+        t.standingGoal = undefined;
+        return undefined;
+    }
+
+    // Not yet — give the errand queue a few cycles to clear before reasserting.
+    if (cycle - standing.setCycle < STANDING_GOAL.resumeCycles) return undefined;
+
+    const resumed = { ...standing.goal, expires: cycle + OBJECTIVES.reachCycles } as Objective;
+    t.standingGoal = { ...standing, setCycle: cycle };
+    return resumed;
 }
 
 /**
@@ -602,6 +734,7 @@ function hesitate(ctx: SimContext, t: Tribute, chosen: Objective, other: Objecti
             case 'reach': return {
                 water: 'finding water', shelter: 'finding somewhere to sleep',
                 feast: 'the feast', ally: 'reaching their allies', forage: 'finding food',
+                endgame: 'where this ends',
             }[o.reason];
             default: return undefined;
         }
@@ -716,7 +849,7 @@ export function objectiveLabel(state: { tributes: Tribute[] }, t: Tribute): stri
         case 'reach': {
             const why = {
                 water: 'for water', shelter: 'for shelter', feast: 'for the feast',
-                ally: 'to reach an ally', forage: 'to forage',
+                ally: 'to reach an ally', forage: 'to forage', endgame: 'to force the end',
             }[objective.reason];
             return `Making for ${objective.zone} ${why}`;
         }

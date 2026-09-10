@@ -27,18 +27,36 @@ await step('setup screen renders', async () => {
   await page.getByRole('heading', { name: /may the odds/i }).waitFor();
 });
 
+// §2: the setup screen is four tabs rather than one long scroll, so every step
+// below that reaches a control has to be on the step that owns it. This is the
+// navigation the player does; the test does it too.
+const setupTab = name => page.getByRole('tab', { name });
+
+await step('setup tabs switch sections', async () => {
+  await setupTab('Rules').click();
+  await page.getByText(/mutators/i).first().waitFor();
+  await setupTab('Meta').click();
+  await page.getByText('Gamemaker Mode').waitFor();
+  await setupTab('Cast').click();
+  await page.getByText(/plain tribute names/i).waitFor();
+  await setupTab('Arena').click();
+  await page.getByText(/select arena/i).waitFor();
+});
+
 await step('advanced settings open and sliders move', async () => {
+  await setupTab('Rules').click();
   await page.getByText(/advanced simulation settings/i).click();
   const sliders = page.locator('input[type=range]');
   await sliders.nth(0).fill('4');   // districts
   await sliders.nth(1).fill('2.5'); // hazard
   await sliders.nth(2).fill('3');   // betrayal
   await sliders.nth(3).fill('0');   // sponsors
-  await page.getByText('Reset to defaults').click();
+  await page.getByText('Reset everything').click();
   await sliders.nth(0).fill('12');
 });
 
 await step('gamemaker mode toggles', async () => {
+  await setupTab('Meta').click();
   await page.getByText('Gamemaker Mode').click();
 });
 
@@ -56,6 +74,7 @@ await step('empty seed is accepted (falls back to random)', async () => {
 // The explicit "Procedural Arena" entry is no longer in the picker — the
 // generator still backs the sealed draw, which is what this now selects.
 await step('sealed random arena selectable', async () => {
+  await setupTab('Arena').click();
   await page.getByRole('button', { name: /random arena \(hidden\)/i }).click();
 });
 
@@ -63,6 +82,7 @@ await step('sealed random arena selectable', async () => {
 // pick the starters and the sealed draw; everything else is visible, disabled,
 // and says so.
 await step('locked arenas are shown but not selectable', async () => {
+  await setupTab('Arena').click();
   const locked = page.getByRole('button', { name: /undiscovered arena — locked/i });
   if (await locked.count() === 0) throw new Error('expected at least one locked arena on a cold profile');
   if (await locked.first().isEnabled()) throw new Error('a locked arena was selectable');
@@ -73,6 +93,7 @@ await step('locked arenas are shown but not selectable', async () => {
 // §2.1: promoted out of the advanced list and renamed — it is the single most
 // important flag for anyone trying to understand what a slider does.
 await step('plain rules toggle is settable', async () => {
+  await setupTab('Rules').click();
   const toggle = page.getByText(/^Plain Rules — your sliders, nothing else$/);
   await toggle.click();
   await page.waitForTimeout(100);

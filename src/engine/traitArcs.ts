@@ -105,7 +105,7 @@ function tickOne(ctx: SimContext, t: Tribute) {
     // Loyal is not a thing anybody can still call you after the second time
     // you have sold out somebody who trusted you.
     if (t.traits.includes('Loyal')
-        && (t.betrayalsCommitted ?? 0) >= EARNED_TRAIT_RULES.loyalBreaksAt) {
+        && (t.betrayalsCommitted ?? 0) + (t.faithBroken ?? 0) >= EARNED_TRAIT_RULES.loyalBreaksAt) {
         if (transformTrait(ctx, t, ['Loyal'], 'Treacherous',
             `${t.name} gave their word and then went back on it, and everybody who was standing near enough saw. `
             + 'Whatever they used to be to the people who trusted them, they are not that any more, and they know it before anyone tells them.')) {

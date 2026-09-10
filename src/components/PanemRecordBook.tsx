@@ -144,6 +144,14 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                         );
                     })}
                 </div>
+                {/* §2: what the record book is for, while it is still empty. */}
+                {crownedDistricts === 0 && (
+                    <p className="text-[11px] text-[var(--color-ink-500)] mt-2 max-w-prose">
+                        Nothing here yet. As you finish Games this fills with the country's standing
+                        records — the longest Games, the youngest crown, the highest kill count, which
+                        districts have ever produced a victor, and which Head Gamemakers ran which years.
+                    </p>
+                )}
                 {crownedDistricts < DISTRICT_NUMBERS.length && (
                     <p className="text-[11px] text-[var(--color-ink-500)] mt-2 italic">
                         <Trophy className="w-3 h-3 inline mb-0.5" /> The outer districts almost never win.

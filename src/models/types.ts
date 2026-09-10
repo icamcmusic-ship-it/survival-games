@@ -123,7 +123,9 @@ export type InjurySite = keyof Injuries;
 export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking' | 'persuasion';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
-export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage';
+export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'
+    /** Workstream A §11: the final-four reposition toward the horn or high ground. */
+    | 'endgame';
 
 /**
  * A standing intention, held across cycles.
@@ -666,6 +668,13 @@ export interface Tribute {
      * their own, much colder, machinery.
      */
     formerAllies?: string[];
+    /**
+     * §4: cycles spent in the same group as each former ally. `formerAllies`
+     * was a flat set, so six days of sharing a camp and a fire read exactly
+     * like one cycle of standing next to each other before it fell apart.
+     * Re-forming reads this; a betrayal on the record cancels it.
+     */
+    sharedHistory?: Record<string, number>;
     protectorBonds?: string[];
     /**
      * How far their launch plate landed from the mouth of the Cornucopia, 0-1.
@@ -822,6 +831,16 @@ export interface Tribute {
     levelsStood?: ZoneLevel[];
     /** Consecutive cycles at terminal-grade sepsis. Fatal at INFECTION.terminalCycles. */
     septicCycles?: number;
+    /**
+     * §4: every way this tribute has gone back on somebody who was counting on
+     * them, beyond the alliance betrayals `betrayalsCommitted` counts: a
+     * charter clause broken, a vengeance pact walked away from, a downed ally
+     * left where they fell. The Loyal -> Treacherous arc reads this, because
+     * the arc gated on alliance betrayals alone could effectively never fire —
+     * Loyal carries `treachery: -0.3`, which makes its holder the least likely
+     * tribute in the arena to commit one.
+     */
+    faithBroken?: number;
     /** §8.9: traps this tribute has successfully pulled apart. */
     trapsDisarmed?: number;
     /** §8.9: hard water crossings begun (destination terrain 'water'). */
@@ -883,6 +902,14 @@ export interface Tribute {
     // ---- A2: archetype hook state ----
     /** A2: whether this tribute's once-per-run archetype signature has fired. */
     signatureFired?: boolean;
+    /**
+     * §8: the Scholar's foreknowledge, banked by their signature and spent the
+     * next time the arena tries to kill them. Their signature fired for 59% of
+     * Scholars and converted into nothing: it moved them one zone and gave
+     * them an excitement bump. Being right about the arena should be worth
+     * surviving it once.
+     */
+    arenaForeknowledge?: boolean;
     /** A2: Mercenary — the price of their company, and who has paid it. */
     retainerPaidBy?: string[];
     /** A4: pre-arena agreements struck on the training floor. */
@@ -996,6 +1023,59 @@ export interface Tribute {
     interviewCalloutId?: string;
     /** §6.4: whose named feast pack they walked away with, if not their own. */
     feastPrizeTaken?: string;
+
+    // ---- workstream A: tribute logic ----
+    /**
+     * A §1: what the decision layer weighed last cycle — the top scored
+     * stances with their strongest reasons, the top scored destinations, and
+     * the objective candidates. Last cycle only; overwritten every cycle.
+     */
+    decisionTrace?: DecisionTrace;
+    /**
+     * A §3: the standing goal. A third objective slot behind the two-deep
+     * queue: a feast, a sworn hunt or the endgame reposition that survives
+     * errand interruptions across cycles until it completes or is invalidated.
+     */
+    standingGoal?: StandingGoal;
+    /**
+     * A §8: shock. A one-cycle status separate from sanity, set by a
+     * near-death moment (a single hit carrying them under the line, or a
+     * downed recovery). Forces Evasive for the cycle it holds.
+     */
+    shock?: { untilCycle: number; cause: string };
+    /**
+     * A §10: what the arena currently makes worth keeping, recomputed each
+     * cycle from the climate so `enforceCapacity` — which has no context —
+     * can weigh a cloak in the cold and a canteen in the dry.
+     */
+    kitPriorities?: { warmth?: boolean; water?: boolean; purifier?: boolean };
+}
+
+/** A §1: one weighed reason behind a stance score. */
+export interface TraceReason {
+    label: string;
+    weight: number;
+}
+
+/** A §1: the per-cycle decision trace. Small on purpose — last cycle only. */
+export interface DecisionTrace {
+    cycle: number;
+    /** Top scored stance options, best first, each with its strongest reasons. */
+    stances: Array<{ stance: Stance; score: number; reasons: TraceReason[] }>;
+    /** Top scored destinations from the wander scorer, if it ran this cycle. */
+    destinations?: Array<{ zone: string; score: number }>;
+    /** The objective candidates the cascade produced, chosen first, with their tiers. */
+    objectives?: Array<{ label: string; tier: number }>;
+    /** Set when the stance was imposed rather than scored. */
+    forced?: string;
+}
+
+/** A §3: a goal held behind the errand queue. */
+export interface StandingGoal {
+    goal: Objective;
+    /** Why it is standing: the chronicle names it when it is picked back up. */
+    reason: 'feast' | 'avenge' | 'endgame';
+    setCycle: number;
 }
 
 /**
@@ -1085,6 +1165,27 @@ export interface Alliance {
     charter?: CharterRule[];
     /** §10.1: charter breaches this group has logged, for 'Charter Kept'. */
     breaches?: number;
+    /**
+     * §4: how this leader runs the group. Rolled from their temperament when
+     * the alliance forms and read at every hearing: a democratic leader puts
+     * it to the group and mostly forgives; a tyrant decides alone and mostly
+     * expels. Roles already existed; nothing said what having the leader's
+     * role actually meant.
+     */
+    leaderStyle?: 'democratic' | 'tyrant';
+    /**
+     * §4: what each member's ledger read when the charter was sworn, so
+     * 'no-looting-the-fallen' and 'share-intel' catch what somebody did
+     * *since* they agreed not to rather than what they had already done.
+     */
+    lootedAtCharter?: Record<string, number>;
+    intelSoldAtCharter?: Record<string, number>;
+    /**
+     * A §6: the night's watch. Set at nightfall for a group sleeping in one
+     * zone: who is awake, who is asleep, and the cycle it was posted, so the
+     * chronicle names it once rather than every night.
+     */
+    watch?: { cycle: number; zone: string; watcherId: string; sleeperIds: string[] };
 }
 
 /**
@@ -1146,7 +1247,9 @@ export type TruceReason = 'mutual-threat' | 'both-wounded' | 'brokered' | 'extor
 export type AllianceRole = 'quartermaster' | 'scout' | 'muscle' | 'medic';
 
 /** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
-export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone' | 'split-at-eight';
+export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone' | 'split-at-eight'
+    // §4: three more, each with a breach the engine can actually detect.
+    | 'no-looting-the-fallen' | 'share-intel' | 'leader-decides-targets';
 
 /**
  * What happened between one specific pair, across the whole run.
@@ -1162,6 +1265,12 @@ export interface RivalRecord {
     /** Times this tribute broke off rather than finish it. */
     timesFled: number;
     lastFightCycle: number;
+    /**
+     * A §5: how well this tribute has this person's measure, 0-1. Improves
+     * with every sighting, meeting and fight; read by the threat estimate to
+     * blend the visible-power guess toward the truth for known opponents.
+     */
+    read?: number;
 }
 
 /**
@@ -1215,7 +1324,14 @@ export interface ZoneEffect {
 /** A snare, deadfall or tripline left in a zone, waiting for whoever walks into it. */
 export interface Trap {
     id: string;
-    kind: 'snare' | 'deadfall';
+    /**
+     * §6: two kinds was one decision — do you have a line or not. A pit is
+     * work that pays off in a hole nobody climbs out of quickly; a trip-wire
+     * alarm hurts nobody and tells you exactly where somebody is, which is the
+     * more valuable of the two for anybody hiding; a poisoned stake is what a
+     * tribute with a venom gland and no intention of fighting builds.
+     */
+    kind: 'snare' | 'deadfall' | 'pit' | 'tripwire' | 'stake';
     zone: string;
     /** Who set it. They know it is there; nobody else does until they find it. */
     ownerId: string;
@@ -1230,7 +1346,14 @@ export interface Trap {
     knownBy?: string[];
 }
 
-export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland';
+/**
+ * §10: four more first-class terrains. Each has its own band in the procedural
+ * generator, its own drains in the movement and survival layers, its own map
+ * colour and at least one mutt that will hunt on it — `test:arenas` treats an
+ * uncovered terrain as a permanently mutt-free zone rather than a quiet one.
+ */
+export type Terrain = 'open' | 'forest' | 'water' | 'highland' | 'ruins' | 'wetland'
+    | 'cave' | 'ice' | 'desert' | 'urban';
 
 /**
  * A behavioural archetype layered on top of a mutt's raw kit. Undefined means
@@ -1371,7 +1494,15 @@ export type ArenaLawId =
     | 'fireImpossible'      // fire cannot be lit anywhere in this arena
     // §5.1: an arena is allowed more than one of these now (`Arena.laws`).
     | 'noSponsors'         // communications blackout: no gift ever lands
-    | 'noHealing';         // medical items do nothing; rest is the only recovery
+    | 'noHealing'          // medical items do nothing; rest is the only recovery
+    // §5: six more. Each is enforced at exactly one site, the way the eight
+    // above are, and each is declarable by a hand-authored arena.
+    | 'noForage'           // nothing edible grows here; the horn is the only pantry
+    | 'deadlyNight'        // the dark is the hazard: night hazard rates double
+    | 'oneWayBorders'      // every edge runs one way, and the map is a current
+    | 'noWeapons'          // nothing in this arena is a weapon (also a Quell)
+    | 'shrinkingArena'     // the border starts closing from the first morning
+    | 'openMic';           // every fight is audible arena-wide
 
 /** A traversal rule layered on top of plain adjacency for one edge. Keyed by `edgeKey(a,b)` on `Arena.edgeRules`. */
 export interface EdgeRule {
@@ -1467,6 +1598,18 @@ export interface Arena {
      * every arena did before this existed.
      */
     restockBias?: string[];
+    /**
+     * §5: what the mouth of the horn is actually shaped like.
+     *
+     * `restockBias` already said what this arena's horn holds; nothing said
+     * what it is to approach. An open plate is the classic bloodbath — a flat
+     * ring and a sprint. A walled horn is a killing box: fewer people commit,
+     * and the ones who do are committed. An island horn has to be crossed to,
+     * so the scramble is slower, wetter and much more selective about who
+     * bothers. Cosmetic default is 'plate', which is the behaviour every arena
+     * had before this existed.
+     */
+    cornucopiaLayout?: 'plate' | 'walled' | 'island';
     /**
      * §5: the off-season skin this run is wearing, if any — a purely cosmetic
      * alternate dressing on the same zone graph and the same mechanics. Set at

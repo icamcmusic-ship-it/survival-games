@@ -1081,6 +1081,14 @@ export const BLOODBATH = {
     plateNeighbourFearScore: 9,
     /** Fear per training point over eight, felt across two metres of gravel. */
     plateNeighbourFearPerPoint: 5,
+    /** §8: how much `targetDraw` moves who gets picked in the scrum. */
+    targetDrawWeight: 0.06,
+    /** §5: a walled horn is a killing box — fewer commit, and they commit harder. */
+    walledHornDeterrent: 0.18,
+    walledHornCommitment: 0.3,
+    /** §5: an island horn has to be crossed to, which selects for swimmers. */
+    islandHornDeterrent: 0.22,
+    islandHornSwimmer: 0.35,
 } as const;
 
 /**
@@ -1156,6 +1164,8 @@ export const ESCALATION = {
      * set-piece is not always the same stage. Rolled once per run, seeded.
      */
     altFinaleChance: 0.35,
+    /** §7: what a chokepoint closing does over and above an open-ground collapse. */
+    chokepointCrushMultiplier: 2.2,
 } as const;
 
 /**
@@ -1506,6 +1516,16 @@ export const COMBAT = {
     /** Health below which an ally who fought beside you genuinely saved you. */
     savedHealthThreshold: 35,
     grudgeOnWound: 8,
+    /** §8: floor on a focus-fire weight, so a heavy targetDraw never zeroes it. */
+    minFocusWeight: 0.5,
+    /** ...and what an ally at your shoulder is worth against being picked. */
+    defendedWeight: 40,
+    /** §7: friendly fire — attackers needed before a swing can find the wrong body. */
+    friendlyFireMinAttackers: 3,
+    friendlyFireChance: 0.07,
+    friendlyFireDamage: 14,
+    friendlyFireNightMultiplier: 1.5,
+    friendlyFireRegard: 10,
 } as const;
 
 /**
@@ -1773,6 +1793,8 @@ export const OBJECTIVES = {
     holdMaxThreat: 0.4,
     /** §4.3: how much a believed bond to somebody present deters a hunter. */
     avengerDeterrent: 0.05,
+    /** §4: what attacking somebody your ally has a truce with costs on the board. */
+    thirdPartyTruceCost: 30,
 } as const;
 
 /**
@@ -1863,6 +1885,10 @@ export const MUTTS = {
     parasiteDamageShare: 0.3,
     parasiteInfectChance: 0.55,
     parasiteSanityLoss: 6,
+    /** §7: a pack big enough to be a direction rather than an attack. */
+    stampedeMinPack: 4,
+    stampedeChance: 0.18,
+    stampedeDamage: 26,
 } as const;
 
 export const ZONE_EFFECTS = {
@@ -2017,6 +2043,8 @@ export const ZONE_EFFECTS = {
     forceFieldExploitIntellect: 8,
     forceFieldExploitChance: 0.05,
     forceFieldExploitHungerRelief: 25,
+    /** §5 `deadlyNight`: how much more often the arena turns on people after dark. */
+    deadlyNightMultiplier: 2,
 } as const;
 
 /**
@@ -2050,6 +2078,11 @@ export const EPITHET_RULES = {
     killsForBloody: 3,
     unseenCyclesForGhost: 12,
     daysForEnduring: 6,
+    /** §6: four more triggers, each off a counter the run already keeps. */
+    sparesForMerciful: 2,
+    breaksForTurncoat: 2,
+    trapKillsForBuilder: 2,
+    cyclesForWarden: 6,
 } as const;
 
 /**
@@ -2116,6 +2149,9 @@ export const VERTICALITY = {
     descendFatigue: 6,
     climbFatigue: 12,
     descendFallChance: 0.12,
+    /** §7: fatigue above which a descent starts going wrong, and how hard. */
+    fallFatiguePivot: 55,
+    fallFatigueWeight: 1.6,
     fallDamage: 24,
 } as const;
 
@@ -2247,6 +2283,20 @@ export const TRAPS = {
      * arena's cruellest single outcome and it should stay rare.
      */
     ownSnareForgetChance: 0.16,
+    /** §6: strength needed to dig a pit worth falling into. */
+    pitStrength: 6,
+    /** §6: what each of the three new kinds does when it goes off. */
+    pitDamage: 26,
+    pitLegInjuryChance: 0.55,
+    pitBleedChance: 0.3,
+    stakeDamage: 18,
+    stakeBleedChance: 0.6,
+    /**
+     * A trip-wire hurts nobody at all — it has no damage or bleed dial for
+     * that reason. What it costs the person who walks into it is the knowledge
+     * that somebody now knows where they are.
+     */
+    tripwireRattle: 4,
 } as const;
 
 /** Applying venom to a blade — the Trickster's other unspoken speciality. */
@@ -2265,6 +2315,8 @@ export const POISONING = {
      * nearly killed them — the second source path beyond forage.
      */
     muttGlandChance: 0.3,
+    /** §7: per grade of arm injury, odds your own coated blade gets into you. */
+    ownBladeChance: 0.04,
 } as const;
 
 /** What a tribute can physically carry. */
@@ -2341,6 +2393,9 @@ export const ZONES = {
     /** Share of successful forages that turn up nightlock instead of a meal. */
     /** §6.4: raised 0.12 -> 0.16 so blade-poison material actually circulates. */
     nightlockChance: 0.16,
+    /** §10: what standing in the new terrains costs per cycle. */
+    desertThirstPerCycle: 6,
+    iceFatiguePerCycle: 4,
 } as const;
 
 /** What tributes remember, and how fast they forget it. */
@@ -2644,8 +2699,12 @@ export const STANCE_MODES = {
         // §8: 7 of 10 stealth, on a cast whose stealth averages nearer 5, on
         // top of an unbroken unseen streak and a valid quarry one zone over.
         // Shadowing fired in 0.5% of cycles.
+        // A §2: 5 rather than the original 6 — above-average stealth still,
+        // on a cast averaging nearer 5, but not the top decile. Dropping to 4
+        // bought another 0.6% of cycles at the cost of the stance meaning
+        // anything, so the floor stays where "the sneaky one" is true.
         stealthMin: 5,
-        base: 4.4,
+        base: 6.0,
         /** Consecutive unnoticed cycles that convert into a free ambush. */
         cyclesToAmbush: 3,
         /** Concealment edge while trailing rather than closing. */
@@ -2825,6 +2884,13 @@ export const RELATIONSHIPS = {
     trustDecayPerCycle: 1.5,
     lateGameTrustDecay: 4,
     lateGameAliveCount: 6,
+    /** §4: cycles of shared alliance history at which re-teaming is at full weight. */
+    sharedHistoryCap: 8,
+    /** ...and what a full history is worth to the odds of forming again. */
+    sharedHistoryFormWeight: 0.22,
+    sharedHistoryRecruitWeight: 0.18,
+    /** §4: regard at which a survivor counts as close enough to inherit. */
+    inheritBond: 30,
 } as const;
 
 /**
@@ -2920,6 +2986,8 @@ export const RUMOURS = {
     plantedSuspicion: 30,
     repeatedRegardCost: 8,
     repeatedSuspicion: 10,
+    /** §4: what getting clean away with a plant is worth to the planter. */
+    untraceableReputation: 3,
 } as const;
 
 export const VENGEANCE_PACT = {
@@ -2927,6 +2995,10 @@ export const VENGEANCE_PACT = {
     minRegard: 25,
     /** Regard below which one of them is treated as having walked away from it. */
     abandonRegard: 0,
+    /** §4: ...or they are simply too hurt or too far gone to keep carrying it. */
+    abandonHealth: 35,
+    abandonResolve: 30,
+    abandonWhenSpentChance: 0.08,
     chance: 0.35,
     regard: 12,
     resolve: 8,
@@ -2958,8 +3030,8 @@ export const BLOC_TREATY = {
      * killing, because the treaty was an absolute block on drawing sides.
      * Per pair per cycle, before treachery and circumstance.
      */
-    breachBase: 0.03,
-    breachTreacheryWeight: 0.25,
+    breachBase: 0.06,
+    breachTreacheryWeight: 0.35,
     breachEndgameFieldSize: 8,
     breachEndgameBonus: 0.08,
     breachWoundedHealth: 40,
@@ -3106,6 +3178,8 @@ export const ROMANCE = {
     contactGrowth: 5,
     /** Standing by someone is worth far more than standing near them. */
     stoodByGrowth: 14,
+    /** §4: regard a cross-district pair is credited toward the romance bar. */
+    crossDistrictRelief: 8,
 } as const;
 
 /** Alliance formation and dissolution. */
@@ -3266,6 +3340,15 @@ export const ALLIANCES = {
      * A small chance somebody never joins at all, and a rare chance the whole
      * thing comes apart before the bloodbath is even over.
      */
+    // §8: the Career pack takes ~50% of all crowns against a design goal of
+    // 45%, and the obvious lever turns out to be the wrong one. Loosening the
+    // pack (opt-outs 0.24, early collapse 0.11) was measured over 400 runs and
+    // made it *worse*: the Career archetype's win rate went 7.9% -> 10.9% and
+    // the archetype spread 2.9x -> 4.1x, because a Career who walks away from
+    // the pack is a strong solo tribute who no longer shares a field with
+    // three rivals for the same crown. Cohesion is a tax on them, not a
+    // subsidy. Left where it was; the share has to come down from the other
+    // end, by making the outer districts better rather than the Careers worse.
     careerOptOutChance: 0.18,
     careerMaxOptOuts: 2,
     careerEarlyCollapseChance: 0.06,
@@ -3347,12 +3430,39 @@ export const ALLIANCES = {
     successionContestMargin: 15,
     /** Odds a contested succession splits the group rather than resolving. */
     successionSplitChance: 0.45,
+    /** §4: members needed before a contested succession can split the group. */
+    successionSplitMinMembers: 3,
     /** Regard the losing side of a contested succession loses for the winner. */
     successionLoserRegard: 14,
 
     /** Pooled supplies: what a member will contribute, and what a thief takes. */
     cacheContributeSurplus: 2,
     cacheMaxSize: 8,
+    /** §4: need-based recruitment — health and vitals at which somebody needs a group. */
+    needyHealth: 55,
+    needyHunger: 60,
+    /** What the group having what they need is worth to a candidate's odds. */
+    needMedicPull: 0.16,
+    needSuppliesPull: 0.12,
+    /** ...and what the candidate having what the group needs is worth. */
+    needProviderPull: 0.12,
+    /** §4: combined hardness above which a leader runs the group as a tyrant. */
+    tyrantThreshold: 0.25,
+    /** How a tyrant's hearings differ from a democratic leader's. */
+    tyrantExpelBonus: 0.25,
+    democratExpelRelief: 0.15,
+    /** §4: living Careers at which a year is Career-heavy enough for a coalition. */
+    grandCoalitionCareers: 4,
+    /** Extra members the ceiling lifts by, and how long the year stays that way. */
+    grandCoalitionExtra: 2,
+    grandCoalitionUntilDay: 6,
+    /** Size at and above which a bloc is fracture-prone, and the odds per cycle. */
+    fractureSize: 7,
+    fractureChance: 0.45,
+    /** Regard toward the leader that keeps somebody on their side of the split. */
+    fractureLoyalRegard: 15,
+    /** What the split costs across the new line. */
+    fractureRegardCost: 12,
 } as const;
 
 /**
@@ -3603,6 +3713,14 @@ export const WILDCARD = {
     flatlineCycles: 4,
     flatlineTolerance: 8,
     flatlinePullForwardDays: 1,
+    /** §7: what a cannon that fires for nobody is worth to the field's nerves. */
+    misfireExcitement: 8,
+    /** §7: sponsor trust from one open minute of mentors. */
+    broadcastTrust: 10,
+    /** §7: remembered danger the migration carries with it. */
+    migrationThreat: 30,
+    /** §7: grieving somebody who turns out to be alive. */
+    falseFaceSanity: 10,
 } as const;
 
 export const GAMEMAKER = {
@@ -4567,6 +4685,8 @@ export const PARLEY = {
     standoffChance: 0.4,
     standoffPerFear: 0.004,
     standoffFatigue: 6,
+    /** §4: odds a truce holding in shared ground is narrated this cycle. */
+    quietHoldChance: 0.1,
 } as const;
 
 /**
@@ -4698,6 +4818,16 @@ export const GAMEMAKER_AGENCY = {
     grindDepletion: 0.2,
     grindThirst: 12,
     grindFatigue: 10,
+    /** §10: a favoured district's tribute, and what the rest of the field makes of it. */
+    favouredTrust: 15,
+    favouredResentment: 8,
+    /** §10: what a year that discourages groups does to a camped alliance. */
+    punishAllianceDamage: 12,
+    punishAllianceSanity: 8,
+    /** §10: how much of the low ground goes under. */
+    floodLowZones: 3,
+    /** §10: remembered danger where the crowd's favourite just got the Capitol's attention. */
+    favouriteThreat: 25,
 } as const;
 
 /**
@@ -4771,6 +4901,8 @@ export const MENTOR_DRAMA = {
     correctedBelow: 45,
     /** Cycles the lesson stays live before the mentor lets it drop. */
     lessonWindowCycles: 6,
+    /** §4: odds two allied districts' mentors split a parachute between them. */
+    crossTalkChance: 0.35,
 } as const;
 
 /**
@@ -4864,6 +4996,8 @@ export const EDGE_RULES = {
     forcedCrossingFatigue: 8,
     /** Cycles an alliance must hold a chokepoint zone before it counts as garrisoned. */
     garrisonHoldCycles: 2,
+    /** §5: per-cycle odds a severed route becomes passable again before the endgame. */
+    reopenChance: 0.08,
 } as const;
 
 /**
@@ -5065,6 +5199,8 @@ export const ARCHETYPE_HOOKS = {
     triageBond: 20,
     /** Saboteur: one arena-scale act of vandalism. */
     sabotageTraps: 3,
+    /** §8: exits a zone can have and still be worth cutting somebody off in. */
+    sabotageStrandMaxExits: 2,
     /** Beast: the sound. */
     roarFear: 12,
     roarSanity: 9,
@@ -5088,7 +5224,10 @@ export const ARCHETYPE_HOOKS = {
     ghostTrustCap: 2.5,
     ghostExcitementDrain: 3,
     /** Ghost: named personally, at the field size where it stings. */
-    ghostNamingField: 8,
+    ghostNamingField: 12,
+    /** ...or a long enough stretch unseen that one kill does not disqualify them. */
+    ghostNamingUnseenCycles: 4,
+    ghostNamingMaxKills: 1,
     namingFear: 5,
 } as const;
 
@@ -5197,4 +5336,206 @@ export const ARENA_SIGNATURES = {
         mossDimCycles: 3,
         siphonChance: 0.5,
     },
+} as const;
+
+// ==== workstream A: tribute logic ====
+
+/**
+ * Decision transparency. The trace is a per-cycle record of what the stance
+ * table and the destination scorer actually weighed, kept small — last cycle
+ * only — so the tribute sheet can answer "why did they do that?" without the
+ * engine having to be re-run.
+ */
+export const DECISION_TRACE = {
+    /** Scored stance options and destinations kept per cycle. */
+    topN: 3,
+    /** Reasons kept per stance, ranked by absolute weight. */
+    reasonsPerStance: 3,
+} as const;
+
+/**
+ * Stance hysteresis, second pass. The score-only margin stops oscillation
+ * between the two big families but did nothing for a conditional stance
+ * whose whole value is *staying* in it: Fortified lost to a wandering
+ * Aggressive score the moment the numbers touched. An incumbent conditional
+ * stance now carries a small bonus while its situation still holds, so a
+ * challenger has to be clearly better rather than marginally better.
+ */
+export const STANCE_HOLD = {
+    /** Score added to a still-valid conditional incumbent before the compare. */
+    conditionalIncumbentBonus: 0.9,
+    /**
+     * Fortified for anybody with a camp and the supplies to sit in it — a
+     * fire, a shelter or a camouflaged position plus food and water is a
+     * position worth keeping whether or not the ground is a chokepoint.
+     */
+    fortifiedSuppliedKit: 10,
+    fortifiedCampBonus: 1.0,
+    fortifiedSuppliedBonus: 1.2,
+    /** A camp counts as held ground even before the hold counter says so. */
+    fortifiedCampHoldCycles: 1,
+    /**
+     * Shadowing for anybody currently tracking a rival in memory — a known
+     * recent sighting one zone over — not only the high-stealth builds.
+     */
+    shadowTrackingBonus: 2.2,
+    /** Cycles a sighting may be old and still count as "currently tracking". */
+    shadowSightingMaxAge: 2,
+    /** Stealth points below the floor that a tracked sighting can make up for. */
+    shadowStealthSlack: 4,
+    /** A §1: a trace reason below this magnitude is noise, not an explanation. */
+    traceReasonFloor: 0.05,
+} as const;
+
+/**
+ * §3: the standing goal — a third objective slot that survives errand
+ * interruptions across cycles. The two-deep queue holds one errand in front
+ * of one goal; a feast, a sworn hunt or the endgame reposition is a goal that
+ * should outlast several errands, and used to be re-derived from scratch
+ * every time one finished.
+ */
+export const STANDING_GOAL = {
+    /** A standing goal resumes when the fresh choice's priority tier is at or below this. */
+    resumeBelowTier: 45,
+    /** Cycles a standing goal may live before it is dropped as stale. */
+    maxCycles: 12,
+    /** Cycles of expiry granted each time the goal is picked back up. */
+    resumeCycles: 4,
+} as const;
+
+/**
+ * State-dependent risk tolerance, in roughly [-1, 1]. The archetype curve was
+ * the whole story; health, kit, day count and field size now move it too.
+ */
+export const RISK = {
+    /** Archetype temperament: aggression pushes up, effective caution pushes down. */
+    aggressionWeight: 0.6,
+    cautionWeight: 0.8,
+    /** Health at which the health term is neutral, and its weight per 100 points. */
+    healthPivot: 60,
+    healthWeight: 0.8,
+    /** A weapon in hand is the single biggest reason to take a chance. */
+    weaponBonus: 0.2,
+    /** Kit value at which "something to lose" starts weighing, and the weight per point. */
+    kitPivot: 20,
+    kitWeightPerPoint: 0.006,
+    kitMaxPenalty: 0.25,
+    /** Days into the run at which fatigue with the whole thing starts pushing caution. */
+    dayPivot: 6,
+    dayWeightPerDay: 0.03,
+    dayMaxPenalty: 0.2,
+    /** Field size at and below which the arithmetic says somebody has to force it. */
+    fieldPivot: 6,
+    fieldWeightPerTribute: 0.08,
+    fieldMaxBonus: 0.35,
+    /** How far the composite moves the stance, targeting, movement and retreat reads. */
+    stanceAggressionWeight: 1.4,
+    stanceEvasiveWeight: 1.2,
+    /** Hunt scoring: a cautious tribute leans harder on picking the weak. */
+    targetWeakWeight: 0.3,
+    /** Destination scoring: tolerant tributes read danger as opportunity. */
+    dangerWeight: 1.5,
+    /** Retreat roll: risk tolerance argues against breaking off. */
+    retreatWeight: 0.12,
+} as const;
+
+/**
+ * §5: learning about opponents. A per-rival "read" in [0, 1] on the memory
+ * record, improved by every meeting, fight and sighting, and used to blend
+ * the visible-power guess toward the truth for people they actually know.
+ */
+export const RIVAL_READ = {
+    perSighting: 0.08,
+    perMeeting: 0.15,
+    perFight: 0.25,
+    perWound: 0.1,
+    max: 1,
+    /** How much of the estimate the true figure replaces at a full read. */
+    blendWeight: 0.7,
+    /** A well-read rival does not regress toward "average tribute" as fast. */
+    staleResist: 0.6,
+} as const;
+
+/**
+ * §6: the watch rotation. An alliance sleeping in one zone posts a watch —
+ * the member with the best awareness, which is what a Light Sleeper is for —
+ * and the rest actually sleep.
+ */
+export const WATCH_ROTATION = {
+    /** Members co-located at nightfall needed to post a watch at all. */
+    minMembers: 2,
+    /** Health the sleepers recover on top of the ordinary ally-watch bonus. */
+    recoveryBonus: 2,
+    /** ...and again when the watcher is somebody who wakes at a snapped twig. */
+    lightSleeperBonus: 2,
+    /** Awareness at which the watcher counts as a real sentry. */
+    sentryAwareness: 6.5,
+    /** Sleep debt the sleepers pay down for a watched night. */
+    debtRepaid: 1,
+    /** The watcher's own night is shorter. */
+    watcherFatigue: 4,
+} as const;
+
+/** §7: injuries change the plan, not only the numbers. */
+export const INJURY_BEHAVIOUR = {
+    /** Destination penalty per extra cycle of traversal, per grade of leg injury. */
+    legsHopPenaltyPerGrade: 1.2,
+    /** A limping hunter drops quarry further than this many hops away. */
+    legsHuntMaxHops: 2,
+    /** Weapon-choice multiplier per grade of injury to the weapon hand. */
+    weaponHandPerGrade: 0.22,
+    /** ...and to the off hand, which still matters for a bow or a spear. */
+    offHandPerGrade: 0.1,
+    /** Two-handed weapons (bows, spears, axes) pay the off-hand cost too. */
+    twoHandedDamage: 14,
+} as const;
+
+/**
+ * §8: shock. A one-cycle status separate from sanity — a near-death moment
+ * that forces Evasive for the cycle after it, whatever the scorer says.
+ */
+export const SHOCK = {
+    /** Health line a single hit has to carry them under. */
+    healthLine: 30,
+    /** ...and the hit has to be big enough to be a moment, not a scratch. */
+    minHit: 12,
+    /** Cycles the status holds. */
+    cycles: 1,
+    lineChance: 0.7,
+} as const;
+
+/** §9: whom to avoid and whom to hunt is partly what the country calls them. */
+export const REPUTATION_TARGETING = {
+    /** Hunt-score penalty at full notoriety, scaled down by risk tolerance. */
+    notorietyDeterrent: 30,
+    /** An epithet is a prize to somebody who wants one and a warning to everyone else. */
+    epithetPrize: 12,
+    epithetDeterrent: 10,
+    /** Risk tolerance at which a named rival reads as a prize rather than a threat. */
+    prizeRiskAbove: 0.25,
+    /** What a heard-of name adds to how dangerous somebody looks across a zone. */
+    notorietyVisibleWeight: 2.5,
+    epithetVisibleBonus: 1,
+} as const;
+
+/** §10: what is worth keeping depends on where you are keeping it. */
+export const SITUATIONAL_KIT = {
+    coldWarmthBonus: 45,
+    coldFireBonus: 25,
+    dryWaterBonus: 45,
+    foulWaterPurifierBonus: 35,
+    /** Thirst multiplier at and above which the arena counts as dry. */
+    dryThirstMultiplier: 1.3,
+} as const;
+
+/** §11: the tribute side of the endgame — repositioning before the Gamemakers do it for them. */
+export const ENDGAME_POSITIONING = {
+    /** Field size at and below which the last few start moving deliberately. */
+    fieldSize: 4,
+    /** Priority tier of the reposition, between the feast and a sworn hunt. */
+    tier: 58,
+    /** Destination pull toward the horn or high ground once the field is this small. */
+    pullWeight: 3,
+    /** Edge above which the horn is the place to be; below it, high ground. */
+    hornEdge: 0,
 } as const;

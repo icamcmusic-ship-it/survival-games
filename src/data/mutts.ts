@@ -1021,6 +1021,115 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
     ],
 
     // Procedural biomes (src/engine/arenaGenerator.ts BIOMES ids).
+    // §5/§10: biomes that shipped with no roster at all — `rosterFor` returned
+    // an empty array, so a tundra or a dune arena was a permanently mutt-free
+    // Games. Each covers its own terrains, including the four added in §10.
+    dunes: [
+        {
+            id: 'glass-wasps', name: 'Glass Wasps',
+            // Nothing they do kills anybody; they get into a wound and hand
+            // it to the fever.
+            packSize: [10, 24], damage: 2, speed: 9,
+            inflicts: { infected: true },
+            terrainPreference: ['desert', 'open'],
+            role: 'parasite',
+        },
+        {
+            id: 'sand-stalkers', name: 'Sand Stalkers',
+            packSize: [1, 3], damage: 22, speed: 8,
+            inflicts: { bleeding: true },
+            terrainPreference: ['desert', 'open', 'highland'],
+            role: 'ambusher',
+        },
+        {
+            id: 'carrion-jackals', name: 'Carrion Jackals',
+            packSize: [3, 7], damage: 10, speed: 8,
+            terrainPreference: ['desert', 'open', 'ruins'],
+            role: 'scavenger',
+        },
+        {
+            id: 'wadi-eels', name: 'Wadi Eels',
+            packSize: [2, 4], damage: 14, speed: 6,
+            terrainPreference: ['water', 'wetland'],
+        },
+        {
+            id: 'thorn-mimics', name: 'Thorn Mimics',
+            packSize: [1, 1], damage: 18, speed: 5,
+            fearAura: 9,
+            terrainPreference: ['forest', 'desert'],
+            role: 'mimic',
+        },
+    ],
+    tundra: [
+        {
+            id: 'crevasse-worms', name: 'Crevasse Worms',
+            packSize: [1, 2], damage: 24, speed: 3,
+            inflicts: { bleeding: true },
+            terrainPreference: ['ice', 'highland'],
+            role: 'ambusher',
+        },
+        {
+            id: 'rime-lice', name: 'Rime Lice',
+            // They live in the seams of whatever you are wearing, and they
+            // are why the cold gets in.
+            packSize: [12, 30], damage: 1, speed: 6,
+            inflicts: { infected: true },
+            terrainPreference: ['ice', 'open', 'ruins'],
+            role: 'parasite',
+        },
+        {
+            id: 'ice-gulls', name: 'Ice Gulls',
+            packSize: [4, 9], damage: 6, speed: 9,
+            terrainPreference: ['ice', 'water', 'open'],
+            role: 'scavenger',
+        },
+        {
+            id: 'timber-wolves', name: 'Timber Wolves',
+            packSize: [3, 6], damage: 18, speed: 9,
+            inflicts: { bleeding: true },
+            terrainPreference: ['forest', 'open', 'wetland'],
+            role: 'herder',
+        },
+    ],
+    ruinlands: [
+        {
+            id: 'street-mimics', name: 'Street Mimics',
+            // A mimic that works in a place with doorways: it wears the shape
+            // of somebody sheltering in one until you are close enough.
+            packSize: [1, 1], damage: 20, speed: 7,
+            fearAura: 10,
+            terrainPreference: ['urban', 'ruins'],
+            role: 'mimic',
+        },
+        {
+            id: 'gutter-rats', name: 'Gutter Rats',
+            packSize: [8, 18], damage: 4, speed: 8,
+            inflicts: { infected: true },
+            terrainPreference: ['urban', 'ruins', 'wetland'],
+            role: 'scavenger',
+        },
+        {
+            id: 'cornice-shrikes', name: 'Cornice Shrikes',
+            packSize: [2, 5], damage: 13, speed: 9,
+            inflicts: { bleeding: true },
+            terrainPreference: ['urban', 'highland', 'ruins'],
+            role: 'herder',
+        },
+        {
+            id: 'cellar-hounds', name: 'Cellar Hounds',
+            packSize: [2, 4], damage: 21, speed: 7,
+            nocturnal: true,
+            terrainPreference: ['urban', 'ruins', 'open'],
+            role: 'ambusher',
+        },
+        {
+            id: 'reservoir-leeches', name: 'Reservoir Leeches',
+            packSize: [6, 14], damage: 3, speed: 3,
+            inflicts: { bleeding: true, infected: true },
+            terrainPreference: ['water', 'wetland', 'urban'],
+            role: 'parasite',
+        },
+    ],
     rainforest: [
         {
             id: 'razor-parrots', name: 'Razor Parrots',
@@ -1041,6 +1150,28 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
         },
     ],
     volcanic: [
+        {
+            id: 'tube-crawlers', name: 'Tube Crawlers',
+            packSize: [2, 6], damage: 15, speed: 6,
+            terrainPreference: ['cave', 'ruins'],
+            role: 'ambusher',
+        },
+        {
+            id: 'echo-mimics', name: 'Echo Mimics',
+            // §5: in the dark a mimic does not need a face, only a voice.
+            packSize: [1, 2], damage: 16, speed: 7,
+            fearAura: 14,
+            terrainPreference: ['cave'],
+            role: 'mimic',
+        },
+        {
+            id: 'ash-grubs', name: 'Ash Grubs',
+            // §5: the bestiary shipped one parasite in 179 mutts.
+            packSize: [10, 20], damage: 2, speed: 4,
+            inflicts: { infected: true },
+            terrainPreference: ['cave', 'ruins'],
+            role: 'parasite',
+        },
         {
             id: 'magma-hounds', name: 'Magma Hounds',
             packSize: [2, 4], damage: 22, speed: 8,

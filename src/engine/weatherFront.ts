@@ -3,6 +3,7 @@ import { WEATHER_FRONT } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { ExposureProfile, applyExposure } from './exposure';
 import { getZone } from './map';
+import { endZoneEffect, hasEffect, startZoneEffect } from './zoneEffects';
 import { addZoneThreat } from './memory';
 import { MEMORY } from '../data/balance';
 
@@ -181,6 +182,36 @@ export function tickWeatherFront(ctx: SimContext) {
         );
 
         const profile = FRONTS[front.kind % FRONTS.length];
+
+        // §5: the front and the zone effects were two weather systems that
+        // never spoke. A wall of driving rain crossing a burning sector put
+        // the fire out in every other model of weather anybody has; here it
+        // rained on the fire and both carried on independently. Rain drowns a
+        // burn, a freeze locks a flood, and a dust storm chokes a fog out.
+        const kind = FRONTS[front.kind % FRONTS.length].name;
+        if (/rain/i.test(kind) && hasEffect(ctx.state, front.zone, 'burning')) {
+            endZoneEffect(ctx.state, front.zone, 'burning');
+            ctx.logEvent(
+                `The rain gets to ${front.zone} ahead of anybody else and puts the fire out. What is left is steam, ash and a lot of very cold people.`,
+                [], { important: true, zone: front.zone, category: 'arena' }
+            );
+        }
+        if (/freeze/i.test(kind) && hasEffect(ctx.state, front.zone, 'flooded')) {
+            endZoneEffect(ctx.state, front.zone, 'flooded');
+            startZoneEffect(ctx, front.zone, 'frozen');
+            ctx.logEvent(
+                `The freeze catches ${front.zone} with the water still standing in it. By morning the flood is a floor, and nobody is sure how thick.`,
+                [], { important: true, zone: front.zone, category: 'arena' }
+            );
+        }
+        if (/dust/i.test(kind) && hasEffect(ctx.state, front.zone, 'fogbound')) {
+            endZoneEffect(ctx.state, front.zone, 'fogbound');
+            ctx.logEvent(
+                `The dust front goes through ${front.zone} and takes the fog with it. Visibility comes back all at once, which is worse for some people than for others.`,
+                [], { important: true, zone: front.zone, category: 'arena' }
+            );
+        }
+
         getAlive(ctx.state).forEach(t => {
             if (t.zone !== front!.zone) return;
             applyExposure(ctx, t, profile);

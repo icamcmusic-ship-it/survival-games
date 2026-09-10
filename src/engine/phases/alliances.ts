@@ -2,13 +2,13 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { RESPECT, ALLIANCES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, ROMANCE, SUSPICION } from '../../data/balance';
+import { RESPECT, ALLIANCES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
 import { profOf, trainProficiency } from '../proficiency';
 import { applyDamage, checkDeath } from '../combat';
 import { clampTribute } from '../vitals';
 import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel, trustOf } from '../relationships';
-import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, raiseSuspicion, suspicionOf } from '../memory';
+import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, raiseSuspicion, sharedHistoryOf, suspicionOf } from '../memory';
 import { respectOf } from '../relationships';
 import { sniffPerformances } from '../alliance';
 import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
@@ -107,6 +107,41 @@ function pickBetrayer(ctx: SimContext, members: Tribute[]): Tribute {
         if (roll <= 0) return s.m;
     }
     return scored[scored.length - 1].m;
+}
+
+/**
+ * §4: need-based recruitment.
+ *
+ * Joining used to be affinity, persona and district ties — who you get on
+ * with. It left out the reason most people in an arena actually attach
+ * themselves to a group: they need something the group has. A tribute
+ * bleeding out wants whoever is carrying medicine; a group living on nothing
+ * wants whoever is carrying food. Both are readable off the inventories that
+ * are already there.
+ */
+function needBasedPull(candidate: Tribute, present: Tribute[]): number {
+    let pull = 0;
+    const hurt = candidate.health < ALLIANCES.needyHealth
+        || candidate.injuries.bleeding || candidate.injuries.infected;
+    if (hurt && present.some(m => m.inventory.some(i => i.type === 'medical'))) {
+        pull += ALLIANCES.needMedicPull;
+    }
+    const starving = candidate.vitals.hunger > ALLIANCES.needyHunger
+        || candidate.vitals.thirst > ALLIANCES.needyHunger;
+    if (starving && present.some(m => m.inventory.some(i => i.type === 'food' || i.type === 'water'))) {
+        pull += ALLIANCES.needSuppliesPull;
+    }
+    // ...and the other direction: a group short of everything wants whoever
+    // walked up carrying a full pack.
+    const groupThin = present.every(m => !m.inventory.some(i => i.type === 'food' || i.type === 'water'));
+    if (groupThin && candidate.inventory.some(i => i.type === 'food' || i.type === 'water')) {
+        pull += ALLIANCES.needProviderPull;
+    }
+    if (candidate.inventory.some(i => i.type === 'medical')
+        && present.some(m => m.health < ALLIANCES.needyHealth)) {
+        pull += ALLIANCES.needProviderPull;
+    }
+    return pull;
 }
 
 export function processAlliances(ctx: SimContext) {
@@ -361,10 +396,15 @@ export function processAlliances(ctx: SimContext) {
                     const persona = interviewChemistry(t1, t2);
                     // Someone who has been sold out before is far harder to recruit.
                     const trustCost = (distrustFactor(t1) + distrustFactor(t2)) / 2;
+                    // §4: people who have already done this together do it
+                    // again more readily — unless one of them is the reason it
+                    // ended, which `sharedHistoryOf` zeroes.
+                    const history = (sharedHistoryOf(t1, t2.id) + sharedHistoryOf(t2, t1.id)) / 2
+                        * RELATIONSHIPS.sharedHistoryFormWeight;
 
                     const formChance = Math.max(
                         ALLIANCES.minFormChance,
-                        (ALLIANCES.baseFormChance + affinity + compat + persona) / trustCost
+                        (ALLIANCES.baseFormChance + affinity + compat + persona + history) / trustCost
                     );
                     const relThreshold = (ALLIANCES.baseRelThreshold - compat * 100 - persona * 60) * trustCost;
 
@@ -412,9 +452,19 @@ export function processAlliances(ctx: SimContext) {
     });
 
     const maxSize = effectiveAllianceMaxSize(ctx.state, ALLIANCES.maxSize);
+    // §4: a grand coalition. Size 7 was reachable on paper and happened twice
+    // in 400 runs, so the cap was in practice 6 and the arena never produced
+    // the shape a Career year is remembered for: a bloc too big to be an
+    // alliance, held together by nothing, certain to come apart. In a
+    // Career-heavy year the ceiling lifts early, and `fractureBlocs` below
+    // makes sure it does not simply stand.
+    const careerHeavy = getAlive(ctx.state).filter(t => t.isCareer).length >= ALLIANCES.grandCoalitionCareers;
+    const ceiling = careerHeavy && ctx.state.day <= ALLIANCES.grandCoalitionUntilDay
+        ? maxSize + ALLIANCES.grandCoalitionExtra
+        : maxSize;
     groups.forEach((members, id) => {
         if (alliancesForbidden) return;
-        if (members.length < 2 || members.length >= maxSize) return;
+        if (members.length < 2 || members.length >= ceiling) return;
         // Star-crossed lovers are a pair, not the seed of a gang.
         if (id.startsWith('lovers-')) return;
 
@@ -427,7 +477,7 @@ export function processAlliances(ctx: SimContext) {
 
         candidates.forEach(candidate => {
             if (candidate.allianceId) return;
-            if (members.length >= maxSize) return;
+            if (members.length >= ceiling) return;
             // §4.2: a group does not hand back the place it threw somebody out of.
             if (wasExpelled(allianceOf(ctx.state, id), candidate.id)) return;
 
@@ -456,7 +506,15 @@ export function processAlliances(ctx: SimContext) {
             const advocate = Math.max(0, ...present.map(m => profOf(m, 'persuasion')));
             const affinity = ARCHETYPES[candidate.archetype].allianceAffinity
                 + traitMod(candidate, 'allianceAffinity')
-                + advocate * PROFICIENCY.persuasionRecruitWeight;
+                + advocate * PROFICIENCY.persuasionRecruitWeight
+                // §4: an old campmate is an easier sell than a stranger.
+                + Math.max(0, ...present.map(m => sharedHistoryOf(m, candidate.id)))
+                    * RELATIONSHIPS.sharedHistoryRecruitWeight
+                // §4: need-based recruitment. A wounded loner wants whoever
+                // can patch them up; a group short of supplies wants whoever
+                // is carrying them. Both were invisible to a scorer that read
+                // only temperament and regard.
+                + needBasedPull(candidate, present);
             const chance = Math.max(
                 ALLIANCES.minFormChance,
                 (ALLIANCES.recruitChance + affinity - (members.length - 2) * ALLIANCES.recruitSizePenalty)
@@ -754,7 +812,15 @@ function growRomance(ctx: SimContext) {
             if ((ensureMemory(t1).contactStreak?.[t2.id] ?? 0) < ROMANCE.sustainedCycles) continue;
 
             const stoodBy = hasStoodBy(t1, t2.id) || hasStoodBy(t2, t1.id);
-            const mutual = Math.min(getRel(t1, t2.id), getRel(t2, t1.id));
+            // §4: district partners start with a backstory bond, so in practice
+            // they were the only pair that ever cleared the romance threshold —
+            // 13.5% of runs, and the same two people every time. Two tributes
+            // from different districts who got this far did it with nothing to
+            // start from, which is if anything the better story, so the bar for
+            // them comes down to meet it.
+            const crossDistrict = t1.district !== t2.district;
+            const mutual = Math.min(getRel(t1, t2.id), getRel(t2, t1.id))
+                + (crossDistrict ? ROMANCE.crossDistrictRelief : 0);
 
             // A PERFORMED bond: Star-Crossed in canon is a strategy before it
             // is a romance, and the simulation could only model the sincere

@@ -2,7 +2,7 @@ import { Item, Tribute, Trap } from '../models/types';
 import { BLEEDING, CRAFTING, EARNED_TRAIT_RULES, ENDGAME, HUNTING, POISONING, TRAPS, STANCE_MODES } from '../data/balance';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
-import { addZoneThreat, cycleOf, rattle } from './memory';
+import { addZoneThreat, cycleOf, rattle, noteSighting } from './memory';
 import { endgameEdge } from './objectives';
 import { getZone, zoneFeatures } from './map';
 import { hasEffect } from './zoneEffects';
@@ -67,12 +67,40 @@ export function wantsToSetTrap(ctx: SimContext, t: Tribute): boolean {
     return true;
 }
 
+/** §6: what each kind reads as when it goes in, and when it goes off. */
+const TRAP_SET_LINES: Record<Trap['kind'], (name: string, zone: string) => string> = {
+    snare: (n, z) => `${n} sets a snare across a game trail in ${z} and covers the line with leaf litter.`,
+    deadfall: (n, z) => `${n} balances a deadfall over a gap in ${z} and backs away from it very carefully.`,
+    pit: (n, z) => `${n} spends most of the day digging in ${z}, and most of the rest of it making the ground look untouched.`,
+    tripwire: (n, z) => `${n} runs a line at ankle height across the approach to ${z}. It is not meant to hurt anybody. It is meant to say something.`,
+    stake: (n, z) => `${n} sets a line in ${z} over something sharpened, and paints the point with what came off the last thing that tried to kill them.`,
+};
+
+const TRAP_SPRING_LINES: Record<Trap['kind'], (name: string, zone: string) => string> = {
+    snare: (n, z) => `${n} puts a foot wrong in ${z} and the snare closes on their leg.`,
+    deadfall: (n, z) => `A deadfall comes down on ${n} in ${z} with a sound like the arena clearing its throat.`,
+    pit: (n, z) => `The ground in ${z} stops being ground under ${n}, and they are at the bottom of it before they have finished falling.`,
+    tripwire: (n, z) => `${n} walks through a line strung across ${z}. Nothing happens to them at all, which is the worst part of it.`,
+    stake: (n, z) => `Something sharpened comes up out of the floor of ${z} into ${n}, and it has been treated.`,
+};
+
 /** Spends the turn setting a snare or a deadfall in the tribute's current zone. */
 export function setTrap(ctx: SimContext, t: Tribute) {
     const materialIdx = t.inventory.findIndex(i => i.id === 'rope' || i.id === 'wire');
-    // A deadfall needs weight to drop and cover to hide the trigger; a snare
-    // needs a line. Without a line, only a deadfall is possible.
-    const kind: Trap['kind'] = materialIdx >= 0 ? 'snare' : 'deadfall';
+    const glandIdx = t.inventory.findIndex(i => i.id === 'venom-gland');
+    // §6: what they build is what they have and what they mean to do with it.
+    // A line plus a gland is a stake; a line alone is a snare, or an alarm if
+    // they are hiding rather than hunting; a shovel-worth of soft ground is a
+    // pit; and with nothing at all it is a deadfall.
+    const zone = getZone(ctx.state.arena, t.zone);
+    const diggable = zone !== undefined
+        && (zone.terrain === 'forest' || zone.terrain === 'wetland' || zone.terrain === 'desert' || zone.terrain === 'open');
+    const kind: Trap['kind'] =
+        materialIdx >= 0 && glandIdx >= 0 ? 'stake'
+            : materialIdx >= 0 && isEvasiveStance(t.stance) ? 'tripwire'
+                : materialIdx >= 0 ? 'snare'
+                    : diggable && t.attributes.strength >= TRAPS.pitStrength ? 'pit'
+                        : 'deadfall';
 
     let chance = TRAPS.buildBaseChance
         + t.attributes.intelligence * TRAPS.buildPerIntelligence
@@ -90,6 +118,7 @@ export function setTrap(ctx: SimContext, t: Tribute) {
     }
 
     if (materialIdx >= 0) t.inventory.splice(materialIdx, 1);
+    if (kind === 'stake' && glandIdx >= 0) t.inventory.splice(glandIdx > materialIdx ? glandIdx - 1 : glandIdx, 1);
     ctx.state.traps = ctx.state.traps ?? [];
     ctx.state.traps.push({
         id: `trap-${t.id}-${cycleOf(ctx.state)}-${ctx.state.traps.length}`,
@@ -100,13 +129,7 @@ export function setTrap(ctx: SimContext, t: Tribute) {
         setCycle: cycleOf(ctx.state),
     });
     trainProficiency(t, 'tracking');
-    ctx.logEvent(
-        kind === 'snare'
-            ? `${t.name} sets a snare across a game trail in ${t.zone} and covers the line with leaf litter.`
-            : `${t.name} balances a deadfall over a gap in ${t.zone} and backs away from it very carefully.`,
-        [t.id],
-        { category: 'survival' }
-    );
+    ctx.logEvent(TRAP_SET_LINES[kind](t.name, t.zone), [t.id], { category: 'survival' });
 }
 
 /**
@@ -203,8 +226,29 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     }
 
     removeTrap(ctx, trap.id);
-    const damage = (trap.kind === 'snare' ? TRAPS.snareDamage : TRAPS.deadfallDamage)
-        * (fortifiedOwner ? STANCE_MODES.fortified.trapTriggerMultiplier : 1);
+
+    // §6: an alarm is the one that does not hurt anybody. It tells its owner
+    // exactly where somebody is, which for a tribute who is hiding rather than
+    // hunting is worth more than a wound.
+    if (trap.kind === 'tripwire') {
+        rattle(t, HUNTING.rattledPerTrap + TRAPS.tripwireRattle);
+        if (owner && owner.status === 'alive') {
+            noteSighting(ctx.state, owner, t.zone, 1, 0);
+        }
+        ctx.logEvent(
+            TRAP_SPRING_LINES.tripwire(t.name, t.zone),
+            owner ? [t.id, owner.id] : [t.id],
+            { important: true, category: 'survival' }
+        );
+        return;
+    }
+
+    const baseDamage =
+        trap.kind === 'snare' ? TRAPS.snareDamage
+            : trap.kind === 'pit' ? TRAPS.pitDamage
+                : trap.kind === 'stake' ? TRAPS.stakeDamage
+                    : TRAPS.deadfallDamage;
+    const damage = baseDamage * (fortifiedOwner ? STANCE_MODES.fortified.trapTriggerMultiplier : 1);
     // A trap whose owner is still breathing is a kill and credited as one —
     // that is the entire point of building the thing days earlier. A trap set by
     // someone who has since died is just part of the arena now: crediting a
@@ -216,16 +260,21 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     applyDamage(ctx, t, damage, claimant
         ? { cause, sourceId: claimant.id, kind: 'tribute' }
         : { cause, kind: 'hazard' });
-    const bleedChance = trap.kind === 'snare' ? TRAPS.snareBleedChance : TRAPS.deadfallBleedChance;
+    const bleedChance =
+        trap.kind === 'snare' ? TRAPS.snareBleedChance
+            : trap.kind === 'pit' ? TRAPS.pitBleedChance
+                : trap.kind === 'stake' ? TRAPS.stakeBleedChance
+                    : TRAPS.deadfallBleedChance;
     if (ctx.rng.chance(bleedChance)) openWound(t, BLEEDING.combatSeverity);
     if (trap.kind === 'snare' && ctx.rng.chance(TRAPS.snareLegInjuryChance)) injure(t, 'legs');
+    if (trap.kind === 'pit' && ctx.rng.chance(TRAPS.pitLegInjuryChance)) injure(t, 'legs');
+    // A treated point is the whole reason to build one.
+    if (trap.kind === 'stake') injure(t, 'poisoned');
     // §3.4: walking into someone's trap is exactly the kind of moment that rattles.
     rattle(t, HUNTING.rattledPerTrap);
 
     ctx.logEvent(
-        trap.kind === 'snare'
-            ? `${t.name} puts a foot wrong in ${t.zone} and the snare closes on their leg.`
-            : `A deadfall comes down on ${t.name} in ${t.zone} with a sound like the arena clearing its throat.`,
+        TRAP_SPRING_LINES[trap.kind](t.name, t.zone),
         owner ? [t.id, owner.id] : [t.id],
         { important: true, category: 'hazard' }
     );
