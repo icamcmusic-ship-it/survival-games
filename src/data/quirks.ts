@@ -34,6 +34,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} counts the days under their breath in {zone}, the way they have since the gong.',
             'The count reaches a number {name} does not like in {zone}, and they say it again anyway, out loud, to make it true.',
+            "The number {name} says in {zone} is one higher than yesterday, and they hold on it a beat too long before moving.",
+            "{name} loses the count somewhere in {zone} and starts again from the gong, patiently, as though the arithmetic were the point.",
         ],
     },
     {
@@ -41,6 +43,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} moves their bedroll twice in {zone}, further from the sound of water each time.',
             'There is water audible somewhere in {zone} and {name} has arranged their whole camp so that it is behind them.',
+            "{name} picks a dry corner of {zone} and will not be argued out of it, whatever the better ground is worth.",
+            "Water noise starts up somewhere in {zone} in the night and {name} is awake for the rest of it, eyes open, saying nothing.",
         ],
     },
     {
@@ -48,6 +52,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} climbs before they rest in {zone}. They always climb first.',
             '{name} will not settle in {zone} until they are above something. Anything. The lip of a rock will do.',
+            "Given two bad options in {zone}, {name} takes the higher one without appearing to consider the other.",
+            "{name} scouts the whole of {zone} from a height first, and only then walks down into it, which costs them an hour they do not have.",
         ],
     },
     {
@@ -55,6 +61,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} finds a camera in {zone} and says something to it the microphones do not quite catch.',
             '{name} looks directly into a lens in {zone} and holds it, for longer than is comfortable for anybody watching.',
+            "{name} performs something small for a lens in {zone} — a shrug, a half-smile — the way you would for someone at home.",
+            "There is a camera in {zone} and {name} tells it something plain and unhurried, like a person leaving a message they expect to be heard late.",
         ],
     },
     {
@@ -62,6 +70,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} crosses {zone} sideways, eyes on the treeline the whole way.',
             'Halfway across {zone}, {name} stops and turns fully around to look back at the trees. Nothing is there. There never is.',
+            "{name} chooses the long way round {zone} rather than put trees behind them, and loses daylight doing it.",
+            "{name} sits down in {zone} facing the trees and eats without looking at the food once.",
         ],
     },
     {
@@ -69,6 +79,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Somewhere in {zone}, {name} is humming — an old district tune, barely voiced.',
             'The tune comes out of {name} in {zone} before they notice they have started it, and they let it finish before they stop.',
+            "The anthem of another district plays somewhere in {name}'s memory in {zone}, and what comes out is their own.",
+            "{name} stops the tune mid-bar in {zone}, listens hard at nothing, and does not pick it up again.",
         ],
     },
     {
@@ -76,6 +88,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} turns a small stone over in their fingers in {zone}. It came from home. It goes back in the pocket.',
             '{name} loses the stone in {zone} for a bad thirty seconds, finds it in the wrong pocket, and does not speak for a while after.',
+            "{name} sets the stone on a flat rock in {zone} while they work, and puts it away before they move on.",
+            "Someone asks about the stone in {zone} and {name} gives an answer so short it closes the subject permanently.",
         ],
     },
     {
@@ -83,6 +97,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} checks an edge in {zone} that was already sharp, and sharpens it anyway.',
             'The blade goes over the stone in {zone} more times than the edge needs. {name} counts the passes, and the count is always the same.',
+            "{name} runs a thumb along an edge in {zone} and goes back to the stone over something only they can feel.",
+            "The sharpening in {zone} goes on past any use, and it is obvious to everyone including {name} that the blade is not what is being worked on.",
         ],
     },
     {
@@ -90,6 +106,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} splits their food into exact halves in {zone} and wraps one. They always wrap one.',
             '{name} cannot bring themselves to eat the wrapped half in {zone}, even hungry, even now. It is for later. There is always a later.',
+            "{name} weighs the two halves in {zone} against each other and shaves a crumb off the larger one.",
+            "The wrapped half in {zone} has been wrapped for two days and is starting to turn, and {name} rewraps it anyway.",
         ],
     },
     {
@@ -97,6 +115,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} mutters a name at a distant shriek in {zone} — they have been naming the things that hunt them.',
             'A shriek carries across {zone} and {name} says a name back at it, conversationally, as though answering.',
+            "{name} has a name for the thing in {zone} that screams at dusk, and uses it without explaining it.",
+            "{name} tells an ally in {zone} which of the mutts is which by voice, and is not entirely joking.",
         ],
     },
     {
@@ -104,6 +124,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} settles for the night in {zone} with their back to something solid, upright, the way they always do.',
             '{name} finds the one upright surface in {zone} and puts their spine against it before they will consider sleeping.',
+            "{name} wakes upright in {zone} without the usual moment of not knowing where they are.",
+            "There is nothing solid to lean on in {zone}, so {name} sits out the dark with their arms round their knees rather than lie down.",
         ],
     },
     {
@@ -111,6 +133,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'First thing {name} does in {zone} is look up, for a long moment, at whatever the sky is pretending to be.',
             '{name} is on their back in {zone} reading a sky that is a machine, looking for weather in it the way you would at home.',
+            "The false dawn comes up over {zone} and {name} reads it for a full minute before they will move.",
+            "{name} announces the weather to nobody in {zone}, gets it right, and takes no pleasure in it.",
         ],
     },
     {
@@ -118,6 +142,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} walks the edge of their ground in {zone} three times. Exactly three.',
             'Three circuits of the ground in {zone}, and then {name} stops, unsatisfied, and does a fourth. Something about tonight is off.',
+            "The third circuit of {zone} takes {name} longer than the first two put together; they are looking at something now.",
+            "{name} interrupts a conversation in {zone} to walk the perimeter, and comes back into it mid-sentence as though nothing happened.",
         ],
     },
     {
@@ -125,6 +151,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Someone mentions the anthem in {zone} and {name} goes quiet. They never say the names.',
             'The anthem plays over {zone}, and {name} moves their lips through none of it.',
+            "A name is said aloud in {zone} and {name} finds something to do with their hands until the subject changes.",
+            "{name} counts the faces in the sky over {zone} and does not once move their lips.",
         ],
     },
     {
@@ -132,6 +160,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} sits in {zone} working knots into a cord, tying and untying, thinking.',
             'The cord in {name}\'s hands in {zone} has been tied and untied so many times it has gone soft.',
+            "The knot {name} is working in {zone} is one they learned from somebody who is not here.",
+            "{name} finishes a knot in {zone}, looks at it, unties it, and starts the same knot again.",
         ],
     },
     {
@@ -139,6 +169,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'It is barely drizzling in {zone}, and {name} stands in it with their face up anyway.',
             '{name} tips their head back in {zone} with their mouth open, briefly, and looks about nine years old doing it.',
+            "{name} catches rain off a leaf in {zone} and tastes it before they will let anyone else drink.",
+            "{name} says the water in {zone} tastes like metal today, and is not asked to explain what that means.",
         ],
     },
     {
@@ -146,6 +178,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} stops mid-stride in {zone} to re-tie a lace that did not need it.',
             '{name} checks both laces in {zone} before standing up, and both again after.',
+            "{name} crouches in {zone} to redo a lace that was not loose.",
+            "Before any hard ground in {zone}, {name} checks both laces, in the same order, right then left.",
         ],
     },
     {
@@ -153,6 +187,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} pockets something small in {zone} — a leaf, a bolt, a shell. They have one from everywhere they have been.',
             '{name} turns something small over in their fingers in {zone} — from here, from this ground — and it goes into the pocket with the rest.',
+            "{name} pockets something small and useless from {zone} — a shard, a seed case, a bent nail of a thing.",
+            "The collection weighs more than {name} will admit in {zone}, and they have not thrown any of it away.",
         ],
     },
     {
@@ -160,6 +196,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} takes what they need from the undergrowth in {zone} and says something quiet to it after.',
             '{name} cuts what they need out of {zone} and then puts a hand flat on the stump for a second, which the microphones do not pick up.',
+            "{name} cuts a stem in {zone} and says something under their breath to it that is not quite a word.",
+            "{name} takes the smaller of two plants in {zone}, for reasons that are plainly not practical.",
         ],
     },
     {
@@ -167,6 +205,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} lets the water sit in {zone}, watching it, before they will touch it. Every time.',
             '{name} waits out a full minute over the water in {zone}, watching for something to move in it, before they will lower their face.',
+            "{name} hands the skin across in {zone} and waits, watching the other person's throat.",
+            "{name} goes last at the water in {zone} even alone, even with nobody to go before them.",
         ],
     },
     {
@@ -174,6 +214,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'A thumbnail scratch on bark in {zone}: {name} marking where they have been, or the way back.',
             'A fresh scratch on a trunk in {zone}, at exactly shoulder height, exactly like the last one. {name} is leaving themselves a sentence.',
+            "{name} cuts a mark at knee height on a trunk in {zone}, low enough that only somebody looking for it would see.",
+            "{name} finds one of their own marks in {zone}, realises they have been circling, and says nothing about it.",
         ],
     },
     {
@@ -181,6 +223,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} runs through the same slow stretches in {zone} they must have done every morning of their life.',
             'Before {name} moves out of {zone}, they run the same sequence they have run every morning of their life, and their body cooperates.',
+            "{name} works through the same sequence in {zone} — calves, hamstrings, shoulders — before they will take a single step.",
+            "The stretching in {zone} is unhurried in a way that reads, from a distance, as arrogance.",
         ],
     },
     {
@@ -188,6 +232,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'One flat note carries across {zone}. {name}, telling nobody in particular it is safe.',
             'One clean note out of {zone}. It means nothing to anybody left alive to hear it, and {name} whistles it anyway.',
+            "A single flat note carries across {zone}, and whoever is listening for it knows what it means.",
+            "{name} does not whistle in {zone}, and the silence where the note should be is its own message.",
         ],
     },
     {
@@ -195,6 +241,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} adds a scratch to their bracer in {zone}. Not kills — days the arena has failed to kill them.',
             'Another mark on the bracer in {zone}. {name} looks at the row of them for a moment and appears, briefly, to be winning.',
+            "{name} tallies something against the arena in {zone} — a scratch on a stick, a mark on a sleeve — and the arena is ahead.",
+            "'Two–nil,' {name} says to nothing in particular in {zone}, and the score is not explained to anybody.",
         ],
     },
     {
@@ -202,6 +250,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} settles in {zone} facing, as ever, the direction of the horn.',
             '{name} turns their bedroll in {zone} until it points at the horn, and only then lies down on it.',
+            "{name} turns their bedroll in {zone} until the horn is in front of them, then lies down facing it.",
+            "{name} sits in {zone} with the Cornucopia at their eyeline, the way you sit facing a door.",
         ],
     },
     {
@@ -209,6 +259,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} picks a stalk in {zone} and works it between their teeth, the way half their district does on a break.',
             '{name} pulls a fresh stalk in {zone} the moment the old one goes soft, without breaking stride.',
+            "{name} chews a stalk flat in {zone}, spits it, and picks another without appearing to decide to.",
+            "There is nothing green in {zone}, and {name}'s hands keep going to their mouth anyway.",
         ],
     },
     {
@@ -216,6 +268,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'A ripple of small pops from {zone}: {name} cracking their knuckles, one hand and then the other, deciding something.',
             'Two small volleys of pops in {zone} — left hand, right hand — and then {name} does whatever they had been standing there not doing.',
+            "{name} works each knuckle in {zone} before saying what they have decided.",
+            "The knuckles crack in {zone} and everybody nearby looks up, because they have learned what follows.",
         ],
     },
     {
@@ -223,6 +277,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'The rain starts over {zone} and, very quietly under it, so does {name}.',
             'The drizzle over {zone} thickens and {name}\'s voice comes up under it, thin, and stops the instant it eases.',
+            "It starts raining on {zone} and {name}'s voice comes up out of it, low, tuneless, entirely private.",
+            "{name} sings four bars in {zone} when the rain comes, stops dead when it stops, and looks embarrassed.",
         ],
     },
     {
@@ -230,6 +286,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} adjusts their whole path through {zone} around a patch of something blooming. The cameras never catch them doing it on purpose.',
             '{name} takes three extra paces through {zone} to go around something small and green, and does not look at it as they pass.',
+            "{name} threads a long way round a patch of something flowering in {zone} rather than walk over it.",
+            "{name} rights a trampled stem in {zone} with two fingers and moves on before anybody comments.",
         ],
     },
     {
@@ -237,6 +295,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'From {name}\'s bedroll in {zone}: half a conversation, names included. Anyone listening would learn things.',
             '{name} is talking in {zone} with their eyes shut and their breathing slow. Two of the words are names of people who are not here.',
+            "Whatever {name} is saying in their sleep in {zone} is a conversation, and it has two sides.",
+            "{name} says a name in their sleep in {zone} that nobody in these Games answers to.",
         ],
     },
     {
@@ -244,6 +304,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} hangs their weight on a limb in {zone}, lets go, and hangs it again before trusting it. Both times, every time.',
             '{name} bounces on a limb in {zone} twice, steps off, and finds another one, unconvinced by a branch that was perfectly sound.',
+            "{name} puts weight on a branch in {zone}, takes it off, and puts it on again before trusting it.",
+            "A branch holds fine in {zone} and {name} tests it twice anyway, and is late because of it.",
         ],
     },
     {
@@ -251,6 +313,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} walks the ground around {zone} on an empty stomach. Food is for afterwards; it has always been for afterwards.',
             '{name} has been in {zone} an hour and has not eaten. They walk the edges first. They have always walked the edges first.',
+            "{name} will not eat in {zone} until they have walked the ground and come back, however long that takes.",
+            "Someone offers {name} food first thing in {zone} and it is refused politely and completely.",
         ],
     },
     {
@@ -258,6 +322,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'The left sleeve of {name}\'s jacket in {zone} says everything about the week they are having.',
             '{name} draws the blade across their left forearm in {zone}, wipes, and sheathes it in one movement they clearly do in their sleep.',
+            "{name} wipes the blade on their left sleeve in {zone}, twice, though the sleeve has long stopped helping.",
+            "The left sleeve of {name}'s jacket in {zone} is a different colour from the right, and has been for days.",
         ],
     },
     {
@@ -265,6 +331,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'The anthem ends over {zone} and {name} touches two fingers to their brow. Nobody has ever asked them who it is for.',
             'Two fingers to the brow in {zone}, held for a beat past the last note. {name} does not explain it and nobody asks.',
+            "The anthem finishes over {zone} and {name} lifts two fingers to the sky before they lie back down.",
+            "{name} salutes the empty sky over {zone} a beat after the faces are gone, which somehow makes it worse to watch.",
         ],
     },
     {
@@ -272,6 +340,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Where {name} slept in {zone} there is a stack of five small stones. There always is.',
             'Five stones, smallest on top, on a flat rock in {zone}. {name} does not look back at it walking away.',
+            "{name} balances a fourth stone onto a stack in {zone}, and it is a better stack than it needs to be.",
+            "{name} leaves the cairn standing in {zone} when they break camp, a small mark saying somebody was here.",
         ],
     },
     {
@@ -279,6 +349,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} drinks in {zone} and stops with a mouthful left, the way people raised on rationing always stop.',
             'There is a swallow left in the skin when {name} stops drinking in {zone}. There is always a swallow left.',
+            "{name} stops drinking in {zone} with an inch left and stoppers it, thirsty.",
+            "The inch at the bottom of {name}'s skin in {zone} is not for drinking, and never has been.",
         ],
     },
     {
@@ -286,6 +358,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} inventories their pack in {zone} in dozens and half-dozens — a habit from a district that counts by the crate.',
             '{name} counts what is left in {zone} — two dozen, and four — and the arithmetic comes out in crates and always will.',
+            "{name} counts something in {zone} in twelves and has to go back when it comes out wrong.",
+            "'Two dozen and four,' {name} says of something in {zone}, which is a strange way to say twenty-eight.",
         ],
     },
     {
@@ -293,6 +367,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'A drift of pale shavings marks where {name} waited in {zone}. The stick they were working on is nothing in particular. It never is.',
             '{name}\'s hands are working a knife over a stick in {zone} and their eyes are somewhere else entirely.',
+            "The stick in {name}'s hands in {zone} is going to be nothing in particular, and it is getting smaller.",
+            "{name} whittles in {zone} until the stick is gone, drops the shavings, and picks up another.",
         ],
     },
     {
@@ -300,6 +376,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} loosens exactly nothing before closing their eyes in {zone}. Boots stay on. Boots have stayed on since the gong.',
             '{name} lies down in {zone} laced and buckled, arranged as though the night might require running.',
+            "{name} lies down in {zone} fully laced, and is up and moving in the time it takes anyone else to find a boot.",
+            "The boots have not been off {name}'s feet since the gong, and what is happening inside them in {zone} does not bear thinking about.",
         ],
     },
     {
@@ -307,6 +385,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'First light reaches {zone} and {name} says good morning to it, quietly, like an old arrangement.',
             'The light comes up on {zone} and {name} says something to it, briefly, before the day starts being a day.',
+            "'Morning,' {name} says to the lightening edge of {zone}, to nobody, and means it.",
+            "{name} greets the sunrise over {zone} and then looks around quickly to see who heard.",
         ],
     },
     {
@@ -314,6 +394,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} pauses over still water in {zone}, studying the face in it like they are checking who came out of the arena so far.',
             '{name} crouches over the still water in {zone} a beat too long, and whatever they see in it, they do not appear to recognise it.',
+            "{name} crouches at the water in {zone} and looks at their own face longer than they meant to.",
+            "There is a reflection in {zone} and {name} does not entirely recognise the person in it.",
         ],
     },
     {
@@ -321,6 +403,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} shifts around their fire in {zone} until the wind is behind them. They could not tell you when they started doing it.',
             '{name} moves twice around the fire in {zone} before settling, chasing an angle they could not name if asked.',
+            "{name} shifts twice in {zone} until the wind is on their back, and only then settles.",
+            "{name} reads the wind in {zone} with a wet finger, turns, and walks the way that puts it behind them.",
         ],
     },
     {
@@ -328,6 +412,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'A new knot in the cord on {name}\'s wrist in {zone} — one per morning. The cord is getting short.',
             '{name} unties yesterday\'s knot in {zone} before tying today\'s, so the count stays honest. The cord is very short now.',
+            "{name} unties yesterday's knot in {zone} and ties a fresh one before doing anything else with the day.",
+            "There are eleven old knots in the cord in {name}'s pocket in {zone}, and they know exactly what each one is for.",
         ],
     },
     {
@@ -335,6 +421,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} eats their ration in {zone} on their feet, facing outward, the way you eat when a shift bell might go at any moment.',
             '{name} eats in {zone} standing, facing out, and finishes before anybody would have noticed they had started.',
+            "{name} eats on their feet in {zone}, half-turned, ready to put it down and go.",
+            "Somebody in {zone} tells {name} to sit and eat and they do sit, and they do not stay sitting.",
         ],
     },
     {
@@ -342,6 +430,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} lifts what they need from a cache in {zone} and says sorry to it, out of an honesty the arena has no use for.',
             '{name} takes two things out of a cache in {zone} and says something to the empty space where they were.',
+            "{name} says thank you for a handful of nothing in {zone}, and means it enough to be awkward.",
+            "{name} takes the smallest share in {zone} and apologises for the size of it.",
         ],
     },
     {
@@ -349,6 +439,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'By the time {name} leaves {zone}, the map they spent an hour scratching into the ground is gone under a boot heel. It is all in their head now.',
             '{name} scratches the whole map of the arena into the dust of {zone}, looks at it for a long minute, and wipes it out with a palm.',
+            "{name} scrapes a map into the dirt of {zone}, studies it, and rubs it out with the side of their boot.",
+            "The map in the dirt of {zone} gets one more line than it needs, and then it is gone like it never was.",
         ],
     },
     {
@@ -356,6 +448,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Cord, vine, thread, wire — {name} leaves {zone} with a little more of it than they arrived carrying. They always do.',
             'A length of vine goes into {name}\'s pack in {zone} for no reason they could give. It joins several others.',
+            "{name} coils another length of cord in {zone} and puts it with the rest, which is already more than anyone needs.",
+            "Somebody asks {name} for string in {zone} and is given a foot of it, measured, reluctantly.",
         ],
     },
     {
@@ -363,6 +457,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} says a word to the weapon in their hand in {zone} before moving out — a name. It has had it a while.',
             '{name} says one word to their weapon in {zone} and then goes to work with it, and the word was not a curse.',
+            "{name} says something to the weapon in their hand in {zone}, by name, the way you address a dog.",
+            "The name {name} has for their knife in {zone} is a person's name, and nobody asks whose.",
         ],
     },
     {
@@ -370,6 +466,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} passes over the easier food in {zone} for the snare line. If they did not take it themselves, they do not trust it.',
             'There is food in {zone} that {name} could simply take, and they walk past it to go and check the line they set themselves.',
+            "{name} leaves the meat in {zone} and eats the roots instead, and does not make a speech about it.",
+            "Offered a share of somebody else's kill in {zone}, {name} takes the water and leaves the rest.",
         ],
     },
     {
@@ -377,6 +475,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} unpacks and repacks in {zone}, everything in its fixed order, blade on top. The ritual matters more than the arrangement.',
             '{name} takes everything out of the pack in {zone} and puts it all back, same order, blade last. Nothing about the pack has changed.',
+            "{name} restacks their pack in {zone} — cord, tin, cloth, blade — though nothing has moved.",
+            "Something is in the wrong place in the pack in {zone} and {name} cannot start the day until it is not.",
         ],
     },
     {
@@ -384,6 +484,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} stops in {zone}, closes their eyes for a slow ten-count, and just listens. Then they move like they learned something.',
             '{name} shuts their eyes in {zone} for a ten-count, opens them, and immediately moves off in a direction they did not have before.',
+            "{name} sits down in {zone}, shuts their eyes, and turns their head slowly through the whole circle.",
+            "{name} puts a hand up in {zone} for quiet, eyes closed, and gets it.",
         ],
     },
     {
@@ -391,6 +493,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} sets one piece of their ration aside in {zone} and eats it last, alone, looking at nothing.',
             '{name} eats everything in {zone} except the one good piece, and then sits with it a while before they will.',
+            "{name} sets the last good mouthful aside in {zone} and eats around it first.",
+            "The best of it is still on the leaf in {zone} when {name} decides they are not hungry after all.",
         ],
     },
     {
@@ -398,6 +502,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'In {zone}, {name} takes the seat that faces the opening. There is always one opening, and they always face it.',
             '{name} moves once, without comment, in {zone}, so that the gap in the rock is in front of them instead of behind.',
+            "{name} shifts twice in {zone} before settling with the gap in the rocks in their eyeline.",
+            "There is only one way into {zone} that matters and {name} has sat down facing it without seeming to choose.",
         ],
     },
     {
@@ -405,6 +511,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'A worksong rhythm, tapped on a knee in {zone}: {name}, keeping time with a shift that is happening a thousand miles away.',
             'A rhythm on a knee in {zone}, four beats and a rest, four beats and a rest. It is a shift pattern, and it is a thousand miles away.',
+            "{name} taps a rhythm out on their knee in {zone}, the same eight beats, over and over.",
+            "The tapping in {zone} stops the instant something changes in the sound of the place, before anybody else has noticed.",
         ],
     },
     {
@@ -412,6 +520,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Tucked into {name}\'s pack strap in {zone}: another feather. The row of them is getting long.',
             '{name} picks a feather off the ground in {zone} and works it into the pack strap alongside the others, without slowing down.',
+            "{name} picks a feather out of the dirt in {zone} and stows it with the others, flat, undamaged.",
+            "There are feathers from four different zones in {name}'s pocket in {zone}, and they can tell you which came from where.",
         ],
     },
     {
@@ -419,6 +529,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} crouches over the ground in {zone} narrating to nobody — two of them, heavy, hours old. Talking makes the tracks make sense.',
             '{name} talks the ground of {zone} through out loud: one of them, running, not long. Saying it makes it a fact.',
+            "'Two of them, one carrying,' {name} says of the ground in {zone}, to nobody who asked.",
+            "{name} reads the tracks in {zone} aloud and gets to a conclusion they visibly do not enjoy.",
         ],
     },
     {
@@ -426,6 +538,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Before the sky lights up over {zone}, {name} scrubs their face and hands. If the district is going to see them, they will be clean.',
             '{name} gets their face and hands clean in {zone} before the sky lights up. It is not vanity and it is not for the Capitol.',
+            "{name} washes their hands and face in {zone} before the sky lights up, however little water there is.",
+            "{name} will not watch the faces over {zone} with the day still on them, and finds enough water somewhere to fix that.",
         ],
     },
     {
@@ -433,6 +547,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} scatters crumbs at the edge of {zone} they cannot spare. Somewhere at home, somebody taught them the birds come first.',
             '{name} leaves a small handful at the edge of {zone} that they can very much not spare, and moves off without watching to see if anything takes it.',
+            "{name} tears a corner off what little they have in {zone} and leaves it on a stone for the birds.",
+            "The birds in {zone} have started coming closer to {name} than to anything else in the arena.",
         ],
     },
     {
@@ -440,6 +556,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name}\'s hands are braiding in {zone}, quick and tight, the way they do when they think something is coming.',
             '{name}\'s hands go to their hair in {zone}, quick, tight, practical, and whatever they think is coming, it has not arrived yet.',
+            "{name} braids their hair back tight in {zone}, fast, without a mirror, and their hands are steady.",
+            "The braid in {zone} is the tell: {name} has decided something and has not said it yet.",
         ],
     },
     {
@@ -447,6 +565,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} repeats something in {zone} with the cadence of another person\'s sentence — their mentor\'s, word for word, like a tool taken out of a box.',
             '{name} says something in {zone} in a rhythm that is not theirs, and then stops, having heard whose it is.',
+            "'She'd say hold the line and stay boring,' {name} says in {zone}, and does exactly that.",
+            "{name} repeats their mentor's advice in {zone} word for word, and then does the opposite of it.",
         ],
     },
     {
@@ -454,6 +574,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Asked nothing by nobody, {name} orients in {zone} and glances, briefly, in one particular direction. District-ward.',
             '{name} squares up in {zone}, works something out from the light, and glances once at a horizon that has their district behind it.',
+            "{name} points, without much ceremony, at a direction in {zone}, and it is the right direction.",
+            "Asked which way home is from {zone}, {name} answers before the question is finished.",
         ],
     },
     {
@@ -461,6 +583,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} lifts each piece of food to their nose in {zone}, every time, including the things a sponsor paid for.',
             '{name} holds a piece of food to their face in {zone} for a full second before it goes anywhere near their mouth. Everything. Every time.',
+            "{name} holds a berry under their nose in {zone} for a long moment before anything else happens.",
+            "{name} smells the water in {zone}, puts it down, and does not drink it, and cannot say why.",
         ],
     },
     {
@@ -468,6 +592,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} recites something under the anthem in {zone} — the tally, all of it, in order. Somebody has to keep the list.',
             'Under the anthem in {zone}, {name} is saying names in order, and gets all of them, and gets them right.',
+            "'Eleven,' {name} says in {zone}, and it is not eleven of anything anybody else is counting.",
+            "{name} adjusts a running total in {zone} at the sound of a distant cannon, without breaking stride.",
         ],
     },
     {
@@ -475,6 +601,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} winds cloth over their knuckles in {zone} with the boredom of long habit. Their hands were their trade before they were their weapon.',
             '{name} winds cloth over their knuckles in {zone} the way a person does a thing ten thousand times, and does not look at their hands doing it.',
+            "{name} winds cloth over their knuckles in {zone}, right hand then left, tight, the same every morning.",
+            "The wrappings in {zone} are grey and stiff now, and {name} rewinds them anyway.",
         ],
     },
     {
@@ -482,6 +610,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} finds the stones and the deadfall across the stream in {zone} rather than wade. Superstition, or something they have never explained.',
             '{name} works twenty metres upstream in {zone} to find a crossing that is not water, rather than put a boot in it.',
+            "{name} finds a crossing of stone rather than wade the shallow water in {zone}, and takes the long way for it.",
+            "{name} stops at running water in {zone} the way you stop at an edge, and goes round.",
         ],
     },
     {
@@ -489,6 +619,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Any camp chore in {zone} comes with the same three bars, over and over. {name} does not seem to hear themselves doing it.',
             'The same three bars come up out of {name} in {zone} over a camp chore, and go on until the chore does.',
+            "{name} hums in {zone} while their hands work, and stops the moment they look up.",
+            "The humming in {zone} is not a tune, exactly, and {name} does not appear to hear themselves doing it.",
         ],
     },
     {
@@ -496,6 +628,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'The cannon sounds and {name}\'s arm comes up in {zone}, pointing at nothing, holding a moment. An acknowledgement. Then it drops.',
             'The cannon goes and {name}\'s arm comes up in {zone}, holds, and drops. Whoever it was, it has been acknowledged.',
+            "A cannon goes over {zone} and {name}'s hand comes up and points at the sound without their face changing.",
+            "{name} points at the sky over {zone} at the cannon and holds it until the echo is finished.",
         ],
     },
     {
@@ -503,6 +637,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Even safe, even exhausted, {name} wakes in {zone} every two hours on some internal bell, checks the dark, and goes back down.',
             '{name} surfaces in {zone} at some hour of the night, reads the dark for ten seconds, and is gone again.',
+            "{name} takes their rest in {zone} in pieces, three short stretches instead of one, and wakes clear-eyed from each.",
+            "{name} sets themselves awake in {zone} at intervals nobody asked for and keeps to them exactly.",
         ],
     },
     {
@@ -510,6 +646,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} has their token out in {zone} again, speaking to it too low for the microphones — a report, by the look of it. The day\'s events, delivered home.',
             '{name} has the token out in {zone} and is telling it, very quietly, what happened today.',
+            "{name} turns the token over in {zone} and asks it something, quietly, and answers it themselves.",
+            "{name} holds the token up to the light in {zone} and tells it how the day went.",
         ],
     },
     {
@@ -517,6 +655,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'While thinking, {name} stands a knife, then a stick, then a stone upright on one finger in {zone}. The concentration is the point.',
             'A stone stands upright on {name}\'s fingertip in {zone} for four seconds, and something behind their eyes finishes working.',
+            "{name} balances a stripped twig across one finger in {zone}, dead still, for longer than seems reasonable.",
+            "{name} is spinning a tin on a fingertip in {zone} when the conversation turns serious, and does not stop.",
         ],
     },
     {
@@ -524,6 +664,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Whatever food comes into {name}\'s hands in {zone} gets divided before they take their share, even now, even alone. The habit does not know the arena has different rules.',
             '{name} halves what they are holding in {zone} before eating any of it, and there is nobody there to give the other half to.',
+            "Whatever there is in {zone}, {name} has divided it and handed it out before taking any.",
+            "{name} gives away the better half in {zone} without letting anyone see them choose which half that was.",
         ],
     },
     {
@@ -531,6 +673,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} looks across {zone} and mutters numbers — chances, distances, counts. Their own private betting book.',
             '{name} looks across {zone} and the numbers come out under their breath — distance, count, odds — and none of them are for anybody else.',
+            "'Four to one, and shortening,' {name} says under their breath in {zone}, pricing something nobody asked about.",
+            "{name} mutters a number in {zone} when a name comes up, and it is not a flattering number.",
         ],
     },
     {
@@ -538,6 +682,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Anything sudden in {zone} and {name} turns side-on to it, narrowing themselves, an old fighter\'s geometry nobody taught them in the Training Centre.',
             'Something moves at the edge of {zone} and {name} is instantly side-on to it, narrow, weight back. Nobody taught them that in the Capitol.',
+            "{name} comes into {zone} turned half away, weight on the back foot, presenting as little as possible.",
+            "{name} never quite faces the person they are talking to in {zone}, and it is not rudeness.",
         ],
     },
     {
@@ -545,6 +691,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name}\'s fire in {zone} would embarrass a candle. They feed it in splinters and warm one hand at a time, and it has never once been spotted.',
             '{name}\'s fire in {zone} is three splinters and a coal, and it warms exactly one hand, and it has never been seen from anywhere.',
+            "The fire {name} builds in {zone} would fit in two cupped hands and throws almost no light at all.",
+            "{name} feeds the fire in {zone} one twig at a time and puts it out well before it is cold.",
         ],
     },
     {
@@ -552,6 +700,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} caches the surplus in {zone} and smooths the ground flat over it. They have holes like this all over the arena, and a memory of every one.',
             '{name} puts the surplus in a hole in {zone}, presses the ground back down, and scuffs a leaf over it. That is nine now.',
+            "{name} digs a shallow hole in {zone} and puts what they cannot carry into it rather than leave it lying.",
+            "{name} covers a cache in {zone} carefully, and does not mark it, and will not find it again.",
         ],
     },
     {
@@ -559,6 +709,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Twice a day in {zone}, {name}\'s fingers turn a little crown that is not on their wrist anymore. The watch is at home. The winding stayed.',
             '{name}\'s fingers turn a crown that is not there in {zone}, twice around, and then let go of a wrist with nothing on it.',
+            "{name} winds a watch that is not on their wrist in {zone}, three turns, and checks a face that is not there.",
+            "The winding motion in {zone} comes out of {name} whenever the waiting goes on too long.",
         ],
     },
     {
@@ -566,6 +718,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'The silver chute settles in {zone} and {name} looks up and says thank you to the general sky — loud enough, deliberately, for the sponsors to lip-read.',
             'The chute comes down in {zone} and {name} says thank you upward, clearly, on the assumption that somebody is reading their mouth.',
+            "{name} says thank you into the sky over {zone} after the silk comes down, out loud, to whoever is up there.",
+            "{name} folds the parachute in {zone} rather than drop it, and keeps the silk.",
         ],
     },
     {
@@ -573,6 +727,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} crosses the soft ground of {zone} heel-to-toe, silent as a shop floor at inspection, without appearing to think about it.',
             '{name} crosses the soft ground of {zone} heel-to-toe without appearing to have decided to, and leaves almost nothing behind them.',
+            "{name} crosses the soft ground of {zone} heel to toe, slowly, and leaves almost nothing behind.",
+            "{name} looks back at their own line of prints in {zone} and is not satisfied with them.",
         ],
     },
     {
@@ -580,6 +736,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} lies back in {zone} naming constellations that do not exist — home names, made-up names. The arena sky does not deserve the real ones.',
             '{name} names three constellations over {zone} that no astronomer would recognise, and gets the names from somewhere much further away than the sky.',
+            "{name} gives a constellation over {zone} a name that is not its name, and is entirely consistent about it.",
+            "'That's the Kettle,' {name} tells somebody in {zone}, with total confidence, about no such thing.",
         ],
     },
     {
@@ -587,6 +745,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Twice in the night in {zone}, {name} lifts their head and counts the sleeping shapes around them. The count has to come out right before they lie back down.',
             '{name} counts the sleeping shapes in {zone}, gets the right number, and only then puts their own head down.',
+            "{name} comes back through {zone} in the dark to check the breathing of everyone asleep, then lies down.",
+            "{name} counts the sleeping in {zone} twice, gets the same number twice, and still does not settle for a while.",
         ],
     },
     {
@@ -594,6 +754,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'At the edge of the open stretch in {zone}, {name} spits once, off to the side. District habit. Then they run.',
             '{name} spits once off to the side at the edge of the open ground in {zone}, and then crosses it flat out.',
+            "{name} spits to the side before stepping out into the open in {zone}, quick, half-embarrassed.",
+            "{name} stops at the edge of cover in {zone}, does the small superstitious thing, and then goes.",
         ],
     },
     {
@@ -601,6 +763,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'When {name} breaks camp in {zone}, one cooled coal goes into a pocket. Fires are family where they come from. You keep a piece.',
             'A cold coal goes into {name}\'s pocket as they break camp in {zone}. There are several in there already, and they all came from somewhere.',
+            "{name} rakes a black coal out of the dead fire in {zone} and pockets it while it is still warm.",
+            "There are coals from four camps in {name}'s pocket in {zone}, and they know which fire each came from.",
         ],
     },
     {
@@ -608,6 +772,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             'Morning in {zone} finds a neat row of sharpened sticks by {name}\'s watch post. Nobody needs them. The watch needed the hands busy.',
             'There are eleven sharpened sticks beside {name}\'s watch post in {zone} by first light. Nobody is going to use any of them.',
+            "{name} takes the watch in {zone} and there is a small pile of pointed sticks by their knee come morning.",
+            "{name} sharpens a stick in {zone} that has no use, sets it down, and starts another.",
         ],
     },
     {
@@ -615,6 +781,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '{name} calls it the field, the ground, out there — anything, in {zone}, but the word the Capitol uses. Their whole district does the same.',
             '{name} says \'out there\' about {zone} — never the other word, not once, not since the reaping.',
+            "{name} calls it 'out here' in {zone}, or 'this place', or nothing at all, and never the word itself.",
+            "Somebody says the word in {zone} and {name} does not visibly react, which is its own kind of reaction.",
         ],
     },
     {
@@ -622,6 +790,8 @@ export const QUIRKS: Quirk[] = [
         lines: [
             '"About half a shift," {name} says of the distance across {zone}, to nobody. The district clock is the only clock they carry.',
             '{name} looks across {zone} and says \'a shift and a bit\', to nobody, and is not wrong.',
+            "{name} counts the day in {zone} in shifts rather than hours, and tells you there are two left in it.",
+            "'End of the second,' {name} says in {zone}, meaning something about the day that only they are tracking.",
         ],
     },
 ];

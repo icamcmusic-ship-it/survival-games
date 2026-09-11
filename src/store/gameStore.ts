@@ -1,6 +1,7 @@
 import { InterviewPersona, GameState, GameConfig, HallOfFameEntry } from '../models/types';
-import { Bet, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind } from '../utils/saveMigrations';
+import { Bet, REWIND_PERSIST, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind } from '../utils/saveMigrations';
 import { SIDE_BETS } from '../data/balance';
+import { SideBetTarget, SideQuote, priceSideBet, quoteSideMarkets, settleSideBet } from '../engine/sideMarkets';
 import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
 import { clearAllStoredData } from '../utils/storage';
 import { readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
@@ -152,17 +153,25 @@ function writeSave() {
     // genuine quota refusal — `tryWriteStored` reports the difference between
     // "won't fit" (retry smaller) and "storage unavailable" (stop).
     const savedAt = new Date().toISOString();
-    const attempt = (log: GameState['log']) => tryWriteStored(SAVED_RUN_SPEC, {
+    const attempt = (log: GameState['log'], rewindDepth: number) => tryWriteStored(SAVED_RUN_SPEC, {
         gameState: log === gameState.log ? gameState : { ...gameState, log },
+        // §2.2: the undo stack rides along, so a refresh mid-run no longer
+        // resumes with the history gone.
+        rewind: rewindDepth > 0 ? rewindStack.slice(-rewindDepth) : [],
         bets, sideBets, betsResolved, hofSaved, isReplayedRun, savedAt,
     } as SavedRun);
 
-    const first = attempt(gameState.log);
-    if (first !== 'quota') return;
+    // Each checkpoint is a whole state, so the rewind tail is the most
+    // expensive optional thing in the payload — and the cheapest to lose.
+    // It degrades first, before a single line of chronicle is dropped.
+    const depths = [...new Set([REWIND_PERSIST, 1, 0].map(d => Math.min(d, rewindStack.length)))];
+    for (const depth of depths) {
+        if (attempt(gameState.log, depth) !== 'quota') return;
+    }
 
     for (const cap of LOG_TAIL_FALLBACKS) {
         if (gameState.log.length <= cap) continue;
-        if (attempt(gameState.log.slice(-cap)) !== 'quota') return;
+        if (attempt(gameState.log.slice(-cap), 0) !== 'quota') return;
     }
     // Even the shortest tail won't fit — leave whatever save already exists
     // rather than clobbering it with a failed write.
@@ -236,6 +245,19 @@ function pushRewind(state: GameState) {
 
 function clearRewind() {
     rewindStack = [];
+}
+
+/**
+ * §2.2: adopt the checkpoints that came back with a resumed save.
+ *
+ * The stack used to be wiped on resume because it was never written down:
+ * a refresh mid-run resumed the chronicle and silently dropped every undo.
+ * Only the last `REWIND_PERSIST` survive a reload (see `writeSave`), so the
+ * button comes back working but shallower — which the UI says out loud
+ * rather than leaving the player to discover.
+ */
+function restoreRewind(snaps: GameState[] | undefined) {
+    rewindStack = (snaps ?? []).slice(-REWIND_CAP);
 }
 
 function saveHallOfFame(state: GameState) {
@@ -313,20 +335,14 @@ function commitVictory(state: GameState) {
 function settleSideBets(state: GameState, sideBets: SideBet[]): { winnings: number; lines: string[] } {
     let winnings = 0;
     const lines: string[] = [];
-    const survivors = state.tributes.filter(t => t.status === 'alive');
     sideBets.forEach(bet => {
-        let won = false;
-        let label = '';
-        if (bet.kind === 'first-blood') {
-            const target = state.tributes.find(t => t.id === bet.targetId);
-            won = state.firstBloodId !== undefined && state.firstBloodId === bet.targetId;
-            label = `first blood by ${target?.name ?? 'a named tribute'}`;
-        } else if (bet.kind === 'no-victor') {
-            won = survivors.length === 0;
-            label = 'a Games with no victor';
-        } else {
-            won = survivors.some(t => t.isCareer);
-            label = 'a Career victor';
+        const { won, push, label } = settleSideBet(state, bet);
+        // §6.1: a counting market whose line lands exactly on the result is a
+        // push — the stake comes back rather than being swept.
+        if (push) {
+            winnings += bet.stake;
+            lines.push(`Your side wager on ${label} lands exactly on the line: ${bet.stake} coins returned.`);
+            return;
         }
         if (won) {
             const payout = Math.floor(bet.stake * bet.mult);
@@ -451,18 +467,30 @@ export const gameActions = {
      * §6.8: place a proposition bet. Open only while the ordinary book is —
      * before the gong. Multipliers are fixed (SIDE_BETS in balance.ts).
      */
-    placeSideBet(kind: SideBetKind, stake: number, targetId?: string): boolean {
+    placeSideBet(kind: SideBetKind, stake: number, targetId?: string, target: SideBetTarget = {}): boolean {
         const { gameState, coins, sideBets } = gameStore.getState();
         if (!gameState || (gameState.phase !== 'reaping' && gameState.phase !== 'setup')) return false;
         if (stake <= 0 || coins < stake) return false;
-        if (kind === 'first-blood' && !targetId) return false;
-        const mult = kind === 'first-blood' ? SIDE_BETS.firstBloodMult
-            : kind === 'no-victor' ? SIDE_BETS.noVictorMult
-            : SIDE_BETS.careerVictorMult;
+        // §6.1: the price comes off the live board, not a fixed table — an
+        // unpriceable wager (first blood on nobody, a district with no
+        // tributes left) is simply refused.
+        const quote = priceSideBet(kind, gameState.tributes, { ...target, targetId: targetId ?? target.targetId });
+        if (!quote) return false;
         gameActions.setCoins(coins - stake);
-        gameStore.setState({ sideBets: [...sideBets, { kind, stake, mult, targetId }] });
+        gameStore.setState({
+            sideBets: [...sideBets, {
+                kind, stake, mult: quote.mult,
+                targetId: quote.targetId, targetDistrict: quote.targetDistrict, line: quote.line,
+            }],
+        });
         persistRun();
         return true;
+    },
+
+    /** §6.1: the live proposition board, for a UI that wants to show what is on offer. */
+    sideMarketBoard(): SideQuote[] {
+        const { gameState } = gameStore.getState();
+        return gameState ? quoteSideMarkets(gameState.tributes) : [];
     },
 
     /**
@@ -581,6 +609,7 @@ export const gameActions = {
         const spec = SAVE_SLOT_SPECS[slot - 1];
         return tryWriteStored(spec, {
             gameState, bets, sideBets, betsResolved, hofSaved, isReplayedRun,
+            rewind: rewindStack.slice(-REWIND_PERSIST),
             savedAt: new Date().toISOString(),
         } as SavedRun) === 'ok';
     },
@@ -590,7 +619,10 @@ export const gameActions = {
         const saved = readStored(spec);
         if (!saved) return;
         cancelRunToEnd();
-        clearRewind();
+        // §2.2: whatever undo history travelled with the save comes back with
+        // it. A save from before the stack was persisted has none, and resumes
+        // exactly as it used to.
+        restoreRewind(saved.rewind);
         const { Simulator } = await loadEngine();
         const { gameState } = saved;
         if (!gameState.baseConfig) gameState.baseConfig = gameState.config;
@@ -613,6 +645,24 @@ export const gameActions = {
     discardSlot(slot: 1 | 2 | 3) {
         if (slot === 1) { clearSavedRun(); return; }
         removeStored(SAVE_SLOT_SPECS[slot - 1]);
+    },
+
+    /**
+     * §2.2: how deep the undo history actually goes, for the UI.
+     *
+     * Rewind is bounded twice — sixteen phases in memory, three across a
+     * refresh — and both bounds used to be invisible: the button simply
+     * stopped offering the phase you wanted. `depth`/`cap` let the checkpoint
+     * menu say how much history is standing and that the oldest is being let
+     * go, rather than the player inferring it from a list that never grows.
+     */
+    rewindInfo(): { depth: number; cap: number; persisted: number; atCap: boolean } {
+        return {
+            depth: rewindStack.length,
+            cap: REWIND_CAP,
+            persisted: REWIND_PERSIST,
+            atCap: rewindStack.length >= REWIND_CAP,
+        };
     },
 
     /** Whether a step back is currently possible. */
@@ -862,7 +912,14 @@ export const gameActions = {
         // the run's Quell out from under it.
         const gamesProfile = gamesProfileFor(newSeed, false, gameState.gamesProfile?.quell ?? null, gameState.baseConfig.vanillaRules === true);
         const config = configForProfile(gameState.baseConfig, gamesProfile);
-        const tributes = generateTributes(newSeed, config, gameState.arena.zones[0].name, gamesProfile.castShape, gamesProfile.quell);
+        // §2.6: the cast is drawn from the BASE config, exactly as `startGame`
+        // draws it. It used to be drawn from the profile-executed config, which
+        // diverges the moment a Quell carries a `configOverride` (the doubled
+        // Quell sets districtCount: 16) — the reroll produced a cast the share
+        // link could not reproduce, because the link carries the base config
+        // and `startGame` re-derives the profile from it. One draw, one config,
+        // both paths.
+        const tributes = generateTributes(newSeed, gameState.baseConfig, gameState.arena.zones[0].name, gamesProfile.castShape, gamesProfile.quell);
         // The log and its counter are carried over rather than wiped: nothing
         // written before the reaping belongs to the cast that was drawn, and
         // resetting the counter would let a rerolled run reuse log ids.

@@ -117,6 +117,8 @@ function DeathCard({ log, tribute, animate, cast, onSelectTribute }: {
         // which does not repeat on scroll.
         <div
             role="note"
+            // §2.5: the marker the "jump to the next death" shortcut scrolls to.
+            data-log-id={log.id}
             aria-label={tribute
                 ? `${meta.label}. ${tribute.name} of District ${tribute.district}.`
                 : meta.label}
@@ -231,6 +233,7 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
     if (spoilerSafe && !revealed && (log.category === 'death' || log.category === 'kill')) {
         return (
             <div
+                data-log-id={log.id}
                 className={`feed-item ${animate ? 'animate-riseIn' : ''} is-important`}
                 style={{ ['--cat' as string]: meta.color }}
             >
@@ -262,6 +265,7 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
 
     return (
         <div
+            data-log-id={log.id}
             className={`feed-item ${animate ? 'animate-riseIn' : ''} ${log.important ? 'is-important' : ''} ${continuation ? 'ml-4 text-[13px] opacity-90' : ''}`}
             style={{ ['--cat' as string]: meta.color }}
         >

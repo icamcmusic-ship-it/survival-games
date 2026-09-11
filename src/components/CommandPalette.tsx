@@ -3,7 +3,7 @@ import { GameState } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { gameActions } from '../store/gameStore';
 import { pathForView } from '../store/router';
-import { setChronicle } from '../store/chronicleStore';
+import { chronicleStore, setChronicle } from '../store/chronicleStore';
 import { prefsStore, setPrefs } from '../store/prefsStore';
 
 /**
@@ -66,7 +66,48 @@ export function CommandPalette({ gameState, onSelectTribute }: {
         };
 
         if (!needle) {
+            // §2.5: the three things a reader does most often, each with the
+            // key that also does it. The palette is where a shortcut is
+            // discovered; the help overlay (`?`) is where it is confirmed.
+            const chron = chronicleStore.getState();
+            const watchedId = chron.followedId ?? chron.filterTributeId;
+            const watched = watchedId ? gameState.tributes.find(t => t.id === watchedId) ?? null : null;
+            const deaths = gameState.log.filter(l => l.category === 'death' || l.category === 'kill');
+            const atDeath = deaths.findIndex(l => l.id === chron.focusLogId);
+            const nextDeath = deaths[atDeath === -1 ? 0 : Math.min(deaths.length - 1, atDeath + 1)];
+
+            const watching: Result[] = watched ? [
+                {
+                    id: 'v-open-watched', kind: 'view',
+                    label: `Open ${watched.name}'s dossier`,
+                    detail: 'the tribute you are watching · O',
+                    run: () => onSelectTribute?.(watched.id),
+                },
+                {
+                    id: 'v-filter-watched', kind: 'view',
+                    label: chron.filterTributeId === watched.id
+                        ? 'Clear the chronicle filter'
+                        : `Filter the chronicle to ${watched.name}`,
+                    detail: 'X',
+                    run: () => {
+                        setChronicle(chron.filterTributeId === watched.id
+                            ? { filterTributeId: null, filterTributeId2: null }
+                            : { filterTributeId: watched.id, filterTributeId2: null, filterPairMode: 'either' });
+                        go('game');
+                    },
+                },
+            ] : [];
+
+            const deathJump: Result[] = nextDeath ? [{
+                id: 'v-next-death', kind: 'view',
+                label: 'Jump to the next death',
+                detail: `${nextDeath.day === 0 ? nextDeath.phase : `day ${nextDeath.day}`} · D`,
+                run: () => { setChronicle({ focusLogId: nextDeath.id }); go('game'); },
+            }] : [];
+
             return [
+                ...watching,
+                ...deathJump,
                 { id: 'v-arena', kind: 'view', label: 'Go to the arena', run: () => go('game') },
                 { id: 'v-chronicle', kind: 'view', label: 'Go to the chronicle', run: () => go('chronicle') },
                 { id: 'v-roster', kind: 'view', label: 'Go to the roster', run: () => go('roster') },

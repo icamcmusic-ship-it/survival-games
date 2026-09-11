@@ -108,12 +108,26 @@ export function tickVerticality(ctx: SimContext) {
         const spent = Math.max(0, t.vitals.fatigue - VERTICALITY.fallFatiguePivot) / 100;
         const fallChance = VERTICALITY.descendFallChance * (1 + spent * VERTICALITY.fallFatigueWeight);
         if (going === 'lower' && ctx.rng.chance(fallChance)) {
-            const cause = `Fell inside ${t.zone}`;
-            applyDamage(ctx, t, Math.round(VERTICALITY.fallDamage * (1 + spent)), { cause, kind: 'arena' });
+            // §7.1: a fall from height as a real ending rather than a graze.
+            // The engine already knew the tribute was on the upper level, how
+            // tired they were and that going down is the dangerous direction;
+            // all that was missing was a magnitude that could finish somebody.
+            const sheer = t.vitals.fatigue >= VERTICALITY.sheerFallFatigue
+                && ctx.rng.chance(VERTICALITY.sheerFallShare);
+            const cause = sheer ? `Fell from the top of ${t.zone}` : `Fell inside ${t.zone}`;
+            applyDamage(
+                ctx, t,
+                Math.round((sheer ? VERTICALITY.sheerFallDamage : VERTICALITY.fallDamage) * (1 + spent)),
+                { cause, kind: 'arena' }
+            );
             openWound(t, BLEEDING.hazardSeverity);
             injure(t, 'legs');
+            if (sheer) injure(t, 'torso');
             ctx.logEvent(
-                `${t.name} takes the fast way down inside ${t.zone} and finds out, halfway, that it is the fast way for a reason.`,
+                sheer
+                    ? `${t.name} has not slept in days and their hands know it before they do. They go off the ledge inside ${t.zone} `
+                        + 'without a sound, and the sound only arrives afterwards.'
+                    : `${t.name} takes the fast way down inside ${t.zone} and finds out, halfway, that it is the fast way for a reason.`,
                 [t.id],
                 { important: true, category: 'hazard' }
             );

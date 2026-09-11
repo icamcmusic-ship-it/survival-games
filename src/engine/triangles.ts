@@ -23,17 +23,25 @@
  */
 import { GameState, Tribute } from '../models/types';
 import { TRIANGLES } from '../data/balance';
+import { TRIANGLE_TEXTS } from '../data/flavorText';
 import { SimContext, getAlive } from './context';
+import { reachableZones, severedEdgeSet } from './map';
 import { adjustRel, getRel } from './relationships';
 import { cycleOf, swearVengeance } from './memory';
 import { areLovers } from './alliance';
 import { addExcitement } from './audience';
 import { clampTribute } from './vitals';
 
+/** The stored shape, named locally so the resolver can take one. */
+type LoveTriangle = NonNullable<GameState['loveTriangles']>[number];
+
 function triangles(state: GameState) {
     if (!state.loveTriangles) state.loveTriangles = [];
     return state.loveTriangles;
 }
+
+const fill = (template: string, vars: Record<string, string>) =>
+    Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
 
 /** How attached `t` is to `otherId`, counting a declared bond as the ceiling. */
 function attachment(t: Tribute, other: Tribute): number {
@@ -57,8 +65,15 @@ function isRomance(t: Tribute, other: Tribute): boolean {
     // A performed bond is recorded as a displayed regard for that specific
     // person — the number they are showing the cameras rather than the one
     // they hold.
-    return t.displayedRegard?.[other.id] !== undefined
-        || other.displayedRegard?.[t.id] !== undefined;
+    if (t.displayedRegard?.[other.id] !== undefined
+        || other.displayedRegard?.[t.id] !== undefined) return true;
+    // §4.1: ...or it is simply obvious. Gating every triangle on a declared or
+    // performed bond confined the whole subsystem to the minority of runs that
+    // produce one, and produced one forced choice in 400 runs. Two people at
+    // the very top of the regard scale with each other are a romance the
+    // arena can see, whatever either of them has said out loud.
+    return getRel(t, other.id) >= TRIANGLES.romanticRegard
+        && getRel(other, t.id) >= TRIANGLES.romanticRegard;
 }
 
 /**
@@ -90,12 +105,35 @@ export function detectTriangles(ctx: SimContext) {
 
         list.push({ apexId: apex.id, aId: a.id, bId: b.id, formedCycle: cycleOf(state), heat: 0 });
         ctx.logEvent(
-            `It has become obvious to everyone except possibly ${apex.name} that ${a.name} and ${b.name} are not `
-            + 'going to be able to go on being polite to each other about this.',
+            fill(ctx.pickText(TRIANGLE_TEXTS.formed), { apex: apex.name, a: a.name, b: b.name }),
             [apex.id, a.id, b.id],
             { important: true, category: 'romance' }
         );
     });
+}
+
+/**
+ * §4.1: how close two rivals have to be for it to be costing them anything.
+ *
+ * The original gate was strict co-location, which is why the whole subsystem
+ * produced one forced choice in 400 runs: two people who want the same person
+ * are rivals whether or not they are standing on the same square. Being in
+ * the same group is rivalry all day; being one zone apart is rivalry you can
+ * see coming. And the sharpest version of all is the apex being with one of
+ * them and not the other, which is a thing the person left out feels from
+ * wherever they are.
+ */
+function heatOf(ctx: SimContext, apex: Tribute, a: Tribute, b: Tribute): number {
+    if (a.zone === b.zone) return TRIANGLES.heatSameZone;
+
+    const sameGroup = a.allianceId !== undefined && a.allianceId === b.allianceId;
+    const adjacent = () => reachableZones(
+        ctx.state.arena, a.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state),
+    ).some(z => z.name === b.zone);
+    // Exactly one of them has the apex. The other one knows.
+    const apexWithOne = (apex.zone === a.zone) !== (apex.zone === b.zone);
+
+    return (sameGroup || apexWithOne || adjacent()) ? TRIANGLES.heatNearby : 0;
 }
 
 /** One cycle of a triangle being a triangle. */
@@ -112,28 +150,31 @@ export function tickTriangles(ctx: SimContext) {
         if (apex.status !== 'alive' || a.status !== 'alive' || b.status !== 'alive') return false;
         if (tri.resolved) return true;
 
-        // Jealousy only builds where the rivals can actually see each other
-        // being rivals. Two people in love with the same person four zones
-        // apart is not yet a triangle, it is two crushes.
-        // Jealousy is between the two rivals; it does not need the apex in
-        // the room. Requiring all three in one place made this fire four
-        // times in 400 runs.
-        const together = a.zone === b.zone;
-        if (!together) return true;
+        const gain = heatOf(ctx, apex, a, b);
+        if (gain <= 0) return true;
 
-        tri.heat += 1;
-        adjustRel(a, b.id, -TRIANGLES.jealousyRegardPerCycle);
-        adjustRel(b, a.id, -TRIANGLES.jealousyRegardPerCycle);
-        addExcitement(apex, TRIANGLES.excitementPerCycle);
+        const before = tri.heat;
+        tri.heat += gain;
+        // Jealousy costs what it costs in proportion to how close they are to
+        // each other's throats about it.
+        const share = gain / TRIANGLES.heatSameZone;
+        adjustRel(a, b.id, -TRIANGLES.jealousyRegardPerCycle * share);
+        adjustRel(b, a.id, -TRIANGLES.jealousyRegardPerCycle * share);
+        addExcitement(apex, TRIANGLES.excitementPerCycle * share);
 
-        if (tri.heat === TRIANGLES.jealousyLineHeat) {
+        if (before < TRIANGLES.jealousyLineHeat && tri.heat >= TRIANGLES.jealousyLineHeat) {
             ctx.logEvent(
-                `${a.name} and ${b.name} have started arranging themselves around ${apex.name} — who sits where, who takes which watch — `
-                + 'and neither of them has said a word about why.',
+                fill(ctx.pickText(TRIANGLE_TEXTS.jealousy), { apex: apex.name, a: a.name, b: b.name }),
                 [a.id, b.id, apex.id],
                 { important: true, category: 'romance' }
             );
         }
+
+        // §4.1: it does not wait for the feast. A triangle holds until it
+        // cannot hold, and this is the point at which it cannot: the two of
+        // them have been doing this long enough that somebody says the thing
+        // out loud. The feast and the endgame still force it early.
+        if (tri.heat >= TRIANGLES.boilOverHeat) resolveChoice(ctx, tri, byId);
         return true;
     });
 }
@@ -141,57 +182,57 @@ export function tickTriangles(ctx: SimContext) {
 /**
  * The forced choice. Called at a pressure point — the feast, or the field
  * closing — rather than on a timer: the whole point of a triangle is that it
- * holds until something makes it impossible to hold, and then does not.
+ * holds until something makes it impossible to hold, and then does not. It is
+ * also called by `tickTriangles` once the thing has simply gone on too long.
  */
 export function forceTriangleChoice(ctx: SimContext) {
-    const state = ctx.state;
-    const byId = new Map(state.tributes.map(t => [t.id, t] as const));
+    const byId = new Map(ctx.state.tributes.map(t => [t.id, t] as const));
+    triangles(ctx.state).forEach(tri => resolveChoice(ctx, tri, byId));
+}
 
-    triangles(state).forEach(tri => {
-        if (tri.resolved || tri.heat < TRIANGLES.choiceMinHeat) return;
-        const apex = byId.get(tri.apexId);
-        const a = byId.get(tri.aId);
-        const b = byId.get(tri.bId);
-        if (!apex || !a || !b) return;
-        if ([apex, a, b].some(t => t.status !== 'alive')) return;
+function resolveChoice(ctx: SimContext, tri: LoveTriangle, byId: Map<string, Tribute>) {
+    if (tri.resolved || tri.heat < TRIANGLES.choiceMinHeat) return;
+    const apex = byId.get(tri.apexId);
+    const a = byId.get(tri.aId);
+    const b = byId.get(tri.bId);
+    if (!apex || !a || !b) return;
+    if ([apex, a, b].some(t => t.status !== 'alive')) return;
 
-        tri.resolved = true;
-        // They choose whoever they are actually warmer to. A declared
-        // Star-Crossed bond outweighs anything unspoken, which is what
-        // declaring it is for.
-        const chosen = getRel(apex, a.id) + (areLovers(apex, a) ? TRIANGLES.declaredBondRegard : 0)
-            >= getRel(apex, b.id) + (areLovers(apex, b) ? TRIANGLES.declaredBondRegard : 0) ? a : b;
-        const passed = chosen.id === a.id ? b : a;
+    tri.resolved = true;
+    // They choose whoever they are actually warmer to. A declared
+    // Star-Crossed bond outweighs anything unspoken, which is what
+    // declaring it is for.
+    const chosen = getRel(apex, a.id) + (areLovers(apex, a) ? TRIANGLES.declaredBondRegard : 0)
+        >= getRel(apex, b.id) + (areLovers(apex, b) ? TRIANGLES.declaredBondRegard : 0) ? a : b;
+    const passed = chosen.id === a.id ? b : a;
 
-        adjustRel(apex, chosen.id, TRIANGLES.chosenRegard);
-        adjustRel(chosen, apex.id, TRIANGLES.chosenRegard);
-        adjustRel(passed, apex.id, -TRIANGLES.passedOverRegard);
-        adjustRel(passed, chosen.id, -TRIANGLES.passedOverRegard);
-        passed.vitals.sanity -= TRIANGLES.passedOverSanity;
-        clampTribute(passed);
-        addExcitement(apex, TRIANGLES.choiceExcitement);
-        addExcitement(passed, TRIANGLES.choiceExcitement);
+    adjustRel(apex, chosen.id, TRIANGLES.chosenRegard);
+    adjustRel(chosen, apex.id, TRIANGLES.chosenRegard);
+    adjustRel(passed, apex.id, -TRIANGLES.passedOverRegard);
+    adjustRel(passed, chosen.id, -TRIANGLES.passedOverRegard);
+    passed.vitals.sanity -= TRIANGLES.passedOverSanity;
+    clampTribute(passed);
+    addExcitement(apex, TRIANGLES.choiceExcitement);
+    addExcitement(passed, TRIANGLES.choiceExcitement);
 
-        // Being passed over in an arena is not the same as being passed over
-        // anywhere else, and some people take it the way the arena invites.
-        const bitter = ctx.rng.chance(TRIANGLES.vengeanceChance);
-        if (bitter) swearVengeance(passed, chosen.id);
+    // Being passed over in an arena is not the same as being passed over
+    // anywhere else, and some people take it the way the arena invites.
+    const bitter = ctx.rng.chance(TRIANGLES.vengeanceChance);
+    if (bitter) swearVengeance(passed, chosen.id);
 
-        // BUG-1.3: this line used to say "twelve people left alive" no matter
-        // what. The dayNight caller is gated on a field of five or fewer, so
-        // it was guaranteed false there and arbitrary on the feast path.
-        const remaining = getAlive(ctx.state).length;
-        ctx.logEvent(
-            bitter
-                ? `${apex.name} makes the choice in front of both of them, and it is ${chosen.name}. `
-                    + `${passed.name} says that is fine, and means something else entirely by it. `
-                    + (remaining === 1
-                        ? 'There is one person left alive in here.'
-                        : `There are ${remaining} people left alive in here.`)
-                : `${apex.name} makes the choice in front of both of them, and it is ${chosen.name}. `
-                    + `${passed.name} takes it better than anyone watching expected, which the Capitol finds far less interesting than the alternative.`,
-            [apex.id, chosen.id, passed.id],
-            { important: true, category: 'romance' }
-        );
-    });
+    // BUG-1.3: this line used to say "twelve people left alive" no matter
+    // what. The dayNight caller is gated on a field of five or fewer, so
+    // it was guaranteed false there and arbitrary on the feast path.
+    const remaining = getAlive(ctx.state).length;
+    const vars = { apex: apex.name, chosen: chosen.name, passed: passed.name, remaining: String(remaining) };
+    const tail = remaining === 1
+        ? 'There is one person left alive in here.'
+        : fill(ctx.pickText(TRIANGLE_TEXTS.remaining), vars);
+    ctx.logEvent(
+        bitter
+            ? `${fill(ctx.pickText(TRIANGLE_TEXTS.choiceBitter), vars)} ${tail}`
+            : fill(ctx.pickText(TRIANGLE_TEXTS.choiceGracious), vars),
+        [apex.id, chosen.id, passed.id],
+        { important: true, category: 'romance' }
+    );
 }

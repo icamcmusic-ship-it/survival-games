@@ -44,7 +44,19 @@ districts.forEach(d => {
         const dupes = pool.filter((n, i) => pool.indexOf(n) !== i);
         if (dupes.length) problems.push(`district ${d} ${gender}: repeats within its own pool — ${[...new Set(dupes)].join(', ')}`);
     });
-    const both = new Set([...DISTRICT_NAMES[d].Male, ...DISTRICT_NAMES[d].Female]);
+    // 4. No name is reapable twice inside the same district. The per-gender
+    //    check above cannot see this: `Barley` sitting in District 9's Male
+    //    pool AND its Female pool is one district offering the same name
+    //    twice, which reads as a copy-paste slip rather than a unisex name —
+    //    and it quietly doubles that name's draw weight inside its own
+    //    district, which is the part a player actually notices. Sixty of
+    //    these had accumulated across thirteen districts.
+    const districtPool = [...DISTRICT_NAMES[d].Male, ...DISTRICT_NAMES[d].Female];
+    const crossGender = [...new Set(districtPool.filter((n, i) => districtPool.indexOf(n) !== i))];
+    if (crossGender.length) {
+        problems.push(`district ${d}: name(s) in both the Male and Female pool — ${crossGender.join(', ')}`);
+    }
+    const both = new Set(districtPool);
     both.forEach(name => {
         if (!homes.has(name)) homes.set(name, []);
         homes.get(name)!.push(d);

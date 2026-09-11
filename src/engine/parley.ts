@@ -8,7 +8,7 @@ import { SimContext, getAlive } from './context';
 import { tradeReputations } from './notoriety';
 import { tradeRumours } from './rumours';
 import { assessZone } from './stance';
-import { adjustMutual, adjustRel, getRel, respectOf } from './relationships';
+import { adjustMutual, adjustRel, getRel, respectOf, trustOf } from './relationships';
 import { addZoneThreat, cycleOf, ensureMemory, lieAboutZone, noteStoodBy, raiseSuspicion, rememberedThreat, shareZoneIntel, swearVengeance } from './memory';
 import { areLovers, maintainPerformance } from './alliance';
 import { earnTrait } from './earnedTraits';
@@ -682,7 +682,12 @@ function treacheryOf(t: Tribute): number {
 
 function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
     clearTruce(a, b);
-    const regard = Math.min(getRel(a, b.id), getRel(b, a.id));
+    // §4.5: renewing an agreement with somebody is a trust decision, not a
+    // warmth one — the question is whether the last one was honoured, which is
+    // precisely the history `trustOf` corrects regard by. The weaker side of
+    // the pair still governs: a truce is only as good as its least convinced
+    // party.
+    const regard = Math.min(trustOf(a, b), trustOf(b, a));
 
     // RENEW: it worked, and both of them know it.
     // §8: whichever of them is better at this carries the renewal.

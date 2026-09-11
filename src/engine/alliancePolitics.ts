@@ -50,8 +50,15 @@ function updateFactions(ctx: SimContext, record: Alliance, members: Tribute[]) {
 
     const detected: NonNullable<Alliance['factions']> = [];
     members.forEach(target => {
+        // §4.4: two ways to be a bloc. Suspicion is the sharp one — these
+        // people think that member is going to do something — and it was the
+        // only one, which is why factions needed a witnessed betrayal to get
+        // started at all. The other one is commoner and just as real: people
+        // who have simply stopped being able to stand the same member.
         const bloc = members.filter(m =>
-            m.id !== target.id && suspicionOf(m, target.id) >= ALLIANCES.factionSuspicion);
+            m.id !== target.id
+            && (suspicionOf(m, target.id) >= ALLIANCES.factionSuspicion
+                || getRel(m, target.id) <= ALLIANCES.factionResentRegard));
         if (bloc.length < ALLIANCES.factionMinMembers) return;
         const existing = record.factions?.find(f =>
             f.againstId === target.id && f.memberIds.some(id => bloc.some(m => m.id === id)));
@@ -94,6 +101,22 @@ function resolveFactions(ctx: SimContext, record: Alliance, members: Tribute[]) 
             members.map(m => m.id),
             { important: true, category: 'alliance' }
         );
+        return;
+    }
+
+    // §4.4: a bloc that is most of the group does not leave — it throws the
+    // member out. Expulsion is described as "the most common way a real group
+    // loses a member", and it was reachable only through a second breach of
+    // the same charter clause by the same person: 18 firings in 400 runs, and
+    // then fewer once factions started walking out before the group lived long
+    // enough to hold a hearing. A majority that has decided about somebody is
+    // exactly the situation an expulsion is, and the group survives it, which
+    // a walk-out does not.
+    const rest = members.filter(m => m.id !== target.id && !faction.memberIds.includes(m.id));
+    if (bloc.length > rest.length && members.length - 1 >= ALLIANCES.factionMinMembers) {
+        record.factions = (record.factions ?? []).filter(f => f !== faction);
+        expel(ctx, record, target, members,
+            `${names} have been talking about ${target.name} for days and this morning they say it to their face.`);
         return;
     }
 

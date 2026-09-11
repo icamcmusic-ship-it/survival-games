@@ -3,7 +3,7 @@ import { zoneFeatures } from './map';
 import { CRAFTING, INVENTORY, STANCE_MODES, STEALTH } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { traitMod } from '../data/traits';
-import { concealmentModifier } from './physique';
+import { concealmentModifier, effectiveIntelligence } from './physique';
 import { encumbranceOf, hasTool } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 
@@ -98,7 +98,12 @@ export function concealment(
 
 /** How good a tribute is at spotting someone who does not want to be spotted. */
 export function awareness(t: Tribute, dark = false): number {
-    let value = t.attributes.intelligence * STEALTH.awarenessFromIntelligence;
+    // §3.3: `effectiveIntelligence`, not the printed number. Judgement is the
+    // first thing a fourth night without sleep takes, and watching a treeline
+    // properly is judgement — the sleep-debt system already charged for it in
+    // dropped kit and missed forage but never in the attribute it was actually
+    // impairing.
+    let value = effectiveIntelligence(t) * STEALTH.awarenessFromIntelligence;
 
     // You cannot watch a treeline you cannot see. A light or the right eyes
     // give it back; the trait's own awareness bonus stacks on top.

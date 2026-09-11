@@ -119,8 +119,23 @@ export type InjurySite = keyof Injuries;
  * successfully all week is genuinely better at it by day 8, which is what makes
  * a survivalist visibly become a survivalist over a run instead of merely
  * being labelled one.
+ *
+ * §3.1: six skills was the binding constraint on the whole system. Fifty-two
+ * items, forty arenas and eight stances all resolved through six buckets, and
+ * two of the things a tribute most obviously gets better at — going up
+ * something, crossing water — were expressed *only* as reaping traits
+ * (`Climber`, `Swimmer`). The same concept in two systems that could not talk
+ * to each other, so a Swimmer never got better at swimming. `climbing`,
+ * `swimming` and `crafting` close that: the traits now seed the matching
+ * proficiency (see `TRAIT_PROFICIENCY_FLOOR` in engine/proficiency) instead of
+ * standing in for it.
+ *
+ * There is deliberately no `stealth` proficiency. Stealth is already a rolled
+ * attribute that `tracking` drifts upward; adding a same-named skill on top
+ * would be exactly the doubling this pass exists to remove.
  */
-export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking' | 'persuasion';
+export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking' | 'persuasion'
+    | 'climbing' | 'swimming' | 'crafting';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'

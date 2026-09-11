@@ -117,7 +117,66 @@ const mislabelled = sorted.filter(a => {
 console.log(`\nrarity labels contradicted by the measured rate (${mislabelled.length}):`);
 mislabelled.forEach(a => console.log(`  ${a.id.padEnd(24)} labelled ${a.rarity.padEnd(10)} measured ${(rate(a.id) * 100).toFixed(1)}%`));
 
+/* -------------------------------------------------------------------------- */
+/* §2.4: nearMiss is mandatory wherever the test is a matter of degree         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * "2 kills from Bloodbath" is the best idea in achievements.ts: it turns a
+ * binary into a nudge. It was also applied by hand, which meant it was missing
+ * from exactly the entries where the player has no other feedback loop — an
+ * achievement whose predicate counts to four and says nothing when you reached
+ * three is a locked card with no information in it.
+ *
+ * So it is mechanical now. An achievement whose `test` compares something
+ * against a numeric literal of two or more is *measuring* something, and a run
+ * can therefore come close to it: it must carry a `nearMiss`. Comparisons
+ * against 0 and 1 are deliberately exempt — those are presence checks ("never
+ * foraged", "survived a collapse"), where being one short is the whole of the
+ * distance and there is nothing to report.
+ *
+ * Reading the predicate's own source is crude, and deliberately so: anything
+ * declarative would have to be kept in step by hand, which is the failure this
+ * replaces. It cannot see a threshold hidden behind an imported constant, so
+ * it under-reports rather than crying wolf.
+ *
+ * `NEAR_MISS_EXEMPT` is a ratchet in the style of the knobs baseline: entries
+ * may be removed, never added, and an exemption that is no longer needed fails
+ * the check so it cannot quietly rot into a licence.
+ */
+const NEAR_MISS_EXEMPT: string[] = [];
+
+const THRESHOLD = /(?:>=|<=|>|<)\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(?:>=|<=|>|<)/g;
+function thresholdsIn(fn: (...args: never[]) => unknown): number[] {
+    const src = fn.toString().replace(/\s+/g, ' ');
+    return [...src.matchAll(THRESHOLD)]
+        .map(m => Number(m[1] ?? m[2]))
+        .filter(n => Number.isFinite(n) && n >= 2);
+}
+
+const measured = ACHIEVEMENTS.filter(a => thresholdsIn(a.test).length > 0);
+const missingNearMiss = measured.filter(a => !a.nearMiss && !NEAR_MISS_EXEMPT.includes(a.id));
+const staleExemptions = NEAR_MISS_EXEMPT.filter(id => {
+    const a = ACHIEVEMENTS.find(x => x.id === id);
+    return !a || !!a.nearMiss || thresholdsIn(a.test).length === 0;
+});
+
+console.log(`\nnumeric-threshold tests: ${measured.length}; carrying a nearMiss: `
+    + `${measured.filter(a => a.nearMiss).length}; exempt: ${NEAR_MISS_EXEMPT.length}`);
+
 let failed = false;
+if (missingNearMiss.length > 0) {
+    console.log(`\nFAIL: ${missingNearMiss.length} achievement(s) test a numeric threshold with no nearMiss —`
+        + ' a player who came one short is told nothing:');
+    missingNearMiss.forEach(a => console.log(`  ${a.id.padEnd(24)} thresholds ${thresholdsIn(a.test).join(', ')}`));
+    failed = true;
+}
+if (staleExemptions.length > 0) {
+    console.log(`\nFAIL: ${staleExemptions.length} stale nearMiss exemption(s) — delete them from NEAR_MISS_EXEMPT:`);
+    staleExemptions.forEach(id => console.log(`  ${id}`));
+    failed = true;
+}
+
 if (errors.length > 0) {
     console.log(`\nFAIL: ${errors.length} predicate error(s):`);
     errors.slice(0, 20).forEach(e => console.log(`  ${e}`));

@@ -177,7 +177,7 @@ export function ReplayScrubber({
                 </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5">
                 <div className="stat-tile">
                     <div className="eyebrow">Standing</div>
                     <div className="text-2xl font-black font-mono text-[var(--cat-alliance)]">{snapshot.standing.length}</div>

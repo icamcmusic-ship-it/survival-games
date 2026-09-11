@@ -76,16 +76,25 @@ console.log(`   ${thinArenas.length} arena pack(s) under the target; generic fal
 
 // §8/§11.3: interview scenarios, bucketed per persona. A persona with a thin
 // scenario pool now fails the build exactly the way a thin arena pool does.
-console.log(`\ninterview scenario pools per persona (target ${POOL_TARGET}):`);
+/**
+ * §10.2: the floor-as-ceiling. All thirteen personas sat at exactly 12/12 —
+ * the number this check enforced — which is what happens when a guard becomes
+ * the authoring target. The interview is also the single most re-read screen
+ * in the game (every run, 24 tributes, one scenario each), so 12 is thinner in
+ * practice than the same number would be anywhere else: a player who has run
+ * twenty Games has seen most of a persona's pool several times over.
+ * Raised to 15 with the pools, and ratcheted the same way.
+ */
+const PERSONA_TARGET = 15;
+console.log(`\ninterview scenario pools per persona (target ${PERSONA_TARGET}):`);
 INTERVIEW_SCENARIOS.forEach(scenario => {
     const n = Math.min(scenario.success.length, scenario.failure.length);
-    console.log(`   ${n < POOL_TARGET ? '!' : ' '} ${scenario.strategy.padEnd(26)} ${scenario.success.length} success / ${scenario.failure.length} failure`);
-    // §11.3: all thirteen are at the target as of this change, so the guard is
-    // the target rather than the hard floor — the improvement is locked in and
-    // a new persona cannot land under-written.
-    if (n < POOL_TARGET) {
-        structuralProblems.push(`interview persona '${scenario.strategy}': ${n} entries in its thinnest half, under the target of ${POOL_TARGET}`);
+    console.log(`   ${n < PERSONA_TARGET ? '!' : ' '} ${scenario.strategy.padEnd(26)} ${scenario.success.length} success / ${scenario.failure.length} failure`);
+    if (n < PERSONA_TARGET) {
+        structuralProblems.push(`interview persona '${scenario.strategy}': ${n} entries in its thinnest half, under the target of ${PERSONA_TARGET}`);
     }
+    const dupes = (['success', 'failure'] as const).filter(half => new Set(scenario[half]).size !== scenario[half].length);
+    dupes.forEach(half => structuralProblems.push(`interview persona '${scenario.strategy}': a repeated line in its ${half} pool`));
 });
 
 /**
@@ -136,13 +145,32 @@ if (thinStancePools.length > KNOWN_THIN_STANCE_POOLS) {
     console.log(`   ${thinStancePools.length} authored pool(s) under the hard floor of ${HARD_FLOOR} (baseline ${KNOWN_THIN_STANCE_POOLS}).`);
 }
 
-// §11.2: quirk line variants. One line per quirk is a guaranteed verbatim
-// repeat for any tribute who idles more than once.
-const thinQuirks = QUIRKS.filter(q => q.lines.length < 2);
+/**
+ * §11.2 / §10.2: quirk line variants.
+ *
+ * The original floor was 2, on the reasoning that one line per quirk is a
+ * guaranteed verbatim repeat. Two is the same failure one step further out:
+ * a tribute carries one or two quirks for a whole run, the idle beat draws
+ * from that tribute's own quirks, and a 780-line run fires a given quirk far
+ * more than twice — so every quirk in the game sat at exactly the floor its
+ * test enforced and repeated itself verbatim by the middle of day two.
+ *
+ * All 85 are now at four. The floor is a ratchet in the same style as
+ * `KNOWN_THIN`: it may be raised when the pools are raised, and lowering it
+ * has to be a deliberate edit to this line.
+ */
+const QUIRK_LINE_FLOOR = 4;
+const thinQuirks = QUIRKS.filter(q => q.lines.length < QUIRK_LINE_FLOOR);
 if (thinQuirks.length > 0) {
-    structuralProblems.push(`${thinQuirks.length} quirk(s) carry a single line and will repeat verbatim: ${thinQuirks.map(q => q.label).join(', ')}`);
+    structuralProblems.push(
+        `${thinQuirks.length} quirk(s) carry fewer than ${QUIRK_LINE_FLOOR} lines and will repeat inside one run: `
+        + thinQuirks.map(q => `${q.label} (${q.lines.length})`).join(', '));
 }
-console.log(`\n${QUIRKS.length} quirks, ${Math.min(...QUIRKS.map(q => q.lines.length))} line variants in the thinnest.`);
+// A pool of four identical lines is a pool of one; the depth has to be real.
+QUIRKS.filter(q => new Set(q.lines).size !== q.lines.length).forEach(q => {
+    structuralProblems.push(`quirk '${q.label}' repeats a line inside its own pool`);
+});
+console.log(`\n${QUIRKS.length} quirks, ${Math.min(...QUIRKS.map(q => q.lines.length))} line variants in the thinnest (floor ${QUIRK_LINE_FLOOR}).`);
 
 if (structuralProblems.length > 0) {
     console.error('');

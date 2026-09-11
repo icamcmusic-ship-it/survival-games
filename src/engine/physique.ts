@@ -1,6 +1,8 @@
 import { Build, Condition, Frame, InjurySite, LimbRatio, Tribute } from '../models/types';
 import { traitMod } from '../data/traits';
-import { PHYSIQUE, GENERATION } from '../data/balance';
+import { ATTRITION, PHYSIQUE, GENERATION, PROFICIENCY, SLEEP } from '../data/balance';
+import { profOf } from './proficiency';
+import { injuryGrade } from './wounds';
 
 /**
  * Bodies, on two axes.
@@ -143,9 +145,19 @@ export function chokepointModifier(t: Tribute): number {
     return -frameStep(t) * PHYSIQUE.framePerStep.chokepoint + PHYSIQUE.limbChokepoint[limbRatioOf(t)];
 }
 
-/** Going up something: same trade, different sign on the limbs. */
+/**
+ * Going up something: same trade, different sign on the limbs — and, §3.1,
+ * whatever the tribute has actually learned about rock.
+ *
+ * This is the read site for the `climbing` proficiency. A Climber starts ahead
+ * of the field here (see `TRAIT_PROFICIENCY_FLOOR`) and everybody else can
+ * close the gap by spending days in highland, ruins and cave terrain, which is
+ * the whole point of the axis existing separately from the trait.
+ */
 export function climbModifier(t: Tribute): number {
-    return -frameStep(t) * PHYSIQUE.framePerStep.climb + PHYSIQUE.limbClimb[limbRatioOf(t)];
+    return -frameStep(t) * PHYSIQUE.framePerStep.climb
+        + PHYSIQUE.limbClimb[limbRatioOf(t)]
+        + profOf(t, 'climbing') * PROFICIENCY.climbWeight;
 }
 
 /**
@@ -341,4 +353,59 @@ export function agedResolveDecay(age: number, tensionStreak: number): number {
 
 export function strengthCapForAge(age: number): number {
     return Math.min(10, GENERATION.strengthCapAtMinAge + (age - GENERATION.minAge) * GENERATION.strengthCapPerYear);
+}
+
+
+/**
+ * §3.3: the attributes that move.
+ *
+ * `condition` was the only thing about a tribute that changed over a run.
+ * Everything else — strength, agility, intelligence, charisma, stealth,
+ * endurance — was rolled at the reaping and frozen, so a tribute nine days
+ * into starvation with a shattered leg and four nights of no sleep read on
+ * every sheet and in every roll as the person who stepped off the plate. Only
+ * `effectiveStrength()` in combat.ts wrapped any of it, and only for age.
+ *
+ * These are its siblings, and they follow it exactly: read-only accessors over
+ * the printed attribute, never a mutation of it. The tribute sheet keeps
+ * showing who they were at the reaping; the engine asks who they are now. The
+ * weights live in `ATTRITION`.
+ *
+ * Note the deliberate asymmetry with `condition`, which is the same asymmetry
+ * that makes the physique model work: what degrades is the *use* of the body,
+ * not the fact of it. A tribute with a ruined leg is slower, but they are
+ * exactly as large, as long-armed and as frightening to look at as they were
+ * on day one.
+ */
+
+/** Agility, after what the legs and the soft tissue are actually costing. */
+export function effectiveAgility(t: Tribute): number {
+    const legs = injuryGrade(t, 'legs') * ATTRITION.agilityPerLegGrade;
+    return Math.max(ATTRITION.floor, t.attributes.agility - legs - conditionAgilityPenalty(t));
+}
+
+/**
+ * Intelligence, after sleep deprivation.
+ *
+ * `sleepDebt` past `SLEEP.deprivedAt` already drove dropped kit, a forage
+ * penalty and a stance-hold delay — three symptoms of an impairment the
+ * impaired attribute itself never showed. Judgement is the first thing a
+ * fourth night without sleep takes.
+ */
+export function effectiveIntelligence(t: Tribute): number {
+    const deprived = Math.max(0, (t.sleepDebt ?? 0) - SLEEP.deprivedAt);
+    return Math.max(ATTRITION.floor, t.attributes.intelligence - deprived * ATTRITION.intelligencePerSleepDebt);
+}
+
+/**
+ * Charisma, after what is visibly happening to them.
+ *
+ * Nobody is at their most persuasive while coming apart, and the arena's
+ * cameras are on. Above `charismaSanityPivot` this costs nothing: this is the
+ * bottom half of the sanity scale being legible to other people, not a tax on
+ * having a bad week.
+ */
+export function effectiveCharisma(t: Tribute): number {
+    const below = Math.max(0, ATTRITION.charismaSanityPivot - t.vitals.sanity) / 10;
+    return Math.max(ATTRITION.floor, t.attributes.charisma - below * ATTRITION.charismaPerSanityStep);
 }

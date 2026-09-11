@@ -8747,9 +8747,17 @@ function withUniversalEvents(flavor: ArenaFlavor): ArenaFlavor {
     // Solve `u / (authored + u) = share` for the total weight the universal
     // pool should carry, then split it evenly across its members.
     const universalTotal = authoredWeight * UNIVERSAL_EVENT_SHARE / (1 - UNIVERSAL_EVENT_SHARE);
-    const per = universalTotal / Math.max(1, UNIVERSAL_EVENTS.length);
+    // §7.1: scaled *proportionally*, not flattened. This used to assign every
+    // universal event the same weight, which silently threw away the relative
+    // weights the pool itself authors — the load-bearing collapse asks for 1.4
+    // and the bleakest one-offs ask for less, and all of them were being
+    // levelled to the same number. The share the pool takes overall is
+    // unchanged; what changes is that a weight written in the table now means
+    // something.
+    const universalWeight = UNIVERSAL_EVENTS.reduce((sum, e) => sum + (e.weight ?? 1), 0) || 1;
+    const scale = universalTotal / universalWeight;
     return {
         ...flavor,
-        events: [...flavor.events, ...UNIVERSAL_EVENTS.map(e => ({ ...e, weight: per }))],
+        events: [...flavor.events, ...UNIVERSAL_EVENTS.map(e => ({ ...e, weight: (e.weight ?? 1) * scale }))],
     };
 }

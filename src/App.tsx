@@ -121,6 +121,9 @@ export default function App() {
         enableFeast: boolParam('enableFeast', DEFAULT_GAME_CONFIG.enableFeast),
         enableSanity: boolParam('enableSanity', DEFAULT_GAME_CONFIG.enableSanity),
         plainNames: boolParam('plainNames', !!DEFAULT_GAME_CONFIG.plainNames),
+        // §2.6: a Vanilla Games link replays vanilla. Links written before the
+        // parameter existed read as false, which is what they always were.
+        vanillaRules: boolParam('vanillaRules', !!DEFAULT_GAME_CONFIG.vanillaRules),
       };
       // A shared link pins the run's exact Quarter Quell (or explicit lack of
       // one) so it replays the same Games it was copied from — the same

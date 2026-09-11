@@ -121,6 +121,9 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'social',
         rarity: 'rare',
         test: (_s, v) => !!v && (v.betrayalsCommitted ?? 0) >= 2,
+        nearMiss: (_s, v) => (v && (v.betrayalsCommitted ?? 0) === 1)
+            ? `${v.name} broke faith once — a turncoat twice does it again`
+            : undefined,
     },
     {
         id: 'never-ate',
@@ -224,6 +227,13 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'combat',
         rarity: 'rare',
         test: (_s, v) => !!v && (v.fightsOpened ?? 0) === 0 && v.kills >= 2,
+        nearMiss: (_s, v) => {
+            if (!v) return undefined;
+            const opened = v.fightsOpened ?? 0;
+            if (opened === 0 && v.kills === 1) return `${v.name} never opened a fight and came home with one kill — the Watcher needs two`;
+            if (opened === 1 && v.kills >= 2) return `${v.name} took ${v.kills}, but opened one fight — the Watcher opens none`;
+            return undefined;
+        },
     },
     {
         id: 'front-loaded',
@@ -242,6 +252,9 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'arena',
         rarity: 'rare',
         test: (_s, v) => !!v && (v.stormsSurvived ?? 0) >= 4,
+        nearMiss: (_s, v) => (v && (v.stormsSurvived ?? 0) >= 2 && (v.stormsSurvived ?? 0) < 4)
+            ? `${v.name} rode out ${v.stormsSurvived} storms — ${4 - (v.stormsSurvived ?? 0)} short of weather-beaten`
+            : undefined,
     },
     {
         id: 'heir-apparent',
@@ -345,6 +358,18 @@ export const ACHIEVEMENTS: Achievement[] = [
                 (b.dayOfDeath ?? Infinity) - (a.dayOfDeath ?? Infinity));
             const finalFour = new Set(ranked.slice(0, 4).map(t => t.id));
             return lovers.filter(l => finalFour.has(l.id)).length >= 2;
+        },
+        nearMiss: state => {
+            const lovers = state.tributes.filter(t => t.traits.includes('Star-Crossed'));
+            if (lovers.length < 2) return undefined;
+            const ranked = [...state.tributes].sort((a, b) =>
+                (b.dayOfDeath ?? Infinity) - (a.dayOfDeath ?? Infinity));
+            const finalFour = new Set(ranked.slice(0, 4).map(t => t.id));
+            const made = lovers.filter(l => finalFour.has(l.id));
+            if (made.length !== 1) return undefined;
+            const left = lovers.find(l => l.id !== made[0].id);
+            return `${made[0].name} reached the final four; ${left?.name ?? 'the other half of the pair'} fell`
+                + `${left?.dayOfDeath ? ` on day ${left.dayOfDeath}` : ''} — star-crossed needs both of them there`;
         },
     },
     {
@@ -570,6 +595,16 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'games',
         rarity: 'rare',
         test: state => (state.victorIds?.length ?? 0) >= 2,
+        nearMiss: state => {
+            // Only meaningful once a single victor is standing: the question is
+            // whether the runner-up fell on the very last day of the Games.
+            if ((state.victorIds?.length ?? 0) >= 2 || alive(state).length !== 1) return undefined;
+            const runnerUp = dead(state)
+                .slice()
+                .sort((a, b) => (b.dayOfDeath ?? -Infinity) - (a.dayOfDeath ?? -Infinity))[0];
+            if (!runnerUp || runnerUp.dayOfDeath !== state.day) return undefined;
+            return `${runnerUp.name} fell on the last day — one cannon from a Games with two victors`;
+        },
     },
     {
         id: 'nightlock-ending',
@@ -945,6 +980,9 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'arena',
         rarity: 'rare',
         test: (state, v) => !!v && state.arena.zones.length >= 13,
+        nearMiss: (state, v) => (v && state.arena.zones.length >= 10 && state.arena.zones.length < 13)
+            ? `this arena ran ${state.arena.zones.length} sectors — deep water is thirteen or more`
+            : undefined,
     },
     {
         id: 'pressure-cooker',
@@ -953,6 +991,9 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'arena',
         rarity: 'uncommon',
         test: (state, v) => !!v && state.arena.zones.length <= 8,
+        nearMiss: (state, v) => (v && state.arena.zones.length > 8 && state.arena.zones.length <= 10)
+            ? `this arena ran ${state.arena.zones.length} sectors — a pressure cooker is eight or fewer`
+            : undefined,
     },
     {
         id: 'ground-gave-out',
@@ -1084,6 +1125,13 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'arena',
         rarity: 'rare',
         test: (state, v) => !!v && ((state.arena.law ? 1 : 0) + (state.arena.laws?.length ?? 0)) >= 3,
+        nearMiss: (state, v) => {
+            if (!v) return undefined;
+            const laws = (state.arena.law ? 1 : 0) + (state.arena.laws?.length ?? 0);
+            return laws === 2
+                ? 'this arena ran two standing laws at once — three is Against the Law'
+                : undefined;
+        },
     },
     {
         id: 'never-left',
@@ -1174,6 +1222,15 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'social',
         rarity: 'rare',
         test: state => state.tributes.some(t => (t.reachedDownedFirst ?? 0) >= 3),
+        nearMiss: state => {
+            const best = state.tributes
+                .slice()
+                .sort((a, b) => (b.reachedDownedFirst ?? 0) - (a.reachedDownedFirst ?? 0))[0];
+            const count = best?.reachedDownedFirst ?? 0;
+            return count === 2
+                ? `${best.name} was first to a downed ally twice — three times is Found First`
+                : undefined;
+        },
     },
     {
         id: 'every-door',
@@ -1207,6 +1264,12 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'social',
         rarity: 'rare',
         test: (_s, v) => !!v && (v.sharedIntelWith?.length ?? 0) >= 3,
+        nearMiss: (_s, v) => {
+            const shared = v?.sharedIntelWith?.length ?? 0;
+            return (v && shared >= 1 && shared < 3)
+                ? `${v.name} traded honest map knowledge with ${shared === 1 ? 'one tribute' : `${shared} tributes`} — ${3 - shared} short of word of mouth`
+                : undefined;
+        },
     },
     {
         id: 'poisoned-well',
@@ -1362,6 +1425,12 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'arena',
         rarity: 'uncommon',
         test: (_s, v) => !!v && (v.walkedIntoEffect ?? 0) >= 3,
+        nearMiss: (_s, v) => {
+            const walked = v?.walkedIntoEffect ?? 0;
+            return (v && walked >= 1 && walked < 3)
+                ? `${v.name} walked into a sector under an active effect ${walked === 1 ? 'once' : `${walked} times`} — ${3 - walked} short of storm chaser`
+                : undefined;
+        },
     },
     {
         id: 'the-tally',
@@ -1390,6 +1459,16 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'survival',
         rarity: 'rare',
         test: (_s, v) => !!v && (v.minResolve ?? 100) < 10 && (v.resolve ?? 0) >= 10,
+        nearMiss: (_s, v) => {
+            if (!v) return undefined;
+            const low = v.minResolve ?? 100;
+            const now = v.resolve ?? 0;
+            // Two ways to miss it: never dropped far enough, or dropped and
+            // never climbed back out.
+            if (low < 10 && now < 10) return `${v.name} came home on ${Math.round(now)} resolve — borrowed time needs them back above ten`;
+            if (low >= 10 && low <= 20) return `${v.name}'s will bottomed out at ${Math.round(low)} — borrowed time starts under ten`;
+            return undefined;
+        },
     },
     {
         id: 'the-unwitnessed',

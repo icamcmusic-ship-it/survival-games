@@ -68,10 +68,15 @@ export function BroadcastBar({
 
     const [checkpointsOpen, setCheckpointsOpen] = useState(false);
     const checkpoints = checkpointsOpen ? gameActions.checkpoints() : [];
+    // §2.2: rewind is bounded — sixteen phases in memory, three across a
+    // refresh — and the bound used to be invisible, so the list just quietly
+    // stopped reaching back any further.
+    const rewind = gameActions.rewindInfo();
 
     // §2.13: Undo said "Undo" with no indication of what it undoes.
     const undoLabel = gameActions.canStepBack()
         ? `Undo — back to ${gameState.day === 0 ? 'the previous phase' : `day ${gameState.day}`}`
+            + ` (${rewind.depth} of the last ${rewind.cap} phases kept${rewind.atCap ? ' — the oldest is being let go' : ''})`
         : 'Nothing to undo yet';
 
     return (
@@ -145,6 +150,14 @@ export function BroadcastBar({
                                         </span>
                                     </button>
                                 ))}
+                                {checkpoints.length > 0 && (
+                                    <p className="px-1.5 pt-1.5 mt-1 border-t border-[var(--line-soft)] text-[10px] leading-snug text-[var(--color-ink-500)]">
+                                        {rewind.atCap
+                                            ? `Holding the last ${rewind.cap} phases — anything earlier has been let go.`
+                                            : `${rewind.depth} of ${rewind.cap} phases held.`}
+                                        {' '}A refresh keeps the last {rewind.persisted}.
+                                    </p>
+                                )}
                             </div>
                         )}
                     </span>

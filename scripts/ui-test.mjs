@@ -465,14 +465,32 @@ await step('new keyboard shortcuts drive the arena', async () => {
   await page.keyboard.press('p');        // auto-advance on
   await page.waitForTimeout(400);
   await page.keyboard.press('p');        // and off again
+  await page.keyboard.press('d');        // §2.5: jump to the next death
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Shift+D');  // and back to the previous one
+  await page.waitForTimeout(150);
   await page.keyboard.press('?');
   await page.getByRole('dialog', { name: /how to read the games/i }).waitFor();
   const help = await page.getByRole('dialog').innerText();
-  for (const key of ['Z / Shift+Z', 'T / Shift+T', '[ / ]', 'Space', 'Esc']) {
+  for (const key of ['Z / Shift+Z', 'T / Shift+T', '[ / ]', 'Space', 'Esc', 'O', 'X', 'D / Shift+D']) {
     if (!help.includes(key)) throw new Error(`help panel does not document ${key}`);
   }
   await page.keyboard.press('Escape');
   await page.getByRole('dialog').waitFor({ state: 'detached' });
+});
+
+// §2.5: the two shortcuts for the thing a reader does most — open the tribute
+// they are watching, and narrow the feed to them.
+await step('O opens the watched tribute and X filters the chronicle to them', async () => {
+  await page.keyboard.press('t');        // watch somebody (the tribute filter)
+  await page.waitForTimeout(150);
+  await page.keyboard.press('o');
+  await page.getByRole('dialog', { name: /profile/i }).waitFor({ timeout: 4000 });
+  await page.keyboard.press('Escape');
+  await page.getByRole('dialog').waitFor({ state: 'detached' });
+  await page.keyboard.press('x');        // toggles that filter back off
+  await page.waitForTimeout(150);
+  await page.keyboard.press('0');        // and resets whatever is left standing
 });
 
 await step('shortcuts do not hijack typing in the chronicle search', async () => {
@@ -485,12 +503,53 @@ await step('shortcuts do not hijack typing in the chronicle search', async () =>
   await page.getByRole('button', { name: /filters/i }).click();
 });
 
+// §2.1: the two surfaces a player spends a whole run in, at the narrow end of
+// real phones (380px), with the dossier sheet open on top of the arena — the
+// case the desktop-first layout was least likely to have been checked against.
+const overflows = () => page.evaluate(() =>
+  document.documentElement.scrollWidth > window.innerWidth + 2);
+
 await step('no horizontal overflow at mobile width', async () => {
-  await page.setViewportSize({ width: 390, height: 850 });
-  await page.waitForTimeout(300);
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2);
+  for (const width of [390, 380]) {
+    await page.setViewportSize({ width, height: 850 });
+    await page.waitForTimeout(300);
+    if (await overflows()) throw new Error(`page scrolls horizontally at ${width}px`);
+  }
   await page.screenshot({ path: `${shots}/mobile.png` });
-  if (overflow) throw new Error('page scrolls horizontally on mobile');
+});
+
+await step('the arena and the tribute sheet both fit a 380px phone', async () => {
+  await page.setViewportSize({ width: 380, height: 850 });
+  await page.goto(`${BASE}?seed=MOBILE1&arena=frozen&gamemaker=false`, { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: /confirm tributes/i }).click();
+  await page.getByRole('button', { name: /begin training/i }).click();
+  await page.getByRole('button', { name: /proceed/i }).first().waitFor();
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(120);
+  }
+  if (await overflows()) throw new Error('the arena screen scrolls horizontally at 380px');
+
+  // Every pane of the bottom tab bar, not just the one it opens on.
+  for (const pane of ['Map', 'Table', /^Cast/, 'Chronicle']) {
+    await page.getByRole('button', { name: pane }).first().click();
+    await page.waitForTimeout(250);
+    if (await overflows()) throw new Error(`the ${pane} pane scrolls horizontally at 380px`);
+  }
+
+  await page.keyboard.press('t');
+  await page.waitForTimeout(150);
+  await page.keyboard.press('o');
+  await page.getByRole('dialog', { name: /profile/i }).waitFor({ timeout: 4000 });
+  await page.screenshot({ path: `${shots}/mobile-tribute-sheet.png` });
+  if (await overflows()) throw new Error('the tribute sheet scrolls horizontally at 380px');
+  // And every tab of it — the sheet is four screens, not one.
+  for (const tab of [/combat/i, /social/i, /story/i]) {
+    await page.getByRole('tab', { name: tab }).click();
+    await page.waitForTimeout(200);
+    if (await overflows()) throw new Error(`the tribute sheet scrolls horizontally at 380px on ${tab}`);
+  }
+  await page.keyboard.press('Escape');
 });
 
 console.log('\n' + (errors.length ? 'ERRORS:\n' + errors.map(e => ' - ' + e).join('\n') : 'No errors.'));

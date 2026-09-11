@@ -18,6 +18,7 @@ import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG, traitsConflict } from '../src/data/constants';
 import { ALLIANCES, FEAR, GENERATION, HUNTING, NOTORIETY, PROFICIENCY, RELATIONSHIPS, ZONES } from '../src/data/balance';
 import { carryCapacity } from '../src/engine/items';
+import { emptyPickCount } from '../src/utils/rng';
 import { oddsScore, tributeOdds } from '../src/engine/odds';
 import { GameConfig, GameState, Stance } from '../src/models/types';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
@@ -77,6 +78,8 @@ let vengeancePacts = 0, vengeancePaid = 0, vengeanceStolen = 0, vengeanceAbandon
 let treatiesSworn = 0, treatiesBroken = 0, treatiesLapsed = 0, treatiesOutgrown = 0;
 let trianglesFormed = 0, triangleJealousy = 0, triangleChoices = 0;
 let loansMade = 0, loansReturned = 0, loansDefaulted = 0;
+let loansLost = 0, loansLenderDied = 0, loansBorrowerDied = 0, loansOpenAtEnd = 0;
+let vengeanceOutlived = 0, vengeanceSoloed = 0, vengeancePactsOpenAtEnd = 0;
 let successionHeir = 0, successionPassedOver = 0, successionSplit = 0, successionUnnamed = 0;
 let peakNotoriety = 0, notorietyWithoutContact = 0, strangersKnownByName = 0;
 let sleepDrops = 0, coldWeaponSwings = 0, bluffsLanded = 0, bluffsCaught = 0, loyalBroke = 0, mercyBroke = 0, pacifistBroke = 0;
@@ -207,6 +210,12 @@ for (let i = 0; i < 400; i++) {
   totalDays += state.day;
   totalLogs += state.log.length;
   if ((state.feastsHeld ?? 0) > 0) feastRuns++;
+  // §4.2/§4.3: the two ledgers that have to close. Everything else is counted
+  // off a log line; what is *still open* when the Games end can only be read
+  // off the final state, and without it "made" and "sworn" can never be
+  // reconciled against their endings.
+  state.tributes.forEach(t => { loansOpenAtEnd += Object.keys(t.loans ?? {}).length; });
+  vengeancePactsOpenAtEnd += (state.vengeancePacts ?? []).length;
   calendarBeats += (state.firedWildcards ?? []).length;
 
   const alive = state.tributes.filter(t => t.status === 'alive');
@@ -307,12 +316,24 @@ for (let i = 0; i < 400; i++) {
     if (/Both of them are heavier than they look|thinks less of them for it|heard it often enough to carry it on/.test(l.text)) inheritances++;
     if (/have evidently been talking/.test(l.text)) mentorCrossTalk++;
     if (/takes the first watch|takes the watch in/.test(l.text)) watchesPosted++;
-    if (/going to be able to go on being polite/.test(l.text)) trianglesFormed++;
-    if (/neither of them has said a word about why/.test(l.text)) triangleJealousy++;
-    if (/makes the choice in front of both of them/.test(l.text)) triangleChoices++;
+    // §4.1: all three triangle beats draw from pools now (TRIANGLE_TEXTS), so
+    // each matcher names one fragment per variant rather than the single
+    // wording the beat used to have.
+    if (/going to be able to go on being polite|the unit of measurement is|both know exactly where|shapes like that do not hold|want the same thing, and that the thing is|Neither of them makes room for the other|only ever had room for one of those|have both already decided what is going on here/.test(l.text)) trianglesFormed++;
+    if (/neither of them has said a word about why|the silence afterwards lasts longer|counts it, again, and says nothing, again|watching which portion goes to|holding the same thing from opposite ends|is looking somewhere else on purpose|takes slightly too long to say|and it is not really a joke/.test(l.text)) triangleJealousy++;
+    if (/makes the choice in front of both of them|the nod is a door closing|believes a word of it|very specific reason to be careful|being extremely reasonable about it|load-bearing quietly stops being|walks their watch alone that night|decided to be decent about it|the sponsors read as weakness|would rather know, and then does not say/.test(l.text)) triangleChoices++;
     if (/both of them hear the word/.test(l.text)) loansMade++;
     if (/back without being asked for it/.test(l.text)) loansReturned++;
     if (/stopped thinking of the .* as lent/.test(l.text)) loansDefaulted++;
+    // §4.2: the three endings the loan ledger used to close silently. 175 of
+    // 244 loans reached the end of a run in no state at all; these are where
+    // they were going.
+    if (/nods, and files it/.test(l.text)) loansLost++;
+    if (/they stop thinking of it as borrowed/.test(l.text)) loansLenderDied++;
+    if (/It is out there somewhere in/.test(l.text)) loansBorrowerDied++;
+    // §4.3: and the two the vengeance-pact ledger closed silently.
+    if (/are both in the sky now/.test(l.text)) vengeanceOutlived++;
+    if (/stopped being a thing two people are doing/.test(l.text)) vengeanceSoloed++;
     if (/was named for this and steps into it|only thing anybody can point at/.test(l.text)) successionHeir++;
     if (/without ever putting it to a vote/.test(l.text)) successionPassedOver++;
     if (/two camps and neither of them is going to be the one that apologises/.test(l.text)) successionSplit++;
@@ -758,6 +779,23 @@ console.log(`blocTreaties: sworn=${treatiesSworn} brokenByAKilling=${treatiesBro
 console.log(`§4: coalitionFractures=${fractures} inheritances=${inheritances} mentorCrossTalk=${mentorCrossTalk} watchesPosted=${watchesPosted}`);
 console.log(`triangles: formed=${trianglesFormed} jealousyBeats=${triangleJealousy} forcedChoices=${triangleChoices}`);
 console.log(`loans: made=${loansMade} returned=${loansReturned} defaulted=${loansDefaulted}`);
+// §4.2: the loan ledger, closed the way the truce ledger is. Every loan ends
+// in exactly one of six ways or is still standing when the Games end; if these
+// do not add up to `made`, the ledger is losing entries again.
+const loanEndings = loansReturned + loansDefaulted + loansLost + loansLenderDied + loansBorrowerDied;
+console.log(`loan ledger: made=${loansMade} accountedEndings=${loanEndings} `
+  + `(returned=${loansReturned} defaulted=${loansDefaulted} lostTheItem=${loansLost} lenderDied=${loansLenderDied} borrowerDied=${loansBorrowerDied}) `
+  + `stillStandingAtEnd=${loansOpenAtEnd} unaccounted=${loansMade - loanEndings - loansOpenAtEnd}`);
+if (loansMade - loanEndings - loansOpenAtEnd > loansMade * 0.05) {
+  note(`loan ledger loses ${loansMade - loanEndings - loansOpenAtEnd} of ${loansMade} loans`);
+}
+const pactEndings = vengeancePaid + vengeanceStolen + vengeanceAbandoned + vengeanceOutlived + vengeanceSoloed;
+console.log(`vengeance ledger: sworn=${vengeancePacts} accountedEndings=${pactEndings} `
+  + `(paidThemselves=${vengeancePaid} takenByAnother=${vengeanceStolen} abandoned=${vengeanceAbandoned} outlivedByTheArena=${vengeanceOutlived} downToOne=${vengeanceSoloed}) `
+  + `stillStandingAtEnd=${vengeancePactsOpenAtEnd} unaccounted=${vengeancePacts - pactEndings - vengeancePactsOpenAtEnd}`);
+if (vengeancePacts - pactEndings - vengeancePactsOpenAtEnd > vengeancePacts * 0.05) {
+  note(`vengeance-pact ledger loses ${vengeancePacts - pactEndings - vengeancePactsOpenAtEnd} of ${vengeancePacts} pacts`);
+}
 console.log(`succession: toNamedHeir=${successionHeir} heirPassedOver=${successionPassedOver} splitTheGroup=${successionSplit} noHeirNamed=${successionUnnamed}`);
 console.log(`notoriety: peak=${Math.round(peakNotoriety)} ledgerEntriesWithoutContact=${notorietyWithoutContact} strangersKnownByName=${strangersKnownByName}`);
 console.log(`traitArcs: pacifistToBroken=${pacifistBroke} loyalToTreacherous=${loyalBroke} mercifulToRuthless=${mercyBroke}`);
@@ -778,6 +816,13 @@ console.log(`arena: zoneFires=${zoneFiresStarted} (spread ${zoneFiresSpread}) fl
 console.log(`arena: borderTelegraphs=${borderTelegraphs} cornucopiaRestocks=${cornucopiaRestocks} muttEncounters=${muttEncounters}`);
 console.log(`alliances: recruitments=${recruitments} organicGroupsOf3Plus=${organicTrios} largestSeen=${maxAllianceSeen}`);
 console.log(`inventory: overloaded drops=${overloadedDrops}`);
+// §3.4: empty pools handed to `RNG.pickOrUndefined`. `RNG.pick` throws, so a
+// genuinely-empty required pool cannot pass silently any more; this is the
+// other half — the honest form returns undefined, and an undefined that lands
+// in a non-string field or in a branch that narrates nothing is invisible to
+// the rendered-text grep below. The number is not a pass/fail bound. It is a
+// tripwire: a jump after a change to a filter is the thing worth looking at.
+console.log(`rng: empty pools handed to pickOrUndefined=${emptyPickCount()}`);
 // §5.4: the peak sat exactly on the clamp, which says nothing about how
 // often zones actually strip. The distribution does.
 if (depletionValues.length > 0) {

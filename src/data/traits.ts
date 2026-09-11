@@ -1,4 +1,5 @@
-import { Tribute } from '../models/types';
+import { Proficiency, Tribute } from '../models/types';
+import { PROFICIENCY } from './balance';
 
 /**
  * Traits, as data with hooks rather than chips with prose.
@@ -460,6 +461,43 @@ export function traitMod(t: Tribute, key: TraitMod): number {
         if (mod) total += mod;
     }
     return total;
+}
+
+/**
+ * §3.1: traits that were standing in for a skill.
+ *
+ * `Climber` and `Swimmer` described a competence and expressed it only as
+ * movement-scoring preference, because there was no `climbing` or `swimming`
+ * proficiency for them to be an extreme of. That is the same concept written
+ * twice in two systems that could not talk to each other — a Swimmer could
+ * cross water all week and never get better at it, and a non-Swimmer who
+ * crossed it every day could never catch up.
+ *
+ * The fix is not to delete the trait. It is to make the trait the *head start*
+ * and the proficiency the *arc*: a Climber walks in already competent and can
+ * still become an expert, and anyone else can get there the slow way. The
+ * movement mods stay exactly as they were — preferring high ground is a
+ * statement about temperament, not about technique.
+ *
+ * Read through `profOf()` in engine/proficiency, which takes the larger of the
+ * stored level and this floor, so the floor also applies to saves written
+ * before these axes existed.
+ */
+const TRAIT_PROFICIENCY_FLOOR: Record<string, Partial<Record<Proficiency, number>>> = {
+    'Climber': { climbing: PROFICIENCY.traitHeadStart },
+    'Swimmer': { swimming: PROFICIENCY.traitHeadStart },
+    // Trapper is the third of the same shape: a trait that names a craft.
+    'Trapper': { crafting: PROFICIENCY.traitHeadStart },
+};
+
+/** The competence a tribute's traits grant outright in a skill, before use. */
+export function traitProficiencyFloor(t: Tribute, skill: Proficiency): number {
+    let floor = 0;
+    for (const name of t.traits) {
+        const granted = TRAIT_PROFICIENCY_FLOOR[name]?.[skill];
+        if (granted && granted > floor) floor = granted;
+    }
+    return floor;
 }
 
 /** Documentation lookup, tolerating a trait from an older save. */

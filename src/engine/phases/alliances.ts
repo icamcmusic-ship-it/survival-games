@@ -2,16 +2,16 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { RESPECT, ALLIANCES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
+import { RESPECT, ALLIANCES, BETRAYAL, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
 import { profOf, trainProficiency } from '../proficiency';
 import { applyDamage, checkDeath } from '../combat';
 import { clampTribute } from '../vitals';
-import { ALLIANCE_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
+import { ALLIANCE_TEXTS, BETRAYAL_AFTERMATH_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel, trustOf } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, raiseSuspicion, sharedHistoryOf, suspicionOf } from '../memory';
 import { respectOf } from '../relationships';
 import { sniffPerformances } from '../alliance';
-import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
+import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal } from '../betrayal';
 import { resolveDuePacts } from '../alliancePact';
 import { runAlliancePolitics, wasExpelled } from '../alliancePolitics';
@@ -542,6 +542,12 @@ export function processAlliances(ctx: SimContext) {
     applyContactWarmth(ctx);
     growRomance(ctx);
     growProtectorBond(ctx);
+    // 4a. §4.1: and then the days the bond is simply had, and the days after
+    // a betrayal is simply survived — the two thinnest categories in the
+    // chronicle, both of which previously consisted of one line at the moment
+    // the thing was declared and silence for the rest of the run.
+    tickBondBeats(ctx);
+    tickBetrayalAftermath(ctx);
 
     // 5. Structure upkeep: prune the dead, re-elect leaders, pool supplies.
     reconcileAlliances(ctx);
@@ -948,6 +954,107 @@ function growProtectorBond(ctx: SimContext) {
             if (++formed >= ROMANCE.maxPerCycle) return;
         }
     }
+}
+
+/**
+ * §4.1: a bond, on the days it is not being declared.
+ *
+ * Romance was 0.1% of the chronicle — rarer than gamemaker interventions,
+ * rarer than kills — against sanity's 13.6%. The formation rate is not the
+ * problem and is deliberately tuned (10-15% of runs); the problem was that a
+ * declared pair produced exactly one line and then went quiet for the rest of
+ * the run, so the central emotional beat of the genre was, in the feed, a
+ * single announcement. These are the days in between.
+ *
+ * A performed bond draws from the same pool, because from outside it is the
+ * same thing — and playing the scene is what keeps the performance topped up,
+ * which is the existing `performedUpkeep` contract.
+ */
+function tickBondBeats(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    const done = new Set<string>();
+
+    alive.forEach(t1 => {
+        if (!t1.traits.includes('Star-Crossed')) return;
+        const t2 = alive.find(o => o.id !== t1.id && areLovers(t1, o));
+        if (!t2) return;
+        const key = [t1.id, t2.id].sort().join('|');
+        if (done.has(key)) return;
+        done.add(key);
+        // A bond only gets a scene where the two of them actually are. Apart,
+        // the arena is telling a different story about them.
+        if (t1.zone !== t2.zone) return;
+        if (!ctx.rng.chance(ROMANCE.bondBeatChance)) return;
+
+        // Whichever of them is performing has just played another scene warm.
+        maintainPerformance(t1, t2.id, ROMANCE.performedUpkeep);
+        maintainPerformance(t2, t1.id, ROMANCE.performedUpkeep);
+        // The audience is watching this and not the other thing.
+        addExcitement(t1, ROMANCE.bondBeatExcitement);
+        addExcitement(t2, ROMANCE.bondBeatExcitement);
+
+        // Order matters to the prose but not to the pair, so it is drawn from
+        // the run's stream rather than from iteration order.
+        const [a, b] = ctx.rng.pick([[t1, t2], [t2, t1]]);
+        ctx.logEvent(
+            fill(ctx.pickText(ROMANCE_BOND_TEXTS), { t1: a.name, t2: b.name, zone: a.zone }),
+            [t1.id, t2.id],
+            { category: 'romance', zone: t1.zone }
+        );
+    });
+}
+
+/**
+ * §4.1: what a betrayal is still doing to people a day later.
+ *
+ * Betrayal was 0.2% of the chronicle: the knife, and then nothing. A betrayal
+ * is the longest-lived social event in the game — it is written into
+ * `betrayedBy`, `timesBetrayed`, suspicion and the trust derivation, all of
+ * which the engine consults for the rest of the run — and none of that was
+ * ever legible. The window is the contact window rather than a stored cycle:
+ * the beat fades as the pair drift apart, which is also what actually happens.
+ */
+function tickBetrayalAftermath(ctx: SimContext) {
+    const recent = (of: Tribute, id: string) =>
+        cyclesSinceContact(ctx.state, of, id) <= BETRAYAL.aftermathCycles;
+
+    getAlive(ctx.state).forEach(t => {
+        if (!ctx.rng.chance(BETRAYAL.aftermathChance)) return;
+
+        // Their side of it. `timesBetrayed` is the gate rather than
+        // `betrayedBy`, which witnesses are also written into.
+        if ((t.memory?.timesBetrayed ?? 0) > 0) {
+            const betrayer = (t.memory?.betrayedBy ?? [])
+                .map(id => ctx.state.tributes.find(o => o.id === id))
+                .find(o => !!o && recent(t, o.id));
+            if (betrayer) {
+                ctx.logEvent(
+                    fill(ctx.pickText(BETRAYAL_AFTERMATH_TEXTS), {
+                        betrayer: betrayer.name, victim: t.name, zone: t.zone,
+                    }),
+                    [t.id, betrayer.id],
+                    { category: 'betrayal', zone: t.zone }
+                );
+                return;
+            }
+        }
+
+        // ...or they are the one who did it, which is its own weather.
+        if ((t.betrayalsCommitted ?? 0) === 0) return;
+        const victim = ctx.state.tributes.find(o =>
+            o.id !== t.id
+            && (o.memory?.timesBetrayed ?? 0) > 0
+            && (o.memory?.betrayedBy ?? []).includes(t.id)
+            && recent(o, t.id));
+        if (!victim) return;
+        ctx.logEvent(
+            fill(ctx.pickText(BETRAYAL_AFTERMATH_TEXTS), {
+                betrayer: t.name, victim: victim.name, zone: t.zone,
+            }),
+            [t.id, victim.id],
+            { category: 'betrayal', zone: t.zone }
+        );
+    });
 }
 
 function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute, performer?: Tribute) {

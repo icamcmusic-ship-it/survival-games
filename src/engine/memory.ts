@@ -338,10 +338,19 @@ export function cyclesSinceContact(state: GameState, a: Tribute, bId: string): n
 }
 
 /** Swears vengeance, deduplicated and bounded. */
+/**
+ * §4.3: one more name at the front of the list.
+ *
+ * The cap is `MEMORY.maxOaths` rather than a literal, and it is lower than it
+ * was: a tribute carrying four names is not carrying any of them. Displacing
+ * the oldest is the honest model of what actually happens — the thing you
+ * swore on day two stops being what you are doing the moment something worse
+ * happens on day five.
+ */
 export function swearVengeance(t: Tribute, targetId: string) {
     const mem = ensureMemory(t);
     if (mem.vengeance[0] === targetId) return;
-    mem.vengeance = [targetId, ...mem.vengeance.filter(id => id !== targetId)].slice(0, 4);
+    mem.vengeance = [targetId, ...mem.vengeance.filter(id => id !== targetId)].slice(0, MEMORY.maxOaths);
 }
 
 export function hasVengeanceAgainst(t: Tribute, targetId: string): boolean {
