@@ -1476,6 +1476,67 @@ export const VOLUNTEER = {
     sacrificeExcitement: 14,
 } as const;
 
+/**
+ * §9.4: the academy's bill, and when it comes due.
+ *
+ * `DISTRICT_CRAFT.hungerResilience` already said the thing out loud — "a
+ * tribute from the wealthiest district in Panem has never missed a meal in
+ * their life, which is precisely why the Cornucopia matters so much to them
+ * and why the pack falls apart once the supplies are gone" — but it was a flat
+ * multiplier applied from the first cycle, so it taxed a Career hardest
+ * exactly where they are supposed to be strongest (the bloodbath, and the days
+ * they are still eating out of the horn) and said nothing at all about the
+ * part of the run it was written about.
+ *
+ * The measurement that prompted this was not the win share on its own. Careers
+ * took 48.1% of crowns at n=3200 against a 25% share of the cast, and they
+ * were doing it with the *longest* average survival in the game (4.52 days
+ * against a 3.7 field mean) on 0.96 kills. The archetype whose `riskCurve` is
+ * `front-loaded`, whose whole story is a pack that comes apart, was winning
+ * the attrition game. That inversion is the bug; the share is the symptom.
+ *
+ * So the head start is untouched and the cost moves onto the clock.
+ * `graceDays` is the pile at the horn: while it lasts a Career eats better
+ * than anybody. Past it the multiplier climbs every cycle, so a Career alive
+ * on day eight is the hungriest tribute in the arena and the one who least
+ * knows what to do about it. Hunger is deliberately the axis rather than
+ * damage — it gates `RECOVERY.maxHunger`, drains sanity and stops a wound
+ * closing, so it costs a Career the long game without ever making them easier
+ * to beat in the fight they picked. Starvation deaths move 1.1% -> 1.4%: this
+ * is attrition, not a starvation clock.
+ *
+ * Pairs with the archetype's `intelligence: -1` (§8) — the appetite is why
+ * they need to forage, the intelligence is why they are bad at it — and with
+ * `TRAINING_FLOOR.careerSurvival`, which is why they never learned.
+ *
+ * Deliberately keyed on `isCareer` (D1/D2/D4) rather than the `career`
+ * archetype: the academy is a place, not a personality, and only ~36% of
+ * Career-district tributes roll the archetype, so a trade-off hung on the
+ * archetype alone is paid by a third of the people holding the advantage.
+ *
+ * Measured at n=3200 (the 400-run default moves this number by ~2 points
+ * either way, so it was tuned on the larger sample): Career victors 48.1% ->
+ * 42.9%, design goal <= 45% newly met. Four other goals come with it — best
+ * archetype 8.61% -> 7.95% (<= 8%, newly met), archetype spread 2.65x -> 2.23x
+ * (<= 2.3, newly met), worst archetype 3.24% -> 3.57% (>= 3.5%, newly met) and
+ * wipeouts 2.1% -> 2.0% — because Career dominance was most of what the
+ * archetype spread was measuring. Career average survival 4.52 -> 4.37 days on
+ * an unchanged 0.94 kills, which is the intended shape: they are beaten later,
+ * not beaten harder. Bloodbath share (35.0%), tribute-caused deaths (56.1%)
+ * and end health (40.0) are flat; zero-kill victors 28.9% -> 30.6%, which is
+ * the one number that moves the wrong way and is the reason the ramp is not
+ * steeper — the crowns leaving the Careers land disproportionately with
+ * survivalists, who win by outlasting rather than by killing.
+ */
+export const CAREER_APPETITE = {
+    /** Cycles of the horn's supplies before the academy stomach starts to tell. */
+    graceDays: 2,
+    /** Added to the hunger-drain multiplier for each cycle past the grace period. */
+    perDayPastGrace: 0.22,
+    /** Ceiling on that addition, so a long run does not become a starvation clock. */
+    multiplierCap: 1.2,
+} as const;
+
 /** Random encounters, hazards and mutts during a cycle. */
 /**
  * Item grades and condition. See `mintItem` in `engine/items.ts`.

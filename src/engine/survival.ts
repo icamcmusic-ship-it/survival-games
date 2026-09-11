@@ -1,5 +1,5 @@
 import { Tribute, attr } from '../models/types';
-import { ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
+import { CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -104,6 +104,15 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     // District 1 does, and that is the whole of what mining and the Seam buy.
     const resilience = craftOf(t.district).hungerResilience;
     if (resilience) hunger *= resilience;
+    // §9.4: and the academy's bill comes due on a clock. While the horn still
+    // has a pile on it a Career eats better than anybody; every cycle after
+    // that, the stomach an academy built asks for more than the arena has.
+    // See `CAREER_APPETITE` — the Career head start is untouched, the cost is
+    // moved onto the part of the run the pack is supposed to lose.
+    if (t.isCareer) {
+        const past = Math.max(0, ctx.state.day - CAREER_APPETITE.graceDays);
+        hunger *= 1 + Math.min(CAREER_APPETITE.multiplierCap, past * CAREER_APPETITE.perDayPastGrace);
+    }
     // §7.1: a tribute who took tesserae has been rationing for years — the
     // personal version of the district-level resilience above, and the
     // mechanical teeth the reaping note promises.

@@ -1280,6 +1280,34 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     victim.health = 0;
     victim.dayOfDeath = ctx.state.day;
 
+    // §9.1: the obituary and the damage record have to agree, and one path
+    // could not make them agree on its own.
+    //
+    // `strikeDown` finishes a tribute who is *already* in the rescue window by
+    // calling straight through to here, so the victim still carried the record
+    // of whoever put them on the ground. A tribute knocked down by friendly
+    // fire and then killed by somebody else read back as "Killed by Lavender
+    // (Sword)" with `lastDamage.sourceId` pointing at Sequoia — the obituary,
+    // the kill credit and the soak's attribution invariant disagreeing three
+    // ways about the same death. `finish` in downed.ts already does this
+    // reconciliation for the endings `tickDowned` owns; this is the same move
+    // for the ending combat owns, at the one funnel every death goes through.
+    //
+    // Narrow on purpose: when the record already names the killer — which is
+    // every ordinary kill, because `applyDamage` wrote it moments ago — this
+    // is a no-op. The marker goes with it: a corpse is not in a rescue window.
+    if (killer && victim.lastDamage?.sourceId !== killer.id) {
+        victim.lastDamage = {
+            cause: cause
+                || (weapon ? `Killed by ${killer.name} (${weapon.name})` : `Killed by ${killer.name}`),
+            kind: 'tribute',
+            sourceId: killer.id,
+            cycle: cycleOf(ctx.state),
+            amount: victim.lastDamage?.amount ?? 0,
+        };
+    }
+    delete victim.downed;
+
     // A2: a Diplomat's death dissolves every truce they talked other people
     // into. The agreements were only ever held together by them being there.
     dissolveBrokeredTruces(ctx, victim);
