@@ -448,7 +448,14 @@ export function generateTributes(
             // tracking and medicine, so it arrived with no way to kill anybody
             // at all. Wire and mechanism is a kill path — theirs is the trap,
             // and this is what lets them actually build one.
-            if (district === 3 && traitFits(traits, 'Trapper')) traits.push('Trapper');
+            // §8: this used to fire on *every* District 3 tribute, which made
+            // 'Trapper' a proxy for "reaped from District 3" rather than a
+            // trait — it is the largest sample in the trait table (n=4102 at
+            // 1600 runs) and the worst-performing, and tuning its numbers
+            // barely moved it, because most of what the number measures is
+            // District 3's win rate. Rolled now, so the trait table reports a
+            // trait; District 3 still gets its kill path most of the time.
+            if (district === 3 && rng.chance(GENERATION.districtThreeTrapperChance) && traitFits(traits, 'Trapper')) traits.push('Trapper');
             let traitAttempts = TRAITS.length * 4;
             while (traits.length < numTraits && traitAttempts-- > 0) {
                 const trait = rng.pick(TRAITS);

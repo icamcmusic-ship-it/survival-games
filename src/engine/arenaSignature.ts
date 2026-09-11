@@ -1059,7 +1059,7 @@ function labyrinthSignature(ctx: SimContext, cycle: number, rng: RNG) {
     // The telegraph for next time, with a false-direction chance: the grinding
     // does not come from where the grinding is.
     const trueZone = rng.pick(zones);
-    const named = rng.chance(SIGNATURE_RULES.labyrinthFalseChance) ? rng.pick(zones.filter(z => z !== trueZone)) ?? trueZone : trueZone;
+    const named = rng.chance(SIGNATURE_RULES.labyrinthFalseChance) ? rng.pickOrUndefined(zones.filter(z => z !== trueZone)) ?? trueZone : trueZone;
     ctx.logEvent(`Grinding starts up somewhere near ${named}, low and patient, and stops.`, [], { zone: named, category: 'arena' });
     getAlive(ctx.state).forEach(t => addZoneThreat(ctx.state, t, named, MEMORY.cannonThreat));
 }

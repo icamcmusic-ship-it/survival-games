@@ -1,3 +1,4 @@
+import { targetDrawOf } from '../targeting';
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Item, Tribute } from '../../models/types';
@@ -271,7 +272,7 @@ export function processBloodbath(ctx: SimContext) {
         const proximity = 1 - (t.platePosition ?? 0.5);
         const caught = BLOODBATH.runDownChance * proximity * Math.max(0.3, 1 - t.attributes.agility / 12);
         if (!ctx.rng.chance(caught)) return;
-        const hunter = ctx.rng.pick(hunters.filter(h => h.status === 'alive' && h.id !== t.id));
+        const hunter = ctx.rng.pickOrUndefined(hunters.filter(h => h.status === 'alive' && h.id !== t.id));
         if (!hunter) return;
         ctx.logEvent(
             `${t.name} turns for the treeline and does not get there. ${hunter.name} runs them down before they clear the ring of plates.`,
@@ -411,7 +412,7 @@ function pickOpponentIndex(ctx: SimContext, attacker: Tribute, pool: Tribute[]):
         // §8: the trait that claims nobody is looking at them. The bloodbath
         // is a third of every run's deaths and it was reading everything about
         // a target except how little anybody wanted to pick them.
-        weight += traitMod(target, 'targetDraw') * BLOODBATH.targetDrawWeight;
+        weight += targetDrawOf(target) * BLOODBATH.targetDrawWeight;
         // Careers hunt the weak first; that is the whole strategy.
         if (attacker.isCareer) weight += (10 - target.attributes.strength) * 0.15;
         weight *= Math.max(0.1, 1 - Math.max(0, getRel(attacker, target.id)) / 120);

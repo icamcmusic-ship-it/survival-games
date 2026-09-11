@@ -177,10 +177,17 @@ export function forceTriangleChoice(ctx: SimContext) {
         const bitter = ctx.rng.chance(TRIANGLES.vengeanceChance);
         if (bitter) swearVengeance(passed, chosen.id);
 
+        // BUG-1.3: this line used to say "twelve people left alive" no matter
+        // what. The dayNight caller is gated on a field of five or fewer, so
+        // it was guaranteed false there and arbitrary on the feast path.
+        const remaining = getAlive(ctx.state).length;
         ctx.logEvent(
             bitter
                 ? `${apex.name} makes the choice in front of both of them, and it is ${chosen.name}. `
-                    + `${passed.name} says that is fine, and means something else entirely by it. There are twelve people left alive in here.`
+                    + `${passed.name} says that is fine, and means something else entirely by it. `
+                    + (remaining === 1
+                        ? 'There is one person left alive in here.'
+                        : `There are ${remaining} people left alive in here.`)
                 : `${apex.name} makes the choice in front of both of them, and it is ${chosen.name}. `
                     + `${passed.name} takes it better than anyone watching expected, which the Capitol finds far less interesting than the alternative.`,
             [apex.id, chosen.id, passed.id],

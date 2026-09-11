@@ -1,3 +1,4 @@
+import { targetDrawOf } from './targeting';
 import { GameState, Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { ENDGAME, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
@@ -430,7 +431,7 @@ function chooseObjective(
                     && hasTruce(state, ally, o.id));
                 const thirdPartyCost = trucedWithAnAlly ? OBJECTIVES.thirdPartyTruceCost : 0;
                 return (winnable + loot + weakness + grudge - fearOf(t, o.id) + reputation - thirdPartyCost
-                    + traitMod(o, 'targetDraw')
+                    + targetDrawOf(o)
                     + targetPreferenceScore(t, o, hops)
                     // §4.3: and who is going to come looking. A hunter who has
                     // watched somebody else pull this tribute out of a fire has

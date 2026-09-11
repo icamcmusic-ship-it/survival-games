@@ -1,5 +1,5 @@
 import { Arena, ArenaLawId, EdgeRule, Injuries, Mutt, MuttRole, SignatureRule, Terrain, Zone, ZoneEffectKind } from '../models/types';
-import { RNG } from '../utils/rng';
+import { RNG, baseSeedOf } from '../utils/rng';
 import { PROCEDURAL_EVENTS, FlavorTag } from '../data/proceduralFlavor';
 import { PROC_SIGNATURE, PROC_TERRAIN } from '../data/balance';
 
@@ -656,9 +656,25 @@ function rollSponsorMultiplier(rng: RNG): number | undefined {
     return Math.round((0.7 + rng.nextFloat() * 0.6) * 20) / 20;
 }
 
-export function generateArena(seed: string): Arena {
-    const rng = new RNG(`${seed}-arena`);
-    const biome = rng.pick(BIOMES);
+/**
+ * Builds a procedural arena from a seed.
+ *
+ * BUG-1.1: the arena is keyed off the BASE seed. `rerollCast` composes
+ * `base~SUFFIX` and keeps the arena the run is already standing in, so a
+ * replay of that composite seed has to resolve the same arena or the share
+ * link plays a different map than the session it was copied from.
+ *
+ * `biomeId` pins the biome — a share link carries the resolved
+ * `procedural-<biome>` id, and honouring it means a link to a tundra run
+ * replays as a tundra run rather than as "some procedural arena".
+ */
+export function generateArena(seed: string, biomeId?: string): Arena {
+    const rng = new RNG(`${baseSeedOf(seed)}-arena`);
+    // The draw happens either way: pinning the biome must not shift every
+    // later draw in this stream, or a pinned link would replay a different
+    // map from the un-pinned one it was copied from.
+    const drawn = rng.pick(BIOMES);
+    const biome = (biomeId ? BIOMES.find(b => b.id === biomeId) : undefined) ?? drawn;
     // §8.3: the shape varies. Every hand-authored arena is 10-11 zones with 3
     // mutts, which reads to the player as sameness. The Gamemakers now build
     // claustrophobic 7-zone pressure cookers and 16-zone sprawls too — a

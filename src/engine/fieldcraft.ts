@@ -567,6 +567,14 @@ export function attemptFieldcraft(ctx: SimContext, t: Tribute): boolean {
     // Cold, dark and exhaustion, in the order a person would actually feel them.
     // A fire is a beacon, so it is worth it when warmth or morale is the problem
     // and not when they are trying to disappear.
+    // §8: a genuine trapper lays the trap first. This used to be the last
+    // option in the queue, behind sharpening, poisoning, a fire, a shelter and
+    // camouflage, so the whole field set 0.57 traps per run and the trait that
+    // exists to do this was the worst-performing in the game.
+    if (traitMod(t, 'trapSkill') >= TRAPS.prioritySkill && wantsToSetTrap(ctx, t)) {
+        setTrap(ctx, t);
+        return true;
+    }
     if (!isEvasiveStance(t.stance) && lightFire(ctx, t)) return true;
     if (buildShelter(ctx, t)) return true;
     if (isEvasiveStance(t.stance) && applyCamouflage(ctx, t)) return true;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ACHIEVEMENTS, META_ACHIEVEMENTS } from '../data/achievements';
+import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, AchievementCategory, AchievementRarity, META_ACHIEVEMENTS } from '../data/achievements';
 import { PanemRecords, RECORD_DEFS } from '../utils/panemStorage';
 import { DISTRICT_LEGACY, legacyOf } from '../data/districts';
 import { ARCHETYPES } from '../data/archetypes';
@@ -10,6 +10,35 @@ const DISTRICT_NUMBERS = Object.keys(DISTRICT_LEGACY).map(Number).sort((a, b) =>
 
 function archetypeName(id: string): string {
     return ARCHETYPES[id as ArchetypeId]?.name ?? id;
+}
+
+const RARITY_ORDER: Record<AchievementRarity, number> = { common: 0, uncommon: 1, rare: 2, legendary: 3 };
+
+/**
+ * §11: one row. `data-locked` is what the print stylesheet reads to spell out
+ * "not yet earned" — on a mono printer the lock icon and the dimmed text are
+ * indistinguishable from the checked, undimmed version.
+ */
+function AchievementRow({ a, unlocked }: { a: { id: string; name: string; hint: string; rarity?: AchievementRarity }, unlocked: boolean }) {
+    return (
+        <div
+            className={`panel-flush p-2.5 flex items-start gap-2.5${unlocked ? '' : ' opacity-55'}`}
+            data-locked={unlocked ? 'false' : 'true'}
+        >
+            {unlocked
+                ? <Check className="w-3.5 h-3.5 mt-0.5 flex-none" style={{ color: 'var(--cat-alliance)' }} />
+                : <Lock className="w-3.5 h-3.5 mt-0.5 flex-none text-[var(--color-ink-500)]" />}
+            <div className="min-w-0">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                    <div className={`text-sm font-bold achievement-name ${unlocked ? 'text-[var(--ink)]' : 'text-[var(--color-ink-400)]'}`}>{a.name}</div>
+                    {a.rarity && (
+                        <span className="text-[9px] font-mono uppercase tracking-wide text-[var(--color-ink-500)]">{a.rarity}</span>
+                    )}
+                </div>
+                <div className="text-[11px] text-[var(--color-ink-500)]">{a.hint}</div>
+            </div>
+        </div>
+    );
 }
 
 /**
@@ -24,6 +53,26 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
     const allAchievements = [...ACHIEVEMENTS, ...META_ACHIEVEMENTS];
     const seen = allAchievements.filter(a => unlocked.has(a.id));
     const unseen = allAchievements.filter(a => !unlocked.has(a.id));
+    // §11: 111 entries used to arrive as one flat list, seen-then-unseen, with
+    // nothing to say which shelf an entry was on or how hard it was — which is
+    // not a menu, it is a wall. Grouped by category, seen first inside each
+    // group, so "you have finished the social ones, go and look at the arena
+    // ones" is a thing the page can actually say.
+    const groups = (Object.keys(ACHIEVEMENT_CATEGORIES) as AchievementCategory[])
+        .map(category => {
+            const entries = ACHIEVEMENTS.filter(a => a.category === category);
+            return {
+                category,
+                blurb: ACHIEVEMENT_CATEGORIES[category],
+                seenCount: entries.filter(a => unlocked.has(a.id)).length,
+                entries: [...entries].sort((a, b) =>
+                    Number(unlocked.has(b.id)) - Number(unlocked.has(a.id))
+                    || RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity]
+                    || a.name.localeCompare(b.name)),
+            };
+        })
+        .filter(g => g.entries.length > 0);
+    const metaEntries = META_ACHIEVEMENTS;
     const heldRecords = RECORD_DEFS.filter(def => panem.bests[def.id] !== undefined);
     // Absent on any record written before district crowns existed, which reads
     // correctly as "nothing crowned yet".
@@ -162,29 +211,41 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
 
             <section>
                 <div className="eyebrow mb-2">Things these Games can do</div>
-                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-2 custom-scrollbar print-unclip">
-                    {seen.map(a => (
-                        <div key={a.id} className="panel-flush p-2.5 flex items-start gap-2.5" data-locked="false">
-                            <Check className="w-3.5 h-3.5 mt-0.5 flex-none" style={{ color: 'var(--cat-alliance)' }} />
-                            <div className="min-w-0">
-                                <div className="text-sm font-bold text-[var(--ink)] achievement-name">{a.name}</div>
-                                <div className="text-[11px] text-[var(--color-ink-500)]">{a.hint}</div>
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar print-unclip">
+                    {groups.map(group => (
+                        <div key={group.category}>
+                            <div className="flex items-baseline justify-between gap-2 mb-1">
+                                <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-ink-400)]">
+                                    {group.category}
+                                </div>
+                                <div className="text-[10px] font-mono text-[var(--color-ink-500)]">
+                                    {group.seenCount}/{group.entries.length}
+                                </div>
+                            </div>
+                            <div className="text-[10px] text-[var(--color-ink-500)] italic mb-1.5">{group.blurb}</div>
+                            <div className="space-y-1.5">
+                                {group.entries.map(a => <AchievementRow key={a.id} a={a} unlocked={unlocked.has(a.id)} />)}
                             </div>
                         </div>
                     ))}
-                    {/* §2.8: `data-locked` is what the print stylesheet reads to
-                        spell out "not yet earned" — on a mono printer the lock
-                        icon and the dimmed text are indistinguishable from the
-                        checked, undimmed version above. */}
-                    {unseen.map(a => (
-                        <div key={a.id} className="panel-flush p-2.5 flex items-start gap-2.5 opacity-55" data-locked="true">
-                            <Lock className="w-3.5 h-3.5 mt-0.5 flex-none text-[var(--color-ink-500)]" />
-                            <div className="min-w-0">
-                                <div className="text-sm font-bold text-[var(--color-ink-400)] achievement-name">{a.name}</div>
-                                <div className="text-[11px] text-[var(--color-ink-500)]">{a.hint}</div>
+                    {metaEntries.length > 0 && (
+                        <div>
+                            <div className="flex items-baseline justify-between gap-2 mb-1">
+                                <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-ink-400)]">
+                                    collection
+                                </div>
+                                <div className="text-[10px] font-mono text-[var(--color-ink-500)]">
+                                    {metaEntries.filter(a => unlocked.has(a.id)).length}/{metaEntries.length}
+                                </div>
+                            </div>
+                            <div className="text-[10px] text-[var(--color-ink-500)] italic mb-1.5">
+                                Earned across every Games you have ever run, not inside one of them.
+                            </div>
+                            <div className="space-y-1.5">
+                                {metaEntries.map(a => <AchievementRow key={a.id} a={a} unlocked={unlocked.has(a.id)} />)}
                             </div>
                         </div>
-                    ))}
+                    )}
                 </div>
                 {unseen.length > 0 && (
                     <p className="text-[11px] text-[var(--color-ink-500)] mt-2 italic">

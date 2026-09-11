@@ -49,6 +49,15 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   stock (districts 13-16 once shipped at 30 entries per gender against the
   original twelve's 100), no pool repeats itself, and no name is resident in
   more than two districts at once (`Sable` was in five).
+- `npm run test:achievements` — achievement coverage. Evaluates all 111
+  predicates against a few hundred real end-states (a crash test in itself:
+  they run over finished states with arbitrary optional fields missing), then
+  reports what the discovery layer actually hands out — entries that never
+  unlock, entries that fire on more than 60% of runs, how many land in the
+  usable 5-60% band, and any authored `rarity` label the measured rate
+  contradicts. Both failure modes matter: an unreachable entry is a promise the
+  game does not keep, and a near-automatic one is a participation ribbon on a
+  list that is supposed to be a menu.
 - `npm run test:flavor` — flavour-pool depth. A run averages ~650 log lines and
   swears ~10 vengeance oaths, so a 10-entry pool repeats itself inside a single
   Games as a matter of arithmetic. The backlog is now empty: every pool is at or
@@ -84,8 +93,11 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   win-rate tables it reports three things that used to be guesswork: trait power
   level (every numeric modifier bucketed by category, magnitude summed per trait,
   anything more than 1.5sd off its category mean flagged — a proxy for power, so
-  a report rather than a guard), per-archetype signature fire rate (fourteen
-  archetypes fire between 40% and 60%; Ghost fires at 19.8%), and win rate by
+  a report rather than a guard), per-archetype signature fire rate (all fifteen
+  archetypes now fire between 39% and 59% at 1,600 runs — the old note about
+  Ghost firing at 19.8% is long stale, Ghost is at 40%; the two at the bottom
+  of the band, Mercenary and Zealot, are there because they die fastest rather
+  than because their set piece is gated), and win rate by
   district legacy tier, which is the check that "starts behind on purpose" has
   not quietly become "cannot win".
 - `npm run test:ui` — Chromium smoke test covering every screen, control and

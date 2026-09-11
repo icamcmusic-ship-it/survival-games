@@ -303,13 +303,16 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Unremarkable': {
         info: 'Nobody is watching. Draws very little excitement and almost no sponsorship — and is genuinely the last person anyone goes looking for.',
-        // §8c: at 2.18% the worst trait in the game, because the promise in
-        // its own info string was never mechanical: the targeting layer did
-        // not weight it at all. `targetDraw` is that discount made real and
-        // made large — being overlooked is the entire trait, so it has to be
-        // worth as much as a weapon. The sponsor rider pays out late, when
-        // the crowd finally notices somebody they have not been shown.
-        mods: { excitement: -0.4, sponsorTrust: -1.5, odds: -1, targetDraw: -28, concealment: 0.08 },
+        // §8c gave this a large `targetDraw` discount to make the promise in
+        // its own info string mechanical, and it worked — but the trait was
+        // still last at 3.87% (n=1266), because the riders cost more than
+        // being overlooked was worth. `sponsorTrust: -1.5` is applied *per
+        // cycle* (survival.ts), so over a full run it drove trust to zero and
+        // kept it there: this tribute could never be sponsored at all. Cut to
+        // a drift that still reads as "nobody is buying them a parachute"
+        // without closing the door, and the concealment rider raised to pay
+        // out where the trait's identity actually lives.
+        mods: { excitement: -0.4, sponsorTrust: -0.4, odds: -1, targetDraw: -28, concealment: 0.12 },
     },
 
     // ---- the pack and the pantry ---------------------------------------
@@ -318,8 +321,16 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { forage: 0.1, medicine: 0.2, poisonResist: 0.25 },
     },
     'Trapper': {
+        // §8: the largest sample of any trait (n=4102) and the worst win rate
+        // in the game (3.05%) — common AND bad, the worst combination there
+        // is for how fair the game feels. The cause was not the numbers here:
+        // `attemptFieldcraft` tried sharpening, poisoning, a fire, a shelter
+        // and camouflage before it ever considered a trap, so across 400 runs
+        // the entire field set 228 of them. Trap-setting now jumps that queue
+        // for tributes who are genuinely good at it (see TRAPS.prioritySkill),
+        // which is what this trait is for; the skill number went up with it.
         info: 'Builds things that wait. The best trap-setter in the field, and a competent camp.',
-        mods: { trapSkill: 0.2, campSkill: 0.1 },
+        mods: { trapSkill: 0.28, campSkill: 0.1 },
     },
     'Scavenger': {
         info: 'Finds what other people walked past. Turns up supplies with no obvious source.',
@@ -360,7 +371,15 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     'Hardened': {
         info: 'Earned surviving the Gamemakers\' animals twice. Whatever they send next, they have already met worse — and they break off from it sooner.',
         earned: true,
-        mods: { fearGain: -0.4, sanityDrain: -0.2, combatPower: 1, resolveDrift: 1, retreat: 0.1, muttDamage: -0.35 },
+        // §8: the one earned trait that reads below the field (0.65% against a
+        // ~5% baseline and 12-25% for the other eleven), because its earning
+        // condition is itself two near-deaths: everyone holding it has already
+        // been mauled twice. The rate can never look like Feared's — but the
+        // mitigation was nowhere near paying for what it cost to get, so the
+        // mutt-damage discount and the break-off are both raised. A tribute
+        // who has met the Gamemakers' animals twice and walked away should be
+        // genuinely hard for the third one to kill.
+        mods: { fearGain: -0.4, sanityDrain: -0.2, combatPower: 1.5, resolveDrift: 1, retreat: 0.15, muttDamage: -0.6 },
     },
     'Merciful': {
         info: 'Earned by letting someone live who did not have to. The Capitol finds it fascinating; the arena finds it expensive.',

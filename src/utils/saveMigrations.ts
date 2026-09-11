@@ -415,7 +415,11 @@ function normalizeStandingGoal(raw: unknown): StandingGoal | undefined {
 function normalizeConfig(raw: unknown): GameConfig {
     const r = asRecord(raw) ?? {};
     return {
-        districtCount: clamp(asNum(r.districtCount, DEFAULT_GAME_CONFIG.districtCount), 1, 16),
+        // §1.6: floor of 2, not 1. Every other reader of this field
+        // (prefsStorage, hofStorage, the arena generator) clamps to 2-16 and
+        // types.ts documents the range as 2-16; a migrated save carrying a
+        // districtCount of 1 was a value nothing downstream agreed with.
+        districtCount: clamp(asNum(r.districtCount, DEFAULT_GAME_CONFIG.districtCount), 2, 16),
         hazardRate: asNum(r.hazardRate, DEFAULT_GAME_CONFIG.hazardRate),
         betrayalRate: asNum(r.betrayalRate, DEFAULT_GAME_CONFIG.betrayalRate),
         sponsorGenerosity: asNum(r.sponsorGenerosity, DEFAULT_GAME_CONFIG.sponsorGenerosity),

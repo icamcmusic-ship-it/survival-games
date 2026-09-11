@@ -22,6 +22,18 @@ export function sfc32(a: number, b: number, c: number, d: number) {
     }
 }
 
+/**
+ * A rerolled cast composes its seed as `base~SUFFIX` (see `rerollCast`). The
+ * suffix rerolls the cast and the year's profile, but NOT the things that were
+ * already locked in when the reroll button was pressed — the arena and the
+ * Quarter Quell. Anything that must stay stable across a reroll derives its
+ * stream from this, so that replaying the composite seed from a share link
+ * resolves the same arena and the same Quell as the session it was copied from.
+ */
+export function baseSeedOf(seed: string): string {
+    return seed.split('~')[0];
+}
+
 export class RNG {
     private random: () => number;
     constructor(seed: string) {
@@ -34,11 +46,27 @@ export class RNG {
     nextInt(min: number, max: number): number {
         return Math.floor(this.random() * (max - min + 1)) + min;
     }
+    /**
+     * Picks from a non-empty array. An empty array is a call-site bug — every
+     * caller of this overload has already guarded, or is picking from a
+     * literal pool — so it throws rather than handing back an `undefined`
+     * wearing a `T`, which used to travel silently into fields the soak's
+     * undefined/NaN grep (it reads rendered log text) could never see.
+     * Use `pickOrUndefined` where an empty pool is a legitimate outcome.
+     */
     pick<T>(arr: T[]): T {
-        // An empty array must not consume a draw: nextInt(0, -1) burned one
-        // and returned undefined, so the stream position depended on data the
-        // call site had already guarded against — a replay-divergence hazard.
-        if (arr.length === 0) return undefined as T;
+        const picked = this.pickOrUndefined(arr);
+        if (picked === undefined) throw new Error('RNG.pick called with an empty array — use pickOrUndefined for pools that may be empty');
+        return picked;
+    }
+    /**
+     * The honest form: an empty pool yields `undefined` and, crucially, does
+     * not consume a draw. nextInt(0, -1) burned one and returned undefined, so
+     * the stream position depended on data the call site had already guarded
+     * against — a replay-divergence hazard.
+     */
+    pickOrUndefined<T>(arr: readonly T[]): T | undefined {
+        if (arr.length === 0) return undefined;
         return arr[this.nextInt(0, arr.length - 1)];
     }
     chance(probability: number): boolean {
