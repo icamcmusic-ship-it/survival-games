@@ -161,8 +161,15 @@ export const INFECTION = {
      * matters, through `perGradeAbove`; it is a weight, not a gate.
      */
     minWoundGrade: 1,
-    /** Cycles a wound must go untended before the first roll. */
-    incubationCycles: 4,
+    /**
+     * Cycles a wound must go untended before the first roll.
+     *
+     * §7.1: two rather than four. A Games lasts ~20 cycles and most tributes
+     * who take a wound are dead inside six of them, so a four-cycle fuse meant
+     * the arc reliably started after the only people it could have finished
+     * were already gone.
+     */
+    incubationCycles: 2,
     /** Per-cycle odds once incubated, before every term below. */
     baseChance: 0.035,
     perGradeAbove: 0.05,
@@ -183,8 +190,16 @@ export const INFECTION = {
 
     /** Grades an infection runs through; the top one is terminal. */
     maxGrade: 3,
-    /** Odds an untreated infection deepens a grade this cycle. */
-    worsenChance: 0.24,
+    /**
+     * Odds an untreated infection deepens a grade this cycle.
+     *
+     * §7.1: 0.24 with a ~20-cycle run meant 105 wounds turned per 400 runs,
+     * 30 deepened once, and 3 ever reached the terminal grade — so the whole
+     * back half of the arc, including the only achievement that reads it, was
+     * effectively unreachable. An infection nobody treats has to be able to
+     * finish the job inside the length of a Games.
+     */
+    worsenChance: 0.34,
 
     /** The drain: what sepsis takes that is not health. */
     fatiguePerCycle: 2.5,
@@ -196,7 +211,7 @@ export const INFECTION = {
      * against field dressings and sponsor medicine produced one sepsis death
      * in 400 runs; an untreated infection has to be able to end somebody.
      */
-    terminalCycles: 3,
+    terminalCycles: 5,
     feverLineChance: 0.12,
 
     /** Treatment: a real medical item, one grade at a time. */
@@ -577,8 +592,35 @@ export const HUNTING = {
  * out-weighs the first.
  */
 export const PROFICIENCY = {
-    /** Gained per successful use, before diminishing returns. */
-    gainPerUse: 0.35,
+    /**
+     * Gained per successful use, before diminishing returns.
+     *
+     * §3.1: measured over 400 runs, the average tribute's *best* proficiency
+     * finished at 2.20 against a cap of 6 — 37% of the ceiling — and the
+     * single highest value seen anywhere in 400 runs was 5.30, so nothing has
+     * ever been mastered. avgDays is 9.9: the cap was set for a longer game
+     * than the one being played.
+     *
+     * Of the two fixes available — drop the cap to ~4, or raise the gain so a
+     * ten-day run can plausibly max one skill — this takes the second. The
+     * cap is not just a clamp: `combatWeight`, `forageWeight`, the
+     * `persuasion*` weights, `competentBand`/`skilledBand`/`expertBand` and
+     * `nearCapBand` are all denominated in it, and most of their read sites
+     * live in combat.ts, fieldcraft.ts and parley.ts. Lowering `max` would
+     * silently rescale every one of those bonuses by a third while leaving
+     * their comments claiming otherwise. Raising the rate moves one number and
+     * leaves the meaning of "a 5 in melee" exactly where every read site
+     * already assumes it is.
+     *
+     * Re-measured at 400 runs after the change: best proficiency avg 2.20 ->
+     * 2.56, peak 5.30 -> 6.00, so the top of the scale is reachable for the
+     * first time. 0.54 was also measured and gives avg 2.77, but wipeouts
+     * (runs ending with no victor) walk 1.5% -> 2.5% -> 3.3% monotonically
+     * with this knob — a better-skilled field kills itself out more often —
+     * and 3.3% is far enough off the <=2% design goal to not be worth 0.2 of
+     * a proficiency point. 0.46 is where that trade sits.
+     */
+    gainPerUse: 0.46,
     /** Nobody becomes a surgeon in eight days — but the old cap of 4 was hit
      *  by every specialist by mid-run, flattening late-run differentiation.
      *  Raised, with each successive point costing more (see `trainProficiency`),
@@ -594,8 +636,8 @@ export const PROFICIENCY = {
      * accelerate as the run wears on (necessity is the arena's tutor), so a
      * survivalist visibly arrives somewhere by the endgame.
      */
-    lateRunGainPerDay: 0.09,
-    lateRunGainCap: 0.9,
+    lateRunGainPerDay: 0.11,
+    lateRunGainCap: 1.1,
     /**
      * §3.9: the bottom of the curve. Proficiency averaged 1.85 against a cap
      * of 6 across 400 runs — flat enough that most tributes never felt a
@@ -620,7 +662,14 @@ export const PROFICIENCY = {
      * of the scale stays somewhere almost nobody gets to.
      */
     nearCapBand: 1,
-    nearCapGainMultiplier: 0.35,
+    /**
+     * §3.1: relaxed from 0.35. The asymptote above was doing its job a little
+     * too well — combined with `diminishingPerLevel` it put roughly seventeen
+     * hard uses between 5 and 6, which on a 9.9-day run meant the top of the
+     * scale was decorative. The last band is still the most expensive band by
+     * a distance; it is now somewhere a specialist can actually arrive.
+     */
+    nearCapGainMultiplier: 0.55,
     /** §3.9: the visible bands, in prose and on the tribute sheet. */
     competentBand: 2,
     skilledBand: 3.5,
@@ -715,6 +764,127 @@ export const PROFICIENCY = {
     skillLossGrade: 3,
     skillLossPerCycle: 0.25,
     skillLossFloor: 0.5,
+    /**
+     * §3.1: the three added axes — `climbing`, `swimming`, `crafting`.
+     *
+     * `Climber` and `Swimmer` existed as reaping traits with movement-scoring
+     * mods and nothing behind them, so the one thing a swimmer obviously does
+     * over eight days — get better at swimming — was unrepresentable. The
+     * trait now seeds the matching proficiency to this level and the tribute
+     * grows past it; the movement mods stay, because preferring water is a
+     * different statement from being good in it.
+     */
+    traitHeadStart: 1.5,
+    /**
+     * Chance per cycle that standing in ground which demands a skill teaches
+     * it. Deliberately well under 1: a cycle in a gorge is practice, not a
+     * lesson, and these three would otherwise be the only skills in the file
+     * that train for free.
+     */
+    terrainTrainChance: 0.3,
+    /** ...and the same for keeping a fire, a shelter or a trap line working. */
+    craftTrainChance: 0.35,
+    /** Climb modifier added per point of `climbing` (physique.climbModifier). */
+    climbWeight: 0.22,
+    /** Fatigue a point of `swimming` takes off a cycle spent in or on water. */
+    swimFatigueRelief: 0.5,
+    /** Extra fatigue recovery per point of `crafting` for a tribute in camp. */
+    craftRestWeight: 0.35,
+} as const;
+
+/**
+ * §3.3: attributes that move.
+ *
+ * `condition` is the strongest idea in the tribute model — it walks
+ * Padded -> Lean -> Wasted under starvation while frame, reach and
+ * intimidation stay exactly where they were, and that asymmetry is what makes
+ * the back half of a run feel unlike the front half. It was also the *only*
+ * thing about a body that moved. Strength, agility, intelligence, charisma,
+ * stealth and endurance were rolled at the reaping and constant for the run,
+ * so a tribute nine days into starvation swung as hard as on day one and only
+ * `effectiveStrength()` wrapped any of it.
+ *
+ * These are the weights for the sibling `effectiveX()` accessors in
+ * engine/physique.ts. Nothing here mutates a base attribute: the printed sheet
+ * still shows who they were at the reaping, and the engine reads who they are
+ * now. That is the same contract `effectiveStrength` already had.
+ */
+export const ATTRITION = {
+    /** Agility lost per grade of leg injury. A ruined leg is three of these. */
+    agilityPerLegGrade: 0.9,
+    /** Intelligence lost per point of sleep debt past `SLEEP.deprivedAt`. */
+    intelligencePerSleepDebt: 0.45,
+    /** Sanity at which charisma starts to go. Above this, nothing is lost. */
+    charismaSanityPivot: 60,
+    /** Charisma lost per ten points of sanity below the pivot. */
+    charismaPerSanityStep: 0.5,
+    /** Nobody degrades below this on any axis — a wreck is still a person. */
+    floor: 1,
+} as const;
+
+/**
+ * §3.2: the two attributes still doing more than one job.
+ *
+ * The endurance comment in `Attributes` documents the precedent: fatigue used
+ * to decide both "can fight" and "can keep walking", so the disposition half
+ * was split out into its own scalar and the state half kept its name. Two
+ * unsplit cases were left.
+ *
+ *  - `vitals.sanity` runs breakdown risk, hallucination, alliance affinity and
+ *    audience appeal off one number, and it is the largest single log category
+ *    at 13.6% of all chronicle lines — more than combat (7.9%) or survival
+ *    (9.1%). A stat generating one line in seven is doing too much narrative
+ *    work to also be a mechanical scalar. Sanity keeps the mechanical half
+ *    (breakdown, hallucination, `sanityBandOf`); `poiseOf()` is the social
+ *    half — what a tribute *looks* like to an ally or a sponsor, which lags
+ *    behind what they are, because people hold it together in company.
+ *
+ *  - `charisma` feeds interviews, sponsors, alliance recruitment, parley and
+ *    rumour credibility with no separation between "likeable" and
+ *    "persuasive". `warmthOf()` is the first; `rhetoricOf()` is the second.
+ *    Being feared and being trusted are not the same currency, and a tribute
+ *    with four kills should be losing the first while keeping the second.
+ *
+ * Both are derived rather than stored: no save-format change, no generator
+ * change, and every existing read of `charisma`/`sanity` keeps working while
+ * call sites move over one at a time. See engine/composure.ts.
+ */
+export const SOCIAL_AXES = {
+    /** Sanity points of poise a point of willpower over the midpoint holds on to. */
+    poisePerWillpower: 2.5,
+    /** ...and what signed composure (momentum minus rattled) is worth to it. */
+    poisePerComposure: 1.5,
+    /** Warmth lost per kill. A useful ally and a safe one are different things. */
+    warmthPerKill: 0.35,
+    /** How much a trait's alliance affinity (0-1 scale) reads as warmth (0-10). */
+    warmthPerAffinity: 3,
+    /** Warmth lost per ten points of poise below the midpoint. */
+    warmthPerPoiseStep: 0.4,
+    /** Rhetoric added per point of the `persuasion` proficiency. */
+    rhetoricPerPersuasion: 0.5,
+    /** Argument is partly knowing the ground: intelligence's share of rhetoric. */
+    rhetoricPerIntelligence: 0.2,
+    /** Rhetoric lost per ten points of poise below the midpoint — nobody argues
+     *  well while visibly coming apart, but it costs less than warmth does. */
+    rhetoricPerPoiseStep: 0.25,
+    /** The midpoint of the 0-100 poise scale, above which neither is penalised. */
+    poiseMidpoint: 50,
+    /** The midpoint of the 0-10 attribute scale, for the two ally reads below. */
+    attributeMidpoint: 5,
+    /**
+     * Sanity recovery added per point of the warmest present ally's warmth
+     * over the midpoint. Company was a flat number: any ally in the zone was
+     * worth exactly as much as any other, which is the reading of comfort a
+     * spreadsheet has and nobody else does.
+     */
+    allyComfortPerWarmth: 0.5,
+    /**
+     * ...and resolve added per point of the most persuasive ally's rhetoric.
+     * Somebody who can make the case for tomorrow is a different asset from
+     * somebody who is merely there, and this is the one place the distinction
+     * between warmth and rhetoric is visible in a single cycle.
+     */
+    allyArgumentPerRhetoric: 0.12,
 } as const;
 
 /**
@@ -906,6 +1076,15 @@ export const FATIGUE_MISTAKES = {
     /** Of the mistakes: odds it is a dropped item (else a stumble). */
     dropShare: 0.5,
     stumbleDamage: 6,
+    /**
+     * §3.3: how much of the mistake chance a point of *effective* agility over
+     * the midpoint takes off — and, symmetrically, how much a point below it
+     * adds. This is the visible end of `effectiveAgility`: a tribute with a
+     * grade-3 leg misjudges a step in the dark far more often than the same
+     * tribute did on day one, which is the whole argument for attributes that
+     * move. Clamped at the call site so it can never reach zero or one.
+     */
+    agilityRelief: 0.012,
 } as const;
 
 /**
@@ -1297,6 +1476,67 @@ export const VOLUNTEER = {
     sacrificeExcitement: 14,
 } as const;
 
+/**
+ * §9.4: the academy's bill, and when it comes due.
+ *
+ * `DISTRICT_CRAFT.hungerResilience` already said the thing out loud — "a
+ * tribute from the wealthiest district in Panem has never missed a meal in
+ * their life, which is precisely why the Cornucopia matters so much to them
+ * and why the pack falls apart once the supplies are gone" — but it was a flat
+ * multiplier applied from the first cycle, so it taxed a Career hardest
+ * exactly where they are supposed to be strongest (the bloodbath, and the days
+ * they are still eating out of the horn) and said nothing at all about the
+ * part of the run it was written about.
+ *
+ * The measurement that prompted this was not the win share on its own. Careers
+ * took 48.1% of crowns at n=3200 against a 25% share of the cast, and they
+ * were doing it with the *longest* average survival in the game (4.52 days
+ * against a 3.7 field mean) on 0.96 kills. The archetype whose `riskCurve` is
+ * `front-loaded`, whose whole story is a pack that comes apart, was winning
+ * the attrition game. That inversion is the bug; the share is the symptom.
+ *
+ * So the head start is untouched and the cost moves onto the clock.
+ * `graceDays` is the pile at the horn: while it lasts a Career eats better
+ * than anybody. Past it the multiplier climbs every cycle, so a Career alive
+ * on day eight is the hungriest tribute in the arena and the one who least
+ * knows what to do about it. Hunger is deliberately the axis rather than
+ * damage — it gates `RECOVERY.maxHunger`, drains sanity and stops a wound
+ * closing, so it costs a Career the long game without ever making them easier
+ * to beat in the fight they picked. Starvation deaths move 1.1% -> 1.4%: this
+ * is attrition, not a starvation clock.
+ *
+ * Pairs with the archetype's `intelligence: -1` (§8) — the appetite is why
+ * they need to forage, the intelligence is why they are bad at it — and with
+ * `TRAINING_FLOOR.careerSurvival`, which is why they never learned.
+ *
+ * Deliberately keyed on `isCareer` (D1/D2/D4) rather than the `career`
+ * archetype: the academy is a place, not a personality, and only ~36% of
+ * Career-district tributes roll the archetype, so a trade-off hung on the
+ * archetype alone is paid by a third of the people holding the advantage.
+ *
+ * Measured at n=3200 (the 400-run default moves this number by ~2 points
+ * either way, so it was tuned on the larger sample): Career victors 48.1% ->
+ * 42.9%, design goal <= 45% newly met. Four other goals come with it — best
+ * archetype 8.61% -> 7.95% (<= 8%, newly met), archetype spread 2.65x -> 2.23x
+ * (<= 2.3, newly met), worst archetype 3.24% -> 3.57% (>= 3.5%, newly met) and
+ * wipeouts 2.1% -> 2.0% — because Career dominance was most of what the
+ * archetype spread was measuring. Career average survival 4.52 -> 4.37 days on
+ * an unchanged 0.94 kills, which is the intended shape: they are beaten later,
+ * not beaten harder. Bloodbath share (35.0%), tribute-caused deaths (56.1%)
+ * and end health (40.0) are flat; zero-kill victors 28.9% -> 30.6%, which is
+ * the one number that moves the wrong way and is the reason the ramp is not
+ * steeper — the crowns leaving the Careers land disproportionately with
+ * survivalists, who win by outlasting rather than by killing.
+ */
+export const CAREER_APPETITE = {
+    /** Cycles of the horn's supplies before the academy stomach starts to tell. */
+    graceDays: 2,
+    /** Added to the hunger-drain multiplier for each cycle past the grace period. */
+    perDayPastGrace: 0.22,
+    /** Ceiling on that addition, so a long run does not become a starvation clock. */
+    multiplierCap: 1.2,
+} as const;
+
 /** Random encounters, hazards and mutts during a cycle. */
 /**
  * Item grades and condition. See `mintItem` in `engine/items.ts`.
@@ -1316,6 +1556,47 @@ export const QUALITY = {
     maxArmour: 0.35,
     /** Durability an armour piece loses per point of damage it absorbs. */
     armourWearPerPoint: 1.5,
+} as const;
+
+/**
+ * §10.2: condition as something you can read, and salvage as something you can do.
+ *
+ * Durability existed and worked — `conditionOf` returns a fraction, and
+ * `effectiveDamage` already scaled with it — but it was invisible. A blade
+ * three exchanges from snapping was named exactly like a fresh one in every
+ * line of the chronicle, so the whole system was a hidden float that surfaced
+ * once, at zero, as "it breaks". Named bands make it legible, and give the
+ * keep/drop heuristic something better than a magic `durability <= 10`.
+ *
+ * Salvage is the other half: two of the same kind of thing in a pack that
+ * only holds so much used to mean dropping one on the ground intact. Stripping
+ * the one you are leaving for parts is what anybody would actually do, and it
+ * gives a worn weapon a route back that is not a sponsor gift.
+ */
+export const ITEM_CONDITION = {
+    /** Condition at or above which a piece is as good as it came. */
+    pristineAbove: 0.85,
+    /** …and the two bands below that. Under `failingBelow` it is about to go. */
+    serviceableAbove: 0.55,
+    failingBelow: 0.25,
+    /** Names, in the chronicle's register rather than an inventory screen's. */
+    wornSuffix: 'notched',
+    failingSuffix: 'close to done',
+
+    /** What the keep/drop heuristic makes of a piece in each band. */
+    wornKeepPenalty: 12,
+    failingKeepPenalty: 34,
+
+    /**
+     * Salvage: the share of a scrapped piece's remaining durability that
+     * reaches the one being kept. Well under half — this is a field repair
+     * with somebody else's crossguard, not a forge.
+     */
+    salvageYield: 0.4,
+    /** A repair cannot take a piece past this share of its original condition. */
+    salvageCeiling: 0.9,
+    /** Below this much remaining durability there is nothing worth stripping. */
+    salvageFloor: 4,
 } as const;
 
 /**
@@ -2078,6 +2359,20 @@ export const LOAD_BEARING = {
     collapseCrushChance: 0.55,
     /** Of the crush injuries, the share that are legs rather than torso. */
     collapseLegShare: 0.5,
+    /**
+     * §7.1: the threshold the module's own doc comment always claimed — "past
+     * a threshold it is a question of when rather than whether" — and which
+     * nothing implemented. The collapse existed only as a universal event a
+     * tribute had to happen to draw while standing in a loaded ruin, so a
+     * mechanic whose *state* is reached in 201 of 657 ruins-zone run-ends fired
+     * exactly once in 400 runs. Past `collapseAt` the structure rolls for
+     * itself each cycle, whether or not anybody drew the event.
+     */
+    collapseAt: 0.8,
+    /** Per-cycle odds a structure past `collapseAt` comes down on its own. */
+    collapseChancePerCycle: 0.14,
+    /** ...and the multiplier on that while somebody is standing in it. */
+    collapseOccupiedMultiplier: 2,
 } as const;
 
 /**
@@ -2163,6 +2458,16 @@ export const VERTICALITY = {
     fallFatiguePivot: 55,
     fallFatigueWeight: 1.6,
     fallDamage: 24,
+    /**
+     * §7.1: the fall that is not a slip. Past this much fatigue a descent from
+     * the top of a vertical zone is a drop rather than a climb, and the damage
+     * is scaled to be survivable only by somebody who was near full health —
+     * which is the threshold the audit asked for rather than a new feature.
+     */
+    sheerFallFatigue: 72,
+    /** Share of falls at that fatigue that go all the way down. */
+    sheerFallShare: 0.45,
+    sheerFallDamage: 62,
 } as const;
 
 export const CRAFTING = {
@@ -2249,9 +2554,17 @@ export const TRAPS = {
      * a real thing to walk into rather than a line of flavour text.
      */
     /** Cycles before an unsprung trap rots, is found by the arena, or is stepped over. */
-    lifetime: 8,
-    /** How many a single tribute can have set at once. */
-    maxPerTribute: 2,
+    lifetime: 10,
+    /**
+     * How many a single tribute can have set at once.
+     *
+     * §7.1: three rather than two. The `deadfall` achievement wants a victor
+     * whose traps killed two people, and with a two-trap cap, an eight-cycle
+     * lifetime and a rot roll every cycle, a trapper who survives to the end
+     * essentially never has two standing at once — 74 trap kills across 400
+     * runs produced no victor with two of them.
+     */
+    maxPerTribute: 3,
     /** Base odds a build attempt produces a working trap. */
     buildBaseChance: 0.5,
     buildPerIntelligence: 0.045,
@@ -2442,6 +2755,15 @@ export const MEMORY = {
     dissociationBlankShare: 0.3,
     dissociationInventShare: 0.2,
     dissociationInventedThreat: 4,
+    /**
+     * §4.3: how many names one person can actually be carrying at once.
+     *
+     * Vengeance was sworn 10.2 times a run and paid by the swearer 5% of the
+     * time, which makes an oath cheap talk. A tribute holds this many; a new
+     * one displaces the oldest, because a grudge you have replaced twice over
+     * was never the thing organising your run.
+     */
+    maxOaths: 3,
     /** Threat impression added to a zone by a death witnessed there. */
     deathThreat: 1.0,
     /** Threat added by a death only heard as a cannon (location known from the sky). */
@@ -2771,6 +3093,18 @@ export const RELATIONSHIPS = {
     trustBetrayedPenalty: 40,
     trustSuspicionWeight: 0.4,
     trustCreditorBonus: 10,
+    /**
+     * §4.5: how much trust affection can buy on its own.
+     *
+     * Regard was doing three jobs at once — "I like you", "I trust you with
+     * the cache", "I would die for you" — and deriving trust as regard plus
+     * corrections kept the first of those three welded to the second: adoring
+     * somebody made you trust them, which is not how anybody works and rules
+     * out the most interesting position in an arena, which is someone you love
+     * and do not trust. Regard raises trust only this far. Past it, trust is
+     * bought with the things in `memory` that somebody actually did.
+     */
+    trustFromRegardCap: 55,
     min: -100,
     max: 100,
     /** Per-cycle pull toward zero for pairs with no contact. */
@@ -2805,6 +3139,13 @@ export const RELATIONSHIPS = {
      * anyone this tribute was this close to. See `propagateDeathFallout`.
      */
     vengeanceBond: 40,
+    /**
+     * §4.3: an oath sworn over a body you were standing next to is a different
+     * object from one sworn over a name in the sky. Ten oaths a run at a 5%
+     * self-completion rate is cheap talk; a mourner who was not there swears
+     * only on this roll, and everyone else's grief stays grief.
+     */
+    vengeanceDistantChance: 0.18,
     /** Sanity cost scales with how strong the lost bond was. */
     griefSanityMax: 45,
     griefSanityMin: 8,
@@ -3068,10 +3409,33 @@ export const BLOC_TREATY = {
 } as const;
 
 export const TRIANGLES = {
-    /** Regard a rival needs toward the apex to count as attached. */
-    suitorRegard: 38,
-    /** Regard the apex needs toward both, so this is a choice and not two crushes. */
-    apexWarmth: 15,
+    /**
+     * Regard a rival needs toward the apex to count as attached.
+     *
+     * §4.1: raised from 38 with the undeclared-romance leg. Contact warmth
+     * pushes any pair who travel together toward the clamp, so at 38 a
+     * five-member alliance contained a dozen nominal "suitors" and the
+     * detector found a triangle around nearly everybody.
+     */
+    suitorRegard: 70,
+    /**
+     * §4.1: mutual regard at which a leg counts as a romance in its own right,
+     * without a declared or performed bond on it.
+     *
+     * Requiring a declared bond meant a triangle could only exist in the ~13%
+     * of runs that produce one at all, which is why 400 runs produced 38
+     * triangles and four forced choices. This is deliberately far above the
+     * bar that produced 3,970 triangles (any warm pair inside an alliance):
+     * both sides have to be near the top of the scale, which is a romance
+     * whether or not anybody has said so on camera.
+     */
+    romanticRegard: 96,
+    /**
+     * Regard the apex needs toward both, so this is a choice and not two
+     * crushes. §4.1: raised from 15 alongside the undeclared-romance leg — at
+     * 15 the apex barely had to have noticed the second suitor exists.
+     */
+    apexWarmth: 40,
     /** What a declared Star-Crossed bond is worth against unspoken regard. */
     declaredBondRegard: 85,
 
@@ -3082,6 +3446,25 @@ export const TRIANGLES = {
     jealousyLineHeat: 1,
 
     /**
+     * §4.1: what heat actually is.
+     *
+     * Heat used to accrue only while the two rivals stood in the same zone,
+     * which across 400 runs produced 44 triangles, 24 jealousy beats and one
+     * forced choice — the payoff the whole subsystem exists for, fired once.
+     * Rivalry does not require co-location: two people in the same group, or
+     * one ridge apart and both walking toward the same person, are rivals all
+     * day. Same place is worth the most, nearby or same group rather less.
+     */
+    heatSameZone: 1,
+    heatNearby: 0.5,
+    /**
+     * Heat at which the triangle forces its own choice rather than waiting for
+     * the feast or the endgame. A thing that holds until it cannot hold still
+     * has to have a point at which it cannot hold.
+     */
+    boilOverHeat: 7,
+
+    /**
      * Heat before the apex can be made to choose at all.
      *
      * Heat only accrues while all three are in the same place, which is
@@ -3089,7 +3472,7 @@ export const TRIANGLES = {
      * the choice fired three times in 400 runs and the beat the whole feature
      * exists for effectively did not ship.
      */
-    choiceMinHeat: 2,
+    choiceMinHeat: 3,
     chosenRegard: 15,
     passedOverRegard: 30,
     passedOverSanity: 12,
@@ -3176,6 +3559,15 @@ export const ROMANCE = {
      * everyone who is not first in the iteration order.
      */
     maxPerCycle: 2,
+    /**
+     * §4.1: odds per cycle that a standing bond gets a line about the day it
+     * is having. Romance was the rarest category in the chronicle (0.1%) not
+     * because pairs never formed but because forming was all a pair could do;
+     * the declaration was the whole relationship. See `tickBondBeats`.
+     */
+    bondBeatChance: 0.65,
+    /** Excitement a bonded pair earns for playing one of those days on camera. */
+    bondBeatExcitement: 6,
     /** Cycles of recent contact required, tracked as a streak. */
     sustainedCycles: 4,
     /** Contact this stale breaks the streak. */
@@ -3421,11 +3813,21 @@ export const ALLIANCES = {
      * A faction forms when two or more members' suspicion of the same third
      * party is all above `factionSuspicion`. `factionHeat*` decides whether it
      * ends in a coup, a walk-out, or nothing at all.
+     *
+     * §4.4: 125 faction actions, 18 expulsions and 77 hearings across 400
+     * runs meant a player watched ~22 runs between expulsions, for mechanics
+     * that are built, tested and shipping. The detector was the bottleneck:
+     * suspicion decays 2 a cycle, so a bloc needed a witnessed betrayal or
+     * three charter breaches to clear 14 and then had to hold it for four
+     * cycles. Loosened at both ends, and given a second way in — a bloc can
+     * also be people who simply cannot stand the same member, which is what
+     * `factionResentRegard` reads.
      */
-    factionSuspicion: 14,
+    factionSuspicion: 9,
+    factionResentRegard: -18,
     factionMinMembers: 2,
     factionHeatPerCycle: 6,
-    factionCoupHeat: 24,
+    factionCoupHeat: 16,
     factionSplitHeat: 12,
     factionCoupRegard: -14,
     /** A second breach of the same clause by the same member is a hearing. */
@@ -3484,8 +3886,16 @@ export const ALLIANCES = {
     /** Extra members the ceiling lifts by, and how long the year stays that way. */
     grandCoalitionExtra: 2,
     grandCoalitionUntilDay: 6,
-    /** Size at and above which a bloc is fracture-prone, and the odds per cycle. */
-    fractureSize: 7,
+    /**
+     * Size at and above which a bloc is fracture-prone, and the odds per cycle.
+     *
+     * §4.4: at 7 this fired once in 400 runs, because the alliance ceiling is
+     * `maxSize` 6 and a group only reaches seven on a grand-coalition year. A
+     * pack at the ceiling is already the thing this beat is about — a Career
+     * year's worth of people postponing the same problem — so the fracture
+     * lives at the ceiling rather than one above it.
+     */
+    fractureSize: 6,
     fractureChance: 0.45,
     /** Regard toward the leader that keeps somebody on their side of the split. */
     fractureLoyalRegard: 15,
@@ -3516,6 +3926,16 @@ export const BETRAYAL = {
     lureMinRememberedThreat: 0.8,
     /** Withholding only means anything if they are actually dying. */
     withholdMaxHealth: 45,
+    /**
+     * §4.1: betrayal was 0.2% of the chronicle — one line at the knife and
+     * then silence. These are the days after: the odds per cycle that somebody
+     * who was sold out, or who did the selling, gets a line about still being
+     * inside it, and the window in which that is still what they are.
+     */
+    aftermathChance: 0.3,
+    aftermathCycles: 6,
+    /** Odds a witness to a betrayal gets a line of their own about it. */
+    witnessLineChance: 0.6,
 } as const;
 
 /**
@@ -4775,6 +5195,12 @@ export const DEBTS = {
      */
     /** Odds an ally with a spare weapon lends it to an unarmed one. */
     loanChance: 0.3,
+    /**
+     * §4.5: ...and how much they have to trust them first. Handing somebody a
+     * weapon is the definitive trust decision in an arena, and it was reading
+     * regard, which is the axis that says you like them.
+     */
+    loanMinTrust: 10,
     /** Cycles before an unreturned loan starts costing the borrower regard. */
     loanPatience: 4,
     /** Regard the lender loses for the borrower per cycle once patience runs out. */
@@ -5181,11 +5607,158 @@ export const TOOLS = {
  * settling a victory wager early at its current implied value.
  */
 export const SIDE_BETS = {
-    firstBloodMult: 8,
-    noVictorMult: 30,
-    careerVictorMult: 2.2,
+    // §6.1: `firstBloodMult: 8`, `noVictorMult: 30` and `careerVictorMult: 2.2`
+    // lived here and were the entire side book — one price per market
+    // regardless of who or what was being wagered on. They are gone; every
+    // proposition is now priced off the field by `engine/sideMarkets.ts`
+    // against `SIDE_MARKETS` below, at the same house margin the victor book
+    // charges. `cashOutMargin` stays, because partial-position settlement is
+    // a house cut rather than a price.
     /** Fraction of fair implied value paid on an early cash-out. */
     cashOutMargin: 0.8,
+} as const;
+
+/**
+ * §6.4: what an off-season actually changes.
+ *
+ * The skins were 42 description strings and the design note said so out loud:
+ * a skin "rewrites the description and nothing else, so the same seed still
+ * plays the same Games". That is a defensible purity call and it is also the
+ * reason a feature with 42 pieces of content in it was worth no mechanical
+ * attention at all — a player who recognised the thaw had learned nothing
+ * they could use.
+ *
+ * The determinism argument does not actually require cosmetics. The skin is
+ * rolled from the seed, so a seeded replay wears the same skin and plays the
+ * same Games whether the skin moves a number or not. What it requires is that
+ * the shift be small, legible and declared in one place, which is here.
+ */
+export const OFF_SEASON = {
+    /** Added to every zone's danger, clamped into 0-1. */
+    harsher: 0.12,
+    kinder: -0.1,
+    /** …and to every zone's forage yield. */
+    fertile: 0.12,
+    barren: -0.12,
+} as const;
+
+/**
+ * §6.1: the probability models behind the live-priced proposition book.
+ *
+ * `SIDE_BETS` above is what the side market used to be in its entirety: three
+ * fixed multipliers, the same price on first blood whether you named a Career
+ * volunteer or a twelve-year-old. Every market in `engine/sideMarkets.ts`
+ * declares a model over the actual field instead, and the payout falls out of
+ * it at `ODDS.houseMargin` — the same margin the (well-calibrated) victor book
+ * charges. These are that model's constants.
+ *
+ * The defaults are set against measured soak numbers rather than taste:
+ * bloodbath share 34.2%, run-length sd 2.57, wipeouts 1.5%.
+ */
+export const SIDE_MARKETS = {
+    /** Nothing is priced as a certainty or as an impossibility. */
+    minProbability: 0.005,
+    maxProbability: 0.95,
+    minMult: 1.05,
+    maxMult: 60,
+
+    /** First blood is drawn by aggression and reach, not by the ability to outlast. */
+    firstBloodBase: 1,
+    firstBloodCareer: 1.6,
+    firstBloodStrength: 0.06,
+    firstBloodTraining: 0.12,
+    /** Added for a warrior/brute persona, subtracted for an underdog/reluctant one. */
+    firstBloodAggressivePersona: 0.5,
+    firstBloodFloor: 0.15,
+
+    /**
+     * Expected Cornucopia body count: a share of the cast, tilted by Career
+     * density. Fitted against a 250-run sweep — mean 8.45 dead of a cast of 24
+     * with six Careers (35.2%), sd 2.29.
+     */
+    bloodbathShare: 0.322,
+    bloodbathCareerTilt: 0.12,
+    bloodbathSdShare: 0.095,
+    bloodbathSdFloor: 1.2,
+
+    /**
+     * Expected run length in days: a floor, a per-tribute term, and the pull a
+     * field full of closers exerts on it. Fitted the same way — mean 9.92
+     * days, sd 2.50, on the same sweep.
+     */
+    baseDays: 5.14,
+    daysPerTribute: 0.22,
+    careerDayPull: 2,
+    daySpread: 2.5,
+
+    /**
+     * A counting market's line lands exactly on the result often enough
+     * (~15% of runs) that it has to be priced as a push rather than swept.
+     * The continuity correction is what opens that gap in a continuous model.
+     */
+    pushHalfStep: 0.5,
+
+    /**
+     * Top-three places, and how sublinearly crown probability scales into
+     * them. Fitted to a realised 16.4% hit rate against a mean crown price of
+     * ~4.2% on the same sweep; above 3/24 because the settlement is lenient
+     * about a shared place.
+     */
+    topThreePlaces: 3,
+    topThreeExponent: 4,
+
+    /** Wipeouts: the measured base rate, and how much a field without closers raises it. */
+    noVictorBase: 0.015,
+    careerShareNorm: 0.25,
+    noVictorCareerTilt: 1.5,
+} as const;
+
+/**
+ * §9.3: how much of run N reaches run N+1.
+ *
+ * Every number here is deliberately small. The complaint the continuity layer
+ * answers is that nothing carried forward at all, not that earlier runs should
+ * decide later ones — a returning player should feel the country remembering
+ * them, and should never feel handicapped for having won.
+ */
+export const CONTINUITY = {
+    /** Consecutive crowns that make a district a dynasty rather than a good year. */
+    dynastyStreak: 2,
+    /** …or this many crowns with this many of them inside the recent-runs window. */
+    dynastyCrowns: 4,
+    dynastyRecent: 2,
+    /** Crowns that make a district decorated. */
+    decoratedCrowns: 2,
+    /** Runs after which a district that has never won is the story nobody has heard. */
+    forgottenAfterRuns: 6,
+
+    /** Reaping deltas by standing: sponsor trust, and how much the field watches them. */
+    dynastyTrustPenalty: 10,
+    dynastyThreat: 18,
+    decoratedTrustPenalty: 4,
+    decoratedThreat: 7,
+    forgottenTrustBonus: 8,
+
+    /** A Head Gamemaker's grudge: what earns a point, and the cap. */
+    maxGrudge: 3,
+    grudgeMinGames: 2,
+    grudgeBeatenBy: 2,
+    grudgePatronWins: 2,
+
+    /**
+     * What a grudge is worth in the arena. The signature intervention comes
+     * earlier and is likelier to fire unprompted, and at full grudge the Head
+     * Gamemaker takes a second turn aimed at the district they are watching.
+     */
+    grudgeEarlierDays: 1,
+    grudgeUnpromptedBonus: 0.12,
+    /** Grudge at which the Gamemakers act against the watched district directly. */
+    grudgeInterventionTier: 2,
+    /** Remembered danger left on a watched district's ground. */
+    grudgeThreat: 20,
+    /** What the watched district's tributes lose to the Gamemakers' attention. */
+    grudgeSanity: 8,
+    grudgeFatigue: 10,
 } as const;
 
 export const GAMEMAKER_COSTS = {

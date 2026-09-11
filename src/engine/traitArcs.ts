@@ -4,6 +4,7 @@ import { EARNED_TRAIT_RULES } from '../data/balance';
 import { TRAIT_DEFS } from '../data/traits';
 import { earnTrait } from './earnedTraits';
 import { resolveOf } from './resolve';
+import { poiseOf } from './composure';
 
 /**
  * §3.2: traits that change.
@@ -131,7 +132,11 @@ function tickOne(ctx: SimContext, t: Tribute) {
     // being frightened — which reads as calm and is not.
     if (t.traits.includes('Haunted')
         && ageOf(t, 'Haunted') >= EARNED_TRAIT_RULES.hollowCycles
-        && t.vitals.sanity <= EARNED_TRAIT_RULES.hollowSanity) {
+        // §3.2: poise, not sanity. Hollow is a trait the arena awards for how
+        // somebody *reads* — "they have stopped flinching at the cannons" is an
+        // observation another tribute makes, not a private state — so it is one
+        // of the four jobs sanity was doing that belongs on the social axis.
+        && poiseOf(t) <= EARNED_TRAIT_RULES.hollowSanity) {
         if (transformTrait(ctx, t, ['Haunted'], 'Hollow',
             `${t.name} has stopped flinching at the cannons. They watch the sky the way somebody watches weather in a country they no longer live in.`)) {
             return;

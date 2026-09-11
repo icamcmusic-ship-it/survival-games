@@ -190,6 +190,8 @@ export function GameScreen({
     // reader is already there; once they have scrolled up, surface a pill.
     const chronicleRef = useRef<HTMLDivElement>(null);
     const currentDayInViewRef = useRef<number | null>(null);
+    /** §2.5: the last `focusLogId` this screen actually scrolled to. */
+    const scrolledToRef = useRef<string | null>(null);
     const [scrolledAway, setScrolledAway] = useState(false);
     const prevLogCountRef = useRef(gameState.log.length);
 
@@ -202,6 +204,33 @@ export function GameScreen({
         if (grew && nearBottom(el)) el.scrollTop = el.scrollHeight;
         else if (grew) setScrolledAway(true);
     }, [gameState.log.length]);
+
+    /**
+     * §2.5: scroll the chronicle to whatever asked to be looked at.
+     *
+     * One effect serves both the D / Shift+D death jump and the command
+     * palette's "jump to the next death", so the two cannot drift. The
+     * position stays in the store afterwards: it is the bookmark "next" is
+     * measured from.
+     */
+    useEffect(() => {
+        const id = filters.focusLogId;
+        if (!id || scrolledToRef.current === id) return;
+        scrolledToRef.current = id;
+        const target = gameState.log.find(l => l.id === id);
+        setStageTab('chronicle');
+        setMobilePane('chronicle');
+        if (target) currentDayInViewRef.current = target.day;
+        setScrolledAway(true);
+        requestAnimationFrame(() => {
+            const el = chronicleRef.current?.querySelector(`[data-log-id="${id}"]`)
+                // A filter or a reading density can hide the line itself; its
+                // day heading is still a useful landing place.
+                ?? (target ? chronicleRef.current?.querySelector(`[data-day="${target.day}"]`) : null);
+            el?.scrollIntoView({ block: 'center' });
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filters.focusLogId]);
 
     const jumpToLatest = () => {
         const el = chronicleRef.current;
@@ -342,6 +371,46 @@ export function GameScreen({
                 announceShortcut(target === 0 ? 'Jumped to before the Games' : `Jumped to day ${target}`);
             };
 
+            /**
+             * §2.5: the tribute the reader is actually watching.
+             *
+             * The pinned tribute first (the star is an explicit "this is the
+             * one I care about"), then whoever the chronicle is filtered to.
+             * Both of the new dossier/feed shortcuts key off the same answer,
+             * so O and X always talk about the same person.
+             */
+            const watchedId = filters.followedId ?? filters.filterTributeId;
+            const watched = watchedId
+                ? gameState.tributes.find(t => t.id === watchedId) ?? null
+                : null;
+
+            /**
+             * §2.5: the deaths, in order, and where the reader is in them.
+             * `[`/`]` page by day, which is far too coarse for the thing a
+             * reader actually goes looking for in a 600-line chronicle.
+             */
+            const deaths = gameState.log.filter(l => l.category === 'death' || l.category === 'kill');
+            const jumpDeath = (step: number) => {
+                if (deaths.length === 0) {
+                    announceShortcut('Nobody has died yet');
+                    return;
+                }
+                const at = deaths.findIndex(l => l.id === filters.focusLogId);
+                // From nowhere: forward starts at the first death, back at the last.
+                const nextIndex = at === -1
+                    ? (step > 0 ? 0 : deaths.length - 1)
+                    : Math.min(deaths.length - 1, Math.max(0, at + step));
+                if (at !== -1 && nextIndex === at) {
+                    announceShortcut(step > 0 ? 'Already at the last death' : 'Already at the first death');
+                    return;
+                }
+                const target = deaths[nextIndex];
+                // The scroll itself is the `focusLogId` effect below, shared
+                // with the command palette's version of this command.
+                setChronicle({ focusLogId: target.id });
+                announceShortcut(`Death ${nextIndex + 1} of ${deaths.length} — ${target.day === 0 ? target.phase : `day ${target.day}`}`);
+            };
+
             const key = e.key;
             const lower = key.toLowerCase();
 
@@ -380,6 +449,28 @@ export function GameScreen({
                 setChronicle({ filterTributeId: next });
                 const name = next ? sortedRoster.find(t => t.id === next)?.name : null;
                 announceShortcut(name ? `Tribute filter: ${name}` : 'Tribute filter cleared');
+            } else if (lower === 'o') {
+                // §2.5: open the dossier of the tribute being watched. The
+                // single most frequent thing a reader does had no key at all.
+                if (watched) {
+                    setSelectedTributeId(watched.id);
+                    announceShortcut(`Opened ${watched.name}`);
+                } else {
+                    announceShortcut('No tribute is being watched — star one in the roster, or filter the chronicle to one with T');
+                }
+            } else if (lower === 'x') {
+                // §2.5: narrow the chronicle to that same tribute, and back.
+                if (filters.filterTributeId && (!watched || filters.filterTributeId === watched.id)) {
+                    setChronicle({ filterTributeId: null, filterTributeId2: null });
+                    announceShortcut('Tribute filter cleared');
+                } else if (watched) {
+                    setChronicle({ filterTributeId: watched.id, filterTributeId2: null, filterPairMode: 'either' });
+                    announceShortcut(`Chronicle filtered to ${watched.name}`);
+                } else {
+                    announceShortcut('No tribute is being watched — star one in the roster first');
+                }
+            } else if (lower === 'd') {
+                jumpDeath(e.shiftKey ? -1 : 1);
             } else if (key === '[') {
                 jumpDay(-1);
             } else if (key === ']') {
@@ -593,10 +684,14 @@ export function GameScreen({
                 <div className="panel-flush px-4 py-2 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
                     <span className="eyebrow flex-none">Keyboard</span>
                     <span className="text-[var(--color-ink-300)]">
+                        {/* §2.5: this line named two keys that do something
+                            else — [ / ] page the chronicle by day and I cycles
+                            reading density — and none of the ones a reader
+                            reaches for most. */}
                         <kbd className="font-mono font-bold text-[var(--ink)]">space</kbd> advance
-                        {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">[</kbd>/<kbd className="font-mono font-bold text-[var(--ink)]">]</kbd> speed
+                        {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">o</kbd> open who you're watching
+                        {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">d</kbd> next death
                         {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">m</kbd> map
-                        {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">i</kbd> standings
                         {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">?</kbd> all of them
                     </span>
                     <button
@@ -866,20 +961,24 @@ export function GameScreen({
                     { id: 'chronicle', label: 'Chronicle' },
                     { id: 'map', label: 'Map' },
                     { id: 'standings', label: 'Table' },
-                    { id: 'tributes', label: `Tributes ${aliveCount}` },
+                    { id: 'tributes', label: `Cast ${aliveCount}` },
                 ] as const).map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => selectMobilePane(tab.id)}
                         aria-pressed={mobilePane === tab.id}
-                        className="flex-1 py-3 text-[10px] font-extrabold uppercase tracking-[0.1em]"
+                        // §2.1: four labels plus Proceed across 380px. `min-w-0`
+                        // lets them actually share the row instead of forcing it
+                        // wider than the phone, and the 44px floor is the same
+                        // touch target the arena zones are held to.
+                        className="flex-1 min-w-0 px-1 py-3 min-h-[44px] leading-tight text-[10px] font-extrabold uppercase tracking-[0.1em]"
                         style={{ fontFamily: 'var(--font-mono)', color: mobilePane === tab.id ? 'var(--red-on-ink)' : '#a89a86' }}
                     >
                         {tab.label}
                     </button>
                 ))}
                 {!isOver && (
-                    <button onClick={onNextPhase} className="flex-none px-5 bg-[var(--red)] text-white text-[10px] font-extrabold uppercase tracking-[0.1em]" style={{ fontFamily: 'var(--font-mono)' }}>
+                    <button onClick={onNextPhase} className="flex-none px-4 sm:px-5 min-h-[44px] bg-[var(--red)] text-white text-[10px] font-extrabold uppercase tracking-[0.1em]" style={{ fontFamily: 'var(--font-mono)' }}>
                         Proceed
                     </button>
                 )}
@@ -972,6 +1071,9 @@ function HelpOverlay({ onClose }: { onClose: () => void }) {
                             ['C', 'Show the chronicle'],
                             ['M', 'Switch between the chronicle and the arena map'],
                             ['S', 'Show the standings table'],
+                            ['O', 'Open the dossier of the tribute you are watching — the starred one, or whoever the chronicle is filtered to'],
+                            ['X', 'Filter the chronicle to that same tribute, and back'],
+                            ['D / Shift+D', 'Jump to the next or previous death in the chronicle'],
                             ['T / Shift+T', 'Cycle the tribute filter forward or back — past the last tribute clears it'],
                             ['F', 'Show or hide the chronicle filters'],
                             ['Z / Shift+Z', 'Cycle the sector filter forward or back — past the last sector clears it'],

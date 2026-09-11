@@ -3,10 +3,12 @@ import { DRIFT, PROFICIENCY } from '../data/balance';
 import { craftOf } from '../data/districts';
 import { strengthCapForAge } from './physique';
 import { isAggressiveStance } from '../data/stances';
+import { traitProficiencyFloor } from '../data/traits';
 import { SimContext, getAlive } from './context';
 import { witnessCompetence } from './rapport';
 import { injuryGrade } from './wounds';
 import { fill } from './encounters';
+import { getZone } from './map';
 
 /**
  * Skills that improve with use.
@@ -115,9 +117,18 @@ export function isUnfamiliar(t: Tribute, weapon?: Item): boolean {
     return (t.weaponFamiliarity?.[weapon.id] ?? 0) < PROFICIENCY.familiarUses;
 }
 
-/** Current level, tolerating states saved before proficiencies existed. */
+/**
+ * Current level, tolerating states saved before proficiencies existed.
+ *
+ * §3.1: takes the larger of what the tribute has earned and what their traits
+ * grant outright, so `Climber` and `Swimmer` are a head start in `climbing`
+ * and `swimming` rather than a parallel system that never learns. The floor
+ * also applies to saves written before those axes existed.
+ */
 export function profOf(t: Tribute, skill: Proficiency): number {
-    return t.proficiencies?.[skill] ?? 0;
+    const held = t.proficiencies?.[skill] ?? 0;
+    const floor = traitProficiencyFloor(t, skill);
+    return floor > held ? floor : held;
 }
 
 /**
@@ -278,6 +289,42 @@ export function observeProficiency(ctx: SimContext, actor: Tribute, skill: Profi
     });
 }
 
+/**
+ * §3.1: the three axes the arena teaches without anybody deciding to learn.
+ *
+ * `melee`, `ranged`, `forage`, `medicine`, `tracking` and `persuasion` all
+ * train off a discrete action somebody chose to take, which is why the six of
+ * them were the whole list: there was no hook for the things a tribute does
+ * simply by being where they are. Going up a cliff face every cycle for four
+ * days is practice. So is crossing a channel, and so is keeping a snare line
+ * and a fire alive.
+ *
+ * Gated on a chance rather than granted flat, because a cycle spent in a gorge
+ * is exposure to climbing, not a lesson in it — and because these would
+ * otherwise be the only skills in the file that train for free.
+ */
+export function trainTerrainSkills(ctx: SimContext) {
+    getAlive(ctx.state).forEach(t => {
+        const terrain = getZone(ctx.state.arena, t.zone)?.terrain;
+        if ((terrain === 'highland' || terrain === 'ruins' || terrain === 'cave')
+            && ctx.rng.chance(PROFICIENCY.terrainTrainChance)) {
+            trainProficiency(t, 'climbing', ctx);
+        }
+        if ((terrain === 'water' || terrain === 'wetland')
+            && ctx.rng.chance(PROFICIENCY.terrainTrainChance)) {
+            trainProficiency(t, 'swimming', ctx);
+        }
+        // Something they built is still standing, which is the only honest
+        // evidence that they can build.
+        const camp = ctx.state.camps?.[t.id];
+        const keeping = !!camp && (camp.fire !== undefined || camp.shelter !== undefined || camp.camouflage !== undefined);
+        const trapping = (ctx.state.traps ?? []).some(trap => trap.ownerId === t.id);
+        if ((keeping || trapping) && ctx.rng.chance(PROFICIENCY.craftTrainChance)) {
+            trainProficiency(t, 'crafting', ctx);
+        }
+    });
+}
+
 /** The weapon skill a given weapon class trains and benefits from. */
 export function weaponProficiency(weaponClass: string | undefined): Proficiency {
     return weaponClass === 'ranged' || weaponClass === 'thrown' ? 'ranged' : 'melee';
@@ -355,6 +402,9 @@ const TEACH_PHRASE: Record<Proficiency, string> = {
     forage: 'the three things on that bush that mean do not',
     medicine: 'how to pack a wound so it stops instead of merely looking packed',
     persuasion: 'what to say first, and what to leave for them to say',
+    climbing: 'where to put a foot on rock that looks like it has nowhere to put one',
+    swimming: 'how to let the current do most of it instead of fighting all of it',
+    crafting: 'why that snare has been sprung empty three times running',
 };
 
 /**

@@ -63,6 +63,20 @@ export function tickStructuralFatigue(ctx: SimContext) {
     state.arena.zones.forEach(zone => {
         if (zone.terrain !== RUINS) return;
         const occupants = state.tributes.filter(t => t.status === 'alive' && t.zone === zone.name).length;
+        // §7.1: a structure past `collapseAt` is no longer waiting for somebody
+        // to draw the right event — it is waiting for a bad hour. This is the
+        // half of the primitive the module always described and never had, and
+        // it is why "load-bearing" was a shipped mechanic that fired once in
+        // 400 runs. Rolled before the occupation load so a zone that has just
+        // tipped over the line gets its first chance next cycle, not this one.
+        if (structuralFatigueOf(state, zone.name) >= LOAD_BEARING.collapseAt) {
+            const odds = LOAD_BEARING.collapseChancePerCycle
+                * (occupants > 0 ? LOAD_BEARING.collapseOccupiedMultiplier : 1);
+            if (ctx.rng.chance(odds)) {
+                collapseStructure(ctx, zone.name);
+                return;
+            }
+        }
         if (occupants > 0) {
             loadStructure(state, zone.name, LOAD_BEARING.perOccupantCycle * occupants, zone.terrain);
             return;

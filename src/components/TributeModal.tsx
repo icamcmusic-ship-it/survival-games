@@ -367,7 +367,11 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
             aria-modal="true"
             aria-label={`${tribute.name} profile`}
         >
-            <div ref={panelRef} tabIndex={-1} className="panel p-6 max-w-3xl w-full max-h-[88vh] overflow-y-auto custom-scrollbar animate-riseIn" onClick={e => e.stopPropagation()}>
+            {/* §2.1: 24px of padding inside a 16px overlay gutter left 300px of
+                content on a 380px phone. The sheet is the surface a player
+                spends the whole run in, so it gets the phone's width back and
+                takes the desktop padding from `sm:` up. */}
+            <div ref={panelRef} tabIndex={-1} className="panel p-4 sm:p-6 max-w-3xl w-full max-h-[88vh] overflow-y-auto custom-scrollbar animate-riseIn" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start mb-3 gap-4">
                     <div className="min-w-0">
                         <h3 className="display-title text-2xl">{tribute.name}</h3>
@@ -675,7 +679,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                 </div>
 
                 {compare && (
-                    <div className="panel-flush p-3 mb-4 grid grid-cols-2 gap-4 text-xs">
+                    <div className="panel-flush p-3 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                         {[tribute, compare].map(t => (
                             <div key={t.id} className="space-y-1">
                                 <div className="font-black uppercase text-[var(--ink)] text-sm">{t.name}</div>

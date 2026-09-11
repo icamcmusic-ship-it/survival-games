@@ -329,11 +329,15 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             placeholder="Any word or code"
                             onChange={(e) => setSeed(e.target.value.toUpperCase())}
                             onKeyDown={(e) => { if (e.key === 'Enter') start(); }}
-                            className="flex-1 bg-[var(--paper-panel)] px-3 py-2.5 font-mono font-bold text-[var(--ink)] focus:outline-none focus:bg-white"
+                            // §2.1: `flex-1` alone cannot shrink an input below
+                            // its intrinsic width, so this row was 7px wider
+                            // than a 380px phone and took the whole document
+                            // sideways with it.
+                            className="flex-1 min-w-0 bg-[var(--paper-panel)] px-3 py-2.5 font-mono font-bold text-[var(--ink)] focus:outline-none focus:bg-white"
                         />
                         <button
                             onClick={() => setSeed(randomSeed())}
-                            className="px-4 font-mono text-[11px] font-extrabold uppercase tracking-wider text-[var(--red)] hover:bg-[var(--paper-flush)] transition-colors flex-none"
+                            className="px-3 sm:px-4 font-mono text-[11px] font-extrabold uppercase tracking-wider text-[var(--red)] hover:bg-[var(--paper-flush)] transition-colors flex-none"
                         >
                             Randomize
                         </button>

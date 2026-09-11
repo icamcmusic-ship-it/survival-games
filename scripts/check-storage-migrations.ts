@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 import { HOF_SPEC } from '../src/utils/hofStorage';
 import { PANEM_SPEC } from '../src/utils/panemStorage';
 import { COINS_SPEC, CONFIG_SPEC, FILTERS_SPEC, readCoins } from '../src/utils/prefsStorage';
-import { SAVED_RUN_SPEC, normalizeTribute } from '../src/utils/saveMigrations';
+import { REWIND_PERSIST, SAVED_RUN_SPEC, normalizeTribute } from '../src/utils/saveMigrations';
 import {
     STORAGE_KEYS, StorageBackend, StorageSpec, readStored, setStorageBackend, writeStored,
 } from '../src/utils/storage';
@@ -154,6 +154,72 @@ test('a tribute from an old build gets every field the engine expects', () => {
     assert.equal(t.bleedSeverity, 1);
     // baseConfig did not exist; it falls back to the config that did.
     assert.equal(t.zone, 'Cornucopia');
+});
+
+test('the rewind stack round-trips, is capped, and survives junk entries', () => {
+    // A save written before §2.2 has no `rewind` at all: it must resume with an
+    // empty history rather than an undefined one.
+    seedLegacy(STORAGE_KEYS.savedRun, legacySave());
+    assert.deepEqual(readStored(SAVED_RUN_SPEC)!.rewind, [], 'absent rewind stack not defaulted');
+
+    // Four checkpoints offered, three kept (REWIND_PERSIST), newest last.
+    const checkpoint = (day: number) => ({ ...legacySave().gameState, day });
+    seedLegacy(STORAGE_KEYS.savedRun, {
+        ...legacySave(),
+        rewind: [checkpoint(1), checkpoint(2), checkpoint(3), checkpoint(4)],
+    });
+    const kept = readStored(SAVED_RUN_SPEC)!.rewind!;
+    assert.equal(kept.length, REWIND_PERSIST, 'rewind stack not truncated to the persisted tail');
+    assert.deepEqual(kept.map(s => s.day), [2, 3, 4], 'wrong end of the stack kept');
+    // And each checkpoint is normalised like the live state, not passed through.
+    assert.equal(typeof kept[0].tributes[0].resolve, 'number', 'checkpoint tribute not normalised');
+
+    // Hostile or unrepairable entries are dropped; the run itself still loads.
+    seedLegacy(STORAGE_KEYS.savedRun, {
+        ...legacySave(),
+        rewind: [null, 'nope', { arena: null }, checkpoint(9)],
+    });
+    const salvaged = readStored(SAVED_RUN_SPEC);
+    assert.ok(salvaged, 'a broken checkpoint rejected the whole save');
+    assert.deepEqual(salvaged!.rewind!.map(s => s.day), [9]);
+
+    seedLegacy(STORAGE_KEYS.savedRun, { ...legacySave(), rewind: 'not-an-array' });
+    assert.deepEqual(readStored(SAVED_RUN_SPEC)!.rewind, []);
+});
+
+test('stripped checkpoint chronicles are rebuilt from the run being saved', () => {
+    // What `packRewind` writes: a checkpoint with no log of its own, plus the
+    // number of lines it had. The chronicle is stored once, not once per
+    // checkpoint — three copies of a 1,300-line log is 1.5 MB of quota.
+    const base = legacySave();
+    const line = (n: number) => ({
+        id: `l${n}`, day: n, phase: 'day', text: `Line ${n}`,
+        tributesInvolved: [], important: false, category: 'ambient',
+    });
+    const full = { ...base, gameState: { ...base.gameState, log: [line(1), line(2), line(3)] } };
+    seedLegacy(STORAGE_KEYS.savedRun, {
+        ...full,
+        rewind: [
+            { ...full.gameState, day: 1, log: [] },
+            { ...full.gameState, day: 2, log: [] },
+        ],
+        rewindLogLengths: [1, 3],
+    });
+    const run = readStored(SAVED_RUN_SPEC)!;
+    assert.equal(run.gameState.log.length, 3);
+    assert.deepEqual(run.rewind!.map(s => s.log.length), [1, 3], 'checkpoint chronicles not rebuilt');
+    assert.equal(run.rewind![0].log[0].text, 'Line 1');
+
+    // A length the saved chronicle cannot honour drops that checkpoint rather
+    // than handing it somebody else's log.
+    seedLegacy(STORAGE_KEYS.savedRun, {
+        ...full,
+        rewind: [{ ...full.gameState, day: 1, log: [] }, { ...full.gameState, day: 2, log: [] }],
+        rewindLogLengths: [99, 2],
+    });
+    const repaired = readStored(SAVED_RUN_SPEC)!;
+    assert.equal(repaired.rewind!.length, 1, 'impossible checkpoint length accepted');
+    assert.equal(repaired.rewind![0].log.length, 2);
 });
 
 test('normalizeTribute rejects non-tributes and survives hostile input', () => {

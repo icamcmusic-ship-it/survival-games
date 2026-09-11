@@ -2,7 +2,7 @@ import { Tribute } from '../models/types';
 import { DEBTS } from '../data/balance';
 import { DEBT_TEXTS } from '../data/flavorText';
 import { SimContext, getAlive } from './context';
-import { adjustMutual, adjustRel, getRel } from './relationships';
+import { adjustMutual, adjustRel, getRel, trustOf } from './relationships';
 import { cycleOf, noteStoodBy, raiseSuspicion } from './memory';
 import { witnessKindness } from './rapport';
 import { giveItem } from './items';
@@ -224,6 +224,9 @@ export function offerLoans(ctx: SimContext) {
             && o.allianceId === lender.allianceId
             && o.zone === lender.zone
             && !o.inventory.some(i => i.type === 'weapon')
+            // §4.5: on the trust axis, not the affection one. You can be very
+            // fond of the person you are not handing a blade to.
+            && trustOf(lender, o) >= DEBTS.loanMinTrust
             && !(o.loans ?? {})[lender.id]);
         if (!borrower || !ctx.rng.chance(DEBTS.loanChance)) return;
 
@@ -265,15 +268,11 @@ export function settleLoans(ctx: SimContext) {
             // of 200 loans a soak used to end here or in the branch below
             // with no line at all, which read as the ledger simply losing them.
             if (!lender || lender.status !== 'alive') {
-                delete borrower.loans![lenderId];
-                if (held && lender) {
-                    ctx.logEvent(
-                        `${borrower.name} is still carrying ${lender.name}'s ${loan.itemName}. There is nobody left to give it back to, `
-                        + 'and they stop thinking of it as borrowed the same day they stop saying the name.',
-                        [borrower.id, lender.id],
-                        { category: 'alliance' }
-                    );
-                }
+                // §4.2: this is now a safety net rather than the usual path —
+                // `resolveLoansOnDeath` closes the entry on the cannon — and,
+                // like every other ending, it writes a line. A deletion with
+                // no line is exactly how 175 of 244 loans went missing.
+                writeOffToDeadLender(ctx, borrower, lenderId, loan.itemName, lender);
                 return;
             }
             // They no longer have it — lost, traded, taken off them. Nothing
@@ -330,4 +329,57 @@ export function settleLoans(ctx: SimContext) {
         });
         if (borrower.loans && Object.keys(borrower.loans).length === 0) delete borrower.loans;
     });
+}
+
+/**
+ * §4.2: the ending the loan ledger did not have.
+ *
+ * `loans: made=244 returned=46 defaulted=23` — 175 of 244 loans reached the
+ * end of a run in neither state, and the reason is that both of the states a
+ * loan can *also* end in involve somebody dying, which `settleLoans` only ever
+ * walked the living for. A borrower who is killed takes the entry to the grave
+ * with them; a lender who is killed leaves an entry nobody is ever coming to
+ * collect. Both are real endings and both were silent.
+ *
+ * Called from `propagateDeathFallout`, so every cannon closes every loan the
+ * dead tribute was on either side of. No items move: whatever the borrower was
+ * carrying is on the body or in their hands, and the looting layer already has
+ * opinions about that. What moves is the ledger, and the record of it.
+ */
+export function resolveLoansOnDeath(ctx: SimContext, victim: Tribute) {
+    // Loans the dead tribute had taken out. The lender, if they are still
+    // alive, has just watched their spare weapon leave the ledger.
+    Object.entries(victim.loans ?? {}).forEach(([lenderId, loan]) => {
+        const lender = ctx.state.tributes.find(t => t.id === lenderId);
+        delete victim.loans![lenderId];
+        if (!lender || lender.status !== 'alive') return;
+        adjustRel(lender, victim.id, DEBTS.loanReturnedRegard);
+        ctx.logEvent(
+            `${lender.name} lent ${victim.name} that ${loan.itemName}. It is out there somewhere in ${victim.zone} now, `
+            + 'and so is everything else they were going to say to them.',
+            [lender.id, victim.id],
+            { category: 'alliance' }
+        );
+    });
+    delete victim.loans;
+
+    // ...and loans they had made, which have just stopped being loans.
+    ctx.state.tributes.forEach(borrower => {
+        if (borrower.status !== 'alive' || !borrower.loans?.[victim.id]) return;
+        const loan = borrower.loans[victim.id];
+        writeOffToDeadLender(ctx, borrower, victim.id, loan.itemName, victim);
+    });
+}
+
+/** One loan closing because the person who made it is dead. */
+function writeOffToDeadLender(ctx: SimContext, borrower: Tribute, lenderId: string, itemName: string, lender?: Tribute) {
+    delete borrower.loans![lenderId];
+    if (borrower.loans && Object.keys(borrower.loans).length === 0) delete borrower.loans;
+    if (!lender) return;
+    ctx.logEvent(
+        `${borrower.name} is still carrying ${lender.name}'s ${itemName}. There is nobody left to give it back to, `
+        + 'and they stop thinking of it as borrowed the same day they stop saying the name.',
+        [borrower.id, lender.id],
+        { category: 'alliance' }
+    );
 }

@@ -116,23 +116,50 @@ export function tickVengeancePacts(ctx: SimContext) {
         const members = pact.memberIds.map(id => byId.get(id)).filter((t): t is Tribute => !!t && t.status === 'alive');
         const target = byId.get(pact.targetId);
 
-        // Everyone who swore it is gone.
-        if (members.length === 0) return false;
+        // Everyone who swore it is gone. §4.3: 165 of 329 pacts had no
+        // recorded ending at all, and this is where most of them went — a
+        // silent `return false` for a pact the arena outlived. It is an
+        // ending, and it gets a line like the other three.
+        if (members.length === 0) {
+            const names = pact.memberIds
+                .map(id => byId.get(id)?.name)
+                .filter((n): n is string => !!n);
+            if (target && names.length > 0) {
+                ctx.logEvent(
+                    `${names.join(' and ')} swore this together and are both in the sky now. `
+                    + `${target.name} will never know how close it came, or that it was coming at all.`,
+                    [...pact.memberIds, pact.targetId],
+                    { important: true, category: 'alliance' }
+                );
+            }
+            return false;
+        }
 
         // Paid — by their hand or anybody's.
         if (!target || target.status !== 'dead') {
             // still standing; fall through
         } else {
             const theirs = members.some(m => target.causeOfDeath?.includes(m.name));
+            // §4.3: ...or they were standing in it. A pact that hunted somebody
+            // into the fight that killed them has finished what it swore to
+            // finish, whoever landed the last of it — and crediting only the
+            // named hand is why this ledger read `paidThemselves=17` against
+            // `takenByAnother=89`. Being there is the whole objective.
+            const present = !theirs
+                && target.dayOfDeath === state.day
+                && members.some(m => m.zone === target.zone);
             members.forEach(m => {
                 m.objective = { kind: 'survive' };
-                adjustResolve(m, theirs ? VENGEANCE_PACT.paidResolve : -VENGEANCE_PACT.stolenResolve);
+                adjustResolve(m, theirs || present ? VENGEANCE_PACT.paidResolve : -VENGEANCE_PACT.stolenResolve);
             });
             ctx.logEvent(
                 theirs
                     ? `${members.map(m => m.name).join(' and ')} finish what they swore to finish. Whatever they expected to feel, `
                         + 'both of them are quiet for a long time afterwards.'
-                    : `${target.name} is dead, and it was not ${members.map(m => m.name).join(' or ')} who did it. `
+                    : present
+                        ? `${members.map(m => m.name).join(' and ')} were both there when ${target.name} went down, which is what they swore to be. `
+                            + 'Which of them it was, exactly, is not a thing either of them intends to correct anybody about.'
+                        : `${target.name} is dead, and it was not ${members.map(m => m.name).join(' or ')} who did it. `
                         + 'They swore this together and somebody else has taken it off them, which is not the same as it being over.',
                 [...members.map(m => m.id), pact.targetId],
                 { important: true, category: 'alliance' }
@@ -140,9 +167,24 @@ export function tickVengeancePacts(ctx: SimContext) {
             return false;
         }
 
-        // A single survivor is not a pact. It is back to being a grudge.
+        // A single survivor is not a pact. It is back to being a grudge —
+        // and that is the second ending that used to close the record without
+        // saying anything, which is how the ledger lost half its entries.
         if (members.length < 2) {
+            const lost = pact.memberIds
+                .filter(id => !members.some(m => m.id === id))
+                .map(id => byId.get(id)?.name)
+                .filter((n): n is string => !!n);
             members.forEach(m => swearVengeance(m, pact.targetId));
+            const survivor = members[0];
+            if (target && lost.length > 0) {
+                ctx.logEvent(
+                    `${lost.join(' and ')} is dead, and whatever ${survivor.name} swore alongside them is ${survivor.name}'s alone now. `
+                    + `It has not stopped being about ${target.name}. It has stopped being a thing two people are doing.`,
+                    [survivor.id, pact.targetId],
+                    { important: true, category: 'alliance' }
+                );
+            }
             return false;
         }
 

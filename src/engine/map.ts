@@ -219,6 +219,7 @@ export function zoneFeatures(zone: Zone): ZoneFeatures {
             shelterQuality: zone.features.shelterQuality
                 ?? Math.max(0, Math.min(1, BASE_SHELTER[zone.terrain] + zone.features.cover * 0.25)),
             acoustics: zone.features.acoustics ?? derivedAcoustics(zone, zone.features.cover),
+            vertical: zone.features.vertical ?? derivedVertical(zone),
         };
     }
     const cover = Math.max(0, Math.min(1, BASE_COVER[zone.terrain] + (h - 0.5) * 0.3));
@@ -227,7 +228,39 @@ export function zoneFeatures(zone: Zone): ZoneFeatures {
         || (!elevation && h >= 0.62 && h <= 0.78);
     const shelterQuality = Math.max(0, Math.min(1,
         BASE_SHELTER[zone.terrain] + cover * 0.25 + (/cave|cavern|tunnel|vault|cellar|shaft|bunker|lodge|cabin|shack|hollow/i.test(zone.name) ? 0.2 : 0)));
-    return { cover, elevation, chokepoint, waterSource: derivedWater, shelterQuality, acoustics: derivedAcoustics(zone, cover) };
+    return {
+        cover, elevation, chokepoint, waterSource: derivedWater, shelterQuality,
+        acoustics: derivedAcoustics(zone, cover),
+        vertical: derivedVertical(zone),
+    };
+}
+
+/**
+ * §7/§5.4: which zones have an inside with a height to it, when the arena has
+ * not said.
+ *
+ * `ZoneFeatures.vertical` was opt-in only, and exactly three zones across two
+ * arenas ever opted in — so `verticality.ts`, a whole shared primitive with
+ * its own fall risk, fatigue cost and level-aware `samePlace`, reached 2% of
+ * runs and the both-levels achievement fired in half a percent of them. That
+ * is not a rare mechanic, it is an unshipped one.
+ *
+ * Derived the way `acoustics` already is: deterministic, name-and-terrain
+ * driven, and overridable by any arena that wants to say otherwise. The test
+ * is deliberately conservative — a place has to *read* as having a top and a
+ * bottom. A shaft, a gallery, a tower, a canopy, a cliff face, a stairwell,
+ * a silo: those are two places with one name. A meadow is not, and neither is
+ * an open flat with the word 'ridge' in it, which is why the terrain gate
+ * sits alongside the name test rather than the name test standing alone.
+ */
+const VERTICAL_NAME =
+    /shaft|gallery|tower|spire|steeple|belfry|canopy|cliff|scaffold|gantry|catwalk|stack|silo|stair|chimney|flue|crane|mast|rig|loft|balcon|tier|terrace|mezzanine|undercroft|cellar|crypt|vault|well\b|pit\b|chasm|crevasse|throat|cathedral|atrium|column|colonnade|treetop|crown|lift|ladder|rooftop|roof|derrick|pylon|trestle|viaduct|aqueduct|buttress|overlook|escarpment/i;
+/** Terrains that can plausibly have an interior with a height to it. */
+const VERTICAL_TERRAIN: Zone['terrain'][] = ['ruins', 'highland', 'forest', 'cave', 'urban'];
+
+function derivedVertical(zone: Zone): boolean {
+    if (!VERTICAL_TERRAIN.includes(zone.terrain)) return false;
+    return VERTICAL_NAME.test(zone.name);
 }
 
 /**

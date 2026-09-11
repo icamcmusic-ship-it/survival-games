@@ -43,6 +43,15 @@ export interface ChronicleState {
     selectedZone: string | null;
     /** §2.12: the one pinned tribute the feed, dossier and brakes foreground. */
     followedId: string | null;
+    /**
+     * §2.5: the log line the chronicle should be showing.
+     *
+     * Written by the "jump to the next death" shortcut (D / Shift+D) and by
+     * the command palette's equivalent; the chronicle scrolls to it and it
+     * stays put afterwards, because it is also the bookmark those two read to
+     * work out what "next" means. Transient — a position, not a preference.
+     */
+    focusLogId: string | null;
 }
 
 function initialState(): ChronicleState {
@@ -62,6 +71,7 @@ function initialState(): ChronicleState {
         filterDay: null,
         selectedZone: null,
         followedId: null,
+        focusLogId: null,
     };
 }
 

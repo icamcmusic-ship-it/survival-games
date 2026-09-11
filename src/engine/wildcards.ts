@@ -300,7 +300,10 @@ function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
             // the herd rather than staying where it was earned.
             const zones = ctx.state.arena.zones
                 .filter(z => !(ctx.state.collapsedZones ?? []).includes(z.name));
-            const heading = ctx.rng.pick(zones);
+            // pickOrUndefined, not pick: every zone can be collapsed by a
+            // late border, and pick throws on an empty pool — which made the
+            // guard below unreachable dead code rather than a guard.
+            const heading = ctx.rng.pickOrUndefined(zones);
             if (!heading) break;
             alive.forEach(t => addZoneThreat(ctx.state, t, heading.name, WILDCARD.migrationThreat));
             ctx.logEvent(

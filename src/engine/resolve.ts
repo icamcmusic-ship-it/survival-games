@@ -1,10 +1,11 @@
 import { Tribute, attr } from '../models/types';
 import { forceStance } from './stance';
-import { MOTIVES, RESOLVE } from '../data/balance';
+import { MOTIVES, RESOLVE, SOCIAL_AXES } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { agedResolveDecay } from './physique';
 import { ensureMemory, cyclesSinceContact } from './memory';
 import { clampTribute } from './vitals';
+import { rhetoricOf } from './composure';
 import { selfInflictedDeath } from './combat';
 import { getZone } from './map';
 import { traitMod } from '../data/traits';
@@ -58,7 +59,17 @@ export function tickResolve(ctx: SimContext) {
 
         // Somebody to keep going for, or somebody to avenge. Both work.
         const allies = alive.filter(o => o.id !== t.id && o.allianceId !== undefined && o.allianceId === t.allianceId);
-        if (allies.length > 0) delta += RESOLVE.allyBonus;
+        if (allies.length > 0) {
+            delta += RESOLVE.allyBonus;
+            // §3.2: and the other half of the split. Warmth is who you want
+            // beside you; rhetoric is who can still make the case for
+            // tomorrow when you have stopped being able to. Resolve is about
+            // *intent*, so it is rhetoric that reaches it — an ally who is
+            // merely pleasant company does nothing here, and does everything
+            // to sanity.
+            const argued = allies.reduce((best, o) => Math.max(best, rhetoricOf(o)), 0);
+            delta += Math.max(0, argued - SOCIAL_AXES.attributeMidpoint) * SOCIAL_AXES.allyArgumentPerRhetoric;
+        }
         // §3.10: private motive. A tribute holding onto someone at home is
         // harder to put out; one whose whole reason is their district
         // partner burns hotter for vengeance when it comes to that.

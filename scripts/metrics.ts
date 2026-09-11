@@ -693,19 +693,34 @@ const indicators: Indicator[] = [
         // would be 25% and canon wants them meaningfully above that but not
         // dominant. The rebalance (district attribute spread, the Career
         // archetype's redundant stat stacking, and Career hunger dependence)
-        // moved this to ~68%, which is real progress and still short of the
-        // goal. Deliberately left as an unmet goal rather than a relaxed one:
-        // closing the rest of it means giving the outer districts ways to win
-        // that are not "roll better melee stats" — traps, poison and attrition
-        // are all present but under-tuned — and that is a larger piece of work
-        // than a stat table.
+        // moved this to ~68%, then to 48.1% at n=3200.
+        //
+        // §9.4 closed the rest of it on the clock rather than on the stat
+        // table. The measurement that mattered was not the share: it was that
+        // Careers were taking those crowns with the *longest* average survival
+        // in the game (4.52 days against a 3.7 field mean) on 0.96 kills. The
+        // archetype whose `riskCurve` is `front-loaded`, whose story is a pack
+        // that comes apart, and whose district table already said in prose
+        // that "the pack falls apart once the supplies are gone" was winning
+        // the attrition game. `CAREER_APPETITE` makes that prose true — the
+        // head start is untouched, the hunger multiplier climbs once the
+        // horn's pile is gone — and the share fell to 42.9% at n=3200, with the
+        // bloodbath share, tribute-caused deaths and end health flat and four
+        // further design goals (best archetype, archetype spread, worst
+        // archetype, wipeouts) newly met alongside it.
+        //
+        // Guard ratcheted 72% -> 50%: seven points of headroom over the
+        // measured value, which is ~3 standard errors at the 400-run default.
+        // Tune this one at METRICS_RUNS=3200 or more. At the 400-run default
+        // the same build reads 42.4% against 42.9%, and a two-point swing is
+        // most of the distance between the goal and missing it.
         label: 'Career victors',
         value: careerVictors / Math.max(1, victors),
-        guard: v => v <= 0.72,
-        guardText: '<= 72%',
+        guard: v => v <= 0.50,
+        guardText: '<= 50%',
         goal: '<= 45%',
         goalMet: v => v <= 0.45,
-        baseline: '76.3% measured (audit reported 40.1%, did not reproduce)',
+        baseline: '76.3% measured (audit reported 40.1%, did not reproduce); 48.1% before §9.4',
         fmt: asPct,
     },
 ];

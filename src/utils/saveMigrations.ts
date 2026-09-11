@@ -35,19 +35,62 @@ export interface Bet {
     mult: number;
 }
 
-/** §6.8: a proposition bet settled from the run itself rather than the crown. */
-export type SideBetKind = 'first-blood' | 'no-victor' | 'career-victor';
+/**
+ * §6.8/§6.1: a proposition bet settled from the run itself rather than the
+ * crown. The kinds and their pricing live in `engine/sideMarkets.ts`; this
+ * module only has to be able to read one back out of a save written by an
+ * older build, which is why `normalizeSideBets` validates against the market
+ * catalogue rather than a hardcoded list.
+ */
+import { SIDE_BET_KINDS, SideBetKind } from '../engine/sideMarkets';
+export type { SideBetKind };
 export interface SideBet {
     kind: SideBetKind;
     stake: number;
-    /** Fixed at placement — see SIDE_BETS in balance.ts. */
+    /** Locked at placement, from the live board — see `priceSideBet`. */
     mult: number;
-    /** 'first-blood' only: the tribute wagered to draw it. */
+    /** 'first-blood' and 'top-three': the tribute wagered on. */
     targetId?: string;
+    /** 'victor-district': which district. */
+    targetDistrict?: number;
+    /** The counting markets: the line the wager was struck at. */
+    line?: number;
 }
+
+/**
+ * §2.2: how many rewind snapshots travel with the save.
+ *
+ * The in-memory stack holds sixteen; a refresh used to take all of them,
+ * because the stack lived in a module-level variable and nothing in the save
+ * payload knew it existed. A resumed run now comes back with its last few
+ * checkpoints intact. Deliberately a *short* tail: each snapshot is a whole
+ * `GameState` (chronicle included), and the localStorage origin quota is the
+ * budget that has to cover the run itself first.
+ */
+export const REWIND_PERSIST = 3;
 
 export interface SavedRun {
     gameState: GameState;
+    /**
+     * §2.2: the tail of the undo stack, oldest first — the same order the
+     * in-memory stack uses, so resuming is a straight assignment. Optional:
+     * every save written before this existed simply resumes with no history,
+     * which is exactly what it had before.
+     *
+     * In memory every entry is a whole state. *On disk* the chronicles are
+     * stripped, because a checkpoint's log is always a prefix of the live one
+     * (the engine only ever appends to it) and writing three more copies of a
+     * 1,300-line chronicle every two seconds took the autosave from 0.55 MB to
+     * 2.1 MB. `packRewind` strips them, `normalizeSavedRun` puts them back, and
+     * nothing outside this module sees the difference.
+     */
+    rewind?: GameState[];
+    /**
+     * Parallel to `rewind`: how many lines of the saved chronicle each
+     * checkpoint had. -1 means "this entry carries its own log", the fallback
+     * for the case where the prefix relationship does not hold.
+     */
+    rewindLogLengths?: number[];
     bets: Record<string, Bet>;
     sideBets: SideBet[];
     betsResolved: boolean;
@@ -655,17 +698,49 @@ function normalizeSideBets(raw: unknown): SideBet[] {
     return raw.flatMap(entry => {
         const b = asRecord(entry);
         if (!b) return [];
-        const kind = b.kind;
-        if (kind !== 'first-blood' && kind !== 'no-victor' && kind !== 'career-victor') return [];
+        // §6.1: validated against the market catalogue rather than a list
+        // copied into this file, so adding a market cannot silently orphan
+        // every save that holds one.
+        const kind = SIDE_BET_KINDS.find(k => k === b.kind);
+        if (!kind) return [];
         const stake = asNum(b.stake, 0);
         if (stake <= 0) return [];
+        const district = asNum(b.targetDistrict, NaN);
+        const line = asNum(b.line, NaN);
         return [{
             kind,
             stake,
             mult: Math.max(1, asNum(b.mult, 1)),
             targetId: typeof b.targetId === 'string' ? b.targetId : undefined,
+            targetDistrict: Number.isFinite(district) ? district : undefined,
+            line: Number.isFinite(line) ? line : undefined,
         }];
     });
+}
+
+/**
+ * §2.2: prepare the undo stack for writing, sharing the run's own chronicle
+ * rather than copying it three more times.
+ *
+ * A checkpoint's log is a prefix of the log being saved — the engine only
+ * appends, and a rewind pops the stack down to the state it restores — so the
+ * length is all that has to be written down. The prefix is verified rather than
+ * assumed: anything that does not line up keeps its own log and costs what it
+ * always did.
+ */
+export function packRewind(stack: GameState[], log: EventLog[]): {
+    rewind: GameState[];
+    rewindLogLengths: number[];
+} {
+    const rewind: GameState[] = [];
+    const rewindLogLengths: number[] = [];
+    stack.forEach(snap => {
+        const n = snap.log.length;
+        const isPrefix = n <= log.length && (n === 0 || snap.log[n - 1]?.id === log[n - 1]?.id);
+        rewind.push(isPrefix ? { ...snap, log: [] } : snap);
+        rewindLogLengths.push(isPrefix ? n : -1);
+    });
+    return { rewind, rewindLogLengths };
 }
 
 /** Total, non-throwing coercion of an unknown payload into a `SavedRun`. */
@@ -679,8 +754,33 @@ export function normalizeSavedRun(raw: unknown): SavedRun | null {
     if (gameState.phase === 'ended') return null;
 
     const savedAt = asStr(r.savedAt, '');
+    // §2.2: the persisted undo stack. Each entry goes through the same
+    // `normalizeGameState` the live run does — a checkpoint written by an
+    // older build has exactly the same holes in it — and anything that cannot
+    // be repaired into a state is dropped rather than rejecting the whole
+    // save: losing a checkpoint is survivable, losing the run is not.
+    const lengths = Array.isArray(r.rewindLogLengths) ? r.rewindLogLengths : [];
+    const rewind = Array.isArray(r.rewind)
+        ? (r.rewind as unknown[])
+            .map((entry, i) => {
+                const snap = normalizeGameState(entry);
+                if (!snap) return null;
+                // Put the stripped chronicle back (see `packRewind`). A length
+                // that cannot be honoured — a truncated save, a hand-edited
+                // file — drops the checkpoint rather than resurrecting it with
+                // somebody else's log.
+                const len = typeof lengths[i] === 'number' ? (lengths[i] as number) : -1;
+                if (len < 0) return snap;
+                if (len > gameState.log.length) return null;
+                return { ...snap, log: gameState.log.slice(0, len) };
+            })
+            .filter((s): s is GameState => s !== null)
+            .slice(-REWIND_PERSIST)
+        : [];
+
     return {
         gameState,
+        rewind,
         bets: normalizeBets(r.bets),
         sideBets: normalizeSideBets(r.sideBets),
         betsResolved: asBool(r.betsResolved, false),

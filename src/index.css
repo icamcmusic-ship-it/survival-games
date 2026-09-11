@@ -631,6 +631,13 @@ html[data-reduce-motion='true'] {
     /* segmented control */
     .seg {
         display: inline-flex;
+        /* §2.1: segmented controls carry three or four nowrap items and were
+           laid out on a 1280px page. On a 380px phone a `seg` that cannot wrap
+           is a row wider than the viewport, and one of those anywhere makes the
+           whole document scroll sideways. Wrapping costs a line of height on a
+           narrow screen and nothing at all on a wide one. */
+        flex-wrap: wrap;
+        max-width: 100%;
         gap: 0.2rem;
         padding: 0.2rem;
         background: var(--paper-flush);

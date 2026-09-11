@@ -207,6 +207,9 @@ export const INTERVIEW_SCENARIOS = [
             "The love story lands because {tribute} plainly wishes it were nobody's business, and everyone can see it costing them to share.",
             "{tribute} is asked what they will do if it comes down to the two of them, and takes long enough answering that the answer is the pause.",
             "{tribute} mentions, almost as an aside, that they have already decided how this ends for them, and the room goes very quiet working out what that means.",
+            "{tribute} is asked whether the person at home is watching and says they hope not, and the hope is so plainly genuine that the room aches.",
+            "{tribute} answers a question about weapons by describing a kitchen, and a table, and who sits where at it, and nobody interrupts.",
+            "Caesar tries to move on twice and cannot, because {tribute} has said something true and the audience is not finished with it.",
         ],
         failure: [
             "{tribute} tries to act heartbroken, but it lands as calculated and cheap.",
@@ -221,6 +224,9 @@ export const INTERVIEW_SCENARIOS = [
             "The heartbreak is word-perfect, which is the problem — the Capitol has heard this exact heartbreak before.",
             "{tribute} calls the beloved by a slightly different name in the second answer than in the first, and the Capitol is nothing if not attentive.",
             "{tribute} performs the love story at exactly the volume of a person who has rehearsed it, and Caesar moves the interview on early.",
+            "{tribute} explains why the love story is good for sponsorship, out loud, on camera, in the third answer.",
+            "The token {tribute} keeps raising for the cameras turns out to be Capitol-issue, and the room recognises it before they do.",
+            "{tribute} weeps on cue at the exact moment the strings come in, and the Capitol, which wrote the cue, is unimpressed.",
         ],
         charismaBuff: 1,
         trustMultiplier: 1.5
@@ -240,6 +246,9 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} says the quiet part plainly — they are here to win, not to be liked — and the Capitol likes them for it.",
             "{tribute} is asked who they are afraid of and answers with a number instead of a name — twenty-three — and the room laughs before it understands.",
             "{tribute} describes what they intend to do in the arena in the flat, procedural voice of somebody describing a job, and it is far worse than a threat.",
+            "{tribute} is offered a chance to walk back a threat and declines it, politely, twice.",
+            "Asked what they will miss, {tribute} says nothing at all, holds the silence for four seconds, and moves on.",
+            "{tribute} answers a question about mercy with a question about arithmetic, and Caesar does not try that angle again.",
         ],
         failure: [
             "{tribute} tries to be intimidating and comes off as a try-hard.",
@@ -254,6 +263,9 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} tries to loom on a couch, which has never once worked, and does not work now.",
             "{tribute} promises carnage in a voice that cracks on the second syllable of it.",
             "{tribute} lists what they will do to the field and gets an eight in training the next morning, and the Capitol does the arithmetic in public.",
+            "{tribute} promises to kill on the first day and is asked, reasonably, who, and has not thought that far.",
+            "The threats are fluent until Caesar asks a small kind question about home, and {tribute} cannot get back to being frightening afterwards.",
+            "{tribute} tries to stare down a Career in the wings and is smiled at, and the cameras catch the smile.",
         ],
         charismaBuff: 0,
         trustMultiplier: 1.2
@@ -273,6 +285,9 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} says they are not the story, and names three tributes who are, and by doing so becomes the story.",
             "{tribute} thanks the stylist, the escort and the woman who did the hems, by name, and forgets to mention themselves at all.",
             "Asked about their odds, {tribute} says they are probably about right, and the honesty of it lands harder than any boast in the whole evening.",
+            "{tribute} thanks the stylist by name, then the prep team by name, and the room finds itself rooting for someone who notices people.",
+            "Asked about their odds, {tribute} agrees with them cheerfully, and somehow this makes the Capitol want to change them.",
+            "{tribute} says the training week was the most food they have ever seen, without any bitterness at all, and the silence afterwards is complicated.",
         ],
         failure: [
             "{tribute} comes across as too small and too soft to see out the first hour.",
@@ -287,6 +302,9 @@ export const INTERVIEW_SCENARIOS = [
             "Caesar hands {tribute} three openings to sell themselves and watches all three go unused.",
             "{tribute} works the humility so hard it curdles into a bid, and the front row can hear the bid.",
             "{tribute} says they are nobody four times in six minutes, and by the fourth the Capitol has agreed with them.",
+            "{tribute} works the humility so hard it becomes a boast about humility, and the room hears the turn.",
+            "{tribute} says they are nothing special four times, and by the fourth the audience has agreed.",
+            "The modesty collapses when {tribute} mentions their training score unprompted, twice.",
         ],
         charismaBuff: 1,
         trustMultiplier: 1.3
@@ -306,6 +324,9 @@ export const INTERVIEW_SCENARIOS = [
             "Every non-answer is polite, complete, and empty. It is a kind of craftsmanship, and the room applauds it as such.",
             "{tribute} answers three questions with three sentences and leaves the country arguing about what the second one meant.",
             "Asked directly what their plan is, {tribute} says 'yes', and Caesar decides not to follow up.",
+            "{tribute} answers three questions without once using the word 'I', and the Capitol spends the night noticing.",
+            "Asked directly what their strategy is, {tribute} says 'yes' and lets it sit there.",
+            "{tribute} gives one small, specific, verifiable detail about themselves and nothing else, and it is repeated all week.",
         ],
         failure: [
             "{tribute} is so quiet that the interview becomes painfully awkward.",
@@ -320,6 +341,9 @@ export const INTERVIEW_SCENARIOS = [
             "The cryptic answers arrive a half-beat late every time, which makes them sound rehearsed, which makes them sound like nothing.",
             "{tribute} withholds so much that there is visibly nothing being withheld.",
             "The mystery act runs out somewhere around the fourth question and what is left is a frightened sixteen-year-old in a good jacket.",
+            "The enigma runs out somewhere in the second question and what is left is a tribute with no answers.",
+            "{tribute} is mysterious about something the Capitol already knows, and the room enjoys knowing it first.",
+            "Asked to elaborate, {tribute} repeats the same cryptic line word for word, and the trick dies in public.",
         ],
         charismaBuff: 0,
         trustMultiplier: 1.1
@@ -339,6 +363,9 @@ export const INTERVIEW_SCENARIOS = [
             "The wink is deployed exactly once, at exactly the right moment, and half the Capitol claims it personally.",
             "{tribute} makes Caesar laugh so hard he loses his place in the cards, which has happened four times in thirty years.",
             "{tribute} turns a question about weaponry into a question about the interviewer's tailoring and gets away with it completely.",
+            "{tribute} makes Caesar laugh at Caesar's own expense, and gets away with it entirely.",
+            "{tribute} learns the name of somebody in the third row and uses it, and the third row is theirs for the year.",
+            "{tribute} flirts with the whole room rather than one camera, which is the harder trick, and lands it.",
         ],
         failure: [
             "{tribute} tries to be charming and completely misreads the room.",
@@ -353,6 +380,9 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} winks at the camera a fourth time, and the fourth one costs them everything the first three earned.",
             "{tribute} tries a line on the front row that would have worked on a different front row.",
             "The charm is doing the work of the answer, and about halfway through the room notices there was no answer.",
+            "{tribute} aims a line at a sponsor who is visibly older than their parents, and the room cools by several degrees.",
+            "The charm is fine and the timing is not, and every laugh arrives half a beat after {tribute} has already moved on.",
+            "{tribute} winks at the camera and the feed cuts to a reaction shot of nobody reacting.",
         ],
         charismaBuff: 2,
         trustMultiplier: 1.4
@@ -372,6 +402,9 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} promises the Capitol a short Games, 'out of respect for your time,' and the room roars.",
             "{tribute} is asked whether they have any weaknesses and appears, genuinely, to think about it for a while.",
             "{tribute} names the two tributes they consider a real problem, on air, and both of them go up in the odds by morning.",
+            "{tribute} is rude to Caesar in a way that is genuinely funny, and the Capitol decides arrogance is a personality.",
+            "Asked to name a rival, {tribute} says they would need a list of names first, and gets the laugh.",
+            "{tribute} treats the interview as an inconvenience with such total conviction that the room follows them anyway.",
         ],
         failure: [
             "{tribute} insults the Capitol audience and is met with dead silence and boos.",
@@ -386,6 +419,9 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} mocks a twelve-year-old tribute by name, and whatever the strategy was, it dies right there.",
             "{tribute} bellows something about the Careers and gets a look from the Careers.",
             "{tribute}'s boast requires a fact that the whole country can check, and the whole country checks it.",
+            "{tribute} insults a Career on live broadcast and the segment cuts to that Career, who is enjoying it.",
+            "The arrogance lands as fear wearing a costume, and the Capitol is expert at spotting the seams.",
+            "{tribute} claims a training score they did not get, on the night before the scores are read out.",
         ],
         charismaBuff: -1,
         trustMultiplier: 0.8
@@ -405,6 +441,9 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} asks the sponsors for one specific, absurd item, deadpan. By morning, three patrons have pledged it.",
             "{tribute} answers a question about survival strategy with a long, precise account of something they once did to a chicken, and it is somehow reassuring.",
             "{tribute} asks Caesar a question back, gets an answer, and thanks him for it, and the interview never fully recovers its shape.",
+            "{tribute} answers a serious question with something so sideways that Caesar has to sit down, and the clip runs all week.",
+            "{tribute} brings a small object to the interview and explains it badly and at length, and the Capitol is delighted.",
+            "{tribute} is odd without performing odd, which is rare enough that the room can tell the difference.",
         ],
         failure: [
             "{tribute} mumbles incoherently. Caesar has to change the subject quickly.",
@@ -419,6 +458,9 @@ export const INTERVIEW_SCENARIOS = [
             "The audience wants to be baffled on purpose, and cannot shake the feeling that nobody here is doing anything on purpose.",
             "The bit that worked in the corridor does not work under the lights, and {tribute} keeps going with it anyway.",
             "{tribute} is odd in a way the room reads as unwell rather than interesting, and the applause is the polite kind.",
+            "The bit goes on ninety seconds past the laugh and Caesar has to steer out of it.",
+            "{tribute} is strange in a way that reads as unwell rather than charming, and the room is uncomfortable rather than amused.",
+            "The oddity is plainly rehearsed, and the Capitol prefers its eccentrics unpolished.",
         ],
         charismaBuff: 1,
         trustMultiplier: 1.2
@@ -438,6 +480,9 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} thanks the audience at the end — quietly, correctly — and the ordinary courtesy is somehow the most unnerving thing all night.",
             "{tribute} gives eleven words across the whole interview and the Capitol replays all eleven of them until morning.",
             "Asked whether they have anything to say to the other tributes, {tribute} looks into the camera and says nothing at all for four seconds.",
+            "{tribute} answers in five words or fewer, every time, and the room leans further in each time.",
+            "Caesar asks a long question and {tribute} waits, patiently, until it becomes clear there is not going to be an answer.",
+            "{tribute} says one full sentence at the very end, and it is repeated by every commentator in Panem before morning.",
         ],
         failure: [
             "{tribute} tries to be quietly menacing and just comes across as somebody with nothing to say.",
@@ -452,6 +497,9 @@ export const INTERVIEW_SCENARIOS = [
             "By the buzzer the quiet reads as stage fright with a haircut, and the sponsors saw the real thing earlier tonight.",
             "{tribute}'s silence reads as a person who cannot think of anything, because that is what it is.",
             "{tribute} tries to be unnerving and lands on uncomfortable, and Caesar spends the last minute rescuing them.",
+            "The silence is just silence, and the audience works that out somewhere in the second question.",
+            "{tribute} says nothing for so long that Caesar answers for them, and the room laughs at the rescue.",
+            "There is no menace behind the quiet, only a tribute who cannot think of anything to say, and it shows.",
         ],
         charismaBuff: 0,
         trustMultiplier: 1.15
@@ -471,6 +519,9 @@ export const INTERVIEW_SCENARIOS = [
             "Caesar reaches for the handkerchief and {tribute} does not need it, and that — the not needing — is what the room remembers.",
             "{tribute} says the name once, at the end, and then will not say anything else, and the applause takes a long time to start.",
             "{tribute} explains, very steadily, exactly how many name-slips were in that bowl and whose they were, and nobody in the room enjoys the arithmetic.",
+            "{tribute} talks about the Reaping in the past tense and about their sibling in the present, and nobody in the room misses it.",
+            "Asked whether they blame anybody, {tribute} says no in a way that is plainly a decision rather than a feeling.",
+            "{tribute} describes teaching somebody to do something small and ordinary, and the Capitol is quietly wrecked by it.",
         ],
         failure: [
             "{tribute} breaks down mid-answer and cannot recover the thread. Caesar is kind about it, which somehow makes it worse.",
@@ -485,6 +536,9 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} asks the room for nothing, twice, and the room, relieved, gives exactly that.",
             "{tribute} reaches for the grief and finds the performance of it instead, and the difference is audible.",
             "The story lands and then {tribute} keeps going past the end of it, and the room watches it go from a loss to a strategy.",
+            "{tribute} deploys the grief at the exact moment the sponsorship board goes up behind them.",
+            "The story changes in one detail between the second answer and the fourth, and the Capitol keeps its own notes.",
+            "{tribute} cannot say the name at all, which would work, except they then explain at length that they cannot say it.",
         ],
         charismaBuff: 0,
         trustMultiplier: 1.35
@@ -504,6 +558,9 @@ export const INTERVIEW_SCENARIOS = [
             "Caesar tries to rattle the machine and the machine thanks him for the data.",
             "{tribute} corrects Caesar on a point of Games history, politely and correctly, and the Capitol makes a note.",
             "{tribute} explains what they think the field's biggest mistake will be and declines, reasonably, to explain what they intend to do about it.",
+            "{tribute} describes the arena as a supply problem and starts solving it out loud, and the Capitol is fascinated.",
+            "Asked about allies, {tribute} gives a rate rather than a name — most of them fail by day four — and the room takes the point.",
+            "{tribute} corrects Caesar on a piece of Games history, accurately, and is right, and does not gloat.",
         ],
         failure: [
             "{tribute} comes across as a spreadsheet with a pulse, and the room's attention drifts within a minute.",
@@ -518,6 +575,9 @@ export const INTERVIEW_SCENARIOS = [
             "The plan is genuinely good, and {tribute} explains enough of it that it stops being one.",
             "{tribute} talks about the arena like a problem set and the room stops caring whether they solve it.",
             "{tribute}'s analysis is good and their delivery has the warmth of a train timetable, and the sponsors go elsewhere.",
+            "The analysis is sharp and entirely about other Games, and the room notices {tribute} has said nothing about this one.",
+            "{tribute} explains their plan in enough detail that twenty-three other tributes now have it.",
+            "The coldness is fine until {tribute} is asked about their district, and the same flat voice makes the room dislike them.",
         ],
         charismaBuff: 0,
         trustMultiplier: 1.1
@@ -537,6 +597,9 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} promises to do the necessary and no more than the necessary, and the room hears something it almost never hears here: a limit.",
             "Asked whether they want to win, {tribute} says they want to go home, which is not the same sentence and the room hears that.",
             "{tribute} says they will not be the first to raise a hand out there, and manages to make it sound like a decision rather than a weakness.",
+            "{tribute} says they do not want any of this, plainly, and then says what they intend to do anyway.",
+            "Asked whether they volunteered, {tribute} says no and that they would not have, and the honesty buys them the room.",
+            "{tribute} refuses to promise a good show and promises something smaller and more believable instead.",
         ],
         failure: [
             "The reluctance reads as self-pity instead of honesty, and the room's sympathy curdles fast.",
@@ -551,6 +614,9 @@ export const INTERVIEW_SCENARIOS = [
             "The honesty is real and shapeless, and shapeless does not survive a three-minute format.",
             "{tribute} says they do not want to hurt anybody and then cannot say what they will do instead.",
             "The reluctance stops reading as decency somewhere around the third answer and starts reading as an absence of a plan.",
+            "The reluctance curdles into complaint somewhere in the third answer, and complaining is not a story.",
+            "{tribute} says they never asked for this to a crowd that has never asked them for anything, and the room withdraws.",
+            "The humility and the reluctance fight each other for the whole segment, and neither wins.",
         ],
         charismaBuff: 1,
         trustMultiplier: 1.25
@@ -570,6 +636,9 @@ export const INTERVIEW_SCENARIOS = [
             "Caesar asks what home smells like, off his own cards, and {tribute}'s answer makes twelve districts homesick at once.",
             "{tribute} speaks for six minutes about their district and does not use the word 'I' once.",
             "{tribute} sends a message home in the district's own idiom, and half of Panem does not understand it and the right half does.",
+            "{tribute} names three people from their district and what each of them does, and the Capitol learns a place it had never considered.",
+            "Asked what they are fighting for, {tribute} names a street, and it lands harder than any abstraction.",
+            "{tribute} speaks about their district with such specific pride that even the Capitol audience wants to visit it.",
         ],
         failure: [
             "The district pride reads as rehearsed, a line delivered rather than meant, and the room can tell the difference.",
@@ -584,6 +653,9 @@ export const INTERVIEW_SCENARIOS = [
             "The message to home is lovely and long, and the Capitol, which is not home, checks its programme halfway through.",
             "{tribute} praises their district in the Capitol's words instead of the district's, and both audiences notice.",
             "The loyalty is real and the delivery is a recitation, and the room has heard the recitation before.",
+            "The district pride tips into something the censors are visibly unhappy about, and the segment is shortened.",
+            "{tribute} recites district statistics for a full minute and the room's attention goes somewhere else entirely.",
+            "{tribute} praises their district by criticising another one, and the other one's sponsors are in the room.",
         ],
         charismaBuff: 0,
         trustMultiplier: 1.2
@@ -603,6 +675,9 @@ export const INTERVIEW_SCENARIOS = [
             "{tribute} ends the segment a full minute early, on a high note, on purpose, and walking off becomes the biggest laugh of the night.",
             "{tribute} does something in the last ten seconds that nobody in the production booth planned for, and it is the clip of the night.",
             "{tribute} answers every question truthfully and in a completely different register each time, and by the end nobody can predict anything about them.",
+            "{tribute} answers every question in a completely different register from the last, and the Capitol cannot look away.",
+            "Nobody, including Caesar, knows where the answer is going until it arrives, and it arrives well.",
+            "{tribute} does something unplanned on live broadcast that ought to have failed, and does not fail.",
         ],
         failure: [
             "The unpredictability just reads as unfocused, and the segment goes nowhere in particular.",
@@ -617,6 +692,9 @@ export const INTERVIEW_SCENARIOS = [
             "The room needed a thread, any thread. {tribute} hands it confetti.",
             "{tribute} swings at three different angles in one interview and lands none of them.",
             "The unpredictability reads, by the fourth answer, as somebody who has not decided who they are, which is exactly what it is.",
+            "The unpredictability lands as nothing in particular, which is the one thing a wildcard cannot afford.",
+            "{tribute} tries three angles in ninety seconds and the room never gets hold of any of them.",
+            "The swerve arrives on a question that deserved a straight answer, and the audience holds it against them.",
         ],
         charismaBuff: 1,
         trustMultiplier: 1.15
@@ -1003,6 +1081,143 @@ export const ROMANCE_TEXTS = [
     'ROMANCE: {t1} and {t2} of District {district} have started talking about after, out loud, where the microphones are. Nobody in the sponsor rooms corrects them.',
     'ROMANCE: There is no version of the rules where this ends well for {t1} and {t2} of District {district}. They appear to have read the rules and continued anyway.',
 ];
+
+/**
+ * §4.1: what a bond looks like on the days it is not being declared.
+ *
+ * Romance was 0.1% of the chronicle — the rarest category in the game — not
+ * because pairs never formed but because forming was the only thing a pair
+ * could ever do. A declared bond produced one line and then went silent for
+ * the rest of the run while the pair walked around inside it. These are the
+ * days in between: fired per cycle from `tickBondBeats` for a standing
+ * Star-Crossed pair who are in the same place, so a bonded pair is something
+ * the feed keeps showing you rather than something it mentioned once.
+ *
+ * A performed bond draws from the same pool on purpose. The whole point of a
+ * performance is that from outside it is indistinguishable.
+ */
+export const ROMANCE_BOND_TEXTS = [
+    'ROMANCE: {t1} sleeps through the watch in {zone} and {t2} lets them, and takes the whole night instead, and says nothing about it in the morning.',
+    'ROMANCE: The cameras catch {t1} and {t2} splitting one ration in {zone} into two unequal halves, and each of them trying to be handed the smaller one.',
+    'ROMANCE: {t1} has started checking where {t2} is before doing anything at all. It is not strategy and everybody watching knows it.',
+    'ROMANCE: In {zone}, {t2} cleans the grit out of a cut on {t1}\'s hand with more care than the cut needs.',
+    'ROMANCE: {t1} and {t2} argue about something small in {zone} for twenty minutes. It is the most ordinary either of them has been allowed to look all week.',
+    'ROMANCE: {t1} says {t2}\'s name in their sleep in {zone}. The broadcast runs it, because of course it does.',
+    'ROMANCE: {t2} walks the perimeter of {zone} twice before settling, and only settles once {t1} has.',
+    'ROMANCE: There is a joke between {t1} and {t2} now that nobody outside {zone} has the context for. The Capitol has been trying to decode it for two days.',
+    'ROMANCE: {t1} and {t2} have stopped discussing the ending. Everyone in the sponsor rooms has noticed which conversation they are not having.',
+    'ROMANCE: {t2} carries the heavier pack out of {zone} without being asked and without making a thing of it.',
+    'ROMANCE: When the cannon goes somewhere across the arena, {t1} and {t2} look at each other before they look anywhere else.',
+    'ROMANCE: {t1} teaches {t2} the knot their father used, badly, in {zone}, and {t2} learns it the way you learn something you intend to keep.',
+    'ROMANCE: {t2} has started leaving the last of the water for {t1} and drinking after, and lying about the order.',
+    'ROMANCE: In {zone}, {t1} and {t2} take turns naming things they will do afterwards. Neither of them says "if".',
+    'ROMANCE: {t1} falls behind on the climb out of {zone}. {t2} does not go on ahead, and does not pretend it was a rest stop either.',
+    'ROMANCE: The odds on {t1} and {t2} have started moving as one number. The bookmakers have given up trying to separate them.',
+    'ROMANCE: {t2} keeps {t1} between themselves and the open ground in {zone}, every time, all day, without either of them mentioning it.',
+    'ROMANCE: {t1} and {t2} sit through the anthem in {zone} holding onto each other hard enough that the Capitol cuts away and then cuts straight back.',
+    'ROMANCE: Somebody in {zone} asks {t1} what they will do if it comes down to the two of them. {t1} says "it will not", which is not an answer.',
+];
+
+/**
+ * §4.1: what a betrayal leaves behind, a cycle or more later.
+ *
+ * Betrayal was 0.2% of the chronicle: one line at the moment of the knife and
+ * then nothing, which is the opposite of how a betrayal actually works on a
+ * group. Fired from `tickBetrayalAftermath` on somebody who has been sold out
+ * and lived, or on the person who did it.
+ */
+export const BETRAYAL_AFTERMATH_TEXTS = [
+    '{victim} has started sleeping with their back to rock in {zone}. They did not used to need to.',
+    '{betrayer} has not said {victim}\'s name out loud since it happened, and has stopped being able to say anybody else\'s either.',
+    '{victim} catches themselves listening for {betrayer}\'s footfall in {zone} and cannot decide whether they want to hear it.',
+    'Somebody offers {victim} a place at their fire in {zone}. {victim} says no, and keeps walking, and the offer was genuine.',
+    '{betrayer} eats alone in {zone}. Whatever they bought with it, the price keeps arriving in instalments.',
+    '{victim} rehearses what they will say to {betrayer} in {zone}, out loud, and none of the versions end with talking.',
+    'The Capitol keeps replaying what {betrayer} did to {victim}. It has become the thing {betrayer} is, as far as the audience is concerned.',
+    '{victim} goes back through everything {betrayer} ever said to them looking for the seam, and finds it, and that is worse.',
+    '{betrayer} takes the long way around {zone} to avoid a ridgeline they cannot even see {victim} from.',
+    '{victim} still has the knot {betrayer} tied in their pack strap. In {zone}, they cut the strap rather than untie it.',
+    'Nobody in {zone} will take a watch with {betrayer} now. Nobody has said why. Everybody knows why.',
+    '{betrayer} has started explaining it to people who did not ask, which is how everyone in {zone} knows it is still going on inside them.',
+    '{victim} is politer than they used to be, to everyone, in the way that means they have stopped expecting anything from anyone.',
+    'There is a version of {betrayer} that existed before {zone} and the broadcast keeps showing it, which the sponsors find unbearable and cannot stop watching.',
+    '{victim} dreams about {betrayer} doing it again, differently, and wakes in {zone} already sitting up.',
+    '{betrayer} was owed nothing and took it anyway, and in {zone}, days later, is still doing the arithmetic that was supposed to make it worth it.',
+];
+
+/**
+ * §4.1: the room, after. Witnessing a betrayal is a thing that happens *to*
+ * the witness, and it used to move three numbers and print nothing.
+ */
+export const BETRAYAL_WITNESS_TEXTS = [
+    '{witness} saw the whole thing in {zone} and has not been able to look at {betrayer} since without doing sums.',
+    '{witness} was standing close enough to {victim} to be splashed by it. In {zone}, they are very quiet about that.',
+    '{witness} works out, in {zone}, that the reason it was not them was timing and nothing else.',
+    'Nobody asks {witness} what happened in {zone}. Everybody watches them not say it.',
+    '{witness} has started counting the exits of every camp they sit down in, which is what watching {betrayer} do that to {victim} cost them.',
+    '{witness} offers {betrayer} the first watch in {zone} to see what they say. {betrayer} takes it, which settles nothing.',
+    'The thing {witness} cannot stop returning to is how ordinary {betrayer} looked in {zone} both before and after.',
+    '{witness} liked {betrayer}. In {zone}, that is the part they are having trouble with.',
+    '{witness} tells the story of what {betrayer} did to {victim} twice in {zone}, and the second telling is harder than the first.',
+    'Since {zone}, {witness} has stopped handing anybody their weapon to look at.',
+    '{witness} decides in {zone} that they will not be in a group with {betrayer} when the field gets small, and starts arranging it now.',
+    '{witness} was asleep for the first half of it and is not telling anybody in {zone} which half.',
+    '{witness} does the maths on their own alliance after {zone} and does not like any of the answers.',
+    'What happened to {victim} in {zone} has made {witness} kinder to everybody, briefly, in a way that frightens them.',
+];
+
+/**
+ * §4.1: the love triangle, in its three beats.
+ *
+ * Detection, the jealousy that builds while nothing is happening, and the
+ * forced choice — the payoff the whole subsystem exists for, which fired five
+ * times in 400 runs and therefore had exactly one wording. See
+ * `engine/triangles.ts`.
+ */
+export const TRIANGLE_TEXTS = {
+    formed: [
+        'It has become obvious to everyone except possibly {apex} that {a} and {b} are not going to be able to go on being polite to each other about this.',
+        '{a} and {b} have started measuring everything against each other, and the unit of measurement is {apex}.',
+        'Nobody has said anything out loud, but {a} and {b} both know exactly where {apex} slept last night, and both know the other knows.',
+        'There is a shape in this camp now with {apex} at the point of it and {a} and {b} on the two long sides, and shapes like that do not hold.',
+        'The Capitol works out before anybody in the arena does that {a} and {b} want the same thing, and that the thing is {apex}.',
+        '{a} makes room for {apex}. {b} makes room for {apex}. Neither of them makes room for the other, and that is the whole story now.',
+        'Two people have decided {apex} is the reason to keep going, and the arena has only ever had room for one of those at a time. {a} and {b} are both still pretending otherwise.',
+        'Whatever {apex} thinks is going on here, {a} and {b} have both already decided what is going on here, and they have decided the same thing.',
+    ],
+    jealousy: [
+        '{a} and {b} have started arranging themselves around {apex} — who sits where, who takes which watch — and neither of them has said a word about why.',
+        '{a} answers a question {b} was asked, about {apex}, and the silence afterwards lasts longer than the answer did.',
+        '{b} takes the watch next to {apex} again. {a} counts it, again, and says nothing, again.',
+        'The rations get divided three ways and somehow {a} and {b} are both watching which portion goes to {apex}.',
+        '{a} and {b} are very careful with each other now. It is the carefulness of two people holding the same thing from opposite ends.',
+        '{apex} laughs at something {b} said. {a} is looking somewhere else on purpose and hears every syllable of it.',
+        'Somebody harmless asks {a} what {b} is like. {a} takes slightly too long to say "fine".',
+        'There is a joke going around the Capitol about which of {a} or {b} will get to {apex} first, and it is not really a joke.',
+    ],
+    choiceBitter: [
+        '{apex} makes the choice in front of both of them, and it is {chosen}. {passed} says that is fine, and means something else entirely by it.',
+        '{apex} does not draw it out. It is {chosen}, said plainly, with {passed} standing right there. {passed} nods once, and the nod is a door closing.',
+        'Asked directly, with the field down to what it is down to, {apex} picks {chosen}. {passed} congratulates them both. Nobody who hears it believes a word of it.',
+        'It is {chosen}. {passed} takes their share of the water, and their weapon, and their new and very specific reason to be careful about who is behind them.',
+        '{apex} says {chosen}\'s name and the whole thing is over in a second and a half. {passed} spends the rest of the day being extremely reasonable about it.',
+        'The choice is {chosen}, and {passed} hears it, and something in {passed} that was load-bearing quietly stops being.',
+    ],
+    choiceGracious: [
+        '{apex} makes the choice in front of both of them, and it is {chosen}. {passed} takes it better than anyone watching expected, which the Capitol finds far less interesting than the alternative.',
+        'It is {chosen}. {passed} says so out loud first, before {apex} has to, and that costs {passed} more than anyone in the Capitol has the equipment to notice.',
+        '{apex} chooses {chosen}. {passed} shakes their hand, means it, and walks their watch alone that night without being asked to.',
+        '{apex} picks {chosen}, and {passed} — who had a day in which to decide how to be about this — turns out to have decided to be decent about it.',
+        'The choice goes to {chosen}. {passed} stays anyway, which the sponsors read as weakness and the other two read correctly.',
+        'It is {chosen}. {passed} says the only true thing available to them, which is that they would rather know, and then does not say anything else for a long while.',
+    ],
+    /** What the arena has left, appended to the choice. */
+    remaining: [
+        'There are {remaining} people left alive in here.',
+        'There are {remaining} of them left in the arena, and the Capitol is enjoying all three of these numbers.',
+        '{remaining} still standing, and everyone in this conversation can count.',
+    ],
+};
 
 /**
  * CONTENT-06: a bond that is not romance. {older} has taken {younger} under

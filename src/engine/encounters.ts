@@ -287,6 +287,66 @@ export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDe
     }
 }
 
+/**
+ * §7.4: the death vocabulary of one run, as a shape a records screen can read.
+ *
+ * Of 151 distinct death-cause templates, fifty fired exactly once across 400
+ * runs — which makes the most interesting deaths in the game the ones almost
+ * nobody will ever see, with nothing anywhere to tell a player they saw one.
+ * `PanemRecords` already does exactly this job for Quells through `quellsSeen`,
+ * and a "deaths witnessed" ledger is the same shape: a set of stable ids that
+ * accumulates across runs and gives the rarest outcomes somewhere to land.
+ *
+ * This is the engine-side half of that, deliberately kept as two pure
+ * functions so the records layer can own the persistence without this module
+ * knowing anything about it:
+ *
+ *   deathCauseTemplate('Killed by Marcus Vane')            -> 'killed-by-tribute'
+ *   deathCauseTemplate('Fell from the top of The Crown')   -> 'fell-from-the-top-of'
+ *   deathCausesInRun(state)                                -> the run's set
+ *
+ * The template is what has to be stored, not the raw cause: raw causes embed
+ * tribute names and zone names, so a per-cause ledger keyed on them would
+ * never see the same entry twice. Names are stripped, leading articles on the
+ * trailing place-name are dropped, and what is left is the sentence the
+ * authoring table actually wrote.
+ */
+export function deathCauseTemplate(cause: string): string {
+    const trimmed = cause.trim();
+    if (!trimmed) return 'unknown';
+    // Every tribute-dealt death is written by `killTribute` as "Killed by <name>"
+    // — sometimes with a possessive tail ("Killed by X's deadfall"), which is a
+    // different template and worth keeping apart from a plain killing.
+    const byTribute = /^Killed by [A-Z][^']*?(?:'s (.+))?$/.exec(trimmed);
+    if (byTribute) {
+        return byTribute[1] ? `killed-by-tribute-${slug(byTribute[1])}` : 'killed-by-tribute';
+    }
+    // Anything with a proper-noun place on the end is the same death wherever
+    // it happened: "Buried in the collapse of The Winch House" is one template.
+    const stripped = trimmed.replace(/\s+(?:of|in|inside|at|on|from|under)\s+(?:The\s+)?[A-Z].*$/, '');
+    return slug(stripped);
+}
+
+function slug(text: string): string {
+    return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unknown';
+}
+
+/**
+ * §7.4: every death template this run actually produced, deduplicated.
+ *
+ * The hook a records screen wants: call it once when a run ends, union the
+ * result into whatever the profile stores, and the count of distinct entries
+ * is a completion figure over the whole death table the way `quellsSeen` is
+ * over the Quells.
+ */
+export function deathCausesInRun(state: { tributes: Tribute[] }): string[] {
+    const seen = new Set<string>();
+    state.tributes.forEach(t => {
+        if (t.status === 'dead' && t.causeOfDeath) seen.add(deathCauseTemplate(t.causeOfDeath));
+    });
+    return [...seen].sort();
+}
+
 /** Rough terrain a hand-authored event was written for, guessed from its own words. */
 const TERRAIN_KEYWORDS: Array<[Terrain, RegExp]> = [
     ['water', /flood|drown|riptide|whirlpool|surf|tidal|river|current|swim|lake|geothermal vent|steam vent|water tank/i],

@@ -1,5 +1,5 @@
 import { Tribute, attr } from '../models/types';
-import { ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
+import { CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -7,8 +7,9 @@ import { applyExposure } from './exposure';
 import { getZone, zoneFeatures } from './map';
 import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
+import { warmthOf } from './composure';
 import { sanityBandOf } from './sanityBands';
-import { decayIdleDrift } from './proficiency';
+import { decayIdleDrift, profOf, trainTerrainSkills } from './proficiency';
 import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding, tickWoundRecovery, injuryGrade } from './wounds';
 import { rememberedThreat } from './memory';
 import { hasCamp } from './fieldcraft';
@@ -19,8 +20,8 @@ import { craftOf } from '../data/districts';
 import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
 import { earnTrait } from './earnedTraits';
-import { SLEEP } from '../data/balance';
-import { bodyLabel, driftCondition, hungerDrainMultiplier, starvationBuffer, waterNeedMultiplier, youthRecoveryMultiplier } from './physique';
+import { PROFICIENCY, SLEEP, SOCIAL_AXES } from '../data/balance';
+import { bodyLabel, driftCondition, effectiveAgility, hungerDrainMultiplier, starvationBuffer, waterNeedMultiplier, youthRecoveryMultiplier } from './physique';
 import { arenaHasLaw, wildcardIs } from './gamesProfile';
 import { isEvasiveStance } from '../data/stances';
 
@@ -82,6 +83,15 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
         if (zoneFeatures(zone).waterSource && wateredHere) thirst -= VITALS.waterThirstRelief;
         if (zone.terrain === 'highland') fatigue += VITALS.highlandFatiguePenalty;
         if (zone.terrain === 'forest' && time === 'night') fatigue -= VITALS.forestNightShelter;
+        // §3.1: the read site for the `swimming` proficiency. A cycle spent in
+        // or on water is work, and how much work it is depends on whether the
+        // tribute knows how to let the current do some of it. `Swimmer` seeds
+        // this (see `TRAIT_PROFICIENCY_FLOOR`) rather than being the whole of
+        // it, so a non-swimmer who has spent four days in the shallows is no
+        // longer permanently the worse of the two.
+        if (zone.terrain === 'water' || zone.terrain === 'wetland') {
+            fatigue -= profOf(t, 'swimming') * PROFICIENCY.swimFatigueRelief;
+        }
     }
 
     const climate = climateOf(ctx.state.arena.id);
@@ -94,6 +104,15 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     // District 1 does, and that is the whole of what mining and the Seam buy.
     const resilience = craftOf(t.district).hungerResilience;
     if (resilience) hunger *= resilience;
+    // §9.4: and the academy's bill comes due on a clock. While the horn still
+    // has a pile on it a Career eats better than anybody; every cycle after
+    // that, the stomach an academy built asks for more than the arena has.
+    // See `CAREER_APPETITE` — the Career head start is untouched, the cost is
+    // moved onto the part of the run the pack is supposed to lose.
+    if (t.isCareer) {
+        const past = Math.max(0, ctx.state.day - CAREER_APPETITE.graceDays);
+        hunger *= 1 + Math.min(CAREER_APPETITE.multiplierCap, past * CAREER_APPETITE.perDayPastGrace);
+    }
     // §7.1: a tribute who took tesserae has been rationing for years — the
     // personal version of the district-level resilience above, and the
     // mechanical teeth the reaping note promises.
@@ -482,8 +501,14 @@ function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night'
     let amount = RECOVERY.nightHeal + Math.max(0, traitMod(t, 'sanityRecovery') / 2);
     const zone = getZone(ctx.state.arena, t.zone);
     if (zone && (zone.terrain === 'forest' || zone.terrain === 'ruins')) amount += RECOVERY.shelteredBonus;
-    // A shelter they actually built beats whatever cover the terrain offered.
-    if (hasCamp(ctx, t, 'shelter')) amount += CRAFTING.shelterRecoveryBonus;
+    // A shelter they actually built beats whatever cover the terrain offered —
+    // and §3.1, how much better depends on how well they build. This is the
+    // read site for the `crafting` proficiency: the same night in the same
+    // weather is worth more to somebody who has been keeping a camp alive for
+    // a week than to somebody who put up a lean-to this afternoon.
+    if (hasCamp(ctx, t, 'shelter')) {
+        amount += CRAFTING.shelterRecoveryBonus + profOf(t, 'crafting') * PROFICIENCY.craftRestWeight;
+    }
     // The most famous parachute in the source material, doing the thing it is
     // famous for: keeping somebody alive through a night they should not survive.
     if (hasTool(t, 'warmth')) amount += RECOVERY.sleepingBagBonus;
@@ -539,7 +564,19 @@ function applySanityPressure(ctx: SimContext, t: Tribute, time: 'day' | 'night',
         && (RECOVERY.restfulStances as readonly string[]).includes(t.stance)
         && t.vitals.fatigue < SANITY.restFatigueCeiling;
     if (resting) recovery += SANITY.restRecovery;
-    if (alliesPresent > 0) recovery += SANITY.allyPresentRecovery;
+    if (alliesPresent > 0) {
+        recovery += SANITY.allyPresentRecovery;
+        // §3.2: company was a flat number — any ally in the zone was worth
+        // exactly as much as any other. `warmthOf` is the half of charisma
+        // that answers "is this person a comfort to be near", as distinct from
+        // "is this person persuasive", and the warmest ally present is the one
+        // doing the work.
+        const warmest = getAlive(ctx.state)
+            .filter(o => o.id !== t.id && o.zone === t.zone
+                && o.allianceId !== undefined && o.allianceId === t.allianceId)
+            .reduce((best, o) => Math.max(best, warmthOf(o)), 0);
+        recovery += Math.max(0, warmest - SOCIAL_AXES.attributeMidpoint) * SOCIAL_AXES.allyComfortPerWarmth;
+    }
     if (dread < 0.2 && t.health > 60 && t.vitals.hunger < SANITY.deprivationThreshold) {
         recovery += SANITY.safetyRecovery;
     }
@@ -560,7 +597,14 @@ function applySanityPressure(ctx: SimContext, t: Tribute, time: 'day' | 'night',
  */
 function applyWearAndTear(ctx: SimContext, t: Tribute) {
     // Fatigue mistake: drop something, or stumble.
-    if (t.vitals.fatigue > FATIGUE_MISTAKES.threshold && ctx.rng.chance(FATIGUE_MISTAKES.chance)) {
+    // §3.3: the mistake chance answers to `effectiveAgility`, not to the
+    // printed number — so a ruined leg and a wasted frame make a tribute
+    // measurably clumsier on day nine than they were on day one, which is the
+    // arc `condition` was previously the only attribute allowed to have.
+    const slip = Math.max(FATIGUE_MISTAKES.chance / 2, Math.min(FATIGUE_MISTAKES.chance * 2,
+        FATIGUE_MISTAKES.chance
+        - (effectiveAgility(t) - SOCIAL_AXES.attributeMidpoint) * FATIGUE_MISTAKES.agilityRelief));
+    if (t.vitals.fatigue > FATIGUE_MISTAKES.threshold && ctx.rng.chance(slip)) {
         const droppable = t.inventory.filter(i => i.type !== 'weapon' || t.inventory.filter(w => w.type === 'weapon').length > 1);
         if (droppable.length > 0 && ctx.rng.chance(FATIGUE_MISTAKES.dropShare)) {
             const lost = ctx.rng.pick(droppable);
@@ -720,6 +764,11 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
 
 /** One cycle of simply existing in the arena. */
 export function processVitals(ctx: SimContext, time: 'day' | 'night') {
+    // §3.1: the skills nobody decides to practise. Climbing, swimming and
+    // keeping a camp are learned by being somewhere and doing the work, so
+    // unlike the other six they train off the cycle rather than off a chosen
+    // action — which is exactly why they did not exist before.
+    trainTerrainSkills(ctx);
     const board = getAlive(ctx.state);
     board.forEach(t => {
         const drains = drainsFor(ctx, t, time);

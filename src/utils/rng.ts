@@ -34,6 +34,33 @@ export function baseSeedOf(seed: string): string {
     return seed.split('~')[0];
 }
 
+/**
+ * §3.4: how many times a pool came back empty this process.
+ *
+ * `pick` throws on an empty array, which is loud by construction. The honest
+ * form below does not — an empty pool is a legitimate outcome there — and that
+ * is the case the soak could never see: it greps *rendered log text* for
+ * "undefined" and "NaN", so a missing pick that lands in a non-string field,
+ * or in a branch that simply narrates nothing, is invisible to it. A rising
+ * count is not by itself a bug; a count that jumps after a change to a filter
+ * is the signal worth having, and the soak can print it.
+ *
+ * Deliberately process-global and deliberately not on the RNG instance: it is
+ * a diagnostic, it never feeds a decision, and nothing in the engine reads it,
+ * so it cannot affect a seeded replay.
+ */
+let emptyPicks = 0;
+
+/** The running count of empty pools handed to `pickOrUndefined`. */
+export function emptyPickCount(): number {
+    return emptyPicks;
+}
+
+/** Resets the count — for a soak that wants a per-run figure. */
+export function resetEmptyPickCount(): void {
+    emptyPicks = 0;
+}
+
 export class RNG {
     private random: () => number;
     constructor(seed: string) {
@@ -66,7 +93,7 @@ export class RNG {
      * against — a replay-divergence hazard.
      */
     pickOrUndefined<T>(arr: readonly T[]): T | undefined {
-        if (arr.length === 0) return undefined;
+        if (arr.length === 0) { emptyPicks++; return undefined; }
         return arr[this.nextInt(0, arr.length - 1)];
     }
     chance(probability: number): boolean {

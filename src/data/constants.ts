@@ -58,6 +58,10 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'frozen',
+        // §5.2: nothing grows under a metre of snow, and the dark is the thing
+        // that actually kills up here — the two rules the arena's own
+        // description has always claimed and never enforced.
+        laws: ['noForage', 'deadlyNight'],
         // §5.7: the Frozen Wasteland's horn leans toward warmth.
         restockBias: ['sleeping-bag', 'thermal-cloak', 'matches', 'lamb-stew'],
         name: 'The Frozen Wasteland',
@@ -85,6 +89,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'concrete',
+        // §5.2: a fight between two tower blocks is heard by the whole city.
+        law: 'openMic',
         name: 'The Concrete Jungle',
         description: 'An abandoned, decaying metropolis. Verticality and structural collapses are constant threats.',
         mutts: ['Steel-jawed Rats', 'Glass-winged Bats', 'Feral Tracker Jackers', 'Sewer Eels'],
@@ -119,6 +125,11 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'toxic',
+        // §5.2: everything here is wet and everything here is poisoned. The
+        // same already-tested stack the Drowned Reef carries, which is the
+        // cheapest variety available — a law that exists in one arena is a law
+        // nobody meets.
+        laws: ['fireImpossible', 'noHealing'],
         // §5.7: a bog arena's drop is what makes its water and air survivable.
         restockBias: ['tablets', 'antidote', 'charcoal-filter', 'iodine'],
         name: 'The Toxic Swamps',
@@ -173,6 +184,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'ashfall',
+        // §5.2: no parachute finds the ground through that much falling ash.
+        law: 'noSponsors',
         name: 'The Ashfall Basin',
         description: 'A dead volcanic caldera under permanent grey snowfall. The ash coats the lungs, the ground is warm, and nothing green has grown here in a decade.',
         mutts: ['Cinder Hounds', 'Ash Wraiths', 'Glass-Shard Crows', 'Ember Moths'],
@@ -199,6 +212,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'tempest',
+        // §5.2: nothing stays lit in that wind and nothing can be dropped into it.
+        laws: ['fireImpossible', 'noSponsors'],
         // §5.7: a flooded arena's horn leans toward water gear.
         restockBias: ['net', 'fishing-kit', 'rope', 'waterskin'],
         name: 'The Tempest Reach',
@@ -232,6 +247,10 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'saltflats',
+        // §5.2: a salt pan surrounded by water, none of it drinkable. The one
+        // seep is in the scrub, and everybody works that out on day two.
+        law: 'noWaterExceptZone',
+        lawZone: 'Scrub Hollow',
         name: 'The Salt Mirror',
         description: 'A dried inland sea of blinding white crust. There is nowhere to hide, the glare burns from below as well as above, and every horizon lies.',
         mutts: ['Brine Wolves', 'Salt Locusts', 'Mirage Stalkers'],
@@ -282,6 +301,11 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'canopy',
+        // §5.2: `oneWayBorders` was declared by no arena at all — a law with a
+        // tested enforcement site and nowhere to happen. A hanging garden is
+        // exactly where it belongs: every route is a drop to the next bough,
+        // and nothing that goes down comes back up the way it went.
+        law: 'oneWayBorders',
         name: 'The Hanging Gardens',
         description: 'An arena built upward instead of outward. Every zone is a platform in a two-hundred-metre canopy, and the ground is not survivable.',
         mutts: ['Silk Spiders', 'Screech Primates', 'Thornvine Constrictors', 'Needle Hornets', 'Bough Vipers'],
@@ -367,6 +391,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'islands',
+        // §5.2: the channels between the islands run one way, all week.
+        law: 'oneWayBorders',
         name: 'The Shattered Archipelago',
         description: 'Micro-islands adrift in a sea of thick magnetic fog, joined by swaying rope bridges and zip-lines. Compasses spin, the fog below has never been surveyed, and a cut rope is a border redrawn.',
         mutts: ['Lodestone Gulls', 'Fogline Eels', 'The Ferryman', 'Rust Mites'],
@@ -390,6 +416,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'eclipse',
+        // §5.2: an arena named for the dark that had no rule about the dark.
+        law: 'deadlyNight',
         name: 'The Perpetual Eclipse Forest',
         description: 'An ancient redwood forest locked in permanent dusk, lit only by glowing fungi, fiery pitch-vents and a ceiling of artificial stars that do not stay still. Nothing here waits for nightfall, because nightfall never quite comes.',
         mutts: ['Duskwing Owls', 'Pitch Hounds', 'Lantern Beetles', 'The Understory', 'Star Moths'],
@@ -436,6 +464,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'abattoir',
+        // §5.2: a killing floor is a tiled room. Everything in it is audible.
+        law: 'openMic',
         name: 'The Industrial Abattoir',
         description: 'A multi-level automated factory that never fully shut down: rust-seized gears the size of rooms, conveyor lines that still run, crushing pistons on a schedule, and furnace halls that have not been cold in living memory.',
         mutts: ['Hook Apes', 'Scald Rats', 'The Line Boss', 'Grinder Beetles', 'Loft Swine'],
@@ -487,6 +517,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'ashwaste',
+        // §5.2: ash is not soil. Nothing has come up out of it in years.
+        law: 'noForage',
         name: 'The Ash Wasteland',
         description: 'A dead land under three feet of volcanic ash, ringed around a caldera that has not finished with anyone. Every step is work, every print is a signature, and the mountain is still deciding.',
         mutts: ['Drift Serpents', 'Caldera Vultures', 'Cinder Fleas', 'The Grey Bull'],
@@ -505,6 +537,10 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'quarry',
+        // §5.2: `shrinkingArena` was the other law no arena declared. A working
+        // quarry is the one place where the ground itself is being taken away
+        // on a schedule, so the border starts closing from the first morning.
+        law: 'shrinkingArena',
         name: 'The Vertical Quarry',
         description: 'A cylindrical open-pit mine, spiral roads cut into sheer stone, dropping bench by bench to a flooded black centre. The only ways down are the ways everyone else knows about.',
         mutts: ['Bench Cats', 'Blast Bats', 'The Dredger', 'Scree Adders', 'Silt Hounds'],
@@ -526,6 +562,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'glacier',
+        // §5.2: there is nothing on a glacier that will take a flame.
+        law: 'fireImpossible',
         name: 'The Glacial Cavern Network',
         description: 'A blinding white glacier above, and under it a maze of translucent blue caves, frozen waterfalls and tunnels polished slick as glass. The light comes down through thirty metres of ice, and so does the sound of it moving.',
         mutts: ['Blue-Ice Bears', 'Crevasse Worms', 'Echo Bats', 'Rime Foxes'],
@@ -553,6 +591,10 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'floe',
+        // §5.2: polar summer. The sun goes round the horizon and never sets,
+        // which is the second-cruellest thing about the place. Spreads `noNight`
+        // off the single arena that was carrying it alone.
+        laws: ['noNight'],
         name: 'The Shattered Ice Floe Sea',
         description: 'Open pack ice on a pitch-black frigid ocean, plates grinding and drifting all night, the Cornucopia stranded on the one shelf big enough to trust. The map is provisional. The water is not survivable.',
         mutts: ['Ice Orcas', 'Floe Bears', 'Storm Petrels', 'The Under-Thing'],
@@ -577,6 +619,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'alpine',
+        // §5.2: the updraughts off the faces take every parachute over the ridge.
+        law: 'noSponsors',
         name: 'The Pine Forest & Avalanche Peaks',
         description: 'Steep alpine slopes, heavy timber below, bare rock and loaded snowfields above. Everything worth having is downhill; everything that can kill you is up, and it is all one loud noise from coming down.',
         mutts: ['Timberline Wolves', 'The White Stag', 'Chough Flocks', 'Marmot Mutts', 'The Tarn Lurker'],
@@ -598,6 +642,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'terraces',
+        // §5.2: you go down a terraced mine. You do not go back up one.
+        law: 'oneWayBorders',
         name: 'The Abandoned Terraced Mines',
         description: 'A mountain cut into dozens of stepped stone terraces by pre-Dark Days mining, riddled with open shaft mouths and strung with the rusted bones of a cable car system nobody has trusted in a century.',
         mutts: ['Shaft Swifts', 'Terrace Jackals', 'The Foreman', 'Cable Spiders', 'Flume Eels'],
@@ -621,6 +667,10 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'seapeaks',
+        // §5.2: peaks in an ocean. Salt water everywhere and one place the ice
+        // gives up anything anybody can drink.
+        law: 'noWaterExceptZone',
+        lawZone: 'The Ice Chimney',
         name: 'The Alpine Archipelago',
         description: 'A chain of sharp mountain peaks thrust directly out of a deep, rough ocean — no coastlines, no beaches, no gradual slopes. Scale the ice or swim the swells; there is no third way between any two peaks.',
         mutts: ['Undertow Serpents', 'Cliff Harriers', 'Deep Current Grapplers'],
@@ -686,6 +736,9 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'burnscar',
+        // §5.2: the fire already came through. There is nothing left to eat and
+        // nothing left that will take a flame twice.
+        laws: ['fireImpossible', 'noForage'],
         name: 'The Post-Burn Scar & Fireweed Slope',
         description: 'A mountain forest three years burned: blackened snag trees, deep erosion gullies, and thorny fireweed grown up thick over ground that still runs hot. Deadfall drops silently. The mountain is not finished with fire.',
         mutts: ['Cinder-Back Boars', 'Thornvine Jackals', 'The Standing Char'],
@@ -731,6 +784,10 @@ export const ARENAS: Arena[] = [
         mutts: ['The Family Dogs', 'The Meter Reader', 'Wasps in the Eaves', 'Something in the Pool'],
         events: ['The Neighbourhood Watch', 'Gas Leak', 'The Sprinklers'],
         law: 'cornucopiaRefills',
+        // §5.2: the cordon around a suburb is a street at a time, from the
+        // first morning, and everybody on the loop road can see which street
+        // went last night. Gives `shrinkingArena` a second home.
+        laws: ['shrinkingArena'],
         // The arena's utilities are its hazards: sprinklers instead of fog, a
         // garden left too long instead of a bloom, larders instead of forage.
         effectVocab: {
@@ -1005,6 +1062,10 @@ export const ARENAS: Arena[] = [
         mutts: ['Raptors', 'The Troop', 'Constrictors & Vipers', 'The Bears', 'The Herd', 'The Cats', 'Quarantine'],
         events: ['The Schedule', 'Feeding Time', 'Ahead of Schedule'],
         law: 'cornucopiaRefills',
+        // §5.2: the animals are the weapons here, and the keepers never left
+        // anything sharp lying around a public park. Spreads `noWeapons` off
+        // the one arena that was carrying the whole law by itself.
+        laws: ['noWeapons'],
         effectVocab: {
             stripped: { label: 'cleaned out' },
             contaminated: { label: 'the reptile house', durationMult: 1.2 },

@@ -33,6 +33,11 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: {
             enableFeast: String(config.enableFeast),
             enableSanity: String(config.enableSanity),
             plainNames: String(!!config.plainNames),
+            // §2.6: "Vanilla Games" is not a cosmetic slider — it suppresses
+            // the whole profile draw (temperament, calendar, cast shape), so a
+            // link that left it out replayed a plain run as a modified one,
+            // with a different cast.
+            vanillaRules: String(!!config.vanillaRules),
             // Pin this run's exact Quarter Quell (or explicit lack of one) the
             // same way HallOfFameEntry.quellId does — without it a link to a
             // forced-Quell run replays as an ordinary year.
@@ -76,16 +81,14 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: {
                 className="btn btn-sm"
                 // No aria-label here on purpose: the button's own text is what
                 // changes to "Copied", and a static label would silence that.
-                // §1.8: a rerolled cast composes its seed as `base~SUFFIX`,
-                // where the suffix is a non-seeded `Math.random()`. The share
-                // link encodes the composite verbatim. The arena and the Quell
-                // are resolved from the BASE seed (see `baseSeedOf`) and the
-                // link pins both explicitly, so the composite replays the same
-                // map, the same law and the same cast — but the UI elsewhere
-                // shows the base, so say the composite out loud here.
-                title={seed.includes('~')
-                    ? `Copy a link that replays this exact rerolled cast. The full seed is ${seed} — the part after the ~ is what the reroll drew, and a link without it replays the original cast instead.`
-                    : `Copy a link that replays seed ${seed}`}
+                // §2.6: this used to carry four lines apologising for a bug —
+                // the link and the on-screen seed disagreed after a reroll.
+                // They do not any more: every screen shows the composite
+                // `base~SUFFIX` seed, the link carries that same string plus
+                // the arena, the Quell and the rules the run is executing, and
+                // the reroll draws its cast from the same base config
+                // `startGame` does. So the tooltip is one line again.
+                title={`Copy a link that replays seed ${seed}`}
             >
                 {status === 'copied'
                     ? <Check aria-hidden="true" className="w-3.5 h-3.5 text-[var(--color-coin-400)]" />
@@ -95,9 +98,7 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: {
             <button
                 onClick={copySeed}
                 className="chip"
-                title={seed.includes('~')
-                    ? `Copy the seed as text. This cast was rerolled: the full seed is ${seed}; the base seed alone (${seed.split('~')[0]}) replays the original cast.`
-                    : `Copy the seed ${seed} as text`}
+                title={`Copy the seed ${seed} as text`}
             >
                 {seedCopied ? <Check aria-hidden="true" className="w-3 h-3 inline" /> : <Copy aria-hidden="true" className="w-3 h-3 inline" />}
                 {' '}seed {seed}

@@ -2,14 +2,15 @@ import { GameState, Tribute } from '../models/types';
 import { forceStance } from './stance';
 import { noteRivalDeath } from './rapport';
 import { RNG } from '../utils/rng';
-import { DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, RIVALRY, SUSPICION } from '../data/balance';
+import { BETRAYAL, DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, RIVALRY, SUSPICION } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
 import { carryCapacity, giveItem } from './items';
 import { clampTribute } from './vitals';
 import { cyclesSinceContact, ensureMemory, hasStoodBy, raiseSuspicion, rattle, swearVengeance, noteContact } from './memory';
 import { areLovers } from './alliance';
-import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS } from '../data/flavorText';
+import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS, BETRAYAL_WITNESS_TEXTS } from '../data/flavorText';
+import { resolveLoansOnDeath } from './debts';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
@@ -54,8 +55,19 @@ export function adjustRel(a: Tribute, bId: string, delta: number): number {
  * Alliance formation, recruitment and mergers read trust; targeting, grief
  * and the audience read regard.
  */
+export function affectionOf(a: Tribute, b: Tribute): number {
+    return getRel(a, b.id);
+}
+
 export function trustOf(a: Tribute, b: Tribute): number {
-    let trust = getRel(a, b.id);
+    // §4.5: affection buys trust only up to a point. Past `trustFromRegardCap`
+    // the two axes come apart, which is what makes "someone you love and do
+    // not trust" a state the engine can hold: a bond can run to +100 regard
+    // and still leave trust sitting at the cap until the person has actually
+    // done something — stood by them, carried their debt — to earn the rest.
+    // Negative regard passes through undamped: distrust was never the half of
+    // this that was broken.
+    let trust = Math.min(getRel(a, b.id), RELATIONSHIPS.trustFromRegardCap);
     if (hasStoodBy(a, b.id)) trust += RELATIONSHIPS.trustStoodByBonus;
     const mem = a.memory;
     if (mem?.betrayedBy?.includes(b.id)) trust -= RELATIONSHIPS.trustBetrayedPenalty;
@@ -213,6 +225,10 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
     const state = ctx.state;
     const mourners: Tribute[] = [];
     inheritFrom(ctx, victim, killer);
+    // §4.2: every loan the dead tribute was on either side of closes here,
+    // with a line. Both of those endings used to be a silent delete — or, for
+    // a borrower who died, not even that.
+    resolveLoansOnDeath(ctx, victim);
 
     state.tributes.forEach(other => {
         if (other.status !== 'alive' || other.id === victim.id) return;
@@ -258,7 +274,15 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 // Watching your ally or someone you loved die is sufficient on
                 // its own; the relationship hit is the consequence, not the gate.
                 const personal = wereAllied || isLover || isPartner || bond >= RELATIONSHIPS.vengeanceBond;
-                if (personal || now <= RELATIONSHIPS.vengeanceThreshold) {
+                // §4.3: ...but where you were standing when it happened is
+                // part of what makes it an oath. Ten sworn a run, 5% of them
+                // ever paid by the person who swore, is not a vow, it is a
+                // reflex — and most of those were sworn over a name in the
+                // sky. A mourner who watched it happen swears; one who heard
+                // the cannon from two zones away mostly grieves instead.
+                const sworn = other.zone === victim.zone || isLover || isPartner
+                    || ctx.rng.chance(RELATIONSHIPS.vengeanceDistantChance);
+                if (sworn && (personal || now <= RELATIONSHIPS.vengeanceThreshold)) {
                     swearVengeance(other, killer.id);
                     forceStance(other, 'Aggressive');
                     ctx.logEvent(
@@ -384,6 +408,18 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
         if (!mem.betrayedBy.includes(betrayer.id)) mem.betrayedBy.push(betrayer.id);
         // §4.2: watching someone get knifed makes you watch the knife.
         raiseSuspicion(w, betrayer.id, SUSPICION.perWitnessedBetrayal);
+        // §4.1: ...and it is a thing that happened to them, too. This moved
+        // three numbers and printed nothing, in the thinnest category in the
+        // whole chronicle.
+        if (ctx.rng.chance(BETRAYAL.witnessLineChance)) {
+            ctx.logEvent(
+                fill(ctx.pickText(BETRAYAL_WITNESS_TEXTS), {
+                    witness: w.name, betrayer: betrayer.name, victim: victim.name, zone: w.zone,
+                }),
+                [w.id, betrayer.id, victim.id],
+                { category: 'betrayal' }
+            );
+        }
         // Watching an ally get knifed poisons the room — but only the part of
         // the room the witness has actually been in. The old blanket sweep hit
         // every living tribute (~500 relationship writes per betrayal) and

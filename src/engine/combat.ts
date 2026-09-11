@@ -26,7 +26,7 @@ import { areLovers } from './alliance';
 import { hasTruce } from './parley';
 import { riskTolerance } from './risk';
 import { blocTreatyHolds, noteBlocKill } from './blocTreaty';
-import { dominantSideCost, grappleResistance, injuryAbsorption, reachBonus } from './physique';
+import { dominantSideCost, effectiveAgility, grappleResistance, injuryAbsorption, reachBonus } from './physique';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
@@ -385,7 +385,7 @@ function packCohesion(ctx: SimContext, t: Tribute): number {
 }
 
 function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opponent?: Tribute): number {
-    let power = effectiveStrength(t) + t.attributes.agility + ctx.rng.nextInt(0, 5);
+    let power = effectiveStrength(t) + effectiveAgility(t) + ctx.rng.nextInt(0, 5);
 
     if (weapon) {
         power += weapon.damage !== undefined ? effectiveDamage(weapon) : weapon.value / 10;
@@ -395,7 +395,7 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         // craft mid-run — were the only weapons in the game with no stat
         // scaling behind them, which made crafting a downgrade.
         if (weapon.weaponClass === 'ranged') {
-            power += Math.floor(t.attributes.agility / COMBAT.rangedAgilityDivisor) + traitMod(t, 'rangedPower');
+            power += Math.floor(effectiveAgility(t) / COMBAT.rangedAgilityDivisor) + traitMod(t, 'rangedPower');
         } else if (weapon.weaponClass === 'melee') {
             power += Math.floor(effectiveStrength(t) / COMBAT.meleeStrengthDivisor) + traitMod(t, 'meleePower');
             // Reach: a long-armed tribute lands first in a melee. `heightCm` was
@@ -404,7 +404,7 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         } else if (weapon.weaponClass === 'thrown') {
             // Throwing wants both the arm behind it and the eye in front of it.
             power += Math.floor(effectiveStrength(t) / COMBAT.thrownStrengthDivisor)
-                + Math.floor(t.attributes.agility / COMBAT.thrownAgilityDivisor)
+                + Math.floor(effectiveAgility(t) / COMBAT.thrownAgilityDivisor)
                 + traitMod(t, 'rangedPower') * 0.5 + traitMod(t, 'meleePower') * 0.5;
         }
         // Practice with the class of weapon actually in their hands.
@@ -1279,6 +1279,34 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     enforceCapacity(victim);
     victim.health = 0;
     victim.dayOfDeath = ctx.state.day;
+
+    // §9.1: the obituary and the damage record have to agree, and one path
+    // could not make them agree on its own.
+    //
+    // `strikeDown` finishes a tribute who is *already* in the rescue window by
+    // calling straight through to here, so the victim still carried the record
+    // of whoever put them on the ground. A tribute knocked down by friendly
+    // fire and then killed by somebody else read back as "Killed by Lavender
+    // (Sword)" with `lastDamage.sourceId` pointing at Sequoia — the obituary,
+    // the kill credit and the soak's attribution invariant disagreeing three
+    // ways about the same death. `finish` in downed.ts already does this
+    // reconciliation for the endings `tickDowned` owns; this is the same move
+    // for the ending combat owns, at the one funnel every death goes through.
+    //
+    // Narrow on purpose: when the record already names the killer — which is
+    // every ordinary kill, because `applyDamage` wrote it moments ago — this
+    // is a no-op. The marker goes with it: a corpse is not in a rescue window.
+    if (killer && victim.lastDamage?.sourceId !== killer.id) {
+        victim.lastDamage = {
+            cause: cause
+                || (weapon ? `Killed by ${killer.name} (${weapon.name})` : `Killed by ${killer.name}`),
+            kind: 'tribute',
+            sourceId: killer.id,
+            cycle: cycleOf(ctx.state),
+            amount: victim.lastDamage?.amount ?? 0,
+        };
+    }
+    delete victim.downed;
 
     // A2: a Diplomat's death dissolves every truce they talked other people
     // into. The agreements were only ever held together by them being there.

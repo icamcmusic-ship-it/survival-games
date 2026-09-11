@@ -147,7 +147,7 @@ export function EndScreen({
                         <h3 className="panel-title">Chronicle archive — {gameState.log.length} events</h3>
                         <ChronicleExport gameState={gameState} />
                     </div>
-                    <div className="max-h-[620px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="max-h-[70vh] md:max-h-[620px] overflow-y-auto pr-2 custom-scrollbar">
                         {/* §2.5: the run is over. Nothing in here is a spoiler any more. */}
                         <EventFeed logs={gameState.log} cast={gameState.tributes} onSelectTribute={setSelectedTributeId} defaultExpanded revealed gameState={gameState} />
                     </div>

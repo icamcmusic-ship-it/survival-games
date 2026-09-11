@@ -158,7 +158,7 @@ export function DossierPanel({
                         foregrounds their story and the playback brakes can stop on their events.
                     </p>
                 )}
-                <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1.5 custom-scrollbar">
+                <div className="space-y-1.5 max-h-[60vh] md:max-h-[520px] overflow-y-auto pr-1.5 custom-scrollbar">
                     {sorted.map(t => {
                         const dead = t.status === 'dead';
                         const accent = dead ? undefined : allianceAccent(t.allianceId);
