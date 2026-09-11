@@ -1,6 +1,8 @@
 import { Arena, ArenaLawId } from '../models/types';
 import { RNG } from '../utils/rng';
 import { OFF_SEASON } from './balance';
+import { OFF_SEASON_SKINS_EXTRA1 } from './offSeasonSkins/extra1';
+import { OFF_SEASON_SKINS_EXTRA2 } from './offSeasonSkins/extra2';
 
 /**
  * §5: the off-season skin.
@@ -17,8 +19,9 @@ import { OFF_SEASON } from './balance';
  * seed replays the same Games, and would make this a second arena roster to
  * balance rather than a coat of paint.
  *
- * One skin per arena at most, rolled from the seed at `OFF_SEASON_CHANCE`, so
- * it is an occasional surprise rather than a coin flip on every run.
+ * Several skins per arena, one rolled from the seed at `OFF_SEASON_CHANCE`,
+ * so it is an occasional surprise rather than a coin flip on every run — and a
+ * player who has seen an arena's alternate once has not seen all of them.
  */
 
 export interface OffSeasonSkin {
@@ -310,6 +313,14 @@ export const OFF_SEASON_SKINS: Record<string, OffSeasonSkin[]> = {
         dangerShift: OFF_SEASON.kinder,
     }],
 };
+
+// §6.1: fold the extra season files in once, at load, so every reader sees
+// one roster per arena.
+for (const group of [OFF_SEASON_SKINS_EXTRA1, OFF_SEASON_SKINS_EXTRA2]) {
+    for (const [id, skins] of Object.entries(group)) {
+        OFF_SEASON_SKINS[id] = [...(OFF_SEASON_SKINS[id] ?? []), ...skins];
+    }
+}
 
 /**
  * The skin this run's arena wears, if any. Deterministic from the seed, so a
