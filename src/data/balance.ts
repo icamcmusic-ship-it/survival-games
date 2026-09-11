@@ -2493,7 +2493,7 @@ export const TRAPS = {
      * a real thing to walk into rather than a line of flavour text.
      */
     /** Cycles before an unsprung trap rots, is found by the arena, or is stepped over. */
-    lifetime: 8,
+    lifetime: 10,
     /**
      * How many a single tribute can have set at once.
      *

@@ -57,15 +57,16 @@ const AUTHORED_EVENT_TARGET = 24;
 /**
  * The guaranteed minimum. Raise it — never lower it — when the thinnest pack
  * clears a new number. History: 12 (every pack authored to exactly the old
- * note's threshold) -> 18.
+ * note's threshold) -> 18 -> 24.
  */
-const AUTHORED_EVENT_FLOOR = 18;
+const AUTHORED_EVENT_FLOOR = 24;
 /**
- * Packs still under the target. Lower this as packs are brought up to 24; it
- * is not allowed to rise, so a trimmed pack or a thin new arena fails the
- * build. 44 packs exist; this is how many of them are not yet at the target.
+ * Packs still under the target. It is not allowed to rise, so a trimmed pack
+ * or a thin new arena fails the build. All 44 packs are at the target as of
+ * this pass, so the allowance is zero — which means the next number to move is
+ * the target itself, not this one.
  */
-const KNOWN_UNDER_TARGET = 44;
+const KNOWN_UNDER_TARGET = 0;
 
 ARENAS.forEach(arena => {
     const names = new Set(arena.zones.map(z => z.name));
