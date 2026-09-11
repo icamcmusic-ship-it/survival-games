@@ -173,6 +173,29 @@ function pOver(mean: number, sd: number, line: number): number {
     return 1 / (1 + Math.exp(-(mean - line) / (sd * 0.5513)));
 }
 
+/**
+ * The two live sides of a counting market, with the continuity correction
+ * that opens the push between them: 'over 8' wins on 9, not on 8.
+ */
+function twoSided(mean: number, sd: number, line: number): { over: number; under: number } {
+    return {
+        over: pOver(mean, sd, line + SIDE_MARKETS.pushHalfStep),
+        under: 1 - pOver(mean, sd, line - SIDE_MARKETS.pushHalfStep),
+    };
+}
+
+/**
+ * Price a side of a pushable market conditional on the market resolving at
+ * all. Without this the house gives its whole margin back: the push returns
+ * the stake at 1.0, so a market that pushes 15% of the time and is priced on
+ * unconditional probability pays out 0.85 + 0.15 = 1.00 and the book works
+ * for nothing. Every real over/under is quoted this way.
+ */
+function conditional(win: number, lose: number): number {
+    const resolves = win + lose;
+    return resolves > 0 ? win / resolves : win;
+}
+
 /** The default line the board offers for a counting market. */
 export function bloodbathLine(field: Tribute[]): number {
     return Math.max(1, Math.round(bloodbathModel(field).mean));
@@ -234,18 +257,19 @@ export function priceSideBet(kind: SideBetKind, field: Tribute[], target: SideBe
         case 'bloodbath-under': {
             const line = target.line ?? bloodbathLine(pool);
             const { mean, sd } = bloodbathModel(pool);
-            const over = pOver(mean, sd, line);
             const isOver = kind === 'bloodbath-over';
+            const { over, under } = twoSided(mean, sd, line);
             return {
-                kind, line, ...price(isOver ? over : 1 - over),
+                kind, line, ...price(conditional(isOver ? over : under, isOver ? under : over)),
                 label: `${isOver ? 'more' : 'fewer'} than ${line} dead at the Cornucopia`,
             };
         }
         case 'long-games': {
             const line = target.line ?? lengthLine(pool);
             const { mean, sd } = lengthModel(pool);
+            const { over, under } = twoSided(mean, sd, line);
             return {
-                kind, line, ...price(pOver(mean, sd, line)),
+                kind, line, ...price(conditional(over, under)),
                 label: `the Games still running after day ${line}`,
             };
         }

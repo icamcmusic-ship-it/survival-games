@@ -4,6 +4,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { gameActions } from '../store/gameStore';
 import { pathForView } from '../store/router';
 import { chronicleStore, setChronicle } from '../store/chronicleStore';
+import { useStore } from '../store/createStore';
 import { prefsStore, setPrefs } from '../store/prefsStore';
 
 /**
@@ -35,6 +36,10 @@ export function CommandPalette({ gameState, onSelectTribute }: {
     const [query, setQuery] = useState('');
     const [cursor, setCursor] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
+    // Subscribed rather than read inside the memo: the default command list
+    // names the tribute being watched, and a `getState()` call in there is
+    // captured on the first render and never refreshed.
+    const chron = useStore(chronicleStore, s => s);
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -69,7 +74,6 @@ export function CommandPalette({ gameState, onSelectTribute }: {
             // §2.5: the three things a reader does most often, each with the
             // key that also does it. The palette is where a shortcut is
             // discovered; the help overlay (`?`) is where it is confirmed.
-            const chron = chronicleStore.getState();
             const watchedId = chron.followedId ?? chron.filterTributeId;
             const watched = watchedId ? gameState.tributes.find(t => t.id === watchedId) ?? null : null;
             const deaths = gameState.log.filter(l => l.category === 'death' || l.category === 'kill');
@@ -161,7 +165,7 @@ export function CommandPalette({ gameState, onSelectTribute }: {
         }));
 
         return out;
-    }, [query, gameState, onSelectTribute]);
+    }, [query, gameState, onSelectTribute, chron]);
 
     if (!open) return null;
 

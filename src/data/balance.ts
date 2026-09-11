@@ -161,8 +161,15 @@ export const INFECTION = {
      * matters, through `perGradeAbove`; it is a weight, not a gate.
      */
     minWoundGrade: 1,
-    /** Cycles a wound must go untended before the first roll. */
-    incubationCycles: 3,
+    /**
+     * Cycles a wound must go untended before the first roll.
+     *
+     * §7.1: two rather than four. A Games lasts ~20 cycles and most tributes
+     * who take a wound are dead inside six of them, so a four-cycle fuse meant
+     * the arc reliably started after the only people it could have finished
+     * were already gone.
+     */
+    incubationCycles: 2,
     /** Per-cycle odds once incubated, before every term below. */
     baseChance: 0.035,
     perGradeAbove: 0.05,
@@ -1488,6 +1495,47 @@ export const QUALITY = {
     maxArmour: 0.35,
     /** Durability an armour piece loses per point of damage it absorbs. */
     armourWearPerPoint: 1.5,
+} as const;
+
+/**
+ * §10.2: condition as something you can read, and salvage as something you can do.
+ *
+ * Durability existed and worked — `conditionOf` returns a fraction, and
+ * `effectiveDamage` already scaled with it — but it was invisible. A blade
+ * three exchanges from snapping was named exactly like a fresh one in every
+ * line of the chronicle, so the whole system was a hidden float that surfaced
+ * once, at zero, as "it breaks". Named bands make it legible, and give the
+ * keep/drop heuristic something better than a magic `durability <= 10`.
+ *
+ * Salvage is the other half: two of the same kind of thing in a pack that
+ * only holds so much used to mean dropping one on the ground intact. Stripping
+ * the one you are leaving for parts is what anybody would actually do, and it
+ * gives a worn weapon a route back that is not a sponsor gift.
+ */
+export const ITEM_CONDITION = {
+    /** Condition at or above which a piece is as good as it came. */
+    pristineAbove: 0.85,
+    /** …and the two bands below that. Under `failingBelow` it is about to go. */
+    serviceableAbove: 0.55,
+    failingBelow: 0.25,
+    /** Names, in the chronicle's register rather than an inventory screen's. */
+    wornSuffix: 'notched',
+    failingSuffix: 'close to done',
+
+    /** What the keep/drop heuristic makes of a piece in each band. */
+    wornKeepPenalty: 12,
+    failingKeepPenalty: 34,
+
+    /**
+     * Salvage: the share of a scrapped piece's remaining durability that
+     * reaches the one being kept. Well under half — this is a field repair
+     * with somebody else's crossguard, not a forge.
+     */
+    salvageYield: 0.4,
+    /** A repair cannot take a piece past this share of its original condition. */
+    salvageCeiling: 0.9,
+    /** Below this much remaining durability there is nothing worth stripping. */
+    salvageFloor: 4,
 } as const;
 
 /**
@@ -3300,8 +3348,15 @@ export const BLOC_TREATY = {
 } as const;
 
 export const TRIANGLES = {
-    /** Regard a rival needs toward the apex to count as attached. */
-    suitorRegard: 38,
+    /**
+     * Regard a rival needs toward the apex to count as attached.
+     *
+     * §4.1: raised from 38 with the undeclared-romance leg. Contact warmth
+     * pushes any pair who travel together toward the clamp, so at 38 a
+     * five-member alliance contained a dozen nominal "suitors" and the
+     * detector found a triangle around nearly everybody.
+     */
+    suitorRegard: 70,
     /**
      * §4.1: mutual regard at which a leg counts as a romance in its own right,
      * without a declared or performed bond on it.
@@ -3313,9 +3368,13 @@ export const TRIANGLES = {
      * both sides have to be near the top of the scale, which is a romance
      * whether or not anybody has said so on camera.
      */
-    romanticRegard: 72,
-    /** Regard the apex needs toward both, so this is a choice and not two crushes. */
-    apexWarmth: 15,
+    romanticRegard: 96,
+    /**
+     * Regard the apex needs toward both, so this is a choice and not two
+     * crushes. §4.1: raised from 15 alongside the undeclared-romance leg — at
+     * 15 the apex barely had to have noticed the second suitor exists.
+     */
+    apexWarmth: 40,
     /** What a declared Star-Crossed bond is worth against unspoken regard. */
     declaredBondRegard: 85,
 
@@ -3342,7 +3401,7 @@ export const TRIANGLES = {
      * the feast or the endgame. A thing that holds until it cannot hold still
      * has to have a point at which it cannot hold.
      */
-    boilOverHeat: 5,
+    boilOverHeat: 7,
 
     /**
      * Heat before the apex can be made to choose at all.
@@ -3352,7 +3411,7 @@ export const TRIANGLES = {
      * the choice fired three times in 400 runs and the beat the whole feature
      * exists for effectively did not ship.
      */
-    choiceMinHeat: 2,
+    choiceMinHeat: 3,
     chosenRegard: 15,
     passedOverRegard: 30,
     passedOverSanity: 12,
@@ -5527,26 +5586,94 @@ export const SIDE_MARKETS = {
     firstBloodAggressivePersona: 0.5,
     firstBloodFloor: 0.15,
 
-    /** Expected Cornucopia body count: a share of the cast, tilted by Career density. */
-    bloodbathShare: 0.3,
+    /**
+     * Expected Cornucopia body count: a share of the cast, tilted by Career
+     * density. Fitted against a 250-run sweep — mean 8.45 dead of a cast of 24
+     * with six Careers (35.2%), sd 2.29.
+     */
+    bloodbathShare: 0.322,
     bloodbathCareerTilt: 0.12,
-    bloodbathSdShare: 0.1,
+    bloodbathSdShare: 0.095,
     bloodbathSdFloor: 1.2,
 
-    /** Expected run length in days: a floor, a per-tribute term, and the closers' pull. */
-    baseDays: 3.2,
+    /**
+     * Expected run length in days: a floor, a per-tribute term, and the pull a
+     * field full of closers exerts on it. Fitted the same way — mean 9.92
+     * days, sd 2.50, on the same sweep.
+     */
+    baseDays: 5.14,
     daysPerTribute: 0.22,
     careerDayPull: 2,
-    daySpread: 2.6,
+    daySpread: 2.5,
 
-    /** Top-three places, and how sublinearly crown probability scales into them. */
+    /**
+     * A counting market's line lands exactly on the result often enough
+     * (~15% of runs) that it has to be priced as a push rather than swept.
+     * The continuity correction is what opens that gap in a continuous model.
+     */
+    pushHalfStep: 0.5,
+
+    /**
+     * Top-three places, and how sublinearly crown probability scales into
+     * them. Fitted to a realised 16.4% hit rate against a mean crown price of
+     * ~4.2% on the same sweep; above 3/24 because the settlement is lenient
+     * about a shared place.
+     */
     topThreePlaces: 3,
-    topThreeExponent: 2.6,
+    topThreeExponent: 4,
 
     /** Wipeouts: the measured base rate, and how much a field without closers raises it. */
     noVictorBase: 0.015,
     careerShareNorm: 0.25,
     noVictorCareerTilt: 1.5,
+} as const;
+
+/**
+ * §9.3: how much of run N reaches run N+1.
+ *
+ * Every number here is deliberately small. The complaint the continuity layer
+ * answers is that nothing carried forward at all, not that earlier runs should
+ * decide later ones — a returning player should feel the country remembering
+ * them, and should never feel handicapped for having won.
+ */
+export const CONTINUITY = {
+    /** Consecutive crowns that make a district a dynasty rather than a good year. */
+    dynastyStreak: 2,
+    /** …or this many crowns with this many of them inside the recent-runs window. */
+    dynastyCrowns: 4,
+    dynastyRecent: 2,
+    /** Crowns that make a district decorated. */
+    decoratedCrowns: 2,
+    /** Runs after which a district that has never won is the story nobody has heard. */
+    forgottenAfterRuns: 6,
+
+    /** Reaping deltas by standing: sponsor trust, and how much the field watches them. */
+    dynastyTrustPenalty: 10,
+    dynastyThreat: 18,
+    decoratedTrustPenalty: 4,
+    decoratedThreat: 7,
+    forgottenTrustBonus: 8,
+
+    /** A Head Gamemaker's grudge: what earns a point, and the cap. */
+    maxGrudge: 3,
+    grudgeMinGames: 2,
+    grudgeBeatenBy: 2,
+    grudgePatronWins: 2,
+
+    /**
+     * What a grudge is worth in the arena. The signature intervention comes
+     * earlier and is likelier to fire unprompted, and at full grudge the Head
+     * Gamemaker takes a second turn aimed at the district they are watching.
+     */
+    grudgeEarlierDays: 1,
+    grudgeUnpromptedBonus: 0.12,
+    /** Grudge at which the Gamemakers act against the watched district directly. */
+    grudgeInterventionTier: 2,
+    /** Remembered danger left on a watched district's ground. */
+    grudgeThreat: 20,
+    /** What the watched district's tributes lose to the Gamemakers' attention. */
+    grudgeSanity: 8,
+    grudgeFatigue: 10,
 } as const;
 
 export const GAMEMAKER_COSTS = {

@@ -76,8 +76,21 @@ export interface SavedRun {
      * in-memory stack uses, so resuming is a straight assignment. Optional:
      * every save written before this existed simply resumes with no history,
      * which is exactly what it had before.
+     *
+     * In memory every entry is a whole state. *On disk* the chronicles are
+     * stripped, because a checkpoint's log is always a prefix of the live one
+     * (the engine only ever appends to it) and writing three more copies of a
+     * 1,300-line chronicle every two seconds took the autosave from 0.55 MB to
+     * 2.1 MB. `packRewind` strips them, `normalizeSavedRun` puts them back, and
+     * nothing outside this module sees the difference.
      */
     rewind?: GameState[];
+    /**
+     * Parallel to `rewind`: how many lines of the saved chronicle each
+     * checkpoint had. -1 means "this entry carries its own log", the fallback
+     * for the case where the prefix relationship does not hold.
+     */
+    rewindLogLengths?: number[];
     bets: Record<string, Bet>;
     sideBets: SideBet[];
     betsResolved: boolean;
@@ -705,6 +718,31 @@ function normalizeSideBets(raw: unknown): SideBet[] {
     });
 }
 
+/**
+ * §2.2: prepare the undo stack for writing, sharing the run's own chronicle
+ * rather than copying it three more times.
+ *
+ * A checkpoint's log is a prefix of the log being saved — the engine only
+ * appends, and a rewind pops the stack down to the state it restores — so the
+ * length is all that has to be written down. The prefix is verified rather than
+ * assumed: anything that does not line up keeps its own log and costs what it
+ * always did.
+ */
+export function packRewind(stack: GameState[], log: EventLog[]): {
+    rewind: GameState[];
+    rewindLogLengths: number[];
+} {
+    const rewind: GameState[] = [];
+    const rewindLogLengths: number[] = [];
+    stack.forEach(snap => {
+        const n = snap.log.length;
+        const isPrefix = n <= log.length && (n === 0 || snap.log[n - 1]?.id === log[n - 1]?.id);
+        rewind.push(isPrefix ? { ...snap, log: [] } : snap);
+        rewindLogLengths.push(isPrefix ? n : -1);
+    });
+    return { rewind, rewindLogLengths };
+}
+
 /** Total, non-throwing coercion of an unknown payload into a `SavedRun`. */
 export function normalizeSavedRun(raw: unknown): SavedRun | null {
     const r = asRecord(raw);
@@ -721,9 +759,21 @@ export function normalizeSavedRun(raw: unknown): SavedRun | null {
     // older build has exactly the same holes in it — and anything that cannot
     // be repaired into a state is dropped rather than rejecting the whole
     // save: losing a checkpoint is survivable, losing the run is not.
+    const lengths = Array.isArray(r.rewindLogLengths) ? r.rewindLogLengths : [];
     const rewind = Array.isArray(r.rewind)
         ? (r.rewind as unknown[])
-            .map(entry => normalizeGameState(entry))
+            .map((entry, i) => {
+                const snap = normalizeGameState(entry);
+                if (!snap) return null;
+                // Put the stripped chronicle back (see `packRewind`). A length
+                // that cannot be honoured — a truncated save, a hand-edited
+                // file — drops the checkpoint rather than resurrecting it with
+                // somebody else's log.
+                const len = typeof lengths[i] === 'number' ? (lengths[i] as number) : -1;
+                if (len < 0) return snap;
+                if (len > gameState.log.length) return null;
+                return { ...snap, log: gameState.log.slice(0, len) };
+            })
             .filter((s): s is GameState => s !== null)
             .slice(-REWIND_PERSIST)
         : [];

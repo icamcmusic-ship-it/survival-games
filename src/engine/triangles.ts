@@ -22,12 +22,12 @@
  *    with that.
  */
 import { GameState, Tribute } from '../models/types';
-import { TRIANGLES } from '../data/balance';
+import { ROMANCE, TRIANGLES } from '../data/balance';
 import { TRIANGLE_TEXTS } from '../data/flavorText';
 import { SimContext, getAlive } from './context';
 import { reachableZones, severedEdgeSet } from './map';
 import { adjustRel, getRel } from './relationships';
-import { cycleOf, swearVengeance } from './memory';
+import { cycleOf, ensureMemory, hasStoodBy, swearVengeance } from './memory';
 import { areLovers } from './alliance';
 import { addExcitement } from './audience';
 import { clampTribute } from './vitals';
@@ -69,11 +69,23 @@ function isRomance(t: Tribute, other: Tribute): boolean {
         || other.displayedRegard?.[t.id] !== undefined) return true;
     // §4.1: ...or it is simply obvious. Gating every triangle on a declared or
     // performed bond confined the whole subsystem to the minority of runs that
-    // produce one, and produced one forced choice in 400 runs. Two people at
-    // the very top of the regard scale with each other are a romance the
-    // arena can see, whatever either of them has said out loud.
-    return getRel(t, other.id) >= TRIANGLES.romanticRegard
+    // produce one, and produced one forced choice in 400 runs. The undeclared
+    // version uses exactly the two conditions `growRomance` itself uses, one
+    // step below the threshold that would have made it official: regard near
+    // the top of the scale on both sides, and somebody having actually risked
+    // something for the other. Regard alone is not enough — contact warmth
+    // pushes ordinary allies to the clamp, and "warm pair inside an alliance"
+    // is precisely the false positive this detector already learned about.
+    const mutual = getRel(t, other.id) >= TRIANGLES.romanticRegard
         && getRel(other, t.id) >= TRIANGLES.romanticRegard;
+    if (!mutual) return false;
+    if (!hasStoodBy(t, other.id) && !hasStoodBy(other, t.id)) return false;
+    // ...and the sustained-contact streak `growRomance` gates on, read from
+    // whichever side of the pair is carrying it (it is stored once per pair).
+    const streak = Math.max(
+        ensureMemory(t).contactStreak?.[other.id] ?? 0,
+        ensureMemory(other).contactStreak?.[t.id] ?? 0);
+    return streak >= ROMANCE.sustainedCycles;
 }
 
 /**
@@ -98,10 +110,14 @@ export function detectTriangles(ctx: SimContext) {
         const [a, b] = suitors.sort((x, y) => attachment(y, apex) - attachment(x, apex));
         // Two admirers is not a triangle. One romance and a rival for it is.
         if (!isRomance(apex, a) && !isRomance(apex, b)) return;
-        const already = list.some(tri =>
-            tri.apexId === apex.id
-            && ((tri.aId === a.id && tri.bId === b.id) || (tri.aId === b.id && tri.bId === a.id)));
-        if (already) return;
+        // One per apex per Games. The story is this person being made to
+        // choose, and it happens to them once — without this, a popular apex
+        // whose second suitor died simply acquired a new second suitor and the
+        // beat replayed with a different name in it.
+        if (list.some(tri => tri.apexId === apex.id)) return;
+        // ...and nobody is the rival in two of them at once.
+        if (list.some(tri => !tri.resolved
+            && [tri.aId, tri.bId].some(id => id === a.id || id === b.id))) return;
 
         list.push({ apexId: apex.id, aId: a.id, bId: b.id, formedCycle: cycleOf(state), heat: 0 });
         ctx.logEvent(

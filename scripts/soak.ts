@@ -305,7 +305,9 @@ for (let i = 0; i < 400; i++) {
     if (/passed it on in good faith/.test(l.text)) rumoursCaughtRepeated++;
     if (/cannot even remember now who told them|no way for anybody to find out it was never true/.test(l.text)) rumoursDeadEnd++;
     if (/Neither of them is doing this alone any more|now has two people coming/.test(l.text)) vengeancePacts++;
-    if (/finish what they swore to finish/.test(l.text)) vengeancePaid++;
+    // §4.3: two ways a pact is paid by the people who swore it — the named
+    // hand, and both of them standing in the fight it ended in.
+    if (/finish what they swore to finish|which is what they swore to be/.test(l.text)) vengeancePaid++;
     if (/somebody else has taken it off them/.test(l.text)) vengeanceStolen++;
     if (/which of them was the one who could/.test(l.text)) vengeanceAbandoned++;
     if (/anybody made on behalf of somebody else/.test(l.text)) treatiesSworn++;

@@ -1,5 +1,5 @@
 import { InterviewPersona, GameState, GameConfig, HallOfFameEntry } from '../models/types';
-import { Bet, REWIND_PERSIST, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind } from '../utils/saveMigrations';
+import { Bet, REWIND_PERSIST, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind, packRewind } from '../utils/saveMigrations';
 import { SIDE_BETS } from '../data/balance';
 import { SideBetTarget, SideQuote, priceSideBet, quoteSideMarkets, settleSideBet } from '../engine/sideMarkets';
 import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
@@ -156,8 +156,10 @@ function writeSave() {
     const attempt = (log: GameState['log'], rewindDepth: number) => tryWriteStored(SAVED_RUN_SPEC, {
         gameState: log === gameState.log ? gameState : { ...gameState, log },
         // §2.2: the undo stack rides along, so a refresh mid-run no longer
-        // resumes with the history gone.
-        rewind: rewindDepth > 0 ? rewindStack.slice(-rewindDepth) : [],
+        // resumes with the history gone. `packRewind` shares this payload's
+        // chronicle with the checkpoints instead of writing it again per
+        // checkpoint — see its comment for why that is exact.
+        ...packRewind(rewindDepth > 0 ? rewindStack.slice(-rewindDepth) : [], log),
         bets, sideBets, betsResolved, hofSaved, isReplayedRun, savedAt,
     } as SavedRun);
 
@@ -609,7 +611,7 @@ export const gameActions = {
         const spec = SAVE_SLOT_SPECS[slot - 1];
         return tryWriteStored(spec, {
             gameState, bets, sideBets, betsResolved, hofSaved, isReplayedRun,
-            rewind: rewindStack.slice(-REWIND_PERSIST),
+            ...packRewind(rewindStack.slice(-REWIND_PERSIST), gameState.log),
             savedAt: new Date().toISOString(),
         } as SavedRun) === 'ok';
     },

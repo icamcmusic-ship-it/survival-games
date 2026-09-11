@@ -13,7 +13,7 @@ import { adjustRel } from './relationships';
 import { applyDamage, checkDeath } from './combat';
 import { startZoneEffect } from './zoneEffects';
 import { addZoneThreat } from './memory';
-import { ESCALATION } from '../data/balance';
+import { CONTINUITY, ESCALATION } from '../data/balance';
 
 /**
  * The Head Gamemaker actually doing something.
@@ -40,7 +40,53 @@ function asGamemaker(ctx: SimContext, fn: () => void) {
     }
 }
 
+/**
+ * §9.3: the Head Gamemaker's second turn.
+ *
+ * A grudge is earned by the player: beating this Gamemaker before, running a
+ * patron district that keeps coming home, holding a live dynasty. It does two
+ * things. The signature comes sooner and is likelier to fire unprompted — and
+ * at `CONTINUITY.grudgeInterventionTier` the Gamemakers take a turn aimed
+ * squarely at the district they are watching, which is the one the player has
+ * spent runs building up.
+ *
+ * The whole of it reads `state.continuity`, which is resolved once at the
+ * reaping from records that already persist. A headless run with no record
+ * book simply has no continuity and behaves exactly as before.
+ */
+export function runGrudgeIntervention(ctx: SimContext) {
+    const continuity = ctx.state.continuity;
+    if (!continuity || ctx.state.grudgeFired) return;
+    if (continuity.grudge < CONTINUITY.grudgeInterventionTier) return;
+    const watched = continuity.watchedDistrict;
+    if (watched === undefined) return;
+    const marked = getAlive(ctx.state).filter(t => t.district === watched);
+    if (marked.length === 0) return;
+    if (ctx.state.day < GAMEMAKER_AGENCY.earliestDay) return;
+
+    ctx.state.grudgeFired = true;
+    ctx.logEvent(
+        `${ctx.state.headGamemaker ?? 'The Head Gamemaker'} has not forgotten District ${watched}. `
+        + `The arena's attention arrives where they are standing, and it is not subtle about it.`,
+        marked.map(t => t.id),
+        { important: true, category: 'gamemaker' },
+    );
+    marked.forEach(t => {
+        t.vitals.sanity -= CONTINUITY.grudgeSanity;
+        t.vitals.fatigue += CONTINUITY.grudgeFatigue;
+        clampTribute(t);
+        addZoneThreat(ctx.state, t, t.zone, CONTINUITY.grudgeThreat);
+    });
+    // One of them gets the Gamemakers' full attention rather than the weather.
+    const mark = ctx.rng.pick(marked);
+    if (mark) asGamemaker(ctx, () => triggerGamemakerEvent(ctx, 'mutt', mark.id, true));
+}
+
 export function runGamemakerSignature(ctx: SimContext) {
+    // Called from the same per-cycle hook, and deliberately ahead of the
+    // once-per-run guard below: the grudge is a separate turn with its own
+    // guard, not a variant of the signature.
+    runGrudgeIntervention(ctx);
     if (ctx.state.gamemakerSignatureFired) return;
     const alive = getAlive(ctx.state);
     // Not while the cast is still enormous, and not once it is down to the
@@ -48,11 +94,13 @@ export function runGamemakerSignature(ctx: SimContext) {
     // which is exactly the stretch the review found samey.
     if (alive.length > GAMEMAKER_AGENCY.maxFieldSize) return;
     if (alive.length <= ESCALATION.finalistCount) return;
-    if (ctx.state.day < GAMEMAKER_AGENCY.earliestDay) return;
+    // §9.3: a Gamemaker with something to prove does not wait as long.
+    const grudge = ctx.state.continuity?.grudge ?? 0;
+    if (ctx.state.day < GAMEMAKER_AGENCY.earliestDay - grudge * CONTINUITY.grudgeEarlierDays) return;
 
     const bored = ctx.state.audienceInterest !== undefined
         && ctx.state.audienceInterest < GAMEMAKER_AGENCY.boredomThreshold;
-    if (!bored && !ctx.rng.chance(GAMEMAKER_AGENCY.unpromptedChance)) return;
+    if (!bored && !ctx.rng.chance(GAMEMAKER_AGENCY.unpromptedChance + grudge * CONTINUITY.grudgeUnpromptedBonus)) return;
 
     const profile = gamemakerProfile(ctx.state.headGamemaker);
     ctx.state.gamemakerSignatureFired = true;

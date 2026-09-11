@@ -140,15 +140,26 @@ export function tickVengeancePacts(ctx: SimContext) {
             // still standing; fall through
         } else {
             const theirs = members.some(m => target.causeOfDeath?.includes(m.name));
+            // §4.3: ...or they were standing in it. A pact that hunted somebody
+            // into the fight that killed them has finished what it swore to
+            // finish, whoever landed the last of it — and crediting only the
+            // named hand is why this ledger read `paidThemselves=17` against
+            // `takenByAnother=89`. Being there is the whole objective.
+            const present = !theirs
+                && target.dayOfDeath === state.day
+                && members.some(m => m.zone === target.zone);
             members.forEach(m => {
                 m.objective = { kind: 'survive' };
-                adjustResolve(m, theirs ? VENGEANCE_PACT.paidResolve : -VENGEANCE_PACT.stolenResolve);
+                adjustResolve(m, theirs || present ? VENGEANCE_PACT.paidResolve : -VENGEANCE_PACT.stolenResolve);
             });
             ctx.logEvent(
                 theirs
                     ? `${members.map(m => m.name).join(' and ')} finish what they swore to finish. Whatever they expected to feel, `
                         + 'both of them are quiet for a long time afterwards.'
-                    : `${target.name} is dead, and it was not ${members.map(m => m.name).join(' or ')} who did it. `
+                    : present
+                        ? `${members.map(m => m.name).join(' and ')} were both there when ${target.name} went down, which is what they swore to be. `
+                            + 'Which of them it was, exactly, is not a thing either of them intends to correct anybody about.'
+                        : `${target.name} is dead, and it was not ${members.map(m => m.name).join(' or ')} who did it. `
                         + 'They swore this together and somebody else has taken it off them, which is not the same as it being over.',
                 [...members.map(m => m.id), pact.targetId],
                 { important: true, category: 'alliance' }

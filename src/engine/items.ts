@@ -1,6 +1,6 @@
 import { GameState, Item, ItemQuality, Tribute } from '../models/types';
 import { arenaHasLaw } from './gamesProfile';
-import { INVENTORY, PHYSIQUE, QUALITY, SITUATIONAL_KIT } from '../data/balance';
+import { INVENTORY, ITEM_CONDITION, PHYSIQUE, QUALITY, SITUATIONAL_KIT } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { massOf } from './physique';
 import { traitMod } from '../data/traits';
@@ -19,10 +19,58 @@ export function itemPhrase(item: Item): string {
     return `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name}`;
 }
 
-/** The name as it should read in the feed, including its grade. */
+/**
+ * §10.2: how worn a thing is, as a band rather than a float.
+ *
+ * `conditionOf` has always returned a fraction, and combat has always read it.
+ * Nothing ever *said* it: a sword one exchange from snapping was named exactly
+ * like the one taken off the horn an hour ago, so the entire durability
+ * system was invisible until the moment something broke.
+ */
+export type ItemCondition = 'pristine' | 'serviceable' | 'worn' | 'failing';
+
+export function conditionTier(item: Item): ItemCondition {
+    if (item.durability === undefined) return 'pristine';
+    const c = conditionOf(item);
+    if (c >= ITEM_CONDITION.pristineAbove) return 'pristine';
+    if (c >= ITEM_CONDITION.serviceableAbove) return 'serviceable';
+    if (c >= ITEM_CONDITION.failingBelow) return 'worn';
+    return 'failing';
+}
+
+/** The name as it should read in the feed, including its grade and its condition. */
 export function displayName(item: Item): string {
     const prefix = item.quality && item.quality !== 'standard' ? QUALITY.prefix[item.quality] : '';
-    return prefix ? `${prefix} ${item.name}` : item.name;
+    const named = prefix ? `${prefix} ${item.name}` : item.name;
+    // Only the bad news gets said. "A serviceable axe" is just an axe.
+    const tier = conditionTier(item);
+    if (tier === 'worn') return `${named}, ${ITEM_CONDITION.wornSuffix}`;
+    if (tier === 'failing') return `${named}, ${ITEM_CONDITION.failingSuffix}`;
+    return named;
+}
+
+/**
+ * §10.2: strip a piece you are leaving behind for the one you are keeping.
+ *
+ * Two of the same kind of thing in a pack that only holds so much used to mean
+ * one of them going on the ground intact. Returns true if anything was
+ * actually recovered, so the caller can say so.
+ */
+export function salvageInto(keeper: Item, scrap: Item): boolean {
+    if (keeper.durability === undefined || scrap.durability === undefined) return false;
+    if (keeper.type !== scrap.type) return false;
+    if (scrap.durability < ITEM_CONDITION.salvageFloor) return false;
+    const max = keeper.maxDurability ?? keeper.durability;
+    const ceiling = max * ITEM_CONDITION.salvageCeiling;
+    if (keeper.durability >= ceiling) return false;
+    const recovered = Math.min(
+        scrap.durability * ITEM_CONDITION.salvageYield,
+        ceiling - keeper.durability,
+    );
+    if (recovered <= 0) return false;
+    keeper.durability = Math.round((keeper.durability + recovered) * 100) / 100;
+    scrap.durability = 0;
+    return true;
 }
 
 /**
@@ -154,8 +202,11 @@ function keepValue(t: Tribute, item: Item): number {
     }
     if (priorities?.water && item.type === 'water') value += SITUATIONAL_KIT.dryWaterBonus;
     if (priorities?.purifier && item.purifies === true) value += SITUATIONAL_KIT.foulWaterPurifierBonus;
-    // A broken weapon is dead weight.
-    if (item.durability !== undefined && item.durability <= 10) value -= 30;
+    // §10.2: how worn it is, in bands, rather than a single cliff at 10
+    // durability that read the same for a fine sword and a crude one.
+    const tier = conditionTier(item);
+    if (tier === 'worn') value -= ITEM_CONDITION.wornKeepPenalty;
+    if (tier === 'failing') value -= ITEM_CONDITION.failingKeepPenalty;
     return value;
 }
 
@@ -199,7 +250,15 @@ export function enforceCapacity(t: Tribute): Item[] {
             const value = keepValue(t, item);
             if (value < worstValue) { worstValue = value; worstIdx = idx; }
         });
-        dropped.push(...t.inventory.splice(worstIdx, 1));
+        const [leaving] = t.inventory.splice(worstIdx, 1);
+        // §10.2: before it hits the ground, it gets stripped for the one being
+        // kept. The obvious thing to do with a second axe you have no room
+        // for, and the only route a worn weapon has back short of a sponsor.
+        const keeper = t.inventory
+            .filter(i => i.type === leaving.type && i.durability !== undefined)
+            .sort((a, b) => conditionOf(b) - conditionOf(a))[0];
+        if (keeper) salvageInto(keeper, leaving);
+        dropped.push(leaving);
     }
     return dropped;
 }

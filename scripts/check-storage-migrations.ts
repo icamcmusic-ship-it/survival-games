@@ -187,6 +187,41 @@ test('the rewind stack round-trips, is capped, and survives junk entries', () =>
     assert.deepEqual(readStored(SAVED_RUN_SPEC)!.rewind, []);
 });
 
+test('stripped checkpoint chronicles are rebuilt from the run being saved', () => {
+    // What `packRewind` writes: a checkpoint with no log of its own, plus the
+    // number of lines it had. The chronicle is stored once, not once per
+    // checkpoint — three copies of a 1,300-line log is 1.5 MB of quota.
+    const base = legacySave();
+    const line = (n: number) => ({
+        id: `l${n}`, day: n, phase: 'day', text: `Line ${n}`,
+        tributesInvolved: [], important: false, category: 'ambient',
+    });
+    const full = { ...base, gameState: { ...base.gameState, log: [line(1), line(2), line(3)] } };
+    seedLegacy(STORAGE_KEYS.savedRun, {
+        ...full,
+        rewind: [
+            { ...full.gameState, day: 1, log: [] },
+            { ...full.gameState, day: 2, log: [] },
+        ],
+        rewindLogLengths: [1, 3],
+    });
+    const run = readStored(SAVED_RUN_SPEC)!;
+    assert.equal(run.gameState.log.length, 3);
+    assert.deepEqual(run.rewind!.map(s => s.log.length), [1, 3], 'checkpoint chronicles not rebuilt');
+    assert.equal(run.rewind![0].log[0].text, 'Line 1');
+
+    // A length the saved chronicle cannot honour drops that checkpoint rather
+    // than handing it somebody else's log.
+    seedLegacy(STORAGE_KEYS.savedRun, {
+        ...full,
+        rewind: [{ ...full.gameState, day: 1, log: [] }, { ...full.gameState, day: 2, log: [] }],
+        rewindLogLengths: [99, 2],
+    });
+    const repaired = readStored(SAVED_RUN_SPEC)!;
+    assert.equal(repaired.rewind!.length, 1, 'impossible checkpoint length accepted');
+    assert.equal(repaired.rewind![0].log.length, 2);
+});
+
 test('normalizeTribute rejects non-tributes and survives hostile input', () => {
     assert.equal(normalizeTribute(null), null);
     assert.equal(normalizeTribute('nope'), null);

@@ -113,7 +113,10 @@ function resolveFactions(ctx: SimContext, record: Alliance, members: Tribute[]) 
     // exactly the situation an expulsion is, and the group survives it, which
     // a walk-out does not.
     const rest = members.filter(m => m.id !== target.id && !faction.memberIds.includes(m.id));
-    if (bloc.length > rest.length && members.length - 1 >= ALLIANCES.factionMinMembers) {
+    // `rest` has to contain somebody: in a group of three, everyone who is not
+    // the target *is* the bloc, and a unanimous group of two throwing out the
+    // third is not politics, it is the group ending. That stays a walk-out.
+    if (rest.length >= 1 && bloc.length > rest.length) {
         record.factions = (record.factions ?? []).filter(f => f !== faction);
         expel(ctx, record, target, members,
             `${names} have been talking about ${target.name} for days and this morning they say it to their face.`);

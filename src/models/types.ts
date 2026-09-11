@@ -1848,6 +1848,16 @@ export interface GameState {
     /** Guards the Head Gamemaker's one signature intervention per run. */
     gamemakerSignatureFired?: boolean;
     /**
+     * §9.3: what the last few Games left behind — the Head Gamemaker's grudge,
+     * the district the Gamemakers are watching, and how Panem regards each
+     * district this year. Resolved once at the reaping from `PanemRecords`
+     * (see `engine/continuity.ts`); absent on a first run and in any headless
+     * harness, which is exactly "no history yet".
+     */
+    continuity?: import('../engine/continuity').RunContinuity;
+    /** Guards the grudge intervention to once per run. */
+    grudgeFired?: boolean;
+    /**
      * REPLAY-01: this year's Games, as announced. Rolled from the seed so a
      * shared seed reproduces the same Games, not merely the same cast.
      */

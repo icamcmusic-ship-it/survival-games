@@ -26,7 +26,7 @@ import { areLovers } from './alliance';
 import { hasTruce } from './parley';
 import { riskTolerance } from './risk';
 import { blocTreatyHolds, noteBlocKill } from './blocTreaty';
-import { dominantSideCost, grappleResistance, injuryAbsorption, reachBonus } from './physique';
+import { dominantSideCost, effectiveAgility, grappleResistance, injuryAbsorption, reachBonus } from './physique';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
@@ -385,7 +385,7 @@ function packCohesion(ctx: SimContext, t: Tribute): number {
 }
 
 function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opponent?: Tribute): number {
-    let power = effectiveStrength(t) + t.attributes.agility + ctx.rng.nextInt(0, 5);
+    let power = effectiveStrength(t) + effectiveAgility(t) + ctx.rng.nextInt(0, 5);
 
     if (weapon) {
         power += weapon.damage !== undefined ? effectiveDamage(weapon) : weapon.value / 10;
@@ -395,7 +395,7 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         // craft mid-run — were the only weapons in the game with no stat
         // scaling behind them, which made crafting a downgrade.
         if (weapon.weaponClass === 'ranged') {
-            power += Math.floor(t.attributes.agility / COMBAT.rangedAgilityDivisor) + traitMod(t, 'rangedPower');
+            power += Math.floor(effectiveAgility(t) / COMBAT.rangedAgilityDivisor) + traitMod(t, 'rangedPower');
         } else if (weapon.weaponClass === 'melee') {
             power += Math.floor(effectiveStrength(t) / COMBAT.meleeStrengthDivisor) + traitMod(t, 'meleePower');
             // Reach: a long-armed tribute lands first in a melee. `heightCm` was
@@ -404,7 +404,7 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         } else if (weapon.weaponClass === 'thrown') {
             // Throwing wants both the arm behind it and the eye in front of it.
             power += Math.floor(effectiveStrength(t) / COMBAT.thrownStrengthDivisor)
-                + Math.floor(t.attributes.agility / COMBAT.thrownAgilityDivisor)
+                + Math.floor(effectiveAgility(t) / COMBAT.thrownAgilityDivisor)
                 + traitMod(t, 'rangedPower') * 0.5 + traitMod(t, 'meleePower') * 0.5;
         }
         // Practice with the class of weapon actually in their hands.

@@ -360,6 +360,10 @@ export const ACHIEVEMENTS: Achievement[] = [
             return lovers.filter(l => finalFour.has(l.id)).length >= 2;
         },
         nearMiss: state => {
+            // Only once the field really is down to four: "the final four" is
+            // meaningless with fourteen alive, and this evaluator also runs
+            // mid-run for the in-arena nudges.
+            if (state.tributes.filter(t => t.status === 'alive').length > 4) return undefined;
             const lovers = state.tributes.filter(t => t.traits.includes('Star-Crossed'));
             if (lovers.length < 2) return undefined;
             const ranked = [...state.tributes].sort((a, b) =>

@@ -10,6 +10,8 @@ import { adjustRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { legacyOf } from '../../data/districts';
 import { HEAD_GAMEMAKERS } from '../../data/gamemakers';
+import { resolveContinuity, standingEffect, standingLine } from '../continuity';
+import { addNotoriety } from '../notoriety';
 import { readPanem } from '../../utils/panemStorage';
 import { ordinal } from '../gamesProfile';
 
@@ -68,6 +70,40 @@ export function processPreGames(ctx: SimContext) {
     // brings it up — which is what makes the country continuous between runs
     // rather than a series of unrelated Games.
     const panem = readPanem();
+
+    /*
+     * §9.3: what the last few Games left behind.
+     *
+     * `PanemRecords` already knew which Gamemaker had run how many of this
+     * player's Games, which districts had been crowned, and how long the
+     * current dynasty had run. None of it reached the arena. It does now, and
+     * it is resolved here — where the Head Gamemaker has just been drawn and
+     * the cast is standing on the stage — rather than in the store, so a
+     * headless run with no record book simply gets no continuity.
+     *
+     * Derived, never stored: see `engine/continuity.ts` for why.
+     */
+    const continuity = resolveContinuity(panem, headGamemaker.name, [...new Set(cast.map(t => t.district))]);
+    ctx.state.continuity = continuity;
+    if (continuity.grudgeLine) {
+        ctx.logEvent(continuity.grudgeLine, [], { important: true, category: 'gamemaker' });
+    }
+    Object.entries(continuity.standings).forEach(([key, standing]) => {
+        const district = Number(key);
+        const { trust, threat } = standingEffect(standing);
+        const locals = cast.filter(t => t.district === district);
+        if (locals.length === 0) return;
+        locals.forEach(t => {
+            t.sponsorTrust = Math.max(0, Math.min(100, t.sponsorTrust + trust));
+            // A district that keeps winning walks in already known: everybody
+            // else starts with a reputation for them. That is what a dynasty
+            // costs, and it is the reason patronage is a decision rather than
+            // a purchase.
+            if (threat > 0) cast.forEach(other => addNotoriety(other, t.id, threat));
+        });
+        ctx.logEvent(standingLine(district, standing), locals.map(t => t.id), { important: true, category: 'system' });
+    });
+
     // §10.4: the small continuity thread. Somebody from this district died in
     // an earlier Games carrying something from home, and the district sent it
     // back in. Purely cosmetic — nothing mechanical reads a token or a quirk —
