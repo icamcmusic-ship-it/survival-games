@@ -67,6 +67,11 @@ export type TraitMod =
     | 'betrayalResist'       // fraction removed from being betrayed / betraying
     | 'treachery'            // flat, added to betrayal willingness
     | 'griefResist'          // fraction of the sanity hit from a death removed
+    // §8.3 (audit): the social engine is the deepest part of the game and
+    // the trait layer barely touched it — six social hooks against
+    // twenty-six combat ones. Two more, each read at exactly one site.
+    | 'persuasion'           // flat, added to the persuasion proficiency where a truce is held together (parley.ts)
+    | 'rapport'              // flat, scales the regard two people gain from reconciling (rapport.ts)
     // audience
     | 'sponsorTrust'         // flat, per-cycle drift
     | 'excitement'           // multiplier offset on excitement earned
@@ -158,7 +163,9 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Skittish': {
         info: 'Frightens easily and stays frightened. Picks up fear fast and breaks off sooner.',
-        mods: { fearGain: 0.5, retreat: 0.1 },
+        // §8.2 (audit): 2.03%. The fear it adds is the point of the trait;
+        // the retreat bonus is what is supposed to pay for it, and did not.
+        mods: { fearGain: 0.4, retreat: 0.18, rapport: -0.1 },
     },
     'Paranoid': {
         info: 'Never fully relaxes. Notices people trying not to be noticed, and trusts nobody enough to be sold out easily.',
@@ -199,7 +206,10 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Chameleon': {
         info: 'Disappears into whatever they are standing in. The strongest concealment bonus in the game.',
-        mods: { concealment: 0.12, campSkill: 0.12 },
+        // §8.2 (audit): last of the reaping traits at 1.84%. Concealment
+        // was read, but 0.12 on a 0-1 scale was not a trait, it was a
+        // rounding error; and nothing about it kept the field from looking.
+        mods: { concealment: 0.22, campSkill: 0.12, targetDraw: -0.1 },
     },
 
     // ---- eyes ----------------------------------------------------------
@@ -284,7 +294,7 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Loyal': {
         info: 'Will not sell anyone out, and is hard to convince that anyone has sold them out.',
-        mods: { allianceAffinity: 0.25, treachery: -0.3, betrayalResist: 0.2 },
+        mods: { allianceAffinity: 0.25, treachery: -0.3, betrayalResist: 0.2, rapport: 0.15 },
     },
     'Treacherous': {
         info: 'Always weighing it. Far more likely to be the one who moves first on an alliance.',
@@ -300,7 +310,7 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Silver-Tongued': {
         info: 'Talks the Capitol into things. A steady drift upward in sponsor trust all run.',
-        mods: { sponsorTrust: 2.5, allianceAffinity: 0.1 },
+        mods: { sponsorTrust: 2.5, allianceAffinity: 0.1, persuasion: 0.6, rapport: 0.2 },
     },
     'Unremarkable': {
         info: 'Nobody is watching. Draws very little excitement and almost no sponsorship — and is genuinely the last person anyone goes looking for.',

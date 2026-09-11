@@ -1,5 +1,6 @@
 import { targetDrawOf } from '../targeting';
 import { SimContext, getAlive } from '../context';
+import { tickRunRecords } from '../runRecords';
 import { RNG } from '../../utils/rng';
 import { Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
@@ -397,6 +398,13 @@ export function processBloodbath(ctx: SimContext) {
     );
 
     ctx.state.phase = 'day';
+    // §1.3: the run-record differ used to be driven by the day/night
+    // orchestrator only, so a dip below the near-death line and back inside
+    // the bloodbath — the most violent phase in the game — was never seen.
+    // The tick itself skips the met-anybody record while the phase is
+    // 'bloodbath', so calling it here only seeds the watch and counts the
+    // health recovery.
+    tickRunRecords(ctx);
 }
 
 /**

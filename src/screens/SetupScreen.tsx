@@ -196,6 +196,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const [seed, setSeed] = useState(randomSeed());
     const [tab, setTab] = useState<SetupTab>('arena');
     const [arenaId, setArenaId] = useState(ARENAS[0].id);
+    const [arenaFacet, setArenaFacet] = useState<'all' | 'unseen' | 'stacked' | 'blackout' | 'water' | 'small' | 'large'>('all');
     const [gamemakerMode, setGamemakerMode] = useState(false);
     const [forceQuell, setForceQuell] = useState(false);
     const [config, setConfigState] = useState<GameConfig>(readStoredConfig);
@@ -256,12 +257,44 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     // achievements, so none of `arenaGenerator.ts`, `proceduralFlavor.ts` or
     // `meta-every-biome` is affected; it is only no longer a thing the player
     // picks by name.
+    // §2.3 (audit): forty entries with no filter is picking a name. The
+    // facets are things the data already knows — laws, water, size, whether
+    // the player has been there — so the list can be narrowed to a question
+    // ('somewhere with a standing law I have never run') rather than scrolled.
+    const arenaFacets = [
+        { id: 'all', label: 'All' },
+        { id: 'unseen', label: 'New to you' },
+        { id: 'stacked', label: '2+ laws' },
+        { id: 'blackout', label: 'No sponsors' },
+        { id: 'water', label: 'Watery' },
+        { id: 'small', label: 'Small' },
+        { id: 'large', label: 'Large' },
+    ] as const;
+    const facetMatches = (a: typeof ARENAS[number]): boolean => {
+        const laws = lawsOf(a);
+        const water = a.zones.filter(z => z.terrain === 'water' || z.terrain === 'wetland').length / a.zones.length;
+        switch (arenaFacet) {
+            case 'unseen': return unseenArena(a.id, a.name);
+            case 'stacked': return laws.length >= 2;
+            case 'blackout': return laws.includes('noSponsors');
+            case 'water': return water >= 0.3;
+            case 'small': return a.zones.length <= 9;
+            case 'large': return a.zones.length >= 12;
+            default: return true;
+        }
+    };
     const arenaOptions = [
         // No SIGNATURE_BLURBS entry on purpose — the whole point is that
         // nothing about this arena is knowable until the bloodbath.
         { id: 'random-hidden', name: '❓ Random Arena (Hidden)', description: 'The Capitol picks. Its name, its layout, its rules — none of it is shown until the tributes are already standing on the plates.' },
-        ...ARENAS.map(a => ({ id: a.id, name: a.name, description: a.description })),
+        ...ARENAS.filter(facetMatches).map(a => ({ id: a.id, name: a.name, description: a.description })),
     ];
+    // §2.3 (audit): "surprise me, but with constraints" — a random pick
+    // from whatever the facet leaves.
+    const surpriseWithin = () => {
+        const pool = ARENAS.filter(a => facetMatches(a) && arenaUnlocked(a.id, a.name));
+        if (pool.length > 0) setArenaId(pool[Math.floor(Math.random() * pool.length)].id);
+    };
 
     return (
         <div className="max-w-3xl mx-auto space-y-8">
@@ -546,6 +579,27 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             </button>
                         </div>
                     )}
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter arenas">
+                        {arenaFacets.map(f => (
+                            <button
+                                key={f.id}
+                                type="button"
+                                onClick={() => setArenaFacet(f.id)}
+                                aria-pressed={arenaFacet === f.id}
+                                className={`btn btn-sm ${arenaFacet === f.id ? '' : 'btn-ghost'} text-[11px]`}
+                            >
+                                {f.label}
+                            </button>
+                        ))}
+                        <button
+                            type="button"
+                            onClick={surpriseWithin}
+                            className="btn btn-sm btn-ghost text-[11px] ml-auto"
+                            title="Pick a random arena from the current filter"
+                        >
+                            Surprise me within this
+                        </button>
+                    </div>
                     <div className="mt-2">
                         {arenaOptions.map(a => {
                             const selected = arenaId === a.id;

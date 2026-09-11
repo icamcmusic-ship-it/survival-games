@@ -2404,7 +2404,7 @@ export const LEGENDARY_ITEMS = {
  */
 export const RUN_RECORDS = {
     /** Health below which a tribute counts as having been on the floor. */
-    nearDeathHealth: 5,
+    nearDeathHealth: 10,
 } as const;
 
 /**
@@ -3105,6 +3105,14 @@ export const RELATIONSHIPS = {
      * bought with the things in `memory` that somebody actually did.
      */
     trustFromRegardCap: 55,
+    /** §4.2 (audit): the stored trust axis. See `adjustTrust` / `decayTrust`. */
+    trustHistoryMax: 60,
+    trustKeptPromise: 8,
+    trustBrokenPromise: 25,
+    trustRepaidDebt: 10,
+    /** Per-cycle heal toward zero from below, and fade toward zero from above. */
+    trustHealPerCycle: 0.6,
+    trustFadePerCycle: 1.2,
     min: -100,
     max: 100,
     /** Per-cycle pull toward zero for pairs with no contact. */
@@ -3919,7 +3927,16 @@ export const BETRAYAL = {
         lure: 0.6,
         abandon: 0.5,
         withhold: 0.5,
+        preempt: 0,
     },
+    /**
+     * §3.2 (audit): the pre-emptive strike. Suspicion of a specific ally has
+     * to clear this line before anybody moves first, and the per-cycle roll
+     * scales with how far past it they are. Never chosen from the ordinary
+     * betrayal roll (weight 0 above) — it has its own trigger.
+     */
+    preemptSuspicion: 45,
+    preemptChance: 0.08,
     /** A thief needs something worth taking. */
     minCacheValueToSteal: 15,
     /** Leading someone into ground you know is lethal needs you to know it. */
@@ -4178,6 +4195,11 @@ export const GAMEMAKER = {
      * just turned up, which is what makes it an intervention.
      */
     weatherIntensity: 1.6,
+    /** §6.2 (audit): what a mercy parachute restores. */
+    mercyHeal: 35,
+    mercyFatigueRelief: 30,
+    /** §6.2 (audit): how much of a zone's forage stock the strip lever removes (0-1). */
+    stripDepletion: 0.8,
     muttSweepBaseChance: 0.2,
     muttSweepDangerWeight: 0.3,
     /**
@@ -5656,6 +5678,15 @@ export const OFF_SEASON = {
  * bloodbath share 34.2%, run-length sd 2.57, wipeouts 1.5%.
  */
 export const SIDE_MARKETS = {
+    /**
+     * §6.3 (audit): the prop markets. Measured over a 150-run sweep at the
+     * default config: a feast was called in 75% of runs, 27% of victors had
+     * no kills, 36% were crowned carrying a wound.
+     */
+    feastHeldBase: 0.75,
+    bloodlessVictorBase: 0.27,
+    bloodlessCareerTilt: 1.2,
+    woundedVictorBase: 0.36,
     /** Nothing is priced as a certainty or as an impossibility. */
     minProbability: 0.005,
     maxProbability: 0.95,
@@ -5768,6 +5799,12 @@ export const GAMEMAKER_COSTS = {
     sever: 100,
     drop: 200,
     bounty: 300,
+    // §6.2 (audit): the non-harm levers. Mercy is priced like a bounty
+    // because it moves the field just as hard; reveal and strip sit with
+    // the zone effects.
+    mercy: 280,
+    reveal: 160,
+    strip: 130,
 } as const;
 
 

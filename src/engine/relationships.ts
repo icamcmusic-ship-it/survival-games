@@ -74,7 +74,44 @@ export function trustOf(a: Tribute, b: Tribute): number {
     trust -= (mem?.suspicion?.[b.id] ?? 0) * RELATIONSHIPS.trustSuspicionWeight;
     // A creditor is safe company: they have already proven what they'll risk.
     if ((b.debts?.[a.id] ?? 0) > 0) trust += RELATIONSHIPS.trustCreditorBonus;
+    // §4.2 (audit): plus whatever history has built or broken on its own.
+    trust += a.trusts?.[b.id] ?? 0;
     return Math.max(RELATIONSHIPS.min, Math.min(RELATIONSHIPS.max, trust));
+}
+
+/** §4.2 (audit): the stored trust history alone, without the derivation. */
+export function trustHistoryOf(a: Tribute, bId: string): number {
+    return a.trusts?.[bId] ?? 0;
+}
+
+/**
+ * §4.2 (audit): move stored trust. Positive deltas are capped lower than
+ * negative ones: trust is earned slowly and lost at once.
+ */
+export function adjustTrust(a: Tribute, bId: string, delta: number): void {
+    const next = Math.max(-RELATIONSHIPS.trustHistoryMax, Math.min(RELATIONSHIPS.trustHistoryMax, trustHistoryOf(a, bId) + delta));
+    a.trusts = { ...(a.trusts ?? {}), [bId]: Math.round(next * 10) / 10 };
+}
+
+/**
+ * §4.2 (audit): trust history heals toward zero at its own rate — slower
+ * than regard decays, and slower on the way up from a betrayal than on the
+ * way down from a kept promise, which is the asymmetry the derived formula
+ * could never express.
+ */
+export function decayTrust(state: GameState) {
+    state.tributes.forEach(t => {
+        if (t.status !== 'alive' || !t.trusts) return;
+        Object.keys(t.trusts).forEach(otherId => {
+            const value = t.trusts![otherId];
+            if (value === 0) { delete t.trusts![otherId]; return; }
+            const rate = value < 0 ? RELATIONSHIPS.trustHealPerCycle : RELATIONSHIPS.trustFadePerCycle;
+            const next = value > 0 ? Math.max(0, value - rate) : Math.min(0, value + rate);
+            if (next === 0) delete t.trusts![otherId];
+            else t.trusts![otherId] = Math.round(next * 10) / 10;
+        });
+        if (Object.keys(t.trusts).length === 0) delete t.trusts;
+    });
 }
 
 /** Most interactions move both sides of the pair. */
@@ -382,6 +419,9 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
 export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim: Tribute, witnesses: Tribute[]) {
     adjustRel(victim, betrayer.id, -RELATIONSHIPS.betrayalDirectPenalty);
     adjustRel(betrayer, victim.id, -RELATIONSHIPS.betrayalDirectPenalty / 2);
+    // §4.2 (audit): the wound to trust is separate from the wound to regard,
+    // and heals on its own clock.
+    adjustTrust(victim, betrayer.id, -RELATIONSHIPS.trustBrokenPromise);
 
     // §3.4: the other side of the ledger. `timesBetrayed` counts what was done
     // to you; nothing counted what you did, which is what a Loyal tribute

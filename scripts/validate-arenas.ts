@@ -221,7 +221,10 @@ Object.entries({ ...ARENA_FLAVOR, ...PROCEDURAL_FLAVOR_PACKS }).forEach(([id, fl
     flavor.events.forEach(e => {
         if (!e.cause) problems.push(`${id}: event without a cause of death`);
         if (!/\{tribute\}/.test(e.text)) problems.push(`${id}: event text never names the tribute`);
-        if (!/\{tribute\}/.test(e.escapeText)) problems.push(`${id}: escape text never names the tribute`);
+        // A pure boon has no escape: nothing rolls against it, so
+        // `rollEscape` never reads its escape text and it may be empty.
+        const boon = e.escapeText === '' && !e.dodgeStat && !e.dodgeAlt && !(e.damage ?? 0);
+        if (!boon && !/\{tribute\}/.test(e.escapeText)) problems.push(`${id}: escape text never names the tribute`);
     });
 });
 

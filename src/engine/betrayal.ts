@@ -27,7 +27,15 @@ import { addExcitement } from './audience';
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
 
-export type BetrayalKind = 'knife' | 'steal' | 'lure' | 'abandon' | 'withhold';
+export type BetrayalKind = 'knife' | 'steal' | 'lure' | 'abandon' | 'withhold'
+    /**
+     * §3.2 (audit): the pre-emptive strike. Not opportunism — the betrayer
+     * has decided the *other* person is about to turn, and moves first. It
+     * is the one betrayal that comes from a model of somebody else's mind
+     * rather than from the cache or the field size, and it is where the
+     * tragic ones come from: the suspicion can be wrong.
+     */
+    | 'preempt';
 
 /** Which forms are actually available given the situation the pair are in. */
 function availableKinds(ctx: SimContext, betrayer: Tribute, victim: Tribute): BetrayalKind[] {
@@ -60,7 +68,7 @@ function availableKinds(ctx: SimContext, betrayer: Tribute, victim: Tribute): Be
 }
 
 function pickKind(ctx: SimContext, kinds: BetrayalKind[]): BetrayalKind {
-    const weights = kinds.map(k => BETRAYAL.weights[k]);
+    const weights: number[] = kinds.map(k => BETRAYAL.weights[k]);
     let roll = ctx.rng.nextFloat() * weights.reduce((a, b) => a + b, 0);
     for (let i = 0; i < kinds.length; i++) {
         roll -= weights[i];
@@ -73,8 +81,8 @@ function pickKind(ctx: SimContext, kinds: BetrayalKind[]): BetrayalKind {
  * Carries out one betrayal. Returns the kind chosen so the caller can log
  * around it if it wants to.
  */
-export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Tribute, members: Tribute[]): BetrayalKind {
-    const kind = pickKind(ctx, availableKinds(ctx, betrayer, victim));
+export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Tribute, members: Tribute[], forced?: BetrayalKind): BetrayalKind {
+    const kind = forced ?? pickKind(ctx, availableKinds(ctx, betrayer, victim));
     const record = allianceOf(ctx.state, betrayer.allianceId);
     noteContact(ctx.state, betrayer, victim);
 
@@ -160,9 +168,45 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             return kind;
         }
 
+        case 'preempt': {
+            // The knife, but the reason is written down first: they believed
+            // the other was coming for them. Whether they were right is a
+            // matter of record — the victim's own treachery is on the sheet.
+            const wasRight = suspicionOf(victim, betrayer.id) >= SUSPICION.departThreshold / 2;
+            ctx.logEvent(
+                `${betrayer.name} has been watching ${victim.name}'s hands for two days in ${betrayer.zone}, and decides not to wait to find out. `
+                + (wasRight
+                    ? `${victim.name} had been watching ${betrayer.name}'s too.`
+                    : `${victim.name} had not been planning anything at all.`),
+                [betrayer.id, victim.id],
+                { important: true, category: 'betrayal' }
+            );
+            return resolveKnife(ctx, betrayer, victim, members);
+        }
+
         default:
             return resolveKnife(ctx, betrayer, victim, members);
     }
+}
+
+/**
+ * §3.2 (audit): does anybody in this group strike first because they expect
+ * to be struck? Rolled per alliance per cycle, before the ordinary betrayal
+ * roll, and only for a member whose suspicion of a specific ally has climbed
+ * past the pre-emption line. Returns the pair, or nothing.
+ */
+export function preemptiveBetrayer(ctx: SimContext, members: Tribute[]): [Tribute, Tribute] | undefined {
+    const live = members.filter(m => m.status === 'alive');
+    for (const m of live) {
+        for (const o of live) {
+            if (o.id === m.id) continue;
+            const suspicion = suspicionOf(m, o.id);
+            if (suspicion < BETRAYAL.preemptSuspicion) continue;
+            const chance = BETRAYAL.preemptChance * (suspicion / 100) * ctx.state.config.betrayalRate;
+            if (ctx.rng.chance(chance)) return [m, o];
+        }
+    }
+    return undefined;
 }
 
 /** The original: the knife, and the fight that follows it. */

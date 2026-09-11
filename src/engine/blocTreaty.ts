@@ -132,6 +132,7 @@ export function proposeBlocTreaties(ctx: SimContext) {
             if (!ctx.rng.chance(odds)) continue;
 
             const cycles = BLOC_TREATY.cycles;
+            state.blocTreatiesSworn = (state.blocTreatiesSworn ?? 0) + 1;
             treaties(state).push({
                 aId, bId,
                 until: cycleOf(state) + cycles,

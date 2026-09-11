@@ -43,17 +43,17 @@ export const ARENAS: Arena[] = [
         // storm generator at the top of it.
         edgeRules: { 'Sector 3 (Cliffs)|Sector 5 (Lightning Tree)': { kind: 'tolled', toll: { fatigue: 6 } } },
         zones: [
-            { name: 'The Cornucopia', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Sector 1 (Jungle)', 'Sector 2 (Beach)', 'Sector 3 (Cliffs)', 'Sector 4 (Swamp)', 'Sector 12 (Blood Rain)'] },
-            { name: 'Sector 1 (Jungle)', terrain: 'forest', danger: 0.5, resources: 0.7, adjacent: ['The Cornucopia', 'Sector 2 (Beach)', 'Sector 11 (Monkey Wood)'] },
-            { name: 'Sector 2 (Beach)', terrain: 'water', danger: 0.3, resources: 0.5, adjacent: ['The Cornucopia', 'Sector 1 (Jungle)', 'Sector 3 (Cliffs)'] },
-            { name: 'Sector 3 (Cliffs)', terrain: 'highland', danger: 0.7, resources: 0.2, adjacent: ['The Cornucopia', 'Sector 2 (Beach)', 'Sector 4 (Swamp)', 'Sector 5 (Lightning Tree)'] },
-            { name: 'Sector 4 (Swamp)', terrain: 'wetland', danger: 0.6, resources: 0.4, adjacent: ['The Cornucopia', 'Sector 3 (Cliffs)', 'Sector 6 (Insect Hollow)'] },
-            { name: 'Sector 5 (Lightning Tree)', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['Sector 3 (Cliffs)', 'Sector 9 (Salt Reef)'] },
-            { name: 'Sector 6 (Insect Hollow)', terrain: 'wetland', danger: 0.8, resources: 0.35, adjacent: ['Sector 4 (Swamp)', 'Sector 7 (Dry Shelf)'] },
-            { name: 'Sector 7 (Dry Shelf)', terrain: 'open', danger: 0.45, resources: 0.25, adjacent: ['Sector 6 (Insect Hollow)', 'Sector 9 (Salt Reef)', 'Sector 12 (Blood Rain)'] },
-            { name: 'Sector 9 (Salt Reef)', terrain: 'water', danger: 0.55, resources: 0.6, adjacent: ['Sector 5 (Lightning Tree)', 'Sector 7 (Dry Shelf)', 'Sector 11 (Monkey Wood)'] },
-            { name: 'Sector 11 (Monkey Wood)', terrain: 'forest', danger: 0.75, resources: 0.55, adjacent: ['Sector 1 (Jungle)', 'Sector 9 (Salt Reef)', 'Sector 12 (Blood Rain)'] },
-            { name: 'Sector 12 (Blood Rain)', terrain: 'ruins', danger: 0.7, resources: 0.2, adjacent: ['The Cornucopia', 'Sector 7 (Dry Shelf)', 'Sector 11 (Monkey Wood)'] },
+            { name: 'The Cornucopia', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Sector 1 (Jungle)', 'Sector 2 (Beach)', 'Sector 3 (Cliffs)', 'Sector 4 (Swamp)', 'Sector 12 (Blood Rain)'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'Sector 1 (Jungle)', terrain: 'forest', danger: 0.5, resources: 0.7, adjacent: ['The Cornucopia', 'Sector 2 (Beach)', 'Sector 11 (Monkey Wood)'], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 0.7, vertical: true } },
+            { name: 'Sector 2 (Beach)', terrain: 'water', danger: 0.3, resources: 0.5, adjacent: ['The Cornucopia', 'Sector 1 (Jungle)', 'Sector 3 (Cliffs)'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'Sector 3 (Cliffs)', terrain: 'highland', danger: 0.7, resources: 0.2, adjacent: ['The Cornucopia', 'Sector 2 (Beach)', 'Sector 4 (Swamp)', 'Sector 5 (Lightning Tree)'], features: { cover: 0.2, elevation: true, chokepoint: true, acoustics: 1.35, vertical: true } },
+            { name: 'Sector 4 (Swamp)', terrain: 'wetland', danger: 0.6, resources: 0.4, adjacent: ['The Cornucopia', 'Sector 3 (Cliffs)', 'Sector 6 (Insect Hollow)'], features: { cover: 0.6, elevation: false, chokepoint: false, acoustics: 0.75 } },
+            { name: 'Sector 5 (Lightning Tree)', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['Sector 3 (Cliffs)', 'Sector 9 (Salt Reef)'], features: { cover: 0.15, elevation: true, chokepoint: false, shelterQuality: 0.1, acoustics: 1.3, vertical: true } },
+            { name: 'Sector 6 (Insect Hollow)', terrain: 'wetland', danger: 0.8, resources: 0.35, adjacent: ['Sector 4 (Swamp)', 'Sector 7 (Dry Shelf)'], features: { cover: 0.65, elevation: false, chokepoint: true, acoustics: 0.75 } },
+            { name: 'Sector 7 (Dry Shelf)', terrain: 'open', danger: 0.45, resources: 0.25, adjacent: ['Sector 6 (Insect Hollow)', 'Sector 9 (Salt Reef)', 'Sector 12 (Blood Rain)'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'Sector 9 (Salt Reef)', terrain: 'water', danger: 0.55, resources: 0.6, adjacent: ['Sector 5 (Lightning Tree)', 'Sector 7 (Dry Shelf)', 'Sector 11 (Monkey Wood)'], features: { cover: 0.2, elevation: false, chokepoint: true, waterSource: false, shelterQuality: 0.1 } },
+            { name: 'Sector 11 (Monkey Wood)', terrain: 'forest', danger: 0.75, resources: 0.55, adjacent: ['Sector 1 (Jungle)', 'Sector 9 (Salt Reef)', 'Sector 12 (Blood Rain)'], features: { cover: 0.8, elevation: false, chokepoint: false, acoustics: 0.75, vertical: true } },
+            { name: 'Sector 12 (Blood Rain)', terrain: 'ruins', danger: 0.7, resources: 0.2, adjacent: ['The Cornucopia', 'Sector 7 (Dry Shelf)', 'Sector 11 (Monkey Wood)'], features: { cover: 0.45, elevation: false, chokepoint: false, acoustics: 1.25 } },
         ]
     },
     {
@@ -73,18 +73,18 @@ export const ARENAS: Arena[] = [
         effectVocab: { frozen: { label: 'a blizzard whiteout', severityMult: 1.2 } },
         edgeRules: { 'Frozen Lake|The Meltwater Channel': { kind: 'timeGated', gatedTime: 'day' } },
         zones: [
-            { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Frozen Lake', 'Snowy Pine Forest', 'The Windbreak'] },
-            { name: 'Frozen Lake', terrain: 'water', danger: 0.7, resources: 0.4, adjacent: ['The Cornucopia', 'Ice Caves', 'The Meltwater Channel'] },
-            { name: 'Ice Caves', terrain: 'ruins', danger: 0.4, resources: 0.2, adjacent: ['Frozen Lake', 'Glacier Peak', 'The Crevasse Field'] },
+            { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Frozen Lake', 'Snowy Pine Forest', 'The Windbreak'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.75 } },
+            { name: 'Frozen Lake', terrain: 'water', danger: 0.7, resources: 0.4, adjacent: ['The Cornucopia', 'Ice Caves', 'The Meltwater Channel'], features: { cover: 0.05, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 1.25 } },
+            { name: 'Ice Caves', terrain: 'ruins', danger: 0.4, resources: 0.2, adjacent: ['Frozen Lake', 'Glacier Peak', 'The Crevasse Field'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.85, acoustics: 1.4, vertical: true } },
             // The one real larder in a starving map — the doc's terrain-skew
             // note for this arena raises the forest resource ceiling to 0.9.
-            { name: 'Snowy Pine Forest', terrain: 'forest', danger: 0.3, resources: 0.85, adjacent: ['The Cornucopia', 'Glacier Peak', 'The Trapper\'s Cabin'] },
-            { name: 'Glacier Peak', terrain: 'highland', danger: 0.8, resources: 0.1, adjacent: ['Ice Caves', 'Snowy Pine Forest', 'The Crevasse Field'] },
-            { name: 'The Windbreak', terrain: 'open', danger: 0.55, resources: 0.15, adjacent: ['The Cornucopia', 'The Trapper\'s Cabin', 'The Meltwater Channel'] },
-            { name: 'The Trapper\'s Cabin', terrain: 'ruins', danger: 0.35, resources: 0.55, adjacent: ['Snowy Pine Forest', 'The Windbreak', 'Buried Timberline'] },
-            { name: 'The Crevasse Field', terrain: 'highland', danger: 0.9, resources: 0.05, adjacent: ['Ice Caves', 'Glacier Peak'] },
-            { name: 'The Meltwater Channel', terrain: 'water', danger: 0.6, resources: 0.5, adjacent: ['Frozen Lake', 'The Windbreak', 'Buried Timberline'] },
-            { name: 'Buried Timberline', terrain: 'forest', danger: 0.45, resources: 0.8, adjacent: ['The Trapper\'s Cabin', 'The Meltwater Channel'] },
+            { name: 'Snowy Pine Forest', terrain: 'forest', danger: 0.3, resources: 0.85, adjacent: ['The Cornucopia', 'Glacier Peak', 'The Trapper\'s Cabin'], features: { cover: 0.8, elevation: false, chokepoint: false, acoustics: 0.65 } },
+            { name: 'Glacier Peak', terrain: 'highland', danger: 0.8, resources: 0.1, adjacent: ['Ice Caves', 'Snowy Pine Forest', 'The Crevasse Field'], features: { cover: 0.1, elevation: true, chokepoint: false, shelterQuality: 0.05, acoustics: 1.25, vertical: true } },
+            { name: 'The Windbreak', terrain: 'open', danger: 0.55, resources: 0.15, adjacent: ['The Cornucopia', 'The Trapper\'s Cabin', 'The Meltwater Channel'], features: { cover: 0.3, elevation: false, chokepoint: true, shelterQuality: 0.35 } },
+            { name: 'The Trapper\'s Cabin', terrain: 'ruins', danger: 0.35, resources: 0.55, adjacent: ['Snowy Pine Forest', 'The Windbreak', 'Buried Timberline'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.9, acoustics: 0.75 } },
+            { name: 'The Crevasse Field', terrain: 'highland', danger: 0.9, resources: 0.05, adjacent: ['Ice Caves', 'Glacier Peak'], features: { cover: 0.15, elevation: true, chokepoint: true, shelterQuality: 0.05, acoustics: 1.3, vertical: true } },
+            { name: 'The Meltwater Channel', terrain: 'water', danger: 0.6, resources: 0.5, adjacent: ['Frozen Lake', 'The Windbreak', 'Buried Timberline'], features: { cover: 0.2, elevation: false, chokepoint: true, shelterQuality: 0.1 } },
+            { name: 'Buried Timberline', terrain: 'forest', danger: 0.45, resources: 0.8, adjacent: ['The Trapper\'s Cabin', 'The Meltwater Channel'], features: { cover: 0.75, elevation: false, chokepoint: false, acoustics: 0.6 } },
         ]
     },
     {
@@ -104,23 +104,23 @@ export const ARENAS: Arena[] = [
         // §5.5: widened to thirteen zones — a metropolis should sprawl, with
         // whole districts a tribute can vanish into for days.
         zones: [
-            { name: 'The Cornucopia (City Square)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Abandoned Subway', 'Skyscraper Ruins', 'Overgrown Park', 'The Flooded Underpass'] },
-            { name: 'Abandoned Subway', terrain: 'ruins', danger: 0.7, resources: 0.3, adjacent: ['The Cornucopia (City Square)', 'Industrial District', 'The Flooded Underpass', 'The Storm Drains'] },
-            { name: 'Skyscraper Ruins', terrain: 'highland', danger: 0.85, resources: 0.4, adjacent: ['The Cornucopia (City Square)', 'Industrial District', 'The Rooftop Gardens'] },
-            { name: 'Overgrown Park', terrain: 'forest', danger: 0.3, resources: 0.7, adjacent: ['The Cornucopia (City Square)', 'Industrial District', 'The Reservoir'] },
-            { name: 'Industrial District', terrain: 'ruins', danger: 0.6, resources: 0.4, adjacent: ['Abandoned Subway', 'Skyscraper Ruins', 'Overgrown Park', 'The Rail Yard'] },
-            { name: 'The Flooded Underpass', terrain: 'water', danger: 0.65, resources: 0.35, adjacent: ['The Cornucopia (City Square)', 'Abandoned Subway', 'The Reservoir', 'The Storm Drains'] },
-            { name: 'The Rooftop Gardens', terrain: 'forest', danger: 0.45, resources: 0.65, adjacent: ['Skyscraper Ruins', 'The Rail Yard', 'The Botanical Atrium'] },
-            { name: 'The Reservoir', terrain: 'water', danger: 0.4, resources: 0.6, adjacent: ['Overgrown Park', 'The Flooded Underpass', 'The Botanical Atrium'] },
-            { name: 'The Rail Yard', terrain: 'open', danger: 0.55, resources: 0.25, adjacent: ['Industrial District', 'The Rooftop Gardens', 'The Clocktower', 'The Collapsed Overpass'] },
+            { name: 'The Cornucopia (City Square)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Abandoned Subway', 'Skyscraper Ruins', 'Overgrown Park', 'The Flooded Underpass'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.1, acoustics: 1.25 } },
+            { name: 'Abandoned Subway', terrain: 'ruins', danger: 0.7, resources: 0.3, adjacent: ['The Cornucopia (City Square)', 'Industrial District', 'The Flooded Underpass', 'The Storm Drains'], features: { cover: 0.55, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 1.45, vertical: true } },
+            { name: 'Skyscraper Ruins', terrain: 'highland', danger: 0.85, resources: 0.4, adjacent: ['The Cornucopia (City Square)', 'Industrial District', 'The Rooftop Gardens'], features: { cover: 0.5, elevation: true, chokepoint: false, shelterQuality: 0.7, acoustics: 1.3, vertical: true } },
+            { name: 'Overgrown Park', terrain: 'forest', danger: 0.3, resources: 0.7, adjacent: ['The Cornucopia (City Square)', 'Industrial District', 'The Reservoir'], features: { cover: 0.7, elevation: false, chokepoint: false, acoustics: 0.75 } },
+            { name: 'Industrial District', terrain: 'ruins', danger: 0.6, resources: 0.4, adjacent: ['Abandoned Subway', 'Skyscraper Ruins', 'Overgrown Park', 'The Rail Yard'], features: { cover: 0.5, elevation: false, chokepoint: false, acoustics: 1.3, vertical: true } },
+            { name: 'The Flooded Underpass', terrain: 'water', danger: 0.65, resources: 0.35, adjacent: ['The Cornucopia (City Square)', 'Abandoned Subway', 'The Reservoir', 'The Storm Drains'], features: { cover: 0.3, elevation: false, chokepoint: true, waterSource: false, acoustics: 1.4 } },
+            { name: 'The Rooftop Gardens', terrain: 'forest', danger: 0.45, resources: 0.65, adjacent: ['Skyscraper Ruins', 'The Rail Yard', 'The Botanical Atrium'], features: { cover: 0.6, elevation: true, chokepoint: false, vertical: true } },
+            { name: 'The Reservoir', terrain: 'water', danger: 0.4, resources: 0.6, adjacent: ['Overgrown Park', 'The Flooded Underpass', 'The Botanical Atrium'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'The Rail Yard', terrain: 'open', danger: 0.55, resources: 0.25, adjacent: ['Industrial District', 'The Rooftop Gardens', 'The Clocktower', 'The Collapsed Overpass'], features: { cover: 0.3, elevation: false, chokepoint: false, shelterQuality: 0.2 } },
             // The outer districts: a shattered ring road, a glasshouse gone
             // feral, and the storm sewers under everything.
-            { name: 'The Collapsed Overpass', terrain: 'highland', danger: 0.75, resources: 0.2, adjacent: ['The Rail Yard', 'The Storm Drains'] },
-            { name: 'The Botanical Atrium', terrain: 'forest', danger: 0.35, resources: 0.75, adjacent: ['The Rooftop Gardens', 'The Reservoir'] },
-            { name: 'The Storm Drains', terrain: 'wetland', danger: 0.6, resources: 0.35, adjacent: ['Abandoned Subway', 'The Flooded Underpass', 'The Collapsed Overpass'] },
+            { name: 'The Collapsed Overpass', terrain: 'highland', danger: 0.75, resources: 0.2, adjacent: ['The Rail Yard', 'The Storm Drains'], features: { cover: 0.25, elevation: true, chokepoint: true, acoustics: 1.25, vertical: true } },
+            { name: 'The Botanical Atrium', terrain: 'forest', danger: 0.35, resources: 0.75, adjacent: ['The Rooftop Gardens', 'The Reservoir'], features: { cover: 0.75, elevation: false, chokepoint: false, shelterQuality: 0.85, acoustics: 1.25, vertical: true } },
+            { name: 'The Storm Drains', terrain: 'wetland', danger: 0.6, resources: 0.35, adjacent: ['Abandoned Subway', 'The Flooded Underpass', 'The Collapsed Overpass'], features: { cover: 0.5, elevation: false, chokepoint: true, waterSource: false, acoustics: 1.5 } },
             // A dead end (one edge) and a pure ambush zone by design — high
             // danger, kept low on resources so it's never worth the risk as bait.
-            { name: 'The Clocktower', terrain: 'highland', danger: 0.9, resources: 0.15, adjacent: ['The Rail Yard'] },
+            { name: 'The Clocktower', terrain: 'highland', danger: 0.9, resources: 0.15, adjacent: ['The Rail Yard'], features: { cover: 0.35, elevation: true, chokepoint: true, shelterQuality: 0.75, acoustics: 1.35, vertical: true } },
         ]
     },
     {
@@ -144,16 +144,16 @@ export const ARENAS: Arena[] = [
         // §5.5: trimmed to eight zones — a tight, claustrophobic swamp rather
         // than another ten-zone standard shape.
         zones: [
-            { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Murky Waters', 'Dead Tree Grove', 'The Causeway'] },
+            { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Murky Waters', 'Dead Tree Grove', 'The Causeway'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
             // Undrinkable and barely worth foraging — the danger carries this
             // terrain here, not the resources.
-            { name: 'Murky Waters', terrain: 'water', danger: 0.7, resources: 0.15, adjacent: ['The Cornucopia', 'Glowing Bog', 'The Reed Maze'] },
-            { name: 'Dead Tree Grove', terrain: 'forest', danger: 0.4, resources: 0.5, adjacent: ['The Cornucopia', 'Ruined Shacks', 'The Cypress Stand'] },
-            { name: 'Glowing Bog', terrain: 'wetland', danger: 0.8, resources: 0.6, adjacent: ['Murky Waters', 'Ruined Shacks'] },
-            { name: 'Ruined Shacks', terrain: 'ruins', danger: 0.3, resources: 0.4, adjacent: ['Dead Tree Grove', 'Glowing Bog'] },
-            { name: 'The Causeway', terrain: 'open', danger: 0.55, resources: 0.2, adjacent: ['The Cornucopia', 'The Reed Maze', 'The Cypress Stand'] },
-            { name: 'The Reed Maze', terrain: 'wetland', danger: 0.6, resources: 0.55, adjacent: ['Murky Waters', 'The Causeway'] },
-            { name: 'The Cypress Stand', terrain: 'forest', danger: 0.35, resources: 0.75, adjacent: ['Dead Tree Grove', 'The Causeway'] },
+            { name: 'Murky Waters', terrain: 'water', danger: 0.7, resources: 0.15, adjacent: ['The Cornucopia', 'Glowing Bog', 'The Reed Maze'], features: { cover: 0.3, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.1, acoustics: 0.75 } },
+            { name: 'Dead Tree Grove', terrain: 'forest', danger: 0.4, resources: 0.5, adjacent: ['The Cornucopia', 'Ruined Shacks', 'The Cypress Stand'], features: { cover: 0.55, elevation: false, chokepoint: false, acoustics: 1.25, vertical: true } },
+            { name: 'Glowing Bog', terrain: 'wetland', danger: 0.8, resources: 0.6, adjacent: ['Murky Waters', 'Ruined Shacks'], features: { cover: 0.6, elevation: false, chokepoint: false, waterSource: false, acoustics: 0.75 } },
+            { name: 'Ruined Shacks', terrain: 'ruins', danger: 0.3, resources: 0.4, adjacent: ['Dead Tree Grove', 'Glowing Bog'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.7 } },
+            { name: 'The Causeway', terrain: 'open', danger: 0.55, resources: 0.2, adjacent: ['The Cornucopia', 'The Reed Maze', 'The Cypress Stand'], features: { cover: 0.1, elevation: false, chokepoint: true, shelterQuality: 0.1 } },
+            { name: 'The Reed Maze', terrain: 'wetland', danger: 0.6, resources: 0.55, adjacent: ['Murky Waters', 'The Causeway'], features: { cover: 0.85, elevation: false, chokepoint: true, waterSource: false, acoustics: 0.7 } },
+            { name: 'The Cypress Stand', terrain: 'forest', danger: 0.35, resources: 0.75, adjacent: ['Dead Tree Grove', 'The Causeway'], features: { cover: 0.8, elevation: false, chokepoint: false, acoustics: 0.75, vertical: true } },
         ]
     },
     {
@@ -170,16 +170,16 @@ export const ARENAS: Arena[] = [
         // Under a sun that never sets, a fire is a flare — fierce and brief.
         effectVocab: { burning: { label: 'a solar-flare firestorm', severityMult: 1.25, durationMult: 0.75 } },
         zones: [
-            { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Endless Dunes', 'Rocky Outcrop', 'The Bone Road'] },
-            { name: 'Endless Dunes', terrain: 'open', danger: 0.7, resources: 0.05, adjacent: ['The Cornucopia', 'Dried Oasis', 'The Glass Sea'] },
-            { name: 'Canyon Shadows', terrain: 'highland', danger: 0.4, resources: 0.4, adjacent: ['Dried Oasis', 'Rocky Outcrop', 'The Slot Canyon'] },
-            { name: 'Dried Oasis', terrain: 'wetland', danger: 0.3, resources: 0.65, adjacent: ['Endless Dunes', 'Canyon Shadows', 'The Palm Ruin'] },
-            { name: 'Rocky Outcrop', terrain: 'highland', danger: 0.6, resources: 0.3, adjacent: ['The Cornucopia', 'Canyon Shadows', 'The Bone Road'] },
-            { name: 'The Bone Road', terrain: 'ruins', danger: 0.55, resources: 0.25, adjacent: ['The Cornucopia', 'Rocky Outcrop', 'The Glass Sea'] },
-            { name: 'The Glass Sea', terrain: 'open', danger: 0.85, resources: 0.05, adjacent: ['Endless Dunes', 'The Bone Road'] },
-            { name: 'The Slot Canyon', terrain: 'ruins', danger: 0.5, resources: 0.35, adjacent: ['Canyon Shadows', 'The Seep'] },
-            { name: 'The Palm Ruin', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['Dried Oasis', 'The Seep'] },
-            { name: 'The Seep', terrain: 'water', danger: 0.45, resources: 0.7, adjacent: ['The Slot Canyon', 'The Palm Ruin'] },
+            { name: 'The Cornucopia', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['Endless Dunes', 'Rocky Outcrop', 'The Bone Road'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05 } },
+            { name: 'Endless Dunes', terrain: 'open', danger: 0.7, resources: 0.05, adjacent: ['The Cornucopia', 'Dried Oasis', 'The Glass Sea'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.75 } },
+            { name: 'Canyon Shadows', terrain: 'highland', danger: 0.4, resources: 0.4, adjacent: ['Dried Oasis', 'Rocky Outcrop', 'The Slot Canyon'], features: { cover: 0.5, elevation: false, chokepoint: true, shelterQuality: 0.5, acoustics: 1.45, vertical: true } },
+            { name: 'Dried Oasis', terrain: 'wetland', danger: 0.3, resources: 0.65, adjacent: ['Endless Dunes', 'Canyon Shadows', 'The Palm Ruin'], features: { cover: 0.5, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.4 } },
+            { name: 'Rocky Outcrop', terrain: 'highland', danger: 0.6, resources: 0.3, adjacent: ['The Cornucopia', 'Canyon Shadows', 'The Bone Road'], features: { cover: 0.35, elevation: true, chokepoint: false, acoustics: 1.25, vertical: true } },
+            { name: 'The Bone Road', terrain: 'ruins', danger: 0.55, resources: 0.25, adjacent: ['The Cornucopia', 'Rocky Outcrop', 'The Glass Sea'], features: { cover: 0.2, elevation: false, chokepoint: true, shelterQuality: 0.1 } },
+            { name: 'The Glass Sea', terrain: 'open', danger: 0.85, resources: 0.05, adjacent: ['Endless Dunes', 'The Bone Road'], features: { cover: 0.05, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 1.25 } },
+            { name: 'The Slot Canyon', terrain: 'ruins', danger: 0.5, resources: 0.35, adjacent: ['Canyon Shadows', 'The Seep'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.6, acoustics: 1.55, vertical: true } },
+            { name: 'The Palm Ruin', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['Dried Oasis', 'The Seep'], features: { cover: 0.6, elevation: false, chokepoint: false, shelterQuality: 0.6 } },
+            { name: 'The Seep', terrain: 'water', danger: 0.45, resources: 0.7, adjacent: ['The Slot Canyon', 'The Palm Ruin'], features: { cover: 0.4, elevation: false, chokepoint: true, waterSource: true } },
         ]
     },
     {
@@ -198,16 +198,16 @@ export const ARENAS: Arena[] = [
             fogbound: { label: 'an ash whiteout' },
         },
         zones: [
-            { name: 'The Cornucopia (Caldera Floor)', terrain: 'open', danger: 0.6, resources: 0.25, adjacent: ['Cinder Fields', 'The Obsidian Maze', 'Sulphur Springs'] },
-            { name: 'Cinder Fields', terrain: 'open', danger: 0.5, resources: 0.15, adjacent: ['The Cornucopia (Caldera Floor)', 'Ashen Woods', 'Sulphur Springs', 'The Scoria Slope'] },
-            { name: 'Ashen Woods', terrain: 'forest', danger: 0.4, resources: 0.6, adjacent: ['Cinder Fields', 'The Obsidian Maze', 'The Fern Gully'] },
-            { name: 'The Obsidian Maze', terrain: 'ruins', danger: 0.75, resources: 0.3, adjacent: ['The Cornucopia (Caldera Floor)', 'Ashen Woods', 'Magma Vents'] },
-            { name: 'Sulphur Springs', terrain: 'water', danger: 0.55, resources: 0.5, adjacent: ['The Cornucopia (Caldera Floor)', 'Cinder Fields', 'Magma Vents'] },
-            { name: 'Magma Vents', terrain: 'highland', danger: 0.9, resources: 0.1, adjacent: ['The Obsidian Maze', 'Sulphur Springs', 'The Rim Path'] },
-            { name: 'The Scoria Slope', terrain: 'highland', danger: 0.7, resources: 0.1, adjacent: ['Cinder Fields', 'The Rim Path'] },
-            { name: 'The Fern Gully', terrain: 'wetland', danger: 0.35, resources: 0.75, adjacent: ['Ashen Woods', 'The Steam Caves'] },
-            { name: 'The Rim Path', terrain: 'highland', danger: 0.8, resources: 0.15, adjacent: ['Magma Vents', 'The Scoria Slope', 'The Steam Caves'] },
-            { name: 'The Steam Caves', terrain: 'ruins', danger: 0.6, resources: 0.4, adjacent: ['The Fern Gully', 'The Rim Path'] },
+            { name: 'The Cornucopia (Caldera Floor)', terrain: 'open', danger: 0.6, resources: 0.25, adjacent: ['Cinder Fields', 'The Obsidian Maze', 'Sulphur Springs'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.1, acoustics: 0.75 } },
+            { name: 'Cinder Fields', terrain: 'open', danger: 0.5, resources: 0.15, adjacent: ['The Cornucopia (Caldera Floor)', 'Ashen Woods', 'Sulphur Springs', 'The Scoria Slope'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.75 } },
+            { name: 'Ashen Woods', terrain: 'forest', danger: 0.4, resources: 0.6, adjacent: ['Cinder Fields', 'The Obsidian Maze', 'The Fern Gully'], features: { cover: 0.6, elevation: false, chokepoint: false, acoustics: 0.7 } },
+            { name: 'The Obsidian Maze', terrain: 'ruins', danger: 0.75, resources: 0.3, adjacent: ['The Cornucopia (Caldera Floor)', 'Ashen Woods', 'Magma Vents'], features: { cover: 0.7, elevation: false, chokepoint: true, shelterQuality: 0.6, acoustics: 1.4 } },
+            { name: 'Sulphur Springs', terrain: 'water', danger: 0.55, resources: 0.5, adjacent: ['The Cornucopia (Caldera Floor)', 'Cinder Fields', 'Magma Vents'], features: { cover: 0.2, elevation: false, chokepoint: false, waterSource: false } },
+            { name: 'Magma Vents', terrain: 'highland', danger: 0.9, resources: 0.1, adjacent: ['The Obsidian Maze', 'Sulphur Springs', 'The Rim Path'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.15, acoustics: 1.25, vertical: true } },
+            { name: 'The Scoria Slope', terrain: 'highland', danger: 0.7, resources: 0.1, adjacent: ['Cinder Fields', 'The Rim Path'], features: { cover: 0.15, elevation: true, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'The Fern Gully', terrain: 'wetland', danger: 0.35, resources: 0.75, adjacent: ['Ashen Woods', 'The Steam Caves'], features: { cover: 0.7, elevation: false, chokepoint: true, acoustics: 0.75 } },
+            { name: 'The Rim Path', terrain: 'highland', danger: 0.8, resources: 0.15, adjacent: ['Magma Vents', 'The Scoria Slope', 'The Steam Caves'], features: { cover: 0.1, elevation: true, chokepoint: true, shelterQuality: 0.05, vertical: true } },
+            { name: 'The Steam Caves', terrain: 'ruins', danger: 0.6, resources: 0.4, adjacent: ['The Fern Gully', 'The Rim Path'], features: { cover: 0.7, elevation: false, chokepoint: true, shelterQuality: 0.85, acoustics: 1.35, vertical: true } },
         ]
     },
     {
@@ -228,21 +228,21 @@ export const ARENAS: Arena[] = [
         // §5.5: widened to thirteen zones — a drowned coastline should feel
         // like a coastline, with room to lose someone along it.
         zones: [
-            { name: 'The Cornucopia (Breakwater)', terrain: 'open', danger: 0.65, resources: 0.3, adjacent: ['Flooded Terraces', 'The Lighthouse', 'Kelp Shallows'] },
-            { name: 'Flooded Terraces', terrain: 'wetland', danger: 0.5, resources: 0.6, adjacent: ['The Cornucopia (Breakwater)', 'Mangrove Sprawl', 'The Salt Marsh', 'The Storm Barrens'] },
-            { name: 'The Lighthouse', terrain: 'highland', danger: 0.7, resources: 0.2, adjacent: ['The Cornucopia (Breakwater)', 'Wreck Graveyard', 'The Cliff Stair'] },
-            { name: 'Kelp Shallows', terrain: 'water', danger: 0.45, resources: 0.65, adjacent: ['The Cornucopia (Breakwater)', 'Mangrove Sprawl', 'Wreck Graveyard'] },
-            { name: 'Mangrove Sprawl', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['Flooded Terraces', 'Kelp Shallows', 'The Boathouse', 'The Storm Barrens'] },
-            { name: 'Wreck Graveyard', terrain: 'ruins', danger: 0.8, resources: 0.4, adjacent: ['The Lighthouse', 'Kelp Shallows', 'The Tidal Cave'] },
-            { name: 'The Salt Marsh', terrain: 'wetland', danger: 0.55, resources: 0.5, adjacent: ['Flooded Terraces', 'The Boathouse', 'The Drowned Quarter'] },
-            { name: 'The Cliff Stair', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Lighthouse', 'The Tidal Cave', 'The Gull Roost'] },
-            { name: 'The Boathouse', terrain: 'ruins', danger: 0.4, resources: 0.55, adjacent: ['Mangrove Sprawl', 'The Salt Marsh', 'The Drowned Quarter'] },
-            { name: 'The Tidal Cave', terrain: 'water', danger: 0.75, resources: 0.45, adjacent: ['Wreck Graveyard', 'The Cliff Stair', 'The Gull Roost'] },
+            { name: 'The Cornucopia (Breakwater)', terrain: 'open', danger: 0.65, resources: 0.3, adjacent: ['Flooded Terraces', 'The Lighthouse', 'Kelp Shallows'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05 } },
+            { name: 'Flooded Terraces', terrain: 'wetland', danger: 0.5, resources: 0.6, adjacent: ['The Cornucopia (Breakwater)', 'Mangrove Sprawl', 'The Salt Marsh', 'The Storm Barrens'], features: { cover: 0.3, elevation: false, chokepoint: false, waterSource: false, vertical: true } },
+            { name: 'The Lighthouse', terrain: 'highland', danger: 0.7, resources: 0.2, adjacent: ['The Cornucopia (Breakwater)', 'Wreck Graveyard', 'The Cliff Stair'], features: { cover: 0.3, elevation: true, chokepoint: true, shelterQuality: 0.85, acoustics: 1.4, vertical: true } },
+            { name: 'Kelp Shallows', terrain: 'water', danger: 0.45, resources: 0.65, adjacent: ['The Cornucopia (Breakwater)', 'Mangrove Sprawl', 'Wreck Graveyard'], features: { cover: 0.3, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.05 } },
+            { name: 'Mangrove Sprawl', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['Flooded Terraces', 'Kelp Shallows', 'The Boathouse', 'The Storm Barrens'], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 0.7, vertical: true } },
+            { name: 'Wreck Graveyard', terrain: 'ruins', danger: 0.8, resources: 0.4, adjacent: ['The Lighthouse', 'Kelp Shallows', 'The Tidal Cave'], features: { cover: 0.6, elevation: false, chokepoint: false, acoustics: 1.3, vertical: true } },
+            { name: 'The Salt Marsh', terrain: 'wetland', danger: 0.55, resources: 0.5, adjacent: ['Flooded Terraces', 'The Boathouse', 'The Drowned Quarter'], features: { cover: 0.5, elevation: false, chokepoint: false, waterSource: false, acoustics: 0.75 } },
+            { name: 'The Cliff Stair', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Lighthouse', 'The Tidal Cave', 'The Gull Roost'], features: { cover: 0.15, elevation: true, chokepoint: true, acoustics: 1.4, vertical: true } },
+            { name: 'The Boathouse', terrain: 'ruins', danger: 0.4, resources: 0.55, adjacent: ['Mangrove Sprawl', 'The Salt Marsh', 'The Drowned Quarter'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.85 } },
+            { name: 'The Tidal Cave', terrain: 'water', danger: 0.75, resources: 0.45, adjacent: ['Wreck Graveyard', 'The Cliff Stair', 'The Gull Roost'], features: { cover: 0.7, elevation: false, chokepoint: true, waterSource: false, shelterQuality: 0.7, acoustics: 1.5 } },
             // The far end of the coast: a drowned town, a bare headland, and
             // the one high roost the storm never quite reaches.
-            { name: 'The Drowned Quarter', terrain: 'ruins', danger: 0.6, resources: 0.5, adjacent: ['The Salt Marsh', 'The Boathouse'] },
-            { name: 'The Storm Barrens', terrain: 'open', danger: 0.7, resources: 0.15, adjacent: ['Flooded Terraces', 'Mangrove Sprawl'] },
-            { name: 'The Gull Roost', terrain: 'highland', danger: 0.55, resources: 0.35, adjacent: ['The Cliff Stair', 'The Tidal Cave'] },
+            { name: 'The Drowned Quarter', terrain: 'ruins', danger: 0.6, resources: 0.5, adjacent: ['The Salt Marsh', 'The Boathouse'], features: { cover: 0.55, elevation: false, chokepoint: false, acoustics: 1.25, vertical: true } },
+            { name: 'The Storm Barrens', terrain: 'open', danger: 0.7, resources: 0.15, adjacent: ['Flooded Terraces', 'Mangrove Sprawl'], features: { cover: 0.05, elevation: false, chokepoint: false, shelterQuality: 0.05 } },
+            { name: 'The Gull Roost', terrain: 'highland', danger: 0.55, resources: 0.35, adjacent: ['The Cliff Stair', 'The Tidal Cave'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.1 } },
         ]
     },
     {
@@ -263,13 +263,13 @@ export const ARENAS: Arena[] = [
         // §5.5: trimmed to seven zones. A dried sea with nowhere to hide reads
         // truest as a small, merciless map where everyone can see everyone.
         zones: [
-            { name: 'The Cornucopia (Salt Pan)', terrain: 'open', danger: 0.6, resources: 0.2, adjacent: ['The Hexagon Flats', 'Brine Pools', 'The Boneyard'] },
-            { name: 'The Hexagon Flats', terrain: 'open', danger: 0.7, resources: 0.05, adjacent: ['The Cornucopia (Salt Pan)', 'Crystal Spires'] },
-            { name: 'Brine Pools', terrain: 'water', danger: 0.5, resources: 0.45, adjacent: ['The Cornucopia (Salt Pan)', 'The Boneyard', 'Crystal Spires'] },
-            { name: 'The Boneyard', terrain: 'ruins', danger: 0.45, resources: 0.35, adjacent: ['The Cornucopia (Salt Pan)', 'Brine Pools', 'Scrub Hollow'] },
-            { name: 'Crystal Spires', terrain: 'highland', danger: 0.8, resources: 0.15, adjacent: ['The Hexagon Flats', 'Brine Pools', 'The Evaporation Pans'] },
-            { name: 'Scrub Hollow', terrain: 'forest', danger: 0.3, resources: 0.6, adjacent: ['The Boneyard', 'The Evaporation Pans'] },
-            { name: 'The Evaporation Pans', terrain: 'water', danger: 0.55, resources: 0.4, adjacent: ['Crystal Spires', 'Scrub Hollow'] },
+            { name: 'The Cornucopia (Salt Pan)', terrain: 'open', danger: 0.6, resources: 0.2, adjacent: ['The Hexagon Flats', 'Brine Pools', 'The Boneyard'], features: { cover: 0.05, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 1.25 } },
+            { name: 'The Hexagon Flats', terrain: 'open', danger: 0.7, resources: 0.05, adjacent: ['The Cornucopia (Salt Pan)', 'Crystal Spires'], features: { cover: 0.05, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 1.25 } },
+            { name: 'Brine Pools', terrain: 'water', danger: 0.5, resources: 0.45, adjacent: ['The Cornucopia (Salt Pan)', 'The Boneyard', 'Crystal Spires'], features: { cover: 0.1, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.05 } },
+            { name: 'The Boneyard', terrain: 'ruins', danger: 0.45, resources: 0.35, adjacent: ['The Cornucopia (Salt Pan)', 'Brine Pools', 'Scrub Hollow'], features: { cover: 0.5, elevation: false, chokepoint: true, shelterQuality: 0.55, acoustics: 1.3, vertical: true } },
+            { name: 'Crystal Spires', terrain: 'highland', danger: 0.8, resources: 0.15, adjacent: ['The Hexagon Flats', 'Brine Pools', 'The Evaporation Pans'], features: { cover: 0.4, elevation: true, chokepoint: false, shelterQuality: 0.3, acoustics: 1.45, vertical: true } },
+            { name: 'Scrub Hollow', terrain: 'forest', danger: 0.3, resources: 0.6, adjacent: ['The Boneyard', 'The Evaporation Pans'], features: { cover: 0.6, elevation: false, chokepoint: false, shelterQuality: 0.5, acoustics: 0.75 } },
+            { name: 'The Evaporation Pans', terrain: 'water', danger: 0.55, resources: 0.4, adjacent: ['Crystal Spires', 'Scrub Hollow'], features: { cover: 0.05, elevation: false, chokepoint: true, waterSource: false, shelterQuality: 0.05 } },
         ]
     },
     {
@@ -287,16 +287,16 @@ export const ARENAS: Arena[] = [
         // Contamination here is the forest doing what it grew to do.
         effectVocab: { contaminated: { label: 'a spore bloom', durationMult: 1.25 } },
         zones: [
-            { name: 'The Cornucopia (Ring of Caps)', terrain: 'open', danger: 0.55, resources: 0.4, adjacent: ['The Glowcap Wood', 'Rot Hollow', 'Mycelium Steps'] },
-            { name: 'The Glowcap Wood', terrain: 'forest', danger: 0.4, resources: 0.85, adjacent: ['The Cornucopia (Ring of Caps)', 'Spore Marsh', 'The Shelf Terraces'] },
-            { name: 'Rot Hollow', terrain: 'wetland', danger: 0.7, resources: 0.55, adjacent: ['The Cornucopia (Ring of Caps)', 'Spore Marsh', 'The Fruiting Body'] },
-            { name: 'Mycelium Steps', terrain: 'highland', danger: 0.6, resources: 0.3, adjacent: ['The Cornucopia (Ring of Caps)', 'The Fruiting Body', 'The Blight Scar'] },
-            { name: 'Spore Marsh', terrain: 'water', danger: 0.65, resources: 0.5, adjacent: ['The Glowcap Wood', 'Rot Hollow', 'The Cold Cellar'] },
-            { name: 'The Fruiting Body', terrain: 'ruins', danger: 0.85, resources: 0.45, adjacent: ['Rot Hollow', 'Mycelium Steps'] },
-            { name: 'The Shelf Terraces', terrain: 'highland', danger: 0.5, resources: 0.6, adjacent: ['The Glowcap Wood', 'The Blight Scar'] },
-            { name: 'The Cold Cellar', terrain: 'ruins', danger: 0.35, resources: 0.7, adjacent: ['Spore Marsh', 'The Deadfall'] },
-            { name: 'The Blight Scar', terrain: 'open', danger: 0.75, resources: 0.1, adjacent: ['Mycelium Steps', 'The Shelf Terraces', 'The Deadfall'] },
-            { name: 'The Deadfall', terrain: 'forest', danger: 0.45, resources: 0.65, adjacent: ['The Cold Cellar', 'The Blight Scar'] },
+            { name: 'The Cornucopia (Ring of Caps)', terrain: 'open', danger: 0.55, resources: 0.4, adjacent: ['The Glowcap Wood', 'Rot Hollow', 'Mycelium Steps'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'The Glowcap Wood', terrain: 'forest', danger: 0.4, resources: 0.85, adjacent: ['The Cornucopia (Ring of Caps)', 'Spore Marsh', 'The Shelf Terraces'], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 0.65, vertical: true } },
+            { name: 'Rot Hollow', terrain: 'wetland', danger: 0.7, resources: 0.55, adjacent: ['The Cornucopia (Ring of Caps)', 'Spore Marsh', 'The Fruiting Body'], features: { cover: 0.7, elevation: false, chokepoint: true, acoustics: 0.6 } },
+            { name: 'Mycelium Steps', terrain: 'highland', danger: 0.6, resources: 0.3, adjacent: ['The Cornucopia (Ring of Caps)', 'The Fruiting Body', 'The Blight Scar'], features: { cover: 0.4, elevation: true, chokepoint: false, acoustics: 0.75, vertical: true } },
+            { name: 'Spore Marsh', terrain: 'water', danger: 0.65, resources: 0.5, adjacent: ['The Glowcap Wood', 'Rot Hollow', 'The Cold Cellar'], features: { cover: 0.5, elevation: false, chokepoint: false, waterSource: false, acoustics: 0.7 } },
+            { name: 'The Fruiting Body', terrain: 'ruins', danger: 0.85, resources: 0.45, adjacent: ['Rot Hollow', 'Mycelium Steps'], features: { cover: 0.75, elevation: false, chokepoint: true, shelterQuality: 0.85, acoustics: 0.7, vertical: true } },
+            { name: 'The Shelf Terraces', terrain: 'highland', danger: 0.5, resources: 0.6, adjacent: ['The Glowcap Wood', 'The Blight Scar'], features: { cover: 0.45, elevation: true, chokepoint: false, vertical: true } },
+            { name: 'The Cold Cellar', terrain: 'ruins', danger: 0.35, resources: 0.7, adjacent: ['Spore Marsh', 'The Deadfall'], features: { cover: 0.7, elevation: false, chokepoint: true, shelterQuality: 0.9, acoustics: 1.3 } },
+            { name: 'The Blight Scar', terrain: 'open', danger: 0.75, resources: 0.1, adjacent: ['Mycelium Steps', 'The Shelf Terraces', 'The Deadfall'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05 } },
+            { name: 'The Deadfall', terrain: 'forest', danger: 0.45, resources: 0.65, adjacent: ['The Cold Cellar', 'The Blight Scar'], features: { cover: 0.8, elevation: false, chokepoint: true, acoustics: 0.7 } },
         ]
     },
     {
@@ -318,16 +318,16 @@ export const ARENAS: Arena[] = [
             'The Crown|The Rope Bridges': { kind: 'tolled', toll: { fatigue: 8, timeCost: 1 } },
         },
         zones: [
-            { name: 'The Cornucopia (Great Bough)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Rope Bridges', 'Orchid Terraces', 'The Undercanopy'] },
-            { name: 'The Rope Bridges', terrain: 'highland', danger: 0.8, resources: 0.15, adjacent: ['The Cornucopia (Great Bough)', 'The Crown', 'Orchid Terraces', 'The Strangler Fig'] },
-            { name: 'Orchid Terraces', terrain: 'forest', danger: 0.35, resources: 0.8, adjacent: ['The Cornucopia (Great Bough)', 'The Rope Bridges', 'Cistern Hollows'] },
-            { name: 'The Undercanopy', terrain: 'wetland', danger: 0.65, resources: 0.55, adjacent: ['The Cornucopia (Great Bough)', 'Cistern Hollows', 'The Root Cage'] },
-            { name: 'Cistern Hollows', terrain: 'water', danger: 0.4, resources: 0.6, adjacent: ['Orchid Terraces', 'The Undercanopy', 'The Epiphyte Shelf'] },
-            { name: 'The Crown', terrain: 'highland', danger: 0.85, resources: 0.2, adjacent: ['The Rope Bridges', 'The Wind Gap'] },
-            { name: 'The Strangler Fig', terrain: 'ruins', danger: 0.7, resources: 0.4, adjacent: ['The Rope Bridges', 'The Wind Gap', 'The Root Cage'] },
-            { name: 'The Root Cage', terrain: 'ruins', danger: 0.55, resources: 0.5, adjacent: ['The Undercanopy', 'The Strangler Fig'] },
-            { name: 'The Epiphyte Shelf', terrain: 'forest', danger: 0.45, resources: 0.75, adjacent: ['Cistern Hollows', 'The Wind Gap'] },
-            { name: 'The Wind Gap', terrain: 'open', danger: 0.75, resources: 0.15, adjacent: ['The Crown', 'The Strangler Fig', 'The Epiphyte Shelf'] },
+            { name: 'The Cornucopia (Great Bough)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Rope Bridges', 'Orchid Terraces', 'The Undercanopy'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.15, vertical: true } },
+            { name: 'The Rope Bridges', terrain: 'highland', danger: 0.8, resources: 0.15, adjacent: ['The Cornucopia (Great Bough)', 'The Crown', 'Orchid Terraces', 'The Strangler Fig'], features: { cover: 0.05, elevation: true, chokepoint: true, shelterQuality: 0.05, acoustics: 1.25 } },
+            { name: 'Orchid Terraces', terrain: 'forest', danger: 0.35, resources: 0.8, adjacent: ['The Cornucopia (Great Bough)', 'The Rope Bridges', 'Cistern Hollows'], features: { cover: 0.7, elevation: true, chokepoint: false, acoustics: 0.75, vertical: true } },
+            { name: 'The Undercanopy', terrain: 'wetland', danger: 0.65, resources: 0.55, adjacent: ['The Cornucopia (Great Bough)', 'Cistern Hollows', 'The Root Cage'], features: { cover: 0.8, elevation: false, chokepoint: false, waterSource: false, acoustics: 0.65, vertical: true } },
+            { name: 'Cistern Hollows', terrain: 'water', danger: 0.4, resources: 0.6, adjacent: ['Orchid Terraces', 'The Undercanopy', 'The Epiphyte Shelf'], features: { cover: 0.5, elevation: false, chokepoint: true, waterSource: true, shelterQuality: 0.7, acoustics: 1.35 } },
+            { name: 'The Crown', terrain: 'highland', danger: 0.85, resources: 0.2, adjacent: ['The Rope Bridges', 'The Wind Gap'], features: { cover: 0.3, elevation: true, chokepoint: false, shelterQuality: 0.1, acoustics: 1.25, vertical: true } },
+            { name: 'The Strangler Fig', terrain: 'ruins', danger: 0.7, resources: 0.4, adjacent: ['The Rope Bridges', 'The Wind Gap', 'The Root Cage'], features: { cover: 0.75, elevation: true, chokepoint: true, shelterQuality: 0.8, acoustics: 0.75, vertical: true } },
+            { name: 'The Root Cage', terrain: 'ruins', danger: 0.55, resources: 0.5, adjacent: ['The Undercanopy', 'The Strangler Fig'], features: { cover: 0.85, elevation: false, chokepoint: true, shelterQuality: 0.85, acoustics: 0.7, vertical: true } },
+            { name: 'The Epiphyte Shelf', terrain: 'forest', danger: 0.45, resources: 0.75, adjacent: ['Cistern Hollows', 'The Wind Gap'], features: { cover: 0.7, elevation: true, chokepoint: false, vertical: true } },
+            { name: 'The Wind Gap', terrain: 'open', danger: 0.75, resources: 0.15, adjacent: ['The Crown', 'The Strangler Fig', 'The Epiphyte Shelf'], features: { cover: 0.05, elevation: true, chokepoint: true, shelterQuality: 0.05, acoustics: 1.25 } },
         ]
     },
     {
@@ -351,17 +351,17 @@ export const ARENAS: Arena[] = [
         // §5: the horn is in a service bay with one way in. It is a killing box and it looks like one.
         cornucopiaLayout: 'walled',
         zones: [
-            { name: 'The Cornucopia (Atrium)', terrain: 'open', danger: 0.65, resources: 0.3, adjacent: ['Service Tunnels', 'The Hydroponics Bay', 'Reactor Level'] },
-            { name: 'Service Tunnels', terrain: 'ruins', danger: 0.7, resources: 0.25, adjacent: ['The Cornucopia (Atrium)', 'The Cistern', 'Dormitory Block', 'The Ventilation Shafts'] },
-            { name: 'The Hydroponics Bay', terrain: 'forest', danger: 0.3, resources: 0.85, adjacent: ['The Cornucopia (Atrium)', 'The Cistern', 'The Seed Vault'] },
-            { name: 'Reactor Level', terrain: 'highland', danger: 0.9, resources: 0.2, adjacent: ['The Cornucopia (Atrium)', 'Dormitory Block', 'The Turbine Hall'] },
-            { name: 'The Cistern', terrain: 'water', danger: 0.5, resources: 0.5, adjacent: ['Service Tunnels', 'The Hydroponics Bay', 'The Sump'] },
-            { name: 'Dormitory Block', terrain: 'ruins', danger: 0.4, resources: 0.4, adjacent: ['Service Tunnels', 'Reactor Level', 'The Commissary'] },
-            { name: 'The Ventilation Shafts', terrain: 'highland', danger: 0.75, resources: 0.1, adjacent: ['Service Tunnels', 'The Turbine Hall'] },
-            { name: 'The Seed Vault', terrain: 'ruins', danger: 0.35, resources: 0.7, adjacent: ['The Hydroponics Bay', 'The Commissary'] },
-            { name: 'The Turbine Hall', terrain: 'ruins', danger: 0.8, resources: 0.3, adjacent: ['Reactor Level', 'The Ventilation Shafts', 'The Sump'] },
-            { name: 'The Commissary', terrain: 'open', danger: 0.45, resources: 0.6, adjacent: ['Dormitory Block', 'The Seed Vault'] },
-            { name: 'The Sump', terrain: 'water', danger: 0.7, resources: 0.35, adjacent: ['The Cistern', 'The Turbine Hall'] },
+            { name: 'The Cornucopia (Atrium)', terrain: 'open', danger: 0.65, resources: 0.3, adjacent: ['Service Tunnels', 'The Hydroponics Bay', 'Reactor Level'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.6, acoustics: 1.5, vertical: true } },
+            { name: 'Service Tunnels', terrain: 'ruins', danger: 0.7, resources: 0.25, adjacent: ['The Cornucopia (Atrium)', 'The Cistern', 'Dormitory Block', 'The Ventilation Shafts'], features: { cover: 0.5, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 1.45 } },
+            { name: 'The Hydroponics Bay', terrain: 'forest', danger: 0.3, resources: 0.85, adjacent: ['The Cornucopia (Atrium)', 'The Cistern', 'The Seed Vault'], features: { cover: 0.7, elevation: false, chokepoint: false, waterSource: true, shelterQuality: 0.85, acoustics: 0.75, vertical: true } },
+            { name: 'Reactor Level', terrain: 'highland', danger: 0.9, resources: 0.2, adjacent: ['The Cornucopia (Atrium)', 'Dormitory Block', 'The Turbine Hall'], features: { cover: 0.4, elevation: true, chokepoint: true, shelterQuality: 0.7, acoustics: 1.4, vertical: true } },
+            { name: 'The Cistern', terrain: 'water', danger: 0.5, resources: 0.5, adjacent: ['Service Tunnels', 'The Hydroponics Bay', 'The Sump'], features: { cover: 0.2, elevation: false, chokepoint: true, waterSource: true, acoustics: 1.55 } },
+            { name: 'Dormitory Block', terrain: 'ruins', danger: 0.4, resources: 0.4, adjacent: ['Service Tunnels', 'Reactor Level', 'The Commissary'], features: { cover: 0.7, elevation: false, chokepoint: false, shelterQuality: 0.9, acoustics: 0.75 } },
+            { name: 'The Ventilation Shafts', terrain: 'highland', danger: 0.75, resources: 0.1, adjacent: ['Service Tunnels', 'The Turbine Hall'], features: { cover: 0.4, elevation: true, chokepoint: true, acoustics: 1.5, vertical: true } },
+            { name: 'The Seed Vault', terrain: 'ruins', danger: 0.35, resources: 0.7, adjacent: ['The Hydroponics Bay', 'The Commissary'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.95, acoustics: 1.3 } },
+            { name: 'The Turbine Hall', terrain: 'ruins', danger: 0.8, resources: 0.3, adjacent: ['Reactor Level', 'The Ventilation Shafts', 'The Sump'], features: { cover: 0.35, elevation: false, chokepoint: false, acoustics: 1.55, vertical: true } },
+            { name: 'The Commissary', terrain: 'open', danger: 0.45, resources: 0.6, adjacent: ['Dormitory Block', 'The Seed Vault'], features: { cover: 0.4, elevation: false, chokepoint: false, shelterQuality: 0.8 } },
+            { name: 'The Sump', terrain: 'water', danger: 0.7, resources: 0.35, adjacent: ['The Cistern', 'The Turbine Hall'], features: { cover: 0.3, elevation: false, chokepoint: true, waterSource: false, acoustics: 1.35 } },
         ]
     },
     {
@@ -379,14 +379,14 @@ export const ARENAS: Arena[] = [
         // §5: the horn is at the bottom of the shaft, walled by the workings themselves.
         cornucopiaLayout: 'walled',
         zones: [
-            { name: 'The Cornucopia (The Hub)', terrain: 'open', danger: 0.6, resources: 0.45, adjacent: ['The Choke', 'The Root Gardens', 'The Dust Flats'] },
-            { name: 'The Choke', terrain: 'ruins', danger: 0.8, resources: 0.2, adjacent: ['The Cornucopia (The Hub)', 'The Old Workings', 'The Collapsed Galleries'] },
+            { name: 'The Cornucopia (The Hub)', terrain: 'open', danger: 0.6, resources: 0.45, adjacent: ['The Choke', 'The Root Gardens', 'The Dust Flats'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.7, acoustics: 1.4 } },
+            { name: 'The Choke', terrain: 'ruins', danger: 0.8, resources: 0.2, adjacent: ['The Cornucopia (The Hub)', 'The Old Workings', 'The Collapsed Galleries'], features: { cover: 0.5, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 1.5 } },
             // The only reliable food source in a six-zone map with no water
             // anywhere — worth pushing higher than any other arena's forest.
-            { name: 'The Root Gardens', terrain: 'forest', danger: 0.3, resources: 0.92, adjacent: ['The Cornucopia (The Hub)', 'The Collapsed Galleries'] },
-            { name: 'The Dust Flats', terrain: 'open', danger: 0.45, resources: 0.3, adjacent: ['The Cornucopia (The Hub)', 'The Old Workings'] },
-            { name: 'The Old Workings', terrain: 'highland', danger: 0.7, resources: 0.35, adjacent: ['The Choke', 'The Dust Flats'] },
-            { name: 'The Collapsed Galleries', terrain: 'ruins', danger: 0.65, resources: 0.5, adjacent: ['The Choke', 'The Root Gardens'] },
+            { name: 'The Root Gardens', terrain: 'forest', danger: 0.3, resources: 0.92, adjacent: ['The Cornucopia (The Hub)', 'The Collapsed Galleries'], features: { cover: 0.75, elevation: false, chokepoint: false, shelterQuality: 0.8, acoustics: 0.7 } },
+            { name: 'The Dust Flats', terrain: 'open', danger: 0.45, resources: 0.3, adjacent: ['The Cornucopia (The Hub)', 'The Old Workings'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.5, acoustics: 0.75 } },
+            { name: 'The Old Workings', terrain: 'highland', danger: 0.7, resources: 0.35, adjacent: ['The Choke', 'The Dust Flats'], features: { cover: 0.45, elevation: true, chokepoint: true, shelterQuality: 0.75, acoustics: 1.35, vertical: true } },
+            { name: 'The Collapsed Galleries', terrain: 'ruins', danger: 0.65, resources: 0.5, adjacent: ['The Choke', 'The Root Gardens'], features: { cover: 0.7, elevation: false, chokepoint: true, shelterQuality: 0.7, acoustics: 1.3, vertical: true } },
         ]
     },
     {
@@ -402,16 +402,16 @@ export const ARENAS: Arena[] = [
         // §5: the horn sits on its own sandbar. Getting to it is a crossing, not a sprint.
         cornucopiaLayout: 'island',
         zones: [
-            { name: 'The Cornucopia (Anchor Isle)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Long Span', 'The Fog Shallows', 'The Orchard Isle'] },
-            { name: 'The Long Span', terrain: 'open', danger: 0.75, resources: 0.1, adjacent: ['The Cornucopia (Anchor Isle)', 'Lodestone Crag', 'Gullrock'], features: { cover: 0.05, elevation: true, chokepoint: true } },
-            { name: 'The Fog Shallows', terrain: 'water', danger: 0.7, resources: 0.4, adjacent: ['The Cornucopia (Anchor Isle)', 'The Reed Islet', 'The Wreck of the Ferry'] },
-            { name: 'The Orchard Isle', terrain: 'forest', danger: 0.3, resources: 0.8, adjacent: ['The Cornucopia (Anchor Isle)', 'Gullrock', 'The Reed Islet'] },
-            { name: 'Gullrock', terrain: 'highland', danger: 0.55, resources: 0.35, adjacent: ['The Long Span', 'The Orchard Isle', 'The Tilting Isle'] },
-            { name: 'Lodestone Crag', terrain: 'highland', danger: 0.85, resources: 0.15, adjacent: ['The Long Span', 'The Compass Rose'] },
-            { name: 'The Reed Islet', terrain: 'wetland', danger: 0.45, resources: 0.6, adjacent: ['The Fog Shallows', 'The Orchard Isle', 'The Wreck of the Ferry'] },
-            { name: 'The Wreck of the Ferry', terrain: 'ruins', danger: 0.65, resources: 0.5, adjacent: ['The Fog Shallows', 'The Reed Islet', 'The Compass Rose'] },
-            { name: 'The Tilting Isle', terrain: 'open', danger: 0.7, resources: 0.2, adjacent: ['Gullrock', 'The Compass Rose'] },
-            { name: 'The Compass Rose', terrain: 'ruins', danger: 0.6, resources: 0.4, adjacent: ['Lodestone Crag', 'The Wreck of the Ferry', 'The Tilting Isle'] },
+            { name: 'The Cornucopia (Anchor Isle)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Long Span', 'The Fog Shallows', 'The Orchard Isle'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.15, acoustics: 0.7 } },
+            { name: 'The Long Span', terrain: 'open', danger: 0.75, resources: 0.1, adjacent: ['The Cornucopia (Anchor Isle)', 'Lodestone Crag', 'Gullrock'], features: { cover: 0.05, elevation: true, chokepoint: true, shelterQuality: 0.05, acoustics: 0.75, vertical: true } },
+            { name: 'The Fog Shallows', terrain: 'water', danger: 0.7, resources: 0.4, adjacent: ['The Cornucopia (Anchor Isle)', 'The Reed Islet', 'The Wreck of the Ferry'], features: { cover: 0.4, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.05, acoustics: 0.6 } },
+            { name: 'The Orchard Isle', terrain: 'forest', danger: 0.3, resources: 0.8, adjacent: ['The Cornucopia (Anchor Isle)', 'Gullrock', 'The Reed Islet'], features: { cover: 0.7, elevation: false, chokepoint: false, acoustics: 0.7 } },
+            { name: 'Gullrock', terrain: 'highland', danger: 0.55, resources: 0.35, adjacent: ['The Long Span', 'The Orchard Isle', 'The Tilting Isle'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.15, vertical: true } },
+            { name: 'Lodestone Crag', terrain: 'highland', danger: 0.85, resources: 0.15, adjacent: ['The Long Span', 'The Compass Rose'], features: { cover: 0.3, elevation: true, chokepoint: true, shelterQuality: 0.3, acoustics: 1.25, vertical: true } },
+            { name: 'The Reed Islet', terrain: 'wetland', danger: 0.45, resources: 0.6, adjacent: ['The Fog Shallows', 'The Orchard Isle', 'The Wreck of the Ferry'], features: { cover: 0.7, elevation: false, chokepoint: false, acoustics: 0.65 } },
+            { name: 'The Wreck of the Ferry', terrain: 'ruins', danger: 0.65, resources: 0.5, adjacent: ['The Fog Shallows', 'The Reed Islet', 'The Compass Rose'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.7, acoustics: 1.25, vertical: true } },
+            { name: 'The Tilting Isle', terrain: 'open', danger: 0.7, resources: 0.2, adjacent: ['Gullrock', 'The Compass Rose'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'The Compass Rose', terrain: 'ruins', danger: 0.6, resources: 0.4, adjacent: ['Lodestone Crag', 'The Wreck of the Ferry', 'The Tilting Isle'], features: { cover: 0.4, elevation: false, chokepoint: false, acoustics: 0.75 } },
         ]
     },
     {
@@ -425,16 +425,16 @@ export const ARENAS: Arena[] = [
         // Poor visibility for cameras, similar to the Vault but less severe.
         sponsorMultiplier: 0.9,
         zones: [
-            { name: 'The Cornucopia (Clearing of Stars)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Redwood Naves', 'Foxfire Creek', 'The Pitch-Vents'] },
-            { name: 'The Redwood Naves', terrain: 'forest', danger: 0.4, resources: 0.65, adjacent: ['The Cornucopia (Clearing of Stars)', 'The Glowcap Hollow', 'The Fallen Giant'], features: { cover: 0.9, elevation: false, chokepoint: false } },
-            { name: 'Foxfire Creek', terrain: 'water', danger: 0.35, resources: 0.55, adjacent: ['The Cornucopia (Clearing of Stars)', 'The Duskmoss Flats', 'The Glowcap Hollow'] },
-            { name: 'The Pitch-Vents', terrain: 'highland', danger: 0.85, resources: 0.15, adjacent: ['The Cornucopia (Clearing of Stars)', 'The Star Gantries', 'The Charcoal Grove'] },
-            { name: 'The Glowcap Hollow', terrain: 'forest', danger: 0.45, resources: 0.8, adjacent: ['The Redwood Naves', 'Foxfire Creek', 'The Duskmoss Flats'], features: { cover: 0.85, elevation: false, chokepoint: false } },
-            { name: 'The Duskmoss Flats', terrain: 'wetland', danger: 0.5, resources: 0.6, adjacent: ['Foxfire Creek', 'The Glowcap Hollow', 'The Dark Meander'] },
-            { name: 'The Fallen Giant', terrain: 'ruins', danger: 0.55, resources: 0.45, adjacent: ['The Redwood Naves', 'The Charcoal Grove', 'The Star Gantries'] },
-            { name: 'The Charcoal Grove', terrain: 'forest', danger: 0.65, resources: 0.35, adjacent: ['The Pitch-Vents', 'The Fallen Giant'] },
-            { name: 'The Star Gantries', terrain: 'highland', danger: 0.75, resources: 0.2, adjacent: ['The Pitch-Vents', 'The Fallen Giant', 'The Dark Meander'] },
-            { name: 'The Dark Meander', terrain: 'water', danger: 0.6, resources: 0.5, adjacent: ['The Duskmoss Flats', 'The Star Gantries'] },
+            { name: 'The Cornucopia (Clearing of Stars)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Redwood Naves', 'Foxfire Creek', 'The Pitch-Vents'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'The Redwood Naves', terrain: 'forest', danger: 0.4, resources: 0.65, adjacent: ['The Cornucopia (Clearing of Stars)', 'The Glowcap Hollow', 'The Fallen Giant'], features: { cover: 0.9, elevation: false, chokepoint: false, acoustics: 0.65, vertical: true } },
+            { name: 'Foxfire Creek', terrain: 'water', danger: 0.35, resources: 0.55, adjacent: ['The Cornucopia (Clearing of Stars)', 'The Duskmoss Flats', 'The Glowcap Hollow'], features: { cover: 0.4, elevation: false, chokepoint: true, waterSource: true } },
+            { name: 'The Pitch-Vents', terrain: 'highland', danger: 0.85, resources: 0.15, adjacent: ['The Cornucopia (Clearing of Stars)', 'The Star Gantries', 'The Charcoal Grove'], features: { cover: 0.3, elevation: true, chokepoint: false, shelterQuality: 0.3, acoustics: 1.25 } },
+            { name: 'The Glowcap Hollow', terrain: 'forest', danger: 0.45, resources: 0.8, adjacent: ['The Redwood Naves', 'Foxfire Creek', 'The Duskmoss Flats'], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 0.7 } },
+            { name: 'The Duskmoss Flats', terrain: 'wetland', danger: 0.5, resources: 0.6, adjacent: ['Foxfire Creek', 'The Glowcap Hollow', 'The Dark Meander'], features: { cover: 0.6, elevation: false, chokepoint: false, acoustics: 0.6 } },
+            { name: 'The Fallen Giant', terrain: 'ruins', danger: 0.55, resources: 0.45, adjacent: ['The Redwood Naves', 'The Charcoal Grove', 'The Star Gantries'], features: { cover: 0.75, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 0.75, vertical: true } },
+            { name: 'The Charcoal Grove', terrain: 'forest', danger: 0.65, resources: 0.35, adjacent: ['The Pitch-Vents', 'The Fallen Giant'], features: { cover: 0.55, elevation: false, chokepoint: false, acoustics: 0.75 } },
+            { name: 'The Star Gantries', terrain: 'highland', danger: 0.75, resources: 0.2, adjacent: ['The Pitch-Vents', 'The Fallen Giant', 'The Dark Meander'], features: { cover: 0.2, elevation: true, chokepoint: true, acoustics: 1.25, vertical: true } },
+            { name: 'The Dark Meander', terrain: 'water', danger: 0.6, resources: 0.5, adjacent: ['The Duskmoss Flats', 'The Star Gantries'], features: { cover: 0.5, elevation: false, chokepoint: true, acoustics: 0.75 } },
         ]
     },
     {
@@ -450,16 +450,16 @@ export const ARENAS: Arena[] = [
         // §5: the horn is on the coral head, and everything between is water.
         cornucopiaLayout: 'island',
         zones: [
-            { name: 'The Cornucopia (Drained Basin)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Coral Razors', 'The Urchin Barrens', 'The Dry Kelp Forest'] },
-            { name: 'The Coral Razors', terrain: 'ruins', danger: 0.8, resources: 0.25, adjacent: ['The Cornucopia (Drained Basin)', 'The Shelf Break', 'The Anemone Fields'] },
-            { name: 'The Urchin Barrens', terrain: 'open', danger: 0.6, resources: 0.2, adjacent: ['The Cornucopia (Drained Basin)', 'The Tidepool Terraces', 'The Brine Sumps'] },
-            { name: 'The Dry Kelp Forest', terrain: 'forest', danger: 0.35, resources: 0.6, adjacent: ['The Cornucopia (Drained Basin)', 'The Anemone Fields', 'The Tidepool Terraces'] },
-            { name: 'The Anemone Fields', terrain: 'wetland', danger: 0.75, resources: 0.5, adjacent: ['The Coral Razors', 'The Dry Kelp Forest', 'The Whale Fall'] },
-            { name: 'The Shelf Break', terrain: 'highland', danger: 0.7, resources: 0.2, adjacent: ['The Coral Razors', 'The Great Trench'] },
-            { name: 'The Tidepool Terraces', terrain: 'wetland', danger: 0.4, resources: 0.65, adjacent: ['The Urchin Barrens', 'The Dry Kelp Forest'] },
-            { name: 'The Brine Sumps', terrain: 'water', danger: 0.5, resources: 0.4, adjacent: ['The Urchin Barrens', 'The Great Trench'] },
-            { name: 'The Great Trench', terrain: 'water', danger: 0.9, resources: 0.4, adjacent: ['The Shelf Break', 'The Brine Sumps', 'The Whale Fall'], features: { cover: 0.6, elevation: false, chokepoint: true } },
-            { name: 'The Whale Fall', terrain: 'ruins', danger: 0.5, resources: 0.55, adjacent: ['The Anemone Fields', 'The Great Trench'] },
+            { name: 'The Cornucopia (Drained Basin)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Coral Razors', 'The Urchin Barrens', 'The Dry Kelp Forest'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 1.25 } },
+            { name: 'The Coral Razors', terrain: 'ruins', danger: 0.8, resources: 0.25, adjacent: ['The Cornucopia (Drained Basin)', 'The Shelf Break', 'The Anemone Fields'], features: { cover: 0.6, elevation: false, chokepoint: true, acoustics: 1.3, vertical: true } },
+            { name: 'The Urchin Barrens', terrain: 'open', danger: 0.6, resources: 0.2, adjacent: ['The Cornucopia (Drained Basin)', 'The Tidepool Terraces', 'The Brine Sumps'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05 } },
+            { name: 'The Dry Kelp Forest', terrain: 'forest', danger: 0.35, resources: 0.6, adjacent: ['The Cornucopia (Drained Basin)', 'The Anemone Fields', 'The Tidepool Terraces'], features: { cover: 0.75, elevation: false, chokepoint: false, acoustics: 0.7, vertical: true } },
+            { name: 'The Anemone Fields', terrain: 'wetland', danger: 0.75, resources: 0.5, adjacent: ['The Coral Razors', 'The Dry Kelp Forest', 'The Whale Fall'], features: { cover: 0.5, elevation: false, chokepoint: false, waterSource: false, acoustics: 0.75 } },
+            { name: 'The Shelf Break', terrain: 'highland', danger: 0.7, resources: 0.2, adjacent: ['The Coral Razors', 'The Great Trench'], features: { cover: 0.2, elevation: true, chokepoint: true, acoustics: 1.35, vertical: true } },
+            { name: 'The Tidepool Terraces', terrain: 'wetland', danger: 0.4, resources: 0.65, adjacent: ['The Urchin Barrens', 'The Dry Kelp Forest'], features: { cover: 0.35, elevation: false, chokepoint: false, waterSource: false, vertical: true } },
+            { name: 'The Brine Sumps', terrain: 'water', danger: 0.5, resources: 0.4, adjacent: ['The Urchin Barrens', 'The Great Trench'], features: { cover: 0.2, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.1 } },
+            { name: 'The Great Trench', terrain: 'water', danger: 0.9, resources: 0.4, adjacent: ['The Shelf Break', 'The Brine Sumps', 'The Whale Fall'], features: { cover: 0.6, elevation: false, chokepoint: true, waterSource: false, acoustics: 1.5, vertical: true } },
+            { name: 'The Whale Fall', terrain: 'ruins', danger: 0.5, resources: 0.55, adjacent: ['The Anemone Fields', 'The Great Trench'], features: { cover: 0.7, elevation: false, chokepoint: true, shelterQuality: 0.75, acoustics: 1.25 } },
         ]
     },
     {
@@ -475,16 +475,16 @@ export const ARENAS: Arena[] = [
         // Fire in here comes out of a furnace door, not a lightning strike.
         effectVocab: { burning: { label: 'a furnace backdraft', severityMult: 1.2 } },
         zones: [
-            { name: 'The Cornucopia (Kill Floor)', terrain: 'open', danger: 0.65, resources: 0.35, adjacent: ['The Conveyor Deck', 'The Gear Gallery', 'The Coolant Vats'] },
-            { name: 'The Conveyor Deck', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Cornucopia (Kill Floor)', 'The Piston Hall', 'The Catwalks'] },
-            { name: 'The Gear Gallery', terrain: 'ruins', danger: 0.7, resources: 0.4, adjacent: ['The Cornucopia (Kill Floor)', 'The Piston Hall', 'The Feed Lofts'] },
-            { name: 'The Coolant Vats', terrain: 'water', danger: 0.5, resources: 0.45, adjacent: ['The Cornucopia (Kill Floor)', 'The Rendering Pits', 'The Feed Lofts'] },
-            { name: 'The Piston Hall', terrain: 'ruins', danger: 0.85, resources: 0.2, adjacent: ['The Conveyor Deck', 'The Gear Gallery', 'Furnace Row'], features: { cover: 0.3, elevation: false, chokepoint: true } },
-            { name: 'The Catwalks', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Conveyor Deck', 'Furnace Row'] },
-            { name: 'The Feed Lofts', terrain: 'forest', danger: 0.3, resources: 0.75, adjacent: ['The Gear Gallery', 'The Coolant Vats', 'The Rendering Pits'] },
-            { name: 'The Rendering Pits', terrain: 'wetland', danger: 0.65, resources: 0.4, adjacent: ['The Coolant Vats', 'The Feed Lofts', 'The Hook Line'] },
-            { name: 'Furnace Row', terrain: 'ruins', danger: 0.9, resources: 0.25, adjacent: ['The Piston Hall', 'The Catwalks', 'The Hook Line'] },
-            { name: 'The Hook Line', terrain: 'ruins', danger: 0.55, resources: 0.5, adjacent: ['The Rendering Pits', 'Furnace Row'] },
+            { name: 'The Cornucopia (Kill Floor)', terrain: 'open', danger: 0.65, resources: 0.35, adjacent: ['The Conveyor Deck', 'The Gear Gallery', 'The Coolant Vats'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.6, acoustics: 1.4 } },
+            { name: 'The Conveyor Deck', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Cornucopia (Kill Floor)', 'The Piston Hall', 'The Catwalks'], features: { cover: 0.3, elevation: false, chokepoint: true, acoustics: 1.3, vertical: true } },
+            { name: 'The Gear Gallery', terrain: 'ruins', danger: 0.7, resources: 0.4, adjacent: ['The Cornucopia (Kill Floor)', 'The Piston Hall', 'The Feed Lofts'], features: { cover: 0.6, elevation: false, chokepoint: false, acoustics: 1.45, vertical: true } },
+            { name: 'The Coolant Vats', terrain: 'water', danger: 0.5, resources: 0.45, adjacent: ['The Cornucopia (Kill Floor)', 'The Rendering Pits', 'The Feed Lofts'], features: { cover: 0.35, elevation: false, chokepoint: false, waterSource: false, acoustics: 1.3 } },
+            { name: 'The Piston Hall', terrain: 'ruins', danger: 0.85, resources: 0.2, adjacent: ['The Conveyor Deck', 'The Gear Gallery', 'Furnace Row'], features: { cover: 0.3, elevation: false, chokepoint: true, acoustics: 1.5 } },
+            { name: 'The Catwalks', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Conveyor Deck', 'Furnace Row'], features: { cover: 0.25, elevation: true, chokepoint: true, acoustics: 1.35, vertical: true } },
+            { name: 'The Feed Lofts', terrain: 'forest', danger: 0.3, resources: 0.75, adjacent: ['The Gear Gallery', 'The Coolant Vats', 'The Rendering Pits'], features: { cover: 0.8, elevation: true, chokepoint: false, shelterQuality: 0.85, acoustics: 0.7, vertical: true } },
+            { name: 'The Rendering Pits', terrain: 'wetland', danger: 0.65, resources: 0.4, adjacent: ['The Coolant Vats', 'The Feed Lofts', 'The Hook Line'], features: { cover: 0.4, elevation: false, chokepoint: true, waterSource: false, acoustics: 1.25, vertical: true } },
+            { name: 'Furnace Row', terrain: 'ruins', danger: 0.9, resources: 0.25, adjacent: ['The Piston Hall', 'The Catwalks', 'The Hook Line'], features: { cover: 0.35, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 1.4 } },
+            { name: 'The Hook Line', terrain: 'ruins', danger: 0.55, resources: 0.5, adjacent: ['The Rendering Pits', 'Furnace Row'], features: { cover: 0.5, elevation: false, chokepoint: true, acoustics: 1.3 } },
         ]
     },
     {
@@ -499,20 +499,20 @@ export const ARENAS: Arena[] = [
         // §5: the Capitol dressed this one as an amusement park and did not put a single blade in it.
         law: 'noWeapons',
         zones: [
-            { name: 'The Cornucopia (The Midway)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Carousel', 'The Big Top', 'The Pine Dark'] },
-            { name: 'The Carousel', terrain: 'ruins', danger: 0.65, resources: 0.3, adjacent: ['The Cornucopia (The Midway)', 'The Mirror Maze', 'The Duck Pond'] },
-            { name: 'The Big Top', terrain: 'ruins', danger: 0.55, resources: 0.45, adjacent: ['The Cornucopia (The Midway)', 'The Ferris Wheel', "Fortune Teller's Row"] },
-            { name: 'The Pine Dark', terrain: 'forest', danger: 0.45, resources: 0.7, adjacent: ['The Cornucopia (The Midway)', 'The Duck Pond', 'The Overgrown Campground'], features: { cover: 0.9, elevation: false, chokepoint: false } },
-            { name: 'The Mirror Maze', terrain: 'ruins', danger: 0.8, resources: 0.2, adjacent: ['The Carousel', 'The Ferris Wheel', 'The Haunted Manor'], features: { cover: 0.7, elevation: false, chokepoint: true } },
-            { name: 'The Duck Pond', terrain: 'water', danger: 0.4, resources: 0.55, adjacent: ['The Carousel', 'The Pine Dark', 'The Sunken Boat Ride', 'The Swan Boat Canal'] },
-            { name: 'The Ferris Wheel', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Big Top', 'The Mirror Maze', 'The Haunted Manor'] },
-            { name: "Fortune Teller's Row", terrain: 'ruins', danger: 0.5, resources: 0.5, adjacent: ['The Big Top', 'The Overgrown Campground'] },
-            { name: 'The Overgrown Campground', terrain: 'forest', danger: 0.35, resources: 0.65, adjacent: ['The Pine Dark', "Fortune Teller's Row", 'The Sunken Boat Ride'] },
-            { name: 'The Sunken Boat Ride', terrain: 'wetland', danger: 0.6, resources: 0.45, adjacent: ['The Duck Pond', 'The Overgrown Campground', 'The Swan Boat Canal'] },
+            { name: 'The Cornucopia (The Midway)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Carousel', 'The Big Top', 'The Pine Dark'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.15, acoustics: 0.75 } },
+            { name: 'The Carousel', terrain: 'ruins', danger: 0.65, resources: 0.3, adjacent: ['The Cornucopia (The Midway)', 'The Mirror Maze', 'The Duck Pond'], features: { cover: 0.5, elevation: false, chokepoint: false, acoustics: 1.25 } },
+            { name: 'The Big Top', terrain: 'ruins', danger: 0.55, resources: 0.45, adjacent: ['The Cornucopia (The Midway)', 'The Ferris Wheel', "Fortune Teller's Row"], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 1.3, vertical: true } },
+            { name: 'The Pine Dark', terrain: 'forest', danger: 0.45, resources: 0.7, adjacent: ['The Cornucopia (The Midway)', 'The Duck Pond', 'The Overgrown Campground'], features: { cover: 0.9, elevation: false, chokepoint: false, acoustics: 0.6 } },
+            { name: 'The Mirror Maze', terrain: 'ruins', danger: 0.8, resources: 0.2, adjacent: ['The Carousel', 'The Ferris Wheel', 'The Haunted Manor'], features: { cover: 0.7, elevation: false, chokepoint: true, acoustics: 1.4 } },
+            { name: 'The Duck Pond', terrain: 'water', danger: 0.4, resources: 0.55, adjacent: ['The Carousel', 'The Pine Dark', 'The Sunken Boat Ride', 'The Swan Boat Canal'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'The Ferris Wheel', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Big Top', 'The Mirror Maze', 'The Haunted Manor'], features: { cover: 0.2, elevation: true, chokepoint: true, shelterQuality: 0.1, acoustics: 1.25, vertical: true } },
+            { name: "Fortune Teller's Row", terrain: 'ruins', danger: 0.5, resources: 0.5, adjacent: ['The Big Top', 'The Overgrown Campground'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.7 } },
+            { name: 'The Overgrown Campground', terrain: 'forest', danger: 0.35, resources: 0.65, adjacent: ['The Pine Dark', "Fortune Teller's Row", 'The Sunken Boat Ride'], features: { cover: 0.7, elevation: false, chokepoint: false, shelterQuality: 0.6, acoustics: 0.7 } },
+            { name: 'The Sunken Boat Ride', terrain: 'wetland', danger: 0.6, resources: 0.45, adjacent: ['The Duck Pond', 'The Overgrown Campground', 'The Swan Boat Canal'], features: { cover: 0.55, elevation: false, chokepoint: true, waterSource: false, acoustics: 1.3 } },
             // The back of the park: the dark ride nobody finished, and the
             // canal that used to carry the swan boats between attractions.
-            { name: 'The Haunted Manor', terrain: 'ruins', danger: 0.7, resources: 0.4, adjacent: ['The Mirror Maze', 'The Ferris Wheel'], features: { cover: 0.8, elevation: false, chokepoint: true } },
-            { name: 'The Swan Boat Canal', terrain: 'water', danger: 0.5, resources: 0.4, adjacent: ['The Duck Pond', 'The Sunken Boat Ride'] },
+            { name: 'The Haunted Manor', terrain: 'ruins', danger: 0.7, resources: 0.4, adjacent: ['The Mirror Maze', 'The Ferris Wheel'], features: { cover: 0.8, elevation: false, chokepoint: true, shelterQuality: 0.85, acoustics: 1.25, vertical: true } },
+            { name: 'The Swan Boat Canal', terrain: 'water', danger: 0.5, resources: 0.4, adjacent: ['The Duck Pond', 'The Sunken Boat Ride'], features: { cover: 0.3, elevation: false, chokepoint: true, acoustics: 0.75 } },
         ]
     },
     {
@@ -524,15 +524,15 @@ export const ARENAS: Arena[] = [
         mutts: ['Drift Serpents', 'Caldera Vultures', 'Cinder Fleas', 'The Grey Bull'],
         events: ['Ash Slide', 'Vent Burst', 'The Mountain Clears Its Throat'],
         zones: [
-            { name: 'The Cornucopia (Cinder Ring)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Deep Drifts', 'The Burned Forest', 'The Buried Village'] },
-            { name: 'The Deep Drifts', terrain: 'open', danger: 0.7, resources: 0.1, adjacent: ['The Cornucopia (Cinder Ring)', 'The Caldera Rim', 'The Mudpots'] },
-            { name: 'The Burned Forest', terrain: 'forest', danger: 0.45, resources: 0.5, adjacent: ['The Cornucopia (Cinder Ring)', 'The Steam Field', 'The Buried Village'] },
-            { name: 'The Buried Village', terrain: 'ruins', danger: 0.5, resources: 0.55, adjacent: ['The Cornucopia (Cinder Ring)', 'The Burned Forest', 'The Lava Tubes'] },
-            { name: 'The Caldera Rim', terrain: 'highland', danger: 0.9, resources: 0.1, adjacent: ['The Deep Drifts', 'The Smolder'], features: { cover: 0.1, elevation: true, chokepoint: true } },
-            { name: 'The Mudpots', terrain: 'wetland', danger: 0.65, resources: 0.45, adjacent: ['The Deep Drifts', 'The Steam Field'] },
-            { name: 'The Steam Field', terrain: 'water', danger: 0.55, resources: 0.4, adjacent: ['The Burned Forest', 'The Mudpots'] },
-            { name: 'The Smolder', terrain: 'highland', danger: 0.85, resources: 0.15, adjacent: ['The Caldera Rim', 'The Lava Tubes'] },
-            { name: 'The Lava Tubes', terrain: 'ruins', danger: 0.6, resources: 0.35, adjacent: ['The Buried Village', 'The Smolder'], features: { cover: 0.8, elevation: false, chokepoint: true } },
+            { name: 'The Cornucopia (Cinder Ring)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Deep Drifts', 'The Burned Forest', 'The Buried Village'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.75 } },
+            { name: 'The Deep Drifts', terrain: 'open', danger: 0.7, resources: 0.1, adjacent: ['The Cornucopia (Cinder Ring)', 'The Caldera Rim', 'The Mudpots'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.6 } },
+            { name: 'The Burned Forest', terrain: 'forest', danger: 0.45, resources: 0.5, adjacent: ['The Cornucopia (Cinder Ring)', 'The Steam Field', 'The Buried Village'], features: { cover: 0.4, elevation: false, chokepoint: false, acoustics: 0.75 } },
+            { name: 'The Buried Village', terrain: 'ruins', danger: 0.5, resources: 0.55, adjacent: ['The Cornucopia (Cinder Ring)', 'The Burned Forest', 'The Lava Tubes'], features: { cover: 0.65, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 0.75, vertical: true } },
+            { name: 'The Caldera Rim', terrain: 'highland', danger: 0.9, resources: 0.1, adjacent: ['The Deep Drifts', 'The Smolder'], features: { cover: 0.1, elevation: true, chokepoint: true, shelterQuality: 0.05, acoustics: 1.3, vertical: true } },
+            { name: 'The Mudpots', terrain: 'wetland', danger: 0.65, resources: 0.45, adjacent: ['The Deep Drifts', 'The Steam Field'], features: { cover: 0.3, elevation: false, chokepoint: false, waterSource: false, acoustics: 0.7 } },
+            { name: 'The Steam Field', terrain: 'water', danger: 0.55, resources: 0.4, adjacent: ['The Burned Forest', 'The Mudpots'], features: { cover: 0.35, elevation: false, chokepoint: false, waterSource: false, acoustics: 0.65 } },
+            { name: 'The Smolder', terrain: 'highland', danger: 0.85, resources: 0.15, adjacent: ['The Caldera Rim', 'The Lava Tubes'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.15 } },
+            { name: 'The Lava Tubes', terrain: 'ruins', danger: 0.6, resources: 0.35, adjacent: ['The Buried Village', 'The Smolder'], features: { cover: 0.8, elevation: false, chokepoint: true, shelterQuality: 0.9, acoustics: 1.5, vertical: true } },
         ]
     },
     {
@@ -549,15 +549,15 @@ export const ARENAS: Arena[] = [
         edgeRules: { 'The Middle Benches|The Spiral Road': { kind: 'tolled', toll: { fatigue: 6 } } },
         // §5.5: trimmed to nine zones — the Blast Face sheared off years ago.
         zones: [
-            { name: 'The Cornucopia (Rim Camp)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Spiral Road', 'The Upper Benches', 'The Scrub Ledges'] },
-            { name: 'The Spiral Road', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Cornucopia (Rim Camp)', 'The Middle Benches'], features: { cover: 0.1, elevation: true, chokepoint: true } },
-            { name: 'The Upper Benches', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['The Cornucopia (Rim Camp)', 'The Powder Magazine'] },
-            { name: 'The Scrub Ledges', terrain: 'forest', danger: 0.35, resources: 0.6, adjacent: ['The Cornucopia (Rim Camp)', 'The Powder Magazine', 'The Seep Wall'] },
-            { name: 'The Middle Benches', terrain: 'open', danger: 0.6, resources: 0.25, adjacent: ['The Spiral Road', 'The Crusher House', 'The Flooded Pit'] },
-            { name: 'The Powder Magazine', terrain: 'ruins', danger: 0.7, resources: 0.45, adjacent: ['The Upper Benches', 'The Scrub Ledges'] },
-            { name: 'The Seep Wall', terrain: 'wetland', danger: 0.45, resources: 0.55, adjacent: ['The Scrub Ledges', 'The Flooded Pit'] },
-            { name: 'The Crusher House', terrain: 'ruins', danger: 0.65, resources: 0.4, adjacent: ['The Middle Benches', 'The Flooded Pit'] },
-            { name: 'The Flooded Pit', terrain: 'water', danger: 0.8, resources: 0.35, adjacent: ['The Middle Benches', 'The Seep Wall', 'The Crusher House'] },
+            { name: 'The Cornucopia (Rim Camp)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Spiral Road', 'The Upper Benches', 'The Scrub Ledges'], features: { cover: 0.15, elevation: true, chokepoint: false, shelterQuality: 0.1, acoustics: 1.25 } },
+            { name: 'The Spiral Road', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Cornucopia (Rim Camp)', 'The Middle Benches'], features: { cover: 0.1, elevation: true, chokepoint: true, acoustics: 1.4, vertical: true } },
+            { name: 'The Upper Benches', terrain: 'open', danger: 0.5, resources: 0.3, adjacent: ['The Cornucopia (Rim Camp)', 'The Powder Magazine'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.1, acoustics: 1.35, vertical: true } },
+            { name: 'The Scrub Ledges', terrain: 'forest', danger: 0.35, resources: 0.6, adjacent: ['The Cornucopia (Rim Camp)', 'The Powder Magazine', 'The Seep Wall'], features: { cover: 0.65, elevation: true, chokepoint: false, acoustics: 0.75, vertical: true } },
+            { name: 'The Middle Benches', terrain: 'open', danger: 0.6, resources: 0.25, adjacent: ['The Spiral Road', 'The Crusher House', 'The Flooded Pit'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.1, acoustics: 1.4, vertical: true } },
+            { name: 'The Powder Magazine', terrain: 'ruins', danger: 0.7, resources: 0.45, adjacent: ['The Upper Benches', 'The Scrub Ledges'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.9, acoustics: 1.3 } },
+            { name: 'The Seep Wall', terrain: 'wetland', danger: 0.45, resources: 0.55, adjacent: ['The Scrub Ledges', 'The Flooded Pit'], features: { cover: 0.4, elevation: false, chokepoint: true, waterSource: true, vertical: true } },
+            { name: 'The Crusher House', terrain: 'ruins', danger: 0.65, resources: 0.4, adjacent: ['The Middle Benches', 'The Flooded Pit'], features: { cover: 0.55, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 1.45, vertical: true } },
+            { name: 'The Flooded Pit', terrain: 'water', danger: 0.8, resources: 0.35, adjacent: ['The Middle Benches', 'The Seep Wall', 'The Crusher House'], features: { cover: 0.1, elevation: false, chokepoint: true, shelterQuality: 0.05, acoustics: 1.5 } },
         ]
     },
     {
@@ -576,17 +576,17 @@ export const ARENAS: Arena[] = [
             flooded: { label: 'a meltwater surge' },
         },
         zones: [
-            { name: 'The Cornucopia (Snowfield)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Firn Slope', 'The Blue Galleries', 'The Frozen Falls'] },
-            { name: 'The Firn Slope', terrain: 'open', danger: 0.6, resources: 0.2, adjacent: ['The Cornucopia (Snowfield)', 'The Serac Field', 'The Pressure Ridge'] },
-            { name: 'The Blue Galleries', terrain: 'ruins', danger: 0.5, resources: 0.4, adjacent: ['The Cornucopia (Snowfield)', 'The Slick Tunnels', 'The Green Chimney'], features: { cover: 0.75, elevation: false, chokepoint: false } },
-            { name: 'The Frozen Falls', terrain: 'water', danger: 0.7, resources: 0.45, adjacent: ['The Cornucopia (Snowfield)', 'The Slush Basin', 'The Slick Tunnels'] },
-            { name: 'The Serac Field', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Firn Slope', 'The Pressure Ridge'] },
-            { name: 'The Pressure Ridge', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Firn Slope', 'The Serac Field', 'The Moulin'] },
-            { name: 'The Slick Tunnels', terrain: 'ruins', danger: 0.65, resources: 0.3, adjacent: ['The Blue Galleries', 'The Frozen Falls', 'The Meltwater Vault'], features: { cover: 0.6, elevation: false, chokepoint: true } },
-            { name: 'The Green Chimney', terrain: 'forest', danger: 0.3, resources: 0.7, adjacent: ['The Blue Galleries', 'The Meltwater Vault'] },
-            { name: 'The Slush Basin', terrain: 'wetland', danger: 0.55, resources: 0.5, adjacent: ['The Frozen Falls', 'The Moulin'] },
-            { name: 'The Moulin', terrain: 'ruins', danger: 0.9, resources: 0.2, adjacent: ['The Pressure Ridge', 'The Slush Basin'], features: { cover: 0.2, elevation: false, chokepoint: true } },
-            { name: 'The Meltwater Vault', terrain: 'water', danger: 0.6, resources: 0.55, adjacent: ['The Slick Tunnels', 'The Green Chimney'] },
+            { name: 'The Cornucopia (Snowfield)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Firn Slope', 'The Blue Galleries', 'The Frozen Falls'], features: { cover: 0.05, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.7 } },
+            { name: 'The Firn Slope', terrain: 'open', danger: 0.6, resources: 0.2, adjacent: ['The Cornucopia (Snowfield)', 'The Serac Field', 'The Pressure Ridge'], features: { cover: 0.1, elevation: true, chokepoint: false, shelterQuality: 0.05, acoustics: 0.7 } },
+            { name: 'The Blue Galleries', terrain: 'ruins', danger: 0.5, resources: 0.4, adjacent: ['The Cornucopia (Snowfield)', 'The Slick Tunnels', 'The Green Chimney'], features: { cover: 0.75, elevation: false, chokepoint: false, shelterQuality: 0.8, acoustics: 1.45, vertical: true } },
+            { name: 'The Frozen Falls', terrain: 'water', danger: 0.7, resources: 0.45, adjacent: ['The Cornucopia (Snowfield)', 'The Slush Basin', 'The Slick Tunnels'], features: { cover: 0.3, elevation: true, chokepoint: true, waterSource: true, acoustics: 1.3, vertical: true } },
+            { name: 'The Serac Field', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Firn Slope', 'The Pressure Ridge'], features: { cover: 0.4, elevation: true, chokepoint: false, acoustics: 1.25, vertical: true } },
+            { name: 'The Pressure Ridge', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Firn Slope', 'The Serac Field', 'The Moulin'], features: { cover: 0.2, elevation: true, chokepoint: true, acoustics: 1.25 } },
+            { name: 'The Slick Tunnels', terrain: 'ruins', danger: 0.65, resources: 0.3, adjacent: ['The Blue Galleries', 'The Frozen Falls', 'The Meltwater Vault'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 1.5 } },
+            { name: 'The Green Chimney', terrain: 'forest', danger: 0.3, resources: 0.7, adjacent: ['The Blue Galleries', 'The Meltwater Vault'], features: { cover: 0.6, elevation: true, chokepoint: true, acoustics: 1.3, vertical: true } },
+            { name: 'The Slush Basin', terrain: 'wetland', danger: 0.55, resources: 0.5, adjacent: ['The Frozen Falls', 'The Moulin'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.1, acoustics: 0.75 } },
+            { name: 'The Moulin', terrain: 'ruins', danger: 0.9, resources: 0.2, adjacent: ['The Pressure Ridge', 'The Slush Basin'], features: { cover: 0.2, elevation: false, chokepoint: true, waterSource: true, acoustics: 1.55, vertical: true } },
+            { name: 'The Meltwater Vault', terrain: 'water', danger: 0.6, resources: 0.55, adjacent: ['The Slick Tunnels', 'The Green Chimney'], features: { cover: 0.3, elevation: false, chokepoint: true, waterSource: true, shelterQuality: 0.7, acoustics: 1.5 } },
         ]
     },
     {
@@ -606,15 +606,15 @@ export const ARENAS: Arena[] = [
         // §5: the shelf the horn stands on is separated from the pack ice by open leads.
         cornucopiaLayout: 'island',
         zones: [
-            { name: 'The Cornucopia (Ice Shelf)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Pack Ice', 'The Pressure Ridges', 'The Black Lead'] },
-            { name: 'The Pack Ice', terrain: 'open', danger: 0.65, resources: 0.2, adjacent: ['The Cornucopia (Ice Shelf)', 'The Grease Ice', 'The Frozen Wreck'] },
-            { name: 'The Pressure Ridges', terrain: 'highland', danger: 0.7, resources: 0.15, adjacent: ['The Cornucopia (Ice Shelf)', 'The Big Berg', 'The Frozen Wreck'] },
-            { name: 'The Black Lead', terrain: 'water', danger: 0.85, resources: 0.4, adjacent: ['The Cornucopia (Ice Shelf)', 'The Seal Colony', 'The Grease Ice'] },
-            { name: 'The Grease Ice', terrain: 'wetland', danger: 0.75, resources: 0.3, adjacent: ['The Pack Ice', 'The Black Lead'] },
-            { name: 'The Frozen Wreck', terrain: 'ruins', danger: 0.5, resources: 0.55, adjacent: ['The Pack Ice', 'The Pressure Ridges', 'The Bergy Bits'] },
-            { name: 'The Big Berg', terrain: 'highland', danger: 0.6, resources: 0.25, adjacent: ['The Pressure Ridges', 'The Bergy Bits'], features: { cover: 0.3, elevation: true, chokepoint: false } },
-            { name: 'The Seal Colony', terrain: 'wetland', danger: 0.4, resources: 0.7, adjacent: ['The Black Lead', 'The Bergy Bits'] },
-            { name: 'The Bergy Bits', terrain: 'water', danger: 0.7, resources: 0.35, adjacent: ['The Frozen Wreck', 'The Big Berg', 'The Seal Colony'] },
+            { name: 'The Cornucopia (Ice Shelf)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Pack Ice', 'The Pressure Ridges', 'The Black Lead'], features: { cover: 0.05, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.75 } },
+            { name: 'The Pack Ice', terrain: 'open', danger: 0.65, resources: 0.2, adjacent: ['The Cornucopia (Ice Shelf)', 'The Grease Ice', 'The Frozen Wreck'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.75 } },
+            { name: 'The Pressure Ridges', terrain: 'highland', danger: 0.7, resources: 0.15, adjacent: ['The Cornucopia (Ice Shelf)', 'The Big Berg', 'The Frozen Wreck'], features: { cover: 0.3, elevation: true, chokepoint: true, shelterQuality: 0.2, acoustics: 1.25, vertical: true } },
+            { name: 'The Black Lead', terrain: 'water', danger: 0.85, resources: 0.4, adjacent: ['The Cornucopia (Ice Shelf)', 'The Seal Colony', 'The Grease Ice'], features: { cover: 0.05, elevation: false, chokepoint: true, waterSource: false, shelterQuality: 0.05, acoustics: 1.25 } },
+            { name: 'The Grease Ice', terrain: 'wetland', danger: 0.75, resources: 0.3, adjacent: ['The Pack Ice', 'The Black Lead'], features: { cover: 0.05, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.05, acoustics: 0.7 } },
+            { name: 'The Frozen Wreck', terrain: 'ruins', danger: 0.5, resources: 0.55, adjacent: ['The Pack Ice', 'The Pressure Ridges', 'The Bergy Bits'], features: { cover: 0.65, elevation: false, chokepoint: true, shelterQuality: 0.85, acoustics: 1.35, vertical: true } },
+            { name: 'The Big Berg', terrain: 'highland', danger: 0.6, resources: 0.25, adjacent: ['The Pressure Ridges', 'The Bergy Bits'], features: { cover: 0.3, elevation: true, chokepoint: false, shelterQuality: 0.3, acoustics: 1.25, vertical: true } },
+            { name: 'The Seal Colony', terrain: 'wetland', danger: 0.4, resources: 0.7, adjacent: ['The Black Lead', 'The Bergy Bits'], features: { cover: 0.2, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.1, acoustics: 1.25 } },
+            { name: 'The Bergy Bits', terrain: 'water', danger: 0.7, resources: 0.35, adjacent: ['The Frozen Wreck', 'The Big Berg', 'The Seal Colony'], features: { cover: 0.25, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.05, acoustics: 0.75 } },
         ]
     },
     {
@@ -628,16 +628,16 @@ export const ARENAS: Arena[] = [
         // The traverse to the summit snows is a knife's edge in crampon weather.
         edgeRules: { 'The Knife Ridge|The Summit Snows': { kind: 'tolled', toll: { fatigue: 8, woundChance: 0.1 } } },
         zones: [
-            { name: 'The Cornucopia (Treeline Meadow)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Old Growth', 'The Scree Chutes', 'The Tarn'] },
-            { name: 'The Old Growth', terrain: 'forest', danger: 0.35, resources: 0.75, adjacent: ['The Cornucopia (Treeline Meadow)', 'The Deadfall Slope', 'The Hunting Lodge'], features: { cover: 0.85, elevation: false, chokepoint: false } },
-            { name: 'The Scree Chutes', terrain: 'highland', danger: 0.7, resources: 0.15, adjacent: ['The Cornucopia (Treeline Meadow)', 'The Knife Ridge', 'The Cirque'] },
-            { name: 'The Tarn', terrain: 'water', danger: 0.4, resources: 0.6, adjacent: ['The Cornucopia (Treeline Meadow)', 'The Bog Meadow', 'The Hunting Lodge'] },
-            { name: 'The Deadfall Slope', terrain: 'forest', danger: 0.55, resources: 0.5, adjacent: ['The Old Growth', 'The Cirque'] },
-            { name: 'The Hunting Lodge', terrain: 'ruins', danger: 0.45, resources: 0.55, adjacent: ['The Old Growth', 'The Tarn'] },
-            { name: 'The Knife Ridge', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Scree Chutes', 'The Summit Snows'], features: { cover: 0.05, elevation: true, chokepoint: true } },
-            { name: 'The Cirque', terrain: 'open', danger: 0.65, resources: 0.25, adjacent: ['The Scree Chutes', 'The Deadfall Slope', 'The Summit Snows'] },
-            { name: 'The Bog Meadow', terrain: 'wetland', danger: 0.35, resources: 0.65, adjacent: ['The Tarn'] },
-            { name: 'The Summit Snows', terrain: 'highland', danger: 0.9, resources: 0.05, adjacent: ['The Knife Ridge', 'The Cirque'] },
+            { name: 'The Cornucopia (Treeline Meadow)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Old Growth', 'The Scree Chutes', 'The Tarn'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'The Old Growth', terrain: 'forest', danger: 0.35, resources: 0.75, adjacent: ['The Cornucopia (Treeline Meadow)', 'The Deadfall Slope', 'The Hunting Lodge'], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 0.6, vertical: true } },
+            { name: 'The Scree Chutes', terrain: 'highland', danger: 0.7, resources: 0.15, adjacent: ['The Cornucopia (Treeline Meadow)', 'The Knife Ridge', 'The Cirque'], features: { cover: 0.15, elevation: true, chokepoint: true, shelterQuality: 0.05, acoustics: 1.35, vertical: true } },
+            { name: 'The Tarn', terrain: 'water', danger: 0.4, resources: 0.6, adjacent: ['The Cornucopia (Treeline Meadow)', 'The Bog Meadow', 'The Hunting Lodge'], features: { cover: 0.15, elevation: false, chokepoint: false, waterSource: true, shelterQuality: 0.1 } },
+            { name: 'The Deadfall Slope', terrain: 'forest', danger: 0.55, resources: 0.5, adjacent: ['The Old Growth', 'The Cirque'], features: { cover: 0.7, elevation: true, chokepoint: false, acoustics: 0.75 } },
+            { name: 'The Hunting Lodge', terrain: 'ruins', danger: 0.45, resources: 0.55, adjacent: ['The Old Growth', 'The Tarn'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.9, acoustics: 0.75, vertical: true } },
+            { name: 'The Knife Ridge', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Scree Chutes', 'The Summit Snows'], features: { cover: 0.05, elevation: true, chokepoint: true, shelterQuality: 0.05, acoustics: 1.3 } },
+            { name: 'The Cirque', terrain: 'open', danger: 0.65, resources: 0.25, adjacent: ['The Scree Chutes', 'The Deadfall Slope', 'The Summit Snows'], features: { cover: 0.15, elevation: true, chokepoint: false, shelterQuality: 0.1, acoustics: 1.45 } },
+            { name: 'The Bog Meadow', terrain: 'wetland', danger: 0.35, resources: 0.65, adjacent: ['The Tarn'], features: { cover: 0.45, elevation: false, chokepoint: false, acoustics: 0.7 } },
+            { name: 'The Summit Snows', terrain: 'highland', danger: 0.9, resources: 0.05, adjacent: ['The Knife Ridge', 'The Cirque'], features: { cover: 0.05, elevation: true, chokepoint: false, shelterQuality: 0.05, acoustics: 0.7 } },
         ]
     },
     {
@@ -651,18 +651,18 @@ export const ARENAS: Arena[] = [
         // Hand over hand along the counterweight cable to the winch house.
         edgeRules: { 'The Counterweight Span|The Winch House': { kind: 'tolled', toll: { fatigue: 7 } } },
         zones: [
-            { name: 'The Cornucopia (Grand Terrace)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Upper Steps', 'The Overgrown Steps', 'The Tailings Fans'] },
-            { name: 'The Upper Steps', terrain: 'highland', danger: 0.65, resources: 0.25, adjacent: ['The Cornucopia (Grand Terrace)', 'The Cable Car Station', 'The Counterweight Span'] },
-            { name: 'The Overgrown Steps', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['The Cornucopia (Grand Terrace)', 'The Cistern Terrace', 'The Slurry Ponds'] },
-            { name: 'The Tailings Fans', terrain: 'open', danger: 0.55, resources: 0.2, adjacent: ['The Cornucopia (Grand Terrace)', 'The Slurry Ponds', 'The Shaft Mouths'] },
-            { name: 'The Cable Car Station', terrain: 'ruins', danger: 0.5, resources: 0.5, adjacent: ['The Upper Steps', 'The Winch House'] },
-            { name: 'The Counterweight Span', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Upper Steps', 'The Winch House'], features: { cover: 0.05, elevation: true, chokepoint: true } },
-            { name: 'The Cistern Terrace', terrain: 'water', danger: 0.4, resources: 0.55, adjacent: ['The Overgrown Steps', 'The Shaft Mouths'] },
-            { name: 'The Slurry Ponds', terrain: 'wetland', danger: 0.6, resources: 0.4, adjacent: ['The Overgrown Steps', 'The Tailings Fans'] },
+            { name: 'The Cornucopia (Grand Terrace)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Upper Steps', 'The Overgrown Steps', 'The Tailings Fans'], features: { cover: 0.15, elevation: true, chokepoint: false, shelterQuality: 0.1, acoustics: 1.3, vertical: true } },
+            { name: 'The Upper Steps', terrain: 'highland', danger: 0.65, resources: 0.25, adjacent: ['The Cornucopia (Grand Terrace)', 'The Cable Car Station', 'The Counterweight Span'], features: { cover: 0.25, elevation: true, chokepoint: false, acoustics: 1.3, vertical: true } },
+            { name: 'The Overgrown Steps', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['The Cornucopia (Grand Terrace)', 'The Cistern Terrace', 'The Slurry Ponds'], features: { cover: 0.75, elevation: true, chokepoint: false, acoustics: 0.75, vertical: true } },
+            { name: 'The Tailings Fans', terrain: 'open', danger: 0.55, resources: 0.2, adjacent: ['The Cornucopia (Grand Terrace)', 'The Slurry Ponds', 'The Shaft Mouths'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05 } },
+            { name: 'The Cable Car Station', terrain: 'ruins', danger: 0.5, resources: 0.5, adjacent: ['The Upper Steps', 'The Winch House'], features: { cover: 0.55, elevation: true, chokepoint: true, shelterQuality: 0.75, acoustics: 1.3, vertical: true } },
+            { name: 'The Counterweight Span', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Upper Steps', 'The Winch House'], features: { cover: 0.05, elevation: true, chokepoint: true, shelterQuality: 0.05, acoustics: 1.25, vertical: true } },
+            { name: 'The Cistern Terrace', terrain: 'water', danger: 0.4, resources: 0.55, adjacent: ['The Overgrown Steps', 'The Shaft Mouths'], features: { cover: 0.3, elevation: false, chokepoint: true, waterSource: true, acoustics: 1.4 } },
+            { name: 'The Slurry Ponds', terrain: 'wetland', danger: 0.6, resources: 0.4, adjacent: ['The Overgrown Steps', 'The Tailings Fans'], features: { cover: 0.2, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.1 } },
             // A good ambush zone — a resource bonus rewards the risk of using
             // it as a route rather than just its danger punishing it.
-            { name: 'The Shaft Mouths', terrain: 'ruins', danger: 0.8, resources: 0.6, adjacent: ['The Tailings Fans', 'The Cistern Terrace', 'The Winch House'], features: { cover: 0.6, elevation: false, chokepoint: true } },
-            { name: 'The Winch House', terrain: 'ruins', danger: 0.55, resources: 0.5, adjacent: ['The Cable Car Station', 'The Counterweight Span', 'The Shaft Mouths'] },
+            { name: 'The Shaft Mouths', terrain: 'ruins', danger: 0.8, resources: 0.6, adjacent: ['The Tailings Fans', 'The Cistern Terrace', 'The Winch House'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.7, acoustics: 1.55, vertical: true } },
+            { name: 'The Winch House', terrain: 'ruins', danger: 0.55, resources: 0.5, adjacent: ['The Cable Car Station', 'The Counterweight Span', 'The Shaft Mouths'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.85, acoustics: 1.25 } },
         ]
     },
     {
@@ -679,15 +679,15 @@ export const ARENAS: Arena[] = [
         // §11.6: nobody free-climbs the chimney without leaving gear in it.
         edgeRules: { 'The Ice Chimney|The Summit Col': { kind: 'tolled', toll: { fatigue: 8, woundChance: 0.12, itemCost: true } } },
         zones: [
-            { name: 'The Cornucopia (The Shelf)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The First Peak', 'The Drowned Approach', 'Open Water Reach'] },
-            { name: 'The First Peak', terrain: 'highland', danger: 0.7, resources: 0.2, adjacent: ['The Cornucopia (The Shelf)', 'The Ice Chimney', 'The Sea Cave'] },
-            { name: 'The Drowned Approach', terrain: 'water', danger: 0.65, resources: 0.3, adjacent: ['The Cornucopia (The Shelf)', 'Open Water Reach', 'The Kelp Shallows'] },
-            { name: 'The Ice Chimney', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The First Peak', 'The Summit Col'] },
-            { name: 'Open Water Reach', terrain: 'water', danger: 0.75, resources: 0.35, adjacent: ['The Cornucopia (The Shelf)', 'The Drowned Approach', 'The Kelp Shallows', 'The Sea Cave'] },
-            { name: 'The Sea Cave', terrain: 'ruins', danger: 0.5, resources: 0.5, adjacent: ['The First Peak', 'Open Water Reach', 'The Second Peak'] },
-            { name: 'The Second Peak', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Sea Cave', 'The Summit Col', 'The Kelp Shallows'] },
-            { name: 'The Kelp Shallows', terrain: 'water', danger: 0.55, resources: 0.55, adjacent: ['The Drowned Approach', 'Open Water Reach', 'The Second Peak'] },
-            { name: 'The Summit Col', terrain: 'highland', danger: 0.9, resources: 0.05, adjacent: ['The Ice Chimney', 'The Second Peak'] },
+            { name: 'The Cornucopia (The Shelf)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The First Peak', 'The Drowned Approach', 'Open Water Reach'], features: { cover: 0.1, elevation: true, chokepoint: false, shelterQuality: 0.05, acoustics: 1.25 } },
+            { name: 'The First Peak', terrain: 'highland', danger: 0.7, resources: 0.2, adjacent: ['The Cornucopia (The Shelf)', 'The Ice Chimney', 'The Sea Cave'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.1, acoustics: 1.3, vertical: true } },
+            { name: 'The Drowned Approach', terrain: 'water', danger: 0.65, resources: 0.3, adjacent: ['The Cornucopia (The Shelf)', 'Open Water Reach', 'The Kelp Shallows'], features: { cover: 0.1, elevation: false, chokepoint: true, waterSource: false, shelterQuality: 0.05 } },
+            { name: 'The Ice Chimney', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The First Peak', 'The Summit Col'], features: { cover: 0.2, elevation: true, chokepoint: true, acoustics: 1.5, vertical: true } },
+            { name: 'Open Water Reach', terrain: 'water', danger: 0.75, resources: 0.35, adjacent: ['The Cornucopia (The Shelf)', 'The Drowned Approach', 'The Kelp Shallows', 'The Sea Cave'], features: { cover: 0.05, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.05 } },
+            { name: 'The Sea Cave', terrain: 'ruins', danger: 0.5, resources: 0.5, adjacent: ['The First Peak', 'Open Water Reach', 'The Second Peak'], features: { cover: 0.7, elevation: false, chokepoint: true, waterSource: false, shelterQuality: 0.8, acoustics: 1.45 } },
+            { name: 'The Second Peak', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Sea Cave', 'The Summit Col', 'The Kelp Shallows'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.1, acoustics: 1.3, vertical: true } },
+            { name: 'The Kelp Shallows', terrain: 'water', danger: 0.55, resources: 0.55, adjacent: ['The Drowned Approach', 'Open Water Reach', 'The Second Peak'], features: { cover: 0.3, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.05, acoustics: 0.75 } },
+            { name: 'The Summit Col', terrain: 'highland', danger: 0.9, resources: 0.05, adjacent: ['The Ice Chimney', 'The Second Peak'], features: { cover: 0.1, elevation: true, chokepoint: true, shelterQuality: 0.05, acoustics: 1.25 } },
         ]
     },
     {
@@ -699,15 +699,15 @@ export const ARENAS: Arena[] = [
         law: 'noWaterExceptZone',
         lawZone: 'The Rain Catch',
         zones: [
-            { name: 'The Cornucopia (The Landing)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Needle Bridges', 'Moss Hammock Grove', 'The Crown Break'] },
-            { name: 'The Needle Bridges', terrain: 'highland', danger: 0.8, resources: 0.15, adjacent: ['The Cornucopia (The Landing)', 'The Swaying Reach', 'The Old Nest'], features: { cover: 0.1, elevation: true, chokepoint: true } },
-            { name: 'Moss Hammock Grove', terrain: 'forest', danger: 0.35, resources: 0.75, adjacent: ['The Cornucopia (The Landing)', 'The Rain Catch', 'The Web Anchor'] },
-            { name: 'The Rain Catch', terrain: 'water', danger: 0.3, resources: 0.5, adjacent: ['Moss Hammock Grove', 'The Web Anchor'] },
-            { name: 'The Swaying Reach', terrain: 'highland', danger: 0.75, resources: 0.2, adjacent: ['The Needle Bridges', 'The Old Nest', 'The Crown Break'] },
-            { name: 'The Old Nest', terrain: 'ruins', danger: 0.5, resources: 0.55, adjacent: ['The Needle Bridges', 'The Swaying Reach', 'The Understory Fog'] },
-            { name: 'The Understory Fog', terrain: 'wetland', danger: 0.85, resources: 0.3, adjacent: ['The Old Nest', 'The Web Anchor'] },
-            { name: 'The Crown Break', terrain: 'open', danger: 0.6, resources: 0.25, adjacent: ['The Cornucopia (The Landing)', 'The Swaying Reach'] },
-            { name: 'The Web Anchor', terrain: 'ruins', danger: 0.45, resources: 0.6, adjacent: ['Moss Hammock Grove', 'The Rain Catch', 'The Understory Fog'] },
+            { name: 'The Cornucopia (The Landing)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Needle Bridges', 'Moss Hammock Grove', 'The Crown Break'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.15, vertical: true } },
+            { name: 'The Needle Bridges', terrain: 'highland', danger: 0.8, resources: 0.15, adjacent: ['The Cornucopia (The Landing)', 'The Swaying Reach', 'The Old Nest'], features: { cover: 0.1, elevation: true, chokepoint: true, shelterQuality: 0.05, acoustics: 0.75, vertical: true } },
+            { name: 'Moss Hammock Grove', terrain: 'forest', danger: 0.35, resources: 0.75, adjacent: ['The Cornucopia (The Landing)', 'The Rain Catch', 'The Web Anchor'], features: { cover: 0.85, elevation: true, chokepoint: false, acoustics: 0.6, vertical: true } },
+            { name: 'The Rain Catch', terrain: 'water', danger: 0.3, resources: 0.5, adjacent: ['Moss Hammock Grove', 'The Web Anchor'], features: { cover: 0.3, elevation: true, chokepoint: false, waterSource: true, acoustics: 0.75 } },
+            { name: 'The Swaying Reach', terrain: 'highland', danger: 0.75, resources: 0.2, adjacent: ['The Needle Bridges', 'The Old Nest', 'The Crown Break'], features: { cover: 0.3, elevation: true, chokepoint: true, acoustics: 0.75, vertical: true } },
+            { name: 'The Old Nest', terrain: 'ruins', danger: 0.5, resources: 0.55, adjacent: ['The Needle Bridges', 'The Swaying Reach', 'The Understory Fog'], features: { cover: 0.8, elevation: true, chokepoint: true, shelterQuality: 0.8, acoustics: 0.7 } },
+            { name: 'The Understory Fog', terrain: 'wetland', danger: 0.85, resources: 0.3, adjacent: ['The Old Nest', 'The Web Anchor'], features: { cover: 0.9, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.2, acoustics: 0.55 } },
+            { name: 'The Crown Break', terrain: 'open', danger: 0.6, resources: 0.25, adjacent: ['The Cornucopia (The Landing)', 'The Swaying Reach'], features: { cover: 0.1, elevation: true, chokepoint: false, shelterQuality: 0.05, acoustics: 1.25 } },
+            { name: 'The Web Anchor', terrain: 'ruins', danger: 0.45, resources: 0.6, adjacent: ['Moss Hammock Grove', 'The Rain Catch', 'The Understory Fog'], features: { cover: 0.6, elevation: true, chokepoint: true, acoustics: 0.75, vertical: true } },
         ]
     },
     {
@@ -722,16 +722,16 @@ export const ARENAS: Arena[] = [
         // §5: the arena's whole premise, finally a rule — in the Whispering Forest every fight is audible from every other sector.
         law: 'openMic',
         zones: [
-            { name: 'The Cornucopia (The Grove Floor)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Hollow Boughs', 'The Wind Throat', "Piper's Creek"] },
-            { name: 'The Hollow Boughs', terrain: 'forest', danger: 0.4, resources: 0.7, adjacent: ['The Cornucopia (The Grove Floor)', 'The Needle Drift', 'The Deep Organ'] },
-            { name: 'The Wind Throat', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Cornucopia (The Grove Floor)', 'The Resonance Chamber', 'The Splinter Field'] },
-            { name: "Piper's Creek", terrain: 'water', danger: 0.4, resources: 0.55, adjacent: ['The Cornucopia (The Grove Floor)', 'The Needle Drift', 'The Whisper Hollow'] },
-            { name: 'The Needle Drift', terrain: 'forest', danger: 0.35, resources: 0.65, adjacent: ['The Hollow Boughs', "Piper's Creek", 'The Deep Organ'] },
-            { name: 'The Deep Organ', terrain: 'forest', danger: 0.55, resources: 0.6, adjacent: ['The Hollow Boughs', 'The Needle Drift', 'Old Sawmill Ruins'] },
-            { name: 'The Whisper Hollow', terrain: 'wetland', danger: 0.5, resources: 0.5, adjacent: ["Piper's Creek", 'Old Sawmill Ruins'] },
-            { name: 'Old Sawmill Ruins', terrain: 'ruins', danger: 0.45, resources: 0.5, adjacent: ['The Deep Organ', 'The Whisper Hollow', 'The Resonance Chamber'] },
-            { name: 'The Resonance Chamber', terrain: 'ruins', danger: 0.6, resources: 0.4, adjacent: ['The Wind Throat', 'Old Sawmill Ruins', 'The Splinter Field'] },
-            { name: 'The Splinter Field', terrain: 'open', danger: 0.65, resources: 0.2, adjacent: ['The Wind Throat', 'The Resonance Chamber'] },
+            { name: 'The Cornucopia (The Grove Floor)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Hollow Boughs', 'The Wind Throat', "Piper's Creek"], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.1, acoustics: 1.3 } },
+            { name: 'The Hollow Boughs', terrain: 'forest', danger: 0.4, resources: 0.7, adjacent: ['The Cornucopia (The Grove Floor)', 'The Needle Drift', 'The Deep Organ'], features: { cover: 0.8, elevation: false, chokepoint: false, acoustics: 1.4, vertical: true } },
+            { name: 'The Wind Throat', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Cornucopia (The Grove Floor)', 'The Resonance Chamber', 'The Splinter Field'], features: { cover: 0.3, elevation: true, chokepoint: true, acoustics: 1.6, vertical: true } },
+            { name: "Piper's Creek", terrain: 'water', danger: 0.4, resources: 0.55, adjacent: ['The Cornucopia (The Grove Floor)', 'The Needle Drift', 'The Whisper Hollow'], features: { cover: 0.4, elevation: false, chokepoint: true, waterSource: true, acoustics: 1.25 } },
+            { name: 'The Needle Drift', terrain: 'forest', danger: 0.35, resources: 0.65, adjacent: ['The Hollow Boughs', "Piper's Creek", 'The Deep Organ'], features: { cover: 0.7, elevation: false, chokepoint: false, acoustics: 0.65 } },
+            { name: 'The Deep Organ', terrain: 'forest', danger: 0.55, resources: 0.6, adjacent: ['The Hollow Boughs', 'The Needle Drift', 'Old Sawmill Ruins'], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 1.5, vertical: true } },
+            { name: 'The Whisper Hollow', terrain: 'wetland', danger: 0.5, resources: 0.5, adjacent: ["Piper's Creek", 'Old Sawmill Ruins'], features: { cover: 0.6, elevation: false, chokepoint: false, acoustics: 0.7 } },
+            { name: 'Old Sawmill Ruins', terrain: 'ruins', danger: 0.45, resources: 0.5, adjacent: ['The Deep Organ', 'The Whisper Hollow', 'The Resonance Chamber'], features: { cover: 0.55, elevation: false, chokepoint: true, shelterQuality: 0.7, acoustics: 1.25, vertical: true } },
+            { name: 'The Resonance Chamber', terrain: 'ruins', danger: 0.6, resources: 0.4, adjacent: ['The Wind Throat', 'Old Sawmill Ruins', 'The Splinter Field'], features: { cover: 0.5, elevation: false, chokepoint: true, shelterQuality: 0.75, acoustics: 1.6 } },
+            { name: 'The Splinter Field', terrain: 'open', danger: 0.65, resources: 0.2, adjacent: ['The Wind Throat', 'The Resonance Chamber'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
         ]
     },
     {
@@ -744,16 +744,16 @@ export const ARENAS: Arena[] = [
         mutts: ['Cinder-Back Boars', 'Thornvine Jackals', 'The Standing Char'],
         events: ['Seed Shrapnel', 'Silent Deadfall', 'Ground Heat Flare'],
         zones: [
-            { name: 'The Cornucopia (The Ash Clearing)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Snag Field', 'The Fireweed Slope', 'Seep Spring'] },
-            { name: 'The Snag Field', terrain: 'ruins', danger: 0.5, resources: 0.3, adjacent: ['The Cornucopia (The Ash Clearing)', 'Deadfall Hollow', 'The Char Ridge'] },
-            { name: 'The Fireweed Slope', terrain: 'forest', danger: 0.45, resources: 0.65, adjacent: ['The Cornucopia (The Ash Clearing)', 'Bramble Choke', 'Erosion Gully'] },
-            { name: 'Seep Spring', terrain: 'water', danger: 0.35, resources: 0.45, adjacent: ['The Cornucopia (The Ash Clearing)', 'Erosion Gully', 'The Standing Dead'] },
-            { name: 'Deadfall Hollow', terrain: 'forest', danger: 0.6, resources: 0.5, adjacent: ['The Snag Field', 'The Char Ridge', 'The Old Burn Line'] },
-            { name: 'The Char Ridge', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Snag Field', 'Deadfall Hollow', 'The Old Burn Line'] },
-            { name: 'Bramble Choke', terrain: 'wetland', danger: 0.7, resources: 0.35, adjacent: ['The Fireweed Slope', 'Erosion Gully'], features: { cover: 0.7, elevation: false, chokepoint: true } },
-            { name: 'Erosion Gully', terrain: 'wetland', danger: 0.5, resources: 0.4, adjacent: ['The Fireweed Slope', 'Seep Spring', 'Bramble Choke'] },
-            { name: 'The Old Burn Line', terrain: 'open', danger: 0.6, resources: 0.25, adjacent: ['Deadfall Hollow', 'The Char Ridge', 'The Standing Dead'] },
-            { name: 'The Standing Dead', terrain: 'ruins', danger: 0.55, resources: 0.45, adjacent: ['Seep Spring', 'The Old Burn Line'] },
+            { name: 'The Cornucopia (The Ash Clearing)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Snag Field', 'The Fireweed Slope', 'Seep Spring'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.75 } },
+            { name: 'The Snag Field', terrain: 'ruins', danger: 0.5, resources: 0.3, adjacent: ['The Cornucopia (The Ash Clearing)', 'Deadfall Hollow', 'The Char Ridge'], features: { cover: 0.35, elevation: false, chokepoint: false, acoustics: 1.25, vertical: true } },
+            { name: 'The Fireweed Slope', terrain: 'forest', danger: 0.45, resources: 0.65, adjacent: ['The Cornucopia (The Ash Clearing)', 'Bramble Choke', 'Erosion Gully'], features: { cover: 0.6, elevation: true, chokepoint: false, acoustics: 0.75 } },
+            { name: 'Seep Spring', terrain: 'water', danger: 0.35, resources: 0.45, adjacent: ['The Cornucopia (The Ash Clearing)', 'Erosion Gully', 'The Standing Dead'], features: { cover: 0.35, elevation: false, chokepoint: true, waterSource: true } },
+            { name: 'Deadfall Hollow', terrain: 'forest', danger: 0.6, resources: 0.5, adjacent: ['The Snag Field', 'The Char Ridge', 'The Old Burn Line'], features: { cover: 0.75, elevation: false, chokepoint: true, acoustics: 0.7 } },
+            { name: 'The Char Ridge', terrain: 'highland', danger: 0.85, resources: 0.1, adjacent: ['The Snag Field', 'Deadfall Hollow', 'The Old Burn Line'], features: { cover: 0.15, elevation: true, chokepoint: true, shelterQuality: 0.05, acoustics: 1.3, vertical: true } },
+            { name: 'Bramble Choke', terrain: 'wetland', danger: 0.7, resources: 0.35, adjacent: ['The Fireweed Slope', 'Erosion Gully'], features: { cover: 0.7, elevation: false, chokepoint: true, acoustics: 0.7 } },
+            { name: 'Erosion Gully', terrain: 'wetland', danger: 0.5, resources: 0.4, adjacent: ['The Fireweed Slope', 'Seep Spring', 'Bramble Choke'], features: { cover: 0.5, elevation: false, chokepoint: true, waterSource: false, acoustics: 1.35, vertical: true } },
+            { name: 'The Old Burn Line', terrain: 'open', danger: 0.6, resources: 0.25, adjacent: ['Deadfall Hollow', 'The Char Ridge', 'The Standing Dead'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05 } },
+            { name: 'The Standing Dead', terrain: 'ruins', danger: 0.55, resources: 0.45, adjacent: ['Seep Spring', 'The Old Burn Line'], features: { cover: 0.4, elevation: false, chokepoint: false, acoustics: 1.25, vertical: true } },
         ]
     },
     {
@@ -765,16 +765,16 @@ export const ARENAS: Arena[] = [
         // §5: unexploded ordnance under a root mat is worse in the dark, when nobody can see where they are putting their feet.
         law: 'deadlyNight',
         zones: [
-            { name: 'The Cornucopia (The Motor Pool)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Shallow Craters', 'Rusted Convoy Road', 'The Root Mat Flat'] },
-            { name: 'The Shallow Craters', terrain: 'wetland', danger: 0.55, resources: 0.4, adjacent: ['The Cornucopia (The Motor Pool)', 'The Deep Craters', 'The Fruiting Tangle'] },
-            { name: 'The Deep Craters', terrain: 'water', danger: 0.8, resources: 0.35, adjacent: ['The Shallow Craters', 'Stagnant Pool Marsh', 'Slick Crater Wall'] },
-            { name: 'Rusted Convoy Road', terrain: 'open', danger: 0.4, resources: 0.25, adjacent: ['The Cornucopia (The Motor Pool)', 'Vine-Choked Bunker', 'The Old Ammo Dump'] },
-            { name: 'The Root Mat Flat', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Cornucopia (The Motor Pool)', 'The Fruiting Tangle', 'Vine-Choked Bunker'] },
-            { name: 'Vine-Choked Bunker', terrain: 'ruins', danger: 0.65, resources: 0.45, adjacent: ['Rusted Convoy Road', 'The Root Mat Flat', 'The Old Ammo Dump'] },
-            { name: 'The Fruiting Tangle', terrain: 'forest', danger: 0.5, resources: 0.75, adjacent: ['The Shallow Craters', 'The Root Mat Flat', 'Stagnant Pool Marsh'] },
-            { name: 'Stagnant Pool Marsh', terrain: 'wetland', danger: 0.6, resources: 0.5, adjacent: ['The Deep Craters', 'The Fruiting Tangle', 'Slick Crater Wall'] },
-            { name: 'Slick Crater Wall', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Deep Craters', 'Stagnant Pool Marsh'] },
-            { name: 'The Old Ammo Dump', terrain: 'ruins', danger: 0.7, resources: 0.4, adjacent: ['Rusted Convoy Road', 'Vine-Choked Bunker'] },
+            { name: 'The Cornucopia (The Motor Pool)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Shallow Craters', 'Rusted Convoy Road', 'The Root Mat Flat'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.15 } },
+            { name: 'The Shallow Craters', terrain: 'wetland', danger: 0.55, resources: 0.4, adjacent: ['The Cornucopia (The Motor Pool)', 'The Deep Craters', 'The Fruiting Tangle'], features: { cover: 0.35, elevation: false, chokepoint: false, waterSource: false, vertical: true } },
+            { name: 'The Deep Craters', terrain: 'water', danger: 0.8, resources: 0.35, adjacent: ['The Shallow Craters', 'Stagnant Pool Marsh', 'Slick Crater Wall'], features: { cover: 0.4, elevation: false, chokepoint: true, waterSource: false, acoustics: 1.35, vertical: true } },
+            { name: 'Rusted Convoy Road', terrain: 'open', danger: 0.4, resources: 0.25, adjacent: ['The Cornucopia (The Motor Pool)', 'Vine-Choked Bunker', 'The Old Ammo Dump'], features: { cover: 0.3, elevation: false, chokepoint: true, acoustics: 1.25 } },
+            { name: 'The Root Mat Flat', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Cornucopia (The Motor Pool)', 'The Fruiting Tangle', 'Vine-Choked Bunker'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.1, acoustics: 0.7 } },
+            { name: 'Vine-Choked Bunker', terrain: 'ruins', danger: 0.65, resources: 0.45, adjacent: ['Rusted Convoy Road', 'The Root Mat Flat', 'The Old Ammo Dump'], features: { cover: 0.8, elevation: false, chokepoint: true, shelterQuality: 0.95, acoustics: 1.3, vertical: true } },
+            { name: 'The Fruiting Tangle', terrain: 'forest', danger: 0.5, resources: 0.75, adjacent: ['The Shallow Craters', 'The Root Mat Flat', 'Stagnant Pool Marsh'], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 0.65 } },
+            { name: 'Stagnant Pool Marsh', terrain: 'wetland', danger: 0.6, resources: 0.5, adjacent: ['The Deep Craters', 'The Fruiting Tangle', 'Slick Crater Wall'], features: { cover: 0.5, elevation: false, chokepoint: false, waterSource: false, acoustics: 0.75 } },
+            { name: 'Slick Crater Wall', terrain: 'highland', danger: 0.75, resources: 0.15, adjacent: ['The Deep Craters', 'Stagnant Pool Marsh'], features: { cover: 0.2, elevation: true, chokepoint: true, shelterQuality: 0.1, acoustics: 1.4, vertical: true } },
+            { name: 'The Old Ammo Dump', terrain: 'ruins', danger: 0.7, resources: 0.4, adjacent: ['Rusted Convoy Road', 'Vine-Choked Bunker'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.85, acoustics: 1.35 } },
         ]
     },
     {
@@ -803,17 +803,17 @@ export const ARENAS: Arena[] = [
             'The Storm Creek|The Substation': { kind: 'tolled', toll: { woundChance: 0.15 } },
         },
         zones: [
-            { name: 'The Cornucopia (Loop Road)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['Number 14', 'Number 27', 'The Show Home', 'The Green', 'The Loading Bay'] },
-            { name: 'Number 14', terrain: 'ruins', danger: 0.45, resources: 0.6, adjacent: ['The Cornucopia (Loop Road)', 'Number 27', 'Back Gardens'], features: { cover: 0.8, elevation: false, chokepoint: true } },
-            { name: 'Number 27', terrain: 'ruins', danger: 0.55, resources: 0.55, adjacent: ['The Cornucopia (Loop Road)', 'Number 14', 'The Cut-Through'], features: { cover: 0.8, elevation: false, chokepoint: true } },
-            { name: 'The Show Home', terrain: 'ruins', danger: 0.4, resources: 0.65, adjacent: ['The Cornucopia (Loop Road)', 'The Green', 'The Pool Complex'], features: { cover: 0.75, elevation: false, chokepoint: false } },
-            { name: 'The Cut-Through', terrain: 'forest', danger: 0.5, resources: 0.5, adjacent: ['Number 27', 'The Green', 'Back Gardens', 'The Storm Creek'], features: { cover: 0.85, elevation: false, chokepoint: true } },
-            { name: 'The Green', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Cornucopia (Loop Road)', 'The Show Home', 'The Cut-Through', 'The Pool Complex'] },
-            { name: 'Back Gardens', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['Number 14', 'The Cut-Through', 'The Storm Creek'], features: { cover: 0.9, elevation: false, chokepoint: false } },
-            { name: 'The Pool Complex', terrain: 'water', danger: 0.6, resources: 0.4, adjacent: ['The Show Home', 'The Green', 'The Loading Bay'] },
-            { name: 'The Storm Creek', terrain: 'water', danger: 0.5, resources: 0.5, adjacent: ['The Cut-Through', 'Back Gardens', 'The Substation'] },
-            { name: 'The Loading Bay', terrain: 'open', danger: 0.65, resources: 0.55, adjacent: ['The Cornucopia (Loop Road)', 'The Pool Complex', 'The Substation'] },
-            { name: 'The Substation', terrain: 'ruins', danger: 0.85, resources: 0.2, adjacent: ['The Storm Creek', 'The Loading Bay'], features: { cover: 0.4, elevation: false, chokepoint: true } },
+            { name: 'The Cornucopia (Loop Road)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['Number 14', 'Number 27', 'The Show Home', 'The Green', 'The Loading Bay'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'Number 14', terrain: 'ruins', danger: 0.45, resources: 0.6, adjacent: ['The Cornucopia (Loop Road)', 'Number 27', 'Back Gardens'], features: { cover: 0.8, elevation: false, chokepoint: true, shelterQuality: 0.9, acoustics: 0.75, vertical: true } },
+            { name: 'Number 27', terrain: 'ruins', danger: 0.55, resources: 0.55, adjacent: ['The Cornucopia (Loop Road)', 'Number 14', 'The Cut-Through'], features: { cover: 0.8, elevation: false, chokepoint: true, shelterQuality: 0.9, acoustics: 0.75, vertical: true } },
+            { name: 'The Show Home', terrain: 'ruins', danger: 0.4, resources: 0.65, adjacent: ['The Cornucopia (Loop Road)', 'The Green', 'The Pool Complex'], features: { cover: 0.75, elevation: false, chokepoint: false, shelterQuality: 0.9, acoustics: 1.25, vertical: true } },
+            { name: 'The Cut-Through', terrain: 'forest', danger: 0.5, resources: 0.5, adjacent: ['Number 27', 'The Green', 'Back Gardens', 'The Storm Creek'], features: { cover: 0.85, elevation: false, chokepoint: true, acoustics: 0.75 } },
+            { name: 'The Green', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Cornucopia (Loop Road)', 'The Show Home', 'The Cut-Through', 'The Pool Complex'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'Back Gardens', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['Number 14', 'The Cut-Through', 'The Storm Creek'], features: { cover: 0.9, elevation: false, chokepoint: false, acoustics: 0.7 } },
+            { name: 'The Pool Complex', terrain: 'water', danger: 0.6, resources: 0.4, adjacent: ['The Show Home', 'The Green', 'The Loading Bay'], features: { cover: 0.3, elevation: false, chokepoint: true, waterSource: false, acoustics: 1.4 } },
+            { name: 'The Storm Creek', terrain: 'water', danger: 0.5, resources: 0.5, adjacent: ['The Cut-Through', 'Back Gardens', 'The Substation'], features: { cover: 0.5, elevation: false, chokepoint: true, waterSource: true } },
+            { name: 'The Loading Bay', terrain: 'open', danger: 0.65, resources: 0.55, adjacent: ['The Cornucopia (Loop Road)', 'The Pool Complex', 'The Substation'], features: { cover: 0.3, elevation: false, chokepoint: true, shelterQuality: 0.4, acoustics: 1.3 } },
+            { name: 'The Substation', terrain: 'ruins', danger: 0.85, resources: 0.2, adjacent: ['The Storm Creek', 'The Loading Bay'], features: { cover: 0.4, elevation: false, chokepoint: true, shelterQuality: 0.7, acoustics: 1.25 } },
         ]
     },
     {
@@ -841,19 +841,19 @@ export const ARENAS: Arena[] = [
             "The Canal Walk|The Gardener's Gate": { kind: 'timeGated', gatedTime: 'day' },
         },
         zones: [
-            { name: 'The Cornucopia (Fountain Court)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Outer Ring', 'The Parterre', 'The Canal Walk'] },
-            { name: 'The Outer Ring', terrain: 'forest', danger: 0.45, resources: 0.5, adjacent: ['The Cornucopia (Fountain Court)', 'The North Spiral', 'The South Spiral', "The Gardener's Gate"], features: { cover: 0.85, elevation: false, chokepoint: false } },
-            { name: 'The North Spiral', terrain: 'forest', danger: 0.55, resources: 0.45, adjacent: ['The Outer Ring', 'The Long Alley', 'The False Centre'], features: { cover: 0.9, elevation: false, chokepoint: true } },
-            { name: 'The South Spiral', terrain: 'forest', danger: 0.55, resources: 0.45, adjacent: ['The Outer Ring', 'The Dead End', 'The Topiary Garden'], features: { cover: 0.9, elevation: false, chokepoint: true } },
+            { name: 'The Cornucopia (Fountain Court)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Outer Ring', 'The Parterre', 'The Canal Walk'], features: { cover: 0.15, elevation: false, chokepoint: false, waterSource: true, shelterQuality: 0.1, acoustics: 1.25 } },
+            { name: 'The Outer Ring', terrain: 'forest', danger: 0.45, resources: 0.5, adjacent: ['The Cornucopia (Fountain Court)', 'The North Spiral', 'The South Spiral', "The Gardener's Gate"], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 0.7 } },
+            { name: 'The North Spiral', terrain: 'forest', danger: 0.55, resources: 0.45, adjacent: ['The Outer Ring', 'The Long Alley', 'The False Centre'], features: { cover: 0.9, elevation: false, chokepoint: true, acoustics: 0.65 } },
+            { name: 'The South Spiral', terrain: 'forest', danger: 0.55, resources: 0.45, adjacent: ['The Outer Ring', 'The Dead End', 'The Topiary Garden'], features: { cover: 0.9, elevation: false, chokepoint: true, acoustics: 0.65 } },
             // One way in, the same way out. The maze's oubliette.
-            { name: 'The Dead End', terrain: 'forest', danger: 0.7, resources: 0.25, adjacent: ['The South Spiral'], features: { cover: 0.95, elevation: false, chokepoint: true } },
-            { name: 'The Long Alley', terrain: 'forest', danger: 0.5, resources: 0.4, adjacent: ['The North Spiral', 'The Parterre', 'The True Centre'], features: { cover: 0.8, elevation: false, chokepoint: true } },
-            { name: 'The Parterre', terrain: 'open', danger: 0.4, resources: 0.6, adjacent: ['The Cornucopia (Fountain Court)', 'The Long Alley', 'The Canal Walk'] },
-            { name: 'The Canal Walk', terrain: 'water', danger: 0.5, resources: 0.55, adjacent: ['The Cornucopia (Fountain Court)', 'The Parterre', "The Gardener's Gate"] },
-            { name: 'The Topiary Garden', terrain: 'forest', danger: 0.75, resources: 0.4, adjacent: ['The South Spiral', 'The False Centre'], features: { cover: 0.8, elevation: false, chokepoint: false } },
-            { name: 'The False Centre', terrain: 'forest', danger: 0.65, resources: 0.3, adjacent: ['The North Spiral', 'The Topiary Garden', 'The True Centre'], features: { cover: 0.85, elevation: false, chokepoint: true } },
-            { name: 'The True Centre', terrain: 'open', danger: 0.35, resources: 0.7, adjacent: ['The Long Alley', 'The False Centre'] },
-            { name: "The Gardener's Gate", terrain: 'open', danger: 0.55, resources: 0.45, adjacent: ['The Outer Ring', 'The Canal Walk'], features: { cover: 0.3, elevation: false, chokepoint: true } },
+            { name: 'The Dead End', terrain: 'forest', danger: 0.7, resources: 0.25, adjacent: ['The South Spiral'], features: { cover: 0.95, elevation: false, chokepoint: true, shelterQuality: 0.7, acoustics: 0.6 } },
+            { name: 'The Long Alley', terrain: 'forest', danger: 0.5, resources: 0.4, adjacent: ['The North Spiral', 'The Parterre', 'The True Centre'], features: { cover: 0.8, elevation: false, chokepoint: true, acoustics: 1.25 } },
+            { name: 'The Parterre', terrain: 'open', danger: 0.4, resources: 0.6, adjacent: ['The Cornucopia (Fountain Court)', 'The Long Alley', 'The Canal Walk'], features: { cover: 0.3, elevation: true, chokepoint: false, shelterQuality: 0.15, vertical: true } },
+            { name: 'The Canal Walk', terrain: 'water', danger: 0.5, resources: 0.55, adjacent: ['The Cornucopia (Fountain Court)', 'The Parterre', "The Gardener's Gate"], features: { cover: 0.4, elevation: false, chokepoint: true, acoustics: 1.25 } },
+            { name: 'The Topiary Garden', terrain: 'forest', danger: 0.75, resources: 0.4, adjacent: ['The South Spiral', 'The False Centre'], features: { cover: 0.8, elevation: false, chokepoint: false, acoustics: 0.7, vertical: true } },
+            { name: 'The False Centre', terrain: 'forest', danger: 0.65, resources: 0.3, adjacent: ['The North Spiral', 'The Topiary Garden', 'The True Centre'], features: { cover: 0.85, elevation: false, chokepoint: true, acoustics: 0.7 } },
+            { name: 'The True Centre', terrain: 'open', danger: 0.35, resources: 0.7, adjacent: ['The Long Alley', 'The False Centre'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.15, vertical: true } },
+            { name: "The Gardener's Gate", terrain: 'open', danger: 0.55, resources: 0.45, adjacent: ['The Outer Ring', 'The Canal Walk'], features: { cover: 0.3, elevation: false, chokepoint: true, shelterQuality: 0.4 } },
         ]
     },
     {
@@ -879,24 +879,24 @@ export const ARENAS: Arena[] = [
             'Lockers|Main Corridor': { kind: 'contested' },
         },
         zones: [
-            { name: 'The Cornucopia (The Yard)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['Main Corridor', 'The Gymnasium', 'The Playing Field', 'The Roof'] },
+            { name: 'The Cornucopia (The Yard)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['Main Corridor', 'The Gymnasium', 'The Playing Field', 'The Roof'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.1, acoustics: 1.25 } },
             // The spine of the school: every wing hangs off it, and everyone
             // has to use it.
-            { name: 'Main Corridor', terrain: 'ruins', danger: 0.7, resources: 0.25, adjacent: ['The Cornucopia (The Yard)', 'The Cafeteria', 'The Library', 'Lockers', 'Science Block', 'The Auditorium'], features: { cover: 0.4, elevation: false, chokepoint: true } },
-            { name: 'The Gymnasium', terrain: 'ruins', danger: 0.5, resources: 0.4, adjacent: ['The Cornucopia (The Yard)', 'Lockers', 'The Flooded Pool'], features: { cover: 0.5, elevation: false, chokepoint: false } },
-            { name: 'The Cafeteria', terrain: 'ruins', danger: 0.45, resources: 0.7, adjacent: ['Main Corridor', 'The Boiler Room'] },
-            { name: 'The Library', terrain: 'ruins', danger: 0.3, resources: 0.5, adjacent: ['Main Corridor', 'The Auditorium'], features: { cover: 0.85, elevation: false, chokepoint: false } },
-            { name: 'Science Block', terrain: 'ruins', danger: 0.75, resources: 0.55, adjacent: ['Main Corridor', 'The Boiler Room', 'The Roof'] },
-            { name: 'The Boiler Room', terrain: 'ruins', danger: 0.85, resources: 0.3, adjacent: ['The Cafeteria', 'Science Block', 'The Flooded Pool'], features: { cover: 0.6, elevation: false, chokepoint: true } },
+            { name: 'Main Corridor', terrain: 'ruins', danger: 0.7, resources: 0.25, adjacent: ['The Cornucopia (The Yard)', 'The Cafeteria', 'The Library', 'Lockers', 'Science Block', 'The Auditorium'], features: { cover: 0.4, elevation: false, chokepoint: true, acoustics: 1.5 } },
+            { name: 'The Gymnasium', terrain: 'ruins', danger: 0.5, resources: 0.4, adjacent: ['The Cornucopia (The Yard)', 'Lockers', 'The Flooded Pool'], features: { cover: 0.5, elevation: false, chokepoint: false, acoustics: 1.55, vertical: true } },
+            { name: 'The Cafeteria', terrain: 'ruins', danger: 0.45, resources: 0.7, adjacent: ['Main Corridor', 'The Boiler Room'], features: { cover: 0.55, elevation: false, chokepoint: false, shelterQuality: 0.8, acoustics: 1.35 } },
+            { name: 'The Library', terrain: 'ruins', danger: 0.3, resources: 0.5, adjacent: ['Main Corridor', 'The Auditorium'], features: { cover: 0.85, elevation: false, chokepoint: false, shelterQuality: 0.85, acoustics: 0.7, vertical: true } },
+            { name: 'Science Block', terrain: 'ruins', danger: 0.75, resources: 0.55, adjacent: ['Main Corridor', 'The Boiler Room', 'The Roof'], features: { cover: 0.6, elevation: false, chokepoint: true, acoustics: 1.3, vertical: true } },
+            { name: 'The Boiler Room', terrain: 'ruins', danger: 0.85, resources: 0.3, adjacent: ['The Cafeteria', 'Science Block', 'The Flooded Pool'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.9, acoustics: 1.4 } },
             // Narrow enough to hold with two people — see the `contested`
             // edge above.
-            { name: 'Lockers', terrain: 'ruins', danger: 0.65, resources: 0.45, adjacent: ['Main Corridor', 'The Gymnasium'], features: { cover: 0.7, elevation: false, chokepoint: true } },
-            { name: 'The Auditorium', terrain: 'ruins', danger: 0.55, resources: 0.35, adjacent: ['Main Corridor', 'The Library'], features: { cover: 0.75, elevation: false, chokepoint: false } },
-            { name: 'The Flooded Pool', terrain: 'water', danger: 0.7, resources: 0.4, adjacent: ['The Gymnasium', 'The Boiler Room'] },
+            { name: 'Lockers', terrain: 'ruins', danger: 0.65, resources: 0.45, adjacent: ['Main Corridor', 'The Gymnasium'], features: { cover: 0.7, elevation: false, chokepoint: true, acoustics: 1.45 } },
+            { name: 'The Auditorium', terrain: 'ruins', danger: 0.55, resources: 0.35, adjacent: ['Main Corridor', 'The Library'], features: { cover: 0.75, elevation: false, chokepoint: false, shelterQuality: 0.8, acoustics: 1.3, vertical: true } },
+            { name: 'The Flooded Pool', terrain: 'water', danger: 0.7, resources: 0.4, adjacent: ['The Gymnasium', 'The Boiler Room'], features: { cover: 0.2, elevation: false, chokepoint: true, waterSource: false, acoustics: 1.5 } },
             // The field edge has gone over to scrub and bramble — the arena's
             // only green cover.
-            { name: 'The Playing Field', terrain: 'forest', danger: 0.4, resources: 0.65, adjacent: ['The Cornucopia (The Yard)'] },
-            { name: 'The Roof', terrain: 'open', danger: 0.8, resources: 0.15, adjacent: ['Science Block', 'The Cornucopia (The Yard)'], features: { cover: 0.2, elevation: true, chokepoint: true } },
+            { name: 'The Playing Field', terrain: 'forest', danger: 0.4, resources: 0.65, adjacent: ['The Cornucopia (The Yard)'], features: { cover: 0.3, elevation: false, chokepoint: false, shelterQuality: 0.15, acoustics: 0.75 } },
+            { name: 'The Roof', terrain: 'open', danger: 0.8, resources: 0.15, adjacent: ['Science Block', 'The Cornucopia (The Yard)'], features: { cover: 0.2, elevation: true, chokepoint: true, shelterQuality: 0.1, vertical: true } },
         ]
     },
     {
@@ -923,18 +923,18 @@ export const ARENAS: Arena[] = [
         // §5: the horn stands inside the cold store, behind a single blast door.
         cornucopiaLayout: 'walled',
         zones: [
-            { name: 'The Cornucopia (The Apron)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Generator Hall', 'Habitation Ring', 'The Ice Shelf', 'Fuel Farm'] },
-            { name: 'Generator Hall', terrain: 'ruins', danger: 0.5, resources: 0.35, adjacent: ['The Cornucopia (The Apron)', 'Habitation Ring', 'Fuel Farm'], features: { cover: 0.6, elevation: false, chokepoint: true } },
-            { name: 'Habitation Ring', terrain: 'ruins', danger: 0.4, resources: 0.55, adjacent: ['The Cornucopia (The Apron)', 'Generator Hall', 'The Mess', 'Laboratory Module'] },
+            { name: 'The Cornucopia (The Apron)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Generator Hall', 'Habitation Ring', 'The Ice Shelf', 'Fuel Farm'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.75 } },
+            { name: 'Generator Hall', terrain: 'ruins', danger: 0.5, resources: 0.35, adjacent: ['The Cornucopia (The Apron)', 'Habitation Ring', 'Fuel Farm'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.9, acoustics: 1.45, vertical: true } },
+            { name: 'Habitation Ring', terrain: 'ruins', danger: 0.4, resources: 0.55, adjacent: ['The Cornucopia (The Apron)', 'Generator Hall', 'The Mess', 'Laboratory Module'], features: { cover: 0.7, elevation: false, chokepoint: false, shelterQuality: 0.95, acoustics: 0.75 } },
             // The one real larder on a map that is otherwise snow.
-            { name: 'The Mess', terrain: 'ruins', danger: 0.35, resources: 0.85, adjacent: ['Habitation Ring', 'Laboratory Module'] },
-            { name: 'Laboratory Module', terrain: 'ruins', danger: 0.55, resources: 0.5, adjacent: ['Habitation Ring', 'The Mess', 'The Isotope Store'] },
-            { name: 'The Isotope Store', terrain: 'ruins', danger: 0.9, resources: 0.4, adjacent: ['Laboratory Module', 'The Ridge'], features: { cover: 0.5, elevation: false, chokepoint: true } },
-            { name: 'Comms Mast', terrain: 'highland', danger: 0.7, resources: 0.15, adjacent: ['The Ridge', 'The Ice Shelf'], features: { cover: 0.1, elevation: true, chokepoint: false } },
-            { name: 'The Ice Shelf', terrain: 'open', danger: 0.65, resources: 0.1, adjacent: ['The Cornucopia (The Apron)', 'Comms Mast', 'The Open Lead'] },
-            { name: 'The Open Lead', terrain: 'water', danger: 0.8, resources: 0.45, adjacent: ['The Ice Shelf', 'Fuel Farm'] },
-            { name: 'Fuel Farm', terrain: 'open', danger: 0.5, resources: 0.4, adjacent: ['The Cornucopia (The Apron)', 'Generator Hall', 'The Open Lead'] },
-            { name: 'The Ridge', terrain: 'highland', danger: 0.75, resources: 0.1, adjacent: ['The Isotope Store', 'Comms Mast'], features: { cover: 0.1, elevation: true, chokepoint: true } },
+            { name: 'The Mess', terrain: 'ruins', danger: 0.35, resources: 0.85, adjacent: ['Habitation Ring', 'Laboratory Module'], features: { cover: 0.5, elevation: false, chokepoint: false, shelterQuality: 0.9, acoustics: 1.25 } },
+            { name: 'Laboratory Module', terrain: 'ruins', danger: 0.55, resources: 0.5, adjacent: ['Habitation Ring', 'The Mess', 'The Isotope Store'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.9 } },
+            { name: 'The Isotope Store', terrain: 'ruins', danger: 0.9, resources: 0.4, adjacent: ['Laboratory Module', 'The Ridge'], features: { cover: 0.5, elevation: false, chokepoint: true, shelterQuality: 0.85, acoustics: 1.3 } },
+            { name: 'Comms Mast', terrain: 'highland', danger: 0.7, resources: 0.15, adjacent: ['The Ridge', 'The Ice Shelf'], features: { cover: 0.1, elevation: true, chokepoint: false, shelterQuality: 0.05, acoustics: 1.25, vertical: true } },
+            { name: 'The Ice Shelf', terrain: 'open', danger: 0.65, resources: 0.1, adjacent: ['The Cornucopia (The Apron)', 'Comms Mast', 'The Open Lead'], features: { cover: 0.05, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.7 } },
+            { name: 'The Open Lead', terrain: 'water', danger: 0.8, resources: 0.45, adjacent: ['The Ice Shelf', 'Fuel Farm'], features: { cover: 0.05, elevation: false, chokepoint: true, waterSource: false, shelterQuality: 0.05 } },
+            { name: 'Fuel Farm', terrain: 'open', danger: 0.5, resources: 0.4, adjacent: ['The Cornucopia (The Apron)', 'Generator Hall', 'The Open Lead'], features: { cover: 0.35, elevation: false, chokepoint: false, shelterQuality: 0.3, acoustics: 1.25 } },
+            { name: 'The Ridge', terrain: 'highland', danger: 0.75, resources: 0.1, adjacent: ['The Isotope Store', 'Comms Mast'], features: { cover: 0.1, elevation: true, chokepoint: true, shelterQuality: 0.05, acoustics: 0.75, vertical: true } },
         ]
     },
     {
@@ -957,19 +957,19 @@ export const ARENAS: Arena[] = [
             "Broodmother's Crag|The Silk Bridge": { kind: 'collapsing', crossings: 3 },
         },
         zones: [
-            { name: 'The Cornucopia (The Clearing)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Low Wood', 'The Silk Bridge', 'The Ridge Path'] },
-            { name: 'The Low Wood', terrain: 'forest', danger: 0.45, resources: 0.7, adjacent: ['The Cornucopia (The Clearing)', 'The Sink', 'Web Hollow', 'The Old Burn'], features: { cover: 0.85, elevation: false, chokepoint: false } },
-            { name: 'The Sink', terrain: 'wetland', danger: 0.65, resources: 0.5, adjacent: ['The Low Wood', 'Web Hollow'] },
-            { name: "Broodmother's Crag", terrain: 'highland', danger: 0.95, resources: 0.35, adjacent: ['The Silk Bridge', 'The Ridge Path', 'The Nursery'], features: { cover: 0.3, elevation: true, chokepoint: true } },
-            { name: 'The Silk Bridge', terrain: 'forest', danger: 0.6, resources: 0.4, adjacent: ['The Cornucopia (The Clearing)', "Broodmother's Crag", 'Deadfall Slope'], features: { cover: 0.5, elevation: true, chokepoint: true } },
-            { name: 'Deadfall Slope', terrain: 'forest', danger: 0.55, resources: 0.55, adjacent: ['The Silk Bridge', "The Collector's Lodge", 'The Old Burn'] },
-            { name: "The Collector's Lodge", terrain: 'ruins', danger: 0.4, resources: 0.65, adjacent: ['Deadfall Slope', 'The Old Burn'], features: { cover: 0.7, elevation: false, chokepoint: true } },
+            { name: 'The Cornucopia (The Clearing)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Low Wood', 'The Silk Bridge', 'The Ridge Path'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'The Low Wood', terrain: 'forest', danger: 0.45, resources: 0.7, adjacent: ['The Cornucopia (The Clearing)', 'The Sink', 'Web Hollow', 'The Old Burn'], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 0.65 } },
+            { name: 'The Sink', terrain: 'wetland', danger: 0.65, resources: 0.5, adjacent: ['The Low Wood', 'Web Hollow'], features: { cover: 0.5, elevation: false, chokepoint: true, acoustics: 0.7 } },
+            { name: "Broodmother's Crag", terrain: 'highland', danger: 0.95, resources: 0.35, adjacent: ['The Silk Bridge', 'The Ridge Path', 'The Nursery'], features: { cover: 0.3, elevation: true, chokepoint: true, acoustics: 1.3, vertical: true } },
+            { name: 'The Silk Bridge', terrain: 'forest', danger: 0.6, resources: 0.4, adjacent: ['The Cornucopia (The Clearing)', "Broodmother's Crag", 'Deadfall Slope'], features: { cover: 0.5, elevation: true, chokepoint: true, acoustics: 0.75, vertical: true } },
+            { name: 'Deadfall Slope', terrain: 'forest', danger: 0.55, resources: 0.55, adjacent: ['The Silk Bridge', "The Collector's Lodge", 'The Old Burn'], features: { cover: 0.7, elevation: true, chokepoint: false, acoustics: 0.75 } },
+            { name: "The Collector's Lodge", terrain: 'ruins', danger: 0.4, resources: 0.65, adjacent: ['Deadfall Slope', 'The Old Burn'], features: { cover: 0.7, elevation: false, chokepoint: true, shelterQuality: 0.9, acoustics: 0.75, vertical: true } },
             // The one spider-free ground in the arena: nothing to eat here and
             // nothing eating anyone either.
-            { name: 'The Old Burn', terrain: 'open', danger: 0.2, resources: 0.15, adjacent: ['The Low Wood', 'Deadfall Slope', "The Collector's Lodge"] },
-            { name: 'Web Hollow', terrain: 'forest', danger: 0.75, resources: 0.6, adjacent: ['The Low Wood', 'The Sink', 'The Nursery'], features: { cover: 0.9, elevation: false, chokepoint: false } },
-            { name: 'The Ridge Path', terrain: 'highland', danger: 0.5, resources: 0.2, adjacent: ['The Cornucopia (The Clearing)', "Broodmother's Crag"] },
-            { name: 'The Nursery', terrain: 'forest', danger: 0.9, resources: 0.75, adjacent: ["Broodmother's Crag", 'Web Hollow'], features: { cover: 0.8, elevation: false, chokepoint: true } },
+            { name: 'The Old Burn', terrain: 'open', danger: 0.2, resources: 0.15, adjacent: ['The Low Wood', 'Deadfall Slope', "The Collector's Lodge"], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'Web Hollow', terrain: 'forest', danger: 0.75, resources: 0.6, adjacent: ['The Low Wood', 'The Sink', 'The Nursery'], features: { cover: 0.9, elevation: false, chokepoint: false, acoustics: 0.6 } },
+            { name: 'The Ridge Path', terrain: 'highland', danger: 0.5, resources: 0.2, adjacent: ['The Cornucopia (The Clearing)', "Broodmother's Crag"], features: { cover: 0.2, elevation: true, chokepoint: true, shelterQuality: 0.1, acoustics: 1.25 } },
+            { name: 'The Nursery', terrain: 'forest', danger: 0.9, resources: 0.75, adjacent: ["Broodmother's Crag", 'Web Hollow'], features: { cover: 0.8, elevation: false, chokepoint: true, acoustics: 0.65, vertical: true } },
         ]
     },
     {
@@ -995,17 +995,17 @@ export const ARENAS: Arena[] = [
             'Exit|The Long Hall': { kind: 'hidden' },
         },
         zones: [
-            { name: 'The Cornucopia (Reception)', terrain: 'open', danger: 0.5, resources: 0.35, adjacent: ['The Yellow Halls', 'Office Level', 'The Long Hall'] },
-            { name: 'The Yellow Halls', terrain: 'open', danger: 0.55, resources: 0.2, adjacent: ['The Cornucopia (Reception)', 'The Carpet', 'The Stairwell', 'The Long Hall'] },
+            { name: 'The Cornucopia (Reception)', terrain: 'open', danger: 0.5, resources: 0.35, adjacent: ['The Yellow Halls', 'Office Level', 'The Long Hall'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.7, acoustics: 1.3 } },
+            { name: 'The Yellow Halls', terrain: 'open', danger: 0.55, resources: 0.2, adjacent: ['The Cornucopia (Reception)', 'The Carpet', 'The Stairwell', 'The Long Hall'], features: { cover: 0.3, elevation: false, chokepoint: true, shelterQuality: 0.7, acoustics: 1.5 } },
             // The carpet is damp. It is always damp. It is genuinely a wetland.
-            { name: 'The Carpet', terrain: 'wetland', danger: 0.5, resources: 0.4, adjacent: ['The Yellow Halls', 'Office Level', 'The Room With The Chair'] },
-            { name: 'Office Level', terrain: 'ruins', danger: 0.45, resources: 0.6, adjacent: ['The Cornucopia (Reception)', 'The Carpet', 'The Stairwell'], features: { cover: 0.7, elevation: false, chokepoint: false } },
-            { name: 'The Stairwell', terrain: 'ruins', danger: 0.6, resources: 0.15, adjacent: ['The Yellow Halls', 'Office Level', 'Sub-Level'], features: { cover: 0.4, elevation: true, chokepoint: true } },
-            { name: 'Sub-Level', terrain: 'ruins', danger: 0.7, resources: 0.45, adjacent: ['The Stairwell', 'The Flooded Floor', 'The Room With The Chair'] },
-            { name: 'The Flooded Floor', terrain: 'water', danger: 0.75, resources: 0.4, adjacent: ['Sub-Level', 'The Long Hall'] },
-            { name: 'The Room With The Chair', terrain: 'ruins', danger: 0.85, resources: 0.1, adjacent: ['The Carpet', 'Sub-Level'], features: { cover: 0.2, elevation: false, chokepoint: true } },
-            { name: 'The Long Hall', terrain: 'open', danger: 0.6, resources: 0.15, adjacent: ['The Cornucopia (Reception)', 'The Yellow Halls', 'The Flooded Floor', 'Exit'] },
-            { name: 'Exit', terrain: 'open', danger: 0.3, resources: 0.1, adjacent: ['The Long Hall'], features: { cover: 0.1, elevation: false, chokepoint: true } },
+            { name: 'The Carpet', terrain: 'wetland', danger: 0.5, resources: 0.4, adjacent: ['The Yellow Halls', 'Office Level', 'The Room With The Chair'], features: { cover: 0.2, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.6, acoustics: 0.6 } },
+            { name: 'Office Level', terrain: 'ruins', danger: 0.45, resources: 0.6, adjacent: ['The Cornucopia (Reception)', 'The Carpet', 'The Stairwell'], features: { cover: 0.7, elevation: false, chokepoint: false, shelterQuality: 0.8, acoustics: 0.75, vertical: true } },
+            { name: 'The Stairwell', terrain: 'ruins', danger: 0.6, resources: 0.15, adjacent: ['The Yellow Halls', 'Office Level', 'Sub-Level'], features: { cover: 0.4, elevation: true, chokepoint: true, shelterQuality: 0.7, acoustics: 1.55, vertical: true } },
+            { name: 'Sub-Level', terrain: 'ruins', danger: 0.7, resources: 0.45, adjacent: ['The Stairwell', 'The Flooded Floor', 'The Room With The Chair'], features: { cover: 0.5, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 1.4, vertical: true } },
+            { name: 'The Flooded Floor', terrain: 'water', danger: 0.75, resources: 0.4, adjacent: ['Sub-Level', 'The Long Hall'], features: { cover: 0.15, elevation: false, chokepoint: false, waterSource: false, shelterQuality: 0.5, acoustics: 1.35 } },
+            { name: 'The Room With The Chair', terrain: 'ruins', danger: 0.85, resources: 0.1, adjacent: ['The Carpet', 'Sub-Level'], features: { cover: 0.2, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 0.7 } },
+            { name: 'The Long Hall', terrain: 'open', danger: 0.6, resources: 0.15, adjacent: ['The Cornucopia (Reception)', 'The Yellow Halls', 'The Flooded Floor', 'Exit'], features: { cover: 0.15, elevation: false, chokepoint: true, shelterQuality: 0.7, acoustics: 1.5 } },
+            { name: 'Exit', terrain: 'open', danger: 0.3, resources: 0.1, adjacent: ['The Long Hall'], features: { cover: 0.1, elevation: false, chokepoint: true, shelterQuality: 0.5, acoustics: 1.25 } },
         ]
     },
     {
@@ -1036,23 +1036,23 @@ export const ARENAS: Arena[] = [
             'The Butte|The South Rim': { kind: 'collapsing', crossings: 2 },
         },
         zones: [
-            { name: 'The Cornucopia (The North Rim)', terrain: 'highland', danger: 0.55, resources: 0.3, adjacent: ['Rim Pinyon', 'The Bright Angel Descent'], features: { cover: 0.2, elevation: true, chokepoint: false } },
-            { name: 'Rim Pinyon', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['The Cornucopia (The North Rim)', 'The Bright Angel Descent'] },
+            { name: 'The Cornucopia (The North Rim)', terrain: 'highland', danger: 0.55, resources: 0.3, adjacent: ['Rim Pinyon', 'The Bright Angel Descent'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.1, acoustics: 1.3, vertical: true } },
+            { name: 'Rim Pinyon', terrain: 'forest', danger: 0.35, resources: 0.7, adjacent: ['The Cornucopia (The North Rim)', 'The Bright Angel Descent'], features: { cover: 0.6, elevation: true, chokepoint: false, acoustics: 0.75 } },
             // The only stair between two worlds. Everyone who wants water
             // walks it, and everyone knows everyone walks it.
-            { name: 'The Bright Angel Descent', terrain: 'highland', danger: 0.7, resources: 0.1, adjacent: ['The Cornucopia (The North Rim)', 'Rim Pinyon', 'Upper Bench'], features: { cover: 0.15, elevation: true, chokepoint: true } },
-            { name: 'Upper Bench', terrain: 'open', danger: 0.5, resources: 0.35, adjacent: ['The Bright Angel Descent', 'The Slot', 'Cliff Dwellings'] },
-            { name: 'The Slot', terrain: 'highland', danger: 0.85, resources: 0.15, adjacent: ['Upper Bench', 'The Wash'], features: { cover: 0.6, elevation: false, chokepoint: true } },
-            { name: 'Cliff Dwellings', terrain: 'ruins', danger: 0.45, resources: 0.6, adjacent: ['Upper Bench', 'Lower Bench'], features: { cover: 0.7, elevation: true, chokepoint: true } },
-            { name: 'Lower Bench', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Cliff Dwellings', 'The Wash', 'The River', 'The Seeps', 'The South Rim'] },
-            { name: 'The Wash', terrain: 'open', danger: 0.75, resources: 0.25, adjacent: ['The Slot', 'Lower Bench', 'The River'] },
+            { name: 'The Bright Angel Descent', terrain: 'highland', danger: 0.7, resources: 0.1, adjacent: ['The Cornucopia (The North Rim)', 'Rim Pinyon', 'Upper Bench'], features: { cover: 0.15, elevation: true, chokepoint: true, acoustics: 1.4, vertical: true } },
+            { name: 'Upper Bench', terrain: 'open', danger: 0.5, resources: 0.35, adjacent: ['The Bright Angel Descent', 'The Slot', 'Cliff Dwellings'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.1, acoustics: 1.3 } },
+            { name: 'The Slot', terrain: 'highland', danger: 0.85, resources: 0.15, adjacent: ['Upper Bench', 'The Wash'], features: { cover: 0.6, elevation: false, chokepoint: true, acoustics: 1.55, vertical: true } },
+            { name: 'Cliff Dwellings', terrain: 'ruins', danger: 0.45, resources: 0.6, adjacent: ['Upper Bench', 'Lower Bench'], features: { cover: 0.7, elevation: true, chokepoint: true, shelterQuality: 0.85, acoustics: 1.3, vertical: true } },
+            { name: 'Lower Bench', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['Cliff Dwellings', 'The Wash', 'The River', 'The Seeps', 'The South Rim'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.1, acoustics: 1.35 } },
+            { name: 'The Wash', terrain: 'open', danger: 0.75, resources: 0.25, adjacent: ['The Slot', 'Lower Bench', 'The River'], features: { cover: 0.3, elevation: false, chokepoint: true, shelterQuality: 0.1, acoustics: 1.4 } },
             // The one legal drink in the arena, and everybody knows it.
-            { name: 'The River', terrain: 'water', danger: 0.65, resources: 0.55, adjacent: ['The Wash', 'Lower Bench'] },
-            { name: 'The Seeps', terrain: 'water', danger: 0.7, resources: 0.4, adjacent: ['Lower Bench'], features: { cover: 0.5, elevation: false, chokepoint: true } },
-            { name: 'The South Rim', terrain: 'highland', danger: 0.5, resources: 0.25, adjacent: ['Lower Bench', 'The Butte'], features: { cover: 0.2, elevation: true, chokepoint: false } },
+            { name: 'The River', terrain: 'water', danger: 0.65, resources: 0.55, adjacent: ['The Wash', 'Lower Bench'], features: { cover: 0.15, elevation: false, chokepoint: false, waterSource: true, shelterQuality: 0.1, acoustics: 1.25 } },
+            { name: 'The Seeps', terrain: 'water', danger: 0.7, resources: 0.4, adjacent: ['Lower Bench'], features: { cover: 0.5, elevation: false, chokepoint: true, waterSource: true, acoustics: 1.35 } },
+            { name: 'The South Rim', terrain: 'highland', danger: 0.5, resources: 0.25, adjacent: ['Lower Bench', 'The Butte'], features: { cover: 0.2, elevation: true, chokepoint: false, shelterQuality: 0.1, acoustics: 1.3, vertical: true } },
             // A dead end in the sky. Getting up costs the rope; there is no
             // second rope for getting down.
-            { name: 'The Butte', terrain: 'highland', danger: 0.4, resources: 0.2, adjacent: ['The South Rim'], features: { cover: 0.3, elevation: true, chokepoint: true } },
+            { name: 'The Butte', terrain: 'highland', danger: 0.4, resources: 0.2, adjacent: ['The South Rim'], features: { cover: 0.3, elevation: true, chokepoint: true, shelterQuality: 0.15, acoustics: 1.35, vertical: true } },
         ]
     },
     {
@@ -1072,22 +1072,22 @@ export const ARENAS: Arena[] = [
             blooming: { label: 'the arboretum' },
         },
         zones: [
-            { name: 'The Cornucopia (The Plaza)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Feed Store', 'Big Cat Terrace', 'The Aviary', 'Elephant Paddock', 'Keeper\'s Yard'] },
+            { name: 'The Cornucopia (The Plaza)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Feed Store', 'Big Cat Terrace', 'The Aviary', 'Elephant Paddock', 'Keeper\'s Yard'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.1, acoustics: 1.25 } },
             // The larder everything in the park can smell. The refill law is
             // this zone's whole personality.
-            { name: 'The Feed Store', terrain: 'ruins', danger: 0.7, resources: 0.9, adjacent: ['The Cornucopia (The Plaza)', 'Keeper\'s Yard'], features: { cover: 0.5, elevation: false, chokepoint: true } },
-            { name: 'Big Cat Terrace', terrain: 'open', danger: 0.75, resources: 0.25, adjacent: ['The Cornucopia (The Plaza)', 'The Primate Wood', 'Bear Moat'], features: { cover: 0.3, elevation: true, chokepoint: false } },
-            { name: 'The Primate Wood', terrain: 'forest', danger: 0.55, resources: 0.6, adjacent: ['Big Cat Terrace', 'The Arboretum', 'Reptile House'] },
-            { name: 'Reptile House', terrain: 'ruins', danger: 0.8, resources: 0.3, adjacent: ['The Primate Wood', 'The Aquarium'], features: { cover: 0.6, elevation: false, chokepoint: true } },
-            { name: 'The Aviary', terrain: 'wetland', danger: 0.5, resources: 0.5, adjacent: ['The Cornucopia (The Plaza)', 'Elephant Paddock', 'The Aquarium'] },
-            { name: 'Elephant Paddock', terrain: 'open', danger: 0.45, resources: 0.4, adjacent: ['The Cornucopia (The Plaza)', 'The Aviary', 'The Perimeter Fence'] },
-            { name: 'The Aquarium', terrain: 'ruins', danger: 0.6, resources: 0.35, adjacent: ['Reptile House', 'The Aviary', 'Bear Moat'], features: { cover: 0.55, elevation: false, chokepoint: true } },
-            { name: 'Bear Moat', terrain: 'water', danger: 0.7, resources: 0.45, adjacent: ['Big Cat Terrace', 'The Aquarium', 'Quarantine'] },
-            { name: 'The Arboretum', terrain: 'forest', danger: 0.3, resources: 0.8, adjacent: ['The Primate Wood', 'Keeper\'s Yard'] },
-            { name: 'Keeper\'s Yard', terrain: 'ruins', danger: 0.4, resources: 0.55, adjacent: ['The Cornucopia (The Plaza)', 'The Feed Store', 'The Arboretum', 'Quarantine'] },
-            { name: 'The Perimeter Fence', terrain: 'open', danger: 0.5, resources: 0.15, adjacent: ['Elephant Paddock', 'Quarantine'] },
+            { name: 'The Feed Store', terrain: 'ruins', danger: 0.7, resources: 0.9, adjacent: ['The Cornucopia (The Plaza)', 'Keeper\'s Yard'], features: { cover: 0.5, elevation: false, chokepoint: true, shelterQuality: 0.8 } },
+            { name: 'Big Cat Terrace', terrain: 'open', danger: 0.75, resources: 0.25, adjacent: ['The Cornucopia (The Plaza)', 'The Primate Wood', 'Bear Moat'], features: { cover: 0.3, elevation: true, chokepoint: false, vertical: true } },
+            { name: 'The Primate Wood', terrain: 'forest', danger: 0.55, resources: 0.6, adjacent: ['Big Cat Terrace', 'The Arboretum', 'Reptile House'], features: { cover: 0.75, elevation: false, chokepoint: false, acoustics: 0.75, vertical: true } },
+            { name: 'Reptile House', terrain: 'ruins', danger: 0.8, resources: 0.3, adjacent: ['The Primate Wood', 'The Aquarium'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.85, acoustics: 1.3 } },
+            { name: 'The Aviary', terrain: 'wetland', danger: 0.5, resources: 0.5, adjacent: ['The Cornucopia (The Plaza)', 'Elephant Paddock', 'The Aquarium'], features: { cover: 0.5, elevation: false, chokepoint: true, waterSource: false, acoustics: 1.25, vertical: true } },
+            { name: 'Elephant Paddock', terrain: 'open', danger: 0.45, resources: 0.4, adjacent: ['The Cornucopia (The Plaza)', 'The Aviary', 'The Perimeter Fence'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
+            { name: 'The Aquarium', terrain: 'ruins', danger: 0.6, resources: 0.35, adjacent: ['Reptile House', 'The Aviary', 'Bear Moat'], features: { cover: 0.55, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 1.45, vertical: true } },
+            { name: 'Bear Moat', terrain: 'water', danger: 0.7, resources: 0.45, adjacent: ['Big Cat Terrace', 'The Aquarium', 'Quarantine'], features: { cover: 0.3, elevation: false, chokepoint: true, waterSource: false, acoustics: 1.3 } },
+            { name: 'The Arboretum', terrain: 'forest', danger: 0.3, resources: 0.8, adjacent: ['The Primate Wood', 'Keeper\'s Yard'], features: { cover: 0.8, elevation: false, chokepoint: false, acoustics: 0.7 } },
+            { name: 'Keeper\'s Yard', terrain: 'ruins', danger: 0.4, resources: 0.55, adjacent: ['The Cornucopia (The Plaza)', 'The Feed Store', 'The Arboretum', 'Quarantine'], features: { cover: 0.45, elevation: false, chokepoint: true, shelterQuality: 0.7 } },
+            { name: 'The Perimeter Fence', terrain: 'open', danger: 0.5, resources: 0.15, adjacent: ['Elephant Paddock', 'Quarantine'], features: { cover: 0.1, elevation: false, chokepoint: true, shelterQuality: 0.05 } },
             // Unlisted contents. Last on the schedule for a reason.
-            { name: 'Quarantine', terrain: 'ruins', danger: 0.9, resources: 0.5, adjacent: ['Bear Moat', 'Keeper\'s Yard', 'The Perimeter Fence'], features: { cover: 0.4, elevation: false, chokepoint: true } },
+            { name: 'Quarantine', terrain: 'ruins', danger: 0.9, resources: 0.5, adjacent: ['Bear Moat', 'Keeper\'s Yard', 'The Perimeter Fence'], features: { cover: 0.4, elevation: false, chokepoint: true, shelterQuality: 0.85, acoustics: 1.35 } },
         ]
     },
     {
@@ -1110,24 +1110,24 @@ export const ARENAS: Arena[] = [
             'The Spinning House|The Tower': { kind: 'oneWayAfter', from: 'The Spinning House', to: 'The Tower', after: 2 },
         },
         zones: [
-            { name: 'The Cornucopia (The Clearing)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Path', 'The Deep Wood', 'The Field of Stones'] },
+            { name: 'The Cornucopia (The Clearing)', terrain: 'open', danger: 0.55, resources: 0.35, adjacent: ['The Path', 'The Deep Wood', 'The Field of Stones'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.1 } },
             // The one honest road in the arena: low danger, and it goes
             // exactly where it says.
-            { name: 'The Path', terrain: 'forest', danger: 0.2, resources: 0.3, adjacent: ['The Cornucopia (The Clearing)', 'The Woodcutter\'s Cottage', 'Grandmother\'s Cottage'] },
-            { name: 'The Deep Wood', terrain: 'forest', danger: 0.7, resources: 0.6, adjacent: ['The Cornucopia (The Clearing)', 'The Gingerbread House', 'The Spinning House', 'The Bramble'], features: { cover: 0.8, elevation: false, chokepoint: false } },
-            { name: 'The Gingerbread House', terrain: 'ruins', danger: 0.75, resources: 0.85, adjacent: ['The Deep Wood', 'The Bramble'], features: { cover: 0.6, elevation: false, chokepoint: true } },
-            { name: 'The Woodcutter\'s Cottage', terrain: 'ruins', danger: 0.4, resources: 0.5, adjacent: ['The Path', 'The Millpond'] },
-            { name: 'The Spinning House', terrain: 'ruins', danger: 0.6, resources: 0.4, adjacent: ['The Deep Wood', 'The Tower'], features: { cover: 0.5, elevation: false, chokepoint: true } },
-            { name: 'The Millpond', terrain: 'water', danger: 0.6, resources: 0.5, adjacent: ['The Woodcutter\'s Cottage', 'The Well'] },
-            { name: 'The Well', terrain: 'water', danger: 0.65, resources: 0.3, adjacent: ['The Millpond', 'The Field of Stones', 'Grandmother\'s Cottage'], features: { cover: 0.2, elevation: false, chokepoint: true } },
-            { name: 'Grandmother\'s Cottage', terrain: 'ruins', danger: 0.5, resources: 0.55, adjacent: ['The Path', 'The Well'] },
-            { name: 'The Bramble', terrain: 'forest', danger: 0.9, resources: 0.45, adjacent: ['The Deep Wood', 'The Gingerbread House'], features: { cover: 0.9, elevation: false, chokepoint: true } },
-            { name: 'The Field of Stones', terrain: 'open', danger: 0.45, resources: 0.2, adjacent: ['The Cornucopia (The Clearing)', 'The Well', 'The Tower'] },
+            { name: 'The Path', terrain: 'forest', danger: 0.2, resources: 0.3, adjacent: ['The Cornucopia (The Clearing)', 'The Woodcutter\'s Cottage', 'Grandmother\'s Cottage'], features: { cover: 0.6, elevation: false, chokepoint: true, acoustics: 0.75 } },
+            { name: 'The Deep Wood', terrain: 'forest', danger: 0.7, resources: 0.6, adjacent: ['The Cornucopia (The Clearing)', 'The Gingerbread House', 'The Spinning House', 'The Bramble'], features: { cover: 0.8, elevation: false, chokepoint: false, acoustics: 0.6 } },
+            { name: 'The Gingerbread House', terrain: 'ruins', danger: 0.75, resources: 0.85, adjacent: ['The Deep Wood', 'The Bramble'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.85 } },
+            { name: 'The Woodcutter\'s Cottage', terrain: 'ruins', danger: 0.4, resources: 0.5, adjacent: ['The Path', 'The Millpond'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.9, acoustics: 0.75 } },
+            { name: 'The Spinning House', terrain: 'ruins', danger: 0.6, resources: 0.4, adjacent: ['The Deep Wood', 'The Tower'], features: { cover: 0.5, elevation: false, chokepoint: true, shelterQuality: 0.85, vertical: true } },
+            { name: 'The Millpond', terrain: 'water', danger: 0.6, resources: 0.5, adjacent: ['The Woodcutter\'s Cottage', 'The Well'], features: { cover: 0.2, elevation: false, chokepoint: false, waterSource: true, shelterQuality: 0.1 } },
+            { name: 'The Well', terrain: 'water', danger: 0.65, resources: 0.3, adjacent: ['The Millpond', 'The Field of Stones', 'Grandmother\'s Cottage'], features: { cover: 0.2, elevation: false, chokepoint: true, waterSource: true, acoustics: 1.5, vertical: true } },
+            { name: 'Grandmother\'s Cottage', terrain: 'ruins', danger: 0.5, resources: 0.55, adjacent: ['The Path', 'The Well'], features: { cover: 0.65, elevation: false, chokepoint: true, shelterQuality: 0.9, acoustics: 0.75 } },
+            { name: 'The Bramble', terrain: 'forest', danger: 0.9, resources: 0.45, adjacent: ['The Deep Wood', 'The Gingerbread House'], features: { cover: 0.9, elevation: false, chokepoint: true, acoustics: 0.65 } },
+            { name: 'The Field of Stones', terrain: 'open', danger: 0.45, resources: 0.2, adjacent: ['The Cornucopia (The Clearing)', 'The Well', 'The Tower'], features: { cover: 0.15, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 1.25 } },
             // The Tower's bargain (locking somebody in) has no transit
             // machinery to hang on, so the Tower pays out in resources
             // instead: the best-stocked room in the wood, at the top of the
             // most obvious climb.
-            { name: 'The Tower', terrain: 'ruins', danger: 0.55, resources: 0.8, adjacent: ['The Spinning House', 'The Field of Stones'], features: { cover: 0.4, elevation: true, chokepoint: true } },
+            { name: 'The Tower', terrain: 'ruins', danger: 0.55, resources: 0.8, adjacent: ['The Spinning House', 'The Field of Stones'], features: { cover: 0.4, elevation: true, chokepoint: true, shelterQuality: 0.85, acoustics: 1.4, vertical: true } },
         ]
     },
     // ---- §13.3: three hand-authored arenas -------------------------------
@@ -1157,21 +1157,21 @@ export const ARENAS: Arena[] = [
         // Breaking trail through chest-high drifts with no cover at all.
         edgeRules: { 'The Snowed Road|Treeline Approach': { kind: 'tolled', toll: { fatigue: 9, woundChance: 0.15 } } },
         zones: [
-            { name: 'The Cornucopia (Dooryard)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Porch', 'The Woodshed', 'The Frozen Well', 'The Barn'] },
+            { name: 'The Cornucopia (Dooryard)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Porch', 'The Woodshed', 'The Frozen Well', 'The Barn'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.1, acoustics: 0.75 } },
             { name: 'The Porch', terrain: 'ruins', danger: 0.5, resources: 0.2, adjacent: ['The Cornucopia (Dooryard)', 'Front Room'], features: { cover: 0.3, elevation: false, chokepoint: true, shelterQuality: 0.5 } },
             // The interior: thin walls, a stove that can be lit, and no way in
             // that is not watched from somewhere.
             { name: 'Front Room', terrain: 'ruins', danger: 0.55, resources: 0.4, adjacent: ['The Porch', 'Kitchen', 'The Loft'], features: { cover: 0.55, elevation: false, chokepoint: false, shelterQuality: 0.95, acoustics: 0.8 } },
             { name: 'Kitchen', terrain: 'ruins', danger: 0.45, resources: 0.65, adjacent: ['Front Room', 'The Root Cellar', 'The Back Door'], features: { cover: 0.5, elevation: false, chokepoint: false, shelterQuality: 0.95, acoustics: 0.8 } },
-            { name: 'The Root Cellar', terrain: 'ruins', danger: 0.4, resources: 0.9, adjacent: ['Kitchen'], features: { cover: 0.7, elevation: false, chokepoint: true, shelterQuality: 1, acoustics: 0.7 } },
-            { name: 'The Loft', terrain: 'ruins', danger: 0.35, resources: 0.3, adjacent: ['Front Room'], features: { cover: 0.4, elevation: true, chokepoint: true, shelterQuality: 0.9 } },
+            { name: 'The Root Cellar', terrain: 'ruins', danger: 0.4, resources: 0.9, adjacent: ['Kitchen'], features: { cover: 0.7, elevation: false, chokepoint: true, shelterQuality: 1, acoustics: 0.7, vertical: true } },
+            { name: 'The Loft', terrain: 'ruins', danger: 0.35, resources: 0.3, adjacent: ['Front Room'], features: { cover: 0.4, elevation: true, chokepoint: true, shelterQuality: 0.9, acoustics: 0.75, vertical: true } },
             { name: 'The Woodshed', terrain: 'ruins', danger: 0.6, resources: 0.55, adjacent: ['The Cornucopia (Dooryard)', 'The Barn', 'The Back Door'], features: { cover: 0.45, elevation: false, chokepoint: false, shelterQuality: 0.6 } },
-            { name: 'The Barn', terrain: 'ruins', danger: 0.7, resources: 0.5, adjacent: ['The Cornucopia (Dooryard)', 'The Woodshed', 'Treeline Approach'], features: { cover: 0.5, elevation: false, chokepoint: false, shelterQuality: 0.7, acoustics: 1.3 } },
+            { name: 'The Barn', terrain: 'ruins', danger: 0.7, resources: 0.5, adjacent: ['The Cornucopia (Dooryard)', 'The Woodshed', 'Treeline Approach'], features: { cover: 0.5, elevation: false, chokepoint: false, shelterQuality: 0.7, acoustics: 1.3, vertical: true } },
             { name: 'The Back Door', terrain: 'open', danger: 0.65, resources: 0.15, adjacent: ['Kitchen', 'The Woodshed', 'The Frozen Well'], features: { cover: 0.15, elevation: false, chokepoint: true, shelterQuality: 0.15 } },
-            { name: 'The Frozen Well', terrain: 'water', danger: 0.5, resources: 0.45, adjacent: ['The Cornucopia (Dooryard)', 'The Back Door'], features: { cover: 0.1, elevation: false, chokepoint: false, waterSource: true, shelterQuality: 0.1 } },
+            { name: 'The Frozen Well', terrain: 'water', danger: 0.5, resources: 0.45, adjacent: ['The Cornucopia (Dooryard)', 'The Back Door'], features: { cover: 0.1, elevation: false, chokepoint: false, waterSource: true, shelterQuality: 0.1, acoustics: 0.7 } },
             { name: 'Treeline Approach', terrain: 'forest', danger: 0.75, resources: 0.6, adjacent: ['The Barn', 'The Snowed Road'], features: { cover: 0.75, elevation: false, chokepoint: false, shelterQuality: 0.35, acoustics: 0.65 } },
             // The buried way out that isn't one.
-            { name: 'The Snowed Road', terrain: 'open', danger: 0.85, resources: 0.05, adjacent: ['Treeline Approach'], features: { cover: 0.05, elevation: false, chokepoint: false, shelterQuality: 0.05 } },
+            { name: 'The Snowed Road', terrain: 'open', danger: 0.85, resources: 0.05, adjacent: ['Treeline Approach'], features: { cover: 0.05, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.65 } },
         ]
     },
     {
@@ -1195,21 +1195,21 @@ export const ARENAS: Arena[] = [
         // §5: the crater rim closes around the horn on three sides.
         cornucopiaLayout: 'walled',
         zones: [
-            { name: 'The Cornucopia (Crater Rim)', terrain: 'highland', danger: 0.6, resources: 0.3, adjacent: ['The Ash-Choked Stair', 'The Outer Gallery'] },
-            { name: 'The Ash-Choked Stair', terrain: 'highland', danger: 0.55, resources: 0.15, adjacent: ['The Cornucopia (Crater Rim)', 'The Outer Gallery', 'The Steam Vents'], features: { cover: 0.2, elevation: true, chokepoint: true, acoustics: 1.45 } },
-            { name: 'The Outer Gallery', terrain: 'ruins', danger: 0.45, resources: 0.4, adjacent: ['The Cornucopia (Crater Rim)', 'The Ash-Choked Stair', 'The Condensation Cistern', 'The Bat Colony', 'The Long Way Round'] },
-            { name: 'The Condensation Cistern', terrain: 'water', danger: 0.5, resources: 0.55, adjacent: ['The Outer Gallery', 'The Sulfur Shelf'], features: { cover: 0.25, elevation: false, chokepoint: true, waterSource: true } },
-            { name: 'The Steam Vents', terrain: 'ruins', danger: 0.75, resources: 0.35, adjacent: ['The Ash-Choked Stair', 'The Sulfur Shelf', 'The Upper Throat'] },
-            { name: 'The Sulfur Shelf', terrain: 'highland', danger: 0.7, resources: 0.25, adjacent: ['The Condensation Cistern', 'The Steam Vents', 'The Bat Colony'] },
+            { name: 'The Cornucopia (Crater Rim)', terrain: 'highland', danger: 0.6, resources: 0.3, adjacent: ['The Ash-Choked Stair', 'The Outer Gallery'], features: { cover: 0.15, elevation: true, chokepoint: false, shelterQuality: 0.1, acoustics: 1.25, vertical: true } },
+            { name: 'The Ash-Choked Stair', terrain: 'highland', danger: 0.55, resources: 0.15, adjacent: ['The Cornucopia (Crater Rim)', 'The Outer Gallery', 'The Steam Vents'], features: { cover: 0.2, elevation: true, chokepoint: true, acoustics: 1.45, vertical: true } },
+            { name: 'The Outer Gallery', terrain: 'ruins', danger: 0.45, resources: 0.4, adjacent: ['The Cornucopia (Crater Rim)', 'The Ash-Choked Stair', 'The Condensation Cistern', 'The Bat Colony', 'The Long Way Round'], features: { cover: 0.5, elevation: false, chokepoint: false, shelterQuality: 0.7, acoustics: 1.4, vertical: true } },
+            { name: 'The Condensation Cistern', terrain: 'water', danger: 0.5, resources: 0.55, adjacent: ['The Outer Gallery', 'The Sulfur Shelf'], features: { cover: 0.25, elevation: false, chokepoint: true, waterSource: true, acoustics: 1.4 } },
+            { name: 'The Steam Vents', terrain: 'ruins', danger: 0.75, resources: 0.35, adjacent: ['The Ash-Choked Stair', 'The Sulfur Shelf', 'The Upper Throat'], features: { cover: 0.35, elevation: false, chokepoint: true, shelterQuality: 0.5, acoustics: 0.75 } },
+            { name: 'The Sulfur Shelf', terrain: 'highland', danger: 0.7, resources: 0.25, adjacent: ['The Condensation Cistern', 'The Steam Vents', 'The Bat Colony'], features: { cover: 0.3, elevation: true, chokepoint: false, acoustics: 1.3, vertical: true } },
             { name: 'The Bat Colony', terrain: 'forest', danger: 0.5, resources: 0.7, adjacent: ['The Outer Gallery', 'The Sulfur Shelf', 'The Upper Throat'], features: { cover: 0.85, elevation: false, chokepoint: false, acoustics: 1.2, vertical: true } },
-            { name: 'The Upper Throat', terrain: 'ruins', danger: 0.8, resources: 0.3, adjacent: ['The Steam Vents', 'The Bat Colony', 'The Ember Shaft'], features: { cover: 0.2, elevation: false, chokepoint: true, acoustics: 1.5 } },
+            { name: 'The Upper Throat', terrain: 'ruins', danger: 0.8, resources: 0.3, adjacent: ['The Steam Vents', 'The Bat Colony', 'The Ember Shaft'], features: { cover: 0.2, elevation: false, chokepoint: true, acoustics: 1.5, vertical: true } },
             // §5.1: one named place with a height to it — the descent happens inside
             // this zone rather than between two of them.
-            { name: 'The Ember Shaft', terrain: 'highland', danger: 0.85, resources: 0.2, adjacent: ['The Upper Throat', 'Lower Throat'], features: { cover: 0.1, elevation: true, chokepoint: true, vertical: true } },
-            { name: 'Lower Throat', terrain: 'ruins', danger: 0.9, resources: 0.5, adjacent: ['The Ember Shaft', 'The Lava Lake Antechamber', 'The Long Way Round'] },
+            { name: 'The Ember Shaft', terrain: 'highland', danger: 0.85, resources: 0.2, adjacent: ['The Upper Throat', 'Lower Throat'], features: { cover: 0.1, elevation: true, chokepoint: true, acoustics: 1.5, vertical: true } },
+            { name: 'Lower Throat', terrain: 'ruins', danger: 0.9, resources: 0.5, adjacent: ['The Ember Shaft', 'The Lava Lake Antechamber', 'The Long Way Round'], features: { cover: 0.3, elevation: false, chokepoint: true, acoustics: 1.5, vertical: true } },
             // Best resources, worst danger, and only one way back out of it.
-            { name: 'The Lava Lake Antechamber', terrain: 'open', danger: 1, resources: 0.95, adjacent: ['Lower Throat'], features: { cover: 0.15, elevation: false, chokepoint: true, acoustics: 1.5 } },
-            { name: 'The Long Way Round', terrain: 'ruins', danger: 0.65, resources: 0.35, adjacent: ['Lower Throat', 'The Outer Gallery'] },
+            { name: 'The Lava Lake Antechamber', terrain: 'open', danger: 1, resources: 0.95, adjacent: ['Lower Throat'], features: { cover: 0.15, elevation: false, chokepoint: true, shelterQuality: 0.3, acoustics: 1.5 } },
+            { name: 'The Long Way Round', terrain: 'ruins', danger: 0.65, resources: 0.35, adjacent: ['Lower Throat', 'The Outer Gallery'], features: { cover: 0.6, elevation: false, chokepoint: true, shelterQuality: 0.7, acoustics: 1.3 } },
         ]
     },
     {
@@ -1230,18 +1230,18 @@ export const ARENAS: Arena[] = [
         // A steep, wet flowstone squeeze: a narrow crawl into a vast dark room.
         edgeRules: { 'The Cathedral|The Weeping Wall': { kind: 'tolled', toll: { fatigue: 11 } } },
         zones: [
-            { name: 'The Cornucopia (Sinkhole Floor)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Drip Gallery', 'The Glowmoss Hollow', 'The Bat Roost'], features: { cover: 0.2, elevation: false, chokepoint: false, acoustics: 1.4 } },
-            { name: 'The Drip Gallery', terrain: 'ruins', danger: 0.45, resources: 0.3, adjacent: ['The Cornucopia (Sinkhole Floor)', 'The Bone Passage', 'The Weeping Wall'], features: { cover: 0.35, elevation: false, chokepoint: false, acoustics: 1.45 } },
-            { name: 'The Glowmoss Hollow', terrain: 'forest', danger: 0.4, resources: 0.85, adjacent: ['The Cornucopia (Sinkhole Floor)', 'The Bat Roost', 'The Siphon Passage'], features: { cover: 0.6, elevation: false, chokepoint: false, acoustics: 0.75 } },
-            { name: 'The Bat Roost', terrain: 'forest', danger: 0.55, resources: 0.6, adjacent: ['The Cornucopia (Sinkhole Floor)', 'The Glowmoss Hollow', 'The Bone Passage'], features: { cover: 0.85, elevation: true, chokepoint: false, acoustics: 1.2 } },
-            { name: 'The Bone Passage', terrain: 'ruins', danger: 0.65, resources: 0.4, adjacent: ['The Drip Gallery', 'The Bat Roost', 'The Black Gallery'], features: { cover: 0.4, elevation: false, chokepoint: true, acoustics: 1.5 } },
-            { name: 'The Weeping Wall', terrain: 'water', danger: 0.6, resources: 0.45, adjacent: ['The Drip Gallery', 'The Cathedral', 'The Undermere'], features: { cover: 0.25, elevation: true, chokepoint: true, waterSource: true, acoustics: 1.1 } },
+            { name: 'The Cornucopia (Sinkhole Floor)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Drip Gallery', 'The Glowmoss Hollow', 'The Bat Roost'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.4, acoustics: 1.4, vertical: true } },
+            { name: 'The Drip Gallery', terrain: 'ruins', danger: 0.45, resources: 0.3, adjacent: ['The Cornucopia (Sinkhole Floor)', 'The Bone Passage', 'The Weeping Wall'], features: { cover: 0.35, elevation: false, chokepoint: false, waterSource: true, shelterQuality: 0.8, acoustics: 1.45, vertical: true } },
+            { name: 'The Glowmoss Hollow', terrain: 'forest', danger: 0.4, resources: 0.85, adjacent: ['The Cornucopia (Sinkhole Floor)', 'The Bat Roost', 'The Siphon Passage'], features: { cover: 0.6, elevation: false, chokepoint: false, shelterQuality: 0.85, acoustics: 0.75 } },
+            { name: 'The Bat Roost', terrain: 'forest', danger: 0.55, resources: 0.6, adjacent: ['The Cornucopia (Sinkhole Floor)', 'The Glowmoss Hollow', 'The Bone Passage'], features: { cover: 0.85, elevation: true, chokepoint: false, shelterQuality: 0.8, acoustics: 1.2, vertical: true } },
+            { name: 'The Bone Passage', terrain: 'ruins', danger: 0.65, resources: 0.4, adjacent: ['The Drip Gallery', 'The Bat Roost', 'The Black Gallery'], features: { cover: 0.4, elevation: false, chokepoint: true, shelterQuality: 0.8, acoustics: 1.5 } },
+            { name: 'The Weeping Wall', terrain: 'water', danger: 0.6, resources: 0.45, adjacent: ['The Drip Gallery', 'The Cathedral', 'The Undermere'], features: { cover: 0.25, elevation: true, chokepoint: true, waterSource: true, acoustics: 1.1, vertical: true } },
             // §5.1: the flowstone squeeze comes in high; the floor is a long way
             // under it, and in the dark that is two different places.
-            { name: 'The Cathedral', terrain: 'open', danger: 0.8, resources: 0.2, adjacent: ['The Weeping Wall', 'The Black Gallery'], features: { cover: 0.05, elevation: false, chokepoint: false, acoustics: 1.6, vertical: true } },
-            { name: 'The Black Gallery', terrain: 'ruins', danger: 0.9, resources: 0.55, adjacent: ['The Bone Passage', 'The Cathedral', 'The Undermere'], features: { cover: 0.3, elevation: false, chokepoint: false, acoustics: 1.55 } },
-            { name: 'The Undermere', terrain: 'water', danger: 0.7, resources: 0.65, adjacent: ['The Weeping Wall', 'The Black Gallery', 'The Siphon Passage'], features: { cover: 0.2, elevation: false, chokepoint: false, waterSource: true, acoustics: 1.3 } },
-            { name: 'The Siphon Passage', terrain: 'wetland', danger: 0.75, resources: 0.3, adjacent: ['The Glowmoss Hollow', 'The Undermere'], features: { cover: 0.3, elevation: false, chokepoint: true, acoustics: 1.2 } },
+            { name: 'The Cathedral', terrain: 'open', danger: 0.8, resources: 0.2, adjacent: ['The Weeping Wall', 'The Black Gallery'], features: { cover: 0.05, elevation: false, chokepoint: false, shelterQuality: 0.7, acoustics: 1.6, vertical: true } },
+            { name: 'The Black Gallery', terrain: 'ruins', danger: 0.9, resources: 0.55, adjacent: ['The Bone Passage', 'The Cathedral', 'The Undermere'], features: { cover: 0.3, elevation: false, chokepoint: false, shelterQuality: 0.8, acoustics: 1.55, vertical: true } },
+            { name: 'The Undermere', terrain: 'water', danger: 0.7, resources: 0.65, adjacent: ['The Weeping Wall', 'The Black Gallery', 'The Siphon Passage'], features: { cover: 0.2, elevation: false, chokepoint: false, waterSource: true, shelterQuality: 0.5, acoustics: 1.3 } },
+            { name: 'The Siphon Passage', terrain: 'wetland', danger: 0.75, resources: 0.3, adjacent: ['The Glowmoss Hollow', 'The Undermere'], features: { cover: 0.3, elevation: false, chokepoint: true, waterSource: true, shelterQuality: 0.6, acoustics: 1.2 } },
         ]
     },
 ];

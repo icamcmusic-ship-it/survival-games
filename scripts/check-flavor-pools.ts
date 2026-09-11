@@ -74,6 +74,37 @@ arenaPools.slice(0, 12).forEach(([id, n]) => console.log(`   ${n < POOL_TARGET ?
 if (arenaPools.length > 12) console.log(`     … ${arenaPools.length - 12} more at or above the thinnest listed`);
 console.log(`   ${thinArenas.length} arena pack(s) under the target; generic fallback carries ${GENERIC_ARENA_FLAVOR.events.length}.`);
 
+/**
+ * §7.4a (audit): the floor became the target. Thirty-seven of forty packs
+ * sat at exactly 24 — the signature of content written to satisfy a check
+ * rather than to fill a run of ~650 lines. So the two are split: the hard
+ * floor stays a build failure, and a *soft target* above it is reported as
+ * distance-to-go, never failed. Once-per-run events are counted separately
+ * because they are what makes one run of an arena differ from the next, and
+ * 'Every Door' is only reachable in an arena carrying at least two.
+ */
+const ARENA_EVENT_FLOOR = 24;
+const ARENA_EVENT_TARGET = 40;
+const ONCE_PER_RUN_FLOOR = 2;
+const authoredArenaPools = Object.entries(ARENA_FLAVOR)
+    .map(([id, flavor]) => ({
+        id,
+        events: flavor.events.length,
+        once: flavor.events.filter(e => e.oncePerRun && e.id).length,
+        chains: flavor.events.filter(e => e.chain).length,
+    }))
+    .sort((a, b) => a.events - b.events);
+const underFloor = authoredArenaPools.filter(p => p.events < ARENA_EVENT_FLOOR);
+const underTarget = authoredArenaPools.filter(p => p.events < ARENA_EVENT_TARGET);
+const noOnce = authoredArenaPools.filter(p => p.once < ONCE_PER_RUN_FLOOR);
+const atFloorExactly = authoredArenaPools.filter(p => p.events === ARENA_EVENT_FLOOR).length;
+console.log(`\narena packs: hard floor ${ARENA_EVENT_FLOOR}, soft target ${ARENA_EVENT_TARGET}, once-per-run floor ${ONCE_PER_RUN_FLOOR}`);
+console.log(`   thinnest: ${authoredArenaPools.slice(0, 5).map(p => `${p.id} ${p.events} (${p.once} once, ${p.chains} chains)`).join(', ')}`);
+console.log(`   ${underTarget.length} pack(s) under the soft target, ${atFloorExactly} sitting exactly on the floor, `
+    + `${authoredArenaPools.reduce((s, p) => s + Math.max(0, ARENA_EVENT_TARGET - p.events), 0)} events to go across the roster.`);
+underFloor.forEach(p => structuralProblems.push(`arena '${p.id}': ${p.events} authored events, under the hard floor of ${ARENA_EVENT_FLOOR}`));
+noOnce.forEach(p => structuralProblems.push(`arena '${p.id}': ${p.once} once-per-run event(s), under the floor of ${ONCE_PER_RUN_FLOOR} — 'Every Door' cannot fire here`));
+
 // §8/§11.3: interview scenarios, bucketed per persona. A persona with a thin
 // scenario pool now fails the build exactly the way a thin arena pool does.
 /**

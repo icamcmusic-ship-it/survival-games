@@ -19,7 +19,11 @@
     "test:names": "tsx scripts/check-names.ts",
     "test:flavor": "tsx scripts/check-flavor-pools.ts",
     "test:ui": "node scripts/ui-test.mjs",
-    "test:achievements": "tsx scripts/check-achievements.ts"
+    "test:achievements": "tsx scripts/check-achievements.ts",
+    "test:predicates": "tsx scripts/check-predicates.ts",
+    "test:zone-features": "tsx scripts/check-zone-features.ts",
+    "test:decisions": "tsx scripts/check-decisions.ts",
+    "audit": "npm audit --audit-level=high"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",

@@ -100,6 +100,46 @@ export function stripZoneClause(text: string, zone: string): string {
  * the column, names the tribute and their district, and carries the portrait
  * slot the roster screens use.
  */
+/**
+ * §2.1 (audit): the causal chain behind a death, from what the tribute
+ * already carries. A run is ~650 lines of prose and the question a spectator
+ * asks of a death is always "why did that happen?" — the stance they were
+ * in, what they were trying to do, the wounds they were carrying, how they
+ * felt about whoever killed them, and what their own scorer was weighing.
+ * Nothing here is newly simulated; it is the record, read back.
+ */
+function deathWhy(victim: Tribute, log: EventLog, cast?: Tribute[]): string[] {
+    const facts: string[] = [];
+    if (victim.causeOfDeath) facts.push(victim.causeOfDeath);
+    facts.push(`Stance at the time: ${victim.stance.toLowerCase()}.`);
+    const trace = victim.decisionTrace;
+    if (trace?.forced) facts.push(`They were not choosing: ${trace.forced}.`);
+    else if (trace?.stances[0]?.reasons.length) {
+        facts.push(`Why that stance: ${trace.stances[0].reasons.map(r => r.label).join(', ')}.`);
+    }
+    if (trace?.objectives?.[0]) facts.push(`Trying to: ${trace.objectives[0].label.toLowerCase()}.`);
+    const wounds = (Object.entries(victim.injuries) as Array<[string, boolean]>)
+        .filter(([, on]) => on).map(([k]) => k);
+    if (wounds.length > 0) facts.push(`Carrying: ${wounds.join(', ')}.`);
+    if (victim.health <= 0 && victim.vitals) {
+        const drains: string[] = [];
+        if (victim.vitals.thirst >= 70) drains.push('parched');
+        if (victim.vitals.hunger >= 70) drains.push('starving');
+        if (victim.vitals.fatigue >= 80) drains.push('exhausted');
+        if (drains.length > 0) facts.push(`Vitals: ${drains.join(', ')}.`);
+    }
+    const killer = cast?.find(t => t.id !== victim.id && log.tributesInvolved.includes(t.id));
+    if (killer) {
+        const regard = victim.relationships[killer.id] ?? 0;
+        const read = regard >= 40 ? 'someone they trusted' : regard >= 10 ? 'someone they were warm to'
+            : regard <= -40 ? 'someone they hated' : regard <= -10 ? 'someone they disliked' : 'a stranger';
+        const betrayed = victim.memory?.betrayedBy?.includes(killer.id);
+        facts.push(`${killer.name} was ${read}${betrayed ? ', and had betrayed them before' : ''} (regard ${Math.round(regard)}).`);
+        if (victim.allianceId !== undefined && victim.allianceId === killer.allianceId) facts.push('They were allies.');
+    }
+    return facts.slice(0, 6);
+}
+
 function DeathCard({ log, tribute, animate, cast, onSelectTribute }: {
     log: EventLog;
     tribute?: Tribute;
@@ -108,6 +148,7 @@ function DeathCard({ log, tribute, animate, cast, onSelectTribute }: {
     onSelectTribute?: (id: string) => void;
 }) {
     const meta = categoryMeta(log.category);
+    const why = tribute ? deathWhy(tribute, log, cast) : [];
     return (
         // §2.5: the death interstitial breaks the column visually and was not
         // announced at all — a screen-reader user got the most significant
@@ -149,6 +190,14 @@ function DeathCard({ log, tribute, animate, cast, onSelectTribute }: {
                     <p className="text-sm mt-1 text-[var(--color-ink-200)] leading-snug">
                         {withTributeLinks(log.text, cast, log.tributesInvolved, onSelectTribute)}
                     </p>
+                    {why.length > 0 && (
+                        <details className="mt-1.5 text-xs text-[var(--color-ink-400)]">
+                            <summary className="cursor-pointer eyebrow inline-block">Why?</summary>
+                            <ul className="mt-1 space-y-0.5 list-disc pl-4">
+                                {why.map((fact, i) => <li key={i}>{fact}</li>)}
+                            </ul>
+                        </details>
+                    )}
                 </div>
             </div>
         </div>

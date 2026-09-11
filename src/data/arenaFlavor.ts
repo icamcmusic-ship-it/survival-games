@@ -1,6 +1,7 @@
 import { Arena, ArenaLawId, Attributes, Stance, Terrain, ZoneEffectKind } from '../models/types';
 import type { SanityBand } from '../engine/sanityBands';
 import { proceduralArenaFlavor } from './proceduralFlavor';
+import { EXTRA_ARENA_EVENTS } from './arenaEvents';
 
 /**
  * Arena-specific colour: every arena gets its own hazards, its own idle
@@ -14643,6 +14644,14 @@ const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         sanity: -8,
     },
 ];
+
+// §7.4: fold the per-group extra event files into the authored packs once,
+// at load, so every reader of `ARENA_FLAVOR[id].events` (the picker, the
+// achievements, the coverage scripts) sees one pool.
+for (const [id, events] of Object.entries(EXTRA_ARENA_EVENTS)) {
+    const pack = ARENA_FLAVOR[id];
+    if (pack) pack.events = [...pack.events, ...events];
+}
 
 export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {
     // A procedural arena has no hand-authored entry here — it used to fall

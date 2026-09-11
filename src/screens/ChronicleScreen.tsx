@@ -89,6 +89,25 @@ function readDeepLink(): { day: number; phase: string } | null {
     return { day, phase };
 }
 
+function CopyPageLink({ page }: { page: Page }) {
+    const [state, setState] = useState<'idle' | 'ok' | 'fail'>('idle');
+    const url = `${window.location.origin}${window.location.pathname}${window.location.search}#/chronicle?day=${page.day}&phase=${page.phase}`;
+    return (
+        <button
+            type="button"
+            className="btn btn-sm btn-ghost text-[11px]"
+            aria-label={`Copy a link to ${page.label}`}
+            title="Copy a link straight to this page of the chronicle"
+            onClick={() => {
+                navigator.clipboard?.writeText(url).then(() => setState('ok')).catch(() => setState('fail'));
+                setTimeout(() => setState('idle'), 1500);
+            }}
+        >
+            {state === 'ok' ? 'Link copied' : state === 'fail' ? 'Copy failed' : 'Copy link'}
+        </button>
+    );
+}
+
 function writeDeepLink(page: Page | undefined) {
     if (!page) return;
     const url = `${window.location.pathname}${window.location.search}#/chronicle?day=${page.day}&phase=${page.phase}`;
@@ -276,6 +295,10 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
             <header className="panel p-5 flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h2 className="display-title text-3xl">{page?.label ?? 'THE CHRONICLE'}</h2>
+                    {/* §2.4 (audit): the deep link existed and nothing pointed
+                        at it. One button per page, so a moment in the record
+                        is a thing that can be sent. */}
+                    {page && <CopyPageLink page={page} />}
                     <p className="text-[var(--color-ink-400)] text-sm mt-1">
                         {arenaSealed ? '❓ Arena sealed' : gameState.arena.name}
                         {' · '}{survivorsAtPage} still standing

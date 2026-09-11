@@ -1,5 +1,6 @@
 import { forceTriangleChoice } from '../triangles';
 import { SimContext, getAlive } from '../context';
+import { tickRunRecords } from '../runRecords';
 import { RNG } from '../../utils/rng';
 import { GameState, Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
@@ -459,6 +460,9 @@ export function processFeast(ctx: SimContext) {
             { important: true, zone: cornucopia, category: 'feast' }
         );
     }
+    // §1.3: the feast is the one place everybody is in the same zone by
+    // design, and the run-record differ never observed it.
+    tickRunRecords(ctx);
 }
 
 /**

@@ -1,5 +1,5 @@
 import { Item, Tribute, TruceReason } from '../models/types';
-import { COMPOSURE, INTEL, PARLEY, PROFICIENCY, RESPECT, ROMANCE } from '../data/balance';
+import { COMPOSURE, INTEL, PARLEY, PROFICIENCY, RELATIONSHIPS, RESPECT, ROMANCE } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { PARLEY_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
@@ -8,7 +8,7 @@ import { SimContext, getAlive } from './context';
 import { tradeReputations } from './notoriety';
 import { tradeRumours } from './rumours';
 import { assessZone } from './stance';
-import { adjustMutual, adjustRel, getRel, respectOf, trustOf } from './relationships';
+import { adjustMutual, adjustRel, adjustTrust, getRel, respectOf, trustOf } from './relationships';
 import { addZoneThreat, cycleOf, ensureMemory, lieAboutZone, noteStoodBy, raiseSuspicion, rememberedThreat, shareZoneIntel, swearVengeance } from './memory';
 import { areLovers, maintainPerformance } from './alliance';
 import { earnTrait } from './earnedTraits';
@@ -61,7 +61,24 @@ export function hasTruce(state: { cycle?: number }, t: Tribute, otherId: string)
  * two people who are not them — needs a way to write a truce that
  * `declareTruce`'s parley-local shape does not offer.
  */
+/**
+ * §1.4 (audit): process-wide count of truce terms opened, for the soak's
+ * ledger. Not state — never saved — and counted at the two sites that write
+ * a truce rather than by matching prose, so a brokered or bought truce that
+ * never printed a 'TRUCE:' line is still a term the ledger has to close.
+ */
+export const TRUCE_LEDGER = {
+    struck: 0,
+    // Every way a term ends, counted at the site rather than by matching
+    // prose, so the soak's closure assertion cannot rot when a line is
+    // reworded. `renewed` both closes a term and opens the next.
+    renewed: 0, lapsed: 0, turned: 0, broken: 0, outlived: 0, buried: 0, dissolved: 0, standingAtEnd: 0,
+};
+
 export function grantTruce(ctx: SimContext, a: Tribute, b: Tribute, cycles: number, reason: TruceReason = 'brokered') {
+    // Re-granting over a standing truce (a retainer paid again, a Diplomat
+    // brokering the same pair twice) extends one term rather than opening two.
+    if (a.truces?.[b.id] === undefined && b.truces?.[a.id] === undefined) TRUCE_LEDGER.struck++;
     const until = cycleOf(ctx.state) + cycles;
     a.truces = { ...(a.truces ?? {}), [b.id]: until };
     b.truces = { ...(b.truces ?? {}), [a.id]: until };
@@ -98,6 +115,9 @@ function reasonSpent(ctx: SimContext, a: Tribute, b: Tribute): boolean {
 
 function declareTruce(ctx: SimContext, a: Tribute, b: Tribute) {
     const until = cycleOf(ctx.state) + PARLEY.truceCycles;
+    // A renewal re-declares the same pair; the ledger counts a *new* term
+    // only when nothing was standing between them.
+    if (a.truces?.[b.id] === undefined && b.truces?.[a.id] === undefined) TRUCE_LEDGER.struck++;
     a.truces = { ...(a.truces ?? {}), [b.id]: until };
     b.truces = { ...(b.truces ?? {}), [a.id]: until };
     // §4.3: a truce is about something. Which of the two obvious reasons it is
@@ -167,7 +187,9 @@ export function breaksTruce(ctx: SimContext, t: Tribute, other: Tribute): boolea
     // only talk you into an agreement, they keep talking you out of leaving
     // it — which is the read site persuasion was missing, and the reason a
     // charisma build's investment stopped paying the moment the truce existed.
-    chance *= Math.max(0.35, 1 - profOf(other, 'persuasion') * PROFICIENCY.persuasionRestraintWeight);
+    // §8.3 (audit): and the trait half of that — the Silver-Tongued keep
+    // people at the table without having trained for it.
+    chance *= Math.max(0.35, 1 - (profOf(other, 'persuasion') + traitMod(other, 'persuasion')) * PROFICIENCY.persuasionRestraintWeight);
 
     return breakChanceOf(ctx, chance);
 }
@@ -222,6 +244,7 @@ function truceBreakChance(ctx: SimContext, t: Tribute, other: Tribute): number {
  */
 export function breakTruce(ctx: SimContext, breaker: Tribute, victim: Tribute) {
     clearTruce(breaker, victim);
+    TRUCE_LEDGER.broken++;
     // §3.4: this counts on the same ledger as an alliance betrayal. The
     // Loyal -> Treacherous arc turns on "how many times have you broken faith
     // with somebody who trusted you", and a truce is exactly that — a promise
@@ -232,6 +255,8 @@ export function breakTruce(ctx: SimContext, breaker: Tribute, victim: Tribute) {
     // to be one of them, so the arc could never fire.
     breaker.betrayalsCommitted = (breaker.betrayalsCommitted ?? 0) + 1;
     adjustRel(victim, breaker.id, -PARLEY.truceBreakRegard);
+    // §4.2 (audit): a broken truce is a broken promise, on the trust axis.
+    adjustTrust(victim, breaker.id, -RELATIONSHIPS.trustBrokenPromise);
     // Going back on your word costs you with the person you did it to, and with
     // everyone watching from the Capitol who was told there was an agreement.
     raiseSuspicion(victim, breaker.id, PARLEY.truceBreakSuspicion);
@@ -487,7 +512,8 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
  * collection. A negotiated non-aggression pact used to reach its expiry cycle
  * and simply vanish from the Record: no payoff scene, no acknowledgement,
  * nothing observable at all, for 80 of the 84 truces a 240-run soak produced.
- * Every truce now resolves on-screen as one of three beats:
+ * Every truce now resolves on-screen as one of these beats (and, at the end
+ * of the run, `closeTrucesAtEnd` names the rest — see the soak's ledger):
  *
  *  - **renew** — it has been working, and both still prefer it to the odds;
  *  - **turn** — one of them kept the agreement like a blade kept sheathed,
@@ -507,6 +533,59 @@ export function resolveTruces(ctx: SimContext) {
             // §4.3: expiry is the earlier of the clock and the reason. A truce
             // whose reason has evaporated resolves now rather than idling out
             // its counter, which is what turned 90% of all truces into silence.
+            // A dead counterparty leaves nothing to resolve. Clear both
+            // sides of the record — leaving the mirror key on the other
+            // tribute made save payloads accrete stale empty truce objects.
+            // §1.4 (audit): checked *before* the clock. This used to sit under
+            // the "not expired yet" branch, so a truce whose other half was
+            // dead idled out its counter unresolved, and if the survivor died
+            // meanwhile the record vanished without a line.
+            if (!other || other.status !== 'alive' || t.status !== 'alive') {
+                // §10.1: 'Kept Word' — a truce that had been renewed at least
+                // once was still standing when one of its parties fell.
+                if ((t.truceRenewed?.[otherId] ?? 0) > 0) state.keptWordSeen = true;
+                // §1.4: this was the silent exit — the single largest way a
+                // truce ended, and the one the Record never mentioned. A
+                // promise that outlived one of the people who made it is worth
+                // a line; it is also, unambiguously, a promise kept.
+                // §1.4 (audit): this beat used to fire only when the *living*
+                // side happened to be walked first. Walked from the dead side,
+                // it cleared both records silently, which is where 38% of all
+                // truces went. Resolve it from whichever side is still
+                // standing, and say something when neither is.
+                const survivor = t.status === 'alive' ? t : other && other.status === 'alive' ? other : undefined;
+                const fallen = survivor === t ? other : t;
+                if (other && survivor && fallen) {
+                    TRUCE_LEDGER.outlived++;
+                    state.keptWordSeen = true;
+                    // §1.4: the single most common way a truce ends, and it
+                    // also never reached the broker. A promise that outlived
+                    // one of the people who made it was kept by definition.
+                    creditBroker(ctx, survivor, fallen, 'outlived');
+                    ctx.logEvent(
+                        `The agreement between ${survivor.name} and ${fallen.name} ends the way most of them do: `
+                        + `${fallen.name} is dead, and ${survivor.name} never once broke it.`,
+                        [survivor.id, fallen.id],
+                        { category: 'alliance' }
+                    );
+                } else if (other && !survivor) {
+                    TRUCE_LEDGER.buried++;
+                    ctx.logEvent(
+                        `The agreement between ${t.name} and ${other.name} is buried with both of them. `
+                        + 'Neither broke it; the arena did not need them to.',
+                        [t.id, other.id],
+                        { category: 'alliance' }
+                    );
+                }
+                if (!other) TRUCE_LEDGER.buried++;
+                delete t.truces![otherId];
+                if (t.truceReason) delete t.truceReason[otherId];
+                if (other?.truces) {
+                    delete other.truces[t.id];
+                    if (Object.keys(other.truces).length === 0) delete other.truces;
+                }
+                return;
+            }
             if (cycle < until && !(other && other.status === 'alive' && reasonSpent(ctx, t, other))) {
                 // §4: a truce visibly holding. It used to be narrated only when
                 // the two of them happened to meet in an encounter, which is
@@ -525,42 +604,74 @@ export function resolveTruces(ctx: SimContext) {
                 }
                 return;
             }
-            // A dead counterparty leaves nothing to resolve. Clear both
-            // sides of the record — leaving the mirror key on the other
-            // tribute made save payloads accrete stale empty truce objects.
-            if (!other || other.status !== 'alive' || t.status !== 'alive') {
-                // §10.1: 'Kept Word' — a truce that had been renewed at least
-                // once was still standing when one of its parties fell.
-                if ((t.truceRenewed?.[otherId] ?? 0) > 0) state.keptWordSeen = true;
-                // §1.4: this was the silent exit — the single largest way a
-                // truce ended, and the one the Record never mentioned. A
-                // promise that outlived one of the people who made it is worth
-                // a line; it is also, unambiguously, a promise kept.
-                if (other && t.status === 'alive' && other.status !== 'alive') {
-                    state.keptWordSeen = true;
-                    // §1.4: the single most common way a truce ends, and it
-                    // also never reached the broker. A promise that outlived
-                    // one of the people who made it was kept by definition.
-                    creditBroker(ctx, t, other, 'outlived');
-                    ctx.logEvent(
-                        `The agreement between ${t.name} and ${other.name} ends the way most of them do: `
-                        + `${other.name} is dead, and ${t.name} never once broke it.`,
-                        [t.id, other.id],
-                        { category: 'alliance' }
-                    );
-                }
-                delete t.truces![otherId];
-                if (t.truceReason) delete t.truceReason[otherId];
-                if (other?.truces) {
-                    delete other.truces[t.id];
-                    if (Object.keys(other.truces).length === 0) delete other.truces;
-                }
-                return;
-            }
             // Each pair resolves exactly once, from whichever side sorts first;
             // the resolution clears both sides of the record.
             if (t.id > otherId) return;
             resolveTrucePair(ctx, t, other);
+        });
+        if (t.truces && Object.keys(t.truces).length === 0) delete t.truces;
+    });
+}
+
+/**
+ * §1.4 (audit): the ledger has to close at the end of the run too. A truce
+ * that was still standing when the last cannon fired — the victor's, or one
+ * between two tributes who fell in the same final cycle — was the other place
+ * truces went to disappear. Called once from the epilogue: every remaining
+ * entry gets a terminal beat and is cleared, so `struck` equals the sum of
+ * every named ending.
+ */
+export function closeTrucesAtEnd(ctx: SimContext) {
+    const state = ctx.state;
+    const byId = new Map(state.tributes.map(t => [t.id, t] as const));
+    state.tributes.forEach(t => {
+        if (!t.truces) return;
+        Object.keys(t.truces).forEach(otherId => {
+            const other = byId.get(otherId);
+            if (other && t.id > otherId && other.truces?.[t.id] !== undefined) return; // resolved from the other side
+            if (other) {
+                const bothAlive = t.status === 'alive' && other.status === 'alive';
+                const survivor = t.status === 'alive' ? t : other.status === 'alive' ? other : undefined;
+                const fallen = survivor === t ? other : t;
+                if (bothAlive) {
+                    TRUCE_LEDGER.standingAtEnd++;
+                    state.keptWordSeen = true;
+                    creditBroker(ctx, t, other, 'outlived');
+                    ctx.logEvent(
+                        `The agreement between ${t.name} and ${other.name} was the last one standing, and it is standing still. `
+                        + 'They leave the arena together without either having tested it.',
+                        [t.id, other.id],
+                        { category: 'alliance' }
+                    );
+                } else if (survivor) {
+                    TRUCE_LEDGER.outlived++;
+                    state.keptWordSeen = true;
+                    creditBroker(ctx, survivor, fallen, 'outlived');
+                    ctx.logEvent(
+                        `The truce between ${survivor.name} and ${fallen.name} is down to one. `
+                        + `${survivor.name} kept it to the end, and there is nobody left to keep it with.`,
+                        [survivor.id, fallen.id],
+                        { category: 'alliance' }
+                    );
+                } else {
+                    TRUCE_LEDGER.buried++;
+                    ctx.logEvent(
+                        `The agreement between ${t.name} and ${other.name} is buried with both of them. `
+                        + 'Neither broke it; the arena did not need them to.',
+                        [t.id, other.id],
+                        { category: 'alliance' }
+                    );
+                }
+            } else {
+                TRUCE_LEDGER.buried++;
+            }
+            delete t.truces![otherId];
+            if (t.truceReason) delete t.truceReason[otherId];
+            if (other?.truces) {
+                delete other.truces[t.id];
+                if (other.truceReason) delete other.truceReason[t.id];
+                if (Object.keys(other.truces).length === 0) delete other.truces;
+            }
         });
         if (t.truces && Object.keys(t.truces).length === 0) delete t.truces;
     });
@@ -682,6 +793,13 @@ function treacheryOf(t: Tribute): number {
 
 function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
     clearTruce(a, b);
+    // The renewal below re-declares the pair; the soak counts renewals as
+    // terms itself, so the ledger must not count them again.
+    const struckBefore = TRUCE_LEDGER.struck;
+    // §4.2 (audit): a term that ran its course was a promise kept, whichever
+    // beat it resolves into next. Trust history moves before regard is read.
+    adjustTrust(a, b.id, RELATIONSHIPS.trustKeptPromise);
+    adjustTrust(b, a.id, RELATIONSHIPS.trustKeptPromise);
     // §4.5: renewing an agreement with somebody is a trust decision, not a
     // warmth one — the question is whether the last one was honoured, which is
     // precisely the history `trustOf` corrects regard by. The weaker side of
@@ -694,6 +812,7 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
     const renewTalker = Math.max(profOf(a, 'persuasion'), profOf(b, 'persuasion'));
     const renewChance = PARLEY.truceRenewChance + renewTalker * PROFICIENCY.persuasionRenewWeight;
     if (regard >= PARLEY.truceRenewMinRegard && ctx.rng.chance(renewChance)) {
+        TRUCE_LEDGER.renewed++;
         // §10.1: 'Kept Word' reads this — a truce that was renewed at least
         // once and was still standing when one party died.
         a.truceRenewed = { ...(a.truceRenewed ?? {}), [b.id]: (a.truceRenewed?.[b.id] ?? 0) + 1 };
@@ -701,6 +820,7 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
         trainProficiency(a, 'persuasion');
         trainProficiency(b, 'persuasion');
         declareTruce(ctx, a, b);
+        TRUCE_LEDGER.struck = struckBefore;
         adjustMutual(ctx.state, a, b, PARLEY.truceRegard);
         // §1.4: a renewal is the *strongest* evidence a brokered agreement is
         // working — both parties have now chosen it twice — and it was the one
@@ -719,6 +839,7 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
     }
 
     // TURN: whichever of them is more treacherous was counting the hours.
+    // (counted below, once the turn is actually rolled)
     const striker = treacheryOf(a) >= treacheryOf(b) ? a : b;
     const target = striker.id === a.id ? b : a;
     const turnChance = PARLEY.truceTurnChance
@@ -732,6 +853,7 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
         adjustRel(target, striker.id, -PARLEY.truceBreakRegard);
         raiseSuspicion(target, striker.id, PARLEY.truceBreakSuspicion);
         addExcitement(striker, PARLEY.truceBreakExcitement);
+        TRUCE_LEDGER.turned++;
         ctx.logEvent(
             fill(ctx.pickText(PARLEY_TEXTS.truceTurned), { t1: striker.name, t2: target.name, zone: striker.zone }),
             [striker.id, target.id],
@@ -741,6 +863,7 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
     }
 
     // LAPSE: kept to the end. The arena takes note, and so does the feed.
+    TRUCE_LEDGER.lapsed++;
     //
     // §1.4: 'Kept Word' used to need a *renewed* truce still standing when one
     // party died, which across 400 runs happened 11 times against 218 truces —
