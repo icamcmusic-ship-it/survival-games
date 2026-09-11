@@ -974,6 +974,28 @@ function tickBondBeats(ctx: SimContext) {
     const alive = getAlive(ctx.state);
     const done = new Set<string>();
 
+    // The protector bond is the other standing bond in the game and had
+    // exactly the same shape of problem: one line when it forms, nothing
+    // afterwards. Its pool is written for {older}/{younger} and is deep enough
+    // to carry a run, so the beats simply keep drawing from it.
+    alive.forEach(older => {
+        const ward = alive.find(o => o.id !== older.id
+            && (older.protectorBonds ?? []).includes(o.id)
+            && o.age < older.age
+            && o.zone === older.zone);
+        if (!ward) return;
+        const key = [older.id, ward.id].sort().join('|');
+        if (done.has(key)) return;
+        done.add(key);
+        if (!ctx.rng.chance(ROMANCE.bondBeatChance)) return;
+        addExcitement(older, ROMANCE.bondBeatExcitement);
+        ctx.logEvent(
+            fill(ctx.pickText(PROTECTOR_BOND_TEXTS), { older: older.name, younger: ward.name }),
+            [older.id, ward.id],
+            { category: 'romance', zone: older.zone }
+        );
+    });
+
     alive.forEach(t1 => {
         if (!t1.traits.includes('Star-Crossed')) return;
         const t2 = alive.find(o => o.id !== t1.id && areLovers(t1, o));

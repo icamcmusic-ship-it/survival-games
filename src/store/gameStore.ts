@@ -18,7 +18,7 @@ import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
 import { seatVeterans } from '../engine/veterans';
 import { VETERANS } from '../data/balance';
-import { offSeasonFor } from '../data/offSeason';
+import { applyOffSeason, offSeasonFor } from '../data/offSeason';
 
 /**
  * PERF: the engine is loaded on demand.
@@ -807,14 +807,13 @@ export const gameActions = {
         // shallow clone gives this run its own zone objects (arenaLawOverride
         // below, and the Moving Arena Quell later, both write to them).
         const arena = { ...baseArena, zones: baseArena.zones.map(z => ({ ...z })) };
-        // §5: the off-season skin. Strictly cosmetic — it rewrites the
-        // description and nothing else, so the same seed still plays the same
-        // Games; the arena simply does not read the way it did last time.
+        // §5/§6.4: the off-season skin. Rolled from the seed, so a shared seed
+        // still replays exactly — and no longer only a change of paragraph:
+        // a season may lift the arena's own law, impose one of its own, or
+        // shift what the ground yields and what it costs to cross. Applied to
+        // this run's clone only; `applyOffSeason` never touches ARENAS.
         const skin = offSeasonFor(safeSeed, arena);
-        if (skin) {
-            arena.description = skin.description;
-            arena.offSeason = skin.label;
-        }
+        if (skin) applyOffSeason(arena, skin);
         if (gamesProfile.quell?.arenaLawOverride) {
             arena.law = gamesProfile.quell.arenaLawOverride;
             // 'sponsorsFixedZone' and 'noWaterExceptZone' both compare a

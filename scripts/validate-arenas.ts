@@ -17,6 +17,8 @@ import { gamesProfileFor } from '../src/engine/gamesProfile';
 const problems: string[] = [];
 /** §5.12: things worth saying out loud that are not build failures. */
 const notes: string[] = [];
+/** §7.3: packs above the hard floor but still short of the target. */
+const underTarget: string[] = [];
 
 /** Every real `ZoneEffectKind`, for the effectVocab key check below. */
 const EFFECT_KINDS = new Set<string>([
@@ -25,8 +27,45 @@ const EFFECT_KINDS = new Set<string>([
     'quaking', 'swarming',
 ]);
 
-/** §5.12: authored events per arena, below which an arena reads as generic. */
-const AUTHORED_EVENT_TARGET = 12;
+/**
+ * §7.3: authored events per arena, as a ratchet rather than a flag day.
+ *
+ * The old shape of this check was a single number, 12, reported as a note.
+ * That number became the authoring target: every one of the forty
+ * hand-authored arenas landed on exactly twelve events, three landed on
+ * thirteen, and none landed anywhere near twenty. The floor was being hit and
+ * treated as done — which is what a floor reported as a note will always
+ * produce.
+ *
+ * So it works the way `check-flavor-pools`'s `KNOWN_THIN` allowance and
+ * `check-undeclared-knobs` do instead. There are two numbers:
+ *
+ *  - `AUTHORED_EVENT_FLOOR` is the guaranteed minimum every pack is at or
+ *    above *today*. It is a hard build failure, and it may only ever be
+ *    raised. Raising it is the whole point: author content, then move it up,
+ *    and the improvement can never regress.
+ *  - `AUTHORED_EVENT_TARGET` is where the roster is going. Packs below it are
+ *    counted, and the count may shrink and may not grow — so a new arena
+ *    cannot land under-written and an existing one cannot be trimmed.
+ *
+ * A ~9.8-day run pulls hundreds of event draws. Twelve authored events means a
+ * player sees every one of an arena's own beats several times in a single
+ * Games; twenty-four is the point at which an arena can carry a run in its own
+ * voice. That is what the target is set to, and the floor walks up to meet it.
+ */
+const AUTHORED_EVENT_TARGET = 24;
+/**
+ * The guaranteed minimum. Raise it — never lower it — when the thinnest pack
+ * clears a new number. History: 12 (every pack authored to exactly the old
+ * note's threshold) -> 18.
+ */
+const AUTHORED_EVENT_FLOOR = 18;
+/**
+ * Packs still under the target. Lower this as packs are brought up to 24; it
+ * is not allowed to rise, so a trimmed pack or a thin new arena fails the
+ * build. 44 packs exist; this is how many of them are not yet at the target.
+ */
+const KNOWN_UNDER_TARGET = 44;
 
 ARENAS.forEach(arena => {
     const names = new Set(arena.zones.map(z => z.name));
@@ -165,11 +204,14 @@ Object.keys(PROCEDURAL_FLAVOR_PACKS).forEach(id => {
 
 Object.entries({ ...ARENA_FLAVOR, ...PROCEDURAL_FLAVOR_PACKS }).forEach(([id, flavor]) => {
     if (flavor.events.length < 3) problems.push(`${id}: flavour pack has fewer than 3 events`);
-    // §7b: every arena should carry a dozen of its own before the universal
-    // pool starts speaking for it. A note, not a failure — the gap is an
-    // authoring backlog, and failing the build on it helps nobody.
-    if (flavor.events.length < AUTHORED_EVENT_TARGET) {
-        notes.push(`${id}: ${flavor.events.length} authored events (target ${AUTHORED_EVENT_TARGET})`);
+    // §7.3: the floor is a build failure — it is the guarantee that no arena
+    // in the roster has ever been allowed to fall back below.
+    if (flavor.events.length < AUTHORED_EVENT_FLOOR) {
+        problems.push(
+            `${id}: ${flavor.events.length} authored events, under the guaranteed floor of ${AUTHORED_EVENT_FLOOR}`
+            + ' — top it up, or lower AUTHORED_EVENT_FLOOR on purpose (which un-guarantees it for every arena)');
+    } else if (flavor.events.length < AUTHORED_EVENT_TARGET) {
+        underTarget.push(`${id}: ${flavor.events.length}`);
     }
     if (flavor.ambient.length < 3) problems.push(`${id}: flavour pack has fewer than 3 ambient lines`);
     (['forage', 'rest', 'hide', 'hunt', 'travel'] as const).forEach(k => {
@@ -181,6 +223,30 @@ Object.entries({ ...ARENA_FLAVOR, ...PROCEDURAL_FLAVOR_PACKS }).forEach(([id, fl
         if (!/\{tribute\}/.test(e.escapeText)) problems.push(`${id}: escape text never names the tribute`);
     });
 });
+
+/**
+ * §7.3: the ratchet's second half. The count of packs short of the target may
+ * fall and may not rise, exactly the way `check-flavor-pools` treats its thin
+ * pools — so topping a pack up is always allowed, and adding a thin one or
+ * trimming an existing one is not.
+ */
+if (underTarget.length > KNOWN_UNDER_TARGET) {
+    problems.push(
+        `${underTarget.length} flavour pack(s) are under the authored-event target of ${AUTHORED_EVENT_TARGET}, `
+        + `up from a baseline of ${KNOWN_UNDER_TARGET}. Author the new one up, or raise KNOWN_UNDER_TARGET on purpose.`);
+    underTarget.slice(0, 12).forEach(u => problems.push(`   ${u}`));
+} else {
+    const thinnest = Math.min(...Object.values({ ...ARENA_FLAVOR, ...PROCEDURAL_FLAVOR_PACKS }).map(f => f.events.length));
+    notes.push(
+        `authored events: floor ${AUTHORED_EVENT_FLOOR} (thinnest pack ${thinnest}), `
+        + `${underTarget.length} of 44 pack(s) under the target of ${AUTHORED_EVENT_TARGET} (baseline ${KNOWN_UNDER_TARGET})`);
+    if (underTarget.length < KNOWN_UNDER_TARGET) {
+        notes.push(`lower KNOWN_UNDER_TARGET to ${underTarget.length} in scripts/validate-arenas.ts to lock that in`);
+    }
+    if (thinnest > AUTHORED_EVENT_FLOOR) {
+        notes.push(`raise AUTHORED_EVENT_FLOOR to ${thinnest} in scripts/validate-arenas.ts to lock that in`);
+    }
+}
 
 if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has no events');
 

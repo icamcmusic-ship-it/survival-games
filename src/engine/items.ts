@@ -256,7 +256,9 @@ export function enforceCapacity(t: Tribute): Item[] {
         // for, and the only route a worn weapon has back short of a sponsor.
         const keeper = t.inventory
             .filter(i => i.type === leaving.type && i.durability !== undefined)
-            .sort((a, b) => conditionOf(b) - conditionOf(a))[0];
+            // The neediest piece, not the best one — a repair is worth most
+            // where there is most to repair.
+            .sort((a, b) => conditionOf(a) - conditionOf(b))[0];
         if (keeper) salvageInto(keeper, leaving);
         dropped.push(leaving);
     }

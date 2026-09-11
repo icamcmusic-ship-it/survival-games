@@ -3504,7 +3504,7 @@ export const ROMANCE = {
      * because pairs never formed but because forming was all a pair could do;
      * the declaration was the whole relationship. See `tickBondBeats`.
      */
-    bondBeatChance: 0.4,
+    bondBeatChance: 0.65,
     /** Excitement a bonded pair earns for playing one of those days on camera. */
     bondBeatExcitement: 6,
     /** Cycles of recent contact required, tracked as a streak. */
@@ -3871,10 +3871,10 @@ export const BETRAYAL = {
      * who was sold out, or who did the selling, gets a line about still being
      * inside it, and the window in which that is still what they are.
      */
-    aftermathChance: 0.22,
+    aftermathChance: 0.3,
     aftermathCycles: 6,
     /** Odds a witness to a betrayal gets a line of their own about it. */
-    witnessLineChance: 0.45,
+    witnessLineChance: 0.6,
 } as const;
 
 /**
@@ -5555,6 +5555,30 @@ export const SIDE_BETS = {
     // a house cut rather than a price.
     /** Fraction of fair implied value paid on an early cash-out. */
     cashOutMargin: 0.8,
+} as const;
+
+/**
+ * §6.4: what an off-season actually changes.
+ *
+ * The skins were 42 description strings and the design note said so out loud:
+ * a skin "rewrites the description and nothing else, so the same seed still
+ * plays the same Games". That is a defensible purity call and it is also the
+ * reason a feature with 42 pieces of content in it was worth no mechanical
+ * attention at all — a player who recognised the thaw had learned nothing
+ * they could use.
+ *
+ * The determinism argument does not actually require cosmetics. The skin is
+ * rolled from the seed, so a seeded replay wears the same skin and plays the
+ * same Games whether the skin moves a number or not. What it requires is that
+ * the shift be small, legible and declared in one place, which is here.
+ */
+export const OFF_SEASON = {
+    /** Added to every zone's danger, clamped into 0-1. */
+    harsher: 0.12,
+    kinder: -0.1,
+    /** …and to every zone's forage yield. */
+    fertile: 0.12,
+    barren: -0.12,
 } as const;
 
 /**
