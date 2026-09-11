@@ -68,6 +68,13 @@ export interface Achievement {
      * nothing at all. Optional: some achievements are not a matter of degree.
      */
     nearMiss?: (state: GameState, victor: Tribute | undefined) => string | undefined;
+    /**
+     * §1.2 (audit): whether this run's arena can produce the achievement at
+     * all. 'Every Door' needs an arena with at least two once-only events; an
+     * achievement list that advertises it in an arena with none is a lie.
+     * Absent means always available.
+     */
+    availableIn?: (state: GameState) => boolean;
 }
 
 /** An achievement this run came close to, for the end screen. */
@@ -108,7 +115,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Quartermaster',
         hint: 'Crown a victor who held a named alliance role for ten cycles or more.',
         category: 'social',
-        rarity: 'uncommon',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.roleCycles ?? 0) >= 10,
         nearMiss: (_s, v) => (v && (v.roleCycles ?? 0) >= 6 && (v.roleCycles ?? 0) < 10)
             ? `${v.name} held a role for ${v.roleCycles} cycles — ${10 - (v.roleCycles ?? 0)} short`
@@ -158,7 +165,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Both Levels',
         hint: 'Crown a victor who stood on both levels of a vertical zone.',
         category: 'arena',
-        rarity: 'legendary',
+        rarity: 'uncommon',
         test: (_s, v) => !!v && (v.levelsStood?.includes('upper') ?? false) && (v.levelsStood?.includes('lower') ?? false),
     },
     {
@@ -166,7 +173,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Load-Bearing',
         hint: 'Crown a victor who walked out of a structural collapse.',
         category: 'arena',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.collapsesSurvived ?? 0) >= 1,
         nearMiss: state => state.tributes.some(t => (t.collapsesSurvived ?? 0) >= 1)
             ? 'somebody walked out of a collapse this year — it just was not the victor'
@@ -244,6 +251,14 @@ export const ACHIEVEMENTS: Achievement[] = [
         test: (s, v) => !!v && v.isCareer
             && (v.visitedZones?.length ?? 0) === 1
             && v.visitedZones?.[0] === s.arena.zones[0]?.name,
+        nearMiss: (s, v) => {
+            if (!v || !v.isCareer) return undefined;
+            const visited = v.visitedZones?.length ?? 0;
+            if (visited === 2 && v.visitedZones?.[0] === s.arena.zones[0]?.name) {
+                return `${v.name} left the Cornucopia exactly once — Front-Loaded never leaves it`;
+            }
+            return undefined;
+        },
     },
     {
         id: 'weather-beaten',
@@ -263,17 +278,6 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'social',
         rarity: 'rare',
         test: (_s, v) => !!v && v.succeededAsHeir === true,
-    },
-    {
-        id: 'nobodys-ally',
-        name: "Nobody's Ally",
-        hint: 'Crown a victor who met nobody at all after the bloodbath.',
-        category: 'survival',
-        rarity: 'legendary',
-        test: (_s, v) => !!v && v.metAnybodyAfterBloodbath === false,
-        nearMiss: (_s, v) => (v && v.metAnybodyAfterBloodbath !== false && (v.allianceId === undefined))
-            ? `${v.name} never allied with anybody, but the arena still put them in front of somebody after the bloodbath`
-            : undefined,
     },
     {
         id: 'cold-hands',
@@ -442,7 +446,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Mercy',
         hint: 'See a tribute spare an opponent they had already beaten.',
         category: 'combat',
-        rarity: 'common',
+        rarity: 'uncommon',
         test: state => state.tributes.some(t => t.traits.includes('Merciful')),
     },
     {
@@ -487,7 +491,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Long Games',
         hint: 'See a Games run past day twelve.',
         category: 'games',
-        rarity: 'uncommon',
+        rarity: 'rare',
         test: state => state.day > 12,
         nearMiss: state => state.day >= 10 && state.day <= 12
             ? `these Games ran ${state.day} days — ${13 - state.day} short`
@@ -798,6 +802,11 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'capitol',
         rarity: 'legendary',
         test: (state, v) => !!v && state.gamesProfile?.quell?.id === 'the-reflection',
+        nearMiss: (state, v) => {
+            if (state.gamesProfile?.quell?.id !== 'the-reflection') return undefined;
+            if (v) return undefined;
+            return 'the Reflection Quell ended with no victor — somebody has to walk out to beat their own face';
+        },
     },
     {
         id: 'bloodless-quell',
@@ -900,7 +909,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Blood Feud',
         hint: 'See one pair of tributes fight each other four separate times.',
         category: 'combat',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: state => state.tributes.some(t =>
             Object.values(t.memory?.rivals ?? {}).some(r => r.fights >= 4)),
         nearMiss: state => {
@@ -1257,6 +1266,8 @@ export const ACHIEVEMENTS: Achievement[] = [
                 ? 'every one of the arena\'s once-only events fired but one'
                 : undefined;
         },
+        availableIn: state => arenaFlavor(state.arena.id, state.arena).events
+            .filter(e => e.oncePerRun && e.id).length >= 2,
     },
     {
         // §9.7: the outer-district counterweight, made visible. A tribute who
@@ -1348,7 +1359,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Foul Weather Friend',
         hint: 'Crown a victor who stood in three separate Gamemaker storm fronts and walked out of all three.',
         category: 'arena',
-        rarity: 'uncommon',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.stormsSurvived ?? 0) >= 3,
         nearMiss: (_s, v) => (v && (v.stormsSurvived ?? 0) === 2)
             ? `${v.name} rode out two fronts — one short`
@@ -1367,7 +1378,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Understudy',
         hint: 'Crown a victor who took over an alliance after its original leader died.',
         category: 'social',
-        rarity: 'uncommon',
+        rarity: 'rare',
         test: (_s, v) => !!v && v.tookOverAllianceLead === true,
     },
     {
@@ -1481,6 +1492,13 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'oddity',
         rarity: 'legendary',
         test: (_s, v) => !!v && v.metAnybodyAfterBloodbath !== true,
+        // §1.1 (audit): 'Nobody's Ally' tested the same record with
+        // `=== false` on a field that is only ever set `true`, so it could not
+        // fire; it was a broken duplicate of this entry and is gone. Its
+        // near-miss lives on here, corrected.
+        nearMiss: (_s, v) => (v && v.metAnybodyAfterBloodbath === true && v.allianceId === undefined && v.kills === 0)
+            ? `${v.name} never allied and never killed, but the arena still put them in front of somebody after the bloodbath`
+            : undefined,
     },
 ];
 
@@ -1718,6 +1736,9 @@ export function evaluateInRunNearMisses(state: GameState, unlocked: string[]): N
     ACHIEVEMENTS.forEach(a => {
         if (unlocked.includes(a.id) || !a.nearMiss) return;
         try {
+            // §1.2: never nudge the player towards something this arena
+            // cannot produce.
+            if (a.availableIn && !a.availableIn(state)) return;
             const detail = a.nearMiss(state, undefined);
             if (detail) misses.push({ id: a.id, name: a.name, detail });
         } catch {
@@ -1725,6 +1746,21 @@ export function evaluateInRunNearMisses(state: GameState, unlocked: string[]): N
         }
     });
     return misses.slice(0, 2);
+}
+
+/**
+ * §1.2 (audit): the achievements this run's arena can actually produce. The
+ * record book lists everything; anything that advertises an achievement *for
+ * this run* should draw from this instead.
+ */
+export function achievementsAvailableIn(state: GameState): Achievement[] {
+    return ACHIEVEMENTS.filter(a => {
+        try {
+            return !a.availableIn || a.availableIn(state);
+        } catch {
+            return true;
+        }
+    });
 }
 
 export function evaluateAchievements(state: GameState): string[] {

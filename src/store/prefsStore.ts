@@ -92,6 +92,21 @@ export const DEFAULT_PREFS: Prefs = {
     arenaBriefingOnDrop: true,
 };
 
+/**
+ * §1.8 (audit): the toggle used to default to "off" for a user whose OS said
+ * otherwise. The CSS media query already honoured the OS; the setting now
+ * reads the same way, and a stored explicit choice still wins.
+ */
+export function systemReduceMotion(): boolean {
+    try {
+        return typeof window !== 'undefined'
+            && typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch {
+        return false;
+    }
+}
+
 export const PREFS_SPEC: StorageSpec<Prefs> = {
     key: STORAGE_KEYS.prefs,
     version: 1,
@@ -113,7 +128,7 @@ export const PREFS_SPEC: StorageSpec<Prefs> = {
             pauseOnSponsor: asBool(r.pauseOnSponsor, DEFAULT_PREFS.pauseOnSponsor),
             pauseOnFollowed: asBool(r.pauseOnFollowed, DEFAULT_PREFS.pauseOnFollowed),
             phasePacing: asBool(r.phasePacing, DEFAULT_PREFS.phasePacing),
-            reduceMotion: asBool(r.reduceMotion, DEFAULT_PREFS.reduceMotion),
+            reduceMotion: asBool(r.reduceMotion, systemReduceMotion()),
             seenShortcutHint: asBool(r.seenShortcutHint, DEFAULT_PREFS.seenShortcutHint),
             arenaBriefingOnDrop: asBool(r.arenaBriefingOnDrop, DEFAULT_PREFS.arenaBriefingOnDrop),
         };
@@ -121,7 +136,7 @@ export const PREFS_SPEC: StorageSpec<Prefs> = {
 };
 
 export function readPrefs(): Prefs {
-    return readStored(PREFS_SPEC) ?? { ...DEFAULT_PREFS };
+    return readStored(PREFS_SPEC) ?? { ...DEFAULT_PREFS, reduceMotion: systemReduceMotion() };
 }
 
 export const prefsStore = createStore<Prefs>(readPrefs());

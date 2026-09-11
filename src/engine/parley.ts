@@ -487,7 +487,8 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
  * collection. A negotiated non-aggression pact used to reach its expiry cycle
  * and simply vanish from the Record: no payoff scene, no acknowledgement,
  * nothing observable at all, for 80 of the 84 truces a 240-run soak produced.
- * Every truce now resolves on-screen as one of three beats:
+ * Every truce now resolves on-screen as one of these beats (and, at the end
+ * of the run, `closeTrucesAtEnd` names the rest — see the soak's ledger):
  *
  *  - **renew** — it has been working, and both still prefer it to the odds;
  *  - **turn** — one of them kept the agreement like a blade kept sheathed,
@@ -536,15 +537,29 @@ export function resolveTruces(ctx: SimContext) {
                 // truce ended, and the one the Record never mentioned. A
                 // promise that outlived one of the people who made it is worth
                 // a line; it is also, unambiguously, a promise kept.
-                if (other && t.status === 'alive' && other.status !== 'alive') {
+                // §1.4 (audit): this beat used to fire only when the *living*
+                // side happened to be walked first. Walked from the dead side,
+                // it cleared both records silently, which is where 38% of all
+                // truces went. Resolve it from whichever side is still
+                // standing, and say something when neither is.
+                const survivor = t.status === 'alive' ? t : other && other.status === 'alive' ? other : undefined;
+                const fallen = survivor === t ? other : t;
+                if (other && survivor && fallen) {
                     state.keptWordSeen = true;
                     // §1.4: the single most common way a truce ends, and it
                     // also never reached the broker. A promise that outlived
                     // one of the people who made it was kept by definition.
-                    creditBroker(ctx, t, other, 'outlived');
+                    creditBroker(ctx, survivor, fallen, 'outlived');
                     ctx.logEvent(
-                        `The agreement between ${t.name} and ${other.name} ends the way most of them do: `
-                        + `${other.name} is dead, and ${t.name} never once broke it.`,
+                        `The agreement between ${survivor.name} and ${fallen.name} ends the way most of them do: `
+                        + `${fallen.name} is dead, and ${survivor.name} never once broke it.`,
+                        [survivor.id, fallen.id],
+                        { category: 'alliance' }
+                    );
+                } else if (other && !survivor) {
+                    ctx.logEvent(
+                        `The agreement between ${t.name} and ${other.name} is buried with both of them. `
+                        + 'Neither broke it; the arena did not need them to.',
                         [t.id, other.id],
                         { category: 'alliance' }
                     );
@@ -561,6 +576,65 @@ export function resolveTruces(ctx: SimContext) {
             // the resolution clears both sides of the record.
             if (t.id > otherId) return;
             resolveTrucePair(ctx, t, other);
+        });
+        if (t.truces && Object.keys(t.truces).length === 0) delete t.truces;
+    });
+}
+
+/**
+ * §1.4 (audit): the ledger has to close at the end of the run too. A truce
+ * that was still standing when the last cannon fired — the victor's, or one
+ * between two tributes who fell in the same final cycle — was the other place
+ * truces went to disappear. Called once from the epilogue: every remaining
+ * entry gets a terminal beat and is cleared, so `struck` equals the sum of
+ * every named ending.
+ */
+export function closeTrucesAtEnd(ctx: SimContext) {
+    const state = ctx.state;
+    const byId = new Map(state.tributes.map(t => [t.id, t] as const));
+    state.tributes.forEach(t => {
+        if (!t.truces) return;
+        Object.keys(t.truces).forEach(otherId => {
+            const other = byId.get(otherId);
+            if (other && t.id > otherId && other.truces?.[t.id] !== undefined) return; // resolved from the other side
+            if (other) {
+                const bothAlive = t.status === 'alive' && other.status === 'alive';
+                const survivor = t.status === 'alive' ? t : other.status === 'alive' ? other : undefined;
+                const fallen = survivor === t ? other : t;
+                if (bothAlive) {
+                    state.keptWordSeen = true;
+                    creditBroker(ctx, t, other, 'outlived');
+                    ctx.logEvent(
+                        `The agreement between ${t.name} and ${other.name} was the last one standing, and it is standing still. `
+                        + 'They leave the arena together without either having tested it.',
+                        [t.id, other.id],
+                        { category: 'alliance' }
+                    );
+                } else if (survivor) {
+                    state.keptWordSeen = true;
+                    creditBroker(ctx, survivor, fallen, 'outlived');
+                    ctx.logEvent(
+                        `The truce between ${survivor.name} and ${fallen.name} is down to one. `
+                        + `${survivor.name} kept it to the end, and there is nobody left to keep it with.`,
+                        [survivor.id, fallen.id],
+                        { category: 'alliance' }
+                    );
+                } else {
+                    ctx.logEvent(
+                        `The agreement between ${t.name} and ${other.name} is buried with both of them. `
+                        + 'Neither broke it; the arena did not need them to.',
+                        [t.id, other.id],
+                        { category: 'alliance' }
+                    );
+                }
+            }
+            delete t.truces![otherId];
+            if (t.truceReason) delete t.truceReason[otherId];
+            if (other?.truces) {
+                delete other.truces[t.id];
+                if (other.truceReason) delete other.truceReason[t.id];
+                if (Object.keys(other.truces).length === 0) delete other.truces;
+            }
         });
         if (t.truces && Object.keys(t.truces).length === 0) delete t.truces;
     });

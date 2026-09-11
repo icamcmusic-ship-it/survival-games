@@ -161,9 +161,23 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
     }
 
     let roll = ctx.rng.nextFloat() * scored.reduce((s, o) => s + o.score, 0);
+    let pick = scored[scored.length - 1];
     for (const o of scored) {
         roll -= o.score;
-        if (roll <= 0) return o.z;
+        if (roll <= 0) { pick = o; break; }
     }
-    return scored[scored.length - 1].z;
+    // §3.3 (audit): where the pick sat among the options. The roll is
+    // weighted, so a low-ranked pick is legitimate now and then; the soak's
+    // decision check asserts it is not the norm.
+    if (t.decisionTrace) {
+        const ranked = [...scored].sort((a, b) => b.score - a.score);
+        const rank = ranked.indexOf(pick);
+        t.decisionTrace.destinationPick = {
+            zone: pick.z.name,
+            rank,
+            of: ranked.length,
+            percentile: ranked.length <= 1 ? 1 : Math.round((1 - rank / (ranked.length - 1)) * 100) / 100,
+        };
+    }
+    return pick.z;
 }

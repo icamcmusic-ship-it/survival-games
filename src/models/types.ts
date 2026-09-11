@@ -1095,6 +1095,13 @@ export interface DecisionTrace {
     objectives?: Array<{ label: string; tier: number }>;
     /** Set when the stance was imposed rather than scored. */
     forced?: string;
+    /**
+     * §3.3 (audit): what the wander scorer actually *picked*, ranked against
+     * everything it weighed, so decision quality is measurable rather than
+     * inferred from win rates. `rank` is 0 for the best-scored option;
+     * `percentile` is the pick's score position across all options (1 = best).
+     */
+    destinationPick?: { zone: string; rank: number; of: number; percentile: number };
 }
 
 /** A §3: a goal held behind the errand queue. */

@@ -358,7 +358,7 @@ for (let i = 0; i < 400; i++) {
     if (/gone dark and the heat of it/.test(l.text)) { sepsisDeepened++; sepsisTerminal++; }
     if (/cleans it out properly|cleans the .* out with the/.test(l.text)) sepsisTreated++;
     if (/running a fever they cannot sweat out/.test(l.text)) feverLines++;
-    if (/never once broke it/.test(l.text)) trucesOutlived++;
+    if (/never once broke it|is buried with both of them|is standing still\. They leave the arena together|is down to one\. /.test(l.text)) trucesOutlived++;
     // §1.4: all three beats that pay a broker. This matcher used to name only
     // the LAPSE line, which is why the counter read 1 across 400 runs even
     // after the other endings started crediting the broker — the metric was
@@ -804,8 +804,13 @@ console.log(`traitArcs: pacifistToBroken=${pacifistBroke} loyalToTreacherous=${l
 console.log(`infection: woundsTurned=${woundsTurned} deepened=${sepsisDeepened} reachedTerminal=${sepsisTerminal} treated=${sepsisTreated} feverLines=${feverLines} sepsisDeaths=${sepsisDeaths}`);
 console.log(`truces2: outlived=${trucesOutlived} brokeredHeld=${brokeredHeld}`);
 console.log(`truce ledger: struck=${trucesStruck} accountedEndings=${truceEndings} `
-  + `(renewed=${trucesRenewed} lapsed=${trucesLapsed} turned=${trucesTurned} broken=${trucesBroken} outlivedByDeath=${trucesOutlived}) `
-  + `stillStandingAtEnd=${trucesStruck - truceEndings}`);
+  + `(renewed=${trucesRenewed} lapsed=${trucesLapsed} turned=${trucesTurned} broken=${trucesBroken} outlivedByDeathOrTheEnd=${trucesOutlived}) `
+  + `unaccounted=${trucesStruck - truceEndings}`);
+// §1.4 (audit): loans and vengeance pacts both closed to zero; truces left
+// 38% open. The epilogue now closes the rest, so the same tolerance applies.
+if (trucesStruck - truceEndings > trucesStruck * 0.05) {
+  note(`truce ledger loses ${trucesStruck - truceEndings} of ${trucesStruck} truces`);
+}
 console.log(`politics: factionActions=${factionActions} expulsions=${expulsions} hearings=${hearings}`);
 console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} paidInInformation=${tributesPaidInformation} truces=${trucesStruck} trucesHeld=${trucesHeld} trucesBroken=${trucesBroken} trucesRenewed=${trucesRenewed} trucesLapsed=${trucesLapsed} trucesTurned=${trucesTurned} soloDepartures=${soloDepartures} schisms=${schisms}`);
 console.log(`bonds: debtsRepaid=${debtsRepaid} charterBreaches=${charterBreaches} performed=${performedBonds} districtPairs=${districtBonds}`);

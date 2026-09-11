@@ -5,6 +5,7 @@ import { getRel } from '../relationships';
 import { RNG } from '../../utils/rng';
 import { EPILOGUE } from '../../data/balance';
 import { namedWeapons } from '../legendaryItems';
+import { closeTrucesAtEnd } from '../parley';
 
 /** Picks one variant, seeded so the same run always gives the same interview. */
 function pick(rng: RNG, variants: string[]): string {
@@ -112,6 +113,9 @@ function quoteLine(text: string): string {
 export function processEpilogue(ctx: SimContext) {
     ctx.state.phase = 'epilogue';
     ctx.rng = new RNG(`${ctx.state.seed}-epilogue`);
+    // §1.4: close every truce still standing before the couch — the ledger
+    // has to add up, and a promise the victor kept to the end deserves a line.
+    closeTrucesAtEnd(ctx);
     const rng = ctx.rng;
     const alive = getAlive(ctx.state);
     const winner = alive[0];

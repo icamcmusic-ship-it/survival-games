@@ -117,6 +117,19 @@ const mislabelled = sorted.filter(a => {
 console.log(`\nrarity labels contradicted by the measured rate (${mislabelled.length}):`);
 mislabelled.forEach(a => console.log(`  ${a.id.padEnd(24)} labelled ${a.rarity.padEnd(10)} measured ${(rate(a.id) * 100).toFixed(1)}%`));
 
+// §1.5 (audit): the report above never failed, so eight labels drifted — one
+// 'legendary' fired in a sixth of all runs. A label is a fact about the data,
+// so a contradiction is a failure. The bands overlap on purpose, and a label
+// is only wrong when the measured rate lands wholly outside its band *and*
+// outside the neighbouring one, so ordinary run-to-run noise at 200 runs
+// cannot flip the build. Regenerate the labels with ACHIEVEMENT_EMIT_RARITY=1.
+const ORDER = ['common', 'uncommon', 'rare', 'legendary'] as const;
+const bandOf = (r: number) => r >= 0.3 ? 'common' : r >= 0.08 ? 'uncommon' : r >= 0.005 ? 'rare' : 'legendary';
+const badlyMislabelled = mislabelled.filter(a =>
+    Math.abs(ORDER.indexOf(bandOf(rate(a.id))) - ORDER.indexOf(a.rarity as typeof ORDER[number])) >= 2
+    || (a.rarity === 'legendary' && rate(a.id) >= 0.05)
+    || (a.rarity === 'common' && rate(a.id) < 0.05));
+
 /* -------------------------------------------------------------------------- */
 /* §2.4: nearMiss is mandatory wherever the test is a matter of degree         */
 /* -------------------------------------------------------------------------- */
@@ -165,6 +178,11 @@ console.log(`\nnumeric-threshold tests: ${measured.length}; carrying a nearMiss:
     + `${measured.filter(a => a.nearMiss).length}; exempt: ${NEAR_MISS_EXEMPT.length}`);
 
 let failed = false;
+if (badlyMislabelled.length > 0) {
+    console.log(`\nFAIL: ${badlyMislabelled.length} rarity label(s) are two bands off the measured rate — relabel them:`);
+    badlyMislabelled.forEach(a => console.log(`  ${a.id.padEnd(24)} labelled ${a.rarity.padEnd(10)} measured ${(rate(a.id) * 100).toFixed(1)}%`));
+    failed = true;
+}
 if (missingNearMiss.length > 0) {
     console.log(`\nFAIL: ${missingNearMiss.length} achievement(s) test a numeric threshold with no nearMiss —`
         + ' a player who came one short is told nothing:');

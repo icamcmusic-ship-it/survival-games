@@ -24,11 +24,20 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # §1.7: the build chain is what deploys; a high-severity advisory in it fails the deploy.
+      - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run test:knobs
       - run: npm run test:sim
       - run: npm run test:metrics
       - run: npm run test:arenas
+      - run: npm run test:achievements
+      - run: npm run test:predicates
+      - run: npm run test:zone-features
+      - run: npm run test:flavor
+      - run: npm run test:names
+      - run: npm run test:storage
+      - run: npm run test:decisions
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
