@@ -86,6 +86,8 @@ export interface NearMiss {
 }
 
 const alive = (state: GameState) => state.tributes.filter(t => t.status === 'alive');
+/** The last day a tribute was standing: the run's length for a survivor. */
+const lastDay = (t: Tribute) => t.status === 'alive' ? Number.MAX_SAFE_INTEGER : (t.dayOfDeath ?? 0);
 
 /**
  * Traits that can only be picked up in the arena. Derived from `TRAIT_DEFS`
@@ -163,10 +165,17 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'both-levels',
         name: 'Both Levels',
-        hint: 'Crown a victor who stood on both levels of a vertical zone.',
+        hint: 'Crown a victor who changed level inside three different vertical zones.',
         category: 'arena',
-        rarity: 'uncommon',
-        test: (_s, v) => !!v && (v.levelsStood?.includes('upper') ?? false) && (v.levelsStood?.includes('lower') ?? false),
+        rarity: 'rare',
+        // §5.2 (audit): once every arena authored its verticality, "stood on
+        // both levels once" fired in 62% of runs. Three separate places is a
+        // habit rather than an accident.
+        test: (_s, v) => !!v && (v.levelsStood?.includes('upper') ?? false) && (v.levelsStood?.includes('lower') ?? false)
+            && (v.verticalZonesStood?.length ?? 0) >= 3,
+        nearMiss: (_s, v) => (v && (v.verticalZonesStood?.length ?? 0) === 2)
+            ? `${v.name} climbed or dropped a level in two places — Both Levels wants three`
+            : undefined,
     },
     {
         id: 'load-bearing',
@@ -680,7 +689,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Never Needed Anyone',
         hint: 'Crown a victor who never once joined an alliance.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: (state, v) => !!v && !state.log.some(e => e.category === 'alliance' && e.tributesInvolved.includes(v.id)),
     },
     {
@@ -1470,18 +1479,20 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'borrowed-time',
         name: 'Borrowed Time',
-        hint: 'Crown a victor whose will to keep going dropped under ten and came back up.',
+        hint: 'Crown a victor whose will to keep going dropped under twenty and came back up.',
         category: 'survival',
         rarity: 'rare',
-        test: (_s, v) => !!v && (v.minResolve ?? 100) < 10 && (v.resolve ?? 0) >= 10,
+        // §1.3 (audit): resolve is sampled in every phase now; the trough that
+        // counts is twenty, which is where breakdowns start being rolled.
+        test: (_s, v) => !!v && (v.minResolve ?? 100) < 20 && (v.resolve ?? 0) >= 20,
         nearMiss: (_s, v) => {
             if (!v) return undefined;
             const low = v.minResolve ?? 100;
             const now = v.resolve ?? 0;
             // Two ways to miss it: never dropped far enough, or dropped and
             // never climbed back out.
-            if (low < 10 && now < 10) return `${v.name} came home on ${Math.round(now)} resolve — borrowed time needs them back above ten`;
-            if (low >= 10 && low <= 20) return `${v.name}'s will bottomed out at ${Math.round(low)} — borrowed time starts under ten`;
+            if (low < 20 && now < 20) return `${v.name} came home on ${Math.round(now)} resolve — borrowed time needs them back above twenty`;
+            if (low >= 20 && low <= 30) return `${v.name}'s will bottomed out at ${Math.round(low)} — borrowed time starts under twenty`;
             return undefined;
         },
     },
@@ -1500,7 +1511,245 @@ export const ACHIEVEMENTS: Achievement[] = [
             ? `${v.name} never allied and never killed, but the arena still put them in front of somebody after the bloodbath`
             : undefined,
     },
+    // §11.2/§11.3 (audit): oddity had two entries and games six — the two
+    // categories that reward watching a whole run, smallest by a factor of
+    // ten. Every entry below reads state that already exists; nothing here
+    // needed new simulation. Rarities were set from a first measurement and
+    // are re-derived by test:achievements.
+    {
+        id: 'rooted',
+        name: 'Rooted',
+        hint: 'Crown a victor who never set foot outside the zone they started in.',
+        category: 'oddity',
+        rarity: 'legendary',
+        test: (s, v) => !!v && !v.isCareer
+            && (v.visitedZones?.length ?? 0) === 1
+            && v.visitedZones?.[0] === s.arena.zones[0]?.name,
+        nearMiss: (s, v) => (v && !v.isCareer && (v.visitedZones?.length ?? 0) === 2 && v.visitedZones?.[0] === s.arena.zones[0]?.name)
+            ? `${v.name} left the Cornucopia exactly once — Rooted stays put`
+            : undefined,
+    },
+    {
+        id: 'district-final',
+        name: 'Two of a Kind',
+        hint: 'See the last two tributes standing come from the same district.',
+        category: 'oddity',
+        rarity: 'rare',
+        test: state => {
+            const order = [...state.tributes].sort((a, b) => lastDay(b) - lastDay(a));
+            return order.length >= 2 && state.tributes.some(t => t.status === 'dead')
+                && order[0].district === order[1].district && lastDay(order[1]) > 1;
+        },
+        nearMiss: state => {
+            const order = [...state.tributes].sort((a, b) => lastDay(b) - lastDay(a));
+            return order.length >= 3 && order[0].district !== order[1].district && order[0].district === order[2].district
+                ? `District ${order[0].district} had two of the last three standing — Two of a Kind wants the last two`
+                : undefined;
+        },
+    },
+    {
+        id: 'careers-early',
+        name: 'The Pack Broke Early',
+        hint: 'See every Career dead before day three.',
+        category: 'games',
+        rarity: 'legendary',
+        test: state => {
+            const careers = state.tributes.filter(t => t.isCareer);
+            return careers.length >= 2 && careers.every(t => t.status === 'dead' && (t.dayOfDeath ?? 99) < 3);
+        },
+        nearMiss: state => {
+            const careers = state.tributes.filter(t => t.isCareer);
+            const late = careers.filter(t => !(t.status === 'dead' && (t.dayOfDeath ?? 99) < 3));
+            return careers.length >= 2 && late.length === 1
+                ? `every Career but ${late[0].name} was dead before day three`
+                : undefined;
+        },
+    },
+    {
+        id: 'grand-tour',
+        name: 'Every Square',
+        hint: 'See every zone of the arena stood in by somebody before the Games end.',
+        category: 'games',
+        rarity: 'uncommon',
+        test: state => {
+            const visited = new Set(state.tributes.flatMap(t => t.visitedZones ?? []));
+            return state.arena.zones.length >= 6 && state.arena.zones.every(z => visited.has(z.name));
+        },
+        nearMiss: state => {
+            const visited = new Set(state.tributes.flatMap(t => t.visitedZones ?? []));
+            const missing = state.arena.zones.filter(z => !visited.has(z.name));
+            return missing.length === 1 ? `nobody ever stood in ${missing[0].name} — every other zone was walked` : undefined;
+        },
+    },
+    {
+        id: 'no-feast',
+        name: 'Nobody Was Invited',
+        hint: 'See a Games of seven days or more end without the Gamemakers ever calling a feast.',
+        category: 'games',
+        rarity: 'uncommon',
+        test: state => state.config.enableFeast === true && (state.feastsHeld ?? 0) === 0 && state.day >= 7,
+        nearMiss: state => state.config.enableFeast === true && (state.feastsHeld ?? 0) === 0 && state.day === 6
+            ? 'no feast was ever called, but the Games ended on day six — Nobody Was Invited runs to seven'
+            : undefined,
+    },
+    {
+        id: 'quiet-booth',
+        name: 'Hands Off',
+        hint: 'As Gamemaker, crown a victor without pulling a single lever.',
+        category: 'games',
+        rarity: 'rare',
+        test: (state, v) => !!v && state.gamemakerMode === true
+            && Object.values(state.gamemakerUse ?? {}).every(u => (u?.uses ?? 0) === 0),
+    },
+    {
+        id: 'halved',
+        name: 'Halved',
+        hint: 'See a field of ten or more lose half its number in a single day after the bloodbath.',
+        category: 'games',
+        rarity: 'rare',
+        test: state => {
+            const total = state.tributes.length;
+            const byDay: Record<number, number> = {};
+            state.tributes.forEach(t => {
+                if (t.status === 'dead' && !t.diedInBloodbath && t.dayOfDeath !== undefined) byDay[t.dayOfDeath] = (byDay[t.dayOfDeath] ?? 0) + 1;
+            });
+            const bloodbath = state.tributes.filter(t => t.diedInBloodbath).length;
+            return Object.entries(byDay).some(([day, dead]) => {
+                const aliveAtDawn = total - bloodbath - state.tributes.filter(t =>
+                    t.status === 'dead' && !t.diedInBloodbath && (t.dayOfDeath ?? 99) < Number(day)).length;
+                return aliveAtDawn >= 10 && dead * 2 >= aliveAtDawn;
+            });
+        },
+        nearMiss: state => {
+            const total = state.tributes.length;
+            const bloodbath = state.tributes.filter(t => t.diedInBloodbath).length;
+            const byDay: Record<number, number> = {};
+            state.tributes.forEach(t => {
+                if (t.status === 'dead' && !t.diedInBloodbath && t.dayOfDeath !== undefined) byDay[t.dayOfDeath] = (byDay[t.dayOfDeath] ?? 0) + 1;
+            });
+            const close = Object.entries(byDay).find(([day, dead]) => {
+                const aliveAtDawn = total - bloodbath - state.tributes.filter(t =>
+                    t.status === 'dead' && !t.diedInBloodbath && (t.dayOfDeath ?? 99) < Number(day)).length;
+                return aliveAtDawn >= 10 && dead * 2 === aliveAtDawn - 2;
+            });
+            return close ? `day ${close[0]} took ${close[1]} of a field of ten or more — one short of halving it` : undefined;
+        },
+    },
+    {
+        id: 'every-district-bleeds',
+        name: 'Every District Bleeds',
+        hint: 'See every district lose at least one tribute on the first day.',
+        category: 'games',
+        rarity: 'rare',
+        test: state => {
+            const districts = [...new Set(state.tributes.map(t => t.district))];
+            return districts.length >= 6 && districts.every(d => state.tributes.some(t =>
+                t.district === d && t.status === 'dead' && (t.diedInBloodbath || t.dayOfDeath === 1)));
+        },
+        nearMiss: state => {
+            const districts = [...new Set(state.tributes.map(t => t.district))];
+            const spared = districts.filter(d => !state.tributes.some(t =>
+                t.district === d && t.status === 'dead' && (t.diedInBloodbath || t.dayOfDeath === 1)));
+            return districts.length >= 6 && spared.length === 1
+                ? `every district but ${spared[0]} lost somebody on day one`
+                : undefined;
+        },
+    },
+    {
+        id: 'walking-wounded',
+        name: 'Walking Wounded',
+        hint: 'Crown a victor carrying three or more separate injuries.',
+        category: 'survival',
+        rarity: 'rare',
+        test: (_s, v) => !!v && Object.values(v.injuries).filter(Boolean).length >= 3,
+        nearMiss: (_s, v) => (v && Object.values(v.injuries).filter(Boolean).length === 2)
+            ? `${v.name} was crowned carrying two injuries — Walking Wounded carries three`
+            : undefined,
+    },
+    {
+        id: 'unpaid-crown',
+        name: 'Still Owing',
+        hint: 'Crown a victor who still owes somebody a debt.',
+        category: 'social',
+        rarity: 'rare',
+        test: (_s, v) => !!v && Object.values(v.debts ?? {}).some(d => d > 0),
+    },
+    {
+        id: 'rumour-mill',
+        name: 'Rumour Mill',
+        hint: 'See three or more rumours still in circulation when the Games end.',
+        category: 'social',
+        rarity: 'rare',
+        test: state => (state.rumours?.length ?? 0) >= 3,
+        nearMiss: state => (state.rumours?.length ?? 0) === 2
+            ? 'two rumours were still going round at the end — Rumour Mill wants three'
+            : undefined,
+    },
+    {
+        id: 'treaty-year',
+        name: 'The Treaty Year',
+        hint: 'See a bloc treaty still standing when the Games end.',
+        category: 'social',
+        rarity: 'rare',
+        test: state => (state.blocTreaties?.length ?? 0) >= 1,
+    },
+    {
+        id: 'named-blade',
+        name: 'A Blade With a Name',
+        hint: 'Crown a victor carrying a weapon that earned a name in the arena.',
+        category: 'combat',
+        rarity: 'rare',
+        test: (_s, v) => !!v && v.inventory.some(i => i.legendName !== undefined),
+    },
+    {
+        id: 'strange-year',
+        name: 'A Strange Year',
+        hint: 'See a Games in which two or more once-only arena events fired.',
+        category: 'oddity',
+        rarity: 'rare',
+        test: state => (state.firedEvents?.length ?? 0) >= 2,
+        nearMiss: state => (state.firedEvents?.length ?? 0) === 1 ? 'one once-only event fired — a Strange Year has two' : undefined,
+    },
+    {
+        id: 'sky-of-cannons',
+        name: 'Nothing but Sky',
+        hint: 'See a Games where two of every three deaths were the arena\'s, not another tribute\'s.',
+        category: 'oddity',
+        rarity: 'rare',
+        test: state => {
+            const dead = state.tributes.filter(t => t.status === 'dead');
+            const byHand = dead.filter(t => (t.causeOfDeath ?? '').startsWith('Killed by ')).length;
+            return dead.length >= 8 && byHand * 3 <= dead.length;
+        },
+        nearMiss: state => {
+            const dead = state.tributes.filter(t => t.status === 'dead');
+            const byHand = dead.filter(t => (t.causeOfDeath ?? '').startsWith('Killed by ')).length;
+            return dead.length >= 8 && byHand * 3 > dead.length && byHand * 2 < dead.length
+                ? 'more died to the arena than to each other — Nothing but Sky wants two in three'
+                : undefined;
+        },
+    },
+    {
+        id: 'epithet-victor',
+        name: 'Known As',
+        hint: 'Crown a victor who earned an epithet before the crown.',
+        category: 'oddity',
+        rarity: 'uncommon',
+        test: (_s, v) => !!v && v.epithet !== undefined,
+    },
+    {
+        id: 'long-truce',
+        name: 'The Long Truce',
+        hint: 'Crown a victor whose truce was renewed twice with the same tribute.',
+        category: 'social',
+        rarity: 'rare',
+        test: (_s, v) => !!v && Object.values(v.truceRenewed ?? {}).some(n => n >= 2),
+        nearMiss: (_s, v) => (v && Object.values(v.truceRenewed ?? {}).some(n => n === 1))
+            ? `${v.name} renewed a truce once — the Long Truce renews it twice`
+            : undefined,
+    },
 ];
+
 
 /**
  * S-3: career-wide achievements, evaluated against the persistent Panem

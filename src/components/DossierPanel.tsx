@@ -431,6 +431,32 @@ export function DossierPanel({
                                 Supply drop <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.drop}</span>
                             </button>
                             <button
+                                onClick={() => spendGamemaker('strip', GAMEMAKER_COSTS.strip, gmZone || undefined)}
+                                className="btn btn-sm w-full"
+                                disabled={coins < GAMEMAKER_COSTS.strip}
+                                title={`Strip the zone's forage — nothing edible left in it for days (${GAMEMAKER_COSTS.strip} coins)`}
+                            >
+                                Strip zone <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.strip}</span>
+                            </button>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                <button
+                                    onClick={() => spendGamemaker('mercy', GAMEMAKER_COSTS.mercy, muttTargetId || undefined)}
+                                    className="btn btn-sm w-full"
+                                    disabled={coins < GAMEMAKER_COSTS.mercy}
+                                    title={`Send an unrequested medical parachute to the selected tribute (or the most hurt) — and let the whole field see who you favour (${GAMEMAKER_COSTS.mercy} coins)`}
+                                >
+                                    Mercy <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.mercy}</span>
+                                </button>
+                                <button
+                                    onClick={() => spendGamemaker('reveal', GAMEMAKER_COSTS.reveal, muttTargetId || undefined)}
+                                    className="btn btn-sm w-full"
+                                    disabled={coins < GAMEMAKER_COSTS.reveal}
+                                    title={`Put the selected tribute (or the best hidden one) on every screen in the arena (${GAMEMAKER_COSTS.reveal} coins)`}
+                                >
+                                    Reveal <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.reveal}</span>
+                                </button>
+                            </div>
+                            <button
                                 onClick={() => spendGamemaker('bounty', GAMEMAKER_COSTS.bounty, muttTargetId || undefined)}
                                 className="btn btn-sm w-full"
                                 disabled={coins < GAMEMAKER_COSTS.bounty || !!gameState.bountyTargetId}

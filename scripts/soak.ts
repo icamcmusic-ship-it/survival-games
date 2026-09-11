@@ -12,6 +12,7 @@
  *
  *   npm run test:sim
  */
+import { TRUCE_LEDGER } from '../src/engine/parley';
 import { generateTributes, strengthCapForAge } from '../src/engine/generator';
 import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
@@ -87,7 +88,7 @@ let woundsTurned = 0, sepsisDeepened = 0, sepsisTerminal = 0, sepsisTreated = 0,
 let zoneDrinks = 0, pursuits = 0, desperationFights = 0, fearFelt = 0;
 let bestProficiencySeen = 0;
 // Relationships and alliances.
-let exoticBetrayals = 0, merges = 0, leadershipChanges = 0, pactsDeclared = 0, pactsHonoured = 0;
+let exoticBetrayals = 0, preemptiveBetrayals = 0, merges = 0, leadershipChanges = 0, pactsDeclared = 0, pactsHonoured = 0;
 let factionActions = 0, expulsions = 0, hearings = 0, trucesOutlived = 0, brokeredHeld = 0;
 let feuds = 0, freeForAlls = 0, careerDefections = 0, cacheContributions = 0;
 // Intentions and fieldcraft.
@@ -298,6 +299,7 @@ for (let i = 0; i < 400; i++) {
     if (/coats their .* with it/.test(l.text)) weaponsPoisoned++;
     // --- Relationships and alliances. ---
     if (/empties the group's stash|and watches them go|keeps their hand over the pocket|hears it, and keeps walking/.test(l.text)) exoticBetrayals++;
+    if (/decides not to wait to find out/.test(l.text)) preemptiveBetrayals++;
     if (/run as one/.test(l.text)) merges++;
     if (/takes charge of what is left|stops deferring to/.test(l.text)) leadershipChanges++;
     if (/There is no reason at all for it to be true/.test(l.text)) rumoursPlanted++;
@@ -569,6 +571,9 @@ for (let i = 0; i < 400; i++) {
     }
   }
 }
+// §1.4: snapshot before the determinism replays below open more truces.
+const truceStruckInSample = TRUCE_LEDGER.struck;
+const truceLedgerInSample = { ...TRUCE_LEDGER };
 
 // --- Backstory relationships exist before the gong. ---
 {
@@ -764,14 +769,24 @@ console.log(`wounds: clots=${clots} fieldDressings=${fieldDressings} restRecover
 console.log(`agency: hunts/crafts=${huntOrCraft} zoneDrinks=${zoneDrinks} pursuits=${pursuits} desperationFights=${desperationFights}`);
 console.log(`psychology: fear entries=${fearFelt} peakProficiency=${bestProficiencySeen.toFixed(2)} (cap ${PROFICIENCY.max})`);
 console.log(`intentions: objectives formed=${objectivesFormed}`);
-console.log(`social: exoticBetrayals=${exoticBetrayals} merges=${merges} leaderChanges=${leadershipChanges} feuds=${feuds} freeForAlls=${freeForAlls}`);
+console.log(`social: exoticBetrayals=${exoticBetrayals} preemptiveBetrayals=${preemptiveBetrayals} merges=${merges} leaderChanges=${leadershipChanges} feuds=${feuds} freeForAlls=${freeForAlls}`);
 console.log(`pacts: declared=${pactsDeclared} honoured=${pactsHonoured} careerDefections=${careerDefections} cacheContributions=${cacheContributions}`);
 // §1.4: the truce ledger has to close. renew + lapse + turn + break + held
 // only ever accounted for ~40% of the truces struck; the missing majority is
 // `trucesOutlived` — a truce ended by one party dying — which was a real,
 // logged, achievement-granting ending that no counter here named, so the
 // mechanic read as "251 formed, 102 resolved, 149 vanished".
+// §1.4 (audit): a renewal closes one term and opens the next, so the terms
+// the ledger has to close are `struck + renewed`, and `struck` itself is read
+// from the engine's own counter rather than from 'TRUCE:' prose — brokered and
+// bought truces never printed that line and were invisible to the old count.
+const truceTerms = truceStruckInSample + trucesRenewed;
 const truceEndings = trucesRenewed + trucesLapsed + trucesTurned + trucesBroken + trucesOutlived;
+// The engine's own ledger, counted at every site a term opens or ends, so the
+// closure assertion does not depend on matching prose.
+const L = truceLedgerInSample;
+const ledgerTerms = L.struck + L.renewed;
+const ledgerEndings = L.renewed + L.lapsed + L.turned + L.broken + L.outlived + L.buried + L.dissolved + L.standingAtEnd;
 console.log(`sleep: deprivedDrops=${sleepDrops}`);
 console.log(`weapons: coldSwings=${coldWeaponSwings}`);
 console.log(`bluffs: landed=${bluffsLanded} caught=${bluffsCaught}`);
@@ -803,13 +818,21 @@ console.log(`notoriety: peak=${Math.round(peakNotoriety)} ledgerEntriesWithoutCo
 console.log(`traitArcs: pacifistToBroken=${pacifistBroke} loyalToTreacherous=${loyalBroke} mercifulToRuthless=${mercyBroke}`);
 console.log(`infection: woundsTurned=${woundsTurned} deepened=${sepsisDeepened} reachedTerminal=${sepsisTerminal} treated=${sepsisTreated} feverLines=${feverLines} sepsisDeaths=${sepsisDeaths}`);
 console.log(`truces2: outlived=${trucesOutlived} brokeredHeld=${brokeredHeld}`);
-console.log(`truce ledger: struck=${trucesStruck} accountedEndings=${truceEndings} `
-  + `(renewed=${trucesRenewed} lapsed=${trucesLapsed} turned=${trucesTurned} broken=${trucesBroken} outlivedByDeathOrTheEnd=${trucesOutlived}) `
-  + `unaccounted=${trucesStruck - truceEndings}`);
+console.log(`truce endings narrated: renewed=${trucesRenewed} lapsed=${trucesLapsed} turned=${trucesTurned} broken=${trucesBroken} `
+  + `outlivedOrClosedAtEnd=${trucesOutlived} (matched by prose; the engine ledger below is the assertion)`);
+console.log(`truce ledger (engine): terms=${ledgerTerms} endings=${ledgerEndings} `
+  + `(renewed=${L.renewed} lapsed=${L.lapsed} turned=${L.turned} broken=${L.broken} outlived=${L.outlived} buried=${L.buried} `
+  + `dissolvedWithBroker=${L.dissolved} standingAtEnd=${L.standingAtEnd}) unaccounted=${ledgerTerms - ledgerEndings}`);
 // §1.4 (audit): loans and vengeance pacts both closed to zero; truces left
-// 38% open. The epilogue now closes the rest, so the same tolerance applies.
-if (trucesStruck - truceEndings > trucesStruck * 0.05) {
-  note(`truce ledger loses ${trucesStruck - truceEndings} of ${trucesStruck} truces`);
+// 38% open. Every exit is counted at its site now, and the epilogue closes
+// whatever is still standing, so the ledger has to balance exactly.
+if (ledgerTerms !== ledgerEndings) {
+  problems.push(`truce ledger loses ${ledgerTerms - ledgerEndings} of ${ledgerTerms} truce terms`);
+}
+// The prose-matched view is the on-screen guarantee: nearly every ending has
+// to have printed a line the reader can find.
+if (Math.abs(truceTerms - truceEndings - L.dissolved - L.buried) > truceTerms * 0.1) {
+  note(`truce endings on screen: ${truceEndings + L.dissolved + L.buried} of ${truceTerms} terms narrated`);
 }
 console.log(`politics: factionActions=${factionActions} expulsions=${expulsions} hearings=${hearings}`);
 console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} paidInInformation=${tributesPaidInformation} truces=${trucesStruck} trucesHeld=${trucesHeld} trucesBroken=${trucesBroken} trucesRenewed=${trucesRenewed} trucesLapsed=${trucesLapsed} trucesTurned=${trucesTurned} soloDepartures=${soloDepartures} schisms=${schisms}`);

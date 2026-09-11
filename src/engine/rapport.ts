@@ -2,6 +2,7 @@ import { Tribute } from '../models/types';
 import { RELATIONSHIPS, RESPECT, RIVALRY } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { adjustMutual, adjustRel, getRel, adjustRespect, respectOf } from './relationships';
+import { traitMod } from '../data/traits';
 import { cycleOf, ensureMemory, rivalRecord } from './memory';
 import { addFear, fearOf } from './fear';
 
@@ -109,7 +110,10 @@ export function reconcileRivals(ctx: SimContext) {
             }
 
             if (sharedDanger && record.fights <= 0 && other) {
-                adjustMutual(ctx.state, t, other, RIVALRY.reconcileRegard);
+                // §8.3 (audit): the reconciliation lands harder between people
+                // who are good at people — read once, here, for both sides.
+                adjustMutual(ctx.state, t, other,
+                    RIVALRY.reconcileRegard * (1 + traitMod(t, 'rapport') + traitMod(other, 'rapport')));
                 // Respect survives the reconciliation even when the liking does
                 // not — you do not forget what they were like across a clearing.
                 adjustRespect(t, other.id, RESPECT.reconcile);

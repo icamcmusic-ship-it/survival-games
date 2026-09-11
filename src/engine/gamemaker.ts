@@ -1,6 +1,7 @@
 import { SimContext, getAlive } from './context';
 import { ExposureProfile, applyExposure } from './exposure';
-import { getZone } from './map';
+import { depleteZone, getZone } from './map';
+import { clampTribute } from './vitals';
 import { FEAST, GAMEMAKER, OBJECTIVES } from '../data/balance';
 import { wildcardIs } from './gamesProfile';
 import { eligibleMutts, engageMutt, rosterFor } from './mutts';
@@ -101,7 +102,11 @@ const WEATHER_EFFECTS: ExposureProfile[] = [
 
 export type GamemakerEventType =
     | 'mutt' | 'weather' | 'feast'
-    | 'burn' | 'flood' | 'fog' | 'sever' | 'bounty' | 'drop';
+    | 'burn' | 'flood' | 'fog' | 'sever' | 'bounty' | 'drop'
+    // §6.2 (audit): three levers that are not harm. Mercy heals somebody,
+    // which is a far more political act than hurting them; reveal tells the
+    // whole field where one tribute is; strip empties a zone's pantry.
+    | 'mercy' | 'reveal' | 'strip';
 
 /**
  * §6.7: what pressing the same lever again actually costs. Escalates on the
@@ -285,6 +290,50 @@ export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType,
         });
     } else if (type === 'drop') {
         dropSupplies(ctx);
+    } else if (type === 'mercy') {
+        const alive = getAlive(ctx.state);
+        const target = targetId
+            ? alive.find(t => t.id === targetId)
+            : [...alive].sort((a, b) => a.health - b.health)[0];
+        if (!target) return;
+        target.health = Math.min(100, target.health + GAMEMAKER.mercyHeal);
+        target.injuries.bleeding = false;
+        target.vitals.fatigue = Math.max(0, target.vitals.fatigue - GAMEMAKER.mercyFatigueRelief);
+        clampTribute(target);
+        // The whole field saw the parachute, and the whole field now knows
+        // who the booth is keeping alive.
+        alive.forEach(t => { if (t.id !== target.id) noteSighting(ctx.state, t, target.zone, 1, 0); });
+        ctx.logEvent(
+            `GAMEMAKER: A medical parachute lands on ${target.name} of District ${target.district} in ${target.zone}, unrequested and unpaid for. `
+            + 'Every tribute who saw it come down has just learned who the Capitol wants kept alive.',
+            [target.id],
+            { important: true, zone: target.zone, category: 'gamemaker' }
+        );
+    } else if (type === 'reveal') {
+        const alive = getAlive(ctx.state);
+        const target = targetId
+            ? alive.find(t => t.id === targetId)
+            : [...alive].sort((a, b) => b.attributes.stealth - a.attributes.stealth)[0];
+        if (!target) return;
+        // Their cover, if they had any, is gone: the field revises its read.
+        target.concealRevealed = true;
+        alive.forEach(t => { if (t.id !== target.id) noteSighting(ctx.state, t, target.zone, 1, 0); });
+        ctx.logEvent(
+            `GAMEMAKER: The arena's screens light up with ${target.name} of District ${target.district}, live, in ${target.zone}. `
+            + 'There is nowhere in the arena that cannot see it.',
+            [target.id],
+            { important: true, zone: target.zone, category: 'gamemaker' }
+        );
+    } else if (type === 'strip') {
+        const zone = pickTargetZone(ctx, targetId);
+        if (!zone) return;
+        depleteZone(ctx.state, zone, GAMEMAKER.stripDepletion);
+        ctx.logEvent(
+            `GAMEMAKER: Overnight, everything edible in ${zone} is gone — picked, burned back, or simply switched off. `
+            + 'Whoever was counting on it will have to count on somewhere else.',
+            [],
+            { important: true, zone, category: 'gamemaker' }
+        );
     }
 }
 

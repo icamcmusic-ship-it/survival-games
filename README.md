@@ -49,7 +49,7 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   stock (districts 13-16 once shipped at 30 entries per gender against the
   original twelve's 100), no pool repeats itself, and no name is resident in
   more than two districts at once (`Sable` was in five).
-- `npm run test:achievements` — achievement coverage. Evaluates all 111
+- `npm run test:achievements` — achievement coverage. Evaluates all 130-odd
   predicates against a few hundred real end-states (a crash test in itself:
   they run over finished states with arbitrary optional fields missing), then
   reports what the discovery layer actually hands out — entries that never
@@ -57,8 +57,17 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   usable 5-60% band, and any authored `rarity` label the measured rate
   contradicts. Both failure modes matter: an unreachable entry is a promise the
   game does not keep, and a near-automatic one is a participation ribbon on a
-  list that is supposed to be a menu.
-- `npm run test:flavor` — flavour-pool depth. A run averages ~650 log lines and
+  list that is supposed to be a menu. A rarity label two bands off its measured
+  rate is now a build failure rather than a line in a report — eight labels had
+  drifted, one 'legendary' firing in a sixth of all runs — and
+  `ACHIEVEMENT_EMIT_RARITY=1` regenerates the whole set from the data.
+- `npm run test:flavor` — flavour-pool depth. For arena event packs the hard
+  floor (24) and the soft target (40) are now separate numbers: the floor fails
+  the build, the target is reported as distance-to-go. They were one number, and
+  37 of 40 packs sat at exactly 24 — the signature of content written to satisfy
+  a check rather than to fill a ~650-line run. Once-per-run events are floored
+  separately at two per arena, because that is what makes one run of an arena
+  differ from the next, and 'Every Door' cannot fire in an arena with fewer. A run averages ~650 log lines and
   swears ~10 vengeance oaths, so a 10-entry pool repeats itself inside a single
   Games as a matter of arithmetic. The backlog is now empty: every pool is at or
   above the 12-entry target and the allowance is zero, so a new thin pool fails
@@ -73,6 +82,29 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
   most arenas that author them author four entries against a generic fallback of
   twelve, which makes an authored pool *worse* than none — so it ratchets the way
   the global allowance does and can only shrink.
+- `npm run test:predicates` — unreachable data predicates. Walks every optional
+  boolean on `Tribute` and `GameState`, finds which literal values the engine
+  ever writes to it, and fails on any achievement `test` or `nearMiss` that
+  compares the field against a value it never takes. This is the check that
+  would have caught `nobodys-ally` (`metAnybodyAfterBloodbath === false` on a
+  field only ever set `true`, so it could not fire — and the coverage report
+  listed it alongside the genuinely hard entries, which hid it).
+- `npm run test:zone-features` — authored versus derived zone interiors.
+  Acoustics, verticality and shelter are shared primitives every arena can use,
+  and `zoneFeatures()` derives a value for any zone that does not author one —
+  which meant nothing was ever broken, and nothing said that 37 of 40 arenas
+  were running on a name-hash. Every zone now carries an authored interior,
+  every arena at least two vertical zones and three non-neutral acoustics, and
+  the floors ratchet: they may rise and may not fall.
+- `npm run test:decisions` — decision quality, measured. Every tribute records a
+  per-cycle `decisionTrace` (the top scored stances with their reasons, the
+  destinations the wander scorer weighed, and — new — which one it actually
+  picked and where that pick ranked). The check asserts the trace exists for
+  nearly every living tribute, that the stance a tribute holds is one of its own
+  top three nearly always (hysteresis may keep an incumbent; an incumbent the
+  scorer ranks fourth is a scorer being ignored), and that a destination pick
+  from the bottom fifth of its own scoring is rare. Until this existed, a
+  stupid decision could not be told apart from a stale memory or a bad roll.
 - `npm run test:knobs` — fails the build on a knob declared in `data/balance.ts`
   that nothing in `src/` reads, so a dead dial cannot silently absorb tuning
   effort.
@@ -242,6 +274,37 @@ running in parallel:
   A weapon that draws blood twice earns a name of its own
   (`engine/legendaryItems.ts`) and keeps it when it changes hands, which is a
   kind of proper noun the game did not otherwise have.
+- **Trust has its own history** (`engine/relationships.ts`). `trustOf` is still
+  derived — regard, capped, corrected by the memory ledger — which is what keeps
+  every old save readable; on top of it sits a stored `trusts` axis, added the
+  way `respects` was. A kept truce term and a repaid debt build it, a betrayal
+  or a broken truce takes from it, and it heals toward zero on its own clock,
+  slower up from a wound than down from a favour. "I don't like you any more
+  but I've come to trust you" is now a state the engine can hold.
+- **Betrayal can be pre-emptive** (`engine/betrayal.ts`). Every other betrayal
+  was opportunism — the cache, the field size, the roll. The pre-emptive strike
+  comes from a model of somebody else's mind: a tribute whose suspicion of a
+  specific ally has climbed past the line moves first because they expect to be
+  moved on. The record says whether they were right, which is where the tragic
+  ones come from.
+- **Every arena has an inside.** Every one of the 415 zones authors its own
+  `features` — cover, elevation, chokepoints, shelter, acoustics, and whether
+  it has an upper and a lower level — where three arenas used to and the rest
+  ran on a name-hash. Every arena also carries at least three once-per-run
+  events, an event *chain* (a setup that fires its follow-up on the same
+  tribute next cycle), two signature deaths in its own idiom, and reactive
+  events keyed to state (after dark, in a storm, when the field is down to
+  four), in `data/arenaEvents/`. Off-season skins are three per arena rather
+  than one, in `data/offSeasonSkins/`.
+- **The Gamemaker booth** has levers that are not harm: *mercy* drops an
+  unrequested medical parachute and lets the whole field see who the Capitol
+  favours, *reveal* puts one tribute on every screen, *strip* empties a zone's
+  pantry. Side markets include prop bets on the run's shape (a feast called, a
+  bloodless crown, a wounded one), priced from measured rates.
+- **Deaths explain themselves.** Every death card carries a "Why?" — the
+  stance, what the tribute was trying to do and why the scorer chose it, the
+  wounds they carried, and what their killer was to them — read back from the
+  record rather than newly simulated.
 - **Districts** (`data/districts.ts`) carry a Games record. A tribute from a
   storied district arrives with a mentor who has stood on the podium and a
   crowd that already expects them to do well; a tribute from a forgotten one

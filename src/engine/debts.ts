@@ -1,8 +1,8 @@
 import { Tribute } from '../models/types';
-import { DEBTS } from '../data/balance';
+import { DEBTS, RELATIONSHIPS } from '../data/balance';
 import { DEBT_TEXTS } from '../data/flavorText';
 import { SimContext, getAlive } from './context';
-import { adjustMutual, adjustRel, getRel, trustOf } from './relationships';
+import { adjustMutual, adjustRel, getRel, trustOf, adjustTrust } from './relationships';
 import { cycleOf, noteStoodBy, raiseSuspicion } from './memory';
 import { witnessKindness } from './rapport';
 import { giveItem } from './items';
@@ -155,6 +155,8 @@ export function repayDebts(ctx: SimContext) {
 
         clearDebt(debtor, creditorId);
         adjustMutual(ctx.state, debtor, creditor, DEBTS.repayRegard);
+        // §4.2 (audit): a debt honoured is trust earned, on its own axis.
+        adjustTrust(creditor, debtor.id, RELATIONSHIPS.trustRepaidDebt);
         addExcitement(debtor, DEBTS.repayExcitement);
         clampTribute(debtor);
         clampTribute(creditor);

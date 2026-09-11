@@ -6,7 +6,7 @@ import { SimContext, getAlive } from './context';
 import { getRel, adjustMutual, adjustRel } from './relationships';
 import { fearOf, addFear } from './fear';
 import { addExcitement } from './audience';
-import { grantTruce } from './parley';
+import { grantTruce, TRUCE_LEDGER } from './parley';
 import { giveItem, inventoryValue } from './items';
 import { healInjury, clearBleeding } from './wounds';
 import { clampTribute } from './vitals';
@@ -400,6 +400,9 @@ export function dissolveBrokeredTruces(ctx: SimContext, dead: Tribute) {
         if (a.truces?.[bId] === undefined && b.truces?.[aId] === undefined) return;
         if (a.truces) delete a.truces[bId];
         if (b.truces) delete b.truces[aId];
+        if (a.truceReason) delete a.truceReason[bId];
+        if (b.truceReason) delete b.truceReason[aId];
+        TRUCE_LEDGER.dissolved += 1;
         dissolved += 1;
     });
     if (dissolved === 0) return;

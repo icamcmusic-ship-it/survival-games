@@ -100,6 +100,9 @@ export function tickVerticality(ctx: SimContext) {
         t.vitals.fatigue += going === 'lower' ? VERTICALITY.descendFatigue : VERTICALITY.climbFatigue;
         t.levelsStood = t.levelsStood ?? [level];
         if (!t.levelsStood.includes(going)) t.levelsStood.push(going);
+        if (!(t.verticalZonesStood ?? []).includes(t.zone)) {
+            t.verticalZonesStood = [...(t.verticalZonesStood ?? []), t.zone];
+        }
 
         // Going down fast is how people get hurt; going up is slow and safe.
         // §7: the descent fall was a flat roll — a tribute who had not slept in

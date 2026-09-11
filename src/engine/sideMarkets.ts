@@ -46,7 +46,15 @@ export type SideBetKind =
     /** The crown goes to a named district. */
     | 'victor-district'
     /** The Games are still running after the line. */
-    | 'long-games';
+    | 'long-games'
+    // §6.3 (audit): prop markets on the *shape* of the run rather than on a
+    // name — priced from measured rates, settled from state.
+    /** The Gamemakers call at least one feast. */
+    | 'feast-held'
+    /** The crown goes to somebody who never killed. */
+    | 'bloodless-victor'
+    /** The victor is crowned still carrying a wound. */
+    | 'wounded-victor';
 
 /**
  * Every market, as a runtime list. Save normalisation validates an unknown
@@ -56,6 +64,7 @@ export type SideBetKind =
 export const SIDE_BET_KINDS: readonly SideBetKind[] = [
     'first-blood', 'no-victor', 'career-victor', 'top-three',
     'bloodbath-over', 'bloodbath-under', 'victor-district', 'long-games',
+    'feast-held', 'bloodless-victor', 'wounded-victor',
 ] as const;
 
 /** What a market needs beyond its kind to be a specific wager. */
@@ -273,6 +282,16 @@ export function priceSideBet(kind: SideBetKind, field: Tribute[], target: SideBe
                 label: `the Games still running after day ${line}`,
             };
         }
+        case 'feast-held':
+            return { kind, ...price(SIDE_MARKETS.feastHeldBase), label: 'the Gamemakers calling a feast' };
+        case 'bloodless-victor': {
+            // Careers close; a Career-heavy field leaves fewer bloodless crowns.
+            const careerShare = pool.filter(t => t.isCareer).length / pool.length;
+            const p = SIDE_MARKETS.bloodlessVictorBase * (1 + (SIDE_MARKETS.careerShareNorm - careerShare) * SIDE_MARKETS.bloodlessCareerTilt);
+            return { kind, ...price(p), label: 'a victor who never killed' };
+        }
+        case 'wounded-victor':
+            return { kind, ...price(SIDE_MARKETS.woundedVictorBase), label: 'a victor crowned still wounded' };
     }
 }
 
@@ -286,6 +305,9 @@ export function quoteSideMarkets(field: Tribute[]): SideQuote[] {
         priceSideBet('bloodbath-over', pool),
         priceSideBet('bloodbath-under', pool),
         priceSideBet('long-games', pool),
+        priceSideBet('feast-held', pool),
+        priceSideBet('bloodless-victor', pool),
+        priceSideBet('wounded-victor', pool),
         ...districts.map(d => priceSideBet('victor-district', pool, { targetDistrict: d })),
         ...pool.map(t => priceSideBet('first-blood', pool, { targetId: t.id })),
         ...pool.map(t => priceSideBet('top-three', pool, { targetId: t.id })),
@@ -350,5 +372,12 @@ export function settleSideBet(state: GameState, bet: SideBetKind extends never ?
             if (state.day === line) return { won: false, push: true, label };
             return yes(state.day > line, label);
         }
+        case 'feast-held':
+            return yes((state.feastsHeld ?? 0) > 0, 'the Gamemakers calling a feast');
+        case 'bloodless-victor':
+            return yes(survivors.length > 0 && survivors.every(t => t.kills === 0), 'a victor who never killed');
+        case 'wounded-victor':
+            return yes(survivors.length > 0 && survivors.some(t => Object.values(t.injuries).some(Boolean)),
+                'a victor crowned still wounded');
     }
 }

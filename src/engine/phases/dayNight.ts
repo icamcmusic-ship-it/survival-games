@@ -11,7 +11,7 @@ import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, neare
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, checkIntelLies, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
-import { decayAllianceTrust, driftReputation, getRel } from '../relationships';
+import { decayAllianceTrust, driftReputation, getRel, decayTrust } from '../relationships';
 import { clampTribute } from '../vitals';
 import { openWound } from '../wounds';
 import { isNoticed } from '../stealth';
@@ -293,6 +293,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     checkIntelLies(ctx);
     decayMemories(ctx.state);
     decayRelationships(ctx.state);
+    // §4.2 (audit): stored trust heals on its own clock.
+    decayTrust(ctx.state);
     decayAllianceTrust(ctx.state);
     decayFear(ctx.state);
     decaySuspicion(ctx.state);

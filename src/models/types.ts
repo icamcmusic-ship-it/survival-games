@@ -751,6 +751,17 @@ export interface Tribute {
      */
     respects?: Record<string, number>;
     /**
+     * §4.2 (audit): the third stored axis — trust *history*. `trustOf` is
+     * still derived from regard and the memory ledger, which is what keeps
+     * every old save readable; this is the part of trust that has its own
+     * momentum. A kept promise adds to it, a broken one takes from it, and it
+     * heals toward zero at its own rate — so "I don't like you any more but
+     * I've come to trust you" and "trust that was broken and is mending" are
+     * both states the engine can hold. Added the way `respects` was: an
+     * optional record, absent on every save written before it existed.
+     */
+    trusts?: Record<string, number>;
+    /**
      * §4.4/§6.3: the angle they took with Caesar. A showmance is a strategy
      * chosen before the arena; so is publicly inviting allies, so is naming
      * the person you intend to kill in front of the whole country.
@@ -856,6 +867,12 @@ export interface Tribute {
     terminalInfectionBeaten?: boolean;
     /** §11: vertical-zone levels ever stood on. */
     levelsStood?: ZoneLevel[];
+    /**
+     * §5.2 (audit): the distinct vertical zones they changed level in. Once
+     * every arena authored its interiors, "stood on both levels" became true
+     * of most victors; the achievement now asks for it in several places.
+     */
+    verticalZonesStood?: string[];
     /** Consecutive cycles at terminal-grade sepsis. Fatal at INFECTION.terminalCycles. */
     septicCycles?: number;
     /**
@@ -2046,6 +2063,8 @@ export interface GameState {
      * and dissolving for reasons about the blocs rather than about any pair.
      * See `engine/blocTreaty.ts`.
      */
+    /** §11.3 (audit): treaties sworn this run. Treaties are pruned as they end, so the count is the only record. */
+    blocTreatiesSworn?: number;
     blocTreaties?: Array<{
         /** Cycle a member last decided the treaty did not bind them. Log de-dup only. */
         strainedCycle?: number;

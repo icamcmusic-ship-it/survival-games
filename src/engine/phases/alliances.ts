@@ -12,7 +12,7 @@ import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteConta
 import { respectOf } from '../relationships';
 import { sniffPerformances } from '../alliance';
 import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
-import { resolveBetrayal } from '../betrayal';
+import { resolveBetrayal, preemptiveBetrayer } from '../betrayal';
 import { resolveDuePacts } from '../alliancePact';
 import { runAlliancePolitics, wasExpelled } from '../alliancePolitics';
 import { betrayalReluctance } from '../debts';
@@ -346,6 +346,13 @@ export function processAlliances(ctx: SimContext) {
     // 2. Betrayal Logic
     alliances.forEach((members) => {
         if (members.length < 2) return;
+        // §3.2 (audit): before the ordinary roll, anybody who has decided an
+        // ally is about to turn on them gets to turn first.
+        const first = preemptiveBetrayer(ctx, members);
+        if (first) {
+            resolveBetrayal(ctx, first[0], first[1], members, 'preempt');
+            return;
+        }
         // Betrayal chance increases as fewer tributes remain
         const betrayalThreshold = (alive.length <= ALLIANCES.betrayalEndgameFieldSize
             ? ALLIANCES.betrayalEndgame

@@ -33,13 +33,13 @@ const configs: GameConfig[] = [
     { ...DEFAULT_GAME_CONFIG, districtCount: 12, hazardRate: 1.5 },
 ];
 
-function start(seed: string, arenaId: string, config: GameConfig): GameState {
+function start(seed: string, arenaId: string, config: GameConfig, gamemaker = false): GameState {
     const arena = arenaId.startsWith('procedural') ? generateArena(seed) : ARENAS.find(a => a.id === arenaId)!;
     const gamesProfile = gamesProfileFor(seed, seed.endsWith('7'));
     const resolved = configForProfile(config, gamesProfile);
     const tributes = generateTributes(seed, resolved, arena.zones[0].name, gamesProfile.castShape, gamesProfile.quell);
     return {
-        seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: false,
+        seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: gamemaker,
         config: resolved, baseConfig: config, gamesProfile, logCounter: 0, feastsHeld: 0, cycle: 0,
     };
 }
@@ -50,7 +50,9 @@ let completed = 0;
 
 for (let i = 0; i < RUNS; i++) {
     const seed = `ACH${i}`;
-    const sim = new Simulator(start(seed, arenaIds[i % arenaIds.length], configs[i % configs.length]));
+    // §11 (audit): a quarter of runs in Gamemaker mode, so the booth's own
+    // achievements are measured rather than listed as never-unlocked.
+    const sim = new Simulator(start(seed, arenaIds[i % arenaIds.length], configs[i % configs.length], i % 4 === 3));
     let guard = 3000;
     let state = sim.getState();
     while (state.phase !== 'ended' && guard-- > 0) {
