@@ -13,6 +13,7 @@ import {
 import { Stat } from '../components/Stat';
 import { tributeOdds } from '../engine/odds';
 import { Bet, gameActions, gameStore } from '../store/gameStore';
+import { SideQuote } from '../engine/sideMarkets';
 import { Swords, Zap, Brain, Eye, User, FastForward, Search, Heart, Flame } from 'lucide-react';
 
 type SortKey = 'district' | 'odds' | 'training' | 'name' | 'age' | 'archetype';
@@ -54,6 +55,12 @@ export function RosterScreen({
 }) {
     const bettingOpen = phase === 'setup';
     const sideBets = useStore(gameStore, s => s.sideBets);
+    // §6.1: the live proposition board. Eleven markets exist in the engine;
+    // the roster hardcoded three at a fixed stake with no price shown.
+    const [sideStake, setSideStake] = useState(50);
+    const board: SideQuote[] = useMemo(() => (bettingOpen ? gameActions.sideMarketBoard() : []), [bettingOpen, tributes, sideBets.length]);
+    const sideKey = (q: { kind: string; targetId?: string; targetDistrict?: number }) => `${q.kind}|${q.targetId ?? ''}|${q.targetDistrict ?? ''}`;
+    const placed = new Set(sideBets.map(sideKey));
     // UX-16: the audience learns things when the Capitol broadcasts them, not
     // all at once the moment the reaping ends.
     const disclosure = disclosureFor(phase);
@@ -181,24 +188,46 @@ export function RosterScreen({
             {bettingOpen && (
                 <div className="panel p-4 space-y-2">
                     <div className="flex items-baseline justify-between flex-wrap gap-2">
-                        <span className="eyebrow">Side bets (50 coins each)</span>
-                        {sideBets.length > 0 && (
-                            <span className="font-mono text-[11px] text-[var(--color-ink-500)]">
-                                {sideBets.map(b => `${b.kind} @ ${b.mult.toFixed(1)}×`).join(' · ')}
-                            </span>
-                        )}
+                        <span className="eyebrow">Proposition board</span>
+                        <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-ink-500)]">
+                            Stake
+                            <div className="seg" role="group" aria-label="Side bet stake">
+                                {[25, 50, 100, 200].map(s => (
+                                    <button key={s} className="seg-item" aria-pressed={sideStake === s} onClick={() => setSideStake(s)}>{s}</button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        <span className="chip opacity-70" title="This wager needs a name — use the '1st blood' button on a tribute card below.">
-                            First blood: pick a tribute below
-                        </span>
-                        <button className="chip" disabled={coins < 50} onClick={() => gameActions.placeSideBet('no-victor', 50)}>
-                            No victor at all
-                        </button>
-                        <button className="chip" disabled={coins < 50} onClick={() => gameActions.placeSideBet('career-victor', 50)}>
-                            A Career wins
-                        </button>
+                    <p className="text-[11px] text-[var(--color-ink-500)]">
+                        Settled from what the run does, not who wins. Prices come off the live book — the field's own odds, the book's
+                        margin, and a line that moves with the field — and lock the moment you place them. A line the result lands
+                        exactly on is a push and returns the stake.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {board.map(q => {
+                            const key = sideKey(q);
+                            const held = sideBets.find(b => sideKey(b) === key);
+                            return (
+                                <div key={key} className="panel-flush p-2.5 flex items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <div className="text-xs text-[var(--ink)] font-semibold truncate">{q.label.charAt(0).toUpperCase() + q.label.slice(1)}</div>
+                                        <div className="font-mono text-[10px] text-[var(--color-ink-500)]">{q.pct}% · pays {q.mult.toFixed(1)}×{held ? ` · ${held.stake} staked @ ${held.mult.toFixed(1)}×` : ''}</div>
+                                    </div>
+                                    <button
+                                        className="btn btn-sm flex-none"
+                                        disabled={coins < sideStake || placed.has(key)}
+                                        title={placed.has(key) ? 'Already placed' : `Stake ${sideStake} on this`}
+                                        onClick={() => gameActions.placeSideBet(q.kind, sideStake, q.targetId, { targetDistrict: q.targetDistrict, line: q.line })}
+                                    >
+                                        {placed.has(key) ? 'Placed' : `Stake ${sideStake}`}
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
+                    <p className="text-[10px] text-[var(--color-ink-500)] italic">
+                        First blood and top-three are named markets — the buttons on each tribute card below place those.
+                    </p>
                 </div>
             )}
 
@@ -399,12 +428,20 @@ export function RosterScreen({
                                             <button onClick={() => placeBet(t, 100)} disabled={coins < 100} className="btn btn-sm flex-1">+100</button>
                                             {/* §6.8: the named side bet. */}
                                             <button
-                                                onClick={() => gameActions.placeSideBet('first-blood', 50, t.id)}
-                                                disabled={coins < 50 || sideBets.some(b => b.kind === 'first-blood')}
+                                                onClick={() => gameActions.placeSideBet('first-blood', sideStake, t.id)}
+                                                disabled={coins < sideStake || sideBets.some(b => b.kind === 'first-blood')}
                                                 className="btn btn-sm"
-                                                title="Side bet: this tribute draws first blood (50 coins)"
+                                                title={`Side bet: this tribute draws first blood (${sideStake} coins)`}
                                             >
                                                 1st blood
+                                            </button>
+                                            <button
+                                                onClick={() => gameActions.placeSideBet('top-three', sideStake, t.id)}
+                                                disabled={coins < sideStake || sideBets.some(b => b.kind === 'top-three' && b.targetId === t.id)}
+                                                className="btn btn-sm"
+                                                title={`Side bet: this tribute is among the last three standing (${sideStake} coins)`}
+                                            >
+                                                Top 3
                                             </button>
                                             {currentBet > 0 && (
                                                 <button onClick={() => clearBet(t)} className="btn btn-sm" title="Refund this wager">Clear</button>

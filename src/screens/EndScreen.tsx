@@ -6,7 +6,7 @@ import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { ChronicleExport } from '../components/ChronicleExport';
 import { VictorArc } from '../components/VictorArc';
 import { TributeModal } from '../components/TributeModal';
-import { Trophy, MapPin, Swords, Skull, RotateCcw } from 'lucide-react';
+import { Trophy, MapPin, Swords, Skull, RotateCcw, Repeat, Award } from 'lucide-react';
 import { META_ACHIEVEMENTS, ACHIEVEMENTS } from '../data/achievements';
 import { RECORD_DEFS } from '../utils/panemStorage';
 import { gameStore } from '../store/gameStore';
@@ -31,11 +31,19 @@ function cleanCause(cause: string): string {
 export function EndScreen({
     gameState,
     onRestart,
+    onPlayAgain,
+    onReplaySeed,
+    onHallOfFame,
     coins,
     betWonMessage
 }: {
     gameState: GameState,
     onRestart: () => void,
+    /** Same arena and settings, a fresh seed. */
+    onPlayAgain?: () => void,
+    /** This exact Games again, marked as a replay. */
+    onReplaySeed?: () => void,
+    onHallOfFame?: () => void,
     coins: number,
     betWonMessage: string | null
 }) {
@@ -120,8 +128,25 @@ export function EndScreen({
                         <button onClick={() => setActiveTab('replay')} aria-pressed={activeTab === 'replay'} className="seg-item">Replay</button>
                         <button onClick={() => setActiveTab('logs')} aria-pressed={activeTab === 'logs'} className="seg-item">Full chronicle</button>
                     </div>
-                    <button onClick={onRestart} className="btn btn-primary btn-sm">
-                        <RotateCcw className="w-3.5 h-3.5" /> New simulation
+                    {/* The end of a run is the highest-intent moment in the loop
+                        and it used to dump the reader on a blank setup screen. */}
+                    {onPlayAgain && (
+                        <button onClick={onPlayAgain} className="btn btn-primary btn-sm" title="Same arena and rules, a new seed">
+                            <Repeat className="w-3.5 h-3.5" /> Next year, same arena
+                        </button>
+                    )}
+                    {onReplaySeed && (
+                        <button onClick={onReplaySeed} className="btn btn-sm" title="Run this exact seed again to watch it back">
+                            <RotateCcw className="w-3.5 h-3.5" /> Replay this seed
+                        </button>
+                    )}
+                    {onHallOfFame && (
+                        <button onClick={onHallOfFame} className="btn btn-sm">
+                            <Award className="w-3.5 h-3.5" /> Hall of Fame
+                        </button>
+                    )}
+                    <button onClick={onRestart} className="btn btn-ghost btn-sm">
+                        New setup
                     </button>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GameState, Tribute } from '../models/types';
 import { RunProfileCard } from '../components/RunProfileCard';
 import { heightLabel } from '../engine/physique';
@@ -9,8 +9,11 @@ import { REAPING_CROWDS } from '../data/pregames';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { Explainer } from '../components/Explainer';
 import { GamesProfile, calendarOf, ordinal, profileHeadline } from '../engine/gamesProfile';
+import { standingLine } from '../engine/continuity';
+import { INTERVIEW_PERSONAS } from '../data/personas';
+import { InterviewPersona } from '../models/types';
 
-export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, onReroll, onConfirm }: {
+export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, onReroll, onConfirm, onCoach }: {
     tributes: Tribute[],
     arenaName: string,
     seed: string,
@@ -19,8 +22,14 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
     gameState?: GameState,
     onReroll: () => void,
     onConfirm: () => void,
+    /** §6.10: pin one tribute's training and interview strategy. */
+    onCoach?: (tributeId: string, coaching: { trainingStrategy?: 'showcase' | 'conceal' | 'balanced'; interviewStrategy?: InterviewPersona }) => void,
 }) {
     const units = useStore(prefsStore, p => p.units);
+    const coaching = gameState?.playerCoaching;
+    const [coachId, setCoachId] = useState<string>(coaching?.tributeId ?? '');
+    const veterans = new Set(gameState?.veteransSeated ?? []);
+    const continuity = gameState?.continuity;
     const byDistrict = new Map<number, Tribute[]>();
     tributes.forEach(t => {
         if (!byDistrict.has(t.district)) byDistrict.set(t.district, []);
@@ -90,6 +99,71 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                 </div>
             )}
 
+            {/* §9.3: what the last few Games left behind. Resolved by the
+                engine at the reaping and, until now, printed only into the
+                feed nobody reads before the arena opens. */}
+            {continuity && (continuity.grudgeLine || Object.keys(continuity.standings).length > 0 || veterans.size > 0) && (
+                <div className="panel p-4 space-y-2 animate-riseIn" style={{ borderColor: 'var(--gold)', borderWidth: 3 }}>
+                    <div className="eyebrow" style={{ color: 'var(--gold)' }}>Your Panem remembers</div>
+                    {continuity.grudgeLine && (
+                        <p className="text-[13px] leading-relaxed text-[var(--ink)]">
+                            <strong>Grudge {continuity.grudge}/3.</strong> {continuity.grudgeLine}
+                        </p>
+                    )}
+                    {Object.entries(continuity.standings).map(([d, standing]) => (
+                        <p key={d} className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
+                            <span className="chip mr-1.5">{standing}</span>{standingLine(Number(d), standing)}
+                        </p>
+                    ))}
+                    {veterans.size > 0 && (
+                        <p className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
+                            <span className="chip chip-gold mr-1.5">Grudge match</span>
+                            {tributes.filter(t => veterans.has(t.id)).map(t => `${t.name} (D${t.district})`).join(' and ')} have stood on the podium before, and are reaped again.
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {/* §6.10: coaching. The store action and both engine read sites
+                existed; no control ever reached them. */}
+            {onCoach && (
+                <div className="panel p-4 space-y-2 animate-riseIn">
+                    <div className="flex items-baseline justify-between flex-wrap gap-2">
+                        <span className="eyebrow">Coach one tribute</span>
+                        <span className="text-[11px] text-[var(--color-ink-500)]">Pin how they train and the angle they take on the couch. Everyone else decides for themselves.</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <label className="text-[11px] text-[var(--color-ink-500)]">
+                            Tribute{' '}
+                            <select className="field text-xs w-auto" value={coachId} onChange={e => { setCoachId(e.target.value); if (e.target.value) onCoach(e.target.value, { trainingStrategy: coaching?.trainingStrategy, interviewStrategy: coaching?.interviewStrategy }); }}>
+                                <option value="">— nobody —</option>
+                                {[...tributes].sort((a, b) => a.district - b.district).map(t => (
+                                    <option key={t.id} value={t.id}>D{t.district} · {t.name}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <label className="text-[11px] text-[var(--color-ink-500)]">
+                            Training{' '}
+                            <select className="field text-xs w-auto" disabled={!coachId} value={coaching?.tributeId === coachId ? (coaching?.trainingStrategy ?? '') : ''}
+                                onChange={e => onCoach(coachId, { trainingStrategy: (e.target.value || undefined) as 'showcase' | 'conceal' | 'balanced' | undefined, interviewStrategy: coaching?.interviewStrategy })}>
+                                <option value="">their own call</option>
+                                <option value="showcase">Showcase — score high, be watched</option>
+                                <option value="conceal">Conceal — score low, be underestimated</option>
+                                <option value="balanced">Balanced</option>
+                            </select>
+                        </label>
+                        <label className="text-[11px] text-[var(--color-ink-500)]">
+                            Interview{' '}
+                            <select className="field text-xs w-auto" disabled={!coachId} value={coaching?.tributeId === coachId ? (coaching?.interviewStrategy ?? '') : ''}
+                                onChange={e => onCoach(coachId, { trainingStrategy: coaching?.trainingStrategy, interviewStrategy: (e.target.value || undefined) as InterviewPersona | undefined })}>
+                                <option value="">their own angle</option>
+                                {INTERVIEW_PERSONAS.map(p => <option key={p} value={p}>{p}</option>)}
+                            </select>
+                        </label>
+                    </div>
+                </div>
+            )}
+
             <div className="flex justify-center gap-2">
                 <button onClick={onReroll} className="btn" title="Draw a different cast from a new sub-seed">
                     <Shuffle className="w-4 h-4" /> Reroll cast
@@ -123,6 +197,9 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                                 <div className="min-w-0">
                                     <div className="font-black text-[var(--ink)] truncate">
                                         {t.name}
+                                        {veterans.has(t.id) && (
+                                            <span className="ml-1.5 chip chip-gold" title="A past victor from your Hall of Fame, reaped again.">Victor</span>
+                                        )}
                                         {t.fanFavourite && (
                                             <span className="ml-1.5 text-[var(--gold)]" title="A Capitol favourite before the Games have even begun.">★</span>
                                         )}

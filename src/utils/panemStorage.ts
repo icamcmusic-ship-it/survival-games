@@ -47,6 +47,8 @@ export interface PanemRecords {
     victors: number;
     /** Achievement ids the player has now seen happen. */
     unlocked: string[];
+    /** When each was earned: the run number and the date. Absent for entries earned before this existed. */
+    unlockedAt?: Record<string, { run: number; date: string }>;
     /**
      * §6.2: a persistent coin sink. The player can spend Capitol Coins to
      * become the standing patron of one district; its tributes start every
@@ -287,6 +289,7 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
             runs: Math.max(0, asNum(r.runs, 0)),
             victors: Math.max(0, asNum(r.victors, 0)),
             unlocked: asStrArray(r.unlocked),
+            unlockedAt: asObjMap<{ run: number; date: string }>(r.unlockedAt),
             bests: asObjMap<RecordHolder>(r.bests),
             gamemakerRecords: asObjMap<GamemakerRecord>(r.gamemakerRecords),
             patronDistrict: Number.isFinite(patron) ? patron : undefined,
@@ -343,6 +346,49 @@ export interface RunOutcome {
  * Folds one finished run into the record book. Idempotent per run: the caller
  * (gameStore) already guards against committing the same victory twice.
  */
+/**
+ * The career-wide totals the meta achievements read. Pure over the record
+ * book, so the record-book screen can draw progress bars from the same
+ * numbers `commitRun` unlocks against.
+ */
+export function careerTotals(records: PanemRecords): CareerTotals {
+    // §10.1: the hand-authored shelf and the canonical bestiary, measured
+    // against what actually exists rather than a hardcoded count.
+    const handAuthoredNames = ARENAS.map(a => a.name);
+    const canonicalMutts = new Set<string>();
+    Object.values(ARENA_MUTTS).forEach(list => list.forEach(m => canonicalMutts.add(m.name)));
+    // The most simultaneous bests held by one tribute right now (keyed by
+    // name + seed so two same-named tributes across runs don't merge).
+    const bestsByHolder = new Map<string, number>();
+    Object.values(records.bests).forEach(b => {
+        const key = `${b.name}|${b.seed}`;
+        bestsByHolder.set(key, (bestsByHolder.get(key) ?? 0) + 1);
+    });
+
+    const totals: CareerTotals = {
+        runs: records.runs,
+        victors: records.victors,
+        deaths: Object.values(records.gamemakerRecords ?? {}).reduce((sum, gm) => sum + gm.deaths, 0),
+        crownedDistricts: Object.keys(records.districtCrowns ?? {}).map(Number),
+        arenasWon: records.arenasWon ?? [],
+        quellsSeen: records.quellsSeen ?? [],
+        lawsWonUnder: records.lawsWonUnder ?? [],
+        biomesWon: records.biomesWon ?? [],
+        handAuthoredWon: handAuthoredNames.filter(n => (records.arenasWon ?? []).includes(n)).length,
+        handAuthoredTotal: handAuthoredNames.length,
+        canonicalMuttsSeen: (records.muttsSeen ?? []).filter(n => canonicalMutts.has(n)).length,
+        canonicalMuttTotal: canonicalMutts.size,
+        patronWins: records.patronWins ?? 0,
+        dynastyStreak: records.victorDistrictStreak ?? 0,
+        maxSimultaneousBests: Math.max(0, ...bestsByHolder.values()),
+        gamemakersSeen: Object.keys(records.gamemakerRecords ?? {}).length,
+        gamemakerTotal: HEAD_GAMEMAKERS.length,
+        maxCrownsUnderOneGamemaker: Math.max(0, ...Object.values(records.gamemakerRecords ?? {}).map(gm => gm.victors)),
+        quellTotal: QUELLS.length,
+    };
+    return totals;
+}
+
 export function commitRun(state: GameState): RunOutcome {
     const records = readPanem();
     const victor = state.tributes.find(t => t.status === 'alive');
@@ -498,44 +544,14 @@ export function commitRun(state: GameState): RunOutcome {
 
     // S-3: career-wide achievements read the updated records, so cumulative
     // counts and per-district completion unlock the moment they become true.
-    // §10.1: the hand-authored shelf and the canonical bestiary, measured
-    // against what actually exists rather than a hardcoded count.
-    const handAuthoredNames = ARENAS.map(a => a.name);
-    const canonicalMutts = new Set<string>();
-    Object.values(ARENA_MUTTS).forEach(list => list.forEach(m => canonicalMutts.add(m.name)));
-    // The most simultaneous bests held by one tribute right now (keyed by
-    // name + seed so two same-named tributes across runs don't merge).
-    const bestsByHolder = new Map<string, number>();
-    Object.values(records.bests).forEach(b => {
-        const key = `${b.name}|${b.seed}`;
-        bestsByHolder.set(key, (bestsByHolder.get(key) ?? 0) + 1);
-    });
-
-    const totals: CareerTotals = {
-        runs: records.runs,
-        victors: records.victors,
-        deaths: Object.values(records.gamemakerRecords ?? {}).reduce((sum, gm) => sum + gm.deaths, 0),
-        crownedDistricts: Object.keys(records.districtCrowns ?? {}).map(Number),
-        arenasWon: records.arenasWon ?? [],
-        quellsSeen: records.quellsSeen ?? [],
-        lawsWonUnder: records.lawsWonUnder ?? [],
-        biomesWon: records.biomesWon ?? [],
-        handAuthoredWon: handAuthoredNames.filter(n => (records.arenasWon ?? []).includes(n)).length,
-        handAuthoredTotal: handAuthoredNames.length,
-        canonicalMuttsSeen: (records.muttsSeen ?? []).filter(n => canonicalMutts.has(n)).length,
-        canonicalMuttTotal: canonicalMutts.size,
-        patronWins: records.patronWins ?? 0,
-        dynastyStreak: records.victorDistrictStreak ?? 0,
-        maxSimultaneousBests: Math.max(0, ...bestsByHolder.values()),
-        gamemakersSeen: Object.keys(records.gamemakerRecords ?? {}).length,
-        gamemakerTotal: HEAD_GAMEMAKERS.length,
-        maxCrownsUnderOneGamemaker: Math.max(0, ...Object.values(records.gamemakerRecords ?? {}).map(gm => gm.victors)),
-        quellTotal: QUELLS.length,
-    };
+    const totals = careerTotals(records);
 
     const earned = [...evaluateAchievements(state), ...evaluateMetaAchievements(totals)];
     const newAchievements = earned.filter(id => !records.unlocked.includes(id));
     records.unlocked = [...records.unlocked, ...newAchievements];
+    records.unlockedAt = records.unlockedAt ?? {};
+    const stamp = { run: records.runs, date: new Date().toISOString() };
+    newAchievements.forEach(id => { records.unlockedAt![id] = stamp; });
 
     const brokenRecords: string[] = [];
     RECORD_DEFS.forEach(def => {

@@ -150,6 +150,9 @@ function readSavedRun(): SavedRun | null {
  */
 const LOG_TAIL_FALLBACKS = [4000, 2000, 800, 200];
 
+/** The note on the rolling autosave, kept in memory so the 2s rewrite does not erase it. */
+let autosaveNote: string | undefined;
+
 function writeSave() {
     const { gameState, bets, sideBets, betsResolved, hofSaved, isReplayedRun } = gameStore.getState();
     if (!gameState || gameState.phase === 'ended') {
@@ -169,6 +172,7 @@ function writeSave() {
         // checkpoint — see its comment for why that is exact.
         ...packRewind(rewindDepth > 0 ? rewindStack.slice(-rewindDepth) : [], log),
         bets, sideBets, betsResolved, hofSaved, isReplayedRun, savedAt,
+        note: autosaveNote,
     } as SavedRun);
 
     // Each checkpoint is a whole state, so the rewind tail is the most
@@ -241,12 +245,14 @@ export interface SlotSummary {
     phase: GameState['phase'];
     day: number;
     alive: number;
+    note?: string;
 }
 
 function summarize(slot: number, saved: SavedRun): SlotSummary {
     return {
         slot,
         savedAt: saved.savedAt,
+        note: saved.note,
         seed: saved.gameState.seed,
         arenaName: saved.gameState.arena.name,
         arenaHidden: !!saved.gameState.arenaHidden,
@@ -644,6 +650,16 @@ export const gameActions = {
         } as SavedRun) === 'ok';
     },
 
+    /** A line on a slot card. Rewrites the slot's envelope in place; nothing else about the save moves. */
+    setSlotNote(slot: 1 | 2 | 3, note: string): boolean {
+        const spec = SAVE_SLOT_SPECS[slot - 1];
+        const saved = readStored(spec);
+        if (!saved) return false;
+        const trimmed = note.trim().slice(0, 120);
+        if (slot === 1) autosaveNote = trimmed || undefined;
+        return tryWriteStored(spec, { ...saved, note: trimmed || undefined }) === 'ok';
+    },
+
     async resumeFromSlot(slot: 1 | 2 | 3) {
         const spec = SAVE_SLOT_SPECS[slot - 1];
         const saved = readStored(spec);
@@ -653,6 +669,7 @@ export const gameActions = {
         // it. A save from before the stack was persisted has none, and resumes
         // exactly as it used to.
         restoreRewind(saved.rewind);
+        autosaveNote = saved.note;
         const { Simulator } = await loadEngine();
         const { gameState } = saved;
         if (!gameState.baseConfig) gameState.baseConfig = gameState.config;
@@ -799,6 +816,7 @@ export const gameActions = {
         cancelRunToEnd();
         clearSavedRun();
         clearRewind();
+        autosaveNote = undefined;
 
         const { Simulator, generateArena, generateTributes, gamesProfileFor, configForProfile } = await loadEngine();
 

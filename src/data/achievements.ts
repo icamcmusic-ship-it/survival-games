@@ -1797,6 +1797,12 @@ export interface MetaAchievement {
     name: string;
     hint: string;
     test: (totals: CareerTotals) => boolean;
+    /**
+     * How far along a cumulative entry is, for a progress bar. "A Thousand
+     * Deaths" showed locked or unlocked and never 612/1000, though every
+     * number a bar needs was already in `CareerTotals`.
+     */
+    progress?: (totals: CareerTotals) => { have: number; need: number };
 }
 
 export const META_ACHIEVEMENTS: MetaAchievement[] = [
@@ -1806,12 +1812,14 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         name: 'Every Quell',
         hint: 'See every Quarter Quell on the books play out.',
         test: t => t.quellTotal !== undefined && t.quellsSeen.length >= t.quellTotal,
+        progress: t => ({ have: t.quellsSeen.length, need: t.quellTotal ?? 0 }),
     },
     {
         id: 'meta-every-gamemaker',
         name: 'Every Gamemaker',
         hint: 'Have every Head Gamemaker run one of your Games.',
         test: t => t.gamemakerTotal !== undefined && (t.gamemakersSeen ?? 0) >= t.gamemakerTotal,
+        progress: t => ({ have: t.gamemakersSeen ?? 0, need: t.gamemakerTotal ?? 0 }),
     },
     {
         id: 'meta-same-song',
@@ -1824,66 +1832,77 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         name: 'A Thousand Deaths',
         hint: 'Watch a thousand tributes die.',
         test: t => t.deaths >= 1000,
+        progress: t => ({ have: t.deaths, need: 1000 }),
     },
     {
         id: 'meta-ten-patron-crowns',
         name: 'Ten Patron Crowns',
         hint: 'Bring home ten victories for your patron district.',
         test: t => (t.patronWins ?? 0) >= 10,
+        progress: t => ({ have: t.patronWins ?? 0, need: 10 }),
     },
     {
         id: 'meta-ten-games',
         name: 'A Regular',
         hint: 'Finish ten Games.',
         test: t => t.runs >= 10,
+        progress: t => ({ have: t.runs, need: 10 }),
     },
     {
         id: 'meta-fifty-games',
         name: 'The Career, So To Speak',
         hint: 'Finish fifty Games.',
         test: t => t.runs >= 50,
+        progress: t => ({ have: t.runs, need: 50 }),
     },
     {
         id: 'meta-hundred-deaths',
         name: 'The Price of the Show',
         hint: 'Witness one hundred deaths across all your Games.',
         test: t => t.deaths >= 100,
+        progress: t => ({ have: t.deaths, need: 100 }),
     },
     {
         id: 'meta-half-panem',
         name: 'Half of Panem',
         hint: 'Crown victors from six different districts.',
         test: t => t.crownedDistricts.length >= 6,
+        progress: t => ({ have: t.crownedDistricts.length, need: 6 }),
     },
     {
         id: 'meta-all-twelve',
         name: 'Every District\'s Year',
         hint: 'Crown a victor from every one of the twelve districts.',
         test: t => t.crownedDistricts.length >= 12,
+        progress: t => ({ have: t.crownedDistricts.length, need: 12 }),
     },
     {
         id: 'meta-grand-tour',
         name: 'The Grand Tour',
         hint: 'Crown victors in ten different arenas.',
         test: t => t.arenasWon.length >= 10,
+        progress: t => ({ have: t.arenasWon.length, need: 10 }),
     },
     {
         id: 'meta-two-hundred-deaths',
         name: 'The Show Must Go On',
         hint: 'Witness two hundred deaths across all your Games.',
         test: t => t.deaths >= 200,
+        progress: t => ({ have: t.deaths, need: 200 }),
     },
     {
         id: 'meta-quell-collector',
         name: "The Capitol's Whims",
         hint: 'See five different Quarter Quells play out, win or lose.',
         test: t => t.quellsSeen.length >= 5,
+        progress: t => ({ have: t.quellsSeen.length, need: 5 }),
     },
     {
         id: 'meta-hundred-games',
         name: 'A Life\'s Work',
         hint: 'Finish one hundred Games.',
         test: t => t.runs >= 100,
+        progress: t => ({ have: t.runs, need: 100 }),
     },
     // §10.1: the collector shelf — career-wide completions over the stored
     // records that today's work started keeping (laws, biomes, the bestiary).
@@ -1892,6 +1911,7 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         name: 'Law Abiding',
         hint: 'Crown victors under all six of the arena laws.',
         test: t => (t.lawsWonUnder?.length ?? 0) >= 6,
+        progress: t => ({ have: t.lawsWonUnder?.length ?? 0, need: 6 }),
     },
     {
         id: 'meta-every-biome',
@@ -1901,12 +1921,14 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         // rather than the one it shipped against.
         hint: 'Crown a victor in all twelve of the Gamemakers\' procedural biomes.',
         test: t => (t.biomesWon?.length ?? 0) >= PROCEDURAL_BIOME_COUNT,
+        progress: t => ({ have: t.biomesWon?.length ?? 0, need: PROCEDURAL_BIOME_COUNT }),
     },
     {
         id: 'meta-twenty-eight',
         name: 'Twenty-Eight',
         hint: 'Crown a victor in every hand-authored arena the Capitol has ever built.',
         test: t => (t.handAuthoredTotal ?? 0) > 0 && (t.handAuthoredWon ?? 0) >= (t.handAuthoredTotal ?? Infinity),
+        progress: t => ({ have: t.handAuthoredWon ?? 0, need: t.handAuthoredTotal ?? 0 }),
     },
     {
         id: 'meta-patrons-return',
@@ -1919,24 +1941,28 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         name: 'The Dynasty',
         hint: 'See one district win three Games in a row.',
         test: t => (t.dynastyStreak ?? 0) >= 3,
+        progress: t => ({ have: t.dynastyStreak ?? 0, need: 3 }),
     },
     {
         id: 'meta-full-bestiary',
         name: 'Full Bestiary',
         hint: 'Witness every named mutt the Gamemakers have on file, across all your Games.',
         test: t => (t.canonicalMuttTotal ?? 0) > 0 && (t.canonicalMuttsSeen ?? 0) >= (t.canonicalMuttTotal ?? Infinity),
+        progress: t => ({ have: t.canonicalMuttsSeen ?? 0, need: t.canonicalMuttTotal ?? 0 }),
     },
     {
         id: 'meta-statistician',
         name: 'Statistician',
         hint: 'See one tribute hold five of the record book\'s bests at the same time.',
         test: t => (t.maxSimultaneousBests ?? 0) >= 5,
+        progress: t => ({ have: t.maxSimultaneousBests ?? 0, need: 5 }),
     },
     {
         id: 'meta-long-memory',
         name: 'Long Memory',
         hint: 'Finish five hundred Games.',
         test: t => t.runs >= 500,
+        progress: t => ({ have: t.runs, need: 500 }),
     },
 ];
 

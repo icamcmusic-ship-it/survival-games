@@ -14,6 +14,7 @@ import { chronicleStore, setChronicle, toggleSection } from '../store/chronicleS
 import { prefsStore } from '../store/prefsStore';
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
+import { SPONSOR_BLOCS } from '../engine/sponsorBlocs';
 
 /**
  * A6: five accordion sections instead of three panes behind a segmented
@@ -502,6 +503,34 @@ export function DossierPanel({
                     </div>
                 )}
             </Section>
+
+            {/* ---------- sponsor blocs ---------- */}
+            {gameState.sponsorBlocBudgets && (
+                <Section id="blocs" title="Sponsor blocs">
+                    <p className="text-[11px] text-[var(--color-ink-500)] mb-2">
+                        Every parachute is paid for by one of four crowds, each with its own taste and its own purse. A bloc that has
+                        spent out stops giving — late-run scarcity that the seal on each crate only hinted at.
+                    </p>
+                    <div className="space-y-1.5">
+                        {SPONSOR_BLOCS.map(b => {
+                            const left = gameState.sponsorBlocBudgets?.[b.id] ?? 0;
+                            const opening = Math.round(b.budget * Math.max(0.25, gameState.config.sponsorGenerosity));
+                            const share = opening > 0 ? Math.max(0, Math.min(1, left / opening)) : 0;
+                            return (
+                                <div key={b.id} className="text-xs">
+                                    <div className="flex justify-between gap-2">
+                                        <span className="text-[var(--color-ink-200)] capitalize">{b.name.replace(/^the /, '')}</span>
+                                        <span className="font-mono text-[var(--color-ink-500)]">{left} / {opening}</span>
+                                    </div>
+                                    <div className="h-1.5 bg-[var(--paper-flush)] mt-0.5" role="progressbar" aria-valuenow={Math.round(share * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={`${b.name} purse remaining`}>
+                                        <div className="h-full" style={{ width: `${share * 100}%`, background: share < 0.25 ? 'var(--red)' : 'var(--gold)' }} />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </Section>
+            )}
 
             {/* ---------- this run ---------- */}
             <Section id="run" title="This run">

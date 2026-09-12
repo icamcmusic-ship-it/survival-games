@@ -107,6 +107,8 @@ export interface SavedRun {
     hofSaved: boolean;
     isReplayedRun: boolean;
     savedAt: string;
+    /** A line the player wrote on the slot card — "before the feast", "the one where Rue is winning". */
+    note?: string;
 }
 
 /**
@@ -796,6 +798,7 @@ export function normalizeSavedRun(raw: unknown): SavedRun | null {
         hofSaved: asBool(r.hofSaved, false),
         isReplayedRun: asBool(r.isReplayedRun, false),
         savedAt: Number.isNaN(Date.parse(savedAt)) ? new Date(0).toISOString() : savedAt,
+        note: typeof r.note === 'string' ? r.note.slice(0, 120) : undefined,
     };
 }
 

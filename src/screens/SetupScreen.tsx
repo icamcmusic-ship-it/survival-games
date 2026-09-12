@@ -320,6 +320,20 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             <div key={i} className="flex flex-wrap items-center justify-between gap-3 panel-flush p-3">
                                 <div className="min-w-0">
                                     <div className="font-bold text-xs uppercase text-[var(--ink)]">{label}</div>
+                                    <input
+                                        type="text"
+                                        className="field text-xs w-full mt-1"
+                                        placeholder="Add a note to this save…"
+                                        aria-label={`Note for ${label}`}
+                                        maxLength={120}
+                                        defaultValue={slot.note ?? ''}
+                                        onBlur={e => {
+                                            if ((e.target.value.trim() || '') !== (slot.note ?? '')) {
+                                                gameActions.setSlotNote((i + 1) as 1 | 2 | 3, e.target.value);
+                                                setSlots(gameActions.readSaveSlots());
+                                            }
+                                        }}
+                                    />
                                     <div className="text-xs text-[var(--color-ink-500)] mt-0.5">
                                         {slot.arenaHidden && !canSeeArena(disclosureFor(slot.phase)) ? '❓ Arena sealed' : slot.arenaName}
                                         {' · '}seed {slot.seed}
@@ -451,12 +465,35 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     dials most players never change. Grouped into four steps,
                     in the order somebody actually makes the decisions. */}
                 <div className="p-5 pb-0">
-                    <div className="seg w-fit flex-wrap" role="tablist" aria-label="Setup sections">
+                    <div
+                        className="seg w-fit flex-wrap"
+                        role="tablist"
+                        aria-label="Setup sections"
+                        // Arrow keys move between tabs and Home/End jump, which is
+                        // what `role="tab"` promises a keyboard user; without it
+                        // the ARIA was a claim the controls did not honour.
+                        onKeyDown={e => {
+                            const ids = SETUP_TABS.map(([id]) => id);
+                            const at = ids.indexOf(tab);
+                            const go = (next: number) => {
+                                const id = ids[(next + ids.length) % ids.length];
+                                setTab(id);
+                                document.getElementById(`setup-tab-${id}`)?.focus();
+                            };
+                            if (e.key === 'ArrowRight') { e.preventDefault(); go(at + 1); }
+                            else if (e.key === 'ArrowLeft') { e.preventDefault(); go(at - 1); }
+                            else if (e.key === 'Home') { e.preventDefault(); go(0); }
+                            else if (e.key === 'End') { e.preventDefault(); go(ids.length - 1); }
+                        }}
+                    >
                         {SETUP_TABS.map(([id, label, blurb]) => (
                             <button
                                 key={id}
+                                id={`setup-tab-${id}`}
                                 role="tab"
                                 aria-selected={tab === id}
+                                aria-controls={`setup-panel-${id}`}
+                                tabIndex={tab === id ? 0 : -1}
                                 onClick={() => setTab(id)}
                                 className="seg-item"
                                 title={blurb}
