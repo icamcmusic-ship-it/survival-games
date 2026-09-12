@@ -12,7 +12,8 @@
  *
  *   npm run test:sim
  */
-import { TRUCE_LEDGER } from '../src/engine/parley';
+import { emptyTruceLedger, truceLedger } from '../src/engine/parley';
+const TRUCE_LEDGER = emptyTruceLedger();
 import { generateTributes, strengthCapForAge } from '../src/engine/generator';
 import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
@@ -206,6 +207,7 @@ for (let i = 0; i < 400; i++) {
     if (guard < 2500) note(`run ${seed} needed excessive cycles`);
   }
   if (guard <= 0) note(`run ${seed} hit the cycle guard (possible infinite loop)`);
+  { const L = truceLedger(state); (Object.keys(L) as Array<keyof typeof L>).forEach(k => { TRUCE_LEDGER[k] += L[k]; }); }
 
   runs++;
   totalDays += state.day;

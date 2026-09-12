@@ -294,17 +294,36 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
  */
 function springOwnTrap(ctx: SimContext, t: Tribute, trap: Trap) {
     removeTrap(ctx, trap.id);
+    // A tripwire is an alarm. Walking into your own is a bad moment, not a wound.
+    if (trap.kind === 'tripwire') {
+        rattle(t, HUNTING.rattledPerTrap + TRAPS.tripwireRattle);
+        ctx.logEvent(
+            `${t.name} sets off a tripwire in ${t.zone} and spins to face whoever set it. Nobody did. They did, days ago, and they stand there a long time working that out.`,
+            [t.id],
+            { important: true, category: 'hazard' }
+        );
+        return;
+    }
     const cause = `Caught in their own ${trap.kind}`;
-    applyDamage(ctx, t, trap.kind === 'snare' ? TRAPS.snareDamage : TRAPS.deadfallDamage, { cause, kind: 'hazard' });
+    // Every kind used to resolve as a deadfall here — the pit lost its leg,
+    // the stake lost its poison, and the tripwire above dealt deadfall damage.
+    const damage =
+        trap.kind === 'snare' ? TRAPS.snareDamage
+            : trap.kind === 'pit' ? TRAPS.pitDamage
+                : trap.kind === 'stake' ? TRAPS.stakeDamage
+                    : TRAPS.deadfallDamage;
+    applyDamage(ctx, t, damage, { cause, kind: 'hazard' });
     openWound(t, BLEEDING.combatSeverity);
-    if (trap.kind === 'snare') injure(t, 'legs');
-    ctx.logEvent(
-        trap.kind === 'snare'
-            ? `${t.name} walks into a snare in ${t.zone} tied with their own knot, at their own working height, by themselves, days ago. They do not appear to recognise it.`
-            : `${t.name} trips their own deadfall in ${t.zone}. They set it. They have not been able to hold on to that kind of thing for a while now.`,
-        [t.id],
-        { important: true, category: 'hazard' }
-    );
+    if (trap.kind === 'snare' || trap.kind === 'pit') injure(t, 'legs');
+    if (trap.kind === 'stake') injure(t, 'poisoned');
+    const line: Record<Trap['kind'], string> = {
+        snare: `${t.name} walks into a snare in ${t.zone} tied with their own knot, at their own working height, by themselves, days ago. They do not appear to recognise it.`,
+        deadfall: `${t.name} trips their own deadfall in ${t.zone}. They set it. They have not been able to hold on to that kind of thing for a while now.`,
+        pit: `${t.name} goes into a pit in ${t.zone} that they dug, covered, and forgot, in that order. The forgetting is the part that should worry them.`,
+        stake: `${t.name} walks onto a treated stake in ${t.zone}. Their own — the poison is the batch they mixed. They know exactly what happens next, which is the worst part.`,
+        tripwire: '',
+    };
+    ctx.logEvent(line[trap.kind], [t.id], { important: true, category: 'hazard' });
     clampTribute(t);
     checkDeath(ctx, t, cause);
     if (t.status === 'dead') t.trapKills = (t.trapKills ?? 0) + 1;

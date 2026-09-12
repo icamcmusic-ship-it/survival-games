@@ -1,6 +1,6 @@
 import { Arena, ArenaLawId, EdgeRule, Injuries, Mutt, MuttRole, SignatureRule, Terrain, Zone, ZoneEffectKind } from '../models/types';
 import { RNG, baseSeedOf } from '../utils/rng';
-import { PROCEDURAL_EVENTS, FlavorTag } from '../data/proceduralFlavor';
+import { MOOD_BY_BIOME, PROCEDURAL_EVENTS, FlavorTag } from '../data/proceduralFlavor';
 import { PROC_SIGNATURE, PROC_TERRAIN } from '../data/balance';
 
 interface Biome {
@@ -403,6 +403,10 @@ const MODIFIERS_BY_TAG: Record<string, string[]> = {
     ruins: ['Rust-Eaten', 'Buried', 'Relic-Bound'],
     wetland: ['Marsh-Born', 'Silt-Skinned', 'Bog-Cursed'],
     open: ['Sun-Scarred', 'Dust-Born', 'Bare-Fanged'],
+    cave: ['Blind', 'Pale-Bellied', 'Deep-Dwelling'],
+    ice: ['Ice-Shod', 'White-Pelted', 'Crevasse-Born'],
+    desert: ['Sand-Blind', 'Heat-Shimmered', 'Scorch-Hided'],
+    urban: ['Gutter-Bred', 'Wire-Scarred', 'Tenement'],
 };
 const GENERIC_MODIFIERS = ['Iron-Jawed', 'Blood-Eyed', 'Night-Bred', 'Hollow-Eyed'];
 const CREATURE_BASES = ['Harpies', 'Wraiths', 'Hounds', 'Stalkers', 'Serpents', 'Mutts', 'Ravagers', 'Screechers', 'Crawlers', 'Reapers'];
@@ -439,7 +443,15 @@ function generateMuttRoster(rng: RNG, biome: Biome, activeTags: string[], count:
         : [];
     const modifierPool = (pools.length ? pools : GENERIC_MODIFIERS).concat(GENERIC_MODIFIERS);
     const usedNames = new Set<string>();
-    const templates = rng.shuffle(ROLE_TEMPLATES).slice(0, count);
+    let templates = rng.shuffle(ROLE_TEMPLATES).slice(0, count);
+    // A `siege` mutt is pinned to one zone and a `scavenger` only appears
+    // where a cannon fired this cycle. A roster made only of those is an
+    // arena with no mutts in it. At least one has to roam.
+    const roams = (r: MuttRole) => r !== 'siege' && r !== 'scavenger';
+    if (!templates.some(tpl => roams(tpl.role))) {
+        const roamer = rng.pick(ROLE_TEMPLATES.filter(tpl => roams(tpl.role)));
+        templates = [roamer, ...templates.slice(1)];
+    }
     // Siege mutts get a home outside the Cornucopia when there's a choice —
     // pinning one to the one zone every tribute passes through would make it
     // less a territorial horror than a mandatory toll booth.
@@ -719,13 +731,16 @@ export function generateArena(seed: string, biomeId?: string): Arena {
     buildTopology(topology, zones, rng);
     guaranteeConnectivity(zones);
 
-    const activeTags = Array.from(new Set(zones.map(z => z.terrain as string)));
+    // Terrain plus the biome's mood, so a tundra roster can be Frost-Fanged
+    // and a dunes roster Ash-Wreathed — those modifier lists were keyed on
+    // tags the terrain-only set could never contain.
+    const activeTags = Array.from(new Set([...zones.map(z => z.terrain as string), ...(MOOD_BY_BIOME[biome.id] ?? [])]));
     // §8.3 / ARENA-11: mutt count varies too — one arena with a single
     // persistent horror reads very differently from one with three kinds of
     // teeth. `muttRoster` is what the encounter system actually resolves
     // against; `mutts` (display names) is now derived from it directly, so
     // the arena summary never again names a mutt that can't actually appear.
-    const muttCount = rng.nextInt(1, 3);
+    const muttCount = rng.nextInt(2, 3);
     const muttRoster = generateMuttRoster(rng, biome, activeTags, muttCount, zones.map(z => z.name));
     const mutts = muttRoster.map(m => m.name);
 

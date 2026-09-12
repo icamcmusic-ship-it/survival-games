@@ -1378,7 +1378,6 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'intelligence',
                 sanity: 26,
                 fatigue: 10,
-                requires: { law: 'noCannons' },
                 witnesses: true,
             },
             {

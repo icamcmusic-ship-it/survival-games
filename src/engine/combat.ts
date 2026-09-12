@@ -384,8 +384,16 @@ function packCohesion(ctx: SimContext, t: Tribute): number {
     return scaled;
 }
 
+/**
+ * A fighter's power as an *estimate*: everything on the sheet and in the
+ * situation, and nothing rolled. This is what ranking and weighting read —
+ * "who is the strongest attacker here" has to have one answer, and it used
+ * to re-roll a die inside every comparison, which made the reduce below
+ * non-transitive and burned a handful of RNG draws per round just picking a
+ * lead. The die lives in `contestedPower`, which only the exchanges use.
+ */
 function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opponent?: Tribute): number {
-    let power = effectiveStrength(t) + effectiveAgility(t) + ctx.rng.nextInt(0, 5);
+    let power = effectiveStrength(t) + effectiveAgility(t);
 
     if (weapon) {
         power += weapon.damage !== undefined ? effectiveDamage(weapon) : weapon.value / 10;
@@ -478,6 +486,11 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     }
 
     return power;
+}
+
+/** `combatPower` plus the swing of the moment — the roll the exchange is decided on. */
+function contestedPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opponent?: Tribute): number {
+    return combatPower(ctx, t, weapon, allies, opponent) + ctx.rng.nextInt(0, COMBAT.powerSwingMax);
 }
 
 /**
@@ -743,8 +756,8 @@ export function resolveCombat(
         // scale every other retreat check uses — the ambush bonus is spent on
         // the opening blow and does not carry into the second round, so what
         // they weigh is the standing fight, plus how much that first hit hurt.
-        const ambushEdge = combatPower(ctx, t1, opener, 0, t2)
-            - combatPower(ctx, t2, bestWeapon(t2), 0, t1)
+        const ambushEdge = contestedPower(ctx, t1, opener, 0, t2)
+            - contestedPower(ctx, t2, bestWeapon(t2), 0, t1)
             + damage / 10;
         if (noRetreatRounds < 1 && wantsToRetreat(ctx, t2, ambushEdge, 1, t1)) {
             ctx.logEvent(
@@ -779,8 +792,8 @@ export function resolveCombat(
         round++;
         const w1 = bestWeapon(t1);
         const w2 = bestWeapon(t2);
-        const p1 = combatPower(ctx, t1, w1, 0, t2);
-        const p2 = combatPower(ctx, t2, w2, 0, t1);
+        const p1 = contestedPower(ctx, t1, w1, 0, t2);
+        const p2 = contestedPower(ctx, t2, w2, 0, t1);
         const edge = p1 - p2;
 
         if (Math.abs(edge) < 1.5) {
@@ -1054,8 +1067,8 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         // feud escalation and the rematch prose are all keyed on.
         noteGroupFight(lead, target);
         const weapon = bestWeapon(lead);
-        const edge = combatPower(ctx, lead, weapon, Math.max(0, advantage), target)
-            - combatPower(ctx, target, bestWeapon(target), Math.max(0, -advantage), lead);
+        const edge = contestedPower(ctx, lead, weapon, Math.max(0, advantage), target)
+            - contestedPower(ctx, target, bestWeapon(target), Math.max(0, -advantage), lead);
 
         if (attackers.length > 1) {
             ctx.logEvent(
@@ -1094,8 +1107,8 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         for (const a of attackers) {
             if (targetDown || a.id === lead.id || !isActive(a)) continue;
             const supportWeapon = bestWeapon(a);
-            const supportEdge = combatPower(ctx, a, supportWeapon, 0, target)
-                - combatPower(ctx, target, bestWeapon(target), 0, a)
+            const supportEdge = contestedPower(ctx, a, supportWeapon, 0, target)
+                - contestedPower(ctx, target, bestWeapon(target), 0, a)
                 - COMBAT.supportAttackPenalty;
             if (supportEdge <= 0) continue;
             noteGroupFight(a, target);
@@ -1215,8 +1228,8 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
 
         noteFight(ctx.state, attacker, target);
         const weapon = bestWeapon(attacker);
-        const edge = combatPower(ctx, attacker, weapon, 0, target)
-            - combatPower(ctx, target, bestWeapon(target), 0, attacker);
+        const edge = contestedPower(ctx, attacker, weapon, 0, target)
+            - contestedPower(ctx, target, bestWeapon(target), 0, attacker);
         if (edge > 0) {
             landHit(ctx, attacker, target, edge, weapon);
             if (target.health <= 0) { strikeDown(ctx, target, attacker, weapon); continue; }

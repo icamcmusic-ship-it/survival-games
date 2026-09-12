@@ -1,4 +1,4 @@
-import { Item, Tribute, TruceReason } from '../models/types';
+import { GameState, Item, Tribute, TruceReason } from '../models/types';
 import { COMPOSURE, INTEL, PARLEY, PROFICIENCY, RELATIONSHIPS, RESPECT, ROMANCE } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { PARLEY_TEXTS } from '../data/flavorText';
@@ -67,18 +67,31 @@ export function hasTruce(state: { cycle?: number }, t: Tribute, otherId: string)
  * a truce rather than by matching prose, so a brokered or bought truce that
  * never printed a 'TRUCE:' line is still a term the ledger has to close.
  */
-export const TRUCE_LEDGER = {
-    struck: 0,
+export interface TruceLedger {
+    struck: number;
     // Every way a term ends, counted at the site rather than by matching
     // prose, so the soak's closure assertion cannot rot when a line is
     // reworded. `renewed` both closes a term and opens the next.
-    renewed: 0, lapsed: 0, turned: 0, broken: 0, outlived: 0, buried: 0, dissolved: 0, standingAtEnd: 0,
-};
+    renewed: number; lapsed: number; turned: number; broken: number; outlived: number; buried: number; dissolved: number; standingAtEnd: number;
+}
+export const emptyTruceLedger = (): TruceLedger => ({
+    struck: 0, renewed: 0, lapsed: 0, turned: 0, broken: 0, outlived: 0, buried: 0, dissolved: 0, standingAtEnd: 0,
+});
+/**
+ * The ledger lives on the state, one per run. It was a module-level object
+ * — exactly the process-global the day/night phase was rid of in
+ * `context.ts` — which accumulated across every run in one process and
+ * could not survive a save.
+ */
+export function truceLedger(state: GameState): TruceLedger {
+    if (!state.truceLedger) state.truceLedger = emptyTruceLedger();
+    return state.truceLedger;
+}
 
 export function grantTruce(ctx: SimContext, a: Tribute, b: Tribute, cycles: number, reason: TruceReason = 'brokered') {
     // Re-granting over a standing truce (a retainer paid again, a Diplomat
     // brokering the same pair twice) extends one term rather than opening two.
-    if (a.truces?.[b.id] === undefined && b.truces?.[a.id] === undefined) TRUCE_LEDGER.struck++;
+    if (a.truces?.[b.id] === undefined && b.truces?.[a.id] === undefined) truceLedger(ctx.state).struck++;
     const until = cycleOf(ctx.state) + cycles;
     a.truces = { ...(a.truces ?? {}), [b.id]: until };
     b.truces = { ...(b.truces ?? {}), [a.id]: until };
@@ -117,7 +130,7 @@ function declareTruce(ctx: SimContext, a: Tribute, b: Tribute) {
     const until = cycleOf(ctx.state) + PARLEY.truceCycles;
     // A renewal re-declares the same pair; the ledger counts a *new* term
     // only when nothing was standing between them.
-    if (a.truces?.[b.id] === undefined && b.truces?.[a.id] === undefined) TRUCE_LEDGER.struck++;
+    if (a.truces?.[b.id] === undefined && b.truces?.[a.id] === undefined) truceLedger(ctx.state).struck++;
     a.truces = { ...(a.truces ?? {}), [b.id]: until };
     b.truces = { ...(b.truces ?? {}), [a.id]: until };
     // §4.3: a truce is about something. Which of the two obvious reasons it is
@@ -163,35 +176,11 @@ function clearTruce(a: Tribute, b: Tribute) {
  * and the one that makes a kept truce mean something.
  */
 export function breaksTruce(ctx: SimContext, t: Tribute, other: Tribute): boolean {
-    // A bond you actually feel is not a truce you are looking to escape.
-    if (areLovers(t, other)) return false;
-    if (t.allianceId !== undefined && t.allianceId === other.allianceId) return false;
-
-    let chance = PARLEY.truceBreakBase
-        + (ARCHETYPES[t.archetype].treachery + traitMod(t, 'treachery')) * PARLEY.truceBreakTreacheryWeight;
-
-    // How this matchup reads to the breaker — through the perception layer, so
-    // a concealed tribute is not obviously easy prey.
-    const ratio = assessZone(other, [other, t], ctx.state).ratio;
-    if (ratio > PARLEY.truceBreakOpportunismRatio) chance += PARLEY.truceBreakOpportunismBonus;
-
-    const alive = ctx.state.tributes.filter(o => o.status === 'alive').length;
-    if (alive <= PARLEY.truceBreakEndgameFieldSize) chance += PARLEY.truceBreakEndgameBonus;
-
-    // Genuine regard is what holds a promise together when nothing else does.
-    chance *= Math.max(0.05, 1 - Math.max(0, getRel(t, other.id)) / 110);
-    // §4.1: and so is professional esteem — you do not cross someone you rate.
-    chance *= Math.max(0.3, 1 - Math.max(0, respectOf(t, other.id)) / RESPECT.truceRestraintDivisor);
-    if (ensureMemory(t).betrayedBy.length > 0) chance *= PARLEY.truceBreakBetrayedRestraint;
-    // §8: the other party's persuasion. Someone who is good at this does not
-    // only talk you into an agreement, they keep talking you out of leaving
-    // it — which is the read site persuasion was missing, and the reason a
-    // charisma build's investment stopped paying the moment the truce existed.
-    // §8.3 (audit): and the trait half of that — the Silver-Tongued keep
-    // people at the table without having trained for it.
-    chance *= Math.max(0.35, 1 - (profOf(other, 'persuasion') + traitMod(other, 'persuasion')) * PROFICIENCY.persuasionRestraintWeight);
-
-    return breakChanceOf(ctx, chance);
+    // One implementation. This and `truceBreakChance` were copies that had
+    // drifted — the per-encounter path had lost the persuasion restraint, so
+    // a Silver-Tongued tribute was protected against being hunted under a
+    // truce and not against being turned on face to face.
+    return breakChanceOf(ctx, truceBreakChance(ctx, t, other));
 }
 
 /** Probability post-processing hook — kept separate so `resolveTrucePair` and
@@ -214,8 +203,13 @@ function truceBreakerThisCycle(ctx: SimContext, a: Tribute, b: Tribute): Tribute
     const roll = new RNG(`${ctx.state.seed}-truce-${cycleOf(ctx.state)}-${lo.id}-${hi.id}`).nextFloat();
     // Each party gets the front section of the unit interval proportional to
     // their own inclination; the shared roll lands in at most one of them.
-    const chanceLo = truceBreakChance(ctx, lo, hi);
-    const chanceHi = truceBreakChance(ctx, hi, lo);
+    let chanceLo = truceBreakChance(ctx, lo, hi);
+    let chanceHi = truceBreakChance(ctx, hi, lo);
+    // Each is clamped to 0.75, so together they can exceed the interval; the
+    // second party's share used to be silently truncated to whatever was
+    // left, which was a bias by id order. Scale both down to fit instead.
+    const sum = chanceLo + chanceHi;
+    if (sum > 1) { chanceLo /= sum; chanceHi /= sum; }
     if (roll < chanceLo) return lo;
     if (roll < chanceLo + chanceHi) return hi;
     return null;
@@ -234,6 +228,11 @@ function truceBreakChance(ctx: SimContext, t: Tribute, other: Tribute): number {
     chance *= Math.max(0.05, 1 - Math.max(0, getRel(t, other.id)) / 110);
     chance *= Math.max(0.3, 1 - Math.max(0, respectOf(t, other.id)) / RESPECT.truceRestraintDivisor);
     if (ensureMemory(t).betrayedBy.length > 0) chance *= PARLEY.truceBreakBetrayedRestraint;
+    // §8: the other party's persuasion. Someone who is good at this does not
+    // only talk you into an agreement, they keep talking you out of leaving
+    // it. §8.3 (audit): and the trait half of that — the Silver-Tongued keep
+    // people at the table without having trained for it.
+    chance *= Math.max(0.35, 1 - (profOf(other, 'persuasion') + traitMod(other, 'persuasion')) * PROFICIENCY.persuasionRestraintWeight);
     return Math.max(0, Math.min(0.75, chance));
 }
 
@@ -244,7 +243,7 @@ function truceBreakChance(ctx: SimContext, t: Tribute, other: Tribute): number {
  */
 export function breakTruce(ctx: SimContext, breaker: Tribute, victim: Tribute) {
     clearTruce(breaker, victim);
-    TRUCE_LEDGER.broken++;
+    truceLedger(ctx.state).broken++;
     // §3.4: this counts on the same ledger as an alliance betrayal. The
     // Loyal -> Treacherous arc turns on "how many times have you broken faith
     // with somebody who trusted you", and a truce is exactly that — a promise
@@ -556,7 +555,7 @@ export function resolveTruces(ctx: SimContext) {
                 const survivor = t.status === 'alive' ? t : other && other.status === 'alive' ? other : undefined;
                 const fallen = survivor === t ? other : t;
                 if (other && survivor && fallen) {
-                    TRUCE_LEDGER.outlived++;
+                    truceLedger(ctx.state).outlived++;
                     state.keptWordSeen = true;
                     // §1.4: the single most common way a truce ends, and it
                     // also never reached the broker. A promise that outlived
@@ -569,7 +568,7 @@ export function resolveTruces(ctx: SimContext) {
                         { category: 'alliance' }
                     );
                 } else if (other && !survivor) {
-                    TRUCE_LEDGER.buried++;
+                    truceLedger(ctx.state).buried++;
                     ctx.logEvent(
                         `The agreement between ${t.name} and ${other.name} is buried with both of them. `
                         + 'Neither broke it; the arena did not need them to.',
@@ -577,7 +576,7 @@ export function resolveTruces(ctx: SimContext) {
                         { category: 'alliance' }
                     );
                 }
-                if (!other) TRUCE_LEDGER.buried++;
+                if (!other) truceLedger(ctx.state).buried++;
                 delete t.truces![otherId];
                 if (t.truceReason) delete t.truceReason[otherId];
                 if (other?.truces) {
@@ -634,7 +633,7 @@ export function closeTrucesAtEnd(ctx: SimContext) {
                 const survivor = t.status === 'alive' ? t : other.status === 'alive' ? other : undefined;
                 const fallen = survivor === t ? other : t;
                 if (bothAlive) {
-                    TRUCE_LEDGER.standingAtEnd++;
+                    truceLedger(ctx.state).standingAtEnd++;
                     state.keptWordSeen = true;
                     creditBroker(ctx, t, other, 'outlived');
                     ctx.logEvent(
@@ -644,7 +643,7 @@ export function closeTrucesAtEnd(ctx: SimContext) {
                         { category: 'alliance' }
                     );
                 } else if (survivor) {
-                    TRUCE_LEDGER.outlived++;
+                    truceLedger(ctx.state).outlived++;
                     state.keptWordSeen = true;
                     creditBroker(ctx, survivor, fallen, 'outlived');
                     ctx.logEvent(
@@ -654,7 +653,7 @@ export function closeTrucesAtEnd(ctx: SimContext) {
                         { category: 'alliance' }
                     );
                 } else {
-                    TRUCE_LEDGER.buried++;
+                    truceLedger(ctx.state).buried++;
                     ctx.logEvent(
                         `The agreement between ${t.name} and ${other.name} is buried with both of them. `
                         + 'Neither broke it; the arena did not need them to.',
@@ -663,7 +662,7 @@ export function closeTrucesAtEnd(ctx: SimContext) {
                     );
                 }
             } else {
-                TRUCE_LEDGER.buried++;
+                truceLedger(ctx.state).buried++;
             }
             delete t.truces![otherId];
             if (t.truceReason) delete t.truceReason[otherId];
@@ -795,7 +794,7 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
     clearTruce(a, b);
     // The renewal below re-declares the pair; the soak counts renewals as
     // terms itself, so the ledger must not count them again.
-    const struckBefore = TRUCE_LEDGER.struck;
+    const struckBefore = truceLedger(ctx.state).struck;
     // §4.2 (audit): a term that ran its course was a promise kept, whichever
     // beat it resolves into next. Trust history moves before regard is read.
     adjustTrust(a, b.id, RELATIONSHIPS.trustKeptPromise);
@@ -812,7 +811,7 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
     const renewTalker = Math.max(profOf(a, 'persuasion'), profOf(b, 'persuasion'));
     const renewChance = PARLEY.truceRenewChance + renewTalker * PROFICIENCY.persuasionRenewWeight;
     if (regard >= PARLEY.truceRenewMinRegard && ctx.rng.chance(renewChance)) {
-        TRUCE_LEDGER.renewed++;
+        truceLedger(ctx.state).renewed++;
         // §10.1: 'Kept Word' reads this — a truce that was renewed at least
         // once and was still standing when one party died.
         a.truceRenewed = { ...(a.truceRenewed ?? {}), [b.id]: (a.truceRenewed?.[b.id] ?? 0) + 1 };
@@ -820,7 +819,7 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
         trainProficiency(a, 'persuasion');
         trainProficiency(b, 'persuasion');
         declareTruce(ctx, a, b);
-        TRUCE_LEDGER.struck = struckBefore;
+        truceLedger(ctx.state).struck = struckBefore;
         adjustMutual(ctx.state, a, b, PARLEY.truceRegard);
         // §1.4: a renewal is the *strongest* evidence a brokered agreement is
         // working — both parties have now chosen it twice — and it was the one
@@ -840,7 +839,11 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
 
     // TURN: whichever of them is more treacherous was counting the hours.
     // (counted below, once the turn is actually rolled)
-    const striker = treacheryOf(a) >= treacheryOf(b) ? a : b;
+    // Equal treachery is common — it is archetype plus trait — and `>=`
+    // handed every tie to whichever id sorted first. Ties are a coin.
+    const striker = treacheryOf(a) === treacheryOf(b)
+        ? (ctx.rng.chance(0.5) ? a : b) // balance-exempt: a fair coin, not a tunable
+        : (treacheryOf(a) > treacheryOf(b) ? a : b);
     const target = striker.id === a.id ? b : a;
     const turnChance = PARLEY.truceTurnChance
         + Math.max(0, treacheryOf(striker)) * PARLEY.truceTurnTreacheryWeight;
@@ -853,7 +856,7 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
         adjustRel(target, striker.id, -PARLEY.truceBreakRegard);
         raiseSuspicion(target, striker.id, PARLEY.truceBreakSuspicion);
         addExcitement(striker, PARLEY.truceBreakExcitement);
-        TRUCE_LEDGER.turned++;
+        truceLedger(ctx.state).turned++;
         ctx.logEvent(
             fill(ctx.pickText(PARLEY_TEXTS.truceTurned), { t1: striker.name, t2: target.name, zone: striker.zone }),
             [striker.id, target.id],
@@ -863,7 +866,7 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
     }
 
     // LAPSE: kept to the end. The arena takes note, and so does the feed.
-    TRUCE_LEDGER.lapsed++;
+    truceLedger(ctx.state).lapsed++;
     //
     // §1.4: 'Kept Word' used to need a *renewed* truce still standing when one
     // party died, which across 400 runs happened 11 times against 218 truces —

@@ -1718,6 +1718,8 @@ export const ENCOUNTERS = {
 
 /** Multi-round duels: how long they last and when someone breaks off. */
 export const COMBAT = {
+    /** The die on top of a fighter's estimated power in an exchange (0..this, inclusive). */
+    powerSwingMax: 5,
     /**
      * §8a: the numbers advantage decays with the pack's own trust. A group
      * that has stopped trusting each other still outnumbers you — it simply
@@ -2044,6 +2046,8 @@ export const PLANNING = {
 } as const;
 
 export const OBJECTIVES = {
+    /** Priority tier of a hunt on a mark worth breaking a truce for — the honest hunt sits at 52. */
+    huntTier: 54,
     /**
      * §3.3: stalking — following without engaging. Taken instead of a hunt by
      * anyone who has found somebody they are not confident of beating today.
@@ -3954,6 +3958,11 @@ export const BETRAYAL = {
     lureMinRememberedThreat: 0.8,
     /** Withholding only means anything if they are actually dying. */
     withholdMaxHealth: 45,
+    /** ...and it costs them: the untreated wound worsens and the refusal lands. */
+    withholdSanity: 8,
+    withholdExcitement: 15,
+    /** Abandoning is only a betrayal if there is something to abandon them to. */
+    abandonMaxHealth: 60,
     /**
      * §4.1: betrayal was 0.2% of the chronicle — one line at the knife and
      * then silence. These are the days after: the odds per cycle that somebody
@@ -5313,6 +5322,15 @@ export const CHARTER = {
     hoardingFood: 2,
     /** Regard below which two members of the same group are visibly at odds. */
     hostileRegard: -15,
+    /**
+     * Cycles before the same clause can be found broken again. The looting
+     * and intel clauses compared a lifetime counter to a baseline that was
+     * never advanced after a breach, and the grudge and camp clauses test a
+     * standing condition — so one slip was an offender for the rest of the
+     * run, breach after breach, and the hearing machinery fired on the same
+     * offence every cycle.
+     */
+    rebreachCooldownCycles: 4,
 } as const;
 
 /**

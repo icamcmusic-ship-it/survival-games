@@ -1,12 +1,14 @@
 import { Tribute } from '../models/types';
 import { ALLIANCE_TEXTS } from '../data/flavorText';
-import { BETRAYAL, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
+import { BETRAYAL, BLEEDING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
 import { SimContext } from './context';
 import { resolveCombat } from './combat';
 import { allianceOf, cacheValue, emptyCache } from './alliance';
 import { addZoneThreat, noteContact, raiseSuspicion, rememberedThreat, suspicionOf } from './memory';
 import { giveItem } from './items';
-import { reachableZones, severedEdgeSet } from './map';
+import { noteTraffic, reachableZones, severedEdgeSet } from './map';
+import { checkTraps } from './fieldcraft';
+import { openWound } from './wounds';
 import { adjustRel, applyBetrayalFallout } from './relationships';
 import { addExcitement } from './audience';
 
@@ -62,7 +64,7 @@ function availableKinds(ctx: SimContext, betrayer: Tribute, victim: Tribute): Be
     }
 
     // Abandoning is only a betrayal if there is something to abandon them to.
-    if (victim.health < 60 || victim.injuries.bleeding) kinds.push('abandon');
+    if (victim.health < BETRAYAL.abandonMaxHealth || victim.injuries.bleeding) kinds.push('abandon');
 
     return kinds;
 }
@@ -120,7 +122,11 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
                 .sort((a, b) => rememberedThreat(ctx.state, betrayer, b.name) - rememberedThreat(ctx.state, betrayer, a.name))[0];
             if (!deathTrap) return resolveKnife(ctx, betrayer, victim, members);
 
+            // A real move, not a teleport: it leaves a trail and springs
+            // whatever is waiting in the zone they were sent to.
+            noteTraffic(ctx.state, victim.zone, deathTrap.name);
             victim.zone = deathTrap.name;
+            checkTraps(ctx, victim);
             // The victim does not know why they are there; the betrayer does.
             addZoneThreat(ctx.state, betrayer, deathTrap.name, MEMORY.hazardThreat);
             applyBetrayalFallout(ctx, betrayer, victim, members);
@@ -143,7 +149,13 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             const med = betrayer.inventory.find(i => i.type === 'medical')!;
             adjustRel(victim, betrayer.id, -RELATIONSHIPS.betrayalDirectPenalty / 2);
             raiseSuspicion(victim, betrayer.id, SUSPICION.perWitnessedBetrayal);
-            addExcitement(betrayer, 15);
+            addExcitement(betrayer, BETRAYAL.withholdExcitement);
+            // It is a betrayal, and the ledger says so — this was the one
+            // kind that never counted toward the arc. And the wound they were
+            // asking about is a cycle worse for having gone untreated.
+            betrayer.betrayalsCommitted = (betrayer.betrayalsCommitted ?? 0) + 1;
+            openWound(victim, BLEEDING.hazardSeverity);
+            victim.vitals.sanity = Math.max(0, victim.vitals.sanity - BETRAYAL.withholdSanity);
             ctx.logEvent(
                 `${victim.name} asks ${betrayer.name} for the ${med.name}. ${betrayer.name} says they used it days ago, ` +
                 `and keeps their hand over the pocket it is in.`,
@@ -159,7 +171,12 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             delete betrayer.allianceId;
             const away = reachableZones(ctx.state.arena, betrayer.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state))
                 .filter(z => z.name !== betrayer.zone);
-            if (away.length > 0) betrayer.zone = ctx.rng.pick(away).name;
+            if (away.length > 0) {
+                const to = ctx.rng.pick(away).name;
+                noteTraffic(ctx.state, betrayer.zone, to);
+                betrayer.zone = to;
+                checkTraps(ctx, betrayer);
+            }
             ctx.logEvent(
                 `${victim.name} calls out for ${betrayer.name} in ${victim.zone}. ${betrayer.name} hears it, and keeps walking.`,
                 [betrayer.id, victim.id],

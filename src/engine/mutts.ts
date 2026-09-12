@@ -269,7 +269,11 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
         );
         clampTribute(t);
         checkDeath(ctx, t, cause);
-        if (t.status !== 'alive') return;
+        // Gone over, not bitten: the herd has moved on. The bookkeeping a
+        // bite does still applies — this was a mutt and it was here.
+        if (t.status === 'alive') rattle(t, HUNTING.rattledPerMutt);
+        addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat * 2);
+        return;
     }
 
     // Hardened: having met worse is worth something against exactly this.

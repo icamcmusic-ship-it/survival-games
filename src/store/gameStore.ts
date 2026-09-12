@@ -760,6 +760,8 @@ export const gameActions = {
             panem: readPanem(),
             lastRunOutcome: null,
             runProgress: null,
+            // The archive these ids pointed into is gone with everything else.
+            grudgeMatchIds: [],
         });
     },
 
@@ -861,6 +863,9 @@ export const gameActions = {
                 .filter((e): e is HallOfFameEntry => e !== undefined);
             if (picked.length > 0) veterans = seatVeterans(safeSeed, tributes, picked);
         }
+        // The seating is for *this* Games, as the setup copy says. It used to
+        // persist, so the same two victors were reaped again every run after.
+        if (grudge.length > 0) gameStore.setState({ grudgeMatchIds: [] });
 
         const initialState: GameState = {
             seed: safeSeed,

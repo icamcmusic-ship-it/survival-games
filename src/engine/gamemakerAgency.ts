@@ -252,9 +252,11 @@ export function runGamemakerSignature(ctx: SimContext) {
 
         case 'flood-the-low': {
             // Geography as an argument. Everything that is not high ground.
-            const low = ctx.state.arena.zones
+            // Drawn, not sliced: in declaration order this was the Cornucopia
+            // and the next few authored zones, the same ones every run.
+            const low = ctx.rng.shuffle(ctx.state.arena.zones
                 .filter(z => !(ctx.state.collapsedZones ?? []).includes(z.name))
-                .filter(z => !zoneFeatures(z).elevation)
+                .filter(z => !zoneFeatures(z).elevation))
                 .slice(0, GAMEMAKER_AGENCY.floodLowZones);
             if (low.length === 0) break;
             low.forEach(z => startZoneEffect(ctx, z.name, 'flooded'));

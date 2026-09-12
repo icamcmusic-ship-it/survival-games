@@ -615,12 +615,21 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
                 { category: 'survival' }
             );
         } else {
-            t.health = Math.max(1, t.health - FATIGUE_MISTAKES.stumbleDamage);
+            // Through the funnel like every other point of health — armour,
+            // shock, the damage record, and yes, a death. A stumble that
+            // could only ever take you to one health was a hazard with the
+            // teeth filed off.
+            const cause = 'Fell badly from exhaustion';
+            applyDamage(ctx, t, FATIGUE_MISTAKES.stumbleDamage, { cause, kind: 'hazard' });
             ctx.logEvent(
-                `${t.name} misjudges a step they would have made easily three days ago and goes down hard. Exhaustion is its own hazard now.`,
+                t.health <= 0
+                    ? `${t.name} misjudges a step they would have made easily three days ago, goes down hard, and does not get up. The arena did not have to do anything.`
+                    : `${t.name} misjudges a step they would have made easily three days ago and goes down hard. Exhaustion is its own hazard now.`,
                 [t.id],
-                { category: 'injury' }
+                { category: 'injury', important: t.health <= 0 }
             );
+            clampTribute(t);
+            checkDeath(ctx, t, cause);
         }
     }
 

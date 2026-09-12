@@ -15,7 +15,30 @@ export type FlavorTag = Terrain | 'cold' | 'heat' | 'toxic' | 'height' | 'storm'
 
 export interface TaggedEvent extends ArenaEventDef {
     tags: FlavorTag[];
+    /** Never selected into an arena carrying any of these tags — a heatstroke on the tundra was a real draw. */
+    excludes?: FlavorTag[];
 }
+
+/**
+ * The mood each biome adds on top of its terrain, so `open` reads differently
+ * between a volcanic and a highland arena. Shared with the generator, which
+ * keys its mutt-name modifiers off the same tags — it used to derive tags
+ * from terrain alone, so `cold` and `heat` modifiers were unreachable.
+ */
+export const MOOD_BY_BIOME: Record<string, FlavorTag[]> = {
+    rainforest: ['toxic', 'eerie'],
+    volcanic: ['heat', 'toxic'],
+    archipelago: ['storm', 'water'],
+    highlands: ['cold', 'height', 'storm'],
+    tundra: ['cold', 'storm'],
+    dunes: ['heat'],
+    bayou: ['toxic', 'eerie', 'water'],
+    ruinlands: ['eerie', 'ruins'],
+    steppe: ['storm', 'open'],
+    saltmarsh: ['toxic', 'water', 'wetland'],
+    boreal: ['cold', 'forest', 'eerie'],
+    badlands: ['heat', 'height'],
+};
 
 // Aim for broad tag coverage rather than deep per-biome lists — the
 // composer below leans on overlap-weighting to pick a plausible subset
@@ -95,7 +118,8 @@ export const PROCEDURAL_EVENTS: TaggedEvent[] = [
     },
     // open
     {
-        tags: ['open'],
+        tags: ['open', 'heat'],
+        excludes: ['cold'],
         text: 'The sun in {zone} has nowhere to hide from. {tribute} pushes on too long before the dizziness hits.',
         escapeText: '{tribute} reads their own shadow in {zone} and pulls back before heatstroke sets in.',
         cause: 'Died of heatstroke',
@@ -105,7 +129,8 @@ export const PROCEDURAL_EVENTS: TaggedEvent[] = [
         fatigue: 20,
     },
     {
-        tags: ['open'],
+        tags: ['open', 'heat'],
+        excludes: ['cold'],
         text: 'A dust squall rakes across {zone}, and {tribute} is caught in the open with no cover.',
         escapeText: '{tribute} sees the dust wall coming across {zone} and gets their back to a rock in time.',
         cause: 'Blinded and battered by a dust squall',
@@ -598,18 +623,8 @@ export function proceduralArenaFlavor(arena: Arena): ArenaFlavor {
     // Biome mood tags, inferred from the arena id the generator assigned
     // (`procedural-<biome>`), so the same terrain (e.g. `open`) still reads
     // differently between a volcanic and a highland arena.
-    const moodByBiome: Record<string, FlavorTag[]> = {
-        rainforest: ['toxic', 'eerie'],
-        volcanic: ['heat', 'toxic'],
-        archipelago: ['storm', 'water'],
-        highlands: ['cold', 'height', 'storm'],
-        tundra: ['cold', 'storm'],
-        dunes: ['heat'],
-        bayou: ['toxic', 'eerie', 'water'],
-        ruinlands: ['eerie', 'ruins'],
-    };
     const biomeId = arena.id.replace(/^procedural-/, '');
-    (moodByBiome[biomeId] || []).forEach(t => active.add(t));
+    (MOOD_BY_BIOME[biomeId] || []).forEach(t => active.add(t));
 
     // Score by overlap fraction rather than raw overlap count, so the
     // catch-all entries (tagged with every terrain, so they always match)
@@ -617,6 +632,7 @@ export function proceduralArenaFlavor(arena: Arena): ArenaFlavor {
     // distinctive — a single-tag exact match should outrank a six-tag entry
     // that merely happens to include one active tag.
     const weighted = PROCEDURAL_EVENTS
+        .filter(e => !e.excludes?.some(x => active.has(x)))
         .map(e => ({ e, score: overlapScore(e.tags, active) / e.tags.length }))
         .filter(x => x.score > 0)
         .sort((a, b) => b.score - a.score);
@@ -627,7 +643,7 @@ export function proceduralArenaFlavor(arena: Arena): ArenaFlavor {
     const events: ArenaEventDef[] = (weighted.length >= 4 ? weighted : PROCEDURAL_EVENTS.map(e => ({ e, score: 1 })))
         .map(x => x.e)
         .slice(0, 8)
-        .map(({ tags, ...rest }) => rest);
+        .map(({ tags, excludes, ...rest }) => rest);
 
     const ambient = [
         ...GENERIC_AMBIENT.slice(0, 2),

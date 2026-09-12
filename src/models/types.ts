@@ -1127,6 +1127,8 @@ export interface StandingGoal {
     /** Why it is standing: the chronicle names it when it is picked back up. */
     reason: 'feast' | 'avenge' | 'endgame';
     setCycle: number;
+    /** Cycle it was last picked back up; the resume gate reads this, staleness reads `setCycle`. */
+    resumedCycle?: number;
 }
 
 /**
@@ -1231,6 +1233,8 @@ export interface Alliance {
      */
     lootedAtCharter?: Record<string, number>;
     intelSoldAtCharter?: Record<string, number>;
+    /** Cycle each clause was last found broken, so a standing condition is one breach, not one per cycle. */
+    lastBreachCycle?: Partial<Record<CharterRule, number>>;
     /**
      * A §6: the night's watch. Set at nightfall for a group sleeping in one
      * zone: who is awake, who is asleep, and the cycle it was posted, so the
@@ -1881,6 +1885,8 @@ export interface GameState {
     continuity?: import('../engine/continuity').RunContinuity;
     /** Guards the grudge intervention to once per run. */
     grudgeFired?: boolean;
+    /** Per-run truce accounting. See `engine/parley.ts`. */
+    truceLedger?: import('../engine/parley').TruceLedger;
     /**
      * REPLAY-01: this year's Games, as announced. Rolled from the seed so a
      * shared seed reproduces the same Games, not merely the same cast.

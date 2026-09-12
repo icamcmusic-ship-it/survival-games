@@ -402,8 +402,11 @@ export function suspicionOf(t: Tribute, otherId: string): number {
 export function raiseSuspicion(t: Tribute, otherId: string, amount: number) {
     const mem = ensureMemory(t);
     mem.suspicion = mem.suspicion ?? {};
-    // The Paranoid read more into everything they see.
-    const sharpened = amount * (1 + traitMod(t, 'betrayalResist'));
+    // The Paranoid read more into everything they see — and are no quicker to
+    // let it go. The multiplier applies to the upward direction only; it
+    // used to scale a clearing investigation too, so a Paranoid cleared a
+    // suspect 30% *harder* than anybody else.
+    const sharpened = amount > 0 ? amount * (1 + traitMod(t, 'betrayalResist')) : amount;
     mem.suspicion[otherId] = Math.min(SUSPICION.max, (mem.suspicion[otherId] ?? 0) + sharpened);
 }
 

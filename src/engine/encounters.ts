@@ -355,6 +355,12 @@ const TERRAIN_KEYWORDS: Array<[Terrain, RegExp]> = [
     ['forest', /canopy|vine|timber|jungle fruit|army ants|insect swarm|falling branch/i],
     ['ruins', /building collapse|stairwell|sewer|tunnel|wire|tank water|gas explosion|rubble/i],
     ['open', /sandstorm|dust devil|mirage|sun|solar flare|dune|ash storm|lava|magma|volcanic/i],
+    // The four terrains added in §10 had no keywords, so the ~430 events
+    // without explicit `terrains` could never be inferred onto them.
+    ['cave', /cavern|stalactite|stalagmite|passage|gallery|chamber|underground|blind dark|bat/i],
+    ['ice', /crevasse|pack ice|floe|black ice|glacier|frozen lake|ice shelf|serac/i],
+    ['desert', /dune|sand|scorch|salt pan|heat haze|mirage|dust squall/i],
+    ['urban', /street|alley|tenement|rooftop|stairwell|window|storefront|gutter|tram/i],
 ];
 
 /** Best-guess terrain(s) for an event that never had `terrains` set explicitly. Cached per event def — the defs are shared module-level objects, and the regex sweep was previously re-run on every pick. */
@@ -432,7 +438,11 @@ export function pendingChain(ctx: SimContext, t: Tribute, events: ArenaEventDef[
     const queued = ctx.state.eventChains?.[t.id];
     if (!queued) return undefined;
     delete ctx.state.eventChains![t.id];
-    return events.find(e => e.id === queued);
+    const event = events.find(e => e.id === queued);
+    // Two tributes can each set the same chain up; a once-per-run payoff
+    // still only pays off once. The bell does not fall twice.
+    if (!event || spent(ctx, event)) return undefined;
+    return event;
 }
 
 export function pickTerrainEvent(ctx: SimContext, events: ArenaEventDef[], terrain: Terrain | undefined, t?: Tribute): ArenaEventDef {

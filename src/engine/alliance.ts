@@ -302,7 +302,9 @@ export function mergeAllianceRecords(ctx: SimContext, keepId: string, absorbedId
             keep.pactSwornField = absorbed.pactSwornField;
         }
         // §4.2: a merge pools two ledgers of who fed whom.
-        keep.cacheContributions = { ...(absorbed.cacheContributions ?? {}), ...(keep.cacheContributions ?? {}) };
+        const pooled: Record<string, number> = { ...(keep.cacheContributions ?? {}) };
+        Object.entries(absorbed.cacheContributions ?? {}).forEach(([id, n]) => { pooled[id] = (pooled[id] ?? 0) + n; });
+        keep.cacheContributions = pooled;
     }
     return keep;
 }

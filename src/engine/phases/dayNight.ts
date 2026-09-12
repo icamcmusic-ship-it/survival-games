@@ -130,7 +130,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     processVitals(ctx, time);
 
     // 3. Crafting, situational awareness, stance and movement.
-    const currentAlive = getAlive(ctx.state);
+    // Resolution order is drawn fresh every cycle. Each tribute fully resolves
+    // — sights, stance, intention, move — before the next one even looks at
+    // the zone, so whoever went first saw a world nobody had acted on yet.
+    // In roster order that was a standing advantage for the lowest slots.
+    const currentAlive = ctx.rng.shuffle(getAlive(ctx.state));
     const acted = new Set<string>();
     // Tributes brought ashore this cycle as part of somebody else's group
     // crossing. Kept separate from `acted` on purpose: they have finished

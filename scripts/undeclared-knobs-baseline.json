@@ -1,9 +1,10 @@
 {
   "src/engine/alliance.ts :: threshold :: m.vitals.hunger < 40": 1,
   "src/engine/alliance.ts :: threshold :: m.vitals.thirst < 40": 1,
+  "src/engine/allianceCharter.ts :: threshold :: regardFloor < 10": 1,
+  "src/engine/allianceCharter.ts :: threshold :: t.vitals.hunger > 50": 1,
   "src/engine/arenaGenerator.ts :: threshold :: shapeRoll < 0.2": 1,
   "src/engine/arenaGenerator.ts :: threshold :: shapeRoll < 0.85": 1,
-  "src/engine/betrayal.ts :: threshold :: victim.health < 60": 1,
   "src/engine/combat.ts :: accumulate :: chance += 0.15": 1,
   "src/engine/combat.ts :: accumulate :: chance -= 0.1": 1,
   "src/engine/combat.ts :: accumulate :: chance -= 0.12": 1,

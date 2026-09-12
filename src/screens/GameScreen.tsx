@@ -261,10 +261,14 @@ export function GameScreen({
     const lastTickLogCount = useRef(gameState.log.length);
     useEffect(() => {
         const running = speed !== 'manual' || playUntil !== null;
-        if (!running || isOver || runProgress) return;
         const newCount = Math.max(0, gameState.log.length - lastTickLogCount.current);
         const newLines = newCount > 0 ? gameState.log.slice(-newCount) : [];
+        // Advance the watermark whether or not we are running. It used to sit
+        // behind the early return below, so every phase stepped by hand while
+        // paused piled up as "new" — and the moment auto-play resumed, a
+        // cannon the player had already watched tripped the brake.
         lastTickLogCount.current = gameState.log.length;
+        if (!running || isOver || runProgress) return;
 
         const aliveNow = gameState.tributes.filter(t => t.status === 'alive').length;
         const untilHit = playUntil === 'death'

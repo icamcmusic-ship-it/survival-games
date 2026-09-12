@@ -39,21 +39,36 @@ const RULE_TEXT: Record<CharterRule, string> = {
 
 /** Rolls the clauses a new alliance agrees to, from its members' natures. */
 export function rollCharter(rng: RNG, members: Tribute[]): CharterRule[] {
-    const pool: CharterRule[] = [
-        'share-food', 'no-fighting', 'hold-the-camp', 'no-hunting-alone',
-        'no-looting-the-fallen', 'share-intel', 'leader-decides-targets',
+    // Each clause is weighted by who is signing it. A group with somebody
+    // hungry writes the food rule; two members who already dislike each other
+    // write the no-fighting rule; a strategist wants the intel shared; a
+    // Career leader wants to pick the fights. `members` used to be `void`ed
+    // — the doc said "from its members' natures" and the body rolled flat.
+    const has = (pred: (t: Tribute) => boolean) => members.some(pred);
+    const regardFloor = Math.min(...members.flatMap(m => members.filter(o => o.id !== m.id).map(o => getRel(m, o.id))));
+    const weights: Array<[CharterRule, number]> = [
+        ['share-food', 1 + (has(t => t.vitals.hunger > 50) ? 1 : 0) + (has(t => t.archetype === 'survivalist') ? 0.5 : 0)],
+        ['no-fighting', 1 + (regardFloor < 10 ? 1.5 : 0) + (has(t => t.archetype === 'diplomat' || t.traits.includes('Pacifist')) ? 0.5 : 0)],
+        ['hold-the-camp', 1 + (has(t => t.archetype === 'protector' || t.archetype === 'medic') ? 1 : 0)],
+        ['no-hunting-alone', 1 + (has(t => t.isCareer || isAggressiveStance(t.stance)) ? 1 : 0)],
+        ['no-looting-the-fallen', 1 + (has(t => t.traits.includes('Merciful') || t.traits.includes('Softhearted')) ? 1.5 : 0)],
+        ['share-intel', 1 + (has(t => t.archetype === 'strategist' || t.archetype === 'scholar') ? 1.5 : 0)],
+        ['leader-decides-targets', 1 + (has(t => t.archetype === 'career' || t.archetype === 'zealot') ? 1.5 : 0)],
     ];
     const count = rng.chance(CHARTER.twoClauseChance) ? 2 : 1;
     const chosen: CharterRule[] = [];
     for (let i = 0; i < count; i++) {
-        const remaining = pool.filter(r => !chosen.includes(r));
+        const remaining = weights.filter(([r]) => !chosen.includes(r));
         if (remaining.length === 0) break;
-        chosen.push(rng.pick(remaining));
+        const total = remaining.reduce((sum, [, w]) => sum + w, 0);
+        let roll = rng.nextFloat() * total;
+        let pick = remaining[remaining.length - 1][0];
+        for (const [rule, w] of remaining) { roll -= w; if (roll <= 0) { pick = rule; break; } }
+        chosen.push(pick);
     }
     // §4.5: a cautious group writes the ending into the terms up front —
     // "we split at the final eight" is a pact, and now it is a clause.
     if (rng.chance(CHARTER.endgameClauseChance)) chosen.push('split-at-eight');
-    void members;
     return chosen;
 }
 
@@ -122,11 +137,23 @@ export function enforceCharters(ctx: SimContext) {
             return;
         }
 
+        const cycle = ctx.state.cycle ?? 0;
         record.charter.forEach(rule => {
             if (rule === 'split-at-eight') return;
+            const last = record.lastBreachCycle?.[rule];
+            if (last !== undefined && cycle - last < CHARTER.rebreachCooldownCycles) return;
             const offender = findBreach(ctx, rule, record, members);
             if (!offender) return;
             if (!ctx.rng.chance(CHARTER.noticeChance)) return;
+            record.lastBreachCycle = { ...(record.lastBreachCycle ?? {}), [rule]: cycle };
+            // The counted clauses move their baseline forward: the offence is
+            // the bodies stripped *since the last time it came up*.
+            if (rule === 'no-looting-the-fallen') {
+                record.lootedAtCharter = { ...(record.lootedAtCharter ?? {}), [offender.id]: offender.corpsesLooted ?? 0 };
+            }
+            if (rule === 'share-intel') {
+                record.intelSoldAtCharter = { ...(record.intelSoldAtCharter ?? {}), [offender.id]: offender.intelSold ?? 0 };
+            }
             record.breaches = (record.breaches ?? 0) + 1;
             // §4: a clause broken is a promise broken, and the trait arc counts it.
             offender.faithBroken = (offender.faithBroken ?? 0) + 1;

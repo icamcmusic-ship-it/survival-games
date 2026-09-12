@@ -177,6 +177,18 @@ export function processAlliances(ctx: SimContext) {
         });
     }
 
+    // Every step below may strip an `allianceId` without touching the arrays
+    // built above, and the later steps average, gate and pick betrayers over
+    // those arrays. Re-derive them between steps, so a member who walked out
+    // in 1c is not a witness in 2 and not a vote in 5.
+    const refresh = () => {
+        alliances.forEach((members, id) => {
+            const live = members.filter(m => m.status === 'alive' && m.allianceId === id);
+            if (live.length === 0) alliances.delete(id);
+            else alliances.set(id, live);
+        });
+    };
+
     // 1. Dissolve small alliances
     alliances.forEach((members, id) => {
         if (members.length < 2) {
@@ -210,6 +222,7 @@ export function processAlliances(ctx: SimContext) {
         }
     });
 
+    refresh();
     // 1b2. §4.8: suspicion gets an investigation path. A tribute who
     // suspects an ally no longer only waits or leaves: below the departure
     // threshold they *test* it — trail the suspect, check the cache, ask a
@@ -247,6 +260,7 @@ export function processAlliances(ctx: SimContext) {
         });
     });
 
+    refresh();
     // 1c. §4.2: pre-emptive departure. A member whose suspicion of a specific
     // ally has climbed high enough gets out before the knife does — the
     // telegraphed version of the betrayal the audience can see building.
@@ -277,6 +291,7 @@ export function processAlliances(ctx: SimContext) {
         });
     });
 
+    refresh();
     // 1d. Going it alone. Not a grievance — every other way out of an alliance
     // is one (suspicion, betrayal, romance, a pact coming due), which left no
     // path at all for a tribute who gets on fine with their group and has
@@ -317,6 +332,7 @@ export function processAlliances(ctx: SimContext) {
         });
     }
 
+    refresh();
     // 1e. A2: the Mercenary's terms coming due.
     //
     // `parley.ts` gestured at alliance-as-transaction and nothing in the model
@@ -343,6 +359,7 @@ export function processAlliances(ctx: SimContext) {
         });
     });
 
+    refresh();
     // 2. Betrayal Logic
     alliances.forEach((members) => {
         if (members.length < 2) return;
@@ -370,6 +387,7 @@ export function processAlliances(ctx: SimContext) {
         }
     });
 
+    refresh();
     // 3. Dynamic Alliance Formation & Star-Crossed Lovers
     // Re-read the living: betrayals above may have killed someone since the
     // snapshot at the top of this function.

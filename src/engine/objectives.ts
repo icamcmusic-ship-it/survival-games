@@ -376,7 +376,7 @@ function chooseObjective(
             // healthy Career with a trident. Weigh how winnable the fight looks
             // (from what the hunter last saw, not the live sheet), the loot,
             // and the grudge — minus how much this person frightens them.
-            const score = (o: Tribute) => {
+            const rawScore = (o: Tribute) => {
                 const winnable = (100 - o.health)
                     + (o.inventory.some(i => i.type === 'weapon') ? 0 : 30)
                     + (o.allianceId === undefined ? 15 : 0);
@@ -440,7 +440,16 @@ function chooseObjective(
                     - visible.reduce((worst, ally) => Math.max(worst,
                         ally.id === o.id ? 0 : perceivedBond(t, o.id, ally.id)), 0)
                         * OBJECTIVES.avengerDeterrent
-                    ) * targetReluctance(t, o.id);
+                    );
+            };
+            // Respect is a reason to leave somebody for last. On a mark that
+            // already scores negative, multiplying by a number under one made
+            // them *more* attractive; the reluctance has to push away from
+            // zero in both directions.
+            const score = (o: Tribute) => {
+                const raw = rawScore(o);
+                const reluctance = targetReluctance(t, o.id);
+                return raw >= 0 ? raw * reluctance : raw * (2 - reluctance);
             };
             const best = (pool: Tribute[]) =>
                 pool.reduce((top, o) => (score(o) > score(top) ? o : top));
@@ -453,7 +462,11 @@ function chooseObjective(
             if (!dry && tempting && (!target || score(tempting) > score(target))
                 && breaksTruce(ctx, t, tempting)) {
                 breakTruce(ctx, t, tempting);
-                return { kind: 'hunt', targetId: tempting.id, expires: expiry(OBJECTIVES.huntCycles) };
+                // Through `offer`, so it carries the hunt's tier: returned
+                // bare it sat at tier 0, and any standing goal overrode a
+                // truce that had just been broken for this.
+                return offer(OBJECTIVES.huntTier, { kind: 'hunt', targetId: tempting.id, expires: expiry(OBJECTIVES.huntCycles) })
+                    ?? { kind: 'hunt', targetId: tempting.id, expires: expiry(OBJECTIVES.huntCycles) };
             }
             // No honest mark and no truce worth breaking: fall through to the
             // objectives below rather than forcing a hunt that has no target.
@@ -706,10 +719,12 @@ function resumeStandingGoal(ctx: SimContext, t: Tribute): Objective | undefined 
     }
 
     // Not yet — give the errand queue a few cycles to clear before reasserting.
-    if (cycle - standing.setCycle < STANDING_GOAL.resumeCycles) return undefined;
+    if (cycle - (standing.resumedCycle ?? standing.setCycle) < STANDING_GOAL.resumeCycles) return undefined;
 
     const resumed = { ...standing.goal, expires: cycle + OBJECTIVES.reachCycles } as Objective;
-    t.standingGoal = { ...standing, setCycle: cycle };
+    // `setCycle` used to be reset here, so a goal resumed at least once per
+    // window could never go stale. It keeps its birthday now.
+    t.standingGoal = { ...standing, resumedCycle: cycle };
     return resumed;
 }
 
