@@ -1,4 +1,6 @@
 import { GameState, Item, Tribute, TruceReason } from '../models/types';
+import { sanityBandOf } from './sanityBands';
+import { dreadOf } from './intent';
 import { COMPOSURE, INTEL, PARLEY, PROFICIENCY, RELATIONSHIPS, RESPECT, ROMANCE } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { PARLEY_TEXTS } from '../data/flavorText';
@@ -228,6 +230,9 @@ function truceBreakChance(ctx: SimContext, t: Tribute, other: Tribute): number {
     chance *= Math.max(0.05, 1 - Math.max(0, getRel(t, other.id)) / 110);
     chance *= Math.max(0.3, 1 - Math.max(0, respectOf(t, other.id)) / RESPECT.truceRestraintDivisor);
     if (ensureMemory(t).betrayedBy.length > 0) chance *= PARLEY.truceBreakBetrayedRestraint;
+    // §3.5 (audit): the band abstraction finally reaches the parley layer —
+    // somebody coming apart cannot be relied on to keep to terms.
+    if (sanityBandOf(t) === 'unravelling' || sanityBandOf(t) === 'gone') chance += PARLEY.unravellingBreakBonus;
     // §8: the other party's persuasion. Someone who is good at this does not
     // only talk you into an agreement, they keep talking you out of leaving
     // it. §8.3 (audit): and the trait half of that — the Silver-Tongued keep
@@ -320,8 +325,10 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
 
     // TRIBUTE: one of them knows they lose. Paying is better than dying, and
     // the stronger one has to be willing to take payment rather than blood.
-    const tOutmatched = tRatio > PARLEY.outmatchedRatio;
-    const otherOutmatched = otherRatio > PARLEY.outmatchedRatio;
+    // §3.2 (audit): a cowed tribute reads any matchup as one they lose, and
+    // takes terms accordingly. Dread lowers the bar at which they parley.
+    const tOutmatched = tRatio > PARLEY.outmatchedRatio * (1 - dreadOf(ctx, t) * PARLEY.dreadParleyBonus);
+    const otherOutmatched = otherRatio > PARLEY.outmatchedRatio * (1 - dreadOf(ctx, other) * PARLEY.dreadParleyBonus);
     // §1.11: the shakedown was reachable and effectively never reached —
     // `tributesPaid` measured 1 across 400 runs and `paidInInformation` 6.
     // The gating was the cause: the early return below fires precisely for the

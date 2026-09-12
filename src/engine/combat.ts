@@ -5,7 +5,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -629,7 +629,17 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
 
     if (ctx.rng.chance(COMBAT.bleedChance)) openWound(defender, BLEEDING.combatSeverity);
     if (ctx.rng.chance(COMBAT.woundChance)) {
-        const site = ctx.rng.pick(['head', 'torso', 'arms', 'legs'] as const);
+        // Where it lands depends on what landed it and how practised the hand
+        // was. A bow finds the body; a club finds the head; a blade opens the
+        // arm that is put out to stop it.
+        const cls = weapon?.weaponClass ?? 'unarmed';
+        const base = COMBAT.woundSiteWeights[cls] ?? COMBAT.woundSiteWeights.unarmed;
+        const skill = weapon ? profOf(attacker, weaponProficiency(weapon.weaponClass)) : 0;
+        const weights = [base[0] + skill * COMBAT.woundSiteSkillHead, base[1], base[2], base[3]];
+        const sites = ['head', 'torso', 'arms', 'legs'] as const;
+        let roll = ctx.rng.nextFloat() * weights.reduce((a, b) => a + b, 0);
+        let site: typeof sites[number] = 'torso';
+        for (let i = 0; i < sites.length; i++) { roll -= weights[i]; if (roll <= 0) { site = sites[i]; break; } }
         injure(defender, site);
     }
     // A Pyromaniac fights dirty with whatever burns — every landed hit has a
@@ -1029,9 +1039,19 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         const drawOf = (d: Tribute) => {
             const allyPresent = defenders.some(o => o.id !== d.id
                 && o.allianceId !== undefined && o.allianceId === d.allianceId);
+            // §3.3 (audit): the roles the alliance layer assigns finally mean
+            // something in a fight. The muscle stands in front; the medic is
+            // the one the others step in front of — when there is anybody to
+            // step in front.
+            const roles = d.allianceId ? ctx.state.alliances?.[d.allianceId]?.roles : undefined;
+            const roleDraw = roles
+                ? (roles.muscle === d.id ? COMBAT.roleMuscleDraw : 0)
+                    - (roles.medic === d.id && allyPresent ? COMBAT.roleMedicShield : 0)
+                : 0;
             return Math.max(COMBAT.minFocusWeight,
                 Math.max(1, 100 - d.health)
                 + targetDrawOf(d)
+                + roleDraw
                 - (allyPresent ? traitMod(d, 'defended') * COMBAT.defendedWeight : 0));
         };
         const target = sworn ?? (ctx.rng.chance(COMBAT.focusFireChance)
@@ -1043,7 +1063,11 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         // in a big enough fight that is a way to die that nobody chose.
         if (attackers.length >= COMBAT.friendlyFireMinAttackers
             && ctx.rng.chance(COMBAT.friendlyFireChance)) {
-            const swinger = ctx.rng.pick(attackers);
+            // The clumsy one swings wide: low agility and a bad arm, not a
+            // uniform draw over the pack.
+            const swinger = weightedPick(ctx, attackers, a => 1
+                + Math.max(0, SOCIAL_AXES.attributeMidpoint - effectiveAgility(a)) * COMBAT.friendlyFireAgilityWeight
+                + injuryGrade(a, 'arms') * COMBAT.friendlyFireArmWeight);
             const hit = ctx.rng.pickOrUndefined(attackers.filter(a => a.id !== swinger.id));
             if (hit) {
                 const stray = Math.round(COMBAT.friendlyFireDamage

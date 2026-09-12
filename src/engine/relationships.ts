@@ -478,10 +478,32 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
 }
 
 /**
- * Trust erosion inside a standing alliance. Rations run short, the
- * field thins, and everyone starts doing arithmetic about who is left.
+ * §4 (audit): which axis a decision reads. The graph carries four and there
+ * was no single place that said which one governs what, which is how a
+ * function named for trust came to write regard.
+ *
+ *   regard    warmth. Grief, targeting, romance, the audience, and the
+ *             decay below. `getRel`/`adjustRel`.
+ *   respect   professional esteem. Who you believe, who you leave for
+ *             last, who gets recruited. `respectOf`/`adjustRespect`.
+ *   trust     whether their word holds. Alliance formation, recruitment,
+ *             loans, truce renewal. `trustOf` (derived) over `trusts`
+ *             (stored history, `adjustTrust`).
+ *   suspicion per-ally doubt inside a group. Investigations, departures,
+ *             the pre-emptive knife. `suspicionOf`/`raiseSuspicion`/
+ *             `easeSuspicion` in memory.ts.
+ *
+ * The rule: a decision about *joining* reads trust, a decision about
+ * *believing* reads respect, a decision about *hurting* reads regard, and a
+ * decision about *leaving* reads suspicion.
  */
-export function decayAllianceTrust(state: GameState) {
+
+/**
+ * Regard erosion inside a standing alliance. Rations run short, the
+ * field thins, and everyone starts doing arithmetic about who is left.
+ * (Renamed from `decayAllianceTrust`: it writes regard, and always did.)
+ */
+export function decayAllianceRegard(state: GameState) {
     const alive = state.tributes.filter(t => t.status === 'alive');
     const lateGame = alive.length <= RELATIONSHIPS.lateGameAliveCount;
     const rate = lateGame ? RELATIONSHIPS.lateGameTrustDecay : RELATIONSHIPS.trustDecayPerCycle;

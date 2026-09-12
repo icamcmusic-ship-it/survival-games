@@ -1,4 +1,5 @@
 import { Tribute } from '../models/types';
+import { witnessKindness } from './rapport';
 import { WATCH_ROTATION } from '../data/balance';
 import { SimContext } from './context';
 import { allianceRecords, membersOf } from './alliance';
@@ -60,6 +61,8 @@ export function postWatches(ctx: SimContext) {
             });
             watcher.vitals.fatigue += WATCH_ROTATION.watcherFatigue;
             clampTribute(watcher);
+            // A night's watch is a kindness the sleepers can see in the morning.
+            sleepers.forEach(m => witnessKindness(ctx, watcher, m, 0.5));
 
             const already = record.watch?.watcherId === watcher.id && record.watch?.zone === zone;
             record.watch = { cycle, zone, watcherId: watcher.id, sleeperIds: sleepers.map(m => m.id) };

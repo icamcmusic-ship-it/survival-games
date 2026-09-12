@@ -410,6 +410,13 @@ export function raiseSuspicion(t: Tribute, otherId: string, amount: number) {
     mem.suspicion[otherId] = Math.min(SUSPICION.max, (mem.suspicion[otherId] ?? 0) + sharpened);
 }
 
+/** §4.2 (audit): something an ally *did* that argues against the doubt. */
+export function easeSuspicion(t: Tribute, otherId: string, amount: number) {
+    const sus = t.memory?.suspicion;
+    if (!sus || sus[otherId] === undefined) return;
+    sus[otherId] = Math.max(0, sus[otherId] - amount);
+}
+
 export function decaySuspicion(state: GameState) {
     state.tributes.forEach(t => {
         const sus = t.memory?.suspicion;
@@ -449,6 +456,8 @@ export function noteWound(attacker: Tribute, defender: Tribute) {
 export function noteStoodBy(t: Tribute, otherId: string) {
     const mem = ensureMemory(t);
     if (!mem.stoodBy.includes(otherId)) mem.stoodBy.push(otherId);
+    // Somebody who took a risk for you is somebody you doubt less.
+    easeSuspicion(t, otherId, SUSPICION.easedByStoodBy);
 }
 
 export function hasStoodBy(t: Tribute, otherId: string): boolean {

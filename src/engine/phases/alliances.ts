@@ -1,3 +1,4 @@
+import { dreadOf } from '../intent';
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
@@ -237,10 +238,19 @@ export function processAlliances(ctx: SimContext) {
                 && suspicionOf(m, o.id) < SUSPICION.departThreshold);
             if (!suspect) return;
             if (!ctx.rng.chance(SUSPICION.investigateChance)) return;
-            // The test finds what there is to find: real treachery confirms,
-            // an honest ally clears.
-            const guilty = (ARCHETYPES[suspect.archetype].treachery + traitMod(suspect, 'treachery')) > 0.25
+            // The test finds what there is to find — in the *record*, not the
+            // sheet. It used to read the suspect's archetype treachery
+            // straight off the roster, so a treacherous-by-nature ally who had
+            // done nothing was confirmed and a loyal one mid-plot was cleared.
+            // Disposition is a prior now, not a verdict.
+            const record = allianceOf(ctx.state, id);
+            const onRecord = (record?.breachesBy?.[suspect.id]?.length ?? 0) > 0
+                || (suspect.corpsesLooted ?? 0) > (record?.lootedAtCharter?.[suspect.id] ?? 0)
+                || (suspect.intelSold ?? 0) > (record?.intelSoldAtCharter?.[suspect.id] ?? 0)
+                || (suspect.betrayalsCommitted ?? 0) > 0
                 || ensureMemory(m).betrayedBy.includes(suspect.id);
+            const disposed = (ARCHETYPES[suspect.archetype].treachery + traitMod(suspect, 'treachery')) > 0.25;
+            const guilty = onRecord || (disposed && ctx.rng.chance(SUSPICION.dispositionPriorChance));
             if (guilty) {
                 raiseSuspicion(m, suspect.id, SUSPICION.investigateConfirmAmount);
                 ctx.logEvent(
@@ -427,9 +437,13 @@ export function processAlliances(ctx: SimContext) {
                     const history = (sharedHistoryOf(t1, t2.id) + sharedHistoryOf(t2, t1.id)) / 2
                         * RELATIONSHIPS.sharedHistoryFormWeight;
 
+                    // §3.2 (audit): dread is a reason to want company. This
+                    // is the first thing outside the stance scorer to read it.
+                    const dread = (dreadOf(ctx, t1) + dreadOf(ctx, t2)) / 2;
                     const formChance = Math.max(
                         ALLIANCES.minFormChance,
                         (ALLIANCES.baseFormChance + affinity + compat + persona + history) / trustCost
+                            * (1 + dread * ALLIANCES.dreadFormationWeight)
                     );
                     const relThreshold = (ALLIANCES.baseRelThreshold - compat * 100 - persona * 60) * trustCost;
 

@@ -7,6 +7,7 @@ import { getRel, adjustMutual, adjustRel } from './relationships';
 import { fearOf, addFear } from './fear';
 import { addExcitement } from './audience';
 import { grantTruce, truceLedger } from './parley';
+import { witnessKindness } from './rapport';
 import { giveItem, inventoryValue } from './items';
 import { healInjury, clearBleeding } from './wounds';
 import { clampTribute } from './vitals';
@@ -213,6 +214,8 @@ const SIGNATURES: Record<string, Signature> = {
         clampTribute(patient);
         say(ctx, t, 'medicTriage', [t.id, patient.id], { patient: patient.name });
         adjustMutual(ctx.state, t, patient, ARCHETYPE_HOOKS.triageBond);
+        // Everybody standing there just learned something about the two of them.
+        witnessKindness(ctx, t, patient);
         t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
         return true;
     },

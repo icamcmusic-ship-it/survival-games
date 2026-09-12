@@ -354,8 +354,12 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
 
     // ---- bonded ---------------------------------------------------------
     'Star-Crossed': {
-        info: 'Bonded to their district partner. The two of them will refuse to fight each other under any circumstances, and the Capitol adores it — a steady drip of sponsor trust and excitement all run.',
+        info: 'Bonded to their district partner. The two of them will refuse to fight each other under any circumstances, and the Capitol adores it — a steady drip of sponsor trust and excitement all run. They hold their nerve for each other, and a death in front of them lands twice as hard.',
         earned: true,
+        // The only trait in the file with no mods. The bond itself is the
+        // string-id test in `alliance.ts`; these are what being in love does
+        // to a person in an arena.
+        mods: { resolveDrift: 0.75, griefResist: -0.4, allianceAffinity: 0.15 },
     },
 
     // ---- earned in the arena --------------------------------------------

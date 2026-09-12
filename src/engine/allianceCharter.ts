@@ -1,5 +1,5 @@
 import { Alliance, CharterRule, Tribute } from '../models/types';
-import { noteFormerAllies, raiseSuspicion } from './memory';
+import { easeSuspicion, noteFormerAllies, raiseSuspicion } from './memory';
 import { SUSPICION, CHARTER, ENDGAME, ALLIANCES } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { allianceOf } from './alliance';
@@ -138,6 +138,12 @@ export function enforceCharters(ctx: SimContext) {
         }
 
         const cycle = ctx.state.cycle ?? 0;
+        // §4.2 (audit): a charter kept is evidence. A window with no breach
+        // eases everybody's doubt about everybody, a little.
+        const lastAny = Math.max(-Infinity, ...Object.values(record.lastBreachCycle ?? {}).map(n => n ?? -Infinity), record.formedCycle);
+        if (cycle - lastAny >= SUSPICION.keptCharterWindow && (cycle - lastAny) % SUSPICION.keptCharterWindow === 0) {
+            members.forEach(m => members.forEach(o => { if (o.id !== m.id) easeSuspicion(m, o.id, SUSPICION.easedByKeptCharter); }));
+        }
         record.charter.forEach(rule => {
             if (rule === 'split-at-eight') return;
             const last = record.lastBreachCycle?.[rule];

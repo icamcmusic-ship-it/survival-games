@@ -188,6 +188,19 @@ export interface ObjectiveTension {
     voiced?: boolean;
 }
 
+/**
+ * §3.2 (audit): what happened the last few times they tried this kind of
+ * thing. Read by the objective cascade as a per-kind confidence.
+ */
+export interface ObjectiveOutcome {
+    tries: number;
+    wins: number;
+    /** Consecutive failures, cleared by a win. */
+    streak: number;
+    /** For hunts and stalks: the target the streak is against. */
+    lastTargetId?: string;
+}
+
 export type WeaponClass = 'melee' | 'ranged' | 'thrown';
 
 /**
@@ -606,6 +619,8 @@ export interface Tribute {
     /** What they are currently trying to do. See `Objective`. */
     objective?: Objective;
     /** §3.4: what they nearly did instead, and how close it was. */
+    /** §3.2 (audit): per-kind outcome ledger. See `engine/objectives.ts`. */
+    objectiveOutcomes?: Partial<Record<Objective['kind'], ObjectiveOutcome>>;
     objectiveTension?: ObjectiveTension;
     /**
      * §3.2: the goal this tribute is working toward, behind whatever errand

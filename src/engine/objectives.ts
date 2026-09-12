@@ -439,6 +439,12 @@ function chooseObjective(
                 return (winnable + loot + weakness + grudge - fearOf(t, o.id) + reputation - thirdPartyCost
                     + targetDrawOf(o)
                     + targetPreferenceScore(t, o, hops)
+                    // §3.2 (audit): the outcome ledger. A mark that has got
+                    // away from this hunter before scores lower, so a tribute
+                    // who keeps failing changes *target* rather than trying
+                    // the same person identically — learning that changes
+                    // the hunt, not the appetite for one.
+                    - sameTargetPenaltyFor(t, o.id)
                     // §4.3: and who is going to come looking. A hunter who has
                     // watched somebody else pull this tribute out of a fire has
                     // learned that killing them buys a second enemy — which is
@@ -627,6 +633,8 @@ export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
     const standing = resumeStandingGoal(ctx, t);
 
     const previous = t.objective;
+    // §3.2 (audit): before choosing again, judge the one that just ended.
+    if (previous && previous.kind !== 'survive') recordObjectiveOutcome(ctx, t, previous);
     const chosenTier = { tier: 0 };
     let next = chooseObjective(ctx, t, here, undefined, chosenTier);
 
@@ -856,6 +864,49 @@ export function objectiveStep(ctx: SimContext, t: Tribute, options: Zone[]): Zon
     const hop = nextHopToward(ctx.state.arena, t.zone, target, collapsed, severedEdgeSet(ctx.state));
     if (!hop) return undefined;
     return options.find(z => z.name === hop);
+}
+
+/** What the ledger says about hunting this particular tribute again. */
+function sameTargetPenaltyFor(t: Tribute, targetId: string): number {
+    const hunt = t.objectiveOutcomes?.hunt;
+    const stalk = t.objectiveOutcomes?.stalk;
+    const streak = (hunt?.lastTargetId === targetId ? hunt.streak : 0) + (stalk?.lastTargetId === targetId ? stalk.streak : 0);
+    return Math.min(OBJECTIVES.failureStreakCap, streak) * OBJECTIVES.sameTargetPenalty;
+}
+
+/**
+ * §3.2 (audit): did it work?
+ *
+ * Judged when an objective is replaced, against the state of the world at
+ * that moment: a reach that ends standing in the zone worked, a hunt that
+ * ends with the quarry dead by this tribute's hand worked, a flee that ends
+ * anywhere but where it started worked, a protect whose ward is still alive
+ * worked. Anything else is a failure — including an objective that simply
+ * expired, which is the commonest way an intention fails in an arena.
+ */
+function recordObjectiveOutcome(ctx: SimContext, t: Tribute, previous: Objective) {
+    const state = ctx.state;
+    const find = (id: string) => state.tributes.find(o => o.id === id);
+    let won: boolean;
+    switch (previous.kind) {
+        case 'reach': won = t.zone === previous.zone; break;
+        case 'hunt': { const q = find(previous.targetId); won = !!q && q.status === 'dead' && q.lastDamage?.sourceId === t.id; break; }
+        case 'stalk': { const q = find(previous.targetId); won = !!q && (q.status === 'dead' || (t.memory?.lastContact?.[q.id] ?? -Infinity) >= cycleOf(state) - 1); break; }
+        case 'flee': won = t.zone !== previous.from; break;
+        case 'protect': { const w = find(previous.wardId); won = !!w && w.status === 'alive'; break; }
+        case 'hold':
+        case 'wait': won = t.zone === previous.zone && t.status === 'alive'; break;
+        default: return;
+    }
+    t.objectiveOutcomes = t.objectiveOutcomes ?? {};
+    const record = t.objectiveOutcomes[previous.kind] ?? { tries: 0, wins: 0, streak: 0 };
+    record.tries += 1;
+    if (won) { record.wins += 1; record.streak = 0; record.lastTargetId = undefined; }
+    else {
+        record.streak += 1;
+        record.lastTargetId = 'targetId' in previous ? previous.targetId : undefined;
+    }
+    t.objectiveOutcomes[previous.kind] = record;
 }
 
 /** True when the objective says to stay put this cycle. */

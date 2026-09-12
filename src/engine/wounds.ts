@@ -66,6 +66,10 @@ export function healInjury(t: Tribute, site: Exclude<InjurySite, 'bleeding'>, st
     if (next <= 0) {
         t.injuries[site] = false;
         if (t.injurySeverity) delete t.injurySeverity[site];
+        // A healed arm is not a wounded side any more. This was set once on
+        // the first arm wound and never cleared, so the *next* arm wound,
+        // days later, landed on the same side by default.
+        if (site === 'arms') t.woundedSide = undefined;
     }
 }
 

@@ -12,7 +12,7 @@ import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, neare
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, checkIntelLies, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteRivalSighting, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
-import { decayAllianceTrust, driftReputation, getRel, decayTrust } from '../relationships';
+import { decayAllianceRegard, driftReputation, getRel, decayTrust } from '../relationships';
 import { clampTribute } from '../vitals';
 import { openWound } from '../wounds';
 import { isNoticed } from '../stealth';
@@ -304,7 +304,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     decayRelationships(ctx.state);
     // §4.2 (audit): stored trust heals on its own clock.
     decayTrust(ctx.state);
-    decayAllianceTrust(ctx.state);
+    decayAllianceRegard(ctx.state);
     decayFear(ctx.state);
     decaySuspicion(ctx.state);
     // §3.5: the two contactless channels — the sky, and the zone next door —

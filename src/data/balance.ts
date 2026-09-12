@@ -956,6 +956,14 @@ export const FEAR = {
  * suspicious a harder mark for the betrayal they saw coming.
  */
 export const SUSPICION = {
+    /** §4.2 (audit): the way down. What a repaid debt, a kept charter window, and standing by someone are worth against suspicion. */
+    easedByRepaidDebt: 12,
+    easedByKeptCharter: 3,
+    easedByStoodBy: 8,
+    /** Cycles of a charter with no breach before every member eases off every other member. */
+    keptCharterWindow: 5,
+    /** The investigation's disposition prior: odds a treacherous-by-nature suspect with a clean record still reads guilty. */
+    dispositionPriorChance: 0.3,
     /** §4.8: suspicion high enough to be worth testing, but short of walking out. */
     /** Per point of `betrayalResist`, how much faster in-group doubt accrues (Paranoid at 0.3 → 1.8x). */
     accrualPerBetrayalResist: 2.67,
@@ -1723,6 +1731,25 @@ export const COMBAT = {
     /** The die on top of a fighter's estimated power in an exchange (0..this, inclusive). */
     powerSwingMax: 5,
     /**
+     * §3.3 (audit): where a hit lands depends on what landed it. Relative
+     * weights per weapon class over [head, torso, arms, legs]; the hit was a
+     * uniform pick before, so a bow and a club opened bodies identically.
+     */
+    woundSiteWeights: {
+        ranged: [2, 4, 2, 3],
+        thrown: [2, 3, 3, 3],
+        melee: [2, 3, 3, 3],
+        unarmed: [3, 3, 1, 3],
+    } as Record<'ranged' | 'thrown' | 'melee' | 'unarmed', [number, number, number, number]>,
+    /** Per point of the attacker's weapon proficiency, extra weight on the head — practice finds the target. */
+    woundSiteSkillHead: 0.3,
+    /** Group fights: an alliance's muscle draws fire, its medic is protected by the people around them. */
+    roleMuscleDraw: 14,
+    roleMedicShield: 12,
+    /** Friendly fire is a clumsy swing: base weight plus per point of agility *below* the midpoint, plus per grade of arm injury. */
+    friendlyFireAgilityWeight: 1.2,
+    friendlyFireArmWeight: 3,
+    /**
      * §8a: the numbers advantage decays with the pack's own trust. A group
      * that has stopped trusting each other still outnumbers you — it simply
      * stops fighting like one animal. Floor keeps a hostile pack dangerous.
@@ -2048,6 +2075,17 @@ export const PLANNING = {
 } as const;
 
 export const OBJECTIVES = {
+    /**
+     * §3.2 (audit): the outcome ledger. Nothing anywhere recorded "I chose X
+     * and it went badly". A tribute whose hunt of a specific mark has failed
+     * — expired, or abandoned — scores that mark lower next time, per
+     * consecutive failure up to the cap, so they change target rather than
+     * repeat themselves. Deliberately a *target* penalty and not a tier
+     * penalty on hunting in general: lowering the tier fed the tension flip
+     * and the standing-goal override, and measurably bred bloodless victors.
+     */
+    sameTargetPenalty: 9,
+    failureStreakCap: 3,
     /** Priority tier of a hunt on a mark worth breaking a truce for — the honest hunt sits at 52. */
     huntTier: 54,
     /** ...and of a sworn hunt with a pact-mate standing right there for the same kill (a lone oath is 56). */
@@ -3436,6 +3474,8 @@ export const BLOC_TREATY = {
 } as const;
 
 export const TRIANGLES = {
+    /** §4.3 (audit): heat cools when the three are apart. It only ever rose, so every detected triangle was a fuse. */
+    heatDecayApart: 1.5,
     /**
      * Regard a rival needs toward the apex to count as attached.
      *
@@ -3631,6 +3671,8 @@ export const ROMANCE = {
 
 /** Alliance formation and dissolution. */
 export const ALLIANCES = {
+    /** §3.2 (audit): dread pushes people toward company. Formation chance scales by 1 + dread * this. */
+    dreadFormationWeight: 0.5,
     /** §4.4: how much more attractive a mark the member holding the cache is. */
     betrayalQuartermasterWeight: 1.6,
     /**
@@ -3960,6 +4002,8 @@ export const BETRAYAL = {
     minCacheValueToSteal: 15,
     /** Leading someone into ground you know is lethal needs you to know it. */
     lureMinRememberedThreat: 0.8,
+    /** Intelligence at which a betrayer favours the lure over the knife. */
+    lureCleverIntelligence: 7,
     /** Withholding only means anything if they are actually dying. */
     withholdMaxHealth: 45,
     /** ...and it costs them: the untreated wound worsens and the refusal lands. */
@@ -5042,6 +5086,10 @@ export const RESPECT = {
 } as const;
 
 export const PARLEY = {
+    /** §3.5 (audit): an unravelling tribute is harder to talk down — added to their truce-break chance. */
+    unravellingBreakBonus: 0.08,
+    /** ...and a cowed one takes any terms offered: added to parley willingness. */
+    dreadParleyBonus: 0.15,
     /** A power ratio below this means a tribute genuinely likes their odds. */
     // §1.11: read against the same measured distribution as `outmatchedRatio`
     // — at 0.8 nine hostile meetings in ten counted as "confident", so the
@@ -5222,6 +5270,13 @@ export const PARLEY = {
  */
 export const DEBTS = {
     max: 3,
+    /**
+     * §4.5 (audit): the district bond only grows between partners who are
+     * actually in each other's lives — met within this many cycles, or in
+     * the same group — and never between partners who have fought or where
+     * one has sold the other out. It used to ratchet unconditionally.
+     */
+    districtBondContactWindow: 4,
     /** What each kind of help is worth on the ledger. */
     savedInFight: 2,
     patchedUp: 1.5,

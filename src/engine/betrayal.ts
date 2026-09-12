@@ -1,4 +1,5 @@
 import { Tribute } from '../models/types';
+import { ARCHETYPES } from '../data/archetypes';
 import { ALLIANCE_TEXTS } from '../data/flavorText';
 import { BETRAYAL, BLEEDING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
 import { SimContext } from './context';
@@ -69,8 +70,24 @@ function availableKinds(ctx: SimContext, betrayer: Tribute, victim: Tribute): Be
     return kinds;
 }
 
-function pickKind(ctx: SimContext, kinds: BetrayalKind[]): BetrayalKind {
-    const weights: number[] = kinds.map(k => BETRAYAL.weights[k]);
+function pickKind(ctx: SimContext, kinds: BetrayalKind[], betrayer?: Tribute): BetrayalKind {
+    // §4.4 (audit): treachery decided *whether*; nothing decided *how*. The
+    // shape of the betrayal is the betrayer's nature — a thief steals, a
+    // saboteur lures, a fighter uses the knife, and someone who cannot bear a
+    // fight walks away or simply keeps their hand over the pocket.
+    const arch = betrayer ? ARCHETYPES[betrayer.archetype] : undefined;
+    const shape = (k: BetrayalKind): number => {
+        if (!arch || !betrayer) return 1;
+        switch (k) {
+            case 'knife': return 1 + Math.max(0, arch.aggression) * 2 + (betrayer.archetype === 'beast' || betrayer.isCareer ? 0.8 : 0);
+            case 'steal': return 1 + (betrayer.archetype === 'mercenary' || betrayer.archetype === 'trickster' ? 1.5 : 0) + Math.max(0, arch.treachery);
+            case 'lure': return 1 + (betrayer.archetype === 'saboteur' || betrayer.archetype === 'strategist' ? 1.5 : 0) + (betrayer.attributes.intelligence >= BETRAYAL.lureCleverIntelligence ? 0.5 : 0);
+            case 'abandon': return 1 + Math.max(0, -arch.aggression) * 2 + (betrayer.traits.includes('Skittish') ? 0.8 : 0);
+            case 'withhold': return 1 + Math.max(0, -arch.aggression) + (betrayer.traits.includes('Ruthless') ? 0.6 : 0);
+            default: return 1;
+        }
+    };
+    const weights: number[] = kinds.map(k => BETRAYAL.weights[k] * shape(k));
     let roll = ctx.rng.nextFloat() * weights.reduce((a, b) => a + b, 0);
     for (let i = 0; i < kinds.length; i++) {
         roll -= weights[i];
@@ -84,7 +101,7 @@ function pickKind(ctx: SimContext, kinds: BetrayalKind[]): BetrayalKind {
  * around it if it wants to.
  */
 export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Tribute, members: Tribute[], forced?: BetrayalKind): BetrayalKind {
-    const kind = forced ?? pickKind(ctx, availableKinds(ctx, betrayer, victim));
+    const kind = forced ?? pickKind(ctx, availableKinds(ctx, betrayer, victim), betrayer);
     const record = allianceOf(ctx.state, betrayer.allianceId);
     noteContact(ctx.state, betrayer, victim);
 

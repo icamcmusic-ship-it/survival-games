@@ -1,9 +1,9 @@
 import { Tribute } from '../models/types';
-import { DEBTS, RELATIONSHIPS } from '../data/balance';
+import { DEBTS, RELATIONSHIPS, SUSPICION } from '../data/balance';
 import { DEBT_TEXTS } from '../data/flavorText';
 import { SimContext, getAlive } from './context';
 import { adjustMutual, adjustRel, getRel, trustOf, adjustTrust } from './relationships';
-import { cycleOf, noteStoodBy, raiseSuspicion } from './memory';
+import { cycleOf, cyclesSinceContact, easeSuspicion, ensureMemory, noteStoodBy, raiseSuspicion } from './memory';
 import { witnessKindness } from './rapport';
 import { giveItem } from './items';
 import { addExcitement } from './audience';
@@ -155,6 +155,7 @@ export function repayDebts(ctx: SimContext) {
 
         clearDebt(debtor, creditorId);
         adjustMutual(ctx.state, debtor, creditor, DEBTS.repayRegard);
+        easeSuspicion(creditor, debtor.id, SUSPICION.easedByRepaidDebt);
         // §4.2 (audit): a debt honoured is trust earned, on its own axis.
         adjustTrust(creditor, debtor.id, RELATIONSHIPS.trustRepaidDebt);
         addExcitement(debtor, DEBTS.repayExcitement);
@@ -179,6 +180,16 @@ export function tickDistrictBonds(ctx: SimContext) {
     alive.forEach(t => {
         const partner = alive.find(o => o.id !== t.id && o.district === t.district);
         if (!partner) return;
+        // §4.5 (audit): a bond grows between people who are in each other's
+        // lives. Partners who have not laid eyes on each other in days, who
+        // have fought, or where one sold the other out, do not drift warmer
+        // by arithmetic — this used to tick every cycle for everybody.
+        const inContact = t.allianceId !== undefined && t.allianceId === partner.allianceId
+            || cyclesSinceContact(ctx.state, t, partner.id) <= DEBTS.districtBondContactWindow;
+        if (!inContact) return;
+        const fought = (t.memory?.rivals?.[partner.id]?.fights ?? 0) > 0;
+        const betrayed = ensureMemory(t).betrayedBy.includes(partner.id);
+        if (fought || betrayed) return;
         // The further they both get, the more the fact that they are both still
         // here means. Below the final eight it becomes the whole story.
         const weight = fieldSize <= DEBTS.districtLateFieldSize
