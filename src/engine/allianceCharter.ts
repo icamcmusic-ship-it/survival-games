@@ -1,5 +1,5 @@
 import { Alliance, CharterRule, Tribute } from '../models/types';
-import { raiseSuspicion } from './memory';
+import { noteFormerAllies, raiseSuspicion } from './memory';
 import { SUSPICION, CHARTER, ENDGAME, ALLIANCES } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { allianceOf } from './alliance';
@@ -106,9 +106,13 @@ export function enforceCharters(ctx: SimContext) {
             ? record.pactSwornField - ALLIANCES.pactThresholdSlack
             : ENDGAME.fieldSize));
         if (record.charter.includes('split-at-eight') && alive.length <= splitAt) {
+            // A clean parting is still a parting: it leaves the ex-ally memory
+            // behind, and it is worth a small warmth for a promise kept — not
+            // a *breach* cost, which is the constant this used to reuse.
+            noteFormerAllies(members);
             members.forEach(m => { delete m.allianceId; });
             members.forEach(m => members.forEach(o => {
-                if (o.id !== m.id) adjustRel(m, o.id, CHARTER.breachRegardCost);
+                if (o.id !== m.id) adjustRel(m, o.id, CHARTER.honouredPartingRegard);
             }));
             ctx.logEvent(
                 `${members.map(m => m.name).join(', ')} count the cannons and stop at ${alive.length}. The terms were the terms: they divide what is in the cache, and walk away from each other without a word being broken.`,

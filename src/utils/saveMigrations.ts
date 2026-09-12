@@ -17,11 +17,21 @@ import {
 } from '../models/types';
 import { DEFAULT_GAME_CONFIG } from '../data/constants';
 import { ALLIANCES, BLOC_TREATY } from '../data/balance';
-import { conditionOf, frameOf } from '../engine/physique';
+import { CONDITIONS, FRAMES, conditionOf, frameOf } from '../engine/physique';
+import { ARCHETYPES as ARCHETYPE_DEFS } from '../data/archetypes';
+import { STANCES } from '../data/stances';
 
-/** §3.1: the two body axes, for save normalisation. */
-const FRAMES: Frame[] = ['Narrow', 'Spare', 'Even', 'Broad', 'Heavy'];
-const CONDITIONS: Condition[] = ['Wasted', 'Lean', 'Conditioned', 'Padded', 'Bulky'];
+/**
+ * §3.1: the two body axes, for save normalisation.
+ *
+ * Every allowlist here is *derived* from the table that defines the enum.
+ * They used to be typed out by hand, and drifted: `ARCHETYPES` listed the
+ * original seven of fifteen and `STANCES` the original three of eight, so
+ * every resumed save silently rewrote a Ghost to a Wildcard and a Hunting
+ * tribute to Defensive — and a run resumed mid-way no longer replayed the
+ * same as one played straight through, which is the promise the share link
+ * makes. `test:storage` now asserts these lists match their sources.
+ */
 const LIMB_RATIOS: LimbRatio[] = ['long', 'even', 'compact'];
 const HANDEDNESS: Handedness[] = ['left', 'right'];
 import {
@@ -111,9 +121,8 @@ export interface SavedRun {
 export const SAVED_RUN_VERSION = 1;
 
 const GENDERS: Gender[] = ['Male', 'Female'];
-const STANCES: Stance[] = ['Aggressive', 'Defensive', 'Evasive'];
 const BUILDS: Build[] = ['Frail', 'Slight', 'Average', 'Athletic', 'Stocky', 'Muscular'];
-const ARCHETYPES = ['career', 'strategist', 'survivalist', 'protector', 'trickster', 'wildcard', 'underdog'];
+const ARCHETYPES: readonly string[] = Object.keys(ARCHETYPE_DEFS);
 
 function oneOf<T extends string>(value: unknown, allowed: readonly string[], fallback: T): T {
     return typeof value === 'string' && allowed.includes(value) ? (value as T) : fallback;

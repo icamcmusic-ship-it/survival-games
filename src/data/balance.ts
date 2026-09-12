@@ -303,6 +303,8 @@ export const CLIMATE = {
     toxicSanityLoss: 15,
     toxicPoisonChance: 0.08,
     ashenLungChance: 0.12,
+    /** The hit when the ash does get into the lungs. Was `chance * 4` = 0.48, which rounded to nothing. */
+    ashenLungDamage: 4,
     ashenSanityLoss: 8,
     tidalDrenchChance: 0.18,
     stormFatigue: 8,
@@ -1695,6 +1697,15 @@ export const ENCOUNTERS = {
     maxBrawlSize: 5,
     /** Chance a tribute wanders rather than holding position. */
     wanderChance: 0.5,
+    /**
+     * After dark the field moves less: the wander roll is scaled by this,
+     * and every point of `nightMovement` a tribute carries buys back
+     * `nightMovementPerPoint` of it. Night-Sighted (2.5) travels at full
+     * daytime odds; Fleet (1.5) close to it. This is the read site the
+     * trait hook was missing — three traits carried it and nothing read it.
+     */
+    nightWanderMultiplier: 0.6,
+    nightMovementPerPoint: 0.16,
     /**
      * Depletion at which a forage attempt reports the ground picked clean.
      * §1.6: lowered with the zone-economy retune — the notice is the only
@@ -5296,6 +5307,8 @@ export const CHARTER = {
     noticeChance: 0.4,
     /** What every other member's regard drops by when it is. */
     breachRegardCost: 9,
+    /** What a split-at-eight honoured in full is worth between the parting members. */
+    honouredPartingRegard: 4,
     /** Food items held privately that counts as hoarding. */
     hoardingFood: 2,
     /** Regard below which two members of the same group are visibly at odds. */

@@ -3,6 +3,7 @@ import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
 import { BLEEDING, ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, RESOLVE, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
+import { traitMod } from '../../data/traits';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
@@ -10,7 +11,7 @@ import { processSponsors } from '../sponsors';
 import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons, tickOpeningEdges } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
-    addZoneThreat, advanceCycle, checkIntelLies, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
+    addZoneThreat, advanceCycle, checkIntelLies, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteRivalSighting, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
 import { decayAllianceTrust, driftReputation, getRel, decayTrust } from '../relationships';
 import { clampTribute } from '../vitals';
 import { openWound } from '../wounds';
@@ -149,6 +150,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         const here = currentAlive.filter(o => o.status === 'alive' && samePlace(ctx.state.arena, t, o));
         const hostiles = here.filter(o => isHostileTo(t, o)).length;
         noteSighting(ctx.state, t, t.zone, hostiles, depletionOf(ctx.state, t.zone));
+        // A §5: every rival in view is a small lesson in how dangerous they
+        // are. `noteRivalSighting` existed for exactly this and had no caller,
+        // so a read only ever improved by meeting, fighting or bleeding.
+        here.forEach(o => { if (o.id !== t.id && isHostileTo(t, o)) noteRivalSighting(t, o.id); });
         // §4.4/§5.9: if this is the group's scout, that sighting belongs to
         // everybody wearing the same colours.
         shareScoutSighting(ctx.state, t, t.zone, hostiles, depletionOf(ctx.state, t.zone));
@@ -1139,8 +1144,14 @@ function craft(ctx: SimContext, t: Tribute) {
 /** Alliances move as a unit; everyone else moves for themselves. */
 // Hiding is the one stance that should hold position — a reduced chance to
 // slip away quietly, not the guaranteed, silent teleport it used to be.
-function wanderChanceFor(t: Tribute): number {
-    return isEvasiveStance(t.stance) ? ENCOUNTERS.wanderChance * 0.4 : ENCOUNTERS.wanderChance;
+function wanderChanceFor(ctx: SimContext, t: Tribute): number {
+    let chance = isEvasiveStance(t.stance) ? ENCOUNTERS.wanderChance * 0.4 : ENCOUNTERS.wanderChance;
+    // Night travel is rarer, unless the tribute is built for it.
+    if (ctx.state.timeOfDay !== 'day') {
+        const buyback = Math.min(1, traitMod(t, 'nightMovement') * ENCOUNTERS.nightMovementPerPoint);
+        chance *= ENCOUNTERS.nightWanderMultiplier + (1 - ENCOUNTERS.nightWanderMultiplier) * buyback;
+    }
+    return chance;
 }
 
 /**
@@ -1257,7 +1268,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             // leader has no standing intention does the pack drift.
             if (objectiveHolds(t)) return;
             const led = objectiveStep(ctx, t, options);
-            if (!led && !ctx.rng.chance(wanderChanceFor(t))) return;
+            if (!led && !ctx.rng.chance(wanderChanceFor(ctx, t))) return;
             const newZone = (led ?? pickDestination(ctx, t, options)).name;
             if (t.zone === newZone) return;
 
@@ -1324,7 +1335,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         return;
     }
 
-    if (!ctx.rng.chance(wanderChanceFor(t))) return;
+    if (!ctx.rng.chance(wanderChanceFor(ctx, t))) return;
     const newZone = pickDestination(ctx, t, options).name;
     if (t.zone === newZone) return;
     if (!beginMove(ctx, t, newZone)) return;

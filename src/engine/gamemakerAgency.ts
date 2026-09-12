@@ -287,6 +287,8 @@ function withGamemakerAttention(ctx: SimContext, t: Tribute) {
         [t.id],
         { important: true, zone: t.zone, category: 'gamemaker' }
     );
-    triggerGamemakerEvent(ctx, 'mutt', t.id, true);
+    // Without the wrapper this was a no-op in every non-Gamemaker-mode run:
+    // `triggerGamemakerEvent` returns early unless the booth is live.
+    asGamemaker(ctx, () => triggerGamemakerEvent(ctx, 'mutt', t.id, true));
     addZoneThreat(ctx.state, t, t.zone, GAMEMAKER_AGENCY.favouriteThreat);
 }

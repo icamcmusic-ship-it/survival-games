@@ -469,7 +469,14 @@ export function reconcileAlliances(ctx: SimContext) {
             // §3.7: a pack that has simply come apart — the last two members
             // separated, or died down to one — still leaves whoever is left
             // holding six days of having been in it with somebody.
-            noteFormerAllies(membersOf(ctx.state, id));
+            // The living membership is already down to one, so it has to be
+            // the record's last known roster that says who they were in it
+            // with — `noteFormerAllies` over one tribute writes nothing, and
+            // that is how the whole ex-ally layer went unreached on this path.
+            const roster = (records[id].memberIds ?? [])
+                .map(mid => ctx.state.tributes.find(o => o.id === mid))
+                .filter((o): o is Tribute => o !== undefined);
+            noteFormerAllies(roster.length >= 2 ? roster : members);
             members.forEach(m => { delete m.allianceId; });
             delete records[id];
             return;

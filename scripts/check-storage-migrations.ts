@@ -18,6 +18,8 @@ import { HOF_SPEC } from '../src/utils/hofStorage';
 import { PANEM_SPEC } from '../src/utils/panemStorage';
 import { COINS_SPEC, CONFIG_SPEC, FILTERS_SPEC, readCoins } from '../src/utils/prefsStorage';
 import { REWIND_PERSIST, SAVED_RUN_SPEC, normalizeTribute } from '../src/utils/saveMigrations';
+import { ARCHETYPES as ARCHETYPE_DEFS } from '../src/data/archetypes';
+import { STANCES } from '../src/data/stances';
 import {
     STORAGE_KEYS, StorageBackend, StorageSpec, readStored, setStorageBackend, writeStored,
 } from '../src/utils/storage';
@@ -351,6 +353,20 @@ test('feed filters and setup config round-trip and repair partial v0 data', () =
 test('every canonical key follows the survivalGames* convention', () => {
     Object.values(STORAGE_KEYS).forEach(key => {
         assert.ok(/^survivalGames[A-Z]/.test(key), `${key} is off-convention`);
+    });
+});
+
+test('a resumed tribute keeps every archetype and every stance the data tables define', () => {
+    // The allowlists used to be typed by hand and listed 7 of 15 archetypes
+    // and 3 of 8 stances, so a Ghost came back a Wildcard and a Hunting
+    // tribute came back Defensive on every resume.
+    Object.keys(ARCHETYPE_DEFS).forEach(archetype => {
+        const t = normalizeTribute({ id: 'x', name: 'X', archetype, stance: 'Defensive' })!;
+        assert.equal(t.archetype, archetype, `archetype ${archetype} lost on resume`);
+    });
+    STANCES.forEach(stance => {
+        const t = normalizeTribute({ id: 'x', name: 'X', archetype: 'career', stance })!;
+        assert.equal(t.stance, stance, `stance ${stance} lost on resume`);
     });
 });
 
