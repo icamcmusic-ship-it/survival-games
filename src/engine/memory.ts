@@ -181,7 +181,7 @@ export function rememberedThreat(state: GameState, t: Tribute, zone: string): nu
 export function rememberedRivals(state: GameState, t: Tribute, zone: string): number {
     const slot = ensureMemory(t).zones[zone];
     if (!slot) return 0;
-    if (hearsayAge(slot, cycleOf(state) - slot.seen) > MEMORY.sightingLifetime) return 0;
+    if (hearsayAge(slot, Math.max(0, cycleOf(state) - slot.seen)) > MEMORY.sightingLifetime) return 0;
     return slot.rivals;
 }
 
@@ -665,7 +665,9 @@ function noteLie(state: GameState, teller: Tribute, listener: Tribute) {
  * sent to has nothing left in it.
  */
 function lieIsExposed(t: Tribute, zone: string, slot: ZoneMemory, state: GameState): boolean {
-    if (slot.threat >= INTEL.lieThreat) return (state.zoneDeaths?.[zone] ?? 0) === 0;
+    // Threat is capped at MEMORY_THREAT_CAP on write; a lie threshold above
+    // the cap would make the quiet-zone lie permanently unexposable.
+    if (slot.threat >= Math.min(INTEL.lieThreat, MEMORY_THREAT_CAP)) return (state.zoneDeaths?.[zone] ?? 0) === 0;
     return (ensureMemory(t).forageFailures?.[zone] ?? 0) > 0;
 }
 

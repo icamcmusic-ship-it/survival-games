@@ -174,7 +174,7 @@ export function runGamemakerSignature(ctx: SimContext) {
         case 'rig-the-feast': {
             // A feast laid for one tribute in particular. The table is real;
             // whose pack is worth having is the part that has been decided.
-            const mark = ctx.rng.pick(alive);
+            const mark = ctx.rng.pickOrUndefined(alive);
             if (!mark) break;
             ctx.state.feastDay = ctx.state.day + 1;
             announceFeastTheme(ctx);
@@ -195,7 +195,7 @@ export function runGamemakerSignature(ctx: SimContext) {
         case 'favour-a-district': {
             // A house tribute. The parachutes are real and so is what it does
             // to how everybody else feels about them.
-            const favoured = ctx.rng.pick(alive);
+            const favoured = ctx.rng.pickOrUndefined(alive);
             if (!favoured) break;
             const gift = mintItem(ctx.rng, pickNeededGift(ctx, favoured, ITEMS), QUALITY_BIAS.parachute);
             giveItem(favoured, gift);

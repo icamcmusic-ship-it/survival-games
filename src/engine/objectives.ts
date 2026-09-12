@@ -13,6 +13,7 @@ import { breakTruce, breaksTruce, hasTruce } from './parley';
 import { perceivedBond, targetReluctance } from './rapport';
 import { prerequisiteFor, pressTension, queueGoal } from './intent';
 import { areLovers } from './alliance';
+import { sharesVengeancePact } from './vengeancePact';
 import { getRel } from './relationships';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
 import { fill } from './encounters';
@@ -330,7 +331,12 @@ function chooseObjective(
         .map(id => state.tributes.find(o => o.id === id && o.status === 'alive'))
         .find(o => !!o);
     if (sworn) {
-        const o = offer(56, { kind: 'hunt', targetId: sworn.id, expires: expiry(OBJECTIVES.huntCycles) });
+        // A pact-mate standing beside them for the same kill outranks a
+        // private oath: this is the read site `sharesVengeancePact` was
+        // written for.
+        const withPactMate = here.some(o => o.id !== t.id && o.status === 'alive' && sharesVengeancePact(state, t, o)
+            && ensureMemory(o).vengeance.includes(sworn.id));
+        const o = offer(withPactMate ? OBJECTIVES.pactHuntTier : 56, { kind: 'hunt', targetId: sworn.id, expires: expiry(OBJECTIVES.huntCycles) });
         if (o) return o;
     }
     // §3.3: in the endgame, a tribute who concludes they win a straight fight
@@ -446,10 +452,17 @@ function chooseObjective(
             // already scores negative, multiplying by a number under one made
             // them *more* attractive; the reluctance has to push away from
             // zero in both directions.
+            // Memoised: `rawScore` runs a BFS and two visibility scans, and the
+            // reduce below re-scored its running best on every step.
+            const scoreCache = new Map<string, number>();
             const score = (o: Tribute) => {
+                const cached = scoreCache.get(o.id);
+                if (cached !== undefined) return cached;
                 const raw = rawScore(o);
                 const reluctance = targetReluctance(t, o.id);
-                return raw >= 0 ? raw * reluctance : raw * (2 - reluctance);
+                const value = raw >= 0 ? raw * reluctance : raw * (2 - reluctance);
+                scoreCache.set(o.id, value);
+                return value;
             };
             const best = (pool: Tribute[]) =>
                 pool.reduce((top, o) => (score(o) > score(top) ? o : top));

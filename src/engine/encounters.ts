@@ -460,7 +460,10 @@ export function pickTerrainEvent(ctx: SimContext, events: ArenaEventDef[], terra
     // §1.3: weighted, not uniform. `withUniversalEvents` marks the shared pool
     // down so an arena with five authored events still reads as itself.
     const total = candidates.reduce((sum, e) => sum + (e.weight ?? 1), 0);
-    if (total <= 0) return ctx.rng.pick(candidates);
+    // A guard that throws is a trap: `pick` on an empty pool is the crash
+    // this line exists to avoid. Fall to the first candidate, or the universal
+    // pool's first entry if there are none at all.
+    if (total <= 0) return ctx.rng.pickOrUndefined(candidates) ?? events[0];
     let roll = ctx.rng.nextFloat() * total;
     for (const event of candidates) {
         roll -= event.weight ?? 1;

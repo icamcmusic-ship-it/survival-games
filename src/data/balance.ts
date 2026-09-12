@@ -957,6 +957,8 @@ export const FEAR = {
  */
 export const SUSPICION = {
     /** §4.8: suspicion high enough to be worth testing, but short of walking out. */
+    /** Per point of `betrayalResist`, how much faster in-group doubt accrues (Paranoid at 0.3 → 1.8x). */
+    accrualPerBetrayalResist: 2.67,
     investigateThreshold: 35,
     investigateChance: 0.25,
     /** How much a test that finds nothing buys back. */
@@ -2048,6 +2050,8 @@ export const PLANNING = {
 export const OBJECTIVES = {
     /** Priority tier of a hunt on a mark worth breaking a truce for — the honest hunt sits at 52. */
     huntTier: 54,
+    /** ...and of a sworn hunt with a pact-mate standing right there for the same kill (a lone oath is 56). */
+    pactHuntTier: 60,
     /**
      * §3.3: stalking — following without engaging. Taken instead of a hunt by
      * anyone who has found somebody they are not confident of beating today.

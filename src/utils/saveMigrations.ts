@@ -19,7 +19,7 @@ import { DEFAULT_GAME_CONFIG } from '../data/constants';
 import { ALLIANCES, BLOC_TREATY } from '../data/balance';
 import { CONDITIONS, FRAMES, conditionOf, frameOf } from '../engine/physique';
 import { ARCHETYPES as ARCHETYPE_DEFS } from '../data/archetypes';
-import { STANCES } from '../data/stances';
+import { isKnownStance } from '../data/stances';
 
 /**
  * §3.1: the two body axes, for save normalisation.
@@ -302,7 +302,7 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         inventory: Array.isArray(r.inventory)
             ? r.inventory.map(normalizeItem).filter((i): i is Item => i !== null)
             : [],
-        stance: oneOf<Stance>(r.stance, STANCES, 'Defensive'),
+        stance: isKnownStance(r.stance) ? r.stance : 'Defensive',
         relationships: asNumMap(r.relationships),
         excitementRating: asNum(r.excitementRating, 50),
         sponsorTrust: asNum(r.sponsorTrust, 50),

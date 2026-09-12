@@ -355,7 +355,7 @@ export function resolveLoansOnDeath(ctx: SimContext, victim: Tribute) {
         const lender = ctx.state.tributes.find(t => t.id === lenderId);
         delete victim.loans![lenderId];
         if (!lender || lender.status !== 'alive') return;
-        adjustRel(lender, victim.id, DEBTS.loanReturnedRegard);
+        // No regard written toward a corpse; the line is the whole of it.
         ctx.logEvent(
             `${lender.name} lent ${victim.name} that ${loan.itemName}. It is out there somewhere in ${victim.zone} now, `
             + 'and so is everything else they were going to say to them.',

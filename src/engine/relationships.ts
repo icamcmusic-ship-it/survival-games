@@ -55,10 +55,6 @@ export function adjustRel(a: Tribute, bId: string, delta: number): number {
  * Alliance formation, recruitment and mergers read trust; targeting, grief
  * and the audience read regard.
  */
-export function affectionOf(a: Tribute, b: Tribute): number {
-    return getRel(a, b.id);
-}
-
 export function trustOf(a: Tribute, b: Tribute): number {
     // §4.5: affection buys trust only up to a point. Past `trustFromRegardCap`
     // the two axes come apart, which is what makes "someone you love and do
@@ -498,7 +494,9 @@ export function decayAllianceTrust(state: GameState) {
             // Star-crossed lovers are the one bond the endgame cannot erode.
             const bonded = areLovers(t, other);
             if (bonded) return;
-            const paranoia = t.traits.includes('Paranoid') ? 1.8 : 1;
+            // Through the trait hook, like everything else in the file. This
+            // was a hardcoded 'Paranoid' string and a magic 1.8.
+            const paranoia = 1 + traitMod(t, 'betrayalResist') * SUSPICION.accrualPerBetrayalResist;
             // §4.6: doubt is not uniform. The leader's authority slows it;
             // a member who is off out of sight of the camp draws it faster.
             let factor = 1;

@@ -617,7 +617,9 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     witnessReputation(defender, attacker);
     witnessReputation(attacker, defender);
     const raw = (COMBAT.baseHitDamage + edge * COMBAT.damagePerPowerPoint + ctx.rng.nextInt(-3, 4)) * multiplier;
-    const damage = Math.round(Math.max(COMBAT.minRoundDamage, Math.min(COMBAT.maxRoundDamage * multiplier, raw)));
+    // Both bounds scale with the multiplier, or a sub-1 multiplier puts the
+    // floor above the ceiling.
+    const damage = Math.round(Math.max(COMBAT.minRoundDamage * multiplier, Math.min(COMBAT.maxRoundDamage * multiplier, raw)));
 
     applyDamage(ctx, defender, damage, {
         cause: weapon ? `Killed by ${attacker.name} (${weapon.name})` : `Killed by ${attacker.name}`,

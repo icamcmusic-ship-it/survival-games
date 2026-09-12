@@ -24,11 +24,6 @@ import { fearOf } from './fear';
  *                foraging and start trapping.
  */
 
-/** The queued goal this tribute is working toward, if any. */
-export function plannedGoal(t: Tribute): Objective | undefined {
-    return t.objectiveQueue?.[0];
-}
-
 /**
  * §3.2: put a prerequisite in front of a goal the tribute cannot currently
  * serve, and remember the goal.

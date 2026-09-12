@@ -1,5 +1,5 @@
 import { HallOfFameEntry, TributeHoFSummary } from '../models/types';
-import { LEGACY_KEYS, STORAGE_KEYS, StorageSpec, readStored, removeStored, writeStored } from './storage';
+import { LEGACY_KEYS, STORAGE_KEYS, StorageSpec, readStored, removeStored, tryWriteStored } from './storage';
 
 /**
  * Standalone read/write for the Hall of Fame archive.
@@ -56,8 +56,8 @@ export function capWithPins(entries: HallOfFameEntry[], cap = HOF_CAP): HallOfFa
     return kept;
 }
 
-export function writeHallOfFame(entries: HallOfFameEntry[]): void {
-    writeStored(HOF_SPEC, capWithPins(entries));
+export function writeHallOfFame(entries: HallOfFameEntry[]): 'ok' | 'quota' | 'unavailable' {
+    return tryWriteStored(HOF_SPEC, capWithPins(entries));
 }
 
 export function clearHallOfFame(): void {

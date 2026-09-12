@@ -327,8 +327,10 @@ const SIGNATURES: Record<string, Signature> = {
         // somebody walked into them, does not make them visible.
         if (getAlive(ctx.state).length > ARCHETYPE_HOOKS.ghostNamingField) return false;
         const unseen = (t.unseenStreak ?? 0) >= ARCHETYPE_HOOKS.ghostNamingUnseenCycles;
-        if (t.kills > ARCHETYPE_HOOKS.ghostNamingMaxKills && !unseen) return false;
-        if (!unseen && t.kills > 0) return false;
+        // A Ghost is named for being unseen — or for a body count so small
+        // nobody has worked out it was them. The second test used to be
+        // `kills > 0`, which made the max-kills knob unreachable.
+        if (!unseen && t.kills > ARCHETYPE_HOOKS.ghostNamingMaxKills) return false;
         say(ctx, t, 'ghostNaming', [t.id]);
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * 3);
         t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust * 2);
@@ -413,8 +415,3 @@ export function dissolveBrokeredTruces(ctx: SimContext, dead: Tribute) {
     );
 }
 
-/** True when the two archetypes come into the arena already disliking each other. */
-export function archetypeDislike(a: ArchetypeId, b: ArchetypeId): boolean {
-    return (ARCHETYPES[a]?.hatesArchetypes ?? []).includes(b)
-        || (ARCHETYPES[b]?.hatesArchetypes ?? []).includes(a);
-}

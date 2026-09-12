@@ -81,6 +81,14 @@ export interface GameStoreState {
     betsResolved: boolean;
     /** Guards against writing the same victory to the Hall of Fame twice. */
     hofSaved: boolean;
+    /**
+     * Set when the archive write for the run that just ended did not land —
+     * the origin is at its storage quota, or storage is unavailable. The
+     * saved-run writer degrades in four stages; the archive has one shot, and
+     * the end screen has to say when it missed rather than lose the victory
+     * silently.
+     */
+    hofWriteFailed: 'quota' | 'unavailable' | null;
     /** REPLAY-03: everything that carries between runs. */
     panem: PanemRecords;
     /** What the run that just finished unlocked or beat, for the end screen. */
@@ -193,6 +201,23 @@ function persistRun() {
     }, 2000);
 }
 
+/** A pending debounced write, written now. */
+function flushPersist() {
+    if (persistTimer === null) return;
+    clearTimeout(persistTimer);
+    persistTimer = null;
+    writeSave();
+}
+
+// The debounce was accepted as "a couple of seconds lost on a crash", which is
+// fine — but closing the tab is not a crash, and it lost the same two seconds
+// every time. `pagehide` is the last reliable moment to write; hidden-tab is
+// the cheap one to write early on.
+if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', flushPersist);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushPersist(); });
+}
+
 function clearSavedRun() {
     // A debounced write pending from before the clear must not fire after it
     // and resurrect the save.
@@ -262,7 +287,7 @@ function restoreRewind(snaps: GameState[] | undefined) {
     rewindStack = (snaps ?? []).slice(-REWIND_CAP);
 }
 
-function saveHallOfFame(state: GameState) {
+function saveHallOfFame(state: GameState): 'ok' | 'quota' | 'unavailable' {
     const survivors = state.tributes.filter(t => t.status === 'alive');
     const winner = survivors[0];
     // §7.1: a dual victory is archived under both names.
@@ -294,9 +319,10 @@ function saveHallOfFame(state: GameState) {
         }))
     };
     // Keep the archive bounded — storage quota is not infinite. writeHallOfFame
-    // applies the cap (honouring player pins) and swallows a full/unavailable
-    // store.
-    writeHallOfFame([entry, ...readHallOfFame()]);
+    // applies the cap (honouring player pins); a full or unavailable store is
+    // reported rather than swallowed, so the end screen can say the crown
+    // was not archived.
+    return writeHallOfFame([entry, ...readHallOfFame()]);
 }
 
 export const gameStore = createStore<GameStoreState>({
@@ -310,6 +336,7 @@ export const gameStore = createStore<GameStoreState>({
     isReplayedRun: false,
     betsResolved: false,
     hofSaved: false,
+    hofWriteFailed: null,
     panem: readPanem(),
     lastRunOutcome: null,
     grudgeMatchIds: [],
@@ -322,12 +349,13 @@ const snapshot = snapshotState;
 function commitVictory(state: GameState) {
     const { hofSaved } = gameStore.getState();
     if (hofSaved) return;
-    saveHallOfFame(state);
+    const archived = saveHallOfFame(state);
     // REPLAY-03/04: the record book and the discovery layer both fold in a
     // finished run here, behind the same double-commit guard the archive uses.
     const outcome = commitRun(state);
     gameStore.setState({
         hofSaved: true,
+        hofWriteFailed: archived !== 'ok' ? archived : null,
         panem: outcome.records,
         lastRunOutcome: outcome,
     });

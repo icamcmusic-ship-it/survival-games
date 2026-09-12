@@ -820,7 +820,7 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         tickInfection(ctx, t);
         applyStatusDamage(ctx, t);
         applySepsisDrain(ctx, t);
-        if (t.status !== 'alive') { checkDeath(ctx, t); return; }
+        if (t.status !== 'alive') return;
         consumeSupplies(ctx, t);
         // Order matters: the wound costs health first, then gets its chance to
         // close. A fresh cut always draws blood before it starts to clot.

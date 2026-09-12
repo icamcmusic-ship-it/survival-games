@@ -89,8 +89,6 @@ export const STANCE_PROFILES: Record<Stance, StanceProfile> = {
 /** Every stance, in display order. The single source of truth for iteration. */
 export const STANCES: Stance[] = Object.keys(STANCE_PROFILES) as Stance[];
 
-/** The three always-available stances. */
-export const CORE_STANCES: Stance[] = STANCES.filter(s => !STANCE_PROFILES[s].conditional);
 
 export function stanceFamily(stance: Stance): StanceFamily {
     return STANCE_PROFILES[stance]?.family ?? 'defensive';

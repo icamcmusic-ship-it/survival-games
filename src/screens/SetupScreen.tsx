@@ -195,6 +195,8 @@ type SetupTab = 'arena' | 'rules' | 'cast' | 'meta';
 export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig, forceQuell: boolean) => void }) {
     const [seed, setSeed] = useState(randomSeed());
     const [tab, setTab] = useState<SetupTab>('arena');
+    // §2: a 750-coin purchase with no undo asks twice, like every other one-way action.
+    const [patronPending, setPatronPending] = useState<number | null>(null);
     const [arenaId, setArenaId] = useState(ARENAS[0].id);
     const [arenaFacet, setArenaFacet] = useState<'all' | 'unseen' | 'stacked' | 'blackout' | 'water' | 'small' | 'large'>('all');
     const [gamemakerMode, setGamemakerMode] = useState(false);
@@ -773,12 +775,22 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     title={panem.patronDistrict === d
                                         ? `You are District ${d}'s patron`
                                         : `Become District ${d}'s patron (${gameActions.patronCost} coins)`}
-                                    onClick={() => { if (panem.patronDistrict !== d) gameActions.patronDistrict(d); }}
+                                    onClick={() => { if (panem.patronDistrict !== d) setPatronPending(patronPending === d ? null : d); }}
                                 >
                                     D{d}
                                 </button>
                             ))}
                         </div>
+                        {patronPending !== null && panem.patronDistrict !== patronPending && (
+                            <div className="flex flex-wrap items-center gap-2 pt-1" role="group" aria-label="Confirm patronage">
+                                <span className="text-[11px] text-[var(--color-ink-200)]">
+                                    Spend {gameActions.patronCost} coins to become District {patronPending}'s standing patron?
+                                    {panem.patronDistrict !== undefined ? ` This replaces your patronage of District ${panem.patronDistrict}.` : ''} There is no refund.
+                                </span>
+                                <button className="btn btn-primary btn-sm" onClick={() => { gameActions.patronDistrict(patronPending); setPatronPending(null); }}>Confirm</button>
+                                <button className="btn btn-ghost btn-sm" onClick={() => setPatronPending(null)}>Cancel</button>
+                            </div>
+                        )}
                     </div>
                 </div>
                     </div>
