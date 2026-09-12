@@ -480,9 +480,9 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
 
     // Vengeful is not a general combat bonus — it is a bonus against the
     // specific person they cannot let go of.
-    if (opponent && t.traits.includes('Vengeful')
-        && (hasVengeanceAgainst(t, opponent.id) || getRel(t, opponent.id) <= -35)) {
-        power += COMBAT.vengefulEdge;
+    if (opponent && traitMod(t, 'vengeanceEdge') !== 0
+        && (hasVengeanceAgainst(t, opponent.id) || getRel(t, opponent.id) <= COMBAT.vengefulHatredRegard)) {
+        power += traitMod(t, 'vengeanceEdge');
     }
 
     return power;
@@ -644,7 +644,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     }
     // A Pyromaniac fights dirty with whatever burns — every landed hit has a
     // real chance to leave the defender scorched, not just bruised.
-    if (attacker.traits.includes('Pyromaniac') && !defender.injuries.burned && ctx.rng.chance(COMBAT.pyromaniacBurnChance)) {
+    if (!defender.injuries.burned && traitMod(attacker, 'burnOnHit') > 0 && ctx.rng.chance(traitMod(attacker, 'burnOnHit'))) {
         injure(defender, 'burned');
         ctx.logEvent(
             `${attacker.name}'s strike leaves ${defender.name} scorched — Pyromaniacs make sure something is always burning.`,

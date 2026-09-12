@@ -1900,6 +1900,8 @@ export interface GameState {
     continuity?: import('../engine/continuity').RunContinuity;
     /** Guards the grudge intervention to once per run. */
     grudgeFired?: boolean;
+    /** §7 (audit): the bloodless-finalist hunt has been sent, once per run. */
+    bloodlessHuntFired?: boolean;
     /** Per-run truce accounting. See `engine/parley.ts`. */
     truceLedger?: import('../engine/parley').TruceLedger;
     /**

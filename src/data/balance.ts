@@ -1117,6 +1117,20 @@ export const ENDGAME = {
     hunterEdge: 0.25,
     /** Assessment below this: prefer traps, evasion, alliance-seeking. */
     underdogEdge: -0.25,
+    /** §7 (audit): edge added for a bloodless finalist who is still fit enough to fight — the Capitol's expectation, felt. */
+    bloodlessPressure: 0.3,
+    bloodlessPressureHealth: 40,
+    /**
+     * §7 (audit): the Capitol does not crown somebody who hid. Once per run,
+     * once the field is this small, a finalist with no kills who has not
+     * been in a fight for this many cycles gets the arena's attention —
+     * the Gamemakers' mutts, aimed. It is a death that nobody chose and a
+     * fight the tribute cannot walk around, and it is why "outlast everybody"
+     * stops being a plan at the end.
+     */
+    bloodlessHuntField: 4,
+    bloodlessHuntQuietCycles: 3,
+    bloodlessHuntChance: 0.5,
 } as const;
 
 export const DESPERATION = {
@@ -1786,14 +1800,14 @@ export const COMBAT = {
     /** Below this, a landed hit reads as finishing the fight rather than opening it. */
     finishingHealthThreshold: 30,
     /** Power a Vengeful tribute brings against the specific person they hate. */
-    vengefulEdge: 3,
     /** Chance a round inflicts a localised wound on the loser. */
     woundChance: 0.28,
     bleedChance: 0.34,
     /** Chance a poisoned weapon transfers venom on a landed hit. */
     poisonTransferChance: 0.5,
     /** Chance a Pyromaniac's landed hit leaves the defender burned. */
-    pyromaniacBurnChance: 0.2,
+    /** Regard at or below which the Vengeful edge applies without a sworn oath. */
+    vengefulHatredRegard: -35,
     /** Durability burned per round of use. */
     weaponWearPerRound: 6,
     /**
@@ -5911,16 +5925,30 @@ export const ARCHETYPE_HOOKS = {
     /** `escalating`: warier every day, up to a ceiling. */
     escalatingPerDay: 0.03,
     escalatingCap: 0.25,
-    /** `front-loaded`: spends it all at the gong and settles afterwards. */
+    /**
+     * `front-loaded`: spends it all at the gong and settles afterwards. Opens
+     * *below* the archetype's own caution by `frontLoadedOpening` and climbs
+     * back toward it. It used to add caution faster than `escalating` did —
+     * the documented shape, inverted — so Career and Beast were the most
+     * caution-drifted archetypes in the late game.
+     */
+    frontLoadedOpening: 0.1,
     frontLoadedPerDay: 0.05,
-    frontLoadedCap: 0.3,
+    frontLoadedCap: 0.25,
 
     // ---- targetPreference ----
-    /** Scale on the preference term, against the shared opportunism score. */
+    /**
+     * Scale on the preference term, against the shared opportunism score.
+     * Every preference now tops out near the same ±50: `strongest` used to
+     * reach ~90 and `richest` ~100, so the two archetypes carrying them were
+     * steered twice as hard as anyone else.
+     */
     targetPreferenceWeight: 0.5,
-    strongestPerTrainingPoint: 4,
+    strongestHealthWeight: 0.3,
+    strongestPerTrainingPoint: 1.5,
     nearestPerHop: 12,
-    richestPerValue: 1.2,
+    richestPerValue: 0.6,
+    richestCap: 50,
 
     // ---- signatures ----
     /** Per-cycle chance the beat lands, once its conditions hold. */
@@ -5929,6 +5957,8 @@ export const ARCHETYPE_HOOKS = {
     signatureObjectiveCycles: 6,
     signatureExcitement: 25,
     signatureTrust: 8,
+    /** A signature that needs a live pack, a wounded neighbour or two co-located strangers fires far less often than one that needs nothing; its payoff scales to match. */
+    signatureGatedMultiplier: 1.6,
     /** Career: the pack names somebody, out loud. */
     declarationFear: 8,
     /** Trickster: the snare nobody watched them build. */

@@ -1,3 +1,4 @@
+import { ARCHETYPES } from '../data/archetypes';
 import { GameState, Tribute } from '../models/types';
 import { FEAR, MEMORY } from '../data/balance';
 import { cyclesSinceContact, ensureMemory } from './memory';
@@ -23,11 +24,10 @@ export function fearOf(t: Tribute, otherId: string): number {
 
 export function addFear(t: Tribute, otherId: string, amount: number) {
     if (t.id === otherId) return;
-    // A2: a Zealot does not frighten. Not "frightens less" — the archetype's
-    // whole identity is that the thing they believe is louder than the thing
-    // in front of them, and an extreme-variance archetype needs an extreme
-    // property rather than another modifier.
-    if (t.archetype === 'zealot') return;
+    // A2: a Zealot does not frighten — `fearScale: 0` on the archetype
+    // sheet, alongside the other extreme-variance archetypes' own scales,
+    // rather than a carve-out for one id here.
+    amount *= ARCHETYPES[t.archetype].fearScale ?? 1;
     // Temperament decides how much of a frightening thing actually sticks.
     amount *= Math.max(0, 1 + traitMod(t, 'fearGain'));
     if (amount <= 0) return;

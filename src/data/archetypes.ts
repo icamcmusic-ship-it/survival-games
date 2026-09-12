@@ -56,6 +56,14 @@ export interface ArchetypeDef {
     signature?: string;
     /** Seeds backstory dislike at the reaping. */
     hatesArchetypes?: ArchetypeId[];
+    /**
+     * §8 (audit): how much of a frightening thing sticks. 1 is everyone; 0 is
+     * the Zealot, for whom the thing they believe is louder than the thing in
+     * front of them. This was a hardcoded `archetype === 'zealot'` carve-out
+     * in `fear.ts`, the only extreme property on any archetype, with no
+     * counterpart for the other extreme-variance ones.
+     */
+    fearScale?: number;
     /** Sponsor-facing: how the Capitol markets them. */
     tagline?: string;
 }
@@ -93,6 +101,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'front-loaded',
         signature: 'careerDeclaration',
         hatesArchetypes: ['underdog', 'ghost'],
+        fearScale: 0.8,
         tagline: 'Bred for it.',
     },
     strategist: {
@@ -143,7 +152,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: 0.05,
         stanceBias: { Defensive: 0.7, Fortified: 0.4 },
         objectiveBias: { protect: 0.6 },
-        targetPreference: 'strongest',
+        // Whoever is nearest their ward. 'strongest' had them hunting the
+        // single most dangerous tribute in the arena, at odds with every
+        // other number on this sheet.
+        targetPreference: 'nearest',
         riskCurve: 'flat',
         signature: 'protectorStand',
         hatesArchetypes: ['saboteur', 'mercenary'],
@@ -177,9 +189,14 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         treachery: 0.2,
         caution: -0.1,
         stanceBias: { Desperate: 0.6, Aggressive: 0.3, Fortified: -0.4 },
+        // The only archetype with no objective bias and no declared social
+        // relationships. Volatile: pulled toward both the fight and the exit.
+        objectiveBias: { hunt: 0.2, flee: 0.2 },
         targetPreference: 'nearest',
         riskCurve: 'flat',
         signature: 'wildcardTurn',
+        hatesArchetypes: ['strategist'],
+        fearScale: 0.7,
         tagline: 'Unmodellable.',
     },
     underdog: {
@@ -239,6 +256,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'flat',
         signature: 'zealotSermon',
         hatesArchetypes: ['mercenary', 'ghost'],
+        fearScale: 0,
         tagline: 'It means something.',
     },
     medic: {
@@ -303,6 +321,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'nearest',
         riskCurve: 'front-loaded',
         signature: 'beastRoar',
+        fearScale: 0.5,
         tagline: 'Underestimated on paper.',
     },
     diplomat: {
@@ -449,8 +468,17 @@ export function archetypeWeightsFor(district: number, castShape?: string): Array
     };
     layer(DISTRICT_ARCHETYPE_WEIGHTS[district] || {});
     if (castShape && CAST_SHAPE_ARCHETYPE_WEIGHTS[castShape]) layer(CAST_SHAPE_ARCHETYPE_WEIGHTS[castShape]);
+    // A cast shape that *excludes* an archetype excludes it. Expressed as a
+    // large negative weight, 'outer-districts' still reaped Careers from
+    // District 2 (8 - 6 = 2 survived the filter).
+    (castShape && CAST_SHAPE_EXCLUDES[castShape] ? CAST_SHAPE_EXCLUDES[castShape] : []).forEach(id => { delete merged[id]; });
     return (Object.entries(merged) as Array<[ArchetypeId, number]>).filter(([, w]) => w > 0);
 }
+
+/** Archetypes a cast shape rules out entirely, whatever the district weights say. */
+export const CAST_SHAPE_EXCLUDES: Record<string, ArchetypeId[]> = {
+    'outer-districts': ['career'],
+};
 
 // Pairs that get a bonus when considering an alliance
 const COMPATIBLE: Array<[ArchetypeId, ArchetypeId]> = [
@@ -468,6 +496,8 @@ const COMPATIBLE: Array<[ArchetypeId, ArchetypeId]> = [
     ['diplomat', 'protector'],
     ['diplomat', 'scholar'],
     ['scholar', 'strategist'],
+    ['wildcard', 'trickster'],
+    ['wildcard', 'beast'],
     ['saboteur', 'trickster'],
     ['mercenary', 'career'],
     ['zealot', 'career'],

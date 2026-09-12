@@ -13,7 +13,7 @@ import { adjustRel } from './relationships';
 import { applyDamage, checkDeath } from './combat';
 import { startZoneEffect } from './zoneEffects';
 import { addZoneThreat } from './memory';
-import { CONTINUITY, ESCALATION } from '../data/balance';
+import { CONTINUITY, ENDGAME, ESCALATION } from '../data/balance';
 
 /**
  * The Head Gamemaker actually doing something.
@@ -82,11 +82,43 @@ export function runGrudgeIntervention(ctx: SimContext) {
     if (mark) asGamemaker(ctx, () => triggerGamemakerEvent(ctx, 'mutt', mark.id, true));
 }
 
+/**
+ * §7 (audit): the Capitol will not crown a coward.
+ *
+ * A finalist who has reached the last few without drawing blood and has
+ * not been in a fight for days is the one tribute the control room most
+ * wants tested. Mutts to their zone, aimed — a fight they cannot walk
+ * around, once per run. This is what turns "outlast everybody" from a
+ * strategy into a gamble at the end, and it is the reason a bloodless
+ * crown is rare rather than a third of all crowns.
+ */
+export function runBloodlessHunt(ctx: SimContext) {
+    if (ctx.state.bloodlessHuntFired) return;
+    const alive = getAlive(ctx.state);
+    if (alive.length > ENDGAME.bloodlessHuntField || alive.length <= 1) return;
+    const cycle = ctx.state.cycle ?? 0;
+    const hiding = alive.filter(t => t.kills === 0
+        && cycle - Math.max(0, ...Object.values(t.memory?.rivals ?? {}).map(r => r.lastFightCycle ?? 0)) >= ENDGAME.bloodlessHuntQuietCycles);
+    if (hiding.length === 0) return;
+    if (!ctx.rng.chance(ENDGAME.bloodlessHuntChance)) return;
+    const mark = ctx.rng.pick(hiding);
+    ctx.state.bloodlessHuntFired = true;
+    ctx.logEvent(
+        `${mark.name} has reached the last ${alive.length} without a drop of blood on their hands, and the Capitol has noticed. `
+        + 'The Gamemakers do not crown people who hid. Something is released toward '
+        + `${mark.zone}, and it is not looking for anybody else.`,
+        [mark.id],
+        { important: true, zone: mark.zone, category: 'gamemaker' }
+    );
+    asGamemaker(ctx, () => triggerGamemakerEvent(ctx, 'mutt', mark.id, true));
+}
+
 export function runGamemakerSignature(ctx: SimContext) {
     // Called from the same per-cycle hook, and deliberately ahead of the
     // once-per-run guard below: the grudge is a separate turn with its own
     // guard, not a variant of the signature.
     runGrudgeIntervention(ctx);
+    runBloodlessHunt(ctx);
     if (ctx.state.gamemakerSignatureFired) return;
     const alive = getAlive(ctx.state);
     // Not while the cast is still enormous, and not once it is down to the

@@ -177,6 +177,13 @@ export function endgameEdge(state: GameState, t: Tribute): number {
         o.status === 'alive' && o.id !== t.id && o.allianceId !== undefined && o.allianceId === t.allianceId).length;
     edge += Math.min(0.2, allies * 0.1);
     edge += (t.inventory.some(i => i.type === 'food') && t.inventory.some(i => i.type === 'water')) ? 0.05 : -0.05;
+    // §7 (audit): the Capitol expects blood from a finalist who has never
+    // drawn any. A tribute who has reached the last eight without a kill
+    // knows the Gamemakers will not let them hide their way to the crown,
+    // and reads the board more aggressively for it.
+    if (t.kills === 0 && field.length + 1 <= ENDGAME.fieldSize && t.health >= ENDGAME.bloodlessPressureHealth) {
+        edge += ENDGAME.bloodlessPressure;
+    }
     return Math.max(-1, Math.min(1, edge));
 }
 

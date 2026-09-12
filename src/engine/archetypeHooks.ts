@@ -42,7 +42,8 @@ export function effectiveCaution(t: Tribute, day: number): number {
         case 'escalating':
             return base + Math.min(ARCHETYPE_HOOKS.escalatingCap, day * ARCHETYPE_HOOKS.escalatingPerDay);
         case 'front-loaded':
-            return base + Math.min(ARCHETYPE_HOOKS.frontLoadedCap, day * ARCHETYPE_HOOKS.frontLoadedPerDay);
+            return base - ARCHETYPE_HOOKS.frontLoadedOpening
+                + Math.min(ARCHETYPE_HOOKS.frontLoadedCap, day * ARCHETYPE_HOOKS.frontLoadedPerDay);
         default:
             return base;
     }
@@ -69,11 +70,11 @@ export function targetPreferenceScore(t: Tribute, candidate: Tribute, hopsAway: 
         case 'weakest':
             return (100 - candidate.health) * w;
         case 'strongest':
-            return candidate.health * w + candidate.trainingScore * ARCHETYPE_HOOKS.strongestPerTrainingPoint;
+            return candidate.health * ARCHETYPE_HOOKS.strongestHealthWeight + candidate.trainingScore * ARCHETYPE_HOOKS.strongestPerTrainingPoint;
         case 'nearest':
             return -hopsAway * ARCHETYPE_HOOKS.nearestPerHop;
         case 'richest':
-            return inventoryValue(candidate) * ARCHETYPE_HOOKS.richestPerValue;
+            return Math.min(ARCHETYPE_HOOKS.richestCap, inventoryValue(candidate) * ARCHETYPE_HOOKS.richestPerValue);
         case 'rival':
             return Math.max(0, -getRel(t, candidate.id)) * w;
         default:
@@ -104,13 +105,14 @@ function say(ctx: SimContext, t: Tribute, key: keyof typeof ARCHETYPE_SIGNATURE_
 const SIGNATURES: Record<string, Signature> = {
     /** Career: the pack declares itself, out loud, at somebody's expense. */
     careerDeclaration: (ctx, t) => {
+        // gated: needs a live pack and a mark
         const pack = getAlive(ctx.state).filter(o => o.allianceId !== undefined && o.allianceId === t.allianceId);
         if (pack.length < 2) return false;
         const mark = others(ctx, t).sort((a, b) => a.health - b.health)[0];
         if (!mark) return false;
         say(ctx, t, 'careerDeclaration', [...pack.map(p => p.id), mark.id], { target: mark.name });
         others(ctx, t).forEach(o => addFear(o, t.id, ARCHETYPE_HOOKS.declarationFear));
-        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
         return true;
     },
 
@@ -120,7 +122,7 @@ const SIGNATURES: Record<string, Signature> = {
         if (!mark) return false;
         say(ctx, t, 'strategistGambit', [t.id, mark.id], { target: mark.name });
         t.objective = { kind: 'hunt', targetId: mark.id, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
-        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
         return true;
     },
 
@@ -142,7 +144,7 @@ const SIGNATURES: Record<string, Signature> = {
         say(ctx, t, 'protectorStand', [t.id, ward.id], { ward: ward.name });
         t.objective = { kind: 'protect', wardId: ward.id, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
         adjustMutual(ctx.state, t, ward, ARCHETYPE_HOOKS.standBond);
-        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust * ARCHETYPE_HOOKS.signatureGatedMultiplier);
         return true;
     },
 
@@ -185,7 +187,7 @@ const SIGNATURES: Record<string, Signature> = {
         say(ctx, t, 'mercenaryContract', [t.id, client.id], { client: client.name, fee: fee.name });
         // §4.3: a retainer is peace bought, and it lasts as long as the fee.
         grantTruce(ctx, t, client, ARCHETYPE_HOOKS.contractTruceCycles, 'extortion');
-        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
         return true;
     },
 
@@ -216,7 +218,7 @@ const SIGNATURES: Record<string, Signature> = {
         adjustMutual(ctx.state, t, patient, ARCHETYPE_HOOKS.triageBond);
         // Everybody standing there just learned something about the two of them.
         witnessKindness(ctx, t, patient);
-        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust * ARCHETYPE_HOOKS.signatureGatedMultiplier);
         return true;
     },
 
@@ -295,7 +297,7 @@ const SIGNATURES: Record<string, Signature> = {
         say(ctx, t, 'diplomatAccord', [t.id, a.id, b.id], { first: a.name, second: b.name });
         adjustRel(a, t.id, ARCHETYPE_HOOKS.accordGratitude);
         adjustRel(b, t.id, ARCHETYPE_HOOKS.accordGratitude);
-        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust * ARCHETYPE_HOOKS.signatureGatedMultiplier);
         return true;
     },
 

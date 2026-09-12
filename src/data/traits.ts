@@ -51,6 +51,11 @@ export type TraitMod =
     | 'muttDamage'           // multiplier offset on damage taken from mutts (mutts.ts)
     // stance.ts
     | 'aggressionScore'      // flat, on the stance scoring scale
+    | 'hornCommitment'       // flat, 0-1 chance offset of going for the horn at the gong (bloodbath.ts)
+    | 'executeDrive'         // flat, chance offset of finishing somebody downed (downed.ts)
+    | 'burnOnHit'            // flat, 0-1 chance a landed hit leaves the defender burned (combat.ts)
+    | 'vengeanceEdge'        // flat, power against a sworn or hated opponent (combat.ts)
+    | 'sponsorAppeal'        // flat, on the pre-Games buzz scale (generator.ts)
     // resolve.ts — the will to keep going, per cycle
     | 'resolveDrift'         // flat, added to the per-cycle resolve drift
     // fieldcraft.ts / survival foraging
@@ -173,7 +178,7 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Grim': {
         info: 'Has buried people before. A death in front of them costs much less than it costs anyone else.',
-        mods: { griefResist: 0.5, sanityDrain: -0.1, resolveDrift: 0.75 },
+        mods: { griefResist: 0.5, sanityDrain: -0.1, resolveDrift: 0.75, executeDrive: 0.3 },
     },
 
     // ---- moving through the arena -------------------------------------
@@ -197,8 +202,10 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { water: 2, concealment: 0.04 },
     },
     'Fleet': {
-        info: 'Simply faster than the rest of the field. Gets clear of a losing fight and travels at night.',
-        mods: { retreat: -0.06, nightMovement: 1.5 },
+        info: 'Simply faster than the rest of the field. Gets clear of a losing fight, travels at night, and crosses ground for less.',
+        // §8 (audit): `nightMovement` had no read site, so this was a single
+        // retreat modifier — the weakest rollable trait in the game.
+        mods: { retreat: -0.06, nightMovement: 1.5, fatigueDay: -1 },
     },
     'Night-Sighted': {
         info: 'Sees in the dark. The night is not the handicap for them that it is for everyone else.',
@@ -228,11 +235,11 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     // ---- the fight -----------------------------------------------------
     'Bloodthirsty': {
         info: 'Wants the fight. Pushes hard toward the Aggressive stance and is much less willing to break off.',
-        mods: { aggressionScore: 1.5, retreat: -0.25, killSanity: -0.5 },
+        mods: { aggressionScore: 1.5, retreat: -0.25, killSanity: -0.5, hornCommitment: 0.3 },
     },
     'Pacifist': {
         info: 'Will not do this. Resists the Aggressive stance, retreats far sooner — and a kill costs them a catastrophic amount of sanity.',
-        mods: { aggressionScore: -1.5, retreat: 0.25, killSanity: 1.5, allianceAffinity: 0.15 },
+        mods: { aggressionScore: -1.5, retreat: 0.25, killSanity: 1.5, allianceAffinity: 0.15, hornCommitment: -0.35 },
     },
     'Brute': {
         info: 'Built for it. Hits harder with anything heavy and with nothing at all, and the field reads them as dangerous.',
@@ -267,11 +274,13 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Pyromaniac': {
         info: 'Fights with whatever burns. Every landed hit has a real chance to leave the defender scorched, and they are never short of a fire.',
-        mods: { campSkill: 0.2, burnResist: 0.25 },
+        // The headline effect was a hardcoded `includes('Pyromaniac')` in
+        // combat; it is the hook now, like everything else.
+        mods: { campSkill: 0.2, burnResist: 0.25, burnOnHit: 0.2 },
     },
     'Vengeful': {
-        info: 'Does not let go. Fights markedly harder against anyone who has already hurt them, and will not break off from a rival.',
-        mods: { retreat: -0.08 },
+        info: 'Does not let go. Fights markedly harder against anyone who has already hurt them, will not break off from a rival, and is not frightened of the people they hate.',
+        mods: { retreat: -0.08, vengeanceEdge: 3, fearGain: -0.2 },
     },
     'Ruthless': {
         // §8: the worst reaping trait in the game at 2.2%, and structurally so
@@ -290,7 +299,7 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         // honest fix is a survival hook rather than a bigger social number:
         // people like them, so people put themselves in the way for them.
         info: 'Reads well on camera and in a clearing. Forms alliances more easily, holds sponsor trust all run, and the people around them step in when it matters.',
-        mods: { allianceAffinity: 0.2, sponsorTrust: 1.5, excitement: 0.2, defended: 0.35 },
+        mods: { allianceAffinity: 0.2, sponsorTrust: 1.5, excitement: 0.2, defended: 0.35, sponsorAppeal: 8 },
     },
     'Loyal': {
         info: 'Will not sell anyone out, and is hard to convince that anyone has sold them out.',
@@ -399,7 +408,9 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     'Merciful': {
         info: 'Earned by letting someone live who did not have to. The Capitol finds it fascinating; the arena finds it expensive.',
         earned: true,
-        mods: { excitement: 0.3, sponsorTrust: 2, killSanity: 0.4 },
+        // §8 (audit): net negative in the arena. The sponsor drift stays; the
+        // Capitol's fascination is worth more than it was.
+        mods: { excitement: 0.45, sponsorTrust: 2, killSanity: 0.4, griefResist: 0.2 },
     },
     'Starved': {
         info: 'Earned going days without food and coming out the other side. They know how to be hungry now.',
@@ -452,7 +463,9 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     'Vulture': {
         info: 'Earned stripping the fallen. They are never short of supplies, and nobody wants to catch them at work.',
         earned: true,
-        mods: { scavenge: 0.12, capacity: 1, sponsorTrust: -1 },
+        // `sponsorTrust` is a per-cycle drift: -1 a cycle was -20 over a run,
+        // the same failure mode Unremarkable's comment describes being fixed.
+        mods: { scavenge: 0.12, capacity: 1, sponsorTrust: -0.3 },
     },
 };
 

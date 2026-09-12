@@ -204,8 +204,7 @@ export function processBloodbath(ctx: SimContext) {
         }
         fightChance += (t.attributes.agility - 5) * BLOODBATH.fightChanceAgility;
         if (t.attributes.strength > 7) fightChance += 0.15;
-        if (t.traits.includes('Bloodthirsty')) fightChance += 0.3;
-        if (t.traits.includes('Pacifist')) fightChance -= 0.35;
+        fightChance += traitMod(t, 'hornCommitment');
         fightChance += ARCHETYPES[t.archetype].aggression - ARCHETYPES[t.archetype].caution * 0.5;
         // The persona sold on the interview couch is a promise the crowd — and
         // everyone else on the plates — remembers.
