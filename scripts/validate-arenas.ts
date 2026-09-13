@@ -13,6 +13,9 @@ import { CLIMATE_LABELS } from '../src/data/arenaBriefing';
 import { Simulator } from '../src/engine/simulator';
 import { generateTributes } from '../src/engine/generator';
 import { gamesProfileFor } from '../src/engine/gamesProfile';
+import { generateArena, PROCEDURAL_BIOME_COUNT } from '../src/engine/arenaGenerator';
+import { proceduralArenaFlavor } from '../src/data/proceduralFlavor';
+import { arenaHasLaw } from '../src/engine/gamesProfile';
 
 const problems: string[] = [];
 /** §5.12: things worth saying out loud that are not build failures. */
@@ -218,7 +221,15 @@ Object.entries({ ...ARENA_FLAVOR, ...PROCEDURAL_FLAVOR_PACKS }).forEach(([id, fl
     (['forage', 'rest', 'hide', 'hunt', 'travel'] as const).forEach(k => {
         if (flavor.actions[k].length < 3) problems.push(`${id}: flavour pack ${k} pool is thin`);
     });
+    // §7 (audit): an event gated on a law its own arena does not carry can
+    // never fire. The warren authored one on `noCannons`. A Quell can force
+    // any law onto any arena, so this is a note for a *universal* pool and a
+    // problem for an arena's own pack.
+    const arena = ARENAS.find(a => a.id === id);
     flavor.events.forEach(e => {
+        if (arena && e.requires?.law && !arenaHasLaw({ arena, gamesProfile: undefined } as unknown as GameState, e.requires.law)) {
+            problems.push(`${id}: event '${e.cause}' requires law '${e.requires.law}', which the arena does not carry (only a Quell could make it fire)`);
+        }
         if (!e.cause) problems.push(`${id}: event without a cause of death`);
         if (!/\{tribute\}/.test(e.text)) problems.push(`${id}: event text never names the tribute`);
         // A pure boon has no escape: nothing rolls against it, so
@@ -253,6 +264,41 @@ if (underTarget.length > KNOWN_UNDER_TARGET) {
 }
 
 if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has no events');
+
+/**
+ * §5.2 (audit): what a *generated* arena actually receives. The checks above
+ * only ever saw the four static procedural packs; the flavour a live
+ * procedural arena is composed from went unmeasured, and a generated run was
+ * eight anonymous events and ~83% universal content. Every biome, at three
+ * seeds, has to carry what a hand-authored arena does: authored events at
+ * the floor, once-per-run beats, a chain, and ambient lines of its own.
+ */
+{
+    const PROC_EVENT_FLOOR = 16;
+    const PROC_ONCE_FLOOR = 2;
+    const PROC_AMBIENT_FLOOR = 8;
+    const biomes = [...new Set(Array.from({ length: PROCEDURAL_BIOME_COUNT * 6 }, (_, i) => generateArena(`VAL-${i}`).id))];
+    if (biomes.length < PROCEDURAL_BIOME_COUNT) notes.push(`procedural: ${biomes.length} of ${PROCEDURAL_BIOME_COUNT} biomes drawn in the sample`);
+    biomes.forEach(biomeId => {
+        ['A', 'B', 'C'].forEach(tag => {
+            const arena = generateArena(`VAL-${biomeId}-${tag}`, biomeId.replace(/^procedural-/, ''));
+            const flavor = proceduralArenaFlavor(arena);
+            const once = flavor.events.filter(e => e.oncePerRun).length;
+            const chains = flavor.events.filter(e => e.chain).length;
+            if (flavor.events.length < PROC_EVENT_FLOOR) problems.push(`${arena.id} (${tag}): generated arena receives ${flavor.events.length} authored events, under ${PROC_EVENT_FLOOR}`);
+            if (once < PROC_ONCE_FLOOR) problems.push(`${arena.id} (${tag}): generated arena has ${once} once-per-run events, under ${PROC_ONCE_FLOOR}`);
+            if (chains < 1) problems.push(`${arena.id} (${tag}): generated arena has no event chain`);
+            if (flavor.ambient.length < PROC_AMBIENT_FLOOR) problems.push(`${arena.id} (${tag}): generated arena has ${flavor.ambient.length} ambient lines, under ${PROC_AMBIENT_FLOOR}`);
+            const ids = flavor.events.filter(e => e.id).map(e => e.id!);
+            if (new Set(ids).size !== ids.length) problems.push(`${arena.id} (${tag}): duplicate event ids in the composed pack`);
+            flavor.events.forEach(e => {
+                if (e.chain && !flavor.events.some(o => o.id === e.chain)) problems.push(`${arena.id}: chain '${e.chain}' points at an event not in the pack`);
+            });
+            if (arena.zones.length > 13) notes.push(`${arena.id} (${tag}) rolled ${arena.zones.length} zones — check-arena-layout is tuned to 13`);
+        });
+    });
+    notes.push(`procedural: every biome composes ≥${PROC_EVENT_FLOOR} authored events, ≥${PROC_ONCE_FLOOR} once-per-run, a chain, and ≥${PROC_AMBIENT_FLOOR} ambient lines`);
+}
 
 /**
  * §2.1: the setup screen's arena briefing lives in `data/` so the cold-start

@@ -419,6 +419,12 @@ export function severedEdgeSet(state: GameState): Set<string> {
     return new Set(state.severedEdges ?? []);
 }
 
+/** Puts a severed edge back. The inverse of `severEdge`; the sealed horn reads it. */
+export function restoreEdge(state: GameState, a: string, b: string) {
+    const key = edgeKey(a, b);
+    state.severedEdges = (state.severedEdges ?? []).filter(k => k !== key);
+}
+
 export function severEdge(state: GameState, a: string, b: string) {
     state.severedEdges = state.severedEdges ?? [];
     const key = edgeKey(a, b);

@@ -219,6 +219,7 @@ function applyEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef, narrate
 
 /** Applies one arena-specific event to a tribute, honouring their dodge stat. */
 export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
+    ctx.state.eventLastFired = { ...(ctx.state.eventLastFired ?? {}), [eventKey(event)]: cycleOf(ctx.state) };
     const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
     if (!applyEventTo(ctx, t, event, true)) return;
 
@@ -424,6 +425,11 @@ function requirementsHold(ctx: SimContext, t: Tribute, event: ArenaEventDef): bo
     return true;
 }
 
+/** Identity for the repeat cooldown: the id where there is one, else the opening of the text. */
+export function eventKey(event: ArenaEventDef): string {
+    return event.id ?? event.text.slice(0, 48);
+}
+
 /** §7e: an event that has already had its one turn this run. */
 function spent(ctx: SimContext, event: ArenaEventDef): boolean {
     return event.oncePerRun === true && event.id !== undefined
@@ -455,6 +461,12 @@ export function pickTerrainEvent(ctx: SimContext, events: ArenaEventDef[], terra
     const eligible = events.filter(e => !spent(ctx, e) && (!t || requirementsHold(ctx, t, e)));
     const gated = eligible.length > 0 ? eligible : events.filter(e => !spent(ctx, e));
     events = gated.length > 0 ? gated : events;
+    // §7 (audit): no repeats inside the cooldown, unless that would leave
+    // nothing — a small pool still speaks.
+    const cycle = cycleOf(ctx.state);
+    const last = ctx.state.eventLastFired ?? {};
+    const fresh = events.filter(e => cycle - (last[eventKey(e)] ?? -Infinity) >= ENCOUNTERS.eventRepeatCooldown);
+    if (fresh.length > 0) events = fresh;
     const pool = terrain ? events.filter(fits) : events;
     const candidates = pool.length > 0 ? pool : events;
     // §1.3: weighted, not uniform. `withUniversalEvents` marks the shared pool

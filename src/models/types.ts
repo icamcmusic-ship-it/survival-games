@@ -1902,6 +1902,10 @@ export interface GameState {
     grudgeFired?: boolean;
     /** §7 (audit): the bloodless-finalist hunt has been sent, once per run. */
     bloodlessHuntFired?: boolean;
+    /** §7 (audit): cycle each arena event last fired, keyed by id or text, for the repeat cooldown. */
+    eventLastFired?: Record<string, number>;
+    /** §5.3 (audit): the Cornucopia's edges are cut until this cycle (seal-the-horn). */
+    sealedHornUntilCycle?: number;
     /** Per-run truce accounting. See `engine/parley.ts`. */
     truceLedger?: import('../engine/parley').TruceLedger;
     /**

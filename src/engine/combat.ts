@@ -802,6 +802,24 @@ export function resolveCombat(
 
     while (round < maxRounds && isActive(t1) && isActive(t2)) {
         round++;
+        // §7 (audit): exhaustion is now a way to die in a fight, not only a
+        // way to fight worse. Legs go before nerve does.
+        for (const [fighter, other] of [[t1, t2], [t2, t1]] as const) {
+            if (!isActive(fighter) || !isActive(other)) continue;
+            if (fighter.vitals.fatigue < COMBAT.collapseFatigue || !ctx.rng.chance(COMBAT.collapseChance)) continue;
+            const cause = `Collapsed from exhaustion fighting ${other.name}`;
+            applyDamage(ctx, fighter, COMBAT.collapseDamage, { cause, kind: 'tribute', sourceId: other.id });
+            ctx.logEvent(
+                fighter.health <= 0
+                    ? `${fighter.name}'s legs give out mid-swing in ${fighter.zone} and ${other.name} does not have to do much about it.`
+                    : `${fighter.name}'s legs go from under them in ${fighter.zone} — not struck, simply done — and ${other.name} gets a free blow in before they are up.`,
+                [fighter.id, other.id],
+                { important: fighter.health <= 0, category: 'combat' }
+            );
+            clampTribute(fighter);
+            if (fighter.health <= 0) strikeDown(ctx, fighter, other, bestWeapon(other));
+        }
+        if (!isActive(t1) || !isActive(t2)) break;
         const w1 = bestWeapon(t1);
         const w2 = bestWeapon(t2);
         const p1 = contestedPower(ctx, t1, w1, 0, t2);

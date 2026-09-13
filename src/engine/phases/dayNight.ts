@@ -8,7 +8,7 @@ import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SU
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons, tickOpeningEdges } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons, tickOpeningEdges, restoreEdge } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, checkIntelLies, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteRivalSighting, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
@@ -50,7 +50,7 @@ import { resolveTruces } from '../parley';
 import { postWatches } from '../watch';
 import { offerLoans, repayDebts, settleLoans, tickDistrictBonds, tickRetainers } from '../debts';
 import { reconcileRivals } from '../rapport';
-import { decaySkillsUnderInjury, teachSkills } from '../proficiency';
+import { decaySkillsUnderInjury, profOf, teachSkills } from '../proficiency';
 import { enforceCharters } from '../allianceCharter';
 import { earnTrait } from '../earnedTraits';
 import { tickTraitArcs } from '../traitArcs';
@@ -252,6 +252,13 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // final handful of tributes without somebody addressing it.
     if (getAlive(ctx.state).length <= RESOLVE.endgameFieldSize) forceTriangleChoice(ctx);
 
+    // §5.3 (audit): the sealed horn reopens on schedule.
+    if (ctx.state.sealedHornUntilCycle !== undefined && (ctx.state.cycle ?? 0) >= ctx.state.sealedHornUntilCycle) {
+        const horn = ctx.state.arena.zones[0];
+        horn.adjacent.forEach(n => restoreEdge(ctx.state, horn.name, n));
+        ctx.state.sealedHornUntilCycle = undefined;
+        ctx.logEvent(`The force fields around ${horn.name} drop as quietly as they rose.`, [], { category: 'gamemaker', zone: horn.name });
+    }
     // 4b. The arena's own rule — the clock, the tide, the blackout schedule.
     // Runs after movement and encounters so it acts on where tributes actually
     // ended up, and before upkeep so the effects it starts tick normally.
@@ -1230,11 +1237,30 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
                 && m.transit.remaining === remaining);
             const arriving = party.length > 0 ? party : [t];
 
+            const destZone = getZone(ctx.state.arena, dest);
             arriving.forEach(m => {
                 delete m.transit;
                 m.zone = dest;
                 m.vitals.fatigue = Math.min(100, m.vitals.fatigue + MOVEMENT.crossingFatigue);
                 crossed.add(m.id);
+                // §7 (audit): the last stretch of a crossing, spent. Swimming
+                // and the water trait are the defence; nothing else is.
+                if (destZone?.terrain === 'water' && m.vitals.fatigue >= MOVEMENT.drowningFatigue && traitMod(m, 'water') <= 0) {
+                    const chance = Math.max(0, MOVEMENT.drowningChance - profOf(m, 'swimming') * MOVEMENT.drowningSwimmingProtection);
+                    if (ctx.rng.chance(chance)) {
+                        const cause = `Drowned crossing to ${dest}`;
+                        applyDamage(ctx, m, MOVEMENT.drowningDamage, { cause, kind: 'hazard' });
+                        ctx.logEvent(
+                            m.health <= 0
+                                ? `${m.name} goes under a body-length from the bank of ${dest} and does not come up. There was nothing left in their arms.`
+                                : `${m.name} goes under a body-length from the bank of ${dest}, and comes up, and comes up again, and gets a hand on the shore with nothing left in their arms.`,
+                            [m.id],
+                            { important: true, zone: dest, category: 'hazard' }
+                        );
+                        clampTribute(m);
+                        checkDeath(ctx, m, cause);
+                    }
+                }
             });
             noteTraffic(ctx.state, from, dest, arriving.length);
             ctx.logEvent(

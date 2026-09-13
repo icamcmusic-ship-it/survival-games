@@ -1681,6 +1681,13 @@ export const ENCOUNTER_BRANCH = {
 } as const;
 
 export const ENCOUNTERS = {
+    /**
+     * §7 (audit): cycles before the same arena event can be drawn again.
+     * The only repeat suppression was oncePerRun; with ~650 lines a run and
+     * a 30-40 event pool, the same beat landed twice in a day. Lifted when
+     * nothing else is eligible, so a small pool still fires.
+     */
+    eventRepeatCooldown: 4,
     /** T-5: dodge penalty per grade of leg injury (was a flat 2 boolean). */
     legsDodgePenaltyPerGrade: 1.25,
     /** Fallback escape difficulty for an event that does not name its own. */
@@ -1808,6 +1815,15 @@ export const COMBAT = {
     /** Chance a Pyromaniac's landed hit leaves the defender burned. */
     /** Regard at or below which the Vengeful edge applies without a sworn oath. */
     vengefulHatredRegard: -35,
+    /**
+     * §7 (audit): exhaustion is a way to lose a fight, and now a way to die
+     * in one. At or above this fatigue, each round carries a chance the
+     * tribute simply goes down — legs gone, not struck — and takes a free
+     * hit for it. Fatigue never killed mid-fight before.
+     */
+    collapseFatigue: 92,
+    collapseChance: 0.15,
+    collapseDamage: 12,
     /** Durability burned per round of use. */
     weaponWearPerRound: 6,
     /**
@@ -1989,6 +2005,16 @@ export const MOVEMENT = {
     shadowFollowWeight: 8,
     /** §5.3: extra fatigue for completing a two-cycle crossing or climb. */
     crossingFatigue: 8,
+    /**
+     * §7 (audit): drowning as a universal death. A tribute who comes ashore
+     * from a water crossing already past this fatigue, with no swimming to
+     * speak of, can go under on the last stretch. The swimming proficiency
+     * and the water trait are the whole defence, which is what they are for.
+     */
+    drowningFatigue: 78,
+    drowningChance: 0.18,
+    drowningDamage: 38,
+    drowningSwimmingProtection: 0.12,
     /** Thirst above which finding water outranks everything else.
      *  §7.7: lowered 45 -> 38 — dehydration was outranking mutts as a killer,
      *  and the fix is tributes moving toward water a cycle earlier. */
@@ -2263,6 +2289,16 @@ export const ZONE_EFFECTS = {
     /** A burned-out zone is stripped for a long while — the ground is ash. */
     strippedDuration: 6,
     strippedDepletion: 0.85,
+    /**
+     * §5.3 (audit): fogbound, stripped and blooming had empty or one-line
+     * tick bodies. Fog is disorienting and tiring to move through; stripped
+     * ground is a hungry place to stand; a bloom feeds as well as settles.
+     */
+    fogboundFatigue: 2,
+    fogboundSanityLoss: 1,
+    strippedHunger: 2,
+    bloomingFeed: 4,
+    bloomingHeal: 1,
 
     /** Fire: per-cycle damage to anyone still standing in it, and its spread. */
     burningDamage: 10,
@@ -5412,6 +5448,13 @@ export const CHARTER = {
  * tooltip. See `engine/gamemakerAgency.ts`.
  */
 export const GAMEMAKER_AGENCY = {
+    /** §5.3 (audit): the seven new signatures' own numbers. */
+    nightWithoutEndCycles: 2,
+    sealHornCycles: 2,
+    callTruceCycles: 6,
+    /** Mutual regard at or below which a pair counts as hating each other enough to be worth a forced truce. */
+    callTruceMinHatred: -10,
+    poisonWellsSeverity: 1.2,
     /** Not while the cast is still enormous — this rescues the middle of a run. */
     /** A-6: the signature is the roster's whole payoff — it fired in only 65%
      * of runs. Wider window and better unprompted odds get it near-every-run. */

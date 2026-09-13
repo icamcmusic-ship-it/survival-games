@@ -12,7 +12,11 @@ import { Tribute } from '../models/types';
 import { adjustRel } from './relationships';
 import { applyDamage, checkDeath } from './combat';
 import { startZoneEffect } from './zoneEffects';
-import { addZoneThreat } from './memory';
+import { addZoneThreat, noteSighting } from './memory';
+import { severEdge } from './map';
+import { getRel } from './relationships';
+import { grantTruce } from './parley';
+import { tributeOdds } from './odds';
 import { CONTINUITY, ENDGAME, ESCALATION } from '../data/balance';
 
 /**
@@ -296,6 +300,103 @@ export function runGamemakerSignature(ctx: SimContext) {
                 `The water comes up everywhere that is not high ground. ${low.map(z => z.name).join(', ')} are all the same colour now, `
                 + 'and the map everybody has been using is worth rather less than it was this morning.',
                 [], { important: true, category: 'gamemaker' }
+            );
+            break;
+        }
+
+        case 'poison-the-wells': {
+            const wells = ctx.state.arena.zones
+                .filter(z => zoneFeatures(z).waterSource !== false && (z.terrain === 'water' || z.terrain === 'wetland'))
+                .filter(z => !(ctx.state.collapsedZones ?? []).includes(z.name));
+            if (wells.length === 0) break;
+            wells.forEach(z => startZoneEffect(ctx, z.name, 'contaminated', false, GAMEMAKER_AGENCY.poisonWellsSeverity));
+            ctx.logEvent(
+                `Every drinking place in the arena — ${wells.map(z => z.name).join(', ')} — turns in the same minute. The cameras cut between the faces.`,
+                [], { important: true, category: 'gamemaker' }
+            );
+            break;
+        }
+
+        case 'cull-the-weak': {
+            // The zone whose occupants are, on average, closest to done.
+            const byZone = new Map<string, Tribute[]>();
+            alive.forEach(t => { byZone.set(t.zone, [...(byZone.get(t.zone) ?? []), t]); });
+            let weakest: { zone: string; avg: number } | undefined;
+            byZone.forEach((ts, zone) => {
+                const avg = ts.reduce((s, t) => s + t.health, 0) / ts.length;
+                if (!weakest || avg < weakest.avg) weakest = { zone, avg };
+            });
+            if (!weakest) break;
+            const mark = byZone.get(weakest.zone)![0];
+            ctx.logEvent(
+                `The control room has been watching ${weakest.zone}, where the field is at its weakest. Cassius Brant calls it tidying.`,
+                byZone.get(weakest.zone)!.map(t => t.id), { important: true, zone: weakest.zone, category: 'gamemaker' }
+            );
+            asGamemaker(ctx, () => triggerGamemakerEvent(ctx, 'mutt', mark.id, true));
+            break;
+        }
+
+        case 'night-without-end': {
+            ctx.state.blackoutUntilCycle = (ctx.state.cycle ?? 0) + GAMEMAKER_AGENCY.nightWithoutEndCycles;
+            ctx.logEvent(
+                'The sun does not come up. It is not scheduled to. Every tribute in the arena works out at the same moment that this is on purpose.',
+                [], { important: true, category: 'gamemaker' }
+            );
+            break;
+        }
+
+        case 'seal-the-horn': {
+            const horn = ctx.state.arena.zones[0];
+            const inside = alive.filter(t => t.zone === horn.name);
+            horn.adjacent.forEach(n => severEdge(ctx.state, horn.name, n));
+            ctx.state.sealedHornUntilCycle = (ctx.state.cycle ?? 0) + GAMEMAKER_AGENCY.sealHornCycles;
+            ctx.logEvent(
+                `Every way into ${horn.name} closes at once — force fields, the same colour as the sky. ${inside.length > 0 ? `${inside.map(t => t.name).join(' and ')} ${inside.length === 1 ? 'is' : 'are'} inside it.` : 'Nobody is inside it, which is its own kind of message.'}`,
+                inside.map(t => t.id), { important: true, zone: horn.name, category: 'gamemaker' }
+            );
+            break;
+        }
+
+        case 'reveal-all': {
+            alive.forEach(watcher => alive.forEach(seen => {
+                if (watcher.id !== seen.id) noteSighting(ctx.state, watcher, seen.zone, 1, 0);
+            }));
+            alive.forEach(t => { t.concealRevealed = true; });
+            ctx.logEvent(
+                'Every screen in the arena lights up with every tribute at once, live, named, placed. For one long afternoon nobody is hidden from anybody.',
+                alive.map(t => t.id), { important: true, category: 'gamemaker' }
+            );
+            break;
+        }
+
+        case 'arm-the-underdog': {
+            const ranked = [...alive].sort((a, b) => tributeOdds(a, alive).pct - tributeOdds(b, alive).pct);
+            const underdog = ranked[0];
+            if (!underdog) break;
+            const weapons = ITEMS.filter(i => i.type === 'weapon' && (i.damage ?? 0) >= 4);
+            const gift = mintItem(ctx.rng, ctx.rng.pick(weapons.length > 0 ? weapons : ITEMS.filter(i => i.type === 'weapon')), QUALITY_BIAS.parachute);
+            giveItem(underdog, gift);
+            underdog.sponsorTrust = Math.min(100, underdog.sponsorTrust + GAMEMAKER_AGENCY.favouredTrust);
+            ctx.logEvent(
+                `A parachute comes down for ${underdog.name} — the tribute the book rates worst — and there is ${itemPhrase(gift)} in it. Silvanus Reed has never explained this and does not start now.`,
+                [underdog.id], { important: true, zone: underdog.zone, category: 'sponsor' }
+            );
+            break;
+        }
+
+        case 'call-a-truce': {
+            // The two who hate each other most, made to keep the peace.
+            let worst: { a: Tribute; b: Tribute; regard: number } | undefined;
+            alive.forEach(a => alive.forEach(b => {
+                if (a.id >= b.id) return;
+                const regard = Math.min(getRel(a, b.id), getRel(b, a.id));
+                if (!worst || regard < worst.regard) worst = { a, b, regard };
+            }));
+            if (!worst || worst.regard > GAMEMAKER_AGENCY.callTruceMinHatred) break;
+            grantTruce(ctx, worst.a, worst.b, GAMEMAKER_AGENCY.callTruceCycles, 'brokered');
+            ctx.logEvent(
+                `The Capitol declares a truce between ${worst.a.name} and ${worst.b.name}, who would each rather die than keep it, and the arena will enforce it for ${GAMEMAKER_AGENCY.callTruceCycles} cycles. Calpurnia Vex finds the strain more interesting than the fight.`,
+                [worst.a.id, worst.b.id], { important: true, category: 'gamemaker' }
             );
             break;
         }

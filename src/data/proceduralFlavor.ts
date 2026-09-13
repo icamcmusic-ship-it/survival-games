@@ -1,5 +1,6 @@
 import { Arena, Terrain } from '../models/types';
 import { ArenaActions, ArenaEventDef, ArenaFlavor, GENERIC_ARENA_FLAVOR } from './arenaFlavor';
+import { PROCEDURAL_BIOME_AMBIENT, PROCEDURAL_BIOME_EVENTS } from './proceduralBiomeEvents';
 
 /**
  * ARENA-08: procedural arenas used to fall back on one of four pre-written
@@ -617,6 +618,9 @@ function pickActions(active: Set<FlavorTag>, variants: ActionVariant[], generic:
  * Deterministic given the arena's own zone data — no RNG needed here, the
  * generator already baked all its randomness into the zones/name/mutts.
  */
+/** Tag-scored generic events a generated arena takes on top of its biome's own. */
+const PROCEDURAL_GENERIC_EVENTS = 10;
+
 export function proceduralArenaFlavor(arena: Arena): ArenaFlavor {
     const active = new Set<FlavorTag>();
     arena.zones.forEach(z => active.add(z.terrain));
@@ -640,14 +644,21 @@ export function proceduralArenaFlavor(arena: Arena): ArenaFlavor {
     // Guarantee at least a handful of events even for a sparse tag set —
     // fall back to the catch-all entries (tagged with every terrain) if a
     // biome+terrain combo somehow scores nothing.
-    const events: ArenaEventDef[] = (weighted.length >= 4 ? weighted : PROCEDURAL_EVENTS.map(e => ({ e, score: 1 })))
+    // §5.2 (audit): the biome's own authored beats first — once-per-run
+    // events, a chain, state gates — then the tag-scored generic pool behind
+    // them. A generated arena used to receive eight anonymous events and
+    // nothing else of its own; it now carries what a hand-authored arena does.
+    const own = PROCEDURAL_BIOME_EVENTS[biomeId] ?? [];
+    const generic: ArenaEventDef[] = (weighted.length >= 4 ? weighted : PROCEDURAL_EVENTS.map(e => ({ e, score: 1 })))
         .map(x => x.e)
-        .slice(0, 8)
+        .slice(0, PROCEDURAL_GENERIC_EVENTS)
         .map(({ tags, excludes, ...rest }) => rest);
+    const events: ArenaEventDef[] = [...own, ...generic];
 
     const ambient = [
         ...GENERIC_AMBIENT.slice(0, 2),
         ...Array.from(active).flatMap(t => AMBIENT_BY_TAG[t] || []).slice(0, 3),
+        ...(PROCEDURAL_BIOME_AMBIENT[biomeId] ?? []),
     ];
 
     const actions: ArenaActions = {
