@@ -26,6 +26,8 @@ import { copyTributeStory, downloadTributeStory } from '../utils/tributeStory';
 import { BODY_SITES, severityOf, summarySentence, vitalWord, worstFear } from './TributeSummary';
 import { BodyDiagram } from './BodyDiagram';
 import { STANCE_PROFILES, STANCES } from '../data/stances';
+import { believedRumours } from '../engine/rumours';
+import { notorietyOf } from '../engine/notoriety';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
@@ -374,12 +376,22 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
             <div ref={panelRef} tabIndex={-1} className="panel p-4 sm:p-6 max-w-3xl w-full max-h-[88vh] overflow-y-auto custom-scrollbar animate-riseIn" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start mb-3 gap-4">
                     <div className="min-w-0">
-                        <h3 className="display-title text-2xl">{tribute.name}</h3>
+                        <h3 className="display-title text-2xl">
+                            {tribute.name}
+                            {tribute.epithet && (
+                                <span className="block text-sm font-bold text-[var(--gold)] tracking-normal" title={tribute.epithetCycle !== undefined ? `Named on cycle ${tribute.epithetCycle}` : undefined}>
+                                    {tribute.epithet}
+                                </span>
+                            )}
+                        </h3>
                         {/* A5: at most five chips. Everything else moves to the
                             dossier line below, as plain text with its Explainer
                             still attached — the header used to stack twelve. */}
                         <div className="flex flex-wrap gap-1.5 mt-2">
                             <span className="chip">District {tribute.district}</span>
+                            {gameState.veteransSeated?.includes(tribute.id) && (
+                                <span className="chip chip-gold" title="A past victor from your Hall of Fame, reaped again for this Games.">Returning victor</span>
+                            )}
                             <Explainer
                                 align="left"
                                 label={<span className="chip chip-accent">{archetype.name}</span>}
@@ -526,6 +538,13 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                     <p className="mt-1 leading-relaxed text-[var(--color-ink-500)]">
                                         Ground they weighed: {tribute.decisionTrace.destinations
                                             .map(d => `${d.zone} (${d.score})`).join(', ')}.
+                                        {tribute.decisionTrace.destinationPick && (
+                                            <> They picked {tribute.decisionTrace.destinationPick.zone}
+                                                {tribute.decisionTrace.destinationPick.rank === 0
+                                                    ? ', the top of their own list'
+                                                    : `, ${tribute.decisionTrace.destinationPick.rank + 1}${['st', 'nd', 'rd'][tribute.decisionTrace.destinationPick.rank] ?? 'th'} of ${tribute.decisionTrace.destinationPick.of}`}
+                                                {tribute.decisionTrace.destinationPick.rank > 0 && tribute.decisionTrace.destinationPick.percentile < 0.5 ? ' — a long shot the weighted roll landed on' : ''}.</>
+                                        )}
                                     </p>
                                 )}
                                 {tribute.standingGoal && (
@@ -965,6 +984,51 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                     </>}
 
                     {tab === 'social' && <>
+                    {/* §4.7 / §3.5: the two information systems the sheet never
+                        showed. What they have been told about the arena, and
+                        who in the arena has been told about them. */}
+                    {(() => {
+                        const heard = believedRumours(gameState, tribute);
+                        const talkedAbout = gameState.tributes
+                            .filter(o => o.status === 'alive' && o.id !== tribute.id)
+                            .map(o => ({ o, n: notorietyOf(o, tribute.id) }))
+                            .filter(x => x.n > 0)
+                            .sort((a, b) => b.n - a.n);
+                        if (heard.length === 0 && talkedAbout.length === 0) return null;
+                        return (
+                            <section>
+                                <h4 className="panel-title mb-2">Word in the arena</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div className="panel-flush p-3 space-y-1 text-xs">
+                                        <div className="eyebrow">What they believe</div>
+                                        {heard.length === 0
+                                            ? <p className="text-[var(--color-ink-500)]">Nothing anybody has told them, yet.</p>
+                                            : heard.slice(0, 4).map(r => (
+                                                <p key={r.id} className="text-[var(--color-ink-200)]">
+                                                    {r.kind === 'restock' ? `The horn restocked — ${r.zone}.`
+                                                        : r.kind === 'holed-up' ? `${gameState.tributes.find(o => o.id === r.aboutId)?.name ?? 'Somebody'} is dug in at ${r.zone}.`
+                                                        : r.kind === 'cache' ? `There is a cache in ${r.zone}.`
+                                                        : `${r.zone} is picked clean.`}
+                                                    {r.exposed && <span className="ml-1 font-mono text-[10px] text-[var(--red)]">exposed</span>}
+                                                    {r.plantedById === tribute.id && <span className="ml-1 font-mono text-[10px] text-[var(--color-ink-500)]">their own plant</span>}
+                                                </p>
+                                            ))}
+                                    </div>
+                                    <div className="panel-flush p-3 space-y-1 text-xs">
+                                        <div className="eyebrow">Who has heard of them</div>
+                                        {talkedAbout.length === 0
+                                            ? <p className="text-[var(--color-ink-500)]">Nobody is talking about them.</p>
+                                            : <p className="text-[var(--color-ink-200)]">
+                                                {talkedAbout.length} of {gameState.tributes.filter(o => o.status === 'alive').length - 1} living tributes —
+                                                {' '}{talkedAbout.slice(0, 3).map(x => `${x.o.name} (${Math.round(x.n)})`).join(', ')}
+                                                {talkedAbout.length > 3 ? ` and ${talkedAbout.length - 3} more` : ''}.
+                                                {' '}Reputation travels by the sky, by proximity and by talk; it is what people believe, not what is so.
+                                            </p>}
+                                    </div>
+                                </div>
+                            </section>
+                        );
+                    })()}
                     {alliance && allyNames.length > 0 && (
                         <section>
                             <h4 className="panel-title mb-2">Their alliance</h4>

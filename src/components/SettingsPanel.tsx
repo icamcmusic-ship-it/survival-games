@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
+import { useDialogFocus } from '../ui/useDialogFocus';
 import { X } from 'lucide-react';
 import { prefsStore, resetPrefs, setPrefs } from '../store/prefsStore';
 import { useStore } from '../store/createStore';
@@ -13,14 +14,7 @@ import { DEFAULT_FILTERS, writeFilters } from '../utils/prefsStorage';
  */
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
     const prefs = useStore(prefsStore, p => p);
-    const panelRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        window.addEventListener('keydown', onKey);
-        panelRef.current?.focus();
-        return () => window.removeEventListener('keydown', onKey);
-    }, [onClose]);
+    const panelRef = useDialogFocus<HTMLDivElement>(onClose);
 
     return (
         <div

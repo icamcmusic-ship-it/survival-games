@@ -203,6 +203,47 @@ QUIRKS.filter(q => new Set(q.lines).size !== q.lines.length).forEach(q => {
 });
 console.log(`\n${QUIRKS.length} quirks, ${Math.min(...QUIRKS.map(q => q.lines.length))} line variants in the thinnest (floor ${QUIRK_LINE_FLOOR}).`);
 
+/**
+ * §10.2 (audit): the nested pools the flat walk could not see.
+ *
+ * `Object.entries(FLAVOR)` only ever matched `string[]` exports, so every
+ * `Record<string, string[]>` in the file — the archetype signature beats, the
+ * training failure/struggle/altercation registers, the evening beats, the
+ * triangle resolutions, the zone rumour claims — was invisible to the floor
+ * that exists to catch exactly their failure mode. Fourteen of them sat under
+ * the script's own hard floor of 8, and `ARCHETYPE_SIGNATURE_TEXTS` — the
+ * once-per-run beat that is supposed to define an archetype — sat at three or
+ * four across all fifteen.
+ *
+ * Walked here with the same floor and the same ratchet: the count under the
+ * floor may fall and may not rise.
+ */
+const KNOWN_THIN_NESTED = 0;
+const nested: Array<[string, string[]]> = [];
+Object.entries(FLAVOR as Record<string, unknown>).forEach(([name, value]) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+    Object.entries(value as Record<string, unknown>).forEach(([key, inner]) => {
+        if (Array.isArray(inner) && inner.every(v => typeof v === 'string')) {
+            nested.push([`${name}.${key}`, inner as string[]]);
+        }
+    });
+});
+nested.sort((a, b) => a[1].length - b[1].length);
+const thinNested = nested.filter(([, v]) => v.length < HARD_FLOOR);
+// A pool of repeats is not a pool, whatever its length.
+nested.forEach(([name, v]) => {
+    if (new Set(v).size !== v.length) structuralProblems.push(`nested pool '${name}' repeats a line inside itself`);
+});
+console.log(`\nnested flavour pools (floor ${HARD_FLOOR}, ${nested.length} pools): thinnest ${nested[0]?.[0]} at ${nested[0]?.[1].length}`);
+if (thinNested.length > KNOWN_THIN_NESTED) {
+    structuralProblems.push(
+        `${thinNested.length} nested flavour pool(s) are under the hard floor of ${HARD_FLOOR}, `
+        + `up from a baseline of ${KNOWN_THIN_NESTED}. Top them up, or raise KNOWN_THIN_NESTED on purpose.`);
+    thinNested.slice(0, 14).forEach(([name, v]) => structuralProblems.push(`   ${name}: ${v.length}`));
+} else {
+    console.log(`   ${thinNested.length} nested pool(s) under the floor (baseline ${KNOWN_THIN_NESTED}).`);
+}
+
 if (structuralProblems.length > 0) {
     console.error('');
     structuralProblems.forEach(p => console.error(` - ${p}`));

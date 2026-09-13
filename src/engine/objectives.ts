@@ -13,6 +13,7 @@ import { breakTruce, breaksTruce, hasTruce } from './parley';
 import { perceivedBond, targetReluctance } from './rapport';
 import { prerequisiteFor, pressTension, queueGoal } from './intent';
 import { areLovers } from './alliance';
+import { sharesVengeancePact } from './vengeancePact';
 import { getRel } from './relationships';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
 import { fill } from './encounters';
@@ -176,6 +177,13 @@ export function endgameEdge(state: GameState, t: Tribute): number {
         o.status === 'alive' && o.id !== t.id && o.allianceId !== undefined && o.allianceId === t.allianceId).length;
     edge += Math.min(0.2, allies * 0.1);
     edge += (t.inventory.some(i => i.type === 'food') && t.inventory.some(i => i.type === 'water')) ? 0.05 : -0.05;
+    // §7 (audit): the Capitol expects blood from a finalist who has never
+    // drawn any. A tribute who has reached the last eight without a kill
+    // knows the Gamemakers will not let them hide their way to the crown,
+    // and reads the board more aggressively for it.
+    if (t.kills === 0 && field.length + 1 <= ENDGAME.fieldSize && t.health >= ENDGAME.bloodlessPressureHealth) {
+        edge += ENDGAME.bloodlessPressure;
+    }
     return Math.max(-1, Math.min(1, edge));
 }
 
@@ -330,7 +338,12 @@ function chooseObjective(
         .map(id => state.tributes.find(o => o.id === id && o.status === 'alive'))
         .find(o => !!o);
     if (sworn) {
-        const o = offer(56, { kind: 'hunt', targetId: sworn.id, expires: expiry(OBJECTIVES.huntCycles) });
+        // A pact-mate standing beside them for the same kill outranks a
+        // private oath: this is the read site `sharesVengeancePact` was
+        // written for.
+        const withPactMate = here.some(o => o.id !== t.id && o.status === 'alive' && sharesVengeancePact(state, t, o)
+            && ensureMemory(o).vengeance.includes(sworn.id));
+        const o = offer(withPactMate ? OBJECTIVES.pactHuntTier : 56, { kind: 'hunt', targetId: sworn.id, expires: expiry(OBJECTIVES.huntCycles) });
         if (o) return o;
     }
     // §3.3: in the endgame, a tribute who concludes they win a straight fight
@@ -376,7 +389,7 @@ function chooseObjective(
             // healthy Career with a trident. Weigh how winnable the fight looks
             // (from what the hunter last saw, not the live sheet), the loot,
             // and the grudge — minus how much this person frightens them.
-            const score = (o: Tribute) => {
+            const rawScore = (o: Tribute) => {
                 const winnable = (100 - o.health)
                     + (o.inventory.some(i => i.type === 'weapon') ? 0 : 30)
                     + (o.allianceId === undefined ? 15 : 0);
@@ -433,6 +446,12 @@ function chooseObjective(
                 return (winnable + loot + weakness + grudge - fearOf(t, o.id) + reputation - thirdPartyCost
                     + targetDrawOf(o)
                     + targetPreferenceScore(t, o, hops)
+                    // §3.2 (audit): the outcome ledger. A mark that has got
+                    // away from this hunter before scores lower, so a tribute
+                    // who keeps failing changes *target* rather than trying
+                    // the same person identically — learning that changes
+                    // the hunt, not the appetite for one.
+                    - sameTargetPenaltyFor(t, o.id)
                     // §4.3: and who is going to come looking. A hunter who has
                     // watched somebody else pull this tribute out of a fire has
                     // learned that killing them buys a second enemy — which is
@@ -440,7 +459,23 @@ function chooseObjective(
                     - visible.reduce((worst, ally) => Math.max(worst,
                         ally.id === o.id ? 0 : perceivedBond(t, o.id, ally.id)), 0)
                         * OBJECTIVES.avengerDeterrent
-                    ) * targetReluctance(t, o.id);
+                    );
+            };
+            // Respect is a reason to leave somebody for last. On a mark that
+            // already scores negative, multiplying by a number under one made
+            // them *more* attractive; the reluctance has to push away from
+            // zero in both directions.
+            // Memoised: `rawScore` runs a BFS and two visibility scans, and the
+            // reduce below re-scored its running best on every step.
+            const scoreCache = new Map<string, number>();
+            const score = (o: Tribute) => {
+                const cached = scoreCache.get(o.id);
+                if (cached !== undefined) return cached;
+                const raw = rawScore(o);
+                const reluctance = targetReluctance(t, o.id);
+                const value = raw >= 0 ? raw * reluctance : raw * (2 - reluctance);
+                scoreCache.set(o.id, value);
+                return value;
             };
             const best = (pool: Tribute[]) =>
                 pool.reduce((top, o) => (score(o) > score(top) ? o : top));
@@ -453,7 +488,11 @@ function chooseObjective(
             if (!dry && tempting && (!target || score(tempting) > score(target))
                 && breaksTruce(ctx, t, tempting)) {
                 breakTruce(ctx, t, tempting);
-                return { kind: 'hunt', targetId: tempting.id, expires: expiry(OBJECTIVES.huntCycles) };
+                // Through `offer`, so it carries the hunt's tier: returned
+                // bare it sat at tier 0, and any standing goal overrode a
+                // truce that had just been broken for this.
+                return offer(OBJECTIVES.huntTier, { kind: 'hunt', targetId: tempting.id, expires: expiry(OBJECTIVES.huntCycles) })
+                    ?? { kind: 'hunt', targetId: tempting.id, expires: expiry(OBJECTIVES.huntCycles) };
             }
             // No honest mark and no truce worth breaking: fall through to the
             // objectives below rather than forcing a hunt that has no target.
@@ -601,6 +640,8 @@ export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
     const standing = resumeStandingGoal(ctx, t);
 
     const previous = t.objective;
+    // §3.2 (audit): before choosing again, judge the one that just ended.
+    if (previous && previous.kind !== 'survive') recordObjectiveOutcome(ctx, t, previous);
     const chosenTier = { tier: 0 };
     let next = chooseObjective(ctx, t, here, undefined, chosenTier);
 
@@ -706,10 +747,12 @@ function resumeStandingGoal(ctx: SimContext, t: Tribute): Objective | undefined 
     }
 
     // Not yet — give the errand queue a few cycles to clear before reasserting.
-    if (cycle - standing.setCycle < STANDING_GOAL.resumeCycles) return undefined;
+    if (cycle - (standing.resumedCycle ?? standing.setCycle) < STANDING_GOAL.resumeCycles) return undefined;
 
     const resumed = { ...standing.goal, expires: cycle + OBJECTIVES.reachCycles } as Objective;
-    t.standingGoal = { ...standing, setCycle: cycle };
+    // `setCycle` used to be reset here, so a goal resumed at least once per
+    // window could never go stale. It keeps its birthday now.
+    t.standingGoal = { ...standing, resumedCycle: cycle };
     return resumed;
 }
 
@@ -828,6 +871,49 @@ export function objectiveStep(ctx: SimContext, t: Tribute, options: Zone[]): Zon
     const hop = nextHopToward(ctx.state.arena, t.zone, target, collapsed, severedEdgeSet(ctx.state));
     if (!hop) return undefined;
     return options.find(z => z.name === hop);
+}
+
+/** What the ledger says about hunting this particular tribute again. */
+function sameTargetPenaltyFor(t: Tribute, targetId: string): number {
+    const hunt = t.objectiveOutcomes?.hunt;
+    const stalk = t.objectiveOutcomes?.stalk;
+    const streak = (hunt?.lastTargetId === targetId ? hunt.streak : 0) + (stalk?.lastTargetId === targetId ? stalk.streak : 0);
+    return Math.min(OBJECTIVES.failureStreakCap, streak) * OBJECTIVES.sameTargetPenalty;
+}
+
+/**
+ * §3.2 (audit): did it work?
+ *
+ * Judged when an objective is replaced, against the state of the world at
+ * that moment: a reach that ends standing in the zone worked, a hunt that
+ * ends with the quarry dead by this tribute's hand worked, a flee that ends
+ * anywhere but where it started worked, a protect whose ward is still alive
+ * worked. Anything else is a failure — including an objective that simply
+ * expired, which is the commonest way an intention fails in an arena.
+ */
+function recordObjectiveOutcome(ctx: SimContext, t: Tribute, previous: Objective) {
+    const state = ctx.state;
+    const find = (id: string) => state.tributes.find(o => o.id === id);
+    let won: boolean;
+    switch (previous.kind) {
+        case 'reach': won = t.zone === previous.zone; break;
+        case 'hunt': { const q = find(previous.targetId); won = !!q && q.status === 'dead' && q.lastDamage?.sourceId === t.id; break; }
+        case 'stalk': { const q = find(previous.targetId); won = !!q && (q.status === 'dead' || (t.memory?.lastContact?.[q.id] ?? -Infinity) >= cycleOf(state) - 1); break; }
+        case 'flee': won = t.zone !== previous.from; break;
+        case 'protect': { const w = find(previous.wardId); won = !!w && w.status === 'alive'; break; }
+        case 'hold':
+        case 'wait': won = t.zone === previous.zone && t.status === 'alive'; break;
+        default: return;
+    }
+    t.objectiveOutcomes = t.objectiveOutcomes ?? {};
+    const record = t.objectiveOutcomes[previous.kind] ?? { tries: 0, wins: 0, streak: 0 };
+    record.tries += 1;
+    if (won) { record.wins += 1; record.streak = 0; record.lastTargetId = undefined; }
+    else {
+        record.streak += 1;
+        record.lastTargetId = 'targetId' in previous ? previous.targetId : undefined;
+    }
+    t.objectiveOutcomes[previous.kind] = record;
 }
 
 /** True when the objective says to stay put this cycle. */

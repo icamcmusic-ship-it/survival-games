@@ -348,6 +348,8 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                 // is standing in it — the arena's only unambiguous kindness,
                 // and a reason to fight over a zone that is not the horn.
                 t.vitals.sanity = Math.min(100, t.vitals.sanity + ZONE_EFFECTS.bloomingSanityRelief);
+                t.vitals.hunger = Math.max(0, t.vitals.hunger - ZONE_EFFECTS.bloomingFeed * severity);
+                t.health = Math.min(100, t.health + ZONE_EFFECTS.bloomingHeal);
                 clampTribute(t);
                 break;
 
@@ -403,9 +405,18 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                 break;
 
             case 'fogbound':
+                // Read by the stealth system directly (see hasFog below) — and
+                // it is tiring and disorienting to be inside, which used to
+                // cost nothing.
+                t.vitals.fatigue += ZONE_EFFECTS.fogboundFatigue * severity;
+                t.vitals.sanity -= ZONE_EFFECTS.fogboundSanityLoss * severity;
+                clampTribute(t);
+                break;
             case 'stripped':
-                // Fog is read by the stealth system directly (see hasFog below);
-                // stripped ground only affects forage, via effectiveResources.
+                // Forage reads it via effectiveResources; standing on ash with
+                // nothing to eat is also simply hungrier.
+                t.vitals.hunger += ZONE_EFFECTS.strippedHunger * severity;
+                clampTribute(t);
                 break;
         }
     });

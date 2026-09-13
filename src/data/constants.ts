@@ -396,6 +396,9 @@ export const ARENAS: Arena[] = [
         name: 'The Shattered Archipelago',
         description: 'Micro-islands adrift in a sea of thick magnetic fog, joined by swaying rope bridges and zip-lines. Compasses spin, the fog below has never been surveyed, and a cut rope is a border redrawn.',
         mutts: ['Lodestone Gulls', 'Fogline Eels', 'The Ferryman', 'Rust Mites'],
+        // §5.1 (audit): the arena's own identity — it declared none of these.
+        effectVocab: { flooded: { label: 'the fog-tide over the low islets', severityMult: 1.2 }, fogbound: { label: 'the magnetic fog closing in', severityMult: 1.3 } },
+        restockBias: ['fishing-kit', 'rope', 'canteen'],
         events: ['Bridge Failure', 'Magnetic Squall', 'The Fog Rises'],
         // Nobody crosses the great bridge blind: after dark the fog owns it.
         edgeRules: { 'The Cornucopia (Anchor Isle)|The Long Span': { kind: 'timeGated', gatedTime: 'day' } },
@@ -421,6 +424,10 @@ export const ARENAS: Arena[] = [
         name: 'The Perpetual Eclipse Forest',
         description: 'An ancient redwood forest locked in permanent dusk, lit only by glowing fungi, fiery pitch-vents and a ceiling of artificial stars that do not stay still. Nothing here waits for nightfall, because nightfall never quite comes.',
         mutts: ['Duskwing Owls', 'Pitch Hounds', 'Lantern Beetles', 'The Understory', 'Star Moths'],
+        // §5.1 (audit): the arena's own identity — it declared none of these.
+        effectVocab: { fogbound: { label: 'the lightless hour', severityMult: 1.2 }, blooming: { label: 'a foxfire bloom', severityMult: 1.3 } },
+        restockBias: ['lantern', 'glow-stick', 'berries'],
+        edgeRules: { 'The Dark Meander|The Duskmoss Flats': { kind: 'timeGated', gatedTime: 'night' } },
         events: ['Star Shift', 'Pitch-Vent Flare', 'Fungal Bloom'],
         // Poor visibility for cameras, similar to the Vault but less severe.
         sponsorMultiplier: 0.9,
@@ -492,6 +499,9 @@ export const ARENAS: Arena[] = [
         name: 'The Forgotten Carnival',
         description: 'A decayed amusement park swallowed by a fog-choked pine forest. The paint is gone, the music boxes are not, and some of the rides still have power from somewhere.',
         mutts: ['Calliope Jays', 'The Barker', 'Prize Hounds', 'Ticket Wasps'],
+        // §5.1 (audit): the arena's own identity — it declared none of these.
+        effectVocab: { burning: { label: 'a tent fire', severityMult: 1.2 }, fogbound: { label: 'the pine fog through the midway', severityMult: 1.1 } },
+        restockBias: ['crackers', 'cheese', 'rope'],
         events: ['The Ride Wakes', 'Fog Bank', 'Structural Rot'],
         // Broken glass floor to ceiling: crossing the maze costs blood as often as not.
         edgeRules: { 'The Carousel|The Mirror Maze': { kind: 'tolled', toll: { woundChance: 0.1 } } },
@@ -522,6 +532,10 @@ export const ARENAS: Arena[] = [
         name: 'The Ash Wasteland',
         description: 'A dead land under three feet of volcanic ash, ringed around a caldera that has not finished with anyone. Every step is work, every print is a signature, and the mountain is still deciding.',
         mutts: ['Drift Serpents', 'Caldera Vultures', 'Cinder Fleas', 'The Grey Bull'],
+        // §5.1 (audit): the arena's own identity — it declared none of these.
+        effectVocab: { burning: { label: 'the drifts catching', severityMult: 1.3 }, contaminated: { label: 'the mudpots boiling over', severityMult: 1.2 } },
+        restockBias: ['canteen', 'waterskin', 'charcoal-filter'],
+        edgeRules: { 'The Caldera Rim|The Smolder': { kind: 'tolled', toll: { fatigue: 8, woundChance: 0.12 } } },
         events: ['Ash Slide', 'Vent Burst', 'The Mountain Clears Its Throat'],
         zones: [
             { name: 'The Cornucopia (Cinder Ring)', terrain: 'open', danger: 0.6, resources: 0.3, adjacent: ['The Deep Drifts', 'The Burned Forest', 'The Buried Village'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.75 } },
@@ -624,6 +638,9 @@ export const ARENAS: Arena[] = [
         name: 'The Pine Forest & Avalanche Peaks',
         description: 'Steep alpine slopes, heavy timber below, bare rock and loaded snowfields above. Everything worth having is downhill; everything that can kill you is up, and it is all one loud noise from coming down.',
         mutts: ['Timberline Wolves', 'The White Stag', 'Chough Flocks', 'Marmot Mutts', 'The Tarn Lurker'],
+        // §5.1 (audit): the arena's own identity — it declared none of these.
+        effectVocab: { frozen: { label: 'a hard freeze off the peaks', severityMult: 1.3 }, flooded: { label: 'the tarn overtopping', severityMult: 1.1 } },
+        restockBias: ['thermal-cloak', 'matches', 'dried-meat'],
         events: ['Avalanche', 'Rockfall', 'Whiteout Front'],
         // The traverse to the summit snows is a knife's edge in crampon weather.
         edgeRules: { 'The Knife Ridge|The Summit Snows': { kind: 'tolled', toll: { fatigue: 8, woundChance: 0.1 } } },
@@ -647,6 +664,9 @@ export const ARENAS: Arena[] = [
         name: 'The Abandoned Terraced Mines',
         description: 'A mountain cut into dozens of stepped stone terraces by pre-Dark Days mining, riddled with open shaft mouths and strung with the rusted bones of a cable car system nobody has trusted in a century.',
         mutts: ['Shaft Swifts', 'Terrace Jackals', 'The Foreman', 'Cable Spiders', 'Flume Eels'],
+        // §5.1 (audit): the arena's own identity — it declared none of these.
+        effectVocab: { flooded: { label: 'a cistern letting go down the steps', severityMult: 1.3 }, quaking: { label: 'a shaft settling', severityMult: 1.2 } },
+        restockBias: ['rope', 'wire', 'hardtack'],
         events: ['Terrace Slip', 'The Cable Parts', 'Shaft Breath'],
         // Hand over hand along the counterweight cable to the winch house.
         edgeRules: { 'The Counterweight Span|The Winch House': { kind: 'tolled', toll: { fatigue: 7 } } },
@@ -695,6 +715,10 @@ export const ARENAS: Arena[] = [
         name: 'The Suspended Canopy Web',
         description: 'A forest of giant three-hundred-foot conifers, the ground floor buried under a sunless layer of toxic nitrogen fog nobody survives a minute in. Everything worth doing happens hundreds of feet up, on woven needle-bridges and swaying moss webs.',
         mutts: ['Silk-Line Stalkers', 'Needle Wasps', 'The Understory Reach'],
+        // §5.1 (audit): the arena's own identity — it declared none of these.
+        effectVocab: { fogbound: { label: 'the understory fog rising', severityMult: 1.3 }, swarming: { label: 'the needle wasps', severityMult: 1.2 } },
+        restockBias: ['rope', 'net', 'waterskin'],
+        edgeRules: { 'The Needle Bridges|The Swaying Reach': { kind: 'collapsing', crossings: 4 } },
         events: ['Needle Storm', 'Web Collapse', 'The Fog Rises'],
         law: 'noWaterExceptZone',
         lawZone: 'The Rain Catch',
@@ -715,10 +739,11 @@ export const ARENAS: Arena[] = [
         name: 'The Whispering Acoustic Forest',
         description: 'A lodgepole pine forest hollowed out by engineered wood-boring insects, the whole canopy one vast wind organ. The breeze through the hollow trunks sounds uncannily human — and drowns out anyone actually trying to sneak.',
         mutts: ['Wind-Throat Owls', 'Resonance Moths', 'Hollow-Bore Beetles'],
+        restockBias: ['blowgun', 'bandages', 'berries'],
         events: ['Resonant Shattering', 'The Chorus', 'Dry Grove Collapse'],
         // Acoustic confusion runs through the same primitive fog does —
         // hearing nothing true is its own kind of blindness.
-        effectVocab: { fogbound: { label: 'the wind-organ at full voice', severityMult: 1.3 } },
+        effectVocab: { fogbound: { label: 'the wind-organ at full voice', severityMult: 1.3 }, swarming: { label: 'the resonance moths', severityMult: 1.2 } },
         // §5: the arena's whole premise, finally a rule — in the Whispering Forest every fight is audible from every other sector.
         law: 'openMic',
         zones: [
@@ -742,6 +767,10 @@ export const ARENAS: Arena[] = [
         name: 'The Post-Burn Scar & Fireweed Slope',
         description: 'A mountain forest three years burned: blackened snag trees, deep erosion gullies, and thorny fireweed grown up thick over ground that still runs hot. Deadfall drops silently. The mountain is not finished with fire.',
         mutts: ['Cinder-Back Boars', 'Thornvine Jackals', 'The Standing Char'],
+        // §5.1 (audit): the arena's own identity — it declared none of these.
+        effectVocab: { stripped: { label: 'ash to the horizon', severityMult: 1.2 }, quaking: { label: 'a burned root-mat giving way', severityMult: 1.1 } },
+        restockBias: ['charcoal-filter', 'canteen', 'bandages'],
+        edgeRules: { 'The Char Ridge|The Snag Field': { kind: 'collapsing', crossings: 3 } },
         events: ['Seed Shrapnel', 'Silent Deadfall', 'Ground Heat Flare'],
         zones: [
             { name: 'The Cornucopia (The Ash Clearing)', terrain: 'open', danger: 0.55, resources: 0.3, adjacent: ['The Snag Field', 'The Fireweed Slope', 'Seep Spring'], features: { cover: 0.1, elevation: false, chokepoint: false, shelterQuality: 0.05, acoustics: 0.75 } },
@@ -761,6 +790,10 @@ export const ARENAS: Arena[] = [
         name: 'The Overgrown Ordnance Crater Field',
         description: 'A former military proving ground, pockmarked with deep overlapping craters flooded into stagnant ponds and choked by fast-growing vines. Unexploded ordnance sleeps under the root mats, and the vines have learned to grow something worse.',
         mutts: ['Bog Adders', 'Root-Mat Crawlers', 'The Salvage Hound'],
+        // §5.1 (audit): the arena's own identity — it declared none of these.
+        effectVocab: { flooded: { label: 'the craters filling', severityMult: 1.3 }, contaminated: { label: 'old ordnance leaching', severityMult: 1.3 } },
+        restockBias: ['helmet', 'vest', 'iodine'],
+        edgeRules: { 'Slick Crater Wall|The Deep Craters': { kind: 'tolled', toll: { fatigue: 6, itemCost: true } } },
         events: ['Pressure Pod', 'Crater Collapse', 'Buried Ordnance'],
         // §5: unexploded ordnance under a root mat is worse in the dark, when nobody can see where they are putting their feet.
         law: 'deadlyNight',

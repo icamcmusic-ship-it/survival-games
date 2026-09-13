@@ -12,7 +12,9 @@
  *
  *   npm run test:sim
  */
-import { TRUCE_LEDGER } from '../src/engine/parley';
+import { emptyTruceLedger, truceLedger } from '../src/engine/parley';
+import { PARLEY_TEXTS } from '../src/data/flavorText';
+const TRUCE_LEDGER = emptyTruceLedger();
 import { generateTributes, strengthCapForAge } from '../src/engine/generator';
 import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
@@ -100,6 +102,31 @@ let zoneContaminations = 0, zoneFogs = 0, zoneStripped = 0, zoneSevered = 0;
 let borderTelegraphs = 0, cornucopiaRestocks = 0, muttEncounters = 0;
 // Newer systems: each needs evidence it actually fired across the sweep.
 let standoffs = 0, tributesPaid = 0, tributesPaidInformation = 0, trucesStruck = 0;
+/**
+ * §9 (audit): match a log line against the flavour pool that produced it.
+ *
+ * The truce counters were hand-written regexes quoting a few phrases from each
+ * pool. Every time a pool grew, the counter silently stopped seeing the new
+ * entries — which is how the on-screen truce check came to report 472 of 527
+ * terms narrated while the engine ledger balanced exactly. Deriving the
+ * matchers from the pools themselves means a new line is counted the day it is
+ * authored and never needs a second edit here.
+ */
+const POOL_PATTERNS = new Map<readonly string[], RegExp[]>();
+function matchesPool(pool: readonly string[], text: string): boolean {
+    let pats = POOL_PATTERNS.get(pool);
+    if (!pats) {
+        pats = pool.map(tpl => new RegExp(
+            '^' + tpl
+                .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                .replace(/\\\{(t1|t2|zone|tribute|other|breaker|victim|target|striker|name)\\\}/g, '.+?')
+            + '$',
+        ));
+        POOL_PATTERNS.set(pool, pats);
+    }
+    return pats.some(p => p.test(text));
+}
+
 let trucesBroken = 0, soloDepartures = 0, trucesHeld = 0, schisms = 0;
 // §4: the beats this pass added — a coalition coming apart, an estate passing
 // to whoever was standing closest, and two mentors splitting a parachute.
@@ -206,6 +233,7 @@ for (let i = 0; i < 400; i++) {
     if (guard < 2500) note(`run ${seed} needed excessive cycles`);
   }
   if (guard <= 0) note(`run ${seed} hit the cycle guard (possible infinite loop)`);
+  { const L = truceLedger(state); (Object.keys(L) as Array<keyof typeof L>).forEach(k => { TRUCE_LEDGER[k] += L[k]; }); }
 
   runs++;
   totalDays += state.day;
@@ -275,13 +303,13 @@ for (let i = 0; i < 400; i++) {
     if (/pay in directions instead|finds nothing worth taking, and asks a question|Empty pockets buy nothing|Information is the only currency|knowing better than to go back to/.test(l.text)) tributesPaidInformation++;
     if (/^TRUCE:/.test(l.text)) trucesStruck++;
     if (/The agreement is holding|still worth more than the fight|it holds for one more day|Nothing is what they agreed on|That is what the word was for|and neither of them says what|It looks like courtesy|and neither of them moves/.test(l.text)) trucesHeld++;
-    if (/there was never any agreement at all|decides the arithmetic has changed|has just stopped honouring it|Arguing would take longer|replays the handshake twice|is finished with it now/.test(l.text)) trucesBroken++;
+    if (matchesPool(PARLEY_TEXTS.truceBroken, l.text)) trucesBroken++;
     // §4.1: expiry resolves on-screen now — renew, lapse, or turn. These three
     // together are the fix for the "80 of 84 truces evaporated silently" bug,
     // so the floor below asserts the resolution layer stays visible.
-    if (/truce holds another stretch|same terms, both still in|renew the agreement|The truce rolls over/.test(l.text)) trucesRenewed++;
-    if (/runs out quietly|simply expires, and from tomorrow|clock on it has run out|let the pact lapse|The truce is over/.test(l.text)) trucesLapsed++;
-    if (/was counting the hours|discovers what the letter was worth|turns on .* before the echo|kept the truce like a blade/.test(l.text)) trucesTurned++;
+    if (matchesPool(PARLEY_TEXTS.truceRenewed, l.text)) trucesRenewed++;
+    if (matchesPool(PARLEY_TEXTS.truceLapsed, l.text)) trucesLapsed++;
+    if (matchesPool(PARLEY_TEXTS.truceTurned, l.text)) trucesTurned++;
     if (/would rather stop pretending otherwise/.test(l.text)) soloDepartures++;
     if (/it is two camps/.test(l.text)) schisms++;
     if (/stops taking cover in|stops making plans/.test(l.text)) resolveBreakdowns++;

@@ -120,7 +120,7 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Seaton', 'Sinker', 'Skiff', 'Sloop', 'Squall', 'Swells', 'Breakwater', 'Trawl', 'Wake', 'Weir',
         ],
         Female: [
-            'Annie', 'Cresta', 'Mags', 'Nerida', 'Pearl', 'Coral', 'Siren', 'Delta', 'Marina', 'Ocean',
+            'Annie', 'Cresta', 'Mags', 'Nerida', 'Trawler', 'Coral', 'Siren', 'Delta', 'Marina', 'Ocean',
             'Brooke', 'Sandy', 'Aqua', 'Naida', 'Tallulah', 'Undine', 'Kelp', 'Lagoon', 'Cove', 'Isla',
             'Cordelia', 'Lorelei', 'Marisol', 'Maren', 'Meredith', 'Nerissa', 'Oceana', 'Thalassa', 'Calypso', 'Anemone',
             'Azura', 'Caspia', 'Cascade', 'Dune', 'Estuary', 'Kelpie', 'Oyster', 'Saline', 'Seaglass', 'Selkie',
@@ -228,11 +228,11 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Jersey', 'Loomis', 'Mender', 'Quilt', 'Ravel', 'Sartor', 'Shuttle', 'Velveteen', 'Carder', 'Dyer',
             'Mercer', 'Tenter', 'Fuller', 'Napp', 'Paisley', 'Patch', 'Burlap', 'Cord', 'Darner', 'Denim',
             'Dimity', 'Felt', 'Frieze', 'Fringe', 'Garment', 'Gauze', 'Hemp', 'Lint', 'Melton', 'Merino',
-            'Mohair', 'Oxford', 'Pique', 'Plaid', 'Rayon', 'Seam', 'Skein', 'Sley', 'Swatch', 'Taylor',
+            'Mohair', 'Oxford', 'Pique', 'Plaid', 'Rayon', 'Overlock', 'Skein', 'Sley', 'Swatch', 'Taylor',
             'Thread', 'Ticking', 'Toile', 'Tucker', 'Vestman', 'Wale', 'Webb', 'Winder', 'Yarn', 'Zibel',
         ],
         Female: [
-            'Cecelia', 'Paylor', 'Satin', 'Velvet', 'Taffet', 'Lace', 'Damaskin', 'Percale', 'Chiffon', 'Taffeta',
+            'Cecelia', 'Paylor', 'Warpline', 'Napcloth', 'Taffet', 'Lace', 'Damaskin', 'Percale', 'Chiffon', 'Taffeta',
             'Ribbon', 'Gingham', 'Linen', 'Angora', 'Bobbinet', 'Batiste', 'Cambria', 'Chenille', 'Crepe', 'Damask',
             'Georgette', 'Kersey', 'Lawn', 'Muslina', 'Organza', 'Tulle', 'Voile', 'Weaverly', 'Zibeline', 'Alpaca',
             'Chintz', 'Dobby', 'Faille', 'Flannel', 'Crepeline', 'Hemline', 'Madras', 'Shantung', 'Twillia', 'Calenda',
@@ -297,7 +297,7 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Annie', 'Belle', 'Birdie', 'Cassidy', 'Georgia', 'Hattie', 'June', 'Loretta', 'Wranglyn', 'Reba',
             'Bandana', 'Saddleigh', 'Blaze', 'Bonnet', 'Pastura', 'Calfa', 'Chapparal', 'Cowslip', 'Cream', 'Dun',
             'Ewe', 'Farrow', 'Gingham', 'Goldie', 'Heford', 'Hidey', 'Lamb', 'Mare', 'Milka', 'Mowline',
-            'Paint', 'Pinto', 'Ranchelle', 'Rodea', 'Shears', 'Sorrel', 'Spurette', 'Tally', 'Vealia', 'Wooly',
+            'Paint', 'Pinto', 'Ranchelle', 'Rodea', 'Shears', 'Dray', 'Spurette', 'Tally', 'Vealia', 'Wooly',
         ],
     },
     // District 11 — Agriculture: orchards, row crops, and wildflowers, cut
@@ -333,9 +333,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
     // from trades, baking, and soft garden flowers (Peeta, Primrose, Maysilee).
     12: {
         Male: [
-            'Gale', 'Haymitch', 'Burdock', 'Ash', 'Corf', 'Dust', 'Slate', 'Brattice', 'Coal', 'Ore',
+            'Gale', 'Haymitch', 'Burdock', 'Ash', 'Corf', 'Dust', 'Blackdamp', 'Brattice', 'Coal', 'Ore',
             'Soot', 'Pebble', 'Cinder', 'Tipple', 'Gravel', 'Grit', 'Lantern', 'Lode', 'Mica', 'Pitch',
-            'Shale', 'Tunnel', 'Vein', 'Collier', 'Hewer', 'Nugget', 'Drift', 'Ironstone', 'Carbide', 'Anthracite',
+            'Firedamp', 'Tunnel', 'Vein', 'Collier', 'Hewer', 'Nugget', 'Drift', 'Ironstone', 'Carbide', 'Anthracite',
             'Blaine', 'Briar', 'Brooker', 'Buckthorn', 'Chicory', 'Cricket', 'Elk', 'Fenn', 'Fox', 'Hawk',
             'Heron', 'Hollow', 'Hunter', 'Jay', 'Splint', 'Moss', 'Ridge', 'River', 'Sedge', 'Snare',
             'Sumac', 'Tam', 'Teasel', 'Thorn', 'Wilder', 'Wolf', 'Yew', 'Davy', 'Birchen', 'Bracken',
@@ -345,7 +345,7 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Pick', 'Quarrier', 'Seamus', 'Shaft', 'Sledge', 'Smelt', 'Spade', 'Tinder', 'Winch', 'Zinc',
         ],
         Female: [
-            'Katniss', 'Primrose', 'Maysilee', 'Ember', 'Eglantine', 'Hazel', 'Iris', 'Violet', 'Willow', 'Rue',
+            'Katniss', 'Primrose', 'Maysilee', 'Ember', 'Eglantine', 'Hazel', 'Iris', 'Violet', 'Willow', 'Bramble',
             'Aster', 'Bryony', 'Lanterne', 'Bilberry', 'Heather', 'Ivy', 'Harebell', 'Mistle', 'Mallow', 'Colliera',
             'Nettle', 'Raven', 'Sootwyn', 'Foxglove', 'Rainelle', 'Thistle', 'Wren', 'Sloe', 'Betony', 'Dove',
             'Fennel', 'Filly', 'Ginger', 'Hyssop', 'Gritta', 'Linnet', 'Mim', 'Posy', 'Robin', 'Senna',
@@ -377,9 +377,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
     // clipped, functional register of a place that measures everything.
     13: {
         Male: [
-            'Cordite', 'Flint', 'Graphite', 'Primer', 'Casing', 'Vector', 'Ordnance', 'Breech', 'Nitre', 'Sulfur',
+            'Cordite', 'Bunker', 'Graphite', 'Primer', 'Casing', 'Vector', 'Ordnance', 'Breech', 'Nitre', 'Sulfur',
             'Bore', 'Tracer', 'Fuze', 'Calibre', 'Ramrod', 'Percy', 'Magnus', 'Barrel', 'Charge', 'Ledger',
-            'Tallis', 'Corvus', 'Adamant', 'Coriolan', 'Struck', 'Blast', 'Pitchblende', 'Hollis', 'Anvil', 'Cinder',
+            'Tallis', 'Corvus', 'Adamant', 'Coriolan', 'Struck', 'Blast', 'Pitchblende', 'Hollis', 'Silo', 'Fallout',
             'Munition', 'Detonate', 'Salvor', 'Crampon', 'Foundry', 'Bitumen', 'Culvert', 'Slagborn', 'Retort', 'Fulminate',
             'Percussor', 'Lockstep', 'Rollcall', 'Requisite', 'Enfilade', 'Sapper', 'Trench', 'Bunkard', 'Warhead', 'Fissile',
             'Isotope', 'Reactant', 'Halberd', 'Caisson', 'Limber', 'Bandolier', 'Quartermast', 'Kelvyn', 'Marek', 'Dalvin',
@@ -405,7 +405,7 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
     // long shelf-life of everything including grudges.
     14: {
         Male: [
-            'Brine', 'Halloran', 'Saltus', 'Marl', 'Frost', 'Rime', 'Cured', 'Barrow', 'Kelvin', 'Pickett',
+            'Derrick', 'Halloran', 'Saltus', 'Marl', 'Frost', 'Rime', 'Cured', 'Barrow', 'Kelvin', 'Pickett',
             'Ossian', 'Winterbourne', 'Cask', 'Hoar', 'Brack', 'Sump', 'Glaive', 'Cullen', 'Larder', 'Chill',
             'Saline', 'Crust', 'Keeper', 'Cole', 'Halite', 'Freeze', 'Pan', 'Evapor', 'Coldwell', 'Stack',
             'Bittern', 'Corning', 'Icehouse', 'Nitrite', 'Packer', 'Rackard', 'Saltram', 'Scupper', 'Tundras', 'Vault',
@@ -461,9 +461,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
     // and names that sound like equipment because half of them are.
     16: {
         Male: [
-            'Derrick', 'Fathom', 'Vaunt', 'Sounder', 'Riser', 'Kelp', 'Trawl', 'Bathys', 'Anchor', 'Rig',
+            'Derrick', 'Fathom', 'Vaunt', 'Sounder', 'Riser', 'Vane', 'Trawl', 'Bathys', 'Anchor', 'Rig',
             'Drill', 'Marlin', 'Deepwell', 'Gaff', 'Plumb', 'Grapnel', 'Bilge', 'Keel', 'Hawser', 'Cleat',
-            'Undertow', 'Barnacle', 'Cordage', 'Windlass', 'Shoal', 'Tiller', 'Nadir', 'Brace', 'Corrie', 'Abyssal',
+            'Undertow', 'Barnacle', 'Cordage', 'Windlass', 'Pylon', 'Tiller', 'Nadir', 'Brace', 'Corrie', 'Abyssal',
             'Bollard', 'Chokepoint', 'Crownblock', 'Davit', 'Downhole', 'Drawworks', 'Flotel', 'Gimbal', 'Jackup', 'Kelly',
             'Leadline', 'Mudline', 'Outboard', 'Pennant', 'Quayle', 'Reeve', 'Roughneck', 'Scarp', 'Semisub', 'Sheave',
             'Slipway', 'Sonar', 'Spudcan', 'Steever', 'Stopcock', 'Swivel', 'Thwart', 'Topside', 'Tourelle', 'Traverse',
@@ -473,7 +473,7 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Cardwell', 'Deadrise', 'Ebbtide', 'Fairlead', 'Groundswell', 'Hullwright', 'Ironmoor', 'Jibsail', 'Knightshead', 'Longshore',
         ],
         Female: [
-            'Fathoma', 'Marina', 'Nerissa', 'Riserly', 'Bathya', 'Caisson', 'Pontoon', 'Sirena', 'Plumbline', 'Anchora',
+            'Fathoma', 'Aurora', 'Nerissa', 'Riserly', 'Bathya', 'Caisson', 'Pontoon', 'Sirena', 'Plumbline', 'Anchora',
             'Trawla', 'Kelpie', 'Hawsell', 'Cleatwyn', 'Nadira', 'Shoala', 'Cordelle', 'Bilgewyn', 'Keelin', 'Marlena',
             'Windlassa', 'Tillera', 'Brackish', 'Abyssa', 'Benthos', 'Derricka', 'Pelagia', 'Grapnelle', 'Deepwyn', 'Abyssala',
             'Ballasta', 'Bollarda', 'Caissona', 'Chokepointe', 'Crownblocka', 'Davita', 'Downhola', 'Drawworka', 'Flotella', 'Gimbala',

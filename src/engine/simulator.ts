@@ -26,6 +26,10 @@ export class Simulator {
         // JSON fallback. This runs on four hot paths (startGame, rerollCast,
         // confirmReaping, resumeSavedRun), so it gets the fast clone too.
         this.state = snapshotState(initialState);
+        // Inert on purpose: every phase entry point reseeds `ctx.rng` from
+        // (seed, phase, day) before drawing, so this seed is never consumed.
+        // It is here so `ctx.rng` is never undefined between construction and
+        // the first phase, not because resume determinism depends on it.
         this.ctx = createContext(this.state, new RNG(`${this.state.seed}-${this.state.phase}-${this.state.day}`));
     }
 

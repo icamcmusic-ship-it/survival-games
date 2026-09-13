@@ -181,7 +181,7 @@ export function rememberedThreat(state: GameState, t: Tribute, zone: string): nu
 export function rememberedRivals(state: GameState, t: Tribute, zone: string): number {
     const slot = ensureMemory(t).zones[zone];
     if (!slot) return 0;
-    if (hearsayAge(slot, cycleOf(state) - slot.seen) > MEMORY.sightingLifetime) return 0;
+    if (hearsayAge(slot, Math.max(0, cycleOf(state) - slot.seen)) > MEMORY.sightingLifetime) return 0;
     return slot.rivals;
 }
 
@@ -402,9 +402,19 @@ export function suspicionOf(t: Tribute, otherId: string): number {
 export function raiseSuspicion(t: Tribute, otherId: string, amount: number) {
     const mem = ensureMemory(t);
     mem.suspicion = mem.suspicion ?? {};
-    // The Paranoid read more into everything they see.
-    const sharpened = amount * (1 + traitMod(t, 'betrayalResist'));
+    // The Paranoid read more into everything they see — and are no quicker to
+    // let it go. The multiplier applies to the upward direction only; it
+    // used to scale a clearing investigation too, so a Paranoid cleared a
+    // suspect 30% *harder* than anybody else.
+    const sharpened = amount > 0 ? amount * (1 + traitMod(t, 'betrayalResist')) : amount;
     mem.suspicion[otherId] = Math.min(SUSPICION.max, (mem.suspicion[otherId] ?? 0) + sharpened);
+}
+
+/** §4.2 (audit): something an ally *did* that argues against the doubt. */
+export function easeSuspicion(t: Tribute, otherId: string, amount: number) {
+    const sus = t.memory?.suspicion;
+    if (!sus || sus[otherId] === undefined) return;
+    sus[otherId] = Math.max(0, sus[otherId] - amount);
 }
 
 export function decaySuspicion(state: GameState) {
@@ -446,6 +456,8 @@ export function noteWound(attacker: Tribute, defender: Tribute) {
 export function noteStoodBy(t: Tribute, otherId: string) {
     const mem = ensureMemory(t);
     if (!mem.stoodBy.includes(otherId)) mem.stoodBy.push(otherId);
+    // Somebody who took a risk for you is somebody you doubt less.
+    easeSuspicion(t, otherId, SUSPICION.easedByStoodBy);
 }
 
 export function hasStoodBy(t: Tribute, otherId: string): boolean {
@@ -662,7 +674,9 @@ function noteLie(state: GameState, teller: Tribute, listener: Tribute) {
  * sent to has nothing left in it.
  */
 function lieIsExposed(t: Tribute, zone: string, slot: ZoneMemory, state: GameState): boolean {
-    if (slot.threat >= INTEL.lieThreat) return (state.zoneDeaths?.[zone] ?? 0) === 0;
+    // Threat is capped at MEMORY_THREAT_CAP on write; a lie threshold above
+    // the cap would make the quiet-zone lie permanently unexposable.
+    if (slot.threat >= Math.min(INTEL.lieThreat, MEMORY_THREAT_CAP)) return (state.zoneDeaths?.[zone] ?? 0) === 0;
     return (ensureMemory(t).forageFailures?.[zone] ?? 0) > 0;
 }
 

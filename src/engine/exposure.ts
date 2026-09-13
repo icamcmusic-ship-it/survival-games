@@ -28,8 +28,26 @@ export interface ExposureProfile {
     cause: string;
     /** Flat health cost per tick. */
     damage?: number;
+    /**
+     * Odds the `damage` lands at all this tick. A climate whose harm is a
+     * *chance* of a real hit (a lungful of ash) used to be written as
+     * `chance * hit` — a fractional expected value that `Math.round` turned
+     * into zero every single tick, so two arenas' signature deaths could
+     * never fire. Roll the odds, then land the full amount.
+     */
+    damageChance?: number;
     fatigue?: number;
     sanity?: number;
+    /** Same shape for sanity: odds the full `sanity` loss lands this tick. */
+    sanityChance?: number;
+    /**
+     * A heat profile: it works by exhausting and drying a body. Enables the
+     * heatstroke collapse and the heat-resistance scaling. Set this on any
+     * climate whose thirst is charged through `drains.thirstMultiplier`
+     * rather than a per-tick `thirst` figure — otherwise the desert could
+     * not give anyone heatstroke.
+     */
+    heat?: boolean;
     thirst?: number;
     hunger?: number;
     /** Relief, for weather that is actually useful (rain, shade). */
@@ -67,11 +85,14 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     const zoneShelterScale = zone ? 1 - (zoneFeatures(zone).shelterQuality ?? 0) * PHYSIQUE.zoneShelterExposureReduction : 1;
     const scale = (profile.intensity ?? 1) * shelterScale * zoneShelterScale;
     const amount = (value: number | undefined) => Math.round((value ?? 0) * scale);
+    const isHeat = !!profile.thirst || !!profile.heat;
 
     // Heat resistance takes the edge off anything that works by exhausting you.
-    const heatScale = profile.thirst ? Math.max(0, 1 - traitMod(t, 'heatResist')) : 1;
+    const heatScale = isHeat ? Math.max(0, 1 - traitMod(t, 'heatResist')) : 1;
     if (profile.fatigue) t.vitals.fatigue += Math.round(amount(profile.fatigue) * heatScale);
-    if (profile.sanity) t.vitals.sanity -= amount(profile.sanity);
+    if (profile.sanity && (profile.sanityChance === undefined || ctx.rng.chance(profile.sanityChance * scale))) {
+        t.vitals.sanity -= amount(profile.sanity);
+    }
     // §3.1: a well-padded tribute suffers in the heat in a way a lean one does
     // not, and pays for it in water.
     if (profile.thirst) t.vitals.thirst += Math.round(amount(profile.thirst) * heatScale * (1 + heatBurden(t)));
@@ -118,12 +139,12 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
         injure(t, 'infected');
     }
 
-    if (profile.damage) {
+    if (profile.damage && (profile.damageChance === undefined || ctx.rng.chance(profile.damageChance * scale))) {
         applyDamage(ctx, t, amount(profile.damage), { cause: profile.cause, kind: 'climate' });
     }
     // §7: heatstroke. A heat profile is one that works by taking water; a
     // tribute already parched and spent under it can collapse outright.
-    if (profile.thirst && t.status === 'alive'
+    if (isHeat && t.status === 'alive'
         && t.vitals.thirst >= CLIMATE.heatstrokeThirst && t.vitals.fatigue >= CLIMATE.heatstrokeFatigue
         && ctx.rng.chance(CLIMATE.heatstrokeChance * scale * resist('heatResist'))) {
         applyDamage(ctx, t, CLIMATE.heatstrokeDamage, { cause: `Heatstroke in ${profile.name}`, kind: 'climate' });

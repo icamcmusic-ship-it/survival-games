@@ -6,7 +6,7 @@ import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { ChronicleExport } from '../components/ChronicleExport';
 import { VictorArc } from '../components/VictorArc';
 import { TributeModal } from '../components/TributeModal';
-import { Trophy, MapPin, Swords, Skull, RotateCcw } from 'lucide-react';
+import { Trophy, MapPin, Swords, Skull, RotateCcw, Repeat, Award } from 'lucide-react';
 import { META_ACHIEVEMENTS, ACHIEVEMENTS } from '../data/achievements';
 import { RECORD_DEFS } from '../utils/panemStorage';
 import { gameStore } from '../store/gameStore';
@@ -31,11 +31,19 @@ function cleanCause(cause: string): string {
 export function EndScreen({
     gameState,
     onRestart,
+    onPlayAgain,
+    onReplaySeed,
+    onHallOfFame,
     coins,
     betWonMessage
 }: {
     gameState: GameState,
     onRestart: () => void,
+    /** Same arena and settings, a fresh seed. */
+    onPlayAgain?: () => void,
+    /** This exact Games again, marked as a replay. */
+    onReplaySeed?: () => void,
+    onHallOfFame?: () => void,
     coins: number,
     betWonMessage: string | null
 }) {
@@ -49,6 +57,7 @@ export function EndScreen({
         : null;
     // REPLAY-03/04: what this run showed the player that no previous run did.
     const outcome = useStore(gameStore, s => s.lastRunOutcome);
+    const hofWriteFailed = useStore(gameStore, s => s.hofWriteFailed);
 
     // The day counter can tick one past the last day anything actually happened
     // (the loop increments, then the win check ends the run), so bound the
@@ -119,8 +128,25 @@ export function EndScreen({
                         <button onClick={() => setActiveTab('replay')} aria-pressed={activeTab === 'replay'} className="seg-item">Replay</button>
                         <button onClick={() => setActiveTab('logs')} aria-pressed={activeTab === 'logs'} className="seg-item">Full chronicle</button>
                     </div>
-                    <button onClick={onRestart} className="btn btn-primary btn-sm">
-                        <RotateCcw className="w-3.5 h-3.5" /> New simulation
+                    {/* The end of a run is the highest-intent moment in the loop
+                        and it used to dump the reader on a blank setup screen. */}
+                    {onPlayAgain && (
+                        <button onClick={onPlayAgain} className="btn btn-primary btn-sm" title="Same arena and rules, a new seed">
+                            <Repeat className="w-3.5 h-3.5" /> Next year, same arena
+                        </button>
+                    )}
+                    {onReplaySeed && (
+                        <button onClick={onReplaySeed} className="btn btn-sm" title="Run this exact seed again to watch it back">
+                            <RotateCcw className="w-3.5 h-3.5" /> Replay this seed
+                        </button>
+                    )}
+                    {onHallOfFame && (
+                        <button onClick={onHallOfFame} className="btn btn-sm">
+                            <Award className="w-3.5 h-3.5" /> Hall of Fame
+                        </button>
+                    )}
+                    <button onClick={onRestart} className="btn btn-ghost btn-sm">
+                        New setup
                     </button>
                 </div>
             </div>
@@ -246,6 +272,16 @@ export function EndScreen({
                         </div>
                     )}
 
+                    {hofWriteFailed && (
+                        <div role="alert" className="md:col-span-2 panel p-4 space-y-1" style={{ borderColor: 'var(--red-on-ink)', borderWidth: '2px' }}>
+                            <span className="eyebrow" style={{ color: 'var(--red-on-ink)' }}>Not archived</span>
+                            <p className="text-sm text-[var(--color-ink-200)]">
+                                {hofWriteFailed === 'quota'
+                                    ? 'This Games could not be written to the Hall of Fame: the browser\'s storage for this site is full. Export or delete older entries from the Hall of Fame to make room — the record book and your coins were saved.'
+                                    : 'This Games could not be written to the Hall of Fame: browser storage is unavailable in this session (private browsing, or storage blocked). The record book was kept in memory for this session only.'}
+                            </p>
+                        </div>
+                    )}
                     {betWonMessage && (
                         <div className="md:col-span-2 panel p-5 flex flex-wrap justify-between items-center gap-4"
                             style={{ borderColor: 'var(--color-coin-400)', borderWidth: '3px' }}>

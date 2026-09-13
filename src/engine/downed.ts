@@ -202,7 +202,7 @@ export function tickDowned(ctx: SimContext) {
                 let chance = DOWNED.executeBase
                     + ARCHETYPES[decider.archetype].aggression * DOWNED.executePerAggression
                     - traitMod(decider, 'killSanity') * DOWNED.executePerAggression;
-                if (decider.traits.includes('Grim')) chance += DOWNED.executePerAggression;
+                chance += traitMod(decider, 'executeDrive');
                 const witnesses = here.filter(o => o.id !== decider.id);
                 if (ctx.rng.chance(Math.max(0, Math.min(1, chance)))) {
                     decider.finishedDowned = [...(decider.finishedDowned ?? []), t.id];

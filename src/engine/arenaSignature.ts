@@ -171,6 +171,7 @@ function tempestSignature(ctx: SimContext, cycle: number, rng: RNG) {
 function canopySignature(ctx: SimContext, cycle: number, rng: RNG) {
     if (cycle % 2 !== 0) return;
     const zones = activeZones(ctx);
+    if (zones.length === 0) return;
     const from = zones.find(z => tributesIn(ctx, z).length === 0) ?? rng.pick(zones);
     const zone = getZone(ctx.state.arena, from);
     if (!zone) return;
@@ -1028,7 +1029,7 @@ function labyrinthSignature(ctx: SimContext, cycle: number, rng: RNG) {
     // Then cut two: a shifted wall lands somewhere people are not standing,
     // more often than not, because the Gamemakers want a chase, not a crush.
     const cut: string[] = [];
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 2 && zones.length > 0; i++) {
         const from = zones.find(z => tributesIn(ctx, z).length === 0 && rng.chance(SIGNATURE_RULES.labyrinthQuietBias)) ?? rng.pick(zones);
         const zone = getZone(ctx.state.arena, from);
         if (!zone) continue;

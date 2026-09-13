@@ -1378,7 +1378,6 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'intelligence',
                 sanity: 26,
                 fatigue: 10,
-                requires: { law: 'noCannons' },
                 witnesses: true,
             },
             {
@@ -4894,7 +4893,6 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 sanity: 28,
                 infected: true,
                 damage: 10,
-                requires: { law: 'noCannons' },
             },
             {
                 text: 'The hub of {zone} is the one chamber down here with a hole in the roof, and for about two hours in the middle of the day there is a column of actual daylight in it, and {tribute} stands in it.',
@@ -14642,6 +14640,50 @@ const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         heal: 5,
         fatigue: -10,
         sanity: -8,
+    },
+    // §7 (audit): eight more, each on a gate the schema offered and nothing
+    // used — a tribute's trait, their stance, the band their sanity is in —
+    // and one authored entry into `irradiated`, which had none.
+    {
+        id: 'universal-glow', oncePerRun: true, weight: 0.5,
+        text: 'Something the Gamemakers buried under {zone} has started to leak. The ground has a faint warmth to it that has nothing to do with the sun, and {tribute} has been sleeping on it.',
+        escapeText: '{tribute} notices the grass in {zone} has died in a perfect circle and camps somewhere else.',
+        cause: 'Poisoned by what was buried', dodgeStat: 'intelligence', damage: 18, sanity: 10, startsZoneEffect: 'irradiated', zoneWide: true,
+    },
+    {
+        text: '{tribute}, Bloodthirsty, hears a fight two zones over and runs toward it through ground they never checked.',
+        escapeText: '{tribute} runs toward the sound from {zone} and, for once, looks where they are putting their feet.',
+        cause: 'Ran into the arena\'s own trap', dodgeStat: 'agility', damage: 28, bleeding: true, requires: { trait: 'Bloodthirsty', minSurvivors: 4 },
+    },
+    {
+        text: '{tribute} has been Fortified in {zone} for days, and a position that is not moved from is a position the arena has had time to work on.',
+        escapeText: '{tribute} shifts camp fifty metres in {zone} for no reason they can name, and the thing that came for the old camp finds it empty.',
+        cause: 'Dug in too long', dodgeStat: 'intelligence', damage: 30, requires: { stance: ['Fortified'] },
+    },
+    {
+        text: '{tribute}, Skittish, breaks cover in {zone} at a sound that was nothing, and the breaking cover was not nothing.',
+        escapeText: '{tribute} flinches at the sound in {zone} and, this once, stays down.',
+        cause: 'Killed breaking cover', dodgeStat: 'willpower', damage: 24, bleeding: true, requires: { trait: 'Skittish', minSurvivors: 4 },
+    },
+    {
+        text: 'The voices {tribute} has been hearing in {zone} agree on a direction, and it is the direction of the drop.',
+        escapeText: '{tribute} hears the voices in {zone} tell them where to walk and walks the other way.',
+        cause: 'Walked where the voices said', dodgeStat: 'willpower', dodgeDifficulty: 7, damage: 40, requires: { sanityBand: 'unravelling', elevationOrChoke: true },
+    },
+    {
+        text: '{tribute}, Stoic, does not mention the wound in {zone} to anyone, including themselves, for three days.',
+        escapeText: '{tribute} finally looks at the wound in {zone} and does something about it.',
+        cause: 'Died of a wound they would not admit to', dodgeStat: 'intelligence', damage: 16, infected: true, requires: { trait: 'Stoic' },
+    },
+    {
+        text: '{tribute}, scavenging, turns over the body in {zone} that everybody else walked around, and finds out why they walked around it.',
+        escapeText: '{tribute} sees the wire under the body in {zone} before their hand closes on the pack.',
+        cause: 'Killed at a rigged corpse', dodgeStat: 'intelligence', damage: 34, bleeding: true, requires: { stance: ['Scavenging'] },
+    },
+    {
+        text: '{tribute}, desperate, drinks from the first water they find in {zone} without looking at it.',
+        escapeText: '{tribute}, past caring, still smells the water in {zone} first.',
+        cause: 'Poisoned by bad water', dodgeStat: 'intelligence', poisoned: true, damage: 14, quench: 10, requires: { stance: ['Desperate'] },
     },
 ];
 

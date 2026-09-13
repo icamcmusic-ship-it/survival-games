@@ -219,6 +219,7 @@ function applyEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef, narrate
 
 /** Applies one arena-specific event to a tribute, honouring their dodge stat. */
 export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
+    ctx.state.eventLastFired = { ...(ctx.state.eventLastFired ?? {}), [eventKey(event)]: cycleOf(ctx.state) };
     const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
     if (!applyEventTo(ctx, t, event, true)) return;
 
@@ -355,6 +356,12 @@ const TERRAIN_KEYWORDS: Array<[Terrain, RegExp]> = [
     ['forest', /canopy|vine|timber|jungle fruit|army ants|insect swarm|falling branch/i],
     ['ruins', /building collapse|stairwell|sewer|tunnel|wire|tank water|gas explosion|rubble/i],
     ['open', /sandstorm|dust devil|mirage|sun|solar flare|dune|ash storm|lava|magma|volcanic/i],
+    // The four terrains added in §10 had no keywords, so the ~430 events
+    // without explicit `terrains` could never be inferred onto them.
+    ['cave', /cavern|stalactite|stalagmite|passage|gallery|chamber|underground|blind dark|bat/i],
+    ['ice', /crevasse|pack ice|floe|black ice|glacier|frozen lake|ice shelf|serac/i],
+    ['desert', /dune|sand|scorch|salt pan|heat haze|mirage|dust squall/i],
+    ['urban', /street|alley|tenement|rooftop|stairwell|window|storefront|gutter|tram/i],
 ];
 
 /** Best-guess terrain(s) for an event that never had `terrains` set explicitly. Cached per event def — the defs are shared module-level objects, and the regex sweep was previously re-run on every pick. */
@@ -418,6 +425,11 @@ function requirementsHold(ctx: SimContext, t: Tribute, event: ArenaEventDef): bo
     return true;
 }
 
+/** Identity for the repeat cooldown: the id where there is one, else the opening of the text. */
+export function eventKey(event: ArenaEventDef): string {
+    return event.id ?? event.text.slice(0, 48);
+}
+
 /** §7e: an event that has already had its one turn this run. */
 function spent(ctx: SimContext, event: ArenaEventDef): boolean {
     return event.oncePerRun === true && event.id !== undefined
@@ -432,7 +444,11 @@ export function pendingChain(ctx: SimContext, t: Tribute, events: ArenaEventDef[
     const queued = ctx.state.eventChains?.[t.id];
     if (!queued) return undefined;
     delete ctx.state.eventChains![t.id];
-    return events.find(e => e.id === queued);
+    const event = events.find(e => e.id === queued);
+    // Two tributes can each set the same chain up; a once-per-run payoff
+    // still only pays off once. The bell does not fall twice.
+    if (!event || spent(ctx, event)) return undefined;
+    return event;
 }
 
 export function pickTerrainEvent(ctx: SimContext, events: ArenaEventDef[], terrain: Terrain | undefined, t?: Tribute): ArenaEventDef {
@@ -445,12 +461,21 @@ export function pickTerrainEvent(ctx: SimContext, events: ArenaEventDef[], terra
     const eligible = events.filter(e => !spent(ctx, e) && (!t || requirementsHold(ctx, t, e)));
     const gated = eligible.length > 0 ? eligible : events.filter(e => !spent(ctx, e));
     events = gated.length > 0 ? gated : events;
+    // §7 (audit): no repeats inside the cooldown, unless that would leave
+    // nothing — a small pool still speaks.
+    const cycle = cycleOf(ctx.state);
+    const last = ctx.state.eventLastFired ?? {};
+    const fresh = events.filter(e => cycle - (last[eventKey(e)] ?? -Infinity) >= ENCOUNTERS.eventRepeatCooldown);
+    if (fresh.length > 0) events = fresh;
     const pool = terrain ? events.filter(fits) : events;
     const candidates = pool.length > 0 ? pool : events;
     // §1.3: weighted, not uniform. `withUniversalEvents` marks the shared pool
     // down so an arena with five authored events still reads as itself.
     const total = candidates.reduce((sum, e) => sum + (e.weight ?? 1), 0);
-    if (total <= 0) return ctx.rng.pick(candidates);
+    // A guard that throws is a trap: `pick` on an empty pool is the crash
+    // this line exists to avoid. Fall to the first candidate, or the universal
+    // pool's first entry if there are none at all.
+    if (total <= 0) return ctx.rng.pickOrUndefined(candidates) ?? events[0];
     let roll = ctx.rng.nextFloat() * total;
     for (const event of candidates) {
         roll -= event.weight ?? 1;

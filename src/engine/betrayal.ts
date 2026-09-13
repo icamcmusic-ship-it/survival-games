@@ -1,12 +1,15 @@
 import { Tribute } from '../models/types';
+import { ARCHETYPES } from '../data/archetypes';
 import { ALLIANCE_TEXTS } from '../data/flavorText';
-import { BETRAYAL, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
+import { BETRAYAL, BLEEDING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
 import { SimContext } from './context';
 import { resolveCombat } from './combat';
 import { allianceOf, cacheValue, emptyCache } from './alliance';
 import { addZoneThreat, noteContact, raiseSuspicion, rememberedThreat, suspicionOf } from './memory';
 import { giveItem } from './items';
-import { reachableZones, severedEdgeSet } from './map';
+import { noteTraffic, reachableZones, severedEdgeSet } from './map';
+import { checkTraps } from './fieldcraft';
+import { openWound } from './wounds';
 import { adjustRel, applyBetrayalFallout } from './relationships';
 import { addExcitement } from './audience';
 
@@ -62,13 +65,29 @@ function availableKinds(ctx: SimContext, betrayer: Tribute, victim: Tribute): Be
     }
 
     // Abandoning is only a betrayal if there is something to abandon them to.
-    if (victim.health < 60 || victim.injuries.bleeding) kinds.push('abandon');
+    if (victim.health < BETRAYAL.abandonMaxHealth || victim.injuries.bleeding) kinds.push('abandon');
 
     return kinds;
 }
 
-function pickKind(ctx: SimContext, kinds: BetrayalKind[]): BetrayalKind {
-    const weights: number[] = kinds.map(k => BETRAYAL.weights[k]);
+function pickKind(ctx: SimContext, kinds: BetrayalKind[], betrayer?: Tribute): BetrayalKind {
+    // §4.4 (audit): treachery decided *whether*; nothing decided *how*. The
+    // shape of the betrayal is the betrayer's nature — a thief steals, a
+    // saboteur lures, a fighter uses the knife, and someone who cannot bear a
+    // fight walks away or simply keeps their hand over the pocket.
+    const arch = betrayer ? ARCHETYPES[betrayer.archetype] : undefined;
+    const shape = (k: BetrayalKind): number => {
+        if (!arch || !betrayer) return 1;
+        switch (k) {
+            case 'knife': return 1 + Math.max(0, arch.aggression) * 2 + (betrayer.archetype === 'beast' || betrayer.isCareer ? 0.8 : 0);
+            case 'steal': return 1 + (betrayer.archetype === 'mercenary' || betrayer.archetype === 'trickster' ? 1.5 : 0) + Math.max(0, arch.treachery);
+            case 'lure': return 1 + (betrayer.archetype === 'saboteur' || betrayer.archetype === 'strategist' ? 1.5 : 0) + (betrayer.attributes.intelligence >= BETRAYAL.lureCleverIntelligence ? 0.5 : 0);
+            case 'abandon': return 1 + Math.max(0, -arch.aggression) * 2 + (betrayer.traits.includes('Skittish') ? 0.8 : 0);
+            case 'withhold': return 1 + Math.max(0, -arch.aggression) + (betrayer.traits.includes('Ruthless') ? 0.6 : 0);
+            default: return 1;
+        }
+    };
+    const weights: number[] = kinds.map(k => BETRAYAL.weights[k] * shape(k));
     let roll = ctx.rng.nextFloat() * weights.reduce((a, b) => a + b, 0);
     for (let i = 0; i < kinds.length; i++) {
         roll -= weights[i];
@@ -82,7 +101,7 @@ function pickKind(ctx: SimContext, kinds: BetrayalKind[]): BetrayalKind {
  * around it if it wants to.
  */
 export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Tribute, members: Tribute[], forced?: BetrayalKind): BetrayalKind {
-    const kind = forced ?? pickKind(ctx, availableKinds(ctx, betrayer, victim));
+    const kind = forced ?? pickKind(ctx, availableKinds(ctx, betrayer, victim), betrayer);
     const record = allianceOf(ctx.state, betrayer.allianceId);
     noteContact(ctx.state, betrayer, victim);
 
@@ -120,7 +139,11 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
                 .sort((a, b) => rememberedThreat(ctx.state, betrayer, b.name) - rememberedThreat(ctx.state, betrayer, a.name))[0];
             if (!deathTrap) return resolveKnife(ctx, betrayer, victim, members);
 
+            // A real move, not a teleport: it leaves a trail and springs
+            // whatever is waiting in the zone they were sent to.
+            noteTraffic(ctx.state, victim.zone, deathTrap.name);
             victim.zone = deathTrap.name;
+            checkTraps(ctx, victim);
             // The victim does not know why they are there; the betrayer does.
             addZoneThreat(ctx.state, betrayer, deathTrap.name, MEMORY.hazardThreat);
             applyBetrayalFallout(ctx, betrayer, victim, members);
@@ -143,7 +166,13 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             const med = betrayer.inventory.find(i => i.type === 'medical')!;
             adjustRel(victim, betrayer.id, -RELATIONSHIPS.betrayalDirectPenalty / 2);
             raiseSuspicion(victim, betrayer.id, SUSPICION.perWitnessedBetrayal);
-            addExcitement(betrayer, 15);
+            addExcitement(betrayer, BETRAYAL.withholdExcitement);
+            // It is a betrayal, and the ledger says so — this was the one
+            // kind that never counted toward the arc. And the wound they were
+            // asking about is a cycle worse for having gone untreated.
+            betrayer.betrayalsCommitted = (betrayer.betrayalsCommitted ?? 0) + 1;
+            openWound(victim, BLEEDING.hazardSeverity);
+            victim.vitals.sanity = Math.max(0, victim.vitals.sanity - BETRAYAL.withholdSanity);
             ctx.logEvent(
                 `${victim.name} asks ${betrayer.name} for the ${med.name}. ${betrayer.name} says they used it days ago, ` +
                 `and keeps their hand over the pocket it is in.`,
@@ -159,7 +188,12 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             delete betrayer.allianceId;
             const away = reachableZones(ctx.state.arena, betrayer.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state))
                 .filter(z => z.name !== betrayer.zone);
-            if (away.length > 0) betrayer.zone = ctx.rng.pick(away).name;
+            if (away.length > 0) {
+                const to = ctx.rng.pick(away).name;
+                noteTraffic(ctx.state, betrayer.zone, to);
+                betrayer.zone = to;
+                checkTraps(ctx, betrayer);
+            }
             ctx.logEvent(
                 `${victim.name} calls out for ${betrayer.name} in ${victim.zone}. ${betrayer.name} hears it, and keeps walking.`,
                 [betrayer.id, victim.id],

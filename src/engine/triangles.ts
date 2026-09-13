@@ -167,7 +167,12 @@ export function tickTriangles(ctx: SimContext) {
         if (tri.resolved) return true;
 
         const gain = heatOf(ctx, apex, a, b);
-        if (gain <= 0) return true;
+        if (gain <= 0) {
+            // Apart, it cools. A triangle nobody is standing in is a memory,
+            // and it can be one for long enough that nothing comes of it.
+            tri.heat = Math.max(0, tri.heat - TRIANGLES.heatDecayApart);
+            return true;
+        }
 
         const before = tri.heat;
         tri.heat += gain;

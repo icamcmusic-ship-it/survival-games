@@ -24,11 +24,6 @@ import { fearOf } from './fear';
  *                foraging and start trapping.
  */
 
-/** The queued goal this tribute is working toward, if any. */
-export function plannedGoal(t: Tribute): Objective | undefined {
-    return t.objectiveQueue?.[0];
-}
-
 /**
  * §3.2: put a prerequisite in front of a goal the tribute cannot currently
  * serve, and remember the goal.
@@ -37,7 +32,13 @@ export function plannedGoal(t: Tribute): Objective | undefined {
  * an arena is not a place where three-step plans survive contact.
  */
 export function queueGoal(t: Tribute, goal: Objective) {
-    t.objectiveQueue = [goal].slice(0, PLANNING.queueDepth);
+    // The goal goes to the front; whatever was already queued shuffles back
+    // and falls off the end at `queueDepth`. This used to be `[goal].slice(…)`
+    // — a one-element literal — so the depth knob did nothing and the queue
+    // could never hold the second goal the module header promises.
+    const same = (a: Objective, b: Objective) => a.kind === b.kind && JSON.stringify(a) === JSON.stringify(b);
+    const rest = (t.objectiveQueue ?? []).filter(g => !same(g, goal));
+    t.objectiveQueue = [goal, ...rest].slice(0, PLANNING.queueDepth);
 }
 
 /**

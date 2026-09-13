@@ -39,6 +39,7 @@ const SOLAR: ClimateProfile = {
     exposure: time => ({
         name: 'the solar glare',
         cause: 'Died of heatstroke',
+        heat: true,
         burn: time === 'day' ? CLIMATE.solarBurnChance : 0,
         onBurn: t => `${t.name} blisters badly under the merciless solar glare.`,
     }),
@@ -49,7 +50,8 @@ const TOXIC: ClimateProfile = {
     exposure: () => ({
         name: 'the swamp air',
         cause: 'Succumbed to the swamp',
-        sanity: CLIMATE.toxicSanityChance * CLIMATE.toxicSanityLoss,
+        sanity: CLIMATE.toxicSanityLoss,
+        sanityChance: CLIMATE.toxicSanityChance,
         poison: CLIMATE.toxicPoisonChance,
         onPoison: t => `${t.name} drinks tainted swamp water and the toxins take hold.`,
     }),
@@ -60,8 +62,10 @@ const ASHEN: ClimateProfile = {
     exposure: () => ({
         name: 'the ashfall',
         cause: 'Choked on volcanic ash',
-        damage: CLIMATE.ashenLungChance * 4,
-        sanity: CLIMATE.ashenLungChance * CLIMATE.ashenSanityLoss,
+        damage: CLIMATE.ashenLungDamage,
+        damageChance: CLIMATE.ashenLungChance,
+        sanity: CLIMATE.ashenSanityLoss,
+        sanityChance: CLIMATE.ashenLungChance,
     }),
 };
 
@@ -80,7 +84,8 @@ const MAGNETIC_FOG: ClimateProfile = {
     exposure: () => ({
         name: 'the magnetic fog',
         cause: 'Lost to the fog',
-        sanity: CLIMATE.fogSanityChance * CLIMATE.fogSanityLoss,
+        sanity: CLIMATE.fogSanityLoss,
+        sanityChance: CLIMATE.fogSanityChance,
         fatigue: CLIMATE.fogFatigue,
     }),
 };
@@ -95,7 +100,8 @@ const PERPETUAL_DUSK: ClimateProfile = {
     exposure: () => ({
         name: 'the unending dusk',
         cause: 'Unravelled in the half-light',
-        sanity: CLIMATE.duskSanityChance * CLIMATE.duskSanityLoss,
+        sanity: CLIMATE.duskSanityLoss,
+        sanityChance: CLIMATE.duskSanityChance,
     }),
 };
 
@@ -104,6 +110,7 @@ const DRAINED_REEF: ClimateProfile = {
     exposure: time => ({
         name: 'the reef glare',
         cause: 'Died of heatstroke on the dead reef',
+        heat: true,
         burn: time === 'day' ? CLIMATE.solarBurnChance : 0,
         onBurn: t => `${t.name} burns raw under the glare coming off the bleached coral.`,
     }),
@@ -116,6 +123,7 @@ const FURNACE_HEAT: ClimateProfile = {
     exposure: () => ({
         name: 'the furnace heat',
         cause: 'Cooked by the factory',
+        heat: true,
         fatigue: CLIMATE.furnaceFatigue,
         burn: CLIMATE.furnaceBurnChance,
         onBurn: t => `${t.name} takes a scald off a live steam line they never saw.`,
@@ -128,8 +136,11 @@ const ASH_WASTE: ClimateProfile = {
     exposure: () => ({
         name: 'the deep ash',
         cause: 'Choked on the wasteland',
-        damage: CLIMATE.ashenLungChance * 4,
-        sanity: CLIMATE.ashenLungChance * CLIMATE.ashenSanityLoss,
+        damage: CLIMATE.ashenLungDamage,
+        damageChance: CLIMATE.ashenLungChance,
+        sanity: CLIMATE.ashenSanityLoss,
+        sanityChance: CLIMATE.ashenLungChance,
+        heat: true,
     }),
     drains: { thirstMultiplier: CLIMATE.solarThirstMultiplier },
 };

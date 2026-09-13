@@ -627,14 +627,20 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         scores[t.stance] += STANCE_HOLD.conditionalIncumbentBonus;
     }
 
-    // Trailing is a per-cycle commitment; drop it the moment the stance does.
-    if (available.includes('Shadowing') && sig.shadowTarget) {
-        t.shadowing = t.shadowing?.targetId === sig.shadowTarget.id
-            ? t.shadowing
-            : { targetId: sig.shadowTarget.id, cycles: 0 };
-    } else if (t.stance !== 'Shadowing') {
-        t.shadowing = undefined;
-    }
+    // Trailing is a per-cycle commitment and only exists while the stance
+    // does. It used to be written here, before the choice, and the early
+    // exits below never cleared it — so a tribute who merely *qualified* for
+    // Shadowing carried a live record and everyone downstream (false trails,
+    // `isBeingFollowed`) treated them as a pursuer.
+    const settleShadowing = () => {
+        if (t.stance === 'Shadowing' && sig.shadowTarget) {
+            t.shadowing = t.shadowing?.targetId === sig.shadowTarget.id
+                ? t.shadowing
+                : { targetId: sig.shadowTarget.id, cycles: 0 };
+        } else {
+            t.shadowing = undefined;
+        }
+    };
 
     const ranked = (Object.entries(scores) as Array<[Stance, number]>).sort((a, b) => b[1] - a[1]);
     const [bestStance, bestScore] = ranked[0] ?? ['Defensive', 0];
@@ -657,6 +663,7 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     if (bestStance === t.stance) {
         t.stanceHeld += 1;
         if (t.stance === 'Fortified') t.fortifiedCycles = (t.fortifiedCycles ?? 0) + 1;
+        settleShadowing();
         return;
     }
 
@@ -682,6 +689,7 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         + sleepStanceHold(t);
     if (!emergency && t.stanceHeld < hold) {
         t.stanceHeld += 1;
+        settleShadowing();
         return;
     }
     // ...but it does *not* override the switch margin, which is the part that
@@ -699,6 +707,7 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     const margin = STANCE.switchMargin * (1 + (t.stanceChurn ?? 0) * STANCE.churnMarginPerSwitch);
     if (stillValid && bestScore < (scores[t.stance] ?? -Infinity) + margin) {
         t.stanceHeld += 1;
+        settleShadowing();
         return;
     }
 
@@ -711,5 +720,5 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     t.stanceHeld = 0;
     t.stanceChurn = Math.min(STANCE.churnMax, (t.stanceChurn ?? 0) + 1);
     if (bestStance !== 'Fortified') t.fortifiedCycles = 0;
-    if (!isEvasiveStance(bestStance) && bestStance !== 'Shadowing') t.shadowing = undefined;
+    settleShadowing();
 }

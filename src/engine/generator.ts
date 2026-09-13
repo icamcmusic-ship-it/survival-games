@@ -1,6 +1,7 @@
 import { RNG } from '../utils/rng';
 import { Tribute, Attributes, GameConfig, ArchetypeId, Gender, Handedness, LimbRatio } from '../models/types';
 import { TRAITS, DEFAULT_GAME_CONFIG, traitFits } from '../data/constants';
+import { traitMod } from '../data/traits';
 import { ARCHETYPES, archetypeWeightsFor } from '../data/archetypes';
 import { GENERATION, TESSERAE, VOLUNTEER } from '../data/balance';
 import { DISTRICT_NAMES } from '../data/names';
@@ -601,7 +602,7 @@ export function generateTributes(
         score: t.attributes.charisma * 3
             + (t.isCareer ? 6 : 0)
             + (t.age <= 13 ? 5 : 0)
-            + (t.traits.includes('Charismatic') ? 8 : 0)
+            + traitMod(t, 'sponsorAppeal')
             + rng.nextInt(0, 10),
     })).sort((a, b) => b.score - a.score);
 

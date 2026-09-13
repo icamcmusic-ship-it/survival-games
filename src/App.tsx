@@ -178,7 +178,7 @@ export default function App() {
             {isReplayedRun && gameState && (
               <span className="chip chip-coin hidden sm:inline-flex">Replay · {gameState.seed}</span>
             )}
-            <span className="chip chip-gold" title="Capitol Coins available for wagers">{coins} ⨷</span>
+            <span className="chip chip-gold" role="status" aria-label={`${coins} Capitol Coins available for wagers`} title="Capitol Coins available for wagers">{coins} <span aria-hidden="true">⨷</span></span>
             {gameState && (
               <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.baseConfig} quellId={gameState.gamesProfile?.quell?.id ?? null} />
             )}
@@ -238,6 +238,7 @@ export default function App() {
             gameState={gameState}
             onReroll={gameActions.rerollCast}
             onConfirm={gameActions.confirmReaping}
+            onCoach={(id, coaching) => { gameActions.setCoaching(id, coaching); }}
           />
         )}
 
@@ -265,6 +266,14 @@ export default function App() {
             <EndScreen
               gameState={gameState}
               onRestart={() => gameActions.setView('setup')}
+              onPlayAgain={() => {
+                const seed = Math.random().toString(36).substring(2, 8).toUpperCase();
+                void gameActions.startGame(seed, gameState.arena.id, gameState.gamemakerMode, gameState.baseConfig ?? gameState.config);
+              }}
+              onReplaySeed={() => {
+                void gameActions.startGame(gameState.seed, gameState.arena.id, gameState.gamemakerMode, gameState.baseConfig ?? gameState.config, true);
+              }}
+              onHallOfFame={() => gameActions.setView('hallOfFame')}
               coins={coins}
               betWonMessage={betWonMessage}
             />

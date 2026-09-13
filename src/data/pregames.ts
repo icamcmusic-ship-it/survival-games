@@ -94,6 +94,10 @@ export const GOODBYE_SCENES = [
     '{tribute} memorises the room instead of the faces, because the room is easier.',
     '{tribute}\'s best friend swears loudly through the door after time is called. The Peacekeepers pretend not to hear it, which is the closest thing to kindness in the building.',
     'Nobody in the goodbye room says the word "win". They say "come home", which is a different and harder instruction.',
+    '{tribute}\'s sister gets one sentence out before the Peacekeepers move her. It is the sentence {tribute} keeps.',
+    'A neighbour {tribute} barely knows comes in with bread and does not explain why, and leaves without saying anything else.',
+    '{tribute}\'s father does not touch them until the last ten seconds, and then will not let go until he is made to.',
+    '{tribute} is told to win. The word sits in the velvet room afterwards like something dropped.',
 ];
 
 export const TRAIN_SCENES = [
@@ -112,12 +116,38 @@ export const TRAIN_SCENES = [
     'The recaps play {tribute}\'s own reaping and they watch themselves walk to the stage like a stranger. The stranger looks calmer than they remember being.',
     '{mentor} makes {tribute} list everything they are good at, and does not let them stop until the list is longer than {tribute} believed it was.',
     'The train slows through a district that is not theirs, and the people in the fields do not look up. {tribute} understands: the train only means one thing.',
+    '{tribute} finds the compartment with the window that opens and is told, politely, that it does not.',
+    '{mentor} puts the recaps on again and makes {tribute} name every tribute in them. {tribute} gets nineteen of twenty-three.',
+    '{tribute} asks how long the journey is and is told, and spends the rest of it not asking anything else.',
+    'Somebody on the train tells {tribute} what the Capitol smells like. {tribute} does not believe them until the doors open.',
+    '{tribute} washes for the first time in hot water on the train and stays in it until somebody knocks.',
+    '{mentor} tries the speech they have given four times before, and {tribute} listens to all of it, which nobody usually does.',
+    '{tribute} counts the districts going past the window and stops when they run out of ones they can name.',
+    'The escort talks the whole way. {tribute} does not hear a word of it and is grateful for the noise anyway.',
+    '{tribute} eats nothing on the train and drinks four glasses of water, which their mentor notes and does not comment on.',
+    '{tribute} sleeps for eleven hours on the train and wakes up further from home than anyone in their family has ever been.',
+    '{mentor} shows {tribute} the footage of their own Games, once, without saying anything, and turns it off before the end.',
+    '{tribute} writes something on a napkin on the train and puts it in a pocket, and it is still there at the reaping of the Games after this one.',
 ];
 
 /** Stylists, and the angle they take at the Remake Center. */
 export const STYLISTS = [
     'Cinna Vela', 'Portia Ashgrove', 'Octavia Lune', 'Flavius Marr', 'Venia Sol',
     'Tigris Snow', 'Lucian Frost', 'Delphine Kray', 'Castor Vine', 'Aurelia Pike',
+    'Marcus Quill-Vane',
+    'Sable Odain',
+    'Perenna Glass',
+    'Junius Hale',
+    'Corvina Mire',
+    'Atticus Brine',
+    'Lysandra Pell',
+    'Rufus Crane',
+    'Vesper Alaine',
+    'Gaius Thorne',
+    'Nerissa Vale',
+    'Bellamy Roche',
+    'Caspia Wren',
+    'Drusilla Fane',
 ];
 
 export const CHARIOT_ANGLES = [
@@ -131,12 +161,20 @@ export const CHARIOT_ANGLES = [
     { angle: 'plainly', line: '{stylist} does almost nothing to {tribute} at all, and the cameras find somebody else within seconds.', pull: -0.5 },
     { angle: 'in living light', line: '{stylist} threads {tribute}\'s costume with something bioluminescent that pulses with their heartbeat. The avenue can see exactly how afraid they are, and loves them for it.', pull: 2.5 },
     { angle: 'in armour', line: '{stylist} sends {tribute} down the avenue in ceremonial plate half a millimetre thick. It protects nothing and promises everything.', pull: 1.5 },
-    { angle: 'in mourning', line: '{stylist} dresses {tribute} in funeral black, for everyone the Games have taken. The Capitol finds it delicious. The districts find it something else.', pull: 2 },
+    { angle: 'in mourning', line: '{stylist} dresses {tribute} in funeral black, for everyone the Games have taken. The Capitol finds it delicious. The districts find it something else.', pull: 2.5 },
     { angle: 'as royalty', line: '{stylist} crowns {tribute} and drapes them in a cape that takes up half the chariot. The crowd cheers the audacity of it.', pull: 1.5 },
     { angle: 'in smoke', line: '{stylist} wreathes {tribute} in cold grey smoke, so the crowd only catches them in glimpses. By the fountain, half the Capitol is craning for a look.', pull: 2 },
     { angle: 'barefoot', line: '{stylist} sends {tribute} out plainly dressed and barefoot, the way the district actually works. It is quiet, and it lands harder than the fireworks either side of it.', pull: 1 },
     { angle: 'in glass', line: '{stylist} builds {tribute} a costume of hanging glass that chimes with the chariot. It is beautiful, fragile, and everyone watching understands the metaphor.', pull: 1.5 },
     { angle: 'matched', line: '{stylist} dresses {tribute} and their district partner as two halves of one design, and the pair of them are worth more together than either alone. The sponsors take note.', pull: 2 },
+    { angle: 'in mourning', line: '{stylist} dresses {tribute} entirely in black and gives them nothing to hold. The avenue goes quiet in patches as the chariot passes, which no stylist has managed in years.', pull: 2.5 },
+    { angle: 'as a child', line: '{stylist} makes no attempt to make {tribute} look older. The Capitol finds this either unbearable or delicious, and there is no way to tell which until the sponsor lines open.', pull: 1.5 },
+    { angle: 'in the district\'s own dirt', line: '{stylist} sends {tribute} down the avenue unwashed, in working clothes, exactly as District {district} looks on a Tuesday. It is the most shocking thing on the road.', pull: 1.5 },
+    { angle: 'armoured', line: '{stylist} puts {tribute} in something that looks like it was built to stop a blade. It is a promise to the sponsors and a warning to the other chariots.', pull: 2 },
+    { angle: 'unadorned', line: '{stylist} does almost nothing to {tribute} at all, and the restraint reads, to about a third of the avenue, as contempt for the whole exercise.', pull: 0.5 },
+    { angle: 'in water', line: '{stylist} rigs {tribute} with something that catches and sheets light like running water. It photographs better than anything else on the avenue and says nothing whatsoever about District {district}.', pull: 1.5 },
+    { angle: 'as the last victor', line: '{stylist} dresses {tribute} as the last tribute District {district} sent home. Half the Capitol gets the reference immediately and the other half has it explained to them twice.', pull: 3 },
+    { angle: 'in the Capitol\'s own colours', line: '{stylist} puts {tribute} in Capitol colours, which is either flattery or something much sharper, and the commentary desk spends the evening arguing about which.', pull: 1 },
 ];
 
 /**

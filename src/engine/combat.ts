@@ -5,7 +5,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH } from '../data/balance';
+import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -384,8 +384,16 @@ function packCohesion(ctx: SimContext, t: Tribute): number {
     return scaled;
 }
 
+/**
+ * A fighter's power as an *estimate*: everything on the sheet and in the
+ * situation, and nothing rolled. This is what ranking and weighting read —
+ * "who is the strongest attacker here" has to have one answer, and it used
+ * to re-roll a die inside every comparison, which made the reduce below
+ * non-transitive and burned a handful of RNG draws per round just picking a
+ * lead. The die lives in `contestedPower`, which only the exchanges use.
+ */
 function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opponent?: Tribute): number {
-    let power = effectiveStrength(t) + effectiveAgility(t) + ctx.rng.nextInt(0, 5);
+    let power = effectiveStrength(t) + effectiveAgility(t);
 
     if (weapon) {
         power += weapon.damage !== undefined ? effectiveDamage(weapon) : weapon.value / 10;
@@ -472,12 +480,17 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
 
     // Vengeful is not a general combat bonus — it is a bonus against the
     // specific person they cannot let go of.
-    if (opponent && t.traits.includes('Vengeful')
-        && (hasVengeanceAgainst(t, opponent.id) || getRel(t, opponent.id) <= -35)) {
-        power += COMBAT.vengefulEdge;
+    if (opponent && traitMod(t, 'vengeanceEdge') !== 0
+        && (hasVengeanceAgainst(t, opponent.id) || getRel(t, opponent.id) <= COMBAT.vengefulHatredRegard)) {
+        power += traitMod(t, 'vengeanceEdge');
     }
 
     return power;
+}
+
+/** `combatPower` plus the swing of the moment — the roll the exchange is decided on. */
+function contestedPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opponent?: Tribute): number {
+    return combatPower(ctx, t, weapon, allies, opponent) + ctx.rng.nextInt(0, COMBAT.powerSwingMax);
 }
 
 /**
@@ -604,7 +617,9 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     witnessReputation(defender, attacker);
     witnessReputation(attacker, defender);
     const raw = (COMBAT.baseHitDamage + edge * COMBAT.damagePerPowerPoint + ctx.rng.nextInt(-3, 4)) * multiplier;
-    const damage = Math.round(Math.max(COMBAT.minRoundDamage, Math.min(COMBAT.maxRoundDamage * multiplier, raw)));
+    // Both bounds scale with the multiplier, or a sub-1 multiplier puts the
+    // floor above the ceiling.
+    const damage = Math.round(Math.max(COMBAT.minRoundDamage * multiplier, Math.min(COMBAT.maxRoundDamage * multiplier, raw)));
 
     applyDamage(ctx, defender, damage, {
         cause: weapon ? `Killed by ${attacker.name} (${weapon.name})` : `Killed by ${attacker.name}`,
@@ -614,12 +629,22 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
 
     if (ctx.rng.chance(COMBAT.bleedChance)) openWound(defender, BLEEDING.combatSeverity);
     if (ctx.rng.chance(COMBAT.woundChance)) {
-        const site = ctx.rng.pick(['head', 'torso', 'arms', 'legs'] as const);
+        // Where it lands depends on what landed it and how practised the hand
+        // was. A bow finds the body; a club finds the head; a blade opens the
+        // arm that is put out to stop it.
+        const cls = weapon?.weaponClass ?? 'unarmed';
+        const base = COMBAT.woundSiteWeights[cls] ?? COMBAT.woundSiteWeights.unarmed;
+        const skill = weapon ? profOf(attacker, weaponProficiency(weapon.weaponClass)) : 0;
+        const weights = [base[0] + skill * COMBAT.woundSiteSkillHead, base[1], base[2], base[3]];
+        const sites = ['head', 'torso', 'arms', 'legs'] as const;
+        let roll = ctx.rng.nextFloat() * weights.reduce((a, b) => a + b, 0);
+        let site: typeof sites[number] = 'torso';
+        for (let i = 0; i < sites.length; i++) { roll -= weights[i]; if (roll <= 0) { site = sites[i]; break; } }
         injure(defender, site);
     }
     // A Pyromaniac fights dirty with whatever burns — every landed hit has a
     // real chance to leave the defender scorched, not just bruised.
-    if (attacker.traits.includes('Pyromaniac') && !defender.injuries.burned && ctx.rng.chance(COMBAT.pyromaniacBurnChance)) {
+    if (!defender.injuries.burned && traitMod(attacker, 'burnOnHit') > 0 && ctx.rng.chance(traitMod(attacker, 'burnOnHit'))) {
         injure(defender, 'burned');
         ctx.logEvent(
             `${attacker.name}'s strike leaves ${defender.name} scorched — Pyromaniacs make sure something is always burning.`,
@@ -743,8 +768,8 @@ export function resolveCombat(
         // scale every other retreat check uses — the ambush bonus is spent on
         // the opening blow and does not carry into the second round, so what
         // they weigh is the standing fight, plus how much that first hit hurt.
-        const ambushEdge = combatPower(ctx, t1, opener, 0, t2)
-            - combatPower(ctx, t2, bestWeapon(t2), 0, t1)
+        const ambushEdge = contestedPower(ctx, t1, opener, 0, t2)
+            - contestedPower(ctx, t2, bestWeapon(t2), 0, t1)
             + damage / 10;
         if (noRetreatRounds < 1 && wantsToRetreat(ctx, t2, ambushEdge, 1, t1)) {
             ctx.logEvent(
@@ -777,10 +802,28 @@ export function resolveCombat(
 
     while (round < maxRounds && isActive(t1) && isActive(t2)) {
         round++;
+        // §7 (audit): exhaustion is now a way to die in a fight, not only a
+        // way to fight worse. Legs go before nerve does.
+        for (const [fighter, other] of [[t1, t2], [t2, t1]] as const) {
+            if (!isActive(fighter) || !isActive(other)) continue;
+            if (fighter.vitals.fatigue < COMBAT.collapseFatigue || !ctx.rng.chance(COMBAT.collapseChance)) continue;
+            const cause = `Collapsed from exhaustion fighting ${other.name}`;
+            applyDamage(ctx, fighter, COMBAT.collapseDamage, { cause, kind: 'tribute', sourceId: other.id });
+            ctx.logEvent(
+                fighter.health <= 0
+                    ? `${fighter.name}'s legs give out mid-swing in ${fighter.zone} and ${other.name} does not have to do much about it.`
+                    : `${fighter.name}'s legs go from under them in ${fighter.zone} — not struck, simply done — and ${other.name} gets a free blow in before they are up.`,
+                [fighter.id, other.id],
+                { important: fighter.health <= 0, category: 'combat' }
+            );
+            clampTribute(fighter);
+            if (fighter.health <= 0) strikeDown(ctx, fighter, other, bestWeapon(other));
+        }
+        if (!isActive(t1) || !isActive(t2)) break;
         const w1 = bestWeapon(t1);
         const w2 = bestWeapon(t2);
-        const p1 = combatPower(ctx, t1, w1, 0, t2);
-        const p2 = combatPower(ctx, t2, w2, 0, t1);
+        const p1 = contestedPower(ctx, t1, w1, 0, t2);
+        const p2 = contestedPower(ctx, t2, w2, 0, t1);
         const edge = p1 - p2;
 
         if (Math.abs(edge) < 1.5) {
@@ -1014,9 +1057,19 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         const drawOf = (d: Tribute) => {
             const allyPresent = defenders.some(o => o.id !== d.id
                 && o.allianceId !== undefined && o.allianceId === d.allianceId);
+            // §3.3 (audit): the roles the alliance layer assigns finally mean
+            // something in a fight. The muscle stands in front; the medic is
+            // the one the others step in front of — when there is anybody to
+            // step in front.
+            const roles = d.allianceId ? ctx.state.alliances?.[d.allianceId]?.roles : undefined;
+            const roleDraw = roles
+                ? (roles.muscle === d.id ? COMBAT.roleMuscleDraw : 0)
+                    - (roles.medic === d.id && allyPresent ? COMBAT.roleMedicShield : 0)
+                : 0;
             return Math.max(COMBAT.minFocusWeight,
                 Math.max(1, 100 - d.health)
                 + targetDrawOf(d)
+                + roleDraw
                 - (allyPresent ? traitMod(d, 'defended') * COMBAT.defendedWeight : 0));
         };
         const target = sworn ?? (ctx.rng.chance(COMBAT.focusFireChance)
@@ -1028,7 +1081,11 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         // in a big enough fight that is a way to die that nobody chose.
         if (attackers.length >= COMBAT.friendlyFireMinAttackers
             && ctx.rng.chance(COMBAT.friendlyFireChance)) {
-            const swinger = ctx.rng.pick(attackers);
+            // The clumsy one swings wide: low agility and a bad arm, not a
+            // uniform draw over the pack.
+            const swinger = weightedPick(ctx, attackers, a => 1
+                + Math.max(0, SOCIAL_AXES.attributeMidpoint - effectiveAgility(a)) * COMBAT.friendlyFireAgilityWeight
+                + injuryGrade(a, 'arms') * COMBAT.friendlyFireArmWeight);
             const hit = ctx.rng.pickOrUndefined(attackers.filter(a => a.id !== swinger.id));
             if (hit) {
                 const stray = Math.round(COMBAT.friendlyFireDamage
@@ -1054,8 +1111,8 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         // feud escalation and the rematch prose are all keyed on.
         noteGroupFight(lead, target);
         const weapon = bestWeapon(lead);
-        const edge = combatPower(ctx, lead, weapon, Math.max(0, advantage), target)
-            - combatPower(ctx, target, bestWeapon(target), Math.max(0, -advantage), lead);
+        const edge = contestedPower(ctx, lead, weapon, Math.max(0, advantage), target)
+            - contestedPower(ctx, target, bestWeapon(target), Math.max(0, -advantage), lead);
 
         if (attackers.length > 1) {
             ctx.logEvent(
@@ -1094,8 +1151,8 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         for (const a of attackers) {
             if (targetDown || a.id === lead.id || !isActive(a)) continue;
             const supportWeapon = bestWeapon(a);
-            const supportEdge = combatPower(ctx, a, supportWeapon, 0, target)
-                - combatPower(ctx, target, bestWeapon(target), 0, a)
+            const supportEdge = contestedPower(ctx, a, supportWeapon, 0, target)
+                - contestedPower(ctx, target, bestWeapon(target), 0, a)
                 - COMBAT.supportAttackPenalty;
             if (supportEdge <= 0) continue;
             noteGroupFight(a, target);
@@ -1215,8 +1272,8 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
 
         noteFight(ctx.state, attacker, target);
         const weapon = bestWeapon(attacker);
-        const edge = combatPower(ctx, attacker, weapon, 0, target)
-            - combatPower(ctx, target, bestWeapon(target), 0, attacker);
+        const edge = contestedPower(ctx, attacker, weapon, 0, target)
+            - contestedPower(ctx, target, bestWeapon(target), 0, attacker);
         if (edge > 0) {
             landHit(ctx, attacker, target, edge, weapon);
             if (target.health <= 0) { strikeDown(ctx, target, attacker, weapon); continue; }

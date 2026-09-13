@@ -188,6 +188,19 @@ export interface ObjectiveTension {
     voiced?: boolean;
 }
 
+/**
+ * §3.2 (audit): what happened the last few times they tried this kind of
+ * thing. Read by the objective cascade as a per-kind confidence.
+ */
+export interface ObjectiveOutcome {
+    tries: number;
+    wins: number;
+    /** Consecutive failures, cleared by a win. */
+    streak: number;
+    /** For hunts and stalks: the target the streak is against. */
+    lastTargetId?: string;
+}
+
 export type WeaponClass = 'melee' | 'ranged' | 'thrown';
 
 /**
@@ -482,6 +495,14 @@ export interface Tribute {
     daysSurvived: number;
     /** The district's Games history, which decides the quality of their mentor. */
     mentorLegacy?: string;
+    /**
+     * §9 (audit): victor legacy. Set when this district's mentor is a victor
+     * the player crowned in an earlier Games rather than a name from the
+     * district's own table. A mentor who has actually come out of the arena
+     * is worth more than a pedigree, so `mentorGenerosity` and `MENTOR_PULL`
+     * both read it — the carry-over is mechanical, not only a name change.
+     */
+    mentorIsVictor?: boolean;
     /** Total stealth lost permanently to sanity breakdowns, capped rather than uncapped-frequency. */
     sanityStealthLoss?: number;
     /**
@@ -606,6 +627,8 @@ export interface Tribute {
     /** What they are currently trying to do. See `Objective`. */
     objective?: Objective;
     /** §3.4: what they nearly did instead, and how close it was. */
+    /** §3.2 (audit): per-kind outcome ledger. See `engine/objectives.ts`. */
+    objectiveOutcomes?: Partial<Record<Objective['kind'], ObjectiveOutcome>>;
     objectiveTension?: ObjectiveTension;
     /**
      * §3.2: the goal this tribute is working toward, behind whatever errand
@@ -1127,6 +1150,8 @@ export interface StandingGoal {
     /** Why it is standing: the chronicle names it when it is picked back up. */
     reason: 'feast' | 'avenge' | 'endgame';
     setCycle: number;
+    /** Cycle it was last picked back up; the resume gate reads this, staleness reads `setCycle`. */
+    resumedCycle?: number;
 }
 
 /**
@@ -1231,6 +1256,8 @@ export interface Alliance {
      */
     lootedAtCharter?: Record<string, number>;
     intelSoldAtCharter?: Record<string, number>;
+    /** Cycle each clause was last found broken, so a standing condition is one breach, not one per cycle. */
+    lastBreachCycle?: Partial<Record<CharterRule, number>>;
     /**
      * A §6: the night's watch. Set at nightfall for a group sleeping in one
      * zone: who is awake, who is asleep, and the cycle it was posted, so the
@@ -1881,6 +1908,14 @@ export interface GameState {
     continuity?: import('../engine/continuity').RunContinuity;
     /** Guards the grudge intervention to once per run. */
     grudgeFired?: boolean;
+    /** §7 (audit): the bloodless-finalist hunt has been sent, once per run. */
+    bloodlessHuntFired?: boolean;
+    /** §7 (audit): cycle each arena event last fired, keyed by id or text, for the repeat cooldown. */
+    eventLastFired?: Record<string, number>;
+    /** §5.3 (audit): the Cornucopia's edges are cut until this cycle (seal-the-horn). */
+    sealedHornUntilCycle?: number;
+    /** Per-run truce accounting. See `engine/parley.ts`. */
+    truceLedger?: import('../engine/parley').TruceLedger;
     /**
      * REPLAY-01: this year's Games, as announced. Rolled from the seed so a
      * shared seed reproduces the same Games, not merely the same cast.

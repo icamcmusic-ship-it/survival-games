@@ -1,5 +1,6 @@
 import { Arena, Terrain } from '../models/types';
 import { ArenaActions, ArenaEventDef, ArenaFlavor, GENERIC_ARENA_FLAVOR } from './arenaFlavor';
+import { PROCEDURAL_BIOME_AMBIENT, PROCEDURAL_BIOME_EVENTS } from './proceduralBiomeEvents';
 
 /**
  * ARENA-08: procedural arenas used to fall back on one of four pre-written
@@ -15,7 +16,30 @@ export type FlavorTag = Terrain | 'cold' | 'heat' | 'toxic' | 'height' | 'storm'
 
 export interface TaggedEvent extends ArenaEventDef {
     tags: FlavorTag[];
+    /** Never selected into an arena carrying any of these tags — a heatstroke on the tundra was a real draw. */
+    excludes?: FlavorTag[];
 }
+
+/**
+ * The mood each biome adds on top of its terrain, so `open` reads differently
+ * between a volcanic and a highland arena. Shared with the generator, which
+ * keys its mutt-name modifiers off the same tags — it used to derive tags
+ * from terrain alone, so `cold` and `heat` modifiers were unreachable.
+ */
+export const MOOD_BY_BIOME: Record<string, FlavorTag[]> = {
+    rainforest: ['toxic', 'eerie'],
+    volcanic: ['heat', 'toxic'],
+    archipelago: ['storm', 'water'],
+    highlands: ['cold', 'height', 'storm'],
+    tundra: ['cold', 'storm'],
+    dunes: ['heat'],
+    bayou: ['toxic', 'eerie', 'water'],
+    ruinlands: ['eerie', 'ruins'],
+    steppe: ['storm', 'open'],
+    saltmarsh: ['toxic', 'water', 'wetland'],
+    boreal: ['cold', 'forest', 'eerie'],
+    badlands: ['heat', 'height'],
+};
 
 // Aim for broad tag coverage rather than deep per-biome lists — the
 // composer below leans on overlap-weighting to pick a plausible subset
@@ -95,7 +119,8 @@ export const PROCEDURAL_EVENTS: TaggedEvent[] = [
     },
     // open
     {
-        tags: ['open'],
+        tags: ['open', 'heat'],
+        excludes: ['cold'],
         text: 'The sun in {zone} has nowhere to hide from. {tribute} pushes on too long before the dizziness hits.',
         escapeText: '{tribute} reads their own shadow in {zone} and pulls back before heatstroke sets in.',
         cause: 'Died of heatstroke',
@@ -105,7 +130,8 @@ export const PROCEDURAL_EVENTS: TaggedEvent[] = [
         fatigue: 20,
     },
     {
-        tags: ['open'],
+        tags: ['open', 'heat'],
+        excludes: ['cold'],
         text: 'A dust squall rakes across {zone}, and {tribute} is caught in the open with no cover.',
         escapeText: '{tribute} sees the dust wall coming across {zone} and gets their back to a rock in time.',
         cause: 'Blinded and battered by a dust squall',
@@ -592,24 +618,17 @@ function pickActions(active: Set<FlavorTag>, variants: ActionVariant[], generic:
  * Deterministic given the arena's own zone data — no RNG needed here, the
  * generator already baked all its randomness into the zones/name/mutts.
  */
+/** Tag-scored generic events a generated arena takes on top of its biome's own. */
+const PROCEDURAL_GENERIC_EVENTS = 10;
+
 export function proceduralArenaFlavor(arena: Arena): ArenaFlavor {
     const active = new Set<FlavorTag>();
     arena.zones.forEach(z => active.add(z.terrain));
     // Biome mood tags, inferred from the arena id the generator assigned
     // (`procedural-<biome>`), so the same terrain (e.g. `open`) still reads
     // differently between a volcanic and a highland arena.
-    const moodByBiome: Record<string, FlavorTag[]> = {
-        rainforest: ['toxic', 'eerie'],
-        volcanic: ['heat', 'toxic'],
-        archipelago: ['storm', 'water'],
-        highlands: ['cold', 'height', 'storm'],
-        tundra: ['cold', 'storm'],
-        dunes: ['heat'],
-        bayou: ['toxic', 'eerie', 'water'],
-        ruinlands: ['eerie', 'ruins'],
-    };
     const biomeId = arena.id.replace(/^procedural-/, '');
-    (moodByBiome[biomeId] || []).forEach(t => active.add(t));
+    (MOOD_BY_BIOME[biomeId] || []).forEach(t => active.add(t));
 
     // Score by overlap fraction rather than raw overlap count, so the
     // catch-all entries (tagged with every terrain, so they always match)
@@ -617,6 +636,7 @@ export function proceduralArenaFlavor(arena: Arena): ArenaFlavor {
     // distinctive — a single-tag exact match should outrank a six-tag entry
     // that merely happens to include one active tag.
     const weighted = PROCEDURAL_EVENTS
+        .filter(e => !e.excludes?.some(x => active.has(x)))
         .map(e => ({ e, score: overlapScore(e.tags, active) / e.tags.length }))
         .filter(x => x.score > 0)
         .sort((a, b) => b.score - a.score);
@@ -624,14 +644,21 @@ export function proceduralArenaFlavor(arena: Arena): ArenaFlavor {
     // Guarantee at least a handful of events even for a sparse tag set —
     // fall back to the catch-all entries (tagged with every terrain) if a
     // biome+terrain combo somehow scores nothing.
-    const events: ArenaEventDef[] = (weighted.length >= 4 ? weighted : PROCEDURAL_EVENTS.map(e => ({ e, score: 1 })))
+    // §5.2 (audit): the biome's own authored beats first — once-per-run
+    // events, a chain, state gates — then the tag-scored generic pool behind
+    // them. A generated arena used to receive eight anonymous events and
+    // nothing else of its own; it now carries what a hand-authored arena does.
+    const own = PROCEDURAL_BIOME_EVENTS[biomeId] ?? [];
+    const generic: ArenaEventDef[] = (weighted.length >= 4 ? weighted : PROCEDURAL_EVENTS.map(e => ({ e, score: 1 })))
         .map(x => x.e)
-        .slice(0, 8)
-        .map(({ tags, ...rest }) => rest);
+        .slice(0, PROCEDURAL_GENERIC_EVENTS)
+        .map(({ tags, excludes, ...rest }) => rest);
+    const events: ArenaEventDef[] = [...own, ...generic];
 
     const ambient = [
         ...GENERIC_AMBIENT.slice(0, 2),
         ...Array.from(active).flatMap(t => AMBIENT_BY_TAG[t] || []).slice(0, 3),
+        ...(PROCEDURAL_BIOME_AMBIENT[biomeId] ?? []),
     ];
 
     const actions: ArenaActions = {

@@ -4,7 +4,7 @@ import { SimContext, getAlive } from './context';
 import { adjustMutual, adjustRel, getRel, adjustRespect, respectOf } from './relationships';
 import { traitMod } from '../data/traits';
 import { cycleOf, ensureMemory, rivalRecord } from './memory';
-import { addFear, fearOf } from './fear';
+import { addFear, fearOf, reduceFear } from './fear';
 
 /**
  * §4.3: the three things the relationship layer could not do.
@@ -105,8 +105,11 @@ export function reconcileRivals(ctx: SimContext) {
             record.fights = Math.max(0, record.fights - steps);
             record.lastFightCycle = cycle;
             if (other) {
-                addFear(other, t.id, -RIVALRY.coolingFear);
-                addFear(t, other.id, -RIVALRY.coolingFear);
+                // `addFear` discards a non-positive amount by design (fear
+                // gain is scaled by temperament first); cooling goes through
+                // the reduction path or it does not happen at all.
+                reduceFear(other, t.id, RIVALRY.coolingFear);
+                reduceFear(t, other.id, RIVALRY.coolingFear);
             }
 
             if (sharedDanger && record.fights <= 0 && other) {

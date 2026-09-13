@@ -99,6 +99,313 @@ const EARNED_TRAIT_NAMES = Object.keys(TRAIT_DEFS).filter(name => TRAIT_DEFS[nam
 const dead = (state: GameState) => state.tributes.filter(t => t.status === 'dead');
 
 export const ACHIEVEMENTS: Achievement[] = [
+    // §11 (audit): the systems the achievement layer had the same blind spot
+    // about as the interface did. Rumours, epithets, sponsor blocs, charters,
+    // named weapons and the ex-ally layer were all fully simulated and
+    // entirely unrewarded; four write-only fields (`finishedDowned`,
+    // `feastPrizeTaken`, `diedWithinReach`, `intelTrades`, `blocTreatiesSworn`)
+    // were recorded every run and read by nothing at all. Each entry below
+    // reads a field the state already keeps.
+    {
+        id: 'the-liar',
+        name: 'The Liar',
+        hint: 'Crown a victor who planted a rumour that was still believed, and still false, when the Games ended.',
+        category: 'social',
+        rarity: 'rare',
+        test: (state, v) => !!v && (state.rumours ?? []).some(r => r.plantedById === v.id && !r.isTrue && !r.exposed),
+    },
+    {
+        id: 'whisper-campaign',
+        name: 'Whisper Campaign',
+        hint: 'Have three or more planted rumours in circulation at once in a single Games.',
+        category: 'social',
+        rarity: 'uncommon',
+        test: state => (state.rumours ?? []).filter(r => r.plantedById !== undefined).length >= 3,
+        nearMiss: state => {
+            const n = (state.rumours ?? []).filter(r => r.plantedById !== undefined).length;
+            return n === 2 ? 'Two planted rumours were in circulation — one short of a campaign' : undefined;
+        },
+    },
+    {
+        id: 'caught-out',
+        name: 'Caught Out',
+        hint: 'See a planted rumour exposed as false by somebody who went and looked.',
+        category: 'social',
+        rarity: 'uncommon',
+        test: state => (state.rumours ?? []).some(r => r.plantedById !== undefined && r.exposed),
+    },
+    {
+        id: 'named-by-the-country',
+        name: 'Named by the Country',
+        hint: 'Crown a victor who earned an epithet in the arena.',
+        category: 'capitol',
+        rarity: 'uncommon',
+        test: (_s, v) => !!v && !!v.epithet,
+    },
+    {
+        id: 'named-early',
+        name: 'Named Early',
+        hint: 'Have a tribute earn an epithet within the first four cycles of the Games.',
+        category: 'capitol',
+        rarity: 'common',
+        test: state => state.tributes.some(t => t.epithet !== undefined && (t.epithetCycle ?? 99) <= 4),
+        nearMiss: state => { const e = state.tributes.filter(t => !!t.epithet).map(t => t.epithetCycle ?? 99).sort((a, b) => a - b)[0]; return e !== undefined && e > 4 && e <= 7 ? `The first epithet of these Games was awarded on cycle ${e} — ${e - 4} cycles late` : undefined; },
+    },
+    {
+        id: 'three-names',
+        name: 'Three Names',
+        hint: 'Have three tributes carrying earned epithets alive at the same time.',
+        category: 'capitol',
+        rarity: 'rare',
+        test: state => state.tributes.filter(t => !!t.epithet).length >= 3,
+        nearMiss: state => {
+            const n = state.tributes.filter(t => !!t.epithet).length;
+            return n === 2 ? 'Two tributes were named by the country — one short' : undefined;
+        },
+    },
+    {
+        id: 'the-purse-runs-dry',
+        name: 'The Purse Runs Dry',
+        hint: 'Empty a sponsor bloc\'s budget completely in a single Games.',
+        category: 'capitol',
+        rarity: 'rare',
+        test: state => Object.values(state.sponsorBlocBudgets ?? {}).some(b => b <= 0),
+    },
+    {
+        id: 'nobody-is-buying',
+        name: 'Nobody Is Buying',
+        hint: 'Reach the end of a Games with every sponsor bloc down to a quarter of its opening purse.',
+        category: 'capitol',
+        rarity: 'legendary',
+        test: state => {
+            const purses = Object.values(state.sponsorBlocBudgets ?? {});
+            if (purses.length === 0) return false;
+            const opening = Math.max(1, Math.max(...purses, 1));
+            return purses.every(b => b <= opening * 0.25);
+        },
+    },
+    {
+        id: 'a-weapon-with-a-name',
+        name: 'A Weapon With a Name',
+        hint: 'Crown a victor holding a weapon that earned a name of its own in the arena.',
+        category: 'combat',
+        rarity: 'rare',
+        test: (_s, v) => !!v && v.inventory.some(i => !!i.legendName),
+    },
+    {
+        id: 'it-changed-hands',
+        name: 'It Changed Hands',
+        hint: 'End a Games with a named weapon held by somebody other than the tribute who named it.',
+        category: 'combat',
+        rarity: 'rare',
+        test: state => state.tributes.some(t => t.status === 'alive'
+            && t.inventory.some(i => !!i.legendName)
+            && state.tributes.some(o => o.id !== t.id && o.status === 'dead' && (o.kills ?? 0) > 0)),
+    },
+    {
+        id: 'the-terms-were-the-terms',
+        name: 'The Terms Were the Terms',
+        hint: 'See an alliance charter carried to the final eight without a single clause broken.',
+        category: 'social',
+        rarity: 'common',
+        test: state => state.charterKeptSeen === true,
+    },
+    {
+        id: 'lawyers-of-the-arena',
+        name: 'Lawyers of the Arena',
+        hint: 'See an alliance form with three or more clauses in its charter.',
+        category: 'social',
+        rarity: 'uncommon',
+        test: state => Object.values(state.alliances ?? {}).some(a => (a.charter?.length ?? 0) >= 3),
+        nearMiss: state => { const n = Math.max(0, ...Object.values(state.alliances ?? {}).map(a => a.charter?.length ?? 0)); return n === 2 ? 'The deepest charter of these Games ran to two clauses — one short' : undefined; },
+    },
+    {
+        id: 'the-cold-war',
+        name: 'The Cold War',
+        hint: 'Crown a victor who parted from three or more former allies and outlived all of them.',
+        category: 'social',
+        rarity: 'rare',
+        test: (state, v) => !!v && (v.formerAllies?.length ?? 0) >= 3
+            && (v.formerAllies ?? []).every(id => state.tributes.find(o => o.id === id)?.status === 'dead'),
+        nearMiss: (_s, v) => { const n = v?.formerAllies?.length ?? 0; return n === 2 ? `${v!.name} parted from two former allies — one short` : undefined; },
+    },
+    {
+        id: 'no-hard-feelings',
+        name: 'No Hard Feelings',
+        hint: 'Crown a victor who had a former ally still alive at the end.',
+        category: 'social',
+        rarity: 'rare',
+        test: (state, v) => !!v && (v.formerAllies ?? []).some(id => state.tributes.find(o => o.id === id)?.status === 'alive'),
+    },
+    {
+        id: 'the-mercy-and-the-knife',
+        name: 'The Mercy and the Knife',
+        hint: 'Crown a victor who both finished somebody bleeding out and spared somebody else.',
+        category: 'combat',
+        rarity: 'rare',
+        test: (_s, v) => !!v && (v.finishedDowned?.length ?? 0) > 0 && (v.sparedDowned?.length ?? 0) > 0,
+    },
+    {
+        id: 'the-executioner',
+        name: 'The Executioner',
+        hint: 'Crown a victor who finished three or more tributes who were already down.',
+        category: 'combat',
+        rarity: 'legendary',
+        test: (_s, v) => !!v && (v.finishedDowned?.length ?? 0) >= 3,
+        nearMiss: (_s, v) => {
+            const n = v?.finishedDowned?.length ?? 0;
+            return n === 2 ? `${v!.name} finished two tributes who were already down — one short` : undefined;
+        },
+    },
+    {
+        id: 'within-reach',
+        name: 'Within Reach',
+        hint: 'See three or more tributes die with somebody close enough to have helped.',
+        category: 'oddity',
+        rarity: 'uncommon',
+        test: state => (state.diedWithinReach ?? 0) >= 3,
+        nearMiss: state => { const n = state.diedWithinReach ?? 0; return n > 0 && n < 3 ? `${n} tribute(s) died within reach of somebody — ${3 - n} short` : undefined; },
+    },
+    {
+        id: 'nobody-came',
+        name: 'Nobody Came',
+        hint: 'Finish a Games in which not one tribute died within reach of another.',
+        category: 'oddity',
+        rarity: 'uncommon',
+        test: state => (state.diedWithinReach ?? 0) === 0 && dead(state).length >= 16,
+        nearMiss: state => { const n = state.diedWithinReach ?? 0; return n === 1 && dead(state).length >= 16 ? 'Exactly one tribute died within reach of somebody who could have helped' : undefined; },
+    },
+    {
+        id: 'took-the-marked-pack',
+        name: 'Took the Marked Pack',
+        hint: 'Crown a victor who claimed the feast pack with their own name on it.',
+        category: 'capitol',
+        rarity: 'rare',
+        test: (_s, v) => !!v && v.feastPrizeTaken === v.id,
+    },
+    {
+        id: 'took-somebody-elses',
+        name: 'Took Somebody Else\'s',
+        hint: 'Crown a victor who claimed a feast pack marked for another tribute.',
+        category: 'capitol',
+        rarity: 'common',
+        test: (_s, v) => !!v && v.feastPrizeTaken !== undefined && v.feastPrizeTaken !== v.id,
+    },
+    {
+        id: 'the-information-trade',
+        name: 'The Information Trade',
+        hint: 'See five or more pieces of intelligence change hands in a single Games.',
+        category: 'social',
+        rarity: 'uncommon',
+        test: state => (state.intelTrades ?? 0) >= 5,
+        nearMiss: state => {
+            const n = state.intelTrades ?? 0;
+            return n >= 3 && n < 5 ? `${n} pieces of intelligence changed hands — ${5 - n} short` : undefined;
+        },
+    },
+    {
+        id: 'diplomacy-by-proxy',
+        name: 'Diplomacy by Proxy',
+        hint: 'See a treaty sworn between two alliances on behalf of their members.',
+        category: 'social',
+        rarity: 'rare',
+        test: state => (state.blocTreatiesSworn ?? 0) > 0,
+    },
+    {
+        id: 'the-scavenger',
+        name: 'The Scavenger',
+        hint: 'Crown a victor who went through five or more of the fallen.',
+        category: 'survival',
+        rarity: 'rare',
+        test: (_s, v) => !!v && (v.corpsesLooted ?? 0) >= 5,
+        nearMiss: (_s, v) => {
+            const n = v?.corpsesLooted ?? 0;
+            return n >= 3 && n < 5 ? `${v!.name} went through ${n} of the fallen — ${5 - n} short` : undefined;
+        },
+    },
+    {
+        id: 'never-touched-a-body',
+        name: 'Never Touched a Body',
+        hint: 'Crown a victor who never once stripped one of the fallen.',
+        category: 'survival',
+        rarity: 'uncommon',
+        test: (_s, v) => !!v && (v.corpsesLooted ?? 0) === 0,
+    },
+    {
+        id: 'the-trapline',
+        name: 'The Trapline',
+        hint: 'Crown a victor with three or more kills taken by traps they built.',
+        category: 'combat',
+        rarity: 'legendary',
+        test: (_s, v) => !!v && (v.trapKills ?? 0) >= 3,
+        nearMiss: (_s, v) => {
+            const n = v?.trapKills ?? 0;
+            return n === 2 ? `${v!.name} took two kills off their own traps — one short` : undefined;
+        },
+    },
+    {
+        id: 'the-long-walk',
+        name: 'The Long Walk',
+        hint: 'Crown a victor who crossed open water five or more times.',
+        category: 'arena',
+        rarity: 'rare',
+        test: (_s, v) => !!v && (v.waterCrossings ?? 0) >= 5,
+        nearMiss: (_s, v) => { const n = v?.waterCrossings ?? 0; return n >= 3 && n < 5 ? `${v!.name} crossed open water ${n} times — ${5 - n} short` : undefined; },
+    },
+    {
+        id: 'unfilmed',
+        name: 'Unfilmed',
+        hint: 'Crown a victor who went eight or more cycles without being seen by anybody.',
+        category: 'oddity',
+        rarity: 'uncommon',
+        test: (_s, v) => !!v && (v.unseenStreak ?? 0) >= 8,
+        nearMiss: (_s, v) => {
+            const n = v?.unseenStreak ?? 0;
+            return n >= 5 && n < 8 ? `${v!.name} went ${n} cycles unseen — ${8 - n} short` : undefined;
+        },
+    },
+    {
+        id: 'sold-out-everybody',
+        name: 'Sold Out Everybody',
+        hint: 'Crown a victor who committed three or more betrayals.',
+        category: 'social',
+        rarity: 'legendary',
+        test: (_s, v) => !!v && (v.betrayalsCommitted ?? 0) >= 3,
+        nearMiss: (_s, v) => {
+            const n = v?.betrayalsCommitted ?? 0;
+            return n === 2 ? `${v!.name} sold out two people — one short` : undefined;
+        },
+    },
+    {
+        id: 'the-provider',
+        name: 'The Provider',
+        hint: 'Crown a victor who successfully foraged fifteen or more times.',
+        category: 'survival',
+        rarity: 'uncommon',
+        test: (_s, v) => !!v && (v.forageSuccesses ?? 0) >= 15,
+        nearMiss: (_s, v) => { const n = v?.forageSuccesses ?? 0; return n >= 10 && n < 15 ? `${v!.name} foraged successfully ${n} times — ${15 - n} short` : undefined; },
+    },
+    {
+        id: 'unmarked',
+        name: 'Unmarked',
+        hint: 'Crown a victor who never logged a single wound all Games.',
+        category: 'survival',
+        rarity: 'common',
+        test: (_s, v) => !!v && (v.woundsLogged ?? 0) === 0,
+    },
+    {
+        id: 'the-whole-bestiary',
+        name: 'The Whole Bestiary',
+        hint: 'See every mutt on an arena\'s roster attack somebody in one Games.',
+        category: 'arena',
+        rarity: 'uncommon',
+        test: state => {
+            const seen = new Set(state.muttsSeen ?? []);
+            const roster = state.arena.mutts ?? [];
+            return roster.length >= 3 && roster.every(m => seen.has(m));
+        },
+        nearMiss: state => { const seen = new Set(state.muttsSeen ?? []); const roster = state.arena.mutts ?? []; const missing = roster.filter(m => !seen.has(m)); return roster.length >= 3 && missing.length === 1 ? `Every mutt in ${state.arena.name} but one attacked somebody — ${missing[0]} never appeared` : undefined; },
+    },
     // §11: the additions — every one of them reads a field the state already
     // keeps, or one the same change started keeping.
     {
@@ -1797,6 +2104,12 @@ export interface MetaAchievement {
     name: string;
     hint: string;
     test: (totals: CareerTotals) => boolean;
+    /**
+     * How far along a cumulative entry is, for a progress bar. "A Thousand
+     * Deaths" showed locked or unlocked and never 612/1000, though every
+     * number a bar needs was already in `CareerTotals`.
+     */
+    progress?: (totals: CareerTotals) => { have: number; need: number };
 }
 
 export const META_ACHIEVEMENTS: MetaAchievement[] = [
@@ -1806,12 +2119,14 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         name: 'Every Quell',
         hint: 'See every Quarter Quell on the books play out.',
         test: t => t.quellTotal !== undefined && t.quellsSeen.length >= t.quellTotal,
+        progress: t => ({ have: t.quellsSeen.length, need: t.quellTotal ?? 0 }),
     },
     {
         id: 'meta-every-gamemaker',
         name: 'Every Gamemaker',
         hint: 'Have every Head Gamemaker run one of your Games.',
         test: t => t.gamemakerTotal !== undefined && (t.gamemakersSeen ?? 0) >= t.gamemakerTotal,
+        progress: t => ({ have: t.gamemakersSeen ?? 0, need: t.gamemakerTotal ?? 0 }),
     },
     {
         id: 'meta-same-song',
@@ -1824,66 +2139,77 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         name: 'A Thousand Deaths',
         hint: 'Watch a thousand tributes die.',
         test: t => t.deaths >= 1000,
+        progress: t => ({ have: t.deaths, need: 1000 }),
     },
     {
         id: 'meta-ten-patron-crowns',
         name: 'Ten Patron Crowns',
         hint: 'Bring home ten victories for your patron district.',
         test: t => (t.patronWins ?? 0) >= 10,
+        progress: t => ({ have: t.patronWins ?? 0, need: 10 }),
     },
     {
         id: 'meta-ten-games',
         name: 'A Regular',
         hint: 'Finish ten Games.',
         test: t => t.runs >= 10,
+        progress: t => ({ have: t.runs, need: 10 }),
     },
     {
         id: 'meta-fifty-games',
         name: 'The Career, So To Speak',
         hint: 'Finish fifty Games.',
         test: t => t.runs >= 50,
+        progress: t => ({ have: t.runs, need: 50 }),
     },
     {
         id: 'meta-hundred-deaths',
         name: 'The Price of the Show',
         hint: 'Witness one hundred deaths across all your Games.',
         test: t => t.deaths >= 100,
+        progress: t => ({ have: t.deaths, need: 100 }),
     },
     {
         id: 'meta-half-panem',
         name: 'Half of Panem',
         hint: 'Crown victors from six different districts.',
         test: t => t.crownedDistricts.length >= 6,
+        progress: t => ({ have: t.crownedDistricts.length, need: 6 }),
     },
     {
         id: 'meta-all-twelve',
         name: 'Every District\'s Year',
         hint: 'Crown a victor from every one of the twelve districts.',
         test: t => t.crownedDistricts.length >= 12,
+        progress: t => ({ have: t.crownedDistricts.length, need: 12 }),
     },
     {
         id: 'meta-grand-tour',
         name: 'The Grand Tour',
         hint: 'Crown victors in ten different arenas.',
         test: t => t.arenasWon.length >= 10,
+        progress: t => ({ have: t.arenasWon.length, need: 10 }),
     },
     {
         id: 'meta-two-hundred-deaths',
         name: 'The Show Must Go On',
         hint: 'Witness two hundred deaths across all your Games.',
         test: t => t.deaths >= 200,
+        progress: t => ({ have: t.deaths, need: 200 }),
     },
     {
         id: 'meta-quell-collector',
         name: "The Capitol's Whims",
         hint: 'See five different Quarter Quells play out, win or lose.',
         test: t => t.quellsSeen.length >= 5,
+        progress: t => ({ have: t.quellsSeen.length, need: 5 }),
     },
     {
         id: 'meta-hundred-games',
         name: 'A Life\'s Work',
         hint: 'Finish one hundred Games.',
         test: t => t.runs >= 100,
+        progress: t => ({ have: t.runs, need: 100 }),
     },
     // §10.1: the collector shelf — career-wide completions over the stored
     // records that today's work started keeping (laws, biomes, the bestiary).
@@ -1892,6 +2218,7 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         name: 'Law Abiding',
         hint: 'Crown victors under all six of the arena laws.',
         test: t => (t.lawsWonUnder?.length ?? 0) >= 6,
+        progress: t => ({ have: t.lawsWonUnder?.length ?? 0, need: 6 }),
     },
     {
         id: 'meta-every-biome',
@@ -1901,12 +2228,14 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         // rather than the one it shipped against.
         hint: 'Crown a victor in all twelve of the Gamemakers\' procedural biomes.',
         test: t => (t.biomesWon?.length ?? 0) >= PROCEDURAL_BIOME_COUNT,
+        progress: t => ({ have: t.biomesWon?.length ?? 0, need: PROCEDURAL_BIOME_COUNT }),
     },
     {
         id: 'meta-twenty-eight',
         name: 'Twenty-Eight',
         hint: 'Crown a victor in every hand-authored arena the Capitol has ever built.',
         test: t => (t.handAuthoredTotal ?? 0) > 0 && (t.handAuthoredWon ?? 0) >= (t.handAuthoredTotal ?? Infinity),
+        progress: t => ({ have: t.handAuthoredWon ?? 0, need: t.handAuthoredTotal ?? 0 }),
     },
     {
         id: 'meta-patrons-return',
@@ -1919,24 +2248,28 @@ export const META_ACHIEVEMENTS: MetaAchievement[] = [
         name: 'The Dynasty',
         hint: 'See one district win three Games in a row.',
         test: t => (t.dynastyStreak ?? 0) >= 3,
+        progress: t => ({ have: t.dynastyStreak ?? 0, need: 3 }),
     },
     {
         id: 'meta-full-bestiary',
         name: 'Full Bestiary',
         hint: 'Witness every named mutt the Gamemakers have on file, across all your Games.',
         test: t => (t.canonicalMuttTotal ?? 0) > 0 && (t.canonicalMuttsSeen ?? 0) >= (t.canonicalMuttTotal ?? Infinity),
+        progress: t => ({ have: t.canonicalMuttsSeen ?? 0, need: t.canonicalMuttTotal ?? 0 }),
     },
     {
         id: 'meta-statistician',
         name: 'Statistician',
         hint: 'See one tribute hold five of the record book\'s bests at the same time.',
         test: t => (t.maxSimultaneousBests ?? 0) >= 5,
+        progress: t => ({ have: t.maxSimultaneousBests ?? 0, need: 5 }),
     },
     {
         id: 'meta-long-memory',
         name: 'Long Memory',
         hint: 'Finish five hundred Games.',
         test: t => t.runs >= 500,
+        progress: t => ({ have: t.runs, need: 500 }),
     },
 ];
 

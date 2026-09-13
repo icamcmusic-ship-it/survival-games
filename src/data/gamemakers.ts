@@ -45,7 +45,17 @@ export type GamemakerSignature =
     | 'favour-a-district'  // a house tribute, and everybody can see it
     | 'punish-alliances'   // groups are the thing being discouraged this year
     | 'flood-the-low'      // geography as an argument: the low ground goes
-    | 'hunt-the-favourite';// whoever the crowd loves gets the Gamemakers' attention
+    | 'hunt-the-favourite' // whoever the crowd loves gets the Gamemakers' attention
+    // §5.3 (audit): twenty names still shared thirteen behaviours. Seven
+    // more, one each for the duplicates, so a Head Gamemaker's name means
+    // something the previous holder of the same doctrine's did not.
+    | 'poison-the-wells'   // Sarn: every water zone contaminated at once, for the cameras
+    | 'cull-the-weak'      // Brant: mutts to the zone where the field is weakest
+    | 'night-without-end'  // Pell: the lights stay off for two cycles
+    | 'seal-the-horn'      // Mane: the Cornucopia's ways in are cut for a day
+    | 'reveal-all'         // Crest: every tribute's position, on every screen
+    | 'arm-the-underdog'   // Reed: a real weapon to the tribute with the worst odds
+    | 'call-a-truce';      // Vex: the two who hate each other most, made to keep the peace
 
 export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
     {
@@ -117,8 +127,8 @@ export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
         boredomMultiplier: 1.2,
         hazardMultiplier: 0.95,
         openingLine: 'Head Gamemaker Vitellia Sarn ran the Capitol\'s biggest broadcast house before this. She has storyboards.',
-        signature: 'call-the-feast',
-        signatureLine: 'Vitellia Sarn convenes a feast timed to the minute of peak viewership. The table is lit like a stage, because it is one.',
+        signature: 'poison-the-wells',
+        signatureLine: 'Vitellia Sarn fouls every drinking place in the arena in the same minute, so the cameras can cut between the faces as they find out.',
     },
     {
         name: 'Cassius Brant',
@@ -126,8 +136,8 @@ export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
         boredomMultiplier: 1.05,
         hazardMultiplier: 1.4,
         openingLine: 'Head Gamemaker Cassius Brant\'s last arena is still classified. The survivors of it do not give interviews.',
-        signature: 'grind',
-        signatureLine: 'Cassius Brant turns the arena up a degree at a time — the water further, the nights colder — and files it under maintenance.',
+        signature: 'cull-the-weak',
+        signatureLine: 'Cassius Brant sends the mutts to wherever the field is weakest tonight. He calls it tidying.',
     },
     {
         name: 'Octavia Pell',
@@ -135,8 +145,8 @@ export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
         boredomMultiplier: 1.1,
         hazardMultiplier: 1.05,
         openingLine: 'Head Gamemaker Octavia Pell promised the press "skies nobody has ever seen." The forecast is classified.',
-        signature: 'weather-front',
-        signatureLine: 'Octavia Pell delivers the sky she promised. It arrives from the north wall, and it is not weather anyone has ever seen.',
+        signature: 'night-without-end',
+        signatureLine: 'Octavia Pell turns the arena\'s sun off and does not turn it back on. The dark is her medium.',
     },
     {
         name: 'Tiberius Mane',
@@ -144,8 +154,8 @@ export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
         boredomMultiplier: 0.95,
         hazardMultiplier: 1.3,
         openingLine: 'Head Gamemaker Tiberius Mane came up through the mutt labs, and his creatures know his voice.',
-        signature: 'release-mutts',
-        signatureLine: 'Tiberius Mane opens the pens himself, without ceremony. He wants to watch his work run.',
+        signature: 'seal-the-horn',
+        signatureLine: 'Tiberius Mane cuts every way into the Cornucopia for a day. Whoever is inside it is inside it.',
     },
     {
         name: 'Aurelia Crest',
@@ -153,8 +163,8 @@ export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
         boredomMultiplier: 1.3,
         hazardMultiplier: 1.1,
         openingLine: 'Head Gamemaker Aurelia Crest plans arenas backwards from the final zone and works out what to take away, and when.',
-        signature: 'close-the-border',
-        signatureLine: 'Aurelia Crest retires a sector on schedule. Her schedule; nobody else has seen it.',
+        signature: 'reveal-all',
+        signatureLine: 'Aurelia Crest puts every tribute\'s position on every screen at once. Nobody in the arena is hidden from anybody, for one long afternoon.',
     },
     {
         name: 'Silvanus Reed',
@@ -162,8 +172,8 @@ export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
         boredomMultiplier: 1.0,
         hazardMultiplier: 1.15,
         openingLine: 'Head Gamemaker Silvanus Reed does not answer questions about the parachute from three Games ago.',
-        signature: 'spare-the-young',
-        signatureLine: 'A parachute drifts down to the youngest tribute left alive. Silvanus Reed\'s office issues no statement, again.',
+        signature: 'arm-the-underdog',
+        signatureLine: 'Silvanus Reed sends a real weapon down to the tribute the book rates worst. He has never explained why, and the sponsors have stopped asking.',
     },
     {
         name: 'Calpurnia Vex',
@@ -171,8 +181,8 @@ export const HEAD_GAMEMAKERS: HeadGamemakerProfile[] = [
         boredomMultiplier: 0.7,
         hazardMultiplier: 0.8,
         openingLine: 'Head Gamemaker Calpurnia Vex cut this year\'s intervention budget in half and dared anyone to complain about the ratings.',
-        signature: 'do-nothing',
-        signatureLine: 'Calpurnia Vex is offered a dozen interventions by her deputies. She initials none of them and orders dinner.',
+        signature: 'call-a-truce',
+        signatureLine: 'Calpurnia Vex declares a truce between the two tributes who hate each other most, and the arena enforces it. She finds the strain more interesting than the fight.',
     },
     {
         name: 'Drusus Hallow',

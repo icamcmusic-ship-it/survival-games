@@ -148,9 +148,18 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
             }
         }
 
-        const out = { z, score: Math.max(0.1, score) };
+        const out = { z, score };
         return out;
     });
+
+    // §3.3 (audit): shift the field so the worst option sits at the floor, then
+    // sharpen. A flat clamp gave every bad zone the same weight as every other
+    // bad zone, and there are many more bad zones than good ones.
+    const lowest = scored.reduce((lo, o) => Math.min(lo, o.score), Infinity);
+    const weighted = scored.map(o => ({
+        o,
+        w: Math.pow(o.score - lowest + MOVEMENT.destinationFloor, MOVEMENT.destinationSharpness),
+    }));
 
     // A §1: the top few destinations, for the tribute sheet's trace.
     if (t.decisionTrace) {
@@ -160,11 +169,11 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
             .map(o => ({ zone: o.z.name, score: Math.round(o.score * 100) / 100 }));
     }
 
-    let roll = ctx.rng.nextFloat() * scored.reduce((s, o) => s + o.score, 0);
+    let roll = ctx.rng.nextFloat() * weighted.reduce((s, e) => s + e.w, 0);
     let pick = scored[scored.length - 1];
-    for (const o of scored) {
-        roll -= o.score;
-        if (roll <= 0) { pick = o; break; }
+    for (const e of weighted) {
+        roll -= e.w;
+        if (roll <= 0) { pick = e.o; break; }
     }
     // §3.3 (audit): where the pick sat among the options. The roll is
     // weighted, so a low-ranked pick is legitimate now and then; the soak's

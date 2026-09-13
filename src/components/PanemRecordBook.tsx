@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, AchievementCategory, AchievementRarity, META_ACHIEVEMENTS } from '../data/achievements';
+import { careerTotals } from '../utils/panemStorage';
 import { PanemRecords, RECORD_DEFS } from '../utils/panemStorage';
 import { DISTRICT_LEGACY, legacyOf } from '../data/districts';
 import { ARCHETYPES } from '../data/archetypes';
@@ -19,7 +20,13 @@ const RARITY_ORDER: Record<AchievementRarity, number> = { common: 0, uncommon: 1
  * "not yet earned" — on a mono printer the lock icon and the dimmed text are
  * indistinguishable from the checked, undimmed version.
  */
-function AchievementRow({ a, unlocked }: { a: { id: string; name: string; hint: string; rarity?: AchievementRarity }, unlocked: boolean }) {
+function AchievementRow({ a, unlocked, stamp, progress }: {
+    a: { id: string; name: string; hint: string; rarity?: AchievementRarity };
+    unlocked: boolean;
+    stamp?: { run: number; date: string };
+    progress?: { have: number; need: number };
+}) {
+    const share = progress && progress.need > 0 ? Math.min(1, progress.have / progress.need) : undefined;
     return (
         <div
             className={`panel-flush p-2.5 flex items-start gap-2.5${unlocked ? '' : ' opacity-55'}`}
@@ -36,10 +43,29 @@ function AchievementRow({ a, unlocked }: { a: { id: string; name: string; hint: 
                     )}
                 </div>
                 <div className="text-[11px] text-[var(--color-ink-500)]">{a.hint}</div>
+                {unlocked && stamp && (
+                    <div className="text-[10px] font-mono text-[var(--color-ink-500)]">earned in Games {stamp.run}{Date.parse(stamp.date) > 0 ? ` · ${new Date(stamp.date).toLocaleDateString()}` : ''}</div>
+                )}
+                {!unlocked && share !== undefined && progress && (
+                    <div className="mt-1 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 bg-[var(--paper-flush)]" role="progressbar" aria-valuenow={Math.round(share * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={`${a.name} progress`}>
+                            <div className="h-full" style={{ width: `${share * 100}%`, background: 'var(--gold)' }} />
+                        </div>
+                        <span className="text-[10px] font-mono text-[var(--color-ink-500)]">{progress.have}/{progress.need}</span>
+                    </div>
+                )}
             </div>
         </div>
     );
 }
+
+/**
+ * §2: the shelf's own controls. 172 entries in eight groups had no search, no
+ * rarity filter and no way to see only what was still locked — which, on the
+ * one screen that is explicitly a menu of things to go and do, is the
+ * information-density problem.
+ */
+type Shelf = 'all' | 'locked' | 'earned';
 
 /**
  * REPLAY-03/04: what the player has, across every run they have ever finished.
@@ -50,6 +76,15 @@ function AchievementRow({ a, unlocked }: { a: { id: string; name: string; hint: 
  */
 export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
     const unlocked = new Set(panem.unlocked);
+    const [query, setQuery] = useState('');
+    const [shelf, setShelf] = useState<Shelf>('all');
+    const [rarity, setRarity] = useState<AchievementRarity | 'any'>('any');
+    const totals = useMemo(() => careerTotals(panem), [panem]);
+    const q = query.trim().toLowerCase();
+    const matches = (a: { name: string; hint: string; id: string; rarity?: AchievementRarity }) =>
+        (q === '' || a.name.toLowerCase().includes(q) || a.hint.toLowerCase().includes(q))
+        && (shelf === 'all' || (shelf === 'earned') === unlocked.has(a.id))
+        && (rarity === 'any' || a.rarity === rarity);
     const allAchievements = [...ACHIEVEMENTS, ...META_ACHIEVEMENTS];
     const seen = allAchievements.filter(a => unlocked.has(a.id));
     const unseen = allAchievements.filter(a => !unlocked.has(a.id));
@@ -60,7 +95,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
     // ones" is a thing the page can actually say.
     const groups = (Object.keys(ACHIEVEMENT_CATEGORIES) as AchievementCategory[])
         .map(category => {
-            const entries = ACHIEVEMENTS.filter(a => a.category === category);
+            const entries = ACHIEVEMENTS.filter(a => a.category === category && matches(a));
             return {
                 category,
                 blurb: ACHIEVEMENT_CATEGORIES[category],
@@ -72,7 +107,10 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
             };
         })
         .filter(g => g.entries.length > 0);
-    const metaEntries = META_ACHIEVEMENTS;
+    const metaEntries = META_ACHIEVEMENTS.filter(a => matches(a));
+    const heirlooms = Object.entries(panem.heirlooms ?? {})
+        .map(([d, h]) => ({ district: Number(d), ...h }))
+        .sort((a, b) => a.district - b.district);
     const heldRecords = RECORD_DEFS.filter(def => panem.bests[def.id] !== undefined);
     // Absent on any record written before district crowns existed, which reads
     // correctly as "nothing crowned yet".
@@ -209,8 +247,49 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                 )}
             </section>
 
+            {heirlooms.length > 0 && (
+                <section>
+                    <div className="eyebrow mb-2">Heirlooms</div>
+                    <p className="text-[10px] text-[var(--color-ink-500)] italic mb-1.5">
+                        What the fallen carried in, sent back out by their district with the next tribute. Written every run; shown nowhere until now.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {heirlooms.map(h => (
+                            <div key={h.district} className="panel-flush p-2.5 text-xs">
+                                <div className="font-bold text-[var(--ink)]">District {h.district} — {h.token}</div>
+                                <div className="text-[11px] text-[var(--color-ink-500)]">from {h.fromName}, Games {h.run}{h.quirk ? ` · ${h.quirk}` : ''}</div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
+
             <section>
-                <div className="eyebrow mb-2">Things these Games can do</div>
+                <div className="flex items-baseline justify-between gap-3 flex-wrap mb-2">
+                    <div className="eyebrow">Things these Games can do</div>
+                    <div className="flex flex-wrap items-center gap-2 print-hide">
+                        <input
+                            type="search"
+                            className="field text-xs w-40"
+                            placeholder="Search achievements"
+                            aria-label="Search achievements"
+                            value={query}
+                            onChange={e => setQuery(e.target.value)}
+                        />
+                        <div className="seg" role="group" aria-label="Show">
+                            {(['all', 'locked', 'earned'] as Shelf[]).map(s => (
+                                <button key={s} className="seg-item" aria-pressed={shelf === s} onClick={() => setShelf(s)}>{s}</button>
+                            ))}
+                        </div>
+                        <select className="field text-xs w-auto" aria-label="Rarity" value={rarity} onChange={e => setRarity(e.target.value as AchievementRarity | 'any')}>
+                            <option value="any">any rarity</option>
+                            {(['common', 'uncommon', 'rare', 'legendary'] as AchievementRarity[]).map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                    </div>
+                </div>
+                {groups.length === 0 && metaEntries.length === 0 && (
+                    <p className="text-[11px] text-[var(--color-ink-500)] italic">Nothing matches.</p>
+                )}
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar print-unclip">
                     {groups.map(group => (
                         <div key={group.category}>
@@ -224,7 +303,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                             </div>
                             <div className="text-[10px] text-[var(--color-ink-500)] italic mb-1.5">{group.blurb}</div>
                             <div className="space-y-1.5">
-                                {group.entries.map(a => <AchievementRow key={a.id} a={a} unlocked={unlocked.has(a.id)} />)}
+                                {group.entries.map(a => <AchievementRow key={a.id} a={a} unlocked={unlocked.has(a.id)} stamp={panem.unlockedAt?.[a.id]} />)}
                             </div>
                         </div>
                     ))}
@@ -242,7 +321,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                                 Earned across every Games you have ever run, not inside one of them.
                             </div>
                             <div className="space-y-1.5">
-                                {metaEntries.map(a => <AchievementRow key={a.id} a={a} unlocked={unlocked.has(a.id)} />)}
+                                {metaEntries.map(a => <AchievementRow key={a.id} a={a} unlocked={unlocked.has(a.id)} stamp={panem.unlockedAt?.[a.id]} progress={a.progress?.(totals)} />)}
                             </div>
                         </div>
                     )}

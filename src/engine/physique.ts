@@ -33,8 +33,8 @@ import { injuryGrade } from './wounds';
  * reads dangerous from across a zone.
  */
 
-const FRAMES: Frame[] = ['Narrow', 'Spare', 'Even', 'Broad', 'Heavy'];
-const CONDITIONS: Condition[] = ['Wasted', 'Lean', 'Conditioned', 'Padded', 'Bulky'];
+export const FRAMES: Frame[] = ['Narrow', 'Spare', 'Even', 'Broad', 'Heavy'];
+export const CONDITIONS: Condition[] = ['Wasted', 'Lean', 'Conditioned', 'Padded', 'Bulky'];
 
 /** Steps from the middle of the frame scale, signed. */
 export function frameStep(t: Tribute): number {

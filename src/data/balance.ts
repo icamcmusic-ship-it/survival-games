@@ -303,6 +303,8 @@ export const CLIMATE = {
     toxicSanityLoss: 15,
     toxicPoisonChance: 0.08,
     ashenLungChance: 0.12,
+    /** The hit when the ash does get into the lungs. Was `chance * 4` = 0.48, which rounded to nothing. */
+    ashenLungDamage: 4,
     ashenSanityLoss: 8,
     tidalDrenchChance: 0.18,
     stormFatigue: 8,
@@ -954,7 +956,17 @@ export const FEAR = {
  * suspicious a harder mark for the betrayal they saw coming.
  */
 export const SUSPICION = {
+    /** §4.2 (audit): the way down. What a repaid debt, a kept charter window, and standing by someone are worth against suspicion. */
+    easedByRepaidDebt: 12,
+    easedByKeptCharter: 3,
+    easedByStoodBy: 8,
+    /** Cycles of a charter with no breach before every member eases off every other member. */
+    keptCharterWindow: 5,
+    /** The investigation's disposition prior: odds a treacherous-by-nature suspect with a clean record still reads guilty. */
+    dispositionPriorChance: 0.3,
     /** §4.8: suspicion high enough to be worth testing, but short of walking out. */
+    /** Per point of `betrayalResist`, how much faster in-group doubt accrues (Paranoid at 0.3 → 1.8x). */
+    accrualPerBetrayalResist: 2.67,
     investigateThreshold: 35,
     investigateChance: 0.25,
     /** How much a test that finds nothing buys back. */
@@ -1105,6 +1117,20 @@ export const ENDGAME = {
     hunterEdge: 0.25,
     /** Assessment below this: prefer traps, evasion, alliance-seeking. */
     underdogEdge: -0.25,
+    /** §7 (audit): edge added for a bloodless finalist who is still fit enough to fight — the Capitol's expectation, felt. */
+    bloodlessPressure: 0.3,
+    bloodlessPressureHealth: 40,
+    /**
+     * §7 (audit): the Capitol does not crown somebody who hid. Once per run,
+     * once the field is this small, a finalist with no kills who has not
+     * been in a fight for this many cycles gets the arena's attention —
+     * the Gamemakers' mutts, aimed. It is a death that nobody chose and a
+     * fight the tribute cannot walk around, and it is why "outlast everybody"
+     * stops being a plan at the end.
+     */
+    bloodlessHuntField: 4,
+    bloodlessHuntQuietCycles: 3,
+    bloodlessHuntChance: 0.5,
 } as const;
 
 export const DESPERATION = {
@@ -1655,6 +1681,13 @@ export const ENCOUNTER_BRANCH = {
 } as const;
 
 export const ENCOUNTERS = {
+    /**
+     * §7 (audit): cycles before the same arena event can be drawn again.
+     * The only repeat suppression was oncePerRun; with ~650 lines a run and
+     * a 30-40 event pool, the same beat landed twice in a day. Lifted when
+     * nothing else is eligible, so a small pool still fires.
+     */
+    eventRepeatCooldown: 4,
     /** T-5: dodge penalty per grade of leg injury (was a flat 2 boolean). */
     legsDodgePenaltyPerGrade: 1.25,
     /** Fallback escape difficulty for an event that does not name its own. */
@@ -1696,6 +1729,15 @@ export const ENCOUNTERS = {
     /** Chance a tribute wanders rather than holding position. */
     wanderChance: 0.5,
     /**
+     * After dark the field moves less: the wander roll is scaled by this,
+     * and every point of `nightMovement` a tribute carries buys back
+     * `nightMovementPerPoint` of it. Night-Sighted (2.5) travels at full
+     * daytime odds; Fleet (1.5) close to it. This is the read site the
+     * trait hook was missing — three traits carried it and nothing read it.
+     */
+    nightWanderMultiplier: 0.6,
+    nightMovementPerPoint: 0.16,
+    /**
      * Depletion at which a forage attempt reports the ground picked clean.
      * §1.6: lowered with the zone-economy retune — the notice is the only
      * on-screen signal that the system exists, and at 0.55 it was firing
@@ -1707,6 +1749,27 @@ export const ENCOUNTERS = {
 
 /** Multi-round duels: how long they last and when someone breaks off. */
 export const COMBAT = {
+    /** The die on top of a fighter's estimated power in an exchange (0..this, inclusive). */
+    powerSwingMax: 5,
+    /**
+     * §3.3 (audit): where a hit lands depends on what landed it. Relative
+     * weights per weapon class over [head, torso, arms, legs]; the hit was a
+     * uniform pick before, so a bow and a club opened bodies identically.
+     */
+    woundSiteWeights: {
+        ranged: [2, 4, 2, 3],
+        thrown: [2, 3, 3, 3],
+        melee: [2, 3, 3, 3],
+        unarmed: [3, 3, 1, 3],
+    } as Record<'ranged' | 'thrown' | 'melee' | 'unarmed', [number, number, number, number]>,
+    /** Per point of the attacker's weapon proficiency, extra weight on the head — practice finds the target. */
+    woundSiteSkillHead: 0.3,
+    /** Group fights: an alliance's muscle draws fire, its medic is protected by the people around them. */
+    roleMuscleDraw: 14,
+    roleMedicShield: 12,
+    /** Friendly fire is a clumsy swing: base weight plus per point of agility *below* the midpoint, plus per grade of arm injury. */
+    friendlyFireAgilityWeight: 1.2,
+    friendlyFireArmWeight: 3,
     /**
      * §8a: the numbers advantage decays with the pack's own trust. A group
      * that has stopped trusting each other still outnumbers you — it simply
@@ -1744,14 +1807,23 @@ export const COMBAT = {
     /** Below this, a landed hit reads as finishing the fight rather than opening it. */
     finishingHealthThreshold: 30,
     /** Power a Vengeful tribute brings against the specific person they hate. */
-    vengefulEdge: 3,
     /** Chance a round inflicts a localised wound on the loser. */
     woundChance: 0.28,
     bleedChance: 0.34,
     /** Chance a poisoned weapon transfers venom on a landed hit. */
     poisonTransferChance: 0.5,
     /** Chance a Pyromaniac's landed hit leaves the defender burned. */
-    pyromaniacBurnChance: 0.2,
+    /** Regard at or below which the Vengeful edge applies without a sworn oath. */
+    vengefulHatredRegard: -35,
+    /**
+     * §7 (audit): exhaustion is a way to lose a fight, and now a way to die
+     * in one. At or above this fatigue, each round carries a chance the
+     * tribute simply goes down — legs gone, not struck — and takes a free
+     * hit for it. Fatigue never killed mid-fight before.
+     */
+    collapseFatigue: 92,
+    collapseChance: 0.15,
+    collapseDamage: 12,
     /** Durability burned per round of use. */
     weaponWearPerRound: 6,
     /**
@@ -1919,9 +1991,63 @@ export const STEALTH = {
  * zones from open water. These are the standing intentions a tribute actually
  * carries between cycles: find water, find somewhere to sleep.
  */
+/**
+ * §9 (audit): the victor legacy. A tribute the player crowned returns to their
+ * district as its mentor, and their successors feel it at the sponsor desk.
+ * This is the fourth thing that carries between Games, alongside patronage,
+ * the grudge match and arena unlocks — and the only one a player earns by
+ * playing well rather than by spending.
+ */
+export const VICTOR_MENTOR = {
+    /** Multiplier on the district's standing sponsor generosity. */
+    generosityMultiplier: 1.22,
+    /** A victor has contacts even if their district never did, so the plea chance starts from here. */
+    pullFloor: 0.12,
+    pullBonus: 0.08,
+    /** Even a storied district's victor cannot get a parachute past the Capitol every other cycle. */
+    pullCap: 0.34,
+} as const;
+
+/**
+ * §9 (audit): the coin economy's sinks and its one tap.
+ *
+ * Coins had two sinks, one of them a single 750-coin purchase, and a broke
+ * player was topped up by a flat 250 every run — so after roughly ten runs
+ * scarcity never arrived again and the betting layer stopped mattering. The
+ * stipend now tapers toward a floor, patronage escalates so it keeps taking
+ * coins, and locked arenas can be bought outright as an alternative to
+ * waiting for a sealed draw to land on them.
+ */
+export const COIN_ECONOMY = {
+    /** The first stipend. Each subsequent one is multiplied by `stipendTaper`. */
+    stipendBase: 250,
+    stipendTaper: 0.78,
+    /** However many stipends have been taken, one is never worth less than this. */
+    stipendFloor: 60,
+    /** Below this balance the Capitol steps in at all. */
+    brokeThreshold: 50,
+    /** First patronage. The nth costs `patronBaseCost * patronCostGrowth^(n-1)`. */
+    patronBaseCost: 750,
+    patronCostGrowth: 1.85,
+    /** More than this many standing patronages and the Capitol stops selling. */
+    patronMaxDistricts: 4,
+    /** Buying a locked arena outright rather than waiting for the sealed draw to find it. */
+    arenaUnlockCost: 900,
+} as const;
+
 export const MOVEMENT = {
     /** A1: fatigue a plain move costs, used by the Fortified movement penalty. */
     baseMoveFatigue: 4,
+    /**
+     * §3.3 (audit): the destination roll is weighted, but every negative-scoring
+     * zone used to collapse onto one flat floor, so a wide field of bad options
+     * collectively outweighed the good one. Weights are now shifted so the worst
+     * option sits at `destinationFloor` and then raised to `destinationSharpness`,
+     * which keeps a long tail of plausible choices while making the bottom of the
+     * field genuinely unlikely rather than merely individually unlikely.
+     */
+    destinationFloor: 0.1,
+    destinationSharpness: 1.6,
     // ---- A1: how the conditional stances route ----
     /** Cycles a cannon stays worth walking toward for a scavenger. */
     scavengeCannonMemory: 3,
@@ -1933,6 +2059,16 @@ export const MOVEMENT = {
     shadowFollowWeight: 8,
     /** §5.3: extra fatigue for completing a two-cycle crossing or climb. */
     crossingFatigue: 8,
+    /**
+     * §7 (audit): drowning as a universal death. A tribute who comes ashore
+     * from a water crossing already past this fatigue, with no swimming to
+     * speak of, can go under on the last stretch. The swimming proficiency
+     * and the water trait are the whole defence, which is what they are for.
+     */
+    drowningFatigue: 78,
+    drowningChance: 0.18,
+    drowningDamage: 38,
+    drowningSwimmingProtection: 0.12,
     /** Thirst above which finding water outranks everything else.
      *  §7.7: lowered 45 -> 38 — dehydration was outranking mutts as a killer,
      *  and the fix is tributes moving toward water a cycle earlier. */
@@ -2033,6 +2169,21 @@ export const PLANNING = {
 } as const;
 
 export const OBJECTIVES = {
+    /**
+     * §3.2 (audit): the outcome ledger. Nothing anywhere recorded "I chose X
+     * and it went badly". A tribute whose hunt of a specific mark has failed
+     * — expired, or abandoned — scores that mark lower next time, per
+     * consecutive failure up to the cap, so they change target rather than
+     * repeat themselves. Deliberately a *target* penalty and not a tier
+     * penalty on hunting in general: lowering the tier fed the tension flip
+     * and the standing-goal override, and measurably bred bloodless victors.
+     */
+    sameTargetPenalty: 9,
+    failureStreakCap: 3,
+    /** Priority tier of a hunt on a mark worth breaking a truce for — the honest hunt sits at 52. */
+    huntTier: 54,
+    /** ...and of a sworn hunt with a pact-mate standing right there for the same kill (a lone oath is 56). */
+    pactHuntTier: 60,
     /**
      * §3.3: stalking — following without engaging. Taken instead of a hunt by
      * anyone who has found somebody they are not confident of beating today.
@@ -2192,6 +2343,16 @@ export const ZONE_EFFECTS = {
     /** A burned-out zone is stripped for a long while — the ground is ash. */
     strippedDuration: 6,
     strippedDepletion: 0.85,
+    /**
+     * §5.3 (audit): fogbound, stripped and blooming had empty or one-line
+     * tick bodies. Fog is disorienting and tiring to move through; stripped
+     * ground is a hungry place to stand; a bloom feeds as well as settles.
+     */
+    fogboundFatigue: 2,
+    fogboundSanityLoss: 1,
+    strippedHunger: 2,
+    bloomingFeed: 4,
+    bloomingHeal: 1,
 
     /** Fire: per-cycle damage to anyone still standing in it, and its spread. */
     burningDamage: 10,
@@ -3417,6 +3578,8 @@ export const BLOC_TREATY = {
 } as const;
 
 export const TRIANGLES = {
+    /** §4.3 (audit): heat cools when the three are apart. It only ever rose, so every detected triangle was a fuse. */
+    heatDecayApart: 1.5,
     /**
      * Regard a rival needs toward the apex to count as attached.
      *
@@ -3612,6 +3775,8 @@ export const ROMANCE = {
 
 /** Alliance formation and dissolution. */
 export const ALLIANCES = {
+    /** §3.2 (audit): dread pushes people toward company. Formation chance scales by 1 + dread * this. */
+    dreadFormationWeight: 0.5,
     /** §4.4: how much more attractive a mark the member holding the cache is. */
     betrayalQuartermasterWeight: 1.6,
     /**
@@ -3941,8 +4106,15 @@ export const BETRAYAL = {
     minCacheValueToSteal: 15,
     /** Leading someone into ground you know is lethal needs you to know it. */
     lureMinRememberedThreat: 0.8,
+    /** Intelligence at which a betrayer favours the lure over the knife. */
+    lureCleverIntelligence: 7,
     /** Withholding only means anything if they are actually dying. */
     withholdMaxHealth: 45,
+    /** ...and it costs them: the untreated wound worsens and the refusal lands. */
+    withholdSanity: 8,
+    withholdExcitement: 15,
+    /** Abandoning is only a betrayal if there is something to abandon them to. */
+    abandonMaxHealth: 60,
     /**
      * §4.1: betrayal was 0.2% of the chronicle — one line at the knife and
      * then silence. These are the days after: the odds per cycle that somebody
@@ -5018,6 +5190,10 @@ export const RESPECT = {
 } as const;
 
 export const PARLEY = {
+    /** §3.5 (audit): an unravelling tribute is harder to talk down — added to their truce-break chance. */
+    unravellingBreakBonus: 0.08,
+    /** ...and a cowed one takes any terms offered: added to parley willingness. */
+    dreadParleyBonus: 0.15,
     /** A power ratio below this means a tribute genuinely likes their odds. */
     // §1.11: read against the same measured distribution as `outmatchedRatio`
     // — at 0.8 nine hostile meetings in ten counted as "confident", so the
@@ -5198,6 +5374,13 @@ export const PARLEY = {
  */
 export const DEBTS = {
     max: 3,
+    /**
+     * §4.5 (audit): the district bond only grows between partners who are
+     * actually in each other's lives — met within this many cycles, or in
+     * the same group — and never between partners who have fought or where
+     * one has sold the other out. It used to ratchet unconditionally.
+     */
+    districtBondContactWindow: 4,
     /** What each kind of help is worth on the ledger. */
     savedInFight: 2,
     patchedUp: 1.5,
@@ -5296,10 +5479,21 @@ export const CHARTER = {
     noticeChance: 0.4,
     /** What every other member's regard drops by when it is. */
     breachRegardCost: 9,
+    /** What a split-at-eight honoured in full is worth between the parting members. */
+    honouredPartingRegard: 4,
     /** Food items held privately that counts as hoarding. */
     hoardingFood: 2,
     /** Regard below which two members of the same group are visibly at odds. */
     hostileRegard: -15,
+    /**
+     * Cycles before the same clause can be found broken again. The looting
+     * and intel clauses compared a lifetime counter to a baseline that was
+     * never advanced after a breach, and the grudge and camp clauses test a
+     * standing condition — so one slip was an offender for the rest of the
+     * run, breach after breach, and the hearing machinery fired on the same
+     * offence every cycle.
+     */
+    rebreachCooldownCycles: 4,
 } as const;
 
 /**
@@ -5308,6 +5502,13 @@ export const CHARTER = {
  * tooltip. See `engine/gamemakerAgency.ts`.
  */
 export const GAMEMAKER_AGENCY = {
+    /** §5.3 (audit): the seven new signatures' own numbers. */
+    nightWithoutEndCycles: 2,
+    sealHornCycles: 2,
+    callTruceCycles: 6,
+    /** Mutual regard at or below which a pair counts as hating each other enough to be worth a forced truce. */
+    callTruceMinHatred: -10,
+    poisonWellsSeverity: 1.2,
     /** Not while the cast is still enormous — this rescues the middle of a run. */
     /** A-6: the signature is the roster's whole payoff — it fired in only 65%
      * of runs. Wider window and better unprompted odds get it near-every-run. */
@@ -5821,16 +6022,30 @@ export const ARCHETYPE_HOOKS = {
     /** `escalating`: warier every day, up to a ceiling. */
     escalatingPerDay: 0.03,
     escalatingCap: 0.25,
-    /** `front-loaded`: spends it all at the gong and settles afterwards. */
+    /**
+     * `front-loaded`: spends it all at the gong and settles afterwards. Opens
+     * *below* the archetype's own caution by `frontLoadedOpening` and climbs
+     * back toward it. It used to add caution faster than `escalating` did —
+     * the documented shape, inverted — so Career and Beast were the most
+     * caution-drifted archetypes in the late game.
+     */
+    frontLoadedOpening: 0.1,
     frontLoadedPerDay: 0.05,
-    frontLoadedCap: 0.3,
+    frontLoadedCap: 0.25,
 
     // ---- targetPreference ----
-    /** Scale on the preference term, against the shared opportunism score. */
+    /**
+     * Scale on the preference term, against the shared opportunism score.
+     * Every preference now tops out near the same ±50: `strongest` used to
+     * reach ~90 and `richest` ~100, so the two archetypes carrying them were
+     * steered twice as hard as anyone else.
+     */
     targetPreferenceWeight: 0.5,
-    strongestPerTrainingPoint: 4,
+    strongestHealthWeight: 0.3,
+    strongestPerTrainingPoint: 1.5,
     nearestPerHop: 12,
-    richestPerValue: 1.2,
+    richestPerValue: 0.6,
+    richestCap: 50,
 
     // ---- signatures ----
     /** Per-cycle chance the beat lands, once its conditions hold. */
@@ -5839,6 +6054,8 @@ export const ARCHETYPE_HOOKS = {
     signatureObjectiveCycles: 6,
     signatureExcitement: 25,
     signatureTrust: 8,
+    /** A signature that needs a live pack, a wounded neighbour or two co-located strangers fires far less often than one that needs nothing; its payoff scales to match. */
+    signatureGatedMultiplier: 1.6,
     /** Career: the pack names somebody, out loud. */
     declarationFear: 8,
     /** Trickster: the snare nobody watched them build. */

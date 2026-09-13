@@ -15,6 +15,11 @@ import { readStoredConfig, writeStoredConfig } from '../utils/prefsStorage';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 import { CLIMATE_LABELS, LAW_LABELS, lawsOf, lengthEstimate, terrainMix } from '../data/arenaBriefing';
 import { ARENA_MUTTS } from '../data/mutts';
+import { COIN_ECONOMY } from '../data/balance';
+import { RNG } from '../utils/rng';
+
+/** §9 (audit): how many standing patronages the Capitol will sell one player. */
+const PATRON_MAX_DISTRICTS = COIN_ECONOMY.patronMaxDistricts;
 
 function randomSeed() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -195,6 +200,10 @@ type SetupTab = 'arena' | 'rules' | 'cast' | 'meta';
 export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig, forceQuell: boolean) => void }) {
     const [seed, setSeed] = useState(randomSeed());
     const [tab, setTab] = useState<SetupTab>('arena');
+    // §2: a 750-coin purchase with no undo asks twice, like every other one-way action.
+    const [patronPending, setPatronPending] = useState<number | null>(null);
+    const [arenaBuyPending, setArenaBuyPending] = useState(false);
+    const [arenaBought, setArenaBought] = useState<string | null>(null);
     const [arenaId, setArenaId] = useState(ARENAS[0].id);
     const [arenaFacet, setArenaFacet] = useState<'all' | 'unseen' | 'stacked' | 'blackout' | 'water' | 'small' | 'large'>('all');
     const [gamemakerMode, setGamemakerMode] = useState(false);
@@ -214,8 +223,16 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     // the player has played it before (`arenasSeen`, keyed by display name), or
     // if it is the sealed draw — which is never gated, because it is how the
     // rest of the roster is reached.
+    // §9 (audit): an arena is also unlocked if the player bought it outright,
+    // which is the alternative to waiting for a sealed draw to land on it.
+    const boughtArenas = new Set(panem.arenasBought ?? []);
     const arenaUnlocked = (id: string, name: string) =>
-        id === 'random-hidden' || STARTER_ARENA_IDS.includes(id) || seenArenas.has(name);
+        id === 'random-hidden' || STARTER_ARENA_IDS.includes(id) || seenArenas.has(name) || boughtArenas.has(name);
+    // §9 (audit): patronage is a list now, and each seat costs more than the last.
+    const patronDistricts = panem.patronDistricts ?? (panem.patronDistrict === undefined ? [] : [panem.patronDistrict]);
+    const nextPatronCost = gameActions.nextPatronCost();
+    const arenaUnlockCost = gameActions.arenaUnlockCost;
+    const lockedArenas = ARENAS.filter(a => !arenaUnlocked(a.id, a.name));
     const [savedRun, setSavedRun] = useState(readSavedRun);
     // §2.1: the manual slots alongside the rolling autosave.
     const [slots, setSlots] = useState<Array<SlotSummary | null>>(() => gameActions.readSaveSlots());
@@ -233,6 +250,9 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     // and the player's own records, so none of them needs storage of its own.
     const todaySeed = dailySeed();
     const isDaily = trimmedSeed === todaySeed;
+    // §9 (audit): the daily's local scoreboard. A shared starting position is
+    // not a challenge until it can say how your last attempt at it went.
+    const dailyBest = (panem.dailyBests ?? {})[todaySeed];
     const featured = featuredArena(panem.arenasSeen ?? []);
     // §10.5: the archived victors seated for this run, if any.
     const grudgeIds = useStore(gameStore, st => st.grudgeMatchIds);
@@ -318,6 +338,20 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             <div key={i} className="flex flex-wrap items-center justify-between gap-3 panel-flush p-3">
                                 <div className="min-w-0">
                                     <div className="font-bold text-xs uppercase text-[var(--ink)]">{label}</div>
+                                    <input
+                                        type="text"
+                                        className="field text-xs w-full mt-1"
+                                        placeholder="Add a note to this save…"
+                                        aria-label={`Note for ${label}`}
+                                        maxLength={120}
+                                        defaultValue={slot.note ?? ''}
+                                        onBlur={e => {
+                                            if ((e.target.value.trim() || '') !== (slot.note ?? '')) {
+                                                gameActions.setSlotNote((i + 1) as 1 | 2 | 3, e.target.value);
+                                                setSlots(gameActions.readSaveSlots());
+                                            }
+                                        }}
+                                    />
                                     <div className="text-xs text-[var(--color-ink-500)] mt-0.5">
                                         {slot.arenaHidden && !canSeeArena(disclosureFor(slot.phase)) ? '❓ Arena sealed' : slot.arenaName}
                                         {' · '}seed {slot.seed}
@@ -414,6 +448,13 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 Everybody who plays the daily today gets the same arena and the same cast — <span className="font-mono">{todaySeed}</span>.
                                 {isDaily ? ' Loaded.' : ''}
                             </div>
+                            {dailyBest && (
+                                <div className="text-[10px] text-[var(--color-ink-200)] mt-0.5" role="status">
+                                    Your best today: {dailyBest.victorName
+                                        ? `${dailyBest.victorName} of District ${dailyBest.victorDistrict} crowned on day ${dailyBest.day}`
+                                        : `no victor, ${dailyBest.day} days`}.
+                                </div>
+                            )}
                         </div>
                         <button
                             onClick={() => { setSeed(todaySeed); setArenaId(dailyArenaId(todaySeed)); setConfig(dailyConfig()); }}
@@ -449,12 +490,35 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     dials most players never change. Grouped into four steps,
                     in the order somebody actually makes the decisions. */}
                 <div className="p-5 pb-0">
-                    <div className="seg w-fit flex-wrap" role="tablist" aria-label="Setup sections">
+                    <div
+                        className="seg w-fit flex-wrap"
+                        role="tablist"
+                        aria-label="Setup sections"
+                        // Arrow keys move between tabs and Home/End jump, which is
+                        // what `role="tab"` promises a keyboard user; without it
+                        // the ARIA was a claim the controls did not honour.
+                        onKeyDown={e => {
+                            const ids = SETUP_TABS.map(([id]) => id);
+                            const at = ids.indexOf(tab);
+                            const go = (next: number) => {
+                                const id = ids[(next + ids.length) % ids.length];
+                                setTab(id);
+                                document.getElementById(`setup-tab-${id}`)?.focus();
+                            };
+                            if (e.key === 'ArrowRight') { e.preventDefault(); go(at + 1); }
+                            else if (e.key === 'ArrowLeft') { e.preventDefault(); go(at - 1); }
+                            else if (e.key === 'Home') { e.preventDefault(); go(0); }
+                            else if (e.key === 'End') { e.preventDefault(); go(ids.length - 1); }
+                        }}
+                    >
                         {SETUP_TABS.map(([id, label, blurb]) => (
                             <button
                                 key={id}
+                                id={`setup-tab-${id}`}
                                 role="tab"
                                 aria-selected={tab === id}
+                                aria-controls={`setup-panel-${id}`}
+                                tabIndex={tab === id ? 0 : -1}
                                 onClick={() => setTab(id)}
                                 className="seg-item"
                                 title={blurb}
@@ -753,31 +817,110 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             <span className="font-mono text-[11px] text-[var(--color-ink-500)]">{coins} coins held</span>
                         </div>
                         <p className="text-[11px] text-[var(--color-ink-500)]">
-                            {panem.patronDistrict !== undefined
-                                ? `You are the standing patron of District ${panem.patronDistrict}: its tributes begin every Games with sponsors already warm.`
-                                : `Spend ${gameActions.patronCost} coins to become the standing patron of one district — its tributes begin every future Games with a sponsor-trust head start.`}
+                            {patronDistricts.length > 0
+                                ? `You are the standing patron of ${patronDistricts.map(d => `District ${d}`).join(', ')}: their tributes begin every Games with sponsors already warm.`
+                                : `Spend ${nextPatronCost} coins to become the standing patron of a district — its tributes begin every future Games with a sponsor-trust head start.`}
+                            {patronDistricts.length > 0 && patronDistricts.length < PATRON_MAX_DISTRICTS
+                                ? ` A second seat costs more than the first: the next is ${nextPatronCost} coins.`
+                                : ''}
+                            {patronDistricts.length >= PATRON_MAX_DISTRICTS ? ' The Capitol will not sell you another.' : ''}
                         </p>
                         <div className="flex flex-wrap gap-1">
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(d => (
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(d => {
+                                const held = patronDistricts.includes(d);
+                                return (
+                                    <button
+                                        key={d}
+                                        className={`chip ${held ? 'chip-accent' : ''}`}
+                                        // "D7" is a label to the eye and nothing to a
+                                        // screen reader; aria-pressed carries which seats
+                                        // are held.
+                                        aria-pressed={held}
+                                        aria-label={held
+                                            ? `You are District ${d}'s patron — select to give the seat up`
+                                            : `Become District ${d}'s patron for ${nextPatronCost} coins`}
+                                        disabled={!held && (coins < nextPatronCost || patronDistricts.length >= PATRON_MAX_DISTRICTS)}
+                                        title={held
+                                            ? `You are District ${d}'s patron`
+                                            : `Become District ${d}'s patron (${nextPatronCost} coins)`}
+                                        onClick={() => setPatronPending(patronPending === d ? null : d)}
+                                    >
+                                        D{d}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {patronPending !== null && (
+                            <div className="flex flex-wrap items-center gap-2 pt-1" role="group" aria-label="Confirm patronage">
+                                <span className="text-[11px] text-[var(--color-ink-200)]">
+                                    {patronDistricts.includes(patronPending)
+                                        ? `Give up your patronage of District ${patronPending}? The coins you spent on it are not returned.`
+                                        : `Spend ${nextPatronCost} coins to become District ${patronPending}'s standing patron? There is no refund.`}
+                                </span>
                                 <button
-                                    key={d}
-                                    className={`chip ${panem.patronDistrict === d ? 'chip-accent' : ''}`}
-                                    // "D7" is a label to the eye and nothing to a
-                                    // screen reader; aria-pressed carries which one
-                                    // is the standing patronage.
-                                    aria-pressed={panem.patronDistrict === d}
-                                    aria-label={panem.patronDistrict === d
-                                        ? `You are District ${d}'s patron`
-                                        : `Become District ${d}'s patron for ${gameActions.patronCost} coins`}
-                                    disabled={panem.patronDistrict !== d && coins < gameActions.patronCost}
-                                    title={panem.patronDistrict === d
-                                        ? `You are District ${d}'s patron`
-                                        : `Become District ${d}'s patron (${gameActions.patronCost} coins)`}
-                                    onClick={() => { if (panem.patronDistrict !== d) gameActions.patronDistrict(d); }}
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => {
+                                        if (patronDistricts.includes(patronPending)) gameActions.dropPatron(patronPending);
+                                        else gameActions.patronDistrict(patronPending);
+                                        setPatronPending(null);
+                                    }}
+                                >Confirm</button>
+                                <button className="btn btn-ghost btn-sm" onClick={() => setPatronPending(null)}>Cancel</button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* §9 (audit): the second recurring coin sink. Waiting for a
+                        sealed draw to land on one of the locked arenas is a very
+                        long wait, and coins had nowhere to go once the first
+                        patronage was bought. The Capitol will sell you a map —
+                        but not which one, because the picker deliberately hides
+                        a locked arena's identity and naming it here to take your
+                        money would give that away for free. */}
+                    <div className="panel-flush p-4 space-y-2 mt-3">
+                        <div className="flex items-baseline justify-between flex-wrap gap-2">
+                            <span className="eyebrow">Buy a map</span>
+                            <span className="font-mono text-[11px] text-[var(--color-ink-500)]">{lockedArenas.length} still undiscovered</span>
+                        </div>
+                        <p className="text-[11px] text-[var(--color-ink-500)]">
+                            {lockedArenas.length === 0
+                                ? 'You have seen every arena the Capitol has. There is nothing left to sell you.'
+                                : `For ${arenaUnlockCost} coins a clerk in the Gamemakers' archive will lose one undiscovered map where you can find it. Which one is not yours to choose.`}
+                        </p>
+                        {arenaBought !== null && (
+                            <p className="text-[11px] text-[var(--color-ink-200)]" role="status">
+                                The archive gives up <strong>{arenaBought}</strong>. It is yours to pick from now on.
+                            </p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-2">
+                            {arenaBuyPending ? (
+                                <>
+                                    <span className="text-[11px] text-[var(--color-ink-200)]">Spend {arenaUnlockCost} coins on a map you have not chosen? There is no refund.</span>
+                                    <button
+                                        className="btn btn-primary btn-sm"
+                                        onClick={() => {
+                                            // Drawn from the seed the player is about to
+                                            // play, so the purchase is as deterministic as
+                                            // everything else the setup screen does.
+                                            const pickFrom = lockedArenas;
+                                            if (pickFrom.length === 0) { setArenaBuyPending(false); return; }
+                                            const draw = new RNG(`${trimmedSeed || seed}-archive-${panem.arenasBought?.length ?? 0}`);
+                                            const chosen = draw.pick(pickFrom);
+                                            if (gameActions.buyArenaUnlock(chosen.name)) setArenaBought(chosen.name);
+                                            setArenaBuyPending(false);
+                                        }}
+                                    >Confirm</button>
+                                    <button className="btn btn-ghost btn-sm" onClick={() => setArenaBuyPending(false)}>Cancel</button>
+                                </>
+                            ) : (
+                                <button
+                                    className="btn btn-ghost btn-sm"
+                                    disabled={lockedArenas.length === 0 || coins < arenaUnlockCost}
+                                    onClick={() => setArenaBuyPending(true)}
                                 >
-                                    D{d}
+                                    Buy an undiscovered map ({arenaUnlockCost} coins)
                                 </button>
-                            ))}
+                            )}
                         </div>
                     </div>
                 </div>

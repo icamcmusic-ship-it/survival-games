@@ -317,7 +317,7 @@ function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
         case 'the-faces-lie': {
             // A face in the sky belonging to somebody still walking around.
             // Everybody who cared about them grieves for nothing.
-            const liveOne = ctx.rng.pick(alive);
+            const liveOne = ctx.rng.pickOrUndefined(alive);
             if (!liveOne) break;
             alive.filter(o => o.id !== liveOne.id).forEach(o => {
                 if ((o.relationships[liveOne.id] ?? 0) <= 0) return;

@@ -1,3 +1,4 @@
+import { dreadOf } from '../intent';
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
@@ -177,6 +178,18 @@ export function processAlliances(ctx: SimContext) {
         });
     }
 
+    // Every step below may strip an `allianceId` without touching the arrays
+    // built above, and the later steps average, gate and pick betrayers over
+    // those arrays. Re-derive them between steps, so a member who walked out
+    // in 1c is not a witness in 2 and not a vote in 5.
+    const refresh = () => {
+        alliances.forEach((members, id) => {
+            const live = members.filter(m => m.status === 'alive' && m.allianceId === id);
+            if (live.length === 0) alliances.delete(id);
+            else alliances.set(id, live);
+        });
+    };
+
     // 1. Dissolve small alliances
     alliances.forEach((members, id) => {
         if (members.length < 2) {
@@ -210,6 +223,7 @@ export function processAlliances(ctx: SimContext) {
         }
     });
 
+    refresh();
     // 1b2. §4.8: suspicion gets an investigation path. A tribute who
     // suspects an ally no longer only waits or leaves: below the departure
     // threshold they *test* it — trail the suspect, check the cache, ask a
@@ -224,10 +238,19 @@ export function processAlliances(ctx: SimContext) {
                 && suspicionOf(m, o.id) < SUSPICION.departThreshold);
             if (!suspect) return;
             if (!ctx.rng.chance(SUSPICION.investigateChance)) return;
-            // The test finds what there is to find: real treachery confirms,
-            // an honest ally clears.
-            const guilty = (ARCHETYPES[suspect.archetype].treachery + traitMod(suspect, 'treachery')) > 0.25
+            // The test finds what there is to find — in the *record*, not the
+            // sheet. It used to read the suspect's archetype treachery
+            // straight off the roster, so a treacherous-by-nature ally who had
+            // done nothing was confirmed and a loyal one mid-plot was cleared.
+            // Disposition is a prior now, not a verdict.
+            const record = allianceOf(ctx.state, id);
+            const onRecord = (record?.breachesBy?.[suspect.id]?.length ?? 0) > 0
+                || (suspect.corpsesLooted ?? 0) > (record?.lootedAtCharter?.[suspect.id] ?? 0)
+                || (suspect.intelSold ?? 0) > (record?.intelSoldAtCharter?.[suspect.id] ?? 0)
+                || (suspect.betrayalsCommitted ?? 0) > 0
                 || ensureMemory(m).betrayedBy.includes(suspect.id);
+            const disposed = (ARCHETYPES[suspect.archetype].treachery + traitMod(suspect, 'treachery')) > 0.25;
+            const guilty = onRecord || (disposed && ctx.rng.chance(SUSPICION.dispositionPriorChance));
             if (guilty) {
                 raiseSuspicion(m, suspect.id, SUSPICION.investigateConfirmAmount);
                 ctx.logEvent(
@@ -247,6 +270,7 @@ export function processAlliances(ctx: SimContext) {
         });
     });
 
+    refresh();
     // 1c. §4.2: pre-emptive departure. A member whose suspicion of a specific
     // ally has climbed high enough gets out before the knife does — the
     // telegraphed version of the betrayal the audience can see building.
@@ -277,6 +301,7 @@ export function processAlliances(ctx: SimContext) {
         });
     });
 
+    refresh();
     // 1d. Going it alone. Not a grievance — every other way out of an alliance
     // is one (suspicion, betrayal, romance, a pact coming due), which left no
     // path at all for a tribute who gets on fine with their group and has
@@ -317,6 +342,7 @@ export function processAlliances(ctx: SimContext) {
         });
     }
 
+    refresh();
     // 1e. A2: the Mercenary's terms coming due.
     //
     // `parley.ts` gestured at alliance-as-transaction and nothing in the model
@@ -343,6 +369,7 @@ export function processAlliances(ctx: SimContext) {
         });
     });
 
+    refresh();
     // 2. Betrayal Logic
     alliances.forEach((members) => {
         if (members.length < 2) return;
@@ -370,6 +397,7 @@ export function processAlliances(ctx: SimContext) {
         }
     });
 
+    refresh();
     // 3. Dynamic Alliance Formation & Star-Crossed Lovers
     // Re-read the living: betrayals above may have killed someone since the
     // snapshot at the top of this function.
@@ -409,9 +437,13 @@ export function processAlliances(ctx: SimContext) {
                     const history = (sharedHistoryOf(t1, t2.id) + sharedHistoryOf(t2, t1.id)) / 2
                         * RELATIONSHIPS.sharedHistoryFormWeight;
 
+                    // §3.2 (audit): dread is a reason to want company. This
+                    // is the first thing outside the stance scorer to read it.
+                    const dread = (dreadOf(ctx, t1) + dreadOf(ctx, t2)) / 2;
                     const formChance = Math.max(
                         ALLIANCES.minFormChance,
                         (ALLIANCES.baseFormChance + affinity + compat + persona + history) / trustCost
+                            * (1 + dread * ALLIANCES.dreadFormationWeight)
                     );
                     const relThreshold = (ALLIANCES.baseRelThreshold - compat * 100 - persona * 60) * trustCost;
 

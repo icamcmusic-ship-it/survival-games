@@ -16,7 +16,6 @@ import { tributeOdds } from '../engine/odds';
 import { Filter, Star } from 'lucide-react';
 import { GAMEMAKER_COSTS } from '../data/balance';
 import { evaluateInRunNearMisses, evaluateAchievements, ACHIEVEMENTS } from '../data/achievements';
-import { readPanem } from '../utils/panemStorage';
 import { GamemakerEventType, gamemakerCooldownRemaining, gamemakerEventCost } from '../engine/gamemaker';
 import { gameActions, gameStore } from '../store/gameStore';
 import { pathForView } from '../store/router';
@@ -26,6 +25,7 @@ import { playAnthem, playCannon, playParachute, unlockAudio } from '../utils/sou
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 
 import { useStore } from '../store/createStore';
+import { useDialogFocus } from '../ui/useDialogFocus';
 
 const SPEED_DELAY: Record<Exclude<Speed, 'manual'>, number> = { '1x': 1200, '5x': 350, auto: 60 };
 
@@ -261,10 +261,14 @@ export function GameScreen({
     const lastTickLogCount = useRef(gameState.log.length);
     useEffect(() => {
         const running = speed !== 'manual' || playUntil !== null;
-        if (!running || isOver || runProgress) return;
         const newCount = Math.max(0, gameState.log.length - lastTickLogCount.current);
         const newLines = newCount > 0 ? gameState.log.slice(-newCount) : [];
+        // Advance the watermark whether or not we are running. It used to sit
+        // behind the early return below, so every phase stepped by hand while
+        // paused piled up as "new" — and the moment auto-play resumed, a
+        // cannon the player had already watched tripped the brake.
         lastTickLogCount.current = gameState.log.length;
+        if (!running || isOver || runProgress) return;
 
         const aliveNow = gameState.tributes.filter(t => t.status === 'alive').length;
         const untilHit = playUntil === 'death'
@@ -625,7 +629,9 @@ export function GameScreen({
     const shownToasts = useRef<Set<string>>(new Set());
     useEffect(() => {
         if (isOver) return;
-        const already = new Set(readPanem().unlocked);
+        // The store already holds the record book; this used to parse it
+        // out of localStorage — and run its migration — on every phase.
+        const already = new Set(panem.unlocked);
         const live = evaluateAchievements(gameState).filter(id =>
             !already.has(id) && !shownToasts.current.has(id));
         if (live.length === 0) return;
@@ -1048,6 +1054,7 @@ export function GameScreen({
 
 /** §2.3: every binding, in one overlay, reachable from `?`. */
 function HelpOverlay({ onClose }: { onClose: () => void }) {
+    const panelRef = useDialogFocus<HTMLDivElement>(onClose);
     return (
         <div
             className="fixed inset-0 z-50 bg-black/70 flex items-start md:items-center justify-center p-4 overflow-y-auto"
@@ -1056,7 +1063,7 @@ function HelpOverlay({ onClose }: { onClose: () => void }) {
             aria-label="How to read the Games"
             onClick={onClose}
         >
-            <div className="panel p-6 max-w-2xl w-full space-y-5 my-8" onClick={e => e.stopPropagation()}>
+            <div ref={panelRef} tabIndex={-1} className="panel p-6 max-w-2xl w-full space-y-5 my-8" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start gap-4">
                     <h2 className="display-title text-2xl">How to read the Games</h2>
                     <button onClick={onClose} className="btn btn-sm btn-ghost">Close (Esc)</button>
