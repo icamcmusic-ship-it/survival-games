@@ -5,6 +5,7 @@ import { CareerTotals, evaluateAchievements, evaluateMetaAchievements, evaluateN
 import { arenaLaws } from '../engine/gamesProfile';
 import { Notable, runDelta, runNotables } from './notables';
 import { ARENAS } from '../data/constants';
+import { dailySeed } from '../data/replayHooks';
 import { ARENA_MUTTS } from '../data/mutts';
 import {
     STORAGE_KEYS, StorageSpec, asNum, asObjMap, asRecord, asStrArray, readStored, removeStored,
@@ -55,6 +56,41 @@ export interface PanemRecords {
      * future run with a sponsor-trust head start.
      */
     patronDistrict?: number;
+    /**
+     * §9 (audit): patronage is no longer a single one-off purchase. Every
+     * district the player has bought a standing patronage in, cheapest first
+     * purchase to dearest — the cost escalates with each one, so coins keep
+     * having somewhere to go long after the first 750 are spent.
+     * `patronDistrict` remains the first entry, for readers that predate this.
+     */
+    patronDistricts?: number[];
+    /**
+     * §9 (audit): arenas bought outright rather than stumbled into through a
+     * sealed draw. Kept apart from `arenasSeen` so the picker can say which
+     * ones were earned and which were paid for, and so a purchase does not
+     * silently satisfy a "played every arena" achievement.
+     */
+    arenasBought?: string[];
+    /**
+     * §9 (audit): how many Capitol stipends the player has taken. The stipend
+     * exists so a broke player is never locked out of the betting layer, but
+     * an unconditional 250 coins a run meant scarcity never arrived. It now
+     * tapers with each one taken.
+     */
+    stipendsTaken?: number;
+    /**
+     * §9 (audit): the best finish on each daily seed, keyed by the seed. A
+     * daily with no way to say how today went is only a shared starting
+     * position; this is the local scoreboard that gives it a point.
+     */
+    dailyBests?: Record<string, { day: number; deaths: number; victorName?: string; victorDistrict?: number; date: string }>;
+    /**
+     * §9 (audit): victors who came back as mentors, keyed by their district.
+     * A crown used to end at the record book. Now the tribute who won returns
+     * to the district that reaped them and makes their successors' sponsors
+     * answer the phone.
+     */
+    victorMentors?: Record<number, { name: string; archetype: string; run: number }>;
     /** One entry per tracked record, keyed by record id. */
     bests: Record<string, RecordHolder>;
     /** S-3: distinct arenas a victor has been crowned in, for the career meta-achievements. */
@@ -293,6 +329,16 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
             bests: asObjMap<RecordHolder>(r.bests),
             gamemakerRecords: asObjMap<GamemakerRecord>(r.gamemakerRecords),
             patronDistrict: Number.isFinite(patron) ? patron : undefined,
+            // §9: a store written before multi-patronage carries only the
+            // single field; seeding the list from it keeps the purchase the
+            // player already made rather than charging them for it twice.
+            patronDistricts: Array.isArray(r.patronDistricts)
+                ? (r.patronDistricts as unknown[]).map(d => asNum(d, NaN)).filter(d => Number.isFinite(d))
+                : (Number.isFinite(patron) ? [patron] : []),
+            arenasBought: asStrArray(r.arenasBought),
+            stipendsTaken: Math.max(0, asNum(r.stipendsTaken, 0)),
+            dailyBests: asObjMap<{ day: number; deaths: number; victorName?: string; victorDistrict?: number; date: string }>(r.dailyBests),
+            victorMentors: asObjMap<{ name: string; archetype: string; run: number }>(r.victorMentors),
             districtCrowns: asObjMap<DistrictCrown>(r.districtCrowns),
             arenasWon: asStrArray(r.arenasWon),
             quellsSeen: asStrArray(r.quellsSeen),
@@ -417,6 +463,27 @@ export function commitRun(state: GameState): RunOutcome {
         });
 
     // §10.7: the comparison window the end screen's delta reads.
+    // §9 (audit): the daily seed's local scoreboard. A daily that cannot say
+    // how today went is only a shared starting position. Better is a longer
+    // run; a run that crowned somebody beats one that did not, whatever the
+    // day count, because surviving the Games is the result the daily is for.
+    if (state.seed === dailySeed()) {
+        records.dailyBests = records.dailyBests ?? {};
+        const prior = records.dailyBests[state.seed];
+        const betterThanPrior = !prior
+            || (victor !== undefined && prior.victorName === undefined)
+            || ((victor !== undefined) === (prior.victorName !== undefined) && state.day > prior.day);
+        if (betterThanPrior) {
+            records.dailyBests[state.seed] = {
+                day: state.day,
+                deaths: state.tributes.filter(t => t.status === 'dead').length,
+                victorName: victor?.name,
+                victorDistrict: victor?.district,
+                date: new Date().toISOString(),
+            };
+        }
+    }
+
     records.recentRuns = [
         {
             seed: state.seed,
@@ -483,6 +550,18 @@ export function commitRun(state: GameState): RunOutcome {
             };
             firstCrownDistrict = victor.district;
         }
+        // §9 (audit): the victor comes back as their district's mentor. A
+        // crown used to end at the record book; now it changes how the next
+        // tributes reaped from that district are sponsored. The most recent
+        // victor holds the post — a district that keeps winning keeps
+        // replacing its mentor, which is exactly what a career of Games
+        // should look like from the outside.
+        records.victorMentors = records.victorMentors ?? {};
+        records.victorMentors[victor.district] = {
+            name: victor.name,
+            archetype: victor.archetype,
+            run: records.runs,
+        };
     }
 
     if (victor) {
@@ -590,6 +669,49 @@ export function commitRun(state: GameState): RunOutcome {
 export function setPatronDistrict(district: number | undefined): PanemRecords {
     const records = readPanem();
     records.patronDistrict = district;
+    records.patronDistricts = district === undefined ? [] : [district];
+    writePanem(records);
+    return records;
+}
+
+/**
+ * §9 (audit): add a district to the standing patronage list. The caller has
+ * already taken the coins; this only records it. Returns the updated book.
+ */
+export function addPatronDistrict(district: number): PanemRecords {
+    const records = readPanem();
+    const list = records.patronDistricts ?? (records.patronDistrict === undefined ? [] : [records.patronDistrict]);
+    if (!list.includes(district)) list.push(district);
+    records.patronDistricts = list;
+    records.patronDistrict = list[0];
+    writePanem(records);
+    return records;
+}
+
+/** §9 (audit): drop one standing patronage. No refund — the Capitol does not give coins back. */
+export function dropPatronDistrict(district: number): PanemRecords {
+    const records = readPanem();
+    const list = (records.patronDistricts ?? []).filter(d => d !== district);
+    records.patronDistricts = list;
+    records.patronDistrict = list[0];
+    writePanem(records);
+    return records;
+}
+
+/** §9 (audit): records an arena bought outright, so the picker unlocks it. */
+export function buyArena(name: string): PanemRecords {
+    const records = readPanem();
+    const bought = records.arenasBought ?? [];
+    if (!bought.includes(name)) bought.push(name);
+    records.arenasBought = bought;
+    writePanem(records);
+    return records;
+}
+
+/** §9 (audit): records a stipend taken, which is what makes the next one smaller. */
+export function noteStipendTaken(): PanemRecords {
+    const records = readPanem();
+    records.stipendsTaken = (records.stipendsTaken ?? 0) + 1;
     writePanem(records);
     return records;
 }

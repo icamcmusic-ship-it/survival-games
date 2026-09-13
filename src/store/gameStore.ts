@@ -13,11 +13,11 @@ import { RNG } from '../utils/rng';
 import type { Simulator } from '../engine/simulator';
 import type { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
-import { PanemRecords, RunOutcome, clearPanem, commitRun, readPanem, setPatronDistrict } from '../utils/panemStorage';
+import { PanemRecords, RunOutcome, addPatronDistrict, buyArena, clearPanem, commitRun, dropPatronDistrict, noteStipendTaken, readPanem, setPatronDistrict } from '../utils/panemStorage';
 import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
 import { seatVeterans } from '../engine/veterans';
-import { VETERANS } from '../data/balance';
+import { COIN_ECONOMY, VETERANS } from '../data/balance';
 import { applyOffSeason, offSeasonFor } from '../data/offSeason';
 
 /**
@@ -119,11 +119,51 @@ export interface RunProgress {
     wagered: Array<{ name: string; district: number; alive: boolean }>;
 }
 
-const BROKE_THRESHOLD = 50;
-const STIPEND = 250;
+const BROKE_THRESHOLD = COIN_ECONOMY.brokeThreshold;
 /** §6.2: cost of becoming (or changing) a district's standing patron. */
-const PATRON_COST = 750;
+const PATRON_COST = COIN_ECONOMY.patronBaseCost;
 const PATRON_TRUST_BONUS = 12;
+
+/**
+ * §9 (audit): what the next stipend is worth.
+ *
+ * A flat 250 every time a player went broke meant the economy had no failure
+ * state at all — coins were a formality after ten runs and the odds model
+ * underneath the betting layer stopped mattering. Each stipend taken makes
+ * the next one smaller, down to a floor that keeps the feature alive without
+ * keeping the player solvent.
+ */
+function stipendAmount(): number {
+    const taken = readPanem().stipendsTaken ?? 0;
+    return Math.max(
+        COIN_ECONOMY.stipendFloor,
+        Math.round(COIN_ECONOMY.stipendBase * Math.pow(COIN_ECONOMY.stipendTaper, taken)),
+    );
+}
+
+/**
+ * §9 (audit): how many recently-played arenas the sealed draw skips. Eight is
+ * the same window `recentRuns` already keeps, so this needs no storage of its
+ * own, and it is well under the forty-one entries in the pool.
+ */
+const SEALED_DRAW_NO_REPEAT = 8;
+
+/** Ordinal for a run number, so a returning victor's Games has a year on it. */
+function ordinalRun(n: number): string {
+    const rem100 = n % 100;
+    if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+    switch (n % 10) {
+        case 1: return `${n}st`;
+        case 2: return `${n}nd`;
+        case 3: return `${n}rd`;
+        default: return `${n}th`;
+    }
+}
+
+/** §9 (audit): what the nth standing patronage costs, counting the ones already bought. */
+export function patronCostFor(owned: number): number {
+    return Math.round(COIN_ECONOMY.patronBaseCost * Math.pow(COIN_ECONOMY.patronCostGrowth, owned));
+}
 
 /**
  * UX-01: an in-progress run is autosaved after every phase, so a refresh or a
@@ -407,9 +447,11 @@ function resolveBets(state: GameState) {
         // recreated the exact permanently-broke state it was written to fix.
         const balance = gameStore.getState().coins;
         if (balance < BROKE_THRESHOLD) {
-            gameActions.setCoins(balance + STIPEND);
+            const stipend = stipendAmount();
+            gameActions.setCoins(balance + stipend);
+            gameStore.setState({ panem: noteStipendTaken() });
             gameStore.setState({
-                betWonMessage: `The Capitol extends a ${STIPEND}-coin stipend so you can play the next Games.`,
+                betWonMessage: `The Capitol extends a ${stipend}-coin stipend so you can play the next Games.`,
             });
         }
         return;
@@ -441,9 +483,11 @@ function resolveBets(state: GameState) {
     // feature from the game. The Capitol grants a stipend instead.
     const balance = gameStore.getState().coins;
     if (balance < BROKE_THRESHOLD) {
-        gameActions.setCoins(balance + STIPEND);
+        const stipend = stipendAmount();
+        gameActions.setCoins(balance + stipend);
+        gameStore.setState({ panem: noteStipendTaken() });
         gameStore.setState(s => ({
-            betWonMessage: `${s.betWonMessage} The Capitol extends a ${STIPEND}-coin stipend so you can play the next Games.`,
+            betWonMessage: `${s.betWonMessage} The Capitol extends a ${stipend}-coin stipend so you can play the next Games.`,
         }));
     }
 }
@@ -758,14 +802,54 @@ export const gameActions = {
         persistRun();
     },
 
-    /** §6.2: spend coins to become the standing patron of one district. */
+    /**
+     * §6.2: spend coins to become the standing patron of one district.
+     *
+     * §9 (audit): patronage is now cumulative and escalating rather than a
+     * single 750-coin purchase, so it stays a live coin sink across a career
+     * instead of being spent once and forgotten.
+     */
     patronDistrict(district: number): boolean {
-        const { coins } = gameStore.getState();
-        if (coins < PATRON_COST) return false;
-        gameActions.setCoins(coins - PATRON_COST);
-        gameStore.setState({ panem: setPatronDistrict(district) });
+        const { coins, panem } = gameStore.getState();
+        const owned = panem.patronDistricts ?? (panem.patronDistrict === undefined ? [] : [panem.patronDistrict]);
+        if (owned.includes(district)) return false;
+        if (owned.length >= COIN_ECONOMY.patronMaxDistricts) return false;
+        const cost = patronCostFor(owned.length);
+        if (coins < cost) return false;
+        gameActions.setCoins(coins - cost);
+        gameStore.setState({ panem: addPatronDistrict(district) });
         return true;
     },
+
+    /** §9 (audit): give up a standing patronage. No refund; the Capitol does not give coins back. */
+    dropPatron(district: number): void {
+        gameStore.setState({ panem: dropPatronDistrict(district) });
+    },
+
+    /** §9 (audit): what the next patronage would cost, for the button's label. */
+    nextPatronCost(): number {
+        const { panem } = gameStore.getState();
+        const owned = panem.patronDistricts ?? (panem.patronDistrict === undefined ? [] : [panem.patronDistrict]);
+        return patronCostFor(owned.length);
+    },
+
+    /**
+     * §9 (audit): buy a locked arena outright.
+     *
+     * Waiting for a sealed draw to land on one specific arena is a long wait
+     * with 34 of them locked. A coin price gives a player who wants a
+     * particular map a way to get there and gives the economy a repeatable
+     * sink that scales with how much of the roster is still hidden.
+     */
+    buyArenaUnlock(arenaName: string): boolean {
+        const { coins } = gameStore.getState();
+        if (coins < COIN_ECONOMY.arenaUnlockCost) return false;
+        gameActions.setCoins(coins - COIN_ECONOMY.arenaUnlockCost);
+        gameStore.setState({ panem: buyArena(arenaName) });
+        return true;
+    },
+
+    arenaUnlockCost: COIN_ECONOMY.arenaUnlockCost,
 
     patronCost: PATRON_COST,
 
@@ -837,8 +921,24 @@ export const gameActions = {
         // until the bloodbath reveals it (see arenaHidden below and
         // ui/disclosure.ts's canSeeArena).
         const arenaHidden = arenaId === 'random-hidden';
+        // §9 (audit): a sealed draw that can land on the arena you played
+        // last is not much of a draw. The recently-played window is excluded
+        // from the pool, which is still a pure function of the seed and the
+        // player's own record book, so a shared seed replays identically for
+        // anyone whose book matches — and the pool never empties, because the
+        // exclusion is dropped whenever it would leave fewer than two options.
+        const recentArenaNames = new Set(
+            (gameStore.getState().panem.recentRuns ?? [])
+                .slice(0, SEALED_DRAW_NO_REPEAT)
+                .map(r => r.arenaName),
+        );
+        const fullPool = [...ARENAS.map(a => a.id), 'procedural'];
+        const freshPool = fullPool.filter(id => {
+            const name = ARENAS.find(a => a.id === id)?.name;
+            return name === undefined || !recentArenaNames.has(name);
+        });
         const resolvedArenaId = arenaHidden
-            ? new RNG(`${safeSeed}-random-arena`).pick([...ARENAS.map(a => a.id), 'procedural'])
+            ? new RNG(`${safeSeed}-random-arena`).pick(freshPool.length >= 2 ? freshPool : fullPool)
             : arenaId;
         // BUG-1.1: `procedural-<biome>` from a share link pins the biome — the
         // old check only saw the `procedural` prefix, so the specific arena
@@ -888,14 +988,31 @@ export const gameActions = {
 
         // §6.2: standing district patronage — a persistent sink for Capitol
         // Coins. The patron's tributes arrive with sponsors already warm.
-        const patron = gameStore.getState().panem.patronDistrict;
-        if (patron !== undefined) {
+        // §9 (audit): patronage is a list now, not a single district.
+        const panemNow = gameStore.getState().panem;
+        const patrons = new Set(
+            panemNow.patronDistricts ?? (panemNow.patronDistrict === undefined ? [] : [panemNow.patronDistrict]),
+        );
+        if (patrons.size > 0) {
             tributes.forEach(t => {
-                if (t.district === patron) {
+                if (patrons.has(t.district)) {
                     t.sponsorTrust = Math.min(100, t.sponsorTrust + PATRON_TRUST_BONUS);
                 }
             });
         }
+
+        // §9 (audit): the victor legacy. A district whose last crown is still
+        // alive in the player's record book sends that victor to the mentor's
+        // chair. Applied after generation and consuming no RNG, so the seed
+        // still reproduces the same cast — the mentor's name and the sponsor
+        // bonus are the only things a career of Games changes here.
+        const victorMentors = panemNow.victorMentors ?? {};
+        tributes.forEach(t => {
+            const m = victorMentors[t.district];
+            if (!m) return;
+            t.mentorLegacy = `${m.name}, who came home from the ${ordinalRun(m.run)} Games`;
+            t.mentorIsVictor = true;
+        });
 
         // §10.5: the Grudge Match. Two archived victors are grafted onto the
         // field the seed already produced, so the run still replays exactly —

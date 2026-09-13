@@ -9,7 +9,7 @@ import { clampTribute } from './vitals';
 import { getZone, zoneFeatures } from './map';
 import { Item, Tribute } from '../models/types';
 import { mintItem } from './items';
-import { MENTOR_DRAMA, QUALITY_BIAS } from '../data/balance';
+import { MENTOR_DRAMA, QUALITY_BIAS, VICTOR_MENTOR } from '../data/balance';
 
 /**
  * Mentors, as a sponsorship mechanic.
@@ -80,9 +80,28 @@ export function mentorTierOf(t: Tribute): LegacyTier {
     return legacyOf(t.district).tier;
 }
 
-/** Standing multiplier applied on top of the config's sponsor generosity. */
+/**
+ * Standing multiplier applied on top of the config's sponsor generosity.
+ *
+ * §9 (audit): a district whose last victor came home and took the mentor's
+ * chair sponsors better than its pedigree alone would suggest. This is what
+ * makes a crown carry into the next Games rather than stopping at the record
+ * book — and it is deliberately larger for the thin districts, because a
+ * District 12 victor is the only credible voice that district has ever had.
+ */
 export function mentorGenerosity(t: Tribute): number {
-    return MENTOR_GENEROSITY[mentorTierOf(t)];
+    const base = MENTOR_GENEROSITY[mentorTierOf(t)];
+    if (!t.mentorIsVictor) return base;
+    return base * VICTOR_MENTOR.generosityMultiplier;
+}
+
+/** Per-cycle plea chance, with the victor-mentor bonus folded in. */
+export function mentorPull(t: Tribute): number {
+    const base = MENTOR_PULL[mentorTierOf(t)];
+    if (!t.mentorIsVictor) return base;
+    // A forgotten district's victor has contacts for the first time in
+    // living memory, so the floor lifts off zero rather than scaling from it.
+    return Math.min(VICTOR_MENTOR.pullCap, Math.max(base, VICTOR_MENTOR.pullFloor) + VICTOR_MENTOR.pullBonus);
 }
 
 type Need = 'water' | 'food' | 'medical' | 'weapon';
@@ -169,7 +188,7 @@ export function processMentorPleas(ctx: SimContext, alive: Tribute[]): Set<strin
     alive.forEach(t => {
         const mentor = t.mentorLegacy;
         if (!mentor) return;
-        const pull = MENTOR_PULL[mentorTierOf(t)];
+        const pull = mentorPull(t);
         if (pull <= 0) return;
         if (t.sponsorTrust < MENTOR_TRUST_FLOOR) return;
 

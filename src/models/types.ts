@@ -495,6 +495,14 @@ export interface Tribute {
     daysSurvived: number;
     /** The district's Games history, which decides the quality of their mentor. */
     mentorLegacy?: string;
+    /**
+     * §9 (audit): victor legacy. Set when this district's mentor is a victor
+     * the player crowned in an earlier Games rather than a name from the
+     * district's own table. A mentor who has actually come out of the arena
+     * is worth more than a pedigree, so `mentorGenerosity` and `MENTOR_PULL`
+     * both read it — the carry-over is mechanical, not only a name change.
+     */
+    mentorIsVictor?: boolean;
     /** Total stealth lost permanently to sanity breakdowns, capped rather than uncapped-frequency. */
     sanityStealthLoss?: number;
     /**

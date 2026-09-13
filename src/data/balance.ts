@@ -1991,6 +1991,50 @@ export const STEALTH = {
  * zones from open water. These are the standing intentions a tribute actually
  * carries between cycles: find water, find somewhere to sleep.
  */
+/**
+ * §9 (audit): the victor legacy. A tribute the player crowned returns to their
+ * district as its mentor, and their successors feel it at the sponsor desk.
+ * This is the fourth thing that carries between Games, alongside patronage,
+ * the grudge match and arena unlocks — and the only one a player earns by
+ * playing well rather than by spending.
+ */
+export const VICTOR_MENTOR = {
+    /** Multiplier on the district's standing sponsor generosity. */
+    generosityMultiplier: 1.22,
+    /** A victor has contacts even if their district never did, so the plea chance starts from here. */
+    pullFloor: 0.12,
+    pullBonus: 0.08,
+    /** Even a storied district's victor cannot get a parachute past the Capitol every other cycle. */
+    pullCap: 0.34,
+} as const;
+
+/**
+ * §9 (audit): the coin economy's sinks and its one tap.
+ *
+ * Coins had two sinks, one of them a single 750-coin purchase, and a broke
+ * player was topped up by a flat 250 every run — so after roughly ten runs
+ * scarcity never arrived again and the betting layer stopped mattering. The
+ * stipend now tapers toward a floor, patronage escalates so it keeps taking
+ * coins, and locked arenas can be bought outright as an alternative to
+ * waiting for a sealed draw to land on them.
+ */
+export const COIN_ECONOMY = {
+    /** The first stipend. Each subsequent one is multiplied by `stipendTaper`. */
+    stipendBase: 250,
+    stipendTaper: 0.78,
+    /** However many stipends have been taken, one is never worth less than this. */
+    stipendFloor: 60,
+    /** Below this balance the Capitol steps in at all. */
+    brokeThreshold: 50,
+    /** First patronage. The nth costs `patronBaseCost * patronCostGrowth^(n-1)`. */
+    patronBaseCost: 750,
+    patronCostGrowth: 1.85,
+    /** More than this many standing patronages and the Capitol stops selling. */
+    patronMaxDistricts: 4,
+    /** Buying a locked arena outright rather than waiting for the sealed draw to find it. */
+    arenaUnlockCost: 900,
+} as const;
+
 export const MOVEMENT = {
     /** A1: fatigue a plain move costs, used by the Fortified movement penalty. */
     baseMoveFatigue: 4,
