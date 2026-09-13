@@ -1994,6 +1994,16 @@ export const STEALTH = {
 export const MOVEMENT = {
     /** A1: fatigue a plain move costs, used by the Fortified movement penalty. */
     baseMoveFatigue: 4,
+    /**
+     * §3.3 (audit): the destination roll is weighted, but every negative-scoring
+     * zone used to collapse onto one flat floor, so a wide field of bad options
+     * collectively outweighed the good one. Weights are now shifted so the worst
+     * option sits at `destinationFloor` and then raised to `destinationSharpness`,
+     * which keeps a long tail of plausible choices while making the bottom of the
+     * field genuinely unlikely rather than merely individually unlikely.
+     */
+    destinationFloor: 0.1,
+    destinationSharpness: 1.6,
     // ---- A1: how the conditional stances route ----
     /** Cycles a cannon stays worth walking toward for a scavenger. */
     scavengeCannonMemory: 3,

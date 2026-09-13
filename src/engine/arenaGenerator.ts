@@ -408,8 +408,19 @@ const MODIFIERS_BY_TAG: Record<string, string[]> = {
     desert: ['Sand-Blind', 'Heat-Shimmered', 'Scorch-Hided'],
     urban: ['Gutter-Bred', 'Wire-Scarred', 'Tenement'],
 };
-const GENERIC_MODIFIERS = ['Iron-Jawed', 'Blood-Eyed', 'Night-Bred', 'Hollow-Eyed'];
-const CREATURE_BASES = ['Harpies', 'Wraiths', 'Hounds', 'Stalkers', 'Serpents', 'Mutts', 'Ravagers', 'Screechers', 'Crawlers', 'Reapers'];
+// §11 (audit): both pools tripled. Ten bases against four generic modifiers
+// gave procedural mutts a very small name space, and two returning players in
+// the same biome met the same creature by the second run.
+const GENERIC_MODIFIERS = [
+    'Iron-Jawed', 'Blood-Eyed', 'Night-Bred', 'Hollow-Eyed', 'Split-Tongued', 'Ash-Mouthed',
+    'Wire-Boned', 'Grave-Fed', 'Pale-Ribbed', 'Glass-Clawed', 'Mute', 'Unblinking',
+];
+const CREATURE_BASES = [
+    'Harpies', 'Wraiths', 'Hounds', 'Stalkers', 'Serpents', 'Mutts', 'Ravagers', 'Screechers',
+    'Crawlers', 'Reapers', 'Gaunts', 'Shriekers', 'Lurchers', 'Manglers', 'Hollows', 'Skulkers',
+    'Bonepickers', 'Nightjars', 'Rendlings', 'Gulpers', 'Thresh-Hounds', 'Wakers', 'Chitterers',
+    'Long-Limbs', 'Scarabs', 'Draggers', 'Whistlers', 'Coffin-Flies', 'Marrowbirds', 'Splitters',
+];
 
 /**
  * Arena-native mutts, not just names. `generateMuttNames` used to produce
