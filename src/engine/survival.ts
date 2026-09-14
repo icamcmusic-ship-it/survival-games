@@ -273,7 +273,29 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
     if (t.injuries.bleeding) {
         // Cost scales with how badly the wound is running, and the wound gets a
         // chance to clot down a step at the end of the cycle — see `wounds.ts`.
-        if (applyDamage(ctx, t, bleedDamage(t), { cause: 'Bled out from untreated wounds', kind: 'status' })) {
+        /*
+         * Audit 3 §8.2: the wound has an author, and now the death does.
+         *
+         * This was a sourceless `status` wound, so 6.1% of all deaths — the
+         * whole bleeding-out category — were credited to nobody, however
+         * clearly somebody had opened the wound. A tribute who cuts somebody
+         * and walks away killed them; the arena is not a third party in that.
+         *
+         * `kind` stays `status` because the *damage* is attrition rather than a
+         * blow, which is what the wound-severity and healing layers read it
+         * for; `sourceId` is what `checkDeath` needs to find a killer.
+         */
+        const opener = t.bleedOpenedById
+            ? ctx.state.tributes.find(o => o.id === t.bleedOpenedById && o.id !== t.id)
+            : undefined;
+        const bleedCause = opener
+            ? `Bled out from a wound ${opener.name} opened`
+            : 'Bled out from untreated wounds';
+        if (applyDamage(ctx, t, bleedDamage(t), {
+            cause: bleedCause,
+            kind: 'status',
+            sourceId: opener?.id,
+        })) {
             reliefFor(t, 'bleeding');
         }
     }

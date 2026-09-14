@@ -175,19 +175,41 @@ export function bleedSeverity(t: Tribute): number {
 }
 
 /** Opens (or worsens) a bleeding wound. A second cut does not stack forever. */
-export function openWound(t: Tribute, severity: number) {
+export function openWound(t: Tribute, severity: number, openedById?: string) {
     if (!t.injuries.bleeding) t.woundsLogged = (t.woundsLogged ?? 0) + 1;
     t.injuries.bleeding = true;
     t.bleedSeverity = Math.min(
         BLEEDING.damageBySeverity.length - 1,
         Math.max(bleedSeverity(t), severity)
     );
+    /*
+     * Audit 3 §8.2: who opened it, when somebody did.
+     *
+     * Bleeding out is 6.1% of all deaths and every one of them was recorded as
+     * a sourceless `status` wound, so nobody was ever credited — a tribute who
+     * cut somebody open and walked away had, as far as the simulation was
+     * concerned, killed nobody. That is the same accounting gap that made the
+     * Saboteur the worst archetype in the game (`trapKills` incremented and
+     * `kills` untouched), and it feeds the one design goal the metrics sweep
+     * has never met: victors with zero kills.
+     *
+     * The deepest wound owns the death. A worse cut from somebody else
+     * supersedes the claim; a lesser one does not take it away.
+     */
+    if (openedById !== undefined && (t.bleedOpenedById === undefined || severity >= (t.bleedOpenedSeverity ?? 0))) {
+        t.bleedOpenedById = openedById;
+        t.bleedOpenedSeverity = severity;
+    }
 }
 
 /** Closes a wound completely. */
 export function clearBleeding(t: Tribute) {
     t.injuries.bleeding = false;
     t.bleedSeverity = 0;
+    // The claim dies with the wound: somebody who is patched up and cut open
+    // again later was killed by whoever did it the second time.
+    delete t.bleedOpenedById;
+    delete t.bleedOpenedSeverity;
 }
 
 /** Per-cycle health cost of whatever is currently open. */

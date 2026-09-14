@@ -79,6 +79,12 @@ What that line then showed, and what closing it took:
 - **Saboteur** survived above the median and converted none of it, because
   `springTrap` incremented `trapKills` and never touched `kills`. A tribute who
   dies in a snare was killed by whoever tied it.
+- **Bleeding out** — 6.1% of every death in the game — was recorded as a
+  sourceless `status` wound, so a tribute who cut somebody open and walked away
+  had killed nobody as far as the simulation was concerned. The same accounting
+  gap, found by the guard it was breaking: `openWound` now records who opened
+  it and the bleed-out death credits them.
+  **victors with zero kills 32.5% → 29.4% at 400 runs, 29.9% at 1,600.**
 - **Medic** had the Ghost's diagnosis (lasts, cannot close) and the Ghost's old
   answer. Now `late-blooming`, the curve that exists for exactly this.
 

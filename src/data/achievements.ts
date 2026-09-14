@@ -477,7 +477,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // three times more foraging than the calendar allows.
         hint: 'Crown a victor who successfully foraged five or more times.',
         category: 'survival',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && (v.forageSuccesses ?? 0) >= 5,
         nearMiss: (_s, v) => { const n = v?.forageSuccesses ?? 0; return n >= 3 && n < 5 ? `${v!.name} foraged successfully ${n} times — ${5 - n} short` : undefined; },
     },
@@ -668,7 +668,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // then outliving everybody you sold it to, is the rare part.
         hint: 'Crown a victor who sold what they knew to somebody else.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.intelSold ?? 0) >= 1,
         nearMiss: (_s, v) => (v && (v.intelSold ?? 0) === 0 && (v.sharedIntelWith?.length ?? 0) > 0)
             ? `${v.name} gave away what they knew all Games and never once charged for it`
@@ -694,7 +694,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Front-Loaded',
         hint: 'Crown a Career who never left the Cornucopia.',
         category: 'combat',
-        rarity: 'legendary',
+        rarity: 'rare',
         // Audit 3 §1.6: `arena.zones[0]` is the Cornucopia in the hand-authored
         // arenas and is not guaranteed to be in a generated one, so on every
         // procedural map this asked for a sector that was not the horn. Matched
@@ -1131,7 +1131,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Never Needed Anyone',
         hint: 'Crown a victor who never once joined an alliance.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: (state, v) => !!v && !state.log.some(e => e.category === 'alliance' && e.tributesInvolved.includes(v.id)),
     },
     {
@@ -1188,7 +1188,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Squatters at the Horn',
         hint: 'See one alliance hold the Cornucopia for four cycles running.',
         category: 'combat',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: state => (state.maxHornHold ?? 0) >= 4,
         nearMiss: state => {
             const held = state.cornucopiaHolder !== undefined && state.cornucopiaHeldSince !== undefined
@@ -1204,7 +1204,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Kept Their Word',
         hint: 'Crown a victor who was still protecting someone younger when the Games ended.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && (v.protectorBonds?.length ?? 0) > 0,
     },
     {
@@ -1445,7 +1445,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Deep Water',
         hint: 'Crown a victor in a sprawling arena of thirteen zones or more.',
         category: 'arena',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: (state, v) => !!v && state.arena.zones.length >= 13,
         nearMiss: (state, v) => (v && state.arena.zones.length >= 10 && state.arena.zones.length < 13)
             ? `this arena ran ${state.arena.zones.length} sectors — deep water is thirteen or more`
@@ -1702,7 +1702,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Found First',
         hint: 'See one tribute be the first to reach a downed ally three times over.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: state => state.tributes.some(t => (t.reachedDownedFirst ?? 0) >= 3),
         nearMiss: state => {
             const best = state.tributes
@@ -1815,7 +1815,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // people rather than fighting them, which is what the name is for.
         hint: 'Crown a victor who worked two sides of the arena economy — extorting, being extorted, or brokering a truce.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v
             && [(v.extortedIds?.length ?? 0) > 0,
                 (v.extortedByIds?.length ?? 0) > 0,
@@ -1888,7 +1888,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // Coming back is the other half of the name, and now the other half of
         // the test.
         category: 'survival',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.sanityScarred === true && v.sanityRecovered === true,
         nearMiss: (_s, v) => (v && v.sanityScarred === true && v.sanityRecovered !== true)
             ? `${v.name} went all the way down and never climbed back out of it`

@@ -578,6 +578,21 @@ export interface Tribute {
      */
     bleedSeverity?: number;
     /**
+     * Audit 3 §8.2: who opened the wound that is currently bleeding.
+     *
+     * Bleeding out was 6.1% of all deaths and every one was recorded as a
+     * sourceless `status` wound, so a tribute who cut somebody open and walked
+     * away had killed nobody as far as the simulation was concerned. That is
+     * the same accounting gap that made the Saboteur the worst archetype in the
+     * game, and it feeds the one design goal the metrics sweep has never met.
+     *
+     * Set by `openWound` where a tribute caused it, cleared by `clearBleeding`,
+     * read by the bleed-out death in `survival.ts`.
+     */
+    bleedOpenedById?: string;
+    /** The severity that claim was staked at, so a deeper cut supersedes it. */
+    bleedOpenedSeverity?: number;
+    /**
      * T-5: graded severity per injury site, 0-3, generalising the
      * `bleedSeverity` pattern to every other injury. The `Injuries` booleans
      * stay the "is there an injury here" flags every existing read site

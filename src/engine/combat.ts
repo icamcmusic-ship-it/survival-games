@@ -641,7 +641,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     // run's bleeding rate; `test:metrics` is what noticed.
     if (isDowned(defender) || defender.status !== 'alive') { wearWeapon(weapon); return 0; }
 
-    if (ctx.rng.chance(COMBAT.bleedChance)) openWound(defender, BLEEDING.combatSeverity);
+    if (ctx.rng.chance(COMBAT.bleedChance)) openWound(defender, BLEEDING.combatSeverity, attacker.id);
     if (ctx.rng.chance(COMBAT.woundChance)) {
         // Where it lands depends on what landed it and how practised the hand
         // was. A bow finds the body; a club finds the head; a blade opens the
