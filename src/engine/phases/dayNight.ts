@@ -111,21 +111,39 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
      */
     if (time === 'day' && arenaHasLaw(ctx.state, 'dawnMercy')) {
         const horn = ctx.state.arena.zones.find(z => /cornucopia/i.test(z.name));
-        const treated = horn ? alive.filter(t => t.zone === horn.name) : [];
-        treated.forEach(t => {
-            clearBleeding(t);
-            healInjury(t, 'infected');
-            t.health = Math.min(100, t.health + ARENA_LAWS.dawnMercyHeal);
-            t.vitals.sanity = Math.min(100, t.vitals.sanity + ARENA_LAWS.dawnMercySanity);
-            clampTribute(t);
-        });
-        if (treated.length > 0) {
+        const atHorn = horn ? alive.filter(t => t.zone === horn.name) : [];
+        /*
+         * One tribute, not everyone standing there — the worst hurt of them.
+         *
+         * The first cut treated the whole tile, and measured over 1,600 runs
+         * that handed the law to the Career pack: the horn is only the
+         * highest-danger tile in the arena for somebody arriving alone, and for
+         * the group already camped on it free healing every morning is simply a
+         * pack bonus. Career win rate went 7.57% -> 8.02% and the whole-field
+         * spread went back over its goal.
+         *
+         * Treating the worst-hurt one keeps everything the law was for — the
+         * horn becomes worth the risk of sleeping on, and the Capitol gets its
+         * televised act of generosity — and takes the pack bonus out: a group
+         * of five gets one member patched, a tribute who risked it alone gets
+         * patched every time.
+         */
+        const patient = atHorn.reduce<Tribute | undefined>(
+            (worst, t) => (worst === undefined || t.health < worst.health ? t : worst), undefined);
+        if (horn && patient) {
+            clearBleeding(patient);
+            healInjury(patient, 'infected');
+            patient.health = Math.min(100, patient.health + ARENA_LAWS.dawnMercyHeal);
+            patient.vitals.sanity = Math.min(100, patient.vitals.sanity + ARENA_LAWS.dawnMercySanity);
+            clampTribute(patient);
             ctx.logEvent(
-                `First light at ${horn!.name}, and the Capitol is generous to whoever stayed: `
-                + `${treated.map(t => t.name).join(', ')} ${treated.length > 1 ? 'are' : 'is'} treated where they slept. `
-                + 'Everybody watching understands the offer, and what it costs to accept it.',
-                treated.map(t => t.id),
-                { important: true, category: 'gamemaker', zone: horn!.name }
+                `First light at ${horn.name}, and the Capitol is generous to exactly one of the people who stayed: `
+                + `${patient.name}, who needed it most and is the best television. `
+                + (atHorn.length > 1
+                    ? 'Everybody else who slept there watches it happen and does the arithmetic on what being the worst hurt is worth.'
+                    : 'There was nobody else there to watch, which the Capitol will have found disappointing.'),
+                atHorn.map(t => t.id),
+                { important: true, category: 'gamemaker', zone: horn.name }
             );
         }
     }

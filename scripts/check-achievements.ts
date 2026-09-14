@@ -25,7 +25,24 @@ import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, AchievementCategory } from '../src/data/achievements';
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const RUNS = Number(process.env.ACHIEVEMENT_RUNS ?? 200);
+/**
+ * Audit 3 §1.6: 500 rather than 200.
+ *
+ * This sweep does three jobs and 200 runs was too small for two of them. It
+ * measures the unlock *rate* (which is what the rarity labels are regenerated
+ * from, and what "never unlocks" is asserted against) and the numeric *ceiling*
+ * every threshold is checked against — and a legendary is by definition an
+ * outcome a short sweep may not see. `turncoat-twice` failed the ceiling check
+ * at 200 runs ("never produced more than 1 in a victor") and passes at 500,
+ * having not changed: the sample was the problem, exactly as `GUARD_MIN_SAMPLE`
+ * documents for the metrics sweep.
+ *
+ * Raising the sample rather than softening the assertion is deliberate. The
+ * ceiling check has found fifteen genuinely unreachable entries across two
+ * audits and one that an author introduced mid-fix; it is the last thing in
+ * here that should be given a tolerance band.
+ */
+const RUNS = Number(process.env.ACHIEVEMENT_RUNS ?? 500);
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
 const configs: GameConfig[] = [

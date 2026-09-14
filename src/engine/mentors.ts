@@ -2,7 +2,7 @@ import { SimContext } from './context';
 import { ITEMS } from '../data/constants';
 import { legacyOf, LegacyTier } from '../data/districts';
 import { arenaHasLaw } from './gamesProfile';
-import { MENTOR_PARACHUTE_TEXTS, MENTOR_PLEA_FAILED_TEXTS, MENTOR_POINTED_TEXTS, MENTOR_WITHHELD_TEXTS } from '../data/flavorText';
+import { MENTOR_PARACHUTE_TEXTS, MENTOR_PLEA_FAILED_TEXTS, MENTOR_POINTED_TEXTS, MENTOR_TIER_PARACHUTE, MENTOR_TIER_WITHHELD, MENTOR_WITHHELD_TEXTS } from '../data/flavorText';
 import { giveItem, itemPhrase } from './items';
 import { cycleOf, ensureMemory } from './memory';
 import { clampTribute } from './vitals';
@@ -47,6 +47,23 @@ const MENTOR_REPEAT_DECAY = MENTORS.repeatDecay;
 
 export function mentorTierOf(t: Tribute): LegacyTier {
     return legacyOf(t.district).tier;
+}
+
+/**
+ * Audit 3 §10.4: the pool this tribute's mentor speaks from.
+ *
+ * A mentor from a district whose last victor came home twenty years ago and a
+ * mentor from District 1 are doing the same job under completely different
+ * conditions, and the tier already drives a 2.3x difference in win rate — so
+ * the game was already saying they are not alike and only the prose disagreed.
+ *
+ * The tier pool is merged with the generic one rather than replacing it: most
+ * of what a mentor does is the same whoever they are, and a tier pool of three
+ * lines used alone would repeat inside one run.
+ */
+function mentorVoice(t: Tribute, byTier: Record<string, string[]>, generic: string[]): string[] {
+    const tier = byTier[mentorTierOf(t)];
+    return tier && tier.length > 0 ? [...generic, ...tier] : generic;
 }
 
 /**
@@ -202,7 +219,7 @@ export function processMentorPleas(ctx: SimContext, alive: Tribute[]): Set<strin
             ctx.state.mentorWithheld[t.id] = cycle;
             if (ctx.rng.chance(MENTOR_DRAMA.withholdLineChance)) {
                 ctx.logEvent(
-                    ctx.pickText(MENTOR_WITHHELD_TEXTS)
+                    ctx.pickText(mentorVoice(t, MENTOR_TIER_WITHHELD, MENTOR_WITHHELD_TEXTS))
                         .split('{mentor}').join(mentor)
                         .split('{tribute}').join(t.name)
                         .split('{zone}').join(t.zone),
@@ -241,7 +258,7 @@ export function processMentorPleas(ctx: SimContext, alive: Tribute[]): Set<strin
         helped.add(t.id);
 
         ctx.logEvent(
-            ctx.pickText(MENTOR_PARACHUTE_TEXTS)
+            ctx.pickText(mentorVoice(t, MENTOR_TIER_PARACHUTE, MENTOR_PARACHUTE_TEXTS))
                 .split('{mentor}').join(mentor)
                 .split('{tribute}').join(t.name)
                 .split('{item}').join(itemPhrase(gift))

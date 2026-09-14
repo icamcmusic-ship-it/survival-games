@@ -14241,6 +14241,248 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
  * second, uncoordinated stance system fighting the real one.
  */
 export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
+    /*
+     * Audit 3 §7.2: and the other half of the same change.
+     *
+     * The thirteen hazards below were added first, on their own, and moved the
+     * universal pool's composition from 9 boons against 39 harms to 9 against
+     * 52 — an 18.8% boon share down to 14.8%. The universal pool takes a fixed
+     * ~30% of every arena's draw, so that is a real rise in ambient lethality
+     * across every run, and it showed: measured over 1,600 runs, the medic
+     * (whose whole edge is keeping people alive through attrition) fell from
+     * 4.19% to 2.91% and the whole-field archetype spread went from 1.96x back
+     * over its 2.3x goal to 2.75x.
+     *
+     * Two corrections, both kept: every new hazard carries `weight: 0.5` so
+     * thirteen additions do not displace the pool's existing boons, and these
+     * four boons restore the ratio. "More ways to die" was the ask; raising the
+     * death rate of the whole simulation was not.
+     */
+    {
+        id: 'universal-the-dry-hollow',
+        text: '{tribute} finds a hollow under a fall of rock in {zone} that is dry, out of the wind, and has been dry and out of the wind since long before any of this.',
+        escapeText: '',
+        cause: '',
+        heal: 6,
+        fatigue: -22,
+    },
+    {
+        id: 'universal-somebody-elses-fire',
+        text: 'Somebody made a fire in {zone} and left in a hurry. It is still warm enough for {tribute} to build back up, and there is the better part of a meal in the ashes.',
+        escapeText: '',
+        cause: '',
+        heal: 4,
+        feed: 20,
+        fatigue: -12,
+    },
+    {
+        id: 'universal-clean-run-off',
+        text: 'There is a seam of clean run-off coming out of the rock in {zone}, cold enough to hurt, and {tribute} drinks until they have to stop.',
+        escapeText: '',
+        cause: '',
+        quench: 40,
+        heal: 3,
+    },
+    {
+        id: 'universal-an-hour-that-holds',
+        text: 'For one hour in {zone} nothing is coming, nothing hurts more than it did, and {tribute} sits with their back to something solid and lets that be true.',
+        escapeText: '',
+        cause: '',
+        heal: 5,
+        sanity: -14,
+        fatigue: -14,
+    },
+
+    /*
+     * Audit 3 §7.2/§7.5: ways to die the model already had the state for, and
+     * did not have a death for.
+     *
+     * Deaths came from eleven mechanisms, one of which (another tribute) was
+     * 55.6% and the bottom four of which were 8.2% between them. The gap was
+     * not variety of *text* — 1,104 distinct cause strings across 2,160 deaths
+     * — it was variety of mechanism, and several obvious ones were absent from
+     * a model that already tracked everything needed to run them: `water`
+     * terrain and the swimming traits with no drowning, `ZoneLevel` and
+     * `Climber` with no fall, `sleepDebt` and the night watch with nobody ever
+     * dying in their sleep.
+     *
+     * Written universal rather than per-arena on purpose. A fall belongs to
+     * every arena with anywhere to fall from, which is what `elevationOrChoke`
+     * is for — the alternative is forty arenas each authoring their own cliff.
+     * They also spend the `requires` gates the audit measured as barely used
+     * (24 uses of survivor counts in 1,594, `stance` 17, `trait` 17), which is
+     * where per-run variety in the event layer actually lives.
+     */
+    {
+        id: 'universal-the-water-closes',
+        weight: 0.5,
+        text: '{tribute} misjudges the depth of the water in {zone} by about a stride. The cold takes the air out of them first, and the current takes the rest.',
+        escapeText: '{tribute} goes in up to the chest in {zone}, thinks better of it, and backs out onto the bank shaking.',
+        cause: 'Drowned',
+        dodgeStat: 'agility',
+        dodgeAlt: 'strength',
+        dodgeDifficulty: 7,
+        damage: 38,
+        fatigue: 25,
+        terrains: ['water', 'wetland'],
+        witnesses: true,
+    },
+    {
+        id: 'universal-under-the-ice-or-weed',
+        weight: 0.5,
+        text: 'Something in the water in {zone} holds {tribute} down — weed, a snag, their own pack strap. They are still working out which when it stops mattering.',
+        escapeText: '{tribute} feels {zone} take hold of their ankle in the water, and gets the strap off in time.',
+        cause: 'Drowned, tangled under the surface',
+        dodgeStat: 'strength',
+        dodgeDifficulty: 8,
+        damage: 45,
+        terrains: ['water'],
+        requires: { time: 'night' },
+    },
+    {
+        id: 'universal-the-ground-runs-out',
+        weight: 0.5,
+        text: 'The ledge {tribute} is working along in {zone} runs out under their weight with no warning at all, and the drop is the kind that only needs to happen once.',
+        escapeText: '{tribute} feels the ledge in {zone} start to go and is flat on their face on solid ground before it finishes going.',
+        cause: 'Fell',
+        dodgeStat: 'agility',
+        dodgeAlt: 'intelligence',
+        dodgeDifficulty: 7,
+        damage: 40,
+        bleeding: true,
+        requires: { elevationOrChoke: true },
+        witnesses: true,
+    },
+    {
+        id: 'universal-the-climb-they-should-not-have',
+        weight: 0.5,
+        text: '{tribute} takes the fast way up out of {zone} because the slow way is exposed, and finds out two thirds of the way that the fast way was fast for a reason.',
+        escapeText: '{tribute} gets two moves up the fast way out of {zone}, reconsiders the whole plan, and climbs back down.',
+        cause: 'Fell from the climb',
+        dodgeStat: 'strength',
+        dodgeAlt: 'agility',
+        dodgeDifficulty: 8,
+        damage: 34,
+        fatigue: 18,
+        requires: { elevationOrChoke: true, stance: ['Evasive', 'Desperate'] },
+    },
+    {
+        id: 'universal-did-not-wake-up',
+        weight: 0.5,
+        text: '{tribute} lies down in {zone} intending to close their eyes for an hour. The cold comes up through the ground into somebody with nothing left to burn, and they do not wake up.',
+        escapeText: '{tribute} wakes in {zone} shaking so hard they cannot hold anything, which is the good outcome and does not feel like one.',
+        cause: 'Died in their sleep',
+        dodgeStat: 'endurance',
+        dodgeDifficulty: 8,
+        damage: 30,
+        fatigue: -20,
+        requires: { time: 'night' },
+    },
+    {
+        id: 'universal-the-sleep-that-arrives',
+        weight: 0.5,
+        text: 'Sleep arrives for {tribute} in {zone} the way it arrives for people who have stopped being able to refuse it: standing up, mid-step, with nobody watching the treeline.',
+        escapeText: '{tribute} catches themselves going under on their feet in {zone} and walks in a tight circle until the worst of it passes.',
+        cause: 'Collapsed from exhaustion',
+        dodgeStat: 'willpower',
+        dodgeDifficulty: 7,
+        damage: 18,
+        sanity: 10,
+        requires: { sanityBand: 'frayed' },
+    },
+    {
+        id: 'universal-the-last-four',
+        weight: 0.5,
+        text: 'There are few enough of them left now that the arena stops bothering with subtlety. Whatever is under {zone} shifts, and {tribute} is standing on it.',
+        escapeText: '{tribute} feels {zone} move under them and is somewhere else, fast, before it decides what it is doing.',
+        cause: 'Killed by the closing arena',
+        dodgeStat: 'agility',
+        dodgeDifficulty: 8,
+        damage: 42,
+        requires: { maxSurvivors: 4 },
+        zoneWide: true,
+        witnesses: true,
+    },
+    {
+        id: 'universal-the-crowd-is-bored',
+        weight: 0.5,
+        text: 'Nothing has happened for a day and a half and the Gamemakers know exactly what that costs them. Something comes out of the ground in {zone} with {tribute} standing over it.',
+        escapeText: 'Something comes out of the ground in {zone} and {tribute} is already running by the time it is all the way out.',
+        cause: 'Killed by a Gamemaker intervention',
+        dodgeStat: 'agility',
+        dodgeAlt: 'intelligence',
+        dodgeDifficulty: 7,
+        damage: 36,
+        burned: true,
+        requires: { minSurvivors: 6 },
+        witnesses: true,
+    },
+    {
+        id: 'universal-the-thing-they-knew-about',
+        weight: 0.5,
+        text: '{tribute} has walked past the same bad ground in {zone} four times knowing exactly what it is, and on the fifth they are thinking about something else.',
+        escapeText: '{tribute} walks past the bad ground in {zone} for the fifth time and, for the fifth time, goes the long way round.',
+        cause: 'Killed by ground they knew about',
+        dodgeStat: 'intelligence',
+        dodgeDifficulty: 6,
+        damage: 28,
+        bleeding: true,
+        requires: { trait: 'Insomniac' },
+    },
+    {
+        id: 'universal-carrying-too-much',
+        weight: 0.5,
+        text: '{tribute} is carrying more than they can run with, and in {zone} the difference between those two things stops being theoretical.',
+        escapeText: '{tribute} drops half of what they are carrying in {zone} and finds they can move again.',
+        cause: 'Caught carrying too much',
+        dodgeStat: 'strength',
+        dodgeAlt: 'endurance',
+        dodgeDifficulty: 7,
+        damage: 26,
+        fatigue: 22,
+        requires: { trait: 'Hoarder' },
+    },
+    {
+        id: 'universal-the-fire-they-lit',
+        weight: 0.5,
+        text: 'The fire {tribute} lit in {zone} to stop being cold goes into the dry stuff behind it, and the dry stuff goes into everything else.',
+        escapeText: '{tribute} watches their own fire in {zone} take hold of the litter beside it and beats it out with a jacket before it is anything.',
+        cause: 'Killed by their own fire',
+        dodgeStat: 'intelligence',
+        dodgeDifficulty: 6,
+        damage: 30,
+        burned: true,
+        startsZoneEffect: 'burning',
+        terrains: ['forest', 'open', 'ruins'],
+        requires: { trait: 'Pyromaniac' },
+    },
+    {
+        id: 'universal-the-quiet-one-moves',
+        weight: 0.5,
+        text: 'Whatever has been living quietly in {zone} alongside everybody all week decides, tonight, with {tribute} alone in it, that it has been patient enough.',
+        escapeText: '{tribute} hears something in {zone} that has been quiet all week stop being quiet, and does not wait to find out what.',
+        cause: 'Killed by something that had been waiting',
+        dodgeStat: 'stealth',
+        dodgeAlt: 'agility',
+        dodgeDifficulty: 7,
+        damage: 38,
+        bleeding: true,
+        requires: { time: 'night', maxSurvivors: 8 },
+    },
+    {
+        id: 'universal-the-storm-takes-one',
+        weight: 0.5,
+        text: 'The front comes through {zone} and takes the roof off whatever {tribute} was sheltering under, then most of the rest of it, then {tribute}.',
+        escapeText: '{tribute} loses their shelter in {zone} to the front and gets themselves into a ditch, which works.',
+        cause: 'Killed by the storm',
+        dodgeStat: 'endurance',
+        dodgeAlt: 'intelligence',
+        dodgeDifficulty: 7,
+        damage: 34,
+        fatigue: 20,
+        requires: { storm: true },
+        zoneWide: true,
+    },
     {
         text: '{tribute} finds a small cache the Gamemakers clearly meant for someone else in {zone} — a little food, a little water, half-buried and untouched.',
         escapeText: '',
