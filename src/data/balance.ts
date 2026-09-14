@@ -105,6 +105,23 @@ export const VITALS = {
  * `engine/wounds.ts` as a hand-typed record — eight tunables in the engine,
  * which is exactly what this file exists to prevent.
  */
+export const SCARRING = {
+    /**
+     * Injury grade at or above which a wound stops being an injury and starts
+     * being a fact about this person.
+     *
+     * Was hardcoded to `MAX_INJURY_GRADE` (3) in wounds.ts. Audit 2 §1.7: over
+     * 80 runs, 2 tributes out of 1,920 ever reached grade 3 and lived to be
+     * scarred by it, and no victor ever carried a scar at all — so the
+     * permanent-damage floor, the intimidation bonus `STANCE.visibleScarBonus`
+     * reads off visible scarring, the `one-wound` achievement and the whole
+     * BodyDiagram scar display were built on a state essentially nobody
+     * entered. Grade 3 is where a wound kills you; grade 2 is where it marks
+     * you. 57 tributes reach grade 2 in the same sample.
+     */
+    scarsAtGrade: 2,
+} as const;
+
 export const WOUND_RECOVERY: Record<string, number> = {
     /** Cycles of not being re-injured before the site steps down one grade. */
     arms: 4,
@@ -999,7 +1016,12 @@ export const SUSPICION = {
     /** §4.8: suspicion high enough to be worth testing, but short of walking out. */
     /** Per point of `betrayalResist`, how much faster in-group doubt accrues (Paranoid at 0.3 → 1.8x). */
     accrualPerBetrayalResist: 2.67,
-    investigateThreshold: 35,
+    /**
+     * Placed on the measured distribution rather than above it. In-alliance
+     * suspicion runs p50 7 / p90 18 / p95 23 / p99 38, so 20 is the top decile:
+     * worth testing, and common enough to be a beat the audience sees.
+     */
+    investigateThreshold: 20,
     investigateChance: 0.25,
     /** How much a test that finds nothing buys back. */
     investigateClearAmount: 20,
@@ -1008,9 +1030,22 @@ export const SUSPICION = {
     max: 100,
     perWitnessedBetrayal: 35,
     perCharterBreach: 15,
-    decayPerCycle: 2,
-    /** At or above this, an ally considers getting out first. */
-    departThreshold: 60,
+    /**
+     * Cycles an ally can be out of contact before their absence starts to read
+     * as something. The one *ambient* source of doubt: every other source is an
+     * event, which is why a group that simply held together never accrued any.
+     */
+    absenceCycles: 2,
+    /** Suspicion per cycle past `absenceCycles`, per absent ally. */
+    perAbsentCycle: 5,
+    decayPerCycle: 1,
+    /**
+     * At or above this, an ally considers getting out first. The old 60 was
+     * reached in 1 of 902 sampled pair-cycles; 45 is the top half-percent of
+     * the distribution the engine now produces, which is what "this one is
+     * about to move on me" should cost to reach.
+     */
+    departThreshold: 45,
     departChance: 0.35,
     /** How much being watched costs a betrayer's target weighting, at full suspicion. */
     hardMarkFactor: 0.5,
@@ -1402,7 +1437,7 @@ export const ESCALATION = {
      * cycles at finalist count without a resolution, both are herded to the
      * horn every cycle until it ends.
      */
-    finaleAfterFinalistCycles: 4,
+    finaleAfterFinalistCycles: 2,
     hazardMultiplierPerDay: 0.27,
     hazardCeiling: 0.33,
     /**
@@ -1421,8 +1456,17 @@ export const ESCALATION = {
  * before the arena has visibly changed them.
  */
 export const EARNED_TRAIT_RULES = {
-    /** Traps pulled apart before they read as Trapwise. */
-    trapwiseDisarms: 2,
+    /**
+     * Traps pulled apart before they read as Trapwise.
+     *
+     * One, not two. Traps are rare objects — the soak measures ~330 set across
+     * 400 runs — and disarming one is already three gates deep: spot it, choose
+     * to work it rather than walk round it, then succeed. Asking for two of
+     * those on the same tribute was asking for the square of a rare event, and
+     * Trapwise was granted zero times in 120 runs. At one it lands 21 times,
+     * which is a trait somebody earns rather than a trait nobody has.
+     */
+    trapwiseDisarms: 1,
     /** Hard water crossings begun before they read as Waterborn. */
     waterbornCrossings: 3,
     /** Consecutive cycles with no hostile in their zone for Silent Step. */
@@ -1452,10 +1496,18 @@ export const EARNED_TRAIT_RULES = {
      *              (Skittish -> Haunted -> Hollow).
      */
     softheartedShedKills: 3,
-    /** Consecutive cycles carrying Haunted before it can become Hollow. */
-    hollowCycles: 6,
-    /** Sanity at or below which Haunted is eligible to become Hollow. */
-    hollowSanity: 35,
+    /**
+     * Consecutive cycles carrying Haunted before it can become Hollow.
+     *
+     * Raised from 6 once the `killTribute` ordering fix made Haunted reachable
+     * at all: at 6 cycles better than a third of everyone who was ever Haunted
+     * ended the run Hollow (170 per 120 runs), which is not an end of the road,
+     * it is a waypoint. Ten cycles is most of a run — a tribute has to carry it
+     * and keep surviving with it.
+     */
+    hollowCycles: 10,
+    /** Poise at or below which Haunted is eligible to become Hollow. */
+    hollowSanity: 25,
     /** Cycles a Skittish tribute must hold high resolve before the fear burns off. */
     skittishShedCycles: 5,
     skittishShedResolve: 70,
@@ -1937,7 +1989,12 @@ export const STEALTH = {
     aggressiveAwareness: 1.5,
     evasiveAwareness: 1,
     /** A trickster has been setting this up since the gong. */
-    tricksterAmbushBonus: 0.12,
+    /**
+     * What choosing this ground and waiting on it is worth when somebody
+     * finally walks into it. The `wait` objective's entire mechanical payoff.
+     */
+    waitingAmbushBonus: 0.2,
+        tricksterAmbushBonus: 0.12,
     /** §5.2: concealment/ambush per unit of zone cover above the 0.35 baseline. */
     coverGradeScale: 0.5,
     /**
@@ -2224,7 +2281,13 @@ export const OBJECTIVES = {
     stalkFear: 35,
     stalkCycles: 3,
     /** §3.3: waiting at a chokepoint. Cheap, patient, and not the same as holding. */
-    waitFatigue: 45,
+    /**
+     * Fatigue a tribute must still be *under* to choose to sit on a
+     * chokepoint. Was `waitFatigue: 45` and tested the other way round — see
+     * the comment at the site. Somebody who waits on a route is spending time
+     * to deny it, which is a thing you do while you can still fight.
+     */
+    waitMaxFatigue: 60,
     waitCycles: 2,
     /**
      * §3.4: goal conflict. When the winning objective's priority tier is
@@ -3437,8 +3500,26 @@ export const RELATIONSHIPS = {
     wardAge: 13,
     /** Alliance affinity an older tribute needs before a young one moves them. */
     wardAffinity: 0.15,
-    /** Grief intensity above which a close loss leaves a permanent mark. */
-    hauntedIntensity: 0.5,
+    /**
+     * Grief intensity above which a close loss leaves a permanent mark.
+     *
+     * A lover is always 1; an ally is `(bond + 25) / 100`, so this is a bond of
+     * 55 rather than the 25 the old 0.5 asked for. At 0.5, with the
+     * `killTribute` ordering fixed so this branch can run at all, every ally
+     * death marked every surviving member of the group.
+     */
+    hauntedIntensity: 0.8,
+    /**
+     * The bond a *witnessed* ally death needs before it can leave a permanent
+     * mark. `hauntedIntensity` cannot express this on its own: intensity is
+     * `min(1, (bond + 25) / 100)`, so it saturates at a bond of 75 and every
+     * threshold above that is unreachable rather than merely strict.
+     *
+     * Witnessed ally deaths carry a median bond of 66 and a p75 of 96, so this
+     * sits just above the median: the ones that mark you are the ones you were
+     * closer to than most of the people you were travelling with.
+     */
+    hauntedBond: 70,
     /** Grief intensity above which an ordinary mourning gets its own line. */
     griefLineIntensity: 0.45,
     /** Sponsor trust the crowd hands back for visibly grieving, per intensity point. */
@@ -4147,8 +4228,20 @@ export const BETRAYAL = {
      * scales with how far past it they are. Never chosen from the ordinary
      * betrayal roll (weight 0 above) — it has its own trigger.
      */
-    preemptSuspicion: 45,
-    preemptChance: 0.08,
+    /**
+     * Suspicion at which an ally moves first because they expect to be moved
+     * on. Sits inside the investigation band (20-44) deliberately: you test it,
+     * the test hardens it, and then you act — rather than the old 45, which was
+     * above the band and reached in 0.2% of pair-cycles.
+     */
+    preemptSuspicion: 35,
+    /**
+     * Rolled per eligible pair per alliance per cycle. The old 0.08, scaled by
+     * suspicion/100, gave roughly a 3% chance on a state reached 0.2% of the
+     * time — an expected rate indistinguishable from the zero the soak
+     * measured across 400 runs.
+     */
+    preemptChance: 0.25,
     /** A thief needs something worth taking. */
     minCacheValueToSteal: 15,
     /** Leading someone into ground you know is lethal needs you to know it. */
@@ -6114,6 +6207,14 @@ export const ARCHETYPE_HOOKS = {
     /** `escalating`: warier every day, up to a ceiling. */
     escalatingPerDay: 0.03,
     escalatingCap: 0.25,
+    /**
+     * `late-blooming`: the inverse of `front-loaded`. Opens *above* the
+     * archetype's own caution and sheds it as the days pass, so an archetype
+     * that survives well and closes badly has a shape that lets it close.
+     */
+    lateBloomOpening: 0.2,
+    lateBloomPerDay: 0.05,
+    lateBloomCap: 0.45,
     /**
      * `front-loaded`: spends it all at the gong and settles afterwards. Opens
      * *below* the archetype's own caution by `frontLoadedOpening` and climbs

@@ -260,14 +260,32 @@ export function tickDowned(ctx: SimContext) {
         // beat, and the run's tally of them says something about the Games.
         const collapsed = ctx.state.collapsedZones || [];
         const severed = severedEdgeSet(ctx.state);
-        const nearAlly = ctx.state.tributes.find(o =>
-            o.id !== t.id && isActive(o) && o.zone !== t.zone && wouldHelp(o, t)
-            && hopsTo(ctx.state.arena, o.zone, t.zone, collapsed, severed) === 1);
+        // Audit 2 §11.2: this required the would-be rescuer to be in a
+        // *different* zone, exactly one hop away, which excluded the purest
+        // case of all — somebody standing over them who would have helped and
+        // did not. (A same-zone ally who actually tries is the `failedRescuer`
+        // branch above and has already returned, so this cannot double-count
+        // them.) With the same-zone case excluded, `diedWithinReach` never
+        // exceeded 2 across 150 runs, which left `within-reach` unreachable at
+        // its old threshold of 3 and made `nobody-came` — the zero case of the
+        // same counter — fire on 61% of runs. One counter, two broken entries,
+        // in opposite directions.
+        const nearAlly = ctx.state.tributes.find(o => {
+            if (o.id === t.id || !isActive(o) || !wouldHelp(o, t)) return false;
+            if (o.zone === t.zone) return true;
+            // `hopsTo` is undefined when no route exists at all, which is not
+            // within reach of anything.
+            const hops = hopsTo(ctx.state.arena, o.zone, t.zone, collapsed, severed);
+            return hops !== undefined && hops <= 1;
+        });
         if (nearAlly) {
             ctx.state.diedWithinReach = (ctx.state.diedWithinReach ?? 0) + 1;
             ctx.logEvent(
-                `${t.name} bleeds out in ${t.zone}. ${nearAlly.name} is one zone away and will hear the cannon ` +
-                `before they ever hear why.`,
+                nearAlly.zone === t.zone
+                    ? `${t.name} bleeds out in ${t.zone} with ${nearAlly.name} close enough to touch. `
+                        + `${nearAlly.name} does not close the distance, and will have the rest of the Games to think about it.`
+                    : `${t.name} bleeds out in ${t.zone}. ${nearAlly.name} is one zone away and will hear the cannon `
+                        + `before they ever hear why.`,
                 [t.id, nearAlly.id],
                 { important: true, category: 'death' }
             );

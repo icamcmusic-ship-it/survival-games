@@ -25,12 +25,16 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             id: 'tick-tock-monkeys', name: 'Tick-Tock Monkeys',
             packSize: [2, 5], damage: 14, speed: 7,
             // A pack that swarms rather than mauls: no bleed, just battered.
+            // Audit 2 §10.1: named for something that gets into you.
+            role: 'parasite',
         },
         {
             id: 'lightning-birds', name: 'Lightning Birds',
             packSize: [1, 2], damage: 22, speed: 9,
             inflicts: { burned: true },
             nocturnal: true,
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
         {
             id: 'acid-fog', name: 'Acid Fog',
@@ -39,6 +43,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [1, 1], damage: 8, speed: 3,
             inflicts: { infected: true },
             fearAura: 6,
+            // Audit 2 §10.1: carries an infection and barely hits.
+            role: 'parasite',
         },
         {
             id: 'jabberjays', name: 'Jabberjays',
@@ -47,12 +53,16 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [4, 9], damage: 3, speed: 7,
             fearAura: 12,
             terrainPreference: ['forest', 'wetland', 'highland'],
+            // Audit 2 §10.1: named for what it imitates.
+            role: 'mimic',
         },
         {
             id: 'reef-barracuda', name: 'Reef Barracuda',
             packSize: [2, 4], damage: 16, speed: 8,
             inflicts: { bleeding: true },
             terrainPreference: ['water'],
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
     ],
     frozen: [
@@ -62,6 +72,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { bleeding: true },
             // Ice wolves don't swim.
             terrainPreference: ['open', 'forest', 'highland', 'ruins'],
+            // Audit 2 §10.1: named for something that moves you rather than eats you.
+            role: 'herder',
         },
         {
             id: 'snow-camouflage-snakes', name: 'Snow Camouflage Snakes',
@@ -74,6 +86,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [3, 8], damage: 6, speed: 4,
             inflicts: { frostbitten: true },
             // A swarm: low per-hit damage, but numbers alone push the pack-size roll hard.
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
         {
             id: 'snowblind-owls', name: 'Snowblind Owls',
@@ -82,6 +96,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { bleeding: true },
             nocturnal: true,
             terrainPreference: ['forest', 'highland', 'open'],
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
     ],
     concrete: [
@@ -90,12 +106,16 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [3, 6], damage: 10, speed: 6,
             inflicts: { bleeding: true },
             terrainPreference: ['ruins', 'open'],
+            // Audit 2 §10.1: named for something that follows the dead.
+            role: 'scavenger',
         },
         {
             id: 'glass-winged-bats', name: 'Glass-winged Bats',
             packSize: [1, 3], damage: 15, speed: 9,
             nocturnal: true,
             terrainPreference: ['ruins', 'highland'],
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
         {
             id: 'feral-tracker-jackers', name: 'Feral Tracker Jackers',
@@ -123,6 +143,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [4, 9], damage: 5, speed: 2,
             inflicts: { bleeding: true, infected: true },
             terrainPreference: ['wetland', 'water'],
+            // Audit 2 §10.1: named for something that gets into you.
+            role: 'parasite',
         },
         {
             id: 'camouflaged-crocodiles', name: 'Camouflaged Crocodiles',
@@ -136,6 +158,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             // A cloud, not a bite: they cost blood and sleep and nothing else.
             packSize: [5, 10], damage: 3, speed: 6,
             terrainPreference: ['wetland', 'water', 'forest', 'ruins'],
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
         {
             id: 'sump-waders', name: 'Sump Waders',
@@ -159,12 +183,16 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             id: 'mirage-scorpions', name: 'Mirage Scorpions',
             packSize: [2, 4], damage: 9, speed: 5,
             inflicts: { infected: true },
+            // Audit 2 §10.1: carries an infection and barely hits.
+            role: 'parasite',
         },
         {
             id: 'burrowing-centipedes', name: 'Burrowing Centipedes',
             packSize: [3, 6], damage: 7, speed: 4,
             inflicts: { bleeding: true },
             terrainPreference: ['open', 'wetland'],
+            // Audit 2 §10.1: named for something that gets into you.
+            role: 'parasite',
         },
         {
             id: 'glass-hawks', name: 'Glass Hawks',
@@ -180,6 +208,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             id: 'cinder-hounds', name: 'Cinder Hounds',
             packSize: [2, 4], damage: 20, speed: 8,
             inflicts: { burned: true },
+            // Audit 2 §10.1: named for something that moves you rather than eats you.
+            role: 'herder',
         },
         {
             id: 'ash-wraiths', name: 'Ash Wraiths',
@@ -188,18 +218,24 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [1, 2], damage: 6, speed: 6,
             fearAura: 8,
             nocturnal: true,
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
         {
             id: 'glass-shard-crows', name: 'Glass-Shard Crows',
             packSize: [3, 7], damage: 8, speed: 9,
             inflicts: { bleeding: true },
             terrainPreference: ['open', 'highland', 'ruins'],
+            // Audit 2 §10.1: many of them, none of them much.
+            role: 'swarm',
         },
         {
             id: 'ember-moths', name: 'Ember Moths',
             packSize: [4, 8], damage: 4, speed: 6,
             inflicts: { burned: true },
             nocturnal: true,
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
     ],
     tempest: [
@@ -214,12 +250,16 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             id: 'barnacle-crabs', name: 'Barnacle Crabs',
             packSize: [3, 6], damage: 8, speed: 3,
             terrainPreference: ['water', 'wetland', 'open'],
+            // Audit 2 §10.1: many of them, none of them much.
+            role: 'swarm',
         },
         {
             id: 'drowned-gulls', name: 'Drowned Gulls',
             packSize: [2, 5], damage: 6, speed: 10,
             inflicts: { infected: true },
             fearAura: 4,
+            // Audit 2 §10.1: named for something that follows the dead.
+            role: 'scavenger',
         },
         {
             id: 'surge-eels', name: 'Surge Eels',
@@ -228,6 +268,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [2, 5], damage: 12, speed: 7,
             inflicts: { bleeding: true },
             terrainPreference: ['water', 'wetland'],
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
     ],
     saltflats: [
@@ -236,11 +278,15 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [2, 4], damage: 17, speed: 8,
             inflicts: { bleeding: true },
             terrainPreference: ['open', 'ruins', 'highland'],
+            // Audit 2 §10.1: named for something that moves you rather than eats you.
+            role: 'herder',
         },
         {
             id: 'salt-locusts', name: 'Salt Locusts',
             packSize: [4, 9], damage: 5, speed: 6,
             inflicts: { infected: true },
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
         {
             id: 'mirage-stalkers', name: 'Mirage Stalkers',
@@ -257,12 +303,16 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { poisoned: true },
             fearAura: 3,
             nocturnal: true,
+            // Audit 2 §10.1: named for something that gets into you.
+            role: 'parasite',
         },
         {
             id: 'mycelial-hounds', name: 'Mycelial Hounds',
             packSize: [2, 4], damage: 19, speed: 7,
             inflicts: { bleeding: true },
             terrainPreference: ['forest', 'wetland', 'open'],
+            // Audit 2 §10.1: named for something that moves you rather than eats you.
+            role: 'herder',
         },
         {
             id: 'puffball-swarms', name: 'Puffball Swarms',
@@ -270,6 +320,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [1, 1], damage: 4, speed: 1,
             inflicts: { infected: true },
             fearAura: 5,
+            // Audit 2 §10.1: carries an infection and barely hits.
+            role: 'parasite',
         },
         {
             id: 'cordyceps-ticks', name: 'Cordyceps Ticks',
@@ -277,6 +329,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             // they are still a bad hour.
             packSize: [5, 10], damage: 3, speed: 3,
             terrainPreference: ['forest', 'wetland', 'open'],
+            // Audit 2 §10.1: named for something that gets into you.
+            role: 'parasite',
         },
     ],
     canopy: [
@@ -285,11 +339,15 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [2, 5], damage: 11, speed: 7,
             inflicts: { poisoned: true },
             terrainPreference: ['forest', 'highland'],
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
         {
             id: 'screech-primates', name: 'Screech Primates',
             packSize: [3, 6], damage: 13, speed: 9,
             fearAura: 5,
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
         {
             id: 'thornvine-constrictors', name: 'Thornvine Constrictors',
@@ -303,6 +361,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [4, 9], damage: 5, speed: 8,
             inflicts: { poisoned: true },
             terrainPreference: ['forest', 'highland', 'open'],
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
         {
             id: 'bough-vipers', name: 'Bough Vipers',
@@ -321,23 +381,31 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             fearAura: 9,
             nocturnal: true,
             persistent: true,
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
         {
             id: 'rebar-hounds', name: 'Rebar Hounds',
             packSize: [2, 4], damage: 18, speed: 6,
             inflicts: { bleeding: true },
             terrainPreference: ['ruins', 'open', 'highland'],
+            // Audit 2 §10.1: named for something that moves you rather than eats you.
+            role: 'herder',
         },
         {
             id: 'circuit-wasps', name: 'Circuit Wasps',
             packSize: [4, 8], damage: 6, speed: 10,
             inflicts: { infected: true },
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
         {
             id: 'sump-eels', name: 'Sump Eels',
             packSize: [2, 4], damage: 13, speed: 7,
             inflicts: { infected: true },
             terrainPreference: ['water'],
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
     ],
 
@@ -359,6 +427,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             // generations into the dark. A tax on sleep and stores, not a
             // threat: nothing about them was designed.
             packSize: [6, 12], damage: 2, speed: 4,
+            // Audit 2 §10.1: many of them, none of them much.
+            role: 'swarm',
         },
     ],
 
@@ -370,6 +440,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [3, 7], damage: 8, speed: 10,
             inflicts: { bleeding: true },
             terrainPreference: ['open', 'highland', 'water'],
+            // Audit 2 §10.1: many of them, none of them much.
+            role: 'swarm',
         },
         {
             id: 'fogline-eels', name: 'Fogline Eels',
@@ -378,6 +450,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [2, 4], damage: 15, speed: 7,
             inflicts: { bleeding: true },
             terrainPreference: ['water', 'wetland'],
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
         {
             id: 'the-ferryman', name: 'The Ferryman',
@@ -387,6 +461,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             fearAura: 10,
             nocturnal: true,
             persistent: true,
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
         {
             id: 'rust-mites', name: 'Rust Mites',
@@ -395,6 +471,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [5, 10], damage: 3, speed: 5,
             inflicts: { infected: true },
             terrainPreference: ['ruins', 'open'],
+            // Audit 2 §10.1: named for something that gets into you.
+            role: 'parasite',
         },
     ],
     eclipse: [
@@ -412,6 +490,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [2, 4], damage: 19, speed: 7,
             inflicts: { burned: true },
             terrainPreference: ['highland', 'forest', 'ruins'],
+            // Audit 2 §10.1: named for something that moves you rather than eats you.
+            role: 'herder',
         },
         {
             id: 'lantern-beetles', name: 'Lantern Beetles',
@@ -419,6 +499,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [4, 8], damage: 5, speed: 5,
             inflicts: { poisoned: true },
             terrainPreference: ['forest', 'wetland'],
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
         {
             id: 'the-understory', name: 'The Understory',
@@ -436,6 +518,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [3, 7], damage: 6, speed: 8,
             fearAura: 4,
             nocturnal: true,
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
     ],
     reef: [
@@ -463,6 +547,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             // like spilled gravel with teeth.
             packSize: [5, 10], damage: 4, speed: 6,
             inflicts: { bleeding: true },
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
         {
             id: 'the-dry-shark', name: 'The Dry Shark',
@@ -484,6 +570,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [2, 4], damage: 17, speed: 8,
             inflicts: { bleeding: true },
             terrainPreference: ['ruins', 'open', 'highland'],
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
         {
             id: 'scald-rats', name: 'Scald Rats',
@@ -492,6 +580,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [4, 9], damage: 6, speed: 6,
             inflicts: { burned: true },
             terrainPreference: ['ruins', 'water', 'wetland'],
+            // Audit 2 §10.1: many of them, none of them much.
+            role: 'swarm',
         },
         {
             id: 'the-line-boss', name: 'The Line Boss',
@@ -509,6 +599,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [3, 7], damage: 7, speed: 4,
             inflicts: { bleeding: true },
             terrainPreference: ['ruins', 'open'],
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
         {
             id: 'loft-swine', name: 'Loft Swine',
@@ -518,6 +610,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [2, 5], damage: 15, speed: 6,
             inflicts: { bleeding: true },
             terrainPreference: ['forest', 'ruins', 'open'],
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
     ],
     carnival: [
@@ -528,6 +622,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [3, 8], damage: 3, speed: 8,
             fearAura: 12,
             terrainPreference: ['forest', 'ruins', 'open'],
+            // Audit 2 §10.1: frightening far past what it can actually do.
+            role: 'mimic',
         },
         {
             id: 'the-barker', name: 'The Barker',
@@ -537,6 +633,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             fearAura: 11,
             nocturnal: true,
             persistent: true,
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
         {
             id: 'prize-hounds', name: 'Prize Hounds',
@@ -544,6 +642,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             // in matched sets, like something won off a shelf.
             packSize: [2, 5], damage: 16, speed: 8,
             inflicts: { bleeding: true },
+            // Audit 2 §10.1: named for something that moves you rather than eats you.
+            role: 'herder',
         },
         {
             id: 'ticket-wasps', name: 'Ticket Wasps',
@@ -552,6 +652,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [4, 9], damage: 5, speed: 9,
             inflicts: { poisoned: true },
             terrainPreference: ['ruins', 'forest'],
+            // Audit 2 §10.1: named for something that gets into you.
+            role: 'parasite',
         },
     ],
     ashwaste: [
@@ -571,12 +673,16 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { bleeding: true },
             fearAura: 4,
             terrainPreference: ['open', 'highland'],
+            // Audit 2 §10.1: named for something that follows the dead.
+            role: 'scavenger',
         },
         {
             id: 'cinder-fleas', name: 'Cinder Fleas',
             // They live in the warm ash and board anything warmer.
             packSize: [5, 10], damage: 3, speed: 6,
             inflicts: { burned: true },
+            // Audit 2 §10.1: named for something that gets into you.
+            role: 'parasite',
         },
         {
             id: 'the-grey-bull', name: 'The Grey Bull',
@@ -604,6 +710,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [4, 8], damage: 6, speed: 10,
             nocturnal: true,
             terrainPreference: ['ruins', 'highland'],
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
         {
             id: 'the-dredger', name: 'The Dredger',
@@ -650,6 +758,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [1, 3], damage: 16, speed: 5,
             inflicts: { frostbitten: true },
             terrainPreference: ['highland', 'ruins'],
+            // Audit 2 §10.1: named for something that gets into you.
+            role: 'parasite',
         },
         {
             id: 'echo-bats', name: 'Echo Bats',
@@ -658,6 +768,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [3, 7], damage: 6, speed: 10,
             nocturnal: true,
             terrainPreference: ['ruins', 'water'],
+            // Audit 2 §10.1: named for what it imitates.
+            role: 'mimic',
         },
         {
             id: 'rime-foxes', name: 'Rime Foxes',
@@ -666,6 +778,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [2, 4], damage: 11, speed: 9,
             inflicts: { bleeding: true },
             terrainPreference: ['open', 'highland', 'forest'],
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
     ],
     floe: [
@@ -693,6 +807,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             // the real one.
             packSize: [4, 9], damage: 4, speed: 10,
             fearAura: 5,
+            // Audit 2 §10.1: many of them, none of them much.
+            role: 'swarm',
         },
         {
             id: 'the-under-thing', name: 'The Under-Thing',
@@ -702,6 +818,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             fearAura: 12,
             nocturnal: true,
             persistent: true,
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
     ],
     alpine: [
@@ -730,6 +848,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [4, 8], damage: 5, speed: 10,
             inflicts: { bleeding: true },
             terrainPreference: ['highland', 'open'],
+            // Audit 2 §10.1: many of them, none of them much.
+            role: 'swarm',
         },
         {
             id: 'marmot-mutts', name: 'Marmot Mutts',
@@ -737,6 +857,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             // system: one sees you, and every burrow on the slope knows.
             packSize: [2, 5], damage: 9, speed: 5,
             terrainPreference: ['open', 'highland', 'wetland'],
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
         {
             id: 'tarn-lurker', name: 'The Tarn Lurker',
@@ -758,6 +880,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { bleeding: true },
             nocturnal: true,
             terrainPreference: ['ruins', 'highland', 'open'],
+            // Audit 2 §10.1: many of them, none of them much.
+            role: 'swarm',
         },
         {
             id: 'terrace-jackals', name: 'Terrace Jackals',
@@ -777,6 +901,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             nocturnal: true,
             persistent: true,
             terrainPreference: ['ruins', 'open', 'highland'],
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
         {
             id: 'cable-spiders', name: 'Cable Spiders',
@@ -794,6 +920,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [3, 6], damage: 9, speed: 8,
             inflicts: { bleeding: true, infected: true },
             terrainPreference: ['water', 'wetland'],
+            // Audit 2 §10.1: carries an infection and barely hits.
+            role: 'parasite',
         },
     ],
 
@@ -845,6 +973,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             id: 'wind-throat-owls', name: 'Wind-Throat Owls',
             packSize: [1, 3], damage: 16, speed: 10,
             nocturnal: true,
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
         {
             id: 'resonance-moths', name: 'Resonance Moths',
@@ -864,6 +994,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             id: 'cinder-back-boars', name: 'Cinder-Back Boars',
             packSize: [1, 3], damage: 20, speed: 6,
             inflicts: { burned: true },
+            // Audit 2 §10.1: named for something that moves you rather than eats you.
+            role: 'herder',
         },
         {
             id: 'thornvine-jackals', name: 'Thornvine Jackals',
@@ -1051,6 +1183,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             id: 'wadi-eels', name: 'Wadi Eels',
             packSize: [2, 4], damage: 14, speed: 6,
             terrainPreference: ['water', 'wetland'],
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
         {
             id: 'thorn-mimics', name: 'Thorn Mimics',
@@ -1135,6 +1269,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             id: 'razor-parrots', name: 'Razor Parrots',
             packSize: [3, 6], damage: 9, speed: 10,
             inflicts: { bleeding: true },
+            // Audit 2 §10.1: named for something that gets into you.
+            role: 'parasite',
         },
         {
             id: 'constrictor-vines', name: 'Constrictor Vines',
@@ -1147,6 +1283,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [1, 2], damage: 25, speed: 9,
             inflicts: { bleeding: true },
             nocturnal: true,
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
     ],
     volcanic: [
@@ -1176,18 +1314,24 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             id: 'magma-hounds', name: 'Magma Hounds',
             packSize: [2, 4], damage: 22, speed: 8,
             inflicts: { burned: true },
+            // Audit 2 §10.1: named for something that moves you rather than eats you.
+            role: 'herder',
         },
         {
             id: 'ash-wraiths-v', name: 'Ash Wraiths',
             packSize: [1, 2], damage: 7, speed: 6,
             fearAura: 8,
             nocturnal: true,
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
         {
             id: 'obsidian-beetles', name: 'Obsidian Beetles',
             packSize: [3, 7], damage: 6, speed: 4,
             inflicts: { bleeding: true },
             terrainPreference: ['open', 'highland', 'ruins'],
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
     ],
     archipelago: [
@@ -1200,12 +1344,16 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
         {
             id: 'storm-gulls', name: 'Storm Gulls',
             packSize: [3, 6], damage: 8, speed: 10,
+            // Audit 2 §10.1: named for something that follows the dead.
+            role: 'scavenger',
         },
         {
             id: 'coral-crabs', name: 'Coral Crabs',
             packSize: [2, 5], damage: 10, speed: 3,
             inflicts: { infected: true },
             terrainPreference: ['water', 'open'],
+            // Audit 2 §10.1: carries an infection and barely hits.
+            role: 'parasite',
         },
     ],
     highlands: [
@@ -1225,6 +1373,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             fearAura: 6,
             nocturnal: true,
             persistent: true,
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
     ],
     culdesac: [
@@ -1254,6 +1404,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [4, 9], damage: 5, speed: 7,
             inflicts: { poisoned: true },
             terrainPreference: ['ruins'],
+            // Audit 2 §10.1: named for something that arrives in numbers.
+            role: 'swarm',
         },
         {
             id: 'something-in-the-pool', name: 'Something in the Pool',
@@ -1262,6 +1414,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             terrainPreference: ['water'],
             nocturnal: true,
             fearAura: 11,
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
     ],
     labyrinth: [
@@ -1296,6 +1450,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [2, 4], damage: 14, speed: 7,
             inflicts: { bleeding: true },
             terrainPreference: ['water'],
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
     ],
     ashgrove: [
@@ -1314,6 +1470,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [2, 4], damage: 12, speed: 6,
             inflicts: { poisoned: true },
             terrainPreference: ['ruins'],
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
         {
             id: 'pool-filter-thing', name: 'Something in the Pool Filter',
@@ -1335,6 +1493,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             terrainPreference: ['open', 'forest'],
             nocturnal: true,
             persistent: true,
+            // Audit 2 §10.1: named for something that moves you rather than eats you.
+            role: 'herder',
         },
     ],
     kelvin: [
@@ -1347,6 +1507,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             terrainPreference: ['open'],
             persistent: true,
             nocturnal: true,
+            // Audit 2 §10.1: named for something that moves you rather than eats you.
+            role: 'herder',
         },
         {
             id: 'under-the-ice', name: 'Under the Ice',
@@ -1414,6 +1576,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             inflicts: { poisoned: true },
             nocturnal: true,
             persistent: true,
+            // Audit 2 §10.1: named for something that moves you rather than eats you.
+            role: 'herder',
         },
         {
             id: 'the-wrapped', name: 'The Wrapped',
@@ -1460,6 +1624,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             terrainPreference: ['ruins'],
             nocturnal: true,
             fearAura: 8,
+            // Audit 2 §10.1: a pack big enough to move somebody.
+            role: 'herder',
         },
         {
             id: 'the-filing', name: 'The Filing',
@@ -1486,6 +1652,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             packSize: [1, 2], damage: 12, speed: 9,
             inflicts: { poisoned: true },
             terrainPreference: ['open', 'highland'],
+            // Audit 2 §10.1: named for something that follows the dead.
+            role: 'scavenger',
         },
         {
             id: 'cliff-cats', name: 'Cliff Cats',
@@ -1560,6 +1728,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             nocturnal: true,
             persistent: true,
             fearAura: 12,
+            // Audit 2 §10.1: already a night animal; the role is what says so to the engine.
+            role: 'ambusher',
         },
         {
             id: 'quarantine', name: 'Quarantine',

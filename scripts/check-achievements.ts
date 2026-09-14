@@ -23,6 +23,7 @@ import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig, GameState } from '../src/models/types';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, AchievementCategory } from '../src/data/achievements';
+import { readFileSync } from 'node:fs';
 
 const RUNS = Number(process.env.ACHIEVEMENT_RUNS ?? 200);
 
@@ -48,6 +49,64 @@ const unlocks: Record<string, number> = {};
 const errors: string[] = [];
 let completed = 0;
 
+/**
+ * §11.2 (audit 2): the numeric half of `test:predicates`.
+ *
+ * `check-predicates` catches an achievement comparing an optional *boolean*
+ * against a value the engine never writes. The same bug has a numeric form and
+ * nothing caught it: an entry asking for `trapKills >= 3` against a counter
+ * that has never exceeded 1 in any run is not a hard achievement, it is an
+ * unreachable one — and the coverage report below lists it as "never unlocked"
+ * alongside the genuinely hard entries, which is exactly what hid
+ * `nobodys-ally` before the boolean check existed.
+ *
+ * It cannot be answered statically: the ceiling on `trapKills` is a fact about
+ * the simulation, not about the type. So it is measured here, on the sweep this
+ * file is already running, at no extra cost — every optional numeric (and the
+ * length of every optional array) on Tribute and GameState, maximised across
+ * every tribute of every run.
+ */
+const NUMERIC_FIELDS = new Set<string>();
+const ARRAY_FIELDS = new Set<string>();
+{
+    const types = readFileSync('src/models/types.ts', 'utf8');
+    // Scoped to the two interfaces this file actually walks. A global scrape
+    // picks up `Alliance.charter` and `Arena.laws` as well, and then reports
+    // them as never-written because nothing traverses an Alliance or an Arena
+    // here — a false positive that reads exactly like a real finding.
+    const body = (name: string): string => {
+        const at = types.indexOf(`export interface ${name} {`);
+        if (at < 0) return '';
+        const open = types.indexOf('{', at);
+        let depth = 0;
+        for (let i = open; i < types.length; i++) {
+            if (types[i] === '{') depth++;
+            else if (types[i] === '}' && --depth === 0) return types.slice(open, i);
+        }
+        return '';
+    };
+    const scoped = body('Tribute') + '\n' + body('GameState');
+    for (const m of scoped.matchAll(/^\s+(\w+)\?: number;/gm)) NUMERIC_FIELDS.add(m[1]);
+    for (const m of scoped.matchAll(/^\s+(\w+)\?: (?:\w+)\[\];/gm)) ARRAY_FIELDS.add(m[1]);
+}
+const ceiling: Record<string, number> = {};
+// Kept apart, because most entries are scored on the victor and the victor is
+// not the field's best case. Any tribute may reach two trap kills; a *victor*
+// who did is a much rarer thing, and an entry testing `v.trapKills >= 2`
+// against the all-tributes ceiling of 2 reads as reachable and is not.
+const victorCeiling: Record<string, number> = {};
+const seeFields = (into: Record<string, number>, o: Record<string, unknown> | undefined) => {
+    if (!o) return;
+    for (const f of NUMERIC_FIELDS) {
+        const v = o[f];
+        if (typeof v === 'number' && Number.isFinite(v)) into[f] = Math.max(into[f] ?? -Infinity, v);
+    }
+    for (const f of ARRAY_FIELDS) {
+        const v = o[f];
+        if (Array.isArray(v)) into[f + '.length'] = Math.max(into[f + '.length'] ?? -Infinity, v.length);
+    }
+};
+
 for (let i = 0; i < RUNS; i++) {
     const seed = `ACH${i}`;
     // §11 (audit): a quarter of runs in Gamemaker mode, so the booth's own
@@ -66,7 +125,11 @@ for (let i = 0; i < RUNS; i++) {
     }
     if (state.phase !== 'ended') continue;
     completed++;
+    seeFields(ceiling, state as unknown as Record<string, unknown>);
+    state.tributes.forEach(t => seeFields(ceiling, t as unknown as Record<string, unknown>));
     const victor = state.tributes.find(t => t.status === 'alive');
+    seeFields(victorCeiling, victor as unknown as Record<string, unknown>);
+    seeFields(victorCeiling, state as unknown as Record<string, unknown>);
     ACHIEVEMENTS.forEach(a => {
         try {
             if (a.test(state, victor)) unlocks[a.id] = (unlocks[a.id] ?? 0) + 1;
@@ -202,6 +265,72 @@ if (errors.length > 0) {
     errors.slice(0, 20).forEach(e => console.log(`  ${e}`));
     failed = true;
 }
+// §11.2 (audit 2): thresholds that sit above the ceiling the engine produces.
+//
+// Reads source text rather than types, like `check-predicates`, and is
+// deliberately conservative: it only recognises a bare `>=`/`>` against a
+// numeric literal on a field it has a measured ceiling for, so it under-reports
+// rather than crying wolf. A field the sweep never saw at all is skipped —
+// `check-predicates` owns the "nothing ever writes this" case.
+const unreachable: string[] = [];
+{
+    const patterns: RegExp[] = [
+        // (v.field ?? 0) >= 3   |   v.field >= 3   |   v.field! > 2
+        /(\w+)[!?]?\.(\w+)\s*(?:\?\?\s*0\s*\)?|!)?\s*(>=|>)\s*(\d+(?:\.\d+)?)\b/g,
+        // (v.field?.length ?? 0) >= 3
+        /(\w+)[!?]?\.(\w+)\?\.length\s*\?\?\s*0\s*\)?\s*(>=|>)\s*(\d+(?:\.\d+)?)\b/g,
+    ];
+    for (const a of ACHIEVEMENTS) {
+        const src = a.test.toString();
+        // The victor parameter's name, so a `v.field` read can be told apart
+        // from a `t.field` read inside a `.some(t => ...)` over the whole cast.
+        const victorParam = /^\s*\(?\s*[\w_]+\s*,\s*([\w_]+)/.exec(src)?.[1];
+        const seen = new Set<string>();
+        for (const re of patterns) {
+            for (const m of src.matchAll(re)) {
+                const [, receiver, rawField, op, rawNeed] = m;
+                const isLength = m[0].includes('?.length');
+                const key = isLength ? `${rawField}.length`
+                    : ARRAY_FIELDS.has(rawField) ? `${rawField}.length`
+                        : rawField;
+                const victorScoped = !!victorParam && receiver === victorParam;
+                const table = victorScoped ? victorCeiling : ceiling;
+                // A declared optional numeric that no run ever put a number in
+                // is the numeric twin of check-predicates' "nothing in src/ ever
+                // assigns this": the comparison cannot be satisfied, and
+                // skipping it here would let exactly the bug this check exists
+                // for through the one door it does not watch.
+                if (!(key in table) && !(key in ceiling) && !(key in victorCeiling)) {
+                    const declared = NUMERIC_FIELDS.has(rawField) || ARRAY_FIELDS.has(rawField);
+                    if (declared) {
+                        const sig = `${key}!written`;
+                        if (!seen.has(sig)) {
+                            seen.add(sig);
+                            unreachable.push(`${a.id}: reads ${key}, which ${completed} runs never gave a value`);
+                        }
+                    }
+                    continue;
+                }
+                if (!(key in table)) continue;
+                const need = op === '>' ? Number(rawNeed) + 1 : Number(rawNeed);
+                const max = table[key];
+                if (max >= need) continue;
+                const sig = `${key}>=${need}`;
+                if (seen.has(sig)) continue;
+                seen.add(sig);
+                unreachable.push(`${a.id}: needs ${key} >= ${need}, but ${completed} runs never produced `
+                    + `more than ${max}${victorScoped ? ' in a victor' : ''}`);
+            }
+        }
+    }
+}
+if (unreachable.length > 0) {
+    console.log(`\nFAIL: ${unreachable.length} achievement threshold(s) above the ceiling the engine produces:`);
+    unreachable.forEach(u => console.log(`  ${u}`));
+    console.log('  (lower the threshold, or raise the ceiling — an entry nobody can earn is a promise the game does not keep)');
+    failed = true;
+}
+
 const uncategorised = ACHIEVEMENTS.filter(a => !ACHIEVEMENT_CATEGORIES[a.category]);
 if (uncategorised.length > 0) {
     console.log(`\nFAIL: ${uncategorised.length} achievement(s) carry an unknown category.`);

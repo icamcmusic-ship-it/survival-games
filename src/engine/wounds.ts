@@ -1,5 +1,5 @@
 import { InjurySite, Tribute } from '../models/types';
-import { BLEEDING, VITALS, WOUND_RECOVERY } from '../data/balance';
+import { BLEEDING, SCARRING, VITALS, WOUND_RECOVERY } from '../data/balance';
 import { SimContext } from './context';
 import { profOf, trainProficiency, observeProficiency } from './proficiency';
 import { traitMod } from '../data/traits';
@@ -102,9 +102,12 @@ export function tickWoundRecovery(ctx: SimContext, t: Tribute) {
             delete t.recoveryProgress![site];
             return;
         }
-        // §3.6: grade 3 is the threshold at which a wound stops being an
-        // injury and starts being a fact about this person.
-        if (grade >= MAX_INJURY_GRADE) {
+        // §3.6: the threshold at which a wound stops being an injury and starts
+        // being a fact about this person. Audit 2 §1.7: this was
+        // `MAX_INJURY_GRADE`, and grade 3 is the grade at which a wound kills
+        // you rather than the grade at which it marks you — 2 of 1,920 tributes
+        // ever reached it alive, so nothing downstream of `scars` was reachable.
+        if (grade >= SCARRING.scarsAtGrade) {
             t.scars = t.scars ?? {};
             t.scars[site] = true;
         }

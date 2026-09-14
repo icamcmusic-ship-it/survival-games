@@ -569,9 +569,21 @@ function chooseObjective(
     // having — this is sitting on a chokepoint precisely because everyone else
     // has to come through it, and it is the one intention that wants the zone
     // to stay empty until it does not.
+    //
+    // Audit 2 §1.6: this was held in 0.0% of 18,195 tribute-cycles. Of the
+    // 1,748 times the cascade reached this clause, the chokepoint held 559
+    // times, the empty zone 344, the non-aggressive stance 1,483 — and
+    // `fatigue > 45` only 163, which took all four together down to 18.
+    //
+    // The fatigue clause was also backwards. Waiting on a chokepoint is a
+    // decision to spend time denying a route to other people; gating it on
+    // being tired made it a rest behaviour wearing an ambush's name, and the
+    // one tribute who did it was the one least able to do anything when
+    // somebody finally walked in. You wait because you are *in shape to*, so
+    // the test is now the other way round.
     const chokepoint = current && zoneFeatures(current).chokepoint === true;
     if (chokepoint && hostilesHere.length === 0 && !isAggressiveStance(t.stance)
-        && t.vitals.fatigue > OBJECTIVES.waitFatigue) {
+        && t.vitals.fatigue < OBJECTIVES.waitMaxFatigue) {
         const o = offer(28, { kind: 'wait', zone: t.zone, expires: expiry(OBJECTIVES.waitCycles) });
         if (o) return o;
     }

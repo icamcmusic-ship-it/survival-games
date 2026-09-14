@@ -44,9 +44,19 @@ export interface ArchetypeDef {
     /**
      * How caution moves with the day count. `flat` never wavers, `escalating`
      * gets warier as the field narrows, `front-loaded` spends everything early
-     * and settles afterwards.
+     * and settles afterwards, `late-blooming` does the opposite of
+     * `front-loaded` — keeps its head down while the field is big and commits
+     * once there is little left to hide from.
+     *
+     * Audit 2 §8.2/§8.3: the first three were all a tribute could be, and
+     * between them they could not express "careful early, decisive late" —
+     * which is exactly the shape the Ghost needs and cannot have. Ghost has the
+     * second-longest survival in the game (4.19 days) and the worst win rate
+     * (2.78%): an archetype that outlasts and cannot close. `escalating` makes
+     * that worse and `front-loaded` contradicts the character, so there was no
+     * row in the table that described it.
      */
-    riskCurve?: 'flat' | 'escalating' | 'front-loaded';
+    riskCurve?: 'flat' | 'escalating' | 'front-loaded' | 'late-blooming';
     /**
      * The once-per-run archetype beat, keyed into `ARCHETYPE_SIGNATURES` in
      * `engine/archetypeHooks.ts`. Career already effectively had one (the
@@ -135,8 +145,13 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: 0.3,
         stanceBias: { Defensive: 0.5, Evasive: 0.3, Scavenging: 0.3 },
         objectiveBias: { reach: 0.3, survive: 0.3 },
-        targetPreference: 'nearest',
-        riskCurve: 'flat',
+                // Audit 2 §8.2: was `nearest`, the null option. A survivalist does not
+        // go looking; when the choice is forced, they take the fight they can
+        // finish and get back to the business of not being here.
+        targetPreference: 'weakest',
+                // Audit 2 §8.2: was `flat`. The whole archetype is a downward risk
+        // appetite as the odds shorten.
+        riskCurve: 'escalating',
         signature: 'survivalistLarder',
         tagline: 'Outlasts the arena.',
     },
@@ -155,8 +170,12 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // Whoever is nearest their ward. 'strongest' had them hunting the
         // single most dangerous tribute in the arena, at odds with every
         // other number on this sheet.
-        targetPreference: 'nearest',
-        riskCurve: 'flat',
+                // Audit 2 §8.2: was `nearest`. A protector picks the biggest thing in
+        // the room, because that is the thing their ward cannot survive.
+        targetPreference: 'strongest',
+                // Audit 2 §8.2: was `flat`. Every day that passes is a day their ward
+        // is closer to being the one left.
+        riskCurve: 'escalating',
         signature: 'protectorStand',
         hatesArchetypes: ['saboteur', 'mercenary'],
         tagline: 'Stands in front.',
@@ -235,7 +254,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         stanceBias: { Scavenging: 0.5, Aggressive: 0.3 },
         objectiveBias: { hunt: 0.2, reach: 0.2 },
         targetPreference: 'richest',
-        riskCurve: 'flat',
+                // Audit 2 §8.2: was `flat`. A contract is worth most while there is
+        // still a field to be paid by; they spend early and coast, which is
+        // also why they die fastest.
+        riskCurve: 'front-loaded',
         signature: 'mercenaryContract',
         hatesArchetypes: ['zealot', 'protector'],
         tagline: 'Everything has a price.',
@@ -271,7 +293,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: 0.2,
         stanceBias: { Defensive: 0.8, Fortified: 0.3, Aggressive: -0.6 },
         objectiveBias: { protect: 0.5, hold: 0.2 },
-        targetPreference: 'nearest',
+                // Audit 2 §8.2: was `nearest`. A medic fights only what they must, and
+        // only what they can end quickly.
+        targetPreference: 'weakest',
         riskCurve: 'escalating',
         signature: 'medicTriage',
         tagline: 'Keeps them standing.',
@@ -289,7 +313,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         stanceBias: { Fortified: 0.7, Shadowing: 0.5, Aggressive: -0.7 },
         objectiveBias: { hold: 0.4 },
         targetPreference: 'richest',
-        riskCurve: 'flat',
+                // Audit 2 §8.2: was `flat`. Somebody who works from cover has less
+        // cover every day.
+        riskCurve: 'escalating',
         signature: 'saboteurStrike',
         hatesArchetypes: ['career'],
         tagline: 'Breaks the board, not the pieces.',
@@ -336,7 +362,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: 0.2,
         stanceBias: { Defensive: 0.6, Evasive: 0.2, Aggressive: -0.6 },
         objectiveBias: { protect: 0.3, reach: 0.2 },
-        targetPreference: 'nearest',
+                // Audit 2 §8.2: was `nearest`. The one person a diplomat will raise a
+        // hand to is the one they have already failed to talk round.
+        targetPreference: 'rival',
         riskCurve: 'escalating',
         signature: 'diplomatAccord',
         hatesArchetypes: ['zealot'],
@@ -357,7 +385,11 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         stanceBias: { Defensive: 0.4, Evasive: 0.3, Scavenging: 0.3 },
         objectiveBias: { reach: 0.4 },
         targetPreference: 'weakest',
-        riskCurve: 'flat',
+                // Audit 2 §8.2: was `flat`. The point of the archetype is that it
+        // updates — and what it updates *toward* is confidence, not caution. A
+        // scholar who has spent six days reading the arena knows more about it
+        // than anyone else left alive, and that is the moment to use it.
+        riskCurve: 'late-blooming',
         signature: 'scholarReading',
         tagline: 'Reads the arena.',
     },
@@ -374,7 +406,12 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         stanceBias: { Evasive: 0.8, Shadowing: 0.9, Aggressive: -1.0 },
         objectiveBias: { survive: 0.4 },
         targetPreference: 'weakest',
-        riskCurve: 'flat',
+                // Audit 2 §8.3: was `flat`, and Ghost has the second-longest survival
+        // in the game on the worst win rate — an archetype that outlasts and
+        // cannot close. `late-blooming` is the shape the table did not have:
+        // keep your head down while the field is big, and commit once there is
+        // little left to hide from.
+        riskCurve: 'late-blooming',
         signature: 'ghostNaming',
         hatesArchetypes: ['career'],
         tagline: 'Nobody has footage.',

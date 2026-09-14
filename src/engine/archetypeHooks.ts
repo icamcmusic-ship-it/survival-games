@@ -1,7 +1,8 @@
 import { ArchetypeId, Objective, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { severRandomEdge } from './zoneEffects';
-import { ARCHETYPE_HOOKS, HUNTING } from '../data/balance';
+import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING } from '../data/balance';
+import { earnTrait } from './earnedTraits';
 import { SimContext, getAlive } from './context';
 import { getRel, adjustMutual, adjustRel } from './relationships';
 import { fearOf, addFear } from './fear';
@@ -29,9 +30,12 @@ import { ARCHETYPE_SIGNATURE_TEXTS } from '../data/flavorText';
  * How much this tribute's caution has moved by today.
  *
  * `riskCurve` is the shape: `flat` never wavers (a Zealot on day 9 is the
- * Zealot from day 1), `escalating` gets warier as the field narrows, and
- * `front-loaded` spends everything at the gong and settles afterwards. Read
- * anywhere the raw `arch.caution` used to be the whole story.
+ * Zealot from day 1), `escalating` gets warier as the field narrows,
+ * `front-loaded` spends everything at the gong and settles afterwards, and
+ * `late-blooming` is the inverse of `front-loaded` — opens *above* its own
+ * caution and sheds it as the days pass, so the last few days are the ones it
+ * was saving itself for. Read anywhere the raw `arch.caution` used to be the
+ * whole story.
  */
 export function effectiveCaution(t: Tribute, day: number): number {
     const arch = ARCHETYPES[t.archetype];
@@ -44,6 +48,9 @@ export function effectiveCaution(t: Tribute, day: number): number {
         case 'front-loaded':
             return base - ARCHETYPE_HOOKS.frontLoadedOpening
                 + Math.min(ARCHETYPE_HOOKS.frontLoadedCap, day * ARCHETYPE_HOOKS.frontLoadedPerDay);
+        case 'late-blooming':
+            return base + ARCHETYPE_HOOKS.lateBloomOpening
+                - Math.min(ARCHETYPE_HOOKS.lateBloomCap, day * ARCHETYPE_HOOKS.lateBloomPerDay);
         default:
             return base;
     }
@@ -263,6 +270,13 @@ const SIGNATURES: Record<string, Signature> = {
             const sprung = traps.slice(0, ARCHETYPE_HOOKS.sabotageTraps);
             ctx.state.traps = (ctx.state.traps ?? []).filter(tr => !sprung.includes(tr));
             sprung.forEach(tr => { t.trapsDisarmed = (t.trapsDisarmed ?? 0) + 1; });
+            // The count was being written here and read nowhere. `Trapwise` is
+            // granted off `trapsDisarmed` at exactly one site — the ordinary
+            // spot-and-disarm in `fieldcraft.ts` — so the archetype whose whole
+            // identity is other people's mechanisms was the one archetype that
+            // could not earn the trait about them. Measured over 120 runs
+            // before this line existed: Trapwise granted zero times.
+            if ((t.trapsDisarmed ?? 0) >= EARNED_TRAIT_RULES.trapwiseDisarms) earnTrait(ctx, t, 'Trapwise');
             say(ctx, t, 'saboteurTraps', [t.id], { count: String(sprung.length) });
         } else {
             const victim = caches[0];

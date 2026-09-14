@@ -128,6 +128,7 @@ export function setTrap(ctx: SimContext, t: Tribute) {
         concealment: concealmentFor(ctx, t),
         setCycle: cycleOf(ctx.state),
     });
+    t.trapsSet = (t.trapsSet ?? 0) + 1;
     trainProficiency(t, 'tracking');
     ctx.logEvent(TRAP_SET_LINES[kind](t.name, t.zone), [t.id], { category: 'survival' });
 }

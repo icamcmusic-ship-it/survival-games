@@ -141,7 +141,15 @@ dev server and a browser; run it locally.
   not quietly become "cannot win".
 - `npm run test:ui` — Chromium smoke test covering every screen, control and
   keyboard shortcut; fails on any console or page error. Needs `npm run dev`
-  running on port 3000.
+  running on port 3000. It uses whatever browser Playwright resolves by
+  default, which in a fresh checkout or a sandbox is often a revision that was
+  never downloaded — the failure reads `Executable doesn't exist at
+  .../chromium_headless_shell-<rev>`. Point it at a browser you have rather
+  than re-downloading one:
+  `CHROMIUM_PATH=$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome | head -1) npm run test:ui`,
+  or run `npx playwright install chromium`. `SHOT_DIR` controls where its
+  screenshots land. This is the one check excluded from CI, so nobody finds out
+  until they run it.
 
 ## How a run works
 
