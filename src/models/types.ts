@@ -1979,6 +1979,13 @@ export interface GameState {
     zoneTraffic?: Record<string, number>;
     /** Tribute id -> cycle their fire/shelter/camouflage lapses. */
     camps?: Record<string, { fire?: number; shelter?: number; camouflage?: number }>;
+    /**
+     * Audit 3 §1.3: the cycle the Cornucopia was last restocked.
+     *
+     * Read by `mintTrueRumours`: "the horn came back" is only a true thing to
+     * say for a cycle or two after it did.
+     */
+    lastRestockCycle?: number;
     /** Persistent mutts currently hunting a specific tribute. See `ActiveMutt`. */
     activeMutts?: ActiveMutt[];
     /** Zones a cannon fired in this cycle, with the cycle it happened — reads as "just now" only while `cycle` still matches. Feeds the `scavenger` mutt role. */

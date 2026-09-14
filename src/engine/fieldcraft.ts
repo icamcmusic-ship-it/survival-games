@@ -87,7 +87,18 @@ const TRAP_SPRING_LINES: Record<Trap['kind'], (name: string, zone: string) => st
 /** Spends the turn setting a snare or a deadfall in the tribute's current zone. */
 export function setTrap(ctx: SimContext, t: Tribute) {
     const materialIdx = t.inventory.findIndex(i => i.id === 'rope' || i.id === 'wire');
-    const glandIdx = t.inventory.findIndex(i => i.id === 'venom-gland');
+    // Audit 3 §1.2: a stake wanted a mutt venom gland *and* looted cordage, a
+    // conjunction of two rare draws on top of the trap roll itself — zero were
+    // built across 132 runs. Any of the four things that can coat a blade can
+    // paint a point, which is the same act with the same materials.
+    //
+    // The gate that keeps it from swamping the other kinds is the one the
+    // design comment on `Trap.kind` already implies: somebody holding a blade
+    // coats the blade. A stake is what you build when the venom is the only
+    // weapon you have.
+    const venomIdx = t.inventory.findIndex(i => (POISONING.sources as readonly string[]).includes(i.id));
+    const hasBlade = t.inventory.some(i => i.type === 'weapon');
+    const venomIsTheWeapon = venomIdx >= 0 && !hasBlade;
     // §6: what they build is what they have and what they mean to do with it.
     // A line plus a gland is a stake; a line alone is a snare, or an alarm if
     // they are hiding rather than hunting; a shovel-worth of soft ground is a
@@ -95,10 +106,27 @@ export function setTrap(ctx: SimContext, t: Tribute) {
     const zone = getZone(ctx.state.arena, t.zone);
     const diggable = zone !== undefined
         && (zone.terrain === 'forest' || zone.terrain === 'wetland' || zone.terrain === 'desert' || zone.terrain === 'open');
+    // Audit 3 §1.2: cordage was the sole gate on three of the five kinds, and
+    // rope and wire are Cornucopia loot. Measured across 132 runs: pit 137,
+    // deadfall 205, snare 4, tripwire 1, stake 0 — a five-kind menu that was
+    // a two-kind menu in play, and the archetype built around it (saboteur,
+    // 2.21%) was the worst in the game.
+    //
+    // Ground that grows a line gives you one. Vines in a forest, cable in
+    // ruins, sinew and reed in a wetland — a tribute who knows what they are
+    // looking at does not need to have looted rope. It costs the turn either
+    // way, it is gated on the fieldcraft they actually have, and carried
+    // cordage is still strictly better (it works anywhere, including the open).
+    const improvisable = zone !== undefined
+        && (zone.terrain === 'forest' || zone.terrain === 'wetland' || zone.terrain === 'ruins');
+    const hasLine = materialIdx >= 0
+        || (improvisable && profOf(t, 'tracking') >= TRAPS.improvisedLineTracking);
+    // A gland is what makes a stake a stake; the sharpened point is whittled
+    // from whatever is to hand, which is why this no longer also wants a line.
     const kind: Trap['kind'] =
-        materialIdx >= 0 && glandIdx >= 0 ? 'stake'
-            : materialIdx >= 0 && isEvasiveStance(t.stance) ? 'tripwire'
-                : materialIdx >= 0 ? 'snare'
+        venomIsTheWeapon ? 'stake'
+            : hasLine && isEvasiveStance(t.stance) ? 'tripwire'
+                : hasLine ? 'snare'
                     : diggable && t.attributes.strength >= TRAPS.pitStrength ? 'pit'
                         : 'deadfall';
 
@@ -117,8 +145,13 @@ export function setTrap(ctx: SimContext, t: Tribute) {
         return;
     }
 
-    if (materialIdx >= 0) t.inventory.splice(materialIdx, 1);
-    if (kind === 'stake' && glandIdx >= 0) t.inventory.splice(glandIdx > materialIdx ? glandIdx - 1 : glandIdx, 1);
+    // Improvised cordage costs no item; carried cordage is spent, and only by
+    // the kinds that actually run a line. A stake burns the gland instead.
+    const spendsLine = (kind === 'snare' || kind === 'tripwire') && materialIdx >= 0;
+    if (kind === 'stake' && venomIdx >= 0) t.inventory.splice(venomIdx, 1);
+    // Only a stake spends the venom, and a stake never also spends a line, so
+    // `materialIdx` is never shifted by the splice above.
+    if (spendsLine) t.inventory.splice(materialIdx, 1);
     ctx.state.traps = ctx.state.traps ?? [];
     ctx.state.traps.push({
         id: `trap-${t.id}-${cycleOf(ctx.state)}-${ctx.state.traps.length}`,

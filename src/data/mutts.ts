@@ -1196,7 +1196,12 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
     ],
     tundra: [
         {
-            id: 'crevasse-worms', name: 'Crevasse Worms',
+            // Audit 3 §1.1: this was a second `crevasse-worms`, sharing an id
+            // with the Blue-Ice Bears' neighbour in `cabin`. `muttsSeen` is a
+            // list of ids, so the two collapsed into one entry and whichever
+            // the player met second recorded as a repeat. Different creature,
+            // different id: these take you off your feet rather than into you.
+            id: 'rift-worms', name: 'Rift Worms',
             packSize: [1, 2], damage: 24, speed: 3,
             inflicts: { bleeding: true },
             terrainPreference: ['ice', 'highland'],
@@ -1318,7 +1323,10 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             role: 'herder',
         },
         {
-            id: 'ash-wraiths-v', name: 'Ash Wraiths',
+            // Audit 3 §1.1: distinct id, but it shared a display name with
+            // `ash-wraiths` in the burnscar roster, so a bestiary listed the
+            // same creature twice with different stats.
+            id: 'ash-wraiths-v', name: 'Cinder Wraiths',
             packSize: [1, 2], damage: 7, speed: 6,
             fearAura: 8,
             nocturnal: true,

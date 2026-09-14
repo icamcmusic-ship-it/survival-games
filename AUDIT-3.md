@@ -99,15 +99,17 @@ both in a Hall of Fame bestiary.
 **Fix**: rename one id. Add `test:arenas` assertion that mutt ids are unique
 (and that names are unique, or deliberately baselined).
 
-### 1.2 `Trap.kind = 'stake'` can never be built
+### 1.2 Three of the five trap kinds are effectively unreachable
 
-`src/models/types.ts:1429` declares five trap kinds and the doc comment above it
-describes the fifth at length: *"a poisoned stake is what a tribute with a venom
-gland and no intention of fighting builds."* `src/engine/fieldcraft.ts:100-103`
-is the only construction site and its ternary chain produces exactly four:
-`tripwire`, `snare`, `pit`, `deadfall`. Every downstream read site
-(`fieldcraft.ts:248, 265, 312, 318`) therefore has a fall-through branch that no
-input reaches.
+**Correction, made during the fix pass:** this section originally claimed the
+`stake` branch did not exist in `setTrap`. It did — the grep that produced the
+claim started one line below it. The measurement was right and the diagnosis was
+wrong, so the finding is restated here as what the numbers actually show.
+
+`src/models/types.ts:1429` declares five trap kinds. `setTrap` can build all
+five, but three of them sit behind conjunctions a run almost never satisfies: a
+`stake` wanted a mutt venom gland *and* looted cordage, and `snare` and
+`tripwire` both wanted cordage, which is Cornucopia loot.
 
 Measured over 132 runs: pit 137, deadfall 205, snare 4, tripwire 1, **stake 0**.
 

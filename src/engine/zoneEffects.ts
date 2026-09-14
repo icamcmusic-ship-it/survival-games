@@ -687,6 +687,9 @@ export function dropSupplies(ctx: SimContext) {
     const next = Math.max(0, current - ZONE_EFFECTS.cornucopiaRestockAmount);
     if (next >= current) return;
     state.zoneDepletion[cornucopia.name] = next;
+    // Audit 3 §1.3: the world needs to remember that this happened, so the
+    // rumour layer has a true `restock` claim to mint off it.
+    state.lastRestockCycle = cycleOf(state);
 
     // §5.7: what comes down, not just when. An arena that declares a
     // `restockBias` drops kit that belongs to it — anybody standing at the

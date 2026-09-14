@@ -109,6 +109,32 @@ export function mintTrueRumours(ctx: SimContext) {
     state.arena.zones.forEach(z => {
         if (depletionOf(state, z.name) >= RUMOURS.emptyDepletion) candidates.push({ kind: 'empty', zone: z.name });
     });
+    // Audit 3 §1.3: the two lure kinds, which had no true source at all.
+    //
+    // `rumourPull` prices `restock` and `cache` as the claims that draw
+    // somebody toward a place rather than warning them off it, and neither had
+    // a branch here — so across 132 runs every lure anybody ever heard was a
+    // lie, and the lure half of the taxonomy was a tell rather than a gamble.
+    // Both of these are checkable against state exactly the way the two above
+    // are, which is what makes the false ones cost something.
+    const restocked = state.lastRestockCycle !== undefined
+        && cycleOf(state) - state.lastRestockCycle <= RUMOURS.restockFreshCycles;
+    if (restocked) {
+        const horn = state.arena.zones.find(z => /cornucopia/i.test(z.name));
+        if (horn) candidates.push({ kind: 'restock', zone: horn.name });
+    }
+    // Supplies genuinely sitting in a zone: a camp somebody left in a hurry and
+    // nobody has found yet, or a group's pooled cache at a camp they hold.
+    (state.abandonedCamps ?? []).forEach(camp => {
+        if (camp.foundBy) return;
+        if (camp.items.length < RUMOURS.cacheMinItems) return;
+        candidates.push({ kind: 'cache', zone: camp.zone });
+    });
+    Object.values(state.alliances ?? {}).forEach(a => {
+        if (!a.campZone) return;
+        if ((a.sharedCache?.length ?? 0) < RUMOURS.cacheMinItems) return;
+        candidates.push({ kind: 'cache', zone: a.campZone });
+    });
 
     if (candidates.length === 0) return;
     const pick = ctx.rng.pick(candidates);

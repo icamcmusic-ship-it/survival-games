@@ -2893,6 +2893,16 @@ export const TRAPS = {
     ownSnareForgetChance: 0.16,
     /** §6: strength needed to dig a pit worth falling into. */
     pitStrength: 6,
+    /**
+     * Audit 3 §1.2: tracking proficiency at which a tribute can make their own
+     * cordage out of ground that grows it — vine, cable, sinew, reed — rather
+     * than needing looted rope or wire.
+     *
+     * Set at one clean rank of practice. Below it the snare and the trip-wire
+     * stay a loot-gated option, which is why carried cordage is still worth
+     * picking up: it works in the open and on stone, where nothing improvises.
+     */
+    improvisedLineTracking: 1,
     /** §6: what each of the three new kinds does when it goes off. */
     pitDamage: 38,
     pitLegInjuryChance: 0.55,
@@ -3632,6 +3642,19 @@ export const RUMOURS = {
     holedUpCycles: 2,
     /** Depletion at which "picked to the bone" is true. */
     emptyDepletion: 0.6,
+    /**
+     * Audit 3 §1.3: cycles a Cornucopia restock stays fresh enough for "the
+     * horn came back" to be a true thing to say.
+     *
+     * `restock` and `cache` are the two kinds `rumourPull` treats as lures
+     * rather than warnings — the two that draw somebody toward a place — and
+     * `mintTrueRumours` had no branch that could produce either. They existed
+     * only as lies, so the whole lure half of the taxonomy was a tell: if
+     * somebody said there was something good over there, there never was.
+     */
+    restockFreshCycles: 2,
+    /** Items an abandoned camp or a shared cache needs before "there is a cache there" is worth saying. */
+    cacheMinItems: 2,
 
     /** Odds one believed claim is passed on at a given meeting. */
     passOnChance: 0.8,

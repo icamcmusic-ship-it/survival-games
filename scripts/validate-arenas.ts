@@ -433,6 +433,34 @@ if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has n
 }
 
 /**
+ * Audit 3 §1.1: mutt ids and display names must be unique across every roster.
+ *
+ * `GameState.muttsSeen` is a `string[]` of ids, so two creatures sharing one id
+ * collapse into a single entry and whichever the player met second records as a
+ * repeat of the first. Two rosters shipped a duplicate `crevasse-worms` for a
+ * release and the only thing that noticed was an audit probe. Names are held to
+ * the same rule for a softer reason: a bestiary that lists the same name twice
+ * with two different stat blocks reads as a content bug whatever the ids say.
+ */
+{
+    const everyMutt = Object.entries(ARENA_MUTTS).flatMap(([roster, list]) =>
+        list.map(m => ({ roster, id: m.id, name: m.name })));
+    const byId = new Map<string, string[]>();
+    const byName = new Map<string, string[]>();
+    everyMutt.forEach(m => {
+        byId.set(m.id, [...(byId.get(m.id) ?? []), m.roster]);
+        byName.set(m.name, [...(byName.get(m.name) ?? []), m.roster]);
+    });
+    byId.forEach((rosters, id) => {
+        if (rosters.length > 1) problems.push(`mutt id "${id}" is declared in ${rosters.length} rosters (${rosters.join(', ')}) — muttsSeen keys on id`);
+    });
+    byName.forEach((rosters, name) => {
+        if (rosters.length > 1) problems.push(`mutt name "${name}" is declared in ${rosters.length} rosters (${rosters.join(', ')}) — two stat blocks, one name`);
+    });
+    notes.push(`mutts: ${everyMutt.length} across ${Object.keys(ARENA_MUTTS).length} rosters, every id and name unique`);
+}
+
+/**
  * Source guard: no seeded shuffle may go through a random sort comparator.
  *
  * `[...arr].sort(() => rng() - 0.5)` is deterministic *within* one JS engine,

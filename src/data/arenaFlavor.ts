@@ -14240,7 +14240,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
  * a tribute across a stance threshold on its own turns this pool into a
  * second, uncoordinated stance system fighting the real one.
  */
-const UNIVERSAL_EVENTS: ArenaEventDef[] = [
+export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
     {
         text: '{tribute} finds a small cache the Gamemakers clearly meant for someone else in {zone} — a little food, a little water, half-buried and untouched.',
         escapeText: '',
@@ -14694,6 +14694,71 @@ for (const [id, events] of Object.entries(EXTRA_ARENA_EVENTS)) {
     const pack = ARENA_FLAVOR[id];
     if (pack) pack.events = [...pack.events, ...events];
 }
+
+/**
+ * Audit 3 §1.4: every arena event gets a stable id, derived rather than typed.
+ *
+ * `id` was documented as optional because "the great majority of events are
+ * anonymous and stay that way" — and 1,123 of the 1,323 authored events took
+ * that option. The consequences were all silent:
+ *
+ *   - `oncePerRun` keys on `firedEvents`, which keys on id, so an anonymous
+ *     event could not be once-per-run however it was tagged.
+ *   - `eventLastFired` is the cooldown, so the same set piece could land twice
+ *     in three cycles.
+ *   - Nothing could *count* them. `test:flavor` measures pool depth and has no
+ *     way to ask whether a given event has ever reached a player, which is the
+ *     question that actually matters for the largest content table in the
+ *     repository. Answering it once took a throwaway script that matched log
+ *     text against event templates by longest literal substring.
+ *
+ * Deriving the id here rather than hand-writing 1,123 of them keeps the source
+ * tables readable, and makes the id impossible to forget on a new event. The
+ * slug is taken from the text because the text is the thing that is actually
+ * unique; a collision would mean two events with the same opening, which is a
+ * content bug worth failing on, so `validate-arenas` asserts against it.
+ */
+export function derivedEventId(arenaId: string, text: string, index: number): string {
+    const slug = text
+        .toLowerCase()
+        .replace(/\{[a-z]+\}/g, ' ')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .split('-')
+        .filter(Boolean)
+        .slice(0, 8)
+        .join('-');
+    return `${arenaId}-${slug || `event-${index}`}`;
+}
+
+/**
+ * Events whose opening words slug to the same thing. Deterministic given the
+ * table order, and reported by `validate-arenas` so a genuine near-duplicate
+ * is visible rather than silently suffixed forever.
+ */
+export const DERIVED_ID_COLLISIONS: string[] = [];
+
+function stampEventIds(arenaId: string, events: ArenaEventDef[]) {
+    const taken = new Set(events.map(e => e.id).filter((x): x is string => x !== undefined));
+    events.forEach((e, i) => {
+        // A hand-written id wins: `chain` and the once-per-run packs refer to
+        // those by name from other files.
+        if (e.id) return;
+        const base = derivedEventId(arenaId, e.text, i);
+        let id = base;
+        for (let n = 2; taken.has(id); n++) {
+            id = `${base}-${n}`;
+            if (n === 2) DERIVED_ID_COLLISIONS.push(base);
+        }
+        taken.add(id);
+        e.id = id;
+    });
+}
+
+for (const [id, pack] of Object.entries(ARENA_FLAVOR)) stampEventIds(id, pack.events);
+for (const [id, pack] of Object.entries(PROCEDURAL_FLAVOR_PACKS)) stampEventIds(id, pack.events);
+stampEventIds('generic', GENERIC_ARENA_FLAVOR.events);
+stampEventIds('universal', UNIVERSAL_EVENTS);
 
 export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {
     // A procedural arena has no hand-authored entry here — it used to fall
