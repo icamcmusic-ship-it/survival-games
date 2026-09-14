@@ -70,8 +70,24 @@ const NUMERIC_FIELDS = new Set<string>();
 const ARRAY_FIELDS = new Set<string>();
 {
     const types = readFileSync('src/models/types.ts', 'utf8');
-    for (const m of types.matchAll(/^\s+(\w+)\?: number;/gm)) NUMERIC_FIELDS.add(m[1]);
-    for (const m of types.matchAll(/^\s+(\w+)\?: (?:\w+)\[\];/gm)) ARRAY_FIELDS.add(m[1]);
+    // Scoped to the two interfaces this file actually walks. A global scrape
+    // picks up `Alliance.charter` and `Arena.laws` as well, and then reports
+    // them as never-written because nothing traverses an Alliance or an Arena
+    // here — a false positive that reads exactly like a real finding.
+    const body = (name: string): string => {
+        const at = types.indexOf(`export interface ${name} {`);
+        if (at < 0) return '';
+        const open = types.indexOf('{', at);
+        let depth = 0;
+        for (let i = open; i < types.length; i++) {
+            if (types[i] === '{') depth++;
+            else if (types[i] === '}' && --depth === 0) return types.slice(open, i);
+        }
+        return '';
+    };
+    const scoped = body('Tribute') + '\n' + body('GameState');
+    for (const m of scoped.matchAll(/^\s+(\w+)\?: number;/gm)) NUMERIC_FIELDS.add(m[1]);
+    for (const m of scoped.matchAll(/^\s+(\w+)\?: (?:\w+)\[\];/gm)) ARRAY_FIELDS.add(m[1]);
 }
 const ceiling: Record<string, number> = {};
 // Kept apart, because most entries are scored on the victor and the victor is
@@ -279,6 +295,22 @@ const unreachable: string[] = [];
                         : rawField;
                 const victorScoped = !!victorParam && receiver === victorParam;
                 const table = victorScoped ? victorCeiling : ceiling;
+                // A declared optional numeric that no run ever put a number in
+                // is the numeric twin of check-predicates' "nothing in src/ ever
+                // assigns this": the comparison cannot be satisfied, and
+                // skipping it here would let exactly the bug this check exists
+                // for through the one door it does not watch.
+                if (!(key in table) && !(key in ceiling) && !(key in victorCeiling)) {
+                    const declared = NUMERIC_FIELDS.has(rawField) || ARRAY_FIELDS.has(rawField);
+                    if (declared) {
+                        const sig = `${key}!written`;
+                        if (!seen.has(sig)) {
+                            seen.add(sig);
+                            unreachable.push(`${a.id}: reads ${key}, which ${completed} runs never gave a value`);
+                        }
+                    }
+                    continue;
+                }
                 if (!(key in table)) continue;
                 const need = op === '>' ? Number(rawNeed) + 1 : Number(rawNeed);
                 const max = table[key];

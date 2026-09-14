@@ -105,6 +105,23 @@ export const VITALS = {
  * `engine/wounds.ts` as a hand-typed record — eight tunables in the engine,
  * which is exactly what this file exists to prevent.
  */
+export const SCARRING = {
+    /**
+     * Injury grade at or above which a wound stops being an injury and starts
+     * being a fact about this person.
+     *
+     * Was hardcoded to `MAX_INJURY_GRADE` (3) in wounds.ts. Audit 2 §1.7: over
+     * 80 runs, 2 tributes out of 1,920 ever reached grade 3 and lived to be
+     * scarred by it, and no victor ever carried a scar at all — so the
+     * permanent-damage floor, the intimidation bonus `STANCE.visibleScarBonus`
+     * reads off visible scarring, the `one-wound` achievement and the whole
+     * BodyDiagram scar display were built on a state essentially nobody
+     * entered. Grade 3 is where a wound kills you; grade 2 is where it marks
+     * you. 57 tributes reach grade 2 in the same sample.
+     */
+    scarsAtGrade: 2,
+} as const;
+
 export const WOUND_RECOVERY: Record<string, number> = {
     /** Cycles of not being re-injured before the site steps down one grade. */
     arms: 4,

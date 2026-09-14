@@ -145,11 +145,14 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'named-early',
         name: 'Named Early',
-        hint: 'Have a tribute earn an epithet within the first four cycles of the Games.',
+        // Audit 2 §1.10: four cycles fired on 63.5% of runs, because the
+        // bloodbath alone hands out enough kills to earn a name. Two is the
+        // window in which the country naming somebody is genuinely early.
+        hint: 'Have a tribute earn an epithet within the first two cycles of the Games.',
         category: 'capitol',
         rarity: 'common',
-        test: state => state.tributes.some(t => t.epithet !== undefined && (t.epithetCycle ?? 99) <= 4),
-        nearMiss: state => { const e = state.tributes.filter(t => !!t.epithet).map(t => t.epithetCycle ?? 99).sort((a, b) => a - b)[0]; return e !== undefined && e > 4 && e <= 7 ? `The first epithet of these Games was awarded on cycle ${e} — ${e - 4} cycles late` : undefined; },
+        test: state => state.tributes.some(t => t.epithet !== undefined && (t.epithetCycle ?? 99) <= 2),
+        nearMiss: state => { const e = state.tributes.filter(t => !!t.epithet).map(t => t.epithetCycle ?? 99).sort((a, b) => a - b)[0]; return e !== undefined && e > 2 && e <= 5 ? `The first epithet of these Games was awarded on cycle ${e} — ${e - 2} cycles late` : undefined; },
     },
     {
         id: 'three-names',
@@ -272,11 +275,14 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'nobody-came',
         name: 'Nobody Came',
-        hint: 'Finish a Games in which not one tribute died within reach of another.',
+        // Audit 2 §1.10: 61% of runs, because sixteen dead is most fields and
+        // dying within reach of somebody is rare to begin with. A full field is
+        // what makes "not one of them" mean anything.
+        hint: 'Finish a full Games in which not one tribute died within reach of another.',
         category: 'oddity',
         rarity: 'common',
-        test: state => (state.diedWithinReach ?? 0) === 0 && dead(state).length >= 16,
-        nearMiss: state => { const n = state.diedWithinReach ?? 0; return n === 1 && dead(state).length >= 16 ? 'Exactly one tribute died within reach of somebody who could have helped' : undefined; },
+        test: state => (state.diedWithinReach ?? 0) === 0 && dead(state).length >= 20,
+        nearMiss: state => { const n = state.diedWithinReach ?? 0; return n === 1 && dead(state).length >= 20 ? 'Exactly one tribute died within reach of somebody who could have helped' : undefined; },
     },
     {
         id: 'took-the-marked-pack',
