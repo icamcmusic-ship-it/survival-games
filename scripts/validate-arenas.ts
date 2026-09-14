@@ -294,7 +294,10 @@ if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has n
             flavor.events.forEach(e => {
                 if (e.chain && !flavor.events.some(o => o.id === e.chain)) problems.push(`${arena.id}: chain '${e.chain}' points at an event not in the pack`);
             });
-            if (arena.zones.length > 13) notes.push(`${arena.id} (${tag}) rolled ${arena.zones.length} zones — check-arena-layout is tuned to 13`);
+            // Audit 3 §5.5: `check-arena-layout` samples 120 procedural seeds
+            // and asserts on every one of them, including the largest, so a
+            // 16-zone roll is verified rather than merely noted.
+            if (arena.zones.length > 13) notes.push(`${arena.id} (${tag}) rolled ${arena.zones.length} zones — the largest band check-arena-layout reports`);
         });
     });
     notes.push(`procedural: every biome composes ≥${PROC_EVENT_FLOOR} authored events, ≥${PROC_ONCE_FLOOR} once-per-run, a chain, and ≥${PROC_AMBIENT_FLOOR} ambient lines`);

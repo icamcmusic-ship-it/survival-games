@@ -1597,7 +1597,23 @@ export type ArenaLawId =
     | 'oneWayBorders'      // every edge runs one way, and the map is a current
     | 'noWeapons'          // nothing in this arena is a weapon (also a Quell)
     | 'shrinkingArena'     // the border starts closing from the first morning
-    | 'openMic';           // every fight is audible arena-wide
+    | 'openMic'            // every fight is audible arena-wide
+    /*
+     * Audit 3 §5.2: laws that add rather than subtract.
+     *
+     * Eleven of the fifteen laws above are subtractions — no cannons, no night,
+     * no water, no fire, no sponsors, no healing, no forage, no weapons. Three
+     * add or redirect and one compresses. A law that *gives* changes what
+     * players do rather than what they cannot do, and it creates contested
+     * ground instead of uniform scarcity: `cornucopiaRefills` is the existing
+     * proof, and it is the law that most reliably keeps the middle of the map
+     * worth fighting over.
+     *
+     * Both of these are enforced at exactly one site, the way the fifteen above
+     * are, and both are declarable by a hand-authored arena.
+     */
+    | 'bountifulGround'    // `Arena.lawZone` is permanently in bloom: it feeds, heals and settles
+    | 'dawnMercy';         // every morning, whoever slept at the horn is treated
 
 /** A traversal rule layered on top of plain adjacency for one edge. Keyed by `edgeKey(a,b)` on `Arena.edgeRules`. */
 export interface EdgeRule {
@@ -2031,7 +2047,24 @@ export interface GameState {
      * feast is announced (so tributes can weigh the risk against what is
      * actually offered) and consumed by `processFeast`.
      */
-    feastTheme?: 'weapons' | 'medical' | 'food' | 'district-gifts';
+    /**
+     * Audit 3 §5.4: what the table actually holds.
+     *
+     * The feast is the single most anticipated scheduled event in the format
+     * and it had four flavours, one of which accounted for two feasts in five.
+     * The four added here need no new mechanics — each is a different pool, a
+     * different announcement and a different reason to go or not go, which is
+     * the whole decision the feast exists to pose.
+     */
+    feastTheme?: 'weapons' | 'medical' | 'food' | 'district-gifts'
+        /** One pack, on an empty table. Whoever gets there first has it. */
+        | 'single-pack'
+        /** Nothing but the tokens taken at the reaping. Worth nothing, and everybody comes. */
+        | 'tokens'
+        /** Rope, wire, flint, kits — nothing that kills, everything that keeps you alive. */
+        | 'fieldcraft'
+        /** The Gamemakers lied. There is no table. */
+        | 'empty';
     /** §6.8: tribute who drew first blood (first tribute-dealt kill). */
     firstBloodId?: string;
     /**

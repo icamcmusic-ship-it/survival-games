@@ -38,13 +38,26 @@ const fill = (template: string, vars: Record<string, string>) =>
  * the risk against what is actually offered — a wounded tribute risks the
  * medical table; a well-fed Career shrugs at the food one.
  */
-const FEAST_THEMES: Array<NonNullable<GameState['feastTheme']>> = ['weapons', 'medical', 'food', 'district-gifts'];
+const FEAST_THEMES: Array<NonNullable<GameState['feastTheme']>> = [
+    'weapons', 'medical', 'food', 'district-gifts',
+    // Audit 3 §5.4: four more. The feast is the single most anticipated
+    // scheduled event in the format and it had four flavours, so a player who
+    // has watched ten runs has seen every table there is. None of these needs a
+    // new mechanic — each is a different pool, a different announcement, and a
+    // different answer to the only question the feast poses, which is whether
+    // to go.
+    'single-pack', 'tokens', 'fieldcraft', 'empty',
+];
 
 const THEME_ANNOUNCEMENTS: Record<NonNullable<GameState['feastTheme']>, string> = {
     weapons: 'The announcement is specific: a weapons cache. Steel on the table, and nothing to eat — the Gamemakers want a fight over the means of one.',
     medical: 'The announcement is specific: medicine. Kits, antidotes, dressings — everything a wound needs, laid out for whoever is desperate enough to come claim it.',
     food: 'The announcement is specific: a banquet. Bread, meat and clean water — the Gamemakers are betting on empty stomachs overruling good judgement.',
     'district-gifts': 'The announcement is specific: packs marked by district number, each holding the one thing its tribute needs most.',
+    'single-pack': 'The announcement is specific, and short: one pack. Not one each — one. The Gamemakers do not say what is in it, and they do not have to.',
+    tokens: 'The announcement is specific and nobody believes it at first: the tokens. Every keepsake taken at the reaping, laid out on the table, and nothing else. It is worth nothing. Everybody comes anyway.',
+    fieldcraft: 'The announcement is specific: rope, wire, flint, needles, line. Nothing on that table will kill anybody, and everything on it is the difference between a week and a fortnight.',
+    empty: 'The announcement is specific: a feast, at the Cornucopia, at first light. It is the fourth thing the Gamemakers have said all week and the only one anybody acts on.',
 };
 
 export function announceFeastTheme(ctx: SimContext, quietly = false) {
@@ -84,6 +97,13 @@ function themedPool(theme: GameState['feastTheme']): Item[] {
         case 'weapons': return ITEMS.filter(i => i.type === 'weapon' || i.type === 'armour');
         case 'medical': return ITEMS.filter(i => i.type === 'medical');
         case 'food': return ITEMS.filter(i => i.type === 'food' || i.type === 'water');
+        // Audit 3 §5.4: everything that keeps somebody alive and nothing that
+        // ends anybody. A tribute who walks away from this table with a coil of
+        // wire has just got a week, which is a harder call than it sounds.
+        case 'fieldcraft': return ITEMS.filter(i => i.type === 'utility' || i.type === 'tool');
+        // One pack on an empty table, so the pool does not matter much — what
+        // matters is that there is one of it.
+        case 'single-pack': return ITEMS.filter(i => i.type !== 'food' && i.type !== 'water');
         default: return ITEMS;
     }
 }
@@ -141,6 +161,12 @@ function claimPacks(
     cornucopia: string,
     themedGift: (t: Tribute) => Item,
     claimed: Set<string>,
+    /**
+     * Audit 3 §5.4: a `tokens` or `empty` table. Everything about the feast
+     * happens — the journey, the arrival order, the scrum, the fighting — and
+     * nobody leaves holding anything.
+     */
+    barren = false,
 ) {
     arrivals.forEach(t => {
         if (t.status !== 'alive') return;
@@ -154,6 +180,19 @@ function claimPacks(
 
         ctx.state.feastPrizes = prizes.filter(p => p !== prize);
         claimed.add(t.id);
+        if (barren) {
+            // The pack is theirs and it is worth nothing. `feastPrizeTaken` is
+            // still written, because who took whose is still the story.
+            t.feastPrizeTaken = prize.tributeId;
+            ctx.logEvent(
+                takeSomebodyElses
+                    ? `${t.name} picks up somebody else's keepsake off the table in ${cornucopia}, looks at it, and pockets it anyway. There is nothing else to take and they came a long way.`
+                    : `${t.name} finds their own token on the table in ${cornucopia} and closes their hand round it. It is worth nothing. They crossed the arena for it.`,
+                [t.id],
+                { zone: cornucopia, category: 'feast' }
+            );
+            return;
+        }
         const minted = themedGift(t);
         giveItem(t, minted);
         t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
@@ -252,6 +291,23 @@ export function processFeast(ctx: SimContext) {
     const theme = ctx.state.feastTheme ?? 'district-gifts';
     ctx.state.feastTheme = undefined;
     const tablePool = themedPool(theme);
+    /*
+     * Audit 3 §5.4: two of the new themes are about there being nothing worth
+     * taking, which is the feast's most interesting shape and the one it could
+     * not express.
+     *
+     * `tokens` puts every keepsake taken at the reaping on the table and
+     * nothing else: the pack is handed back, it is worth nothing mechanically,
+     * and the whole field converges on open ground for it anyway. `empty` is
+     * the Gamemakers lying — there is no table, and everybody who came is
+     * standing in the middle of the arena with everybody else who came.
+     *
+     * Both resolve through the machinery that already exists. The journey, the
+     * arrival order, the scrum and the fighting all happen exactly as they do
+     * for a real table; the only thing that changes is that nobody leaves
+     * holding anything.
+     */
+    const barrenTable = theme === 'tokens' || theme === 'empty';
     const themedGift = (t: Tribute) =>
         mintItem(ctx.rng, theme === 'district-gifts'
             ? pickNeededGift(ctx, t, itemPoolFor(ctx.state, ITEMS))
@@ -318,6 +374,10 @@ export function processFeast(ctx: SimContext) {
             medical: 'On the table: kits, vials and dressings, laid out like an infirmary with the walls taken away.',
             food: 'On the table: bread still warm, meat, and clean water in sealed flasks.',
             'district-gifts': 'On the table sit packs marked by district number. Whatever each tribute needs most, the Gamemakers have packed it.',
+            'single-pack': 'On the table: one pack, dead centre, on four square metres of nothing. Everybody arrives, sees it, and does the same arithmetic at the same moment.',
+            tokens: 'On the table: a locket, a carved bird, a scrap of cloth, a ring — every token taken at the reaping, set out in a row with the names beside them. There is no food. There is no steel. They came anyway.',
+            fieldcraft: 'On the table: coils of wire, rope, flint, needles, waxed line. Nothing on it will kill anybody. Everything on it is a week.',
+            empty: 'There is no table. There is the Cornucopia, the open ground around it, and every living tribute standing on it looking at each other.',
         };
         ctx.logEvent(tableLines[theme], [], { zone: cornucopia, category: 'feast' });
     }
@@ -351,7 +411,7 @@ export function processFeast(ctx: SimContext) {
     }
     // The head start is spent on the packs: whoever is there first decides
     // which of them are still on the table when everybody else arrives.
-    claimPacks(ctx, ordered.filter(t => early.has(t.id)), cornucopia, themedGift, claimed);
+    claimPacks(ctx, ordered.filter(t => early.has(t.id)), cornucopia, themedGift, claimed, barrenTable);
     // §7: the head start's other use. Runs after the early arrivals have taken
     // what they want and before anyone else reaches the table.
     if (latecomers.length > 0) tamperWithFeast(ctx, ordered.filter(t => early.has(t.id)), cornucopia);
@@ -420,7 +480,7 @@ export function processFeast(ctx: SimContext) {
 
     // Whoever is still standing goes through what is left of the row — the
     // latecomers' own packs, if nobody took them while they were walking.
-    claimPacks(ctx, attendees.filter(t => t.status === 'alive' && !claimed.has(t.id)), cornucopia, themedGift, claimed);
+    claimPacks(ctx, attendees.filter(t => t.status === 'alive' && !claimed.has(t.id)), cornucopia, themedGift, claimed, barrenTable);
     // The table is withdrawn with the unclaimed packs still on it.
     ctx.state.feastPrizes = undefined;
     ctx.state.feastTampering = undefined;
@@ -446,6 +506,9 @@ export function processFeast(ctx: SimContext) {
             // same need arithmetic the sponsor stream uses. A tribute who has
             // already been through the row takes nothing twice.
             if (claimed.has(t.id)) return;
+            // Audit 3 §5.4: a barren table has nothing to hand out. They fought
+            // over it anyway, which is the point of the theme.
+            if (barrenTable) return;
             const minted = themedGift(t);
             giveItem(t, minted);
             t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
@@ -460,6 +523,15 @@ export function processFeast(ctx: SimContext) {
         // Their own pack, plus whichever of the unclaimed ones suits them best
         // — or, if they already went through the row before the fighting
         // started, just the one still lying there when it finished.
+        if (barrenTable) {
+            // Audit 3 §5.4: they won the ground and the ground is all there was.
+            ctx.logEvent(
+                `${winner.name} is the last one standing at ${cornucopia}, and there is nothing on the table worth `
+                + 'the walk, let alone the rest of it. They stand there a while before they leave.',
+                [winner.id],
+                { important: true, zone: cornucopia, category: 'feast' }
+            );
+        } else {
         const item1 = themedGift(winner);
         const item2 = themedGift(winner);
         if (claimed.has(winner.id)) giveItem(winner, item1);
@@ -473,6 +545,7 @@ export function processFeast(ctx: SimContext) {
             [winner.id],
             { important: true, zone: cornucopia, category: 'feast' }
         );
+        }
     }
     // §1.3: the feast is the one place everybody is in the same zone by
     // design, and the run-record differ never observed it.

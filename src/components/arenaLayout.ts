@@ -167,26 +167,30 @@ export function layoutZones(arena: Arena): Record<string, Point> {
     // move and often resolves a caption collision on its own; the caption pass
     // then cleans up what is left.
     const MIN_SEPARATION = NODE_HIT_R * 2 + 2;
-    for (let pass = 0; pass < 80; pass++) {
-        let moved = false;
-        for (let i = 0; i < zones.length; i++) {
-            for (let j = i + 1; j < zones.length; j++) {
-                const pa = positions[zones[i].name], pb = positions[zones[j].name];
-                const vx = pb.x - pa.x, vy = pb.y - pa.y;
-                const dist = Math.hypot(vx, vy);
-                if (dist >= MIN_SEPARATION) continue;
-                moved = true;
-                // Two nodes exactly on top of each other have no direction to
-                // separate along; push them apart on x so the next pass has one.
-                const ux = dist < 0.001 ? 1 : vx / dist;
-                const uy = dist < 0.001 ? 0 : vy / dist;
-                const push = (MIN_SEPARATION - dist) / 2;
-                pa.x -= ux * push; pa.y -= uy * push;
-                pb.x += ux * push; pb.y += uy * push;
+    const separate = () => {
+        for (let pass = 0; pass < 80; pass++) {
+            let moved = false;
+            for (let i = 0; i < zones.length; i++) {
+                for (let j = i + 1; j < zones.length; j++) {
+                    const pa = positions[zones[i].name], pb = positions[zones[j].name];
+                    const vx = pb.x - pa.x, vy = pb.y - pa.y;
+                    const dist = Math.hypot(vx, vy);
+                    if (dist >= MIN_SEPARATION) continue;
+                    moved = true;
+                    // Two nodes exactly on top of each other have no direction
+                    // to separate along; push them apart on x so the next pass
+                    // has one.
+                    const ux = dist < 0.001 ? 1 : vx / dist;
+                    const uy = dist < 0.001 ? 0 : vy / dist;
+                    const push = (MIN_SEPARATION - dist) / 2;
+                    pa.x -= ux * push; pa.y -= uy * push;
+                    pb.x += ux * push; pb.y += uy * push;
+                }
             }
+            if (!moved) break;
         }
-        if (!moved) break;
-    }
+    };
+    separate();
 
     // §1.9: caption de-collision, on the final drawn coordinates.
     //
@@ -198,6 +202,7 @@ export function layoutZones(arena: Arena): Record<string, Point> {
     // shove, which for two wide captions is almost always sideways. Nodes move
     // a few pixels at most, so the graph's shape — the thing a reader is
     // actually reading — is unchanged.
+    const decollideCaptions = () => {
     for (let pass = 0; pass < 60; pass++) {
         let moved = false;
         for (let i = 0; i < zones.length; i++) {
@@ -222,15 +227,41 @@ export function layoutZones(arena: Arena): Record<string, Point> {
         }
         if (!moved) break;
     }
+    };
 
     // Nudging can push a node past the frame; clamp it back with room for its
     // own caption underneath.
-    zones.forEach(z => {
+    const clampToFrame = () => zones.forEach(z => {
         const p = positions[z.name];
         const halfW = Math.max(NODE_R, (z.name.length * LABEL_CHAR_W) / 2);
         p.x = Math.max(halfW, Math.min(VIEW_W - halfW, p.x));
         p.y = Math.max(NODE_R + 2, Math.min(VIEW_H - NODE_R - LABEL_GAP_Y - LABEL_H - 2, p.y));
     });
+
+    /*
+     * Audit 3 §5.5: the three passes have to be run to a fixed point, not once
+     * each in order.
+     *
+     * Separation ran first and then the caption pass and the frame clamp both
+     * moved nodes afterwards, either of which can put a pair back inside the
+     * touch radius. It went unnoticed because `check-arena-layout` sampled
+     * twelve procedural seeds against twelve biomes and a zone count that runs
+     * to sixteen; widening that sample to 120 found `procedural-ruinlands`
+     * drawing two nodes 71.4 units apart against a 72-unit touch target, which
+     * means a tap could land on the wrong zone on the app's most spatial
+     * control.
+     *
+     * Four rounds is comfortably past where these three stop fighting each
+     * other on every arena this generator can produce; separation goes last so
+     * the touch targets are the property that survives.
+     */
+    for (let round = 0; round < 4; round++) {
+        decollideCaptions();
+        clampToFrame();
+        separate();
+    }
+    clampToFrame();
+    separate();
 
     return positions;
 }

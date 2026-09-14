@@ -335,7 +335,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Took the Marked Pack',
         hint: 'Crown a victor who claimed the feast pack with their own name on it.',
         category: 'capitol',
-        rarity: 'uncommon',
+        rarity: 'common',
         test: (_s, v) => !!v && v.feastPrizeTaken === v.id,
     },
     {
@@ -343,7 +343,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Took Somebody Else\'s',
         hint: 'Crown a victor who claimed a feast pack marked for another tribute.',
         category: 'capitol',
-        rarity: 'common',
+        rarity: 'uncommon',
         test: (_s, v) => !!v && v.feastPrizeTaken !== undefined && v.feastPrizeTaken !== v.id,
     },
     {
@@ -351,7 +351,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Information Trade',
         hint: 'See five or more pieces of intelligence change hands in a single Games.',
         category: 'social',
-        rarity: 'uncommon',
+        rarity: 'common',
         test: state => (state.intelTrades ?? 0) >= 5,
         nearMiss: state => {
             const n = state.intelTrades ?? 0;
@@ -383,7 +383,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Never Touched a Body',
         hint: 'Crown a victor who never once stripped one of the fallen.',
         category: 'survival',
-        rarity: 'uncommon',
+        rarity: 'common',
         test: (_s, v) => !!v && (v.corpsesLooted ?? 0) === 0,
     },
     {
@@ -396,13 +396,18 @@ export const ACHIEVEMENTS: Achievement[] = [
         // not a kill count
         // anyway: it is the work. `trapsSet` counts that, and the two entries
         // now measure different things.
-        hint: 'Crown a victor who built a working trapline — four traps or more across the Games.',
+        // Audit 3 §11: and the rung moved again, to the measured ceiling.
+        // `TRAPS.maxPerTribute` is 3, so four traps standing at once is
+        // impossible and four *set* over a run needs a victor who spent four
+        // separate turns on fieldcraft — which 200 runs do not produce. Three
+        // is the whole allowance at once, which is what a trapline is.
+        hint: 'Crown a victor who built a working trapline — three traps across the Games.',
         category: 'combat',
         rarity: 'rare',
-        test: (_s, v) => !!v && (v.trapsSet ?? 0) >= 4,
+        test: (_s, v) => !!v && (v.trapsSet ?? 0) >= 3,
         nearMiss: (_s, v) => {
             const n = v?.trapsSet ?? 0;
-            return n >= 2 && n < 4 ? `${v!.name} set ${n} traps — ${4 - n} short of a trapline` : undefined;
+            return n >= 1 && n < 3 ? `${v!.name} set ${n} trap${n === 1 ? '' : 's'} — ${3 - n} short of a trapline` : undefined;
         },
     },
     {
@@ -505,7 +510,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Quartermaster',
         hint: 'Crown a victor who held a named alliance role for ten cycles or more.',
         category: 'social',
-        rarity: 'uncommon',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.roleCycles ?? 0) >= 10,
         nearMiss: (_s, v) => (v && (v.roleCycles ?? 0) >= 6 && (v.roleCycles ?? 0) < 10)
             ? `${v.name} held a role for ${v.roleCycles} cycles — ${10 - (v.roleCycles ?? 0)} short`
@@ -666,7 +671,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Front-Loaded',
         hint: 'Crown a Career who never left the Cornucopia.',
         category: 'combat',
-        rarity: 'legendary',
+        rarity: 'rare',
         // Audit 3 §1.6: `arena.zones[0]` is the Cornucopia in the hand-authored
         // arenas and is not guaranteed to be in a generated one, so on every
         // procedural map this asked for a sector that was not the horn. Matched
@@ -808,7 +813,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Something Like Family',
         hint: 'See a protective bond form between an older tribute and a much younger one.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: state => state.tributes.some(t => (t.protectorBonds?.length ?? 0) > 0),
     },
     {
@@ -976,7 +981,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'On Their Last Legs',
         hint: 'Crown a victor who finishes below 15 health.',
         category: 'survival',
-        rarity: 'common',
+        rarity: 'uncommon',
         test: (_s, v) => !!v && v.health < 15,
         nearMiss: (_s, v) => (v && v.health >= 15 && v.health <= 30)
             ? `${v.name} finished on ${v.health} health — ${v.health - 14} above the line`
@@ -1103,7 +1108,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Never Needed Anyone',
         hint: 'Crown a victor who never once joined an alliance.',
         category: 'social',
-        rarity: 'uncommon',
+        rarity: 'rare',
         test: (state, v) => !!v && !state.log.some(e => e.category === 'alliance' && e.tributesInvolved.includes(v.id)),
     },
     {
@@ -1372,7 +1377,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // says: shared grief that turned into something.
         hint: 'See two allies grieve the same death and keep standing together afterwards.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: state => state.sharedGriefAllies === true,
     },
     {
@@ -1508,7 +1513,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nothing but Hands',
         hint: 'Crown a victor who never once carried a weapon.',
         category: 'combat',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && v.everCarriedWeapon !== true,
         // Audit 3 §11.4: an entry the sweep never sees unlock, with nothing
         // told to the player, is unreachable and invisible at once.
@@ -1648,7 +1653,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Brought Back',
         hint: 'Crown a victor who was left for dead and pulled back by an ally.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && v.revivedBy !== undefined,
         nearMiss: (state, v) => {
             if (!v || v.revivedBy !== undefined) return undefined;
@@ -1772,7 +1777,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // all and getting back up is the thing the name describes.
         hint: 'Crown a victor who fell below five health and got back up.',
         category: 'survival',
-        rarity: 'rare',
+        rarity: 'uncommon',
         // Audit 2 §11.2: two, against a victor ceiling of one.
         test: (_s, v) => !!v && (v.lowHealthRecoveries ?? 0) >= 1,
         nearMiss: (_s, v) => (v && (v.lowHealthRecoveries ?? 0) === 0 && v.health <= 20)
@@ -1787,7 +1792,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // people rather than fighting them, which is what the name is for.
         hint: 'Crown a victor who worked two sides of the arena economy — extorting, being extorted, or brokering a truce.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v
             && [(v.extortedIds?.length ?? 0) > 0,
                 (v.extortedByIds?.length ?? 0) > 0,
@@ -1804,7 +1809,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Foul Weather Friend',
         hint: 'Crown a victor who stood in three separate Gamemaker storm fronts and walked out of all three.',
         category: 'arena',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: (_s, v) => !!v && (v.stormsSurvived ?? 0) >= 3,
         nearMiss: (_s, v) => (v && (v.stormsSurvived ?? 0) === 2)
             ? `${v.name} rode out two fronts — one short`
@@ -1823,7 +1828,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Understudy',
         hint: 'Crown a victor who took over an alliance after its original leader died.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: (_s, v) => !!v && v.tookOverAllianceLead === true,
     },
     {
@@ -1960,7 +1965,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Rooted',
         hint: 'Crown a victor who never set foot outside the zone they started in.',
         category: 'oddity',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (s, v) => !!v && !v.isCareer
             && (v.visitedZones?.length ?? 0) === 1
             && v.visitedZones?.[0] === s.arena.zones[0]?.name,
@@ -2045,7 +2050,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Halved',
         hint: 'See a field of ten or more lose half its number in a single day after the bloodbath.',
         category: 'games',
-        rarity: 'uncommon',
+        rarity: 'rare',
         test: state => {
             const total = state.tributes.length;
             const byDay: Record<number, number> = {};
@@ -2118,7 +2123,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Rumour Mill',
         hint: 'See three or more rumours still in circulation when the Games end.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: state => (state.rumours?.length ?? 0) >= 3,
         nearMiss: state => (state.rumours?.length ?? 0) === 2
             ? 'two rumours were still going round at the end — Rumour Mill wants three'
@@ -2305,18 +2310,6 @@ export const ACHIEVEMENTS: Achievement[] = [
         nearMiss: state => ((state.collapsedZones ?? []).length > 0
             ? `${(state.collapsedZones ?? []).length} sector${(state.collapsedZones ?? []).length === 1 ? '' : 's'} came down this year, and the victor had never set foot in any of them`
             : undefined),
-    },
-    {
-        id: 'set-a-line-and-slept',
-        name: 'Set a Line and Slept Behind It',
-        hint: 'Crown a victor who set three traps over the course of the Games.',
-        category: 'survival',
-        rarity: 'rare',
-        test: (_s, v) => !!v && (v.trapsSet ?? 0) >= 3,
-        nearMiss: (_s, v) => {
-            const n = v?.trapsSet ?? 0;
-            return n > 0 && n < 3 ? `${v!.name} set ${n} — three is the line` : undefined;
-        },
     },
     {
         id: 'the-heir',

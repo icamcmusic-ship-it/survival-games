@@ -2690,6 +2690,20 @@ export const LEGENDARY_ITEMS = {
  * §12: thresholds the per-run achievement bookkeeping reads. See
  * `engine/runRecords.ts`.
  */
+/**
+ * Audit 3 §5.2: the two arena laws that add rather than subtract.
+ *
+ * Eleven of the fifteen laws that existed were subtractions. A law that gives
+ * changes what players *do* rather than what they cannot do, and it makes one
+ * piece of ground contested instead of making all of it poorer.
+ */
+export const ARENA_LAWS = {
+    /** Health returned at first light to anybody who slept at the horn. */
+    dawnMercyHeal: 14,
+    /** ...and what a night under the Capitol's floodlights does for the nerves. */
+    dawnMercySanity: 8,
+} as const;
+
 export const RUN_RECORDS = {
     /** Health below which a tribute counts as having been on the floor. */
     nearDeathHealth: 10,

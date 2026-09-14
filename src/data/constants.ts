@@ -507,7 +507,10 @@ export const ARENAS: Arena[] = [
         edgeRules: { 'The Carousel|The Mirror Maze': { kind: 'tolled', toll: { woundChance: 0.1 } } },
         // §5.5: widened to twelve zones — a park has more dark corners than this.
         // §5: the Capitol dressed this one as an amusement park and did not put a single blade in it.
-        law: 'noWeapons',
+        // Audit 3 §5.2: and it is generous in the mornings, on camera, at the
+        // one tile everybody else wants. A carnival is a place that gives you
+        // things; that is what makes it a carnival and what makes it a trap.
+        laws: ['noWeapons', 'dawnMercy'],
         zones: [
             { name: 'The Cornucopia (The Midway)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Carousel', 'The Big Top', 'The Pine Dark'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.15, acoustics: 0.75 } },
             { name: 'The Carousel', terrain: 'ruins', danger: 0.65, resources: 0.3, adjacent: ['The Cornucopia (The Midway)', 'The Mirror Maze', 'The Duck Pond'], features: { cover: 0.5, elevation: false, chokepoint: false, acoustics: 1.25 } },
@@ -1130,7 +1133,13 @@ export const ARENAS: Arena[] = [
         mutts: ['The Wolf', 'The Bramble', 'Ravens', 'Something in the Millpond', 'The Sisters'],
         events: ['The Bargain', 'The Telling Mist', 'The Path'],
         // The only medicine in this arena is a bargain, never an item.
-        law: 'noHealing',
+        // Audit 3 §5.2: ...and the wood is generous to whoever finds the
+        // Gingerbread House, which is the oldest version of this trap there is.
+        // `bountifulGround` keeps one sector permanently in flower, so the arena
+        // that takes away medicine also offers the one place that gives it
+        // back, and everybody knows where it is.
+        laws: ['noHealing', 'bountifulGround'],
+        lawZone: 'The Gingerbread House',
         effectVocab: {
             blooming: { label: 'the wood is generous' },
             fogbound: { label: 'the telling mist' },

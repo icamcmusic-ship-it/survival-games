@@ -72,6 +72,15 @@ export const LAW_LABELS: Record<ArenaLawId, { name: string; detail: string }> = 
         name: 'Open mic',
         detail: 'Every fight in this arena is audible from every other sector. Nothing here is private.',
     },
+    // Audit 3 §5.2: the two that give.
+    bountifulGround: {
+        name: 'The good ground',
+        detail: 'One sector of this arena is always in flower. It feeds, it heals, and everybody knows where it is.',
+    },
+    dawnMercy: {
+        name: 'Mercy at dawn',
+        detail: 'Anybody who spends the night at the Cornucopia is treated at first light. The Capitol calls it generosity.',
+    },
 };
 
 /**
