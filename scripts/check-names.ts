@@ -71,7 +71,16 @@ spread.forEach(([name, ds]) => {
 });
 
 // Mentor pools: width, no repeats inside a pool, and no name in two pools.
-const MENTOR_POOL_TARGET = 6;
+/**
+ * Audit 3 §10.3: twelve rather than six.
+ *
+ * Mentors are the recurring cast. There are 3,200 tribute names and a player
+ * who runs twenty Games never sees the same tribute twice — but they see the
+ * same mentor repeatedly, because a district had seven of them. That made the
+ * mentor the single most repeated piece of flavour in the game while carrying,
+ * per §10.4, the thinnest voice.
+ */
+const MENTOR_POOL_TARGET = 12;
 const mentorHomes = new Map<string, number[]>();
 Object.keys(DISTRICT_LEGACY).map(Number).sort((a, b) => a - b).forEach(d => {
     const pool = DISTRICT_LEGACY[d].mentors;

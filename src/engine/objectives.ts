@@ -506,9 +506,25 @@ function chooseObjective(
                 // outmatched, or simply built for it — follows instead, which
                 // is the behavioural pair to the Shadowing stance and the only
                 // objective in the list that wants the target left alive.
+                /*
+                 * Audit 3 §3.3: `stalk` was held in 1.9% of tribute-cycles,
+                 * `wait` in 1.0% and `hold` in 2.6% — three of eight objective
+                 * kinds accounting for 5.5% of all decisions between them, each
+                 * carrying its own log lines and tension beats that almost
+                 * nobody sees.
+                 *
+                 * The gate was the problem rather than the idea. A stalk fired
+                 * on the Shadowing stance (3.1% of stances), being hurt, or
+                 * being frightened — all states, none of them *disposition* —
+                 * while `objectiveBias` has always accepted a `stalk` key and
+                 * not one archetype declared one. Following somebody without
+                 * closing is a character trait before it is a condition, and
+                 * the four archetypes built around watching now say so.
+                 */
                 const shadowing = t.stance === 'Shadowing'
                     || t.health < OBJECTIVES.stalkHealth
-                    || fearOf(t, target.id) >= OBJECTIVES.stalkFear;
+                    || fearOf(t, target.id) >= OBJECTIVES.stalkFear
+                    || objectiveBiasFor(t, 'stalk') > 0;
                 const o = shadowing
                     ? offer(50, { kind: 'stalk', targetId: target.id, expires: expiry(OBJECTIVES.stalkCycles) })
                     : offer(52, { kind: 'hunt', targetId: target.id, expires: expiry(OBJECTIVES.huntCycles) });
