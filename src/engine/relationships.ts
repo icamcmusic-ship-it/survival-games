@@ -1,4 +1,4 @@
-import { GameState, Tribute } from '../models/types';
+import { GameState, Item, Tribute } from '../models/types';
 import { forceStance } from './stance';
 import { noteRivalDeath } from './rapport';
 import { RNG } from '../utils/rng';
@@ -234,13 +234,19 @@ function inheritFrom(ctx: SimContext, victim: Tribute, killer?: Tribute) {
 
     // The kit is picked up where it fell, if there is room for it.
     const estate = victim.inventory.filter(i => i.capacity === undefined);
-    const taken: string[] = [];
+    // Tracked by identity, not by name. Item names are not unique — two loaves,
+    // two knives, a quality prefix shared across instances — so filtering the
+    // body by name deleted every same-named item once the heir ran out of room,
+    // destroying the rest of the estate instead of leaving it to be scavenged,
+    // and could take the backpack this filter exists to exclude with it.
+    const lifted = new Set<Item>();
     estate.forEach(item => {
         if (heir.inventory.length >= carryCapacity(heir)) return;
         giveItem(heir, item);
-        taken.push(item.name);
+        lifted.add(item);
     });
-    victim.inventory = victim.inventory.filter(i => !taken.includes(i.name));
+    const taken = [...lifted].map(i => i.name);
+    victim.inventory = victim.inventory.filter(i => !lifted.has(i));
 
     if (taken.length === 0 && oaths.length === 0) return;
     ctx.logEvent(

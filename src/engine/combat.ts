@@ -621,11 +621,20 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     // floor above the ceiling.
     const damage = Math.round(Math.max(COMBAT.minRoundDamage * multiplier, Math.min(COMBAT.maxRoundDamage * multiplier, raw)));
 
-    applyDamage(ctx, defender, damage, {
+    const landed = applyDamage(ctx, defender, damage, {
         cause: weapon ? `Killed by ${attacker.name} (${weapon.name})` : `Killed by ${attacker.name}`,
         sourceId: attacker.id,
         kind: 'tribute',
     });
+
+    // A tribute who went down mid-round is out of the damage system, and the
+    // riders have to respect that too: `applyDamage` refused the blow, and
+    // opening wounds, breaking limbs, setting them alight and teaching them a
+    // new fear on the strength of a blow that did not land is the same bug one
+    // layer down. `tickDowned` owns what happens to them now. The swing still
+    // counted for the attacker — the familiarity and the reputation read above
+    // both already happened.
+    if (!landed) { wearWeapon(weapon); return 0; }
 
     if (ctx.rng.chance(COMBAT.bleedChance)) openWound(defender, BLEEDING.combatSeverity);
     if (ctx.rng.chance(COMBAT.woundChance)) {

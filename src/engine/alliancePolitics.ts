@@ -1,7 +1,7 @@
 import { Alliance, CharterRule, Tribute } from '../models/types';
 import { ALLIANCES } from '../data/balance';
 import { SimContext, getAlive } from './context';
-import { allianceRecords, membersOf, pickLeader } from './alliance';
+import { allianceRecords, membersOf, pickLeader, registerAlliance } from './alliance';
 import { adjustRel, getRel } from './relationships';
 import { cycleOf, suspicionOf } from './memory';
 import { giveItem } from './items';
@@ -126,6 +126,10 @@ function resolveFactions(ctx: SimContext, record: Alliance, members: Tribute[]) 
     // Otherwise the bloc walks — a quiet split rather than a betrayal.
     const splinterId = `alliance-split-${record.id}-${cycleOf(ctx.state)}`;
     bloc.forEach(m => { m.allianceId = splinterId; });
+    // The bloc that walks is a real alliance from the moment it walks: its own
+    // pact, its own charter, its own leader. Without this it carried an id and
+    // nothing else until the sweep below gave it a pactless, charterless record.
+    registerAlliance(ctx, splinterId, bloc);
     record.memberIds = record.memberIds.filter(id => !faction.memberIds.includes(id));
     record.factions = (record.factions ?? []).filter(f => f !== faction);
     ctx.logEvent(
@@ -279,19 +283,11 @@ export function runAlliancePolitics(ctx: SimContext) {
         if (!t.allianceId || records[t.allianceId]) return;
         const peers = getAlive(ctx.state).filter(o => o.allianceId === t.allianceId);
         if (peers.length < 2) { delete t.allianceId; return; }
-        const leader = pickLeader(peers);
-        records[t.allianceId] = {
-            id: t.allianceId,
-            name: `${leader.name}'s splinter`,
-            leaderId: leader.id,
-            memberIds: peers.map(p => p.id),
-            formedCycle: cycleOf(ctx.state),
-            campZone: leader.zone,
-            sharedCache: [],
-            cacheContributions: {},
-            pact: { kind: 'no-pact' },
-            pactSwornField: getAlive(ctx.state).length,
-        };
+        // Through `registerAlliance` rather than hand-built, so a group that
+        // reaches here still gets a pact, a charter and roles. The hand-built
+        // record was permanently pactless and charterless, and every one of the
+        // three splinter sites used to land here.
+        registerAlliance(ctx, t.allianceId, peers);
     });
 }
 

@@ -35,15 +35,17 @@ Ordered by severity. All are confirmed by reading the current tree.
 
 ### Severe — changes run outcomes or loses data
 
-1. **Nightly-feast Quell permanently skips the day phase.** `engine/simulator.ts:100-109`.
-   After a night, `phase` becomes `'feast'` when `feastDay === day`; the feast branch
-   sets `phase = 'night'`. With `quell-feast-nightly`, `maybeAnnounceFeast` (`:139-156`)
-   re-arms `feastDay = day + 1` every night, so the run alternates feast → night
-   forever and never re-enters `'day'`. Everything day-gated stops:
-   `fireScheduledWildcard` (`simulator.ts:87`), `daysSurvived` (`dayNight.ts:101`),
-   the odds snapshot (`dayNight.ts:441`), the border telegraph (`dayNight.ts:1005`).
-   `daysSurvived` freezes and flows into the epilogue, the Hall of Fame entry and
-   every achievement predicate that reads it.
+1. **Every feast day costs every tribute a day of `daysSurvived`.**
+   `phases/dayNight.ts:101` and `phases/bloodbath.ts:137` are the only writers, and a
+   feast *replaces* that day's day-phase (`simulator.ts:101-107`) — so nobody alive
+   through a feast day is credited with it. That count is what the epilogue
+   (`epilogue.ts:103`), the Hall of Fame entry, `epithets.ts:58` and every achievement
+   predicate reading `daysSurvived` are told the tribute lasted. `feast.ts:220` already
+   carries a fix for the identical omission one field over (the cycle counter), which is
+   how this one is recognisable. The Feast Quell compounds it: measured over four forced
+   runs, feasts replaced 6 of 14 days, and victors finished 1–2 days short of the day
+   the run actually ended on.
+
 2. **`enterVerticalZone` runs on 1 of 5 movement paths.** `phases/dayNight.ts:1376`
    is the *wander* branch only; the objective step (`:1341`), the hunter's second hop
    (`:1355`), the group move (`:1315`) and multi-cycle transit arrival (`:1243`) assign

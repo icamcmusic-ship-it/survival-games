@@ -227,9 +227,13 @@ function chooseObjective(
     //    model — go there, and if the other finalist is already standing in it,
     //    the intention is them. See `forceFinale` in phases/dayNight.ts.
     if (state.finaleZone) {
+        // Co-location belongs inside the predicate. Picking the first living
+        // non-lover in roster order and *then* asking where they are meant that
+        // with three finalists, a tribute standing next to one of them formed no
+        // intention at all because somebody else, elsewhere, was found first.
         const rival = state.tributes.find(o =>
-            o.status === 'alive' && o.id !== t.id && !areLovers(t, o));
-        if (rival && rival.zone === t.zone) {
+            o.status === 'alive' && o.id !== t.id && o.zone === t.zone && !areLovers(t, o));
+        if (rival) {
             const o = offer(100, { kind: 'hunt', targetId: rival.id, expires: expiry(OBJECTIVES.huntCycles) });
             if (o) return o;
         }

@@ -947,6 +947,12 @@ export interface Tribute {
     /** A1: cycles the tribute has been dug in — read by the Fortified payoffs. */
     fortifiedCycles?: number;
     /**
+     * Whether the "somewhere they own" beat has already been read for this
+     * spell of digging in. Cleared alongside `fortifiedCycles` when the stance
+     * is left, so a second stand earns the line again.
+     */
+    fortifiedBeatShown?: boolean;
+    /**
      * A1: per-stance re-entry lockout, stance -> cycle it becomes available
      * again. A conditional stance whose precondition flickers cycle to cycle
      * (a cannon two zones over, a quarry stepping in and out of the next
@@ -1264,6 +1270,12 @@ export interface Alliance {
      * chronicle names it once rather than every night.
      */
     watch?: { cycle: number; zone: string; watcherId: string; sleeperIds: string[] };
+    /**
+     * Who last took the watch, and where. Kept separately from `watch` because
+     * `watch` is swept clear every cycle — which is what made the "name it once"
+     * check above unsatisfiable, and the line fire every single night.
+     */
+    lastWatch?: { zone: string; watcherId: string };
 }
 
 /**

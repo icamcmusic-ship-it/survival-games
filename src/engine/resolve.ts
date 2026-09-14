@@ -190,9 +190,12 @@ export function resolveBreakdowns(ctx: SimContext) {
         const hostile = getAlive(ctx.state).find(o =>
             o.id !== t.id && o.zone === t.zone && (o.allianceId === undefined || o.allianceId !== t.allianceId));
         const armed = t.inventory.some(i => i.type === 'weapon');
-        if (hostile && armed && ctx.rng.chance(RESOLVE.surrenderChance)) {
+        // The churn brake can refuse the posture change, and a surrender that
+        // leaves the tribute standing there in a hunting stance is not one. It
+        // is asked *before* the weapons go on the ground, so a refused beat
+        // costs nothing rather than disarming somebody mid-sentence.
+        if (hostile && armed && ctx.rng.chance(RESOLVE.surrenderChance) && forceStance(t, 'Defensive')) {
             t.inventory = t.inventory.filter(i => i.type !== 'weapon');
-            forceStance(t, 'Defensive');
             t.stanceHeld = 0;
             ctx.logEvent(
                 `${t.name} looks at ${hostile.name} across ${t.zone}, and puts everything they are carrying that can cut on the ground between them. Whatever happens next, they are done doing it armed.`,
@@ -217,10 +220,10 @@ export function resolveBreakdowns(ctx: SimContext) {
             );
         }
 
-        if (!isEvasiveStance(t.stance) && ctx.rng.chance(0.5)) {
-            // Walking into the open. Not a death wish exactly — an end to
-            // caring which way it goes.
-            forceStance(t, 'Aggressive');
+        // Walking into the open. Not a death wish exactly — an end to caring
+        // which way it goes. The whole beat *is* the change of posture, so a
+        // refusal means it does not happen rather than that it is narrated.
+        if (!isEvasiveStance(t.stance) && ctx.rng.chance(0.5) && forceStance(t, 'Aggressive')) {
             t.stanceHeld = 0;
             adjustResolve(t, RESOLVE.breakdownRebound);
             ctx.logEvent(
@@ -238,7 +241,7 @@ export function resolveBreakdowns(ctx: SimContext) {
         // asymmetry is what makes the bottom of the scale reachable at all: a
         // rebound on every breakdown put a floor under resolve well above the
         // point where a tribute could ever make the last choice.
-        forceStance(t, 'Defensive');
+        if (!forceStance(t, 'Defensive')) return;
         t.stanceHeld = 0;
         t.objective = { kind: 'hold', zone: t.zone, expires: (ctx.state.cycle ?? 0) + 2 };
         adjustResolve(t, -RESOLVE.sittingDownPenalty);

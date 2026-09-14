@@ -515,12 +515,17 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
  * being whipsawed is left where they are. Somebody who has flipped three times
  * in four cycles is not going to be talked into a fourth by the same fight.
  */
-export function forceStance(t: Tribute, stance: Stance) {
-    if (t.stance === stance) { t.stanceHeld = 0; return; }
-    if ((t.stanceChurn ?? 0) >= STANCE.churnMax) return;
+export function forceStance(t: Tribute, stance: Stance): boolean {
+    if (t.stance === stance) { t.stanceHeld = 0; return true; }
+    // Returns whether the posture actually changed. It has to: every caller
+    // narrates the beat it is forcing — a surrender, a walk into the open, an
+    // oath — and a silent refusal here printed all three over a tribute who
+    // never moved.
+    if ((t.stanceChurn ?? 0) >= STANCE.churnMax) return false;
     t.stance = stance;
     t.stanceHeld = 0;
     t.stanceChurn = Math.min(STANCE.churnMax, (t.stanceChurn ?? 0) + 1);
+    return true;
 }
 
 /**
@@ -689,6 +694,11 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         + sleepStanceHold(t);
     if (!emergency && t.stanceHeld < hold) {
         t.stanceHeld += 1;
+        // Tenure accrues on every cycle the tribute actually spends in the
+        // stance, not only the ones where the scorer re-picks it outright.
+        // Held here by the hysteresis *is* held, and the set piece that reads
+        // this counter was being stepped over on the cycles it skipped.
+        if (t.stance === 'Fortified') t.fortifiedCycles = (t.fortifiedCycles ?? 0) + 1;
         settleShadowing();
         return;
     }
@@ -707,6 +717,7 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     const margin = STANCE.switchMargin * (1 + (t.stanceChurn ?? 0) * STANCE.churnMarginPerSwitch);
     if (stillValid && bestScore < (scores[t.stance] ?? -Infinity) + margin) {
         t.stanceHeld += 1;
+        if (t.stance === 'Fortified') t.fortifiedCycles = (t.fortifiedCycles ?? 0) + 1;
         settleShadowing();
         return;
     }
@@ -719,6 +730,6 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     t.stance = bestStance;
     t.stanceHeld = 0;
     t.stanceChurn = Math.min(STANCE.churnMax, (t.stanceChurn ?? 0) + 1);
-    if (bestStance !== 'Fortified') t.fortifiedCycles = 0;
+    if (bestStance !== 'Fortified') { t.fortifiedCycles = 0; t.fortifiedBeatShown = undefined; }
     settleShadowing();
 }

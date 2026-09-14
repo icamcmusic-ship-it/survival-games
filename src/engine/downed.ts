@@ -190,8 +190,14 @@ export function tickDowned(ctx: SimContext) {
                 [rescuer.id, t.id],
                 { important: true, category: 'injury' }
             );
-        } else {
-            // (b) Execution or mercy. Only somebody with no reason to help decides.
+        }
+
+        // (b) Execution or mercy. Reached whenever no rescue *succeeded* — this
+        // used to be the `else` of "is an ally present", so one twelve-year-old
+        // kneeling over the body meant the four Careers standing around it never
+        // got a decision at all. A failed rescue is not an absence of hostiles;
+        // it is the most charged moment for one of them to step forward.
+        {
             const hostiles = here.filter(o => !wouldHelp(o, t));
             if (hostiles.length > 0) {
                 const decider = ctx.rng.pick(hostiles);

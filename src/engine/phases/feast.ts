@@ -225,6 +225,13 @@ export function processFeast(ctx: SimContext) {
     // day/night phases both advance it; so does this one.
     advanceCycle(ctx.state);
     const alive = getAlive(ctx.state);
+    // The same omission one field over. `daysSurvived` is written by the day
+    // phase and by the bloodbath, and a feast *replaces* that day's day-phase —
+    // so everyone alive through a feast day quietly lost a day off their count,
+    // and that count is what the epilogue, the Hall of Fame entry and every
+    // achievement predicate that reads it are told the tribute lasted. The
+    // Feast Quell, which can replace half the days in a run, compounded it.
+    alive.forEach(t => { t.daysSurvived = ctx.state.day; });
     const attendees = [] as typeof alive;
     const cornucopia = ctx.state.arena.zones[0]?.name ?? 'The Cornucopia';
 

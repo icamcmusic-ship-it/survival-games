@@ -377,6 +377,12 @@ function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]
                 && withHeir.length + withFavourite.length >= ALLIANCES.successionSplitMinMembers) {
                 const splinterId = `alliance-succession-${record.id}-${cycleOf(ctx.state)}`;
                 withHeir.forEach(m => { m.allianceId = splinterId; });
+                // A group that comes apart is still a group. Assigning the id
+                // and leaving it there gave the breakaway no record until the
+                // politics sweep back-filled a bare one — no pact, no charter,
+                // no roles, and an array-order leader in between — so no camp
+                // formed by a schism could ever swear to anything.
+                registerAlliance(ctx, splinterId, withHeir);
                 record.memberIds = withFavourite.map(m => m.id);
                 record.leaderId = favourite.id;
                 record.successorId = undefined;
@@ -443,6 +449,7 @@ export function fractureBlocs(ctx: SimContext) {
 
         const splinterId = `alliance-fracture-${id}-${cycleOf(ctx.state)}`;
         rest.forEach(m => { m.allianceId = splinterId; });
+        registerAlliance(ctx, splinterId, rest);
         record.memberIds = loyal.map(m => m.id);
         record.leaderId = leader.id;
         record.successorId = undefined;
