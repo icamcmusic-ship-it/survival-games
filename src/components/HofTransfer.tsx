@@ -1,4 +1,5 @@
 import React, { useId, useMemo, useState } from 'react';
+import { useTransientFlag } from '../ui/useTransientFlag';
 import { HallOfFameEntry } from '../models/types';
 import { importHallOfFame, serializeHallOfFame } from '../utils/hofStorage';
 import { Download, Upload, Copy, Check } from 'lucide-react';
@@ -18,7 +19,7 @@ interface Props {
  */
 export function HofTransfer({ entries, onImported }: Props) {
     const [open, setOpen] = useState(false);
-    const [copied, setCopied] = useState(false);
+    const [copied, setCopied] = useTransientFlag(false, 1800);
     const [pasted, setPasted] = useState('');
     const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
     const exportId = useId();
@@ -47,7 +48,6 @@ export function HofTransfer({ entries, onImported }: Props) {
         try {
             await navigator.clipboard?.writeText(json);
             setCopied(true);
-            setTimeout(() => setCopied(false), 1800);
         } catch {
             setStatus({ ok: false, message: 'Clipboard unavailable. Select the JSON below and copy it manually.' });
         }

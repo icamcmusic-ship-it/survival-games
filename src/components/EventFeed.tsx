@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTransientFlag } from '../ui/useTransientFlag';
 import { EventCategory, EventLog, GameState, Tribute } from '../models/types';
 import { copyMoment } from '../utils/chronicle';
 import { categoryMeta } from '../ui/eventStyles';
@@ -34,6 +35,19 @@ export function tierOf(log: EventLog): FeedTier {
     // travel, survival, loot, system — plus anything new — reads as ambient
     // unless the engine flagged it important.
     return log.important ? 'scene' : 'ambient';
+}
+
+/**
+ * Whether a line survives a reading density — the same rule the feed applies,
+ * exported so the controls that report "showing N of M" and the callers that
+ * decide whether to draw an empty state can count what the reader will
+ * actually see rather than what passed the category filters.
+ */
+export function passesDensity(log: EventLog, density: FeedDensity): boolean {
+    const tier = tierOf(log);
+    if (density === 'headlines') return tier === 'headline';
+    if (density === 'scenes') return tier !== 'ambient';
+    return true;
 }
 
 /**
@@ -343,7 +357,7 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
  * is what turns it into something the reader can go and watch for themselves.
  */
 function MomentShare({ gameState, log }: { gameState: GameState; log: EventLog }) {
-    const [state, setState] = useState<'idle' | 'ok' | 'fail'>('idle');
+    const [state, setState] = useTransientFlag<'idle' | 'ok' | 'fail'>('idle', 1600);
     return (
         <button
             type="button"
@@ -353,7 +367,6 @@ function MomentShare({ gameState, log }: { gameState: GameState; log: EventLog }
             onClick={async e => {
                 e.stopPropagation();
                 setState(await copyMoment(gameState, log) ? 'ok' : 'fail');
-                window.setTimeout(() => setState('idle'), 1600);
             }}
         >
             {state === 'ok' ? 'copied' : state === 'fail' ? 'copy failed' : 'copy'}
@@ -597,7 +610,26 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
         logs.forEach(log => seenIds.current.add(log.id));
     }, [logs]);
 
-    const visibleLogs = expanded ? logs : logs.slice(Math.max(0, logs.length - VISIBLE_CAP));
+    // The cap counts entries the reader will actually *see*, not raw log rows.
+    //
+    // It used to slice the newest 200 rows and leave the density filter to run
+    // afterwards, inside each section — so at `headlines` density those 200 rows
+    // might contain a dozen headlines and the feed looked all but empty, with
+    // "show earlier entries" (which then renders the entire run) as the only
+    // way out. The cutoff is walked back until 200 entries past it survive the
+    // current density, which keeps the rows in between for their grouping and
+    // their context.
+    const visibleLogs = useMemo(() => {
+        if (expanded) return logs;
+        const passes = (log: EventLog) => passesDensity(log, density);
+        let shown = 0;
+        let cut = logs.length;
+        while (cut > 0 && shown < VISIBLE_CAP) {
+            cut -= 1;
+            if (passes(logs[cut])) shown += 1;
+        }
+        return logs.slice(cut);
+    }, [logs, expanded, density]);
     const hiddenCount = logs.length - visibleLogs.length;
     // Chronological: the chronicle reads forward, oldest first — a narrative,
     // not a notification tray. The parachute lands *after* the fight that

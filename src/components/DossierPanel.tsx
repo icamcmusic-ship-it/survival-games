@@ -4,6 +4,7 @@ import {
     Brain, Heart, MapPin, Settings, Skull, Star, Swords, TrendingDown, TrendingUp, Minus, Users,
 } from 'lucide-react';
 import { ESCALATION, GAMEMAKER_COSTS } from '../data/balance';
+import { gamemakerCooldownRemaining, gamemakerEventCost } from '../engine/gamemaker';
 import { GamemakerEventType } from '../engine/gamemaker';
 import { objectiveLabel } from '../engine/objectives';
 import { oddsFactors, tributeOdds } from '../engine/odds';
@@ -130,7 +131,33 @@ export function DossierPanel({
     const aliveCount = gameState.tributes.filter(t => t.status === 'alive').length;
     const deadCount = gameState.tributes.length - aliveCount;
 
-    const spendGamemaker = (type: GamemakerEventType, cost: number, targetId?: string) => {
+    /**
+     * What a lever costs *now*, and whether it can be pulled at all.
+     *
+     * These buttons used to price and disable off the flat `GAMEMAKER_COSTS`
+     * base, while `GameScreen` charges the escalated price and refuses a lever
+     * on cooldown — so a button could sit enabled, take a click, and do nothing
+     * whatsoever, with no coins spent and nothing said. Both the price on the
+     * face of the button and its disabled state are read from the same two
+     * functions the spend path uses.
+     */
+    const priceOf = (type: GamemakerEventType, base: number) => gamemakerEventCost(gameState, type, base);
+    const cooldownOf = (type: GamemakerEventType) => gamemakerCooldownRemaining(gameState, type);
+    const leverState = (type: GamemakerEventType, base: number, tip: string) => {
+        const cost = priceOf(type, base);
+        const cooling = cooldownOf(type);
+        return {
+            cost,
+            disabled: coins < cost || cooling > 0,
+            title: cooling > 0
+                ? `${tip} — the booth needs ${cooling} more cycle${cooling === 1 ? '' : 's'} before this lever resets.`
+                : coins < cost
+                    ? `${tip} — costs ${cost} coins and you have ${coins}.`
+                    : `${tip} (${cost} coins)`,
+        };
+    };
+
+    const spendGamemaker = (type: GamemakerEventType, targetId?: string) => {
         onGamemakerEvent(type, targetId);
     };
 
@@ -411,59 +438,64 @@ export function DossierPanel({
                                     ['flood', 'Flood', GAMEMAKER_COSTS.flood, 'Put the zone under water'],
                                     ['fog', 'Fog', GAMEMAKER_COSTS.fog, 'Blind everyone in the zone'],
                                     ['sever', 'Cut route', GAMEMAKER_COSTS.sever, 'Destroy one path out of the zone'],
-                                ] as const).map(([type, label, cost, tip]) => (
+                                ] as const).map(([type, label, base, tip]) => {
+                                    const { cost, disabled, title } = leverState(type, base, tip);
+                                    return (
                                     <button
                                         key={type}
-                                        onClick={() => spendGamemaker(type, cost, gmZone || undefined)}
+                                        onClick={() => spendGamemaker(type, gmZone || undefined)}
                                         className="btn btn-sm w-full"
-                                        disabled={coins < cost}
-                                        title={coins < cost ? `${tip} — costs ${cost} coins and you have ${coins}.` : `${tip} (${cost} coins)`}
+                                        disabled={disabled}
+                                        title={title}
                                     >
                                         {label} <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{cost}</span>
                                     </button>
-                                ))}
+                                    );
+                                })}
                             </div>
                             <button
-                                onClick={() => spendGamemaker('drop', GAMEMAKER_COSTS.drop)}
+                                onClick={() => spendGamemaker('drop')}
                                 className="btn btn-sm w-full"
-                                disabled={coins < GAMEMAKER_COSTS.drop}
-                                title={`Restock the Cornucopia with a supply drop (${GAMEMAKER_COSTS.drop} coins)`}
+                                disabled={leverState('drop', GAMEMAKER_COSTS.drop, 'Restock the Cornucopia with a supply drop').disabled}
+                                title={leverState('drop', GAMEMAKER_COSTS.drop, 'Restock the Cornucopia with a supply drop').title}
                             >
-                                Supply drop <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.drop}</span>
+                                Supply drop <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('drop', GAMEMAKER_COSTS.drop)}</span>
                             </button>
                             <button
-                                onClick={() => spendGamemaker('strip', GAMEMAKER_COSTS.strip, gmZone || undefined)}
+                                onClick={() => spendGamemaker('strip', gmZone || undefined)}
                                 className="btn btn-sm w-full"
-                                disabled={coins < GAMEMAKER_COSTS.strip}
-                                title={`Strip the zone's forage — nothing edible left in it for days (${GAMEMAKER_COSTS.strip} coins)`}
+                                disabled={leverState('strip', GAMEMAKER_COSTS.strip, "Strip the zone's forage — nothing edible left in it for days").disabled}
+                                title={leverState('strip', GAMEMAKER_COSTS.strip, "Strip the zone's forage — nothing edible left in it for days").title}
                             >
-                                Strip zone <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.strip}</span>
+                                Strip zone <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('strip', GAMEMAKER_COSTS.strip)}</span>
                             </button>
                             <div className="grid grid-cols-2 gap-1.5">
                                 <button
-                                    onClick={() => spendGamemaker('mercy', GAMEMAKER_COSTS.mercy, muttTargetId || undefined)}
+                                    onClick={() => spendGamemaker('mercy', muttTargetId || undefined)}
                                     className="btn btn-sm w-full"
-                                    disabled={coins < GAMEMAKER_COSTS.mercy}
-                                    title={`Send an unrequested medical parachute to the selected tribute (or the most hurt) — and let the whole field see who you favour (${GAMEMAKER_COSTS.mercy} coins)`}
+                                    disabled={leverState('mercy', GAMEMAKER_COSTS.mercy, 'Send an unrequested medical parachute to the selected tribute (or the most hurt) — and let the whole field see who you favour').disabled}
+                                    title={leverState('mercy', GAMEMAKER_COSTS.mercy, 'Send an unrequested medical parachute to the selected tribute (or the most hurt) — and let the whole field see who you favour').title}
                                 >
-                                    Mercy <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.mercy}</span>
+                                    Mercy <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('mercy', GAMEMAKER_COSTS.mercy)}</span>
                                 </button>
                                 <button
-                                    onClick={() => spendGamemaker('reveal', GAMEMAKER_COSTS.reveal, muttTargetId || undefined)}
+                                    onClick={() => spendGamemaker('reveal', muttTargetId || undefined)}
                                     className="btn btn-sm w-full"
-                                    disabled={coins < GAMEMAKER_COSTS.reveal}
-                                    title={`Put the selected tribute (or the best hidden one) on every screen in the arena (${GAMEMAKER_COSTS.reveal} coins)`}
+                                    disabled={leverState('reveal', GAMEMAKER_COSTS.reveal, 'Put the selected tribute (or the best hidden one) on every screen in the arena').disabled}
+                                    title={leverState('reveal', GAMEMAKER_COSTS.reveal, 'Put the selected tribute (or the best hidden one) on every screen in the arena').title}
                                 >
-                                    Reveal <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.reveal}</span>
+                                    Reveal <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('reveal', GAMEMAKER_COSTS.reveal)}</span>
                                 </button>
                             </div>
                             <button
-                                onClick={() => spendGamemaker('bounty', GAMEMAKER_COSTS.bounty, muttTargetId || undefined)}
+                                onClick={() => spendGamemaker('bounty', muttTargetId || undefined)}
                                 className="btn btn-sm w-full"
-                                disabled={coins < GAMEMAKER_COSTS.bounty || !!gameState.bountyTargetId}
-                                title={gameState.bountyTargetId ? 'A bounty already stands' : `Place a bounty and point the whole field at them (${GAMEMAKER_COSTS.bounty} coins)`}
+                                disabled={leverState('bounty', GAMEMAKER_COSTS.bounty, '').disabled || !!gameState.bountyTargetId}
+                                title={gameState.bountyTargetId
+                                    ? 'A bounty already stands'
+                                    : leverState('bounty', GAMEMAKER_COSTS.bounty, 'Place a bounty and point the whole field at them').title}
                             >
-                                Place bounty <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{GAMEMAKER_COSTS.bounty}</span>
+                                Place bounty <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('bounty', GAMEMAKER_COSTS.bounty)}</span>
                             </button>
                         </div>
                     </div>

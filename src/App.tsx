@@ -215,7 +215,12 @@ export default function App() {
       {/* §2.2: Cmd-K / Ctrl-K, across the whole run. Mounted at the app level
           so it works from any screen, including the ones that have no search. */}
       <CommandPalette gameState={gameState} onSelectTribute={setPaletteTributeId} />
-      {paletteTribute && gameState && (
+      {/* Not while the arena is on screen: `GameScreen` mounts its own sheet
+          for the tribute it has selected, and two `aria-modal` dialogs open at
+          once means two focus traps fighting each other and a reader who cannot
+          tab out of either. On the arena route the palette hands the id down
+          and the arena opens it in the one sheet it already owns. */}
+      {paletteTribute && gameState && view !== 'game' && (
         <TributeModal
           tribute={paletteTribute}
           gameState={gameState}
@@ -285,6 +290,8 @@ export default function App() {
               onNextPhase={gameActions.nextPhase}
               onRunToEnd={gameActions.runToEnd}
               onGamemakerEvent={gameActions.triggerGamemakerEvent}
+              paletteTributeId={paletteTributeId}
+              onPaletteHandled={() => setPaletteTributeId(null)}
             />
           )
         )}

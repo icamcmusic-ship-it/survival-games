@@ -1,16 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { EventCategory, EventLog, GameState, Tribute } from '../models/types';
 import { CATEGORY_GROUPS, categoryMeta } from '../ui/eventStyles';
-import { Beat, FeedLine, groupBeats, stripZoneClause, tierOf } from '../components/EventFeed';
+import { Beat, FeedLine, groupBeats, passesDensity, stripZoneClause, tierOf } from '../components/EventFeed';
 import { TributeTile } from '../components/TributeTile';
 import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { TributeModal } from '../components/TributeModal';
 import { ChronicleFilters } from '../components/ChronicleFilters';
-import { chronicleStore, setChronicle } from '../store/chronicleStore';
+import { chronicleStore, filtersActive, setChronicle } from '../store/chronicleStore';
 import { useStore } from '../store/createStore';
 import { prefsStore } from '../store/prefsStore';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTransientFlag } from '../ui/useTransientFlag';
 
 /**
  * A3: the chronicle as its own page.
@@ -90,7 +91,7 @@ function readDeepLink(): { day: number; phase: string } | null {
 }
 
 function CopyPageLink({ page }: { page: Page }) {
-    const [state, setState] = useState<'idle' | 'ok' | 'fail'>('idle');
+    const [state, setState] = useTransientFlag<'idle' | 'ok' | 'fail'>('idle', 1500);
     const url = `${window.location.origin}${window.location.pathname}${window.location.search}#/chronicle?day=${page.day}&phase=${page.phase}`;
     return (
         <button
@@ -100,7 +101,6 @@ function CopyPageLink({ page }: { page: Page }) {
             title="Copy a link straight to this page of the chronicle"
             onClick={() => {
                 navigator.clipboard?.writeText(url).then(() => setState('ok')).catch(() => setState('fail'));
-                setTimeout(() => setState('idle'), 1500);
             }}
         >
             {state === 'ok' ? 'Link copied' : state === 'fail' ? 'Copy failed' : 'Copy link'}
@@ -217,12 +217,24 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     }, [gameState.log, filters, mutedCategories]);
 
     const pages = useMemo(() => paginate(filteredLogs), [filteredLogs]);
+    /**
+     * Counted the way the feed reads it — category filters *and* the reading
+     * density — so "Showing N of M" is the number on the page. The filter dot
+     * beside the control now asks `filtersActive` rather than re-paginating the
+     * entire log inline on every render to compare two page counts, which was
+     * both the most expensive thing in this render and wrong: a filter that
+     * removes lines without emptying a whole phase leaves the page count
+     * identical and lit nothing.
+     */
+    const readableCount = useMemo(
+        () => filteredLogs.reduce((n, log) => n + (passesDensity(log, filters.density) ? 1 : 0), 0),
+        [filteredLogs, filters.density],
+    );
 
-    const [pageIndex, setPageIndex] = useState(() => {
-        const deep = readDeepLink();
-        if (!deep) return 0;
-        return 0; // resolved against `pages` in the effect below
-    });
+    // Always 0: a deep link cannot be resolved until `pages` exists, which is
+    // what the effect below is for. The initialiser used to call
+    // `readDeepLink()` and then return 0 on both branches regardless.
+    const [pageIndex, setPageIndex] = useState(0);
 
     // Resolve a deep link once the pages exist, then keep the URL in step with
     // whatever page is showing so the address bar is always shareable.
@@ -316,7 +328,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                         onClick={() => setShowFilters(v => !v)}
                         title="Filters, density, search and export"
                     >
-                        Filters{pages.length !== paginate(gameState.log).length ? ' •' : ''}
+                        Filters{filtersActive(filters) ? ' •' : ''}
                     </button>
                 </div>
             </header>
@@ -324,7 +336,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
             {showFilters && (
                 <ChronicleFilters
                     gameState={gameState}
-                    filteredCount={filteredLogs.length}
+                    filteredCount={readableCount}
                     onSelectTribute={setSelectedTributeId}
                 />
             )}

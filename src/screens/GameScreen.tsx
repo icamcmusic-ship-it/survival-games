@@ -5,7 +5,7 @@ import { ZoneDossier } from '../components/ZoneDossier';
 import { TributeModal } from '../components/TributeModal';
 import { TributeCompare } from '../components/TributeCompare';
 import { CoachMarks } from '../components/CoachMark';
-import { EventFeed, FeedLine, VISIBLE_CAP, tierOf } from '../components/EventFeed';
+import { EventFeed, FeedLine, VISIBLE_CAP, passesDensity, tierOf } from '../components/EventFeed';
 import { ChronicleFilters } from '../components/ChronicleFilters';
 import { BroadcastBar } from '../components/BroadcastBar';
 import { DossierPanel } from '../components/DossierPanel';
@@ -100,11 +100,16 @@ export function GameScreen({
     onNextPhase,
     onRunToEnd,
     onGamemakerEvent,
+    paletteTributeId,
+    onPaletteHandled,
 }: {
     gameState: GameState,
     onNextPhase: () => void,
     onRunToEnd: () => void,
     onGamemakerEvent: (type: GamemakerEventType, targetId?: string) => void,
+    /** A tribute picked from the app-level command palette, to open here. */
+    paletteTributeId?: string | null,
+    onPaletteHandled?: () => void,
 }) {
     // A "Random Arena (Hidden)" pick at setup: identity, zone names and the
     // map itself stay out of the UI until the bloodbath phase reveals them.
@@ -114,6 +119,18 @@ export function GameScreen({
     /** §2.3: the second half of a side-by-side comparison, when one is open. */
     const [compareTributeId, setCompareTributeId] = useState<string | null>(null);
     const [speed, setSpeed] = useState<Speed>('manual');
+
+    // The command palette lives at the app level so it works on every screen,
+    // but this screen already owns a tribute sheet. Rather than let the app
+    // mount a second one over the top of it — two focus traps, two
+    // `aria-modal` dialogs — the palette's pick is adopted as this screen's
+    // selection and the app's copy is stood down.
+    useEffect(() => {
+        if (!paletteTributeId) return;
+        setSelectedTributeId(paletteTributeId);
+        setCompareTributeId(null);
+        onPaletteHandled?.();
+    }, [paletteTributeId, onPaletteHandled]);
     const coins = useStore(gameStore, s => s.coins);
     const runProgress = useStore(gameStore, s => s.runProgress);
 
@@ -479,12 +496,15 @@ export function GameScreen({
                 jumpDay(-1);
             } else if (key === ']') {
                 jumpDay(1);
-            } else if (key === 'i') {
+            } else if (lower === 'i') {
                 const next = filters.density === 'everything' ? 'scenes'
                     : filters.density === 'scenes' ? 'headlines' : 'everything';
                 setChronicle({ density: next });
                 announceShortcut(next === 'everything' ? 'Showing every event' : next === 'scenes' ? 'Showing headlines and scenes' : 'Showing headlines only');
-            } else if (key === 'p' && !isOver) {
+            // `lower`, like every other letter branch: these two compared the
+            // raw key, so CapsLock silently turned off density cycling and
+            // play/pause while the help overlay went on advertising both.
+            } else if (lower === 'p' && !isOver) {
                 setSpeed(s => {
                     const next = s === 'manual' ? '1x' : 'manual';
                     announceShortcut(next === 'manual' ? 'Auto-advance paused' : 'Auto-advance running');
@@ -533,6 +553,17 @@ export function GameScreen({
             return true;
         });
     }, [gameState.log, filters, mutedCategories]);
+
+    /**
+     * How many of those the reader can actually see. The category filters and
+     * the reading density are two separate stages and only the first was being
+     * counted, so "Showing N of M" quoted a number the feed never displayed and
+     * the empty-state check could be satisfied by lines density then hid.
+     */
+    const readableCount = useMemo(
+        () => filteredLogs.reduce((n, log) => n + (passesDensity(log, filters.density) ? 1 : 0), 0),
+        [filteredLogs, filters.density],
+    );
 
     /** PERF: the sector rail is newest-first and capped, like the main chronicle. */
     const sectorLogRows = useMemo(
@@ -625,26 +656,49 @@ export function GameScreen({
     // as they land. Nothing is *recorded* here — the end-of-run pass in
     // `panemStorage` remains the only writer, so a toast can never award
     // something a rewind then un-earns.
-    const [toasts, setToasts] = useState<Array<{ id: string; name: string; hint: string }>>([]);
+    //
+    // Each toast carries its own expiry and a single sweep retires whatever is
+    // due, rather than each batch arming a timer that slices a captured count
+    // off the *front* of the stack. That arrangement retired the wrong toasts
+    // whenever two batches overlapped, and — because the effect's own cleanup
+    // cleared the pending timer and its early returns armed no replacement — a
+    // phase that produced no new achievements left the previous batch on screen
+    // for the rest of the run.
+    const [toasts, setToasts] = useState<Array<{ id: string; name: string; hint: string; expiresAt: number }>>([]);
     const shownToasts = useRef<Set<string>>(new Set());
+    // Read through a ref so evaluating ~180 predicates over the whole state is
+    // tied to the phase boundaries this is documented to run on, and not to
+    // every store write that happens to produce a new state object.
+    const liveState = useRef(gameState);
+    liveState.current = gameState;
     useEffect(() => {
         if (isOver) return;
         // The store already holds the record book; this used to parse it
         // out of localStorage — and run its migration — on every phase.
         const already = new Set(panem.unlocked);
-        const live = evaluateAchievements(gameState).filter(id =>
+        const live = evaluateAchievements(liveState.current).filter(id =>
             !already.has(id) && !shownToasts.current.has(id));
         if (live.length === 0) return;
         live.forEach(id => shownToasts.current.add(id));
+        const expiresAt = Date.now() + TOAST_MS;
         const fresh = live
             .map(id => ACHIEVEMENTS.find(a => a.id === id))
             .filter((a): a is NonNullable<typeof a> => !!a)
-            .map(a => ({ id: a.id, name: a.name, hint: a.hint }));
+            .map(a => ({ id: a.id, name: a.name, hint: a.hint, expiresAt }));
         if (fresh.length === 0) return;
         setToasts(prev => [...prev, ...fresh].slice(-TOAST_MAX));
-        const drop = setTimeout(() => setToasts(prev => prev.slice(fresh.length)), TOAST_MS);
-        return () => clearTimeout(drop);
-    }, [gameState.phase, gameState.day, isOver, gameState]);
+    }, [gameState.phase, gameState.day, isOver, panem.unlocked]);
+
+    // One sweep, armed for whichever toast expires next.
+    useEffect(() => {
+        if (toasts.length === 0) return;
+        const due = Math.min(...toasts.map(t => t.expiresAt));
+        const timer = window.setTimeout(
+            () => setToasts(prev => prev.filter(t => t.expiresAt > Date.now())),
+            Math.max(0, due - Date.now()),
+        );
+        return () => window.clearTimeout(timer);
+    }, [toasts]);
 
     const urgentAnnouncement = useMemo(() => {
         const lastDeath = [...gameState.log]
@@ -824,7 +878,7 @@ export function GameScreen({
                         {showFilters && (
                             <ChronicleFilters
                                 gameState={gameState}
-                                filteredCount={filteredLogs.length}
+                                filteredCount={readableCount}
                                 onSelectTribute={setSelectedTributeId}
                             />
                         )}
@@ -923,7 +977,7 @@ export function GameScreen({
                                     filters.textScale === 'small' ? 'chronicle-text-sm' : filters.textScale === 'large' ? 'chronicle-text-lg' : ''
                                 }`}
                             >
-                                {filteredLogs.length > 0 ? (
+                                {readableCount > 0 ? (
                                     <EventFeed
                                         logs={filteredLogs}
                                         cast={gameState.tributes}
@@ -936,7 +990,12 @@ export function GameScreen({
                                     <div className="empty-state">
                                         {gameState.log.length === 0
                                             ? 'Nothing has happened yet. Hit Proceed to begin.'
-                                            : 'Every logged event is hidden by your current filters.'}
+                                            : filteredLogs.length > 0
+                                                // The category filters let these through and the
+                                                // reading density then hid every one of them, which
+                                                // used to render as a silently blank feed.
+                                                ? `${filteredLogs.length} events match your filters, but none of them are loud enough for the “${filters.density}” reading density.`
+                                                : 'Every logged event is hidden by your current filters.'}
                                     </div>
                                 )}
                             </div>
@@ -1004,10 +1063,20 @@ export function GameScreen({
             {toasts.length > 0 && (
                 <div className="fixed bottom-28 left-4 z-40 space-y-2 max-w-[18rem]" role="status" aria-live="polite">
                     {toasts.map(t => (
-                        <div key={t.id} className="panel px-3 py-2 animate-fadeIn">
+                        <div key={t.id} className="panel px-3 py-2 animate-fadeIn relative">
                             <div className="eyebrow text-[var(--gold-deep)]">Achievement</div>
                             <div className="font-bold text-sm">{t.name}</div>
                             <div className="text-[11px] text-[var(--color-ink-500)]">{t.hint}</div>
+                            {/* Dismissible: a toast that can only be waited out is
+                                a toast a keyboard reader cannot get past. */}
+                            <button
+                                type="button"
+                                aria-label={`Dismiss the ${t.name} achievement notice`}
+                                className="absolute top-1 right-1 px-2 py-1 text-[11px] leading-none text-[var(--color-ink-500)] hover:text-[var(--color-ink-900)]"
+                                onClick={() => setToasts(prev => prev.filter(o => o.id !== t.id))}
+                            >
+                                ✕
+                            </button>
                         </div>
                     ))}
                 </div>

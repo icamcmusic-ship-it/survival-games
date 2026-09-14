@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTransientFlag } from '../ui/useTransientFlag';
 import { GameState } from '../models/types';
 import { ChronicleFormat, copyChronicle, downloadChronicleAs, downloadChronicleJson } from '../utils/chronicle';
 
@@ -11,7 +12,7 @@ export function ChronicleExport({ gameState, importantOnly = false }: {
     gameState: GameState;
     importantOnly?: boolean;
 }) {
-    const [copied, setCopied] = useState<'idle' | 'ok' | 'fail'>('idle');
+    const [copied, setCopied] = useTransientFlag<'idle' | 'ok' | 'fail'>('idle', 2500);
     // §2.7: per-tribute chronicle — "everything involving Rue" as one file.
     const [tributeId, setTributeId] = useState('');
     // §2.11: markdown was the only format. A forum post wants BBCode and a
@@ -53,7 +54,6 @@ export function ChronicleExport({ gameState, importantOnly = false }: {
                 onClick={async () => {
                     const ok = await copyChronicle(gameState, filter, format);
                     setCopied(ok ? 'ok' : 'fail');
-                    setTimeout(() => setCopied('idle'), 2500);
                 }}
             >
                 {copied === 'ok' ? 'Chronicle copied' : copied === 'fail' ? 'Copy failed' : 'Copy chronicle'}

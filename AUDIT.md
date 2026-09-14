@@ -155,12 +155,21 @@ Ordered by severity. All are confirmed by reading the current tree.
 24. **`VISIBLE_CAP` is applied before density filtering.** `EventFeed.tsx:600` slices to
     200 raw lines; the tier filter runs at `:493`. At `headlines` density the newest 200
     lines may hold ~16 headlines, so the feed looks empty.
-25. **Arena screen's filtered count and empty state are density-blind.**
-    `GameScreen.tsx:827` and `:926` vs `ChronicleScreen.tsx:772` — the same control
-    reports two different numbers on two screens over one store.
-26. **The filter "active" dot is lit on a fresh install.** `chronicleStore.ts:447`
-    returns true when `density !== 'everything'`; the shipped default is `'scenes'`
-    (`prefsStorage.ts:260`).
+25. **The filtered count and the empty state are density-blind, on *both* screens.**
+    `GameScreen.tsx:827`/`:926` and `ChronicleScreen.tsx:327` both pass
+    `filteredLogs.length`, which counts what survived the category filters — while the
+    feed then applies the reading density on top. So "Showing N of M" quotes a number
+    the page never displays, and at `headlines` density a quiet phase renders a silently
+    blank feed with the empty state's own check satisfied. (The audit first recorded this
+    as the two screens disagreeing with each other; they agree, and are both wrong the
+    same way.)
+26. ~~The filter "active" dot is lit on a fresh install.~~ **Checked and withdrawn.**
+    `filtersActive` returns true when `density !== 'everything'` and the shipped default
+    is `'scenes'`, so the dot is indeed lit before the reader touches anything — but the
+    dot means *some of the chronicle is hidden from you*, and at `'scenes'` the ambient
+    tier genuinely is. Measuring it against the default instead lights the dot for
+    `'everything'`, the one density that hides nothing, which is strictly worse. The
+    attempted fix was reverted; `test:ui` caught it.
 27. **`paginate()` runs on the full log, unmemoized, every render** —
     `ChronicleScreen.tsx:764`, purely to decide whether to draw a `•`.
 28. **Dead deep-link initialiser.** `ChronicleScreen.tsx:666-670` calls `readDeepLink()`
@@ -175,13 +184,19 @@ Ordered by severity. All are confirmed by reading the current tree.
     `ChronicleExport.tsx:56`, `TributeModal.tsx:1261`, `HofTransfer.tsx:50`,
     `HallOfFameScreen.tsx:51`, `ChronicleScreen.tsx:103`, `EventFeed.tsx:356`, and
     `BroadcastBar.tsx:237`, which mutates `el.textContent` outside React's tree.
-32. **Window key listener re-registers on every phase** — `GameScreen.tsx:509-512`
-    with `gameState` and `filters` in the deps.
-33. **`EventFeed` reads a ref during render** — `:594` reads `seenIds.current` while the
-    write is in an effect at `:597`; under StrictMode this produces exactly the flicker
-    the comment at `:589` is trying to prevent.
-34. **Odds-movement effect reads a value its deps don't track** —
-    `GameScreen.tsx:553-564`, exhaustive-deps disabled; movement is one tick stale.
+32. **Window key listener re-registers on every phase** — `GameScreen.tsx:509-512` with
+    `gameState` and `filters` in the deps. Correct, but wasteful rather than wrong: one
+    `removeEventListener`/`addEventListener` pair per advance. Listed as cleanup, not a
+    defect.
+33. ~~`EventFeed` reads a ref during render.~~ **Checked and withdrawn.** The memo reads
+    `seenIds.current` but never writes it, and it is keyed on `logs` — so a StrictMode
+    double-invoke sees the same set both times and a re-render with unchanged `logs`
+    does not recompute. The pattern is unusual but correct as written.
+34. ~~Odds-movement effect is one tick stale.~~ **Checked and withdrawn.** `oddsLadder`
+    derives from `gameState.tributes`, and a phase change produces the new tributes array
+    in the same commit the effect runs after — so the ladder it reads is current. The
+    narrow dep list is the intended semantic ("movement since the last phase"), not an
+    oversight.
 
 ### Knob-discipline drift (the `test:undeclared-knobs` blind spot)
 

@@ -113,6 +113,10 @@ export function toggleSection(id: string): void {
 /** True when anything is narrowing the chronicle right now. */
 export function filtersActive(s: ChronicleState): boolean {
     return s.mutedGroups.length > 0
+        // Against 'everything', deliberately: the dot means "some of the
+        // chronicle is hidden from you", and the shipped default of 'scenes'
+        // does hide the ambient tier. It is lit on a fresh install because on a
+        // fresh install lines really are being held back.
         || s.density !== 'everything'
         || s.searchText !== ''
         || s.filterTributeId !== null

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTransientFlag } from '../ui/useTransientFlag';
 import { GameState } from '../models/types';
 import { FastForward, Undo2, Volume2, VolumeX } from 'lucide-react';
 import { PlaybackPopover, PlayUntil, Speed } from './PlaybackPopover';
@@ -57,6 +58,8 @@ export function BroadcastBar({
     // to say which of them moved, so each flashes for a moment when it does.
     const prevAlive = useRef(aliveCount);
     const [aliveDelta, setAliveDelta] = useState(0);
+    /** Which save slot is showing a confirmation, and what it says. */
+    const [slotNotice, setSlotNotice] = useTransientFlag<{ slot: number; text: string } | null>(null, 1800);
     useEffect(() => {
         const delta = aliveCount - prevAlive.current;
         prevAlive.current = aliveCount;
@@ -225,19 +228,23 @@ export function BroadcastBar({
                             {!isOver && (
                                 <div className="flex flex-wrap gap-2 items-center border-t border-[var(--color-ink-800)] pt-3">
                                     <span className="eyebrow">Park this run</span>
+                                    {/* Through React state rather than by writing
+                                        `textContent` onto the live node: the DOM
+                                        poke was outside React's tree, so any
+                                        re-render in the 1.8s window restored the
+                                        label early and the pending timer then wrote
+                                        it again — onto a node that may by then have
+                                        belonged to a different slot, or be gone. */}
                                     {([2, 3] as const).map(slot => (
                                         <button
                                             key={slot}
                                             className="btn btn-sm"
                                             title={`Save a copy of this run into slot ${slot} — resume it later from the setup screen`}
-                                            onClick={e => {
-                                                const ok = gameActions.saveToSlot(slot);
-                                                const el = e.currentTarget;
-                                                el.textContent = ok ? `Saved to slot ${slot}` : 'Save failed';
-                                                setTimeout(() => { el.textContent = `Slot ${slot}`; }, 1800);
-                                            }}
+                                            onClick={() => setSlotNotice(gameActions.saveToSlot(slot)
+                                                ? { slot, text: `Saved to slot ${slot}` }
+                                                : { slot, text: 'Save failed' })}
                                         >
-                                            Slot {slot}
+                                            {slotNotice?.slot === slot ? slotNotice.text : `Slot ${slot}`}
                                         </button>
                                     ))}
                                 </div>
