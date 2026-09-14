@@ -238,11 +238,25 @@ the `one-wound` achievement (`=== 1` scar, never fires), and `BodyDiagram.tsx`.
 The permanent-injury floor in `wounds.ts:132` — the "a scarred site never comes
 all the way back" rule the comment is proud of — applies to essentially nobody.
 
-**1.8 `zonesBurned` and `timesTraded` are on the schema and never written.**
-Neither field is assigned anywhere in `src/`. They are not read by any
-achievement, so nothing is broken; they are schema debt that `test:predicates`
-does not cover because it only walks optional *booleans*. Extending that check to
-optional numerics would catch both.
+**1.8 ~~`zonesBurned` and `timesTraded` are on the schema and never written.~~
+Withdrawn — this finding was wrong.**
+
+> **Corrected during the fix pass.** Neither field exists. They are not on
+> `Tribute`, not on `GameState`, and not anywhere in `src/`. They were field
+> names I had *invented* when writing the achievement-counter probe, and the
+> zeros the probe dutifully reported were absent properties on the objects it
+> walked, not unwritten counters in the engine. I then read those zeros back as
+> a finding. An instrumentation script that cannot tell "this counter never
+> moved" from "I asked for a field that does not exist" will manufacture
+> evidence on demand, and this one did.
+
+The half of the recommendation that was worth anything survives, and has been
+implemented: `test:predicates` only walks optional *booleans*, and the numeric
+form of the same bug had nothing watching it. `check-achievements` now measures
+the ceiling of every optional numeric and every optional array length on
+`Tribute` and `GameState` across its own sweep, and fails on any achievement
+threshold above it — including the case where a declared field never receives a
+value at all. See §11.2.
 
 **1.9 Eleven achievement rarity labels contradict their measured rate.**
 `test:achievements` reports them and passes, because the guard fails only at two
