@@ -176,7 +176,6 @@ export function StandingsTable({
                                             onClick={() => onFollow(followedId === t.id ? null : t.id)}
                                             aria-pressed={followedId === t.id}
                                             aria-label={followedId === t.id ? `Stop following ${t.name}` : `Follow ${t.name}`}
-                                            title={followedId === t.id ? 'Following' : 'Follow this tribute'}
                                             className={followedId === t.id ? 'text-[var(--red)]' : 'text-[var(--color-ink-600)]'}
                                             disabled={dead}
                                         >

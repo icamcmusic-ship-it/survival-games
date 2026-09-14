@@ -49,6 +49,11 @@ export function Explainer({
         return () => {
             document.removeEventListener('mousedown', onDown);
             document.removeEventListener('keydown', onKey, true);
+            // Audit 3 §1.7: Escape closed the popover and left focus on a node
+            // that no longer exists, which drops the keyboard reader back at
+            // the top of the document. A popover is not a modal and does not
+            // want a trap, but it does owe the trigger its focus back.
+            wrapRef.current?.querySelector('button')?.focus();
         };
     }, [open]);
 

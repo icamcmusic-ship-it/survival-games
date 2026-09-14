@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Hint } from './Hint';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { GameState } from '../models/types';
 import { ChronicleFormat, copyChronicle, downloadChronicleAs, downloadChronicleJson } from '../utils/chronicle';
@@ -22,30 +23,32 @@ export function ChronicleExport({ gameState, importantOnly = false }: {
 
     return (
         <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Export the chronicle">
+            <Hint text="Export only the lines involving one tribute">
             <select
                 value={tributeId}
                 onChange={e => setTributeId(e.target.value)}
                 className="field text-xs w-auto"
                 aria-label="Export only one tribute's story"
-                title="Export only the lines involving one tribute"
             >
                 <option value="">Whole chronicle</option>
                 {[...gameState.tributes].sort((a, b) => a.district - b.district).map(t => (
                     <option key={t.id} value={t.id}>{t.name} (D{t.district}){t.status === 'dead' ? ' †' : ''}</option>
                 ))}
             </select>
+            </Hint>
+            <Hint text="A readable transcript is the one people actually share; Markdown for a document, BBCode for a forum post, plain text for anything else">
             <select
                 value={format}
                 onChange={e => setFormat(e.target.value as ChronicleFormat)}
                 className="field text-xs w-auto"
                 aria-label="Export format"
-                title="A readable transcript is the one people actually share; Markdown for a document, BBCode for a forum post, plain text for anything else"
             >
                 <option value="prose">Readable transcript</option>
                 <option value="markdown">Markdown</option>
                 <option value="text">Plain text</option>
                 <option value="bbcode">BBCode</option>
             </select>
+            </Hint>
             <button
                 type="button"
                 className="btn btn-sm btn-ghost"
@@ -66,15 +69,16 @@ export function ChronicleExport({ gameState, importantOnly = false }: {
             >
                 Download
             </button>
-            <button
-                type="button"
-                className="btn btn-sm btn-ghost"
-                aria-label="Download the full run as machine-readable JSON, including the seed and settings needed to replay it"
-                title="The full log with metadata — for building your own tooling"
-                onClick={() => downloadChronicleJson(gameState)}
-            >
-                Download as JSON
-            </button>
+            <Hint align="right" text="The full log with metadata — for building your own tooling">
+                <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    aria-label="Download the full run as machine-readable JSON, including the seed and settings needed to replay it"
+                    onClick={() => downloadChronicleJson(gameState)}
+                >
+                    Download as JSON
+                </button>
+            </Hint>
         </div>
     );
 }

@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Hint } from './Hint';
+import { frontName } from '../engine/weatherFront';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { GameState } from '../models/types';
 import { FastForward, Undo2, Volume2, VolumeX } from 'lucide-react';
@@ -82,6 +84,8 @@ export function BroadcastBar({
             + ` (${rewind.depth} of the last ${rewind.cap} phases kept${rewind.atCap ? ' — the oldest is being let go' : ''})`
         : 'Nothing to undo yet';
 
+    const front = gameState.weatherFront;
+
     return (
         <div className="panel sticky top-[3.75rem] z-20 px-4 py-2.5 mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="min-w-0 flex-1">
@@ -97,6 +101,18 @@ export function BroadcastBar({
                         {aliveDelta !== 0 && <span> ({aliveDelta > 0 ? '+' : ''}{aliveDelta})</span>}
                     </span>
                     {' / '}{deadCount} fallen
+                    {/* Audit 3 §2.6: the front is the one hazard in the game a
+                        tribute can see coming and walk away from, and it had no
+                        surface anywhere — so the reader watched people get caught
+                        by something the engine had been telegraphing for cycles. */}
+                    {front && !arenaSealed && (
+                        <>
+                            {' / '}
+                            <span className="text-[var(--red)] font-black">
+                                ⛈ {frontName(front)} over {front.zone}
+                            </span>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -107,7 +123,6 @@ export function BroadcastBar({
                             onClick={() => gameActions.stepBack()}
                             className="btn btn-sm"
                             disabled={!gameActions.canStepBack()}
-                            title={undoLabel}
                             aria-label={undoLabel}
                         >
                             <Undo2 className="w-4 h-4" />
@@ -121,7 +136,6 @@ export function BroadcastBar({
                             disabled={!gameActions.canStepBack()}
                             aria-expanded={checkpointsOpen}
                             aria-haspopup="menu"
-                            title="Jump back to any earlier point in the run"
                             aria-label="Jump back to any earlier point in the run"
                         >
                             ▾
@@ -164,22 +178,23 @@ export function BroadcastBar({
                             </div>
                         )}
                     </span>
-                    <button
-                        onClick={onNextPhase}
-                        className="btn btn-primary"
-                        disabled={!!runProgress}
-                        title="Advance one phase (Space)"
-                    >
-                        Proceed <FastForward className="w-4 h-4" />
-                    </button>
+                    <Hint text="Advance one phase (Space)">
+                        <button
+                            onClick={onNextPhase}
+                            className="btn btn-primary"
+                            disabled={!!runProgress}
+                        >
+                            Proceed <FastForward className="w-4 h-4" />
+                        </button>
+                    </Hint>
                     {runProgress ? (
-                        <button onClick={() => gameActions.cancelRunToEnd()} className="btn btn-sm" title="Stop the fast-forward and keep what has happened so far">
-                            Cancel
-                        </button>
+                        <Hint text="Stop the fast-forward and keep what has happened so far">
+                            <button onClick={() => gameActions.cancelRunToEnd()} className="btn btn-sm">Cancel</button>
+                        </Hint>
                     ) : (
-                        <button onClick={onRunToEnd} className="btn btn-sm" title="Simulate the entire run at once">
-                            Run to end
-                        </button>
+                        <Hint text="Simulate the entire run at once">
+                            <button onClick={onRunToEnd} className="btn btn-sm">Run to end</button>
+                        </Hint>
                     )}
                     <span
                         className="chip font-mono"
@@ -208,20 +223,20 @@ export function BroadcastBar({
                     onClick={() => setPrefs({ muteAudio: !prefs.muteAudio })}
                     aria-pressed={prefs.muteAudio}
                     className="seg-item"
-                    title={prefs.muteAudio ? 'Unmute the cannon, anthem and parachute cues' : 'Mute all sound'}
                     aria-label={prefs.muteAudio ? 'Unmute sound' : 'Mute sound'}
                 >
                     {prefs.muteAudio ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
                 </button>
                 <div className="relative">
-                    <button
-                        className="seg-item"
-                        aria-expanded={showExport}
-                        onClick={() => setShowExport(v => !v)}
-                        title="Copy or download the chronicle, and park this run in a save slot"
-                    >
-                        Export
-                    </button>
+                    <Hint align="right" text="Copy or download the chronicle, and park this run in a save slot">
+                        <button
+                            className="seg-item"
+                            aria-expanded={showExport}
+                            onClick={() => setShowExport(v => !v)}
+                        >
+                            Export
+                        </button>
+                    </Hint>
                     {showExport && (
                         <div className="absolute top-full right-0 mt-1 z-40 panel p-4 space-y-3 w-[min(26rem,90vw)] shadow-[var(--shadow-ink-sm)]">
                             <ChronicleExport gameState={gameState} />

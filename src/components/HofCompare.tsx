@@ -41,24 +41,34 @@ export function HofCompare({ a, b, onClear }: {
         ? lengthEstimate(e.config.districtCount, e.config.hazardRate, e.config.betrayalRate)
         : 'unknown';
 
+    // Audit 3 §2.2: this panel is a two-column comparison table built out of
+    // CSS grid, and it carried no `aria-*` or `role` anywhere — so to anything
+    // that is not reading the visual grid it was an undifferentiated run of
+    // text, with no way to tell which number belonged to which Games. The grid
+    // stays; the semantics are declared over it.
     const line = (label: string, left: React.ReactNode, right: React.ReactNode, changed = true) => (
-        <div className={`grid grid-cols-[7rem_1fr_1fr] gap-2 text-[11px] py-1 ${changed ? '' : 'opacity-60'}`}>
-            <span className="eyebrow pt-px">{label}</span>
-            <span className="text-[var(--color-ink-200)] truncate">{left}</span>
-            <span className="text-[var(--color-ink-200)] truncate">{right}</span>
+        <div role="row" className={`grid grid-cols-[7rem_1fr_1fr] gap-2 text-[11px] py-1 ${changed ? '' : 'opacity-60'}`}>
+            <span role="rowheader" className="eyebrow pt-px">{label}</span>
+            <span role="cell" className="text-[var(--color-ink-200)] truncate">{left}</span>
+            <span role="cell" className="text-[var(--color-ink-200)] truncate">{right}</span>
         </div>
     );
 
     return (
-        <div className="panel p-5 space-y-2" style={{ borderColor: 'var(--red)', borderWidth: '3px' }}>
+        <div
+            role="table"
+            aria-label={`Comparing ${a.winnerName}'s Games against ${b.winnerName}'s`}
+            className="panel p-5 space-y-2"
+            style={{ borderColor: 'var(--red)', borderWidth: '3px' }}
+        >
             <div className="flex items-baseline justify-between gap-3 flex-wrap">
                 <span className="eyebrow" style={{ color: 'var(--red)' }}>Comparing two Games</span>
-                <button onClick={onClear} className="btn btn-sm btn-ghost">Clear</button>
+                <button onClick={onClear} className="btn btn-sm btn-ghost" aria-label="Clear the comparison">Clear</button>
             </div>
-            <div className="grid grid-cols-[7rem_1fr_1fr] gap-2 text-[11px] border-b-2 border-[var(--line-soft)] pb-1">
-                <span />
-                <span className="font-black uppercase text-[var(--ink)] truncate">{a.winnerName} · {a.arenaName}</span>
-                <span className="font-black uppercase text-[var(--ink)] truncate">{b.winnerName} · {b.arenaName}</span>
+            <div role="row" className="grid grid-cols-[7rem_1fr_1fr] gap-2 text-[11px] border-b-2 border-[var(--line-soft)] pb-1">
+                <span role="columnheader" />
+                <span role="columnheader" className="font-black uppercase text-[var(--ink)] truncate">{a.winnerName} · {a.arenaName}</span>
+                <span role="columnheader" className="font-black uppercase text-[var(--ink)] truncate">{b.winnerName} · {b.arenaName}</span>
             </div>
             {line('Seed', a.seed, b.seed)}
             {line('Kills', a.kills, b.kills)}

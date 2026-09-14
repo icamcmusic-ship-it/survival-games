@@ -362,7 +362,6 @@ function MomentShare({ gameState, log }: { gameState: GameState; log: EventLog }
         <button
             type="button"
             className="feed-share"
-            title="Copy this moment, with the seed"
             aria-label={state === 'ok' ? 'Moment copied' : 'Copy this moment'}
             onClick={async e => {
                 e.stopPropagation();
@@ -594,6 +593,15 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
     gameState?: GameState;
 }) {
     const [expanded, setExpanded] = useState(defaultExpanded);
+    /**
+     * Audit 3 §2.5: how many windows past the newest one the reader has asked
+     * for. "Show earlier entries" used to be all-or-nothing — one press went
+     * from 200 visible entries to the entire run, which at the measured average
+     * of 8.6 days and a 2,000-line log is every page when the reader wanted the
+     * previous one. Each press now walks the cutoff back by another window, and
+     * the last press (when a window is all that is left) takes the rest.
+     */
+    const [windows, setWindows] = useState(1);
     const containerRef = useRef<HTMLDivElement>(null);
     // Only entries that are genuinely new since the last render get the rise-in
     // animation — otherwise every re-render (e.g. an unrelated store update)
@@ -624,12 +632,13 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
         const passes = (log: EventLog) => passesDensity(log, density);
         let shown = 0;
         let cut = logs.length;
-        while (cut > 0 && shown < VISIBLE_CAP) {
+        const budget = VISIBLE_CAP * windows;
+        while (cut > 0 && shown < budget) {
             cut -= 1;
             if (passes(logs[cut])) shown += 1;
         }
         return logs.slice(cut);
-    }, [logs, expanded, density]);
+    }, [logs, expanded, density, windows]);
     const hiddenCount = logs.length - visibleLogs.length;
     // Chronological: the chronicle reads forward, oldest first — a narrative,
     // not a notification tray. The parachute lands *after* the fight that
@@ -677,9 +686,21 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
                 </nav>
             )}
             {hiddenCount > 0 && (
-                <button onClick={() => setExpanded(true)} className="btn btn-sm btn-ghost w-full justify-center">
-                    Show {hiddenCount} earlier entries
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => (hiddenCount <= VISIBLE_CAP ? setExpanded(true) : setWindows(w => w + 1))}
+                        className="btn btn-sm btn-ghost flex-1 justify-center"
+                    >
+                        {hiddenCount <= VISIBLE_CAP
+                            ? `Show the remaining ${hiddenCount}`
+                            : `Show ${VISIBLE_CAP} more`}
+                    </button>
+                    {hiddenCount > VISIBLE_CAP && (
+                        <button onClick={() => setExpanded(true)} className="btn btn-sm btn-ghost justify-center">
+                            All {hiddenCount}
+                        </button>
+                    )}
+                </div>
             )}
             {groups.map(([key, entries]) => (
                 <PhaseSection

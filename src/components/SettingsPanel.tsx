@@ -1,4 +1,5 @@
 import React from 'react';
+import { Hint } from './Hint';
 import { useDialogFocus } from '../ui/useDialogFocus';
 import { X } from 'lucide-react';
 import { prefsStore, resetPrefs, setPrefs } from '../store/prefsStore';
@@ -49,15 +50,15 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                             ['colourblind', 'Colourblind-safe', 'Five hues, one per category group; the glyph carries the category.'],
                             ['contrast', 'High contrast', 'No colour coding at all — maximum legibility, glyph only.'],
                         ] as const).map(([id, label, hint]) => (
-                            <button
-                                key={id}
-                                onClick={() => setPrefs({ palette: id })}
-                                aria-pressed={prefs.palette === id}
-                                className="seg-item"
-                                title={hint}
-                            >
-                                {label}
-                            </button>
+                            <Hint key={id} text={hint}>
+                                <button
+                                    onClick={() => setPrefs({ palette: id })}
+                                    aria-pressed={prefs.palette === id}
+                                    className="seg-item"
+                                >
+                                    {label}
+                                </button>
+                            </Hint>
                         ))}
                     </div>
                     <p className="text-xs text-[var(--color-ink-500)]">
@@ -79,15 +80,15 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                             ['light', 'Light', 'Cream paper and black ink, whatever the system says.'],
                             ['dark', 'Dark', 'Ink paper and cream type, for long sessions after dark.'],
                         ] as const).map(([id, label, hint]) => (
-                            <button
-                                key={id}
-                                onClick={() => setPrefs({ theme: id })}
-                                aria-pressed={prefs.theme === id}
-                                className="seg-item"
-                                title={hint}
-                            >
-                                {label}
-                            </button>
+                            <Hint key={id} text={hint}>
+                                <button
+                                    onClick={() => setPrefs({ theme: id })}
+                                    aria-pressed={prefs.theme === id}
+                                    className="seg-item"
+                                >
+                                    {label}
+                                </button>
+                            </Hint>
                         ))}
                     </div>
                 </div>
@@ -165,20 +166,19 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                 <div className="space-y-1.5 border-t border-[var(--color-ink-800)] pt-4">
                     <span className="eyebrow">Reset</span>
                     <div className="flex flex-wrap gap-2">
-                        <button
-                            className="btn btn-sm"
-                            onClick={() => resetPrefs()}
-                            title="Units, sound and brakes back to defaults"
-                        >
-                            Reset preferences
-                        </button>
-                        <button
-                            className="btn btn-sm"
-                            onClick={() => writeFilters({ ...DEFAULT_FILTERS })}
-                            title="Chronicle mutes and reading density back to defaults (takes effect next run)"
-                        >
-                            Reset chronicle filters
-                        </button>
+                        {/* Audit 3 §2.1: two identically-styled reset buttons whose
+                            scopes were distinguished only by a hover tooltip — which on
+                            a phone meant they were not distinguished at all. */}
+                        <Hint text="Units, sound and brakes back to defaults">
+                            <button className="btn btn-sm" onClick={() => resetPrefs()}>
+                                Reset preferences
+                            </button>
+                        </Hint>
+                        <Hint text="Chronicle mutes and reading density back to defaults (takes effect next run)">
+                            <button className="btn btn-sm" onClick={() => writeFilters({ ...DEFAULT_FILTERS })}>
+                                Reset chronicle filters
+                            </button>
+                        </Hint>
                     </div>
                     <p className="text-[10px] text-[var(--color-ink-500)]">
                         Your Panem record book (achievements, records, Hall of Fame) can be exported,

@@ -684,7 +684,6 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     aria-label={unlocked
                                         ? `${a.name}${selected ? ' — selected' : ''}`
                                         : 'Undiscovered arena — locked'}
-                                    title={unlocked ? undefined : 'Not discovered yet — reach it through a sealed draw'}
                                     className={`w-full text-left flex items-center justify-between gap-4 transition-colors ${
                                         selected
                                             ? 'bg-[var(--ink)] px-4 py-3.5'
@@ -840,9 +839,6 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                             ? `You are District ${d}'s patron — select to give the seat up`
                                             : `Become District ${d}'s patron for ${nextPatronCost} coins`}
                                         disabled={!held && (coins < nextPatronCost || patronDistricts.length >= PATRON_MAX_DISTRICTS)}
-                                        title={held
-                                            ? `You are District ${d}'s patron`
-                                            : `Become District ${d}'s patron (${nextPatronCost} coins)`}
                                         onClick={() => setPatronPending(patronPending === d ? null : d)}
                                     >
                                         D{d}

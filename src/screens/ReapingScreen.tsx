@@ -173,9 +173,17 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Audit 3 §2.7: the reaping square is the first screen of a run and
+                the cast is its whole content — twelve to sixteen district panels,
+                each holding a pair. Rendered as bare divs it read as one long
+                undifferentiated list; as a labelled list of labelled groups it
+                reads as the roster it is. */}
+            <ul
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 list-none p-0 m-0"
+                aria-label={`The reaped, by district — ${tributes.length} tributes across ${byDistrict.size} districts`}
+            >
                 {Array.from(byDistrict.entries()).sort((a, b) => a[0] - b[0]).map(([district, pair]) => (
-                    <div key={district} className="panel p-4 space-y-2.5 animate-riseIn">
+                    <li key={district} className="panel p-4 space-y-2.5 animate-riseIn" aria-label={`District ${district}`}>
                         <div className="flex items-baseline justify-between gap-2">
                             <h3 className="panel-title text-[var(--red)]">District {district}</h3>
                             <Explainer
@@ -223,9 +231,9 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                                 </div>
                             </div>
                         ))}
-                    </div>
+                    </li>
                 ))}
-            </div>
+            </ul>
         </div>
     );
 }

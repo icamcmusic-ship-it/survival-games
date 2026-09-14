@@ -37,6 +37,22 @@ function bondLabel(value: number): string {
 
 export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; gameState: GameState }) {
     const sworn = useMemo(() => new Set(tribute.memory?.vengeance ?? []), [tribute.memory]);
+    /**
+     * Audit 3 §2.6/§4.5: standing peace, drawn.
+     *
+     * Truces work — one is live on 10.8% of all tribute-cycles, across four
+     * well-spread reasons — the ledger balances exactly, and the whole thing
+     * was invisible. A reader looking at this graph could see that two tributes
+     * were hostile and had no way to learn that they had also agreed, for a
+     * named reason, not to fight about it yet. That agreement is frequently the
+     * most load-bearing fact on the board.
+     */
+    const truces = useMemo(() => new Map(
+        Object.entries(tribute.truces ?? {}).map(([id, until]) => [id, {
+            until,
+            reason: tribute.truceReason?.[id],
+        }] as const)
+    ), [tribute.truces, tribute.truceReason]);
 
     const links = useMemo(() => {
         const entries = Object.entries(tribute.relationships)
@@ -79,7 +95,7 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                 viewBox={`0 0 ${VIEW} ${VIEW}`}
                 className="w-full h-auto"
                 role="img"
-                aria-label={`Relationship map for ${tribute.name}: ${links.map(l => `${l.other.name} ${bondLabel(l.value)} (${l.value > 0 ? '+' : ''}${l.value})`).join('; ')}.`}
+                aria-label={`Relationship map for ${tribute.name}: ${links.map(l => `${l.other.name} ${bondLabel(l.value)} (${l.value > 0 ? '+' : ''}${l.value})${truces.has(l.other.id) ? ', truce standing' : ''}`).join('; ')}.`}
             >
                 {/* Alliance hull: a ring binding everyone currently in the pack with
                     the subject, so a group reads as a group and not as N separate lines. */}
@@ -114,7 +130,9 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                         <g key={link.other.id}>
                             <title>
                                 {`${link.other.name} (District ${link.other.district}) — ${bondLabel(link.value)}, ${link.value > 0 ? '+' : ''}${link.value}` +
-                                    `${sworn.has(link.other.id) ? ', sworn to kill' : ''}${dead ? ', deceased' : ''}`}
+                                    `${sworn.has(link.other.id) ? ', sworn to kill' : ''}` +
+                                    `${truces.has(link.other.id) ? `, truce standing${truces.get(link.other.id)?.reason ? ` (${truces.get(link.other.id)!.reason})` : ''}` : ''}` +
+                                    `${dead ? ', deceased' : ''}`}
                             </title>
                             <circle
                                 cx={link.x} cy={link.y} r={15}
@@ -137,6 +155,18 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                                     textAnchor="middle"
                                     style={{ fontSize: 11 }}
                                 >⚔</text>
+                            )}
+                            {/* A standing truce, drawn on the ring itself: the bond
+                                colour says what they feel, this says what they agreed. */}
+                            {truces.has(link.other.id) && !dead && (
+                                <circle
+                                    cx={link.x} cy={link.y} r={19}
+                                    fill="none"
+                                    stroke="var(--cat-alliance)"
+                                    strokeWidth={1.5}
+                                    strokeDasharray="2 3"
+                                    opacity={0.9}
+                                />
                             )}
                             <text
                                 x={link.x} y={link.y + 26}
@@ -169,7 +199,7 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                         {band}
                     </span>
                 ))}
-                <span className="text-[var(--color-ink-500)]">⚔ sworn · dashed ring = alliance · faded = dead</span>
+                <span className="text-[var(--color-ink-500)]">⚔ sworn · dotted halo = truce standing · dashed hull = alliance · faded = dead</span>
             </div>
         </div>
     );

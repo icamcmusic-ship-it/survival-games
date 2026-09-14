@@ -21,22 +21,30 @@ export function VictorInterviewScreen({ gameState, onProceed }: { gameState: Gam
                 </p>
             </div>
 
+            {/* Audit 3 §2.7: the last screen of a run carried a single
+                `aria-hidden` and nothing else. A transcript is a structured
+                thing — an ordered exchange between two named speakers — and it
+                was rendered as unlabelled divs, so a screen reader got the
+                words in the right order and no indication of who was talking. */}
             <div className="panel p-6 md:p-8 space-y-7">
-                <div className="space-y-6">
+                <ol className="space-y-6 list-none p-0 m-0" aria-label="Transcript of the victor's interview">
                     {interview.map((qa, idx) => (
-                        <div key={idx} className="space-y-3 border-b border-[var(--color-ink-800)] pb-5 last:border-0 last:pb-0">
+                        <li key={idx} className="space-y-3 border-b border-[var(--color-ink-800)] pb-5 last:border-0 last:pb-0">
                             <div className="flex gap-3 text-sm">
                                 <span className="eyebrow text-[var(--color-blood-400)] flex-none pt-0.5">Caesar</span>
-                                <p className="text-[var(--color-ink-300)] italic">{strip(qa.question)}</p>
+                                <p className="text-[var(--color-ink-300)] italic"><span className="sr-only">Caesar asks: </span>{strip(qa.question)}</p>
                             </div>
                             <div className="flex gap-3 text-sm pl-4 border-l-2 border-[var(--color-gold-500)]">
                                 <span className="eyebrow text-[var(--color-gold-400)] flex-none pt-0.5">Victor</span>
-                                <p className="text-[var(--ink)] font-medium">{strip(qa.answer)}</p>
+                                <p className="text-[var(--ink)] font-medium">
+                                    <span className="sr-only">{winner ? `${winner.name} answers: ` : 'The victor answers: '}</span>
+                                    {strip(qa.answer)}
+                                </p>
                             </div>
-                        </div>
+                        </li>
                     ))}
-                    {interview.length === 0 && <div className="empty-state">The stage remains quiet.</div>}
-                </div>
+                    {interview.length === 0 && <li className="empty-state">The stage remains quiet.</li>}
+                </ol>
 
                 <div className="pt-5 border-t border-[var(--color-ink-800)] flex justify-end">
                     <button onClick={onProceed} className="btn btn-gold">

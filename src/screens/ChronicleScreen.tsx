@@ -98,7 +98,6 @@ function CopyPageLink({ page }: { page: Page }) {
             type="button"
             className="btn btn-sm btn-ghost text-[11px]"
             aria-label={`Copy a link to ${page.label}`}
-            title="Copy a link straight to this page of the chronicle"
             onClick={() => {
                 navigator.clipboard?.writeText(url).then(() => setState('ok')).catch(() => setState('fail'));
             }}
@@ -401,7 +400,6 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                                     onClick={() => setPageIndex(i)}
                                     aria-current={i === clamped ? 'true' : undefined}
                                     aria-label={p.label}
-                                    title={p.label}
                                     className="w-2.5 h-5 border border-[var(--color-ink-700)]"
                                     style={{
                                         background: i === clamped ? 'var(--red)'

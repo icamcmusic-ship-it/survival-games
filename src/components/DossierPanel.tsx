@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Hint } from './Hint';
 import { GameState, Tribute } from '../models/types';
 import {
     Brain, Heart, MapPin, Settings, Skull, Star, Swords, TrendingDown, TrendingUp, Minus, Users,
@@ -292,7 +293,6 @@ export function DossierPanel({
                                             <button
                                                 aria-pressed={followedId === t.id}
                                                 aria-label={followedId === t.id ? `Stop following ${t.name}` : `Follow ${t.name}`}
-                                                title={followedId === t.id ? 'Following — click to stop' : 'Follow this tribute'}
                                                 onClick={() => setChronicle({ followedId: followedId === t.id ? null : t.id })}
                                             >
                                                 <Star className={`w-3.5 h-3.5 ${followedId === t.id ? 'text-[var(--red)] fill-[var(--red)]' : 'text-[var(--color-ink-600)]'}`} />
@@ -441,62 +441,74 @@ export function DossierPanel({
                                 ] as const).map(([type, label, base, tip]) => {
                                     const { cost, disabled, title } = leverState(type, base, tip);
                                     return (
-                                    <button
-                                        key={type}
-                                        onClick={() => spendGamemaker(type, gmZone || undefined)}
-                                        className="btn btn-sm w-full"
-                                        disabled={disabled}
-                                        title={title}
-                                    >
-                                        {label} <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{cost}</span>
-                                    </button>
+                                    // Audit 3 §2.1: these buttons read "Ignite 40" and "Cut route
+                                    // 60", and what they actually do to the arena lived in a hover
+                                    // tooltip — so on a phone the Gamemaker was spending coins on
+                                    // levers with no stated effect.
+                                    <Hint key={type} className="w-full" text={title}>
+                                        <button
+                                            onClick={() => spendGamemaker(type, gmZone || undefined)}
+                                            className="btn btn-sm w-full"
+                                            disabled={disabled}
+                                        >
+                                            {label} <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{cost}</span>
+                                        </button>
+                                    </Hint>
                                     );
                                 })}
                             </div>
-                            <button
-                                onClick={() => spendGamemaker('drop')}
-                                className="btn btn-sm w-full"
-                                disabled={leverState('drop', GAMEMAKER_COSTS.drop, 'Restock the Cornucopia with a supply drop').disabled}
-                                title={leverState('drop', GAMEMAKER_COSTS.drop, 'Restock the Cornucopia with a supply drop').title}
-                            >
-                                Supply drop <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('drop', GAMEMAKER_COSTS.drop)}</span>
-                            </button>
-                            <button
-                                onClick={() => spendGamemaker('strip', gmZone || undefined)}
-                                className="btn btn-sm w-full"
-                                disabled={leverState('strip', GAMEMAKER_COSTS.strip, "Strip the zone's forage — nothing edible left in it for days").disabled}
-                                title={leverState('strip', GAMEMAKER_COSTS.strip, "Strip the zone's forage — nothing edible left in it for days").title}
-                            >
-                                Strip zone <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('strip', GAMEMAKER_COSTS.strip)}</span>
-                            </button>
+                            <Hint className="w-full" text={leverState('drop', GAMEMAKER_COSTS.drop, 'Restock the Cornucopia with a supply drop').title}>
+                                <button
+                                    onClick={() => spendGamemaker('drop')}
+                                    className="btn btn-sm w-full"
+                                    disabled={leverState('drop', GAMEMAKER_COSTS.drop, 'Restock the Cornucopia with a supply drop').disabled}
+                                >
+                                    Supply drop <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('drop', GAMEMAKER_COSTS.drop)}</span>
+                                </button>
+                            </Hint>
+                            <Hint className="w-full" text={leverState('strip', GAMEMAKER_COSTS.strip, "Strip the zone's forage — nothing edible left in it for days").title}>
+                                <button
+                                    onClick={() => spendGamemaker('strip', gmZone || undefined)}
+                                    className="btn btn-sm w-full"
+                                    disabled={leverState('strip', GAMEMAKER_COSTS.strip, "Strip the zone's forage — nothing edible left in it for days").disabled}
+                                >
+                                    Strip zone <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('strip', GAMEMAKER_COSTS.strip)}</span>
+                                </button>
+                            </Hint>
                             <div className="grid grid-cols-2 gap-1.5">
-                                <button
-                                    onClick={() => spendGamemaker('mercy', muttTargetId || undefined)}
-                                    className="btn btn-sm w-full"
-                                    disabled={leverState('mercy', GAMEMAKER_COSTS.mercy, 'Send an unrequested medical parachute to the selected tribute (or the most hurt) — and let the whole field see who you favour').disabled}
-                                    title={leverState('mercy', GAMEMAKER_COSTS.mercy, 'Send an unrequested medical parachute to the selected tribute (or the most hurt) — and let the whole field see who you favour').title}
-                                >
-                                    Mercy <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('mercy', GAMEMAKER_COSTS.mercy)}</span>
-                                </button>
-                                <button
-                                    onClick={() => spendGamemaker('reveal', muttTargetId || undefined)}
-                                    className="btn btn-sm w-full"
-                                    disabled={leverState('reveal', GAMEMAKER_COSTS.reveal, 'Put the selected tribute (or the best hidden one) on every screen in the arena').disabled}
-                                    title={leverState('reveal', GAMEMAKER_COSTS.reveal, 'Put the selected tribute (or the best hidden one) on every screen in the arena').title}
-                                >
-                                    Reveal <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('reveal', GAMEMAKER_COSTS.reveal)}</span>
-                                </button>
+                                <Hint className="w-full" text={leverState('mercy', GAMEMAKER_COSTS.mercy, 'Send an unrequested medical parachute to the selected tribute (or the most hurt) — and let the whole field see who you favour').title}>
+                                    <button
+                                        onClick={() => spendGamemaker('mercy', muttTargetId || undefined)}
+                                        className="btn btn-sm w-full"
+                                        disabled={leverState('mercy', GAMEMAKER_COSTS.mercy, 'Send an unrequested medical parachute to the selected tribute (or the most hurt) — and let the whole field see who you favour').disabled}
+                                    >
+                                        Mercy <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('mercy', GAMEMAKER_COSTS.mercy)}</span>
+                                    </button>
+                                </Hint>
+                                <Hint align="right" className="w-full" text={leverState('reveal', GAMEMAKER_COSTS.reveal, 'Put the selected tribute (or the best hidden one) on every screen in the arena').title}>
+                                    <button
+                                        onClick={() => spendGamemaker('reveal', muttTargetId || undefined)}
+                                        className="btn btn-sm w-full"
+                                        disabled={leverState('reveal', GAMEMAKER_COSTS.reveal, 'Put the selected tribute (or the best hidden one) on every screen in the arena').disabled}
+                                    >
+                                        Reveal <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('reveal', GAMEMAKER_COSTS.reveal)}</span>
+                                    </button>
+                                </Hint>
                             </div>
-                            <button
-                                onClick={() => spendGamemaker('bounty', muttTargetId || undefined)}
-                                className="btn btn-sm w-full"
-                                disabled={leverState('bounty', GAMEMAKER_COSTS.bounty, '').disabled || !!gameState.bountyTargetId}
-                                title={gameState.bountyTargetId
+                            <Hint
+                                className="w-full"
+                                text={gameState.bountyTargetId
                                     ? 'A bounty already stands'
                                     : leverState('bounty', GAMEMAKER_COSTS.bounty, 'Place a bounty and point the whole field at them').title}
                             >
-                                Place bounty <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('bounty', GAMEMAKER_COSTS.bounty)}</span>
-                            </button>
+                                <button
+                                    onClick={() => spendGamemaker('bounty', muttTargetId || undefined)}
+                                    className="btn btn-sm w-full"
+                                    disabled={leverState('bounty', GAMEMAKER_COSTS.bounty, '').disabled || !!gameState.bountyTargetId}
+                                >
+                                    Place bounty <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('bounty', GAMEMAKER_COSTS.bounty)}</span>
+                                </button>
+                            </Hint>
                         </div>
                     </div>
                 </Section>
@@ -521,13 +533,14 @@ export function DossierPanel({
                                         {t.status === 'dead' ? 'lost' : live ? `now ${live.mult.toFixed(1)}×` : ''}
                                     </span>
                                     {t.status === 'alive' && live && (
-                                        <button
-                                            className="btn btn-sm btn-ghost flex-none -my-1"
-                                            title={`Cash out now at the current price (${live.pct}% implied)`}
-                                            onClick={() => gameActions.cashOutBet(t.id)}
-                                        >
-                                            Cash out
-                                        </button>
+                                        <Hint align="right" text={`Cash out now at the current price (${live.pct}% implied)`}>
+                                            <button
+                                                className="btn btn-sm btn-ghost flex-none -my-1"
+                                                onClick={() => gameActions.cashOutBet(t.id)}
+                                            >
+                                                Cash out
+                                            </button>
+                                        </Hint>
                                     )}
                                 </div>
                             );

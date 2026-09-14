@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Hint } from '../components/Hint';
 import { EventCategory, GameState, Phase } from '../models/types';
 import { ArenaMap } from '../components/ArenaMap';
 import { ZoneDossier } from '../components/ZoneDossier';
@@ -795,43 +796,47 @@ export function GameScreen({
                                             ['scenes', 'Scenes', 'Headlines plus combat, mutts, hazards and sponsors'],
                                             ['everything', 'Everything', 'Every logged line, with the quiet moments folded per phase'],
                                         ] as const).map(([id, label, tip]) => (
-                                            <button
-                                                key={id}
-                                                onClick={() => setChronicle({ density: id })}
-                                                aria-pressed={filters.density === id}
-                                                className="seg-item"
-                                                title={tip}
-                                            >
-                                                {label}
-                                            </button>
+                                            <Hint key={id} text={tip}>
+                                                <button
+                                                    onClick={() => setChronicle({ density: id })}
+                                                    aria-pressed={filters.density === id}
+                                                    className="seg-item"
+                                                >
+                                                    {label}
+                                                </button>
+                                            </Hint>
                                         ))}
                                     </div>
                                 )}
-                                <a
-                                    href={`#${pathForView('chronicle')}`}
-                                    onClick={() => gameActions.setView('chronicle')}
-                                    className="seg-item no-underline"
-                                    title="Open the chronicle as a full page, one phase at a time"
-                                >
-                                    Full page ↗
-                                </a>
-                                <button
-                                    onClick={() => setShowFilters(v => !v)}
-                                    aria-pressed={showFilters}
-                                    className="seg-item"
-                                    title="Toggle filters (F)"
-                                >
-                                    <Filter className="w-3 h-3 inline mr-1" /> Filters
-                                    {filtersActive(filters) && <span className="ml-1 text-[var(--red)]">•</span>}
-                                </button>
-                                <button
-                                    onClick={() => setShowHelp(true)}
-                                    className="seg-item"
-                                    title="Keyboard shortcuts and what the panels mean (?)"
-                                    aria-haspopup="dialog"
-                                >
-                                    ?
-                                </button>
+                                <Hint text="Open the chronicle as a full page, one phase at a time">
+                                    <a
+                                        href={`#${pathForView('chronicle')}`}
+                                        onClick={() => gameActions.setView('chronicle')}
+                                        className="seg-item no-underline"
+                                    >
+                                        Full page ↗
+                                    </a>
+                                </Hint>
+                                <Hint text="Toggle filters (F)">
+                                    <button
+                                        onClick={() => setShowFilters(v => !v)}
+                                        aria-pressed={showFilters}
+                                        className="seg-item"
+                                    >
+                                        <Filter className="w-3 h-3 inline mr-1" /> Filters
+                                        {filtersActive(filters) && <span className="ml-1 text-[var(--red)]">•</span>}
+                                    </button>
+                                </Hint>
+                                <Hint align="right" text="Keyboard shortcuts and what the panels mean (?)">
+                                    <button
+                                        onClick={() => setShowHelp(true)}
+                                        className="seg-item"
+                                        aria-label="Help"
+                                        aria-haspopup="dialog"
+                                    >
+                                        ?
+                                    </button>
+                                </Hint>
                             </div>
                         </div>
 
@@ -854,6 +859,7 @@ export function GameScreen({
                             <span className="chip chip-accent inline-flex items-center gap-1">
                                 <Star className="w-3 h-3" aria-hidden="true" />
                                 Following {followed.name}{followed.status === 'dead' ? ' †' : ''}
+                                <Hint text="Filter the chronicle to their story">
                                 <button
                                     className="underline ml-1"
                                     onClick={() => {
@@ -861,10 +867,10 @@ export function GameScreen({
                                         setStageTab('chronicle');
                                         setMobilePane('chronicle');
                                     }}
-                                    title="Filter the chronicle to their story"
                                 >
                                     story
                                 </button>
+                                </Hint>
                                 <button
                                     className="underline ml-1"
                                     onClick={() => setChronicle({ followedId: null })}

@@ -316,13 +316,22 @@ Tab escaping the command palette is the specific one a keyboard-only player will
 hit within a minute: open palette, press Tab, and focus lands somewhere behind
 the scrim with the palette still covering it.
 
-### 2.4 `prefers-reduced-motion` is honoured in two places, not globally
+### 2.4 Withdrawn — reduced motion is already honoured globally
 
-`EventFeed.tsx` checks it for the day-jump smooth scroll; `index.css` and
-`prefsStore.ts` reference it. The project depends on `motion` (Framer Motion
-v12) and nothing in `src/components` gates a `motion.*` animation on the
-preference. The feed's new-entry animation, which replays on every advance, is
-the one that matters most for a player who set that preference.
+**Correction, made during the fix pass.** This section claimed the preference
+was honoured in two places rather than globally, on the grounds that the project
+depends on `motion` (Framer Motion v12) and nothing gates a `motion.*` animation
+on it.
+
+Nothing gates a `motion.*` animation because there are none: every animation in
+the interface is CSS, and `index.css`'s `@media (prefers-reduced-motion: reduce)`
+block carries a `*, *::before, *::after` rule that zeroes every animation
+duration, iteration count and transition in the document. The coverage is
+complete, and `PlaybackPopover` additionally offers the same thing as an in-app
+toggle for readers whose OS preference is not set.
+
+What was actually there is smaller and was fixed: `motion` is an unused
+dependency. It is no longer in `package.json`.
 
 ### 2.5 The feed's "show earlier entries" is still all-or-nothing
 
@@ -341,24 +350,35 @@ Each of these is live state with no surface:
 |---|---|---|
 | `structuralFatigue` (1,054/1,641 samples) | when zones collapse | a gauge on `ArenaMap` |
 | `weatherFront` (570 samples) | the coming hazard | an indicator on `BroadcastBar` |
-| `zoneDepletion` (1,518 samples) | whether foraging pays | shading on `ArenaMap` |
+| ~~`zoneDepletion`~~ | *already shown by `ZoneDossier`* | — |
 | `climateDrift` (820 samples) | the arena's slow turn | the arena briefing |
-| `audienceInterest` / `excitementFlatCycles` | when Gamemakers intervene | `BroadcastBar` |
+| ~~`audienceInterest`~~ | *already shown by `DossierPanel`* | — |
 | `truceLedger` (1,011 samples) | who owes whom peace | `RelationshipGraph` |
-| `rumours` (63/132 runs) | what tributes wrongly believe | `ZoneDossier` |
-| `sponsorBlocBudgets` (1,303 samples) | who can still afford you | the sponsor panel |
+| ~~`rumours`~~ | *already shown by `TributeModal`* | — |
+| ~~`sponsorBlocBudgets`~~ | *already shown by `DossierPanel`* | — |
 
-`AUDIT-2` raised the first two and the fix pass did not reach them. The
-`zoneDepletion` one is the highest value of the eight: the soak measures p50
-depletion 0.19 and p90 0.71, so the map has real, legible variation the player
-is never shown.
+**Corrected during the fix pass.** Four of the eight rows above were wrong: the
+grep behind them looked for the state key by name, and `ZoneDossier`,
+`DossierPanel` and `TributeModal` already render depletion, audience interest,
+rumours and bloc budgets. The four that were genuinely unsurfaced anywhere in
+`src/components` or `src/screens` are `structuralFatigue`, `weatherFront`,
+`climateDrift` and `truceLedger`, and those are the four the fix pass added.
+
+The weather front is the most valuable of them, and not because it is the most
+frequent: it is the one hazard in the game with a *position*, which moves a zone
+or two a cycle and can be walked away from. A hazard the player cannot see is
+not a decision; it is an accident that happens to them.
 
 ### 2.7 Smaller items
 
 - `ReapingScreen` and `VictorInterviewScreen` have **zero** `useMemo`/
   `useCallback` and one aria attribute each; they are the two screens a player
   sees first and last.
-- 4 `onClick` handlers on `<div>` elements — keyboard-unreachable by default.
+- ~~4 `onClick` handlers on `<div>` elements — keyboard-unreachable by default.~~
+  **Withdrawn during the fix pass:** all four are `e.stopPropagation()` guards
+  on a dialog's own panel, stopping a click inside the panel from reaching the
+  scrim's dismiss handler. They are not controls and there is nothing for a
+  keyboard to reach.
 - The settings "reset" buttons (lines 171, 178) explain their scope only in
   `title`, so on touch two identically-styled reset buttons are
   indistinguishable.

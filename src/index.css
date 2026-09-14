@@ -1095,3 +1095,52 @@ input[type="range"]:focus-visible {
         margin: 18mm 16mm;
     }
 }
+
+/* Audit 3 §2.1: the hint bubble behind `components/Hint.tsx`.
+   Always present in the DOM so `aria-describedby` resolves; revealed on hover
+   and on focus-within, which is the half a native `title` has never done.
+
+   Hidden state is the sr-only clip rather than `visibility: hidden`: an
+   absolutely-positioned box still contributes to the document's scroll width
+   even while invisible, and `width: max-content` on a long hint pushed the page
+   past the viewport at 380px. Clipped to a pixel, it contributes nothing, and
+   it is still in the accessibility tree for the description to resolve against. */
+.hint-bubble {
+    position: absolute;
+    top: 100%;
+    margin-top: 0.35rem;
+    z-index: 60;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.hint-wrap:hover > .hint-bubble,
+.hint-wrap:focus-within > .hint-bubble {
+    width: max-content;
+    height: auto;
+    /* Never wider than the screen it is being read on. */
+    max-width: min(16rem, calc(100vw - 2rem));
+    padding: 0.4rem 0.55rem;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+    border: 1px solid var(--line-soft);
+    border-radius: 0.25rem;
+    background: var(--paper);
+    color: var(--color-ink-300);
+    font-size: 11px;
+    line-height: 1.45;
+    font-weight: 400;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: normal;
+    box-shadow: var(--shadow-ink-sm);
+    opacity: 1;
+}
