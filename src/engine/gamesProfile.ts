@@ -4,7 +4,7 @@ import {
     CAST_SHAPES, CastShape, CastShapeId, GAMES_TEMPERAMENTS, GamesTemperament,
     Quell, QUELLS, Wildcard, WildcardDef, WILDCARDS, WildcardKind,
 } from '../data/gamesProfile';
-import { QUELL_MECHANICS } from '../data/balance';
+import { GAMES_PROFILE, QUELL_MECHANICS } from '../data/balance';
 
 /**
  * REPLAY-01: rolling a run's identity, once, from its seed.
@@ -67,7 +67,7 @@ function rollCastShape(rng: RNG, calendar: Wildcard[], quell?: Quell): CastShape
  * Games are not Quarter Quells. `force` (the Setup "Force a Quell" toggle)
  * skips the no-Quell gate but still rolls deterministically from the seed.
  */
-const NO_QUELL_WEIGHT = 600;
+const NO_QUELL_WEIGHT = GAMES_PROFILE.noQuellWeight;
 function drawQuell(rng: RNG, force: boolean): Quell | undefined {
     const questTotal = QUELLS.reduce((sum, q) => sum + q.weight, 0);
     if (!force && rng.nextFloat() * (questTotal + NO_QUELL_WEIGHT) >= questTotal) return undefined;

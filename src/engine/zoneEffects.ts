@@ -1,6 +1,6 @@
 import { GameState, Terrain, Tribute, ZoneEffect, ZoneEffectKind } from '../models/types';
 import { injure, openWound } from './wounds';
-import { BLEEDING, ZONE_EFFECTS } from '../data/balance';
+import { BLEEDING, TERRAIN_DRYNESS as TERRAIN_DRYNESS_TABLE, ZONE_EFFECTS } from '../data/balance';
 import { SimContext } from './context';
 import { traitMod } from '../data/traits';
 import { applyDamage, checkDeath } from './combat';
@@ -434,11 +434,7 @@ function arenaDryness(ctx: SimContext): number {
 }
 
 /** §5.8: per-terrain fuel: dry scrub and timber carry a fire; a marsh resists it. */
-const TERRAIN_DRYNESS: Partial<Record<Terrain, number>> = {
-    forest: 1.15,
-    open: 1.0,
-    wetland: 0.55,
-};
+const TERRAIN_DRYNESS: Partial<Record<Terrain, number>> = TERRAIN_DRYNESS_TABLE;
 
 /**
  * Fire catching on an adjacent zone whose terrain can actually burn.

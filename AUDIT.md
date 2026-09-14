@@ -200,7 +200,14 @@ Ordered by severity. All are confirmed by reading the current tree.
 
 ### Knob-discipline drift (the `test:undeclared-knobs` blind spot)
 
-`mentors.ts:41-77` holds an entire subsystem's balance table — `MENTOR_GENEROSITY`,
+**Fixed in the commit that follows this file.** `check-undeclared-knobs.ts` now looks
+for a fourth shape — a `const` in the engine bound to a number or to a record of
+numbers — and the thirteen sites it found are migrated into `data/balance.ts` as
+`MENTORS`, `WOUND_RECOVERY`, `TERRAIN_DRYNESS`, `GAMES_PROFILE.noQuellWeight` and two
+`ZONES` entries, with two genuine one-offs annotated `balance-exempt`. The original
+finding, for the record:
+
+`mentors.ts:41-77` held an entire subsystem's balance table — `MENTOR_GENEROSITY`,
 `MENTOR_PULL`, `MENTOR_TRUST_FLOOR = 34`, `MENTOR_TRUST_COST = 13`,
 `MENTOR_EXCITEMENT_COST = 18`, `MENTOR_REPEAT_DECAY = 0.5`, plus `urgentNeed`'s
 `35/72/82/60` (`:115-118`) — outside `data/balance.ts`. The check looks for literals
@@ -208,9 +215,9 @@ passed to `chance()`, on the right of `+=`, or beside a comparison; **an exporte
 `const` record matches none of those shapes.** Same class: `wounds.ts:89-99`
 (`RECOVERY_CYCLES`, eight tunables). Plus inline literals at `dayNight.ts:1159`,
 `memory.ts:193` and `:477`, `resolve.ts:220`, `combat.ts:435-446` and `:566-570`,
-`objectives.ts:170-180`, `encounters.ts:622`. **Recommended fix: extend
-`check-undeclared-knobs.ts` to a fourth shape — a numeric-valued exported `const`
-record in `src/engine/` — then migrate these.**
+`objectives.ts:170-180`, `encounters.ts:622`. (This is why `test:knobs` could report "all 2,050 knobs referenced" while a sixth of a
+subsystem's tuning lived somewhere else entirely: the check can only prove the knobs it
+can see.)
 
 ---
 
