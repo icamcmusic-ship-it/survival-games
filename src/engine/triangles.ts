@@ -161,10 +161,16 @@ export function tickTriangles(ctx: SimContext) {
         const apex = byId.get(tri.apexId);
         const a = byId.get(tri.aId);
         const b = byId.get(tri.bId);
-        // The arena resolves most of these itself.
-        if (!apex || !a || !b) return false;
-        if (apex.status !== 'alive' || a.status !== 'alive' || b.status !== 'alive') return false;
-        if (tri.resolved) return true;
+        // The arena resolves most of these itself — but *ending* one is not the
+        // same as never having had it. Audit 3 §6: this returned false, which
+        // dropped the triangle out of the array entirely, and a Games ends with
+        // one tribute alive, so the record was guaranteed to be empty by the
+        // time anything read it. Marked and kept; the tick below skips it.
+        if (!apex || !a || !b || apex.status !== 'alive' || a.status !== 'alive' || b.status !== 'alive') {
+            if (!tri.endedBy) tri.endedBy = 'death';
+            return true;
+        }
+        if (tri.resolved || tri.endedBy) return true;
 
         const gain = heatOf(ctx, apex, a, b);
         if (gain <= 0) {
@@ -220,6 +226,7 @@ function resolveChoice(ctx: SimContext, tri: LoveTriangle, byId: Map<string, Tri
     if ([apex, a, b].some(t => t.status !== 'alive')) return;
 
     tri.resolved = true;
+    tri.endedBy = 'choice';
     // They choose whoever they are actually warmer to. A declared
     // Star-Crossed bond outweighs anything unspoken, which is what
     // declaring it is for.

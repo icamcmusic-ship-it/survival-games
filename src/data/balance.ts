@@ -4133,7 +4133,21 @@ export const ALLIANCES = {
      * for a full 24-tribute field and the anchor for the charter's
      * split-at-eight clause.
      */
-    pactChanceAtAll: 0.6,
+    /**
+     * Audit 3 §4.2: odds a newly formed group agrees *anything* about its own
+     * ending.
+     *
+     * At 0.6, with the fall-through cases on top, the modal alliance was the
+     * one that swore nothing — 48% of 2,779 sampled alliances carried
+     * `no-pact`. A pact is the only thing that gives a group a scheduled
+     * ending to dread, and the telegraphed betrayal this module's own header
+     * calls "one of the best things the alliance layer can produce" was
+     * unavailable to half of them by construction.
+     *
+     * At 0.82 a group that agrees nothing is a deliberate minority — the pair
+     * who fell in together and never discussed it — rather than the default.
+     */
+    pactChanceAtAll: 0.82,
     pactKindWeights: {
         'until-field': 8,
         'to-the-end': 6,

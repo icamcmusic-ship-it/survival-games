@@ -262,17 +262,26 @@ the arrangement as though it meant something. See §4.3.
 - **`Trapwise` holds 7 entrants across 120 runs with a 0% win rate.** It was
   fixed last pass (from never granted to granted); it is now granted so rarely
   that it cannot be balanced or observed. Not the same bug, but the same trait.
-- **`itemQualities` reads `undefined` on 583 of 1,513 sampled inventory items.**
-  `Item.quality` is `'crude' | 'standard' | 'fine'` and is optional; 38% of
-  items in the field carry no quality at all. Whether that is "unqualified
-  consumables" or an unset field on weapons is worth one grep — the dossier and
-  the compare view both render quality.
+- ~~**`itemQualities` reads `undefined` on 583 of 1,513 sampled inventory
+  items.**~~ **Withdrawn during the fix pass.** `items.ts:90` assigns quality to
+  weapons and armour only, deliberately: there is no crude or fine waterskin.
+  The 38% is food, water, medical and utility, which is what it should be.
 - **`state.victorIds` was populated on 2 of 1,641 state-samples** (the dual
-  victories). Single-victor runs never write it. Any consumer that reads
-  `victorIds` rather than "the one alive tribute" is reading an empty field 99%
-  of the time.
-- **`loveTriangles` fired in 1 of 132 runs.** `src/engine/triangles.ts` is 
-  a system that effectively does not exist at the measured rate.
+  victories). Single-victor runs never write it, so it had no reader at all.
+  Fixed by giving it one: 'Two Crowns' (§11.3) is scored off it.
+- ~~**`loveTriangles` fired in 1 of 132 runs.**~~ **Corrected during the fix
+  pass, and it is the most instructive miss in this report.** The measurement
+  was taken from `state.loveTriangles` at the end of a run. `tickTriangles`
+  *deleted* a triangle the moment any of the three died — reasonable on the
+  mechanical grounds that there is nothing left to tick — and a Games ends with
+  one tribute alive, so the array was guaranteed to be empty by the time
+  anything read it. Six were live at once in a sampled run.
+
+  The system was working the whole time; the record was being destroyed. With
+  ended triangles marked rather than deleted, they are present in **79 of 100
+  runs**. The soak's own `triangles: formed=358` counter said so all along and
+  the probe did not read it — which is the same mistake, made by the auditor,
+  that §1.6 documents five achievements making.
 
 ---
 
@@ -450,14 +459,20 @@ nobody sees) or the taxonomy should admit it has five members.
 
 ### 3.4 Robustness: the specific fragilities
 
-- **Eleven unguarded `/ length` divisions** in the engine (`combat.ts:381`,
-  `items.ts:138`, `objectives.ts:171`, `gamemakerAgency.ts:326`,
-  `sideMarkets.ts:261, 289` among them). Several are guarded by the caller, but
-  `combat.ts:381` divides by `mates.length` and `items.ts:138` by `worn.length`
-  with no visible guard at the site. A zero-length array there is `NaN`
-  propagating into a relationship score or a damage split — which would not
-  crash, would not violate any soak invariant, and would silently produce a
-  tribute whose numbers stop meaning anything.
+- ~~**Eleven unguarded `/ length` divisions** in the engine.~~
+  **Withdrawn during the fix pass.** Every one of them is guarded, and in most
+  cases three lines above the division rather than at it: `combat.ts:381` has
+  `if (mates.length === 0) return 1`, `items.ts:138` has
+  `if (worn.length === 0) return`, `objectives.ts:171` has
+  `if (field.length === 0) return 1`, `gamemakerAgency.ts:326` iterates a map
+  whose values are non-empty by construction, `intent.ts:151` returns early and
+  then floors the divisor at 1 anyway, and `movement.ts:188` tests
+  `ranked.length <= 1` inline. The finding was produced by grepping for the
+  division and not reading the function around it.
+
+  The two real ones were `sideMarkets.ts:261` and `:289`, and they are guarded
+  too — by `if (pool.length === 0) return undefined` at the top of
+  `priceSideBet`. Nothing to fix.
 - **No `Math.random` or `Date.now` anywhere in `src/engine` or `src/data`.**
   Determinism discipline is exemplary; that is worth stating.
 - Only 15 non-null assertions across the whole engine. Also good.
@@ -571,15 +586,24 @@ is populated on 1,011 of 1,641 state-samples, the soak asserts it balances
 exactly, and **the player is never shown it** (§2.6). A standing-peace overlay on
 the relationship graph is the whole feature.
 
-### 4.6 Loans are the thinnest relationship primitive
+### 4.6 Loans: a thin origination gate, and a badly chosen metric
 
 `loans` — the "you lent them your spare knife on Tuesday" grievance — is live on
-**2.2% of tribute-cycles**, against `debts` (the heavy version) at 529
-tribute-samples. The type comment argues, correctly, that the model needed
-something below a life-debt. What shipped sits so far below it that it is closer
-to absent than to light. Either an ally who is short a weapon should borrow one
-as a matter of course, or the primitive should be folded into `debts` at a low
-weight.
+**2.2% of tribute-cycles**.
+
+**Partly corrected during the fix pass.** That percentage is the wrong
+instrument: a loan is settled fast, so the share of cycles with one *standing*
+understates how often one is made. The soak's own counter reads
+`loans: made=301 returned=138 defaulted=11` per 400 runs — roughly one loan
+every run and a third, which is light rather than absent.
+
+The real finding underneath it survives: origination required the lender to be
+carrying a **second weapon**, and carrying two weapons at once is rare under the
+carry cap. The rule the code states is "only a genuine spare", and that is the
+right rule; what was too narrow is what counted as one. A lent waterskin that
+has not come back is exactly the small, specific grievance the field exists for
+— arguably more so than a blade, which gets handed back the moment there is a
+fight.
 
 ### 4.7 Bloc treaties are broken or unreachable
 
@@ -724,7 +748,7 @@ runs (probe C) unless noted:
 | Sponsor bloc budgets | 1,303 samples | healthy, invisible (§2.6) |
 | Wildcards | 5 distinct fired, 263 firings | see below |
 | Traps live at run end | 8/132 runs | see §1.2 |
-| Love triangles | **1/132 runs** | effectively absent |
+| Love triangles | **1/132 runs** | *measurement wrong — see §6.5* |
 | Bloc treaties | **0/132 runs** | broken (§4.7) |
 | Legendary items | **0 observed in inventories** | see below |
 
@@ -746,6 +770,31 @@ cycle across 100 runs and found **no item flagged legendary**. Two readings are
 possible and both need checking: either the flag lives under a field name the
 probe did not guess, or a weapon that earns a name never actually gets one. 28
 authored flavour lines are riding on the answer.
+
+### 6.5 Correction: love triangles, and the instrument that missed them
+
+**Made during the fix pass, and the most instructive miss in this report.**
+
+The 1-in-132 figure above came from reading `state.loveTriangles` at the end of
+a run. `tickTriangles` *deleted* a triangle the moment any of the three died —
+reasonable on the mechanical grounds that there is nothing left to tick — and a
+Games ends with exactly one tribute alive. The array was guaranteed to be empty
+by the time anything read it. Six were live at once in a sampled run.
+
+The system was working the whole time. The record was being destroyed. With
+ended triangles marked (`endedBy: 'choice' | 'death'`) rather than removed,
+triangles are present in **79 of 100 runs**, 149 of them, 28 resolved by a
+forced choice.
+
+Two things are worth saying about this plainly:
+
+- It is the same bug as §1.6 and §4.7 — live state pruned before anything could
+  read it — and this report found that pattern five times in the achievement
+  table and once in the treaty layer without noticing it here.
+- The soak's own output carries the line `triangles: formed=358` and has for
+  some time. The probe did not read it. An audit that writes its own instrument
+  and does not check it against the instrument the repository already has is
+  making exactly the mistake it is documenting.
 
 ### 6.3 Quells and temperaments are in good shape
 
@@ -1104,7 +1153,7 @@ surface is a fraction of its designed one:
 | Alliance pacts | 6 kinds | modal kind is `no-pact` at 46% (§4.2) |
 | Objectives | 8 kinds | 3 kinds are 5.8% combined (§3.3) |
 | Zone effects | 10 kinds | top one is 34%, positive one is 3% (§5.3) |
-| Love triangles | a system | 1 run in 132 (§6) |
+| Love triangles | a system | the *record* was deleted (§6) |
 | Bloc treaties | a system | 0 runs in 132 (§4.7) |
 | Legendary items | named weapons, 28 lines | not observed (§6.2) |
 | Loans | a light grievance | 2.2% of tribute-cycles (§4.6) |

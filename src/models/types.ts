@@ -2134,6 +2134,19 @@ export interface GameState {
         heat: number;
         /** Set once the apex has been made to choose. */
         resolved?: boolean;
+        /**
+         * Audit 3 §6/§10.1: how it stopped being a live triangle.
+         *
+         * `tickTriangles` used to *delete* a triangle the moment any of the
+         * three died, on the reasonable mechanical grounds that there is
+         * nothing left to tick. But a Games ends with one tribute alive, so
+         * every triangle that ever formed was erased before anybody could read
+         * the record: four were live at once in a sampled run and one survived
+         * to the end across 80 runs, which is why the whole subsystem measured
+         * as "happens in 1 run in 132" when it actually happens far more often.
+         * Ended, not deleted.
+         */
+        endedBy?: 'choice' | 'death';
     }>;
     /**
      * §4.1: standing non-aggression between two whole alliances.
