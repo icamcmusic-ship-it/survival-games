@@ -1,5 +1,6 @@
 import { SimContext, getAlive } from './context';
 import { profOf } from './proficiency';
+import { isSeptic } from './infection';
 import { ITEMS } from '../data/constants';
 import { COMPOSURE, GIFT_NEED, QUELL_MECHANICS, SPONSORS, SPONSOR_MARKET, PROFICIENCY } from '../data/balance';
 import { composureOf } from './composure';
@@ -80,6 +81,17 @@ export function needWeight(t: Tribute, item: Item): number {
     if (item.type === 'food') weight += t.vitals.hunger / GIFT_NEED.hungerDivisor;
     if (item.type === 'medical') {
         if (t.injuries.bleeding || t.injuries.infected) weight += GIFT_NEED.bleedingOrInfected;
+        // Audit 3 §1.6/§10.1: somebody visibly dying of sepsis is the most
+        // parachute-worthy thing that happens in a Games, and the crowd had no
+        // way to tell them apart from anyone with a scratch — `injuries.infected`
+        // is one flag for all three grades.
+        //
+        // Terminal sepsis is the ending the whole infection arc exists to
+        // reach, and beating it was written as an achievement and measured at
+        // ten tribute-samples in 12,083: a tribute who has got that far has
+        // spent every medical item they had getting there, so the treatment
+        // path existed and nobody could afford to walk it.
+        if (isSeptic(t)) weight += GIFT_NEED.septic;
         if (t.injuries.poisoned && item.id === 'antidote') weight += GIFT_NEED.matchedAntidote;
         if (t.injuries.burned && item.id === 'ointment') weight += GIFT_NEED.matchedOintment;
         weight += Math.max(0, (GIFT_NEED.woundedBelowHealth - t.health) / GIFT_NEED.woundedPerTenHealth);

@@ -1986,6 +1986,27 @@ export interface GameState {
      * say for a cycle or two after it did.
      */
     lastRestockCycle?: number;
+    /**
+     * Audit 3 §1.6: high-water marks for state that does not survive to the end
+     * of a run, written by `tickRunRecords` and read by the achievement table.
+     *
+     * The table is evaluated once, against the final state. Rumours expire and
+     * are pruned; alliances belong to the dead; sponsor purses are only
+     * meaningful against what they opened with. Five achievements were asking
+     * the wreckage and never unlocked once in 200 runs.
+     */
+    /** Most planted claims in circulation at one time. */
+    maxPlantedInCirculation?: number;
+    /** A planted lie was walked to and found out by somebody. */
+    plantedRumourExposed?: boolean;
+    /** Tributes whose planted lie was, at some point, still standing and still believed. */
+    liarsAtLarge?: string[];
+    /** The most clauses any charter sworn this run carried. */
+    deepestCharter?: number;
+    /** Each bloc's purse the first cycle it was seen, so "spent" has a baseline. */
+    openingBlocBudgets?: Record<string, number>;
+    /** Every sponsor bloc was, at some point, down to a fraction of its opening purse. */
+    everySponsorBlocExhausted?: boolean;
     /** Persistent mutts currently hunting a specific tribute. See `ActiveMutt`. */
     activeMutts?: ActiveMutt[];
     /** Zones a cannon fired in this cycle, with the cycle it happened — reads as "just now" only while `cycle` still matches. Feeds the `scavenger` mutt role. */
@@ -2124,6 +2145,19 @@ export interface GameState {
      */
     /** §11.3 (audit): treaties sworn this run. Treaties are pruned as they end, so the count is the only record. */
     blocTreatiesSworn?: number;
+    /**
+     * Audit 3 §4.7: a bloc treaty ran its term, or lasted until the field was
+     * too small to sustain it, without either side breaking it.
+     *
+     * `blocTreaties` is the *live* list and is emptied by every ending a treaty
+     * can have — a bloc wiped out, the field closing, the clock running out —
+     * so at the end of a run, with one tribute standing, it is always empty.
+     * 'The Treaty Year' asked it for a treaty "still standing when the Games
+     * end" and could never once be answered yes in 132 runs.
+     */
+    blocTreatyHeld?: boolean;
+    /** ...and the other outcome: somebody killed across one. */
+    blocTreatyBroken?: boolean;
     blocTreaties?: Array<{
         /** Cycle a member last decided the treaty did not bind them. Log de-dup only. */
         strainedCycle?: number;

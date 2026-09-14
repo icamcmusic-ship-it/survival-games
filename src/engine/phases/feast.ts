@@ -180,6 +180,14 @@ function claimPacks(
         clampTribute(t);
         if (t.status !== 'alive') return;
 
+        // Audit 3 §1.6: recorded for both outcomes, not only for theft.
+        // 'Took the Marked Pack' asks for a victor who claimed the pack with
+        // their *own* name on it (`feastPrizeTaken === v.id`), and this field
+        // was only ever written inside the branch below — the one that runs
+        // when the pack belongs to somebody else. The achievement was testing
+        // for a value the engine had no path to write, and never fired.
+        t.feastPrizeTaken = prize.tributeId;
+
         if (!takeSomebodyElses) {
             ctx.logEvent(
                 `${t.name} finds ${prize.label} and takes it off the table without looking up — ${itemPhrase(minted)}.`,
@@ -190,7 +198,6 @@ function claimPacks(
         }
 
         const victim = ctx.state.tributes.find(o => o.id === prize.tributeId);
-        t.feastPrizeTaken = prize.tributeId;
         ctx.logEvent(
             `${t.name} takes ${prize.label}. It is not theirs and they take it anyway — ${itemPhrase(minted)} — and the Capitol will have that on three cameras.`,
             victim ? [t.id, victim.id] : [t.id],

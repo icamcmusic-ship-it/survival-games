@@ -304,6 +304,10 @@ export function checkRumours(ctx: SimContext) {
             if (rumour.isTrue) return;
 
             rumour.exposed = true;
+            // Audit 3 §1.6: recorded at the moment it happens. An exposed claim
+            // is pruned from the pool, so an end-of-run read of `state.rumours`
+            // was looking for exactly the thing that gets removed.
+            if (rumour.plantedById !== undefined) state.plantedRumourExposed = true;
             const source = sourceId ? byId.get(sourceId) : undefined;
             if (!source || source.status !== 'alive' || source.id === t.id) {
                 ctx.logEvent(
