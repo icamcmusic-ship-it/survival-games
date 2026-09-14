@@ -251,13 +251,14 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'the-executioner',
         name: 'The Executioner',
-        hint: 'Crown a victor who finished three or more tributes who were already down.',
+        hint: 'Crown a victor who finished two or more tributes who were already down.',
         category: 'combat',
         rarity: 'legendary',
-        test: (_s, v) => !!v && (v.finishedDowned?.length ?? 0) >= 3,
+        // Audit 2 §11.2: three, against a victor ceiling of two.
+        test: (_s, v) => !!v && (v.finishedDowned?.length ?? 0) >= 2,
         nearMiss: (_s, v) => {
             const n = v?.finishedDowned?.length ?? 0;
-            return n === 2 ? `${v!.name} finished two tributes who were already down — one short` : undefined;
+            return n === 1 ? `${v!.name} finished one tribute who was already down — one short` : undefined;
         },
     },
     {
@@ -345,8 +346,9 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Trapline',
         // Audit 2 §11.2: this asked for three trap kills against a ceiling of
         // two, so it could not fire — and lowering it to two would have made it
-        // `deadfall` with a different name, on a ladder that already runs 1
-        // (trappers-crown) / 2 (deadfall). A trapline is not a kill count
+        // `deadfall` with a different name (an entry since retired: a counter
+        // whose ceiling is one or two cannot carry three rungs). A trapline is
+        // not a kill count
         // anyway: it is the work. `trapsSet` counts that, and the two entries
         // now measure different things.
         hint: 'Crown a victor who built a working trapline — four traps or more across the Games.',
@@ -482,25 +484,6 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'survival',
         rarity: 'common',
         test: (_s, v) => !!v && (v.forageSuccesses ?? 0) === 0,
-    },
-    {
-        id: 'deadfall',
-        name: 'Deadfall',
-        // Audit 2 §11.2: two trap kills is above the *victor* ceiling of one,
-        // and one is `trappers-crown` already. The all-tributes ceiling is two,
-        // though — somebody does manage it, they just do not go on to win — so
-        // this drops the victor requirement instead of the count. A trapline
-        // that took two people is the achievement whether or not the person who
-        // built it was still standing at the end, and "they did not survive
-        // their own good idea" is the better story of the two.
-        hint: 'See one tribute\'s traps kill two or more people, whether or not they lived to be crowned.',
-        category: 'survival',
-        rarity: 'legendary',
-        test: state => state.tributes.some(t => (t.trapKills ?? 0) >= 2),
-        nearMiss: state => {
-            const holder = state.tributes.find(t => (t.trapKills ?? 0) === 1);
-            return holder ? `${holder.name}'s traps took one — one short of a deadfall` : undefined;
-        },
     },
     {
         id: 'fever-dream',
@@ -1246,7 +1229,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // contract, carried to the end and honoured, is the achievement.
         hint: 'Crown a victor who was paid for their protection and delivered it.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.retainersHonoured ?? 0) >= 1,
         nearMiss: (_s, v) => (v && (v.retainersHonoured ?? 0) === 0 && v.archetype === 'mercenary')
             ? `${v.name} took the crown without ever once being paid to keep somebody else alive`

@@ -1205,14 +1205,24 @@ trait. Outliers past 1.5 standard deviations:
 
 Two things stand out.
 
-**Hardened is the most heavily-modified combat trait in the game and its holders
-win 0.86% of the time** — against a field mean near 5%. 116 holders in 400 runs.
-Earned traits measure survivorship rather than power, so a low win rate is
-expected for a trait granted at a near-death moment; but Hardened is granted to
-survivors of something, and 0.86% is not "survivorship bias", it is the worst
-number in the earned table by a factor of ten. Either the grant condition selects
-for tributes who are already dead, or the trait's 3.45 combat magnitude is
-pointed the wrong way. It is worth an afternoon.
+~~**Hardened is the most heavily-modified combat trait in the game and its
+holders win 0.86% of the time.**~~ **Withdrawn — this was not a finding.**
+
+> **Corrected during the fix pass.** `traits.ts` already carries a long note on
+> exactly this: Hardened is earned by surviving the Gamemakers' animals *twice*,
+> so everyone holding it has been mauled twice, and a previous pass had already
+> measured it at 0.65%, diagnosed it as survivorship, and raised the mutt-damage
+> discount and the break-off to pay for what it costs to get (0.65% → 0.86%).
+>
+> The 3.45 combat magnitude I flagged as suspicious *is* that mitigation. I read
+> a large modifier sum as evidence of power, which is precisely what
+> `metrics.ts` warns against two lines above the table it came from — it calls
+> magnitude "a proxy for power, so a report rather than a guard". A trait can be
+> heavily modified because it is strong or because it is compensating, and the
+> number alone does not say which.
+>
+> No change made. The trait is working as designed and the design is written
+> down.
 
 **Only 6 traits carry social modifiers at all**, against 25 combat and 27
 survival. The social layer is the richest part of the simulation (§4.3) and the
