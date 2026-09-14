@@ -1437,7 +1437,7 @@ export const ESCALATION = {
      * cycles at finalist count without a resolution, both are herded to the
      * horn every cycle until it ends.
      */
-    finaleAfterFinalistCycles: 4,
+    finaleAfterFinalistCycles: 2,
     hazardMultiplierPerDay: 0.27,
     hazardCeiling: 0.33,
     /**
@@ -1989,7 +1989,12 @@ export const STEALTH = {
     aggressiveAwareness: 1.5,
     evasiveAwareness: 1,
     /** A trickster has been setting this up since the gong. */
-    tricksterAmbushBonus: 0.12,
+    /**
+     * What choosing this ground and waiting on it is worth when somebody
+     * finally walks into it. The `wait` objective's entire mechanical payoff.
+     */
+    waitingAmbushBonus: 0.2,
+        tricksterAmbushBonus: 0.12,
     /** §5.2: concealment/ambush per unit of zone cover above the 0.35 baseline. */
     coverGradeScale: 0.5,
     /**
@@ -2276,7 +2281,13 @@ export const OBJECTIVES = {
     stalkFear: 35,
     stalkCycles: 3,
     /** §3.3: waiting at a chokepoint. Cheap, patient, and not the same as holding. */
-    waitFatigue: 45,
+    /**
+     * Fatigue a tribute must still be *under* to choose to sit on a
+     * chokepoint. Was `waitFatigue: 45` and tested the other way round — see
+     * the comment at the site. Somebody who waits on a route is spending time
+     * to deny it, which is a thing you do while you can still fight.
+     */
+    waitMaxFatigue: 60,
     waitCycles: 2,
     /**
      * §3.4: goal conflict. When the winning objective's priority tier is

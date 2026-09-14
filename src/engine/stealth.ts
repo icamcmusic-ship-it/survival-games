@@ -209,6 +209,22 @@ export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute
     if (attacker.archetype === 'trickster') chance += STEALTH.tricksterAmbushBonus;
     // A1: a hunter has been reading this specific person's movements.
     if (attacker.stance === 'Hunting') chance += STANCE_MODES.hunting.ambushBonus;
+    // Audit 2 §1.6/§10.1: somebody who decided to sit on this ground and wait
+    // for whoever came through it.
+    //
+    // The `wait` objective described itself as "sitting on a chokepoint
+    // precisely because everyone else has to come through it" and then did
+    // nothing whatsoever: `objectiveHolds` lumped it in with `hold` and the two
+    // were mechanically the same instruction, "do not move". An intention with
+    // no payoff is not an intention, and making `wait` merely *reachable*
+    // without one just converted fights into standing still — it moved
+    // victors-with-zero-kills from 31.9% to 32.2% and tripped that guard.
+    //
+    // This is the payoff, and it is the only one it needs: the person who chose
+    // the ground gets to open on the person who walked onto it.
+    if (attacker.objective?.kind === 'wait' && attacker.objective.zone === attacker.zone) {
+        chance += STEALTH.waitingAmbushBonus;
+    }
     chance += traitMod(attacker, 'ambush');
     if (isAggressiveStance(defender.stance)) chance -= 0.1;
 

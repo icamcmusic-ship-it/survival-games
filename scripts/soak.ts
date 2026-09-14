@@ -135,6 +135,11 @@ let fractures = 0, inheritances = 0, mentorCrossTalk = 0, watchesPosted = 0;
 // was counted, which is how three of the four shipped calibrated above their
 // own data and stayed that way. An unmeasured mechanic is assumed dead.
 let investigationsGuilty = 0, investigationsCleared = 0, preemptiveDepartures = 0, sleepingApart = 0;
+// §1.6/§3.3 (audit 2): three of the eight objectives were vestigial — `wait`
+// held in 0.0% of 18,195 tribute-cycles, `stalk` 1.1%, `hold` 1.7% — and
+// nothing counted any of them, so there was no difference between "rare by
+// design" and "cannot happen".
+const objectiveCycles: Record<string, number> = {};
 // §1.1 (audit 2): the two beats the killTribute ordering bug silently removed.
 let loverTragedies = 0, hauntedGrants = 0, hollowGrants = 0, reconciliations = 0;
 let trucesRenewed = 0, trucesLapsed = 0, trucesTurned = 0;
@@ -172,6 +177,8 @@ for (let i = 0; i < 400; i++) {
   const sample = () => {
     state.tributes.forEach(t => {
       if (t.status !== 'alive') return;
+      const kind = t.objective?.kind ?? 'none';
+      objectiveCycles[kind] = (objectiveCycles[kind] ?? 0) + 1;
       const prior = stanceSamples.get(t.id);
       if (!prior) stanceSamples.set(t.id, { last: t.stance, changes: 0, samples: 1 });
       else {
@@ -847,6 +854,16 @@ console.log(`suspicion: investigations=${investigationsGuilty + investigationsCl
 console.log(`grief: loverTragedies=${loverTragedies} haunted=${hauntedGrants} hollow=${hollowGrants} reconciliations=${reconciliations}`);
 // Each of these is a shipped mechanic whose only previous evidence of existing
 // was the code. Zero is the bug this file exists to catch.
+{
+  const total = Object.values(objectiveCycles).reduce((a, b) => a + b, 0);
+  const share = (k: string) => ((objectiveCycles[k] ?? 0) / Math.max(1, total) * 100).toFixed(1) + '%';
+  console.log('objectives held: ' + ['survive', 'reach', 'hunt', 'flee', 'protect', 'hold', 'stalk', 'wait']
+    .map(k => `${k}=${share(k)}`).join(' '));
+  (['hold', 'stalk', 'wait'] as const).forEach(k => {
+    if ((objectiveCycles[k] ?? 0) === 0) note(`the '${k}' objective was never held across ${runs} runs`);
+  });
+}
+
 ([
   ['pre-emptive betrayal', preemptiveBetrayals],
   ['pre-emptive departure', preemptiveDepartures],
