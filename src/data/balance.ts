@@ -6197,6 +6197,14 @@ export const ARCHETYPE_HOOKS = {
     escalatingPerDay: 0.03,
     escalatingCap: 0.25,
     /**
+     * `late-blooming`: the inverse of `front-loaded`. Opens *above* the
+     * archetype's own caution and sheds it as the days pass, so an archetype
+     * that survives well and closes badly has a shape that lets it close.
+     */
+    lateBloomOpening: 0.2,
+    lateBloomPerDay: 0.05,
+    lateBloomCap: 0.45,
+    /**
      * `front-loaded`: spends it all at the gong and settles afterwards. Opens
      * *below* the archetype's own caution by `frontLoadedOpening` and climbs
      * back toward it. It used to add caution faster than `escalating` did —

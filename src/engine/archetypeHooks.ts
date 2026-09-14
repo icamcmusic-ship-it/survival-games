@@ -30,9 +30,12 @@ import { ARCHETYPE_SIGNATURE_TEXTS } from '../data/flavorText';
  * How much this tribute's caution has moved by today.
  *
  * `riskCurve` is the shape: `flat` never wavers (a Zealot on day 9 is the
- * Zealot from day 1), `escalating` gets warier as the field narrows, and
- * `front-loaded` spends everything at the gong and settles afterwards. Read
- * anywhere the raw `arch.caution` used to be the whole story.
+ * Zealot from day 1), `escalating` gets warier as the field narrows,
+ * `front-loaded` spends everything at the gong and settles afterwards, and
+ * `late-blooming` is the inverse of `front-loaded` — opens *above* its own
+ * caution and sheds it as the days pass, so the last few days are the ones it
+ * was saving itself for. Read anywhere the raw `arch.caution` used to be the
+ * whole story.
  */
 export function effectiveCaution(t: Tribute, day: number): number {
     const arch = ARCHETYPES[t.archetype];
@@ -45,6 +48,9 @@ export function effectiveCaution(t: Tribute, day: number): number {
         case 'front-loaded':
             return base - ARCHETYPE_HOOKS.frontLoadedOpening
                 + Math.min(ARCHETYPE_HOOKS.frontLoadedCap, day * ARCHETYPE_HOOKS.frontLoadedPerDay);
+        case 'late-blooming':
+            return base + ARCHETYPE_HOOKS.lateBloomOpening
+                - Math.min(ARCHETYPE_HOOKS.lateBloomCap, day * ARCHETYPE_HOOKS.lateBloomPerDay);
         default:
             return base;
     }
