@@ -385,6 +385,7 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         faithBroken: asNum(r.faithBroken, 0),
         arenaForeknowledge: asBool(r.arenaForeknowledge, false),
         trapsDisarmed: asNum(r.trapsDisarmed, 0),
+        trapsSet: asNum(r.trapsSet, 0),
         performingStreak: asNum(r.performingStreak, 0),
         maxPerformingStreak: asNum(r.maxPerformingStreak, 0),
         ghostTrust: asNum(r.ghostTrust, 0),

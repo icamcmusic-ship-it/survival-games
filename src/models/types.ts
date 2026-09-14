@@ -910,6 +910,11 @@ export interface Tribute {
     faithBroken?: number;
     /** §8.9: traps this tribute has successfully pulled apart. */
     trapsDisarmed?: number;
+    /**
+     * Traps this tribute has built. `trapKills` counts the ones that closed on
+     * somebody; this counts the work, which is what a trapline actually is.
+     */
+    trapsSet?: number;
     /** §8.9: hard water crossings begun (destination terrain 'water'). */
     waterCrossings?: number;
     /** §8.9: consecutive cycles spent with no hostile in their zone. */
