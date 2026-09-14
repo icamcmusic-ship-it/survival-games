@@ -333,7 +333,35 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
             }
 
             // Watching someone you were actually close to die does not wash off.
-            if ((isLover || wereAllied) && intensity > RELATIONSHIPS.hauntedIntensity) earnTrait(ctx, other, 'Haunted');
+            //
+            // All three clauses are load-bearing, and until the teardown
+            // ordering in `killTribute` was fixed none of them could be tested:
+            // `wereAllied` and `isLover` were both permanently false here, so
+            // this granted nothing in 120 runs. With the fields arriving
+            // intact, the bare `isLover || wereAllied` gate turned out to be
+            // far too wide — it took Haunted straight to the second most common
+            // trait in the game at 702 grants per 120 runs, and Hollow, six
+            // cycles downstream of it, to 352.
+            //
+            // *Watching*: the same standard vengeance is held to twenty lines
+            // above. You were in the zone — or it was your lover, whose death
+            // reaches them wherever they are standing.
+            //
+            // *Close*: read off the bond directly rather than off `intensity`,
+            // because intensity saturates. It is `min(1, (bond + 25) / 100)`
+            // for an ally, so no threshold below 1 can ask for more than a bond
+            // of 75 and a threshold of 1 asks for something unreachable.
+            //
+            // A post-grief sanity clause was tried here and removed: measured
+            // over 120 runs it moved the count by under 5% at every threshold
+            // from 15 to 45, because the grief hit immediately above this line
+            // takes almost every mourner under all of them. It would have been
+            // a knob that reads as a gate and is not one.
+            const witnessed = other.zone === victim.zone;
+            if ((isLover || (wereAllied && witnessed && bond >= RELATIONSHIPS.hauntedBond))
+                && intensity > RELATIONSHIPS.hauntedIntensity) {
+                earnTrait(ctx, other, 'Haunted');
+            }
 
             if (isLover) {
                 ctx.logEvent(

@@ -60,6 +60,17 @@ export function earnTrait(ctx: SimContext, t: Tribute, trait: string, converted 
     if (!traitFits(t.traits, trait)) return false;
 
     t.traits.push(trait);
+
+    // A conversion narrates itself. `transformTrait` (traitArcs.ts) hands the
+    // arc its own line and logs it immediately after this call returns, so
+    // narrating here as well printed the beat twice — and because none of the
+    // three conversion targets (Broken, Ruthless, Treacherous) has an entry in
+    // `EARNED_LINES`, the first of the two was the bare fallback below, with a
+    // bracketed trait id in it. Measured over 120 runs before this change: 120
+    // log lines shipped to the player ending in `[Broken]`, `[Hollow]`,
+    // `[Ruthless]` or `[Treacherous]`.
+    if (converted) return true;
+
     const line = EARNED_LINES[trait];
     ctx.logEvent(
         line ? line(t) : `${t.name} is not the same person who came off the plate. [${trait}]`,

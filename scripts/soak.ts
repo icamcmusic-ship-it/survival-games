@@ -270,6 +270,13 @@ for (let i = 0; i < 400; i++) {
     categoriesSeen.add(l.category);
     if (/\{[a-z0-9]+\}/i.test(l.text)) note(`unreplaced placeholder: ${l.text.slice(0, 90)}`);
     if (l.text.includes('undefined') || l.text.includes('NaN')) note(`bad text: ${l.text.slice(0, 90)}`);
+    // The other shape of placeholder: a line that ends in a bracketed
+    // identifier because the authored text for it was never written and a
+    // fallback printed the id instead. `earnTrait`'s `[${trait}]` fallback
+    // shipped 120 of these per 120 runs — every trait conversion in the game
+    // narrated twice, and the first of the two named the trait in brackets.
+    // The `{...}` test above cannot see it: brackets, not braces.
+    if (/\[[A-Za-z][A-Za-z -]*\]\s*$/.test(l.text.trim())) note(`bracketed id in feed text: ${l.text.slice(-60)}`);
     if (l.text.startsWith('VENGEANCE:')) vengeanceSworn++;
     if (l.text.startsWith('GROUP FIGHT:')) groupFights++;
     if (l.text.startsWith('AMBUSH:')) ambushes++;

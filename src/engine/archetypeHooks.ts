@@ -1,7 +1,8 @@
 import { ArchetypeId, Objective, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { severRandomEdge } from './zoneEffects';
-import { ARCHETYPE_HOOKS, HUNTING } from '../data/balance';
+import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING } from '../data/balance';
+import { earnTrait } from './earnedTraits';
 import { SimContext, getAlive } from './context';
 import { getRel, adjustMutual, adjustRel } from './relationships';
 import { fearOf, addFear } from './fear';
@@ -263,6 +264,13 @@ const SIGNATURES: Record<string, Signature> = {
             const sprung = traps.slice(0, ARCHETYPE_HOOKS.sabotageTraps);
             ctx.state.traps = (ctx.state.traps ?? []).filter(tr => !sprung.includes(tr));
             sprung.forEach(tr => { t.trapsDisarmed = (t.trapsDisarmed ?? 0) + 1; });
+            // The count was being written here and read nowhere. `Trapwise` is
+            // granted off `trapsDisarmed` at exactly one site — the ordinary
+            // spot-and-disarm in `fieldcraft.ts` — so the archetype whose whole
+            // identity is other people's mechanisms was the one archetype that
+            // could not earn the trait about them. Measured over 120 runs
+            // before this line existed: Trapwise granted zero times.
+            if ((t.trapsDisarmed ?? 0) >= EARNED_TRAIT_RULES.trapwiseDisarms) earnTrait(ctx, t, 'Trapwise');
             say(ctx, t, 'saboteurTraps', [t.id], { count: String(sprung.length) });
         } else {
             const victim = caches[0];

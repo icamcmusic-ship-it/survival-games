@@ -1385,16 +1385,31 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
 
     // A corpse is not part of an alliance; leaving the id set kept dead
     // tributes in the alliance roster and skewed betrayal targeting.
+    //
+    // The teardown itself is deferred to `dissolveVictimAlliance` below, after
+    // the fallout has been propagated. It used to run here, 139 lines before
+    // `propagateDeathFallout`, which reads exactly the fields it clears:
+    //
+    //   const wereAllied = other.allianceId !== undefined && other.allianceId === victim.allianceId;
+    //   const isLover = areLovers(other, victim);
+    //
+    // With the victim's id already deleted, `wereAllied` required
+    // `other.allianceId !== undefined` to equal `undefined` and so could never
+    // be true; and for a two-person bond the survivor's id was deleted too, so
+    // `areLovers` — which matches on a `lovers-<a>-<b>` alliance id held by
+    // either party — could not be true either. Measured over 120 complete runs
+    // before this change: that branch executed zero times, the lover TRAGEDY
+    // beat fired zero times across 19 runs that had a live pair, and `Haunted`
+    // (whose only grant site is that branch) was never once awarded — which
+    // also made `Hollow`, six cycles of Haunted, unreachable by construction.
+    //
+    // `inheritFrom` reads it too, so an ally could only inherit by clearing the
+    // bond threshold and never by membership.
     const formerAlliance = victim.allianceId;
     // Captured before the cleanup below: killing your last remaining ally
     // dissolves the alliance and strips the killer's id, which made the
     // ally-kill sanity toll unreachable for two-person alliances.
     const killerWasAllied = !!formerAlliance && killer?.allianceId === formerAlliance;
-    delete victim.allianceId;
-    if (formerAlliance) {
-        const remaining = ctx.state.tributes.filter(t => t.status === 'alive' && t.allianceId === formerAlliance);
-        if (remaining.length < 2) remaining.forEach(m => delete m.allianceId);
-    }
 
     if (killer) {
         const killerAlive = killer.status === 'alive';
@@ -1527,9 +1542,20 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         });
     }
 
-    // Everything a cannon does to everyone still breathing.
+    // Everything a cannon does to everyone still breathing. Both of these read
+    // the victim's alliance membership — `broadcastDeath` for the ally-kill
+    // suspicion it raises, `propagateDeathFallout` for grief grading, the lover
+    // beat, vengeance and inheritance — so the teardown waits until they have
+    // both had it.
     broadcastDeath(ctx, victim, killer);
     propagateDeathFallout(ctx, victim, killer);
+
+    // Only now is the body out of the roster.
+    if (formerAlliance) {
+        delete victim.allianceId;
+        const remaining = ctx.state.tributes.filter(t => t.status === 'alive' && t.allianceId === formerAlliance);
+        if (remaining.length < 2) remaining.forEach(m => delete m.allianceId);
+    }
 
     // Feeds the `scavenger` mutt role: only eligible where a cannon just
     // fired. Pruned to the current cycle each time so this never grows

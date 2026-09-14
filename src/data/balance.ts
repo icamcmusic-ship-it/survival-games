@@ -1421,8 +1421,17 @@ export const ESCALATION = {
  * before the arena has visibly changed them.
  */
 export const EARNED_TRAIT_RULES = {
-    /** Traps pulled apart before they read as Trapwise. */
-    trapwiseDisarms: 2,
+    /**
+     * Traps pulled apart before they read as Trapwise.
+     *
+     * One, not two. Traps are rare objects — the soak measures ~330 set across
+     * 400 runs — and disarming one is already three gates deep: spot it, choose
+     * to work it rather than walk round it, then succeed. Asking for two of
+     * those on the same tribute was asking for the square of a rare event, and
+     * Trapwise was granted zero times in 120 runs. At one it lands 21 times,
+     * which is a trait somebody earns rather than a trait nobody has.
+     */
+    trapwiseDisarms: 1,
     /** Hard water crossings begun before they read as Waterborn. */
     waterbornCrossings: 3,
     /** Consecutive cycles with no hostile in their zone for Silent Step. */
@@ -1452,10 +1461,18 @@ export const EARNED_TRAIT_RULES = {
      *              (Skittish -> Haunted -> Hollow).
      */
     softheartedShedKills: 3,
-    /** Consecutive cycles carrying Haunted before it can become Hollow. */
-    hollowCycles: 6,
-    /** Sanity at or below which Haunted is eligible to become Hollow. */
-    hollowSanity: 35,
+    /**
+     * Consecutive cycles carrying Haunted before it can become Hollow.
+     *
+     * Raised from 6 once the `killTribute` ordering fix made Haunted reachable
+     * at all: at 6 cycles better than a third of everyone who was ever Haunted
+     * ended the run Hollow (170 per 120 runs), which is not an end of the road,
+     * it is a waypoint. Ten cycles is most of a run — a tribute has to carry it
+     * and keep surviving with it.
+     */
+    hollowCycles: 10,
+    /** Poise at or below which Haunted is eligible to become Hollow. */
+    hollowSanity: 25,
     /** Cycles a Skittish tribute must hold high resolve before the fear burns off. */
     skittishShedCycles: 5,
     skittishShedResolve: 70,
@@ -3437,8 +3454,26 @@ export const RELATIONSHIPS = {
     wardAge: 13,
     /** Alliance affinity an older tribute needs before a young one moves them. */
     wardAffinity: 0.15,
-    /** Grief intensity above which a close loss leaves a permanent mark. */
-    hauntedIntensity: 0.5,
+    /**
+     * Grief intensity above which a close loss leaves a permanent mark.
+     *
+     * A lover is always 1; an ally is `(bond + 25) / 100`, so this is a bond of
+     * 55 rather than the 25 the old 0.5 asked for. At 0.5, with the
+     * `killTribute` ordering fixed so this branch can run at all, every ally
+     * death marked every surviving member of the group.
+     */
+    hauntedIntensity: 0.8,
+    /**
+     * The bond a *witnessed* ally death needs before it can leave a permanent
+     * mark. `hauntedIntensity` cannot express this on its own: intensity is
+     * `min(1, (bond + 25) / 100)`, so it saturates at a bond of 75 and every
+     * threshold above that is unreachable rather than merely strict.
+     *
+     * Witnessed ally deaths carry a median bond of 66 and a p75 of 96, so this
+     * sits just above the median: the ones that mark you are the ones you were
+     * closer to than most of the people you were travelling with.
+     */
+    hauntedBond: 70,
     /** Grief intensity above which an ordinary mourning gets its own line. */
     griefLineIntensity: 0.45,
     /** Sponsor trust the crowd hands back for visibly grieving, per intensity point. */
