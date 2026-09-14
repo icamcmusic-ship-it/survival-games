@@ -266,13 +266,32 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'zealot',
         name: 'Zealot',
         description: 'Believes the Games mean something. Does not frighten, does not break, and does not stop.',
-        statBias: { strength: 1, charisma: 1 },
+        // Audit 3 §8.2: the Zealot had the highest risk tolerance in the game
+        // (aggression 0.3 against a caution of -0.3, and `fearScale: 0` so it
+        // never breaks off) on the second-smallest attribute budget — two
+        // points, where the Beast charges just as hard on three. It charged
+        // harder than anything else in the arena with less to charge with, and
+        // it showed: 2.92 days, the shortest life of any archetype, and a
+        // 2.16% win rate.
+        //
+        // The fix is not to make it careful — not stopping is the whole
+        // character. It is to pay for the conviction with the attribute the
+        // conviction is made of. `willpower` is how steeply resolve falls and
+        // how much fear and grief land, and the archetype whose description is
+        // "does not frighten, does not break" had none of it.
+        statBias: { strength: 1, charisma: 1, willpower: 1 },
         preferredTraits: ['Bloodthirsty', 'Charismatic'],
         aggression: 0.3,
         allianceAffinity: -0.05,
         treachery: -0.1,
         caution: -0.3,
-        stanceBias: { Aggressive: 0.5, Desperate: 0.8, Evasive: -1.2 },
+        // Audit 3 §8.2: `Desperate: 0.8` was the largest single stance bias on
+        // any archetype and it was pointed backwards. Desperate is the stance
+        // of somebody who has come apart — the emergency that "holds for
+        // nothing" — which is the precise opposite of a tribute who does not
+        // break. Kept positive, because a Zealot does end up there, and cut to
+        // below the Aggressive bias, because that is the stance they mean.
+        stanceBias: { Aggressive: 0.6, Desperate: 0.3, Evasive: -1.2 },
         objectiveBias: { hunt: 0.4 },
         targetPreference: 'strongest',
         riskCurve: 'flat',

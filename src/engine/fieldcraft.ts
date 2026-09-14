@@ -315,7 +315,18 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     clampTribute(t);
     checkDeath(ctx, t, cause);
     // §10.1: 'Trapper's Crown' — a kill the builder earned days earlier.
-    if (t.status === 'dead' && claimant) claimant.trapKills = (claimant.trapKills ?? 0) + 1;
+    //
+    // Audit 3 §8.2: and it counts as a kill. `trapKills` was incremented here
+    // and `kills` was not, so the two archetypes built on other people's
+    // mechanisms — saboteur 2.21%, trapper the worst large trait sample —
+    // could work all run and register as having killed nobody. A tribute who
+    // dies in a snare was killed by whoever tied it; the arena is not a third
+    // party here. This also feeds `victors with zero kills`, which is the one
+    // design goal the metrics sweep has never met.
+    if (t.status === 'dead' && claimant) {
+        claimant.trapKills = (claimant.trapKills ?? 0) + 1;
+        claimant.kills += 1;
+    }
 }
 
 /**
