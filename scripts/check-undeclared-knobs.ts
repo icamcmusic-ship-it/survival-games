@@ -11,7 +11,16 @@
  *
  *   1. a numeric literal handed to `chance()` / `nextFloat() <` — an odds dial;
  *   2. a numeric literal on the right of `+=` / `-=` — a magnitude dial;
- *   3. a numeric literal on one side of `<`, `<=`, `>`, `>=` — a threshold.
+ *   3. a numeric literal on one side of `<`, `<=`, `>`, `>=` — a threshold;
+ *   4. a `const` in the engine bound to a number, or to a record of numbers —
+ *      a balance table living in the wrong file.
+ *
+ * Shape 4 was the blind spot that let a whole subsystem's balance sheet sit
+ * outside `data/balance.ts`: `mentors.ts` declared MENTOR_GENEROSITY,
+ * MENTOR_PULL, MENTOR_TRUST_FLOOR, MENTOR_TRUST_COST, MENTOR_EXCITEMENT_COST
+ * and MENTOR_REPEAT_DECAY as exported consts, and an exported const matches
+ * none of the three expression shapes above — so the check that exists to stop
+ * exactly this reported nothing.
  *
  * Everything else is left alone on purpose. A checker that cries wolf is a
  * checker somebody adds `|| true` to, so the filters below are deliberately
@@ -120,6 +129,57 @@ function scanLine(line: string): Array<{ kind: string; expr: string }> {
     return out;
 }
 
+/**
+ * Shape 4: a `const` bound to a number, or to a record whose values are
+ * numbers, declared inside `src/engine/`. That is a balance table, and balance
+ * tables belong in `data/balance.ts`.
+ *
+ * Scanned over the whole file rather than line by line because the interesting
+ * case spans several lines. A record counts when at least two of its entries
+ * are plain numeric literals and none of its values are anything else —
+ * `Record<Terrain, string>` and lookup tables of functions are not balance.
+ */
+function scanConsts(text: string): Array<{ line: number; kind: string; expr: string }> {
+    const out: Array<{ line: number; kind: string; expr: string }> = [];
+    const lines = text.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+        const code = stripStrings(lines[i]);
+        if (/^\s*(\/\/|\*)/.test(code)) continue;
+
+        // A scalar: `const FOO = 34;` / `export const FOO: number = 0.5;`
+        const scalar = code.match(new RegExp(String.raw`^\s*(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*(${NUM})\s*;`));
+        if (scalar && !isStructural(Number(scalar[2]))) {
+            out.push({ line: i + 1, kind: 'const', expr: `const ${scalar[1]} = ${scalar[2]}` });
+            continue;
+        }
+
+        // A table: `const FOO = { ... }` / `const FOO: Record<X, number> = { ... }`
+        const opens = code.match(/^\s*(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*\{\s*$/);
+        if (!opens) continue;
+        let depth = 1;
+        let numeric = 0;
+        let other = 0;
+        let j = i + 1;
+        for (; j < lines.length && depth > 0; j++) {
+            const inner = stripStrings(lines[j]);
+            depth += (inner.match(/\{/g) ?? []).length - (inner.match(/\}/g) ?? []).length;
+            if (depth <= 0) break;
+            if (/^\s*(\/\/|\*)/.test(inner) || inner.trim() === '') continue;
+            const entry = inner.match(new RegExp(String.raw`^\s*(?:\[[^\]]+\]|'[^']*'|"[^"]*"|[\w$]+)\s*:\s*(.+?),?\s*$`));
+            if (!entry) continue;
+            if (new RegExp(String.raw`^${NUM}$`).test(entry[1].trim())) {
+                if (!isStructural(Number(entry[1]))) numeric++;
+            } else other++;
+        }
+        if (numeric >= 2 && other === 0) {
+            out.push({ line: i + 1, kind: 'table', expr: `const ${opens[1]} = { ${numeric} numeric entries }` });
+        }
+        i = j;
+    }
+    return out;
+}
+
 function walk(dir: string, acc: string[] = []): string[] {
     fs.readdirSync(dir, { withFileTypes: true }).forEach(e => {
         const full = path.join(dir, e.name);
@@ -135,11 +195,19 @@ const findings: Finding[] = [];
 SCAN_DIRS.filter(d => fs.existsSync(d)).forEach(dir => {
     walk(dir).forEach(file => {
         const rel = path.relative(ROOT, file).split(path.sep).join('/');
-        const lines = fs.readFileSync(file, 'utf8').split('\n');
+        const text = fs.readFileSync(file, 'utf8');
+        const lines = text.split('\n');
         lines.forEach((line, i) => {
             if (EXEMPT.test(line)) return;
             if (i > 0 && EXEMPT.test(lines[i - 1]) && lines[i - 1].trim().startsWith('//')) return;
             scanLine(line).forEach(f => findings.push({ file: rel, line: i + 1, ...f }));
+        });
+        scanConsts(text).forEach(f => {
+            const line = lines[f.line - 1] ?? '';
+            const above = lines[f.line - 2] ?? '';
+            if (EXEMPT.test(line)) return;
+            if (EXEMPT.test(above) && above.trim().startsWith('//')) return;
+            findings.push({ file: rel, ...f });
         });
     });
 });

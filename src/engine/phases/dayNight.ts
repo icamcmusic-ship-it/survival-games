@@ -1047,6 +1047,11 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
             : inAChokepoint
                 ? `Crushed as ${trappedZone} closed`
                 : `Caught in the collapsing border of ${trappedZone}`;
+        // The crush *replaces* the open-ground collapse rather than preceding
+        // it. A survivor used to take the multiplied crush and then the full
+        // base damage again under the same cause — so the multiplier was really
+        // 1 + itself — and then read the generic "pushed along in front of it"
+        // line immediately after a line insisting there is no such version.
         if (inAChokepoint && !finalists) {
             applyDamage(ctx, t, Math.round(damage * ESCALATION.chokepointCrushMultiplier), { cause, kind: 'arena' });
             openWound(t, BLEEDING.hazardSeverity);
@@ -1057,18 +1062,18 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
                 { important: true, zone: trappedZone, category: 'hazard' }
             );
             clampTribute(t);
-            checkDeath(ctx, t, cause);
-            if (t.status !== 'alive') return;
+        } else {
+            applyDamage(ctx, t, damage, { cause, kind: 'arena' });
+            ctx.logEvent(
+                fill(ctx.pickText(BORDER_TEXTS.collapse), {
+                    tribute: t.name, trapped: trappedZone, damage: String(damage), safe: newSafeZone,
+                }),
+                [t.id],
+                { important: true, zone: newSafeZone, category: 'hazard' }
+            );
         }
-        applyDamage(ctx, t, damage, { cause, kind: 'arena' });
-        ctx.logEvent(
-            fill(ctx.pickText(BORDER_TEXTS.collapse), {
-                tribute: t.name, trapped: trappedZone, damage: String(damage), safe: newSafeZone,
-            }),
-            [t.id],
-            { important: true, zone: newSafeZone, category: 'hazard' }
-        );
         t.zone = newSafeZone;
+        enterVerticalZone(ctx.state.arena, t);
         addZoneThreat(ctx.state, t, trappedZone, MEMORY.deathThreat);
         checkDeath(ctx, t, cause);
     });
@@ -1116,7 +1121,13 @@ function craft(ctx: SimContext, t: Tribute) {
                 : zone?.terrain === 'ruins' ? ['rebar', SURVIVAL_TEXTS.craftRebar] as const
                 : ['sharpstone', SURVIVAL_TEXTS.craftStone] as const;
             const recipe = IMPROVISED_ITEMS.find(i => i.id === recipeId)!;
-            giveItem(t, { ...recipe });
+            // Minted, like every other weapon the game hands out. A plain
+            // spread shares one object shape and skips the quality roll, so the
+            // four terrain-driven improvisations — the common case, since most
+            // tributes are standing on ground rather than holding rope — could
+            // never carry durability, never accumulate `bloodDrawn`, and so
+            // could never earn a name. A sling could; a club could not.
+            giveItem(t, mintItem(ctx.rng, recipe, QUALITY_BIAS.improvised));
             ctx.logEvent(
                 fill(ctx.pickText(pool), { tribute: t.name, zone: t.zone }),
                 [t.id],
@@ -1146,7 +1157,7 @@ function craft(ctx: SimContext, t: Tribute) {
         if (hasWire >= 0 && !t.inventory.some(i => i.id === 'garrote')) {
             t.inventory.splice(hasWire, 1);
             const garrote = ITEMS.find(i => i.id === 'garrote')!;
-            giveItem(t, { ...garrote });
+            giveItem(t, mintItem(ctx.rng, garrote, QUALITY_BIAS.improvised));
             ctx.logEvent(`${t.name} twists a length of wire into a garrote and tests it on a branch.`, [t.id], { category: 'loot' });
         }
     }
@@ -1241,6 +1252,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             arriving.forEach(m => {
                 delete m.transit;
                 m.zone = dest;
+                enterVerticalZone(ctx.state.arena, m);
                 m.vitals.fatigue = Math.min(100, m.vitals.fatigue + MOVEMENT.crossingFatigue);
                 crossed.add(m.id);
                 // §7 (audit): the last stretch of a crossing, spent. Swimming
@@ -1312,7 +1324,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
                 return;
             }
             const departed = t.zone;
-            present.forEach(m => { m.zone = newZone; });
+            present.forEach(m => { m.zone = newZone; enterVerticalZone(ctx.state.arena, m); });
             noteTraffic(ctx.state, departed, newZone, present.length);
             if (isEvasiveStance(t.stance)) {
                 ctx.logEvent(`${present.map(m => m.name).join(', ')} slip out of ${departed} without a sound.`, present.map(m => m.id), { zone: newZone, category: 'travel' });
@@ -1339,6 +1351,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         if (!beginMove(ctx, t, step.name)) return;
         const from = t.zone;
         t.zone = step.name;
+        enterVerticalZone(ctx.state.arena, t);
         noteTraffic(ctx.state, from, step.name);
         ctx.logEvent(
             `${t.name} leaves ${from} for ${step.name} — ${objectiveLabel(ctx.state, t).toLowerCase()}.`,
@@ -1354,6 +1367,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             if (second && second.name !== t.zone && beginMove(ctx, t, second.name)) {
                 const midpoint = t.zone;
                 t.zone = second.name;
+                enterVerticalZone(ctx.state.arena, t);
                 noteTraffic(ctx.state, midpoint, second.name);
                 ctx.logEvent(
                     `${t.name} does not stop in ${midpoint} — they are through it and into ${second.name} inside the hour.`,
@@ -1372,7 +1386,12 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
 
     const oldZone = t.zone;
     t.zone = newZone;
-    // §5.1: you arrive at the rim of a shaft, not at the bottom of it.
+    // §5.1: you arrive at the rim of a shaft, not at the bottom of it. Every
+    // other site that moves a tribute does this too — arriving with the level
+    // you happened to hold in the zone behind you put a purposeful traveller at
+    // the bottom of a shaft for free, and `samePlace` gates both sighting and
+    // encounters, so they could be structurally unmeetable in a zone they
+    // walked into on purpose.
     enterVerticalZone(ctx.state.arena, t);
     noteTraffic(ctx.state, oldZone, newZone);
     if (isEvasiveStance(t.stance)) {

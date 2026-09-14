@@ -49,7 +49,13 @@ export function postWatches(ctx: SimContext) {
             // night of the run, which is the other half of "rotation".
             const ranked = [...camp].sort((a, b) =>
                 (nightEyes(b) - nightEyes(a)) || (a.id < b.id ? -1 : 1));
-            const watcher = ranked[cycle % Math.min(ranked.length, WATCH_ROTATION.minMembers)] ?? ranked[0];
+            // Modulo the camp, not the *minimum camp size*. Taking it against
+            // `minMembers` meant that in a camp of five only the two
+            // best-sighted ever stood a watch, and on odd cycles it went to the
+            // worse of those two — so a rotation that exists to spread the cost
+            // spread it over two people and halved what sharp night eyes were
+            // worth.
+            const watcher = ranked[cycle % ranked.length] ?? ranked[0];
             const sleepers = camp.filter(m => m.id !== watcher.id);
 
             const sentry = nightEyes(watcher) >= WATCH_ROTATION.sentryAwareness;
@@ -64,8 +70,13 @@ export function postWatches(ctx: SimContext) {
             // A night's watch is a kindness the sleepers can see in the morning.
             sleepers.forEach(m => witnessKindness(ctx, watcher, m, 0.5));
 
-            const already = record.watch?.watcherId === watcher.id && record.watch?.zone === zone;
+            // Against `lastWatch`, which survives the sweep at the bottom of
+            // this function. `watch` does not: it is cleared every cycle, so
+            // this comparison was against `undefined` every night and the line
+            // it guards was read out every night of the run.
+            const already = record.lastWatch?.watcherId === watcher.id && record.lastWatch?.zone === zone;
             record.watch = { cycle, zone, watcherId: watcher.id, sleeperIds: sleepers.map(m => m.id) };
+            record.lastWatch = { zone, watcherId: watcher.id };
             if (!already) {
                 ctx.logEvent(
                     sentry

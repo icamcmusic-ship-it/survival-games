@@ -134,6 +134,11 @@ function tickScavenge(ctx: SimContext, t: Tribute) {
     const spoils = body.inventory;
     body.inventory = [];
     const dropped = giveItem(t, ...spoils);
+    // What will not fit stays on the body. The overflow used to be computed and
+    // then thrown away — `body.inventory` was already emptied — so a scavenger
+    // at capacity annihilated the rest of a corpse's pack instead of leaving it
+    // for the next person through. Both the other looting sites conserve it.
+    body.inventory = dropped;
     const taken = spoils.filter(i => !dropped.includes(i));
     t.corpsesLooted = (t.corpsesLooted ?? 0) + 1;
     ctx.logEvent(
@@ -147,8 +152,13 @@ function tickScavenge(ctx: SimContext, t: Tribute) {
 
 /** Dug in. The beat is the preparation, and occasionally the reputation. */
 function tickFortified(ctx: SimContext, t: Tribute) {
+    // `>=`, with the counter consumed below, rather than an exact match: the
+    // tenure counter can advance by more than one step in a cycle and an
+    // equality test simply missed the beat when it did.
     const held = t.fortifiedCycles ?? 0;
-    if (held !== STANCE_MODES.fortified.holdCycles) return;
+    if (held < STANCE_MODES.fortified.holdCycles) return;
+    if (t.fortifiedBeatShown) return;
+    t.fortifiedBeatShown = true;
     ctx.logEvent(
         `${t.name} has not moved out of ${t.zone} in days, and it has stopped looking like somewhere they are hiding and started looking like somewhere they own.`,
         [t.id],

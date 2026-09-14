@@ -24,9 +24,12 @@ export function fearOf(t: Tribute, otherId: string): number {
 
 export function addFear(t: Tribute, otherId: string, amount: number) {
     if (t.id === otherId) return;
-    // A2: a Zealot does not frighten — `fearScale: 0` on the archetype
-    // sheet, alongside the other extreme-variance archetypes' own scales,
-    // rather than a carve-out for one id here.
+    // A2: a Zealot is not frightened — `fearScale: 0` on the archetype sheet,
+    // alongside the other extreme-variance archetypes' own scales, rather than
+    // a carve-out for one id here. `t` is the tribute *becoming* afraid, so
+    // this is how much of a frightening thing sticks to them, which is what the
+    // data sheet documents. The comment used to read "does not frighten",
+    // describing the opposite direction; the code has always been right.
     amount *= ARCHETYPES[t.archetype].fearScale ?? 1;
     // Temperament decides how much of a frightening thing actually sticks.
     amount *= Math.max(0, 1 + traitMod(t, 'fearGain'));

@@ -100,6 +100,23 @@ export const VITALS = {
  * tribute up for the fight that kills them, which means it needs to hurt now
  * and stop hurting later.
  */
+/**
+ * How long a wound takes to step down a grade, per site. Lived in
+ * `engine/wounds.ts` as a hand-typed record — eight tunables in the engine,
+ * which is exactly what this file exists to prevent.
+ */
+export const WOUND_RECOVERY: Record<string, number> = {
+    /** Cycles of not being re-injured before the site steps down one grade. */
+    arms: 4,
+    legs: 5,
+    torso: 6,
+    head: 8,
+    burned: 5,
+    frostbitten: 4,
+    infected: 7,
+    poisoned: 5,
+};
+
 export const BLEEDING = {
     /** A2: the Medic archetype's hands, on somebody else's wound. */
     medicArchetypeMultiplier: 2,
@@ -413,6 +430,21 @@ export const PROC_SIGNATURE = {
  * (QUELLS) that need more than a temperament/config multiplier — see each
  * consumer for exactly where it's read.
  */
+/**
+ * How the run's identity is drawn. §9 of the audit: `noQuellWeight` is the
+ * single number that decides how often anybody sees one of the 27 authored
+ * Quarter Quells, and it sat in `engine/gamesProfile.ts` where no balance pass
+ * would ever find it.
+ */
+export const GAMES_PROFILE = {
+    /**
+     * Weight of "no Quell this year" against the summed weight of every Quell.
+     * High on purpose — most Games are not Quarter Quells — but this is the
+     * dial, and the Setup "Force a Quell" toggle bypasses it entirely.
+     */
+    noQuellWeight: 600,
+} as const;
+
 export const QUELL_MECHANICS = {
     /** 'No Alliances': hard cap on alliance size, and the per-cycle tax on anyone still in a group over it. */
     allianceCapSize: 2,
@@ -2333,6 +2365,17 @@ export const MUTTS = {
     stampedeDamage: 26,
 } as const;
 
+/**
+ * Per-terrain fuel: dry scrub and timber carry a fire, a marsh resists it.
+ * Anything not listed burns at the neutral rate. Moved out of
+ * `engine/zoneEffects.ts`.
+ */
+export const TERRAIN_DRYNESS: Record<string, number> = {
+    forest: 1.15,
+    open: 1.0,
+    wetland: 0.55,
+};
+
 export const ZONE_EFFECTS = {
     /** How long each effect lasts before lifting on its own. */
     burningDuration: 3,
@@ -2855,6 +2898,10 @@ export const INVENTORY = {
 
 /** Zone economy: foraging strips a zone, and the arena grows it back slowly. */
 export const ZONES = {
+    /** Depletion below which a badly stripped zone visibly reads as recovered. */
+    regrowthBeatBelow: 0.2,
+    /** Peak depletion a zone must have hit for its recovery to be worth a line. */
+    regrowthBeatPeak: 0.5,
     /** A fishing net in still water, added to the forage chance. */
     fishingBonus: 0.25,
     /**
@@ -5588,6 +5635,51 @@ export const ZONE_CONTROL = {
  * deliberately sends nothing: the silence is the note. When the tribute then
  * fixes it themselves, the parachute arrives with the point attached.
  */
+/**
+ * The mentor's own balance sheet. This lived in `engine/mentors.ts` as six
+ * exported consts — a whole subsystem's tuning outside this file, invisible to
+ * `test:undeclared-knobs` because an exported `const` matched none of the three
+ * expression shapes it knew how to look for. It looks for this shape now.
+ *
+ * Keyed by district legacy tier: a storied district's mentor has standing and
+ * contacts, a forgotten one's has neither. `pull.forgotten` is zero on purpose
+ * — Haymitch has no credibility left to spend, so his tribute is never rescued
+ * by anyone but themselves.
+ */
+export const MENTORS = {
+    /** Multiplier on ordinary sponsor generosity, by the district's tier. */
+    generosity: {
+        storied: 1.3,
+        strong: 1.18,
+        modest: 1.0,
+        thin: 0.85,
+        forgotten: 0.68,
+    },
+    /**
+     * Per-cycle chance a mentor gets a targeted parachute past the Capitol,
+     * before repeat-decay. Rolled only for a tribute in nameable trouble.
+     */
+    pull: {
+        storied: 0.3,
+        strong: 0.22,
+        modest: 0.13,
+        thin: 0.07,
+        forgotten: 0,
+    },
+    /**
+     * A plea only lands if the crowd still rates the tribute, and each one
+     * burns trust the mentor cannot replace — three in a run drops any tribute
+     * under the floor and the favours are gone. This is the whole budget;
+     * there is no separate counter.
+     */
+    trustFloor: 34,
+    trustCost: 13,
+    /** Excitement a plea spends. Cheaper than a crowd-driven gift: the mentor is paying, not the audience. */
+    excitementCost: 18,
+    /** Repeat pleas decay like ordinary parachutes, so a favourite cannot farm them. */
+    repeatDecay: 0.5,
+} as const;
+
 export const MENTOR_DRAMA = {
     /** Thirst at which sitting near water reads as the mistake. */
     withholdThirst: 62,

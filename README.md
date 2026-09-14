@@ -17,6 +17,13 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
 
 ## Tests
 
+Every check below except `test:ui` runs in CI on each pull request and on every
+push to `main` (`.github/workflows/ci.yml`). It used to run only on push to
+`main`, inside the deploy workflow — so a pull request that broke a guard merged
+clean and the failure landed on the default branch, blocking the Pages deploy
+with the bad commit already in history. `test:ui` is excluded because it needs a
+dev server and a browser; run it locally.
+
 - `npm run lint` — TypeScript type check.
 - `npm run test:sim` — headless soak test: hundreds of complete runs across every
   arena and config spread, asserting no infinite loops, vitals within range,

@@ -139,7 +139,13 @@ export function tickVengeancePacts(ctx: SimContext) {
         if (!target || target.status !== 'dead') {
             // still standing; fall through
         } else {
-            const theirs = members.some(m => target.causeOfDeath?.includes(m.name));
+            // Off the damage record, not off the obituary. `causeOfDeath` is
+            // authored prose — "Caught in the collapsing border of Ashen Flats",
+            // "Killed by X (spear)" — so a substring match on a member's name
+            // credited a pact to Ash for the Ashen Flats and to Rue for Bruel.
+            // `lastDamage.sourceId` is the field that actually says whose hand
+            // it was, and it is what `recordObjectiveOutcome` already reads.
+            const theirs = members.some(m => target.lastDamage?.sourceId === m.id);
             // §4.3: ...or they were standing in it. A pact that hunted somebody
             // into the fight that killed them has finished what it swore to
             // finish, whoever landed the last of it — and crediting only the

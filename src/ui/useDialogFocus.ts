@@ -9,9 +9,22 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  * `SettingsPanel` and the help overlay each did somewhere between none and
  * two, and the compare view — which the arena's own key handler stands down
  * for while a tribute is selected — could not be closed with Escape at all.
+ *
+ * The effect runs on mount and unmount only. It used to depend on `onClose`,
+ * and every call site passes a freshly-allocated arrow, so each render of the
+ * parent tore the effect down — restoring focus to whatever was focused before
+ * the dialog opened — and immediately re-ran it, moving focus back to the
+ * dialog's first control. Inside a running Games the arena re-renders on every
+ * log line, so an open Settings or Help panel yanked focus out of whatever the
+ * reader had tabbed to, several times a second. The handler reads the latest
+ * `onClose` through a ref instead, which keeps Escape current without making
+ * focus management depend on render identity.
  */
 export function useDialogFocus<T extends HTMLElement>(onClose: () => void) {
     const panelRef = useRef<T>(null);
+    const closeRef = useRef(onClose);
+    closeRef.current = onClose;
+
     useEffect(() => {
         const previouslyFocused = document.activeElement as HTMLElement | null;
         const panel = panelRef.current;
@@ -21,7 +34,7 @@ export function useDialogFocus<T extends HTMLElement>(onClose: () => void) {
         const onKey = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
                 e.stopPropagation();
-                onClose();
+                closeRef.current();
                 return;
             }
             if (e.key !== 'Tab' || !panel) return;
@@ -37,6 +50,6 @@ export function useDialogFocus<T extends HTMLElement>(onClose: () => void) {
             window.removeEventListener('keydown', onKey, true);
             previouslyFocused?.focus();
         };
-    }, [onClose]);
+    }, []);
     return panelRef;
 }

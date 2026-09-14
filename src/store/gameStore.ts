@@ -1222,6 +1222,23 @@ export const gameActions = {
             if (state.phase === 'ended') {
                 resolveBets(state);
                 commitVictory(state);
+            } else if (guard <= 0) {
+                // The ceiling tripped. Silently falling out of the loop left
+                // bets unresolved, no victory committed, and a half-finished run
+                // on screen with nothing anywhere saying why — which is the one
+                // outcome a guard exists to make visible rather than tidy.
+                console.error(`[survival-games] runToEnd hit its ${turns}-turn ceiling in phase '${state.phase}' with `
+                    + `${state.tributes.filter(t => t.status === 'alive').length} alive; bets are unresolved.`);
+                state.log.push({
+                    id: `log-${(state.logCounter = (state.logCounter ?? 0) + 1)}-ceiling`,
+                    day: state.day,
+                    phase: state.phase,
+                    text: 'The broadcast cuts out. The simulation ran past the turn ceiling without reaching an ending — '
+                        + 'this run cannot be completed, and no wagers have been settled.',
+                    tributesInvolved: [],
+                    important: true,
+                    category: 'gamemaker',
+                });
             }
         } finally {
             // `cancelRunToEnd` may already have released the token to let a new

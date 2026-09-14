@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTransientFlag } from '../ui/useTransientFlag';
 import { GameState, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { FeedLine } from './EventFeed';
@@ -260,7 +261,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
         };
     }, [onClose]);
 
-    const [storyCopied, setStoryCopied] = useState<'idle' | 'ok' | 'fail'>('idle');
+    const [storyCopied, setStoryCopied] = useTransientFlag<'idle' | 'ok' | 'fail'>('idle', 2500);
     // A5: four tabs, defaulting to Overview, and an optional second tribute
     // rendered beside the first.
     const [tab, setTab] = useState<ModalTab>('overview');
@@ -1258,7 +1259,6 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                     onClick={async () => {
                                         const ok = await copyTributeStory(gameState, tribute);
                                         setStoryCopied(ok ? 'ok' : 'fail');
-                                        setTimeout(() => setStoryCopied('idle'), 2500);
                                     }}
                                 >
                                     {storyCopied === 'ok' ? 'Story copied' : storyCopied === 'fail' ? 'Copy failed' : 'Copy their story'}

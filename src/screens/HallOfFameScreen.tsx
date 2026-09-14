@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { useTransientFlag } from '../ui/useTransientFlag';
 import { HallOfFameEntry } from '../models/types';
 import { readHallOfFame, writeHallOfFame, clearHallOfFame, serializeHallOfFame } from '../utils/hofStorage';
 import { HofFilters, applyHofQuery, isFiltered, EMPTY_HOF_QUERY, HofQuery } from '../components/HofFilters';
@@ -13,12 +14,16 @@ import { PanemRecordBook } from '../components/PanemRecordBook';
 export function HallOfFameScreen() {
     // §10.5: which archived victors are currently seated for the next run.
     const grudgeIds = useStore(gameStore, st => st.grudgeMatchIds);
-    const [entries, setEntries] = useState<HallOfFameEntry[]>([]);
+    // Read in the initialiser, not in an effect. `readHallOfFame` is
+    // synchronous, so loading it after the first paint meant a player with
+    // fifty archived runs opened this page on "finish a simulation to crown
+    // your first victor" and watched it be replaced.
+    const [entries, setEntries] = useState<HallOfFameEntry[]>(() => readHallOfFame());
     const [query, setQuery] = useState<HofQuery>(EMPTY_HOF_QUERY);
     const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
     // §2.3: two entries at a time — a comparison, not a multi-select.
     const [compareIds, setCompareIds] = useState<string[]>([]);
-    const [copiedSeed, setCopiedSeed] = useState<string | null>(null);
+    const [copiedSeed, setCopiedSeed] = useTransientFlag<string | null>(null, 1800);
     const [confirmClear, setConfirmClear] = useState(false);
     const [confirmResetPanem, setConfirmResetPanem] = useState(false);
     const [confirmResetAll, setConfirmResetAll] = useState(false);
@@ -35,10 +40,6 @@ export function HallOfFameScreen() {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
 
-    useEffect(() => {
-        setEntries(readHallOfFame());
-    }, []);
-
     const visible = useMemo(() => applyHofQuery(entries, query), [entries, query]);
 
     // §2: which entry is one click from replacing the player's current run.
@@ -48,7 +49,6 @@ export function HallOfFameScreen() {
         try {
             await navigator.clipboard?.writeText(seed);
             setCopiedSeed(seed);
-            setTimeout(() => setCopiedSeed(null), 1800);
         } catch {
             /* clipboard unavailable — the seed is on screen anyway */
         }

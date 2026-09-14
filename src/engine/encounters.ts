@@ -681,7 +681,7 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         tradeRumours(ctx, t, other);
         ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.friendly), vars), [t.id, other.id], { category: 'alliance' });
         t.vitals.sanity = Math.min(100, t.vitals.sanity + ENCOUNTER_BRANCH.friendlySanity);
-        other.vitals.sanity = Math.min(100, other.vitals.sanity + 10);
+        other.vitals.sanity = Math.min(100, other.vitals.sanity + ENCOUNTER_BRANCH.friendlySanity);
         adjustMutual(ctx.state, t, other, 10);
     }
     clampTribute(t);

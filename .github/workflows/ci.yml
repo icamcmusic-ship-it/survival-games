@@ -1,0 +1,74 @@
+name: CI
+
+# The check roster, run on the pull request rather than after the merge.
+#
+# `deploy.yml` runs these too, but it triggers on `push` to `main` — so until
+# this existed, every check ran *after* the merge had already happened. A pull
+# request that broke a guard merged clean and the failure then landed on `main`,
+# blocking the Pages deploy with the bad commit already in history. That is not
+# hypothetical: the audit branch broke `test:metrics` (the wound/bleed/fear
+# riders were being skipped on nearly every landed hit, halving the run's
+# bleeding rate) and only a local run caught it.
+#
+# Deliberately a separate workflow rather than a `pull_request` trigger added to
+# `deploy.yml`: that file holds `pages: write` and `id-token: write`, the
+# `pages` concurrency group and the `deploy` job, and none of those should be
+# reachable from a pull request. This one only reads the repository.
+#
+# `test:ui` is not here — it needs `npm run dev` on port 3000 and a Playwright
+# browser download, which is its own job and its own runtime budget. Run it
+# locally against a dev server before pushing UI work.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A second push to the same branch supersedes the first; nothing here has a
+# side effect worth finishing once it is known to be stale.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # The build chain is what deploys; a high-severity advisory in it is a
+      # release blocker, so it fails here too rather than only at deploy time.
+      - run: npm audit --audit-level=high
+      - run: npm run lint
+
+      # Balance discipline, both directions: no declared knob goes unread, and
+      # no new tunable is typed into the engine instead of into data/balance.ts.
+      - run: npm run test:knobs
+      - run: npm run test:undeclared-knobs
+
+      # The simulation itself.
+      - run: npm run test:sim
+      - run: npm run test:metrics
+      - run: npm run test:decisions
+
+      # Content and structure.
+      - run: npm run test:arenas
+      - run: npm run test:arena-layout
+      - run: npm run test:zone-features
+      - run: npm run test:flavor
+      - run: npm run test:names
+      - run: npm run test:achievements
+      - run: npm run test:predicates
+
+      # Saves written by an older build must still open.
+      - run: npm run test:storage
+
+      - run: npm run build

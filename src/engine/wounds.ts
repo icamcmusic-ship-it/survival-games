@@ -1,5 +1,5 @@
 import { InjurySite, Tribute } from '../models/types';
-import { BLEEDING, VITALS } from '../data/balance';
+import { BLEEDING, VITALS, WOUND_RECOVERY } from '../data/balance';
 import { SimContext } from './context';
 import { profOf, trainProficiency, observeProficiency } from './proficiency';
 import { traitMod } from '../data/traits';
@@ -27,6 +27,7 @@ import { noteWoundTended, sepsisGrade } from './infection';
  * bad it is. `injure` on an already-hurt site worsens it a step — a second
  * frost, a second dose of venom, a second blow to the same arm.
  */
+// balance-exempt: the grade scale itself (none/hurt/bad/ruined), not a dial — every read site and every line of copy is written against these four steps
 const MAX_INJURY_GRADE = 3;
 
 export function injure(t: Tribute, site: Exclude<InjurySite, 'bleeding'>, severity = 1) {
@@ -86,17 +87,7 @@ export function healInjury(t: Tribute, site: Exclude<InjurySite, 'bleeding'>, st
  * a leg or an arm is *legible*, and `visiblePower` in stance.ts reads it, so a
  * limp is now a reason somebody picks you.
  */
-const RECOVERY_CYCLES: Partial<Record<InjurySite, number>> = {
-    // Cycles of not being re-injured before the site steps down one grade.
-    arms: 4,
-    legs: 5,
-    torso: 6,
-    head: 8,
-    burned: 5,
-    frostbitten: 4,
-    infected: 7,
-    poisoned: 5,
-};
+const RECOVERY_CYCLES: Partial<Record<InjurySite, number>> = WOUND_RECOVERY;
 
 /**
  * One cycle of the body doing its own work. Rest, food and a medic all help

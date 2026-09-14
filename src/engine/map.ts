@@ -602,10 +602,8 @@ export function depleteZone(state: GameState, zoneName: string, amount: number) 
     state.zoneDepletionPeak[zoneName] = Math.max(state.zoneDepletionPeak[zoneName] ?? 0, state.zoneDepletion[zoneName]);
 }
 
-/** Depletion below which a badly stripped zone visibly reads as recovered. */
-const REGROWTH_BEAT_BELOW = 0.2;
-/** Peak depletion a zone must have hit for its recovery to be worth a line. */
-const REGROWTH_BEAT_PEAK = 0.5;
+const REGROWTH_BEAT_BELOW = ZONES.regrowthBeatBelow;
+const REGROWTH_BEAT_PEAK = ZONES.regrowthBeatPeak;
 
 /** Called once per cycle: the arena quietly restocks what nobody is stripping. */
 export function regenerateZones(ctx: SimContext) {

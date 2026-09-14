@@ -12,7 +12,7 @@
  * So a deserialised tribute is normalised *once*, here, on the way in.
  */
 import {
-    Alliance, AlliancePact, Attributes, Build, Condition, EventLog, Frame, Handedness, LimbRatio, GameConfig, GameState, Gender, Injuries, Item,
+    Alliance, AlliancePact, Attributes, Build, Condition, EventLog, Frame, Handedness, LimbRatio, GameConfig, GameState, Gender, Injuries, InjurySite, Item,
     Objective, Stance, StandingGoal, Tribute, TributeMemory, Vitals,
 } from '../models/types';
 import { DEFAULT_GAME_CONFIG } from '../data/constants';
@@ -453,7 +453,62 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
             const k = asRecord(r.kitPriorities);
             return k ? { warmth: asBool(k.warmth, false), water: asBool(k.water, false), purifier: asBool(k.purifier, false) } : {};
         })(),
+
+        // The rest of the objects with *required* sub-fields. These rode
+        // through on the spread above, which meant a save written by a newer
+        // build — or edited by hand, or truncated mid-write — could hand
+        // `tickDowned` a `downed` with no `cyclesLeft` and `checkDeath` a
+        // `lastDamage` with no `cause`, and those two drive the rescue window
+        // and every obituary in the run. Dropped entirely when malformed: the
+        // engine treats all of them as optional, so absent is always safe and
+        // half-present never is.
+        downed: (() => {
+            const d = asRecord(r.downed);
+            if (!d || typeof d.cyclesLeft !== 'number') return undefined;
+            return {
+                sinceCycle: asNum(d.sinceCycle, 0),
+                cyclesLeft: d.cyclesLeft,
+                cause: asStr(d.cause, 'wounds nobody reached in time'),
+                byId: typeof d.byId === 'string' ? d.byId : undefined,
+            };
+        })(),
+        lastDamage: (() => {
+            const d = asRecord(r.lastDamage);
+            if (!d || typeof d.cause !== 'string') return undefined;
+            return {
+                cause: d.cause,
+                sourceId: typeof d.sourceId === 'string' ? d.sourceId : undefined,
+                kind: oneOf<NonNullable<Tribute['lastDamage']>['kind']>(
+                    d.kind, ['tribute', 'mutt', 'hazard', 'climate', 'status', 'gamemaker', 'arena'], 'hazard'),
+                cycle: asNum(d.cycle, 0),
+                amount: asNum(d.amount, 0),
+            };
+        })(),
+        shadowing: (() => {
+            const sh = asRecord(r.shadowing);
+            return sh && typeof sh.targetId === 'string'
+                ? { targetId: sh.targetId, cycles: asNum(sh.cycles, 0) }
+                : undefined;
+        })(),
+        objectiveTension: (() => {
+            const ot = asRecord(r.objectiveTension);
+            if (!ot) return undefined;
+            const runnerUp = normalizeObjective(ot.runnerUp);
+            if (runnerUp.kind === 'survive') return undefined;
+            return { runnerUp, margin: asNum(ot.margin, 0), voiced: asBool(ot.voiced, false) };
+        })(),
+        trusts: asNumMap(r.trusts),
+        zoneLevel: r.zoneLevel === 'upper' || r.zoneLevel === 'lower' ? r.zoneLevel : undefined,
+        favouring: oneOfOrUndefined<InjurySite>(
+            r.favouring, ['head', 'torso', 'arms', 'legs', 'bleeding', 'infected', 'poisoned', 'burned', 'frostbitten']),
+        epithet: typeof r.epithet === 'string' ? r.epithet : undefined,
+        token: typeof r.token === 'string' ? r.token : undefined,
     };
+}
+
+/** `oneOf`, but absent rather than defaulted when the value is not in the set. */
+function oneOfOrUndefined<T extends string>(value: unknown, allowed: readonly string[]): T | undefined {
+    return typeof value === 'string' && allowed.includes(value) ? value as T : undefined;
 }
 
 /** A §3: a standing goal is only kept when its inner objective survives normalisation. */

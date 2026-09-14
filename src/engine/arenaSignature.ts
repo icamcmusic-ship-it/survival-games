@@ -1756,6 +1756,7 @@ function cabinSignature(ctx: SimContext, _cycle: number, rng: RNG) {
  * This is what makes the one-way Ember Shaft a real decision rather than a
  * map quirk: the descent pays, and the descent is hard to undo.
  */
+// balance-exempt: how deep each named zone sits in one arena's shaft — map geometry for the magmatube, not a number anyone would tune
 const THROAT_DEPTH: Record<string, number> = {
     'The Cornucopia (Crater Rim)': 0,
     'The Ash-Choked Stair': 1,

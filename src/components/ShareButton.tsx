@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
+import { useTransientFlag } from '../ui/useTransientFlag';
 import { Share2, Check, Copy } from 'lucide-react';
 import { GameConfig } from '../models/types';
 
 export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: { seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig, quellId: string | null }) {
-    const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+    const [status, setStatus] = useTransientFlag<'idle' | 'copied' | 'failed'>('idle', 2000);
     // On copy failure the URL is shown in a selectable field so the player can
     // copy it by hand instead of being told "Copy failed" with nothing to copy.
     const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
-    const [seedCopied, setSeedCopied] = useState(false);
+    const [seedCopied, setSeedCopied] = useTransientFlag(false, 2000);
 
     // §1.10: the seed as text, not only as a URL. The full seed (base plus
     // any reroll suffix) is what every screen shows and what this copies.
@@ -15,7 +16,6 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: {
         try {
             await navigator.clipboard?.writeText(seed);
             setSeedCopied(true);
-            setTimeout(() => setSeedCopied(false), 2000);
         } catch {
             /* clipboard unavailable — the seed is on screen in the chip */
         }
@@ -71,7 +71,6 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: {
             setStatus('failed');
             setFallbackUrl(url);
         }
-        setTimeout(() => setStatus('idle'), 2000);
     };
 
     return (

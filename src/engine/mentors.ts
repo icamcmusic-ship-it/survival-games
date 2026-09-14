@@ -9,7 +9,7 @@ import { clampTribute } from './vitals';
 import { getZone, zoneFeatures } from './map';
 import { Item, Tribute } from '../models/types';
 import { mintItem } from './items';
-import { MENTOR_DRAMA, QUALITY_BIAS, VICTOR_MENTOR } from '../data/balance';
+import { MENTOR_DRAMA, MENTORS, QUALITY_BIAS, VICTOR_MENTOR } from '../data/balance';
 
 /**
  * Mentors, as a sponsorship mechanic.
@@ -38,43 +38,12 @@ import { MENTOR_DRAMA, QUALITY_BIAS, VICTOR_MENTOR } from '../data/balance';
  * pedigree table is just free points for the Careers. District 12's mentor
  * costs their tribute a third of their parachutes.
  */
-export const MENTOR_GENEROSITY: Record<LegacyTier, number> = {
-    storied: 1.3,
-    strong: 1.18,
-    modest: 1.0,
-    thin: 0.85,
-    forgotten: 0.68,
-};
-
-/**
- * Per-cycle chance a mentor gets a targeted parachute past the Capitol, before
- * repeat-decay. Rolled only for a tribute in genuine, nameable trouble.
- *
- * `forgotten` is zero on purpose: Haymitch has no contacts and no credibility
- * left to spend, so his tribute is never rescued by anyone but themselves.
- */
-export const MENTOR_PULL: Record<LegacyTier, number> = {
-    storied: 0.3,
-    strong: 0.22,
-    modest: 0.13,
-    thin: 0.07,
-    forgotten: 0,
-};
-
-/**
- * A plea only lands if the crowd still rates the tribute. The mentor trades on
- * credibility they do not have an infinite supply of, so each plea burns trust
- * — three of them in a run drops any tribute under the floor and the mentor is
- * out of favours for good. This is the budget; there is no separate counter.
- */
-export const MENTOR_TRUST_FLOOR = 34;
-export const MENTOR_TRUST_COST = 13;
-
-/** Excitement spent by a plea. Cheaper than a crowd-driven gift: the mentor, not the audience, is paying. */
-export const MENTOR_EXCITEMENT_COST = 18;
-
-/** Repeat pleas decay on the same curve as ordinary parachutes, so a favourite cannot farm them. */
-export const MENTOR_REPEAT_DECAY = 0.5;
+export const MENTOR_GENEROSITY: Record<LegacyTier, number> = MENTORS.generosity;
+export const MENTOR_PULL: Record<LegacyTier, number> = MENTORS.pull;
+const MENTOR_TRUST_FLOOR = MENTORS.trustFloor;
+const MENTOR_TRUST_COST = MENTORS.trustCost;
+const MENTOR_EXCITEMENT_COST = MENTORS.excitementCost;
+const MENTOR_REPEAT_DECAY = MENTORS.repeatDecay;
 
 export function mentorTierOf(t: Tribute): LegacyTier {
     return legacyOf(t.district).tier;
