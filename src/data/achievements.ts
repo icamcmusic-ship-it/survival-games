@@ -558,15 +558,28 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'seen-everything',
         name: 'Seen Everything',
-        hint: 'Crown a victor who stood in every zone of the arena.',
+        // Audit 2 §3.1: every zone of the arena is not something a victor can
+        // do, and the reason is the calendar rather than the pathfinding.
+        // Measured over 200 runs, a victor stands in 40% of the arena at the
+        // median, 57% at p90 and 89% at the very best — and that best is on a
+        // small map. A run is under nine days; an arena is ten to thirteen
+        // zones; the two numbers do not meet, and no destination-scoring change
+        // moves it (a backtrack penalty and an unseen-ground pull were tried at
+        // twenty times their sensible value and shifted victor coverage by two
+        // percentage points, because purposeful movement routes through
+        // `objectiveStep` and never consults the drift scorer at all).
+        //
+        // Three-quarters of the map is above p90 and below the ceiling: a
+        // tribute who really did cross almost all of it.
+        hint: 'Crown a victor who stood in three-quarters of the arena or more.',
         category: 'arena',
         rarity: 'legendary',
-        test: (s, v) => !!v && (v.visitedZones?.length ?? 0) >= s.arena.zones.length,
+        test: (s, v) => !!v && (v.visitedZones?.length ?? 0) >= Math.ceil(s.arena.zones.length * 0.75),
         nearMiss: (s, v) => {
             const n = v?.visitedZones?.length ?? 0;
-            const total = s.arena.zones.length;
-            return v && total - n > 0 && total - n <= 2
-                ? `${v.name} saw ${n} of ${total} zones — ${total - n} short of the whole arena`
+            const need = Math.ceil(s.arena.zones.length * 0.75);
+            return v && need - n > 0 && need - n <= 2
+                ? `${v.name} saw ${n} of ${s.arena.zones.length} zones — ${need - n} short of three-quarters of it`
                 : undefined;
         },
     },
@@ -1520,26 +1533,26 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'grand-cartography',
         name: 'Cartography',
-        hint: 'See one tribute stand in every zone of a sprawling arena of twelve zones or more.',
-        // Extends `cartographer`: same walk, but only counted where the walk
-        // is long. §11: a *complete* walk of a 12+ zone sprawl never happened
-        // in 600 runs — `cartographer`, the same walk at any size, fires at
-        // 1.17% — so this asks for all but one zone. Still a tribute who
-        // crossed almost the whole map and lived to be counted.
+        hint: 'See one tribute walk two-thirds of a sprawling arena of twelve zones or more.',
+        // Extends `cartographer`: same walk, but only counted where the walk is
+        // long. §11 cut this from a complete walk to all-but-one and it stayed
+        // unreachable, because the problem is the size of the map against the
+        // length of a run rather than the margin. Audit 2 §3.1: in an arena of
+        // twelve zones or more a victor covers 33% at the median and 67% at the
+        // very best. Two-thirds of a sprawl is the top of what the calendar
+        // allows, and it is still the longest walk anybody takes all year.
         category: 'arena',
         rarity: 'legendary',
         test: state => state.arena.zones.length >= 12
-            && state.tributes.some(t => {
-                const seen = t.visitedZones ?? [];
-                return state.arena.zones.filter(z => !seen.includes(z.name)).length <= 1;
-            }),
+            && state.tributes.some(t =>
+                (t.visitedZones?.length ?? 0) >= Math.ceil(state.arena.zones.length * (2 / 3))),
         nearMiss: state => {
             if (state.arena.zones.length < 12) return undefined;
-            const best = state.tributes.reduce((fewest, t) => {
-                const seen = t.visitedZones ?? [];
-                return Math.min(fewest, state.arena.zones.filter(z => !seen.includes(z.name)).length);
-            }, state.arena.zones.length);
-            return best === 2 ? 'somebody walked all but two zones of a sprawling arena — one short' : undefined;
+            const need = Math.ceil(state.arena.zones.length * (2 / 3));
+            const best = state.tributes.reduce((most, t) => Math.max(most, t.visitedZones?.length ?? 0), 0);
+            return need - best > 0 && need - best <= 2
+                ? `somebody walked ${best} zones of a sprawling arena — ${need - best} short of two-thirds of it`
+                : undefined;
         },
     },
     {

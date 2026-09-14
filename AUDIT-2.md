@@ -435,7 +435,12 @@ setup screen.
 
 ## §3. Tribute logic — robustness and more complexity
 
-### 3.1 The median tribute experiences two zones
+### 3.1 The map is bigger than a run is long
+
+> **Corrected after the fix pass.** This section originally read "the median
+> tribute experiences two zones" and treated that as an exploration failure. The
+> measurement was right and the diagnosis was wrong, and the correction is worth
+> more than the original claim — see 3.1a below.
 
 Over 80 complete runs, recording `visitedZones.length` at death or crowning:
 
@@ -446,18 +451,52 @@ Over 80 complete runs, recording `visitedZones.length` at death or crowning:
 | max | **8** |
 
 Hand-authored arenas carry 10 to 13 zones. `test:zone-features` reports 415
-zones across 40 arenas — an average of 10.4 each. **The median tribute sees two
-of them, and no tribute in 150 runs ever saw more than eight.**
+zones across 40 arenas — an average of 10.4 each.
 
-This is the deepest structural finding in the audit and it cascades:
+#### 3.1a What that number actually measures
+
+The median tribute visits two zones because **the median tribute dies on day
+three**. 34% of the field is lost in the bloodbath, on cycle zero, before
+anybody has walked anywhere. A p50 taken over all 24 tributes is dominated by
+the ones who never got a chance to move, and reporting it as a movement finding
+was a mistake.
+
+The defensible version, measured over 200 runs on the survivors who actually had
+a run:
+
+| | share of the arena stood in |
+|---|---|
+| victor, p50 | **40%** |
+| victor, p90 | 57% |
+| victor, best ever seen | 89% |
+| victor in a 12+ zone arena, p50 | 33% |
+| victor in a 12+ zone arena, best | 67% |
+
+So the true finding is narrower and still real: **a victor never sees the whole
+arena, and typically sees under half of it.** Run length and arena size do not
+meet.
+
+It is also not a scoring bug. A backtrack penalty (do not walk back the way you
+came) and an unseen-ground pull were implemented and measured at twenty times
+their sensible values; victor coverage moved by two percentage points. The
+reason is that purposeful movement routes through `objectiveStep`, which walks
+the adjacency graph toward a chosen destination and never consults
+`pickDestination` at all — the drift scorer only handles tributes with no
+standing intention. Both knobs were reverted rather than shipped dead.
+
+Closing the gap properly means changing *where objectives send people* or
+changing the ratio of run length to arena size. That is design work, not tuning,
+and it is the one item in this report deliberately left open.
+
+This still cascades:
 
 - The arena content budget is enormous — 1,594 authored events, 40 flavour packs,
   415 authored zone interiors, per-zone mutt terrain filters — and the median
   player-visible slice of it is two zones wide. Most of an arena is never seen in
   most runs of that arena.
-- It is why `seen-everything`, `grand-cartography` and `cartographer` are
-  unreachable or near-unreachable (§11.1). Those achievements are not badly
-  tuned; they are asking for a thing the movement system does not do.
+- It is why `seen-everything` and `grand-cartography` were unreachable (§11.1).
+  Those two have since been re-scoped onto the measured ceiling — three-quarters
+  of the arena, and two-thirds of a 12+ sprawl — and both now fire.
 - It makes the map screen mostly static (§2.5).
 - It caps how much arena-specific identity a run can express, which is the
   problem §5 and §7 are otherwise trying to solve by adding content.
@@ -468,18 +507,22 @@ objective, which has no destination — is 42.7%. A tribute with no standing
 intention has no reason to move, and the destination scorer is only consulted
 when something asks for a destination.
 
-Candidate directions, roughly in order of expected value:
+Candidate directions, roughly in order of expected value. Note that (1) was
+tried and did not work — the drift scorer is not on the path that matters:
 
-1. **Give `survive` a destination.** 42.7% of all tribute-cycles are spent under
-   an objective that is definitionally "no plan". Even a weak wander bias would
-   roughly double map coverage.
-2. **Make depletion push.** The zone economy already models forage as a
+1. ~~**Give `survive` a destination.**~~ Tried and reverted. 42.7% of cycles do
+   sit under an objective that is definitionally "no plan", but biasing the
+   drift scorer moved victor coverage by two points at twenty times the
+   sensible weight.
+2. **Let objectives name far zones.** This is the one that would work.
+   `objectiveStep` is where purposeful movement is decided, and `reach` mostly
+   resolves to an adjacent zone. A multi-cycle journey is a different and better
+   narrative object than a step, and it is the only lever measured to be on the
+   right code path.
+3. **Make depletion push.** The zone economy already models forage as a
    depleting, regrowing stock, and a tribute who can read ground is pulled *back*
    toward a recovering zone. The push in the other direction — this ground is
    stripped, go elsewhere — is weaker than the pull.
-3. **Let objectives name far zones.** `reach` currently resolves mostly to
-   adjacent zones; a multi-cycle journey is a different and better narrative
-   object than a step.
 
 ### 3.2 Stance hysteresis is doing more than intended
 
