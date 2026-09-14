@@ -999,7 +999,12 @@ export const SUSPICION = {
     /** §4.8: suspicion high enough to be worth testing, but short of walking out. */
     /** Per point of `betrayalResist`, how much faster in-group doubt accrues (Paranoid at 0.3 → 1.8x). */
     accrualPerBetrayalResist: 2.67,
-    investigateThreshold: 35,
+    /**
+     * Placed on the measured distribution rather than above it. In-alliance
+     * suspicion runs p50 7 / p90 18 / p95 23 / p99 38, so 20 is the top decile:
+     * worth testing, and common enough to be a beat the audience sees.
+     */
+    investigateThreshold: 20,
     investigateChance: 0.25,
     /** How much a test that finds nothing buys back. */
     investigateClearAmount: 20,
@@ -1008,9 +1013,22 @@ export const SUSPICION = {
     max: 100,
     perWitnessedBetrayal: 35,
     perCharterBreach: 15,
-    decayPerCycle: 2,
-    /** At or above this, an ally considers getting out first. */
-    departThreshold: 60,
+    /**
+     * Cycles an ally can be out of contact before their absence starts to read
+     * as something. The one *ambient* source of doubt: every other source is an
+     * event, which is why a group that simply held together never accrued any.
+     */
+    absenceCycles: 2,
+    /** Suspicion per cycle past `absenceCycles`, per absent ally. */
+    perAbsentCycle: 5,
+    decayPerCycle: 1,
+    /**
+     * At or above this, an ally considers getting out first. The old 60 was
+     * reached in 1 of 902 sampled pair-cycles; 45 is the top half-percent of
+     * the distribution the engine now produces, which is what "this one is
+     * about to move on me" should cost to reach.
+     */
+    departThreshold: 45,
     departChance: 0.35,
     /** How much being watched costs a betrayer's target weighting, at full suspicion. */
     hardMarkFactor: 0.5,
@@ -4182,8 +4200,20 @@ export const BETRAYAL = {
      * scales with how far past it they are. Never chosen from the ordinary
      * betrayal roll (weight 0 above) — it has its own trigger.
      */
-    preemptSuspicion: 45,
-    preemptChance: 0.08,
+    /**
+     * Suspicion at which an ally moves first because they expect to be moved
+     * on. Sits inside the investigation band (20-44) deliberately: you test it,
+     * the test hardens it, and then you act — rather than the old 45, which was
+     * above the band and reached in 0.2% of pair-cycles.
+     */
+    preemptSuspicion: 35,
+    /**
+     * Rolled per eligible pair per alliance per cycle. The old 0.08, scaled by
+     * suspicion/100, gave roughly a 3% chance on a state reached 0.2% of the
+     * time — an expected rate indistinguishable from the zero the soak
+     * measured across 400 runs.
+     */
+    preemptChance: 0.25,
     /** A thief needs something worth taking. */
     minCacheValueToSteal: 15,
     /** Leading someone into ground you know is lethal needs you to know it. */

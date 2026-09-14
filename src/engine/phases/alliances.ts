@@ -224,6 +224,41 @@ export function processAlliances(ctx: SimContext) {
     });
 
     refresh();
+    // 1b1. Doubt from absence.
+    //
+    // The suspicion axis gates four separate mechanics — investigation (35),
+    // pre-emptive departure (60), the pre-emptive knife (45) and faction
+    // detection — and every one of them was calibrated above the range the
+    // simulation actually produces. Measured over 60 runs, 902 in-alliance
+    // pair-cycle samples: 68.6% sat at 1-14, 29.9% at 15-34, and 1.4% reached
+    // even the lowest of those four bars. The knife had fired zero times in
+    // 400 runs; hearings, twice.
+    //
+    // The cause was the accrual side rather than the thresholds. Every source
+    // was an *event* — a witnessed betrayal (35), a charter breach (15), an
+    // ally's kill count (8) — and against them `decayPerCycle` ran
+    // unconditionally and deleted the key at zero, so a group that simply held
+    // together reset to "nobody has ever wondered" every few cycles. There was
+    // no way to express a doubt that grows because nothing is happening.
+    //
+    // This is that way. An ally you have not laid eyes on in days, in an arena
+    // where everyone is starving, is the most ordinary reason in the fiction to
+    // start watching somebody — and it accrues while the group is quiet, which
+    // is exactly when the old model went to sleep.
+    alliances.forEach((members, id) => {
+        if (members.length < 2 || id.startsWith('lovers-')) return;
+        members.forEach(m => {
+            if (m.status !== 'alive' || m.allianceId !== id) return;
+            members.forEach(o => {
+                if (o.id === m.id || o.status !== 'alive' || o.allianceId !== id) return;
+                const away = cyclesSinceContact(ctx.state, m, o.id);
+                if (away === Infinity || away < SUSPICION.absenceCycles) return;
+                raiseSuspicion(m, o.id, SUSPICION.perAbsentCycle);
+            });
+        });
+    });
+
+    refresh();
     // 1b2. §4.8: suspicion gets an investigation path. A tribute who
     // suspects an ally no longer only waits or leaves: below the departure
     // threshold they *test* it — trail the suspect, check the cache, ask a

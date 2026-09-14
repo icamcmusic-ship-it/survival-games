@@ -131,6 +131,12 @@ let trucesBroken = 0, soloDepartures = 0, trucesHeld = 0, schisms = 0;
 // §4: the beats this pass added — a coalition coming apart, an estate passing
 // to whoever was standing closest, and two mentors splitting a parachute.
 let fractures = 0, inheritances = 0, mentorCrossTalk = 0, watchesPosted = 0;
+// §4.1 (audit 2): the suspicion axis gates four mechanics and only one of them
+// was counted, which is how three of the four shipped calibrated above their
+// own data and stayed that way. An unmeasured mechanic is assumed dead.
+let investigationsGuilty = 0, investigationsCleared = 0, preemptiveDepartures = 0, sleepingApart = 0;
+// §1.1 (audit 2): the two beats the killTribute ordering bug silently removed.
+let loverTragedies = 0, hauntedGrants = 0, hollowGrants = 0, reconciliations = 0;
 let trucesRenewed = 0, trucesLapsed = 0, trucesTurned = 0;
 let resolveBreakdowns = 0, nightlockDeaths = 0;
 let debtsRepaid = 0, charterBreaches = 0, performedBonds = 0, districtBonds = 0;
@@ -352,6 +358,14 @@ for (let i = 0; i < 400; i++) {
     if (/Nobody renews it and nobody breaks it/.test(l.text)) treatiesLapsed++;
     if (/an arithmetic problem rather than a moral one/.test(l.text)) treatiesOutgrown++;
     if (/only ever an arrangement/.test(l.text)) fractures++;
+    if (/comes back having seen enough/.test(l.text)) investigationsGuilty++;
+    if (/counts everything twice/.test(l.text)) investigationsCleared++;
+    if (/Some betrayals you leave before they happen/.test(l.text)) preemptiveDepartures++;
+    if (/Whatever trust there was is being rationed now/.test(l.text)) sleepingApart++;
+    if (/^TRAGEDY:/.test(l.text)) loverTragedies++;
+    if (/They keep the treeline between themselves and everybody left/.test(l.text)) hauntedGrants++;
+    if (/stopped flinching at the cannons/.test(l.text)) hollowGrants++;
+    if (/Nobody calls it peace/.test(l.text)) reconciliations++;
     if (/Both of them are heavier than they look|thinks less of them for it|heard it often enough to carry it on/.test(l.text)) inheritances++;
     if (/have evidently been talking/.test(l.text)) mentorCrossTalk++;
     if (/takes the first watch|takes the watch in/.test(l.text)) watchesPosted++;
@@ -829,6 +843,21 @@ console.log(`rumours: planted=${rumoursPlanted} exposedAsPlant=${rumoursCaughtPl
 console.log(`vengeancePacts: sworn=${vengeancePacts} paidThemselves=${vengeancePaid} takenByAnother=${vengeanceStolen} abandoned=${vengeanceAbandoned}`);
 console.log(`blocTreaties: sworn=${treatiesSworn} brokenByAKilling=${treatiesBroken} lapsed=${treatiesLapsed} endedByTheField=${treatiesOutgrown}`);
 console.log(`§4: coalitionFractures=${fractures} inheritances=${inheritances} mentorCrossTalk=${mentorCrossTalk} watchesPosted=${watchesPosted}`);
+console.log(`suspicion: investigations=${investigationsGuilty + investigationsCleared} (guilty=${investigationsGuilty} cleared=${investigationsCleared}) preemptiveDepartures=${preemptiveDepartures} sleepingApart=${sleepingApart}`);
+console.log(`grief: loverTragedies=${loverTragedies} haunted=${hauntedGrants} hollow=${hollowGrants} reconciliations=${reconciliations}`);
+// Each of these is a shipped mechanic whose only previous evidence of existing
+// was the code. Zero is the bug this file exists to catch.
+([
+  ['pre-emptive betrayal', preemptiveBetrayals],
+  ['pre-emptive departure', preemptiveDepartures],
+  ['suspicion investigations', investigationsGuilty + investigationsCleared],
+  ['lover death (TRAGEDY)', loverTragedies],
+  ['Haunted', hauntedGrants],
+  ['Hollow', hollowGrants],
+  ['rivalry reconciliation', reconciliations],
+] as Array<[string, number]>).forEach(([label, n]) => {
+  if (n === 0) note(`${label} never fired across ${runs} runs`);
+});
 console.log(`triangles: formed=${trianglesFormed} jealousyBeats=${triangleJealousy} forcedChoices=${triangleChoices}`);
 console.log(`loans: made=${loansMade} returned=${loansReturned} defaulted=${loansDefaulted}`);
 // §4.2: the loan ledger, closed the way the truce ledger is. Every loan ends
