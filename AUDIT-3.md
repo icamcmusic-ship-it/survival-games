@@ -750,7 +750,7 @@ runs (probe C) unless noted:
 | Traps live at run end | 8/132 runs | see §1.2 |
 | Love triangles | **1/132 runs** | *measurement wrong — see §6.5* |
 | Bloc treaties | **0/132 runs** | broken (§4.7) |
-| Legendary items | **0 observed in inventories** | see below |
+| Legendary items | ~~0 observed~~ *probe error* | fine — see §6.2 |
 
 ### 6.1 Wildcards: five in rotation
 
@@ -761,15 +761,21 @@ runs; if the table is longer than five, everything past index 4 is unreached.
 path works. This is the one "run-shaping" system with a visibly short menu, and
 it is the system whose whole purpose is to make two runs differ.
 
-### 6.2 Legendary items were never observed
+### 6.2 Withdrawn — the probe guessed the wrong field name
 
-`src/engine/legendaryItems.ts` exports `bloodOnTheBlade` and `namedWeapons`, and
-`LEGENDARY_ITEM_NAMES` (16 entries) and `LEGENDARY_ITEM_TEXTS` (12 entries)
-exist in `flavorText.ts`. Probe B sampled every living tribute's inventory every
-cycle across 100 runs and found **no item flagged legendary**. Two readings are
-possible and both need checking: either the flag lives under a field name the
-probe did not guess, or a weapon that earns a name never actually gets one. 28
-authored flavour lines are riding on the answer.
+**Correction, made during the fix pass.** Probe B looked for `item.legendary`
+and `item.legendaryId`. The field is `item.legendName`, and the section even
+says the answer out loud: *"either the flag lives under a field name the probe
+did not guess, or..."*. It was the first one.
+
+Named weapons are earned and common enough that 'A Blade With a Name' measures
+in the **uncommon** band — the rarity labels are regenerated from a 200-run
+sweep, so that figure is the simulation's own. Nothing to fix.
+
+Worth noting what the name composition actually does, since it is the answer to
+part of §10.3's complaint about generic item names: a blade that has killed
+twice in a reef becomes *the Reef-Blade*, and the fixed 16-entry pool is only
+the fallback for when the arena's own vocabulary yields nothing usable.
 
 ### 6.5 Correction: love triangles, and the instrument that missed them
 
@@ -1132,8 +1138,8 @@ is the right home for it.
 significant
 
 - **15 grief lines** (§7.4). A player sees the whole pool in one run.
-- **The five-wildcard menu** (§6.1). By run ten the player has seen every
-  scheduled disruption twice.
+- ~~**The five-wildcard menu** (§6.1).~~ Withdrawn: there are 40 kinds and every
+  run draws 2–5 of them. See §6.1.
 
 ---
 
@@ -1155,7 +1161,7 @@ surface is a fraction of its designed one:
 | Zone effects | 10 kinds | top one is 34%, positive one is 3% (§5.3) |
 | Love triangles | a system | the *record* was deleted (§6) |
 | Bloc treaties | a system | 0 runs in 132 (§4.7) |
-| Legendary items | named weapons, 28 lines | not observed (§6.2) |
+| ~~Legendary items~~ | *probe read the wrong field* | withdrawn (§6.2) |
 | Loans | a light grievance | 2.2% of tribute-cycles (§4.6) |
 | Sanity recovery | bidirectional | 0.65% of tribute-cycles (§6.4) |
 | Social traits | a category | 6 traits vs 25 and 27 (§8.4) |
@@ -1357,10 +1363,10 @@ Ordered by value per line changed, with the section that argues each.
    drifting every release. (§1.6, §11.4)
 8. **Scale alliance roles to group size** and give the quartermaster a
    consequence. 46% of alliances are pairs wearing four hats. (§1.8, §4.3)
-9. **A real mid-run disruption menu.** Twenty entries behind a guaranteed day-4
-   and day-7 turn, fired through `gamemakerAgency` (already live in 118/132
-   runs). Every existing variety axis is decided before cycle one; this is the
-   only one that is not. (§9.2)
+9. ~~**A real mid-run disruption menu.**~~ **Withdrawn — already shipped.** Every
+   run draws a calendar of 2–5 scheduled disruptions from 40 distinct kinds, and
+   a flatlining audience pulls the next one forward. The finding measured
+   calendar *indices* and reported them as kinds. (§6.1, §9.2)
 10. **Surface `zoneDepletion` and `structuralFatigue` on the map**, and fix the
     four dialogs without focus management. The engine measures p50 0.19 / p90
     0.71 depletion and shows the player none of it. (§2.2, §2.6)
