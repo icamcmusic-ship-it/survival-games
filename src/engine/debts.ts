@@ -229,22 +229,41 @@ export function offerLoans(ctx: SimContext) {
     const alive = getAlive(ctx.state);
     alive.forEach(lender => {
         if (!lender.allianceId) return;
-        // Only a genuine spare. Nobody lends the weapon they are holding.
-        const weapons = lender.inventory.filter(i => i.type === 'weapon');
-        if (weapons.length < 2) return;
+        /*
+         * Audit 3 §4.6: a loan required the lender to be carrying a *second
+         * weapon*, and carrying two weapons at once is rare under the carry
+         * cap — so the whole primitive was live on 2.2% of tribute-cycles, far
+         * below `debts`, the heavy version it was written to sit underneath.
+         *
+         * The rule the comment states is "only a genuine spare", and that is
+         * kept. What widens is what counts as one: a second weapon, or any
+         * kind of kit the lender is carrying two of. A lent waterskin that has
+         * not come back is exactly the small, specific grievance this field
+         * exists for — arguably more so than a blade, which gets handed back
+         * the moment there is a fight.
+         */
+        const LENDABLE = new Set(['weapon', 'utility', 'tool', 'medical']);
+        const counts = new Map<string, number>();
+        lender.inventory.forEach(i => counts.set(i.type, (counts.get(i.type) ?? 0) + 1));
+        const spares = lender.inventory.filter(i => LENDABLE.has(i.type) && (counts.get(i.type) ?? 0) >= 2);
+        if (spares.length === 0) return;
         const borrower = alive.find(o =>
             o.id !== lender.id
             && o.allianceId === lender.allianceId
             && o.zone === lender.zone
-            && !o.inventory.some(i => i.type === 'weapon')
+            // Short of something the lender has two of. A weapon still counts
+            // for the reason it always did; so now does everything else.
+            && spares.some(sp => !o.inventory.some(i => i.type === sp.type))
             // §4.5: on the trust axis, not the affection one. You can be very
             // fond of the person you are not handing a blade to.
             && trustOf(lender, o) >= DEBTS.loanMinTrust
             && !(o.loans ?? {})[lender.id]);
         if (!borrower || !ctx.rng.chance(DEBTS.loanChance)) return;
 
-        // The worse of the two, obviously. Lending is not the same as giving.
-        const spare = weapons.reduce((worst, w) => (w.value < worst.value ? w : worst));
+        // The worse of the spares the borrower actually lacks. Lending is not
+        // the same as giving.
+        const useful = spares.filter(sp => !borrower.inventory.some(i => i.type === sp.type));
+        const spare = useful.reduce((worst, w) => (w.value < worst.value ? w : worst));
         lender.inventory = lender.inventory.filter(i => i !== spare);
         giveItem(borrower, spare);
         borrower.loans = borrower.loans ?? {};

@@ -529,6 +529,17 @@ export function rollAmbientZoneEffects(ctx: SimContext) {
     if (active.length === 0) return;
     const climate = climateOf(state.arena.id);
 
+    // Audit 3 §5.2 `bountifulGround`: one named sector is always in flower.
+    // Enforced here, at the one site that decides what a zone is currently
+    // doing to whoever stands in it — so the law adds a place worth holding
+    // rather than taking one away, and the ordinary bloom expiry keeps it
+    // honest by needing renewal every few cycles.
+    const good = state.arena.lawZone;
+    if (arenaHasLaw(state, 'bountifulGround') && good && !collapsed.includes(good)
+        && !hasEffect(state, good, 'blooming')) {
+        startZoneEffect(ctx, good, 'blooming', false);
+    }
+
     // Fire: catches in flammable terrain. More likely in a hot standing climate.
     const flammable = active.filter(z =>
         (ZONE_EFFECTS.flammableTerrain as readonly Terrain[]).includes(z.terrain) && !hasEffect(state, z.name, 'burning'));
@@ -687,6 +698,9 @@ export function dropSupplies(ctx: SimContext) {
     const next = Math.max(0, current - ZONE_EFFECTS.cornucopiaRestockAmount);
     if (next >= current) return;
     state.zoneDepletion[cornucopia.name] = next;
+    // Audit 3 §1.3: the world needs to remember that this happened, so the
+    // rumour layer has a true `restock` claim to mint off it.
+    state.lastRestockCycle = cycleOf(state);
 
     // §5.7: what comes down, not just when. An arena that declares a
     // `restockBias` drops kit that belongs to it — anybody standing at the

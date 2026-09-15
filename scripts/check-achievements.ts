@@ -23,9 +23,26 @@ import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig, GameState } from '../src/models/types';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, AchievementCategory } from '../src/data/achievements';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
-const RUNS = Number(process.env.ACHIEVEMENT_RUNS ?? 200);
+/**
+ * Audit 3 §1.6: 500 rather than 200.
+ *
+ * This sweep does three jobs and 200 runs was too small for two of them. It
+ * measures the unlock *rate* (which is what the rarity labels are regenerated
+ * from, and what "never unlocks" is asserted against) and the numeric *ceiling*
+ * every threshold is checked against — and a legendary is by definition an
+ * outcome a short sweep may not see. `turncoat-twice` failed the ceiling check
+ * at 200 runs ("never produced more than 1 in a victor") and passes at 500,
+ * having not changed: the sample was the problem, exactly as `GUARD_MIN_SAMPLE`
+ * documents for the metrics sweep.
+ *
+ * Raising the sample rather than softening the assertion is deliberate. The
+ * ceiling check has found fifteen genuinely unreachable entries across two
+ * audits and one that an author introduced mid-fix; it is the last thing in
+ * here that should be given a tolerance band.
+ */
+const RUNS = Number(process.env.ACHIEVEMENT_RUNS ?? 500);
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
 const configs: GameConfig[] = [
@@ -161,7 +178,25 @@ const nearAutomatic = sorted.filter(a => rate(a.id) >= 0.6);
 const usable = sorted.filter(a => rate(a.id) >= 0.05 && rate(a.id) < 0.6);
 
 console.log(`\nnever unlocked (${never.length}):`);
+let failed = false;
 never.forEach(a => console.log(`  ${a.id.padEnd(24)} ${a.rarity}${a.nearMiss ? '' : '   (no nearMiss — the player learns nothing about it)'}`));
+/*
+ * Audit 3 §11.4: an entry this sweep never sees unlock MUST carry a nearMiss.
+ *
+ * Unreachable and invisible is the worst pair: seven of the seventeen entries
+ * that never unlocked also said nothing at all about what they wanted, so the
+ * player could not even tell they had come close. The sweep already knows which
+ * entries it never saw fire; requiring a nearMiss on exactly those costs
+ * nothing for the ones that fire often and is not optional for the ones that
+ * do not.
+ */
+const silentAndUnreachable = never.filter(a => !a.nearMiss);
+if (silentAndUnreachable.length > 0) {
+    console.log(`\nFAIL: ${silentAndUnreachable.length} achievement(s) never unlocked in ${RUNS} runs AND carry no nearMiss:`);
+    silentAndUnreachable.forEach(a => console.log(`  ${a.id}`));
+    console.log('  (an entry nobody earns and nobody is told about is a promise the game does not keep — give it a nearMiss)');
+    failed = true;
+}
 console.log(`\nnear-automatic, >= 60% of runs (${nearAutomatic.length}):`);
 nearAutomatic.forEach(a => console.log(`  ${a.id.padEnd(24)} ${(rate(a.id) * 100).toFixed(1)}%`));
 console.log(`\nin the usable 5%-60% band: ${usable.length} of ${ACHIEVEMENTS.length}`);
@@ -242,7 +277,6 @@ const staleExemptions = NEAR_MISS_EXEMPT.filter(id => {
 console.log(`\nnumeric-threshold tests: ${measured.length}; carrying a nearMiss: `
     + `${measured.filter(a => a.nearMiss).length}; exempt: ${NEAR_MISS_EXEMPT.length}`);
 
-let failed = false;
 if (badlyMislabelled.length > 0) {
     console.log(`\nFAIL: ${badlyMislabelled.length} rarity label(s) are two bands off the measured rate — relabel them:`);
     badlyMislabelled.forEach(a => console.log(`  ${a.id.padEnd(24)} labelled ${a.rarity.padEnd(10)} measured ${(rate(a.id) * 100).toFixed(1)}%`));
@@ -344,12 +378,37 @@ if (duplicates.length > 0) {
 }
 
 if (process.env.ACHIEVEMENT_EMIT_RARITY === '1') {
-    // Regenerates the authored `rarity` labels from what the simulation
-    // actually does, for pasting back into achievements.ts.
+    /*
+     * Audit 3 §1.6: writes the labels back into `achievements.ts` rather than
+     * printing JSON to paste by hand.
+     *
+     * A rarity label is a fact about the data, and every audit so far has found
+     * it drifted — 45 wrong in one pass, regenerated, and 7 wrong again one
+     * release later. The reason is that regenerating meant reading a blob off
+     * stdout and hand-editing 157 entries, so it happened exactly as often as
+     * somebody was willing to do that. `npm run fix:rarity` now does it, and
+     * the check that follows still fails on anything two bands out, so the
+     * regeneration is a convenience rather than a way to launder a real drift.
+     */
     const label = (r: number) => r >= 0.3 ? 'common' : r >= 0.08 ? 'uncommon' : r >= 0.005 ? 'rare' : 'legendary';
-    const emit: Record<string, string> = {};
-    ACHIEVEMENTS.forEach(a => { emit[a.id] = label(rate(a.id)); });
-    console.log('\n' + JSON.stringify(emit));
+    const path = 'src/data/achievements.ts';
+    let src = readFileSync(path, 'utf8');
+    let rewritten = 0;
+    ACHIEVEMENTS.forEach(a => {
+        const want = label(rate(a.id));
+        if (want === a.rarity) return;
+        // Anchored on the id so the replacement cannot wander to another entry:
+        // `id: 'x',` ... the next `rarity: '...'` after it.
+        const at = src.indexOf(`id: '${a.id}',`);
+        if (at < 0) return;
+        const field = src.indexOf('rarity: ', at);
+        if (field < 0) return;
+        const end = src.indexOf('\n', field);
+        src = src.slice(0, field) + `rarity: '${want}',` + src.slice(end);
+        rewritten++;
+    });
+    writeFileSync(path, src);
+    console.log(`\nrewrote ${rewritten} rarity label(s) in ${path} from the measured rate.`);
 }
 
 console.log(failed ? '\nachievement checks failed.' : '\nAll achievement predicates evaluated without error.');

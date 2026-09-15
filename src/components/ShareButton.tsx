@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Hint } from './Hint';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { Share2, Check, Copy } from 'lucide-react';
 import { GameConfig } from '../models/types';
@@ -75,6 +76,7 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: {
 
     return (
         <span className="inline-flex items-center gap-2">
+            <Hint text={`Copy a link that replays seed ${seed}`}>
             <button
                 onClick={handleShare}
                 className="btn btn-sm"
@@ -87,21 +89,19 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: {
                 // the arena, the Quell and the rules the run is executing, and
                 // the reroll draws its cast from the same base config
                 // `startGame` does. So the tooltip is one line again.
-                title={`Copy a link that replays seed ${seed}`}
             >
                 {status === 'copied'
                     ? <Check aria-hidden="true" className="w-3.5 h-3.5 text-[var(--color-coin-400)]" />
                     : <Share2 aria-hidden="true" className="w-3.5 h-3.5" />}
                 {status === 'copied' ? 'Copied' : status === 'failed' ? 'Copy failed' : 'Share'}
             </button>
-            <button
-                onClick={copySeed}
-                className="chip"
-                title={`Copy the seed ${seed} as text`}
-            >
-                {seedCopied ? <Check aria-hidden="true" className="w-3 h-3 inline" /> : <Copy aria-hidden="true" className="w-3 h-3 inline" />}
-                {' '}seed {seed}
-            </button>
+            </Hint>
+            <Hint text={`Copy the seed ${seed} as text`}>
+                <button onClick={copySeed} className="chip">
+                    {seedCopied ? <Check aria-hidden="true" className="w-3 h-3 inline" /> : <Copy aria-hidden="true" className="w-3 h-3 inline" />}
+                    {' '}seed {seed}
+                </button>
+            </Hint>
             {fallbackUrl && (
                 <input
                     className="field text-xs w-52"

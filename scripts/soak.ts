@@ -19,6 +19,13 @@ import { generateTributes, strengthCapForAge } from '../src/engine/generator';
 import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG, traitsConflict } from '../src/data/constants';
+import { ARENA_FLAVOR, DERIVED_ID_COLLISIONS, UNIVERSAL_EVENTS } from '../src/data/arenaFlavor';
+/**
+ * Audit 3 §1.4: share of authored arena events that must fire at least once
+ * across this sweep. A regression bound rather than a design goal — see the
+ * comment on `eventIdsFired`.
+ */
+const EVENT_REACH_FLOOR = 0.45;
 import { ALLIANCES, FEAR, GENERATION, HUNTING, NOTORIETY, PROFICIENCY, RELATIONSHIPS, ZONES } from '../src/data/balance';
 import { carryCapacity } from '../src/engine/items';
 import { emptyPickCount } from '../src/utils/rng';
@@ -77,6 +84,27 @@ let dualVictories = 0;
 let clots = 0, fieldDressings = 0, restRecoveries = 0, huntOrCraft = 0;
 // §3.1: infection — wounds turning, deepening, being treated, and killing.
 let rumoursPlanted = 0, rumoursCaughtPlanted = 0, rumoursCaughtRepeated = 0, rumoursDeadEnd = 0;
+/**
+ * Audit 3 §1.3: true claims by kind, counted off the live pool rather than off
+ * a log line — a rumour is minted into state and only some of them ever get
+ * narrated. `restock` and `cache` are the two kinds `rumourPull` treats as
+ * lures, and neither had a true source at all: every lure anybody heard across
+ * 132 runs was a lie. A kind with no true source reads zero here.
+ */
+const trueRumourKinds: Record<string, number> = {};
+/**
+ * Audit 3 §1.4: which authored arena events actually reach a player.
+ *
+ * Every event now carries an id (derived in `arenaFlavor.ts` rather than
+ * hand-typed), and `applyArenaEvent` stamps `eventLastFired` with it on every
+ * firing — so for the first time this sweep can answer the question
+ * `test:flavor` structurally could not: not "how deep is the pool" but "does
+ * any of it ever happen". The floor below is a regression bound, not a design
+ * goal: at ~10 runs per arena most of a 33-event pack will not come up, and
+ * that is expected. What is not expected is the number going down.
+ */
+const eventIdsFired = new Set<string>();
+const rumourIdsCounted = new Set<string>();
 let vengeancePacts = 0, vengeancePaid = 0, vengeanceStolen = 0, vengeanceAbandoned = 0;
 let treatiesSworn = 0, treatiesBroken = 0, treatiesLapsed = 0, treatiesOutgrown = 0;
 let trianglesFormed = 0, triangleJealousy = 0, triangleChoices = 0;
@@ -95,6 +123,19 @@ let factionActions = 0, expulsions = 0, hearings = 0, trucesOutlived = 0, broker
 let feuds = 0, freeForAlls = 0, careerDefections = 0, cacheContributions = 0;
 // Intentions and fieldcraft.
 let objectivesFormed = 0, trapsSet = 0, trapsTriggered = 0;
+/**
+ * Audit 3 §1.2: traps were counted as one number, so a five-kind menu that was
+ * a two-kind menu in play read as a healthy 304 traps a sweep. Counted per
+ * kind, and a kind that reads zero fails the build like any other dead branch.
+ */
+const trapKinds = { snare: 0, deadfall: 0, pit: 0, tripwire: 0, stake: 0 };
+const TRAP_SET_PATTERNS: Array<[keyof typeof trapKinds, RegExp]> = [
+    ['snare', /sets a snare across a game trail/],
+    ['deadfall', /balances a deadfall over a gap/],
+    ['pit', /spends most of the day digging in/],
+    ['tripwire', /runs a line at ankle height across the approach/],
+    ['stake', /sets a line in .* over something sharpened/],
+];
 let firesLit = 0, sheltersBuilt = 0, camouflaged = 0, weaponsPoisoned = 0;
 // Arena: stateful zones, mutts, border variety.
 let zoneFiresStarted = 0, zoneFiresSpread = 0, zoneFloods = 0, zoneFreezes = 0;
@@ -175,6 +216,12 @@ for (let i = 0; i < 400; i++) {
   const gongPct = new Map<string, number>();
 
   const sample = () => {
+    Object.keys(state.eventLastFired ?? {}).forEach(id => eventIdsFired.add(id));
+    (state.rumours ?? []).forEach(r => {
+      if (!r.isTrue || rumourIdsCounted.has(r.id)) return;
+      rumourIdsCounted.add(r.id);
+      trueRumourKinds[r.kind] = (trueRumourKinds[r.kind] ?? 0) + 1;
+    });
     state.tributes.forEach(t => {
       if (t.status !== 'alive') return;
       const kind = t.objective?.kind ?? 'none';
@@ -311,7 +358,7 @@ for (let i = 0; i < 400; i++) {
     if (/too few left for either|Only one of them is going home|the week runs out|wanting has stopped mattering|small enough now to decide things/.test(l.text)) desperationFights++;
     // --- Intentions and fieldcraft. ---
     if (/starts hunting |sets off for |worth holding and digs in|wants to be anywhere but|not dying on their watch/.test(l.text)) objectivesFormed++;
-    if (/sets a snare|balances a deadfall/.test(l.text)) trapsSet++;
+    TRAP_SET_PATTERNS.forEach(([kind, re]) => { if (re.test(l.text)) { trapKinds[kind]++; trapsSet++; } });
     if (/snare closes on their leg|deadfall comes down on|pulls apart a (snare|deadfall)/.test(l.text)) trapsTriggered++;
     if (/gets a fire going/.test(l.text)) firesLit++;
     if (/lashes together a shelter/.test(l.text)) sheltersBuilt++;
@@ -735,6 +782,9 @@ if (fearFelt === 0) note('no tribute was ever afraid of another — fear has no 
 if (bestProficiencySeen === 0) note('no proficiency ever grew — skills do not improve with use');
 if (objectivesFormed === 0) note('no tribute ever formed an objective — the intent layer is inert');
 if (trapsSet === 0) note('nobody ever set a trap');
+Object.entries(trapKinds).forEach(([kind, n]) => {
+    if (n === 0) note(`no tribute ever built a ${kind} — Trap.kind declares five and the engine reaches four`);
+});
 if (trapsTriggered === 0) note('no trap was ever spotted or sprung — traps are decorative');
 if (firesLit === 0) note('nobody ever lit a fire');
 if (sheltersBuilt === 0) note('nobody ever built a shelter');
@@ -846,6 +896,39 @@ const ledgerEndings = L.renewed + L.lapsed + L.turned + L.broken + L.outlived + 
 console.log(`sleep: deprivedDrops=${sleepDrops}`);
 console.log(`weapons: coldSwings=${coldWeaponSwings}`);
 console.log(`bluffs: landed=${bluffsLanded} caught=${bluffsCaught}`);
+{
+  // Audit 3 §1.4: authored-event reach, per pack and overall.
+  const packs: Record<string, string[]> = {};
+  Object.entries(ARENA_FLAVOR).forEach(([id, pack]) => {
+    packs[id] = pack.events.map(e => e.id).filter((x): x is string => x !== undefined);
+  });
+  packs.universal = UNIVERSAL_EVENTS.map(e => e.id).filter((x): x is string => x !== undefined);
+  let authored = 0, reached = 0;
+  const worst: Array<[string, number, number]> = [];
+  Object.entries(packs).forEach(([id, ids]) => {
+    const hit = ids.filter(x => eventIdsFired.has(x)).length;
+    authored += ids.length; reached += hit;
+    worst.push([id, hit, ids.length]);
+  });
+  worst.sort((a, b) => (a[1] / a[2]) - (b[1] / b[2]));
+  const share = authored > 0 ? reached / authored : 0;
+  console.log(`arena events: ${reached}/${authored} authored events fired at least once (${(share * 100).toFixed(1)}%)`);
+  console.log(`  thinnest reach: ${worst.slice(0, 5).map(([id, h, n]) => `${id} ${h}/${n}`).join(', ')}`);
+  const dead = Object.entries(packs).filter(([, ids]) => ids.every(x => !eventIdsFired.has(x)));
+  dead.forEach(([id]) => note(`not one authored event in the "${id}" pack ever fired`));
+  if (share < EVENT_REACH_FLOOR) {
+    note(`authored arena events reached ${(share * 100).toFixed(1)}% of the pool, under the ${(EVENT_REACH_FLOOR * 100).toFixed(0)}% floor`);
+  }
+  if (DERIVED_ID_COLLISIONS.length > 0) {
+    console.log(`  ${DERIVED_ID_COLLISIONS.length} derived id(s) needed a collision suffix: ${DERIVED_ID_COLLISIONS.slice(0, 4).join(', ')}`);
+  }
+}
+
+const RUMOUR_KINDS = ['restock', 'holed-up', 'cache', 'empty'];
+RUMOUR_KINDS.forEach(k => {
+  if (!trueRumourKinds[k]) note(`no true "${k}" rumour was ever minted — that kind can only ever be a lie`);
+});
+console.log(`rumours: true claims by kind ${RUMOUR_KINDS.map(k => `${k}=${trueRumourKinds[k] ?? 0}`).join(' ')}`);
 console.log(`rumours: planted=${rumoursPlanted} exposedAsPlant=${rumoursCaughtPlanted} exposedAsRepeated=${rumoursCaughtRepeated} untraceable=${rumoursDeadEnd}`);
 console.log(`vengeancePacts: sworn=${vengeancePacts} paidThemselves=${vengeancePaid} takenByAnother=${vengeanceStolen} abandoned=${vengeanceAbandoned}`);
 console.log(`blocTreaties: sworn=${treatiesSworn} brokenByAKilling=${treatiesBroken} lapsed=${treatiesLapsed} endedByTheField=${treatiesOutgrown}`);
@@ -922,6 +1005,7 @@ console.log(`resolve: breakdowns=${resolveBreakdowns} nightlock=${nightlockDeath
 console.log(`arena2: weatherFronts=${weatherFronts} trapsDestroyed=${trapsDestroyed} gmSignatures=${gamemakerSignatures}`);
 console.log(`zoneControl: held=${cornucopiaHeld} payouts=${cornucopiaPayouts}`);
 console.log(`schedule: signatureBeats=${signatureBeats} calendarBeats=${calendarBeats}`);
+console.log(`fieldcraft: traps by kind ${Object.entries(trapKinds).map(([k, n]) => `${k}=${n}`).join(' ')}`);
 console.log(`fieldcraft: trapsSet=${trapsSet} trapsTriggered=${trapsTriggered} fires=${firesLit} shelters=${sheltersBuilt} camouflage=${camouflaged} poisonedWeapons=${weaponsPoisoned}`);
 console.log(`arena: zoneFires=${zoneFiresStarted} (spread ${zoneFiresSpread}) floods=${zoneFloods} freezes=${zoneFreezes} contaminations=${zoneContaminations} fogs=${zoneFogs} strippedZones=${zoneStripped} severed=${zoneSevered}`);
 console.log(`arena: borderTelegraphs=${borderTelegraphs} cornucopiaRestocks=${cornucopiaRestocks} muttEncounters=${muttEncounters}`);

@@ -102,9 +102,6 @@ export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: 
                     className="field text-xs w-auto"
                     aria-label="Combine the two tribute filters with either or both"
                     disabled={!f.filterTributeId || !f.filterTributeId2}
-                    title={!f.filterTributeId || !f.filterTributeId2
-                        ? 'Pick two tributes to choose how they combine'
-                        : 'Either: lines involving one or the other. Both: only lines they are in together.'}
                 >
                     <option value="either">…or</option>
                     <option value="both">…and</option>

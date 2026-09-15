@@ -204,8 +204,21 @@ export const INFECTION = {
      * were already gone.
      */
     incubationCycles: 2,
-    /** Per-cycle odds once incubated, before every term below. */
-    baseChance: 0.035,
+    /**
+     * Per-cycle odds once incubated, before every term below.
+     *
+     * Audit 3 §10.1: 0.035 put the whole back half of this arc out of reach.
+     * Measured over 200 runs at that value: 19 of 4,808 tributes ever reached
+     * the septic grade, 3 were ever treated back from it, and no victor ever
+     * carried one — so 'Fever Dream', the achievement the arc exists to pay
+     * off, was unreachable by construction rather than merely hard.
+     *
+     * The gate is the *front* of the arc, not the back: an infection that never
+     * starts cannot deepen. Raised here rather than on `worsenChance`, which is
+     * already generous, so what changes is how many wounds turn at all and not
+     * how fast a turned one kills.
+     */
+    baseChance: 0.06,
     perGradeAbove: 0.05,
     /** Filth and exposure. */
     wetlandBonus: 0.05,
@@ -238,8 +251,16 @@ export const INFECTION = {
     /** The drain: what sepsis takes that is not health. */
     fatiguePerCycle: 2.5,
     sanityPerCycle: 1.5,
-    /** Health taken per cycle once it reaches the top grade. */
-    septicDamage: 9,
+    /**
+     * Health taken per cycle once it reaches the top grade.
+     *
+     * Audit 3 §10.1: nine a cycle on top of a five-cycle terminal clock meant
+     * the top grade was a death sentence with a countdown rather than a fight,
+     * and the one outcome the arc had no room for was the one worth watching —
+     * somebody who went septic and came back. Seven leaves a treated tribute a
+     * margin; the terminal clock still ends it if nobody treats them.
+     */
+    septicDamage: 7,
     /**
      * Cycles at the top grade before it is simply fatal. Nine health a cycle
      * against field dressings and sponsor medicine produced one sepsis death
@@ -2669,9 +2690,29 @@ export const LEGENDARY_ITEMS = {
  * §12: thresholds the per-run achievement bookkeeping reads. See
  * `engine/runRecords.ts`.
  */
+/**
+ * Audit 3 §5.2: the two arena laws that add rather than subtract.
+ *
+ * Eleven of the fifteen laws that existed were subtractions. A law that gives
+ * changes what players *do* rather than what they cannot do, and it makes one
+ * piece of ground contested instead of making all of it poorer.
+ */
+export const ARENA_LAWS = {
+    /** Health returned at first light to anybody who slept at the horn. */
+    dawnMercyHeal: 14,
+    /** ...and what a night under the Capitol's floodlights does for the nerves. */
+    dawnMercySanity: 8,
+} as const;
+
 export const RUN_RECORDS = {
     /** Health below which a tribute counts as having been on the floor. */
     nearDeathHealth: 10,
+    /**
+     * Audit 3 §1.6: share of its opening purse a sponsor bloc has to be down to
+     * before it counts as tapped out. 'Nobody Is Buying' wants every bloc there
+     * at once, which is a Games the Capitol has spent itself dry on.
+     */
+    blocExhaustedShare: 0.25,
 } as const;
 
 /**
@@ -2893,6 +2934,16 @@ export const TRAPS = {
     ownSnareForgetChance: 0.16,
     /** §6: strength needed to dig a pit worth falling into. */
     pitStrength: 6,
+    /**
+     * Audit 3 §1.2: tracking proficiency at which a tribute can make their own
+     * cordage out of ground that grows it — vine, cable, sinew, reed — rather
+     * than needing looted rope or wire.
+     *
+     * Set at one clean rank of practice. Below it the snare and the trip-wire
+     * stay a loot-gated option, which is why carried cordage is still worth
+     * picking up: it works in the open and on stone, where nothing improvises.
+     */
+    improvisedLineTracking: 1,
     /** §6: what each of the three new kinds does when it goes off. */
     pitDamage: 38,
     pitLegInjuryChance: 0.55,
@@ -3632,6 +3683,19 @@ export const RUMOURS = {
     holedUpCycles: 2,
     /** Depletion at which "picked to the bone" is true. */
     emptyDepletion: 0.6,
+    /**
+     * Audit 3 §1.3: cycles a Cornucopia restock stays fresh enough for "the
+     * horn came back" to be a true thing to say.
+     *
+     * `restock` and `cache` are the two kinds `rumourPull` treats as lures
+     * rather than warnings — the two that draw somebody toward a place — and
+     * `mintTrueRumours` had no branch that could produce either. They existed
+     * only as lies, so the whole lure half of the taxonomy was a tell: if
+     * somebody said there was something good over there, there never was.
+     */
+    restockFreshCycles: 2,
+    /** Items an abandoned camp or a shared cache needs before "there is a cache there" is worth saying. */
+    cacheMinItems: 2,
 
     /** Odds one believed claim is passed on at a given meeting. */
     passOnChance: 0.8,
@@ -4083,7 +4147,21 @@ export const ALLIANCES = {
      * for a full 24-tribute field and the anchor for the charter's
      * split-at-eight clause.
      */
-    pactChanceAtAll: 0.6,
+    /**
+     * Audit 3 §4.2: odds a newly formed group agrees *anything* about its own
+     * ending.
+     *
+     * At 0.6, with the fall-through cases on top, the modal alliance was the
+     * one that swore nothing — 48% of 2,779 sampled alliances carried
+     * `no-pact`. A pact is the only thing that gives a group a scheduled
+     * ending to dread, and the telegraphed betrayal this module's own header
+     * calls "one of the best things the alliance layer can produce" was
+     * unavailable to half of them by construction.
+     *
+     * At 0.82 a group that agrees nothing is a deliberate minority — the pair
+     * who fell in together and never discussed it — rather than the default.
+     */
+    pactChanceAtAll: 0.82,
     pactKindWeights: {
         'until-field': 8,
         'to-the-end': 6,
@@ -4353,6 +4431,13 @@ export const GIFT_NEED = {
     warmthFatigueDivisor: 25,
     /** Medical: the specific answer to a specific injury outranks a general one. */
     bleedingOrInfected: 6,
+    /**
+     * Audit 3 §1.6/§10.1: the extra pull of a tribute at the terminal grade of
+     * sepsis. Deliberately the largest single term in the table — this is the
+     * canonical parachute, and it is the only thing that makes the back half of
+     * the infection arc survivable rather than simply a slower death.
+     */
+    septic: 9,
     matchedAntidote: 8,
     matchedOintment: 6,
     /** Health below which a wound starts pulling medical weight, and how fast. */

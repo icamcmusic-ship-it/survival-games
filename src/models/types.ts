@@ -578,6 +578,21 @@ export interface Tribute {
      */
     bleedSeverity?: number;
     /**
+     * Audit 3 §8.2: who opened the wound that is currently bleeding.
+     *
+     * Bleeding out was 6.1% of all deaths and every one was recorded as a
+     * sourceless `status` wound, so a tribute who cut somebody open and walked
+     * away had killed nobody as far as the simulation was concerned. That is
+     * the same accounting gap that made the Saboteur the worst archetype in the
+     * game, and it feeds the one design goal the metrics sweep has never met.
+     *
+     * Set by `openWound` where a tribute caused it, cleared by `clearBleeding`,
+     * read by the bleed-out death in `survival.ts`.
+     */
+    bleedOpenedById?: string;
+    /** The severity that claim was staked at, so a deeper cut supersedes it. */
+    bleedOpenedSeverity?: number;
+    /**
      * T-5: graded severity per injury site, 0-3, generalising the
      * `bleedSeverity` pattern to every other injury. The `Injuries` booleans
      * stay the "is there an injury here" flags every existing read site
@@ -1597,7 +1612,23 @@ export type ArenaLawId =
     | 'oneWayBorders'      // every edge runs one way, and the map is a current
     | 'noWeapons'          // nothing in this arena is a weapon (also a Quell)
     | 'shrinkingArena'     // the border starts closing from the first morning
-    | 'openMic';           // every fight is audible arena-wide
+    | 'openMic'            // every fight is audible arena-wide
+    /*
+     * Audit 3 §5.2: laws that add rather than subtract.
+     *
+     * Eleven of the fifteen laws above are subtractions — no cannons, no night,
+     * no water, no fire, no sponsors, no healing, no forage, no weapons. Three
+     * add or redirect and one compresses. A law that *gives* changes what
+     * players do rather than what they cannot do, and it creates contested
+     * ground instead of uniform scarcity: `cornucopiaRefills` is the existing
+     * proof, and it is the law that most reliably keeps the middle of the map
+     * worth fighting over.
+     *
+     * Both of these are enforced at exactly one site, the way the fifteen above
+     * are, and both are declarable by a hand-authored arena.
+     */
+    | 'bountifulGround'    // `Arena.lawZone` is permanently in bloom: it feeds, heals and settles
+    | 'dawnMercy';         // every morning, whoever slept at the horn is treated
 
 /** A traversal rule layered on top of plain adjacency for one edge. Keyed by `edgeKey(a,b)` on `Arena.edgeRules`. */
 export interface EdgeRule {
@@ -1979,6 +2010,34 @@ export interface GameState {
     zoneTraffic?: Record<string, number>;
     /** Tribute id -> cycle their fire/shelter/camouflage lapses. */
     camps?: Record<string, { fire?: number; shelter?: number; camouflage?: number }>;
+    /**
+     * Audit 3 §1.3: the cycle the Cornucopia was last restocked.
+     *
+     * Read by `mintTrueRumours`: "the horn came back" is only a true thing to
+     * say for a cycle or two after it did.
+     */
+    lastRestockCycle?: number;
+    /**
+     * Audit 3 §1.6: high-water marks for state that does not survive to the end
+     * of a run, written by `tickRunRecords` and read by the achievement table.
+     *
+     * The table is evaluated once, against the final state. Rumours expire and
+     * are pruned; alliances belong to the dead; sponsor purses are only
+     * meaningful against what they opened with. Five achievements were asking
+     * the wreckage and never unlocked once in 200 runs.
+     */
+    /** Most planted claims in circulation at one time. */
+    maxPlantedInCirculation?: number;
+    /** A planted lie was walked to and found out by somebody. */
+    plantedRumourExposed?: boolean;
+    /** Tributes whose planted lie was, at some point, still standing and still believed. */
+    liarsAtLarge?: string[];
+    /** The most clauses any charter sworn this run carried. */
+    deepestCharter?: number;
+    /** Each bloc's purse the first cycle it was seen, so "spent" has a baseline. */
+    openingBlocBudgets?: Record<string, number>;
+    /** Every sponsor bloc was, at some point, down to a fraction of its opening purse. */
+    everySponsorBlocExhausted?: boolean;
     /** Persistent mutts currently hunting a specific tribute. See `ActiveMutt`. */
     activeMutts?: ActiveMutt[];
     /** Zones a cannon fired in this cycle, with the cycle it happened — reads as "just now" only while `cycle` still matches. Feeds the `scavenger` mutt role. */
@@ -2003,7 +2062,24 @@ export interface GameState {
      * feast is announced (so tributes can weigh the risk against what is
      * actually offered) and consumed by `processFeast`.
      */
-    feastTheme?: 'weapons' | 'medical' | 'food' | 'district-gifts';
+    /**
+     * Audit 3 §5.4: what the table actually holds.
+     *
+     * The feast is the single most anticipated scheduled event in the format
+     * and it had four flavours, one of which accounted for two feasts in five.
+     * The four added here need no new mechanics — each is a different pool, a
+     * different announcement and a different reason to go or not go, which is
+     * the whole decision the feast exists to pose.
+     */
+    feastTheme?: 'weapons' | 'medical' | 'food' | 'district-gifts'
+        /** One pack, on an empty table. Whoever gets there first has it. */
+        | 'single-pack'
+        /** Nothing but the tokens taken at the reaping. Worth nothing, and everybody comes. */
+        | 'tokens'
+        /** Rope, wire, flint, kits — nothing that kills, everything that keeps you alive. */
+        | 'fieldcraft'
+        /** The Gamemakers lied. There is no table. */
+        | 'empty';
     /** §6.8: tribute who drew first blood (first tribute-dealt kill). */
     firstBloodId?: string;
     /**
@@ -2106,6 +2182,19 @@ export interface GameState {
         heat: number;
         /** Set once the apex has been made to choose. */
         resolved?: boolean;
+        /**
+         * Audit 3 §6/§10.1: how it stopped being a live triangle.
+         *
+         * `tickTriangles` used to *delete* a triangle the moment any of the
+         * three died, on the reasonable mechanical grounds that there is
+         * nothing left to tick. But a Games ends with one tribute alive, so
+         * every triangle that ever formed was erased before anybody could read
+         * the record: four were live at once in a sampled run and one survived
+         * to the end across 80 runs, which is why the whole subsystem measured
+         * as "happens in 1 run in 132" when it actually happens far more often.
+         * Ended, not deleted.
+         */
+        endedBy?: 'choice' | 'death';
     }>;
     /**
      * §4.1: standing non-aggression between two whole alliances.
@@ -2117,6 +2206,19 @@ export interface GameState {
      */
     /** §11.3 (audit): treaties sworn this run. Treaties are pruned as they end, so the count is the only record. */
     blocTreatiesSworn?: number;
+    /**
+     * Audit 3 §4.7: a bloc treaty ran its term, or lasted until the field was
+     * too small to sustain it, without either side breaking it.
+     *
+     * `blocTreaties` is the *live* list and is emptied by every ending a treaty
+     * can have — a bloc wiped out, the field closing, the clock running out —
+     * so at the end of a run, with one tribute standing, it is always empty.
+     * 'The Treaty Year' asked it for a treaty "still standing when the Games
+     * end" and could never once be answered yes in 132 runs.
+     */
+    blocTreatyHeld?: boolean;
+    /** ...and the other outcome: somebody killed across one. */
+    blocTreatyBroken?: boolean;
     blocTreaties?: Array<{
         /** Cycle a member last decided the treaty did not bind them. Log de-dup only. */
         strainedCycle?: number;

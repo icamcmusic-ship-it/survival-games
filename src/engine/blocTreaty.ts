@@ -182,6 +182,9 @@ export function noteBlocKill(ctx: SimContext, killer: Tribute, victim: Tribute) 
     if (!treaty) return;
 
     state.blocTreaties = treaties(state).filter(t => t !== treaty);
+    // Audit 3 §4.7: somebody broke one. Recorded because the live array cannot
+    // answer this at the end of a run — see `blocTreatyHeld` below.
+    state.blocTreatyBroken = true;
     const theirs = membersOf(state, victim.allianceId);
     const ours = membersOf(state, killer.allianceId);
     // Everybody on the other side holds it against everybody on this one. That
@@ -208,6 +211,9 @@ export function tickBlocTreaties(ctx: SimContext) {
         if (aMembers.length === 0 || bMembers.length === 0) return false;
 
         if (fieldSize <= treaty.fieldFloor) {
+            // Audit 3 §4.7: it held right up until the arithmetic ended it.
+            // Nobody broke it, which is what 'The Treaty Year' is about.
+            state.blocTreatyHeld = true;
             ctx.logEvent(
                 `There are ${fieldSize} tributes left and two groups holding an agreement not to fight each other, `
                 + 'which is an arithmetic problem rather than a moral one. Both sides work it out on the same morning.',
@@ -217,6 +223,7 @@ export function tickBlocTreaties(ctx: SimContext) {
             return false;
         }
         if (cycle >= treaty.until) {
+            state.blocTreatyHeld = true;
             ctx.logEvent(
                 `The agreement between the two groups runs out. Nobody renews it and nobody breaks it; `
                 + 'they simply stop being people who have an agreement, and start watching each other again.',

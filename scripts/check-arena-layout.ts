@@ -91,10 +91,21 @@ export function measure(arena: Arena): Measure {
     return { id: arena.id, n: zs.length, minSep: Math.round(minSep * 10) / 10, labelCollisions, crossings };
 }
 
-// Procedural arenas are drawn by the same component and vary in size, so a
-// spread of seeds is measured alongside the hand-authored ones.
-const procedural = Array.from({ length: 12 }, (_, i) => generateArena(`LAYOUT${i}`));
+/*
+ * Procedural arenas are drawn by the same component and vary in size, so a
+ * spread of seeds is measured alongside the hand-authored ones.
+ *
+ * Audit 3 §5.5: twelve seeds, against twelve biomes and a zone count that runs
+ * to sixteen, is not a spread — `validate-arenas` was separately noting that
+ * three biomes roll past thirteen zones and this check might not have drawn
+ * one of them. 120 seeds costs a second and guarantees the largest maps this
+ * generator can produce are in the sample; the assertion below then fails on
+ * the biggest rather than on the average.
+ */
+const PROC_SEEDS = 120;
+const procedural = Array.from({ length: PROC_SEEDS }, (_, i) => generateArena(`LAYOUT${i}`));
 const measured = [...ARENAS, ...procedural].map(measure);
+const largest = measured.reduce((top, m) => (m.n > top.n ? m : top));
 
 const problems: string[] = [];
 measured.forEach(m => {
@@ -123,11 +134,14 @@ if (touchPx < MIN_TOUCH_PX) {
     );
 }
 
+console.log(`largest map sampled: ${largest.id} at ${largest.n} zones — minSep ${largest.minSep}px, `
+    + `${largest.labelCollisions} label collisions`);
+
 const bucket = (lo: number, hi: number) => measured.filter(m => m.n >= lo && m.n <= hi);
 const avg = (rows: Measure[], pick: (m: Measure) => number) =>
     rows.length === 0 ? 0 : Math.round((rows.reduce((s, m) => s + pick(m), 0) / rows.length) * 10) / 10;
 
-[[6, 10], [11, 11], [12, 14]].forEach(([lo, hi]) => {
+[[6, 10], [11, 11], [12, 14], [15, 24]].forEach(([lo, hi]) => {
     const rows = bucket(lo, hi);
     if (rows.length === 0) return;
     console.log(`${lo}-${hi} zones (n=${rows.length}): minSep ${avg(rows, m => m.minSep)}px, `

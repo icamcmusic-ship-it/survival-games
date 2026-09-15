@@ -1143,6 +1143,27 @@ export const BETRAYAL_AFTERMATH_TEXTS = [
     'There is a version of {betrayer} that existed before {zone} and the broadcast keeps showing it, which the sponsors find unbearable and cannot stop watching.',
     '{victim} dreams about {betrayer} doing it again, differently, and wakes in {zone} already sitting up.',
     '{betrayer} was owed nothing and took it anyway, and in {zone}, days later, is still doing the arithmetic that was supposed to make it worth it.',
+    /*
+     * Audit 3 §7.4: sixteen more. The types the pool was short of: the
+     * betrayal that failed, the one the victim survives and has to keep
+     * walking past, and the one that cost the betrayer more than the victim.
+     */
+    '{victim} is alive and {betrayer} is alive and they are both still in this arena, which neither of them planned for.',
+    '{betrayer} got less out of it than it cost. In {zone}, they are carrying the whole price and about a third of the goods.',
+    '{victim} has told four people what {betrayer} did. In {zone}, {betrayer} finds out that all four already knew.',
+    'They pass within one zone of each other and neither closes. Whatever {zone} was, it did not settle anything.',
+    '{betrayer} has started sleeping worse than {victim}, which neither of them expected and only one of them knows.',
+    '{victim} does not want revenge. {victim} wants the four days back, and in {zone} that is the thing nobody can offer.',
+    '{betrayer} rehearses an apology in {zone} that they will never deliver, refining it nightly, getting worse at it.',
+    'The group closes over the gap where {victim} was. In {zone}, {betrayer} sees exactly how quickly that happened and understands what it means for them.',
+    '{victim} is kind to somebody new in {zone}, badly, out of practice, and it does not take.',
+    'Somebody asks {betrayer} in {zone} whether it was worth it, meaning it as small talk. {betrayer} answers for slightly too long.',
+    '{victim} keeps the thing {betrayer} gave them in the first week. In {zone} they take it out, look at it, and put it back.',
+    'Whatever {betrayer} did it for is gone within two days of {zone}. The arena is not interested in whether the price made sense.',
+    'They end up in the same fight on the same side in {zone}, which is the worst possible outcome for both of them.',
+    '{victim} could have finished it in {zone} and walked away instead, and is not sure that was mercy so much as not wanting to be finished with it.',
+    'The sponsors loved it. {betrayer} reads the parachute that comes down in {zone} and understands exactly what it is paying for.',
+    'Nobody in {zone} has said {victim}\'s name and {betrayer}\'s name in the same sentence since. They have become two separate subjects.',
 ];
 
 /**
@@ -1164,6 +1185,29 @@ export const BETRAYAL_WITNESS_TEXTS = [
     '{witness} was asleep for the first half of it and is not telling anybody in {zone} which half.',
     '{witness} does the maths on their own alliance after {zone} and does not like any of the answers.',
     'What happened to {victim} in {zone} has made {witness} kinder to everybody, briefly, in a way that frightens them.',
+    /*
+     * Audit 3 §7.4: sixteen more, against 5.18 betrayals per run.
+     *
+     * Types the pool did not have: the witness who was meant to see it, the
+     * one who profits, the one who had been warned, the one who did nothing,
+     * and the one who is next.
+     */
+    '{betrayer} looked at {witness} first, in {zone}, before turning to {victim}. {witness} has decided that was permission being asked for.',
+    '{witness} understands, walking out of {zone}, that they were supposed to see it. That is worse than having stumbled in on it.',
+    '{witness} is better off now — a rival gone, a pack short one mouth — and has to live in {zone} with being better off.',
+    'Somebody warned {witness} about {betrayer} four days ago in {zone} and {witness} defended them. Nobody brings that up. Everybody remembers it.',
+    '{witness} could have shouted. {witness} did not shout. In {zone} they go back over the half-second in which that was still a choice.',
+    '{witness} takes what is left of {victim}\'s kit in {zone} and cannot tell whether that is practical or something else.',
+    'What {witness} actually felt in {zone}, for the first half-second, was interest. They are going to think about that for a while.',
+    '{witness} starts sleeping outside the camp in {zone}. Nobody asks why, because everybody knows why, because everybody is thinking about it.',
+    '{betrayer} explains it to {witness} in {zone}, at length, unprompted. The explaining is the frightening part.',
+    '{witness} has worked out roughly where they sit on {betrayer}\'s list and has adjusted their walking pace accordingly.',
+    'Two of them saw it. Neither {witness} nor the other one mentions it in {zone}, and each is now watching the other for when they do.',
+    'In {zone}, {witness} rehearses what they will say about {victim} if they get out. They are already writing it for an audience.',
+    '{witness} keeps {betrayer} in front of them on the trail out of {zone} now. It is not subtle and it is not meant to be.',
+    'The cameras were on {witness}\'s face, not {betrayer}\'s, for most of it. All of Panem watched somebody watch.',
+    '{witness} liked {victim} less than they liked {betrayer}, and is finding out in {zone} that it does not help at all.',
+    '{witness} does not report it, does not avenge it and does not forget it, and carries all three out of {zone} together.',
 ];
 
 /**
@@ -1449,6 +1493,128 @@ export const MENTOR_WITHHELD_TEXTS = [
 ];
 
 /** §7.6: the lesson landed — the gift arrives with the point attached. */
+/**
+ * Audit 3 §10.4: the mentor, by what their district has to be a mentor *about*.
+ *
+ * Mentors are the recurring cast — 124 of them against 3,200 tributes, so a
+ * player who runs twenty Games sees the same mentor repeatedly while never
+ * seeing the same tribute twice — and they had the thinnest voice in the game:
+ * four pools at 12 to 18 lines, none of which knew anything about who was
+ * speaking. A mentor from a district whose last victor came home twenty years
+ * ago and a mentor from District 1 should not sound alike, and the tier already
+ * drives a 2.3x difference in win rate, so the game is already saying they are
+ * not alike and only the prose disagreed.
+ *
+ * Drawn first when a tier-specific line exists for the moment; the generic
+ * pools below remain the fallback and remain the majority of the draw, because
+ * most of what a mentor does is the same job whoever they are.
+ */
+export const MENTOR_TIER_PARACHUTE: Record<string, string[]> = {
+    storied: [
+        "{mentor} has a shelf of these at home and still leans forward when the parachute opens over {zone}. {item}, for {tribute}, on the old timing.",
+        "The commentators cut to {mentor} before they cut to {zone}. {item} is already falling and everybody in Panem knew it would.",
+        "{mentor} signs without reading it. They wrote the list of what {tribute} would need on the train. {item} reaches {zone} on schedule.",
+        "A younger mentor asks {mentor} why now and not an hour ago. {item} lands beside {tribute} in {zone} while the answer is still being given.",
+        "{mentor} names the item before the liaison offers it. {item} goes to {tribute} in {zone}, and it is the right one, because it always is.",
+        '{mentor} does not watch the screen while the order goes through. They have done this enough times to know what {zone} looks like. {item} reaches {tribute} anyway.',
+        'The room defers to {mentor} on the timing, because the room always has. {item} goes to {tribute} in {zone} at the moment {mentor} says it should.',
+        "'Standard,' says {mentor}, signing. It is not standard. It is the thing that worked in the forty-first and {mentor} has not forgotten a detail of it. {item} lands in {zone}.",
+    ],
+    strong: [
+        "The patrons round on {mentor} wanting to be part of it. {item} goes into {zone} with four names on the slip and one signature that mattered.",
+        "{mentor} spends on {tribute} the way their district spends on everything: early, visibly, and to be seen doing it. {item} is in {zone} inside the hour.",
+        "There is a queue for {mentor}'s attention tonight and {tribute} is at the front of it. {item} comes down into {zone} accordingly.",
+        "{mentor} upgrades the order twice before it flies. What reaches {tribute} in {zone} is {item}, and it is better than what was asked for.",
+        "The cost of {item} does not come up. In {mentor}'s district it never does, which is most of what {tribute} is carrying into {zone}.",
+        '{mentor} has patrons queuing and spends from the middle of the queue, not the top. {item} is in {zone} inside the hour, and there is plenty more where it came from.',
+        'The money is not the question for {mentor}. The question is whether {tribute} has earned it, and in {zone} today they have. {item} goes out.',
+        '{mentor} buys {item} for {tribute} the way somebody buys a round: without looking at the price, and watching the face.',
+    ],
+    modest: [
+        "{mentor} works out what {item} costs against what is left, twice, and sends it anyway. {tribute} gets it in {zone} and does not know the arithmetic.",
+        "There is enough for this or for one more later. {mentor} chooses now, and {item} finds {tribute} in {zone}.",
+        "{mentor}'s district sent what it could and it was not much. {item} goes out to {zone} carrying more meaning than money.",
+        "The liaison suggests something cheaper. {mentor} declines, politely, and {item} reaches {tribute} in {zone} intact.",
+        "{mentor} has done this on a budget before and it shows in the choice: {item}, exactly what {tribute} needs in {zone} and nothing spare.",
+        '{mentor} gets {item} to {tribute} in {zone} by moving money between three accounts, and does not mention that part on camera.',
+        'It costs {mentor} most of what they have. {item} comes down into {zone} anyway and the sponsor rooms notice the size of the gesture.',
+        '{mentor} has one good patron and spends them on this. {item} reaches {tribute} in {zone}; there will not be a second.',
+    ],
+    thin: [
+        "{mentor} spent the afternoon being turned down by six patrons and the evening being funded by a seventh. {item} lands in {zone}.",
+        "Nothing about this was easy to arrange, and {mentor} will not be telling {tribute} that. {item} is in {zone} and that is the whole message.",
+        "{mentor} skips the reception to sit by the order desk. {item} clears at some hour nobody is watching and finds {tribute} in {zone}.",
+        "It is the first parachute {mentor}'s district has sent in years. {item} comes down into {zone} and somebody at home is watching it fall.",
+        "{mentor} rounds the fund down to nothing to make {item} happen. {tribute} finds it in {zone} and there will be no more.",
+        '{mentor} has been on the floor of the sponsor rooms since the gong, asking. {item} finally goes to {tribute} in {zone}, and the asking is what bought it.',
+        'Nobody in the Capitol owes {mentor} a favour, so {mentor} traded one they could not afford. {item} lands beside {tribute} in {zone}.',
+        '{mentor} sends {item} into {zone} and then sits down, because that was the whole fund and there is nothing to do now but watch.',
+    ],
+    forgotten: [
+        "The Capitol has stopped putting {mentor}'s district on the graphic. {item} still reaches {tribute} in {zone}, which is the entire point of it.",
+        "{mentor} has been rehearsing the ask since the reaping and finally lands it. {item} goes out to {zone} on a favour from somebody who barely remembers why they owed one.",
+        "Nobody expects anything from {mentor}, which is why the bay clerk double-checks the district code. {item} flies to {tribute} in {zone} regardless.",
+        "{mentor} watches {tribute} in {zone} and thinks about the year nobody sent them anything. {item} goes out the same evening.",
+        "The order for {tribute} is the only one from that district on the board. {item} reaches {zone} and the board is empty again by morning.",
+        'Nobody from {mentor}\'s district has come home in living memory, and {mentor} has spent two days explaining to strangers why {tribute} might. {item} reaches {zone} on the strength of it.',
+        '{mentor} sells something of their own. It is not discussed. {item} comes down into {zone} for {tribute} that evening.',
+        'The liaison has to ask {mentor} twice for the district number. The parachute goes out regardless, and {item} finds {tribute} in {zone}.',
+    ],
+};
+
+export const MENTOR_TIER_WITHHELD: Record<string, string[]> = {
+    storied: [
+        "{mentor} has seen exactly this in {zone} before and knows how it ends if somebody solves it for them. The slip stays face down.",
+        "Half the sponsor rooms are asking {mentor} to spend. {mentor} orders nothing and watches {tribute} in {zone} the way you watch an exam.",
+        "'Two more hours,' {mentor} says, to nobody in particular. Nothing goes to {zone}, and the two hours are the gift.",
+        "{mentor} picks up the pen for {tribute} twice and puts it down twice. The feed from {zone} does not change and neither does the decision.",
+        "It would be the easiest thing in the world for {mentor} to fix {zone} tonight. That is the reason they do not.",
+        "The commentators call {mentor} cruel. {mentor} has been called worse by people who later came home because of it. {zone} stays quiet.",
+        "'Not yet,' says {mentor}, and the whole room takes it as settled, because {mentor} has been right about this before. Nothing falls into {zone}.",
+        '{mentor} has watched a tribute of theirs come home from worse than {zone}. The order stays unsigned and {mentor} does not explain further.',
+    ],
+    strong: [
+        "{mentor} is the richest table in the room and the emptiest sky over {zone}, and both of those are on purpose.",
+        "A patron tries to send to {tribute} around {mentor} and is quietly blocked. Nothing lands in {zone}.",
+        "'They can afford this mistake,' says {mentor}, meaning {tribute} and meaning the district. The bay stays shut.",
+        "{mentor} is not being careful with money. {mentor} is being careful with {tribute}, and {zone} is where that is happening.",
+        "The order is drafted at the top of the price list and cancelled at the top of the price list. {zone} gets nothing.",
+        "In {mentor}'s district a tribute who needs rescuing on day four is a tribute who was reaped wrong. Nothing falls.",
+        '{mentor} could buy the whole parachute bay tonight and instead buys nothing. In {zone}, {tribute} is told something expensive and wordless.',
+        'There is no shortage of money on {mentor}\'s table. There is a shortage of reasons, and {zone} has not supplied one.',
+    ],
+    modest: [
+        "{mentor} counts the fund, looks at {zone}, and decides this is not the day it gets spent. {tribute} is on their own until it is.",
+        "There is one parachute left in {mentor}'s budget and {mentor} will not waste it on something {tribute} can fix themselves.",
+        "{mentor} says no to the liaison and then sits with it for an hour. {zone} stays empty either way.",
+        "The district's whole collection would buy one gift. {mentor} holds it, and watches {tribute} in {zone} not get it.",
+        "{mentor} has been poor and been in an arena, and knows which of those {tribute} can survive without help. Nothing flies.",
+        "'Later,' {mentor} tells the desk. Later is a real plan and {zone} does not know that yet.",
+        '{mentor} has enough for one gift and {tribute} is not having it today, because there is a worse day coming and {mentor} can see it. {zone} stays quiet.',
+        'Spending now would leave nothing later. {mentor} does that arithmetic in public, for {tribute}, and gets no thanks for it.',
+    ],
+    thin: [
+        "{mentor} has nothing left and lets the room read it as patience. {tribute} reads the empty sky over {zone} the same way.",
+        "The fund ran out on day two. {mentor} keeps sitting at the table so nobody works that out, and {zone} stays quiet.",
+        "Somebody asks {mentor} what the plan for {tribute} is. The plan is that there is no money. Nothing goes to {zone}.",
+        "{mentor} makes one more call, gets one more no, and goes back to the screen showing {zone} without saying anything.",
+        "The order for {tribute} is filled out to the last field and never costed, because costing it would end it. {zone} gets nothing.",
+        "{mentor} would give {tribute} anything at all and has nothing at all, which is the shape of their whole career. {zone} stays empty.",
+        '{mentor} does not have it to give, and lets the room believe it is a decision. Nothing reaches {tribute} in {zone} either way.',
+        'The silence over {zone} is not strategy. {mentor} is at the end of the fund and will not say so on camera.',
+    ],
+    forgotten: [
+        "There is no fund, no patron and no queue. {mentor} watches {zone} with their hands flat on the table and nothing to sign.",
+        "The liaison does not come to {mentor}'s table at all tonight. Nothing was ever going to reach {tribute} in {zone}.",
+        "{mentor} has done this eleven times and been able to send something twice. {zone} is one of the other nine.",
+        "Somebody in the Capitol laughs about {mentor}'s district within earshot. {mentor} does not turn round, and {zone} stays empty.",
+        "{mentor} writes {tribute}'s name on the pad in front of them, several times, and nothing else happens all evening.",
+        "The sky over {zone} is the same sky it was over {mentor} the year they were reaped, and for the same reason.",
+        'Nobody is watching {mentor}\'s table, so nobody sees the order that is never filled in. {zone} stays empty over {tribute} and the Capitol does not notice.',
+        '{mentor} has nothing and knows exactly how this goes, having watched it go this way every year since they were reaped. Nothing falls into {zone}.',
+    ],
+};
+
 export const MENTOR_POINTED_TEXTS = [
     'The moment {tribute} sorts themselves out, the parachute {mentor} was sitting on comes down into {zone}: {item}, and no note needed.',
     '{item} drifts into {zone} within the hour of {tribute} fixing their own mistake. {mentor} wanted the timing to be unmistakable.',
@@ -1532,6 +1698,67 @@ export const GRIEF_TEXTS = [
     'For one long minute in {zone}, {mourner} lets themselves grieve for {victim} properly. Then they wipe their face and check the treeline.',
     '{mourner} tells the nearest camera exactly what they think of the Capitol taking {victim}. The broadcast does not air it.',
     'Something {victim} taught {mourner} saves their life in {zone} not an hour after the cannon. They say thank you to the air.',
+    /*
+     * Audit 3 §7.4/§10.4: forty more.
+     *
+     * Fifteen lines against a game that averages eighteen deaths a run means a
+     * player sees the entire grief pool inside a single Games, and every run
+     * after that is a repeat — the highest felt-staleness per line anywhere in
+     * the repository, against a 14,774-line arena flavour table.
+     *
+     * Written in the kinds §10.4 asked for rather than as more of the same
+     * note: the body, the practical aftermath, the things grief does that are
+     * not sitting down, the ones who are relieved, the ones who cannot afford
+     * to feel it yet, and the Capitol watching all of it.
+     */
+    // --- the body, and what is left of somebody ---
+    '{mourner} goes back for {victim} and the hovercraft has already been. There is a flattened patch of grass in {zone} and nothing else at all.',
+    '{mourner} finds where {victim} died in {zone} before they find out that {victim} died there. The order of those two things is going to stay with them.',
+    '{mourner} closes {victim}\'s eyes in {zone}, which is a thing they have seen done and never done, and it is harder than it looks.',
+    '{mourner} takes {victim}\'s pack because {victim} does not need it and {mourner} does. They are sick behind a tree in {zone} afterwards and then they carry it anyway.',
+    '{mourner} cannot make themselves take anything off {victim} in {zone}. They will regret that in two days and they know it now.',
+    'They put {victim}\'s token in {victim}\'s hand before the hovercraft comes. It is the only thing {mourner} can still do for them and it takes eleven seconds.',
+    // --- the practical aftermath ---
+    '{mourner} works out, standing in {zone}, that they are now the only one who knows where the water is. It is the loneliest arithmetic of the week.',
+    'Everything {victim} used to do — the fire, the watch, the listening — is {mourner}\'s now, all at once, on no sleep.',
+    '{mourner} keeps setting out two portions in {zone}. They notice on the third night.',
+    'The watch comes round and there is nobody to wake. {mourner} sits through both halves of it in {zone} with their back to a rock.',
+    '{mourner} walks the route {victim} always walked in {zone}, badly, and finds out how much of it was {victim} and not the route.',
+    'Nobody has said {victim}\'s name out loud in a day and a half. {mourner} is aware of this the way you are aware of a held breath.',
+    // --- grief that does something ---
+    '{mourner} does not sit down. {mourner} picks up the nearest heavy thing in {zone} and goes looking, and the arena obliges.',
+    'Grief comes out of {mourner} in {zone} as work: a shelter built far better than it needs to be, by somebody who cannot stop moving.',
+    '{mourner} burns what {victim} could not carry, in {zone}, which is wasteful and stupid and the only thing that helps.',
+    '{mourner} is very calm in {zone}, and very polite, and anybody who has seen grief before would get out of their way.',
+    '{mourner} stops eating. Not as a decision — {mourner} simply does not think of it for a day and a half after {victim}.',
+    'Something in {mourner} closes in {zone} with {victim}\'s face still in the sky, and whatever opens in its place is worse and more useful.',
+    // --- the ones who are not simply sad ---
+    '{mourner} feels relief first, in {zone}, for about a second, before the rest of it arrives. They will not tell anybody about the second.',
+    '{mourner} and {victim} had not spoken in three days. {mourner} spends the night in {zone} composing what they would have said.',
+    '{mourner} hated {victim} and finds, in {zone}, that hating somebody was a kind of company too.',
+    'They were not friends. {mourner} sits down in {zone} anyway, and could not tell a camera why.',
+    '{mourner} owed {victim} something and now cannot pay it. That debt is going to outlast the Games.',
+    '{mourner} promised {victim} something in {zone} last week and is now the only person alive who knows what it was.',
+    // --- the ones who cannot afford it ---
+    'There is somebody moving two sectors over, so {mourner} does the grieving in about four seconds and files the rest for later.',
+    '{mourner} cries exactly once in {zone}, quietly, with a hand over their own mouth, and then checks the treeline.',
+    '{mourner} will do this properly at home. {mourner} says so out loud in {zone}, to nobody, like a contract.',
+    'The cannon goes and {mourner} keeps climbing. There is no version of stopping here that {mourner} survives.',
+    // --- district and home ---
+    '{mourner} thinks about {victim}\'s district watching this, in a square, in the rain, and has to sit down in {zone}.',
+    'Somewhere there is a house with {victim}\'s name still on the reaping list. {mourner} thinks about the door of it all night.',
+    '{mourner} and {victim} came from the same district and the same street, and {mourner} is going to have to walk down it.',
+    '{mourner} realises they cannot remember what {victim}\'s mother is called, and it feels like losing them a second time in {zone}.',
+    // --- the Capitol, watching ---
+    'The cameras find {mourner} in {zone} within the minute. They get the shot they came for and everybody watching knows it.',
+    '{mourner} grieves {victim} facing away from the nearest lens in {zone}, deliberately, which is the only privacy on offer and not much.',
+    'The anthem is four seconds longer than it needs to be over {victim}\'s face. Somebody in the Capitol made that choice and {mourner} can tell.',
+    'They will play this back with music under it. {mourner} knows that, in {zone}, while it is still happening.',
+    // --- the long tail ---
+    '{mourner} dreams about {victim} in {zone} and the dream is completely ordinary, which is the cruel part.',
+    'Two days on, {mourner} laughs at something in {zone} and the laugh turns into something else halfway through.',
+    '{mourner} stops being angry about {victim} somewhere in {zone} and is frightened by how much they miss being angry.',
+    '{mourner} makes it to the end of a whole day without it, and then the light goes a particular way over {zone} and there {victim} is.',
 ];
 
 export const VENGEANCE_TEXTS = [

@@ -321,6 +321,56 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         info: 'Talks the Capitol into things. A steady drift upward in sponsor trust all run.',
         mods: { sponsorTrust: 2.5, allianceAffinity: 0.1, persuasion: 0.6, rapport: 0.2 },
     },
+
+    /*
+     * Audit 3 §8.4: eight more, because six was not a category.
+     *
+     * Sorting every trait by the category its modifiers weigh most toward gave
+     * combat 25, survival 27 and social 6 — in a game whose deepest subsystem
+     * is the social one, which carries the largest achievement shelf (48 of
+     * 170) and the busiest engine module. Six social traits cannot
+     * differentiate twenty-four tributes' social behaviour, and the reaping
+     * was consequently assigning almost everybody a combat or survival
+     * identity and letting alliances sort themselves out on regard alone.
+     *
+     * All eight are built from hooks that already exist and are already read;
+     * none needs a new call site. They are written to pull in different
+     * directions on purpose — two are liabilities — because a category where
+     * every member is an advantage is a category the reaping cannot use to
+     * make somebody interesting.
+     */
+    'Peacemaker': {
+        info: 'Gets between people. Talks truces into existence and back from the brink, and takes a betrayal harder than most.',
+        mods: { persuasion: 0.8, rapport: 0.35, allianceAffinity: 0.15, treachery: -0.2, betrayalResist: -0.15 },
+    },
+    'Grudge-Keeper': {
+        info: 'Forgives nothing and forgets less. Will not reconcile, will not be talked round, and is very hard to betray twice.',
+        mods: { rapport: -0.5, betrayalResist: 0.35, treachery: 0.1, allianceAffinity: -0.15, executeDrive: 0.2 },
+    },
+    'Broker': {
+        info: 'Deals in what other people need. Better at arranging terms than at keeping them, and always has something somebody wants.',
+        mods: { persuasion: 0.55, scavenge: 0.1, treachery: 0.15, sponsorTrust: 1, allianceAffinity: 0.1 },
+    },
+    'Steadfast': {
+        info: 'The one everybody ends up relying on. Does not move first, does not move on you, and grief does not take them off their feet.',
+        mods: { allianceAffinity: 0.25, treachery: -0.35, griefResist: 0.3, defended: 0.2, resolveDrift: 0.4 },
+    },
+    'Prickly': {
+        info: 'Difficult company. Slower to be taken in, quicker to be left out, and largely indifferent to either.',
+        mods: { allianceAffinity: -0.35, rapport: -0.25, sponsorTrust: -1, targetDraw: -0.15, resolveDrift: 0.3 },
+    },
+    'Needy': {
+        info: 'Cannot be alone with it. Allies with almost anybody, feels every loss twice, and comes apart on their own.',
+        mods: { allianceAffinity: 0.4, griefResist: -0.35, sanityDrain: 0.25, betrayalResist: -0.2 },
+    },
+    'Diplomatic Cover': {
+        info: 'Reads as harmless and is trusted accordingly. Hard to suspect, easy to underestimate, and perfectly willing to use both.',
+        mods: { betrayalResist: 0.25, treachery: 0.2, targetDraw: -0.2, persuasion: 0.3, allianceAffinity: 0.1 },
+    },
+    'Sworn': {
+        info: 'Keeps their word past the point of sense. Whatever they agreed to holds, and being on the wrong end of a broken one is worse for them than for anybody else.',
+        mods: { treachery: -0.5, betrayalResist: 0.2, rapport: 0.3, resolveDrift: -0.3, allianceAffinity: 0.2 },
+    },
     'Unremarkable': {
         info: 'Nobody is watching. Draws very little excitement and almost no sponsorship — and is genuinely the last person anyone goes looking for.',
         // §8c gave this a large `targetDraw` discount to make the promise in

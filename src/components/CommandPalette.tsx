@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useDialogFocus } from '../ui/useDialogFocus';
 import { GameState } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { gameActions } from '../store/gameStore';
@@ -56,9 +57,6 @@ export function CommandPalette({ gameState, onSelectTribute }: {
         return () => window.removeEventListener('keydown', onKey);
     }, [open]);
 
-    useEffect(() => {
-        if (open) requestAnimationFrame(() => inputRef.current?.focus());
-    }, [open]);
 
     const results = useMemo<Result[]>(() => {
         const needle = query.trim().toLowerCase();
@@ -176,14 +174,9 @@ export function CommandPalette({ gameState, onSelectTribute }: {
     };
 
     return (
-        <div
-            className="fixed inset-0 z-[60] bg-black/60 flex items-start justify-center p-4 pt-[12vh]"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Search everything"
-            onClick={() => setOpen(false)}
-        >
-            <div className="panel w-full max-w-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <PaletteDialog
+            onClose={() => setOpen(false)}
+            input={
                 <input
                     ref={inputRef}
                     type="search"
@@ -198,6 +191,8 @@ export function CommandPalette({ gameState, onSelectTribute }: {
                     aria-label="Search tributes, sectors and the chronicle"
                     className="field text-sm w-full border-0 border-b-2 border-[var(--color-ink-800)] rounded-none"
                 />
+            }
+        >
                 <div className="max-h-[55vh] overflow-y-auto custom-scrollbar" role="listbox">
                     {results.length === 0 ? (
                         <div className="empty-state m-3">Nothing matches “{query}”.</div>
@@ -224,6 +219,39 @@ export function CommandPalette({ gameState, onSelectTribute }: {
                 <div className="px-4 py-2 text-[10px] font-mono uppercase tracking-wider text-[var(--color-ink-500)] flex gap-3 flex-wrap">
                     <span>↑↓ move</span><span>⏎ open</span><span>Esc close</span>
                 </div>
+        </PaletteDialog>
+    );
+}
+
+/**
+ * Audit 3 §1.7/§2.3: the palette declared `aria-modal="true"` and implemented
+ * none of what that asserts. It focused its input on open and stopped there —
+ * Tab walked straight out of the dialog into the page behind the scrim, with
+ * the palette still covering it, and focus was never returned to whatever the
+ * reader was on when they opened it.
+ *
+ * Split out as its own component purely so `useDialogFocus` can be called on a
+ * node that mounts when the palette opens rather than on every render of a
+ * component that is present for the whole run. The hook does the four things
+ * `aria-modal` promises, and now the promise is kept.
+ */
+function PaletteDialog({ onClose, input, children }: {
+    onClose: () => void;
+    input: React.ReactNode;
+    children: React.ReactNode;
+}) {
+    const panelRef = useDialogFocus<HTMLDivElement>(onClose);
+    return (
+        <div
+            className="fixed inset-0 z-[60] bg-black/60 flex items-start justify-center p-4 pt-[12vh]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search everything"
+            onClick={onClose}
+        >
+            <div ref={panelRef} tabIndex={-1} className="panel w-full max-w-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                {input}
+                {children}
             </div>
         </div>
     );

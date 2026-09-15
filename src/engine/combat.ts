@@ -22,7 +22,7 @@ import { injure, injuryGrade, openWound } from './wounds';
 import { isUnfamiliar, noteWeaponUse, profOf, trainProficiency, weaponAffinity, weaponHandling, weaponProficiency } from './proficiency';
 import { addFear, fearFraction, reduceFear } from './fear';
 import { notorietyFraction, witnessReputation } from './notoriety';
-import { areLovers } from './alliance';
+import { areLovers, emptyCache } from './alliance';
 import { hasTruce } from './parley';
 import { riskTolerance } from './risk';
 import { blocTreatyHolds, noteBlocKill } from './blocTreaty';
@@ -641,7 +641,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     // run's bleeding rate; `test:metrics` is what noticed.
     if (isDowned(defender) || defender.status !== 'alive') { wearWeapon(weapon); return 0; }
 
-    if (ctx.rng.chance(COMBAT.bleedChance)) openWound(defender, BLEEDING.combatSeverity);
+    if (ctx.rng.chance(COMBAT.bleedChance)) openWound(defender, BLEEDING.combatSeverity, attacker.id);
     if (ctx.rng.chance(COMBAT.woundChance)) {
         // Where it lands depends on what landed it and how practised the hand
         // was. A bow finds the body; a club finds the head; a blade opens the
@@ -1549,6 +1549,35 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     // both had it.
     broadcastDeath(ctx, victim, killer);
     propagateDeathFallout(ctx, victim, killer);
+
+    // Audit 3 §4.3: killing the quartermaster costs the group its supplies.
+    //
+    // The role was described as "the obvious knife target" and its removal did
+    // nothing at all — the cache sat in the alliance record and the next member
+    // drew from it exactly as before, so the description was a caption rather
+    // than a strategy. The one who carried it was carrying it: what is left is
+    // scattered where they fell, for whoever comes through next.
+    if (formerAlliance) {
+        const record = ctx.state.alliances?.[formerAlliance];
+        if (record?.roles?.quartermaster === victim.id && record.sharedCache.length > 0) {
+            const scattered = emptyCache(record);
+            delete record.roles.quartermaster;
+            ctx.state.abandonedCamps = ctx.state.abandonedCamps ?? [];
+            ctx.state.abandonedCamps.push({
+                zone: victim.zone,
+                ownerId: victim.id,
+                ownerName: victim.name,
+                cycle: cycleOf(ctx.state),
+                items: scattered.map(i => i.id),
+            });
+            ctx.logEvent(
+                `${victim.name} was carrying everything the group had. It is in ${victim.zone} now, in the open, `
+                + `and whoever comes through next will find ${scattered.map(i => i.name).join(', ')} before any of them get back to it.`,
+                [victim.id],
+                { important: true, category: 'alliance', zone: victim.zone }
+            );
+        }
+    }
 
     // Only now is the body out of the roster.
     if (formerAlliance) {

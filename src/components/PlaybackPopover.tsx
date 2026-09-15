@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Hint } from './Hint';
 import { Pause, Play } from 'lucide-react';
 import { prefsStore, setPrefs } from '../store/prefsStore';
 import { chronicleStore, setChronicle } from '../store/chronicleStore';
@@ -58,6 +59,9 @@ export function PlaybackPopover({
         return () => {
             window.removeEventListener('pointerdown', onDown);
             window.removeEventListener('keydown', onKey);
+            // Audit 3 §1.7: hand the trigger its focus back on close, so Escape
+            // does not drop a keyboard reader at the top of the document.
+            ref.current?.querySelector('button')?.focus();
         };
     }, [open]);
 
@@ -68,31 +72,36 @@ export function PlaybackPopover({
         <div className="relative flex items-center gap-1" ref={ref}>
             <div className="seg">
                 {SPEEDS.map(([s, label]) => (
-                    <button
+                    <Hint
                         key={s}
-                        onClick={() => onSpeed(s)}
-                        aria-pressed={speed === s}
-                        disabled={disabled}
-                        className="seg-item"
-                        title={s === 'manual' ? 'Advance by hand'
+                        text={s === 'manual' ? 'Advance by hand'
                             : s === '1x' ? 'Slow enough to read every line'
                             : s === '5x' ? 'Fast enough to skim'
                             : 'As fast as the simulator will go'}
                     >
-                        {s === 'manual' ? <Pause className="w-3 h-3 inline" /> : s === 'auto' ? <Play className="w-3 h-3 inline" /> : null}
-                        <span className="ml-1">{label}</span>
-                    </button>
+                        <button
+                            onClick={() => onSpeed(s)}
+                            aria-pressed={speed === s}
+                            disabled={disabled}
+                            className="seg-item"
+                        >
+                            {s === 'manual' ? <Pause className="w-3 h-3 inline" /> : s === 'auto' ? <Play className="w-3 h-3 inline" /> : null}
+                            <span className="ml-1">{label}</span>
+                        </button>
+                    </Hint>
                 ))}
             </div>
-            <button
-                className="seg-item"
-                aria-expanded={open}
-                aria-haspopup="dialog"
-                onClick={() => setOpen(v => !v)}
-                title="When to stop: pause triggers and play-until"
-            >
-                ⏱{brakeCount > 0 || playUntil ? <span className="ml-0.5 text-[var(--red)]">•</span> : null}
-            </button>
+            <Hint align="right" text="When to stop: pause triggers and play-until">
+                <button
+                    className="seg-item"
+                    aria-label="Playback brakes"
+                    aria-expanded={open}
+                    aria-haspopup="dialog"
+                    onClick={() => setOpen(v => !v)}
+                >
+                    ⏱{brakeCount > 0 || playUntil ? <span className="ml-0.5 text-[var(--red)]">•</span> : null}
+                </button>
+            </Hint>
 
             {open && (
                 <div

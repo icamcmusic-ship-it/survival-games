@@ -538,6 +538,10 @@ const PROC_LAWS: ArenaLawId[] = [
     // §5: the six new laws are drawable here too, so a procedural year can be
     // one of them without a hand-authored arena having to exist first.
     'noForage', 'deadlyNight', 'oneWayBorders', 'noWeapons', 'shrinkingArena', 'openMic',
+    // Audit 3 §5.2: the two that give. Eleven of the thirteen above take
+    // something away, which makes a generated year reliably harsher and never
+    // differently shaped. These make one piece of ground worth holding.
+    'bountifulGround', 'dawnMercy',
 ];
 
 function rollLaw(rng: RNG, zones: Zone[]): { law?: ArenaLawId; lawZone?: string } {

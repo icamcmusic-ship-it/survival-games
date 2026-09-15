@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { useDialogFocus } from '../ui/useDialogFocus';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { GameState, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
@@ -49,7 +50,6 @@ const BLEED_LABELS: Record<number, string> = {
     1: 'bleeding (slight)', 2: 'bleeding (steady)', 3: 'bleeding (severe)',
 };
 
-const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 
 function VitalBar({ label, value, invert = false, explain, tribute }: {
     label: string;
@@ -227,39 +227,15 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
 }) {
     const units = useStore(prefsStore, p => p.units);
     const arenaSealed = !!gameState.arenaHidden && !canSeeArena(disclosureFor(gameState.phase));
-    const panelRef = useRef<HTMLDivElement>(null);
-    const previouslyFocused = useRef<HTMLElement | null>(null);
-
-    useEffect(() => {
-        previouslyFocused.current = document.activeElement as HTMLElement | null;
-        const panel = panelRef.current;
-        const focusable = panel?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-        (focusable?.[0] ?? panel)?.focus();
-
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onClose();
-                return;
-            }
-            if (e.key !== 'Tab' || !panel) return;
-            const nodes = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-            if (nodes.length === 0) return;
-            const first = nodes[0];
-            const last = nodes[nodes.length - 1];
-            if (e.shiftKey && document.activeElement === first) {
-                e.preventDefault();
-                last.focus();
-            } else if (!e.shiftKey && document.activeElement === last) {
-                e.preventDefault();
-                first.focus();
-            }
-        };
-        window.addEventListener('keydown', onKey);
-        return () => {
-            window.removeEventListener('keydown', onKey);
-            previouslyFocused.current?.focus();
-        };
-    }, [onClose]);
+    // Audit 3 §1.7: this hand-rolled the four modal focus behaviours inline,
+    // which is where `useDialogFocus` came from in the first place — so the
+    // canonical version and this copy were free to drift, and had: the hook
+    // deliberately does *not* depend on `onClose` (every call site passes a
+    // fresh arrow, so the dependency tore the effect down and re-ran it on
+    // every render, yanking focus out of whatever the reader had tabbed to
+    // several times a second inside a running Games). This copy still had the
+    // dependency. One implementation now, and it is the fixed one.
+    const panelRef = useDialogFocus<HTMLDivElement>(onClose);
 
     const [storyCopied, setStoryCopied] = useTransientFlag<'idle' | 'ok' | 'fail'>('idle', 2500);
     // A5: four tabs, defaulting to Overview, and an optional second tribute
@@ -463,7 +439,6 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                             value={compareId}
                             onChange={e => setCompareId(e.target.value)}
                             aria-label="Compare with another tribute"
-                            title="Show a second tribute's overview beside this one"
                         >
                             <option value="">Compare with…</option>
                             {gameState.tributes

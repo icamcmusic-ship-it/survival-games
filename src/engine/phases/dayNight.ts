@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { BLEEDING, ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, RESOLVE, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
+import { ARENA_LAWS, BLEEDING, ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, RESOLVE, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
 import { traitMod } from '../../data/traits';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
@@ -14,7 +14,7 @@ import {
     addZoneThreat, advanceCycle, checkIntelLies, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteRivalSighting, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
 import { decayAllianceRegard, driftReputation, getRel, decayTrust } from '../relationships';
 import { clampTribute } from '../vitals';
-import { openWound } from '../wounds';
+import { clearBleeding, healInjury, openWound } from '../wounds';
 import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
@@ -97,6 +97,56 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     ctx.state.timeOfDay = effectiveTime === 'night' ? 'dusk' : 'day';
     advanceCycle(ctx.state);
     const alive = getAlive(ctx.state);
+
+    /*
+     * Audit 3 §5.2 `dawnMercy`: the second of the two laws that give.
+     *
+     * Anybody who spent the night at the Cornucopia is treated at first light —
+     * bleeding stopped, a wound dressed, health back. Enforced at exactly one
+     * site, like every other law, and deliberately at the horn rather than
+     * anywhere else: the horn is already the highest-danger tile in the arena
+     * and this makes it the highest-reward one too, so the law creates ground
+     * worth contesting rather than a uniform easing. Camping it all night with
+     * the rest of the field awake and hungry is the price.
+     */
+    if (time === 'day' && arenaHasLaw(ctx.state, 'dawnMercy')) {
+        const horn = ctx.state.arena.zones.find(z => /cornucopia/i.test(z.name));
+        const atHorn = horn ? alive.filter(t => t.zone === horn.name) : [];
+        /*
+         * One tribute, not everyone standing there — the worst hurt of them.
+         *
+         * The first cut treated the whole tile, and measured over 1,600 runs
+         * that handed the law to the Career pack: the horn is only the
+         * highest-danger tile in the arena for somebody arriving alone, and for
+         * the group already camped on it free healing every morning is simply a
+         * pack bonus. Career win rate went 7.57% -> 8.02% and the whole-field
+         * spread went back over its goal.
+         *
+         * Treating the worst-hurt one keeps everything the law was for — the
+         * horn becomes worth the risk of sleeping on, and the Capitol gets its
+         * televised act of generosity — and takes the pack bonus out: a group
+         * of five gets one member patched, a tribute who risked it alone gets
+         * patched every time.
+         */
+        const patient = atHorn.reduce<Tribute | undefined>(
+            (worst, t) => (worst === undefined || t.health < worst.health ? t : worst), undefined);
+        if (horn && patient) {
+            clearBleeding(patient);
+            healInjury(patient, 'infected');
+            patient.health = Math.min(100, patient.health + ARENA_LAWS.dawnMercyHeal);
+            patient.vitals.sanity = Math.min(100, patient.vitals.sanity + ARENA_LAWS.dawnMercySanity);
+            clampTribute(patient);
+            ctx.logEvent(
+                `First light at ${horn.name}, and the Capitol is generous to exactly one of the people who stayed: `
+                + `${patient.name}, who needed it most and is the best television. `
+                + (atHorn.length > 1
+                    ? 'Everybody else who slept there watches it happen and does the arithmetic on what being the worst hurt is worth.'
+                    : 'There was nobody else there to watch, which the Capitol will have found disappointing.'),
+                atHorn.map(t => t.id),
+                { important: true, category: 'gamemaker', zone: horn.name }
+            );
+        }
+    }
     // Counted once per day, so it freezes at whatever the tribute reached.
     if (time === 'day') alive.forEach(t => { t.daysSurvived = ctx.state.day; });
 
@@ -273,7 +323,13 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
     // 5. Cycle upkeep: the arena restocks, memories fade, bonds cool, the
     // crowd's attention wanders.
-    regenerateZones(ctx);
+    // Audit 3 §5.3: ground that has come all the way back blooms. `blooming` is
+    // the arena's only unambiguously good zone effect and the only thing that
+    // could ever start one was a rare authored boon event in eleven of forty
+    // arenas — third-rarest of ten kinds at 33 samples against `fogbound`'s 711.
+    // The regrowth beat already told the field the ground was worth returning
+    // to; now it is.
+    regenerateZones(ctx).forEach(zone => startZoneEffect(ctx, zone, 'blooming', false));
     // §5.5: a way nobody has found yet is the most valuable thing in an arena
     // that has one. Run in upkeep, after this cycle's movement has settled
     // `zoneHeld`, so finding one takes actually having sat somewhere.

@@ -66,6 +66,55 @@ export function tickRunRecords(ctx: SimContext) {
 
         WATCH.set(t, { health: t.health, zone: t.zone, frontZone: front?.zone });
     });
+
+    /*
+     * Audit 3 §1.6: the high-water marks for everything that only exists while
+     * the run is running.
+     *
+     * Seventeen achievements never unlocked across 200 runs, and the largest
+     * single cause was this module's own opening paragraph read the wrong way
+     * round. The table is evaluated once, at the end, against the final state —
+     * which is the right design — and five entries were asking it about things
+     * that are *gone* by then. `state.rumours` has a six-cycle lifetime and is
+     * pruned, so "a planted rumour still believed at the end" was asking for a
+     * claim that had survived being retired. `state.alliances` at the end of a
+     * run belongs to the one tribute left standing, so "an alliance with three
+     * clauses in its charter" was asking the wreckage.
+     *
+     * None of these needed a new mechanic. They needed somebody to write down
+     * that it happened, the way `sharedGriefAllies` already does.
+     */
+    const rumours = state.rumours ?? [];
+    const planted = rumours.filter(r => r.plantedById !== undefined);
+    state.maxPlantedInCirculation = Math.max(state.maxPlantedInCirculation ?? 0, planted.length);
+    if (planted.some(r => r.exposed)) state.plantedRumourExposed = true;
+    // A lie that is still standing, still false, and still believed by
+    // somebody who has not been to look. Recorded per planter, because the
+    // achievement is about the person who told it.
+    planted.forEach(r => {
+        if (r.isTrue || r.exposed) return;
+        const believed = state.tributes.some(o =>
+            o.status === 'alive' && o.id !== r.plantedById && (o.memory?.heardRumours ?? []).includes(r.id));
+        if (!believed) return;
+        state.liarsAtLarge = [...new Set([...(state.liarsAtLarge ?? []), r.plantedById!])];
+    });
+
+    Object.values(state.alliances ?? {}).forEach(a => {
+        state.deepestCharter = Math.max(state.deepestCharter ?? 0, a.charter?.length ?? 0);
+    });
+
+    // Every bloc down to a quarter of what it opened with. The opening purses
+    // have to be captured on the first tick that sees them — computing an
+    // "opening" from the live maximum, which is what this used to do, asks for
+    // the largest remaining purse to be a quarter of itself.
+    const purses = state.sponsorBlocBudgets;
+    if (purses && Object.keys(purses).length > 0) {
+        if (!state.openingBlocBudgets) state.openingBlocBudgets = { ...purses };
+        const opening = state.openingBlocBudgets;
+        const allSpent = Object.entries(purses)
+            .every(([bloc, left]) => left <= (opening[bloc] ?? left) * RUN_RECORDS.blocExhaustedShare);
+        if (allSpent) state.everySponsorBlocExhausted = true;
+    }
 }
 
 /** §12: `opener` started this fight, against somebody who had not started one. */

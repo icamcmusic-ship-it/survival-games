@@ -914,5 +914,37 @@ if (underSampled.length) {
     console.log(`Note: ${underSampled.join(', ')} drew fewer than ${GUARD_MIN_SAMPLE} entrants; reported above, but not guarded — `
         + `at this run count one victor moves their rate too far for a pass/fail to reproduce.`);
 }
+
+/**
+ * Audit 3 §1.5: the same three statistics over the *whole* field, printed
+ * where the guarded ones cannot be mistaken for them.
+ *
+ * `GUARD_MIN_SAMPLE` is right — a guard that fires on a 270-entrant archetype
+ * fails on RNG reshuffles rather than on balance. But the report read
+ * `archetype win-rate spread 1.63x  goal <= 2.3 MET` on a line computed over
+ * seven of fifteen archetypes, while the two that actually miss the goal were
+ * the two the guard is structurally unable to see. A design target reported as
+ * met over the subset that meets it is not a design target.
+ *
+ * These carry no guard for exactly the reason above. They carry the goal, so
+ * the gap is visible, and the run count needed to close the confidence gap is
+ * named rather than left as an exercise.
+ */
+{
+    const fullSpread = spreadOf(archetypeRates);
+    const worstFull = archetypeRates[archetypeRates.length - 1];
+    const bestFull = archetypeRates[0];
+    const band = (v: number, goalMet: boolean) => `${v.toFixed(2)}x  ${goalMet ? 'goal MET' : 'SHORT of goal'}`;
+    console.log('\nwhole-field archetype balance (every archetype, no guard — see GUARD_MIN_SAMPLE):');
+    console.log(`  spread (best/worst)   ${band(fullSpread, fullSpread <= 2.3)}  (goal <= 2.3x)`);
+    console.log(`  best   ${bestFull[0]} ${(bestFull[1] * 100).toFixed(2)}% (n=${bestFull[2]})`);
+    console.log(`  worst  ${worstFull[0]} ${(worstFull[1] * 100).toFixed(2)}% (n=${worstFull[2]})`
+        + `  ${worstFull[1] >= 0.035 ? 'goal MET' : 'SHORT of goal (>= 3.5%)'}`);
+    if (fullSpread > 2.3 || worstFull[1] < 0.035) {
+        console.log(`  These two lines are the design targets over the real cast. They are reported`);
+        console.log(`  rather than guarded because ${underSampled.length} archetype(s) are under ${GUARD_MIN_SAMPLE} entrants at`);
+        console.log(`  ${runs} runs; confirm a change to them with METRICS_RUNS=1600.`);
+    }
+}
 console.log(failed ? `\n${failed} regression guard(s) breached.` : '\nAll regression guards hold.');
 if (failed) process.exit(1);

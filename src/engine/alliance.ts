@@ -138,23 +138,50 @@ export function pickLeader(members: Tribute[]): Tribute {
  *   muscle         the one sent to the front of a fight.
  *   medic          patches the others up before themselves.
  *
- * One member may hold more than one role in a pair; a role is never assigned
- * to somebody who is not in the group.
+ * A role is never assigned to somebody who is not in the group.
+ *
+ * Audit 3 §1.8/§4.3: this used to hand out all four roles to every group of two
+ * or more, so each of the four was assigned in exactly 1,748 of 1,848 sampled
+ * alliances — 46% of which were pairs. Two people wearing four hats is not a
+ * division of labour, and every read site downstream was reading a label with
+ * no information in it: `combat.ts` gives the muscle a draw and the medic a
+ * shield, which in a pair was frequently the same person getting both, and
+ * "kill the quartermaster to break the group" was a strategy against somebody
+ * who was also the scout, the muscle and the medic.
+ *
+ * Roles are now dealt out to fit the group. A pair has one job worth naming —
+ * who holds the supplies — and a role is never given to somebody who already
+ * holds one until everybody has one, so a group of three has three distinct
+ * people doing three distinct things. Only a group of four or more fields the
+ * full set, which is what makes the full set mean something.
  */
 export function assignRoles(members: Tribute[], leader: Tribute): Alliance['roles'] {
     if (members.length < 2) return undefined;
-    const best = (score: (t: Tribute) => number) =>
-        members.reduce((top, m) => (score(m) > score(top) ? m : top)).id;
-    return {
-        // Not the leader where the group is big enough to spread the work: a
-        // leader who also holds the supplies is a dictatorship, not a pact.
-        quartermaster: best(t =>
-            t.attributes.intelligence + t.attributes.strength * 0.5
-            + (members.length > 2 && t.id === leader.id ? -4 : 0)),
-        scout: best(t => t.attributes.stealth * 1.4 + t.attributes.agility),
-        muscle: best(t => t.attributes.strength * 1.5 + t.kills),
-        medic: best(t => t.attributes.intelligence * 1.2 + (t.proficiencies?.medicine ?? 0) * 2),
-    };
+    // Ordered by how much the group notices losing them, so a small group keeps
+    // the jobs that matter: somebody holds the food before anybody walks point.
+    const jobs: Array<[keyof NonNullable<Alliance['roles']>, (t: Tribute) => number]> = [
+        ['quartermaster', t => t.attributes.intelligence + t.attributes.strength * 0.5
+            // Not the leader where the group is big enough to spread the work: a
+            // leader who also holds the supplies is a dictatorship, not a pact.
+            + (members.length > 2 && t.id === leader.id ? -4 : 0)],
+        ['muscle', t => t.attributes.strength * 1.5 + t.kills],
+        ['scout', t => t.attributes.stealth * 1.4 + t.attributes.agility],
+        ['medic', t => t.attributes.intelligence * 1.2 + (t.proficiencies?.medicine ?? 0) * 2],
+    ];
+    // A pair names one job, a trio three, four or more the lot.
+    const slots = members.length === 2 ? 1 : Math.min(jobs.length, members.length);
+    const roles: NonNullable<Alliance['roles']> = {};
+    const taken = new Set<string>();
+    jobs.slice(0, slots).forEach(([role, score]) => {
+        const free = members.filter(m => !taken.has(m.id));
+        // Everybody already holds something: fall back to the whole group
+        // rather than leaving the role unfilled.
+        const pool = free.length > 0 ? free : members;
+        const pick = pool.reduce((top, m) => (score(m) > score(top) ? m : top));
+        roles[role] = pick.id;
+        taken.add(pick.id);
+    });
+    return roles;
 }
 
 /**

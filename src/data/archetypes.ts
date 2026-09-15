@@ -191,7 +191,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         treachery: 0.35,
         caution: 0.1,
         stanceBias: { Shadowing: 0.6, Fortified: 0.4, Aggressive: -0.2 },
-        objectiveBias: { hold: 0.3, hunt: 0.2 },
+        // Audit 3 §3.3: a Trickster watches before they spring anything.
+        objectiveBias: { hold: 0.3, hunt: 0.2, stalk: 0.3 },
         targetPreference: 'richest',
         riskCurve: 'escalating',
         signature: 'tricksterSnare',
@@ -266,13 +267,32 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'zealot',
         name: 'Zealot',
         description: 'Believes the Games mean something. Does not frighten, does not break, and does not stop.',
-        statBias: { strength: 1, charisma: 1 },
+        // Audit 3 §8.2: the Zealot had the highest risk tolerance in the game
+        // (aggression 0.3 against a caution of -0.3, and `fearScale: 0` so it
+        // never breaks off) on the second-smallest attribute budget — two
+        // points, where the Beast charges just as hard on three. It charged
+        // harder than anything else in the arena with less to charge with, and
+        // it showed: 2.92 days, the shortest life of any archetype, and a
+        // 2.16% win rate.
+        //
+        // The fix is not to make it careful — not stopping is the whole
+        // character. It is to pay for the conviction with the attribute the
+        // conviction is made of. `willpower` is how steeply resolve falls and
+        // how much fear and grief land, and the archetype whose description is
+        // "does not frighten, does not break" had none of it.
+        statBias: { strength: 1, charisma: 1, willpower: 1 },
         preferredTraits: ['Bloodthirsty', 'Charismatic'],
         aggression: 0.3,
         allianceAffinity: -0.05,
         treachery: -0.1,
         caution: -0.3,
-        stanceBias: { Aggressive: 0.5, Desperate: 0.8, Evasive: -1.2 },
+        // Audit 3 §8.2: `Desperate: 0.8` was the largest single stance bias on
+        // any archetype and it was pointed backwards. Desperate is the stance
+        // of somebody who has come apart — the emergency that "holds for
+        // nothing" — which is the precise opposite of a tribute who does not
+        // break. Kept positive, because a Zealot does end up there, and cut to
+        // below the Aggressive bias, because that is the stance they mean.
+        stanceBias: { Aggressive: 0.6, Desperate: 0.3, Evasive: -1.2 },
         objectiveBias: { hunt: 0.4 },
         targetPreference: 'strongest',
         riskCurve: 'flat',
@@ -296,7 +316,21 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
                 // Audit 2 §8.2: was `nearest`. A medic fights only what they must, and
         // only what they can end quickly.
         targetPreference: 'weakest',
-        riskCurve: 'escalating',
+        /*
+         * Audit 3 §8.2: was `escalating`, which is the wrong shape for this
+         * archetype and is the same diagnosis the Ghost got two audits ago.
+         *
+         * The Medic has the longest survival of any archetype outside the top
+         * three (4.00 days) and the second-lowest kill count (0.38): it lasts
+         * and it cannot close, which `escalating` — a steady drift toward
+         * boldness — does nothing about, because a steady drift from
+         * `aggression: -0.25` never arrives anywhere. `late-blooming` is the
+         * curve that exists for exactly this: careful while there is a field to
+         * be careful of, decisive once there is not. It took the Ghost from
+         * 2.78% to a healthy 5.21%, and a medic's whole case for winning is
+         * that they are still standing and whole when everybody else is not.
+         */
+        riskCurve: 'late-blooming',
         signature: 'medicTriage',
         tagline: 'Keeps them standing.',
     },
@@ -311,7 +345,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         treachery: 0.3,
         caution: 0.2,
         stanceBias: { Fortified: 0.7, Shadowing: 0.5, Aggressive: -0.7 },
-        objectiveBias: { hold: 0.4 },
+        // Audit 3 §3.3: a Saboteur is somebody who watches what other people
+        // do and then breaks it, which is a stalk followed by a plan.
+        objectiveBias: { hold: 0.4, stalk: 0.3 },
         targetPreference: 'richest',
                 // Audit 2 §8.2: was `flat`. Somebody who works from cover has less
         // cover every day.
@@ -383,7 +419,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         treachery: 0.05,
         caution: 0.25,
         stanceBias: { Defensive: 0.4, Evasive: 0.3, Scavenging: 0.3 },
-        objectiveBias: { reach: 0.4 },
+        // Audit 3 §3.3: a Scholar's whole method is watching something for long
+        // enough to understand it, which is what a stalk is.
+        objectiveBias: { reach: 0.4, stalk: 0.25 },
         targetPreference: 'weakest',
                 // Audit 2 §8.2: was `flat`. The point of the archetype is that it
         // updates — and what it updates *toward* is confidence, not caution. A
@@ -404,7 +442,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         treachery: 0.0,
         caution: 0.35,
         stanceBias: { Evasive: 0.8, Shadowing: 0.9, Aggressive: -1.0 },
-        objectiveBias: { survive: 0.4 },
+        // Audit 3 §3.3: the archetype with a 0.9 Shadowing stance bias had no
+        // stalk objective bias at all — the stance and the intention it exists
+        // to express were not connected.
+        objectiveBias: { survive: 0.4, stalk: 0.4 },
         targetPreference: 'weakest',
                 // Audit 2 §8.3: was `flat`, and Ghost has the second-longest survival
         // in the game on the worst win rate — an archetype that outlasts and

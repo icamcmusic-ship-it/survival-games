@@ -606,9 +606,18 @@ const REGROWTH_BEAT_BELOW = ZONES.regrowthBeatBelow;
 const REGROWTH_BEAT_PEAK = ZONES.regrowthBeatPeak;
 
 /** Called once per cycle: the arena quietly restocks what nobody is stripping. */
-export function regenerateZones(ctx: SimContext) {
+export function regenerateZones(ctx: SimContext): string[] {
     const state = ctx.state;
-    if (!state.zoneDepletion) return;
+    /*
+     * Audit 3 §5.3: returns the zones that finished recovering this cycle, so
+     * the caller can bloom them.
+     *
+     * The bloom itself is started by `dayNight` rather than here because
+     * `zoneEffects` already imports this module; calling back into it would
+     * close an import cycle for the sake of one line.
+     */
+    const regrown: string[] = [];
+    if (!state.zoneDepletion) return regrown;
     Object.keys(state.zoneDepletion).forEach(name => {
         const current = state.zoneDepletion![name];
         if (current <= 0) {
@@ -627,6 +636,23 @@ export function regenerateZones(ctx: SimContext) {
         const peak = state.zoneDepletionPeak?.[name] ?? 0;
         if (peak >= REGROWTH_BEAT_PEAK && next <= REGROWTH_BEAT_BELOW) {
             delete state.zoneDepletionPeak![name];
+            /*
+             * Audit 3 §5.3: ground that has come all the way back blooms.
+             *
+             * `blooming` is the arena's only unambiguously *good* zone effect —
+             * it feeds, heals and settles whoever is standing in it — and the
+             * only thing that could ever start one was a rare authored boon
+             * event in one of eleven arenas. Measured across 132 runs it was
+             * the third-rarest of ten effect kinds at 33 samples, against
+             * `fogbound` at 711: the arena's vocabulary for "this place got
+             * worse" was six times richer than its vocabulary for "this place
+             * got better", and the good one was the one with no engine source.
+             *
+             * This is the source it was missing, and it is the right one: the
+             * beat already existed as a line of prose telling the field the
+             * ground is worth returning to, and now it is worth returning to.
+             */
+            regrown.push(name);
             ctx.logEvent(
                 `The green returns to ${name}. What was picked over and trampled a few days ago is quietly worth foraging again.`,
                 [],
@@ -634,6 +660,7 @@ export function regenerateZones(ctx: SimContext) {
             );
         }
     });
+    return regrown;
 }
 
 /**
