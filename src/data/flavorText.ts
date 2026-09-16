@@ -779,6 +779,16 @@ export const ENCOUNTER_TEXTS = {
     ],
 };
 
+/**
+ * Audit 4 §2.5/§10.4: the three pools that repeated inside a single run.
+ *
+ * `sanity` was the largest single category of feed line in the game at 12.9%
+ * of ~760 lines a run — roughly 98 sanity beats per Games against three pools
+ * of ten. Every pool in the file cleared its floor and this one still repeated
+ * itself four or five times a run, because the floor is a floor and the thing
+ * that matters is lines against *occurrences*. The §3.2 work took the share to
+ * 10.9%; doubling these takes the rest.
+ */
 export const SANITY_TEXTS = {
     hallucination: [
         "{tribute} begins to hallucinate, seeing phantom mutts in the shadows of {zone}.",
@@ -791,6 +801,16 @@ export const SANITY_TEXTS = {
         "{tribute} laughs at something in {zone} for a long time, and then stops very suddenly.",
         "{tribute} spends an hour in {zone} apologising to somebody who is three days dead.",
         "{tribute} hears their own name called from deep in {zone}, in a voice from home, and it takes everything not to answer.",
+        '{tribute} answers a question nobody in {zone} asked, and waits for the reply.',
+        'Somebody {tribute} knows is standing at the treeline of {zone}. Somebody {tribute} knows is also on the list they read out last night.',
+        '{tribute} keeps checking over their shoulder in {zone} for a sound that arrives a half-second before it happens.',
+        'The ground in {zone} has started breathing, slowly, and {tribute} has stopped finding that strange.',
+        '{tribute} tells the empty half of {zone} to keep up, and sets off at a pace nobody is matching.',
+        'For a while in {zone} the anthem is playing, and then it is not, and {tribute} cannot say when either of those started.',
+        '{tribute} watches their own hands work in {zone} as though somebody else is operating them.',
+        'Something is saying {tribute}\'s name in {zone} in their mother\'s voice, and getting the emphasis very slightly wrong.',
+        '{tribute} has been walking toward the same tree in {zone} for some time now and it is not getting closer.',
+        'The cameras over {zone} catch {tribute} smiling at nothing, which the Capitol will replay all evening.',
     ],
     dropItem: [
         "{tribute} becomes disoriented and accidentally drops their {item} in {zone}.",
@@ -803,6 +823,16 @@ export const SANITY_TEXTS = {
         "{tribute} sets the {item} down in {zone} to do something important, and cannot afterwards remember the something, or find the {item}.",
         "Convinced the Gamemakers have marked it, {tribute} hurls their {item} into the dark of {zone} and feels immediately, briefly, safer.",
         "{tribute} counts their pack in {zone} and gets a different number each time. By morning, the {item} is simply not among them.",
+        '{tribute} sets something down in {zone} with great care, on a rock, and walks on without it.',
+        'The weight in {tribute}\'s hands in {zone} stops meaning anything, so they put it in the grass.',
+        '{tribute} hands what they were carrying to nobody in {zone}, and lets go when nobody does not take it.',
+        'Whatever {tribute} had is behind them now in {zone}, and they have stopped being able to say why they had it.',
+        '{tribute} leaves it in {zone} the way you leave a coat on a chair: absently, and meaning to come back.',
+        'There is a neat pile in {zone} where {tribute} was, arranged, and abandoned.',
+        '{tribute} looks at the thing in their hand in {zone} for a long moment as if it belongs to somebody else. Then it does.',
+        '{tribute} puts it down in {zone} to do something with both hands, and never does the something.',
+        'It slips out of {tribute}\'s grip in {zone} and they watch it go without moving.',
+        '{tribute} buries it in {zone}, badly, and cannot afterwards find where.',
     ],
     ruinStealth: [
         "{tribute} lets out a blood-curdling scream in {zone}, alerting anyone nearby.",
@@ -815,6 +845,16 @@ export const SANITY_TEXTS = {
         "{tribute} keeps up a running argument with the cameras in {zone}, at full volume, daring them to answer.",
         "Whatever {tribute} sees coming through {zone}, it is not there — but the screaming is real, and it carries.",
         "{tribute} sobs in {zone} the way you can only afford to when nobody is hunting you. Somebody is hunting them.",
+        "{tribute} stops bothering to be quiet in {zone}. There is no version of this where it matters.",
+        "Whatever {tribute} was doing with their footing in {zone} has stopped. They walk like somebody going home.",
+        "{tribute} lets the branch go behind them in {zone} instead of easing it, and the crack goes a long way.",
+        "The fire {tribute} builds in {zone} is far bigger than anybody would build who expected company.",
+        "{tribute} sings in {zone} — properly, from the chest, the way you would at home.",
+        "{tribute} drops the whole pack in {zone} rather than setting it down, and the noise of it is somebody's invitation.",
+        "{tribute} has started narrating what they are doing in {zone}, out loud, for an audience that is entirely real.",
+        "{tribute} stands up straight in the open in {zone} and stretches, taking their time about it.",
+        "{tribute} whistles their district's tune across {zone}, all of it, including the second verse.",
+        "{tribute} has stopped moving between cover in {zone} and simply walks the middle of it.",
     ]
 };
 
@@ -1300,6 +1340,18 @@ export const PROTECTOR_BOND_TEXTS = [
     'BOND: {older} has begun narrating the arena to {younger} — what that sound was, why that ground is wrong — like somebody handing over a trade.',
     'BOND: There is nothing in this for {older}, and the broadcast keeps saying so, and {older} keeps doing it.',
     'BOND: {younger} asked {older} once whether they were going to have to fight each other. {older} has not answered yet.',
+    'BOND: {older} has taken to walking a half-step ahead of {younger}, and has not mentioned doing it.',
+    'BOND: {younger} has stopped checking whether {older} is behind them. {older} has noticed, and says nothing.',
+    'BOND: Whatever {older} is doing for {younger}, neither of them has a word for it that they would use out loud.',
+    'BOND: {older} gives {younger} the better share and makes an argument about arithmetic that does not survive contact with the numbers.',
+    'BOND: {younger} sleeps now. {older} does not, much, and that is the arrangement.',
+    'BOND: {older} has started saying \'we\' about things that are only {younger}\'s problem.',
+    'BOND: The Capitol has worked out what {older} is to {younger} before either of them has, and the cameras are enjoying it.',
+    'BOND: {older} put themselves between {younger} and something today without deciding to, which is how {older} finds out it is real.',
+    'BOND: {younger} asks {older} a question about home and gets a longer answer than anyone has had out of {older} all week.',
+    'BOND: {older} carries the heavier half now. Nobody agreed to that either.',
+    'BOND: {younger} has started copying how {older} holds a knife, badly, and {older} has started correcting it.',
+    'BOND: There is nothing in this for {older} and the whole country can see that, which is exactly why they cannot stop watching.',
 ];
 
 
@@ -1416,6 +1468,18 @@ export const SPONSOR_TEXTS = [
     '{tribute} is given {item} by a city that will not be able to explain, afterwards, why it did that.',
     'Silver over {zone}, and the sound of it. {tribute} has {item} before the canopy has finished settling.',
     'A parachute comes down into {zone} addressed to nobody and lands nearest {tribute}. Inside: {item}.',
+    'The parachute finds {tribute} in {zone} on the third pass, having twice been blown past them: {item}.',
+    'Somebody in the Capitol has been watching {tribute} closely enough to know what they were short of. {zone}, {item}.',
+    'A parachute comes down in {zone} slowly enough that {tribute} has time to be embarrassed about running for it: {item}.',
+    '{tribute}\'s mentor has spent whatever they had. {item}, in {zone}, and nothing after this.',
+    'The silver catches the light over {zone} before {tribute} hears it. {item}.',
+    'It lands short, in the worst part of {zone}, and {tribute} goes and gets it anyway: {item}.',
+    '{tribute} does not look up in {zone} until the parachute is on the ground beside them. {item}.',
+    'A parachute for {tribute} in {zone}, unmarked, from a sponsor who has not wanted their name on anything this year: {item}.',
+    'Somebody paid a great deal for this and {tribute} will never know who. {item}, in {zone}.',
+    'The canopy over {zone} nearly takes it. {tribute} works the parachute free branch by branch: {item}.',
+    '{tribute} has been rationing for two days and the Capitol has decided that was enough of that. {zone}, {item}.',
+    'The parachute hits the ground in {zone} hard enough to say the sponsor was in a hurry: {item}.',
 ];
 
 /**

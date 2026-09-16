@@ -325,13 +325,15 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'within-reach',
         name: 'Within Reach',
         // Audit 2 §11.2: three was above the ceiling — 200 runs never produced
-        // more than two. Two people dying inside somebody's reach in one Games
-        // is still the thing this entry is about.
-        hint: 'See two or more tributes die with somebody close enough to have helped.',
+        // more than two.
+        // Audit 4 §3.2: and two is above it now. The sanity work cut the share
+        // of tribute-time spent at the floor from 33% to 13%, and a tribute who
+        // is not catatonic goes and helps — which is the system working and the
+        // threshold following it down rather than the entry being wrong.
+        hint: 'See a tribute die with somebody close enough to have helped.',
         category: 'oddity',
-        rarity: 'legendary',
-        test: state => (state.diedWithinReach ?? 0) >= 2,
-        nearMiss: state => (state.diedWithinReach ?? 0) === 1 ? 'one tribute died within reach of somebody — one short' : undefined,
+        rarity: 'rare',
+        test: state => (state.diedWithinReach ?? 0) >= 1,
     },
     {
         id: 'nobody-came',
@@ -398,7 +400,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Never Touched a Body',
         hint: 'Crown a victor who never once stripped one of the fallen.',
         category: 'survival',
-        rarity: 'uncommon',
+        rarity: 'common',
         test: (_s, v) => !!v && (v.corpsesLooted ?? 0) === 0,
     },
     {
@@ -486,7 +488,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Unmarked',
         hint: 'Crown a victor who never logged a single wound all Games.',
         category: 'survival',
-        rarity: 'uncommon',
+        rarity: 'common',
         test: (_s, v) => !!v && (v.woundsLogged ?? 0) === 0,
     },
     {
@@ -604,7 +606,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Load-Bearing',
         hint: 'Crown a victor who walked out of a structural collapse.',
         category: 'arena',
-        rarity: 'uncommon',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.collapsesSurvived ?? 0) >= 1,
         nearMiss: state => state.tributes.some(t => (t.collapsesSurvived ?? 0) >= 1)
             ? 'somebody walked out of a collapse this year — it just was not the victor'
@@ -679,7 +681,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Watcher',
         hint: 'Crown a victor with two or more kills who never once opened a fight.',
         category: 'combat',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: (_s, v) => !!v && (v.fightsOpened ?? 0) === 0 && v.kills >= 2,
         nearMiss: (_s, v) => {
             if (!v) return undefined;
@@ -1131,7 +1133,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Never Needed Anyone',
         hint: 'Crown a victor who never once joined an alliance.',
         category: 'social',
-        rarity: 'uncommon',
+        rarity: 'rare',
         test: (state, v) => !!v && !state.log.some(e => e.category === 'alliance' && e.tributesInvolved.includes(v.id)),
     },
     {
@@ -1224,7 +1226,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // runs. `woundsLogged` (engine/wounds.ts) is the history the hint was
         // describing all along.
         category: 'survival',
-        rarity: 'uncommon',
+        rarity: 'common',
         test: (_s, v) => !!v && (v.woundsLogged ?? 0) <= ACHIEVEMENT_BARS.cleanGetawayWounds,
         nearMiss: (_s, v) => (v && (v.woundsLogged ?? 0) > 0 && (v.woundsLogged ?? 0) <= 2)
             ? `${v.name} came home with ${v.woundsLogged} logged wound${v.woundsLogged === 1 ? '' : 's'} — not quite clean`
@@ -1283,7 +1285,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Long Con',
         hint: 'Crown a victor who once held a performed bond for two cycles straight.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'rare',
         // Audit 2 §11.2: five, against a victor ceiling of three.
         // Audit 4 §3.2: two, against a measured victor ceiling of two. The
         // entry is structurally narrow before the threshold does any work — a
@@ -1369,7 +1371,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Blood Feud',
         hint: 'See one pair of tributes fight each other four separate times.',
         category: 'combat',
-        rarity: 'uncommon',
+        rarity: 'rare',
         test: state => state.tributes.some(t =>
             Object.values(t.memory?.rivals ?? {}).some(r => r.fights >= 4)),
         nearMiss: state => {
@@ -1406,7 +1408,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // says: shared grief that turned into something.
         hint: 'See two allies grieve the same death and keep standing together afterwards.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: state => state.sharedGriefAllies === true,
     },
     {
@@ -1482,7 +1484,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Held the Horn',
         hint: 'Hold the Cornucopia for six consecutive cycles.',
         category: 'combat',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: state => (state.maxHornHold ?? 0) >= 6,
         nearMiss: state => {
             const n = state.maxHornHold ?? 0;
@@ -1534,7 +1536,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Full Kit',
         hint: 'See one tribute holding three of armour, a light, warmth and a water purifier at once.',
         category: 'survival',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: state => state.tributes.some(t => t.fullKitSeen === true),
     },
     {
@@ -1793,7 +1795,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Boomerang',
         hint: 'Crown a victor who was betrayed by an ally and won anyway.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: (_s, v) => !!v && (v.memory?.timesBetrayed ?? 0) > 0,
     },
     {
@@ -2025,7 +2027,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Pack Broke Early',
         hint: 'See every Career dead before day three.',
         category: 'games',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: state => {
             const careers = state.tributes.filter(t => t.isCareer);
             return careers.length >= 2 && careers.every(t => t.status === 'dead' && (t.dayOfDeath ?? 99) < 3);
@@ -2043,7 +2045,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Every Square',
         hint: 'See every zone of the arena stood in by somebody before the Games end.',
         category: 'games',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: state => {
             const visited = new Set(state.tributes.flatMap(t => t.visitedZones ?? []));
             return state.arena.zones.length >= 6 && state.arena.zones.every(z => visited.has(z.name));
@@ -2059,7 +2061,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nobody Was Invited',
         hint: 'See a Games of seven days or more end without the Gamemakers ever calling a feast.',
         category: 'games',
-        rarity: 'rare',
+        rarity: 'uncommon',
         test: state => state.config.enableFeast === true && (state.feastsHeld ?? 0) === 0 && state.day >= 7,
         nearMiss: state => state.config.enableFeast === true && (state.feastsHeld ?? 0) === 0 && state.day === 6
             ? 'no feast was ever called, but the Games ended on day six — Nobody Was Invited runs to seven'
@@ -2431,6 +2433,308 @@ export const ACHIEVEMENTS: Achievement[] = [
             && state.gamesProfile?.quell !== undefined
             ? 'a Quell year, and still only one of them walked out'
             : undefined),
+    },
+    /*
+     * Audit 4 §11.3: twenty-two entries against the categories that were
+     * starved and the state that had no reader.
+     *
+     * The table was 48 social against 12 reaping and 12 games, so it read as
+     * an alliance game; and several of the systems this fix pass touched —
+     * garrisons, `irradiated` ground, hidden edges, the sanity bands, quirks —
+     * had just become reachable with nothing rewarding them. Every threshold
+     * below is quoted against a measurement in AUDIT-4.md or in this pass, and
+     * `check-achievements` fails on any that sits above the ceiling 500 runs
+     * can produce.
+     */
+    // ---- arena: the ground itself, which the category under-used ----------
+    {
+        id: 'held-the-pass',
+        name: 'The Toll',
+        hint: 'Crown a victor whose alliance held a contested crossing.',
+        category: 'arena',
+        rarity: 'legendary',
+        // Audit 4 §1.1: `contested` existed on one edge in forty arenas and
+        // garrisons were claimed zero times in 160 runs. There are twenty now,
+        // and a garrison forms in ~19% of runs.
+        test: state => Object.keys(state.garrisonedEdges ?? {}).length > 0,
+    },
+    {
+        id: 'the-bridge-behind',
+        name: 'The Bridge Behind Them',
+        hint: 'See a crossing spend the last of itself and go.',
+        category: 'arena',
+        rarity: 'uncommon',
+        // Audit 4 §1.1: `countCrossing` is the only writer of `edgeCrossings`
+        // and measured 0.0 per run before twelve collapsing edges existed.
+        test: state => Object.values(state.edgeCrossings ?? {}).some(n => n >= 3),
+        nearMiss: state => (Object.values(state.edgeCrossings ?? {}).some(n => n > 0)
+            ? 'a crossing was spending itself, and the Games ended before it went'
+            : undefined),
+    },
+    {
+        id: 'the-unmapped-way',
+        name: 'The Unmapped Way',
+        hint: 'Crown a victor who found a way through the arena that was not on any plan.',
+        category: 'arena',
+        rarity: 'rare',
+        // Audit 4 §1.1: `hidden` was two edges in forty arenas; it is fourteen.
+        test: (_s, v) => (v?.knownEdges?.length ?? 0) > 0,
+    },
+    {
+        id: 'the-ground-turned',
+        name: 'The Ground Turned',
+        hint: 'Crown a victor who was standing in a zone when it went bad.',
+        category: 'arena',
+        rarity: 'uncommon',
+        // `walkedIntoEffect` was tracked per tribute and read by one entry.
+        test: (_s, v) => (v?.walkedIntoEffect ?? 0) >= 2,
+        nearMiss: (_s, v) => ((v?.walkedIntoEffect ?? 0) === 1
+            ? `${v!.name} was caught in one zone going bad — one short`
+            : undefined),
+    },
+    {
+        id: 'whatever-is-loose',
+        name: 'Whatever They Let Loose',
+        hint: 'See ground the Gamemakers ruin permanently, and that spreads.',
+        category: 'arena',
+        rarity: 'uncommon',
+        // Audit 4 §1.8: `irradiated` fired zero times in 340 runs. It now
+        // occurs in ~4% of them, late, on ground already spoiled.
+        test: state => Object.values(state.zoneEffects ?? {})
+            .some(list => list.some(e => e.kind === 'irradiated')),
+    },
+    {
+        id: 'weathered',
+        name: 'Weathered',
+        hint: 'Crown a victor who stood through three storm fronts.',
+        category: 'arena',
+        rarity: 'rare',
+        test: (_s, v) => (v?.stormsSurvived ?? 0) >= 3,
+        nearMiss: (_s, v) => {
+            const n = v?.stormsSurvived ?? 0;
+            return n >= 1 && n < 3 ? `${v!.name} stood through ${n} — ${3 - n} short` : undefined;
+        },
+    },
+    // ---- games: the shape of the year, the second-smallest category -------
+    {
+        id: 'the-quiet-year',
+        name: 'A Quiet Year',
+        hint: 'See a Games with an ordinary temperament, no Quell and no unscheduled disruption.',
+        category: 'games',
+        rarity: 'uncommon',
+        // 12.5% of runs draw `standard`, and most years take at least one
+        // off-calendar beat, so the conjunction is the rare part.
+        test: state => state.gamesProfile?.temperament?.id === 'standard'
+            && state.gamesProfile?.quell === undefined
+            && (state.extraWildcardsFired ?? 0) === 0,
+    },
+    {
+        id: 'the-treacherous-year',
+        name: 'The Treacherous Year',
+        hint: 'See a Games the Capitol ran for the turning.',
+        category: 'games',
+        rarity: 'uncommon',
+        // Audit 4 §9.1: nine temperaments, drawn 6-13% each — the best
+        // distributed variety axis in the game, and no entry read any of them.
+        test: state => state.gamesProfile?.temperament?.id === 'treacherous',
+    },
+    {
+        id: 'the-lean-year',
+        name: 'The Lean Year',
+        hint: 'See a Games the Capitol did not pay for.',
+        category: 'games',
+        rarity: 'rare',
+        test: state => state.gamesProfile?.temperament?.id === 'lean',
+    },
+    {
+        id: 'the-attrition-year',
+        name: 'The Long Attrition',
+        hint: 'See a Games the Capitol meant to grind.',
+        category: 'games',
+        rarity: 'uncommon',
+        test: state => state.gamesProfile?.temperament?.id === 'attrition',
+    },
+    {
+        id: 'nobody-drowned',
+        name: 'Nobody Drowned',
+        hint: 'Run a long Games in an arena that is mostly water, and lose nobody to it.',
+        category: 'games',
+        rarity: 'legendary',
+        // First draft measured 87.4%: "an arena with any water at all, and
+        // nobody drowned" is nearly every Games. A third of the map under water
+        // and a run long enough to have tested it is the thing worth marking.
+        test: state => state.arena.zones.filter(z => z.terrain === 'water').length >= 3
+            && state.day >= 8
+            && !state.tributes.some(t => /drown|tide|undertow|rip ?tide/i.test(t.causeOfDeath ?? '')),
+        nearMiss: state => {
+            const water = state.arena.zones.filter(z => z.terrain === 'water').length;
+            if (water < 3) return undefined;
+            const lost = state.tributes.filter(t => /drown|tide|undertow|rip ?tide/i.test(t.causeOfDeath ?? '')).length;
+            if (lost > 0) return `${lost} went into the water in an arena mostly made of it`;
+            return state.day >= 6 && state.day < 8
+                ? `a water arena came through clean, and ended on day ${state.day} — too short to count`
+                : undefined;
+        },
+    },
+    // ---- reaping: the smallest category -----------------------------------
+    {
+        id: 'five-motives',
+        name: 'Every Reason There Is',
+        hint: 'Reap a field holding all five motives at once.',
+        category: 'reaping',
+        rarity: 'common',
+        // Measured over 3,420 tributes: family 935, prove 747, escape 734,
+        // honour 568, partner 436 — so a full house at the *reaping* is 85% of
+        // twelve-district years, which is a fact about the generator. Holding
+        // all five past the bloodbath is a fact about the run.
+        test: state => new Set(state.tributes
+            .filter(t => (t.daysSurvived ?? 0) >= 3)
+            .map(t => t.motive).filter(Boolean)).size >= 5,
+        nearMiss: state => {
+            const n = new Set(state.tributes.filter(t => (t.daysSurvived ?? 0) >= 3).map(t => t.motive).filter(Boolean)).size;
+            return n === 4 ? 'four of the five reasons made it past the bloodbath — one short' : undefined;
+        },
+    },
+    {
+        id: 'every-persona',
+        name: 'Thirteen Ways To Sell It',
+        hint: 'See every interview persona used in one Games.',
+        category: 'reaping',
+        rarity: 'rare',
+        // Thirteen personas over a 24-cast, measured 94-478 each across 3,420
+        // tributes. Reachable and vanishingly unlikely, which is the category.
+        test: state => new Set(state.tributes.map(t => t.interviewStrategy).filter(Boolean)).size >= 13,
+        nearMiss: state => {
+            const n = new Set(state.tributes.map(t => t.interviewStrategy).filter(Boolean)).size;
+            return n >= 11 && n < 13 ? `${n} of the thirteen personas were sold this year` : undefined;
+        },
+    },
+    {
+        id: 'the-kin-pair',
+        name: 'Two Slips, One Family',
+        hint: 'Crown a victor who was reaped alongside their own family.',
+        category: 'reaping',
+        rarity: 'uncommon',
+        // `generator.ts` rolls a kin pair at 15% per district, so *somebody*
+        // is kin in 86% of twelve-district years — which is what the first
+        // draft measured, and is a fact about the reaping rather than about
+        // this run. The victor being one of them is the story.
+        test: (_s, v) => /\b(sibling|brother|sister|cousin|twin)\b/i.test(v?.reapingNote ?? ''),
+    },
+    {
+        id: 'quirked',
+        name: 'Two Habits and a Token',
+        hint: 'Crown a victor the cameras had two habits and a keepsake on.',
+        category: 'reaping',
+        rarity: 'uncommon',
+        // Audit 4 §6.3: quirks do something now, so counting them is counting
+        // a build rather than a flourish.
+        test: (_s, v) => !!v && (v.quirks?.length ?? 0) >= 2 && !!v.token,
+        nearMiss: (_s, v) => {
+            if (!v) return undefined;
+            const n = v.quirks?.length ?? 0;
+            if (n >= 2 && !v.token) return `${v.name} had both habits and nothing from home`;
+            return n === 1 && v.token ? `${v.name} had the keepsake and only one habit — one short` : undefined;
+        },
+    },
+    // ---- survival: the sanity bands, which nothing read -------------------
+    {
+        id: 'never-frayed',
+        name: 'Never Frayed',
+        hint: 'Crown a victor who never once came apart.',
+        category: 'survival',
+        rarity: 'uncommon',
+        // Audit 4 §3.2: `sanityScarred` fell 49.8% -> 26.9% of the cast and
+        // the floor band from 33% to 13% of tribute-time, so a victor who
+        // never reached it is now a real and rare thing rather than an
+        // impossible one.
+        test: (_s, v) => !!v && !v.sanityScarred && (v.minResolve ?? 100) > 0,
+    },
+    {
+        id: 'four-skills',
+        name: 'Competent At Everything',
+        hint: 'Crown a victor who ended with four skills at three or better.',
+        category: 'survival',
+        rarity: 'rare',
+        // Measured means run 1.06-2.29 against a cap of 6, so four at 3+ is
+        // the top of the distribution rather than past it.
+        test: (_s, v) => Object.values(v?.proficiencies ?? {}).filter(n => n >= 3).length >= 4,
+        nearMiss: (_s, v) => {
+            const n = Object.values(v?.proficiencies ?? {}).filter(x => x >= 3).length;
+            return n === 3 ? `${v!.name} ended with three skills at three or better — one short` : undefined;
+        },
+    },
+    {
+        id: 'scarred-and-standing',
+        name: 'Scarred And Standing',
+        hint: 'Crown a victor carrying two old wounds that never closed properly.',
+        category: 'survival',
+        rarity: 'legendary',
+        test: (_s, v) => Object.values(v?.scars ?? {}).filter(Boolean).length >= 2,
+        nearMiss: (_s, v) => (Object.values(v?.scars ?? {}).filter(Boolean).length === 1
+            ? `${v!.name} carried one scar out — one short`
+            : undefined),
+    },
+    // ---- oddity: runs that were strange rather than good ------------------
+    {
+        id: 'named-twice',
+        name: 'Named Twice',
+        hint: 'Crown a victor the country named, carrying a weapon it also named.',
+        category: 'oddity',
+        rarity: 'uncommon',
+        // Epithets land on 8.5% of tributes; a named weapon exists in 43% of
+        // runs. Both, on the one who wins, is the conjunction.
+        test: (_s, v) => !!v?.epithet && v.inventory.some(i => !!i.legendName),
+    },
+    {
+        id: 'alone-the-whole-way',
+        name: 'Alone The Whole Way',
+        hint: 'Crown a victor who never once shared a camp.',
+        category: 'oddity',
+        rarity: 'uncommon',
+        test: (_s, v) => !!v && !v.allianceId && (v.formerAllies?.length ?? 0) === 0
+            && (v.memory?.stoodBy?.length ?? 0) === 0,
+    },
+    {
+        id: 'stayed-put',
+        name: 'Stayed Put',
+        hint: 'Crown a victor who stood in two sectors and no more.',
+        category: 'oddity',
+        rarity: 'uncommon',
+        // Audit 4 §3.3: tributes move in 28.6% of cycles and a victor covers
+        // 38% of the map at the mean, so two zones is the far tail without
+        // being the one-zone lottery `never-left-the-horn` already is.
+        test: (_s, v) => (v?.visitedZones?.length ?? 0) === 2,
+    },
+    {
+        id: 'down-and-up',
+        name: 'Down And Up',
+        hint: 'Crown a victor somebody else carried out of the dirt.',
+        category: 'oddity',
+        rarity: 'rare',
+        // Audit 4 §2.1: `downed` is 1.5% of tribute-cycles with 137 rescues
+        // per 160 runs; the rescued victor is the narrow part.
+        test: (_s, v) => !!v?.everDowned && !!v.revivedBy,
+        nearMiss: (_s, v) => (v?.everDowned && !v.revivedBy
+            ? `${v!.name} went down and got themselves back up`
+            : undefined),
+    },
+    // ---- capitol ----------------------------------------------------------
+    {
+        id: 'twelve-levers',
+        name: 'Every Lever',
+        hint: 'Use all twelve Gamemaker interventions in one Games.',
+        category: 'capitol',
+        rarity: 'legendary',
+        availableIn: state => state.gamemakerMode,
+        // `gamemakerUse` records uses per type and was read by nothing.
+        test: state => Object.keys(state.gamemakerUse ?? {}).length >= 12,
+        nearMiss: state => {
+            const n = Object.keys(state.gamemakerUse ?? {}).length;
+            return state.gamemakerMode && n >= 8 && n < 12
+                ? `${n} of the twelve levers were pulled this year`
+                : undefined;
+        },
     },
 ];
 

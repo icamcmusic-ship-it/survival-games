@@ -154,6 +154,20 @@ INTERVIEW_SCENARIOS.forEach(scenario => {
  * pool up past the merge target is still worth doing, because past it the
  * arena speaks entirely in its own voice.
  */
+/**
+ * Audit 4 §7.5: and now every arena has to author all four.
+ *
+ * "A missing one is a note, not a failure" was the right call while 17 of 40
+ * arenas authored them. It stopped being right at 40 of 40: the generic pool
+ * means a tribute fortifying in the Red Cathedral and a tribute fortifying in
+ * the Salt Flats did the same thing in the same words, and the five
+ * conditional stances hold 11.5% of all tribute-time. The arena is supposed to
+ * be the thing that sounds different.
+ *
+ * A note would let the next arena ship without them and nobody would know
+ * until an audit counted. This is the whole reason the roster exists.
+ */
+const STANCE_POOL_COVERAGE_FLOOR = 40;
 /** Authored conditional-stance pools whose *effective* pool is under the floor. */
 const KNOWN_THIN_STANCE_POOLS = 0;
 const CONDITIONAL_POOLS = ['fortify', 'scavenge', 'shadow', 'flail'] as const;
@@ -164,6 +178,13 @@ CONDITIONAL_POOLS.forEach(key => {
     // The effective pool: what `actionPool` actually returns for this arena.
     const thinAuthored = authored.filter(([, f]) => actionPool(f, key).length < HARD_FLOOR);
     console.log(`     ${key.padEnd(10)} ${authored.length} arena(s) author it; generic carries ${GENERIC_ARENA_FLAVOR.actions[key]?.length ?? 0}`);
+    if (authored.length < STANCE_POOL_COVERAGE_FLOOR) {
+        const missing = Object.keys(ARENA_FLAVOR).filter(id => (ARENA_FLAVOR[id].actions[key]?.length ?? 0) === 0);
+        structuralProblems.push(
+            `only ${authored.length} of ${Object.keys(ARENA_FLAVOR).length} arenas author a '${key}' pool — `
+            + `${missing.slice(0, 6).join(', ')}${missing.length > 6 ? ` and ${missing.length - 6} more` : ''} `
+            + 'fall back to the generic set, so the stance sounds the same wherever it happens');
+    }
     thinStancePools.push(...thinAuthored.map(([id, f]) =>
         `${id}: effective '${key}' pool is ${actionPool(f, key).length} entries (authored ${f.actions[key]!.length}, generic fallback ${GENERIC_ARENA_FLAVOR.actions[key]?.length ?? 0})`));
 });
@@ -190,6 +211,54 @@ if (thinStancePools.length > KNOWN_THIN_STANCE_POOLS) {
  * `KNOWN_THIN`: it may be raised when the pools are raised, and lowering it
  * has to be a deliberate edit to this line.
  */
+/**
+ * Audit 4 §10.4: depth against *frequency*, which is the thing a floor cannot see.
+ *
+ * Every pool in the file cleared its floor and the repetition a player actually
+ * noticed was elsewhere: in pools large enough to pass and small relative to
+ * how often the event occurs. A floor is a statement about the pool; this is a
+ * statement about the run.
+ *
+ * The audit's own arithmetic for this was wrong and the correction is worth
+ * keeping. It reasoned that `sanity` is ~11% of ~760 lines a run, therefore
+ * ~98 draws split across three pools of ten, therefore heavy repetition. The
+ * middle step does not hold: most `sanity`-category lines come from the band
+ * beats, the anthem reaction, trait arcs and resolve breakdowns, not from
+ * `SANITY_TEXTS` at all. The numbers below are **measured** — each template's
+ * longest literal run matched against the run's own log over 60 complete runs —
+ * and the real picture was one pool over its depth (`ruinStealth`, 11.7 draws
+ * against 10 lines) and one close to it (`SPONSOR_TEXTS`, 16.1 against 19),
+ * neither of which the floor could see and neither of which was the one the
+ * audit named.
+ *
+ * The rule: a pool holds at least as many lines as it is drawn in one Games,
+ * or the player hears the same sentence twice in a single run. Pools drawn less
+ * than once a run are governed by the ordinary floor and are not listed.
+ */
+const DRAWS_PER_RUN: Array<{ pool: string; lines: number; draws: number }> = [
+    { pool: 'SANITY_TEXTS.ruinStealth', lines: FLAVOR.SANITY_TEXTS.ruinStealth.length, draws: 11.7 },
+    { pool: 'SANITY_TEXTS.hallucination', lines: FLAVOR.SANITY_TEXTS.hallucination.length, draws: 8.0 },
+    { pool: 'SANITY_TEXTS.dropItem', lines: FLAVOR.SANITY_TEXTS.dropItem.length, draws: 4.5 },
+    { pool: 'SPONSOR_TEXTS', lines: FLAVOR.SPONSOR_TEXTS.length, draws: 16.1 },
+    { pool: 'GRIEF_TEXTS', lines: FLAVOR.GRIEF_TEXTS.length, draws: 13.4 },
+    { pool: 'VENGEANCE_TEXTS', lines: FLAVOR.VENGEANCE_TEXTS.length, draws: 12.3 },
+    { pool: 'INTIMIDATION_TEXTS', lines: FLAVOR.INTIMIDATION_TEXTS.length, draws: 4.1 },
+    { pool: 'BETRAYAL_AFTERMATH_TEXTS', lines: FLAVOR.BETRAYAL_AFTERMATH_TEXTS.length, draws: 3.5 },
+    { pool: 'AMBIENT_TEXTS', lines: FLAVOR.AMBIENT_TEXTS.length, draws: 1.6 },
+    { pool: 'RELIEF_TEXTS', lines: FLAVOR.RELIEF_TEXTS.length, draws: 1.3 },
+];
+DRAWS_PER_RUN.forEach(row => {
+    if (row.lines < row.draws) {
+        structuralProblems.push(
+            `${row.pool} holds ${row.lines} lines against ${row.draws} draws in an average run — `
+            + 'the player hears the same sentence twice inside one Games');
+    }
+});
+console.log('\npool depth against measured draws per run (Audit 4 §10.4):');
+[...DRAWS_PER_RUN].sort((a, b) => (a.lines / a.draws) - (b.lines / b.draws)).forEach(row => {
+    console.log(`   ${row.pool.padEnd(28)} ${String(row.lines).padStart(3)} lines / ${row.draws.toFixed(1)} draws  (${(row.lines / row.draws).toFixed(1)}x)`);
+});
+
 const QUIRK_LINE_FLOOR = 4;
 const thinQuirks = QUIRKS.filter(q => q.lines.length < QUIRK_LINE_FLOOR);
 if (thinQuirks.length > 0) {

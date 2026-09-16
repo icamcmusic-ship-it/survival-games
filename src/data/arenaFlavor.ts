@@ -563,6 +563,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'The wind drops all at once and the homestead is suddenly, horribly quiet, and every noise in it is a footstep.',
         ],
         actions: {
+            fortify: [
+                '{tribute} bars the back door of {zone} and puts the table against the front one.',
+                '{tribute} takes the loft at {zone}, where the only way up is a ladder they can pull after them.',
+            ],
+            scavenge: [
+                '{tribute} works the root cellar at {zone}, which is what a root cellar is for.',
+                '{tribute} goes through the cabin at {zone} drawer by drawer, the way you would in your own house.',
+            ],
+            shadow: [
+                '{tribute} follows the other round the outside of {zone}, window to window, never in front of one.',
+                '{tribute} keeps the woodshed between themselves and whoever is crossing the yard at {zone}.',
+            ],
+            flail: [
+                '{tribute} swings at the shadows in {zone} and puts a chair through a window doing it.',
+                '{tribute} beats at the boards of {zone} and the whole house answers.',
+            ],
             forage: [
                 '{tribute} goes through the shelves in {zone} the way a person goes through a house they were not invited into, and comes out with {item}.',
                 '{tribute} finds {item} in {zone}, put away carefully by somebody who expected to come back for it.',
@@ -880,6 +896,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Somewhere down past the ember shaft, something that is definitely not rock shifts its weight.',
         ],
         actions: {
+            fortify: [
+                '{tribute} takes the throat above {zone} where the tube narrows and the heat comes up at whoever follows.',
+                '{tribute} wedges into the gallery at {zone} with the vent at their back and one approach in front.',
+            ],
+            scavenge: [
+                '{tribute} works the condensation cistern at {zone}, which is the only water in a mountain.',
+                '{tribute} goes over the ash-choked stair at {zone} for whatever earlier tributes dropped on the way down.',
+            ],
+            shadow: [
+                '{tribute} follows the other down the tube from {zone} by the glow their silhouette interrupts.',
+                '{tribute} keeps to the cold side of {zone} and moves only when the rock is making its own noise.',
+            ],
+            flail: [
+                '{tribute} swings at the steam coming off {zone} and the steam is not what is in the room.',
+                '{tribute} beats at the tube wall of {zone} and brings a shelf of it down on their own feet.',
+            ],
             forage: [
                 '{tribute} works a crevice in the tube wall of {zone} and comes out with {item}, warm to the touch.',
                 '{tribute} goes further down into {zone} than is sensible, and it pays: {item}.',
@@ -1187,6 +1219,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'The dark down here is not the absence of light. It is a substance, and it has a weight to it.',
         ],
         actions: {
+            fortify: [
+                '{tribute} takes the bone passage above {zone}, which is one body wide and lit from their side only.',
+                '{tribute} backs into the gallery at {zone} where the sound of anything coming arrives long before it does.',
+            ],
+            scavenge: [
+                '{tribute} works the weeping wall at {zone} for water, and the floor below it for what the water brought.',
+                '{tribute} goes through {zone} by feel, which in a cave is the only way that works.',
+            ],
+            shadow: [
+                '{tribute} follows the other through {zone} by their light alone, staying outside the reach of it.',
+                '{tribute} matches the other\'s progress through {zone} by the echo, and never by sight.',
+            ],
+            flail: [
+                '{tribute} swings in the dark of {zone} and takes the ceiling with their knuckles.',
+                '{tribute} thrashes in the black at {zone}, and the cave gives every swing back four times.',
+            ],
             forage: [
                 '{tribute} breaks glowmoss free in {zone} and finds {item} in the hollow behind it.',
                 '{tribute} works a silt shelf in {zone} by touch alone and comes up with {item}.',
@@ -2145,6 +2193,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Deep under the grid a train that has not run in years moves through a tunnel. Everyone hears it. Nobody says so.',
         ],
         actions: {
+            fortify: [
+                '{tribute} pulls a desk and half a filing cabinet across the only stair into {zone} and sits behind it.',
+                '{tribute} picks a floor of {zone} with one way up and takes the flights above it out.',
+            ],
+            scavenge: [
+                '{tribute} works {zone} apartment by apartment, and the ones that were already turned over are the ones they skip.',
+                '{tribute} goes through {zone} the way looters do: fast, low, and nothing behind a door that opens easily.',
+            ],
+            shadow: [
+                '{tribute} keeps a block between themselves and whoever is ahead in {zone}, reading their turns off the dust.',
+                '{tribute} follows the footprints through {zone} without ever getting close enough to cast a shadow into them.',
+            ],
+            flail: [
+                '{tribute} swings at the dark in {zone} and brings a length of rebar down on a doorframe.',
+                '{tribute} is throwing whatever is to hand across {zone}, and none of it is going anywhere useful.',
+            ],
             forage: [
                 '{tribute} pries open a rusted locker in {zone} and finds {item} inside.',
                 '{tribute} searches a collapsed storefront in {zone} and salvages {item}.',
@@ -2441,6 +2505,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Frogs start up in one corner of the swamp and stop in another, passing a message the tributes cannot read.',
         ],
         actions: {
+            fortify: [
+                '{tribute} banks the mud into a wall at the one dry approach to {zone} and settles behind it.',
+                '{tribute} takes the boardwalk into {zone} apart behind them and waits on what is left of it.',
+            ],
+            scavenge: [
+                '{tribute} works the tideline of {zone} for anything the bog has pushed up and not yet taken back.',
+                '{tribute} goes through the shacks at {zone} holding their breath for as long as each room takes.',
+            ],
+            shadow: [
+                '{tribute} moves through the reeds of {zone} at the pace of the person ahead, matching every stop.',
+                '{tribute} keeps the haze between themselves and whoever is crossing {zone}, and lets it do the work.',
+            ],
+            flail: [
+                '{tribute} thrashes at the reeds in {zone} until the whole stand of them is moving and none of it helps.',
+                '{tribute} swings wild in the green haze over {zone} and connects with nothing but water.',
+            ],
             forage: [
                 '{tribute} strains bog water through cloth in {zone} and recovers {item} from the reeds.',
                 '{tribute} wades the shallows of {zone} and pulls {item} out of the muck.',
@@ -2740,6 +2820,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Far off, a column of sand stands upright and does not disperse. The tributes give it a wide berth on instinct.',
         ],
         actions: {
+            fortify: [
+                '{tribute} digs into the lee of the rocks at {zone} and builds the shade up until it is a wall as well.',
+                '{tribute} takes the high side of the canyon at {zone}, where anything coming has to come uphill and in the open.',
+            ],
+            scavenge: [
+                '{tribute} works the shadows at the base of every rock in {zone}, because that is where anything worth having has crawled.',
+                '{tribute} sifts the sand at {zone} where the wind has scoured it down to whatever was buried.',
+            ],
+            shadow: [
+                '{tribute} tracks whoever is ahead across {zone} by the heat shimmer alone, staying a dune back.',
+                '{tribute} follows at the distance the glare allows and no closer, reading {zone} for the shape that moves wrong.',
+            ],
+            flail: [
+                '{tribute} swings at the shimmer over {zone} and finds out, again, that there is nothing in it.',
+                '{tribute} is fighting the air in {zone} and the air is not losing.',
+            ],
             forage: [
                 '{tribute} splits open a barrel cactus in {zone} and finds {item} stashed in the shade beneath it.',
                 '{tribute} digs down to cool sand in {zone} and uncovers {item}.',
@@ -3050,6 +3146,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Somewhere upslope, rock cracks in the heat — one report, then its echo, then nothing.',
         ],
         actions: {
+            fortify: [
+                '{tribute} banks the ash into a berm across the approach to {zone} and gets down behind it.',
+                '{tribute} finds the one hollow in {zone} the grey is not filling and makes it a position.',
+            ],
+            scavenge: [
+                '{tribute} digs where the ash has drifted deepest in {zone}, because something is always under a drift.',
+                '{tribute} works {zone} for anything the fall has not yet buried past finding.',
+            ],
+            shadow: [
+                '{tribute} follows the tracks in the ash across {zone}, which are the only honest thing in this arena.',
+                '{tribute} keeps far enough back in {zone} that the grey closes over them between one of the other\'s glances and the next.',
+            ],
+            flail: [
+                '{tribute} swings blind through the fall over {zone}, and the ash takes the swing and gives nothing back.',
+                '{tribute} beats at the grey coming down on {zone} as if it can be driven off.',
+            ],
             forage: [
                 '{tribute} digs through the ash crust of {zone} and turns up {item}.',
                 '{tribute} sifts the warm grit of {zone} and comes away with {item}.',
@@ -3346,6 +3458,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Thunder arrives before its lightning. The storm has stopped following the rules.',
         ],
         actions: {
+            fortify: [
+                '{tribute} wedges themselves into the lee of the wall at {zone} where the wind cannot get behind them.',
+                '{tribute} takes the landward side of {zone} and puts what is left of a boat across the gap.',
+            ],
+            scavenge: [
+                '{tribute} works the wrack line at {zone} for whatever the last surge put there.',
+                '{tribute} goes through the hulls at {zone}, which have been going through the same thing for a long time.',
+            ],
+            shadow: [
+                '{tribute} uses the noise of it over {zone} to close further than they would dare on a still day.',
+                '{tribute} matches the other\'s pace across {zone}, and the wind takes every sound either of them makes.',
+            ],
+            flail: [
+                '{tribute} swings into the wind over {zone} and the wind returns it.',
+                '{tribute} is fighting the weather at {zone}, loudly, and losing.',
+            ],
             forage: [
                 '{tribute} works the wrack line of {zone} in the driving rain and salvages {item}.',
                 '{tribute} pries {item} out of a flooded locker in {zone}.',
@@ -3637,6 +3765,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'The salt creeps: overnight it has grown a fine crystal fur on everything left standing still.',
         ],
         actions: {
+            fortify: [
+                '{tribute} builds a low wall of salt crust at {zone} — it will not stop anything, and it will make somebody slow down.',
+                '{tribute} takes the one broken place in the flat at {zone} and gets below the line of it.',
+            ],
+            scavenge: [
+                '{tribute} works the cracks in {zone} where the crust has opened, because everything here ends up in a crack.',
+                '{tribute} follows the old bones across {zone} on the reasoning that something followed them first.',
+            ],
+            shadow: [
+                '{tribute} keeps to the shimmer at the edge of {zone}, where a shape is only ever a maybe.',
+                '{tribute} tracks across {zone} at the exact distance where the glare stops resolving a person into a person.',
+            ],
+            flail: [
+                '{tribute} swings at their own reflection coming off the salt at {zone}.',
+                '{tribute} thrashes across {zone} and the crust breaks under them with every step.',
+            ],
             forage: [
                 '{tribute} breaks through the salt crust in {zone} and recovers {item} from the mud beneath.',
                 '{tribute} works a cache someone abandoned in {zone} and takes {item}.',
@@ -3962,6 +4106,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Something in the Fields has learned to mimic a cannon. It is not quite right, and that is worse.',
         ],
         actions: {
+            fortify: [
+                '{tribute} rings the approach to {zone} with the caps that burst, and settles inside the ring.',
+                '{tribute} backs into the one dry hollow in {zone} and watches the glow for anything that interrupts it.',
+            ],
+            scavenge: [
+                '{tribute} works the base of every cap in {zone}, where things that came to eat have stopped.',
+                '{tribute} harvests {zone} carefully, testing each one against a list they are making up as they go.',
+            ],
+            shadow: [
+                '{tribute} follows the broken caps across {zone} — a trail the person ahead does not know they are leaving.',
+                '{tribute} keeps to the unlit ground of {zone}, a glow behind the other, never in front of them.',
+            ],
+            flail: [
+                '{tribute} swings through the caps in {zone} and puts up a cloud that will be there for an hour.',
+                '{tribute} beats at the spores over {zone}, which is exactly the wrong thing to do and they know it.',
+            ],
             forage: [
                 '{tribute} cuts into a cap in {zone} and recovers {item} from the hollow inside.',
                 '{tribute} works the mycelial mat of {zone} and turns up {item}.',
@@ -4264,6 +4424,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Birdsong starts at dusk from a part of the Gardens where no tribute has ever seen a bird.',
         ],
         actions: {
+            fortify: [
+                '{tribute} cuts every rope into {zone} but one and sits at the end of the one.',
+                '{tribute} wedges into the crook of the great bough at {zone} where nothing can come at them from below.',
+            ],
+            scavenge: [
+                '{tribute} works the epiphytes at {zone} for water and whatever has drowned in it.',
+                '{tribute} goes along the branch at {zone} hand over hand, checking every hollow on the way.',
+            ],
+            shadow: [
+                '{tribute} follows the sway of the bridges out of {zone} to know where the other one is without looking.',
+                '{tribute} moves through the canopy above {zone}, a level up and half a beat behind.',
+            ],
+            flail: [
+                '{tribute} swings at the vines over {zone} and sets two hundred metres of nothing creaking.',
+                '{tribute} thrashes in the greenery at {zone} and every leaf of it moves.',
+            ],
             forage: [
                 '{tribute} works an orchid basket in {zone} and recovers {item} from the leaf litter.',
                 '{tribute} climbs out along a bough in {zone} and comes back with {item}.',
@@ -4918,6 +5094,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'The Vault\'s lights dim to emergency red for thirty seconds. No explanation is offered, which is the message.',
         ],
         actions: {
+            fortify: [
+                '{tribute} gets the blast door at {zone} halfway down and puts a bar under it.',
+                '{tribute} takes the corridor at {zone} where the lights still work and can be seen coming along.',
+            ],
+            scavenge: [
+                '{tribute} works the lockers at {zone} one at a time, and most of them have been worked already.',
+                '{tribute} goes through {zone} by hand in the dark, which is slower and finds more.',
+            ],
+            shadow: [
+                '{tribute} follows the other through {zone} by the sound the floor makes under them and nothing else.',
+                '{tribute} keeps a bulkhead between themselves and whoever is moving through {zone}.',
+            ],
+            flail: [
+                '{tribute} swings at the ductwork in {zone} and the whole level hears it.',
+                '{tribute} beats at a door in {zone} that was never going to open.',
+            ],
             forage: [
                 '{tribute} forces a supply locker in {zone} and takes {item}.',
                 '{tribute} works the hydroponic racks of {zone} and comes away with {item}.',
@@ -5225,6 +5417,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'For a moment the fog thins and the islands can see each other — a dozen small worlds, each with somebody on it, all counting.',
         ],
         actions: {
+            fortify: [
+                '{tribute} takes the landward end of the span at {zone} and cuts everything they can reach behind them.',
+                '{tribute} gets above the waterline at {zone} where the fog cannot hide an approach.',
+            ],
+            scavenge: [
+                '{tribute} works the strand at {zone} for what the fog has pushed ashore overnight.',
+                '{tribute} goes through the ferry at {zone} deck by deck, and the lower decks are under water.',
+            ],
+            shadow: [
+                '{tribute} follows the other across {zone} by the sound of the boards, a span behind.',
+                '{tribute} lets the fog over {zone} do the work and keeps exactly the distance it allows.',
+            ],
+            flail: [
+                '{tribute} swings at the fog over {zone} and the fog closes behind it.',
+                '{tribute} thrashes in the shallows at {zone} and puts up more noise than water.',
+            ],
             forage: [
                 '{tribute} works the bird nests along the cliff edge of {zone} and comes away with {item}.',
                 '{tribute} hauls up a supply line somebody left dangling off {zone} and finds {item} tied to the end.',
@@ -5533,6 +5741,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Under the biggest trees the dusk is close to true dark, and the glowcaps make small blue rooms of it.',
         ],
         actions: {
+            fortify: [
+                '{tribute} backs into the roots at {zone} where the last light cannot get round behind them.',
+                '{tribute} takes the one gantry into {zone} and drops what is left of the walkway.',
+            ],
+            scavenge: [
+                '{tribute} works {zone} by touch, because the light here has not changed in eleven days and is no help.',
+                '{tribute} goes through the fallen giant at {zone}, every hollow of it, slowly.',
+            ],
+            shadow: [
+                '{tribute} follows the foxfire disturbed by whoever went through {zone} ahead of them.',
+                '{tribute} keeps to the dark side of {zone}, which in this arena is most of it.',
+            ],
+            flail: [
+                '{tribute} swings at the permanent dusk over {zone} and hits a trunk.',
+                '{tribute} thrashes through the duskmoss at {zone}, and the glow of it maps exactly where they are.',
+            ],
             forage: [
                 '{tribute} harvests glowcaps off a nurse log in {zone} — light and food in one — and finds {item} beneath it.',
                 '{tribute} follows the smell of a pitch-vent through {zone} to the warm ground where things grow fast, and takes {item}.',
@@ -5844,6 +6068,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'The anemones face the sun all day, tracking it, patient as sunflowers. Nobody has told them the ocean is gone.',
         ],
         actions: {
+            fortify: [
+                '{tribute} takes the high side of the coral at {zone}, where everything approaching has to come through the razors.',
+                '{tribute} wedges into the trench wall at {zone} with one way in and a long drop behind.',
+            ],
+            scavenge: [
+                '{tribute} works the dry pools at {zone} for whatever the sea left when it was subtracted.',
+                '{tribute} goes through the whale fall at {zone}, holding their breath for reasons that are not about air.',
+            ],
+            shadow: [
+                '{tribute} follows the other across {zone} by the coral they break and do not notice breaking.',
+                '{tribute} keeps below the shelf line at {zone}, tracking a silhouette against a white horizon.',
+            ],
+            flail: [
+                '{tribute} swings at nothing in {zone} and opens both hands on the coral doing it.',
+                '{tribute} thrashes across the razors at {zone} and pays for every step of it.',
+            ],
             forage: [
                 '{tribute} cracks urchin tests along the barrens edge of {zone} and finds {item} among them.',
                 '{tribute} works a tidepool in {zone} that never got the news, still wet and still living, and takes {item}.',
@@ -6153,6 +6393,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Deep in the works, a piston that has been out of time with the others for a century strikes twice to catch up.',
         ],
         actions: {
+            fortify: [
+                '{tribute} jams the conveyor at {zone} and puts the length of it between themselves and the door.',
+                '{tribute} takes the catwalk over {zone}, where the only approach is a ladder.',
+            ],
+            scavenge: [
+                '{tribute} works the lockers and the lofts at {zone}, which were stocked for people who worked here.',
+                '{tribute} goes through {zone} for anything with an edge, and this place was built full of edges.',
+            ],
+            shadow: [
+                '{tribute} follows the other along the line at {zone}, matching the machinery\'s rhythm to cover their own.',
+                '{tribute} keeps a row of hooks between themselves and whoever is crossing {zone}.',
+            ],
+            flail: [
+                '{tribute} swings into the hanging line at {zone} and sets a hundred hooks swinging.',
+                '{tribute} beats at the machinery in {zone}, which does not notice.',
+            ],
             forage: [
                 '{tribute} breaks open a shift-locker off {zone} and finds {item} still waiting for its owner.',
                 '{tribute} works the packing line of {zone} and pulls {item} out of a crate sealed before the Dark Days.',
@@ -6458,6 +6714,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'The fog smells of pine pitch and, underneath, faintly, impossibly, of fried sugar.',
         ],
         actions: {
+            fortify: [
+                '{tribute} pulls the shutters down across the front at {zone} and bars them from inside.',
+                '{tribute} takes the top car of the wheel at {zone}, where anything coming has a long climb to do it.',
+            ],
+            scavenge: [
+                '{tribute} works the prize booths at {zone}, and some of the prizes are worth something now.',
+                '{tribute} goes through {zone} stall by stall, and the ones still locked are the ones worth opening.',
+            ],
+            shadow: [
+                '{tribute} follows the other through the mirror maze at {zone} by working out which reflections are lying.',
+                '{tribute} keeps to the back of the stalls at {zone}, a row over from whoever they are following.',
+            ],
+            flail: [
+                '{tribute} swings at their own reflection in {zone} and breaks three of it.',
+                '{tribute} thrashes through the bunting at {zone} and brings a whole run of it down.',
+            ],
             forage: [
                 '{tribute} jimmies a concession shutter off {zone} and comes out with {item}.',
                 '{tribute} works the prize racks of {zone} and finds {item} behind the rotted plush.',
@@ -6769,6 +7041,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'Beneath three feet of ash, the ground is warm as a sleeping animal.',
         ],
         actions: {
+            fortify: [
+                '{tribute} gets into a doorway in the buried village at {zone} and fills the rest of it with ash.',
+                '{tribute} takes the lava tube at {zone}, which has exactly one mouth.',
+            ],
+            scavenge: [
+                '{tribute} digs the roofline at {zone}, because a buried village is a village with everything still in it.',
+                '{tribute} works the tube at {zone} for anything that sheltered here before them.',
+            ],
+            shadow: [
+                '{tribute} follows the drift-tracks across {zone}, which the wind has not yet had time to take.',
+                '{tribute} keeps to the smoke over {zone} and moves when the other does.',
+            ],
+            flail: [
+                '{tribute} swings into the drift at {zone} and goes in to the knee.',
+                '{tribute} beats at the smoke coming off {zone} as if it were somebody.',
+            ],
             forage: [
                 '{tribute} digs down through the drift in {zone} to the old ground and pulls {item} out of the grey.',
                 '{tribute} follows a buried fence line through {zone} to a stores shed and comes out with {item}.',
@@ -7078,6 +7366,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'A cart rail, bent out over the void two hundred metres up, holds a single wheel that still turns in the wind.',
         ],
         actions: {
+            fortify: [
+                '{tribute} takes the bench above {zone} and pushes what will roll to the edge of it.',
+                '{tribute} gets into the crusher house at {zone} and jams the door with a length of shaft.',
+            ],
+            scavenge: [
+                '{tribute} works the spoil at {zone} for anything the machinery dropped and nobody came back for.',
+                '{tribute} goes through the powder magazine at {zone} very carefully indeed.',
+            ],
+            shadow: [
+                '{tribute} follows the other down the spiral at {zone}, one bench above them the whole way.',
+                '{tribute} keeps to the cut face at {zone} where the shadow is and the sound does not carry up.',
+            ],
+            flail: [
+                '{tribute} swings at the rock face at {zone} and the rock face wins.',
+                '{tribute} throws stones across {zone} at nothing, and the echo comes back off three benches.',
+            ],
             forage: [
                 '{tribute} breaks the lock off a tool crib on {zone} and comes away with {item}.',
                 '{tribute} works the scrub ledges of {zone}, berry by stunted berry, and turns up {item}.',
@@ -7382,6 +7686,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'For an hour the sun aligns with the ice and the whole cave system glows like the inside of a lamp.',
         ],
         actions: {
+            fortify: [
+                '{tribute} cuts steps down into the ice at {zone} and puts themselves below the wind and the sightline both.',
+                '{tribute} takes the serac at {zone}, where there is one way up and it is in full view the whole way.',
+            ],
+            scavenge: [
+                '{tribute} works the moulin at {zone} for whatever the ice has been holding and is now letting go of.',
+                '{tribute} chips at the blue galleries of {zone} for meltwater and anything frozen into it.',
+            ],
+            shadow: [
+                '{tribute} follows the other\'s steps across {zone}, which the ice keeps perfectly.',
+                '{tribute} keeps below the ridge line at {zone} and reads the other\'s progress off the sound of their crampons.',
+            ],
+            flail: [
+                '{tribute} swings at the ice wall of {zone} and takes the shards back in the face.',
+                '{tribute} beats at the glacier in {zone}, which has been here a very long time and will be after.',
+            ],
             forage: [
                 '{tribute} chips fish from the ice of a refrozen pool in {zone} and finds {item} beside them.',
                 '{tribute} follows a meltwater channel through {zone} and nets {item} where it pools.',
@@ -7697,6 +8017,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'The anthem plays over a map that no longer exists; the plates it showed have already traded places.',
         ],
         actions: {
+            fortify: [
+                '{tribute} takes a pan of ice at {zone} with open water on three sides and watches the fourth.',
+                '{tribute} builds a wall of pressure-ice at {zone} and gets behind it out of the wind.',
+            ],
+            scavenge: [
+                '{tribute} works the seal colony at {zone}, which is the only larder on this ocean.',
+                '{tribute} goes through the frozen wreck at {zone} for whatever went down with it.',
+            ],
+            shadow: [
+                '{tribute} follows the other across the floe at {zone}, keeping to the ridges where a shape breaks up.',
+                '{tribute} matches the other\'s crossing of {zone} lead by lead, never on the same pan.',
+            ],
+            flail: [
+                '{tribute} swings at the wind coming across {zone} and nearly goes in the lead doing it.',
+                '{tribute} beats at the ice underfoot in {zone}, which is exactly the wrong argument to have here.',
+            ],
             forage: [
                 '{tribute} jigs a line down a seal hole in {zone} and hauls up {item} with dinner.',
                 '{tribute} works the tide-crack of {zone} where the sea throws things up, and takes {item}.',
@@ -8006,6 +8342,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'The hunting lodge\'s chimney stands against the sky. Nothing has smoked from it in fifty years, and every tribute has thought about changing that.',
         ],
         actions: {
+            fortify: [
+                '{tribute} takes the notch at {zone} where the ridge narrows to one person wide.',
+                '{tribute} builds a windbreak of scree at {zone} and settles in behind it facing downhill.',
+            ],
+            scavenge: [
+                '{tribute} works the deadfall at {zone} for dry wood and whatever has sheltered under it.',
+                '{tribute} goes through the lodge at {zone}, which was stocked by somebody who expected to come back.',
+            ],
+            shadow: [
+                '{tribute} follows the other up out of {zone} a switchback behind, out of their sightline the whole way.',
+                '{tribute} keeps to the timber below {zone} and tracks the other across the open ground above.',
+            ],
+            flail: [
+                '{tribute} swings at the scree above {zone} and starts a slide they then have to outrun.',
+                '{tribute} thrashes in the deadfall at {zone} and gets more caught with every swing.',
+            ],
             forage: [
                 '{tribute} strips a whitebark pine of its nuts in {zone} and finds {item} in a squirrel midden below.',
                 '{tribute} works the berry brush along {zone} and comes away stained and carrying {item}.',
@@ -8323,6 +8675,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'On the highest terrace a winch drum stands taller than a house, wound with cable that could hold up a bridge, waiting for orders a century out of date.',
         ],
         actions: {
+            fortify: [
+                '{tribute} takes the winch house at {zone} and cuts the cable that anything would have to come up.',
+                '{tribute} gets onto a terrace above {zone} with one stair to it and sits at the top of the stair.',
+            ],
+            scavenge: [
+                '{tribute} works the shaft mouths at {zone} for whatever was left when the work stopped.',
+                '{tribute} goes along the terrace at {zone} turning over everything the ground has grown around.',
+            ],
+            shadow: [
+                '{tribute} follows the other along the terrace below {zone}, a level down and never level with them.',
+                '{tribute} uses the cable span at {zone} to watch a whole flight of steps at once.',
+            ],
+            flail: [
+                '{tribute} swings at the counterweight at {zone} and sets the whole span swinging.',
+                '{tribute} beats at the terrace wall of {zone} until something in their hand gives before it does.',
+            ],
             forage: [
                 '{tribute} works the terrace orchards gone wild in {zone} and fills a pocket around {item}.',
                 '{tribute} checks the shaft-mouth toolrooms off {zone} and comes out with {item}.',
@@ -14926,6 +15294,120 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         text: '{tribute}, desperate, drinks from the first water they find in {zone} without looking at it.',
         escapeText: '{tribute}, past caring, still smells the water in {zone} first.',
         cause: 'Poisoned by bad water', dodgeStat: 'intelligence', poisoned: true, damage: 14, quench: 10, requires: { stance: ['Desperate'] },
+    },
+    /*
+     * Audit 4 §7.2/§7.4: fourteen more, and the three registers the pool did
+     * not have.
+     *
+     * The universal pool is 65 events taking a fixed ~30% of every arena's
+     * draw, which makes it the highest-leverage table in the game and the most
+     * dangerous to extend — the last pass added thirteen hazards, moved the
+     * boon share 18.8% -> 14.8%, and cost the medic archetype 1.3 points of
+     * win rate before it was caught. That episode is in the CHANGELOG and it is
+     * the precedent this follows: **eight of the fourteen below are boons or
+     * neutral**, and every hazard carries `weight: 0.5` as the thirteen before
+     * them do, so the pool's composition does not move.
+     *
+     * The first draft of this weighted only the hazards, which took the pool's
+     * boon share *by draw weight* from 21% to 35% and breached a guard on the
+     * next measurement: **victors with zero kills 24.7% -> 32.2%**, over the
+     * 32% bound. A field that is fed and watered and healed does not need to
+     * fight. That is the same mistake the last pass made in the other
+     * direction, found the same way, and the rule it produces is symmetrical:
+     * an addition to this pool is weighted at 0.5 whichever way it points, so
+     * fourteen new events add fourteen new things that can happen and change
+     * nothing about how often the pool helps or hurts.
+     *
+     * Weighting alone did not close it — zero-kill victors came back to 31.0%
+     * against 24.7% before, because the *count* of ways to be fed and healed
+     * matters as well as the ratio. So six of the eight boons carry a cost:
+     * the standing camp is unnerving, the cache is under stones that have to
+     * be moved, the meal somebody else started is not a pleasant one. That is
+     * the register §7.4 asked for and the roster had nine of in 1,388 — "this
+     * helps, and it will be noticed" — and it is the honest way to add
+     * generosity to a pool that cannot afford more of it.
+     *
+     * What they add is register rather than lethality. Of 1,388 authored
+     * events only 10 keyed off `minSurvivors`, 8 off `sanityBand` and 13 off
+     * `stance` — so the pool had no late-game voice, nothing that knew a third
+     * of the cast was at the bottom of the sanity scale, and almost nothing
+     * that reacted to the five conditional stances holding 11.5% of
+     * tribute-time. Nine of these do.
+     */
+    // ---- the late game, which the pool could not previously see -----------
+    {
+        text: '{tribute} realises the birds came back to {zone} days ago and have not left since. Whatever they were waiting out is over, and the arena is quieter than it has any business being.',
+        escapeText: '{tribute} counts the birds in {zone} and does not like the arithmetic.',
+        cause: 'Went still in a quiet arena', sanity: 4, requires: { maxSurvivors: 6 }, weight: 0.5,
+    },
+    {
+        text: '{tribute} finds the whole of somebody\'s camp in {zone} still standing — banked fire, folded bedroll, everything but the person. Nobody has needed it for a while.',
+        escapeText: '{tribute} walks past the standing camp in {zone} without touching it.',
+        cause: 'Found an abandoned camp', heal: 6, feed: 20, grantItem: 'bandages', sanity: -5, requires: { maxSurvivors: 8 }, weight: 0.5,
+    },
+    {
+        text: 'The Gamemakers cut the feed over {zone} and then cut it back, and in between {tribute} has been left alone with the sound of their own breathing for longer than is comfortable.',
+        escapeText: '{tribute} does not look up when the light over {zone} stutters.',
+        cause: 'Unnerved by the silence', sanity: -6, weight: 0.5, requires: { maxSurvivors: 5 },
+    },
+    // ---- the bottom of the sanity scale, which had nothing ---------------
+    {
+        text: '{tribute} is talking, steadily and at length, to somebody who is not in {zone}. The cameras hold on it because the Capitol finds this sort of thing riveting.',
+        escapeText: '{tribute} catches themselves talking to nobody in {zone} and stops.',
+        cause: 'Lost the thread', sanity: -4, weight: 0.5, requires: { sanityBand: 'gone' },
+    },
+    {
+        text: 'Whatever {tribute} has been carrying in their head finally sets down in {zone}. They eat, properly, for the first time in days, and the shaking stops.',
+        escapeText: '{tribute} nearly puts it down in {zone}, and then does not.',
+        cause: 'Came back from somewhere', sanity: 12, hunger: 15, requires: { sanityBand: 'unravelling' }, weight: 0.5,
+    },
+    {
+        text: '{tribute} builds something in {zone} out of nothing anybody can identify, works at it for an hour, and is visibly steadier afterwards.',
+        escapeText: '{tribute} starts building something in {zone} and abandons it.',
+        cause: 'Made something out of nothing', sanity: 7, fatigue: 8, requires: { sanityBand: 'frayed' }, weight: 0.5,
+    },
+    // ---- the conditional stances, which almost nothing reacted to --------
+    {
+        text: 'The ground {tribute} has been holding in {zone} turns out to have been held before. There is a cache under the stones, and whoever put it there is not coming back for it.',
+        escapeText: '{tribute} feels the flat stone under the leaf litter in {zone} and leaves it.',
+        cause: 'Found a cache under a held position', grantItem: 'hardtack', feed: 25, fatigue: 10, requires: { stance: ['Fortified'] }, weight: 0.5,
+    },
+    {
+        text: '{tribute} has been following at a distance long enough to stop watching where they are putting their feet, and {zone} takes the opportunity.',
+        escapeText: '{tribute} catches their footing in {zone} without losing the trail.',
+        cause: 'Fell while shadowing somebody', dodgeStat: 'agility', damage: 16, bleeding: true, weight: 0.5, requires: { stance: ['Shadowing'] },
+    },
+    {
+        text: '{tribute}, hunting, finds the tracks doubled back on themselves in {zone} — and understands, standing there, that they have been walking somebody else\'s circle for a day and a half.',
+        escapeText: '{tribute} reads the doubled tracks in {zone} for what they are and stops walking.',
+        cause: 'Walked somebody else\'s circle', fatigue: 18, sanity: -5, weight: 0.5, requires: { stance: ['Hunting'] },
+    },
+    // ---- the deaths §7.2 named, all reading state the model keeps ---------
+    {
+        text: 'The wound {tribute} thought had closed opens again in {zone} under the weight they are carrying, and this time there is nothing left to bind it with.',
+        escapeText: '{tribute} feels the old wound give in {zone} and gets the weight off it in time.',
+        cause: 'An old wound opened again', dodgeStat: 'endurance', damage: 30, bleeding: true, weight: 0.5, requires: { trait: 'Bloodied' },
+    },
+    {
+        text: '{tribute} has not slept properly in days and the fourth night in {zone} is the one where the difference between sleeping and not sleeping stops meaning anything.',
+        escapeText: '{tribute} gets an hour in {zone}, which is not enough and is something.',
+        cause: 'Stopped being able to tell sleep from waking', dodgeStat: 'willpower', damage: 24, sanity: -8, weight: 0.5, requires: { time: 'night' },
+    },
+    {
+        text: '{tribute} takes everything medical they are carrying at once in {zone}, on the reasoning that it can only help.',
+        escapeText: '{tribute} counts out what they are carrying in {zone} and puts most of it back.',
+        cause: 'Took too much of the cure', dodgeStat: 'intelligence', damage: 26, poisoned: true, weight: 0.5, requires: { sanityBand: 'unravelling' },
+    },
+    // ---- and two more boons, to keep the ratio where it was --------------
+    {
+        text: 'Something has been at the fruit on the far side of {zone} and left most of it. {tribute} works out from the teeth marks what ate it, and therefore that it is safe.',
+        escapeText: '{tribute} looks at the half-eaten fruit in {zone} and cannot decide about it.',
+        cause: 'Ate after something else', feed: 35, quench: 12, sanity: -3, weight: 0.5,
+    },
+    {
+        text: 'The run-off in {zone} has cut a channel down to clean rock, and what comes out of it is cold enough to hurt.',
+        escapeText: '{tribute} finds the channel in {zone} already muddied.',
+        cause: 'Drank from clean rock', quench: 45, fatigue: 8, weight: 0.5,
     },
 ];
 
