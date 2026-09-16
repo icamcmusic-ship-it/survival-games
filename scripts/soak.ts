@@ -57,6 +57,8 @@ const problems: string[] = [];
 const note = (m: string) => { if (!problems.includes(m)) problems.push(m); };
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
+/** Phases in which the arena exists and a tribute's behaviour means something. */
+const ARENA_PHASES = new Set(['bloodbath', 'day', 'night', 'feast']);
 /** Every `ZoneEffectKind`, so the sweep can assert each one actually occurs. */
 const ZONE_EFFECT_KINDS = [
   'burning', 'flooded', 'frozen', 'contaminated', 'fogbound', 'stripped',
@@ -254,6 +256,18 @@ for (let i = 0; i < 400; i++) {
   let state = sim.getState();
   let gamemakerFired = false;
   let sawGarrison = false;
+  /**
+   * Audit 4 §1.10: sampling through the simulator's own observation hook
+   * rather than a `sample()` call the loop has to remember to make.
+   *
+   * The old shape called `sample()` at exactly one of the six places the run
+   * advances — inside the `processTurn` branch — so the bloodbath, the
+   * training floor, the interviews and the feast were never sampled at all,
+   * and every counter below silently measured the day/night loop only. That is
+   * the same class of mistake as reading pruned state at the end of a run, and
+   * it is the reason `Simulator.observe` exists.
+   */
+  sim.observe(() => sample());
 
   // Per-run behavioural tracking.
   const stanceSamples = new Map<string, { last: Stance; changes: number; samples: number }>();
@@ -263,6 +277,21 @@ for (let i = 0; i < 400; i++) {
   const gongPct = new Map<string, number>();
 
   const sample = () => {
+    /**
+     * Audit 4 §1.10: only once the Games are actually running.
+     *
+     * Routing this through `Simulator.observe` fixed a real gap — the old
+     * shape called `sample()` from inside the `processTurn` branch alone, so
+     * the bloodbath and the feast were never sampled — but it also started
+     * sampling the reaping, the training floor and the interviews, where every
+     * tribute holds the default `survive` objective and the arena does not
+     * exist yet. That turned "objectives held: survive 7.3%" into 45.1%
+     * without anything in the simulation changing, which is a measurement bug
+     * of exactly the kind this hook exists to prevent.
+     *
+     * The bloodbath and the feast are in. The pre-arena phases are out.
+     */
+    if (!ARENA_PHASES.has(state.phase)) return;
     Object.keys(state.eventLastFired ?? {}).forEach(id => eventIdsFired.add(id));
     if (Object.keys(state.garrisonedEdges ?? {}).length > 0) { garrisonCycles++; sawGarrison = true; }
     Object.values(state.zoneEffects ?? {}).forEach(list =>
@@ -336,7 +365,6 @@ for (let i = 0; i < 400; i++) {
         sim.triggerGamemakerEvent('feast');
       }
       if (!sim.processTurn()) break;
-      sample();
     }
     state = sim.getState();
     phasesSeen.add(state.phase);

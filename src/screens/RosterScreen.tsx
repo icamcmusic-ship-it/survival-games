@@ -310,7 +310,7 @@ export function RosterScreen({
                                                     {t.reapingNote}
                                                 </Explainer>
                                             )}
-                                            <span className="chip" title={`${t.gender}, age ${t.age}, ${heightLabel(t.heightCm, units)}, ${t.build} build`}>
+                                            <span className="chip" role="group" aria-label={`${t.gender}, age ${t.age}, ${heightLabel(t.heightCm, units)}, ${t.build} build`} title={`${t.gender}, age ${t.age}, ${heightLabel(t.heightCm, units)}, ${t.build} build`}>
                                                 {t.gender} · {t.age} · {heightLabel(t.heightCm, units)} · {t.build}
                                             </span>
                                             {canSeeArchetype(disclosure) ? (
@@ -326,14 +326,14 @@ export function RosterScreen({
                                                     </span>
                                                 </Explainer>
                                             ) : (
-                                                <span className="chip opacity-50" title={sealedReason(disclosure)}>⧗ Unassessed</span>
+                                                <span className="chip opacity-50" role="group" aria-label={sealedReason(disclosure)} title={sealedReason(disclosure)}>⧗ Unassessed</span>
                                             )}
                                         </div>
                                     </div>
                                     {t.trainingScore > 0 && (
                                         <div
                                             className="stat-tile !p-2 flex-none"
-                                            title="Training score — anything above 8 is exceptionally rare"
+                                            role="group" aria-label="Training score — anything above 8 is exceptionally rare" title="Training score — anything above 8 is exceptionally rare"
                                         >
                                             <div className={`text-xl font-black font-mono ${
                                                 t.trainingScore >= 11 ? 'text-[var(--red)]'
@@ -414,7 +414,7 @@ export function RosterScreen({
                                                 {traitInfo(trait)}
                                             </Explainer>
                                         ))
-                                        : <span className="chip opacity-50" title={sealedReason(disclosure)}>⧗ Traits sealed</span>}
+                                        : <span className="chip opacity-50" role="group" aria-label={sealedReason(disclosure)} title={sealedReason(disclosure)}>⧗ Traits sealed</span>}
                                 </div>
 
                                 {bettingOpen && (

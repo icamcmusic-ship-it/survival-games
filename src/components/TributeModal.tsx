@@ -31,6 +31,7 @@ import { STANCE_PROFILES, STANCES } from '../data/stances';
 import { believedRumours } from '../engine/rumours';
 import { notorietyOf } from '../engine/notoriety';
 import { isVeteran } from '../engine/veterans';
+import { charterSummary } from '../engine/allianceCharter';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
@@ -280,6 +281,29 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
         .filter(o => o.status === 'alive' && o.id !== tribute.id && o.allianceId === tribute.allianceId)
         .map(o => o.name);
     const leaderName = gameState.tributes.find(o => o.id === alliance?.leaderId)?.name ?? '—';
+    /**
+     * Audit 4 §2.1/§4.2: where this tribute sits inside their group — the role
+     * they hold, whether they or somebody else is the named heir, how many
+     * factions have formed, and how many charter breaches the group has logged.
+     * All four are live `Alliance` fields that no component read.
+     */
+    const allianceStanding = (() => {
+        if (!alliance) return undefined;
+        const role = (Object.entries(alliance.roles ?? {}) as Array<[string, string]>)
+            .find(([, id]) => id === tribute.id)?.[0];
+        const heirName = alliance.successorId
+            ? gameState.tributes.find(o => o.id === alliance.successorId)?.name
+            : undefined;
+        const factions = alliance.factions?.length ?? 0;
+        const breaches = alliance.breaches ?? 0;
+        const parts = [
+            role ? `holds the ${role}` : undefined,
+            heirName ? (alliance.successorId === tribute.id ? 'named heir' : `${heirName} is named heir`) : undefined,
+            factions > 0 ? `${factions} faction${factions === 1 ? '' : 's'} inside it` : undefined,
+            breaches > 0 ? `${breaches} breach${breaches === 1 ? '' : 'es'} logged` : undefined,
+        ].filter(Boolean);
+        return parts.length > 0 ? parts.join(' · ') : undefined;
+    })();
     // Only pairs who have actually fought more than once read as a feud.
     const feuds = Object.entries(tribute.memory?.rivals ?? {})
         .map(([id, record]) => ({ other: gameState.tributes.find(t => t.id === id)!, record }))
@@ -357,7 +381,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                         <h3 className="display-title text-2xl">
                             {tribute.name}
                             {tribute.epithet && (
-                                <span className="block text-sm font-bold text-[var(--gold)] tracking-normal" title={tribute.epithetCycle !== undefined ? `Named on cycle ${tribute.epithetCycle}` : undefined}>
+                                <span className="block text-sm font-bold text-[var(--gold)] tracking-normal" role="group" aria-label={tribute.epithetCycle !== undefined ? `Named on cycle ${tribute.epithetCycle}` : undefined} title={tribute.epithetCycle !== undefined ? `Named on cycle ${tribute.epithetCycle}` : undefined}>
                                     {tribute.epithet}
                                 </span>
                             )}
@@ -617,7 +641,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                         {tribute.fanFavourite && (
                             <>
                                 <span aria-hidden="true">·</span>
-                                <span title="The Capitol had a favourite before the gong ever sounded.">Fan favourite</span>
+                                <span role="group" aria-label="The Capitol had a favourite before the gong ever sounded." title="The Capitol had a favourite before the gong ever sounded.">Fan favourite</span>
                             </>
                         )}
                     </p>
@@ -861,7 +885,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                                     key={site}
                                                     className="chip"
                                                     style={{ borderColor: 'var(--cat-hazard)', color: 'var(--cat-hazard)' }}
-                                                    title="An untreated wound that has gone bad. Needs medical supplies, not a dressing — and it deepens on its own."
+                                                    role="group" aria-label="An untreated wound that has gone bad. Needs medical supplies, not a dressing — and it deepens on its own." title="An untreated wound that has gone bad. Needs medical supplies, not a dressing — and it deepens on its own."
                                                 >
                                                     {['', 'infected', 'festering', 'septic'][Math.min(3, g ?? 0)]} {site}
                                                 </span>
@@ -947,14 +971,14 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                         {item.stack !== undefined && item.stack > 1 && (
                                             <span className="text-[var(--color-ink-500)]"> ×{item.stack}</span>
                                         )}
-                                        {item.poison && <span className="ml-1 text-[var(--cat-death)]" title="Coated with poison.">☠</span>}
+                                        {item.poison && <span className="ml-1 text-[var(--cat-death)]" role="group" aria-label="Coated with poison." title="Coated with poison.">☠</span>}
                                     </span>
                                     <span className="flex items-center gap-2 flex-none">
                                         {item.durability !== undefined && (
                                             <span
                                                 className="text-[10px] font-mono"
                                                 style={{ color: conditionOf(item) < 0.35 ? 'var(--red)' : 'var(--color-ink-500)' }}
-                                                title="Condition. A worn weapon hits softer, not just closer to breaking."
+                                                role="group" aria-label="Condition. A worn weapon hits softer, not just closer to breaking." title="Condition. A worn weapon hits softer, not just closer to breaking."
                                             >
                                                 {Math.round(conditionOf(item) * 100)}%
                                             </span>
@@ -1054,6 +1078,43 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                             : alliance.sharedCache.map(i => i.name).join(', ')}
                                     </span>
                                 </div>
+                                {/*
+                                  Audit 4 §2.1/§4.4: the whole alliance-politics
+                                  layer was invisible. `Alliance.roles`,
+                                  `.charter`, `.successorId`, `.factions` and
+                                  `.breaches` were named by no component, and
+                                  `charterSummary()` was exported and imported by
+                                  nothing — so a group with a three-clause
+                                  charter, a named heir, two factions and four
+                                  logged breaches rendered exactly like a pair who
+                                  met yesterday.
+
+                                  Measured across 3,187 alliance-samples: charters
+                                  run 1 clause on 1,558, 2 on 1,226, 3 on 229 and
+                                  4 on 22; an heir is named on 1,556; factions
+                                  exist on 394. None of it reached the player.
+                                */}
+                                {charterSummary(alliance) && (
+                                    <div className="flex justify-between gap-2">
+                                        <span className="text-[var(--color-ink-500)]">Charter</span>
+                                        <Explainer
+                                            align="right"
+                                            label={<span className="text-[var(--color-ink-200)] text-right">{charterSummary(alliance)}</span>}
+                                            title="Alliance charter"
+                                        >
+                                            Clauses the group swore beyond the pact itself — who eats first, who
+                                            may open a fight, what happens to the stash. A breach is logged
+                                            against the member who committed it, and a second one is a hearing
+                                            rather than an argument.
+                                        </Explainer>
+                                    </div>
+                                )}
+                                {allianceStanding && (
+                                    <div className="flex justify-between gap-2">
+                                        <span className="text-[var(--color-ink-500)]">Standing in it</span>
+                                        <span className="text-[var(--color-ink-200)] text-right">{allianceStanding}</span>
+                                    </div>
+                                )}
                             </div>
                         </section>
                     )}
@@ -1209,7 +1270,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                     {streak >= ROMANCE.sustainedCycles && other!.status === 'alive' && (
                                         <span
                                             className="font-mono text-[10px] flex-none text-[var(--color-ink-500)] ml-auto"
-                                            title={`They have kept each other's company ${streak} cycles running — sustained contact, not one shared scene.`}
+                                            role="group" aria-label={`They have kept each other's company ${streak} cycles running — sustained contact, not one shared scene.`} title={`They have kept each other's company ${streak} cycles running — sustained contact, not one shared scene.`}
                                         >
                                             {streak}c together
                                         </span>
@@ -1217,7 +1278,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                     <span
                                         className="font-mono text-xs flex-none"
                                         style={{ color: value > 0 ? 'var(--cat-alliance)' : value < 0 ? 'var(--cat-death)' : 'var(--color-ink-500)' }}
-                                        title={sworn ? `${tribute.name} has sworn to kill ${other!.name}` : undefined}
+                                        role="group" aria-label={sworn ? `${tribute.name} has sworn to kill ${other!.name}` : undefined} title={sworn ? `${tribute.name} has sworn to kill ${other!.name}` : undefined}
                                     >
                                         {sworn ? '⚔ ' : ''}{value > 0 ? `+${value}` : value}
                                     </span>

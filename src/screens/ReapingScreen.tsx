@@ -210,10 +210,10 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                                     <div className="font-black text-[var(--ink)] truncate">
                                         {t.name}
                                         {isVeteran(seatedVeterans, t) && (
-                                            <span className="ml-1.5 chip chip-gold" title="A past victor from your Hall of Fame, reaped again.">Victor</span>
+                                            <span className="ml-1.5 chip chip-gold" role="group" aria-label="A past victor from your Hall of Fame, reaped again." title="A past victor from your Hall of Fame, reaped again.">Victor</span>
                                         )}
                                         {t.fanFavourite && (
-                                            <span className="ml-1.5 text-[var(--gold)]" title="A Capitol favourite before the Games have even begun.">★</span>
+                                            <span className="ml-1.5 text-[var(--gold)]" role="group" aria-label="A Capitol favourite before the Games have even begun." title="A Capitol favourite before the Games have even begun.">★</span>
                                         )}
                                     </div>
                                     <div className="eyebrow mt-0.5">

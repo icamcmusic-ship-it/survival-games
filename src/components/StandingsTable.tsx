@@ -129,7 +129,7 @@ export function StandingsTable({
                                 className="sticky top-0 z-10 p-1 w-6 border-b-2 border-[var(--color-ink-800)]"
                                 style={{ background: 'var(--paper)' }}
                             >
-                                <span className="eyebrow" title="Which way their odds have moved since yesterday">Trend</span>
+                                <span className="eyebrow" role="group" aria-label="Which way their odds have moved since yesterday" title="Which way their odds have moved since yesterday">Trend</span>
                             </th>
                             {COLUMNS.map(col => {
                                 const active = sort.column === col.id;
@@ -184,16 +184,16 @@ export function StandingsTable({
                                     </td>
                                     <td className="p-1 text-center font-mono">
                                         {drift === undefined || Math.abs(drift) < TREND_EPSILON ? (
-                                            <span className="text-[var(--color-ink-600)]" title="No meaningful move since yesterday">–</span>
+                                            <span className="text-[var(--color-ink-600)]" role="group" aria-label="No meaningful move since yesterday" title="No meaningful move since yesterday">–</span>
                                         ) : drift > 0 ? (
                                             <span
                                                 className="text-[var(--cat-alliance)]"
-                                                title={`Shortened ${drift.toFixed(1)} points since yesterday's close`}
+                                                role="group" aria-label={`Shortened ${drift.toFixed(1)} points since yesterday's close`} title={`Shortened ${drift.toFixed(1)} points since yesterday's close`}
                                             >▲</span>
                                         ) : (
                                             <span
                                                 className="text-[var(--cat-death)]"
-                                                title={`Drifted ${Math.abs(drift).toFixed(1)} points since yesterday's close`}
+                                                role="group" aria-label={`Drifted ${Math.abs(drift).toFixed(1)} points since yesterday's close`} title={`Drifted ${Math.abs(drift).toFixed(1)} points since yesterday's close`}
                                             >▼</span>
                                         )}
                                     </td>
@@ -212,10 +212,10 @@ export function StandingsTable({
                                     <td className="p-1 text-right font-mono">{dead ? '—' : t.health}</td>
                                     <td className="p-1 text-right font-mono">{t.kills}</td>
                                     <td className="p-1 text-right font-mono">{t.daysSurvived}</td>
-                                    <td className="p-1" title={dead ? undefined : STANCE_PROFILES[t.stance]?.blurb}>
+                                    <td className="p-1" role="group" aria-label={dead ? undefined : STANCE_PROFILES[t.stance]?.blurb} title={dead ? undefined : STANCE_PROFILES[t.stance]?.blurb}>
                                         {dead ? '—' : t.stance}
                                     </td>
-                                    <td className="p-1 truncate max-w-[10rem]" title={dead ? (t.causeOfDeath ?? '') : objectiveLabel(gameState, t)}>
+                                    <td className="p-1 truncate max-w-[10rem]" role="group" aria-label={dead ? (t.causeOfDeath ?? '') : objectiveLabel(gameState, t)} title={dead ? (t.causeOfDeath ?? '') : objectiveLabel(gameState, t)}>
                                         {dead ? (t.causeOfDeath ?? 'Eliminated') : arenaSealed ? '❓' : t.zone}
                                     </td>
                                     <td className="p-1">

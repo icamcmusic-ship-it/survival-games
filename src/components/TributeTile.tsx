@@ -25,6 +25,20 @@ export function TributeTile({
     accent?: string;
 }) {
     const dead = tribute.status === 'dead';
+    /**
+     * Audit 4 §2.1: `Tribute.downed` was named by no component in the app.
+     *
+     * A tribute lying downed — with a rescue window, a cause and, usually, the
+     * name of whoever put them there — is the most dramatic state the
+     * simulation can hold. It occupies 1.5% of all tribute-cycles and resolves
+     * 174 times to a finishing blow, 137 to a rescue and 135 to mercy across
+     * 160 runs. The feed narrated it; every surface that draws a tribute —
+     * this tile, the standings, the map — drew somebody standing up.
+     *
+     * It goes here because this is the one component every one of those
+     * surfaces already renders through.
+     */
+    const downed = !dead && !!tribute.downed;
     const box = size === 'sm' ? 'w-8 h-8 text-[9px]' : 'w-11 h-11 text-[11px]';
     const body = (
         <>
@@ -42,20 +56,43 @@ export function TributeTile({
                         permanent, and until now visible only in the line that
                         awarded it. */}
                     {tribute.epithet && size !== 'sm' && (
-                        <span className="ml-1 font-bold normal-case text-[10px] text-[var(--gold)]" title={`Known as ${tribute.epithet}`}>{tribute.epithet}</span>
+                        <span className="ml-1 font-bold normal-case text-[10px] text-[var(--gold)]">{tribute.epithet}</span>
                     )}
                 </span>
                 <span className="block font-mono font-bold text-[9px] uppercase tracking-wider text-[var(--color-ink-500)] truncate">
                     D{tribute.district} · {tribute.gender === 'Male' ? 'M' : 'F'} · {tribute.age}
                     {dead ? ' · †' : ''}
+                    {downed && (
+                        <span className="ml-1 text-[var(--red)]">
+                            · down, {tribute.downed!.cyclesLeft} left
+                        </span>
+                    )}
+                    {!dead && !downed && tribute.transit && (
+                        <span className="ml-1 text-[var(--color-ink-400)]">· in transit</span>
+                    )}
                 </span>
             </span>
         </>
     );
 
+    /**
+     * Audit 4 §2.2/§2.4: the tile carried one `aria-` attribute and put its
+     * whole description in a `title`, which a phone never shows and a screen
+     * reader mostly will not announce over an element that already has a name.
+     * The same string is the button's accessible name now, and it says the
+     * things the visual tile says — including the two states added above.
+     */
+    const described = `${tribute.name} — District ${tribute.district}, ${tribute.gender}, age ${tribute.age}`
+        + (tribute.epithet ? `, known as ${tribute.epithet}` : '')
+        + (dead ? ' (deceased)' : downed ? ` (down, ${tribute.downed!.cyclesLeft} cycles left)` : tribute.transit ? ' (in transit)' : '');
+
     if (!onSelect) {
         return (
-            <span className={`inline-flex items-center gap-2 ${dead && dimDead ? 'opacity-70' : ''}`}>
+            <span
+                role="group"
+                aria-label={described}
+                className={`inline-flex items-center gap-2 ${dead && dimDead ? 'opacity-70' : ''}`}
+            >
                 {body}
             </span>
         );
@@ -64,7 +101,7 @@ export function TributeTile({
         <button
             type="button"
             onClick={() => onSelect(tribute.id)}
-            title={`${tribute.name} — District ${tribute.district}, ${tribute.gender}, age ${tribute.age}${dead ? ' (deceased)' : ''}`}
+            aria-label={described}
             className={`inline-flex items-center gap-2 hover:opacity-80 focus-visible:outline focus-visible:outline-1 ${dead && dimDead ? 'opacity-70' : ''}`}
         >
             {body}

@@ -207,7 +207,7 @@ export function DossierPanel({
                                             <span className={`font-bold text-sm truncate ${dead ? 'line-through text-[var(--color-ink-500)]' : 'text-[var(--color-ink-100)]'}`}>
                                                 {t.name}
                                             </span>
-                                            <span className="chip" title={`District ${t.district} · ${t.gender} · age ${t.age}`}>
+                                            <span className="chip" role="group" aria-label={`District ${t.district} · ${t.gender} · age ${t.age}`} title={`District ${t.district} · ${t.gender} · age ${t.age}`}>
                                                 D{t.district}·{t.gender === 'Male' ? 'M' : 'F'}
                                             </span>
                                             {!dead && t.allianceId && (
@@ -219,7 +219,7 @@ export function DossierPanel({
                                                 <span
                                                     className="chip"
                                                     style={{ color: 'var(--red)', borderColor: 'var(--red)' }}
-                                                    title={`${t.name} ${t.injuries.bleeding ? 'is bleeding' : t.vitals.thirst > 70 ? 'is badly dehydrated' : 'is unarmed'} — a sponsor parachute would fix this.`}
+                                                    role="group" aria-label={`${t.name} ${t.injuries.bleeding ? 'is bleeding' : t.vitals.thirst > 70 ? 'is badly dehydrated' : 'is unarmed'} — a sponsor parachute would fix this.`} title={`${t.name} ${t.injuries.bleeding ? 'is bleeding' : t.vitals.thirst > 70 ? 'is badly dehydrated' : 'is unarmed'} — a sponsor parachute would fix this.`}
                                                 >
                                                     🪂 Needs aid
                                                 </span>
@@ -236,7 +236,7 @@ export function DossierPanel({
                                                             <span
                                                                 className="font-bold"
                                                                 style={{ color: healthDelta[t.id] > 0 ? 'var(--cat-alliance)' : 'var(--cat-death)' }}
-                                                                title={`${healthDelta[t.id] > 0 ? 'Recovered' : 'Lost'} ${Math.abs(healthDelta[t.id])} health last cycle`}
+                                                                role="group" aria-label={`${healthDelta[t.id] > 0 ? 'Recovered' : 'Lost'} ${Math.abs(healthDelta[t.id])} health last cycle`} title={`${healthDelta[t.id] > 0 ? 'Recovered' : 'Lost'} ${Math.abs(healthDelta[t.id])} health last cycle`}
                                                             >
                                                                 {healthDelta[t.id] > 0 ? '↑' : '↓'}{Math.abs(healthDelta[t.id])}
                                                             </span>
@@ -245,13 +245,13 @@ export function DossierPanel({
                                                     <span className="flex items-center gap-1"><Swords className="w-3 h-3" /> {t.kills}</span>
                                                     {/* §2.2: sanity and the odds line, with the
                                                         direction they moved in last cycle. */}
-                                                    <span className="flex items-center gap-1" title={`Sanity ${Math.round(t.vitals.sanity)}`}>
+                                                    <span className="flex items-center gap-1" role="group" aria-label={`Sanity ${Math.round(t.vitals.sanity)}`} title={`Sanity ${Math.round(t.vitals.sanity)}`}>
                                                         <Brain className="w-3 h-3 text-[var(--cat-sanity)]" /> {Math.round(t.vitals.sanity)}
                                                         {!!sanityDelta[t.id] && (
                                                             <span
                                                                 className="font-bold"
                                                                 style={{ color: sanityDelta[t.id] > 0 ? 'var(--cat-alliance)' : 'var(--cat-death)' }}
-                                                                title={`${sanityDelta[t.id] > 0 ? 'Steadied' : 'Frayed'} ${Math.abs(sanityDelta[t.id])} last cycle`}
+                                                                role="group" aria-label={`${sanityDelta[t.id] > 0 ? 'Steadied' : 'Frayed'} ${Math.abs(sanityDelta[t.id])} last cycle`} title={`${sanityDelta[t.id] > 0 ? 'Steadied' : 'Frayed'} ${Math.abs(sanityDelta[t.id])} last cycle`}
                                                             >
                                                                 {sanityDelta[t.id] > 0 ? '↑' : '↓'}{Math.abs(sanityDelta[t.id])}
                                                             </span>
@@ -261,7 +261,7 @@ export function DossierPanel({
                                                         <span
                                                             className="flex items-center gap-1 font-bold"
                                                             style={{ color: oddsDelta[t.id] > 0 ? 'var(--cat-alliance)' : 'var(--cat-death)' }}
-                                                            title={`The book moved ${oddsDelta[t.id] > 0 ? 'toward' : 'away from'} ${t.name} last cycle`}
+                                                            role="group" aria-label={`The book moved ${oddsDelta[t.id] > 0 ? 'toward' : 'away from'} ${t.name} last cycle`} title={`The book moved ${oddsDelta[t.id] > 0 ? 'toward' : 'away from'} ${t.name} last cycle`}
                                                         >
                                                             {oddsDelta[t.id] > 0 ? '▲' : '▼'}{Math.abs(oddsDelta[t.id])}%
                                                         </span>
@@ -276,6 +276,8 @@ export function DossierPanel({
                                                             <span
                                                                 className="ml-1 font-bold not-italic"
                                                                 style={{ color: 'var(--cat-sanity)' }}
+                                                                role="group"
+                                                                aria-label={`Torn — they nearly ${objectiveLabel(gameState, { ...t, objective: t.objectiveTension.runnerUp }).toLowerCase()} instead`}
                                                                 title={`Torn — they nearly ${objectiveLabel(gameState, { ...t, objective: t.objectiveTension.runnerUp }).toLowerCase()} instead`}
                                                             >
                                                                 ⟂ torn
@@ -361,7 +363,7 @@ export function DossierPanel({
                                     <span className="font-mono text-[10px] text-[var(--color-ink-500)] w-4 flex-none">{i + 1}</span>
                                     <span className="text-xs font-bold text-[var(--color-ink-100)] truncate flex-1 min-w-0">
                                         {tribute.name}
-                                        {bets[tribute.id] && <span className="ml-1 text-[var(--red)]" title="Your wager">●</span>}
+                                        {bets[tribute.id] && <span className="ml-1 text-[var(--red)]" role="group" aria-label="Your wager" title="Your wager">●</span>}
                                     </span>
                                     {/* §2.8: `oddsHistory` was stored every day and never once drawn. */}
                                     <OddsSparkline history={gameState.oddsHistory} tributeId={tribute.id} />
@@ -590,11 +592,11 @@ export function DossierPanel({
                     </div>
                 </div>
                 {gameState.gamesProfile && (
-                    <p className="text-[11px] text-[var(--color-ink-500)] mt-3" title={gameState.gamesProfile.temperament.blurb}>
+                    <p className="text-[11px] text-[var(--color-ink-500)] mt-3" role="group" aria-label={gameState.gamesProfile.temperament.blurb} title={gameState.gamesProfile.temperament.blurb}>
                         <span className="text-[var(--ink)] font-semibold">{ordinal(gameState.gamesProfile.gamesNumber)} Games</span>
                         {' — '}{gameState.gamesProfile.temperament.name}
                         {gameState.gamesProfile.wildcard.kind !== 'nothing' && (
-                            <span title={gameState.gamesProfile.wildcard.announcement}>
+                            <span role="group" aria-label={gameState.gamesProfile.wildcard.announcement} title={gameState.gamesProfile.wildcard.announcement}>
                                 , with {gameState.gamesProfile.wildcard.name}
                                 {gameState.gamesProfile.wildcard.day > 0 ? ` on day ${gameState.gamesProfile.wildcard.day}` : ''}
                             </span>
@@ -602,12 +604,12 @@ export function DossierPanel({
                     </p>
                 )}
                 {gameState.headGamemaker && (
-                    <p className="text-[11px] text-[var(--color-ink-500)] mt-2" title="Chosen at the reaping. Their patience and their hazard appetite shape the whole run.">
+                    <p className="text-[11px] text-[var(--color-ink-500)] mt-2" role="group" aria-label="Chosen at the reaping. Their patience and their hazard appetite shape the whole run." title="Chosen at the reaping. Their patience and their hazard appetite shape the whole run.">
                         Head Gamemaker: <span className="text-[var(--ink)] font-semibold">{gameState.headGamemaker}</span>
                     </p>
                 )}
                 {nearMisses.length > 0 && (
-                    <div className="mt-3 space-y-1" title="Achievements this run is close to earning">
+                    <div className="mt-3 space-y-1" role="group" aria-label="Achievements this run is close to earning" title="Achievements this run is close to earning">
                         {nearMisses.map(m => (
                             <p key={m.id} className="text-[11px] text-[var(--color-ink-500)]">
                                 <span className="text-[var(--ink)] font-semibold">{m.name}</span>{' — '}{m.detail}

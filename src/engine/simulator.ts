@@ -20,6 +20,7 @@ import { wildcardIs } from './gamesProfile';
 export class Simulator {
     private state: GameState;
     private ctx: SimContext;
+    private observers: Array<(state: GameState) => void> = [];
 
     constructor(initialState: GameState) {
         // Shared with the store's per-phase snapshot: structuredClone with a
@@ -37,6 +38,40 @@ export class Simulator {
         return this.state;
     }
 
+    /**
+     * Audit 4 §1.10: one observation point, so measurement stops guessing.
+     *
+     * `getState()` after a phase is the only thing the harness has ever
+     * exposed, and nothing in it distinguishes state that *accumulates* from
+     * state that is *live and pruned*. Three audits running have measured a
+     * live subsystem with an end-state census and reported a false zero:
+     * Audit 2 invented field names; Audit 3 read `state.alliances` at the end
+     * of a run and reported five alliances across 120 runs (the last tribute
+     * standing has no allies); Audit 4 read `state.feastTheme` at the end and
+     * reported 90.6% of runs themeless, because `processFeast` clears it on
+     * the way out. Each time the instrument was wrong and the finding looked
+     * like a bug.
+     *
+     * `runRecords.ts` already solves this for the six things the achievement
+     * table needed. This is the general form: a probe or a check declares what
+     * it wants sampled and the simulator calls it once per phase advance, so
+     * nobody has to know which fields survive to the epilogue. Every probe
+     * behind this report re-implemented the same loop by hand.
+     *
+     * Observers run after the phase has resolved and before the caller sees
+     * the state. They must not mutate it; nothing enforces that, because a
+     * harness that could not reach the state would be useless, but a mutating
+     * observer breaks seeded replay and is a bug in the observer.
+     */
+    public observe(fn: (state: GameState) => void): () => void {
+        this.observers.push(fn);
+        return () => { this.observers = this.observers.filter(o => o !== fn); };
+    }
+
+    private notifyObservers() {
+        for (const fn of this.observers) fn(this.state);
+    }
+
     /** True once the run can no longer advance — used to stop auto-play and run-to-end loops. */
     public isFinished(): boolean {
         return this.state.phase === 'ended';
@@ -51,18 +86,22 @@ export class Simulator {
     public processTraining() {
         processPreGames(this.ctx);
         processTraining(this.ctx);
+        this.notifyObservers();
     }
 
     public processInterviews() {
         processInterviews(this.ctx);
+        this.notifyObservers();
     }
 
     public startGames() {
         startGames(this.ctx);
+        this.notifyObservers();
     }
 
     public processBloodbath() {
         processBloodbath(this.ctx);
+        this.notifyObservers();
     }
 
     /**
@@ -109,6 +148,7 @@ export class Simulator {
         }
 
         this.maybeEndGames();
+        this.notifyObservers();
         return true;
     }
 
