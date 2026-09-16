@@ -15327,6 +15327,17 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
      * helps, and it will be noticed" — and it is the honest way to add
      * generosity to a pool that cannot afford more of it.
      *
+     * That still was not it. Measured by *magnitude* rather than by count, the
+     * fourteen made the pool slightly harsher — weighted help share 13.7% ->
+     * 12.8%, weighted harm 1,116 -> 1,204 — and zero-kill victors were
+     * nonetheless 28.5% at 1,600 runs against 24.7% before, which is 3.5
+     * standard errors and not noise. The mechanism was the three events gated
+     * on `maxSurvivors`: in the endgame they *displace* whatever would
+     * otherwise have fired, and two of them helped. A heal, a meal and a roll
+     * of bandages at eight alive is a lifeline handed to whoever is hiding.
+     * Late-game events should read as pressure or as atmosphere; they are the
+     * one register in this pool that must not be a gift.
+     *
      * What they add is register rather than lethality. Of 1,388 authored
      * events only 10 keyed off `minSurvivors`, 8 off `sanityBand` and 13 off
      * `stance` — so the pool had no late-game voice, nothing that knew a third
@@ -15338,12 +15349,12 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
     {
         text: '{tribute} realises the birds came back to {zone} days ago and have not left since. Whatever they were waiting out is over, and the arena is quieter than it has any business being.',
         escapeText: '{tribute} counts the birds in {zone} and does not like the arithmetic.',
-        cause: 'Went still in a quiet arena', sanity: 4, requires: { maxSurvivors: 6 }, weight: 0.5,
+        cause: 'Went still in a quiet arena', fatigue: 6, requires: { maxSurvivors: 6 }, weight: 0.5,
     },
     {
         text: '{tribute} finds the whole of somebody\'s camp in {zone} still standing — banked fire, folded bedroll, everything but the person. Nobody has needed it for a while.',
         escapeText: '{tribute} walks past the standing camp in {zone} without touching it.',
-        cause: 'Found an abandoned camp', heal: 6, feed: 20, grantItem: 'bandages', sanity: -5, requires: { maxSurvivors: 8 }, weight: 0.5,
+        cause: 'Found an abandoned camp', feed: 20, sanity: -5, requires: { maxSurvivors: 8 }, weight: 0.5,
     },
     {
         text: 'The Gamemakers cut the feed over {zone} and then cut it back, and in between {tribute} has been left alone with the sound of their own breathing for longer than is comfortable.',

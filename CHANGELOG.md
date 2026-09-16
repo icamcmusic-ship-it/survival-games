@@ -43,7 +43,8 @@ so playing the social layer well was the fastest route to the floor.
 Two new metrics indicators guard both ends, because a single mean hides exactly
 this failure. And it moved the one indicator the audit found still short of its
 design goal: **victors with zero kills 29.9% → 24.7%**. A cast that is not
-catatonic fights.
+catatonic fights. (It ended the pass at 28.5% — see *The one that got away*
+below.)
 
 ### Taxonomies nobody stocked (§1.1, §1.8, §1.9)
 
@@ -177,10 +178,35 @@ soak's unreplaced-placeholder assertion — "Silus works the {tribute} sings in
 {zone}"), a duplicate `cartographer` achievement id, and two new entries with a
 numeric threshold and no nearMiss.
 
+### The one that got away
+
+`victors with zero kills` went 29.9% → **24.7%** on the sanity work, meeting
+its ≤25% design goal for the first time, and finished the pass at **28.5%** —
+inside its ≤32% guard, better than it started, and short of goal again.
+
+Something in the second half of the pass cost 3.8 points and it is not written
+down here as a guess, because three 1,600-run measurements failed to find it:
+
+- **Not the universal pool's generosity.** Measured by magnitude rather than by
+  count, the fourteen new events made the pool slightly *harsher* — weighted
+  help share 13.7% → 12.8%, weighted harm 1,116 → 1,204.
+- **Not the endgame-gated events.** Neutralising the two that helped at ≤8
+  alive moved it 28.5% → 28.5%.
+- **Not the pair-role change**, which was the best hypothesis: `medic` carries
+  `COMBAT.roleMedicShield` and pairs are 47.6% of alliance samples. Reverting
+  it for one measurement moved it 28.5% → 28.3%.
+
+What is left in that window is the 85 quirk rows, the medicine training sites
+and the additive off-season laws — each individually tiny, and the honest
+reading is that it is the sum of them rather than any one. Three falsified
+hypotheses is a better place to leave this than a fourth guess dressed as a
+cause, and the next pass has the three dead ends written down.
+
 ### Left open
 
+- `victors with zero kills` at 28.5%, above.
 - `runs with star-crossed lovers` sits at 15.9% against a 10–15% goal band,
-  inside its 5–22% guard. It is the one indicator of 25 short of goal.
+  inside its 5–22% guard. Those are the two indicators of 25 short of goal.
 - Eight achievements never unlock in 500 runs, all legendary, all carrying a
   nearMiss. `twelve-levers` is new and requires Gamemaker mode, which the sweep
   does not run.
