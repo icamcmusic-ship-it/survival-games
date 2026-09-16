@@ -1,5 +1,194 @@
 # Changelog
 
+## Audit 4 fix pass (this branch)
+
+Answers `AUDIT-4.md`. That report's theme was that the repository had reached
+the point where the remaining failures were *taxonomies nobody stocked* and
+*state the interface never showed* — and the pass found a third theme the
+report had not: **the function carrying the design reasoning was not the one
+doing the work.**
+
+### The one that changed the diagnosis (§3.2)
+
+31.4% of all live tribute-cycles sat at sanity 0–9 and 31.3% at 90+, with the
+four middle deciles holding 17% between them and p25 at literal zero. Half the
+cast went all the way down and **one tribute in a thousand ever came back**.
+
+The audit blamed `applySanityPressure` — "the drains and the recoveries are not
+in the same order of magnitude". Two fixes aimed there (a camp and a meal as
+recoveries a *solitary* tribute can reach, and an easing so an empty gauge
+loses less) moved `gone` 33.0% → 31.3% and the escape rate 0.1% → 0.4%. Almost
+nothing.
+
+So the gauge was disabled outright and the run re-measured. **The
+sanity-by-day curve was unchanged.** The function with all the design comments
+in it — and all three previous audits' tuning — was about 5% of the system.
+The other 95% was thirty-odd direct writes across twenty-one files: mutt fear
+auras, exposure, the anthem, betrayal, grief, parley tolls, arena signatures,
+Gamemaker interventions, training, triangles. Nothing bounded their sum, and
+`traitMod('sanityDrain')` — the dial that decides who falls apart under this —
+was applied by the gauge and by nothing else.
+
+`loseSanity()` is the one place sanity is taken now. 59 subtractions route
+through it; it applies the temperament multiplier (so Stoic and Cool-Headed
+reach the 95% of sanity loss they previously did not touch) and eases as the
+gauge empties, so the bottom is a basin rather than a pit. Gains stay direct.
+The anthem's grief is capped per night — uncapped it took 6 per named friend,
+so playing the social layer well was the fastest route to the floor.
+
+    sanity 0-9        31.4% -> 13.4%     middle bands  22.3% -> 54.7%
+    p25                   0 -> 33        scarred       49.8% -> 26.9%
+    recovered from gone 0.1% -> 3.2%     sanity's feed share 12.9% -> 10.9%
+
+Two new metrics indicators guard both ends, because a single mean hides exactly
+this failure. And it moved the one indicator the audit found still short of its
+design goal: **victors with zero kills 29.9% → 24.7%**. A cast that is not
+catatonic fights.
+
+### Taxonomies nobody stocked (§1.1, §1.8, §1.9)
+
+`EdgeRule` declares seven kinds and the roster carried 26 `tolled`, 8
+`timeGated`, 5 `oneWay` — and 4, 2, 1, 1 of the rest. `contested = 1` meant
+`tickGarrisons` ran once per cycle in every game, found nothing in 39 of 40
+arenas and returned: **0 garrisons in 160 runs**. `collapsing` and `oneWayAfter`
+are the only writers of `edgeCrossings`: **0.0 per run**.
+
+`data/arenaEdges.ts` authors 67 new rules across 30 arenas. `validate-arenas`
+fails when a kind is authored fewer than four times and checks the three
+structural constraints — a hidden edge needs one discoverable endpoint, a
+contested edge needs a chokepoint endpoint, collapsing and oneWayAfter need a
+positive count. It immediately caught 21 unsorted keys in the file being added.
+The procedural generator composed 3 of 7 kinds and composes all 7 now;
+`ZoneFeatures.cover/elevation/chokepoint` became optional and derived (the
+pattern the four newer fields already used) so a bisected map's single crossing
+can *say* it is a chokepoint instead of being guessed at from its name.
+
+    garrisons 0 -> 19% of runs   edgeCrossings 0.0 -> 0.66/run
+    contested 1 -> 20            hidden 2 -> 14   collapsing 4 -> 12
+
+`irradiated` — the only permanent and only *creeping* zone effect, 45 lines of
+engine — fired **zero times in 340 runs**, because six authored events were the
+only thing that could start one. `swarming` (1.0% of sampled effects) and
+`quaking` (2.1%) against `fogbound` (31.3%) were never about the ambient
+chances, which are within 20% of each other: fog has the weather-front system
+behind it and the other two had one roll each. All three have a second source
+now, reading state that already exists — `structuralFatigue` for ground that
+shifts before it falls, `zoneDeaths` for something hatching out of what has
+been left lying in a zone, and for `irradiated`, ground already contaminated or
+stripped once the arena has begun closing.
+
+    irradiated 0 -> 4% of runs   swarming 1.0% -> 5.8%   quaking 2.1% -> 5.0%
+    spread across the nine impermanent kinds 30x -> 5.6x
+
+The soak counts every kind off live state and fails if any reads zero.
+
+### Content that was prose (§6.3)
+
+85 quirks with four-plus lines each — the best character-differentiation
+content in the repository — were **entirely inert**. Read in two places, one
+that assigns them and one that surfaces a line on a quiet cycle. "Always takes
+the high ground", "never turns their back on a treeline", "sleeps in short
+shifts by choice": every one is a mechanical hook written out in prose and left
+as prose, which is precisely the failure `data/traits.ts` opens by documenting
+having fixed once already.
+
+`QUIRK_MODS` gives all 85 a row against the existing `TraitMod` vocabulary, so
+a quirk costs a data row and no read site at all. Several cost something,
+because a habit that is all upside is a trait with the price filed off.
+`quirkEffect()` renders the row in plain English on the tribute sheet, so it is
+a mechanic a player can read rather than one they discover by losing to it.
+
+### Guards that measured the wrong thing (§1.5, §1.6)
+
+`test:sim` printed "695/1388 authored events fired at least once (50.1%)",
+which reads like half the content is unreachable. It is a function of
+`RUNS / arenaIds.length`: at 120 runs on one arena, reach is **94–100%**
+(eclipse, the sweep's thinnest pack at 8/33, reaches all 33). The guard falls
+when somebody adds an arena and rises when somebody raises the run count — the
+two changes a ratchet must not react to. It is per-run reach now.
+
+`test:metrics` at its default 400 runs printed two SHORT-of-goal lines that
+read MET at 1,600, because eight of fifteen archetypes are under the guard
+sample there and the whole-field spread is set by whichever got unlucky. The
+verdict is withheld until every archetype clears `GUARD_MIN_SAMPLE`.
+
+### State the interface never showed (§2.1, §4.4)
+
+`Tribute.downed` — 1.5% of tribute-cycles, resolving 174 times to a finishing
+blow, 137 to a rescue and 135 to mercy per 160 runs, the most dramatic state
+the simulation holds — was named by **no component in the app**. So were
+`transit`, `timeOfDay` (three values against a header showing the phase, which
+has two), `cornucopiaHolder`, `activeMutts`, and the entire alliance-politics
+layer: `roles`, `charter`, `successorId`, `factions`, `breaches`, with
+`charterSummary()` exported and imported by nothing.
+
+### Smaller (§1.2–§1.7, §1.11, §3.4, §4.2, §5.4, §6.2, §8.3, §9.5, §11)
+
+- `veteransSeated` held names and three read sites tested ids. The "Returning
+  victor" chip had never rendered.
+- The sixteen authored legendary weapon names were the fallback for an empty
+  composed list, and `composeName` ends in an unconditional push: 86 distinct
+  names over 180 runs, **none of them authored**.
+- `Swamps's Answer` and `Fields's Answer` shipped to the record book.
+- `offSeason.ts` told contributors skins were strictly cosmetic; 118 of 120
+  carry a mechanical field.
+- `medicine` was the only proficiency whose median holder sat below 1.0, on a
+  cold start: `dressChance` reads the skill only success could raise, and using
+  a medical item on yourself taught nothing.
+- A pair named one alliance role and it was the one with no effect in a pair.
+- All 34 off-season skins with an `addLaw` added a *subtractive* law.
+- 27 Quells share 6.1% of runs, 0.23% each, and "Force a Quell" rolled randomly
+  from the same weights. Every piece of plumbing a picker needs already existed.
+- `deathCausesInRun()` was written to be "the hook a records screen wants",
+  said so in its comment, and was called by nothing. The record book now shows
+  six completion figures.
+- `targetDraw` — the only dial saying "the field has decided about you" — had
+  one entry of fifteen.
+- 23 of 40 arenas authored no conditional-stance actions, so fortifying in the
+  Red Cathedral and in the Salt Flats used the same words.
+- 22 new achievements; reaping 12 → 16, games 12 → 17, arena 22 → 28.
+
+### Six findings corrected
+
+Written up in `AUDIT-4.md` rather than quietly dropped, and four of the six
+were found by the check roster rather than by re-reading.
+
+- **§3.2** named `applySanityPressure` as the cause. It is 5% of the system.
+- **§2.2** put the `title=` count at 47. It is 94: the grep missed every
+  `title={...}` and counted component props as HTML attributes.
+- **§1.2** said `ReapingScreen` read `veteransSeated` correctly. It has the
+  same bug in two more places.
+- **§10.4**'s arithmetic ("sanity is 11% of the feed, therefore ~98 draws from
+  three pools of ten") assumed every sanity-category line comes from
+  `SANITY_TEXTS`. Measured, one pool was over its depth and it was not one of
+  the three named.
+- **§5.4** measured `arena.law` and missed `arena.laws`; the additive laws are
+  2.3% and 2.5% of runs, not 0.56%.
+- An earlier draft of the §7 event work weighted only the hazards, took the
+  universal pool's boon share from 28.8% to 34.8%, and breached a guard:
+  **victors with zero kills 24.7% → 32.2%**. The same trap the last pass fell
+  into, in the other direction, caught the same way. Six of the eight new boons
+  carry a cost now — which is also the register §7.4 asked for and the roster
+  had nine of in 1,388.
+
+Three more were caught by the roster mid-pass and never reached a commit: ten
+sanity lines an edit had landed in `TRAINING_STATIONS.strength` (found by the
+soak's unreplaced-placeholder assertion — "Silus works the {tribute} sings in
+{zone}"), a duplicate `cartographer` achievement id, and two new entries with a
+numeric threshold and no nearMiss.
+
+### Left open
+
+- `runs with star-crossed lovers` sits at 15.9% against a 10–15% goal band,
+  inside its 5–22% guard. It is the one indicator of 25 short of goal.
+- Eight achievements never unlock in 500 runs, all legendary, all carrying a
+  nearMiss. `twelve-levers` is new and requires Gamemaker mode, which the sweep
+  does not run.
+- 44 hard-coded `traits.includes('X')` sites remain, now ratcheted. Converting
+  them is design work per trait rather than a rename; `Star-Crossed` (twelve of
+  the original 56) was the one unambiguous case and has a predicate.
+- Every authored arena pack is still 33 events against a soft target of 40.
+
 ## Audit 3 fix pass (this branch)
 
 Answers `AUDIT-3.md`. That report's theme was that the codebase's systems work

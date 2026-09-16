@@ -78,9 +78,29 @@ export function isHostileTo(t: Tribute, o: Tribute): boolean {
     return o.allianceId === undefined || t.allianceId === undefined || o.allianceId !== t.allianceId;
 }
 
+/**
+ * Audit 4 §8.6: `Star-Crossed` is a mechanic, not a trait.
+ *
+ * `data/traits.ts` opens by documenting that a trait should be a row of
+ * modifiers against named hooks, and that a scattered
+ * `traits.includes('...')` check is the failure the file exists to remove. A
+ * grep found **56** of them still in the engine, and `Star-Crossed` was twelve
+ * — by a distance the largest, and the clearest case, because it is not a
+ * disposition at all. It is a *state flag* that happens to be stored in the
+ * trait array: the showmance layer sets it, the romance beats read it, the
+ * epilogue reads it, and it carries no `mods` row because there is nothing for
+ * one to say.
+ *
+ * So it gets a predicate rather than twelve string literals, next to
+ * `areLovers`, which is the function it exists to support.
+ */
+export function isStarCrossed(t: Pick<Tribute, 'traits'>): boolean {
+    return t.traits.includes('Star-Crossed');
+}
+
 export function areLovers(a: Tribute, b: Tribute): boolean {
     if (a.id === b.id) return false;
-    if (!a.traits.includes('Star-Crossed') || !b.traits.includes('Star-Crossed')) return false;
+    if (!isStarCrossed(a) || !isStarCrossed(b)) return false;
     // The bond id names both of them, so it survives one of them losing the id
     // (pulled into another group, or the record pruned) without ever matching a
     // pair who merely both happen to be in love with somebody.

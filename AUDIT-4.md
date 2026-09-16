@@ -1,5 +1,11 @@
 # Survival Games — fourth full audit (11 sections)
 
+> **Status: answered.** `CHANGELOG.md` records the fix pass. Six findings in
+> this report were wrong or imprecise and are corrected in place below, each
+> marked **Correction**, because an audit that hides its own errors is worth
+> less than one that does not — and because four of the six were found by the
+> check roster rather than by re-reading, which is the point of the roster.
+
 ## Context
 
 Taken against `main` at `2f942f6`, after `AUDIT.md`, `AUDIT-2.md`, `AUDIT-3.md`
@@ -155,11 +161,15 @@ fails when a trap kind reads zero.
 seated.push(entry.winnerName);
 ```
 
-`phases/pregames.ts:55` reads it back correctly (`cast.find(t => t.name === name)`),
-and `screens/ReapingScreen.tsx:31` reads it correctly
-(`new Set(gameState?.veteransSeated ?? [])` matched against names).
+`phases/pregames.ts:55` reads it back correctly (`cast.find(t => t.name === name)`).
 
-`components/TributeModal.tsx:369` does not:
+**Correction.** This report said `screens/ReapingScreen.tsx` reads it correctly.
+It does not. Line 31 builds `new Set(gameState?.veteransSeated ?? [])` — a set
+of *names* — and lines 121 and 208 then query it with `veterans.has(t.id)`. The
+same bug, in two more places, on the screen the feature exists for. Reading one
+line of a file and stopping is how a correct-looking line gets certified.
+
+`components/TributeModal.tsx:369` has it too:
 
 ```tsx
 {gameState.veteransSeated?.includes(tribute.id) && (
@@ -413,12 +423,18 @@ time: the engine is ahead of the interface by roughly one subsystem per audit.
 
 `test:ui-affordances` correctly ratchets *controls* at 31 hover-only hints and
 holds — and it holds because it counts hints on controls, which is the right
-thing to ratchet. The raw count of `title=` across `components/` and `screens/`
-is 47, and it is concentrated: **`TributeModal.tsx` carries 19** and
-`DossierPanel.tsx` 9, with the remaining 19 spread one to three at a time
-across eleven files. The tribute modal is the screen a player opens to find out
-who somebody is, and two fifths of its explanatory text is in an attribute a
-phone cannot display.
+thing to ratchet.
+
+**Correction, and the finding is worse than stated.** This report put the raw
+count at 47. That was `grep -c 'title="'`, which misses every `title={...}` —
+and it also counted `Explainer`'s and `Hint`'s `title` *prop*, which is not the
+HTML attribute at all. Counted properly (walk each JSX tag, take lowercase tag
+names only): there are **94**. Thirty-one are on controls; **63 are on spans,
+divs and table cells**, where the check's own comment assumes a `title` is "an
+unabbreviation" of something visible. On the dossier and the standings table it
+is frequently the only statement of what a number *means* — "Steadied 4 last
+cycle", "Current stock 40% · potential 80%" — which is a different thing and a
+worse one.
 
 A native `title` never appears on touch, never opens on keyboard focus, and is
 usually not announced where the element already has an accessible name. The
@@ -588,6 +604,25 @@ recoveries are not in the same order of magnitude, and the bands were placed
 (70 / 40 / 15) on an assumption about the distribution rather than on the
 measured one, which is exactly the mistake Audit 2 §1 found and fixed for the
 suspicion axis. The same instrument, pointed one field over.
+
+**Correction: that paragraph names the wrong function.** The fix pass acted on
+it, added two recovery terms a solitary tribute can reach and an easing at the
+bottom of the gauge, and moved `gone` from 33.0% of tribute-time to 31.3% with
+the escape rate from 0.1% to 0.4%. Almost nothing. So `applySanityPressure` was
+disabled outright and the run re-measured: **the sanity-by-day curve was
+unchanged** (mean 94 / 81 / 63 / 53 / 39 / 27 / 18 with the gauge off against
+94 / 81 / 62 / 55 / 40 / 26 / 19 with it on). The function carrying all the
+design reasoning — and all three previous audits' tuning — accounts for roughly
+5% of the system.
+
+The other 95% is thirty-odd direct writes: mutt fear auras, exposure, the
+anthem, betrayal, grief, parley tolls, arena signatures, Gamemaker
+interventions, training, triangles. Each subtracts on its own account, nothing
+bounds their sum, and `traitMod('sanityDrain')` — the dial that decides who
+falls apart under this — was applied by the gauge and by nothing else. That is
+why three audits of tuning the gauge's constants never moved the distribution,
+and it is a finding this report would not have reached by reading: it took
+turning the suspected cause off and watching nothing happen.
 
 ### 3.3 Tributes stay put 71.4% of cycles, and the map coverage ceiling is a consequence
 
@@ -892,6 +927,13 @@ pinned to one arena each (Story Wood, Carnival) rather than drawable. So the
 count is now 14 subtractive to 2 additive, and weighted by exposure the ratio
 the last audit found is substantially unchanged: a player meets a law that
 gives something in one run in twenty.
+
+**Correction to an earlier draft of this section.** A first pass at this
+measured only `arena.law` and reported `bountifulGround` and `dawnMercy` at
+0.56% each. `Arena.law` became `Arena.laws` in §5.1 and an arena can stack
+them; measured across both fields the figures are 2.3% and 2.5%, and every one
+of the sixteen laws is reachable. The shape of the finding survives the
+correction and its size halves.
 
 `cornucopiaRefills` and `bountifulGround` are the only two that add resources;
 `dawnMercy` is the only one that reduces danger. Everything else removes water,
@@ -1540,9 +1582,28 @@ occurrences-per-run:
 | `DYNAMIC_AMBIENT_TEXTS` | 12 | — | — |
 
 The last fix pass raised grief 15 → 55 on exactly this reasoning and it worked.
-The same arithmetic now points at **sanity (three pools of 10 against ~98
-sanity lines a run), sponsor (19 against 23 a run) and protector bonds (18
-against a state held in 6.8% of tribute-cycles)**.
+
+**Correction: the middle step of that table does not hold.** "Sanity is 12.9%
+of the feed, therefore ~98 draws across three pools of ten" assumes every
+`sanity`-category line comes from `SANITY_TEXTS`. Most do not — the band
+residues, the anthem reaction, trait arcs and resolve breakdowns all file under
+`sanity` and none of them draw from those pools. Measured properly (each
+template's longest literal run matched against the run's own log, over 60
+complete runs) the real draw rates are:
+
+```
+ruinStealth 11.7/run vs 10 lines   sponsor    16.1/run vs 19 lines
+hallucination 8.0    vs 10         grief      13.4    vs 55
+dropItem     4.5     vs 10         vengeance  12.3    vs 24
+intimidation 4.1     vs 18         ambient     1.6    vs 24
+```
+
+So there was exactly **one** pool drawn more often than it had lines
+(`ruinStealth`) and one close to it (`SPONSOR_TEXTS`) — neither of which a
+floor can see, and neither of which this section named. The inference was
+sound and the arithmetic inside it was not, which is the same class of error as
+reading pruned state at the end of a run: a plausible chain with one unchecked
+link.
 
 147 nested flavour pools sit at the floor of 8, including all sixteen
 `ARCHETYPE_SIGNATURE_TEXTS` entries, all ten `MENTOR_TIER_*` entries, and every

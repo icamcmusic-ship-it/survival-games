@@ -4,6 +4,7 @@ import { arenaFlavor } from './arenaFlavor';
 import { legacyOf } from './districts';
 import { PROCEDURAL_BIOME_COUNT } from '../engine/arenaGenerator';
 import { ACHIEVEMENT_BARS } from './balance';
+import { isStarCrossed } from '../engine/alliance';
 
 /**
  * REPLAY-04: achievements as a discovery layer, not a points system.
@@ -808,7 +809,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'social',
         rarity: 'rare',
         test: state => {
-            const lovers = state.tributes.filter(t => t.traits.includes('Star-Crossed'));
+            const lovers = state.tributes.filter(t => isStarCrossed(t));
             if (lovers.length < 2) return false;
             // Both alive at four remaining, or both among the last four to fall.
             const ranked = [...state.tributes].sort((a, b) =>
@@ -821,7 +822,7 @@ export const ACHIEVEMENTS: Achievement[] = [
             // meaningless with fourteen alive, and this evaluator also runs
             // mid-run for the in-arena nudges.
             if (state.tributes.filter(t => t.status === 'alive').length > 4) return undefined;
-            const lovers = state.tributes.filter(t => t.traits.includes('Star-Crossed'));
+            const lovers = state.tributes.filter(t => isStarCrossed(t));
             if (lovers.length < 2) return undefined;
             const ranked = [...state.tributes].sort((a, b) =>
                 (b.dayOfDeath ?? Infinity) - (a.dayOfDeath ?? Infinity));

@@ -17,6 +17,8 @@ import { prefsStore } from '../store/prefsStore';
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { SPONSOR_BLOCS } from '../engine/sponsorBlocs';
+import { arenaFlavor } from '../data/arenaFlavor';
+import { Glossed } from './Glossed';
 
 /**
  * A6: five accordion sections instead of three panes behind a segmented
@@ -142,6 +144,21 @@ export function DossierPanel({
      * face of the button and its disabled state are read from the same two
      * functions the spend path uses.
      */
+    /**
+     * Audit 4 §2.7: how many of this arena's once-only events have fired.
+     *
+     * `state.firedEvents` has held exactly this all along and no component read
+     * it. Computed the same way `every-door` tests it, so the counter and the
+     * achievement cannot disagree.
+     */
+    const onceOnly = (() => {
+        const ids = arenaFlavor(gameState.arena.id, gameState.arena).events
+            .filter(e => e.oncePerRun && e.id)
+            .map(e => e.id as string);
+        const fired = new Set(gameState.firedEvents ?? []);
+        return { total: ids.length, fired: ids.filter(id => fired.has(id)).length };
+    })();
+
     const priceOf = (type: GamemakerEventType, base: number) => gamemakerEventCost(gameState, type, base);
     const cooldownOf = (type: GamemakerEventType) => gamemakerCooldownRemaining(gameState, type);
     const leverState = (type: GamemakerEventType, base: number, tip: string) => {
@@ -606,6 +623,24 @@ export function DossierPanel({
                 {gameState.headGamemaker && (
                     <p className="text-[11px] text-[var(--color-ink-500)] mt-2" role="group" aria-label="Chosen at the reaping. Their patience and their hazard appetite shape the whole run." title="Chosen at the reaping. Their patience and their hazard appetite shape the whole run.">
                         Head Gamemaker: <span className="text-[var(--ink)] font-semibold">{gameState.headGamemaker}</span>
+                    </p>
+                )}
+                {/*
+                  Audit 4 §2.7: `state.firedEvents` holds exactly which of an
+                  arena's once-only events have happened this run, and 'Every
+                  Door' asks the player to collect all of them — so the one
+                  achievement in the table that is explicitly a collection was
+                  the one with no instrument. A player pursuing it had no way to
+                  know how many were left or that any had fired.
+                */}
+                {onceOnly.total >= 2 && (
+                    <p className="text-[11px] text-[var(--color-ink-500)] mt-2">
+                        <Glossed text={`${onceOnly.fired} of this arena's ${onceOnly.total} once-only events have happened this Games. Triggering every one of them is 'Every Door'.`}>
+                            <span>
+                                Once-only events:{' '}
+                                <span className="text-[var(--ink)] font-semibold">{onceOnly.fired}/{onceOnly.total}</span>
+                            </span>
+                        </Glossed>
                     </p>
                 )}
                 {nearMisses.length > 0 && (

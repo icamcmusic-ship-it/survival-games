@@ -7,6 +7,7 @@ import { addFear } from './fear';
 import { stanceFamily } from '../data/stances';
 import { ensureMemory } from './memory';
 import { clampTribute } from './vitals';
+import { isStarCrossed } from './alliance';
 
 /**
  * §6.3: the persona, tested against the arena.
@@ -51,8 +52,8 @@ const PERSONA_TESTS: Record<InterviewPersona, PersonaTest> = {
     // The enigma's promise is to stay unexplained.
     'The Mysterious Enigma': t => stanceFamily(t.stance) === 'evasive',
     // The two romance angles are held by having somebody at all.
-    'The Star-Crossed Lover': t => t.traits.includes('Star-Crossed') || t.allianceId !== undefined,
-    'The Charming Flirt': t => t.traits.includes('Star-Crossed') || t.allianceId !== undefined,
+    'The Star-Crossed Lover': t => isStarCrossed(t) || t.allianceId !== undefined,
+    'The Charming Flirt': t => isStarCrossed(t) || t.allianceId !== undefined,
     // A Career who sold the room a humble underdog is the one shape of this
     // the crowd will not forgive.
     'The Humble Underdog': t => !t.isCareer,

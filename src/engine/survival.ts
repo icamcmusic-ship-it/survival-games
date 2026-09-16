@@ -25,6 +25,7 @@ import { bodyLabel, driftCondition, effectiveAgility, hungerDrainMultiplier, sta
 import { arenaHasLaw, wildcardIs } from './gamesProfile';
 import { isEvasiveStance } from '../data/stances';
 import { loseSanity } from './sanityBands';
+import { isStarCrossed } from './alliance';
 
 /**
  * Staying alive between encounters: spoilage, hunger, thirst, exposure, wounds
@@ -890,7 +891,7 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         const standing = traitMod(t, 'sponsorTrust');
         if (standing !== 0) t.sponsorTrust = Math.max(0, Math.min(100, t.sponsorTrust + standing));
 
-        if (t.traits.includes('Star-Crossed')) {
+        if (isStarCrossed(t)) {
             t.sponsorTrust = Math.min(100, t.sponsorTrust + TRAIT_EFFECTS.starCrossedTrustPerCycle);
             addExcitement(t, TRAIT_EFFECTS.starCrossedExcitementPerCycle);
         }
