@@ -33,6 +33,14 @@ export interface ArchetypeDef {
      * §8: how much the rest of the field wants this archetype dead, on the
      * same hunt-scoring scale as the `targetDraw` trait modifier.
      *
+     * Audit 4 §8.3: this was the most interesting column in the table and it
+     * had **one entry**. It is the only dial that expresses "the field has
+     * decided about you", which is the one pressure a tribute cannot answer by
+     * being better at anything — and eleven of the fifteen archetypes have a
+     * clear reading of it. Filling it in is also the cheapest lever on the
+     * bottom of the win table: the archetypes that cannot fight are precisely
+     * the ones nobody should be going out of their way to find.
+     *
      * Career measured 9.23% against a 5.0% field at n=1600 — the best win
      * rate, the longest survival AND the most kills, dominant on every axis
      * at once, which meant there was no trade-off left to tune. This is the
@@ -132,6 +140,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'escalating',
         signature: 'strategistGambit',
         tagline: 'Counts the board.',
+        // Audit 4 §8.3: Nothing is frightening once it has been priced.
+        fearScale: 0.9,
     },
     survivalist: {
         id: 'survivalist',
@@ -154,6 +164,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'escalating',
         signature: 'survivalistLarder',
         tagline: 'Outlasts the arena.',
+        // Audit 4 §8.3: Nobody is frightened of somebody who has never come for them.
+        targetDraw: -0.5,
+        // Audit 4 §8.3: Familiarity. Most of what frightens the field is weather to them.
+        fearScale: 0.85,
     },
     protector: {
         id: 'protector',
@@ -179,6 +193,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'protectorStand',
         hatesArchetypes: ['saboteur', 'mercenary'],
         tagline: 'Stands in front.',
+        // Audit 4 §8.3: Standing between people and the thing coming for them is a way of volunteering.
+        targetDraw: 1.0,
+        // Audit 4 §8.3: Frightened for other people as well as themselves, which is more of it, not less.
+        fearScale: 1.2,
     },
     trickster: {
         id: 'trickster',
@@ -197,6 +215,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'escalating',
         signature: 'tricksterSnare',
         tagline: 'Nobody sees them twice.',
+        fearScale: 1.0,
     },
     wildcard: {
         id: 'wildcard',
@@ -238,6 +257,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'underdogRefusal',
         hatesArchetypes: ['career'],
         tagline: 'Written off.',
+        // Audit 4 §8.3: Overlooked is the entire premise; the field spends its attention elsewhere.
+        targetDraw: -1.5,
+        // Audit 4 §8.3: Nobody has ever told them they would be fine.
+        fearScale: 1.1,
     },
 
     // ---- A2: eight archetypes built on the hooks rather than the scalars ----
@@ -262,6 +285,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'mercenaryContract',
         hatesArchetypes: ['zealot', 'protector'],
         tagline: 'Everything has a price.',
+        // Audit 4 §8.3: Carries whatever they were last paid, and everybody watched them take it.
+        targetDraw: 1.5,
+        // Audit 4 §8.3: Professional distance — this is a job, and they have had worse clients.
+        fearScale: 0.8,
     },
     zealot: {
         id: 'zealot',
@@ -300,6 +327,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         hatesArchetypes: ['mercenary', 'ghost'],
         fearScale: 0,
         tagline: 'It means something.',
+        // Audit 4 §8.3: Loud, certain and unignorable. Nobody wants to be near it when it goes.
+        targetDraw: 1.0,
     },
     medic: {
         id: 'medic',
@@ -333,6 +362,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'late-blooming',
         signature: 'medicTriage',
         tagline: 'Keeps them standing.',
+        // Audit 4 §8.3: Killing the person keeping everybody alive is a decision most fields put off.
+        targetDraw: -1.0,
+        // Audit 4 §8.3: They have seen what the thing in front of them does to a body, in detail.
+        fearScale: 1.1,
     },
     saboteur: {
         id: 'saboteur',
@@ -355,6 +388,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'saboteurStrike',
         hatesArchetypes: ['career'],
         tagline: 'Breaks the board, not the pieces.',
+        // Audit 4 §8.3: They are rarely the one in the room when it happens.
+        fearScale: 0.9,
     },
     beast: {
         id: 'beast',
@@ -385,6 +420,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'beastRoar',
         fearScale: 0.5,
         tagline: 'Underestimated on paper.',
+        // Audit 4 §8.3: A tribute the arena made. Everybody left alive has already decided this one is the problem.
+        targetDraw: 2.5,
     },
     diplomat: {
         id: 'diplomat',
@@ -405,6 +442,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'diplomatAccord',
         hatesArchetypes: ['zealot'],
         tagline: 'Nobody has to die today.',
+        // Audit 4 §8.3: Hard to justify to a group that has been talking to them all week.
+        targetDraw: -0.5,
+        fearScale: 1.0,
     },
     scholar: {
         id: 'scholar',
@@ -430,6 +470,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'late-blooming',
         signature: 'scholarReading',
         tagline: 'Reads the arena.',
+        // Audit 4 §8.3: Reads as harmless, and is right up until the arena does what they said it would.
+        targetDraw: -1.5,
+        // Audit 4 §8.3: They worked out what this place does days ago; being right is steadying.
+        fearScale: 0.8,
     },
     ghost: {
         id: 'ghost',
@@ -456,6 +500,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'ghostNaming',
         hatesArchetypes: ['career'],
         tagline: 'Nobody has footage.',
+        // Audit 4 §8.3: The whole archetype is not being on anybody's list.
+        targetDraw: -2.5,
+        // Audit 4 §8.3: Fear is the instrument: it is what keeps them moving and unseen.
+        fearScale: 1.2,
     },
 };
 

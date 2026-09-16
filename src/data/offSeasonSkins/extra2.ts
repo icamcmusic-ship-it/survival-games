@@ -25,8 +25,7 @@ export const OFF_SEASON_SKINS_EXTRA2: Record<string, OffSeasonSkin[]> = {
         label: 'the relayed year',
         description: 'The same mountain with the Capitol\'s mast finally through the ridge. Gifts fall for the first time in this arena\'s history, the Hunting Lodge has a working stove, and the meadow the Cornucopia sits in is thick with a summer nobody up here has had before.',
         liftsLaw: true,
-        resourceShift: OFF_SEASON.fertile,
-    }],
+        resourceShift: OFF_SEASON.fertile, addLaw: 'bountifulGround' as const }],
     terraces: [{
         label: 'the cable year',
         description: 'The same terraced mountain with the cable car running. Somebody has greased the Counterweight Span, the cars go up and they come back, and a map that only ever flowed downhill can suddenly be climbed by anyone willing to trust a century of rust.',
@@ -42,8 +41,7 @@ export const OFF_SEASON_SKINS_EXTRA2: Record<string, OffSeasonSkin[]> = {
         label: 'the calm year',
         description: 'The same drowned peaks on a flat sea. The swells that made every crossing a coin toss have laid down, the Kelp Shallows are visible to the bottom, and the tributes who trained to climb are watching the ones who trained to swim.',
         dangerShift: OFF_SEASON.kinder,
-        resourceShift: OFF_SEASON.fertile,
-    }, {
+        resourceShift: OFF_SEASON.fertile, addLaw: 'dawnMercy' as const }, {
         label: 'the rimed year',
         description: 'The same peaks glazed from summit to waterline. A freezing spray has cased every rock in ice, the Ice Chimney has become the only surface on the map anyone can get a hold on, and the sponsors have been told to drop nowhere else.',
         addLaw: 'sponsorsFixedZone',
@@ -53,8 +51,7 @@ export const OFF_SEASON_SKINS_EXTRA2: Record<string, OffSeasonSkin[]> = {
         label: 'the fog-lift year',
         description: 'The same giant conifers with the floor breathable. The nitrogen fog has thinned to a knee-deep haze, the Understory is walkable for the first time, and everyone who was fighting for a foothold three hundred feet up is wondering why they still are.',
         dangerShift: OFF_SEASON.kinder,
-        resourceShift: OFF_SEASON.fertile,
-    }, {
+        resourceShift: OFF_SEASON.fertile, addLaw: 'dawnMercy' as const }, {
         label: 'the gale year',
         description: 'The same canopy in a wind that has not dropped since the gong. The moss webs are pitching like rigging, the Swaying Reach has earned its name every minute, and nothing thrown or dropped from above lands anywhere near where it was aimed.',
         addLaw: 'noSponsors',
@@ -67,8 +64,7 @@ export const OFF_SEASON_SKINS_EXTRA2: Record<string, OffSeasonSkin[]> = {
     }, {
         label: 'the mast year',
         description: 'The same wind organ in a season the pines went to seed. The Needle Drift is deep in cones, the sawmill ruins are running with squirrels, and the forest sounds exactly as human as ever over the noise of things worth eating.',
-        resourceShift: OFF_SEASON.fertile,
-    }],
+        resourceShift: OFF_SEASON.fertile, addLaw: 'bountifulGround' as const }],
     burnscar: [{
         label: 'the reburn year',
         description: 'The same burn scar with the fire back in it. The fireweed has gone up, the Standing Dead are alight one at a time, and the mountain the arena text always said was not finished has, this year, made its point.',
@@ -85,8 +81,7 @@ export const OFF_SEASON_SKINS_EXTRA2: Record<string, OffSeasonSkin[]> = {
         label: 'the cleared year',
         description: 'The same proving ground swept by a Capitol demolition team. The craters have been walked with detectors, the flagged ordnance has been lifted, and the vines that grew something worse have had a whole undisturbed summer to grow it.',
         liftsLaw: true,
-        resourceShift: OFF_SEASON.fertile,
-    }, {
+        resourceShift: OFF_SEASON.fertile, addLaw: 'bountifulGround' as const }, {
         label: 'the dry year',
         description: 'The same craters with the ponds gone to mud. Everything that was sleeping under water is sleeping under a cracked crust that a foot goes through, and the Stagnant Pool Marsh has become a scatter of shells with nothing to hide them.',
         dangerShift: OFF_SEASON.harsher,
@@ -101,8 +96,7 @@ export const OFF_SEASON_SKINS_EXTRA2: Record<string, OffSeasonSkin[]> = {
         label: 'the block-party year',
         description: 'The same street strung with bunting. Every house has a table on the lawn and every table is laid, the Pool Complex is open, and the delivery trucks are coming twice as often to somewhere that nobody has ever been able to leave.',
         resourceShift: OFF_SEASON.fertile,
-        dangerShift: OFF_SEASON.kinder,
-    }],
+        dangerShift: OFF_SEASON.kinder, addLaw: 'dawnMercy' as const }],
     labyrinth: [{
         label: 'the fixed year',
         description: 'The same yew maze with the rails seized. The walls have not moved since the gong, the cannon carries over the hedges for the first time anyone remembers, and the tributes are finding out that a maze that stays still is still a maze.',
@@ -111,8 +105,7 @@ export const OFF_SEASON_SKINS_EXTRA2: Record<string, OffSeasonSkin[]> = {
         label: 'the overgrown year',
         description: 'The same labyrinth a year unclipped. The Long Alley is a tunnel, the Parterre has gone to seed, and the hedges are thick enough now that the walls do not need to move to close a route.',
         resourceShift: OFF_SEASON.fertile,
-        dangerShift: OFF_SEASON.harsher,
-    }],
+        dangerShift: OFF_SEASON.harsher, addLaw: 'bountifulGround' as const }],
     ashgrove: [{
         label: 'the term-time year',
         description: 'The same school with the timetable torn down. The bell rings whenever it likes, the sponsors are dropping on the Roof, the Playing Field, anywhere, and nobody in the corridors knows what period it is.',
@@ -127,8 +120,7 @@ export const OFF_SEASON_SKINS_EXTRA2: Record<string, OffSeasonSkin[]> = {
         label: 'the resupply year',
         description: 'The same station with the Fuel Farm full. Somebody topped it before the reaping, the generator will outlast the Games, and the Mess has been stocked for a wintering party of twelve who never arrived.',
         resourceShift: OFF_SEASON.fertile,
-        dangerShift: OFF_SEASON.kinder,
-    }, {
+        dangerShift: OFF_SEASON.kinder, addLaw: 'dawnMercy' as const }, {
         label: 'the dead-fuel year',
         description: 'The same station with the tanks empty on the first morning. No generator, no heat, the Habitation Ring going to the same temperature as the Ridge, and the only fire on the ice shelf is whatever the Gamemakers have decided this year to allow.',
         liftsLaw: true,

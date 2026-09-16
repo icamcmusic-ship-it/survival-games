@@ -1,3 +1,4 @@
+import type { TraitMod } from './traits';
 /**
  * T-7: per-tribute quirks — non-mechanical idiosyncrasies that make two
  * tributes with identical traits read as different people.
@@ -795,3 +796,188 @@ export const QUIRKS: Quirk[] = [
         ],
     },
 ];
+
+/**
+ * Audit 4 §6.3/§10.1: what each quirk actually does.
+ *
+ * 85 quirks with four-plus lines each were the best character-differentiation
+ * content in the repository and were **entirely inert**: read in two places,
+ * one that assigns them and one that surfaces a line on a quiet cycle, plus a
+ * single achievement that counts how many somebody has. "Always takes the high
+ * ground", "never turns their back on a treeline", "sleeps in short shifts by
+ * choice" — every one of them is a mechanical hook written out in prose and
+ * left as prose, which is precisely the failure `data/traits.ts` exists to
+ * document having fixed once already.
+ *
+ * They reuse `TraitMod` rather than growing a vocabulary of their own, so a
+ * quirk costs a data row and no read site at all, and `traitMod()` folds them
+ * into the same sum. Every row is derived from what the quirk's own label
+ * says, and several of them cost something — somebody who skips breakfast to
+ * scout is hungrier, somebody who sleeps in short shifts is more tired — because
+ * a habit that is all upside is a trait with the price filed off.
+ *
+ * Magnitudes are about a third of a trait's. A tribute carries one or two, they
+ * are free, and they are meant to be a tilt rather than a build.
+ */
+export const QUIRK_MODS: Record<string, Partial<Record<TraitMod, number>>> = {
+    'counts the days out loud': { resolveDrift: 0.2 },
+    'will not sleep near water': { water: -0.6, awarenessNight: 0.3 },
+    'always takes the high ground': { highland: 0.7 },
+    'talks to the cameras': { excitement: 0.1, concealment: -0.02 },
+    'never turns their back on a treeline': { awareness: 0.3, ambush: -0.02 },
+    'hums their district anthem': { resolveDrift: 0.15, concealment: -0.02 },
+    'keeps a pebble from home': { resolveDrift: 0.2 },
+    'sharpens everything twice': { meleePower: 0.3 },
+    'eats in exact halves': { hungerDrain: -1.5 },
+    'names the mutts': { fearGain: -0.1, muttDamage: -0.05 },
+    'sleeps sitting up': { fatigueNight: 1.5, awarenessNight: 0.5 },
+    'reads the sky before anything else': { coldResist: 0.08, heatResist: 0.08 },
+    'walks their camp perimeter three times': { campSkill: 0.05, awareness: 0.2 },
+    'never says the fallen’s names': { griefResist: 0.12 },
+    'braids or knots something when thinking': { trapSkill: 0.04, campSkill: 0.03 },
+    'tastes rain': { thirstDrain: -1.5 },
+    'keeps their laces double-tied': { fatigueDay: -0.8 },
+    'collects one thing from every zone': { scavenge: 0.04, capacity: 0 },
+    'apologises to plants they cut': { forage: 0.03, treachery: -0.03 },
+    'refuses to drink first': { poisonResist: 0.1, thirstDrain: 1 },
+    'marks the trees as they pass': { awareness: 0.25 },
+    'stretches like an athlete before moving': { fatigueDay: -1, retreat: 0.02 },
+    'whistles one note when the coast is clear': { allianceAffinity: 0.04, concealment: -0.02 },
+    'keeps score against the arena': { resolveDrift: 0.2, excitement: 0.05 },
+    'always faces the Cornucopia when they rest': { awareness: 0.2 },
+    'chews on a stalk of grass': { hungerDrain: -1 },
+    'cracks their knuckles before decisions': { unarmedPower: 0.3 },
+    'sings only when it rains': { sanityRecovery: 1, concealment: -0.02 },
+    'refuses to step on flowers': { forage: 0.03 },
+    'talks in their sleep': { concealment: -0.04 },
+    'tests every branch twice': { retreat: 0.03, fatigueDay: 0.5 },
+    'skips breakfast until they have scouted': { awareness: 0.3, hungerDrain: 1 },
+    'wipes their blade on their left sleeve': { meleePower: 0.2 },
+    'salutes the sky after the anthem': { excitement: 0.08, griefResist: 0.05 },
+    'builds tiny cairns at camps': { campSkill: 0.05 },
+    'never finishes a water skin': { thirstDrain: -1, scavenge: -0.02 },
+    'counts everything in dozens': { scavenge: 0.03 },
+    'whittles when nervous': { trapSkill: 0.05 },
+    'sleeps with their boots on': { fatigueNight: 1, retreat: 0.04 },
+    'greets the sunrise out loud': { resolveDrift: 0.15, concealment: -0.02 },
+    'checks their reflection in water': { sponsorAppeal: 0.3, concealment: -0.02 },
+    'keeps their back to the wind': { coldResist: 0.1 },
+    'ties a fresh knot every morning': { campSkill: 0.04, trapSkill: 0.03 },
+    'eats standing up': { awareness: 0.2, hungerDrain: 0.5 },
+    'apologises when they take supplies': { rapport: 0.06, treachery: -0.04 },
+    'draws maps in the dirt and erases them': { awareness: 0.3 },
+    'hoards string': { trapSkill: 0.05, capacity: 0 },
+    'names their weapons': { meleePower: 0.25, rangedPower: 0.15 },
+    'refuses to eat meat they did not catch': { poisonResist: 0.12, hungerDrain: 1 },
+    'stacks their supplies in the same order': { scavenge: 0.04 },
+    'listens with their eyes shut': { awareness: 0.4, ambush: -0.02 },
+    'saves the best bite for last': { hungerDrain: -1, resolveDrift: 0.1 },
+    'never sits with their back to a door or gap': { ambush: -0.04, awareness: 0.2 },
+    'taps out rhythms on their knee': { concealment: -0.03, resolveDrift: 0.1 },
+    'collects feathers': { rangedPower: 0.25 },
+    'reads tracks out loud': { awareness: 0.3, concealment: -0.02 },
+    'washes before the anthem': { medicine: 0.05, concealment: -0.02 },
+    'leaves food for the birds': { forage: 0.04, hungerDrain: 0.5 },
+    'braids their hair before a fight': { combatPower: 0.3, retreat: -0.02 },
+    'quotes their mentor': { sponsorTrust: 0.15, resolveDrift: 0.1 },
+    'always knows which way is home': { resolveDrift: 0.2, nightMovement: 0.3 },
+    'smells everything before eating it': { poisonResist: 0.15 },
+    'keeps a dead tribute\'s count': { targetDraw: 0.2, excitement: 0.06 },
+    'wraps their knuckles each morning': { unarmedPower: 0.35 },
+    'never steps in running water': { water: -0.5, concealment: 0.02 },
+    'hums while working': { campSkill: 0.04, concealment: -0.03 },
+    'points at the sky when a cannon fires': { griefResist: 0.08, excitement: 0.05 },
+    'sleeps in short shifts by choice': { awarenessNight: 0.6, fatigueNight: 2 },
+    'talks to their token': { sanityRecovery: 1.5 },
+    'balances things on their fingers': { rangedPower: 0.2 },
+    'always shares first': { allianceAffinity: 0.06, rapport: 0.05, hungerDrain: 0.5 },
+    'mutters odds under their breath': { odds: 0.3, concealment: -0.02 },
+    'faces threats side-on': { defended: 0.3, retreat: 0.02 },
+    'keeps their fire tiny': { concealment: 0.04, campSkill: -0.02 },
+    'buries what they cannot carry': { scavenge: 0.05 },
+    'winds an imaginary watch': { resolveDrift: 0.15 },
+    'thanks the parachutes': { sponsorTrust: 0.2 },
+    'walks heel-to-toe on soft ground': { concealment: 0.05 },
+    'names the stars wrong on purpose': { sanityRecovery: 1, nightMovement: 0.2 },
+    'checks on sleeping allies': { allianceAffinity: 0.06, betrayalResist: 0.08 },
+    'spits for luck before crossing open ground': { retreat: 0.03 },
+    'keeps the last coal of every fire': { campSkill: 0.06 },
+    'sharpens sticks while on watch': { trapSkill: 0.05, awarenessNight: 0.3 },
+    'won\'t say the word "arena"': { resolveDrift: 0.15, sanityDrain: -0.05 },
+    'measures time in shifts': { fatigueDay: -0.6, fatigueNight: -0.6 },
+};
+
+/**
+ * Audit 4 §6.3: what a quirk does, in words, for the tribute sheet.
+ *
+ * The rows above are the mechanic; this is the sentence. Kept next to the data
+ * rather than in the component so the two cannot drift — the failure mode
+ * `data/traits.ts` describes for its own `info` field.
+ */
+const MOD_PHRASES: Partial<Record<TraitMod, [string, string]>> = {
+    // [what a positive value means, what a negative value means]. Several of
+    // these hooks are costs rather than benefits — a drain, a fatigue, a
+    // multiplier offset — so the sign that reads as *good* is not the same
+    // across the table and the pair has to be written per hook.
+    awareness: ['misses less', 'notices less'],
+    awarenessNight: ['keeps a better watch after dark', 'keeps a worse watch after dark'],
+    concealment: ['is harder to spot', 'is easier to spot'],
+    ambush: ['ambushes better', 'is easier to ambush'],
+    combatPower: ['fights harder', 'fights softer'],
+    meleePower: ['is better in close', 'is worse in close'],
+    rangedPower: ['throws and shoots better', 'throws and shoots worse'],
+    unarmedPower: ['is worse to grapple with', 'is easier to grapple with'],
+    defended: ['is harder to land a blow on', 'is easier to land a blow on'],
+    retreat: ['breaks off sooner', 'presses on longer'],
+    hungerDrain: ['goes hungry faster', 'goes hungry slower'],
+    thirstDrain: ['goes thirsty faster', 'goes thirsty slower'],
+    fatigueDay: ['tires faster by day', 'tires slower by day'],
+    fatigueNight: ['rests worse', 'rests better'],
+    sanityDrain: ['frays faster', 'holds together better'],
+    sanityRecovery: ['steadies faster', 'steadies slower'],
+    resolveDrift: ['is harder to put out', 'is easier to put out'],
+    griefResist: ['carries a death better', 'carries a death worse'],
+    poisonResist: ['shrugs off bad food and venom', 'is quicker to be poisoned'],
+    coldResist: ['handles cold better', 'handles cold worse'],
+    heatResist: ['handles heat better', 'handles heat worse'],
+    forage: ['forages better', 'forages worse'],
+    medicine: ['treats a wound better', 'treats a wound worse'],
+    trapSkill: ['sets a better trap', 'sets a worse trap'],
+    campSkill: ['makes a better camp', 'makes a worse camp'],
+    scavenge: ['finds more', 'finds less'],
+    highland: ['prefers high ground', 'avoids high ground'],
+    water: ['prefers water', 'avoids water'],
+    nightMovement: ['moves better after dark', 'moves worse after dark'],
+    allianceAffinity: ['is easier to ally with', 'is harder to ally with'],
+    betrayalResist: ['is harder to turn on', 'is easier to turn on'],
+    treachery: ['is quicker to turn', 'is slower to turn'],
+    rapport: ['mends a quarrel faster', 'mends a quarrel slower'],
+    persuasion: ['argues better', 'argues worse'],
+    sponsorTrust: ['keeps sponsors warmer', 'cools sponsors'],
+    sponsorAppeal: ['sells better before the gong', 'sells worse before the gong'],
+    excitement: ['plays better on camera', 'plays worse on camera'],
+    odds: ['is priced shorter', 'is priced longer'],
+    targetDraw: ['draws the field toward them', 'draws the field away'],
+    fearGain: ['frightens more easily', 'frightens less easily'],
+    muttDamage: ['takes more from mutts', 'takes less from mutts'],
+    capacity: ['carries more', 'carries less'],
+};
+
+/** "notices more; goes hungry faster" — or undefined for a quirk with no row. */
+export function quirkEffect(label: string): string | undefined {
+    const mods = QUIRK_MODS[label];
+    if (!mods) return undefined;
+    const parts = (Object.entries(mods) as Array<[TraitMod, number]>)
+        .filter(([, v]) => v !== 0)
+        .map(([key, v]) => {
+            const phrase = MOD_PHRASES[key];
+            if (!phrase) return undefined;
+            // Several hooks read "less is better" — a drain, a cost, a
+            // multiplier offset — so the sign that means *good* is not the same
+            // everywhere. The phrase pair is written [positive value, negative
+            // value] and the read site does not have to know which is which.
+            return v > 0 ? phrase[0] : phrase[1];
+        })
+        .filter((x): x is string => !!x);
+    return parts.length > 0 ? parts.join('; ') : undefined;
+}

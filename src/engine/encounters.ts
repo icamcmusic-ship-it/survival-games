@@ -97,7 +97,15 @@ function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: b
     const penalty = injuryGrade(t, 'legs') * ENCOUNTERS.legsDodgePenaltyPerGrade;
 
     // §8: the Scholar worked this out days ago. Spent on the first arena
-    // event that would otherwise land, and only once per run.
+    // event that would otherwise land.
+    //
+    // Audit 4 §8.3: once per run, against a 10.2% arena-death share, is worth
+    // about one avoided event in a lifetime — while the Career's signature is
+    // a standing pack. Scholar measured 3.82% at n=1,231, the worst in the
+    // game, with the lowest kill count (0.31) and the third-highest signature
+    // fire rate: the set piece lands and converts into nothing. The archetype
+    // whose entire premise is *continuous* knowledge of the arena is the one
+    // whose knowledge was a single-use item. `scholarReading` renews it.
     if (t.arenaForeknowledge && !isBoon) {
         t.arenaForeknowledge = false;
         ctx.logEvent(

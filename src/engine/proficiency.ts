@@ -135,7 +135,7 @@ export function profOf(t: Tribute, skill: Proficiency): number {
  * Records a successful use. Returns the new level so callers can narrate a
  * milestone if they want one.
  */
-export function trainProficiency(t: Tribute, skill: Proficiency, ctx?: SimContext): number {
+export function trainProficiency(t: Tribute, skill: Proficiency, ctx?: SimContext, share = 1): number {
     if (!t.proficiencies) t.proficiencies = {};
     const current = profOf(t, skill);
     // Each level already held shrinks the next gain, so the curve flattens
@@ -156,7 +156,21 @@ export function trainProficiency(t: Tribute, skill: Proficiency, ctx?: SimContex
     // between an expert and the best anybody has ever been at this should not
     // be a few more forage rolls.
     const nearCap = current > PROFICIENCY.max - PROFICIENCY.nearCapBand ? PROFICIENCY.nearCapGainMultiplier : 1;
-    const gain = PROFICIENCY.gainPerUse * pressure * early * nearCap
+    /**
+     * Audit 4 §3.4: `share` is what a *failed* attempt is worth.
+     *
+     * Every training site in the engine fired only on success, and for
+     * `medicine` that is a cold start: `dressChance` reads medicine, so a
+     * tribute needed the skill to get a chance at the skill. Measured across
+     * 200 runs it was the only proficiency whose median holder sat below 1.0
+     * and whose ceiling over 3,800 tributes was 3.1 against a cap of 6 — on
+     * the skill the `medic` archetype is built on and the `medic` alliance
+     * role is scored by.
+     *
+     * A fumbled bandage is still the second time somebody has held one.
+     * Defaults to 1, so every existing call site is unchanged.
+     */
+    const gain = PROFICIENCY.gainPerUse * pressure * early * nearCap * share
         * Math.pow(1 - PROFICIENCY.diminishingPerLevel, current);
     const next = Math.min(PROFICIENCY.max, current + gain);
     // Rounded so the value stays legible in a tooltip and in save files.

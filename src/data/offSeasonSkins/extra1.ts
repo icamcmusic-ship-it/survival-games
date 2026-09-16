@@ -81,8 +81,7 @@ export const OFF_SEASON_SKINS_EXTRA1: Record<string, OffSeasonSkin[]> = {
     sporefields: [{
         label: 'the fruiting year',
         description: 'The same fungal plain in a season everything decided to spore at once. The Glowcap Wood is knee-deep in caps, the Shelf Terraces have doubled, and the Fruiting Body is putting out something new every morning. More of it is edible than ever. The same half still is not.',
-        resourceShift: OFF_SEASON.fertile,
-    }, {
+        resourceShift: OFF_SEASON.fertile, addLaw: 'bountifulGround' as const }, {
         label: 'the blight year',
         description: 'The same field with the Blight Scar spreading. Whatever the Gamemakers used to burn it back has got loose, the Deadfall is spreading uphill through the Mycelium Steps, and the spore load in the air is thick enough that breathing is a decision. The Ring of Caps is still the only place a parachute comes down.',
         addLaw: 'noHealing',
@@ -101,8 +100,7 @@ export const OFF_SEASON_SKINS_EXTRA1: Record<string, OffSeasonSkin[]> = {
         label: 'the jubilee year',
         description: 'The same buried complex with the lights on. The faces on the ceiling have been replaced with the Capitol seal, the Commissary is stocked, and the Hydroponics Bay is putting out more than a full roster could eat. Nobody has explained why the Gamemakers are being generous, and the schedule the lights used to go out on has not been cancelled — only postponed.',
         resourceShift: OFF_SEASON.fertile,
-        dangerShift: OFF_SEASON.kinder,
-    }, {
+        dangerShift: OFF_SEASON.kinder, addLaw: 'dawnMercy' as const }, {
         label: 'the flooded-sump year',
         description: 'The same vault with the Sump backing up. The Cistern has crested, the Service Tunnels run ankle-deep and rising, and the Reactor Level has a smell to it that the ventilation is not moving. The cannons still do not fire down here, and now the drains do not either.',
         addLaw: 'oneWayBorders',
@@ -144,8 +142,7 @@ export const OFF_SEASON_SKINS_EXTRA1: Record<string, OffSeasonSkin[]> = {
         label: 'the returning-tide year',
         description: 'The same drained sea floor with the water coming back. The Great Trench is filling, the Brine Sumps are pools, and the Tidepool Terraces have something alive in them for the first time since the ocean left. Everything is still sharp; it is just that some of it is underwater now, where you cannot see it.',
         dangerShift: OFF_SEASON.harsher,
-        resourceShift: OFF_SEASON.fertile,
-    }, {
+        resourceShift: OFF_SEASON.fertile, addLaw: 'bountifulGround' as const }, {
         label: 'the sanded year',
         description: 'The same reef after a season of wind. Sand has drifted over the Coral Razors and filled the Urchin Barrens to the spines, the Anemone Fields are buried, and a map built entirely out of edges has been rounded off. Still no fire, still no medicine. Fewer reasons to need either.',
         dangerShift: OFF_SEASON.kinder,
@@ -163,8 +160,7 @@ export const OFF_SEASON_SKINS_EXTRA1: Record<string, OffSeasonSkin[]> = {
         label: 'the reopened year',
         description: 'The same fairground with the power on. The Ferris Wheel turns, the Carousel plays, the Big Top has lights in it and the Midway has prizes on the stalls again — and among the prizes, this year, are things with edges. Somebody wanted this season to look like the old posters. Somebody else wanted it to end faster.',
         liftsLaw: true,
-        dangerShift: OFF_SEASON.harsher,
-    }, {
+        dangerShift: OFF_SEASON.harsher, addLaw: 'dawnMercy' as const }, {
         label: 'the pine year',
         description: 'The same park a decade further into the forest. The Pine Dark has come over the fence and through the Overgrown Campground to the edge of the Midway, the Haunted Manor has a tree through it, and the fog is thicker under the trees than it ever was on the rides. There is still nothing here to fight with. There is, at last, something to eat.',
         resourceShift: OFF_SEASON.fertile,
@@ -181,8 +177,7 @@ export const OFF_SEASON_SKINS_EXTRA1: Record<string, OffSeasonSkin[]> = {
     quarry: [{
         label: 'the open year',
         description: 'The same pit with the border left where it started. The Gamemakers have not closed a bench all season, the Rim Camp is still in play on the last day, and the Flooded Pit at the bottom is a place a tribute goes by choice rather than by schedule. The roads are the same roads. Nobody is being herded down them.',
-        liftsLaw: true,
-    }, {
+        liftsLaw: true, addLaw: 'dawnMercy' as const }, {
         label: 'the blasting year',
         description: 'The same quarry with the Powder Magazine back in use. Charges go off on the benches a level at a time, the Crusher House runs at night, and the spiral road that was the only way down is being cut shorter behind the tributes as they use it. The border still closes. This year it does so audibly.',
         addLaw: 'openMic',
@@ -192,8 +187,7 @@ export const OFF_SEASON_SKINS_EXTRA1: Record<string, OffSeasonSkin[]> = {
         label: 'the melt year',
         description: 'The same glacier in a summer it was not built for. The Frozen Falls are running, the Moulin is a torrent, and the Slush Basin has spread through the Blue Galleries to the Slick Tunnels. The Green Chimney is putting out something to eat. The ice overhead is thinner every hour anybody spends under it.',
         resourceShift: OFF_SEASON.fertile,
-        dangerShift: OFF_SEASON.harsher,
-    }, {
+        dangerShift: OFF_SEASON.harsher, addLaw: 'bountifulGround' as const }, {
         label: 'the sealed year',
         description: 'The same caves with the entrances closed. Fresh snow has buried the Snowfield to the horn, the Firn Slope has slid over the Blue Galleries, and the Gamemakers have decided this year to run the Games entirely under the ice. The light still comes down through thirty metres of it. Nothing else does.',
         addLaw: 'noSponsors',

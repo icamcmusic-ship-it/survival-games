@@ -1,5 +1,5 @@
 import { InjurySite, Tribute } from '../models/types';
-import { BLEEDING, SCARRING, VITALS, WOUND_RECOVERY } from '../data/balance';
+import { BLEEDING, PROFICIENCY, SCARRING, VITALS, WOUND_RECOVERY } from '../data/balance';
 import { SimContext } from './context';
 import { profOf, trainProficiency, observeProficiency } from './proficiency';
 import { traitMod } from '../data/traits';
@@ -294,6 +294,10 @@ export function attemptFieldDressing(ctx: SimContext, patient: Tribute, medic: T
 
     const isAlly = medic.id !== patient.id;
     if (!ctx.rng.chance(dressChance(medic, isAlly))) {
+        // Audit 4 §3.4: a dressing that does not take still teaches something,
+        // and without this `medicine` could not start — the roll that decides
+        // whether it lands reads the skill the landing is the only source of.
+        trainProficiency(medic, 'medicine', ctx, PROFICIENCY.failedAttemptShare);
         ctx.logEvent(
             isAlly
                 ? `${medic.name} works at ${patient.name}'s wound and cannot get it to close.`

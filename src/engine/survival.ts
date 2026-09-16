@@ -9,7 +9,7 @@ import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { warmthOf } from './composure';
 import { sanityBandOf } from './sanityBands';
-import { decayIdleDrift, profOf, trainTerrainSkills } from './proficiency';
+import { decayIdleDrift, profOf, trainProficiency, trainTerrainSkills } from './proficiency';
 import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding, tickWoundRecovery, injuryGrade } from './wounds';
 import { rememberedThreat } from './memory';
 import { hasCamp } from './fieldcraft';
@@ -456,10 +456,26 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
     // it simply does nothing when opened, so rest is the only way back up.
     if (arenaHasLaw(ctx.state, 'noHealing')) return;
 
+    /**
+     * Audit 4 §3.4: `medicine` trains here too.
+     *
+     * It was the only proficiency whose median holder sat below 1.0 and whose
+     * ceiling across 3,800 tributes was 3.1 against a cap of 6 — on the skill
+     * the `medic` archetype is built on and the `medic` alliance role is
+     * scored by. The cause was opportunity, not rate: `medicine` trained on a
+     * field dressing, an infection treatment, a gift and coating a blade, and
+     * field dressings run about 1.7 per run across a cast of 24.
+     *
+     * Using a medical item on yourself is the commonest medical act in the
+     * arena and taught nothing. Somebody who has packed their own wound four
+     * times is better at packing a wound; that is the whole premise of the
+     * proficiency system, and this is the one place it was not applied.
+     */
     // Antidote cures poison before it becomes lethal.
     if (t.injuries.poisoned) {
         if (consumeOne(t, i => i.id === 'antidote')) {
             healInjury(t, 'poisoned');
+            trainProficiency(t, 'medicine', ctx);
             ctx.logEvent(`${t.name} downs an Antidote Vial just in time, purging the venom from their blood.`, [t.id], { important: true, category: 'survival' });
             earnTrait(ctx, t, 'Venom-Wise');
         }
@@ -470,6 +486,7 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
     if (t.injuries.bleeding) {
         if (consumeOne(t, i => i.id === 'bandages')) {
             clearBleeding(t);
+            trainProficiency(t, 'medicine', ctx);
             ctx.logEvent(`${t.name} winds sterile bandages over the wound until the bleeding gives up.`, [t.id], { category: 'survival' });
         }
     }
@@ -482,6 +499,7 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
         // Clearing the flag is not enough — the severity has to go with it, or
         // the next scratch reopens at whatever the old wound was running at.
         clearBleeding(t);
+        trainProficiency(t, 'medicine', ctx);
         ctx.logEvent(`${t.name} works through a First Aid Kit, stitching and binding everything they can reach.`, [t.id], { important: true, category: 'survival' });
         return;
     }

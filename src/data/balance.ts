@@ -694,6 +694,12 @@ export const HUNTING = {
  */
 export const PROFICIENCY = {
     /**
+     * Audit 4 §3.4: what a failed attempt is worth, as a share of a successful
+     * one. Used by the wound-dressing path, which is the one skill in the game
+     * whose success roll reads the skill that only success could raise.
+     */
+    failedAttemptShare: 0.4,
+    /**
      * Gained per successful use, before diminishing returns.
      *
      * §3.1: measured over 400 runs, the average tribute's *best* proficiency
@@ -1896,6 +1902,21 @@ export const ENCOUNTERS = {
 
 /** Multi-round duels: how long they last and when someone breaks off. */
 export const COMBAT = {
+    /**
+     * Audit 4 §3.2: three literals that `check-undeclared-knobs` had baselined
+     * and one that it could not see at all.
+     *
+     * Routing every sanity loss through `loseSanity` turned
+     * `killer.vitals.sanity -= 12` into an argument, which took it out of the
+     * check's sight without making it any less of an undeclared dial. All
+     * three are declared here instead, where the knob check can count them and
+     * a balance pass can find them.
+     */
+    /** Killing somebody you were allied with. */
+    killAllySanity: 12,
+    /** ...and settling a vengeance you had sworn, which is the other way round. */
+    vengeanceSanityRelief: 20,
+    vengeanceExcitement: 30,
     /** The die on top of a fighter's estimated power in an exchange (0..this, inclusive). */
     powerSwingMax: 5,
     /**
@@ -6349,6 +6370,13 @@ export const GAMEMAKER_COSTS = {
  * the same undeclared-knob problem the stance table just got out of.
  */
 export const ARCHETYPE_HOOKS = {
+    /**
+     * Audit 4 §8.3: cycles a Scholar must hold one zone before they have read
+     * it well enough to renew `arenaForeknowledge`. The cost of the renewal is
+     * standing still, which is the one thing the archetype's premise actually
+     * requires and the one thing an arena makes expensive.
+     */
+    scholarRereadCycles: 3,
     // ---- riskCurve ----
     /** `escalating`: warier every day, up to a ceiling. */
     escalatingPerDay: 0.03,

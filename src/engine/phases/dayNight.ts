@@ -24,7 +24,7 @@ import { decayFear } from '../fear';
 import { decayNotoriety, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
 import { runStanceBeats } from '../stanceBeats';
-import { runArchetypeSignatures, tickGhosts } from '../archetypeHooks';
+import { runArchetypeSignatures, tickGhosts, tickScholars } from '../archetypeHooks';
 import { isActive, isDowned, tickDowned } from '../downed';
 import { processSpoilage, processVitals } from '../survival';
 import {
@@ -321,6 +321,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     runArchetypeSignatures(ctx);
     // A2: the Ghost's two opposed currencies, settled once per cycle.
     tickGhosts(ctx);
+    tickScholars(ctx);
 
     // 5. Cycle upkeep: the arena restocks, memories fade, bonds cool, the
     // crowd's attention wanders.

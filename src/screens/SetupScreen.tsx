@@ -17,6 +17,7 @@ import { CLIMATE_LABELS, LAW_LABELS, lawsOf, lengthEstimate, terrainMix } from '
 import { ARENA_MUTTS } from '../data/mutts';
 import { COIN_ECONOMY } from '../data/balance';
 import { RNG } from '../utils/rng';
+import { QUELLS } from '../data/gamesProfile';
 
 /** §9 (audit): how many standing patronages the Capitol will sell one player. */
 const PATRON_MAX_DISTRICTS = COIN_ECONOMY.patronMaxDistricts;
@@ -197,7 +198,7 @@ const SETUP_TABS: Array<[SetupTab, string, string]> = [
 
 type SetupTab = 'arena' | 'rules' | 'cast' | 'meta';
 
-export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig, forceQuell: boolean) => void }) {
+export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig, forceQuell: boolean, pinnedQuellId: string | null) => void }) {
     const [seed, setSeed] = useState(randomSeed());
     const [tab, setTab] = useState<SetupTab>('arena');
     // §2: a 750-coin purchase with no undo asks twice, like every other one-way action.
@@ -208,6 +209,9 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const [arenaFacet, setArenaFacet] = useState<'all' | 'unseen' | 'stacked' | 'blackout' | 'water' | 'small' | 'large'>('all');
     const [gamemakerMode, setGamemakerMode] = useState(false);
     const [forceQuell, setForceQuell] = useState(false);
+    // Audit 4 §6.2: null means "any Quell", which is what Force-a-Quell alone
+    // used to mean and now has to say explicitly.
+    const [pinnedQuellId, setPinnedQuellId] = useState<string | null>(null);
     const [config, setConfigState] = useState<GameConfig>(readStoredConfig);
     const [showAdvanced, setShowAdvanced] = useState(false);
     const coins = useStore(gameStore, st => st.coins);
@@ -267,7 +271,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
         // Starting a new Games discards the saved run immediately, and the
         // resume card alone was not a guard on that destructive path.
         if (savedRun && !window.confirm('A Games is already in progress. Starting a new one abandons that run — continue?')) return;
-        onStart(trimmedSeed || randomSeed(), arenaId, gamemakerMode, config, forceQuell);
+        onStart(trimmedSeed || randomSeed(), arenaId, gamemakerMode, config, forceQuell, forceQuell ? pinnedQuellId : null);
     };
 
     // §Special requests: the sealed draw leads, because it is both the way a
@@ -774,6 +778,44 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             onChange={(e) => setForceQuell(e.target.checked)}
                         />
                     </label>
+                    {/*
+                      Audit 4 §6.2/§9.5: 27 Quells share 6.1% of runs, which is
+                      0.23% each. They are the largest ratio of authored content
+                      to player exposure in the repository — each one has a
+                      name, an announcement, a cast-shape or config override and
+                      in several cases its own mechanics in `QUELL_MECHANICS` —
+                      and "Force a Quell" rolled randomly from the same weights,
+                      so a player who wanted to see The Reflection had no way to
+                      ask for it.
+
+                      Every piece of plumbing this needs already existed:
+                      `startGame` takes a `pinnedQuellId`, `gamesProfileFor`
+                      takes a `pinnedQuell`, and the share link already
+                      round-trips `quell`. The only thing missing was a control.
+                    */}
+                    {forceQuell && !config.vanillaRules && (
+                        <div className="mt-3 space-y-1.5">
+                            <label className="eyebrow" htmlFor="quell-pick">Which Quell</label>
+                            <select
+                                id="quell-pick"
+                                className="field text-sm"
+                                value={pinnedQuellId ?? ''}
+                                onChange={e => setPinnedQuellId(e.target.value || null)}
+                            >
+                                <option value="">Any — let the seed decide</option>
+                                {QUELLS.map(q => (
+                                    <option key={q.id} value={q.id}>
+                                        {q.name}{(panem.quellsSeen ?? []).includes(q.id) ? '' : ' — never run'}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-[11px] text-[var(--color-ink-500)]">
+                                {(panem.quellsSeen ?? []).length} of {QUELLS.length} seen. Pinning one still rolls
+                                everything else — the arena, the cast, the calendar — from your seed, so the run
+                                replays and shares exactly as any other does.
+                            </p>
+                        </div>
+                    )}
                 </div>
                     </div>
                 )}

@@ -1456,14 +1456,14 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             }
             // Killing someone you were allied with is its own kind of wound.
             if (killerWasAllied) {
-                loseSanity(killer, 12);
+                loseSanity(killer, COMBAT.killAllySanity);
             }
             // Vengeance discharged.
             const mem = ensureMemory(killer);
             if (mem.vengeance.includes(victim.id)) {
                 mem.vengeance = mem.vengeance.filter(id => id !== victim.id);
-                killer.vitals.sanity += 20;
-                addExcitement(killer, 30);
+                killer.vitals.sanity = Math.min(100, killer.vitals.sanity + COMBAT.vengeanceSanityRelief);
+                addExcitement(killer, COMBAT.vengeanceExcitement);
                 ctx.logEvent(
                     `${killer.name} settles the debt. ${victim.name} is dead, and whatever was driving ${killer.name} goes quiet.`,
                     [killer.id, victim.id],

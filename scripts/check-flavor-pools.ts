@@ -17,7 +17,7 @@
 import * as FLAVOR from '../src/data/flavorText';
 import { INTERVIEW_SCENARIOS } from '../src/data/flavorText';
 import { ARENA_FLAVOR, PROCEDURAL_FLAVOR_PACKS, GENERIC_ARENA_FLAVOR, actionPool } from '../src/data/arenaFlavor';
-import { QUIRKS } from '../src/data/quirks';
+import { QUIRK_MODS, QUIRKS } from '../src/data/quirks';
 
 /** Entries a pool should carry to outlast a single Games without repeating. */
 const POOL_TARGET = 12;

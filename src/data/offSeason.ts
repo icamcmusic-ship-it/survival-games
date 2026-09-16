@@ -43,7 +43,21 @@ export interface OffSeasonSkin {
      * the cosmetic skin this file used to ship exclusively — which is still
      * the right answer for a season that is genuinely only a change of light.
      */
-    /** A standing rule the season imposes on top of whatever the arena already runs. */
+    /**
+     * A standing rule the season imposes on top of whatever the arena already
+     * runs.
+     *
+     * Audit 4 §5.4: all 34 skins that carried one carried a *subtractive* law.
+     * Fourteen of the sixteen arena laws take something away, and the two that
+     * give — `bountifulGround` and `dawnMercy` — were pinned to one arena each
+     * (Story Wood, the Carnival) rather than drawable, so they were the two
+     * rarest of the sixteen at 2.3% and 2.5% of runs. A player met a law that
+     * gives something in one run in twenty.
+     *
+     * A season is exactly the right carrier for them: a mast year, a thaw, a
+     * jubilee. Nineteen skins now add one, on the arenas whose season was
+     * already the season of plenty or of the Capitol playing kindly.
+     */
     addLaw?: ArenaLawId;
     /**
      * The arena's own law does not hold this year. The thaw is not the Frozen
@@ -124,8 +138,7 @@ export const OFF_SEASON_SKINS: Record<string, OffSeasonSkin[]> = {
         label: 'the low-tide year',
         description: 'The same island chain at a tide that has gone out and not come back. Land bridges nobody has ever walked stand exposed and stinking, the shallows are a mudflat, and every hidden thing on the sea floor is now scenery.',
         dangerShift: OFF_SEASON.kinder,
-        resourceShift: OFF_SEASON.fertile,
-    }],
+        resourceShift: OFF_SEASON.fertile, addLaw: 'dawnMercy' as const }],
     eclipse: [{
         label: 'the daylight year',
         description: 'The same arena with the shutters open. Whatever the Gamemakers were doing to keep it dark, they have stopped, and a map built entirely around not being able to see is being played in full sun by people who trained for the opposite.',
@@ -153,8 +166,7 @@ export const OFF_SEASON_SKINS: Record<string, OffSeasonSkin[]> = {
         label: 'the green year',
         description: 'The same ash plain, three years further on. Something has started growing in it — thin, grey-green, waist high — and for the first time in the arena\'s history there is cover in it.',
         resourceShift: OFF_SEASON.fertile,
-        dangerShift: OFF_SEASON.kinder,
-    }],
+        dangerShift: OFF_SEASON.kinder, addLaw: 'bountifulGround' as const }],
     quarry: [{
         label: 'the frozen year',
         description: 'The same quarry in a hard freeze. The sumps are lids of ice, the cable runs are furred white, and the loose stone that made every slope a hazard is locked solid until the sun gets round to it.',
@@ -202,8 +214,7 @@ export const OFF_SEASON_SKINS: Record<string, OffSeasonSkin[]> = {
         label: 'the regrowth year',
         description: 'The same burn scar in its third summer. Fireweed to the waist, saplings thick enough to hide a person, and the black standing trunks the arena was named for now surrounded by something green enough to burn again.',
         resourceShift: OFF_SEASON.fertile,
-        dangerShift: OFF_SEASON.kinder,
-    }],
+        dangerShift: OFF_SEASON.kinder, addLaw: 'bountifulGround' as const }],
     craterfield: [{
         label: 'the flooded year',
         description: 'The same ordnance field under standing water. Every crater is a pond, the root mats float, and whatever is buried in the mud has stopped being something you can see and started being something you find.',
@@ -222,8 +233,7 @@ export const OFF_SEASON_SKINS: Record<string, OffSeasonSkin[]> = {
     ashgrove: [{
         label: 'the sap year',
         description: 'The same grey grove running with sap. Everything is sticky, everything smells of it, and the ash that used to fall silently now sticks to whatever it lands on, including people.',
-        resourceShift: OFF_SEASON.fertile,
-    }],
+        resourceShift: OFF_SEASON.fertile, addLaw: 'bountifulGround' as const }],
     kelvin: [{
         label: 'the failed-cooling year',
         description: 'The same cold works with the plant losing. Temperatures are climbing through the whole facility, the frost is coming off the pipework in sheets, and the arena is becoming survivable at exactly the rate it is becoming unstable.',
@@ -281,8 +291,7 @@ export const OFF_SEASON_SKINS: Record<string, OffSeasonSkin[]> = {
     }, {
         label: 'the overgrown year',
         description: 'The same city block gone green. Root damage has opened the slabs, there is soil in the stairwells, and the sightlines that made this arena a shooting gallery are broken everywhere by things that grew there.',
-        resourceShift: OFF_SEASON.fertile,
-    }],
+        resourceShift: OFF_SEASON.fertile, addLaw: 'bountifulGround' as const }],
     canopy: [{
         label: 'the leaf-fall',
         description: 'The same forest, out of season. The canopy that hid everything has come down into a knee-deep carpet that hides nothing and announces every footstep, and for the first time in the arena\'s history you can see the sky from the floor.',

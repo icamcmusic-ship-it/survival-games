@@ -32,6 +32,7 @@ import { believedRumours } from '../engine/rumours';
 import { notorietyOf } from '../engine/notoriety';
 import { isVeteran } from '../engine/veterans';
 import { charterSummary } from '../engine/allianceCharter';
+import { quirkEffect } from '../data/quirks';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
@@ -210,7 +211,26 @@ function StoryPanel({ tribute }: { tribute: Tribute }) {
                 {(tribute.quirks?.length ?? 0) > 0 && (
                     <p>
                         <span className="eyebrow block mb-0.5">What the cameras have noticed</span>
-                        <span className="italic">{tribute.quirks!.join('; ')}.</span>
+                        {/*
+                          Audit 4 §6.3: quirks were pure prose for their whole
+                          life, so this line was a flourish. They carry a
+                          `QUIRK_MODS` row now, and a habit that changes how
+                          somebody plays should say so on the sheet the same way
+                          a trait does — otherwise it is a mechanic the player
+                          can only discover by losing to it.
+                        */}
+                        {tribute.quirks!.map((q, i) => {
+                            const effect = quirkEffect(q);
+                            return (
+                                <span key={q} className="italic">
+                                    {i > 0 ? '; ' : ''}{q}
+                                    {effect && (
+                                        <span className="not-italic text-[var(--color-ink-500)]"> ({effect})</span>
+                                    )}
+                                </span>
+                            );
+                        })}
+                        <span className="italic">.</span>
                     </p>
                 )}
             </div>

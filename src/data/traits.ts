@@ -1,5 +1,6 @@
 import { Proficiency, Tribute } from '../models/types';
 import { PROFICIENCY } from './balance';
+import { QUIRK_MODS } from './quirks';
 
 /**
  * Traits, as data with hooks rather than chips with prose.
@@ -535,6 +536,26 @@ export function traitMod(t: Tribute, key: TraitMod): number {
     let total = 0;
     for (const name of t.traits) {
         const mod = TRAIT_DEFS[name]?.mods?.[key];
+        if (mod) total += mod;
+    }
+    /**
+     * Audit 4 §6.3/§10.1: quirks, folded into the same sum.
+     *
+     * 85 quirks with four-plus lines each were the best character-
+     * differentiation content in the repository and were **entirely inert** —
+     * read in exactly two places, one that assigns them and one that surfaces
+     * a line on a quiet cycle. "Always takes the high ground", "never turns
+     * their back on a treeline", "sleeps in short shifts by choice": every one
+     * of them is a mechanical hook written out in prose and left as prose.
+     *
+     * They reuse the trait vocabulary rather than growing one of their own, so
+     * a quirk costs a data row and no read site at all — the same argument
+     * `TraitMod` was built on. Magnitudes are deliberately about a third of a
+     * trait's: a tribute carries one or two, they are free, and they are
+     * supposed to be a tilt rather than a build.
+     */
+    for (const label of t.quirks ?? []) {
+        const mod = QUIRK_MODS[label]?.[key];
         if (mod) total += mod;
     }
     return total;
