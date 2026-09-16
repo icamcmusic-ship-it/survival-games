@@ -9,6 +9,7 @@ import { applyDamage, checkDeath } from './combat';
 import { clampTribute } from './vitals';
 import { heatBurden, insulation, massOf } from './physique';
 import { traitMod } from '../data/traits';
+import { loseSanity } from './sanityBands';
 
 /**
  * One exposure system, used by both the arena's own climate and the
@@ -91,7 +92,7 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     const heatScale = isHeat ? Math.max(0, 1 - traitMod(t, 'heatResist')) : 1;
     if (profile.fatigue) t.vitals.fatigue += Math.round(amount(profile.fatigue) * heatScale);
     if (profile.sanity && (profile.sanityChance === undefined || ctx.rng.chance(profile.sanityChance * scale))) {
-        t.vitals.sanity -= amount(profile.sanity);
+        loseSanity(t, amount(profile.sanity));
     }
     // §3.1: a well-padded tribute suffers in the heat in a way a lean one does
     // not, and pays for it in water.

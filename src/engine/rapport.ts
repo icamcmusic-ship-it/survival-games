@@ -5,6 +5,7 @@ import { adjustMutual, adjustRel, getRel, adjustRespect, respectOf } from './rel
 import { traitMod } from '../data/traits';
 import { cycleOf, ensureMemory, rivalRecord } from './memory';
 import { addFear, fearOf, reduceFear } from './fear';
+import { loseSanity } from './sanityBands';
 
 /**
  * §4.3: the three things the relationship layer could not do.
@@ -181,7 +182,7 @@ export function noteRivalDeath(ctx: SimContext, mourner: Tribute, victim: Tribut
     if (!sworn && (record?.fights ?? 0) < RIVALRY.grievableFights) return;
     if (killer?.id === mourner.id) return;
 
-    mourner.vitals.sanity = Math.max(0, mourner.vitals.sanity - RIVALRY.stolenKillSanity);
+    loseSanity(mourner, RIVALRY.stolenKillSanity);
     ensureMemory(mourner).vengeance = ensureMemory(mourner).vengeance.filter(id => id !== victim.id);
     if (killer) adjustRel(mourner, killer.id, -RIVALRY.stolenKillRegard);
     ctx.logEvent(

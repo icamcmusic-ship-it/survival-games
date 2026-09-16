@@ -24,6 +24,7 @@ import { PROFICIENCY, SLEEP, SOCIAL_AXES } from '../data/balance';
 import { bodyLabel, driftCondition, effectiveAgility, hungerDrainMultiplier, starvationBuffer, waterNeedMultiplier, youthRecoveryMultiplier } from './physique';
 import { arenaHasLaw, wildcardIs } from './gamesProfile';
 import { isEvasiveStance } from '../data/stances';
+import { loseSanity } from './sanityBands';
 
 /**
  * Staying alive between encounters: spoilage, hunger, thirst, exposure, wounds
@@ -59,7 +60,7 @@ function applyMandatoryPartnerDrain(ctx: SimContext, t: Tribute, board: Tribute[
     const zone = getZone(ctx.state.arena, t.zone);
     const withinOne = t.zone === partner.zone || (zone?.adjacent.includes(partner.zone) ?? false);
     if (withinOne) return;
-    t.vitals.sanity -= QUELL_MECHANICS.mandatoryPartnerSanityDrain;
+    loseSanity(t, QUELL_MECHANICS.mandatoryPartnerSanityDrain);
     t.vitals.fatigue += QUELL_MECHANICS.mandatoryPartnerFatigueDrain;
 }
 
@@ -180,8 +181,8 @@ function applyVitalInteractions(ctx: SimContext, t: Tribute) {
     // actually lands (§3.1), so the two additions to the model meet here.
     if (fatigue > VITALS.interactionFatigueFrom) {
         const grip = 1 - (attr(t, 'willpower') - 5) * VITALS.willpowerSanityGuard;
-        t.vitals.sanity -= (fatigue - VITALS.interactionFatigueFrom)
-            * VITALS.fatigueSanityCoupling * Math.max(VITALS.willpowerGuardFloor, grip);
+        loseSanity(t, (fatigue - VITALS.interactionFatigueFrom)
+            * VITALS.fatigueSanityCoupling * Math.max(VITALS.willpowerGuardFloor, grip));
     }
     // Starvation slows healing: `applyNaturalRecovery` reads `starving` off
     // the same threshold, and a body with nothing coming in does not close
@@ -308,7 +309,7 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
         if (applyDamage(ctx, t, INJURY_DAMAGE.poisoned * gradeDamageScale(t, 'poisoned'), { cause: 'Succumbed to poison', kind: 'status' })) {
             reliefFor(t, 'poisoned');
         }
-        t.vitals.sanity -= INJURY_DAMAGE.poisonSanity;
+        loseSanity(t, INJURY_DAMAGE.poisonSanity);
     }
     if (t.injuries.burned) {
         if (applyDamage(ctx, t, INJURY_DAMAGE.burned * gradeDamageScale(t, 'burned'), { cause: 'Died of untreated burns', kind: 'status' })) {
@@ -570,9 +571,35 @@ function applySanityPressure(ctx: SimContext, t: Tribute, time: 'day' | 'night',
         // player turned off still quietly shapes stance scoring.
         return;
     }
+    /**
+     * Audit 4 §3.2: the distribution this produced was U-shaped and the bottom
+     * was a trapdoor. Measured over 18,194 tribute-cycles: **31% of all live
+     * tribute-time at sanity 0-9 and 31% at 90+**, with the four middle
+     * deciles holding 17% between them; p25 was zero. Half the cast went all
+     * the way down and **one tribute in a thousand ever came back up**
+     * (`sanityRecovered` on 0.1% of the cast).
+     *
+     * The cause was not any single number. It was that every recovery term
+     * required something a tribute at the bottom does not have — company, or a
+     * night's rest they are too exhausted to take, or ground they have no bad
+     * memory of — while the drains stack unconditionally. A solo tribute, which
+     * is 42% of all zone-samples, could reach a net of -13 a cycle against a
+     * best case of +5, so there was no configuration in which they climbed.
+     *
+     * Three changes below, all of them reading state the engine already keeps:
+     * a camp is shelter for the mind as well as the body, being fed is a
+     * positive rather than merely the absence of a drain, and exhaustion no
+     * longer locks a tribute out of resting their head at exactly the point
+     * they most need to.
+     */
+    const ownCamp = hasCamp(ctx, t, 'fire') || hasCamp(ctx, t, 'shelter');
+
     let drain = SANITY.baseDrain;
     if (time === 'night') drain += SANITY.nightDrain;
-    if (alliesPresent === 0) drain += SANITY.isolationDrain;
+    // Alone in the open is not the same thing as alone somewhere you have made
+    // yours. A fire is the difference, and it is the difference the whole
+    // fieldcraft layer exists to let a solitary tribute make for themselves.
+    if (alliesPresent === 0 && !ownCamp) drain += SANITY.isolationDrain;
     if (t.vitals.hunger > SANITY.deprivationThreshold || t.vitals.thirst > SANITY.deprivationThreshold) {
         drain += SANITY.deprivationDrain;
     }
@@ -602,12 +629,38 @@ function applySanityPressure(ctx: SimContext, t: Tribute, time: 'day' | 'night',
     if (dread < 0.2 && t.health > 60 && t.vitals.hunger < SANITY.deprivationThreshold) {
         recovery += SANITY.safetyRecovery;
     }
+    // The design comment above this function has always listed food as one of
+    // the four things that push back, and food was only ever the *absence* of
+    // the deprivation drain. Somebody who has eaten and drunk is steadier than
+    // somebody who merely is not starving.
+    if (t.vitals.hunger < SANITY.fedThreshold && t.vitals.thirst < SANITY.fedThreshold) {
+        recovery += SANITY.fedRecovery;
+    }
+    if (ownCamp) recovery += SANITY.campRecovery;
 
-    // Temperament: who falls apart under this and who does not.
-    drain *= Math.max(0.1, 1 + traitMod(t, 'sanityDrain'));
+    // Temperament on the way up. On the way down it is applied inside
+    // `loseSanity`, with every other loss in the game.
     if (recovery > 0) recovery += traitMod(t, 'sanityRecovery');
 
-    t.vitals.sanity += recovery - drain;
+    /**
+     * Audit 4 §3.2: the gauge and the thirty scattered subtractions are one
+     * curve now.
+     *
+     * Adding the two solitary recovery terms above moved `gone` from 33.0% of
+     * tribute-time to 31.3% and the escape rate from 0.1% to 0.4% — almost
+     * nothing. The reason turned out not to be this function at all: disabling
+     * it outright left the sanity-by-day curve essentially unchanged, because
+     * ~95% of all sanity loss in the game was direct writes elsewhere. See the
+     * comment on `loseSanity`.
+     *
+     * So the drain half goes through `loseSanity` like every other loss —
+     * which is also where the temperament multiplier and the empty-gauge
+     * easing now live, so there is exactly one implementation of each — and
+     * the recovery is applied directly, because what pulls somebody back up
+     * should not be discounted for being needed.
+     */
+    if (recovery > 0) t.vitals.sanity = Math.min(100, t.vitals.sanity + recovery);
+    loseSanity(t, drain);
 }
 
 /**
@@ -721,7 +774,7 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
                 { category: 'loot' }
             );
         }
-        t.vitals.sanity = Math.max(0, t.vitals.sanity - SLEEP.sanityPerCycle);
+        loseSanity(t, SLEEP.sanityPerCycle);
         if (ctx.rng.chance(SLEEP.lineChance)) {
             ctx.logEvent(
                 `${t.name} has not properly slept in days. Things at the edge of ${t.zone} keep moving when they are not looked at directly, `
@@ -756,7 +809,7 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
     // the nights cost more than they used to.
     if (t.sanityScarred) {
         t.vitals.sanity = Math.min(t.vitals.sanity, SANITY_BANDS.scarredSanityCeiling);
-        if (ctx.state.phase === 'night') t.vitals.sanity = Math.max(0, t.vitals.sanity - SANITY_BANDS.scarredNightSanity);
+        if (ctx.state.phase === 'night') loseSanity(t, SANITY_BANDS.scarredNightSanity);
     }
 
     const band = sanityBandOf(t);

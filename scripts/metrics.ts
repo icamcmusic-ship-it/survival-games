@@ -121,6 +121,23 @@ const runLengths: number[] = [];
 let aliveSamples = 0, armedSamples = 0;
 const stanceSamples: Record<Stance, number> = Object.fromEntries(STANCES.map((s: Stance) => [s, 0])) as Record<Stance, number>;
 let bleedingSamples = 0;
+/**
+ * Audit 4 §3.2: the sanity distribution, which had no indicator for four
+ * audits and was the worst-shaped distribution in the simulation.
+ *
+ * Measured before the fix: **31.4% of all live tribute-cycles at sanity 0-9
+ * and 31.3% at 90+**, with the four middle deciles holding 17% between them
+ * and p25 at literal zero. Half the cast went all the way down and one in a
+ * thousand ever came back. Sanity was a two-state flag wearing a 0-100 scale,
+ * and it was simultaneously the largest single category of feed line in the
+ * game (12.9%), so the most common thing the broadcast said was a beat from a
+ * state a third of the cast occupied permanently.
+ *
+ * Two indicators, because a single mean hides exactly this failure: how much
+ * of tribute-time is spent pinned at the bottom, and how much is spent in the
+ * two middle bands `sanityBands.ts` exists to create.
+ */
+let sanityFloorSamples = 0, sanityMidSamples = 0;
 // Proficiency growth: is anyone actually getting better at anything?
 let profSamples = 0, profTotal = 0, profMax = 0;
 // Social systems: the ones the design review measured directly.
@@ -136,6 +153,8 @@ const sampleBoard = (tributes: Tribute[]) => {
         if (t.inventory.some(i => i.type === 'weapon')) armedSamples++;
         stanceSamples[t.stance]++;
         if (t.injuries.bleeding) bleedingSamples++;
+        if (t.vitals.sanity < 10) sanityFloorSamples++;
+        if (t.vitals.sanity >= 15 && t.vitals.sanity < 70) sanityMidSamples++;
         const prof = (t as Tribute & { proficiencies?: Record<string, number> }).proficiencies;
         if (prof) {
             const best = Math.max(0, ...Object.values(prof));
@@ -616,6 +635,34 @@ const indicators: Indicator[] = [
         guard: v => v >= 0.05 && v <= 0.25,
         guardText: '5%-25%',
         baseline: '18.1%',
+        fmt: asPct,
+    },
+    {
+        // Audit 4 §3.2: sanity must not be a two-state flag. A tribute pinned
+        // at the floor has stopped being a character and become a status
+        // effect, and the bottom band's residues fire every cycle they are
+        // there — which is why this was 12.9% of every line in the feed.
+        label: 'tribute-time spent at the sanity floor',
+        value: sanityFloorSamples / Math.max(1, aliveSamples),
+        guard: v => v <= 0.22,
+        guardText: '<= 22%',
+        goal: '<= 15%',
+        goalMet: (v: number) => v <= 0.15,
+        baseline: '31.4%',
+        fmt: asPct,
+    },
+    {
+        // The other half of the same finding: the two middle bands are the
+        // ones `sanityBands.ts` was written to create — cover starting to slip,
+        // foraging you no longer trust — and they held 22% of tribute-time
+        // between them while the two ends held 78%.
+        label: 'tribute-time in the middle sanity bands',
+        value: sanityMidSamples / Math.max(1, aliveSamples),
+        guard: v => v >= 0.22,
+        guardText: '>= 22%',
+        goal: '>= 30%',
+        goalMet: (v: number) => v >= 0.30,
+        baseline: '22.3%',
         fmt: asPct,
     },
     {

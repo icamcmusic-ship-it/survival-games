@@ -63,6 +63,7 @@ import { arenaHasLaw, arenaIsSilent, escalationShift, wildcardIs } from '../game
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
+import { loseSanity } from '../sanityBands';
 
 /**
  * The day/night cycle: the orchestrator, not the implementation.
@@ -552,7 +553,22 @@ function soundTheAnthem(ctx: SimContext) {
     alive.forEach(t => {
         const lost = fallenToday.filter(f => getRel(t, f.id) >= ANTHEM.grievableBond);
         if (lost.length === 0) return;
-        t.vitals.sanity = Math.max(0, t.vitals.sanity - ANTHEM.sanityPerNamedLoss * lost.length);
+        /**
+         * Audit 4 §3.2: this was `sanityPerNamedLoss * lost.length`, unbounded,
+         * and it is the single largest sanity event in the game — a bloodbath
+         * night that names four people a tribute was counting on took 24 in one
+         * step, straight past the whole pressure gauge in `applySanityPressure`.
+         *
+         * It also fell hardest on exactly the tributes the social layer exists
+         * to produce: the more bonds somebody has formed, the more names in the
+         * sky are theirs. Playing the game well was the fastest route to the
+         * bottom band.
+         *
+         * A second name is worse than one and a fourth is not four times the
+         * first. Capped, so a bad night is a bad night rather than a cliff.
+         */
+        const grief = Math.min(ANTHEM.maxSanityPerAnthem, ANTHEM.sanityPerNamedLoss * lost.length);
+        loseSanity(t, grief);
         if (ctx.rng.chance(ANTHEM.reactionChance)) {
             ctx.logEvent(
                 `${t.name} watches ${lost.map(l => l.name).join(' and ')} go up over ${t.zone} and does not move until the sky is dark again.`,

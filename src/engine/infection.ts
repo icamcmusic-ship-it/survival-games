@@ -46,6 +46,7 @@ import { hasCamp } from './fieldcraft';
 import { getZone, zoneFeatures } from './map';
 import { consumeOne } from './items';
 import { clampTribute } from './vitals';
+import { loseSanity } from './sanityBands';
 
 /** Sites that can turn septic. Frostbite and venom have their own arcs. */
 const INFECTABLE: Exclude<InjurySite, 'bleeding'>[] = ['arms', 'legs', 'torso', 'head', 'burned'];
@@ -173,7 +174,7 @@ export function applySepsisDrain(ctx: SimContext, t: Tribute) {
     const worst = worstSepsis(t);
     if (!worst) return;
     t.vitals.fatigue += INFECTION.fatiguePerCycle * worst.grade;
-    t.vitals.sanity -= INFECTION.sanityPerCycle * worst.grade;
+    loseSanity(t, INFECTION.sanityPerCycle * worst.grade);
     clampTribute(t);
     if (worst.grade >= INFECTION.maxGrade) {
         // At the top grade it does take health directly, and this is the

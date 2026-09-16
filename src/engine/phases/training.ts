@@ -17,6 +17,7 @@ import { clampTribute } from '../vitals';
 import { addExcitement } from '../audience';
 import { profOf, trainProficiency } from '../proficiency';
 import { traitMod } from '../../data/traits';
+import { loseSanity } from '../sanityBands';
 
 /**
  * Three days on the training floor, and then a room with the Gamemakers in it.
@@ -267,7 +268,7 @@ function attemptStation(
         [t.id],
         { important: true, category: 'training' }
     );
-    t.vitals.sanity = Math.max(0, t.vitals.sanity - TRAINING.failureSanity);
+    loseSanity(t, TRAINING.failureSanity);
     clampTribute(t);
     floor.forEach(o => {
         if (o.id === t.id) return;
@@ -937,7 +938,7 @@ export function processTraining(ctx: SimContext) {
                 // Careers do not flinch; they file it under 'rival'.
                 adjustRel(other, t.id, -TRAINING.careerRespect * severity);
             } else {
-                other.vitals.sanity -= TRAINING.intimidationSanity * severity;
+                loseSanity(other, TRAINING.intimidationSanity * severity);
                 adjustRel(other, t.id, -TRAINING.intimidationRelationship * severity);
                 // The intimidation used to evaporate the moment the sanity hit
                 // landed. It should stick to the person: this is how a Career's

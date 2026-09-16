@@ -10,6 +10,7 @@ import { adjustRel, adjustRespect } from './relationships';
 import { addFear } from './fear';
 import { hopsTo, severedEdgeSet } from './map';
 import { killTribute, enterShock } from './combat';
+import { loseSanity } from './sanityBands';
 
 /**
  * §9.1: the downed state and the rescue window.
@@ -182,7 +183,7 @@ export function tickDowned(ctx: SimContext) {
                 return;
             }
             failedRescuer = rescuer;
-            rescuer.vitals.sanity -= DOWNED.failedRescueSanity;
+            loseSanity(rescuer, DOWNED.failedRescueSanity);
             rescuer.vitals.fatigue += DOWNED.rescueFatigue;
             clampTribute(rescuer);
             ctx.logEvent(
@@ -218,7 +219,7 @@ export function tickDowned(ctx: SimContext) {
                         addFear(w, decider.id, DOWNED.executeFear);
                         adjustRespect(w, decider.id, -DOWNED.executeRespect);
                     });
-                    decider.vitals.sanity -= DOWNED.executeSanity;
+                    loseSanity(decider, DOWNED.executeSanity);
                     clampTribute(decider);
                     return;
                 }

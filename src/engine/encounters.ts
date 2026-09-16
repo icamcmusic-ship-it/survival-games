@@ -34,6 +34,7 @@ import { traitMod } from '../data/traits';
 import { OBJECTIVES, QUALITY_BIAS } from '../data/balance';
 import { isAggressiveStance, isDefensiveStance, isEvasiveStance } from '../data/stances';
 import { exhaustedHere, freshGround, isBeingFollowed, layFalseTrail, noteForageFailure, noteForageSuccess } from './intent';
+import { loseSanity } from './sanityBands';
 
 export function fill(template: string, vars: Record<string, string>): string {
     return Object.entries(vars).reduce(
@@ -193,7 +194,7 @@ function applyEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef, narrate
     if (event.burned) injure(t, 'burned');
     if (event.frostbitten) injure(t, 'frostbitten');
     if (event.infected) injure(t, 'infected');
-    if (event.sanity) t.vitals.sanity -= event.sanity;
+    if (event.sanity) loseSanity(t, event.sanity);
     if (event.thirst) t.vitals.thirst += event.thirst;
     if (event.hunger) t.vitals.hunger += event.hunger;
     if (event.fatigue) t.vitals.fatigue += event.fatigue;
@@ -963,7 +964,7 @@ export function handleInsanity(ctx: SimContext, t: Tribute) {
     const vars = { tribute: t.name, zone: t.zone };
     if (roll < ENCOUNTER_BRANCH.breakdownHallucinate) {
         ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.hallucination), vars), [t.id], { important: true, category: 'sanity' });
-        t.vitals.sanity -= ENCOUNTER_BRANCH.breakdownSanityCost;
+        loseSanity(t, ENCOUNTER_BRANCH.breakdownSanityCost);
     } else if (roll < ENCOUNTER_BRANCH.breakdownRuinStealth) {
         // A generated identity stat should not ratchet toward zero every time
         // sanity dips below the breakdown threshold — cap the lifetime damage
@@ -976,7 +977,7 @@ export function handleInsanity(ctx: SimContext, t: Tribute) {
             t.sanityStealthLoss = lost + loss;
         } else {
             ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.hallucination), vars), [t.id], { important: true, category: 'sanity' });
-            t.vitals.sanity -= ENCOUNTER_BRANCH.breakdownSanityCost;
+            loseSanity(t, ENCOUNTER_BRANCH.breakdownSanityCost);
         }
     } else if (t.inventory.length > 0) {
         const itemIdx = ctx.rng.nextInt(0, t.inventory.length - 1);

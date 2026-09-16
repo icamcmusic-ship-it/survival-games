@@ -14,6 +14,7 @@ import { healInjury, clearBleeding } from './wounds';
 import { clampTribute } from './vitals';
 import { getZone, zoneNames } from './map';
 import { ARCHETYPE_SIGNATURE_TEXTS } from '../data/flavorText';
+import { loseSanity } from './sanityBands';
 
 /**
  * A2: the behavioural half of an archetype.
@@ -167,7 +168,7 @@ const SIGNATURES: Record<string, Signature> = {
     wildcardTurn: (ctx, t) => {
         say(ctx, t, 'wildcardTurn', [t.id]);
         t.momentum = Math.min(HUNTING.momentumMax, (t.momentum ?? 0) + ARCHETYPE_HOOKS.wildcardMomentum);
-        t.vitals.sanity = Math.max(0, t.vitals.sanity - ARCHETYPE_HOOKS.wildcardSanity);
+        loseSanity(t, ARCHETYPE_HOOKS.wildcardSanity);
         clampTribute(t);
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
         return true;
@@ -204,7 +205,7 @@ const SIGNATURES: Record<string, Signature> = {
         t.resolve = 100;
         others(ctx, t).forEach(o => {
             addFear(o, t.id, ARCHETYPE_HOOKS.sermonFear);
-            o.vitals.sanity = Math.max(0, o.vitals.sanity - ARCHETYPE_HOOKS.sermonSanity);
+            loseSanity(o, ARCHETYPE_HOOKS.sermonSanity);
             clampTribute(o);
         });
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
@@ -294,7 +295,7 @@ const SIGNATURES: Record<string, Signature> = {
         say(ctx, t, 'beastRoar', [t.id]);
         others(ctx, t).forEach(o => {
             addFear(o, t.id, ARCHETYPE_HOOKS.roarFear);
-            o.vitals.sanity = Math.max(0, o.vitals.sanity - ARCHETYPE_HOOKS.roarSanity);
+            loseSanity(o, ARCHETYPE_HOOKS.roarSanity);
             clampTribute(o);
         });
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * 2);

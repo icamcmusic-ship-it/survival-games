@@ -31,6 +31,7 @@ import { cycleOf, ensureMemory, hasStoodBy, swearVengeance } from './memory';
 import { areLovers } from './alliance';
 import { addExcitement } from './audience';
 import { clampTribute } from './vitals';
+import { loseSanity } from './sanityBands';
 
 /** The stored shape, named locally so the resolver can take one. */
 type LoveTriangle = NonNullable<GameState['loveTriangles']>[number];
@@ -238,7 +239,7 @@ function resolveChoice(ctx: SimContext, tri: LoveTriangle, byId: Map<string, Tri
     adjustRel(chosen, apex.id, TRIANGLES.chosenRegard);
     adjustRel(passed, apex.id, -TRIANGLES.passedOverRegard);
     adjustRel(passed, chosen.id, -TRIANGLES.passedOverRegard);
-    passed.vitals.sanity -= TRIANGLES.passedOverSanity;
+    loseSanity(passed, TRIANGLES.passedOverSanity);
     clampTribute(passed);
     addExcitement(apex, TRIANGLES.choiceExcitement);
     addExcitement(passed, TRIANGLES.choiceExcitement);

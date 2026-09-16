@@ -57,6 +57,11 @@ const problems: string[] = [];
 const note = (m: string) => { if (!problems.includes(m)) problems.push(m); };
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
+/** Every `ZoneEffectKind`, so the sweep can assert each one actually occurs. */
+const ZONE_EFFECT_KINDS = [
+  'burning', 'flooded', 'frozen', 'contaminated', 'fogbound', 'stripped',
+  'blooming', 'irradiated', 'quaking', 'swarming',
+] as const;
 // Note on avgDays: this sweep and `metrics.ts` both count `state.day` at the
 // end of the run, but they sweep different configs. Two of the four here are
 // two- and three-district fields that end in a few days, which is why the
@@ -216,6 +221,18 @@ let weatherFronts = 0, trapsDestroyed = 0, gamemakerSignatures = 0;
 // authored 1, 5 and 2 times across forty arenas. Counted so the next time a
 // kind falls out of the roster it shows up here rather than in an audit.
 let garrisonRuns = 0, garrisonCycles = 0, edgeCrossingsMade = 0, hiddenEdgesFound = 0;
+/**
+ * Audit 4 §1.8/§1.9: every `ZoneEffectKind`, counted off live state rather
+ * than off a log line.
+ *
+ * `irradiated` had forty-five lines of engine behind it — a 999-cycle
+ * duration, its own damage, and the only *creeping* effect in the game — and
+ * fired zero times in 340 complete runs, because six authored events across
+ * forty arenas were the only thing that could start one. Nothing said so,
+ * because nothing counted it. The `every kind must occur` assertion below is
+ * the same shape as the one `trapKinds` grew for exactly this reason.
+ */
+const zoneEffectKinds: Record<string, number> = {};
 let cornucopiaHeld = 0, cornucopiaPayouts = 0;
 let signatureBeats = 0, calendarBeats = 0;
 let maxAbsRelationship = 0;
@@ -248,6 +265,8 @@ for (let i = 0; i < 400; i++) {
   const sample = () => {
     Object.keys(state.eventLastFired ?? {}).forEach(id => eventIdsFired.add(id));
     if (Object.keys(state.garrisonedEdges ?? {}).length > 0) { garrisonCycles++; sawGarrison = true; }
+    Object.values(state.zoneEffects ?? {}).forEach(list =>
+      list.forEach(e => { zoneEffectKinds[e.kind] = (zoneEffectKinds[e.kind] ?? 0) + 1; }));
     (state.rumours ?? []).forEach(r => {
       if (!r.isTrue || rumourIdsCounted.has(r.id)) return;
       rumourIdsCounted.add(r.id);
@@ -843,6 +862,9 @@ if (debtsRepaid === 0) note('no debt was ever repaid');
 if (charterBreaches === 0) note('no alliance charter was ever broken');
 if (districtBonds === 0) note('no district pair ever reached the late game together');
 if (weatherFronts === 0) note('no weather front ever crossed the arena');
+ZONE_EFFECT_KINDS.forEach(kind => {
+  if (!zoneEffectKinds[kind]) note(`no zone was ever ${kind} — ZoneEffectKind declares it and nothing the engine does can produce it`);
+});
 if (garrisonRuns === 0) note('no alliance ever garrisoned a contested edge — tickGarrisons runs every cycle and reaches nothing');
 if (edgeCrossingsMade === 0) note('no collapsing or oneWayAfter edge was ever crossed — countCrossing has nothing to count');
 if (hiddenEdgesFound === 0) note('no hidden edge was ever discovered — tickHiddenEdges reaches nothing');
@@ -1063,6 +1085,8 @@ console.log(`politics: factionActions=${factionActions} expulsions=${expulsions}
 console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} paidInInformation=${tributesPaidInformation} truces=${trucesStruck} trucesHeld=${trucesHeld} trucesBroken=${trucesBroken} trucesRenewed=${trucesRenewed} trucesLapsed=${trucesLapsed} trucesTurned=${trucesTurned} soloDepartures=${soloDepartures} schisms=${schisms}`);
 console.log(`bonds: debtsRepaid=${debtsRepaid} charterBreaches=${charterBreaches} performed=${performedBonds} districtPairs=${districtBonds}`);
 console.log(`resolve: breakdowns=${resolveBreakdowns} nightlock=${nightlockDeaths}`);
+console.log('zone effects (live instances sampled per cycle): '
+  + Object.entries(zoneEffectKinds).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k}=${n}`).join(' '));
 console.log(`edges: garrisonRuns=${garrisonRuns} garrisonCycles=${garrisonCycles} crossingsCounted=${edgeCrossingsMade} hiddenEdgesFound=${hiddenEdgesFound}`);
 console.log(`arena2: weatherFronts=${weatherFronts} trapsDestroyed=${trapsDestroyed} gmSignatures=${gamemakerSignatures}`);
 console.log(`zoneControl: held=${cornucopiaHeld} payouts=${cornucopiaPayouts}`);

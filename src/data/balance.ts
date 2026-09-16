@@ -592,8 +592,37 @@ export const SANITY = {
     allyPresentRecovery: 4,
     /** A well-fed, unhurt tribute in a place they have no bad memory of. */
     safetyRecovery: 3,
-    /** Fatigue above this cancels any rest recovery. */
-    restFatigueCeiling: 70,
+    /**
+     * Fatigue above this cancels any rest recovery.
+     *
+     * Audit 4 §3.2: this was 70, which meant the exhausted — the exact
+     * population bottoming out — could not rest their mind either, and the two
+     * failures compounded into a trapdoor nobody climbed out of.
+     */
+    restFatigueCeiling: 85,
+    /**
+     * Audit 4 §3.2: the two recovery terms a *solitary* tribute can reach.
+     *
+     * Every pre-existing recovery needed company, or a rest they were too
+     * tired to take, or ground with no history on it. 42% of zone-samples are
+     * one person alone, and for them the net was -13 a cycle against a +5 best
+     * case — so `gone` was a floor rather than a band, holding 33% of all
+     * tribute-time with a 0.1% escape rate.
+     */
+    /** Hunger and thirst both under this is *fed*, not merely not starving. */
+    fedThreshold: 35,
+    fedRecovery: 2,
+    /** A fire or a shelter of their own. Somewhere to be, rather than nowhere. */
+    campRecovery: 4,
+    /**
+     * Audit 4 §3.2: the share of the full drain still applied at sanity 0.
+     *
+     * Pressure scales linearly from this floor at empty to 1.0 at full, so the
+     * bottom of the gauge is a basin rather than a pit. Lower means the bottom
+     * band is stickier; 1.0 restores the old behaviour, in which half the cast
+     * fell to zero and one in a thousand climbed back.
+     */
+    emptyGaugeDrainFloor: 0.12,
 } as const;
 
 /**
@@ -1152,6 +1181,12 @@ export const SANITY_BANDS = {
      * here for the rest of the run, so 'steady' is somewhere they used to live.
      */
     scarredSanityCeiling: 78,
+    /**
+     * Audit 4 §3.2: floor on the temperament multiplier in `loseSanity`, so no
+     * combination of traits can make a tribute immune to losing their mind.
+     * Mirrors the identical clamp `applySanityPressure` has always had.
+     */
+    minTemperamentScale: 0.1,
     /** ...and the nights are worse, permanently. */
     scarredNightSanity: 2,
     /**
@@ -1403,6 +1438,13 @@ export const ANTHEM = {
     /** Relationship at which a name in the sky is a personal loss. */
     grievableBond: 25,
     sanityPerNamedLoss: 6,
+    /**
+     * Audit 4 §3.2: the most one anthem can take. Uncapped, a night naming
+     * four friends was a 24-point step that bypassed the pressure gauge
+     * entirely — and it landed on the best-connected tributes, so the social
+     * layer was the fastest route to the bottom sanity band.
+     */
+    maxSanityPerAnthem: 14,
     /** Chance a personal loss gets its own line rather than being silent arithmetic. */
     reactionChance: 0.5,
 } as const;
@@ -2610,6 +2652,25 @@ export const ZONE_EFFECTS = {
     ambientSeverChance: 0.012,
     ambientQuakeChance: 0.025,
     ambientSwarmChance: 0.025,
+    /**
+     * Audit 4 §1.9: second sources, because the 30x spread across the
+     * reachable zone effects was never about the ambient rolls — fog has the
+     * weather-front system behind it and quaking and swarming had nothing.
+     * Both of these read state the engine already keeps.
+     */
+    /** `structuralFatigue` at or above which a ruins zone starts to shift underfoot. */
+    quakingFatigueThreshold: 0.55,
+    quakingFromFatigueChance: 0.09,
+    /** Cannons in one zone before something starts hatching out of what is left there. */
+    swarmDeathsThreshold: 2,
+    swarmFromDeathsChance: 0.07,
+    /**
+     * Audit 4 §1.8: the only thing besides six authored events that can start
+     * an `irradiated` zone. Gated on the arena already closing and on ground
+     * that is already contaminated or stripped, so it takes no new territory
+     * and cannot raise early-run lethality.
+     */
+    irradiatedFromSpoiledChance: 0.05,
 
     /**
      * §7.1: the force field at the arena's border zones. Discovery is common
