@@ -1,4 +1,4 @@
-import { Arena, ArenaLawId, EdgeRule, Injuries, Mutt, MuttRole, SignatureRule, Terrain, Zone, ZoneEffectKind } from '../models/types';
+import { Arena, ArenaLawId, EdgeRule, Injuries, Mutt, MuttRole, SignatureRule, Terrain, Zone, ZoneEffectKind, chokepointByName } from '../models/types';
 import { RNG, baseSeedOf } from '../utils/rng';
 import { MOOD_BY_BIOME, PROCEDURAL_EVENTS, FlavorTag } from '../data/proceduralFlavor';
 import { PROC_SIGNATURE, PROC_TERRAIN } from '../data/balance';
@@ -347,6 +347,17 @@ function buildBisected(zones: Zone[], rng: RNG) {
     const mid = Math.floor(outer.length / 2);
     const clusterA = outer.slice(0, mid);
     const clusterB = outer.slice(mid);
+    // Audit 4 §1.1: the comment above has always said "a genuine chokepoint"
+    // and the data never said so, because `ZoneFeatures.chokepoint` was
+    // required and the generator had no cover value to invent. `zoneFeatures`
+    // therefore fell back to guessing from the zone's *name* — which is how a
+    // bisected map's one crossing could read as ordinary open ground, and why
+    // `contested` edges could not be placed on the one place in a generated
+    // arena that is unambiguously worth holding. The field is optional now, so
+    // the two zones the whole map funnels through simply say what they are.
+    [clusterA[0], clusterB[0]].forEach(z => {
+        if (z) z.features = { ...z.features, chokepoint: true };
+    });
     const wireCluster = (cluster: Zone[]) => {
         for (let i = 0; i < cluster.length; i++) {
             connect(cluster[i], cluster[(i + 1) % cluster.length]);
@@ -582,11 +593,33 @@ function rollEdgeRules(rng: RNG, zones: Zone[]): Record<string, EdgeRule> | unde
     const rules: Record<string, EdgeRule> = {};
     const count = rng.nextInt(1, Math.min(3, edges.length));
     const picked = rng.shuffle(edges).slice(0, count);
+    /**
+     * Audit 4 §1.1: a generated map used to compose three of the seven edge
+     * kinds — `tolled`, `timeGated` and `oneWay` — so `collapsing`, `hidden`,
+     * `contested` and `oneWayAfter` could only ever exist if a hand-authored
+     * arena happened to declare one, and before this pass almost none did.
+     * A procedural year is a third of the arena roster; it should be able to
+     * produce every shape the grammar has a word for.
+     *
+     * The four additions all carry the same structural guards the authored
+     * ones do (see `data/arenaEdges.ts` and `check-arena-layout`):
+     *  - `hidden` only where at least one endpoint has another route, or
+     *    nobody can stand next to it to discover it;
+     *  - `contested` only on an edge with a chokepoint endpoint, because
+     *    `tickGarrisons` will not look anywhere else;
+     *  - `collapsing`/`oneWayAfter` only between well-connected zones, for the
+     *    same reason `oneWay` is: severing a leaf edge is a pit trap.
+     */
     picked.forEach(([a, b]) => {
+        const key = procEdgeKey(a.name, b.name);
+        const wellConnected = a.adjacent.length > 1 && b.adjacent.length > 1;
+        const eitherReachableWithout = a.adjacent.length > 1 || b.adjacent.length > 1;
+        const eitherIsChoke = !!a.features?.chokepoint || !!b.features?.chokepoint
+            || chokepointByName(a.name) || chokepointByName(b.name);
         const roll = rng.nextFloat();
-        // balance-exempt: rule-kind mix shares over one roll (tolled/timeGated/oneWay), structural to the grammar
-        if (roll < 0.45) {
-            rules[procEdgeKey(a.name, b.name)] = {
+        // balance-exempt: rule-kind mix shares over one roll, structural to the grammar
+        if (roll < 0.30) {
+            rules[key] = {
                 kind: 'tolled',
                 toll: {
                     fatigue: rng.nextInt(4, 8),
@@ -600,17 +633,33 @@ function rollEdgeRules(rng: RNG, zones: Zone[]): Record<string, EdgeRule> | unde
                 },
             };
         // balance-exempt: rule-kind mix share, same roll as above
-        } else if (roll < 0.75) {
+        } else if (roll < 0.50) {
             // balance-exempt: day/night split of generated gates, structural to the grammar
-            rules[procEdgeKey(a.name, b.name)] = { kind: 'timeGated', gatedTime: rng.chance(0.7) ? 'day' : 'night' };
-        } else if (a.adjacent.length > 1 && b.adjacent.length > 1) {
+            rules[key] = { kind: 'timeGated', gatedTime: rng.chance(0.7) ? 'day' : 'night' };
+        // balance-exempt: rule-kind mix share, same roll as above
+        } else if (roll < 0.63 && eitherIsChoke) {
+            rules[key] = { kind: 'contested' };
+        // balance-exempt: rule-kind mix share, same roll as above
+        } else if (roll < 0.74 && wellConnected) {
+            // balance-exempt: crossings a generated span has in it, part of the grammar
+            rules[key] = { kind: 'collapsing', crossings: rng.nextInt(4, 7) };
+        // balance-exempt: rule-kind mix share, same roll as above
+        } else if (roll < 0.84 && eitherReachableWithout) {
+            rules[key] = { kind: 'hidden' };
+        // balance-exempt: rule-kind mix share, same roll as above
+        } else if (roll < 0.93 && wellConnected) {
+            // balance-exempt: fair coin for which way survives
+            const [from, to] = rng.chance(0.5) ? [a, b] : [b, a];
+            // balance-exempt: crossings before a generated descent wears one-way
+            rules[key] = { kind: 'oneWayAfter', after: rng.nextInt(3, 5), from: from.name, to: to.name };
+        } else if (wellConnected) {
             // One-way only between well-connected zones — a oneWay into a
             // dead end would be a pit trap the AI cannot reason about.
             // balance-exempt: fair coin for the one-way direction
             const [from, to] = rng.chance(0.5) ? [a, b] : [b, a];
-            rules[procEdgeKey(a.name, b.name)] = { kind: 'oneWay', from: from.name, to: to.name };
+            rules[key] = { kind: 'oneWay', from: from.name, to: to.name };
         } else {
-            rules[procEdgeKey(a.name, b.name)] = { kind: 'tolled', toll: { fatigue: rng.nextInt(4, 8) } };
+            rules[key] = { kind: 'tolled', toll: { fatigue: rng.nextInt(4, 8) } };
         }
     });
     return rules;

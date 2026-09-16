@@ -105,7 +105,13 @@ export function PlaybackPopover({
 
             {open && (
                 <div
-                    role="dialog"
+                    // Audit 4 §1.11: this was `role="dialog"`, which promises a
+                    // screen reader a modal context that a popover neither has
+                    // nor wants. Escape, outside-click and focus return are all
+                    // handled below; the trigger already carries
+                    // `aria-haspopup="dialog"`, so the group keeps the name and
+                    // drops the promise.
+                    role="group"
                     aria-label="Playback — when to stop"
                     className="absolute top-full right-0 mt-1 z-40 panel p-4 space-y-3 w-[min(20rem,90vw)] shadow-[var(--shadow-ink-sm)]"
                 >

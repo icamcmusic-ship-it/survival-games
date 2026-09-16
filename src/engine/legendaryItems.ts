@@ -43,11 +43,15 @@ function composeName(ctx: SimContext, weapon: Item, wielder: Tribute): string[] 
 
     const out: string[] = [];
     const cap = (w: string) => w[0].toUpperCase() + w.slice(1).toLowerCase();
+    // Audit 4 §1.4: `${word}'s Answer` shipped "Swamps's Answer" and
+    // "Fields's Answer" to the feed, the chronicle and the record book,
+    // because a good half of the arena names are plural nouns.
+    const possessive = (w: string) => (/s$/i.test(w) ? `${w}'` : `${w}'s`);
     if (zoneWord) out.push(`the ${cap(zoneWord)}-${cap(weaponNoun)}`);
     if (arenaWord) out.push(`the ${cap(arenaWord)}-${cap(weaponNoun)}`);
     if (zoneWord) out.push(`the ${cap(weaponNoun)} of ${wielder.zone}`);
-    if (arenaWord) out.push(`${cap(arenaWord)}'s Answer`);
-    out.push(`District ${wielder.district}'s ${cap(weaponNoun)}`);
+    if (arenaWord) out.push(`${possessive(cap(arenaWord))} Answer`);
+    out.push(`${possessive(`District ${wielder.district}`)} ${cap(weaponNoun)}`);
     return out;
 }
 
@@ -69,12 +73,24 @@ export function bloodOnTheBlade(ctx: SimContext, weapon: Item | undefined, wield
     const taken = new Set(ctx.state.tributes.flatMap(t => t.inventory.map(i => i.legendName).filter(Boolean)));
 
     // §6: a name out of this arena and this weapon, not out of a flat list of
-    // twenty. A blade that has killed twice in a reef is the Reef-Blade; the
-    // fixed pool is the fallback for when the composed name is already taken
-    // or the arena's own vocabulary produces nothing usable.
+    // twenty. A blade that has killed twice in a reef is the Reef-Blade.
+    //
+    // Audit 4 §1.3: the fixed pool used to be the *fallback* for an empty
+    // composed list — and `composeName` ends with an unconditional push, so
+    // the composed list is never empty. Measured over 180 runs: 86 distinct
+    // legendary names, not one of them from the sixteen authored ones. The
+    // two sets are now one candidate list, so a blade is sometimes The
+    // Argument and sometimes the Reef-Blade, which is the mix the feature
+    // wanted in the first place.
+    //
+    // The authored list is sampled down to the size of the composed list
+    // rather than concatenated whole: sixteen against five would have flipped
+    // the imbalance the other way and made the arena-derived names — the
+    // better half of the feature — the rare ones.
     const composed = composeName(ctx, weapon, wielder).filter(n => !taken.has(n));
     const available = LEGENDARY_ITEM_NAMES.filter(n => !taken.has(n));
-    const pool = composed.length > 0 ? composed : available;
+    const authored = ctx.rng.shuffle(available).slice(0, Math.max(1, composed.length));
+    const pool = [...composed, ...authored];
     if (pool.length === 0) return;
 
     weapon.legendName = ctx.pickText(pool);

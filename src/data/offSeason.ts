@@ -13,11 +13,18 @@ import { OFF_SEASON_SKINS_EXTRA2 } from './offSeasonSkins/extra2';
  * Wasteland six times has run one map six times; the seventh, in the thaw, is
  * the same map and does not read like it.
  *
- * Deliberately and strictly cosmetic. A skin rewrites `Arena.description` and
- * nothing else: no zone, no law, no edge rule, no danger or resource value, no
- * mutt. Anything that changed the simulation would break the promise that a
- * seed replays the same Games, and would make this a second arena roster to
- * balance rather than a coat of paint.
+ * Originally, and strictly, cosmetic: a skin rewrote `Arena.description` and
+ * nothing else. §6.4 changed that and this comment did not follow it, which
+ * Audit 4 §1.7 caught — **118 of the 120 skins now carry a mechanical field**
+ * (`dangerShift` on 80, `resourceShift` on 53, `addLaw` on 34, `liftsLaw` on
+ * 28), and a contributor reading only this paragraph would not think to check
+ * a skin when an arena's numbers moved.
+ *
+ * What is still true, and is the actual invariant: every one of those four is
+ * small, is applied to *this run's cloned arena* and never to the shared
+ * definition, and is rolled from the run's own seed — so a seed still replays
+ * the same Games. A skin never touches the zone graph, the edge rules or the
+ * mutt roster. It changes the weather and the standing rule, not the map.
  *
  * Several skins per arena, one rolled from the seed at `OFF_SEASON_CHANCE`,
  * so it is an occasional surprise rather than a coin flip on every run — and a

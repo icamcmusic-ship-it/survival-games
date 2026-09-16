@@ -90,6 +90,26 @@ export function attr(t: { attributes: Attributes }, key: keyof Attributes): numb
     return typeof value === 'number' && !Number.isNaN(value) ? value : 5;
 }
 
+/**
+ * Audit 4 §1.1: the name half of the chokepoint test, shared.
+ *
+ * `zoneFeatures()` in `engine/map.ts` is the authority on a zone's interior,
+ * but the procedural arena generator has to know whether an edge's endpoint
+ * will read as a chokepoint *while it is rolling edge rules* — a `contested`
+ * edge with no chokepoint endpoint is inert, because `tickGarrisons` will not
+ * look at it. The generator cannot import `map.ts` (it would drag the whole
+ * simulation engine onto the setup screen's cold-start path; see the PERF note
+ * in `SetupScreen`), so the one predicate they both need lives here, where
+ * neither has to duplicate it and it cannot drift.
+ *
+ * This is deliberately only the *name* half. `zoneFeatures` also derives a
+ * chokepoint from a name hash for unnamed cases; that half is an implementation
+ * detail of the derivation and is not something the generator should key off.
+ */
+export function chokepointByName(zoneName: string): boolean {
+    return /pass|bridge|ravine|tunnel|gate|causeway|canal|strait|corridor/i.test(zoneName);
+}
+
 export interface Vitals {
     hunger: number; // 0-100, 100 is starving
     thirst: number; // 0-100, 100 is dehydrated
@@ -1539,12 +1559,22 @@ export interface ActiveMutt {
  * deterministically from terrain and name (see `zoneFeatures` in engine/map).
  */
 export interface ZoneFeatures {
+    /**
+     * Audit 4 §1.1: these three used to be required, so a zone that wanted to
+     * declare one thing about itself had to restate the other two — and the
+     * procedural generator, which knows structurally which of its zones is the
+     * single crossing between two halves of a bisected map, could not say so
+     * without inventing a cover value. They are now optional and derived when
+     * absent, exactly as `waterSource`, `shelterQuality`, `acoustics` and
+     * `vertical` already are. `zoneFeatures()` in `engine/map.ts` fills them
+     * in; nothing else should read `zone.features` directly.
+     */
     /** 0-1: how much of the zone offers real concealment. */
-    cover: number;
+    cover?: number;
     /** High ground: approaches are visible, ambushes harder. */
-    elevation: boolean;
+    elevation?: boolean;
     /** Bottlenecked ways in and out: ambushes easier, retreat harder. */
-    chokepoint: boolean;
+    chokepoint?: boolean;
     /**
      * §5.6: drinkable water inside the zone, distinct from the terrain being
      * 'water' — a spring on a moor is a water source; a brine sump is not
@@ -1576,6 +1606,18 @@ export interface ZoneFeatures {
      */
     vertical?: boolean;
 }
+
+/**
+ * Audit 4 §1.1: what `zoneFeatures()` hands back.
+ *
+ * `ZoneFeatures` is what a zone may *declare* — every field optional, so a
+ * zone states only what it means. This is what the engine *reads*: the same
+ * shape with every field resolved, because `zoneFeatures()` derives whatever
+ * the data left out. Keeping the two apart is what stops a consumer having to
+ * null-check a field that is never actually absent at read time.
+ */
+export type ResolvedZoneFeatures = Required<Omit<ZoneFeatures, 'waterSource' | 'shelterQuality' | 'acoustics' | 'vertical'>>
+    & Pick<ZoneFeatures, 'waterSource' | 'shelterQuality' | 'acoustics' | 'vertical'>;
 
 /** §5.1: where inside a vertical zone a tribute is standing. */
 export type ZoneLevel = 'upper' | 'lower';

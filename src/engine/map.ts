@@ -1,5 +1,5 @@
 import { arenaHasLaw } from './gamesProfile';
-import { Arena, EdgeRule, GameState, Tribute, Zone, ZoneFeatures, attr } from '../models/types';
+import { Arena, EdgeRule, GameState, Tribute, Zone, ResolvedZoneFeatures, attr, chokepointByName } from '../models/types';
 import { traitMod } from '../data/traits';
 import { BLEEDING, EDGE_RULES, EDGE_TOLL, ZONE_EFFECTS, ZONES } from '../data/balance';
 import { injuryGrade, openWound } from './wounds';
@@ -206,26 +206,35 @@ const FOUL_SOURCE_NAME = /brine|salt|sulphur|sulfur|boiling|steam|coolant|slurry
  * same arena always has the same texture without any data edits, and an
  * arena author can override any zone by setting `features` in its data.
  */
-export function zoneFeatures(zone: Zone): ZoneFeatures {
+export function zoneFeatures(zone: Zone): ResolvedZoneFeatures {
     const h = nameHash(zone.name);
     const derivedWater = !FOUL_SOURCE_NAME.test(zone.name)
         && (zone.terrain === 'water' || zone.terrain === 'wetland' || WATER_SOURCE_NAME.test(zone.name));
+    // Audit 4 §1.1: every field is derived first and then overridden by what
+    // the zone actually declares, rather than the authored object being
+    // returned wholesale with its gaps patched. Identical result for a zone
+    // that states all three of the original fields — and it lets a zone, or
+    // the generator, declare exactly the one thing it means and inherit the
+    // rest. Hand-authored features predate §5.6's fields, so filling in what
+    // data does not declare is still the job; there are simply three more of
+    // them now.
+    const cover = zone.features?.cover
+        ?? Math.max(0, Math.min(1, BASE_COVER[zone.terrain] + (h - 0.5) * 0.3));
+    const elevation = zone.features?.elevation
+        ?? (zone.terrain === 'highland' || /ridge|cliff|tower|spire|peak|stair|terrace|hill/i.test(zone.name) || h > 0.85);
+    const chokepoint = zone.features?.chokepoint
+        ?? (chokepointByName(zone.name) || (!elevation && h >= 0.62 && h <= 0.78));
     if (zone.features) {
-        // Hand-authored features predate §5.6's fields: fill in what data
-        // does not declare, so an authored `cover` never zeroes out shelter.
         return {
             ...zone.features,
+            cover, elevation, chokepoint,
             waterSource: zone.features.waterSource ?? derivedWater,
             shelterQuality: zone.features.shelterQuality
-                ?? Math.max(0, Math.min(1, BASE_SHELTER[zone.terrain] + zone.features.cover * 0.25)),
-            acoustics: zone.features.acoustics ?? derivedAcoustics(zone, zone.features.cover),
+                ?? Math.max(0, Math.min(1, BASE_SHELTER[zone.terrain] + cover * 0.25)),
+            acoustics: zone.features.acoustics ?? derivedAcoustics(zone, cover),
             vertical: zone.features.vertical ?? derivedVertical(zone),
         };
     }
-    const cover = Math.max(0, Math.min(1, BASE_COVER[zone.terrain] + (h - 0.5) * 0.3));
-    const elevation = zone.terrain === 'highland' || /ridge|cliff|tower|spire|peak|stair|terrace|hill/i.test(zone.name) || h > 0.85;
-    const chokepoint = /pass|bridge|ravine|tunnel|gate|causeway|canal|strait|corridor/i.test(zone.name)
-        || (!elevation && h >= 0.62 && h <= 0.78);
     const shelterQuality = Math.max(0, Math.min(1,
         BASE_SHELTER[zone.terrain] + cover * 0.25 + (/cave|cavern|tunnel|vault|cellar|shaft|bunker|lodge|cabin|shack|hollow/i.test(zone.name) ? 0.2 : 0)));
     return {

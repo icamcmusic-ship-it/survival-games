@@ -14,6 +14,7 @@ import { Simulator } from '../src/engine/simulator';
 import { generateTributes } from '../src/engine/generator';
 import { gamesProfileFor } from '../src/engine/gamesProfile';
 import { generateArena, PROCEDURAL_BIOME_COUNT } from '../src/engine/arenaGenerator';
+import { zoneFeatures } from '../src/engine/map';
 import { proceduralArenaFlavor } from '../src/data/proceduralFlavor';
 import { arenaHasLaw } from '../src/engine/gamesProfile';
 
@@ -171,6 +172,44 @@ ARENAS.forEach(arena => {
         }
         if (rule.kind === 'tolled' && !rule.toll) {
             problems.push(`${arena.id}: edgeRules '${key}' is tolled with no toll — it charges nothing`);
+        }
+        // Audit 4 §1.1, constraint 1: a `hidden` edge is impassable until a
+        // tribute has found it, and `tickHiddenEdges` only lets somebody find
+        // it while they are *standing on one of its endpoints*. So at least one
+        // endpoint must be reachable without it, or the edge can never be
+        // discovered by anybody and the zones on both sides are cut off for
+        // the whole run.
+        //
+        // One endpoint is enough, and deliberately so: nooneplace's `Exit` has
+        // exactly one adjacency and that adjacency is hidden, which is the
+        // arena working as written — a door you find from the corridor, not a
+        // room you can wander into.
+        if (rule.kind === 'hidden') {
+            const reachable = [a, b].some(end => {
+                const zone = arena.zones.find(z => z.name === end);
+                return (zone?.adjacent ?? []).some(n => n !== (end === a ? b : a));
+            });
+            if (!reachable) {
+                problems.push(`${arena.id}: edgeRules '${key}' is hidden and neither endpoint has another route — nobody can ever stand next to it to discover it`);
+            }
+        }
+        // Audit 4 §1.1, constraint 2: `tickGarrisons` only considers an
+        // endpoint where `zoneFeatures(zone).chokepoint` holds. A contested
+        // edge between two open zones can never be claimed by anybody.
+        if (rule.kind === 'contested') {
+            const chokes = [a, b].filter(end => {
+                const zone = arena.zones.find(z => z.name === end);
+                return !!zone && zoneFeatures(zone).chokepoint;
+            });
+            if (chokes.length === 0) {
+                problems.push(`${arena.id}: edgeRules '${key}' is contested but neither endpoint is a chokepoint — tickGarrisons can never claim it`);
+            }
+        }
+        if (rule.kind === 'collapsing' && (rule.crossings ?? 0) <= 0) {
+            problems.push(`${arena.id}: edgeRules '${key}' is collapsing with no positive 'crossings' — it goes on the first use`);
+        }
+        if (rule.kind === 'oneWayAfter' && (rule.after ?? 0) <= 0) {
+            problems.push(`${arena.id}: edgeRules '${key}' is oneWayAfter with no positive 'after' — it is just a oneWay`);
         }
     });
     // §5.12: an arena's mutt roster must cover the terrain it is made of, or
@@ -490,6 +529,34 @@ walk('src').forEach(file => {
         }
     });
 });
+
+/**
+ * Audit 4 §1.1: every edge kind has to be stocked across the roster.
+ *
+ * The bug this exists to stop is not a malformed rule — the per-arena checks
+ * above catch those. It is a kind that nobody ever authored, so the engine
+ * built on it runs in every game and does nothing. Measured before the fix:
+ * `contested` existed on one edge in one arena of forty, and garrisons were
+ * claimed zero times in 160 complete runs.
+ *
+ * The floor is deliberately low. It is a "somebody stocked this" assertion,
+ * not a design target.
+ */
+{
+    const EDGE_KIND_FLOOR = 4;
+    const counts: Record<string, number> = {
+        oneWay: 0, tolled: 0, timeGated: 0, collapsing: 0, oneWayAfter: 0, contested: 0, hidden: 0,
+    };
+    ARENAS.forEach(a => Object.values(a.edgeRules ?? {}).forEach(r => { counts[r.kind] = (counts[r.kind] ?? 0) + 1; }));
+    const total = Object.values(counts).reduce((x, y) => x + y, 0);
+    notes.push(`edge rules: ${total} across the roster — `
+        + Object.entries(counts).sort((x, y) => y[1] - x[1]).map(([k, n]) => `${k} ${n}`).join(', '));
+    Object.entries(counts).forEach(([kind, n]) => {
+        if (n < EDGE_KIND_FLOOR) {
+            problems.push(`edge kind '${kind}' is authored ${n} time(s) across all ${ARENAS.length} arenas, under the floor of ${EDGE_KIND_FLOOR} — the engine behind it effectively never runs`);
+        }
+    });
+}
 
 console.log(`arenas=${ARENAS.length} flavourPacks=${Object.keys(ARENA_FLAVOR).length} sourcesScanned=${walk('src').length}`);
 console.log(ARENAS.map(a => `  ${a.id.padEnd(12)} ${a.zones.length} zones  ${a.name}`).join('\n'));

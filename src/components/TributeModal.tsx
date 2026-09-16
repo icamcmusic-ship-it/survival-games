@@ -30,6 +30,7 @@ import { BodyDiagram } from './BodyDiagram';
 import { STANCE_PROFILES, STANCES } from '../data/stances';
 import { believedRumours } from '../engine/rumours';
 import { notorietyOf } from '../engine/notoriety';
+import { isVeteran } from '../engine/veterans';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
@@ -366,8 +367,16 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                             still attached — the header used to stack twelve. */}
                         <div className="flex flex-wrap gap-1.5 mt-2">
                             <span className="chip">District {tribute.district}</span>
-                            {gameState.veteransSeated?.includes(tribute.id) && (
-                                <span className="chip chip-gold" title="A past victor from your Hall of Fame, reaped again for this Games.">Returning victor</span>
+                            {isVeteran(gameState.veteransSeated, tribute) && (
+                                <Explainer
+                                    align="left"
+                                    label={<span className="chip chip-gold">Returning victor</span>}
+                                    title="Returning victor"
+                                >
+                                    A past victor from your Hall of Fame, reaped again for this Games.
+                                    They carry the traits they won with, a harder start on reputation
+                                    and sponsor trust, and a floor on their training score.
+                                </Explainer>
                             )}
                             <Explainer
                                 align="left"

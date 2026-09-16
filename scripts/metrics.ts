@@ -929,21 +929,37 @@ if (underSampled.length) {
  * These carry no guard for exactly the reason above. They carry the goal, so
  * the gap is visible, and the run count needed to close the confidence gap is
  * named rather than left as an exercise.
+ *
+ * Audit 4 §1.6: and they now *withhold the verdict* below the sample size at
+ * which it reproduces. At the default 400 runs this block printed
+ * `spread 2.77x SHORT of goal` and `worst zealot 2.79% SHORT of goal`; at
+ * 1,600 the same two lines read 1.92x and 3.82%, both MET. Eight of fifteen
+ * archetypes draw under `GUARD_MIN_SAMPLE` at 400 runs, so the whole-field
+ * spread is set by whichever small archetype got unlucky — zealot needed four
+ * more victors. A default invocation telling its reader that balance is
+ * failing when it is not is worse than one that says it cannot yet tell.
  */
 {
     const fullSpread = spreadOf(archetypeRates);
     const worstFull = archetypeRates[archetypeRates.length - 1];
     const bestFull = archetypeRates[0];
-    const band = (v: number, goalMet: boolean) => `${v.toFixed(2)}x  ${goalMet ? 'goal MET' : 'SHORT of goal'}`;
+    // Every member of the field has to clear the guard sample before a
+    // best/worst verdict over the whole field means anything: the extremes are
+    // by definition the rows most sensitive to one victor.
+    const canJudge = archetypeRates.every(([, , n]) => n >= GUARD_MIN_SAMPLE);
+    const verdict = (met: boolean) => (canJudge ? (met ? 'goal MET' : 'SHORT of goal') : 'not yet judgeable');
     console.log('\nwhole-field archetype balance (every archetype, no guard — see GUARD_MIN_SAMPLE):');
-    console.log(`  spread (best/worst)   ${band(fullSpread, fullSpread <= 2.3)}  (goal <= 2.3x)`);
+    console.log(`  spread (best/worst)   ${fullSpread.toFixed(2)}x  ${verdict(fullSpread <= 2.3)}  (goal <= 2.3x)`);
     console.log(`  best   ${bestFull[0]} ${(bestFull[1] * 100).toFixed(2)}% (n=${bestFull[2]})`);
     console.log(`  worst  ${worstFull[0]} ${(worstFull[1] * 100).toFixed(2)}% (n=${worstFull[2]})`
-        + `  ${worstFull[1] >= 0.035 ? 'goal MET' : 'SHORT of goal (>= 3.5%)'}`);
-    if (fullSpread > 2.3 || worstFull[1] < 0.035) {
-        console.log(`  These two lines are the design targets over the real cast. They are reported`);
-        console.log(`  rather than guarded because ${underSampled.length} archetype(s) are under ${GUARD_MIN_SAMPLE} entrants at`);
-        console.log(`  ${runs} runs; confirm a change to them with METRICS_RUNS=1600.`);
+        + `  ${verdict(worstFull[1] >= 0.035)}${canJudge ? '' : ''} (goal >= 3.5%)`);
+    if (!canJudge) {
+        console.log(`  Reported without a verdict: ${underSampled.length} archetype(s) are under ${GUARD_MIN_SAMPLE}`);
+        console.log(`  entrants at ${runs} runs, and the best/worst rows are the two most sensitive`);
+        console.log(`  to a single victor. Re-run with METRICS_RUNS=1600 to judge these two lines.`);
+    } else if (fullSpread > 2.3 || worstFull[1] < 0.035) {
+        console.log(`  These two lines are the design targets over the real cast, and every`);
+        console.log(`  archetype cleared ${GUARD_MIN_SAMPLE} entrants at ${runs} runs, so the verdict stands.`);
     }
 }
 console.log(failed ? `\n${failed} regression guard(s) breached.` : '\nAll regression guards hold.');
