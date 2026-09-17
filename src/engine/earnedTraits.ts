@@ -31,6 +31,8 @@ const EARNED_LINES: Record<string, (t: Tribute) => string> = {
     'Waterborn': t => `${t.name} comes ashore without gasping this time. The water has stopped arguing with them.`,
     'Silent Step': t => `Nobody has laid eyes on ${t.name} in days. The commentators have started calling them a ghost, and they are not wrong about how it moves.`,
     'Oathbound': t => `${t.name} kept the agreement to its last hour, and everyone watching knows it. In this arena, that is the rarest thing anyone owns.`,
+    'Witness': t => `${t.name} has now watched it happen twice. Something in how they look at the people they eat with has closed.`,
+    'Frostbitten': t => `${t.name} loses feeling in the same fingers for the second time, and this time does not panic about it. The cold has become a fact rather than an event.`,
     'Vulture': t => `${t.name} works through the fallen tribute's pack with a practicality that unsettles even the Capitol. Waste, they seem to feel, is for people with sponsors.`,
 };
 

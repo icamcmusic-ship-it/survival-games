@@ -1,6 +1,7 @@
+import { earnTrait } from './earnedTraits';
 import { Tribute } from '../models/types';
 import { injure } from './wounds';
-import { CLIMATE, CRAFTING, PHYSIQUE, TOOLS } from '../data/balance';
+import { CLIMATE, CRAFTING, PHYSIQUE, TOOLS , EARNED_TRAIT_RULES } from '../data/balance';
 import { hasTool } from './items';
 import { hasCamp } from './fieldcraft';
 import { getZone, zoneFeatures } from './map';
@@ -119,6 +120,9 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
             [t.id],
             { important: true, category: 'injury' }
         );
+        // Audit 5 §12.3: the second time the cold gets into them, the body learns.
+        t.frostbitesTaken = (t.frostbitesTaken ?? 0) + 1;
+        if (t.frostbitesTaken >= EARNED_TRAIT_RULES.frostbittenAt) earnTrait(ctx, t, 'Frostbitten');
     }
     if (profile.burn && !t.injuries.burned && ctx.rng.chance(profile.burn * scale * resist('burnResist'))) {
         injure(t, 'burned');

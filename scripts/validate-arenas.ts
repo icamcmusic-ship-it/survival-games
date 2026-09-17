@@ -11,6 +11,8 @@ import { ArenaLawId, GameState } from '../src/models/types';
 import { ARENA_MUTTS } from '../src/data/mutts';
 import { CLIMATE_LABELS } from '../src/data/arenaBriefing';
 import { Simulator } from '../src/engine/simulator';
+import { hasSignature } from '../src/engine/arenaSignature';
+import { SIGNATURE_BLURBS } from '../src/data/signatureBlurbs';
 import { generateTributes } from '../src/engine/generator';
 import { gamesProfileFor } from '../src/engine/gamesProfile';
 import { generateArena, PROCEDURAL_BIOME_COUNT } from '../src/engine/arenaGenerator';
@@ -105,6 +107,11 @@ ARENAS.forEach(arena => {
     }
 
     if (!ARENA_FLAVOR[arena.id]) problems.push(`${arena.id}: no arena flavour pack (falls back to generic)`);
+    // Audit 5 §1.1: five arenas shipped with no signature and no blurb, and
+    // `runArenaSignature` no-oped in them for the whole run. An arena is not
+    // an arena without a rule of its own.
+    if (!hasSignature(arena.id, arena.signatureRule)) problems.push(`${arena.id}: no SIGNATURES entry and no signatureRule — runArenaSignature does nothing here`);
+    if (!SIGNATURE_BLURBS[arena.id]) problems.push(`${arena.id}: no SIGNATURE_BLURBS entry — the setup screen cannot say what this arena does`);
     // §8.3: mutt count varies by design — one arena with a single persistent
     // horror is a different game from one with five kinds of teeth. An arena
     // does still need at least one.

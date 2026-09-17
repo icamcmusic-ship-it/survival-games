@@ -84,6 +84,16 @@ export const STANCE_PROFILES: Record<Stance, StanceProfile> = {
         conditional: true, minHold: 2,
         blurb: 'One zone behind someone who has not noticed. Three quiet cycles buys a free ambush.',
     },
+    Nursing: {
+        id: 'Nursing', label: 'Nursing', family: 'defensive',
+        conditional: true, minHold: 2,
+        blurb: 'Standing over a hurt ally. Staunches and settles them each cycle; goes nowhere and hunts nothing.',
+    },
+    Patrolling: {
+        id: 'Patrolling', label: 'Patrolling', family: 'defensive',
+        conditional: true, minHold: 2,
+        blurb: 'Walking the edge of a pack\'s ground. Learns what is in the neighbouring sectors, and is the first to be met.',
+    },
 };
 
 /** Every stance, in display order. The single source of truth for iteration. */

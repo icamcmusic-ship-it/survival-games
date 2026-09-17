@@ -1,4 +1,5 @@
 import { dayPhaseLabel } from '../ui/phaseLabels';
+import { evaluateInRunNearMisses } from '../data/achievements';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Hint } from '../components/Hint';
 import { EventCategory, GameState, Phase } from '../models/types';
@@ -638,6 +639,12 @@ export function GameScreen({
 
     const allianceAccent = (allianceId?: string) => (allianceId ? allianceColours[allianceId] : undefined);
 
+    const nearMisses = useMemo(
+        () => (isOver ? [] : evaluateInRunNearMisses(gameState, []).slice(0, 8)),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [gameState.cycle, gameState.phase, isOver]
+    );
+
     const phaseLabel = isOver
         ? 'The Games Have Ended'
         : dayPhaseLabel(gameState.day, gameState.phase).toUpperCase();
@@ -886,7 +893,24 @@ export function GameScreen({
                     </div>
 
                     {stageTab === 'standings' ? (
-                        <div className="panel p-4">
+                        <div className="panel p-4 space-y-4">
+                            {/* Audit 5 §2.2: what this run is close to, while it can
+                                still be steered. `evaluateInRunNearMisses` was written
+                                for this and shown only on the end screen. */}
+                            {nearMisses.length > 0 && (
+                                <details className="text-xs">
+                                    <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-500)]">
+                                        Within reach this Games ({nearMisses.length})
+                                    </summary>
+                                    <ul className="mt-2 space-y-1 list-none m-0 p-0">
+                                        {nearMisses.map(m => (
+                                            <li key={m.id} className="text-[var(--color-ink-300)]">
+                                                <span className="font-bold text-[var(--color-ink-200)]">{m.name}</span> — {m.detail}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </details>
+                            )}
                             <StandingsTable
                                 gameState={gameState}
                                 onSelectTribute={setSelectedTributeId}

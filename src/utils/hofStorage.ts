@@ -10,7 +10,7 @@ import { LEGACY_KEYS, STORAGE_KEYS, StorageSpec, readStored, removeStored, tryWr
  * only ever touches storage, so the spec and cap live here — they are the
  * storage contract, not gameStore's private detail.
  */
-export const HOF_STORAGE_KEY = STORAGE_KEYS.hallOfFame;
+const HOF_STORAGE_KEY = STORAGE_KEYS.hallOfFame;
 
 /** The archive evicts oldest-first past this many records; matches gameStore's slice(0, 50). */
 export const HOF_CAP = 50;

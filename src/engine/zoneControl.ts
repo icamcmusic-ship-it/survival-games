@@ -28,9 +28,6 @@ function cornucopiaName(ctx: SimContext): string {
     return ctx.state.arena.zones[0]?.name ?? 'The Cornucopia';
 }
 
-export function controllingAlliance(ctx: SimContext): string | undefined {
-    return ctx.state.cornucopiaHolder;
-}
 
 export function tickZoneControl(ctx: SimContext) {
     const zone = cornucopiaName(ctx);

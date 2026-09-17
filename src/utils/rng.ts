@@ -56,10 +56,6 @@ export function emptyPickCount(): number {
     return emptyPicks;
 }
 
-/** Resets the count — for a soak that wants a per-run figure. */
-export function resetEmptyPickCount(): void {
-    emptyPicks = 0;
-}
 
 export class RNG {
     private random: () => number;

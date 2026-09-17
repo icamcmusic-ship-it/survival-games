@@ -680,12 +680,11 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'arms-dealer',
         name: 'Arms Dealer',
-        // Audit 2 §11.2: three against an all-tributes ceiling of two, and two
-        // against a *victor* ceiling of one. Selling what you know at all, and
-        // then outliving everybody you sold it to, is the rare part.
+        // Audit 5 §1.6: measured at 4 victors in 400 runs — reachable, so a
+        // legendary and not a 'possible?'.
         hint: 'Crown a victor who sold what they knew to somebody else.',
         category: 'social',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v && (v.intelSold ?? 0) >= 1,
         nearMiss: (_s, v) => (v && (v.intelSold ?? 0) === 0 && (v.sharedIntelWith?.length ?? 0) > 0)
             ? `${v.name} gave away what they knew all Games and never once charged for it`
@@ -1087,7 +1086,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Berries',
         hint: 'See a tribute choose the nightlock rather than keep playing.',
         category: 'games',
-        rarity: 'common',
+        rarity: 'rare',
         test: state => state.tributes.some(t => t.causeOfDeath?.includes('nightlock')),
     },
     {
@@ -1445,7 +1444,8 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Cartographer',
         hint: 'See one tribute personally stand in every zone the arena has.',
         category: 'arena',
-        rarity: 'possible',
+        // Audit 5 §1.6: 8 of 9,600 tributes did it. Legendary, not theoretical.
+        rarity: 'legendary',
         test: state => {
             const all = state.arena.zones.map(z => z.name);
             return state.tributes.some(t => all.every(z => (t.visitedZones ?? []).includes(z)));
@@ -1922,7 +1922,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Quiet One',
         hint: 'Crown a victor the chronicle mentions by name fewer than ten times all run.',
         category: 'oddity',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => !!v && state.log.filter(e => e.tributesInvolved.includes(v.id)).length < 10,
         nearMiss: (state, v) => {
             if (!v) return undefined;
@@ -1989,10 +1989,15 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'the-unwitnessed',
         name: 'The Unwitnessed',
-        hint: 'Crown a victor who never once stood in the same sector as another living tribute after the bloodbath.',
+        hint: 'See a tribute reach the final eight without once standing in the same sector as another living tribute after the bloodbath.',
         category: 'oddity',
-        rarity: 'possible',
-        test: (_s, v) => !!v && v.metAnybodyAfterBloodbath !== true,
+        rarity: 'legendary',
+        // Audit 5 §1.9: a victor structurally cannot (the endgame forces the
+        // last survivors together). A tribute who got deep in without ever
+        // being seen is the same story, and it is reachable.
+        test: state => state.tributes.some(t =>
+            t.metAnybodyAfterBloodbath !== true && t.status === 'dead' && (t.dayOfDeath ?? 0) > 0
+            && state.tributes.filter(o => o.status === 'alive' || (o.dayOfDeath ?? Infinity) >= (t.dayOfDeath ?? 0)).length <= 8),
         // §1.1 (audit): 'Nobody's Ally' tested the same record with
         // `=== false` on a field that is only ever set `true`, so it could not
         // fire; it was a broken duplicate of this entry and is gone. Its
@@ -2416,9 +2421,13 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'the-short-week',
         name: 'The Short Week',
-        hint: 'See a Games finish on the third day or sooner.',
+        hint: 'See a Games finish on the third day or sooner. A small field or a compressed calendar is the honest route.',
         category: 'oddity',
         rarity: 'possible',
+        // Audit 5 §1.8: 0 of 400 default-config runs end by day 3. Only
+        // advertised where the calendar makes it reachable.
+        availableIn: state => state.config.districtCount <= 4
+            || ['compressed', 'blitz'].includes(state.gamesProfile?.temperament.id ?? ''),
         test: state => state.day <= 3 && state.tributes.some(t => t.status === 'alive'),
         nearMiss: state => (state.day === 4 ? 'these Games ran four days — the Short Week is three' : undefined),
     },
@@ -2693,13 +2702,18 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'scarred-and-standing',
         name: 'Scarred And Standing',
-        hint: 'Crown a victor carrying two old wounds that never closed properly.',
+        hint: 'Crown a victor carrying an old wound that never closed properly.',
         category: 'survival',
         rarity: 'legendary',
-        test: (_s, v) => Object.values(v?.scars ?? {}).filter(Boolean).length >= 2,
-        nearMiss: (_s, v) => (Object.values(v?.scars ?? {}).filter(Boolean).length === 1
-            ? `${v!.name} carried one scar out — one short`
-            : undefined),
+        // Audit 5 §1.7: two scars on a victor measured 0 in 400 runs, and 6
+        // tributes of 9,600 ever carried two. One scar on the winner is 5 of
+        // 389 victors — the legendary it was always going to be.
+        test: (_s, v) => Object.values(v?.scars ?? {}).filter(Boolean).length >= 1,
+        nearMiss: (_s, v) => {
+            if (!v) return undefined;
+            const grades = Object.values(v.injurySeverity ?? {}).filter((g): g is number => typeof g === 'number');
+            return grades.some(g => g >= 1) ? `${v.name} came out marked, but every wound closed` : undefined;
+        },
     },
     // ---- oddity: runs that were strange rather than good ------------------
     {

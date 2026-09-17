@@ -1,7 +1,7 @@
 import { ArchetypeId, Objective, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { severRandomEdge } from './zoneEffects';
-import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING } from '../data/balance';
+import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING, MEMORY } from '../data/balance';
 import { earnTrait } from './earnedTraits';
 import { SimContext, getAlive } from './context';
 import { getRel, adjustMutual, adjustRel } from './relationships';
@@ -12,7 +12,9 @@ import { witnessKindness } from './rapport';
 import { giveItem, inventoryValue } from './items';
 import { healInjury, clearBleeding } from './wounds';
 import { clampTribute } from './vitals';
-import { getZone, zoneNames } from './map';
+import { getZone, zoneNames, zoneFeatures } from './map';
+import { addZoneThreat } from './memory';
+import { hasTruce } from './parley';
 import { ARCHETYPE_SIGNATURE_TEXTS } from '../data/flavorText';
 import { loseSanity } from './sanityBands';
 
@@ -362,6 +364,58 @@ const SIGNATURES: Record<string, Signature> = {
         // ...and every other survivor now knows there is somebody they have
         // never once seen.
         others(ctx, t).forEach(o => addFear(o, t.id, ARCHETYPE_HOOKS.namingFear));
+        return true;
+    },
+
+    // ---- Audit 5 §12.4 ----
+
+    /** Scavenger: a cannon fires nearby and they are already walking towards it. */
+    scavengerClaim: (ctx, t) => {
+        const recent = (ctx.state.recentCannonZones ?? []).filter(c => c.cycle >= (ctx.state.cycle ?? 0) - 2 && c.zone !== t.zone);
+        if (recent.length === 0) return false;
+        const site = recent[recent.length - 1].zone;
+        say(ctx, t, 'scavengerClaim', [t.id], { site });
+        t.objective = { kind: 'reach', zone: site, reason: 'forage', expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /** Captor: the weakest person in the sector is offered a deal they cannot refuse. */
+    captorLeverage: (ctx, t) => {
+        const here = others(ctx, t).filter(o => o.zone === t.zone && o.health < t.health && !o.allianceId);
+        if (here.length === 0) return false;
+        const mark = here.sort((a, b) => a.health - b.health)[0];
+        grantTruce(ctx, t, mark, ARCHETYPE_HOOKS.brokeredTruceCycles, 'extortion');
+        say(ctx, t, 'captorLeverage', [t.id, mark.id], { mark: mark.name });
+        adjustRel(mark, t.id, -ARCHETYPE_HOOKS.accordGratitude);
+        t.objective = { kind: 'protect', wardId: mark.id, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles * 2 };
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * 2);
+        return true;
+    },
+
+    /** Bellwether: they name the ground, and the arena hears them do it. */
+    bellwetherHold: (ctx, t) => {
+        const zone = getZone(ctx.state.arena, t.zone);
+        if (!zone) return false;
+        const f = zoneFeatures(zone);
+        if (!f.chokepoint && !f.elevation) return false;
+        say(ctx, t, 'bellwetherHold', [t.id]);
+        t.objective = { kind: 'hold', zone: t.zone, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles * 2 };
+        others(ctx, t).forEach(o => addZoneThreat(ctx.state, o, t.zone, MEMORY.hazardThreat));
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /** Confessor: cornered by somebody stronger, they talk — and it works. */
+    confessorPlea: (ctx, t) => {
+        const threat = others(ctx, t).filter(o => o.zone === t.zone && o.health > t.health && !hasTruce(ctx.state, t, o.id));
+        if (threat.length === 0) return false;
+        const other = threat.sort((a, b) => b.health - a.health)[0];
+        grantTruce(ctx, t, other, ARCHETYPE_HOOKS.brokeredTruceCycles, 'brokered');
+        say(ctx, t, 'confessorPlea', [t.id, other.id], { other: other.name });
+        adjustRel(other, t.id, ARCHETYPE_HOOKS.accordGratitude);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * 2);
         return true;
     },
 };

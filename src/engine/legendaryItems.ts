@@ -1,6 +1,6 @@
 import { Item, Tribute } from '../models/types';
 import { SimContext } from './context';
-import { LEGENDARY_ITEM_NAMES } from '../data/flavorText';
+import { LEGENDARY_ITEM_NAMES, LEGENDARY_ITEM_TEXTS } from '../data/flavorText';
 import { LEGENDARY_ITEMS } from '../data/balance';
 
 /**
@@ -94,12 +94,14 @@ export function bloodOnTheBlade(ctx: SimContext, weapon: Item | undefined, wield
     if (pool.length === 0) return;
 
     weapon.legendName = ctx.pickText(pool);
-    ctx.logEvent(
-        `The commentary has stopped calling the ${weapon.name.toLowerCase()} in ${wielder.name}'s hand a ${weapon.name.toLowerCase()}. `
-        + `As of tonight it is ${weapon.legendName}, and it will be ${weapon.legendName} in the record books whoever is holding it at the end.`,
-        [wielder.id],
-        { important: true, category: 'system' }
-    );
+    // Audit 5 §1.4: the twelve authored naming lines were never drawn — this
+    // moment fires twice a run in nine runs out of ten and printed one
+    // hard-coded sentence every time.
+    const line = ctx.pickText(LEGENDARY_ITEM_TEXTS)
+        .split('{item}').join(weapon.legendName)
+        .split('{base}').join(weapon.name.toLowerCase())
+        .split('{owner}').join(wielder.name);
+    ctx.logEvent(line, [wielder.id], { important: true, category: 'system' });
 }
 
 /** Every named weapon in the arena right now, with whoever is carrying it. */

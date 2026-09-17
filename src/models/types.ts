@@ -43,13 +43,19 @@ export type Stance =
     | 'Fortified'
     | 'Desperate'
     | 'Scavenging'
-    | 'Shadowing';
+    | 'Shadowing'
+    // Audit 5 §12: two more conditional stances — tending an ally, and walking a pack's perimeter.
+    | 'Nursing'
+    | 'Patrolling';
 
 export type ArchetypeId =
     | 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog'
     // A2: eight archetypes with behavioural hooks rather than four more bias
     // scalars. See `data/archetypes.ts`.
-    | 'mercenary' | 'zealot' | 'medic' | 'saboteur' | 'beast' | 'diplomat' | 'scholar' | 'ghost';
+    | 'mercenary' | 'zealot' | 'medic' | 'saboteur' | 'beast' | 'diplomat' | 'scholar' | 'ghost'
+    // Audit 5 §12.4: four more, each holding a stance/objective/target
+    // combination no existing archetype does.
+    | 'scavenger' | 'captor' | 'bellwether' | 'confessor';
 
 export interface Attributes {
     strength: number;
@@ -703,6 +709,9 @@ export interface Tribute {
      * read as weaker) and by the epilogue.
      */
     scars?: Partial<Record<InjurySite, boolean>>;
+    /** Audit 5 §12.3: earned-trait counters. */
+    betrayalsWitnessed?: number;
+    frostbitesTaken?: number;
     /**
      * §11: separate standing injuries this tribute has ever taken, counted at
      * the moment a sound site stops being sound. `injuries` is the live state;
@@ -2089,6 +2098,8 @@ export interface GameState {
     zoneDepletion?: Record<string, number>;
     /** Zone name -> whatever is currently happening to it beyond depletion. */
     zoneEffects?: Record<string, ZoneEffect[]>;
+    /** Audit 5 §5.7: the Kiln's signature names a zone one day and fires it the next. */
+    kilnFiringZone?: string;
     /**
      * Adjacency edges cut by the arena itself — a collapsed bridge, a fire that
      * burned through a crossing. Stored as `map.edgeKey()` strings. The printed

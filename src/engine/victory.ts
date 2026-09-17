@@ -129,7 +129,3 @@ function crown(ctx: SimContext, a: Tribute, b: Tribute): [Tribute, Tribute] {
     return [a, b];
 }
 
-/** Everyone who walked out. Empty on a wipeout; length 2 on a dual victory. */
-export function victorsOf(state: { tributes: Tribute[] }): Tribute[] {
-    return state.tributes.filter(t => t.status === 'alive');
-}

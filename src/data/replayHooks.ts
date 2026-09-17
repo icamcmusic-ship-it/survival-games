@@ -88,6 +88,42 @@ export const MUTATORS: Mutator[] = [
         config: { enableSanity: false, betrayalRate: 0.4, hazardRate: 1.6 },
     },
     {
+        id: 'the-long-week',
+        name: 'The Long Week',
+        blurb: 'A gentle arena and a generous Capitol: nobody dies of the ground, so it has to be each other, and it takes a while.',
+        config: { hazardRate: 0.4, sponsorGenerosity: 1.8, betrayalRate: 1.2, enableFeast: true },
+    },
+    {
+        id: 'dry-year',
+        name: 'The Dry Year',
+        blurb: 'Hazards up, sponsors thin, and a feast that never comes. Water is the whole story.',
+        config: { hazardRate: 1.8, sponsorGenerosity: 0.6, enableFeast: false },
+    },
+    {
+        id: 'quiet-minds',
+        name: 'Quiet Minds',
+        blurb: 'Sanity on, betrayal off. A year about what the arena does to a person, with the knives kept in the drawer.',
+        config: { enableSanity: true, betrayalRate: 0.2, hazardRate: 1.3 },
+    },
+    {
+        id: 'the-thirteen',
+        name: 'The Thirteen',
+        blurb: 'Thirteen districts, the standard levers, and one more pair of faces than anybody rehearsed for.',
+        config: { districtCount: 13, hazardRate: 1.0, betrayalRate: 1.0 },
+    },
+    {
+        id: 'six-and-out',
+        name: 'Six And Out',
+        blurb: 'Six districts, everything sharp. Small enough to know every name, fast enough that you will not for long.',
+        config: { districtCount: 6, hazardRate: 1.6, betrayalRate: 1.6, sponsorGenerosity: 0.8 },
+    },
+    {
+        id: 'the-benefactors',
+        name: 'The Benefactors',
+        blurb: 'Sponsors open-handed and the feast guaranteed, in an arena that is trying to kill everybody. Money against ground.',
+        config: { sponsorGenerosity: 2.5, hazardRate: 2.0, enableFeast: true },
+    },
+    {
         id: 'two-hander',
         name: 'Two-Hander',
         blurb: 'Two districts, four tributes, nowhere to hide from each other. Over fast and almost entirely personal.',

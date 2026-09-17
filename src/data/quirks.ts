@@ -795,6 +795,186 @@ export const QUIRKS: Quirk[] = [
             "'End of the second,' {name} says in {zone}, meaning something about the day that only they are tracking.",
         ],
     },
+    {
+        label: 'sleeps with a knife in their fist',
+        lines: [
+            '{name} sleeps in {zone} with the blade in their hand and their hand under their cheek, the way they have since the gong.',
+            'The knife is in {name}\'s fist before their eyes are open in {zone}. It always is.',
+            '{name} wakes in {zone} and checks the knife is still there before checking anything else.',
+            'In {zone} {name} loosens their grip on the knife in their sleep and tightens it again without waking.',
+        ],
+    },
+    {
+        label: 'never sits with their back to a door',
+        lines: [
+            '{name} moves twice in {zone} before settling, until the only way in is in front of them.',
+            'There is a wall at {name}\'s back in {zone}. There is always a wall at {name}\'s back.',
+            '{name} rearranges the camp in {zone} so that nothing can come at them from behind. Nobody argues.',
+            'In {zone} {name} sits facing the opening, and eats, and does not once look down at the food.',
+        ],
+    },
+    {
+        label: 'talks to the dead by name',
+        lines: [
+            '{name} says a name in {zone}, quietly, to nobody who is there. Then another.',
+            'In {zone} {name} tells somebody who is dead what they did today. It seems to help.',
+            '{name} goes through the fallen in {zone} the way other people go through a shopping list, and lingers on one.',
+            'There is a conversation happening in {zone} and {name} is the only living half of it.',
+        ],
+    },
+    {
+        label: 'rations by the mouthful',
+        lines: [
+            '{name} eats in {zone} by counting, and stops at the number, and puts the rest away.',
+            'In {zone} {name} portions a meal that would not feed a child into three and eats one.',
+            '{name} weighs the food in their hand in {zone} before deciding how much of tomorrow it is.',
+            'Everybody else eats when they are hungry. In {zone} {name} eats when the count says so.',
+        ],
+    },
+    {
+        label: 'whistles when scared',
+        lines: [
+            'A few bars of something drift out of {zone}. {name} is not aware they are doing it.',
+            '{name} whistles in {zone}, badly, and the whistling stops when the thing they were scared of does.',
+            'In {zone} {name} starts whistling and the people near them go very still, because they know what it means.',
+            'Somewhere in {zone}, a tune. Two notes, over and over. {name} is frightened.',
+        ],
+    },
+    {
+        label: 'hoards cordage',
+        lines: [
+            '{name} picks up a length of something stringy in {zone} and adds it to the bundle. The bundle is now most of their pack.',
+            'In {zone} {name} unpicks a bit of cloth for the thread. They have no immediate use for the thread.',
+            '{name} spends an hour in {zone} re-coiling every piece of line they own. There are a lot of pieces.',
+            'A frayed bit of rope in {zone}. {name} takes it. {name} would take a shoelace.',
+        ],
+    },
+    {
+        label: 'checks the sky for cameras',
+        lines: [
+            '{name} looks up in {zone}, finds the lens, and looks away with an expression the lens does not get.',
+            'In {zone} {name} says something to the tree canopy. It is for the Capitol, and it is not friendly.',
+            '{name} moves out from under a clear patch of sky in {zone} for no reason anyone can see.',
+            'Every so often in {zone} {name} counts the angles something could be watching from. They get a different number each time.',
+        ],
+    },
+    {
+        label: 'keeps score on their arm',
+        lines: [
+            '{name} scratches another mark into the skin of their forearm in {zone}. There are several.',
+            'In {zone} {name} counts the marks on their arm and does not say what they are counting.',
+            'A line of small cuts on {name}\'s arm, added to in {zone}. Days, or people, or something else.',
+            '{name} rolls their sleeve down in {zone} when somebody looks at the marks.',
+        ],
+    },
+    {
+        label: 'apologises to the arena',
+        lines: [
+            '{name} steps on something that cracks in {zone} and says sorry to it.',
+            'In {zone} {name} breaks a branch for the fire and apologises, quietly, to the tree.',
+            '{name} drinks from the stream in {zone} and thanks it. Out loud. Every time.',
+            'Somebody in {zone} is apologising to the ground. It is {name}, and the ground has done nothing.',
+        ],
+    },
+    {
+        label: 'sharpens the same stick',
+        lines: [
+            '{name} takes the stick out in {zone} and puts an edge on it that was already there.',
+            'In {zone} {name} whittles the point of a stick they have been whittling since day one. It is very sharp and very short.',
+            'The stick in {name}\'s hands in {zone} is not a weapon. It has never been a weapon. It gets sharpened anyway.',
+            '{name} finds the stick has finally worn to nothing in {zone}, and picks up another one.',
+        ],
+    },
+    {
+        label: 'counts exits before sitting down',
+        lines: [
+            '{name} walks the edge of {zone} once before doing anything else in it.',
+            'In {zone} {name} points, silently, at three ways out, and only then sits down.',
+            '{name} will not rest in {zone} until they have found the second way out of it. There is not one. They keep looking.',
+            'Two exits is the minimum for {name}. {zone} has one, and {name} is not comfortable.',
+        ],
+    },
+    {
+        label: 'wears a dead tribute\'s token',
+        lines: [
+            '{name} touches the thing at their throat in {zone}. It was not theirs at the start.',
+            'In {zone} {name} takes out a token that belonged to somebody who is in the sky now, and holds it, and puts it back.',
+            'The token {name} carries through {zone} is somebody else\'s. They are not going to explain that to anyone.',
+            '{name} ties the cord tighter in {zone}. Losing it would be losing the person twice.',
+        ],
+    },
+    {
+        label: 'eats with their boots on and laced',
+        lines: [
+            '{name} eats in {zone} on their feet, turning slowly, watching the whole way round.',
+            'In {zone} {name} refuses a seat and eats walking, and is done before anybody else has started.',
+            'Somebody offers {name} a place by the fire in {zone}. They eat standing behind it instead.',
+            '{name} never sits to eat in {zone}. Sitting is for people who are sure nobody is coming.',
+        ],
+    },
+    {
+        label: 'names their weapon',
+        lines: [
+            '{name} says something to the blade in {zone} before putting it away. It has a name. They have not told anyone the name.',
+            'In {zone} {name} cleans the weapon and talks to it, low, the way you would to a dog.',
+            '{name} refers to the thing in their hand in {zone} by a name, once, and then pretends they did not.',
+            'The weapon has a name and {name} uses it in {zone}, quietly, when they think nobody is listening.',
+        ],
+    },
+    {
+        label: 'sleeps in shifts with nobody',
+        lines: [
+            '{name} sleeps two hours in {zone}, wakes, checks nothing, sleeps two more. Nobody is on watch. They do it anyway.',
+            'In {zone} {name} wakes at the same hour every night to take a watch nobody asked them to.',
+            '{name} has divided the night in {zone} into pieces, and sleeps only inside the pieces.',
+            'Alone in {zone}, {name} still keeps a rota. It has one name on it.',
+        ],
+    },
+    {
+        label: 'presses flowers in their pack',
+        lines: [
+            '{name} finds something small and blue in {zone} and puts it between two flat things in their pack.',
+            'In {zone} {name} takes out a pressed leaf, looks at it, and puts it back where it will stay flat.',
+            'There is a flower in {name}\'s pack in {zone}. There has been a different one every day.',
+            '{name} stops in {zone} for something growing that nobody else would have seen, and keeps it.',
+        ],
+    },
+    {
+        label: 'salutes the cannon',
+        lines: [
+            'The cannon goes and {name} stops in {zone} and raises two fingers to their brow. Then walks on.',
+            'In {zone} {name} stands for the cannon. Every cannon. Even the ones they are glad about.',
+            '{name} hears the cannon in {zone} and, before anything else, salutes whoever it was.',
+            'A cannon. In {zone} {name} touches their forehead and says nothing, and then says one word.',
+        ],
+    },
+    {
+        label: 'refuses to say the arena\'s name',
+        lines: [
+            '{name} calls it "here" in {zone}. They have never once used the word the Capitol gave it.',
+            'In {zone} somebody says the arena\'s name and {name} winces as if it were a slur.',
+            '{name} talks about {zone} and "this place" and "out there". Never the name. The name is the Capitol\'s.',
+            'Asked where they are, in {zone}, {name} says "not home". It is the closest they will come.',
+        ],
+    },
+    {
+        label: 'counts their own heartbeats',
+        lines: [
+            '{name} sits in {zone} with two fingers at their throat and their lips moving.',
+            'In {zone} {name} takes their own pulse before a decision, and makes it when the number is right.',
+            '{name} has a number in their head in {zone} and it is going up, and they are waiting for it to come down.',
+            'Two fingers to the neck in {zone}. {name} is checking they are still frightened, or still alive, or both.',
+        ],
+    },
+    {
+        label: 'hums the anthem wrong',
+        lines: [
+            '{name} hums a few bars in {zone} and every note of it is somewhere adjacent to the anthem.',
+            'In {zone} {name} gets the Capitol anthem almost right and then, on purpose, does not.',
+            'The tune coming out of {zone} is the anthem, sung the way {name}\'s district sings it, which is not the way it is meant to be sung.',
+            '{name} finishes the anthem in {zone} on the wrong note, deliberately, and looks happier for it.',
+        ],
+    },
 ];
 
 /**
@@ -905,6 +1085,26 @@ export const QUIRK_MODS: Record<string, Partial<Record<TraitMod, number>>> = {
     'sharpens sticks while on watch': { trapSkill: 0.05, awarenessNight: 0.3 },
     'won\'t say the word "arena"': { resolveDrift: 0.15, sanityDrain: -0.05 },
     'measures time in shifts': { fatigueDay: -0.6, fatigueNight: -0.6 },
+    'sleeps with a knife in their fist': { awarenessNight: 0.3, sanityRecovery: -1 },
+    'never sits with their back to a door': { ambush: -0.03, awareness: 0.3 },
+    'talks to the dead by name': { griefResist: 0.15, sanityDrain: 0.05 },
+    'rations by the mouthful': { hungerDrain: -1.0 },
+    'whistles when scared': { concealment: -0.03, fearGain: -0.05 },
+    'hoards cordage': { trapSkill: 0.15, capacity: 1 },
+    'checks the sky for cameras': { sponsorTrust: -0.2, excitement: 0.05 },
+    'keeps score on their arm': { killSanity: -0.1, resolveDrift: 0.1 },
+    'apologises to the arena': { forage: 0.05, sanityRecovery: 1 },
+    'sharpens the same stick': { meleePower: 0.2 },
+    'counts exits before sitting down': { retreat: 0.04 },
+    'wears a dead tribute\'s token': { griefResist: 0.2, targetDraw: 0.3 },
+    'eats with their boots on and laced': { awareness: 0.2, fatigueDay: 0.5 },
+    'names their weapon': { combatPower: 0.2, excitement: 0.05 },
+    'sleeps in shifts with nobody': { awarenessNight: 0.6, fatigueNight: 1.0 },
+    'presses flowers in their pack': { resolveDrift: 0.15, sponsorAppeal: 0.3 },
+    'salutes the cannon': { griefResist: 0.1, sponsorTrust: 0.2 },
+    'refuses to say the arena\'s name': { resolveDrift: 0.2, sponsorAppeal: -0.3 },
+    'counts their own heartbeats': { fearGain: -0.08, sanityDrain: -0.05 },
+    'hums the anthem wrong': { excitement: 0.1, concealment: -0.02 },
 };
 
 /**

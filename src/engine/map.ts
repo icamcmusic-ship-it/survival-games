@@ -309,14 +309,6 @@ export function isUnlitZone(arena: Arena, zone: string): boolean {
     return rule !== undefined && rule(zone);
 }
 
-/**
- * §5.2: the acoustics of a zone by name, for the stealth and encounter
- * layers. Defaults to 1 for anything that has not been derived or authored.
- */
-export function zoneAcoustics(arena: Arena, zoneName: string): number {
-    const zone = getZone(arena, zoneName);
-    return zone ? (zoneFeatures(zone).acoustics ?? 1) : 1;
-}
 
 /**
  * §5.6: zone names visible from this zone. High ground sees into every
@@ -440,9 +432,6 @@ export function severEdge(state: GameState, a: string, b: string) {
     if (!state.severedEdges.includes(key)) state.severedEdges.push(key);
 }
 
-export function isSevered(state: GameState, a: string, b: string): boolean {
-    return (state.severedEdges ?? []).includes(edgeKey(a, b));
-}
 
 /** Breadth-first search over the adjacency graph for the closest zone matching `safeNames`. */
 export function nearestSafeZone(arena: Arena, from: string, safeNames: string[], severed?: Set<string>): string {

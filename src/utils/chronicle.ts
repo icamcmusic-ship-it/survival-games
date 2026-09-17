@@ -181,20 +181,6 @@ export function downloadChronicleAs(
     URL.revokeObjectURL(url);
 }
 
-export function downloadChronicle(state: GameState, filter: boolean | ChronicleFilter = false) {
-    const f: ChronicleFilter = typeof filter === 'boolean' ? { importantOnly: filter } : filter;
-    const md = chronicleMarkdown(state, f);
-    const blob = new Blob([md], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const who = f.tributeId ? `-${state.tributes.find(t => t.id === f.tributeId)?.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') ?? 'tribute'}` : '';
-    a.href = url;
-    a.download = `games-${state.seed}${f.importantOnly ? '-highlights' : ''}${who}.md`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-}
 
 /**
  * S-6: the machine-readable export — the full log with the metadata players

@@ -29,7 +29,7 @@ import {
  * than breaking a screen.
  */
 
-export const PANEM_STORAGE_KEY = STORAGE_KEYS.panem;
+const PANEM_STORAGE_KEY = STORAGE_KEYS.panem;
 
 export interface RecordHolder {
     /** The number this record is for. */

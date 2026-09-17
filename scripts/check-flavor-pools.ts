@@ -38,6 +38,27 @@ const pools = Object.entries(FLAVOR)
         Array.isArray(entry[1]) && entry[1].every(v => typeof v === 'string'))
     .sort((a, b) => a[1].length - b[1].length);
 
+// Audit 5 §1.4/§6.5: a pool that is authored and never drawn is the failure
+// this checker exists to prevent, and `LEGENDARY_ITEM_TEXTS` sat dead for a
+// full audit cycle because the roster only measured depth. Every exported
+// pool must be referenced somewhere in `src/` outside its own file.
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+function walk(dir: string, out: string[] = []): string[] {
+    readdirSync(dir).forEach(name => {
+        const full = join(dir, name);
+        if (statSync(full).isDirectory()) walk(full, out);
+        else if (/\.tsx?$/.test(name) && !full.endsWith('data/flavorText.ts')) out.push(full);
+    });
+    return out;
+}
+const corpus = walk('src').map(f => readFileSync(f, 'utf8')).join('\n');
+const unreferenced = Object.keys(FLAVOR).filter(name => !new RegExp(`\\b${name}\\b`).test(corpus));
+if (unreferenced.length > 0) {
+    console.error(`\n${unreferenced.length} flavour pool(s) are exported from flavorText.ts and drawn by nothing in src/: ${unreferenced.join(', ')}`);
+    process.exit(1);
+}
+
 const thin = pools.filter(([, v]) => v.length < POOL_TARGET);
 const broken = pools.filter(([, v]) => v.length < HARD_FLOOR);
 

@@ -172,7 +172,3 @@ function tickFortified(ctx: SimContext, t: Tribute) {
     });
 }
 
-/** Two tributes standing in the same prepared ground, one of whom built it. */
-export function fortifiedBond(ctx: SimContext, a: Tribute, b: Tribute) {
-    adjustMutual(ctx.state, a, b, RELATIONSHIPS.sharedGriefBond);
-}

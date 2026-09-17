@@ -230,7 +230,10 @@ export function tickBlocTreaties(ctx: SimContext) {
                 `The agreement between the two groups runs out. Nobody renews it and nobody breaks it; `
                 + 'they simply stop being people who have an agreement, and start watching each other again.',
                 [...aMembers.map(m => m.id), ...bMembers.map(m => m.id)],
-                { category: 'alliance' }
+                // Audit 5 §4.2: the one non-violent ending, and it was the only
+                // one filed as ambient — so a treaty read as formed and then
+                // forgotten in three runs out of four.
+                { important: true, category: 'alliance' }
             );
             return false;
         }

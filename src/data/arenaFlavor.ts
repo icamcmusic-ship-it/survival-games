@@ -137,6 +137,9 @@ export interface ArenaActions {
     scavenge?: string[];
     shadow?: string[];
     flail?: string[];
+    /** Audit 5 §12: the two added conditional stances. Generic-only for now. */
+    nurse?: string[];
+    patrol?: string[];
 }
 
 /** The keys `actionPool` will fall back on. */
@@ -257,6 +260,34 @@ const GENERIC_ACTIONS: ArenaActions = {
         '{tribute} has nothing left in {zone} and does not slow down for it.',
         '{tribute} strips the last of their own kit apart in {zone} looking for something that was never there.',
         '{tribute} crosses {zone} at a run and does not stop at the far side of it.',
+    ],
+    nurse: [
+        '{tribute} sits with the hurt one in {zone} and keeps pressure on the wound until the bleeding slows.',
+        '{tribute} boils what water there is in {zone} and cleans the wound again. It is the third time today.',
+        '{tribute} talks to their ally in {zone} the whole time they work, about nothing, to keep them from looking at it.',
+        '{tribute} changes the dressing in {zone} with the last clean cloth they have.',
+        '{tribute} gets their ally to drink in {zone}, a mouthful at a time, and does not let them sleep yet.',
+        '{tribute} checks the wound in {zone} by the light there is and does not like what they see, and does not say so.',
+        '{tribute} stays awake beside the hurt one in {zone} and counts their breathing.',
+        '{tribute} splints the leg in {zone} with two sticks and a strap, badly, and then better.',
+        '{tribute} keeps the fire small in {zone} and the ally warm, and does not go looking for anything.',
+        '{tribute} goes through the packs in {zone} for anything that could pass as medicine, and finds something that will have to.',
+        '{tribute} holds the ally still in {zone} while the worst of it passes.',
+        '{tribute} does not leave {zone}. Somebody has to be here when they wake.',
+    ],
+    patrol: [
+        '{tribute} walks the edge of {zone} once, slowly, and comes back with a report the pack did not ask for.',
+        '{tribute} goes a hundred metres out from the camp in {zone} in every direction and is back before anybody notices.',
+        '{tribute} stands at the boundary of {zone} for an hour and learns which way the sound travels.',
+        '{tribute} circles the camp in {zone} in the dark, and finds where the light from the fire reaches.',
+        '{tribute} checks the approaches to {zone} and moves a branch that was in the wrong place.',
+        '{tribute} takes the far side of {zone} for the pack, and sits there with their back to nobody.',
+        '{tribute} walks the perimeter of {zone} and knows, now, where somebody would come from.',
+        '{tribute} finds tracks at the edge of {zone}, old ones, and follows them far enough to be sure.',
+        '{tribute} watches the neighbouring sector from the edge of {zone} until they have counted the fires in it.',
+        '{tribute} does a slow lap of {zone} and hears the pack behind them go quiet when they pass out of sight.',
+        '{tribute} walks the line of {zone} the way a fence would if a fence could walk.',
+        '{tribute} sets a marker at each corner of {zone} that only the pack will know to read.',
     ],
     travel: [
         '{tribute} moves out toward {zone}.',
@@ -15420,6 +15451,82 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         text: 'The run-off in {zone} has cut a channel down to clean rock. {tribute} drinks out of it and it is cold enough to hurt.',
         escapeText: '{tribute} finds the channel in {zone} already muddied.',
         cause: 'Drank from clean rock', quench: 45, fatigue: 8, weight: 0.5,
+    },
+    /*
+     * Audit 5 §5.5/§7.5: the arena rolled against charisma on 4 events of
+     * 1,241, and against hunger on 13 of 1,522. These are the shapes the schema
+     * supported and the content did not use: a hazard a tribute can talk their
+     * way out of, and things that make you hungry rather than thirsty. Every
+     * harm carries `weight: 0.5` for the same reason the batch above does.
+     */
+    {
+        id: 'universal-the-wrong-camp',
+        text: '{tribute} walks into somebody else\'s camp in {zone} in the dark and has about four seconds to be somebody worth not killing. They are not.',
+        escapeText: '{tribute} walks into somebody else\'s camp in {zone} in the dark, puts their hands up, and says something that buys them the walk back out.',
+        cause: 'Killed walking into the wrong camp',
+        dodgeStat: 'charisma', dodgeAlt: 'agility', dodgeDifficulty: 6,
+        damage: 22, bleeding: true, weight: 0.5, requires: { time: 'night', minSurvivors: 6 },
+    },
+    {
+        id: 'universal-the-shared-fire',
+        text: 'There is a fire in {zone} that is not {tribute}\'s, and somebody at it who could go either way. {tribute} says the wrong thing.',
+        escapeText: 'There is a fire in {zone} that is not {tribute}\'s, and somebody at it who could go either way. {tribute} says the right thing, and eats.',
+        cause: 'Killed at a stranger\'s fire',
+        dodgeStat: 'charisma', dodgeAlt: 'intelligence', dodgeDifficulty: 5,
+        damage: 14, weight: 0.5, requires: { time: 'night', minSurvivors: 5 },
+        feed: 12,
+    },
+    {
+        id: 'universal-the-sponsor-cut',
+        text: 'A parachute comes down in {zone} and it is not for {tribute}, and the person it is for is standing right there. {tribute} argues the point.',
+        escapeText: 'A parachute comes down in {zone} and {tribute} talks the person it was meant for into splitting it.',
+        cause: 'Killed over a parachute',
+        dodgeStat: 'charisma', dodgeDifficulty: 6,
+        damage: 16, weight: 0.4, feed: 10, quench: 8, requires: { minSurvivors: 4 },
+    },
+    {
+        id: 'universal-the-bad-mushroom',
+        text: '{tribute} eats something in {zone} that looked like food, and spends the night bringing up everything they have eaten in two days.',
+        escapeText: '{tribute} looks at the thing in {zone} for a long moment and decides they are not that hungry.',
+        cause: 'Poisoned by something that looked like food',
+        dodgeStat: 'intelligence', dodgeAlt: 'endurance', dodgeDifficulty: 5,
+        damage: 6, hunger: 24, weight: 0.5,
+    },
+    {
+        id: 'universal-the-cold-night',
+        text: 'The cold in {zone} tonight takes more out of {tribute} than the day did. The body burns what it has to stay warm, and it has very little.',
+        escapeText: '',
+        cause: 'Froze in the night',
+        hunger: 14, fatigue: 8, weight: 0.5, requires: { time: 'night' },
+    },
+    {
+        id: 'universal-the-spoiled-cache',
+        text: '{tribute} opens the food they have been saving in {zone} and finds it has turned. All of it.',
+        escapeText: '{tribute} checks the cache in {zone} in time and eats what can still be eaten.',
+        cause: 'Starved after the cache turned',
+        dodgeStat: 'intelligence', dodgeDifficulty: 5,
+        hunger: 20, sanity: 6, weight: 0.5,
+    },
+    {
+        id: 'universal-the-long-carry',
+        text: '{tribute} carries a full pack across {zone} at a pace they should not, and arrives with nothing in the tank.',
+        escapeText: '',
+        cause: 'Collapsed on the long carry',
+        hunger: 10, fatigue: 16, weight: 0.4, requires: { stance: ['Aggressive', 'Hunting'] },
+    },
+    {
+        id: 'universal-somebody-shared',
+        text: 'Somebody has left half a meal on a flat rock in {zone}, on purpose, for whoever came next. {tribute} came next.',
+        escapeText: '',
+        cause: '',
+        feed: 20, sanity: -6, requires: { minSurvivors: 4 },
+    },
+    {
+        id: 'universal-the-quiet-hour',
+        text: 'For one hour in {zone} nothing happens to {tribute} at all. No cannon, no wind, no sound. It is the best hour of the week.',
+        escapeText: '',
+        cause: '',
+        sanity: -10, fatigue: -8, requires: { time: 'day' },
     },
 ];
 
