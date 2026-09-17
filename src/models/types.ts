@@ -1982,6 +1982,12 @@ export interface GameState {
      * share of the cast.
      */
     environmentalDeaths?: number;
+    /**
+     * §11 (requests): the cycle the field first reached two tributes. The
+     * attrition grace in `applyDamage` is measured from here — see
+     * `ESCALATION.finalTwoAttritionGraceCycles`.
+     */
+    finalTwoCycle?: number;
     /** Indices into `gamesProfile.calendar` that have already resolved. */
     firedWildcards?: number[];
     /** The storm currently crossing the arena, if any. See `engine/weatherFront.ts`. */

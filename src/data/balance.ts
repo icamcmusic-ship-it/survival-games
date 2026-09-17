@@ -1409,11 +1409,18 @@ export const BLOODBATH = {
     fightChanceCareer: 0.75,
     /**
      * §23 (requests): the pack going through one target together, rather than
-     * queueing up for duels. Raised from a hardcoded 0.6 in bloodbath.ts —
-     * this is the single biggest lever on the Career share of the opening,
-     * because a four-on-one is the one fight in the arena nobody survives.
+     * queueing up for duels.
+     *
+     * Left where it was, and worth writing down why, because it is the knob
+     * that looks like it should be the lever and measurably is not. Raising it
+     * from 0.6 to 0.8 was measured over 200 runs and moved the Career share of
+     * bloodbath kills *down*, 39.1% to 36.2%. The reason is throughput: a
+     * four-on-one `resolveGroupCombat` pulls four Careers and their target out
+     * of the scrum for the round and produces at most one kill, where four
+     * separate duels can produce four. Ganging up is more frightening and less
+     * productive, which is a real thing about packs and not a bug.
      */
-    packGangUpChance: 0.8,
+    packGangUpChance: 0.6,
     /**
      * §23 (requests): extra damage a Career lands inside the killing zone, on
      * top of `killingZoneDamage`. They trained for this specific sixty
@@ -1456,6 +1463,17 @@ export const BLOODBATH = {
     plateNeighbourFearScore: 9,
     /** Fear per training point over eight, felt across two metres of gravel. */
     plateNeighbourFearPerPoint: 5,
+    /**
+     * §23 (requests): how far ahead of the field a Career reaches the horn.
+     *
+     * `reachScore` was plate proximity plus agility plus noise, which treats
+     * the academy districts as simply faster. They are not simply faster: they
+     * have spent years being told what is laid out at the mouth of a
+     * Cornucopia and which end of it to run to, and arrival order is what
+     * decides who comes away armed. Measured as the largest single lever on
+     * the Career share of the opening.
+     */
+    careerReachBonus: 4,
     /** §8: how much `targetDraw` moves who gets picked in the scrum. */
     targetDrawWeight: 0.06,
     /** §5: a walled horn is a killing box — fewer commit, and they commit harder. */
@@ -1602,8 +1620,13 @@ export const ESCALATION = {
      * finalists to the Cornucopia and make them settle it. After this many
      * cycles at finalist count without a resolution, both are herded to the
      * horn every cycle until it ends.
+     *
+     * §11 (requests): one rather than two. The two cycles this waited were two
+     * of the four the final-two attrition grace has to spend, and the reason
+     * to wait at all — not wanting to herd a pair who were about to meet
+     * anyway — is worth much less than the ending it was costing.
      */
-    finaleAfterFinalistCycles: 2,
+    finaleAfterFinalistCycles: 1,
     hazardMultiplierPerDay: 0.27,
     hazardCeiling: 0.33,
     /**
@@ -1635,6 +1658,32 @@ export const ESCALATION = {
     convergeExtraZonesPerCycle: 1,
     /** Everyone driven into the convergence zone finds everyone else: encounter odds inside it. */
     convergeEncounterChance: 0.85,
+    /**
+     * §11 (requests): the final two are not allowed to be settled by attrition
+     * for this many cycles.
+     *
+     * Measured over 200 runs before this existed: 90 of 189 final-two endings
+     * were the runner-up dying of bleeding, infection, thirst, starvation or
+     * exhaustion, and only 43 were the victor killing them. Half of all
+     * victors finished with one kill or none. That is the complaint exactly —
+     * a Games decided by who happened to be less badly hurt, with the last
+     * fight never happening.
+     *
+     * The existing finalist protection in `applyDamage` deliberately only
+     * covers the *last* tribute alive, because an earlier version protected
+     * both and left two tributes pinned at 1 health for as long as it took
+     * them to find each other (average run length 9.3 -> 13.2 days, resolve
+     * breakdowns up sevenfold). That reasoning still holds, and this is why
+     * the grace is a *window* rather than a rule: the convergence has already
+     * closed the arena to one sector and `forceFinale` herds them, so the two
+     * of them meet within a few cycles or not at all. Four cycles is long
+     * enough to get the fight and far too short to reproduce the old pin.
+     *
+     * Only `status` damage is held back. A mutt, the border or the other
+     * finalist can still finish it — what is no longer allowed is the Games
+     * ending because somebody's arm went septic off-camera.
+     */
+    finalTwoAttritionGraceCycles: 8,
 } as const;
 
 /**

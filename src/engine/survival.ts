@@ -785,6 +785,17 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
     const here = getZone(ctx.state.arena, t.zone);
     if (here?.terrain === 'desert') t.vitals.thirst += ZONES.desertThirstPerCycle;
     if (here?.terrain === 'ice') t.vitals.fatigue += ZONES.iceFatiguePerCycle;
+    // §25 (requests): clamp them.
+    //
+    // These two are the only vital writes in the cycle that happen *after*
+    // `processVitals` has done its own `clampTribute`, and neither had one of
+    // their own — so a tribute already pinned at 100 thirst standing on desert
+    // finished the cycle at 106, and if they died in that same cycle nothing
+    // ever brought it back. Latent since the terrain drains were written: it
+    // needs a tribute at the ceiling, on desert or ice, dying that cycle, which
+    // the older desert arenas rarely produced. `twinSuns` holds a whole cast at
+    // the ceiling for days and it started showing up immediately.
+    clampTribute(t);
 
     const restedThisCycle = ctx.state.phase === 'night'
         && t.vitals.fatigue < SLEEP.restedFatigue

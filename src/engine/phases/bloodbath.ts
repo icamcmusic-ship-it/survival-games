@@ -109,7 +109,11 @@ function scrambleOrder(ctx: SimContext, tributes: Tribute[]): Tribute[] {
 
 function reachScore(ctx: SimContext, t: Tribute): number {
     const proximity = 1 - (t.platePosition ?? 0.5);
-    return proximity * 10 + t.attributes.agility + ctx.rng.nextFloat() * 3;
+    // §23: a Career knows what is at the mouth of the horn and which end of it
+    // to run to. Arrival order is what decides who comes away armed, and being
+    // armed is most of what makes the pack dangerous in the first minute.
+    const trained = t.isCareer ? BLOODBATH.careerReachBonus : 0;
+    return proximity * 10 + t.attributes.agility + trained + ctx.rng.nextFloat() * 3;
 }
 
 /** Weapons only. What is actually laid out at the mouth of the horn. */

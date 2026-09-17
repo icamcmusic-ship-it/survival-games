@@ -192,6 +192,23 @@ function bestWeapon(t: Tribute): Item | undefined {
  * just the clamp.
  */
 /**
+ * §11 (requests): whether the field is down to two and still inside the window
+ * in which the arena is not allowed to finish one of them by attrition.
+ *
+ * `finalTwoCycle` is stamped the first time this is asked with two alive, so
+ * the window is measured from the moment the final two existed rather than
+ * from the convergence (which may have been called at six) or from the day
+ * count (which says nothing about how long these two have been the only ones
+ * left).
+ */
+function inFinalTwoGrace(ctx: SimContext, alive: number): boolean {
+    if (alive !== 2) return false;
+    const now = cycleOf(ctx.state);
+    if (ctx.state.finalTwoCycle === undefined) ctx.state.finalTwoCycle = now;
+    return now - ctx.state.finalTwoCycle < ESCALATION.finalTwoAttritionGraceCycles;
+}
+
+/**
  * §24 (requests): whether the arena has already taken more than its share of
  * this cast, and this particular killing blow should be pulled.
  *
@@ -289,6 +306,24 @@ export function applyDamage(
     if (record.kind !== 'tribute') {
         const alive = ctx.state.tributes.filter(o => o.status === 'alive').length;
         if (alive <= 1 && amount >= t.health) {
+            amount = Math.max(0, t.health - 1);
+            finalistSave = true;
+        }
+        // §11 (requests): the last two settle it between them, not by whose
+        // wound went bad first and not by the weather. Bounded to a few cycles
+        // from the moment the field reached two — see
+        // `finalTwoAttritionGraceCycles` for why it is a window and not a rule.
+        // The return value matters here: the status tick reads it and relieves
+        // the actual cause, so the tribute is not merely pinned at 1 health and
+        // re-killed every cycle.
+        //
+        // Covers everything that is not another tribute. Held to `status`
+        // first, which moved the measured "victor killed the runner-up" share
+        // from 23% to 35% and then simply handed the ending to `climate` and
+        // `arena` instead — 72 of 193 endings. The arena finishing the
+        // second-to-last tribute is the same failure wearing different
+        // clothes, and §24 says so independently.
+        if (!finalistSave && amount >= t.health && inFinalTwoGrace(ctx, alive)) {
             amount = Math.max(0, t.health - 1);
             finalistSave = true;
         }
