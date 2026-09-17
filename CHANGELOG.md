@@ -94,9 +94,11 @@ claimed all twenty-four tributes while naming three.
 - **Plainer prose** (§5, §12): the reaping square is one factual line per
   tribute, and the highest-traffic pools in the simulation — grief, vengeance,
   relief, sanity, betrayal aftermath, duels, group fights, the training floor
-  — report rather than interpret. The per-arena flavour packs (~17,000 lines
-  across 49 arenas) keep their existing voice; the five new arenas are written
-  to the plain standard, so both are in the build and can be compared.
+  — report rather than interpret, as do deaths, alliances, the bloodbath, the
+  border and the parachutes. Between them that is the core in-arena loop. The
+  per-arena flavour packs (~17,000 lines across 49 arenas) keep their existing
+  voice; the five new arenas are written to the plain standard, so both
+  registers are in the build and can be compared.
 - **Fullscreen on start** (§15) and **no map tab before the gong** (§17).
 - **Bugs found on the way** (§25): 'The Toll' could never be earned (it asked
   a live map at the one moment it is always empty — 0% to 13.8%);
@@ -104,7 +106,12 @@ claimed all twenty-four tributes while naming three.
   clamp and never clamped itself; `vanillaRules` was silently dropped by the
   config reader on every reload; the achievement payout ran before the pass
   that decides it; `VENGEANCE_TEXTS` shipped an unfilled `{zone}`; and the
-  'Possible?' tier flapped the build on single-observation noise.
+  'Possible?' tier flapped the build on single-observation noise. And two of
+  the soak's own metrics were counted by matching a fragment of one log line's
+  prose, so rewording that line silently zeroed them — the Cornucopia restock
+  and the border telegraph. The telegraph now carries a stable
+  `BORDER WARNING:` marker, the way `BORDER COLLAPSE:` and `AMBUSH:` already
+  do, and the counter keys on that rather than on English.
 
 ## Audit 4 fix pass (this branch)
 
