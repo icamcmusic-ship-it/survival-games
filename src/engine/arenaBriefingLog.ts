@@ -1,3 +1,5 @@
+import { SIGNATURE_BLURBS } from '../data/signatureBlurbs';
+import { describeSignatureRule } from './arenaSignature';
 import { EdgeRule, ZoneEffectKind } from '../models/types';
 import { SimContext } from './context';
 import { CLIMATE_LABELS, LAW_LABELS, lawsOf, terrainMix } from '../data/arenaBriefing';
@@ -74,6 +76,13 @@ export function arenaBriefingLog(ctx: SimContext) {
 
     const climate = CLIMATE_LABELS[arena.id];
     if (climate) lines.push(`CLIMATE: ${climate.toUpperCase()}`);
+
+    // Audit 5 §1.3: the arena's own rule, stated. `describeSignatureRule` was
+    // written for exactly this and never called, so a procedural arena's rule
+    // was known to the engine and to nobody else.
+    const rule = SIGNATURE_BLURBS[arena.id]
+        ?? (arena.signatureRule ? describeSignatureRule(arena.signatureRule) : undefined);
+    if (rule) lines.push(`ARENA RULE: ${rule.toUpperCase()}`);
 
     // The zones a tribute would want to know about before choosing a direction.
     const water = arena.zones.filter(z => zoneFeatures(z).waterSource).map(z => z.name);

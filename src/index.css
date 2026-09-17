@@ -1368,3 +1368,10 @@ input[type="range"]:focus-visible {
     box-shadow: var(--shadow-ink-sm);
     opacity: 1;
 }
+
+/* §(requests): a lighter chip for dense tables — the relationship grid. */
+.chip-sm {
+    padding: 0 0.35rem;
+    font-size: 0.55rem;
+    letter-spacing: 0.04em;
+}

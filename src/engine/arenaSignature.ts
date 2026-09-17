@@ -2,7 +2,7 @@ import { SignatureRule, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
-import { getZone, reachableZones, severEdge, edgeKey, depleteZone, depletionOf } from './map';
+import { getZone, reachableZones, severEdge, edgeKey, depleteZone, depletionOf, zoneFeatures } from './map';
 import { addZoneThreat, noteSighting } from './memory';
 import { startZoneEffect, hasEffect, severRandomEdge } from './zoneEffects';
 import { injure, openWound } from './wounds';
@@ -1859,6 +1859,219 @@ function karstSignature(ctx: SimContext, cycle: number, rng: RNG) {
     }
 }
 
+
+/**
+ * Audit 5 §1.1: the five newest hand-authored arenas shipped with no signature
+ * at all — `SIGNATURES[id]` was undefined and `signatureRule` is only rolled
+ * for procedural arenas, so `runArenaSignature` silently no-oped twice a day
+ * for the whole run. Each of these takes the arena's own law and gives it a
+ * *moment*: a law is a standing condition, a signature is the arena taking a
+ * swing.
+ */
+
+/**
+ * The Tidewrack Flats: the turn of the tide.
+ *
+ * `tidalBorders` re-cuts the map every night. This is the moment it does —
+ * the water coming up over the lowest ground, with a warning the cycle
+ * before, and anyone still standing in the wetland when it arrives is in it.
+ */
+function tidewrackSignature(ctx: SimContext, _cycle: number, rng: RNG) {
+    const knobs = ARENA_SIGNATURES.tideTurn;
+    const zones = activeZones(ctx);
+    const lowGround = zones.filter(z => {
+        const zone = getZone(ctx.state.arena, z);
+        return zone && (zone.terrain === 'wetland' || zone.terrain === 'water');
+    });
+    if (lowGround.length === 0) return;
+
+    if (ctx.state.timeOfDay === 'day') {
+        // The telegraph: the water withdrawing is the warning.
+        ctx.logEvent(
+            'THE EBB: the water draws back off the flats further than it has all week. Anybody who has lived by a shore knows what that means about tonight.',
+            [],
+            { category: 'arena' }
+        );
+        return;
+    }
+
+    const target = rng.pick(lowGround);
+    ctx.logEvent(
+        `THE TIDE TURNS: the sea comes back over ${target} in one long push, and the flats are not flats any more.`,
+        [],
+        { important: true, zone: target, category: 'arena' }
+    );
+    startZoneEffect(ctx, target, 'flooded', false);
+    tributesIn(ctx, target).forEach(t => {
+        const clear = rng.chance(knobs.escapeBase + t.attributes.agility * knobs.escapePerAgility);
+        if (clear) {
+            ctx.logEvent(`${t.name} reads the water in ${target} and gets to higher ground with wet boots and nothing worse.`, [t.id], { zone: target, category: 'arena' });
+            t.vitals.fatigue += knobs.escapeFatigue;
+            clampTribute(t);
+            return;
+        }
+        applyDamage(ctx, t, knobs.damage, { cause: `Stranded by the tide in ${target}`, kind: 'arena' });
+        t.vitals.fatigue += knobs.caughtFatigue;
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Stranded by the tide in ${target}`);
+    });
+}
+
+/**
+ * The Thresher Floor: the line starts.
+ *
+ * The machinery starts up under whoever is standing on it, without warning —
+ * and `openMic` means the whole arena hears it happen to somebody else.
+ */
+function thresherSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    const knobs = ARENA_SIGNATURES.thresherLine;
+    if (cycle % knobs.everyNth !== 0) return;
+    const zones = activeZones(ctx).filter(z => {
+        const zone = getZone(ctx.state.arena, z);
+        return zone && zone.terrain !== 'water';
+    });
+    if (zones.length === 0) return;
+    const busiest = [...zones].sort((a, b) => tributesIn(ctx, b).length - tributesIn(ctx, a).length)[0];
+    const target = rng.chance(knobs.busiestChance) ? busiest : rng.pick(zones);
+    const present = tributesIn(ctx, target);
+    if (present.length === 0) return;
+
+    ctx.logEvent(
+        `THE LINE STARTS: somewhere a switch is thrown and the floor of ${target} begins to move. It was always machinery. It has only been pretending to be ground.`,
+        [],
+        { important: true, zone: target, category: 'arena' }
+    );
+    present.forEach(t => {
+        if (rng.chance(knobs.dodgeBase + t.attributes.agility * knobs.dodgePerAgility)) {
+            ctx.logEvent(`${t.name} gets off the moving floor of ${target} before it decides where they are going.`, [t.id], { zone: target, category: 'arena' });
+            return;
+        }
+        applyDamage(ctx, t, knobs.damage, { cause: `Caught in the machinery of ${target}`, kind: 'arena' });
+        if (rng.chance(knobs.bleedChance)) openWound(t, BLEEDING.hazardSeverity);
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Caught in the machinery of ${target}`);
+    });
+}
+
+/**
+ * The Vigil: the watch changes.
+ *
+ * A place where nobody sleeps needs a rule about the hour nobody can stay
+ * awake through. Every night the bell goes, and the whole field pays for it
+ * in fatigue and nerve — unless they are standing somewhere with walls.
+ */
+function vigilSignature(ctx: SimContext, _cycle: number, rng: RNG) {
+    const knobs = ARENA_SIGNATURES.watchBell;
+    if (ctx.state.timeOfDay !== 'night') return;
+    const field = getAlive(ctx.state);
+    if (field.length === 0) return;
+
+    ctx.logEvent(
+        'THE BELL: it rings from the tower at the dead hour, once for every tribute still standing, and stops. Nobody in the arena sleeps through the counting.',
+        [],
+        { important: true, category: 'arena' }
+    );
+    field.forEach(t => {
+        const zone = getZone(ctx.state.arena, t.zone);
+        const sheltered = zone ? (zoneFeatures(zone).shelterQuality ?? 0) >= knobs.shelteredAt : false;
+        t.vitals.fatigue += sheltered ? knobs.fatigueSheltered : knobs.fatigue;
+        loseSanity(t, sheltered ? knobs.sanitySheltered : knobs.sanity);
+        clampTribute(t);
+        if (!sheltered && rng.chance(knobs.stumbleChance)) {
+            ctx.logEvent(`${t.name} is on their feet in ${t.zone} before they are awake, and pays for it.`, [t.id], { zone: t.zone, category: 'arena' });
+            applyDamage(ctx, t, knobs.stumbleDamage, { cause: 'Did not wake for the watch', kind: 'arena' });
+            checkDeath(ctx, t, 'Did not wake for the watch');
+        }
+    });
+}
+
+/**
+ * The Saltworks: the pan cracks.
+ *
+ * `meltingGround` punishes lingering; this punishes hiding. Once the border
+ * starts closing, the emptiest pan is the one that goes — and whatever lives
+ * under the crust comes up through it.
+ */
+function saltworksSignature(ctx: SimContext, cycle: number, rng: RNG) {
+    const knobs = ARENA_SIGNATURES.panCracks;
+    if (ctx.state.escalationDay === undefined && cycle % knobs.earlyEveryNth !== 0) return;
+    const zones = activeZones(ctx).filter(z => getZone(ctx.state.arena, z)?.terrain === 'desert');
+    if (zones.length === 0) return;
+    const emptiest = [...zones].sort((a, b) => tributesIn(ctx, a).length - tributesIn(ctx, b).length);
+    const target = rng.chance(knobs.emptiestChance) ? emptiest[0] : rng.pick(zones);
+
+    ctx.logEvent(
+        `THE PAN CRACKS: the crust over ${target} gives with a sound like a shot, and the brine underneath it is not empty.`,
+        [],
+        { important: true, zone: target, category: 'arena' }
+    );
+    startZoneEffect(ctx, target, 'quaking', false);
+    const present = tributesIn(ctx, target);
+    present.forEach(t => {
+        if (rng.chance(knobs.holdBase + t.attributes.agility * knobs.holdPerAgility)) return;
+        applyDamage(ctx, t, knobs.damage, { cause: `Went through the pan in ${target}`, kind: 'arena' });
+        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
+        clampTribute(t);
+        checkDeath(ctx, t, `Went through the pan in ${target}`);
+    });
+    const roster = rosterFor(ctx);
+    const survivors = present.filter(t => t.status === 'alive');
+    if (roster.length > 0 && survivors.length > 0 && rng.chance(knobs.muttChance)) {
+        engageMutt(ctx, rng.pick(survivors), rng.pick(roster));
+    }
+}
+
+/**
+ * The Kiln: the second sun.
+ *
+ * The only arena whose law *gives* (`bountifulGround`), and the only signature
+ * that takes the gift back: every day, the zone that looked safest this
+ * morning is the one that bakes this afternoon. Telegraphed, because a kiln
+ * is heard before it is felt.
+ */
+function kilnSignature(ctx: SimContext, _cycle: number, rng: RNG) {
+    const knobs = ARENA_SIGNATURES.secondSun;
+    if (ctx.state.timeOfDay !== 'day') return;
+    const zones = activeZones(ctx).filter(z => z !== ctx.state.arena.lawZone);
+    if (zones.length === 0) return;
+    const safest = [...zones].sort((a, b) => {
+        const za = getZone(ctx.state.arena, a); const zb = getZone(ctx.state.arena, b);
+        return (za?.danger ?? 1) - (zb?.danger ?? 1);
+    })[0];
+    const target = rng.chance(knobs.safestChance) ? safest : rng.pick(zones);
+
+    const announced = ctx.state.kilnFiringZone;
+    if (announced === undefined) {
+        // The telegraph: this cycle names it, the next day fires it.
+        ctx.state.kilnFiringZone = target;
+        ctx.logEvent(
+            `THE FIRING: the draught changes and every chimney on the ridge starts to draw towards ${target}. The kiln is being loaded, and it is not loaded with clay.`,
+            [],
+            { zone: target, category: 'arena' }
+        );
+        return;
+    }
+    ctx.state.kilnFiringZone = undefined;
+    ctx.logEvent(
+        `THE SECOND SUN: ${announced} goes to firing heat in the space of an hour. Whatever shade was in it is not shade any more.`,
+        [],
+        { important: true, zone: announced, category: 'arena' }
+    );
+    startZoneEffect(ctx, announced, 'burning', false);
+    tributesIn(ctx, announced).forEach(t => {
+        t.vitals.thirst += knobs.thirst;
+        t.vitals.fatigue += knobs.fatigue;
+        if (rng.chance(knobs.burnChance)) {
+            injure(t, 'burned');
+            applyDamage(ctx, t, knobs.burnDamage, { cause: `Found no shade in ${announced}`, kind: 'arena' });
+        }
+        clampTribute(t);
+        checkDeath(ctx, t, `Found no shade in ${announced}`);
+    });
+}
+
 const SIGNATURES: Record<string, Signature> = {
     cabin: cabinSignature,
     magmatube: magmatubeSignature,
@@ -1900,6 +2113,11 @@ const SIGNATURES: Record<string, Signature> = {
     acousticforest: acousticforestSignature,
     burnscar: burnscarSignature,
     craterfield: craterfieldSignature,
+    tidewrack: tidewrackSignature,
+    thresher: thresherSignature,
+    vigil: vigilSignature,
+    saltworks: saltworksSignature,
+    kiln: kilnSignature,
 };
 
 /** True when this arena has a rule of its own — used by the UI to explain it. */

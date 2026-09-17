@@ -1,23 +1,23 @@
 import React, { useMemo } from 'react';
 import { GameState, Tribute } from '../models/types';
+import { areLovers } from '../engine/alliance';
+import { ROMANCE } from '../data/balance';
 
 /**
- * The social graph, drawn.
+ * The social board, as a grid.
  *
- * The relationship system is the most interesting thing in the engine —
- * backstory bonds, grief, betrayal, sworn vengeance, alliance trust decay — and
- * the interface showed it as a flat list of numbers next to names. A list tells
- * you Marvel is on +40 with Cato. It cannot tell you that Marvel, Cato and Clove
- * are a closed triangle and everyone else in the arena is outside it, which is
- * the thing a reader actually wants to see.
+ * §(requests): the radial graph — the subject in the middle, eleven of the
+ * strongest feelings arranged by angle, distance for bond strength — was
+ * clever and nobody could read it. Which tributes were *missing* from it was
+ * not knowable, and D-numbers in circles are not names.
  *
- * Laid out radially around the subject rather than force-directed: the subject
- * is always the centre, distance from them encodes bond strength, and that is
- * both more readable and more stable than letting a physics simulation decide.
+ * This is the whole living field, one row each, in district order, with the
+ * subject's feeling about them as a labelled chip and every standing fact
+ * (ally, sworn, truce, lovers, sustained contact) as a badge. The dead drop
+ * off it: a relationship with a corpse is grief, and grief has its own panel.
+ * Every cell is text, so a reader on a phone or a screen reader gets the same
+ * board as everybody else.
  */
-
-const VIEW = 320;
-const CENTRE = VIEW / 2;
 
 function bondColor(value: number): string {
     if (value >= 40) return 'var(--cat-alliance)';
@@ -35,171 +35,111 @@ function bondLabel(value: number): string {
     return 'hostile';
 }
 
-export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; gameState: GameState }) {
-    const sworn = useMemo(() => new Set(tribute.memory?.vengeance ?? []), [tribute.memory]);
-    /**
-     * Audit 3 §2.6/§4.5: standing peace, drawn.
-     *
-     * Truces work — one is live on 10.8% of all tribute-cycles, across four
-     * well-spread reasons — the ledger balances exactly, and the whole thing
-     * was invisible. A reader looking at this graph could see that two tributes
-     * were hostile and had no way to learn that they had also agreed, for a
-     * named reason, not to fight about it yet. That agreement is frequently the
-     * most load-bearing fact on the board.
-     */
-    const truces = useMemo(() => new Map(
-        Object.entries(tribute.truces ?? {}).map(([id, until]) => [id, {
-            until,
-            reason: tribute.truceReason?.[id],
-        }] as const)
-    ), [tribute.truces, tribute.truceReason]);
+interface Row {
+    other: Tribute;
+    value: number;
+    known: boolean;
+    ally: boolean;
+    sworn: boolean;
+    truce?: string;
+    lovers: boolean;
+    streak: number;
+}
 
-    const links = useMemo(() => {
-        const entries = Object.entries(tribute.relationships)
-            .map(([id, raw]) => {
-                const other = gameState.tributes.find(t => t.id === id);
-                return other ? { other, value: Math.round(raw as number) } : null;
+export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; gameState: GameState }) {
+    const rows = useMemo<Row[]>(() => {
+        const sworn = new Set(tribute.memory?.vengeance ?? []);
+        return gameState.tributes
+            .filter(t => t.id !== tribute.id && t.status === 'alive')
+            .map(other => {
+                const raw = tribute.relationships[other.id];
+                return {
+                    other,
+                    value: Math.round((raw as number | undefined) ?? 0),
+                    known: raw !== undefined,
+                    ally: !!tribute.allianceId && tribute.allianceId === other.allianceId,
+                    sworn: sworn.has(other.id),
+                    truce: tribute.truces?.[other.id] !== undefined
+                        ? (tribute.truceReason?.[other.id] ?? 'truce standing')
+                        : undefined,
+                    lovers: areLovers(tribute, other),
+                    // The streak is only stored on one side of each pair, so read both.
+                    streak: Math.max(
+                        tribute.memory?.contactStreak?.[other.id] ?? 0,
+                        other.memory?.contactStreak?.[tribute.id] ?? 0,
+                    ),
+                };
             })
-            .filter((l): l is { other: Tribute; value: number } => l !== null)
-            // Everyone the subject has any recorded feeling about, strongest first.
-            .filter(l => Math.abs(l.value) > 2 || l.other.allianceId === tribute.allianceId)
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 11);
-        return entries;
+            .sort((a, b) => a.other.district - b.other.district || a.other.name.localeCompare(b.other.name));
     }, [tribute, gameState.tributes]);
 
-    if (links.length === 0) {
-        return <div className="empty-state">No recorded feeling about anyone yet.</div>;
+    const fallen = gameState.tributes.filter(t => t.id !== tribute.id && t.status === 'dead').length;
+
+    if (rows.length === 0) {
+        return <div className="empty-state">Nobody else is left standing.</div>;
     }
-
-    const strongest = Math.max(40, ...links.map(l => Math.abs(l.value)));
-    // Sort into a stable ring so the layout does not jump as values change.
-    const placed = links.map((link, i) => {
-        const angle = (i / links.length) * Math.PI * 2 - Math.PI / 2;
-        // Close bonds sit near the subject; hostility is pushed to the rim.
-        const closeness = (link.value + strongest) / (strongest * 2); // 0..1
-        const radius = 46 + (1 - closeness) * 88;
-        return {
-            ...link,
-            x: CENTRE + Math.cos(angle) * radius,
-            y: CENTRE + Math.sin(angle) * radius,
-        };
-    });
-
-    const allianceMates = placed.filter(l =>
-        l.other.allianceId !== undefined && l.other.allianceId === tribute.allianceId && l.other.status === 'alive');
 
     return (
         <div className="space-y-2">
-            <svg
-                viewBox={`0 0 ${VIEW} ${VIEW}`}
-                className="w-full h-auto"
-                role="img"
-                aria-label={`Relationship map for ${tribute.name}: ${links.map(l => `${l.other.name} ${bondLabel(l.value)} (${l.value > 0 ? '+' : ''}${l.value})${truces.has(l.other.id) ? ', truce standing' : ''}`).join('; ')}.`}
-            >
-                {/* Alliance hull: a ring binding everyone currently in the pack with
-                    the subject, so a group reads as a group and not as N separate lines. */}
-                {/* With a single ally the polygon degenerates to a line, which the
-                    bond line already draws — a hull is only meaningful for a group. */}
-                {allianceMates.length >= 2 && (
-                    <polygon
-                        points={[[CENTRE, CENTRE], ...allianceMates.map(m => [m.x, m.y])]
-                            .map(([x, y]) => `${x},${y}`).join(' ')}
-                        fill="var(--cat-alliance)"
-                        opacity={0.12}
-                        stroke="var(--cat-alliance)"
-                        strokeWidth={1.5}
-                        strokeDasharray="4 3"
-                    />
-                )}
-
-                {placed.map(link => (
-                    <line
-                        key={`line-${link.other.id}`}
-                        x1={CENTRE} y1={CENTRE} x2={link.x} y2={link.y}
-                        stroke={bondColor(link.value)}
-                        strokeWidth={1 + (Math.abs(link.value) / strongest) * 3.5}
-                        opacity={link.other.status === 'dead' ? 0.3 : 0.8}
-                        strokeDasharray={link.other.status === 'dead' ? '3 3' : undefined}
-                    />
-                ))}
-
-                {placed.map(link => {
-                    const dead = link.other.status === 'dead';
-                    return (
-                        <g key={link.other.id}>
-                            <title>
-                                {`${link.other.name} (District ${link.other.district}) — ${bondLabel(link.value)}, ${link.value > 0 ? '+' : ''}${link.value}` +
-                                    `${sworn.has(link.other.id) ? ', sworn to kill' : ''}` +
-                                    `${truces.has(link.other.id) ? `, truce standing${truces.get(link.other.id)?.reason ? ` (${truces.get(link.other.id)!.reason})` : ''}` : ''}` +
-                                    `${dead ? ', deceased' : ''}`}
-                            </title>
-                            <circle
-                                cx={link.x} cy={link.y} r={15}
-                                fill={dead ? 'var(--paper-flush)' : 'var(--paper-panel)'}
-                                stroke={bondColor(link.value)}
-                                strokeWidth={2}
-                                opacity={dead ? 0.5 : 1}
-                            />
-                            <text
-                                x={link.x} y={link.y + 1}
-                                textAnchor="middle" dominantBaseline="middle"
-                                style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 800 }}
-                                fill={dead ? 'var(--color-ink-600)' : 'var(--ink)'}
-                            >
-                                D{link.other.district}
-                            </text>
-                            {sworn.has(link.other.id) && (
-                                <text
-                                    x={link.x + 13} y={link.y - 11}
-                                    textAnchor="middle"
-                                    style={{ fontSize: 11 }}
-                                >⚔</text>
-                            )}
-                            {/* A standing truce, drawn on the ring itself: the bond
-                                colour says what they feel, this says what they agreed. */}
-                            {truces.has(link.other.id) && !dead && (
-                                <circle
-                                    cx={link.x} cy={link.y} r={19}
-                                    fill="none"
-                                    stroke="var(--cat-alliance)"
-                                    strokeWidth={1.5}
-                                    strokeDasharray="2 3"
-                                    opacity={0.9}
-                                />
-                            )}
-                            <text
-                                x={link.x} y={link.y + 26}
-                                textAnchor="middle"
-                                style={{ fontFamily: 'var(--font-mono)', fontSize: 8, fontWeight: 700 }}
-                                fill="var(--color-ink-500)"
-                            >
-                                {link.other.name.length > 10 ? `${link.other.name.slice(0, 9)}…` : link.other.name}
-                            </text>
-                        </g>
-                    );
-                })}
-
-                {/* The subject, always dead centre. */}
-                <circle cx={CENTRE} cy={CENTRE} r={20} fill="var(--ink)" stroke="var(--red)" strokeWidth={3} />
-                <text
-                    x={CENTRE} y={CENTRE + 1}
-                    textAnchor="middle" dominantBaseline="middle"
-                    style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800 }}
-                    fill="#fff"
-                >
-                    D{tribute.district}
-                </text>
-            </svg>
-
+            <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+                <caption className="sr-only">
+                    How {tribute.name} feels about everyone still alive, and what stands between them.
+                </caption>
+                <thead>
+                    <tr className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-ink-500)]">
+                        <th scope="col" className="text-left py-1 pr-2 font-bold">Tribute</th>
+                        <th scope="col" className="text-left py-1 pr-2 font-bold">Feeling</th>
+                        <th scope="col" className="text-left py-1 font-bold">Standing</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map(r => (
+                        <tr key={r.other.id} className="border-t border-[var(--color-ink-800)]">
+                            <th scope="row" className="text-left py-1.5 pr-2 font-normal">
+                                <span className="font-mono text-[10px] text-[var(--color-ink-500)] mr-1.5">D{r.other.district}</span>
+                                <span className={r.ally ? 'text-[var(--cat-alliance)] font-bold' : 'text-[var(--color-ink-200)]'}>
+                                    {r.other.name}
+                                </span>
+                            </th>
+                            <td className="py-1.5 pr-2">
+                                {r.known ? (
+                                    <span
+                                        className="inline-flex items-center gap-1.5 font-mono"
+                                        style={{ color: bondColor(r.value) }}
+                                    >
+                                        <span className="w-2 h-2 inline-block" style={{ background: bondColor(r.value) }} aria-hidden="true" />
+                                        {bondLabel(r.value)}
+                                        <span className="text-[10px] opacity-80">{r.value > 0 ? `+${r.value}` : r.value}</span>
+                                    </span>
+                                ) : (
+                                    <span className="font-mono text-[var(--color-ink-600)]">never met</span>
+                                )}
+                            </td>
+                            <td className="py-1.5">
+                                <span className="flex flex-wrap gap-1">
+                                    {r.ally && <span className="chip chip-sm" style={{ borderColor: 'var(--cat-alliance)', color: 'var(--cat-alliance)' }}>ally</span>}
+                                    {r.lovers && <span className="chip chip-sm" style={{ borderColor: 'var(--cat-romance, var(--red))', color: 'var(--cat-romance, var(--red))' }}>lovers</span>}
+                                    {r.sworn && <span className="chip chip-sm" style={{ borderColor: 'var(--cat-death)', color: 'var(--cat-death)' }}>⚔ sworn to kill</span>}
+                                    {r.truce && <span className="chip chip-sm" style={{ borderColor: 'var(--cat-alliance)', color: 'var(--color-ink-300)' }}>truce · {r.truce}</span>}
+                                    {r.streak >= ROMANCE.sustainedCycles && (
+                                        <span className="chip chip-sm text-[var(--color-ink-400)]">{r.streak} cycles together</span>
+                                    )}
+                                </span>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
             <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-mono uppercase tracking-wider">
                 {(['close', 'friendly', 'neutral', 'wary', 'hostile'] as const).map((band, i) => (
                     <span key={band} className="flex items-center gap-1" style={{ color: bondColor([60, 25, 0, -25, -60][i]) }}>
-                        <span className="w-2.5 h-2.5 inline-block" style={{ background: bondColor([60, 25, 0, -25, -60][i]) }} />
+                        <span className="w-2.5 h-2.5 inline-block" style={{ background: bondColor([60, 25, 0, -25, -60][i]) }} aria-hidden="true" />
                         {band}
                     </span>
                 ))}
-                <span className="text-[var(--color-ink-500)]">⚔ sworn · dotted halo = truce standing · dashed hull = alliance · faded = dead</span>
+                {fallen > 0 && (
+                    <span className="text-[var(--color-ink-500)]">{fallen} fallen not shown</span>
+                )}
             </div>
         </div>
     );

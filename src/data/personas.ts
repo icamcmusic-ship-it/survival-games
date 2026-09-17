@@ -40,10 +40,6 @@ const DECLARED: Record<InterviewPersona, true> = {
     'The Wildcard': true,
 };
 
-/** Guards a string of unknown provenance — a save, a URL, a coaching pin. */
-export function isInterviewPersona(value: unknown): value is InterviewPersona {
-    return typeof value === 'string' && value in DECLARED;
-}
 
 /** Personas the crowd reads as warm, and the ones it reads as cold. */
 export const WARM_PERSONAS: InterviewPersona[] = [

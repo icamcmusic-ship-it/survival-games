@@ -1,3 +1,4 @@
+import { PRE_ARENA_PHASE_SET, dayPhaseLabel } from '../ui/phaseLabels';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { EventCategory, EventLog, GameState, Tribute } from '../models/types';
@@ -386,9 +387,7 @@ export function groupLogs(logs: EventLog[]): Array<[string, EventLog[]]> {
     const groups: Array<[string, EventLog[]]> = [];
     const index = new Map<string, EventLog[]>();
     logs.forEach(log => {
-        const key = log.day === 0
-            ? log.phase.charAt(0).toUpperCase() + log.phase.slice(1)
-            : `Day ${log.day} — ${log.phase.charAt(0).toUpperCase() + log.phase.slice(1)}`;
+        const key = dayPhaseLabel(log.day, log.phase);
         let bucket = index.get(key);
         if (!bucket) {
             bucket = [];
@@ -662,7 +661,7 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
 
     // The final section of the pre-Games ceremony block should not swallow the
     // reveal: collapse day-0 training/interview sections to headlines only.
-    const CEREMONY_PHASES = new Set(['training', 'interviews']);
+    const CEREMONY_PHASES = PRE_ARENA_PHASE_SET;
 
     return (
         // Deliberately NOT role="log": announcing every rendered line drowned

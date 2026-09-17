@@ -133,7 +133,7 @@ for (let i = 0; i < RUNS; i++) {
     let state = sim.getState();
     while (state.phase !== 'ended' && guard-- > 0) {
         if (state.phase === 'setup') sim.processTraining();
-        else if (state.phase === 'training') sim.processInterviews();
+        else if (state.phase === 'training' || state.phase === 'scores') sim.processInterviews();
         else if (state.phase === 'interviews') sim.startGames();
         else if (state.phase === 'bloodbath') sim.processBloodbath();
         else if (state.phase === 'epilogue') { state.phase = 'ended'; }

@@ -413,6 +413,57 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
 
     // ---- bonded ---------------------------------------------------------
+    // ---- Audit 5 §12.3: filling the single-carrier hooks -----------------
+    'Camel': {
+        info: 'Can go a long time on very little water. Loses less to thirst every cycle and shrugs off the heat.',
+        mods: { thirstDrain: -4, heatResist: 0.1 },
+    },
+    'Grappler': {
+        info: 'Fights close. Hard to throw, hard to shake off, and does not break away easily.',
+        mods: { wrestle: 0.4, unarmedPower: 1.5, retreat: -0.03 },
+    },
+    'Kindler': {
+        info: 'Good with fire and unafraid of it. Their hits burn a little more often, and burns hurt them a little less.',
+        mods: { burnOnHit: 0.12, burnResist: 0.2 },
+    },
+    'Houndsman': {
+        info: 'Grew up around animals. Takes less from mutts and hears them coming.',
+        mods: { muttDamage: -0.15, awareness: 0.4 },
+    },
+    'Crowd-Pleaser': {
+        info: 'Plays to the cameras. Sponsors like it; the people trying to hide from the cameras do not.',
+        mods: { sponsorAppeal: 1.5, excitement: 0.2, concealment: -0.05 },
+    },
+    'Sleepless': {
+        info: 'Sleeps badly and wakes fast. Worse fatigue at night, far better awareness after dark, and the mind wears a little quicker.',
+        mods: { fatigueNight: 2, awarenessNight: 0.8, sanityDrain: 0.15 },
+    },
+    'Deep-Lunged': {
+        info: 'A strong swimmer with a long breath. Prefers water when choosing where to go, and survives it.',
+        mods: { water: 0.6, fatigueDay: -0.5 },
+    },
+    'Sure-Footed': {
+        info: 'At home on high ground and steep ground. Chooses it, and gets off it in a hurry when they have to.',
+        mods: { highland: 0.5, retreat: 0.1 },
+    },
+    'Quartermaster': {
+        info: 'Packs and carries well. More room in the bag, and a better eye for what is worth picking up.',
+        mods: { capacity: 2, scavenge: 0.3 },
+    },
+    'Unlucky': {
+        info: 'Things happen to them. The book prices them down, and the field somehow always ends up looking their way.',
+        mods: { odds: -0.3, targetDraw: 1.0 },
+    },
+    'Witness': {
+        info: 'Earned by watching a betrayal happen. Grief lands harder, resolve holds longer, and they are very hard to fool twice.',
+        earned: true,
+        mods: { griefResist: -0.2, resolveDrift: 0.3, betrayalResist: 0.2 },
+    },
+    'Frostbitten': {
+        info: 'Earned in the cold. The body has learnt what it costs; it resists the next freeze and pays for it in sleep.',
+        earned: true,
+        mods: { coldResist: 0.3, fatigueNight: 1.0 },
+    },
     'Star-Crossed': {
         info: 'Bonded to their district partner. The two of them will refuse to fight each other under any circumstances, and the Capitol adores it — a steady drip of sponsor trust and excitement all run. They hold their nerve for each other, and a death in front of them lands twice as hard.',
         earned: true,
@@ -524,7 +575,6 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
 export const ROLLABLE_TRAITS = Object.keys(TRAIT_DEFS).filter(name => !TRAIT_DEFS[name].earned);
 
 /** Every trait name, rollable or earned. */
-export const ALL_TRAITS = Object.keys(TRAIT_DEFS);
 
 /**
  * The sum of one modifier across everything this tribute is carrying.

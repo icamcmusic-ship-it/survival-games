@@ -52,7 +52,7 @@ dev server and a browser; run it locally.
   consumes a different number of RNG draws in another — so a same-process
   replay test can never catch it, and the Share URL silently stops replaying
   the same Games in a different browser.
-- `npm run test:names` — reaping-pool guard: every district pool carries a full
+- `npm run test:names` — reaping-pool guard: no name reads as a surname or a compound (tributes go by one name), every district pool carries a full
   stock (districts 13-16 once shipped at 30 entries per gender against the
   original twelve's 100), no pool repeats itself, and no name is resident in
   more than two districts at once (`Sable` was in five).

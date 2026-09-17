@@ -43,13 +43,19 @@ export type Stance =
     | 'Fortified'
     | 'Desperate'
     | 'Scavenging'
-    | 'Shadowing';
+    | 'Shadowing'
+    // Audit 5 §12: two more conditional stances — tending an ally, and walking a pack's perimeter.
+    | 'Nursing'
+    | 'Patrolling';
 
 export type ArchetypeId =
     | 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog'
     // A2: eight archetypes with behavioural hooks rather than four more bias
     // scalars. See `data/archetypes.ts`.
-    | 'mercenary' | 'zealot' | 'medic' | 'saboteur' | 'beast' | 'diplomat' | 'scholar' | 'ghost';
+    | 'mercenary' | 'zealot' | 'medic' | 'saboteur' | 'beast' | 'diplomat' | 'scholar' | 'ghost'
+    // Audit 5 §12.4: four more, each holding a stance/objective/target
+    // combination no existing archetype does.
+    | 'scavenger' | 'captor' | 'bellwether' | 'confessor';
 
 export interface Attributes {
     strength: number;
@@ -703,6 +709,9 @@ export interface Tribute {
      * read as weaker) and by the epilogue.
      */
     scars?: Partial<Record<InjurySite, boolean>>;
+    /** Audit 5 §12.3: earned-trait counters. */
+    betrayalsWitnessed?: number;
+    frostbitesTaken?: number;
     /**
      * §11: separate standing injuries this tribute has ever taken, counted at
      * the moment a sound site stops being sound. `injuries` is the live state;
@@ -1059,6 +1068,8 @@ export interface Tribute {
     trainingLog?: Array<{
         day: number;
         station: string;
+        /** The discipline the station drilled. Lets a later floor day know what has already been worked. */
+        attr?: keyof Attributes;
         outcome: 'success' | 'struggle' | 'failure';
         witnessIds?: string[];
     }>;
@@ -1701,7 +1712,14 @@ export type ArenaLawId =
     | 'bloodPrice'         // the horn only opens for a tribute who has already killed
     | 'noRest'             // sleep restores nothing; fatigue is paid down only by standing still in daylight
     | 'meltingGround'      // every zone a tribute lingers in is depleted permanently behind them
-    | 'twinSuns';          // no shade anywhere: heat load applies in every zone, all day
+    | 'twinSuns'           // no shade anywhere: heat load applies in every zone, all day
+    /*
+     * Audit 5 §5.4: two laws that give. Thirteen of twenty subtracted, and
+     * the three that gave totalled fewer arena-instances than `noSponsors`
+     * alone. Both enforced at exactly one site.
+     */
+    | 'salvage'            // every corpse leaves its kit where it fell, as a cache anyone can find
+    | 'theBell';           // every morning the Gamemakers name a zone; whoever stands in it at nightfall is resupplied
 
 /** A traversal rule layered on top of plain adjacency for one edge. Keyed by `edgeKey(a,b)` on `Arena.edgeRules`. */
 export interface EdgeRule {
@@ -1839,7 +1857,26 @@ export interface Arena {
     muttRoster?: Mutt[];
 }
 
-export type Phase = 'setup' | 'roster' | 'reaping' | 'training' | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'epilogue' | 'ended';
+/**
+ * §(requests): the pre-Games are staged rather than dumped.
+ *
+ * `processTraining` used to run the reaping square, the goodbyes, the train,
+ * the parade and three days on the floor in one call, and the chronicle got
+ * one 'TRAINING' page with everything in it. Each of those is its own phase
+ * now, so the arena screen advances through them one at a time and the
+ * chronicle pages them the way it pages a day and a night. `training` is kept
+ * as a legacy value for saves written before the split.
+ */
+export type Phase = 'setup' | 'roster' | 'reaping'
+    | 'square' | 'train' | 'parade'
+    | 'training' | 'training1' | 'training2' | 'training3' | 'scores'
+    | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'epilogue' | 'ended';
+
+/** Every phase that happens before anyone is in the arena, in order. */
+export const PRE_GAMES_PHASES: Phase[] = ['square', 'train', 'parade', 'training1', 'training2', 'training3', 'scores', 'interviews'];
+
+/** The phase a training-floor day is logged under. */
+export const trainingPhaseFor = (day: number): Phase => (`training${Math.min(3, Math.max(1, day))}` as Phase);
 
 /**
  * Semantic category for every logged event. Drives the colour coding of the
@@ -2068,6 +2105,10 @@ export interface GameState {
     zoneDepletion?: Record<string, number>;
     /** Zone name -> whatever is currently happening to it beyond depletion. */
     zoneEffects?: Record<string, ZoneEffect[]>;
+    /** Audit 5 §5.7: the Kiln's signature names a zone one day and fires it the next. */
+    kilnFiringZone?: string;
+    /** Audit 5 §5.4 `theBell`: the zone named this morning, paid at nightfall. */
+    bellZone?: string;
     /**
      * Adjacency edges cut by the arena itself — a collapsed bridge, a fire that
      * burned through a crossing. Stored as `map.edgeKey()` strings. The printed

@@ -1,3 +1,4 @@
+import { arenaHasLaw } from './gamesProfile';
 import { targetDrawOf } from './targeting';
 import { DamageRecord, Item, Tribute, attr } from '../models/types';
 import { forceStance } from './stance';
@@ -5,7 +6,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { ARENA_DEATH_BUDGET, BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES } from '../data/balance';
+import { ARENA_DEATH_BUDGET, BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES , ARENA_LAWS } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -1468,6 +1469,20 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         };
     }
     delete victim.downed;
+
+    // Audit 5 §5.4 `salvage`: the dead are not collected. Their kit stays where
+    // they fell, as a cache the abandoned-camp pass will hand to whoever
+    // arrives — which turns every cannon into a map reference.
+    if (arenaHasLaw(ctx.state, 'salvage') && victim.inventory.length > 0) {
+        const kept = victim.inventory.filter(() => ctx.rng.chance(ARENA_LAWS.salvageKeepChance));
+        if (kept.length > 0) {
+            ctx.state.abandonedCamps = ctx.state.abandonedCamps ?? [];
+            if (!ctx.state.abandonedCamps.some(c => c.zone === victim.zone && c.foundBy === undefined)) {
+                ctx.state.abandonedCamps.push({ zone: victim.zone, ownerId: victim.id, ownerName: victim.name, cycle: cycleOf(ctx.state), items: kept.map(i => i.id) });
+                ctx.logEvent(`Nobody comes for ${victim.name}. What they were carrying stays in ${victim.zone}, and the whole arena heard where.`, [victim.id], { category: 'loot', zone: victim.zone });
+            }
+        }
+    }
 
     // A2: a Diplomat's death dissolves every truce they talked other people
     // into. The agreements were only ever held together by them being there.

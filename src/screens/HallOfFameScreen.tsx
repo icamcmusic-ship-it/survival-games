@@ -1,3 +1,4 @@
+import { Hint } from '../components/Hint';
 import React, { useMemo, useState, useEffect } from 'react';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { HallOfFameEntry } from '../models/types';
@@ -399,13 +400,14 @@ export function HallOfFameScreen() {
                                                             </button>
                                                         </span>
                                                     ) : (
-                                                        <button
-                                                            onClick={() => setConfirmReplayId(entry.id)}
-                                                            className="btn btn-sm btn-primary"
-                                                            title={`Run the ${entry.arenaName} Games again on seed ${entry.seed}. This replaces any run in progress.`}
-                                                        >
-                                                            <RotateCcw className="w-3.5 h-3.5" /> Run these Games again
-                                                        </button>
+                                                        <Hint text={`Run the ${entry.arenaName} Games again on seed ${entry.seed}. This replaces any run in progress.`}>
+                                                            <button
+                                                                onClick={() => setConfirmReplayId(entry.id)}
+                                                                className="btn btn-sm btn-primary"
+                                                            >
+                                                                <RotateCcw className="w-3.5 h-3.5" /> Run these Games again
+                                                            </button>
+                                                        </Hint>
                                                     )}
                                                     {/* §2.3: the archive stored each run's whole config so
                                                         it could be relaunched, and there was no way to ask
@@ -420,7 +422,7 @@ export function HallOfFameScreen() {
                                                             onClick={() => gameActions.toggleGrudgeMatch(entry.id)}
                                                             className={`btn btn-sm ${grudgeIds.includes(entry.id) ? 'btn-primary' : ''}`}
                                                             aria-pressed={grudgeIds.includes(entry.id)}
-                                                            title={`Reap ${entry.winnerName} again into your next Games`}
+                                                            aria-label={`Grudge Match — reap ${entry.winnerName} again into your next Games`}
                                                         >
                                                             <Swords className="w-3.5 h-3.5" />
                                                             {grudgeIds.includes(entry.id) ? 'In the Grudge Match' : 'Grudge Match'}
@@ -433,7 +435,7 @@ export function HallOfFameScreen() {
                                                         })}
                                                         className={`btn btn-sm ${compareIds.includes(entry.id) ? 'btn-primary' : ''}`}
                                                         aria-pressed={compareIds.includes(entry.id)}
-                                                        title="Pick two runs to compare their settings and outcomes"
+                                                        aria-label="Compare — pick two runs to compare their settings and outcomes"
                                                     >
                                                         {compareIds.includes(entry.id) ? 'Comparing' : 'Compare'}
                                                     </button>
@@ -448,7 +450,7 @@ export function HallOfFameScreen() {
                                                         }}
                                                         className={`btn btn-sm ${entry.pinned ? 'btn-primary' : ''}`}
                                                         aria-pressed={!!entry.pinned}
-                                                        title={entry.pinned
+                                                        aria-label={entry.pinned
                                                             ? 'Pinned — protected from the archive cap. Click to unpin.'
                                                             : 'Pin this entry so the oldest-evicted archive cap can never delete it'}
                                                     >

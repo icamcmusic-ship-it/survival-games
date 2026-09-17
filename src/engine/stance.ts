@@ -324,6 +324,19 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
         t.attributes.stealth >= STANCE_MODES.shadowing.stealthMin - STANCE_HOLD.shadowStealthSlack
         && (!!sig.shadowTarget || (t.stance === 'Shadowing' && !!t.shadowing))
         && (t.unseenStreak ?? 0) > 0,
+
+    // Audit 5 §12: somebody in the pack, in this sector, who needs tending.
+    Nursing: (_ctx, t, sig) =>
+        !!t.allianceId
+        && sig.occupants.some(o => o.id !== t.id && o.allianceId === t.allianceId
+            && (o.injuries.bleeding || o.health < STANCE_MODES.nursing.allyHealthBelow)),
+
+    // Audit 5 §12: a pack of three or more with somewhere to walk the edge of.
+    Patrolling: (ctx, t, sig) =>
+        !!t.allianceId
+        && sig.occupants.filter(o => o.allianceId === t.allianceId).length >= STANCE_MODES.patrolling.packMin
+        && (ctx.state.camps?.[t.id] !== undefined
+            || sig.occupants.some(o => o.allianceId === t.allianceId && ctx.state.camps?.[o.id] !== undefined)),
 };
 
 /**
@@ -482,6 +495,32 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         if (sig.hasWeapon) s += STANCE_MODES.shadowing.armedBonus;
         if (sig.wounded) s -= STANCE_MODES.shadowing.woundedPenalty;
         s += sig.arch.stanceBias?.Shadowing ?? 0;
+        return s;
+    },
+
+    Nursing: (ctx, t, sig) => {
+        let s = STANCE_MODES.nursing.base;
+        s += profOf(t, 'medicine') * STANCE_MODES.nursing.perMedicinePoint;
+        const hurt = sig.occupants.filter(o => o.id !== t.id && o.allianceId === t.allianceId
+            && (o.injuries.bleeding || o.health < STANCE_MODES.nursing.allyHealthBelow)).length;
+        s += hurt * STANCE_MODES.nursing.perHurtAlly;
+        if (t.objective?.kind === 'protect') s += STANCE.protectDefensive;
+        // Somebody with a weapon in the sector is a reason to stop tending and start standing.
+        if (sig.ratio > STANCE.outmatchedRatio) s -= STANCE_MODES.nursing.contestedPenalty;
+        s += sig.arch.allianceAffinity * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
+        s += sig.arch.stanceBias?.Nursing ?? 0;
+        return s;
+    },
+
+    Patrolling: (ctx, t, sig) => {
+        let s = STANCE_MODES.patrolling.base;
+        const pack = sig.occupants.filter(o => o.allianceId === t.allianceId).length;
+        s += (pack - STANCE_MODES.patrolling.packMin) * STANCE_MODES.patrolling.perExtraMember;
+        s += profOf(t, 'tracking') * STANCE_MODES.patrolling.perTrackingPoint;
+        if (sig.cannonNearby) s += STANCE_MODES.patrolling.cannonBonus;
+        if (sig.wounded) s -= STANCE_MODES.patrolling.woundedPenalty;
+        s += sig.arch.caution * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
+        s += sig.arch.stanceBias?.Patrolling ?? 0;
         return s;
     },
 };

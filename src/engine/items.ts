@@ -157,9 +157,6 @@ export function hasTool(t: Tribute, key: 'purifies' | 'light' | 'warmth' | 'fish
     return t.inventory.some(i => i[key] === true);
 }
 
-export function hasBackpack(t: Tribute): boolean {
-    return t.inventory.some(i => i.id === 'backpack');
-}
 
 /**
  * How much a tribute can carry.

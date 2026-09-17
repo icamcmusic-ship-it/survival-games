@@ -63,6 +63,14 @@ districts.forEach(d => {
     });
 });
 
+// §(requests): tributes go by one name, and nothing may quietly become two.
+districts.forEach(d => {
+    (['Male', 'Female'] as const).forEach(gender => {
+        const bad = DISTRICT_NAMES[d][gender].filter(n => /[\s'-]/.test(n));
+        if (bad.length) problems.push(`district ${d} ${gender}: name(s) that read as a surname or a compound — ${bad.join(', ')}`);
+    });
+});
+
 const spread = [...homes.entries()]
     .filter(([, ds]) => ds.length > MAX_DISTRICTS_PER_NAME)
     .sort((a, b) => b[1].length - a[1].length);

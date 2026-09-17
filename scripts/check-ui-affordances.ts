@@ -45,7 +45,8 @@ const files = [...walk('src/components'), ...walk('src/screens')].sort();
  *
  * The ceiling is a ratchet. Lower it whenever a conversion lands; never raise it.
  */
-const TITLE_CEILING = 30;
+// Audit 5 §2.3: a ceiling that has been reached has stopped ratcheting. 30 -> 21.
+const TITLE_CEILING = 21;
 
 const INTERACTIVE = /<(button|a|input|select|textarea)\b/;
 

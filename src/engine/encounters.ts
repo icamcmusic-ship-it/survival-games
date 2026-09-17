@@ -4,9 +4,9 @@ import { BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ENCOUNTER_BRANC
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaActionKey, ArenaEventDef, actionPool, arenaFlavor } from '../data/arenaFlavor';
 import { QUIRKS, quirkLine } from '../data/quirks';
-import { SimContext } from './context';
+import { SimContext , getAlive } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
-import { depleteZone, depletionOf, effectiveResources, getZone, zoneFeatures } from './map';
+import { depleteZone, depletionOf, effectiveResources, getZone, zoneFeatures , reachableZones } from './map';
 import { collapseStructure, isLoadBearing } from './loadBearing';
 import { noteEffectCaused } from './runRecords';
 import type { SanityBand } from './sanityBands';
@@ -925,6 +925,33 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
     if (t.stance === 'Shadowing') {
         // A shadow does not stop to forage. The turn is the following.
         say('shadow');
+        return;
+    }
+
+    // Audit 5 §12: tending. The turn is the ally.
+    if (t.stance === 'Nursing') {
+        const ally = getAlive(ctx.state).find(o => o.id !== t.id && o.zone === t.zone && o.allianceId === t.allianceId
+            && (o.injuries.bleeding || o.health < STANCE_MODES.nursing.allyHealthBelow));
+        say('nurse');
+        if (ally) {
+            if (ally.injuries.bleeding && ctx.rng.chance(STANCE_MODES.nursing.staunchBase + profOf(t, 'medicine') * STANCE_MODES.nursing.staunchPerMedicine)) {
+                clearBleeding(ally);
+                ctx.logEvent(`${t.name} gets ${ally.name}'s bleeding stopped in ${t.zone}.`, [t.id, ally.id], { category: 'injury', zone: t.zone });
+            }
+            ally.vitals.sanity = Math.min(100, ally.vitals.sanity + STANCE_MODES.nursing.allySanity);
+            trainProficiency(t, 'medicine');
+            clampTribute(ally);
+        }
+        return;
+    }
+
+    // Audit 5 §12: the perimeter. The turn is the neighbouring sectors.
+    if (t.stance === 'Patrolling') {
+        say('patrol');
+        reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? []).forEach(z => {
+            noteSighting(ctx.state, t, z.name, getAlive(ctx.state).filter(o => o.zone === z.name && o.allianceId !== t.allianceId).length, depletionOf(ctx.state, z.name));
+        });
+        trainProficiency(t, 'tracking');
         return;
     }
 

@@ -341,7 +341,7 @@ for (let i = 0; i < 400; i++) {
 
   while (state.phase !== 'ended' && guard-- > 0) {
     if (state.phase === 'setup') sim.processTraining();
-    else if (state.phase === 'training') {
+    else if (state.phase === 'training' || state.phase === 'scores') {
       state.tributes.forEach(t => { trainingHistogram[t.trainingScore] = (trainingHistogram[t.trainingScore] || 0) + 1; });
       sim.processInterviews();
     }
@@ -800,7 +800,7 @@ function runOnce(seed: string, arenaId: string) {
   let g = 3000; let s = sim.getState();
   while (s.phase !== 'ended' && g-- > 0) {
     if (s.phase === 'setup') sim.processTraining();
-    else if (s.phase === 'training') sim.processInterviews();
+    else if (s.phase === 'training' || s.phase === 'scores') sim.processInterviews();
     else if (s.phase === 'interviews') sim.startGames();
     else if (s.phase === 'bloodbath') sim.processBloodbath();
     else if (s.phase === 'epilogue') s.phase = 'ended';
@@ -829,7 +829,7 @@ function runFromBaseConfig(seed: string, arenaId: string, base: GameConfig) {
   let g = 3000; let s = sim.getState();
   while (s.phase !== 'ended' && g-- > 0) {
     if (s.phase === 'setup') sim.processTraining();
-    else if (s.phase === 'training') sim.processInterviews();
+    else if (s.phase === 'training' || s.phase === 'scores') sim.processInterviews();
     else if (s.phase === 'interviews') sim.startGames();
     else if (s.phase === 'bloodbath') sim.processBloodbath();
     else if (s.phase === 'epilogue') s.phase = 'ended';

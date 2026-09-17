@@ -303,6 +303,32 @@ export const LAW_LABELS: Record<ArenaLawId, LawLabel> = {
         ],
         extraEvents: 1,
     },
+    salvage: {
+        name: 'Salvage',
+        detail: 'The dead are not collected. Whatever they were carrying stays where they fell, for whoever gets there.',
+        kind: 'gives',
+        severity: 2,
+        affects: ['food', 'combat'],
+        effects: [
+            'Every death leaves a cache of the fallen tribute\'s kit in the zone, findable like an abandoned camp.',
+            'A cannon is a map reference. Scavengers and the desperate converge on it.',
+            'Killing somebody is also resupplying whoever arrives second.',
+        ],
+        extraEvents: 1,
+    },
+    theBell: {
+        name: 'The bell',
+        detail: 'Each morning a bell names one zone. Whoever is standing in it when night falls is fed and watered by the Capitol.',
+        kind: 'gives',
+        severity: 2,
+        affects: ['food', 'water', 'movement'],
+        effects: [
+            'One zone a day is announced, arena-wide, at first light.',
+            'Everybody in it at nightfall is resupplied — and everybody knows who else will be there.',
+            'A scheduled, announced, contested gift: the horn, every day, somewhere new.',
+        ],
+        extraEvents: 1,
+    },
     twinSuns: {
         name: 'Two suns, no shade',
         detail: 'There is nowhere in this arena out of the light. Cover hides you from people, not from the sky.',

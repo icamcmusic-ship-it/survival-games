@@ -480,7 +480,9 @@ export const GAMES_PROFILE = {
      * High on purpose — most Games are not Quarter Quells — but this is the
      * dial, and the Setup "Force a Quell" toggle bypasses it entirely.
      */
-    noQuellWeight: 600,
+    // Audit 5 §6.2: 600 put a Quell in 7% of runs and a *specific* Quell in
+    // one run in four hundred. Twenty-eight authored Quells behind that door.
+    noQuellWeight: 330,
 } as const;
 
 export const QUELL_MECHANICS = {
@@ -1692,6 +1694,10 @@ export const ESCALATION = {
  * before the arena has visibly changed them.
  */
 export const EARNED_TRAIT_RULES = {
+    /** Audit 5 §12.3: betrayals watched before 'Witness' lands. */
+    witnessBetrayals: 2,
+    /** Audit 5 §12.3: frostbites taken before 'Frostbitten' lands. */
+    frostbittenAt: 2,
     /**
      * Traps pulled apart before they read as Trapwise.
      *
@@ -3011,6 +3017,12 @@ export const LEGENDARY_ITEMS = {
  * piece of ground contested instead of making all of it poorer.
  */
 export const ARENA_LAWS = {
+    /** Audit 5 §5.4 `salvage`: how much of a corpse's kit survives as a cache. */
+    salvageKeepChance: 0.75,
+    /** Audit 5 §5.4 `theBell`: what the Capitol hands out at nightfall. */
+    bellFeed: 30,
+    bellQuench: 30,
+    bellSponsorTrust: 3,
     /** Health returned at first light to anybody who slept at the horn. */
     dawnMercyHeal: 14,
     /** ...and what a night under the Capitol's floodlights does for the nerves. */
@@ -3594,6 +3606,27 @@ export const STANCE = {
  * conditions read next to the payoffs they gate.
  */
 export const STANCE_MODES = {
+    /** Audit 5 §12: tending a hurt ally in the same sector. */
+    nursing: {
+        allyHealthBelow: 45,
+        base: 3.8,
+        perMedicinePoint: 0.5,
+        perHurtAlly: 0.8,
+        contestedPenalty: 2.0,
+        /** Chance per cycle the tending actually staunches a bleed. */
+        staunchBase: 0.35,
+        staunchPerMedicine: 0.12,
+        allySanity: 3,
+    },
+    /** Audit 5 §12: walking the edge of a pack's ground. */
+    patrolling: {
+        packMin: 3,
+        base: 3.6,
+        perExtraMember: 0.3,
+        perTrackingPoint: 0.25,
+        cannonBonus: 0.8,
+        woundedPenalty: 1.5,
+    },
     /** How much of the archetype's temperament a conditional stance inherits. */
     conditionalArchetypeWeight: 0.5,
     hunting: {
@@ -4040,7 +4073,8 @@ export const RUMOURS = {
     /** Odds two co-located allies talk at all in a given cycle. */
     campShareChance: 0.4,
     /** Odds somebody invents one at a meeting, and the regard above which they will not. */
-    plantChance: 0.12,
+    // Audit 5 §4.3: planted lies fired 0.42 a run and the debunk once in 77 runs.
+    plantChance: 0.2,
     plantMaxRegard: 20,
     /** Share of plants that are a lure rather than a warning-off. */
     plantLureShare: 0.6,
@@ -4184,7 +4218,9 @@ export const TRIANGLES = {
 
 export const ROMANCE = {
     /** §4.4: odds an eligible tribute plans the showmance at the interview. */
-    showmanceInterviewChance: 0.12,
+    // Audit 5: performed bonds measured 0.4% of tributes; the achievements
+    // that read them could not be earned in 500 runs. Nudged, not opened.
+    showmanceInterviewChance: 0.18,
     /** Multiplier on performedChance for a tribute who planned it. */
     showmanceMultiplier: 2,
     /**
@@ -6835,6 +6871,17 @@ export const ARCHETYPE_HOOKS = {
  * tuning "the tide" means editing one block.
  */
 export const ARENA_SIGNATURES = {
+    /** Audit 5 §5.7: the Tidewrack Flats' turn of the tide. */
+    tideTurn: { escapeBase: 0.4, escapePerAgility: 0.05, escapeFatigue: 8, damage: 16, caughtFatigue: 14 },
+    /** Audit 5 §5.7: the Thresher Floor's line starting under somebody. */
+    thresherLine: { everyNth: 3, busiestChance: 0.6, dodgeBase: 0.35, dodgePerAgility: 0.05, damage: 14, bleedChance: 0.4 },
+    /** Audit 5 §5.7: the Vigil's bell at the dead hour. */
+    watchBell: { shelteredAt: 0.6, fatigue: 9, fatigueSheltered: 3, sanity: 4, sanitySheltered: 1, stumbleChance: 0.08, stumbleDamage: 6 },
+    /** Audit 5 §5.7: the Saltworks' pan cracking under the emptiest zone. */
+    panCracks: { earlyEveryNth: 5, emptiestChance: 0.65, holdBase: 0.45, holdPerAgility: 0.04, damage: 12, muttChance: 0.5 },
+    /** Audit 5 §5.7: the Kiln's second sun, telegraphed a day ahead. */
+    secondSun: { safestChance: 0.7, thirst: 14, fatigue: 8, burnChance: 0.45, burnDamage: 9 },
+
     /** The Clockwork Island: the hour turns and one sector pays for it. */
     clock: {
         dodgeBase: 0.25,

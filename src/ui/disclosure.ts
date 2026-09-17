@@ -26,8 +26,15 @@ export function disclosureFor(phase: Phase): Disclosure {
         case 'reaping':
         case 'setup':
         case 'roster':
+        case 'square':
+        case 'train':
+        case 'parade':
+        case 'training1':
+        case 'training2':
+        case 'training3':
             return 'public';
         case 'training':
+        case 'scores':
             return 'scored';
         case 'interviews':
             return 'interviewed';

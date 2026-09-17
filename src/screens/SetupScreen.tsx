@@ -638,7 +638,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 tabIndex={tab === id ? 0 : -1}
                                 onClick={() => setTab(id)}
                                 className="seg-item"
-                                title={blurb}
+                                aria-label={`${label} — ${blurb}`}
                             >
                                 {label}
                             </button>
@@ -772,14 +772,15 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 {f.label}
                             </button>
                         ))}
-                        <button
-                            type="button"
-                            onClick={surpriseWithin}
-                            className="btn btn-sm btn-ghost text-[11px] ml-auto"
-                            title="Pick a random arena from the current filter"
-                        >
-                            Surprise me within this
-                        </button>
+                        <Hint text="Pick a random arena from the current filter" align="right" className="ml-auto">
+                            <button
+                                type="button"
+                                onClick={surpriseWithin}
+                                className="btn btn-sm btn-ghost text-[11px]"
+                            >
+                                Surprise me within this
+                            </button>
+                        </Hint>
                     </div>
                     {/* §7 (requests): a two-column grid of compact entries
                         rather than one full-width row per arena. Fifty-two
@@ -1114,7 +1115,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                                 // survive, and the module-level preset object never
                                                 // ends up in (mutable) React state.
                                                 onClick={() => setConfig(c => ({ ...c, ...p.config }))}
-                                                title={p.blurb}
+                                                aria-label={`${p.name} — ${p.blurb}`}
                                                 className={`chip ${active ? 'chip-accent' : ''}`}
                                             >
                                                 {p.name}
@@ -1271,13 +1272,15 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     enableSanity: DEFAULT_GAME_CONFIG.enableSanity,
                                 }))}
                                 className="btn btn-sm btn-ghost -ml-2"
-                                title="Put the pacing sliders and toggles back. District count and naming are left as they are."
+                                aria-label="Reset sliders — put the pacing sliders and toggles back; district count and naming are left as they are"
                             >
                                 Reset sliders
                             </button>
-                            <button onClick={() => setConfig(DEFAULT_GAME_CONFIG)} className="btn btn-sm btn-ghost" title="Every setting back to the defaults, district count and naming included.">
-                                Reset everything
-                            </button>
+                            <Hint text="Every setting back to the defaults, district count and naming included.">
+                                <button onClick={() => setConfig(DEFAULT_GAME_CONFIG)} className="btn btn-sm btn-ghost">
+                                    Reset everything
+                                </button>
+                            </Hint>
                             {/* §8 (requests): roll the lot. The presets above
                                 are four fixed points; this is the rest of the
                                 space, and it is the fastest way to find out

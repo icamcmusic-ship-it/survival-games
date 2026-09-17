@@ -43,6 +43,10 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     diplomat: 'persuasion',
     scholar: 'forage',
     ghost: 'tracking',
+    scavenger: 'forage',
+    captor: 'persuasion',
+    bellwether: 'crafting',
+    confessor: 'persuasion',
 };
 
 /**

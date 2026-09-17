@@ -199,7 +199,7 @@ for (let i = 0; i < RUNS; i++) {
                 if (t.isCareer) { careerScores += t.trainingScore; careerCount++; }
             });
         }
-        else if (state.phase === 'training') sim.processInterviews();
+        else if (state.phase === 'training' || state.phase === 'scores') sim.processInterviews();
         else if (state.phase === 'interviews') sim.startGames();
         else if (state.phase === 'bloodbath') {
             const fieldSize = state.tributes.length;

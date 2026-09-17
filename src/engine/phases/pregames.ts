@@ -21,9 +21,26 @@ import { loseSanity } from '../sanityBands';
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
 
+/**
+ * §(requests): the pre-Games, staged.
+ *
+ * One call used to run the square, the goodbyes, the train, the Remake Center
+ * and the parade back to back. They are three phases now — `square`, `train`,
+ * `parade` — each with its own RNG stream so a change to the parade cannot
+ * reshuffle the reaping. This wrapper runs all three for callers that want the
+ * old one-shot behaviour (the headless scripts); the store advances a stage at
+ * a time through `Simulator.advance`.
+ */
 export function processPreGames(ctx: SimContext) {
-    if (ctx.state.preGamesDone) return;
-    ctx.state.preGamesDone = true;
+    processSquare(ctx);
+    processTrain(ctx);
+    processParade(ctx);
+}
+
+/** Stage 1: the reaping square and the goodbye room. */
+export function processSquare(ctx: SimContext) {
+    if (ctx.state.preGamesDone || ctx.state.phase === 'square') return;
+    ctx.state.phase = 'square';
     ctx.rng = new RNG(`${ctx.state.seed}-pregames`);
 
     const cast = getAlive(ctx.state);
@@ -189,6 +206,16 @@ export function processPreGames(ctx: SimContext) {
         clampTribute(t);
     });
 
+}
+
+/** Stage 2: the train and the Remake Center. */
+export function processTrain(ctx: SimContext) {
+    if (ctx.state.preGamesDone || ctx.state.phase === 'train') return;
+    ctx.state.phase = 'train';
+    ctx.rng = new RNG(`${ctx.state.seed}-pregames-train`);
+    const cast = getAlive(ctx.state);
+    const districts = [...new Set(cast.map(t => t.district))].sort((a, b) => a - b);
+
     // ---- 3. The train ----
     cast.forEach(t => {
         ctx.logEvent(
@@ -207,6 +234,16 @@ export function processPreGames(ctx: SimContext) {
         const stylist = stylists[index % stylists.length];
         cast.filter(t => t.district === district).forEach(t => { t.stylist = stylist; });
     });
+
+}
+
+/** Stage 3: the chariot parade. Closes the pre-Games. */
+export function processParade(ctx: SimContext) {
+    if (ctx.state.preGamesDone) return;
+    ctx.state.phase = 'parade';
+    ctx.state.preGamesDone = true;
+    ctx.rng = new RNG(`${ctx.state.seed}-pregames-parade`);
+    const cast = getAlive(ctx.state);
 
     // ---- 5. The chariot parade ----
     ctx.logEvent(

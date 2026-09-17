@@ -1,5 +1,10 @@
 /** One-line description of the arena's own rule, for the setup and game screens. */
 export const SIGNATURE_BLURBS: Record<string, string> = {
+    tidewrack: 'The turn of the tide: the water draws back by day and comes over the low ground every night, and anyone still on the flats is in it.',
+    thresher: 'The line: every third cycle the floor under the busiest sector starts moving, and the whole arena hears who was standing on it.',
+    vigil: 'The bell: it rings at the dead hour every night, once per tribute standing. Nobody sleeps through the count, and the unsheltered pay most.',
+    saltworks: 'The pan cracks: once the border closes in, the emptiest pan gives way — and what lives under the crust comes up through it.',
+    kiln: 'The second sun: each morning the chimneys name a sector; by afternoon it is at firing heat, and it is usually the one that looked safest.',
     clockwork: 'The clock: one sector is struck every cycle, in strict rotation, telegraphed a cycle ahead.',
     vault: 'The schedule: every third cycle every light in the complex fails at once.',
     cabin: 'The hearth: the stove in the interior rooms holds the cold off — as long as somebody is working the Woodshed to feed it.',

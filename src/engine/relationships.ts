@@ -2,7 +2,7 @@ import { GameState, Item, Tribute } from '../models/types';
 import { forceStance } from './stance';
 import { noteRivalDeath } from './rapport';
 import { RNG } from '../utils/rng';
-import { BETRAYAL, DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, RIVALRY, SUSPICION } from '../data/balance';
+import { BETRAYAL, DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, RIVALRY, SUSPICION , EARNED_TRAIT_RULES } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
 import { carryCapacity, giveItem } from './items';
@@ -483,6 +483,9 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
         if (!mem.betrayedBy.includes(betrayer.id)) mem.betrayedBy.push(betrayer.id);
         // §4.2: watching someone get knifed makes you watch the knife.
         raiseSuspicion(w, betrayer.id, SUSPICION.perWitnessedBetrayal);
+        // Audit 5 §12.3: the second betrayal somebody watches changes them.
+        w.betrayalsWitnessed = (w.betrayalsWitnessed ?? 0) + 1;
+        if (w.betrayalsWitnessed >= EARNED_TRAIT_RULES.witnessBetrayals) earnTrait(ctx, w, 'Witness');
         // §4.1: ...and it is a thing that happened to them, too. This moved
         // three numbers and printed nothing, in the thinnest category in the
         // whole chronicle.

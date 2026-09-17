@@ -58,7 +58,7 @@ for (let i = 0; i < RUNS; i++) {
         const st = sim.getState();
         if (st.phase === 'ended') break;
         if (st.phase === 'setup') sim.processTraining();
-        else if (st.phase === 'training') sim.processInterviews();
+        else if (st.phase === 'training' || st.phase === 'scores') sim.processInterviews();
         else if (st.phase === 'interviews') sim.startGames();
         else if (st.phase === 'bloodbath') sim.processBloodbath();
         else if (!sim.processTurn()) break;
