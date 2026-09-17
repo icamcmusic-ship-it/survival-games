@@ -7034,12 +7034,12 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
         ambient: [
             'The ash lies three feet deep and level to the caldera. Every trail anybody has walked here is still showing.',
             'The caldera has been smouldering against the sky since the gong.',
-            'A tree in the burned forest drops a limb, and the ash accepts it without a sound.',
-            'Heat shimmer stands over the mudpots like a curtain. Behind it the mountain\'s shoulder wavers.',
-            'A tribute\'s footprints from the first day are still there, sharp as the hour they were made. Everything a person does here is permanent until the next fall.',
-            'Fine ash sifts down without pause, softening every edge, greying every colour. The arena is being buried in real time.',
-            'Something big moves through the drifts a valley over — a bow-wave of grey rolling silently across the flat.',
-            'Beneath three feet of ash, the ground is warm as a sleeping animal.',
+            'A tree in the burned forest drops a limb into the ash without a sound.',
+            'Heat shimmer stands over the mudpots. The mountain\'s shoulder moves behind it.',
+            'Footprints from the first day are still sharp-edged. Nothing here is covered until the next fall.',
+            'Fine ash sifts down without pause. It has added an inch since the gong.',
+            'A bow-wave of grey rolls across the flat a valley over. Nothing is visible above it.',
+            'Under three feet of ash the ground is at blood heat.',
         ],
         actions: {
             fortify: [
@@ -7047,7 +7047,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} takes the lava tube at {zone}, which has exactly one mouth.',
             ],
             scavenge: [
-                '{tribute} digs the roofline at {zone}, because a buried village is a village with everything still in it.',
+                '{tribute} digs down to the roofline at {zone}, where the village is still furnished.',
                 '{tribute} works the tube at {zone} for anything that sheltered here before them.',
             ],
             shadow: [
@@ -7056,7 +7056,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
             flail: [
                 '{tribute} swings into the drift at {zone} and goes in to the knee.',
-                '{tribute} beats at the smoke coming off {zone} as if it were somebody.',
+                '{tribute} beats at the smoke coming off {zone} until they have to stop and cough.',
             ],
             forage: [
                 '{tribute} digs down through the drift in {zone} to the old ground and pulls {item} out of the grey.',
@@ -7065,50 +7065,50 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} pans the ash of {zone} like a prospector and comes up with {item}.',
                 '{tribute} reads a stovepipe sticking from the drift of {zone}, digs out the buried kitchen, and takes {item}.',
                 '{tribute} finds where the steam field of {zone} keeps a spring drinkable and pockets {item} beside it.',
-                '{tribute} follows vulture-circles over {zone} to something dead, and leaves with {item}.',
+                '{tribute} follows the vultures circling over {zone} to a body and takes {item} off it.',
                 '{tribute} works the lava tube mouths of {zone}, where the ash never fell, and finds {item}.',
             ],
             rest: [
                 '{tribute} digs a trench in the drift of {zone} down to the warm ground and sleeps on the mountain\'s heat.',
                 '{tribute} rests in a lava tube off {zone}, in air that is clear for the first time in days.',
-                '{tribute} shakes a day\'s ash from everything they own in {zone} and repacks it grey.',
+                '{tribute} shakes a day\'s ash out of everything they own in {zone} and repacks.',
                 '{tribute} rests under an ash-laden tarp in {zone}, invisible from ten feet.',
-                '{tribute} wets a cloth and wipes their face in {zone}, and the cloth comes away the colour of the arena.',
-                '{tribute} watches the caldera glow from {zone} and matches their breathing to it.',
+                '{tribute} wets a cloth and wipes their face in {zone}. It comes away grey.',
+                '{tribute} watches the caldera glow from {zone} for an hour.',
                 '{tribute} sleeps in a buried doorway in {zone}, in a house that is now a cellar.',
                 '{tribute} coughs the day\'s grey out of their lungs in {zone}, quietly, into their sleeve.',
             ],
             hide: [
                 '{tribute} buries themselves to the neck in the drift of {zone} with a hood of ash-cloth.',
-                '{tribute} lies in an old footprint trench in {zone} and lets the sift blur them into the ground.',
-                '{tribute} goes still against a burned trunk in {zone}, grey on grey on grey.',
+                '{tribute} lies in an old footprint trench in {zone} and the fall covers them over.',
+                '{tribute} goes still against a burned trunk in {zone}, the same colour as it.',
                 '{tribute} slips into a lava tube off {zone} and watches the light at the mouth.',
                 '{tribute} crouches behind a buried wall in {zone}, one eye at the chimney gap.',
-                '{tribute} stands in the steam curtain of {zone} and lets the shimmer eat their outline.',
-                '{tribute} backs into their own footprints across {zone}, and the trail says they went the other way.',
+                '{tribute} stands in the steam curtain of {zone}, where nothing holds an outline.',
+                '{tribute} backs into their own footprints across {zone}. The trail reads as leading the other way.',
                 '{tribute} waits under the ash-crust shelf of {zone}, breathing through a hollow reed.',
             ],
             hunt: [
-                '{tribute} reads trails in {zone} like a ledger — every crossing signed and dated in ash.',
+                '{tribute} reads the trails in {zone}: four crossings, all printed, none of them covered.',
                 '{tribute} follows a fresh wake through the drifts of {zone}, closing on whoever is breaking trail.',
                 '{tribute} takes the rim path over {zone} and glasses the grey for moving smudges.',
-                '{tribute} waits at the drinkable spring of {zone}. The wasteland has few, and everyone is thirsty.',
-                '{tribute} hunts the burned forest of {zone}, where the trunks hide silhouettes going both ways.',
-                '{tribute} watches the vultures over {zone}. They find everyone eventually.',
+                '{tribute} waits at the drinkable spring of {zone}, which is one of three in the caldera.',
+                '{tribute} hunts the burned forest of {zone}, where a standing trunk and a standing person read alike.',
+                '{tribute} watches the vultures over {zone} and works out where they are coming down.',
                 '{tribute} sets an ambush in a drift-hollow of {zone}, below the level of the grey.',
-                '{tribute} listens across {zone} for a cough. Sooner or later, this arena makes everyone cough.',
+                '{tribute} listens across {zone} for a cough. Everybody in this arena is coughing by the third day.',
             ],
             travel: [
                 '{tribute} wades into {zone}, hip-deep in ash, hauling each leg out like a swimmer.',
-                '{tribute} follows a compacted trail into {zone}, in footprints someone else paid to make.',
+                '{tribute} follows a compacted trail into {zone}, stepping in somebody else\'s prints.',
                 '{tribute} crosses into {zone} along a fallen power line, walking the cable above the drift.',
                 '{tribute} moves into {zone} in the wake of the wind, where the ash lies thinnest.',
-                '{tribute} takes the lava tube under the drift into {zone} and comes up grey as a ghost.',
-                '{tribute} drags a sled of their own gear into {zone}, leaving a wake a mile long.',
-                '{tribute} crosses the crust into {zone} fast and light, before it decides about their weight.',
+                '{tribute} takes the lava tube under the drift into {zone} and comes up grey to the eyes.',
+                '{tribute} drags a sled of gear into {zone}, leaving a mile of wake behind it.',
+                '{tribute} crosses the crust into {zone} fast and light, without stopping on it.',
                 '{tribute} walks the burned ridgeline into {zone}, ash to the knee instead of the hip.',
-                '{tribute} moves into {zone} with cloth tied over mouth and eyes, steering by the caldera\'s glow.',
-                '{tribute} breaks trail into {zone} and does not once look at the smoking horizon.',
+                '{tribute} moves into {zone} with cloth over their mouth and eyes, steering by the caldera glow.',
+                '{tribute} breaks trail into {zone} through ash to the hip.',
             ],
         },
         events: [
@@ -7124,7 +7124,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 bleeding: true,
             },
             {
-                text: 'A burned tree in {zone} that has been standing for a decade chooses the hour {tribute} passes under it to stop.',
+                text: 'A burned tree in {zone} that has stood for a decade comes down as {tribute} passes under it.',
                 escapeText: '{tribute} hears the burned trunk in {zone} give and is out from under it.',
                 cause: 'Crushed by a burned tree',
                 dodgeStat: 'stealth',
@@ -7132,7 +7132,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 bleeding: true,
             },
             {
-                text: 'The ash sea in {zone} is level for a reason, and {tribute} finds out what is under it to the chest.',
+                text: 'The ash sea in {zone} is level because it is filling something. {tribute} goes into it to the chest.',
                 escapeText: '{tribute} probes ahead of themselves across {zone} and finds the buried edge before standing on it.',
                 cause: 'Swallowed by the ash',
                 dodgeStat: 'intelligence',
@@ -7175,7 +7175,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'fogbound',
             },
             {
-                text: 'A burned snag in {zone}, dead ten years and patient, picks the moment {tribute} passes to come down.',
+                text: 'A snag in {zone}, dead ten years, comes down as {tribute} passes it.',
                 escapeText: '{tribute} gives every standing trunk in {zone} its own length of clearance, and the snag falls on nothing.',
                 cause: 'Crushed by a burned snag',
                 dodgeStat: 'stealth',
@@ -7183,7 +7183,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The mountain coughs, and a fist of hot gravel out of the caldera rakes {zone} with {tribute} in the open.',
+                text: 'The caldera throws a fist of hot gravel across {zone}. {tribute} is in the open.',
                 escapeText: '{tribute} hears the caldera bark and is under a boulder\'s lee before the fall arrives over {zone}.',
                 cause: 'Killed by ejecta',
                 dodgeStat: 'agility',
@@ -7193,7 +7193,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'Ash-blind and trail-hypnotised, {tribute} follows their own three-day-old footprints in a wide circle around {zone}.',
+                text: '{tribute} follows their own three-day-old footprints in a circle around {zone} for most of the afternoon.',
                 escapeText: '{tribute} notices the boot-tread in {zone} is their own and sits down to think it through.',
                 cause: 'Walked in circles until the wasteland won',
                 dodgeStat: 'intelligence',
@@ -7210,7 +7210,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 quench: 30,
             },
             {
-                text: 'Rain crosses the wasteland, and {tribute} stands out in {zone} drinking it off their own cupped hands while the ash pocks and steams.',
+                text: 'Rain crosses the wasteland. {tribute} stands out in {zone} drinking it off their cupped hands while the ash steams.',
                 escapeText: '{tribute} watches the rain pass wide of {zone}, greying out over someone luckier.',
                 cause: 'Died of thirst in the ash',
                 quench: 40,
@@ -7219,7 +7219,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: three feet of ash under a mountain that has not
                 // finished, and nothing edible anywhere under `noForage`.
-                text: 'Every step across {zone} is knee-deep and every one of them prints, and {tribute} has been leaving a signature across the drifts all day for anybody who cares to read it.',
+                text: 'Every step across {zone} is knee-deep and every one prints. {tribute} has left a readable line across the drifts all day.',
                 escapeText: '{tribute} works the wind line across {zone} where the ash is scoured to rock and leaves nothing behind them at all.',
                 cause: 'Run down across the drifts',
                 dodgeStat: 'stealth',
@@ -7230,7 +7230,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open'],
             },
             {
-                text: 'The mudpots in {zone} are at a rolling boil under a grey skin that looks exactly like the ground, and {tribute} finds the edge of one with a foot.',
+                text: 'The mudpots in {zone} boil under a grey skin the colour of the ground. {tribute} finds the edge of one with a foot.',
                 escapeText: '{tribute} throws a stone ahead of themselves across the mudpots of {zone} and listens to what it lands in before they follow it.',
                 cause: 'Scalded in the mudpots',
                 dodgeStat: 'intelligence',
@@ -7241,7 +7241,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['wetland'],
             },
             {
-                text: 'The buried village under {zone} has roofs eighteen inches under the drift and {tribute} puts a leg through one into a room that has been sealed since the eruption.',
+                text: 'The roofs of the buried village under {zone} sit eighteen inches down. {tribute} puts a leg through one into a sealed room.',
                 escapeText: '{tribute} reads the line of the buried roofs across {zone} by the shape of the drift and walks between them.',
                 cause: 'Fell into the buried village',
                 dodgeStat: 'agility',
@@ -7253,7 +7253,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 special: 'collapse',
             },
             {
-                text: 'The smolder above {zone} is ash over embers that have been alive for years, and the crust {tribute} is standing on is the only thing between them and it.',
+                text: 'The smolder above {zone} is ash over embers years old. {tribute} is standing on the crust over it.',
                 escapeText: '{tribute} feels the heat come up through their boot soles in {zone} and backs off the smolder the way they came in.',
                 cause: 'Burned in the smolder',
                 dodgeStat: 'intelligence',
@@ -7264,7 +7264,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'burning',
             },
             {
-                text: 'The mountain clears its throat while {tribute} is on the caldera rim of {zone}, and half the rim goes down the outside slope with the noise still arriving.',
+                text: 'The mountain shifts while {tribute} is on the caldera rim of {zone}. Half the rim goes down the outside slope.',
                 escapeText: '{tribute} feels the rim of {zone} start to talk through the soles of their feet and is off it before it goes.',
                 cause: 'Went down with the caldera rim',
                 dodgeStat: 'agility',
@@ -7279,7 +7279,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // Nothing grows here. The only water is what the steam field
                 // gives back, and it gives it back clean.
-                text: 'The steam field in {zone} condenses on the cold rock overhangs and runs down them, and {tribute} works a whole afternoon of distilled water off a single face.',
+                text: 'The steam field in {zone} condenses on the cold rock overhangs. {tribute} works an afternoon of clean water off one face.',
                 escapeText: '{tribute} works the overhangs of the steam field in {zone} and finds every drip face already wiped dry.',
                 cause: 'Died of thirst in the ash',
                 quench: 58,
@@ -7290,7 +7290,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: second pass to the target. Nothing grows in three feet
                 // of ash and the mountain is still deciding.
-                text: 'The lava tubes under {zone} run for kilometres and are the only shade and the only shelter, and the one {tribute} is in narrows, turns, and stops being the one they entered.',
+                text: 'The lava tubes under {zone} run for kilometres. The one {tribute} entered narrows, turns and joins another.',
                 escapeText: '{tribute} pays out a length of cord behind them through the lava tubes of {zone} and follows it back out.',
                 cause: 'Lost in the lava tubes',
                 dodgeStat: 'intelligence',
@@ -7301,7 +7301,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The grey bull works the deep drifts of {zone} where the ash is over the knee, and it moves through that better than a person does, and it has been moving toward {tribute} for an hour.',
+                text: 'The grey bull works the deep drifts of {zone} faster than a person can. It has been closing on {tribute} for an hour.',
                 escapeText: '{tribute} gets onto scoured rock out of the deep drifts of {zone}, where the footing is theirs rather than the bull’s.',
                 cause: 'Killed by the Grey Bull',
                 dodgeStat: 'agility',
@@ -7312,7 +7312,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open'],
             },
             {
-                text: 'The caldera vultures over {zone} have been down on something two ridges over for three days and this morning they are not, and they are circling {tribute} instead.',
+                text: 'The caldera vultures have been down on something two ridges from {zone} for three days. This morning they are circling {tribute}.',
                 escapeText: '{tribute} keeps moving under the caldera vultures at {zone} all day rather than resting, and they go back to the thing two ridges over.',
                 cause: 'Taken by the caldera vultures',
                 dodgeStat: 'endurance',
@@ -7323,7 +7323,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open', 'highland'],
             },
             {
-                text: 'There is nothing edible in the burned forest at {zone}, nor in the drifts, nor anywhere in this caldera, and {tribute} has been turning over ash with their hands for two hours.',
+                text: 'There is nothing edible in the burned forest at {zone} or in the drifts. {tribute} has turned over ash by hand for two hours.',
                 escapeText: '{tribute} stops digging in the ash at {zone} and goes and works the steam field instead, where at least there is water.',
                 cause: 'Starved in the ash',
                 dodgeStat: 'intelligence',
@@ -7334,7 +7334,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 requires: { law: 'noForage' },
             },
             {
-                text: 'The drift serpents in the deep ash of {zone} move under it rather than on it and the only warning is a line in the grey coming across at an angle, and {tribute} sees it late.',
+                text: 'The drift serpents in the deep ash of {zone} travel under it. The only sign is a line crossing the grey, and {tribute} sees it late.',
                 escapeText: '{tribute} watches the surface of the drifts at {zone} rather than the horizon and sees the line coming from thirty metres.',
                 cause: 'Killed by a drift serpent',
                 dodgeStat: 'agility',
@@ -7344,7 +7344,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open'],
             },
             {
-                text: 'The buried village under {zone} has one roof that held, and under it is a room with a table, and on the table is a meal somebody set out on the last morning and never ate, and {tribute} eats it.',
+                text: 'One roof in the buried village under {zone} held. Under it is a table with a meal set out on the last morning and never eaten. {tribute} eats it.',
                 escapeText: '{tribute} gets into the buried village at {zone} to find every roof in it down and every room full of ash to the ceiling.',
                 cause: 'Died of thirst in the ash',
                 feed: 34,
@@ -7357,13 +7357,13 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     },
     quarry: {
         ambient: [
-            'The pit descends in perfect rings, road below road, down to a centre of standing black water that has never once reflected the sky properly.',
-            'A pebble goes over the rim and falls for a long, countable time. Everyone within earshot counts it.',
+            'The pit descends in rings, road below road, to a centre of standing black water that carries no reflection.',
+            'A pebble goes over the rim and takes eleven seconds to land.',
             'The dredger crane leans over the flooded centre at the angle it failed at, cable still down in the black.',
-            'Wind circles the pit like water circling a drain, carrying dust and one tribute\'s voice, briefly, to every bench at once.',
-            'Blast wire runs along the spiral road, decades slack, still red where the insulation held.',
+            'Wind circles the pit and carries dust and one tribute\'s voice to every bench at once.',
+            'Blast wire runs slack along the spiral road, still red where the insulation held.',
             'Somewhere below, rock shears and drops into the flood. The ripples take four minutes to still.',
-            'The high benches are in sunlight. The water at the bottom has never been. The arena is a clock face of light, and everyone lives at some hour of it.',
+            'The high benches are in sunlight. The water at the bottom has not been lit since the pit was cut.',
             'A cart rail, bent out over the void two hundred metres up, holds a single wheel that still turns in the wind.',
         ],
         actions: {
@@ -7373,14 +7373,14 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
             scavenge: [
                 '{tribute} works the spoil at {zone} for anything the machinery dropped and nobody came back for.',
-                '{tribute} goes through the powder magazine at {zone} very carefully indeed.',
+                '{tribute} goes through the powder magazine at {zone} shelf by shelf, slowly.',
             ],
             shadow: [
                 '{tribute} follows the other down the spiral at {zone}, one bench above them the whole way.',
                 '{tribute} keeps to the cut face at {zone} where the shadow is and the sound does not carry up.',
             ],
             flail: [
-                '{tribute} swings at the rock face at {zone} and the rock face wins.',
+                '{tribute} swings at the rock face at {zone} and breaks two knuckles on it.',
                 '{tribute} throws stones across {zone} at nothing, and the echo comes back off three benches.',
             ],
             forage: [
@@ -7396,31 +7396,31 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             rest: [
                 '{tribute} sleeps in a drill niche in the wall of {zone}, stone at their back and a two-hundred-metre moat below.',
                 '{tribute} rests on {zone} watching the benches above and below, the only directions that matter here.',
-                '{tribute} eats on the rim of {zone} with their legs over the pit, because the fear stopped paying rent days ago.',
+                '{tribute} eats on the rim of {zone} with their legs over two hundred metres of drop.',
                 '{tribute} beds down under a parked hauler on {zone}, between wheels taller than a man.',
                 '{tribute} wrings the pit-damp out of their socks in {zone} and dries them on sun-warmed stone.',
                 '{tribute} rests in the crusher house shadow off {zone}, out of the wind that circles the pit.',
-                '{tribute} sleeps roped to a ring-bolt on {zone}, in case the bench has plans.',
-                '{tribute} counts the spiral road\'s turns from {zone} until sleep takes the arithmetic.',
+                '{tribute} sleeps roped to a ring-bolt on {zone}.',
+                '{tribute} counts the turns of the spiral road from {zone} until they fall asleep.',
             ],
             hide: [
-                '{tribute} folds into a blast recess on {zone}, invisible from above and below alike.',
+                '{tribute} folds into a blast recess on {zone}, out of sight from the benches above and below.',
                 '{tribute} lies flat on a mid-wall ledge off {zone} that no road leads to.',
                 '{tribute} hides inside a dead hauler\'s cab on {zone}, below the window line.',
                 '{tribute} slips behind the waterfall thread of the seep wall in {zone}.',
-                '{tribute} goes still among the boulder scatter of {zone}, one grey shape among hundreds.',
+                '{tribute} goes still among the boulder scatter of {zone}, in among hundreds of them.',
                 '{tribute} tucks under the loading chute of {zone} and watches boots pass at eye level.',
-                '{tribute} waits in a shot-hole gallery off {zone}, deep enough that daylight gives up first.',
+                '{tribute} waits in a shot-hole gallery off {zone}, past where the daylight reaches.',
                 '{tribute} crouches in the cart tunnel mouth of {zone}, where the dark starts a foot in.',
             ],
             hunt: [
-                '{tribute} watches the spiral road from {zone}. Everyone in the pit is on it eventually, and visible the whole way.',
+                '{tribute} watches the spiral road from {zone}. It is the only way down and it is in view the whole length.',
                 '{tribute} holds the bench above {zone} and waits for someone to walk the one below.',
                 '{tribute} tracks fresh boot-scuff along the drill line of {zone}.',
-                '{tribute} waits at the switchback of {zone}, where every traveller turns their back twice.',
+                '{tribute} waits at the switchback of {zone}, where anybody coming down turns their back twice.',
                 '{tribute} rolls a stone off {zone} and watches which shadows move at the sound.',
                 '{tribute} glasses the opposite wall from {zone}, reading the benches like shelves.',
-                '{tribute} hunts the water line of {zone}. Thirst drags everyone downhill in the end.',
+                '{tribute} hunts the water line of {zone}, which is the lowest bench with anything to drink on it.',
                 '{tribute} sets a tripwire across the narrow of {zone} with a cowbell off a dead mule team.',
             ],
             travel: [
@@ -7428,12 +7428,12 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} climbs the old blast ladder up into {zone}, testing each rung against its rust.',
                 '{tribute} follows the cart rails into {zone}, sleeper to sleeper over the gaps.',
                 '{tribute} traverses the bench face into {zone} on handholds the drills left behind.',
-                '{tribute} rides a scree run down into {zone} on their heels, half descent, half fall.',
+                '{tribute} rides a scree run down into {zone} on their heels and arrives at the bottom on their back.',
                 '{tribute} walks the flooded margin into {zone}, boots in black water, eyes on it.',
-                '{tribute} crosses into {zone} through a cart tunnel, dark for two hundred breaths.',
-                '{tribute} descends the seep wall into {zone}, wet rope, wet rock, wet everything.',
-                '{tribute} moves into {zone} along the powder line, past faded warnings in a dead alphabet.',
-                '{tribute} takes the long spiral into {zone} at night, feeling for the rim with every step.',
+                '{tribute} crosses into {zone} through two hundred metres of unlit cart tunnel.',
+                '{tribute} descends the seep wall into {zone} on wet rope over wet rock.',
+                '{tribute} moves into {zone} along the powder line, past warning boards too faded to read.',
+                '{tribute} takes the long spiral into {zone} at night, feeling for the edge with each step.',
             ],
         },
         events: [
@@ -7441,7 +7441,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             // arena under it spends most of its run speaking in the universal
             // voice rather than its own, which is the whole point of a pack.
             {
-                text: 'A road in {zone} gives out at the edge and takes six metres of rim with it, and {tribute} is on the six metres.',
+                text: 'A road in {zone} gives out and takes six metres of rim with it. {tribute} is on that six metres.',
                 escapeText: '{tribute} keeps to the inside of the road in {zone} and lets the rim go without them.',
                 cause: 'Fell from the quarry road',
                 dodgeStat: 'agility',
@@ -7449,7 +7449,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 bleeding: true,
             },
             {
-                text: 'The dredger below {zone} starts up, and everything on the pit wall above {tribute} comes loose at once.',
+                text: 'The dredger below {zone} starts up. Everything loose on the pit wall above {tribute} comes off at once.',
                 escapeText: '{tribute} gets into the cut of the wall in {zone} when the dredger takes up.',
                 cause: 'Buried in the pit',
                 dodgeStat: 'intelligence',
@@ -7457,7 +7457,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 bleeding: true,
             },
             {
-                text: 'The black water at the bottom of {zone} has never reflected the sky properly, and {tribute} drinks it anyway.',
+                text: 'The black water at the bottom of {zone} carries no reflection. {tribute} drinks it.',
                 escapeText: '{tribute} looks a long time at the black water in {zone} and stays thirsty.',
                 cause: 'Poisoned by the pit water',
                 dodgeStat: 'intelligence',
@@ -7475,14 +7475,14 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 severesRoute: true,
             },
             {
-                text: 'A cart left chocked above {zone} for a century picks today to run, and the rails deliver it at {tribute} out of the dark.',
+                text: 'A cart chocked above {zone} for a century comes off its blocks. The rails bring it at {tribute} out of the dark.',
                 escapeText: '{tribute} feels the rail sing under their boot in {zone} and flattens into the wall as the cart takes the bend.',
                 cause: 'Run down by a loose cart',
                 dodgeStat: 'agility',
                 damage: 24,
             },
             {
-                text: 'Rockfall off the high wall combs {zone}, and {tribute} learns how little a helmet of crossed arms is worth.',
+                text: 'Rockfall off the high wall crosses {zone}. {tribute} takes it with their arms over their head.',
                 escapeText: '{tribute} reads the dust-trickle off the wall over {zone} and presses under the overhang before the fall follows.',
                 cause: 'Killed by rockfall',
                 dodgeStat: 'agility',
@@ -7491,7 +7491,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'Old blasting powder in a forgotten charge off {zone} has one spark left, and {tribute}\'s ricochet finds it.',
+                text: 'An old charge off {zone} is still live. {tribute} strikes a ricochet off the rock beside it.',
                 escapeText: '{tribute} smells the bitter almond of old explosive around {zone} and retreats a bench on principle.',
                 cause: 'Killed by a hundred-year-old charge',
                 dodgeStat: 'intelligence',
@@ -7500,7 +7500,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins', 'highland'],
             },
             {
-                text: 'The black water of {zone} has no shallow end: one step off the margin and {tribute} is under, in cold that locks the chest.',
+                text: 'The black water of {zone} has no shallow end. One step off the margin and {tribute} is under it.',
                 escapeText: '{tribute} tests the margin of {zone} with a pole and finds the drop-off before it finds them.',
                 cause: 'Drowned in the flooded pit',
                 dodgeStat: 'agility',
@@ -7510,7 +7510,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['water'],
             },
             {
-                text: 'Pit gas pools in the low gallery of {zone}, and {tribute}\'s lamp dims a moment before their legs do.',
+                text: 'Pit gas pools in the low gallery of {zone}. {tribute}\'s lamp dims a moment before their legs go.',
                 escapeText: '{tribute} watches the flame gutter in {zone} and climbs back toward air that wants them alive.',
                 cause: 'Overcome by pit gas',
                 dodgeStat: 'intelligence',
@@ -7519,7 +7519,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins', 'water'],
             },
             {
-                text: 'The circling wind takes {tribute} at the rim of {zone} with both arms full, and spends a long second deciding.',
+                text: 'The circling wind takes {tribute} at the rim of {zone} with both arms full. They go down on the road side.',
                 escapeText: '{tribute} drops to a crouch on the rim of {zone} and gives the gust nothing to work with.',
                 cause: 'Blown off the rim',
                 dodgeStat: 'agility',
@@ -7528,7 +7528,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['highland', 'open'],
             },
             {
-                text: '{tribute} finds the pay-office safe in {zone} blown open decades ago, and behind the strongbox, a foreman\'s ration store intact.',
+                text: 'The pay-office safe in {zone} was blown open decades ago. Behind the strongbox {tribute} finds a foreman\'s ration store untouched.',
                 escapeText: '{tribute} finds the pay-office of {zone} picked clean down to the blotter.',
                 cause: 'Starved in the pit',
                 feed: 24,
@@ -7544,7 +7544,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: a cylinder of stone with one road down it, under the
                 // shrinkingArena law — the ground itself is being taken away.
-                text: 'The bench above {zone} lets go a load of scree the size of a house and there is precisely one direction {tribute} can go on a road four metres wide.',
+                text: 'The bench above {zone} lets go a load of scree the size of a house. The road under {tribute} is four metres wide.',
                 escapeText: '{tribute} hears the first stones come off the bench above {zone} and is into the cut of the wall before the rest arrives.',
                 cause: 'Buried in the scree',
                 dodgeStat: 'agility',
@@ -7556,7 +7556,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The powder magazine in {zone} was cut into the rock for a reason and whatever is still in it has spent a century getting less stable, and {tribute} is inside it with a lamp.',
+                text: 'The powder magazine in {zone} still holds stock and a century has not made it safer. {tribute} is inside with a lamp.',
                 escapeText: '{tribute} works out what the magazine in {zone} was for from the thickness of the door and does not take the lamp in.',
                 cause: 'Killed in the powder magazine',
                 dodgeStat: 'intelligence',
@@ -7568,7 +7568,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 special: 'collapse',
             },
             {
-                text: 'The spiral road is the only way down, every bench can see every other bench, and {tribute} is halfway round the open side of {zone} with nowhere at all to be.',
+                text: 'The spiral road is the only way down and every bench overlooks every other. {tribute} is halfway round the open side of {zone}.',
                 escapeText: '{tribute} takes the spiral road out of {zone} in the dead hour before light, when the benches can see nothing at all.',
                 cause: 'Shot off the spiral road',
                 dodgeStat: 'stealth',
@@ -7579,7 +7579,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The crusher house in {zone} has a hopper forty feet across and the grating over it rusted through on the side {tribute} steps on.',
+                text: 'The crusher house in {zone} has a hopper forty feet across. The grating rusted through on the side {tribute} steps on.',
                 escapeText: '{tribute} crosses the crusher house hopper in {zone} on the main beam and nothing under them moves at all.',
                 cause: 'Fell into the crusher',
                 dodgeStat: 'agility',
@@ -7588,7 +7588,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The flooded pit at the bottom of {zone} is black, cold, and much deeper than the last three benches suggested, and {tribute} goes in wearing everything they own.',
+                text: 'The flooded pit at the bottom of {zone} is deeper than the benches suggest. {tribute} goes in wearing everything they own.',
                 escapeText: '{tribute} strips their pack before going into the flooded pit of {zone} and comes out of it with both.',
                 cause: 'Drowned in the flooded pit',
                 dodgeStat: 'endurance',
@@ -7599,7 +7599,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             },
             {
                 // A quarry seep is filtered through a hundred metres of stone.
-                text: 'The seep wall in {zone} weeps clean all day out of a seam halfway up, and {tribute} sits under it with their mouth open like a child.',
+                text: 'The seep wall in {zone} runs clean all day out of a seam halfway up. {tribute} sits under it and drinks.',
                 escapeText: '{tribute} climbs to the seam in the seep wall of {zone} and finds it packed with clay by somebody who wanted it to themselves.',
                 cause: 'Died of thirst in the quarry',
                 quench: 55,
@@ -7610,7 +7610,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: second pass to the target. One road down, every bench
                 // overlooked by every other, and the border closing from day one.
-                text: 'The border comes in on the rim of {zone} on the first morning and it has been coming in every morning since, and the top two benches are already gone, and {tribute} camped on the third.',
+                text: 'The border has taken a bench off the rim of {zone} every morning since the first. The top two are gone and {tribute} camped on the third.',
                 escapeText: '{tribute} works out on the first day which way the quarry is closing and spends every night one bench lower than they need to.',
                 cause: 'Caught by the closing rim',
                 dodgeStat: 'intelligence',
@@ -7622,7 +7622,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The dredger works the flooded pit below {zone} and it has not had anything to dredge in a century, and it takes an interest in {tribute} at the waterline.',
+                text: 'The dredger works the flooded pit below {zone} and has had nothing to dredge in a century. It turns toward {tribute} at the waterline.',
                 escapeText: '{tribute} stays above the old waterline mark on the pit wall at {zone} and whatever works the water below it stays in the water.',
                 cause: 'Taken by the Dredger',
                 dodgeStat: 'stealth',
@@ -7633,7 +7633,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['water'],
             },
             {
-                text: 'The blast bats come off the underside of the upper benches at dusk in a column, all of them, and they go out through the one gap in the rim, and {tribute} is standing in the gap.',
+                text: 'The blast bats come off the upper benches at dusk in one column and go out through the single gap in the rim. {tribute} is standing in the gap.',
                 escapeText: '{tribute} is out of the rim gap at {zone} before dusk, having watched the column go out through it on each of the last two evenings.',
                 cause: 'Knocked off the bench by the bats',
                 dodgeStat: 'agility',
@@ -7644,7 +7644,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 requires: { time: 'night' },
             },
             {
-                text: 'The scrub ledges on the middle benches at {zone} are the only cover in a hole made of stone, and the adders in them have had a century of undisturbed sun to get used to owning the place, which {tribute} discovers by lying down in it.',
+                text: 'The scrub ledges on the middle benches at {zone} are the only cover in the pit, and the adders have had a century of them. {tribute} lies down in one.',
                 escapeText: '{tribute} works the scrub ledges at {zone} with a stick out in front of them and clears everything living before they sit down.',
                 cause: 'Killed by a scree adder',
                 dodgeStat: 'agility',
@@ -7654,7 +7654,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The silt hounds hunt the lower benches of {zone} by sound off the stone, and there is no soft ground anywhere in this quarry, and {tribute} has been walking on rock for six days.',
+                text: 'The silt hounds hunt the lower benches of {zone} by sound off the stone. There is no soft ground in this quarry and {tribute} has walked on rock for six days.',
                 escapeText: '{tribute} takes the tailings slope out of {zone} instead of the road, where the crushed rock takes a footfall without giving it back.',
                 cause: 'Run down by the silt hounds',
                 dodgeStat: 'stealth',
@@ -7664,7 +7664,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open', 'highland'],
             },
             {
-                text: 'The bench cats keep a larder on the middle benches of {zone} the way cats do, wedged into a cleft out of the sun, and {tribute} finds it while the cats are elsewhere.',
+                text: 'The bench cats keep a larder wedged into a cleft out of the sun on the middle benches of {zone}. {tribute} finds it while they are away.',
                 escapeText: '{tribute} finds the cleft larder on the bench at {zone} and the cats are not elsewhere.',
                 cause: 'Died of thirst in the quarry',
                 feed: 42,
@@ -7677,12 +7677,12 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     },
     glacier: {
         ambient: [
-            'Above, the glacier is one blinding white page. Below, the caves are lit blue through thirty metres of ice, an aquarium light with nothing swimming in it. Yet.',
-            'The ice speaks somewhere deep — a groan that starts below hearing and ends below the feet.',
-            'A frozen waterfall stands mid-plunge in the gallery dark, forty metres of arrested motion.',
-            'Meltwater ticks somewhere in the tunnels, one drop at a time, the only clock down here.',
+            'The glacier above is unbroken white. The caves below are lit blue through thirty metres of ice.',
+            'A groan comes out of the ice too low to hear properly and carries up through the soles of the boots.',
+            'A frozen waterfall stands forty metres from lip to floor in the gallery dark.',
+            'Meltwater falls somewhere in the tunnels at about one drop a second.',
             'The surface crust glitters to every horizon. Three sets of tracks cross it. One set stops in the middle.',
-            'Down a slick tunnel, something heavy moves on the far side of a translucent wall — a shadow in the ice, taking its time.',
+            'Something heavy moves slowly on the far side of a translucent wall down one of the slick tunnels.',
             'The moulin exhales a long breath of cold that frosts the snow around its mouth in a perfect ring.',
             'For an hour the sun aligns with the ice and the whole cave system glows like the inside of a lamp.',
         ],
@@ -7692,16 +7692,16 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} takes the serac at {zone}, where there is one way up and it is in full view the whole way.',
             ],
             scavenge: [
-                '{tribute} works the moulin at {zone} for whatever the ice has been holding and is now letting go of.',
+                '{tribute} works the moulin at {zone} for whatever the melt is bringing out of the ice.',
                 '{tribute} chips at the blue galleries of {zone} for meltwater and anything frozen into it.',
             ],
             shadow: [
-                '{tribute} follows the other\'s steps across {zone}, which the ice keeps perfectly.',
+                '{tribute} follows the other\'s steps across {zone}. The ice holds every one of them.',
                 '{tribute} keeps below the ridge line at {zone} and reads the other\'s progress off the sound of their crampons.',
             ],
             flail: [
                 '{tribute} swings at the ice wall of {zone} and takes the shards back in the face.',
-                '{tribute} beats at the glacier in {zone}, which has been here a very long time and will be after.',
+                '{tribute} beats at the glacier in {zone} until the axe handle splits.',
             ],
             forage: [
                 '{tribute} chips fish from the ice of a refrozen pool in {zone} and finds {item} beside them.',
@@ -7714,46 +7714,46 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} checks the crevasse lips of {zone} for wind-blown debris and hooks {item} out.',
             ],
             rest: [
-                '{tribute} sleeps in an ice hollow in {zone}, in cold blue light that never quite becomes day or night.',
-                '{tribute} rests in the green chimney off {zone}, on stone that is impossibly, blessedly warm.',
-                '{tribute} carves a snow shelter into the lee of {zone} and disappears into their own breath.',
+                '{tribute} sleeps in an ice hollow in {zone}, in blue light that does not change hour to hour.',
+                '{tribute} rests in the green chimney off {zone}, on stone above freezing for the first time in days.',
+                '{tribute} carves a snow shelter into the lee of {zone} and blocks the entrance behind them.',
                 '{tribute} eats in {zone} with their back to a frozen waterfall, watching the tunnel both ways.',
-                '{tribute} dries their gloves on their own chest in {zone}, ounce of warmth by ounce.',
-                '{tribute} rests in {zone} counting the glacier\'s groans, learning which ones mean nothing.',
-                '{tribute} sleeps roped to an ice screw in {zone}, in case the floor is lying.',
-                '{tribute} watches the light come down through thirty metres of ice over {zone} and forgets, briefly, everything else.',
+                '{tribute} dries their gloves inside their coat in {zone} over the whole hour.',
+                '{tribute} rests in {zone} counting the glacier\'s groans. There are eleven in the hour.',
+                '{tribute} sleeps roped to an ice screw in {zone}.',
+                '{tribute} watches the light come down through thirty metres of ice over {zone} for most of an hour.',
             ],
             hide: [
-                '{tribute} folds into a blue alcove in {zone} and becomes one more shadow in the ice.',
+                '{tribute} folds into a blue alcove in {zone} and stops moving.',
                 '{tribute} lies flat in a surface trough on {zone}, white on white under a dusting of snow.',
                 '{tribute} slips behind the frozen waterfall of {zone}, into the room the plunge left empty.',
                 '{tribute} wedges into a crevasse lip in {zone}, below the sightline of the whole surface.',
-                '{tribute} stands still in the ice fog of {zone} and lets the whiteness finish the job.',
+                '{tribute} stands still in the ice fog of {zone}, where nothing resolves past three metres.',
                 '{tribute} backs into a melt-scallop in the tunnel wall of {zone} and kills their lamp.',
-                '{tribute} hides among the seracs of {zone}, one tilted white block among hundreds.',
+                '{tribute} hides among the seracs of {zone}, in among hundreds of tilted white blocks.',
                 '{tribute} lets the drifting snow bury their outline on {zone}, breathing through a sleeve.',
             ],
             hunt: [
-                '{tribute} reads tracks on the surface crust of {zone} — down here nobody moves unrecorded.',
+                '{tribute} reads tracks on the surface crust of {zone}. Every crossing since the last fall is showing.',
                 '{tribute} waits where the tunnels of {zone} narrow, listening for boots squeaking on cold ice.',
-                '{tribute} follows lamp-glow through the translucent walls of {zone}, a firefly in the blue.',
-                '{tribute} hunts the meltwater line of {zone}. Everyone needs water they do not have to burn fuel for.',
+                '{tribute} follows a lamp-glow moving through the translucent walls of {zone} two galleries over.',
+                '{tribute} hunts the meltwater line of {zone}, which is the only water down here that needs no fuel.',
                 '{tribute} stalks {zone} in socks over boots, silent on the slick floor.',
-                '{tribute} watches the moulin mouth from {zone}. It is a door, and doors are worth watching.',
+                '{tribute} watches the moulin mouth from {zone}, which is the only way down into the galleries.',
                 '{tribute} tracks a drag-mark down a slick tunnel in {zone} and readies for what made it.',
-                '{tribute} waits above the cave mouth of {zone}, where the light change makes everyone squint.',
+                '{tribute} waits above the cave mouth of {zone}, where anyone coming out is blind for a few seconds.',
             ],
             travel: [
                 '{tribute} descends the moulin into {zone} on a doubled rope, into blue that deepens by the metre.',
-                '{tribute} crosses the crust into {zone} roped to nothing, testing every stride for hollowness.',
-                '{tribute} slides the slick tunnel down into {zone} sitting, brakes with both heels, arrives anyway.',
+                '{tribute} crosses the crust into {zone} unroped, sounding every stride for a hollow under it.',
+                '{tribute} slides the slick tunnel down into {zone} sitting, braking with both heels the whole way.',
                 '{tribute} kicks steps up the frozen waterfall into {zone}, axe in each fist.',
                 '{tribute} follows the meltwater channel into {zone}, boots in the current to hide the sound.',
                 '{tribute} traverses the serac field into {zone}, never pausing under a leaning block.',
                 '{tribute} moves through the galleries into {zone} by the light coming through the roof.',
-                '{tribute} crawls the low crawl into {zone}, ice a hand\'s width over their spine the whole way.',
-                '{tribute} crosses the snow bridge into {zone} one careful, weightless step at a time.',
-                '{tribute} walks into {zone} through standing ice fog, arriving the colour of the arena.',
+                '{tribute} crawls into {zone} with ice a hand\'s width above their back the whole way.',
+                '{tribute} crosses the snow bridge into {zone} one step at a time, spreading their weight.',
+                '{tribute} walks into {zone} through standing ice fog and arrives frosted white.',
             ],
         },
         events: [
@@ -7761,7 +7761,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             // arena under it spends most of its run speaking in the universal
             // voice rather than its own, which is the whole point of a pack.
             {
-                text: 'The ice under {zone} speaks, and the crevasse it has been planning opens along the line {tribute} is walking.',
+                text: 'The ice under {zone} cracks and a crevasse opens along the line {tribute} is walking.',
                 escapeText: '{tribute} hears the ice under {zone} start and steps off the line before it opens.',
                 cause: 'Fell into a crevasse',
                 dodgeStat: 'intelligence',
@@ -7778,7 +7778,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 frostbitten: true,
             },
             {
-                text: 'The blue light in the caves under {zone} is beautiful and steady and has no source, and {tribute} follows it too far.',
+                text: 'The blue light in the caves under {zone} is steady and has no source {tribute} can find. They follow it four galleries in.',
                 escapeText: '{tribute} marks the way back into the caves of {zone} and does not go past their own marks.',
                 cause: 'Lost in the ice caves',
                 dodgeStat: 'willpower',
@@ -7787,7 +7787,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 fatigue: 20,
             },
             {
-                text: 'The snow bridge over a crevasse in {zone} keeps {tribute}\'s secret until mid-span.',
+                text: 'The snow bridge over a crevasse in {zone} holds {tribute} until mid-span.',
                 escapeText: '{tribute} probes the span in {zone}, dislikes the answer, and finds the long way round.',
                 cause: 'Fell into a crevasse',
                 dodgeStat: 'intelligence',
@@ -7797,7 +7797,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open', 'highland'],
             },
             {
-                text: 'The slick tunnel out of {zone} steepens mid-slide, and {tribute} arrives at the bottom at the ice\'s chosen speed.',
+                text: 'The slick tunnel out of {zone} steepens mid-slide. {tribute} arrives at the bottom with nothing slowing them.',
                 escapeText: '{tribute} jams boots and elbows into the walls of {zone} and burns off the speed in scrapes.',
                 cause: 'Killed on the ice slide',
                 dodgeStat: 'agility',
@@ -7806,7 +7806,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins', 'water'],
             },
             {
-                text: 'A serac above {zone} has been leaning for a decade, and it chooses the moment {tribute} passes beneath.',
+                text: 'A serac above {zone} that has leaned for a decade comes over as {tribute} passes beneath it.',
                 escapeText: '{tribute} refuses the shortcut under the leaning block in {zone}, and is alive to feel it land.',
                 cause: 'Crushed by a falling serac',
                 dodgeStat: 'stealth',
@@ -7814,7 +7814,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['highland', 'open'],
             },
             {
-                text: 'Meltwater surges through the tunnel of {zone} without warning, and {tribute} swims in the dark in water one degree off ice.',
+                text: 'Meltwater surges through the tunnel of {zone} without warning. {tribute} swims it in the dark at one degree above freezing.',
                 escapeText: '{tribute} hears the surge coming down {zone} and mantles onto a ledge as it fills the passage.',
                 cause: 'Drowned in a meltwater surge',
                 dodgeStat: 'agility',
@@ -7824,7 +7824,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['water', 'ruins'],
             },
             {
-                text: 'Whiteout takes the surface of {zone}, and {tribute} walks in a private white room, direction a rumour.',
+                text: 'Whiteout takes the surface of {zone}. {tribute} walks for an hour with no horizon in any direction.',
                 escapeText: '{tribute} digs in where they stand on {zone} and lets the whiteout blow itself out.',
                 cause: 'Lost in the whiteout',
                 dodgeStat: 'intelligence',
@@ -7836,7 +7836,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open', 'highland'],
             },
             {
-                text: 'The cave roof over {zone} lets a chandelier of ice down on {tribute}, a tonne of it in pieces the size of blades.',
+                text: 'The cave roof over {zone} drops a tonne of ice on {tribute} in pieces the size of blades.',
                 escapeText: '{tribute} hears the roof of {zone} tick twice and is flat to the wall when it drops.',
                 cause: 'Killed by falling ice',
                 dodgeStat: 'agility',
@@ -7845,7 +7845,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins', 'water'],
             },
             {
-                text: 'The glare off the surface of {zone} burns {tribute}\'s eyes to weeping slits over one long afternoon.',
+                text: 'The glare off the surface of {zone} closes {tribute}\'s eyes to weeping slits over the afternoon.',
                 escapeText: '{tribute} soots their cheekbones and slits a cloth for their eyes before crossing {zone}.',
                 cause: 'Snow-blinded on the glacier',
                 dodgeStat: 'intelligence',
@@ -7855,14 +7855,14 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open'],
             },
             {
-                text: '{tribute} finds the green chimney\'s heart in {zone}: warm stone, moss thick as a mattress, and air that does not hurt.',
+                text: '{tribute} finds the bottom of the green chimney in {zone}: warm stone, moss a foot thick, and air above freezing.',
                 escapeText: '{tribute} finds the green chimney of {zone} claimed, a stranger\'s gear drying on the moss, and withdraws.',
                 cause: 'Died of exposure',
                 heal: 8,
                 fatigue: -18,
             },
             {
-                text: 'A refrozen pool in {zone} holds a season of fish in perfect suspension, and {tribute} mines dinner with an axe.',
+                text: 'A refrozen pool in {zone} holds a season of fish frozen in place. {tribute} cuts them out with an axe.',
                 escapeText: '{tribute} chips at the refrozen pool of {zone} and blunts their edge on fishless ice.',
                 cause: 'Starved under the ice',
                 feed: 26,
@@ -7870,7 +7870,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: blue ice, thirty metres of light coming down through it,
                 // and no fire anywhere under this arena's law.
-                text: 'The serac above {zone} has been leaning a degree further every day this week and it finishes the job while {tribute} is in its shadow.',
+                text: 'The serac above {zone} has leaned a degree further every day this week. It goes over with {tribute} in its shadow.',
                 escapeText: '{tribute} counts the lean of the serac over {zone} against yesterday and camps a hundred metres out from under it.',
                 cause: 'Crushed under a serac',
                 dodgeStat: 'intelligence',
@@ -7883,7 +7883,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The slick tunnels through {zone} are polished to glass by a century of meltwater, and once {tribute} is sliding there is nothing at all to put a hand on.',
+                text: 'The slick tunnels through {zone} are polished to glass by a century of meltwater. {tribute} starts sliding and finds nothing to hold.',
                 escapeText: '{tribute} cuts steps down the slick tunnel out of {zone} with a heel, four inches at a time, and takes an hour over forty metres.',
                 cause: 'Went down the slick tunnels',
                 dodgeStat: 'agility',
@@ -7894,7 +7894,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The moulin at {zone} takes the whole surface melt of the glacier down a shaft nobody has ever seen the bottom of, and the lip of it is not where {tribute} left it yesterday.',
+                text: 'The moulin at {zone} takes the whole surface melt down a shaft with no measured bottom. Its lip has moved since {tribute} was last here.',
                 escapeText: '{tribute} finds the lip of the moulin at {zone} by throwing ice at it rather than by standing on it.',
                 cause: 'Went down the moulin',
                 dodgeStat: 'intelligence',
@@ -7905,7 +7905,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins', 'water'],
             },
             {
-                text: 'The glacier moves in the night with a noise like a building failing, all along the pressure ridge above {zone}, and it does it for four hours without stopping, and {tribute} lies in it listening.',
+                text: 'The glacier moves along the pressure ridge above {zone} for four hours in the night without stopping. {tribute} lies in it listening.',
                 escapeText: '{tribute} gets far enough out onto the firn from {zone} that the glacier talking all night is just a noise and not a warning.',
                 cause: 'Broke on the moving ice',
                 dodgeStat: 'willpower',
@@ -7917,7 +7917,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The frozen falls at {zone} are a climb and not a wall, right up until the column {tribute} has both hands on comes off the rock in one piece.',
+                text: 'The frozen falls at {zone} climb well until the column {tribute} has both hands on comes off the rock in one piece.',
                 escapeText: '{tribute} tests the column at the frozen falls of {zone} with the flat of a palm, hears what it says, and finds another line.',
                 cause: 'Killed by the frozen falls',
                 dodgeStat: 'strength',
@@ -7929,7 +7929,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // A glacier is a library of clean water and the green chimney
                 // is the one place in it anything grows.
-                text: 'The green chimney in {zone} is a shaft of daylight down through thirty metres of blue, and there is moss in it, and meltwater, and it is the first warm place {tribute} has stood in days.',
+                text: 'The green chimney in {zone} is daylight down through thirty metres of blue, with moss and meltwater at the bottom. {tribute} stands in the first warm place in days.',
                 escapeText: '{tribute} finds the green chimney of {zone} sunless and running with grit, the day gone from the top of it an hour ago.',
                 cause: 'Died of thirst on the ice',
                 quench: 45,
@@ -7941,7 +7941,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: second pass to the target. Blue ice, thirty metres of
                 // daylight coming down through it, and nothing here will burn.
-                text: 'The firn slope above {zone} is last year’s snow that never quite became ice and it will take a person’s weight for six paces at a time, and {tribute} is on pace eleven.',
+                text: 'The firn slope above {zone} holds a person for about six paces at a time. {tribute} is on the eleventh.',
                 escapeText: '{tribute} crosses the firn slope above {zone} spreading their weight on a flattened pack and never loads a single step.',
                 cause: 'Went through the firn',
                 dodgeStat: 'agility',
@@ -7952,7 +7952,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open'],
             },
             {
-                text: 'The meltwater vault under {zone} fills from above on a warm afternoon and it fills fast, and the only way out of it is the hole {tribute} came in by, which is now a waterfall.',
+                text: 'The meltwater vault under {zone} fills fast on a warm afternoon. The only way out is the hole {tribute} came in by and it is now a waterfall.',
                 escapeText: '{tribute} gets out of the meltwater vault at {zone} the moment the drip rate changes, which is the only warning it gives.',
                 cause: 'Drowned in the meltwater vault',
                 dodgeStat: 'intelligence',
@@ -7964,7 +7964,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 requires: { time: 'day' },
             },
             {
-                text: 'There is nothing on this glacier that will take a flame — not one stick, not one leaf — and {tribute} has been wet to the knee since the morning, and the night is sixteen hours long.',
+                text: 'There is nothing on this glacier that will take a flame. {tribute} has been wet to the knee since morning and the night runs sixteen hours.',
                 escapeText: '{tribute} gets out of their wet clothes into dry ones inside a snow hole at {zone}, which is the entire substitute for fire available here.',
                 cause: 'Froze without a fire',
                 dodgeStat: 'intelligence',
@@ -7975,7 +7975,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 requires: { law: 'fireImpossible' },
             },
             {
-                text: 'The crevasse worms work the blue galleries under {zone} where the ice is thinnest and they come through the wall rather than along the floor, and {tribute} has their back to a wall.',
+                text: 'The crevasse worms work the thin ice of the blue galleries under {zone} and come through the wall rather than along the floor. {tribute} has their back to a wall.',
                 escapeText: '{tribute} sleeps in the middle of the gallery floor at {zone} rather than against a wall, cold and exposed and entirely correct.',
                 cause: 'Taken by a crevasse worm',
                 dodgeStat: 'stealth',
@@ -7986,7 +7986,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The echo bats in the tunnels beyond {zone} navigate by sound in a space made entirely of polished ice, and every noise {tribute} makes down here arrives everywhere at once.',
+                text: 'The echo bats in the tunnels beyond {zone} hunt by sound in polished ice. Every noise {tribute} makes arrives everywhere at once.',
                 escapeText: '{tribute} moves through the slick tunnels at {zone} in absolute silence, breathing through their mouth, and nothing comes.',
                 cause: 'Killed by the echo bats',
                 dodgeStat: 'stealth',
@@ -7997,7 +7997,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'swarming',
             },
             {
-                text: 'The slush basin at {zone} is meltwater over gravel and it is clean all the way down, and {tribute} drinks off the surface of it for as long as they can stand the cold.',
+                text: 'The slush basin at {zone} is meltwater over gravel and clean all the way down. {tribute} drinks off the surface until the cold stops them.',
                 escapeText: '{tribute} finds the slush basin at {zone} frozen to the gravel and spends an hour on it with a heel for nothing.',
                 cause: 'Died of thirst on the ice',
                 quench: 52,
@@ -8008,8 +8008,8 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     },
     floe: {
         ambient: [
-            'The pack ice grinds against itself all night, plate on plate, a sound like a city being slowly dismantled.',
-            'The ocean under the ice is black past the first metre. Things pass under thin plates as travelling shadows, and the shadows are not small.',
+            'The pack ice grinds plate against plate all night and does not stop before morning.',
+            'The ocean under the ice is black past the first metre. Shadows cross under the thin plates and none of them is small.',
             'A lead of open water closes with a clap that carries to every floe in the arena.',
             'Frost smoke stands off the black leads in the dawn cold, the sea steaming like something cooked.',
             'The Cornucopia\'s shelf is the only ice anyone trusts, which is exactly why nobody dares stay on it.',
