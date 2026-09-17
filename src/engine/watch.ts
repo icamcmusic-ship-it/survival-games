@@ -78,10 +78,14 @@ export function postWatches(ctx: SimContext) {
             record.watch = { cycle, zone, watcherId: watcher.id, sleeperIds: sleepers.map(m => m.id) };
             record.lastWatch = { zone, watcherId: watcher.id };
             if (!already) {
+                // §22: "the others" are on the line's own cast list and were
+                // never in the line. In a chronicle the point of the watch is
+                // which of them was awake and which of them was not.
+                const asleep = sleepers.map(m => m.name).join(', ');
                 ctx.logEvent(
                     sentry
-                        ? `${watcher.name} takes the first watch in ${zone}. Nobody argues: ${watcher.name} wakes at things the rest of them sleep straight through.`
-                        : `${watcher.name} takes the watch in ${zone} while the others sleep. It is not much of a system, but it is a system.`,
+                        ? `${watcher.name} takes the first watch in ${zone}. ${asleep} sleep${sleepers.length === 1 ? 's' : ''}.`
+                        : `${watcher.name} keeps watch in ${zone}. ${asleep} sleep${sleepers.length === 1 ? 's' : ''}.`,
                     camp.map(m => m.id),
                     { category: 'alliance', zone }
                 );

@@ -287,7 +287,8 @@ function caesarCallback(ctx: SimContext, previous: Tribute, current: Tribute, ca
             return;
         }
         ctx.logEvent(
-            `"You will have heard what ${previous.name} said just now," Caesar begins, because of course they heard it — there is one screen backstage and nobody is allowed to turn it off.`,
+            // §22: the line is about `current` and never said so.
+            `Caesar opens on ${current.name} with what ${previous.name} said in the previous interview. ${current.name} watched it backstage.`,
             [current.id, previous.id],
             { category: 'interview' }
         );

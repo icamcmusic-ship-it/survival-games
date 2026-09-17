@@ -789,8 +789,14 @@ export function dropSupplies(ctx: SimContext) {
         if (granted.length > 0) flavourNote = ` ${granted.join('; ')}.`;
     }
 
+    // §22: the takers are this line's cast list and were only named by the
+    // optional bias note, so an arena without a `restockBias` logged a drop
+    // involving four people and named none of them.
+    const present = takers.map(t => t.name).join(', ');
     ctx.logEvent(
-        `A supply drop lands over the Cornucopia. Everyone in range of it just recalculated the risk.${flavourNote}`,
+        `A supply drop lands at the Cornucopia.`
+        + (present ? ` ${present} ${takers.length === 1 ? 'is' : 'are'} there for it.` : ' Nobody is there for it.')
+        + flavourNote,
         takers.map(t => t.id),
         { important: true, zone: cornucopia.name, category: 'arena' }
     );

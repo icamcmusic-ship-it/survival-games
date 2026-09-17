@@ -132,9 +132,12 @@ function resolveFactions(ctx: SimContext, record: Alliance, members: Tribute[]) 
     registerAlliance(ctx, splinterId, bloc);
     record.memberIds = record.memberIds.filter(id => !faction.memberIds.includes(id));
     record.factions = (record.factions ?? []).filter(f => f !== faction);
+    // §22: the members who stayed are on this line and were never in it.
+    const stayed = members.filter(m => !bloc.some(b => b.id === m.id)).map(m => m.name);
     ctx.logEvent(
-        `${names} take their share and walk. Nobody says the word ${target.name}, and nobody has to: `
-        + 'the group is two groups now, camped a valley apart and each certain the other made the mistake.',
+        `${names} take their share and leave the group over ${target.name}.`
+        + (stayed.length > 0 ? ` ${stayed.join(', ')} stay.` : '')
+        + ' There are two groups now.',
         members.map(m => m.id),
         { important: true, category: 'alliance' }
     );
@@ -247,9 +250,12 @@ function nameSuccessor(ctx: SimContext, record: Alliance, members: Tribute[]) {
         .sort((a, b) => getRel(leader, b.id) - getRel(leader, a.id))[0];
     if (!heir) return;
     record.successorId = heir.id;
+    // §22: "the group" was the rest of this line's cast list, unnamed. At 153
+    // occurrences a sweep this was the second-worst offender in the log.
+    const witnesses = members.filter(m => m.id !== leader.id && m.id !== heir.id).map(m => m.name);
     ctx.logEvent(
-        `${leader.name} tells the group, without any ceremony about it, that if anything happens to them ${heir.name} `
-        + 'has the say. It changes what killing the leader is worth, and everyone standing there works that out at once.',
+        `${leader.name} names ${heir.name} to take over the group if they are killed.`
+        + (witnesses.length > 0 ? ` ${witnesses.join(', ')} hear${witnesses.length === 1 ? 's' : ''} it said.` : ''),
         members.map(m => m.id),
         { category: 'alliance' }
     );

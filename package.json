@@ -18,6 +18,7 @@
     "test:arena-layout": "tsx scripts/check-arena-layout.ts",
     "test:names": "tsx scripts/check-names.ts",
     "test:flavor": "tsx scripts/check-flavor-pools.ts",
+    "test:unnamed": "tsx scripts/check-unnamed.ts",
     "test:ui": "node scripts/ui-test.mjs",
     "test:achievements": "tsx scripts/check-achievements.ts",
     "test:predicates": "tsx scripts/check-predicates.ts",

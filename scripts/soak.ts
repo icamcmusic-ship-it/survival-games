@@ -575,7 +575,7 @@ for (let i = 0; i < 400; i++) {
     if (l.text.includes('burned down to ash')) zoneStripped++;
     if (l.text.includes('route between') || l.text.includes('route gives out')) zoneSevered++;
     if (l.text.includes('border will close around')) borderTelegraphs++;
-    if (l.text.includes('supply drop lands over the Cornucopia')) cornucopiaRestocks++;
+    if (l.text.includes('A supply drop lands at the Cornucopia')) cornucopiaRestocks++;
     if (l.category === 'mutt') muttEncounters++;
   });
 

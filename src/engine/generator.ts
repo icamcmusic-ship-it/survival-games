@@ -588,7 +588,8 @@ export function generateTributes(
             if (pair.length !== 2) continue;
             const [a, b] = pair;
             const note = (other: Tribute) =>
-                `Reaped alongside their cousin ${other.name} — two slips out of the same family, the same year. The square did that arithmetic in silence.`;
+                // §12 (requests): the fact, stated. Which is all it ever was.
+                `Reaped alongside their cousin ${other.name}. Two slips, one family, the same year.`;
             a.reapingNote = a.reapingNote ? `${note(b)} ${a.reapingNote}` : note(b);
             b.reapingNote = b.reapingNote ? `${note(a)} ${b.reapingNote}` : note(a);
             // Family walks in already knowing each other.
@@ -600,24 +601,17 @@ export function generateTributes(
     // The reaping is not just a name out of a bowl.
     tributes.forEach(t => applyVolunteer(rng, t, shape));
 
-    // The square's other stories. Some tributes arrive on the plate already
-    // defined by the thirty seconds after their name was read — the faint,
-    // the silence, the parent held back, the escort getting the name wrong.
-    const MISC_NOTE_POOLS = [
-        REAPING_NOTE_TEXTS.stunnedSilence,
-        REAPING_NOTE_TEXTS.defiantWalk,
-        REAPING_NOTE_TEXTS.fainted,
-        REAPING_NOTE_TEXTS.parentHeldBack,
-        REAPING_NOTE_TEXTS.allyShouted,
-        REAPING_NOTE_TEXTS.escortMispronounced,
-        REAPING_NOTE_TEXTS.tooCalm,
-    ];
-    tributes.forEach(t => {
-        // balance-exempt: flavour frequency of the misc reaping notes, not a balance dial
-        if (t.reapingNote || !rng.chance(0.3)) return;
-        t.reapingNote = rng.pick(rng.pick(MISC_NOTE_POOLS))
-            .split('{district}').join(String(t.district));
-    });
+    // §5 (requests): the square's other stories are gone.
+    //
+    // Seven pools of reaping-day decoration used to land on roughly a third of
+    // the cast — the stunned square, the defiant walk, the faint, the parent
+    // held back, the friend who shouted, the escort who got the name wrong.
+    // None of them said anything about the tribute that the tribute's own
+    // sheet does not, and between them they made the roster read as a short
+    // story collection rather than a list of twenty-four people. The four
+    // remaining note pools are facts about how this tribute came to be on the
+    // plate — tesserae, a Career volunteer, a sibling volunteer, a bonded
+    // pair — and nothing else is written onto anybody.
 
     // Audience meta: the Capitol has favourites before the gong.
     // Charisma, a good story and a career pedigree all feed the pre-Games buzz.
