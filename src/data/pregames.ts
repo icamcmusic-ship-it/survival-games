@@ -30,48 +30,16 @@ export const REAPING_CROWDS: Record<number, string> = {
     16: 'District 16 holds its reaping on the supply pier, because half the district is offshore and the other half is waiting for them. The names are read twice: once for the square, once over the radio.',
 };
 
-export const REAPING_REACTIONS = {
-    child: [
-        '{tribute} does not move until a Peacekeeper takes their arm. Somewhere behind them a woman starts screaming and is helped out of the square.',
-        '{tribute} walks to the stage the way children walk to the front of a classroom, and the square makes no sound at all.',
-        'A boy in the fourteens tries to get to {tribute} and is put on the ground for it.',
-        '{tribute} looks for their mother in the crowd and cannot find her. They stop looking before they reach the steps, which is worse.',
-        'The escort has to say the name twice. {tribute} heard it the first time; their legs simply did not.',
-        '{tribute} carries a stuffed animal to the stage because no one thought to take it from them. The cameras cannot get enough of it.',
-        'Somebody in the square starts the three-finger salute for {tribute}, and by the time the anthem plays the whole district is holding it.',
-        '{tribute} asks the escort a question on the way up the steps. The microphone does not catch it, and the escort does not answer.',
-        '{tribute} is small enough that the Peacekeeper walking them up looks like a parent taking a child to their first day of school. The broadcast lingers on it.',
-        'The mayor will not meet {tribute}\'s eyes during the anthem. Nobody on that stage will.',
-        '{tribute} waves at someone in the crowd because they do not fully understand yet. The square understands for them.',
-        'When the escort asks for volunteers for {tribute}, the silence lasts four full seconds. The cameras count every one of them.',
-    ],
-    ordinary: [
-        '{tribute} climbs the steps without being told twice. Their district watches them do it.',
-        '{tribute} finds a face in the crowd, holds it for exactly as long as they can, and then looks at the escort instead.',
-        '{tribute} says something to the girl beside them before they go. Nobody on the broadcast hears what.',
-        '{tribute} takes a breath at the bottom of the steps that the whole square hears, and then takes the steps.',
-        '{tribute} nods once — at nobody, at everybody — and walks up like someone reporting for a shift.',
-        '{tribute} stumbles on the second step and recovers. It is the only thing about them the Capitol commentators will remember.',
-        'The escort offers {tribute} a hand up the steps. {tribute} does not take it.',
-        '{tribute}\'s friends push to the rope line to see them go. None of them can think of anything to shout.',
-        '{tribute} stands on the stage looking at the roofs of their district like they are memorising them. They are.',
-        '{tribute} keeps their hands still at their sides the entire time, which costs them more than the square will ever know.',
-        'A dog follows {tribute} to the barricade and has to be held back. It is somehow the hardest thing anyone in the square has watched all morning.',
-        '{tribute} mouths something to the sky before the anthem. The commentators decide it was a prayer. It was a name.',
-    ],
-    hardened: [
-        '{tribute} is on the stage before the escort has finished saying the name, and looks out at the square like they own it.',
-        '{tribute} takes the steps two at a time. The Capitol cameras like that very much.',
-        '{tribute} shakes the escort\'s hand. Half the square applauds and the other half does not.',
-        '{tribute} rolls their shoulders on the way up like someone stepping into a ring, because that is exactly what this is.',
-        '{tribute} smiles at the cameras before they smile at their district, and everybody watching notices the order.',
-        '{tribute} raises a fist on the stage. The academy rows answer it. The rest of the square does not.',
-        '{tribute} looks bored during the anthem, and it is not an act, and the commentators cannot decide if they love it.',
-        'The applause for {tribute} starts before their name is fully read. The betting shops in the Capitol hear it and adjust.',
-        '{tribute} finds the nearest camera and holds it for a slow three-count. The sponsors will remember that.',
-        '{tribute} pats the escort on the shoulder like a colleague. The escort visibly does not know what to do about it.',
-    ],
-};
+/*
+ * §5 (requests): `REAPING_REACTIONS` lived here — three pools of thirty-odd
+ * lines describing how each tribute took the news, drawn once per tribute and
+ * logged immediately beside their reaping note. That is the "reaping extra
+ * flavour" the request names: twenty-four lines a run, none of which said
+ * anything the tribute's own sheet does not, all of them in the register the
+ * request asks to be rid of. The square's crowd line above and the one
+ * factual note per tribute are what is left, and they are the record.
+ */
+
 
 export const GOODBYE_SCENES = [
     'Three minutes in the Justice Building. {tribute}\'s family says almost nothing useful and every word of it will be remembered.',

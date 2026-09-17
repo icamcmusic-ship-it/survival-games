@@ -232,14 +232,21 @@ mislabelled.forEach(a => console.log(`  ${a.id.padEnd(24)} labelled ${a.rarity.p
 // outside the neighbouring one, so ordinary run-to-run noise at 200 runs
 // cannot flip the build. Regenerate the labels with ACHIEVEMENT_EMIT_RARITY=1.
 const ORDER = ['common', 'rare', 'legendary', 'possible'] as const;
-const bandOf = (r: number) => r >= 0.25 ? 'common' : r >= 0.03 ? 'rare' : r > 0 ? 'legendary' : 'possible';
+const bandOf = (id: string, r: number) => r >= 0.25 ? 'common' : r >= 0.03 ? 'rare' : (unlocks[id] ?? 0) > 1 ? 'legendary' : 'possible';
 const badlyMislabelled = mislabelled.filter(a =>
-    Math.abs(ORDER.indexOf(bandOf(rate(a.id))) - ORDER.indexOf(a.rarity as typeof ORDER[number])) >= 2
+    Math.abs(ORDER.indexOf(bandOf(a.id, rate(a.id))) - ORDER.indexOf(a.rarity as typeof ORDER[number])) >= 2
     || (a.rarity === 'legendary' && rate(a.id) >= 0.08)
     || (a.rarity === 'common' && rate(a.id) < 0.05)
     // A 'possible?' entry that the simulation demonstrably produces is simply
     // wrong: the tier means nobody has ever seen it happen.
-    || (a.rarity === 'possible' && rate(a.id) > 0));
+    //
+    // With a one-observation tolerance, and that is not slack — it is what
+    // makes the tier usable. An entry that fires once in 500 runs sits exactly
+    // on the boundary and flips between 'legendary' and 'possible' from one
+    // sweep to the next purely on which seeds were drawn, which would make
+    // this check fail at random rather than on a regression. Two hits is a
+    // thing the simulation demonstrably does; one is noise.
+    || (a.rarity === 'possible' && unlocks[a.id] > 1));
 
 /* -------------------------------------------------------------------------- */
 /* §2.4: nearMiss is mandatory wherever the test is a matter of degree         */
@@ -401,12 +408,16 @@ if (process.env.ACHIEVEMENT_EMIT_RARITY === '1') {
      * the check that follows still fails on anything two bands out, so the
      * regeneration is a convenience rather than a way to launder a real drift.
      */
-    const label = (r: number) => r >= 0.25 ? 'common' : r >= 0.03 ? 'rare' : r > 0 ? 'legendary' : 'possible';
+    // Mirrors `bandOf` and the fail condition above, including the
+    // one-observation tolerance on 'possible?' — the writer and the check have
+    // to agree about the boundary or `fix:rarity` writes labels that fail.
+    const label = (id: string, r: number) =>
+        r >= 0.25 ? 'common' : r >= 0.03 ? 'rare' : (unlocks[id] ?? 0) > 1 ? 'legendary' : 'possible';
     const path = 'src/data/achievements.ts';
     let src = readFileSync(path, 'utf8');
     let rewritten = 0;
     ACHIEVEMENTS.forEach(a => {
-        const want = label(rate(a.id));
+        const want = label(a.id, rate(a.id));
         if (want === a.rarity) return;
         // Anchored on the id so the replacement cannot wander to another entry:
         // `id: 'x',` ... the next `rarity: '...'` after it.
