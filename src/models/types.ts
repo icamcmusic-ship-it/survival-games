@@ -1712,7 +1712,14 @@ export type ArenaLawId =
     | 'bloodPrice'         // the horn only opens for a tribute who has already killed
     | 'noRest'             // sleep restores nothing; fatigue is paid down only by standing still in daylight
     | 'meltingGround'      // every zone a tribute lingers in is depleted permanently behind them
-    | 'twinSuns';          // no shade anywhere: heat load applies in every zone, all day
+    | 'twinSuns'           // no shade anywhere: heat load applies in every zone, all day
+    /*
+     * Audit 5 §5.4: two laws that give. Thirteen of twenty subtracted, and
+     * the three that gave totalled fewer arena-instances than `noSponsors`
+     * alone. Both enforced at exactly one site.
+     */
+    | 'salvage'            // every corpse leaves its kit where it fell, as a cache anyone can find
+    | 'theBell';           // every morning the Gamemakers name a zone; whoever stands in it at nightfall is resupplied
 
 /** A traversal rule layered on top of plain adjacency for one edge. Keyed by `edgeKey(a,b)` on `Arena.edgeRules`. */
 export interface EdgeRule {
@@ -2100,6 +2107,8 @@ export interface GameState {
     zoneEffects?: Record<string, ZoneEffect[]>;
     /** Audit 5 §5.7: the Kiln's signature names a zone one day and fires it the next. */
     kilnFiringZone?: string;
+    /** Audit 5 §5.4 `theBell`: the zone named this morning, paid at nightfall. */
+    bellZone?: string;
     /**
      * Adjacency edges cut by the arena itself — a collapsed bridge, a fire that
      * burned through a crossing. Stored as `map.edgeKey()` strings. The printed

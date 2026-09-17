@@ -1,5 +1,110 @@
 # Changelog
 
+## Audit 5 fix pass, plus the requests (this branch)
+
+Everything `AUDIT-5.md` asked for, and the nine items the request added on top
+of it. Every number below was re-measured after the change; the roster is
+green (`lint` + 16 checks).
+
+### The requests
+
+- **The pre-Games are staged.** `Phase` gained `square`, `train`, `parade`,
+  `training1..3` and `scores`; `Simulator.advance()` owns the dispatch table
+  and the store just asks for the next thing. The chronicle pages each one
+  (`THE REAPING`, `THE TRAIN TO THE CAPITOL`, `TRAINING — DAY 2`, …), the arena
+  screen's Next button walks them one at a time, day and night were already
+  separate pages. Old saves with `phase: 'training'` resume into the scores.
+- **The chronicle can advance the Games.** On its last page the Next button
+  becomes the stage's own verb (*Board the train*, *Sound the gong*, *Into the
+  night*), runs it, lands on the page it just wrote, and every page change
+  scrolls to the top of the log.
+- **The relationship graph is a grid.** Every living tribute, one row each, in
+  district order, with the feeling as a labelled chip and every standing fact
+  (ally, lovers, sworn, truce, sustained contact) as a badge. The dead drop off
+  it. The modal's separate "Relationships" list is folded into it.
+- **"rated X on the floor yesterday"** is now *"has been watching X work, and
+  was impressed."*
+- **"How X got out"** is *The road out*: the victor's own important chronicle
+  lines, grouped by day, with the arithmetic (days, kills, sectors, health,
+  opening odds, traits earned and shed) in a fact row above. Nothing in it can
+  be wrong about the run because every line is something the engine logged.
+- **"What made these Games unusual"** was rewritten so every claim is derived
+  from a number the state holds: the bloodbath is counted from `dayOfDeath`,
+  the cast size is the cast size (not "twenty-four"), the zero-kill history
+  reads zero-kill runs (not the total victor count), "the odds board never had
+  them near the top" actually reads the odds board, "the longest feud on
+  record" says *in these Games*, and the arena-vs-tribute death split reads the
+  cause strings rather than a regex for four of them.
+- **The cousin pairing is gone.** It landed on one district in six every year.
+  The RNG draw is kept so existing seeds reap the same cast; the achievement
+  that read it now reads the sibling volunteer.
+- **Names.** ~810 district names that read as an industrial noun with a vowel
+  on the end (*Stopcocka*, *Semisub*, *Transitor*, *Chokepointe*, *Gob*,
+  *Nipt*, *Kicking*, *Sablefisher*…) were replaced with names in the same
+  theme that read as names. `test:names` now also guards against anything
+  that would read as a surname or a compound.
+- **More of everything:** 20 quirks (all mechanical, 105 total), 2 stances
+  (`Nursing`, `Patrolling`, both conditional, with scorers, preconditions and
+  12-line generic pools), 4 archetypes (`Scavenger`, `Captor`, `Bellwether`,
+  `Confessor`, each with a signature hook and an 8-line set-piece pool — all
+  four fire for 30–48% of entrants), 12 traits (10 rollable filling the nine
+  single-carrier hooks, 2 earned: `Witness` on the second betrayal watched,
+  `Frostbitten` on the second frostbite).
+
+### Audit 5 §1 — bugs
+
+- **Five arenas have signatures** (§1.1). `tidewrack`, `thresher`, `vigil`,
+  `saltworks`, `kiln` — the turn of the tide, the line starting, the bell, the
+  pan cracking, the second sun — each expressed in the arena's own law.
+  Measured over 150 runs: all five fire. `validate-arenas` now fails an arena
+  with no `SIGNATURES` entry / `signatureRule`, or no blurb (§1.2).
+- **`describeSignatureRule` is called** (§1.3): the Gamemaker brief at the
+  drop now carries `ARENA RULE: …` for every arena, authored or procedural.
+- **`LEGENDARY_ITEM_TEXTS` is drawn** (§1.4): the naming moment uses the
+  twelve authored lines. `check-flavor-pools` now fails any exported pool
+  nothing in `src/` references (§6.5).
+- **Seventeen dead exports** removed or wired (§1.5): `evaluateInRunNearMisses`
+  now feeds a "Within reach this Games" panel on the standings tab;
+  `hasSignature` and `describeSignatureRule` are live; the rest are gone.
+- **Achievements** (§1.6–§1.9): `scarred-and-standing` asks for one scar (two
+  measured 0 in 400 runs); `the-short-week` carries `availableIn` for small
+  fields and compressed calendars; `arms-dealer`, `cartographer`,
+  `the-quiet-one` relabelled `legendary` (they fire); `the-unwitnessed` reads a
+  tribute who reached the final eight unseen rather than a victor who
+  structurally cannot.
+
+### §2–§12
+
+- **§2.3** the hover-hint ratchet: nine `title=` on `SetupScreen` and
+  `HallOfFameScreen` converted to `Hint`/`aria-label`; ceiling 30 → 21.
+- **§4.2** bloc-treaty expiry is `important`, so a treaty is seen to end.
+- **§4.3** rumour `plantChance` 0.12 → 0.2.
+- **§5.3/§5.5/§7.5** `dodgeAlt` back-filled on 994 events that had none, so an
+  arena hazard is no longer a tax on agility and intelligence alone; nine
+  universal events added — three that roll against charisma, four that make
+  you hungry, two boons.
+- **§5.4** two laws that give: `salvage` (a corpse's kit stays where it fell as
+  a cache — on the Abattoir) and `theBell` (a zone named at dawn, fed at
+  nightfall — on the Carnival). Both fire.
+- **§6.2** Quell rate ~7% → ~12% (`noQuellWeight` 600 → 330).
+- **§7.4/§7.6** 80 authored events across the five floor packs (16 each, with
+  each arena's signature death: stranded by the tide, turned away at the horn,
+  did not wake for the watch, went through the pan, found no shade). Zero packs
+  sit on the floor now; roster short of the soft target 357 → 277 events.
+- **§8.2** `preferredTraits` widened to 4–5 on the bottom five archetypes.
+- **§9.5** six mutators added (twelve total).
+- **§11.5** fourteen achievements added (207 total).
+
+### Not done, and why
+
+- **§10.3 flattening the initial-letter distribution / a third name pool** —
+  the name pass replaced ugly names rather than adding 400 new ones; a
+  gender-neutral pool is a data-shape change to `DISTRICT_NAMES` and every
+  reader of it, and is left for its own change.
+- **§3.4/§12.2 new proficiencies** (`stealth`, `intimidation`…) — a new
+  `Proficiency` touches the UI, the archetype speciality table and the
+  proficiency check; deferred rather than half-done.
+
 ## Second requests pass (this branch)
 
 Three items: finish the prose pass the last branch scoped down, get zero-kill

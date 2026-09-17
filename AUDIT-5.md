@@ -1,5 +1,11 @@
 # Survival Games — fifth full audit (12 sections)
 
+> **Status: answered.** `CHANGELOG.md` records the fix pass on this branch.
+> One finding was imprecise and is corrected in place: §4.2 said bloc treaties
+> had no non-violent ending — they did (`"The agreement between the two groups
+> runs out"`), filed as ambient; the probe's regex missed it. It is now
+> `important`, which was the actual gap.
+
 ## Context
 
 Taken against `main` at `fed43bc`, after `AUDIT.md`, `AUDIT-2.md`, `AUDIT-3.md`,

@@ -482,6 +482,8 @@ export const ARENAS: Arena[] = [
         id: 'abattoir',
         // §5.2: a killing floor is a tiled room. Everything in it is audible.
         law: 'openMic',
+        // Audit 5 §5.4: bodies as supplies is what the place is.
+        laws: ['salvage'],
         name: 'The Industrial Abattoir',
         description: 'A multi-level automated factory that never fully shut down: rust-seized gears the size of rooms, conveyor lines that still run, crushing pistons on a schedule, and furnace halls that have not been cold in living memory.',
         mutts: ['Hook Apes', 'Scald Rats', 'The Line Boss', 'Grinder Beetles', 'Loft Swine'],
@@ -519,7 +521,8 @@ export const ARENAS: Arena[] = [
         // Audit 3 §5.2: and it is generous in the mornings, on camera, at the
         // one tile everybody else wants. A carnival is a place that gives you
         // things; that is what makes it a carnival and what makes it a trap.
-        laws: ['noWeapons', 'dawnMercy'],
+        // Audit 5 §5.4: a fairground has a bell, and an announcer.
+        laws: ['noWeapons', 'dawnMercy', 'theBell'],
         zones: [
             { name: 'The Cornucopia (The Midway)', terrain: 'open', danger: 0.6, resources: 0.35, adjacent: ['The Carousel', 'The Big Top', 'The Pine Dark'], features: { cover: 0.2, elevation: false, chokepoint: false, shelterQuality: 0.15, acoustics: 0.75 } },
             { name: 'The Carousel', terrain: 'ruins', danger: 0.65, resources: 0.3, adjacent: ['The Cornucopia (The Midway)', 'The Mirror Maze', 'The Duck Pond'], features: { cover: 0.5, elevation: false, chokepoint: false, acoustics: 1.25 } },

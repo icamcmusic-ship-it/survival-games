@@ -322,6 +322,7 @@ export function generateTributes(
         // that used to ride on the surname is gone too — it landed on about
         // one district in six, every year, which is not a story, it is a rate.
         // The RNG draw it made is kept so every seed still reaps the same cast.
+        // balance-exempt: a retired flavour roll kept only so existing seeds reap the same cast
         rng.chance(0.15);
         for (const gender of ['Male', 'Female'] as const) {
             const isCareer = [1, 2, 4].includes(district);

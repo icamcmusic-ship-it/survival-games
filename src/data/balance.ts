@@ -3017,6 +3017,12 @@ export const LEGENDARY_ITEMS = {
  * piece of ground contested instead of making all of it poorer.
  */
 export const ARENA_LAWS = {
+    /** Audit 5 §5.4 `salvage`: how much of a corpse's kit survives as a cache. */
+    salvageKeepChance: 0.75,
+    /** Audit 5 §5.4 `theBell`: what the Capitol hands out at nightfall. */
+    bellFeed: 30,
+    bellQuench: 30,
+    bellSponsorTrust: 3,
     /** Health returned at first light to anybody who slept at the horn. */
     dawnMercyHeal: 14,
     /** ...and what a night under the Capitol's floodlights does for the nerves. */
@@ -4067,7 +4073,8 @@ export const RUMOURS = {
     /** Odds two co-located allies talk at all in a given cycle. */
     campShareChance: 0.4,
     /** Odds somebody invents one at a meeting, and the regard above which they will not. */
-    plantChance: 0.12,
+    // Audit 5 §4.3: planted lies fired 0.42 a run and the debunk once in 77 runs.
+    plantChance: 0.2,
     plantMaxRegard: 20,
     /** Share of plants that are a lure rather than a warning-off. */
     plantLureShare: 0.6,

@@ -326,6 +326,31 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // Runs after movement and encounters so it acts on where tributes actually
     // ended up, and before upkeep so the effects it starts tick normally.
     runArenaSignature(ctx);
+    // Audit 5 §5.4 `theBell`: named at first light, paid at nightfall.
+    if (arenaHasLaw(ctx.state, 'theBell')) {
+        if (time === 'day') {
+            const zones = ctx.state.arena.zones.map(z => z.name).filter(z => !(ctx.state.collapsedZones ?? []).includes(z));
+            if (zones.length > 0) {
+                const rng = new RNG(`${ctx.state.seed}-bell-${ctx.state.day}`);
+                ctx.state.bellZone = rng.pick(zones);
+                ctx.logEvent(`THE BELL: one stroke over the arena at first light, and the Capitol's voice after it, naming ${ctx.state.bellZone}. Whoever is standing there when the light goes gets fed.`, [], { important: true, zone: ctx.state.bellZone, category: 'arena' });
+            }
+        } else if (ctx.state.bellZone) {
+            const there = getAlive(ctx.state).filter(t => t.zone === ctx.state.bellZone);
+            there.forEach(t => {
+                t.vitals.hunger = Math.max(0, t.vitals.hunger - ARENA_LAWS.bellFeed);
+                t.vitals.thirst = Math.max(0, t.vitals.thirst - ARENA_LAWS.bellQuench);
+                t.sponsorTrust = Math.min(100, t.sponsorTrust + ARENA_LAWS.bellSponsorTrust);
+                clampTribute(t);
+            });
+            if (there.length > 0) {
+                ctx.logEvent(`The bell pays out in ${ctx.state.bellZone}: ${there.map(t => t.name).join(', ')} ${there.length === 1 ? 'is' : 'are'} fed and watered by the Capitol, on camera, in front of everybody who did not make it there.`, there.map(t => t.id), { important: true, zone: ctx.state.bellZone, category: 'arena' });
+            } else {
+                ctx.logEvent(`The bell's zone, ${ctx.state.bellZone}, is empty at nightfall. The Capitol's supper goes back up on the wire uneaten.`, [], { zone: ctx.state.bellZone, category: 'arena' });
+            }
+            ctx.state.bellZone = undefined;
+        }
+    }
     // ...and the Head Gamemaker's, once per run, when the feed needs saving.
     runGamemakerSignature(ctx);
     // A2: and the archetypes' own — one set piece per tribute per run, which
