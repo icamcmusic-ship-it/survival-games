@@ -1167,7 +1167,40 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
 
     if (ctx.state.escalationDay === undefined) return false;
 
-    const collapsedList = collapseOrder.slice(0, thisCount);
+    let collapsedList = collapseOrder.slice(0, thisCount);
+
+    /**
+     * §11 (requests, second pass): the forced finale closes the arena for
+     * real, not only in the announcement.
+     *
+     * `forceFinale` already says this from the sky — "every route that is not
+     * toward {horn} closes behind whoever walks it" — and then left the border
+     * on its ordinary day-counted schedule, so the last two were herded by an
+     * objective they could decline and nothing else. Measured across 400 runs:
+     * the finalists were standing in the finale zone for 30.7% of the cycles
+     * they were being herded through, the forced-finale branch fired in 97 of
+     * 361 final-two runs, and in none of the runs whose victor finished with
+     * no kills did the two of them ever meet.
+     *
+     * So the wall does what the announcement said. Everywhere that is not the
+     * finale zone goes out of bounds, and the relocation below puts both of
+     * them in the only place left — `nearestSafeZone` walks the adjacency
+     * graph and falls back to the single safe name, so a severed arena cannot
+     * strand either of them. They are not teleported into a fight: they arrive
+     * in the same zone and the encounter layer resolves it, which is the same
+     * order of events as any other meeting.
+     *
+     * The finalist damage cap above (`finalistCollapseDamage`, itself clamped
+     * to `health - 1`) is what keeps this from being the border deciding the
+     * Games — the wall bloodies them into the room and never lands the last
+     * blow.
+     */
+    const forcedFinale = ctx.state.finaleZone !== undefined
+        && (ctx.state.finalistCycles ?? 0) >= ESCALATION.finaleAfterFinalistCycles;
+    if (forcedFinale) {
+        const stage = ctx.state.finaleZone!;
+        collapsedList = allZoneNames.filter(z => z !== stage);
+    }
     ctx.state.collapsedZones = collapsedList;
 
     getAlive(ctx.state).forEach(t => {
@@ -1576,6 +1609,34 @@ function resolveEncounters(
         if (acted.has(t.id) || t.status === 'dead' || isDowned(t)) return;
 
         const zone = getZone(ctx.state.arena, t.zone);
+
+        /**
+         * §11 (requests, second pass): once the Gamemakers have forced the
+         * finale, a finalist standing where the other finalist is standing
+         * meets them. Nothing gets to go first.
+         *
+         * `forceFinale` drains the arena to one zone and `resolveEncounter`
+         * has had a branch since §7 that turns a final-two meeting into the
+         * fight — but the meeting has to be reached, and three things above it
+         * were reaching their own conclusions instead. A hazard roll (capped
+         * at `ESCALATION.hazardCeiling`) and a mutt roll (the same ceiling)
+         * each `return` after firing, so in the escalated endgame better than
+         * half of a finalist's cycles were spent on the arena rather than on
+         * the other finalist; and `isNoticed` still let one of them go to
+         * ground in a sector the Gamemakers have just stripped of cover.
+         *
+         * Measured across 400 runs with the attrition grace, the finalist
+         * opt-out and the finale round ceiling all closed: 361 runs reached a
+         * final two and the forced-finale branch fired 59 times, none of them
+         * in a run whose victor finished with no kills. The last fight was not
+         * being called a draw. It was not being started.
+         */
+        const finaleNow = ctx.state.finaleZone !== undefined
+            && (ctx.state.finalistCycles ?? 0) >= ESCALATION.finaleAfterFinalistCycles;
+        const finaleOpponent = finaleNow
+            ? shuffled.find(o => o.id !== t.id && o.status === 'alive' && !isDowned(o) && samePlace(ctx.state.arena, t, o))
+            : undefined;
+
         const zoneDanger = zone ? 0.5 + zone.danger : 1; // 0.5x-1.5x from zone danger
         let eventChance = ENCOUNTERS.baseEventChance * zoneDanger;
         let muttChance = ENCOUNTERS.baseMuttChance * zoneDanger;
@@ -1589,7 +1650,7 @@ function resolveEncounters(
         eventChance = Math.min(ENCOUNTERS.hazardCeiling, eventChance * ctx.state.config.hazardRate);
         muttChance = Math.min(ENCOUNTERS.hazardCeiling, muttChance * ctx.state.config.hazardRate);
 
-        if (ctx.rng.chance(eventChance)) {
+        if (!finaleOpponent && ctx.rng.chance(eventChance)) {
             // §7e: an arena that started a story last cycle finishes it.
             applyArenaEvent(ctx, t,
                 pendingChain(ctx, t, flavor.events) ?? pickTerrainEvent(ctx, flavor.events, zone?.terrain, t));
@@ -1597,7 +1658,7 @@ function resolveEncounters(
             return;
         }
 
-        if (ctx.rng.chance(muttChance)) {
+        if (!finaleOpponent && ctx.rng.chance(muttChance)) {
             resolveMuttAttack(ctx, t, time);
             acted.add(t.id);
             return;
@@ -1608,8 +1669,12 @@ function resolveEncounters(
         // simply not found this cycle, which is what stealth buys them.
         const inZone = shuffled.filter(o => o.id !== t.id && !acted.has(o.id) && o.status === 'alive' && samePlace(ctx.state.arena, t, o));
         const alliesOf = (o: Tribute) => inZone.filter(x => x.allianceId !== undefined && x.allianceId === o.allianceId).length;
-        const others = inZone.filter(o =>
-            isNoticed(ctx, o, t, zone, alliesOf(o)) || isNoticed(ctx, t, o, zone, alliesOf(t)));
+        // In a forced finale the notice roll is skipped for the same reason
+        // the hazard rolls above are: there is no cover left to be missed in.
+        const others = finaleOpponent
+            ? inZone
+            : inZone.filter(o =>
+                isNoticed(ctx, o, t, zone, alliesOf(o)) || isNoticed(ctx, t, o, zone, alliesOf(t)));
 
         if (others.length < inZone.length && ctx.rng.chance(ENCOUNTERS.nearMissLineChance)) {
             const missed = inZone.filter(o => !others.includes(o));

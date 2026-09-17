@@ -22,7 +22,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             id: 'eclipse-the-stars-go-out',
             oncePerRun: true,
             witnesses: true,
-            text: 'Every artificial star over {zone} goes out at once, and for a full minute the forest is the dark it was always pretending to be. {tribute} does not move. Something near them does.',
+            text: 'Every artificial star over {zone} goes out at once and the forest is fully dark for a minute. {tribute} does not move. Something a few metres off does.',
             escapeText: '{tribute} sits down where they stand in {zone} when the stars go out, and stays there until they come back on.',
             cause: 'Lost in the true dark',
             dodgeStat: 'willpower',
@@ -33,7 +33,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'eclipse-the-warm-vent',
             oncePerRun: true,
-            text: 'A pitch-vent in {zone} has been breathing on the same patch of ground for a hundred years, and everything that grows there grows fast and sweet. {tribute} eats until the blue stops mattering.',
+            text: 'A pitch-vent in {zone} has warmed the same patch of ground for a century and everything on it grows fast. {tribute} eats their fill of it.',
             escapeText: '',
             cause: 'Fed by the vent garden',
             feed: 20,
@@ -54,7 +54,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'eclipse-the-star-comes-loose',
             chain: 'eclipse-the-star-falls',
-            text: 'One of the stars over {zone} slips its station and starts to drift, slow as a boat. {tribute} watches it come down through the crowns a metre an hour, and does not think to move camp.',
+            text: 'One of the stars over {zone} slips its station and starts down through the crowns at about a metre an hour. {tribute} watches it and does not move camp.',
             escapeText: '{tribute} sees the star over {zone} slip and moves camp before it can finish falling.',
             cause: 'Struck by a falling star',
             dodgeStat: 'intelligence',
@@ -76,7 +76,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         },
         // --- signature deaths ---
         {
-            text: 'The pitch under {zone} finds a crack and lights it, and {tribute} is standing on the crack. The flare goes up through them like a match through paper.',
+            text: 'The pitch under {zone} finds a crack and lights. {tribute} is standing over the crack when it goes up.',
             escapeText: 'The ground under {zone} hisses and {tribute} is off it before the flare comes up.',
             cause: 'Burned in a pitch-vent flare',
             dodgeStat: 'agility',
@@ -86,7 +86,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             terrains: ['highland', 'forest'],
         },
         {
-            text: 'The owls of {zone} hunt what moves in the dusk, and tonight they decide {tribute} is small enough. They come out of the crowns without a sound, a dozen of them, and take the eyes first.',
+            text: 'A dozen owls come out of the crowns over {zone} without a sound, onto {tribute}, at the eyes.',
             escapeText: '{tribute} gets their back to a trunk in {zone} and the owls circle once and go back to the crowns.',
             cause: 'Taken by the duskwing owls',
             dodgeStat: 'intelligence',
@@ -98,7 +98,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         // --- reactive ---
         {
             requires: { time: 'night' },
-            text: 'The dusk over {zone} thickens toward something honest, and the pitch hounds come out of the charcoal to run in it. {tribute} hears them before the glowcaps do.',
+            text: 'The dusk over {zone} darkens past its usual level and the pitch hounds come out of the charcoal. {tribute} hears them before the glowcaps brighten.',
             escapeText: '{tribute} goes still against the fungus-light in {zone} and the hounds pass close enough to smell the pitch on them.',
             cause: 'Run down by the pitch hounds',
             dodgeStat: 'endurance',
@@ -108,7 +108,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         },
         {
             requires: { effect: 'burning' },
-            text: 'The fire in {zone} reaches a vent and the vent answers it, and the whole grove around {tribute} goes from burning to detonating.',
+            text: 'The fire in {zone} reaches a vent. The whole grove around {tribute} goes from burning to blowing out.',
             escapeText: '{tribute} feels the pitch heat under the burning ground of {zone} and gets clear before it lights.',
             cause: 'Killed when the vents caught',
             dodgeStat: 'intelligence',
@@ -126,7 +126,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             id: 'reef-the-tide-comes-back',
             oncePerRun: true,
             witnesses: true,
-            text: 'For one hour the Gamemakers put the sea back. It comes across {zone} at a walking pace, grey and cold and ankle-deep, and {tribute} drinks from it before remembering what it is.',
+            text: 'The Gamemakers put the sea back for an hour. It crosses {zone} ankle-deep at walking pace and {tribute} drinks from it before tasting the salt.',
             escapeText: '{tribute} sees the sea coming across {zone} and climbs the coral until it goes away again.',
             cause: 'Poisoned by the returning sea',
             dodgeStat: 'intelligence',
@@ -139,7 +139,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'reef-the-whale-heart',
             oncePerRun: true,
-            text: 'Under the ribs of the whale fall in {zone} the meat is still good, packed in brine and the cold of the trench. {tribute} eats a mouthful of something that was alive before they were born.',
+            text: 'Under the ribs of the whale fall in {zone} the meat is still packed in brine and trench cold. {tribute} cuts and eats it.',
             escapeText: '',
             cause: 'Fed by the whale fall',
             feed: 22,
@@ -149,7 +149,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'reef-the-freshwater-seep',
             oncePerRun: true,
-            text: 'At the bottom of a tidepool in {zone} the water is not salt. {tribute} tastes it twice to be sure, then lies on the coral and drinks like an animal.',
+            text: 'The water at the bottom of a tidepool in {zone} is fresh. {tribute} tastes it twice and then lies on the coral and drinks.',
             escapeText: '',
             cause: 'Quenched at the seep',
             quench: 22,
@@ -160,7 +160,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'reef-the-urchins-move',
             chain: 'reef-the-urchin-tide',
-            text: 'The urchins of {zone} are moving. Not fast — a metre a night — but every one of them in the same direction, and the direction is toward {tribute}.',
+            text: 'The urchins of {zone} are moving at about a metre a night, all in the same direction, toward where {tribute} is camped.',
             escapeText: '{tribute} notices the urchins of {zone} are all pointed at their camp and stops having a camp.',
             cause: 'Overrun by urchins',
             dodgeStat: 'intelligence',
@@ -183,7 +183,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         },
         // --- signature deaths ---
         {
-            text: 'The shelf break at {zone} is a cliff the sea used to hide, and the coral at the lip is the sharpest on the reef. {tribute} goes over it, and the reef opens them the whole way down.',
+            text: 'The shelf break at {zone} is a cliff with the sharpest coral on the reef at its lip. {tribute} goes over it and is cut the whole way down.',
             escapeText: '{tribute} feels the coral crumble at the lip of {zone} and throws themselves back from it.',
             cause: 'Flayed on the shelf break',
             dodgeStat: 'agility',
@@ -193,7 +193,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             terrains: ['highland', 'ruins'],
         },
         {
-            text: 'The brine in the sumps of {zone} is heavier than water and colder than the sea was, and it does not let go of a leg. {tribute} goes in to the waist, then the chest, and the salt does the rest.',
+            text: 'The brine in the sumps of {zone} is heavier than water and colder than the sea. {tribute} goes in to the waist, then the chest.',
             escapeText: '{tribute} feels the brine of {zone} take their foot and goes flat across the crust until it lets go.',
             cause: 'Drowned in the brine sumps',
             dodgeStat: 'strength',
@@ -205,7 +205,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         // --- reactive ---
         {
             requires: { time: 'night' },
-            text: 'The reef glows at night in places it should not, and {tribute} follows the glow in {zone} to a pool where the anemones have been waiting for exactly this.',
+            text: 'The reef at {zone} glows in patches at night. {tribute} follows one to a pool full of anemones.',
             escapeText: '{tribute} stops short of the glow in {zone} and watches it pulse, and does not put a hand in.',
             cause: 'Stung by the night anemones',
             dodgeStat: 'intelligence',
@@ -217,7 +217,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             requires: { maxSurvivors: 4 },
             witnesses: true,
-            text: 'With so few left the Gamemakers drain the trench. The floor of {zone} tilts as the last of the water goes, and everything that lived in the deep comes up the slope looking for {tribute}.',
+            text: 'The Gamemakers drain the trench. The floor of {zone} tilts as the last of it goes and everything that lived in the deep comes up the slope at {tribute}.',
             escapeText: '{tribute} feels the floor of {zone} tilt and climbs while the trench things are still finding their feet.',
             cause: 'Taken by the trench',
             dodgeStat: 'agility',
@@ -235,7 +235,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             id: 'abattoir-the-line-stops',
             oncePerRun: true,
             witnesses: true,
-            text: 'Every belt, chain and piston in the plant stops at once. The silence in {zone} is so total that {tribute} hears their own blood, and then, from three sectors over, somebody else\'s footsteps.',
+            text: 'Every belt, chain and piston in the plant stops at once. In the silence over {zone}, {tribute} hears footsteps three sectors away.',
             escapeText: '',
             cause: 'Undone by the silence',
             sanity: 10,
@@ -243,7 +243,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'abattoir-the-cold-store',
             oncePerRun: true,
-            text: 'A door in {zone} that was locked yesterday is not today, and behind it the cold store still runs. There is meat on the racks. {tribute} does not ask what it was, and eats.',
+            text: 'A door in {zone} that was locked yesterday is open, and the cold store behind it is still running with meat on the racks. {tribute} eats.',
             escapeText: '',
             cause: 'Fed from the cold store',
             feed: 24,
@@ -253,7 +253,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'abattoir-the-manifest',
             oncePerRun: true,
-            text: 'In the foreman\'s office in {zone} there is a manifest, and the manifest lists this week\'s intake by district. {tribute} finds their own number on it, with a weight.',
+            text: 'The manifest in the foreman\'s office at {zone} lists this week\'s intake by district. {tribute} finds their own number on it, with a weight beside it.',
             escapeText: '',
             cause: 'Broken by the manifest',
             sanity: 14,
@@ -263,7 +263,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'abattoir-the-belt-warms',
             chain: 'abattoir-the-line-starts',
-            text: 'The conveyor under {zone} is warm. Not running — warm, the way a machine is when somebody has switched it on in a room far away and is waiting. {tribute} decides it is nothing.',
+            text: 'The conveyor under {zone} is warm and not running. {tribute} puts a hand on it and walks on.',
             escapeText: '{tribute} puts a hand on the belt in {zone}, feels it warm, and gets off the deck.',
             cause: 'Killed on the line',
             dodgeStat: 'intelligence',
@@ -276,7 +276,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             oncePerRun: true,
             weight: 0.15,
             witnesses: true,
-            text: 'The line starts. Every belt in {zone} goes from still to full speed in one second, and {tribute} goes with it, toward the part of the plant with the blades.',
+            text: 'Every belt in {zone} goes from still to full speed in one second. {tribute} goes with it, toward the blades.',
             escapeText: 'The line starts under {tribute} in {zone} and they roll off the belt one metre from the guard rails.',
             cause: 'Fed into the line',
             dodgeStat: 'agility',
@@ -287,7 +287,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         },
         // --- signature deaths ---
         {
-            text: 'The hooks of {zone} run on an overhead chain, and the chain moves. One of them takes {tribute} under the collarbone and lifts, and the line carries them down toward the chill room at the pace it carries everything.',
+            text: 'The overhead chain in {zone} starts. A hook takes {tribute} under the collarbone and lifts, and the line carries them toward the chill room.',
             escapeText: '{tribute} hears the chain of {zone} take up slack and drops flat under the hooks as they pass.',
             cause: 'Taken by the hooks',
             dodgeStat: 'intelligence',
@@ -297,7 +297,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             terrains: ['ruins', 'open'],
         },
         {
-            text: 'The chill room door in {zone} closes behind {tribute} and the compressors come on. It is not the cold that does it, at first. It is the hour of knowing the cold is coming.',
+            text: 'The chill room door in {zone} closes behind {tribute} and the compressors come on. It takes the room an hour to reach temperature.',
             escapeText: '{tribute} gets a shoulder in the chill room door of {zone} before the seal takes and forces it back.',
             cause: 'Frozen in the chill room',
             dodgeStat: 'strength',
@@ -310,7 +310,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         // --- reactive ---
         {
             requires: { elevationOrChoke: true },
-            text: 'The catwalk through {zone} is a metre wide and there is somebody at the other end of it. Neither of them can go back. {tribute} does the arithmetic on the rail.',
+            text: 'The catwalk through {zone} is a metre wide with somebody at the far end of it and {tribute} at this one. Neither end has a turning.',
             escapeText: '{tribute} meets somebody on the catwalk in {zone} and the two of them edge past each other in a silence that lasts a week.',
             cause: 'Thrown from the catwalk',
             dodgeStat: 'strength',
@@ -322,7 +322,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             requires: { minSurvivors: 12 },
             witnesses: true,
-            text: 'The plant is built for volume, and there is volume. The Gamemakers run the pistons in {zone} at intake speed, and the whole hall around {tribute} becomes a machine for making fewer people.',
+            text: 'The Gamemakers run the pistons in {zone} at full intake speed. The whole hall is moving around {tribute} at the rate it was built to process.',
             escapeText: '{tribute} finds the one dead piston in {zone} and stands in its shadow while the rest of the hall cycles.',
             cause: 'Crushed in the piston hall',
             dodgeStat: 'agility',
@@ -340,7 +340,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             id: 'carnival-the-lights-come-on',
             oncePerRun: true,
             witnesses: true,
-            text: 'The midway lights come on. All of them, every bulb on every stall, and the organ, and the wheel, and {tribute} stands in {zone} lit like the last day of summer while every other tribute in the arena turns to look.',
+            text: 'Every bulb on the midway comes on at once, with the organ and the wheel. {tribute} is standing in {zone} under all of it, in view of the whole park.',
             escapeText: '',
             cause: 'Lit up on the midway',
             sanity: 6,
@@ -348,7 +348,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'carnival-the-concession-stand',
             oncePerRun: true,
-            text: 'A concession stand in {zone} still has power to the fryer and a freezer that never lost its seal. {tribute} eats candyfloss and frozen corn dogs by the light of a popcorn machine, and it is the best meal of the Games.',
+            text: 'A concession stand in {zone} still has power to the fryer and a sealed freezer. {tribute} eats candyfloss and corn dogs by the light of the popcorn machine.',
             escapeText: '',
             cause: 'Fed at the concession stand',
             feed: 22,
@@ -358,7 +358,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'carnival-the-fortune',
             oncePerRun: true,
-            text: 'The fortune machine on {zone} takes no coin from {tribute} and prints a card anyway. It has their name on it, and a number of days, and the number is small.',
+            text: 'The fortune machine on {zone} prints a card without a coin. It carries {tribute}\'s name and a number of days.',
             escapeText: '{tribute} does not read the card the fortune machine in {zone} prints for them, and feeds it to the duck pond.',
             cause: 'Broken by a fortune',
             dodgeStat: 'willpower',
@@ -370,7 +370,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'carnival-the-wheel-ticks',
             chain: 'carnival-the-wheel-turns',
-            text: 'The Ferris wheel over {zone} ticks. One tooth of the drive gear, then silence, then another. {tribute} counts them going to sleep, the way another child counts sheep.',
+            text: 'The Ferris wheel over {zone} moves one tooth of the drive gear at a time, with long gaps. {tribute} counts them going to sleep.',
             escapeText: '{tribute} hears the wheel over {zone} start to tick and moves camp out from under it.',
             cause: 'Crushed under the wheel',
             dodgeStat: 'intelligence',
@@ -382,7 +382,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             oncePerRun: true,
             weight: 0.15,
             witnesses: true,
-            text: 'The wheel turns. A full revolution, all at once, gears screaming, and it sheds forty years of cars and cable across {zone} on the way round. {tribute} is under one of them.',
+            text: 'The wheel turns a full revolution at once and sheds forty years of cars and cable across {zone}. {tribute} is under one of them.',
             escapeText: 'The wheel over {zone} lets go and {tribute} runs the length of the falling cars and out the far side of the shadow.',
             cause: 'Crushed under the wheel',
             dodgeStat: 'agility',
@@ -392,7 +392,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         },
         // --- signature deaths ---
         {
-            text: 'The mirror maze in {zone} has a way out and {tribute} has found it three times, and each time it was glass. They put a hand through the fourth one, and the glass takes the hand, and the arm, and the way out was never there.',
+            text: '{tribute} has found the way out of the mirror maze in {zone} three times and each was glass. They put a hand through the fourth and it opens them to the elbow.',
             escapeText: '{tribute} closes their eyes in the mirror maze of {zone} and walks it by the wall until the wall stops being glass.',
             cause: 'Bled out in the mirror maze',
             dodgeStat: 'intelligence',
@@ -403,7 +403,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             terrains: ['ruins'],
         },
         {
-            text: 'The carousel in {zone} starts with {tribute} on the platform, and it does not stop at the speed carousels stop at. The horses on their poles go round at the speed of a thrown thing, and one of them meets {tribute} on the way.',
+            text: 'The carousel in {zone} starts with {tribute} on the platform and keeps accelerating. One of the horses comes round at full speed into them.',
             escapeText: 'The carousel in {zone} starts under {tribute} and they go off the platform at the first horse instead of the tenth.',
             cause: 'Killed by the carousel',
             dodgeStat: 'agility',
@@ -414,7 +414,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         // --- reactive ---
         {
             requires: { time: 'night' },
-            text: 'After dark the haunted manor in {zone} does what it was built to do, and it was built by people who were very good at it. {tribute} knows every scare is a machine, and it does not help.',
+            text: 'After dark the haunted manor in {zone} runs its whole sequence with {tribute} inside it.',
             escapeText: '{tribute} finds the fuse box in the haunted manor of {zone} and the night goes quiet, and stays quiet.',
             cause: 'Died of fright in the manor',
             dodgeStat: 'willpower',
@@ -425,7 +425,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         },
         {
             requires: { storm: true },
-            text: 'The wind takes the big top in {zone} and the big top takes everything under it. {tribute} is under it, in an acre of canvas and pole and rope that is trying to fold.',
+            text: 'The wind takes the big top in {zone} down. {tribute} is under an acre of folding canvas, pole and rope.',
             escapeText: '{tribute} feels the big top of {zone} lift at the edges and gets out through the slit in the wall before it comes down.',
             cause: 'Crushed under the big top',
             dodgeStat: 'agility',
@@ -443,7 +443,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             id: 'ashwaste-the-rain',
             oncePerRun: true,
             witnesses: true,
-            text: 'It rains. The first rain in the arena\'s life, and it comes down on {zone} grey and thick and turns the ash to a slurry that sets like plaster on {tribute}\'s skin.',
+            text: 'It rains on the wasteland for the first time since the gong. It comes down grey over {zone} and sets like plaster on {tribute}\'s skin.',
             escapeText: '{tribute} stands with their mouth open in the rain over {zone} and drinks it before it turns to mud.',
             cause: 'Drowned in ash-mud',
             dodgeStat: 'intelligence',
@@ -455,7 +455,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'ashwaste-the-root-cellar',
             oncePerRun: true,
-            text: 'Under the buried village in {zone} a root cellar kept its door, and the ash that killed everyone above it preserved everything below. {tribute} eats apples that are older than they are and taste of the last autumn before the end.',
+            text: 'A root cellar under the buried village in {zone} kept its door and the ash sealed it. {tribute} eats apples older than they are.',
             escapeText: '',
             cause: 'Fed from the root cellar',
             feed: 22,
@@ -466,7 +466,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'ashwaste-the-cast',
             oncePerRun: true,
-            text: 'The ash in {zone} kept a shape. A hollow the size of a person, curled, hands over the face. {tribute} looks into it a long time, and then walks a very long way from it.',
+            text: 'The ash in {zone} holds a person-shaped hollow, curled, hands over the face. {tribute} looks into it and then camps two zones away.',
             escapeText: '',
             cause: 'Undone by the ash cast',
             sanity: 12,
@@ -476,7 +476,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'ashwaste-the-ground-warms',
             chain: 'ashwaste-the-caldera-clears-its-throat',
-            text: 'The ground in {zone} is warmer than it was at dawn, and the mudpots have gone quiet. Everything on the wasteland that can move is moving away from the rim, and {tribute} watches it go.',
+            text: 'The ground in {zone} is warmer than at dawn and the mudpots have gone quiet. Everything that can move on the wasteland is heading away from the rim, past {tribute}.',
             escapeText: '{tribute} notices what the animals in {zone} are doing and does it too.',
             cause: 'Killed in the eruption',
             dodgeStat: 'intelligence',
@@ -488,7 +488,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             oncePerRun: true,
             weight: 0.15,
             witnesses: true,
-            text: 'The caldera clears its throat. It is not the big one, the one that made the wasteland — just a cough of cinder and gas, but it lands across {zone} like a hot grey wave, and {tribute} is standing in it.',
+            text: 'The caldera puts up a short blast of cinder and gas. It comes down across {zone} as a hot grey wave with {tribute} standing in it.',
             escapeText: 'The caldera coughs and {tribute} goes flat behind a burned stump in {zone} while the cinder goes over.',
             cause: 'Killed in the eruption',
             dodgeStat: 'agility',
@@ -499,7 +499,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         },
         // --- signature deaths ---
         {
-            text: 'The mudpots of {zone} are a crust over something boiling, and the crust is not the same thickness everywhere. {tribute} finds the thin place with one leg and then the other, and the mud closes over them at a temperature that cooks.',
+            text: 'The mudpots of {zone} are a crust of varying thickness over boiling mud. {tribute} finds the thin place with one leg and then the other.',
             escapeText: '{tribute} feels the crust of {zone} give and throws their weight backward into the ash.',
             cause: 'Boiled in the mudpots',
             dodgeStat: 'agility',
@@ -509,7 +509,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             terrains: ['wetland', 'water'],
         },
         {
-            text: 'The ash of {zone} is fine as flour and there is a drift of it fifteen metres deep, and {tribute} does not know the drift is there until they are in it to the chest, and then the neck, and then the ash is in them.',
+            text: 'The ash of {zone} is fine as flour and there is a drift fifteen metres deep in it. {tribute} is in to the chest before they know it is there.',
             escapeText: '{tribute} feels the ash of {zone} go soft under them and swims backward out of it, spitting grey.',
             cause: 'Drowned in the ash drifts',
             dodgeStat: 'strength',
@@ -521,7 +521,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         // --- reactive ---
         {
             requires: { storm: true },
-            text: 'The wind gets under the ash of {zone} and lifts it, and for an hour there is no sky, no ground, and no air that is not grey. {tribute} breathes it because there is nothing else to breathe.',
+            text: 'The wind lifts the ash of {zone} and holds it up for an hour. {tribute} breathes nothing but grey in all of it.',
             escapeText: '{tribute} wraps their face and lies down in the lee of a wall in {zone} while the ash storm goes over.',
             cause: 'Choked in the ash storm',
             dodgeStat: 'intelligence',
@@ -532,7 +532,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         },
         {
             requires: { time: 'night' },
-            text: 'At night the smolder in {zone} shows through the ash as a red map of everywhere that is still burning under the surface, and {tribute} finds out the map is not complete.',
+            text: 'At night the smolder in {zone} shows through the ash as a red map of what is still burning underneath. {tribute} steps onto a patch it does not show.',
             escapeText: '{tribute} reads the red under the ash of {zone} and walks only where it is dark.',
             cause: 'Burned through the crust',
             dodgeStat: 'intelligence',
@@ -550,7 +550,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             id: 'quarry-the-siren',
             oncePerRun: true,
             witnesses: true,
-            text: 'The blast siren on the rim sounds, the way it did every day of the quarry\'s working life, and the tributes who know what it means have thirty seconds. {tribute} is in {zone}, and the charge is under the bench above.',
+            text: 'The blast siren on the rim sounds, which gives thirty seconds. {tribute} is in {zone} and the charge is under the bench above them.',
             escapeText: '{tribute} hears the siren over {zone} and is under an overhang before the bench above them goes.',
             cause: 'Killed in the scheduled blast',
             dodgeStat: 'intelligence',
@@ -562,7 +562,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'quarry-the-mess-hall',
             oncePerRun: true,
-            text: 'The crusher house in {zone} had a crew and the crew had a mess hall, and the mess hall had tins. {tribute} opens six of them with a rock and eats sitting on a conveyor that has not moved in twenty years.',
+            text: 'The mess hall off the crusher house in {zone} still has tins in it. {tribute} opens six with a rock and eats on a stopped conveyor.',
             escapeText: '',
             cause: 'Fed from the mess hall',
             feed: 20,
@@ -572,7 +572,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'quarry-the-seep',
             oncePerRun: true,
-            text: 'The seep wall of {zone} runs cleaner than usual today — someone, or something, opened a valve far up the spiral. {tribute} drinks from a crack in the rock and fills every container they have.',
+            text: 'The seep wall of {zone} is running harder today than it has all week. {tribute} drinks from a crack in the rock and fills every container they have.',
             escapeText: '',
             cause: 'Quenched at the seep wall',
             quench: 24,
@@ -582,7 +582,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'quarry-the-crack-in-the-bench',
             chain: 'quarry-the-bench-lets-go',
-            text: 'A crack runs the length of the bench {tribute} is camped on in {zone}. It was a hairline at dawn. By dusk they can put a finger in it.',
+            text: 'A crack runs the length of the bench {tribute} is camped on in {zone}. It was a hairline at dawn and takes a finger by dusk.',
             escapeText: '{tribute} puts a finger in the crack in {zone} and does not spend the night on that side of it.',
             cause: 'Buried in the pit',
             dodgeStat: 'intelligence',
@@ -595,7 +595,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             oncePerRun: true,
             weight: 0.15,
             witnesses: true,
-            text: 'The bench lets go. Fifty metres of {zone} slide into the pit as one piece, and {tribute} rides it down until it stops being one piece.',
+            text: 'Fifty metres of bench at {zone} goes into the pit in one piece with {tribute} on it, and breaks up halfway down.',
             escapeText: 'The bench of {zone} goes and {tribute} jumps the crack to the side that stays.',
             cause: 'Buried in the pit',
             dodgeStat: 'agility',
@@ -606,7 +606,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         },
         // --- signature deaths ---
         {
-            text: 'The powder magazine in {zone} has been dry for twenty years and the powder has been waiting for one spark, and {tribute} strikes their fire in the doorway.',
+            text: 'The powder magazine in {zone} has been dry for twenty years and still holds stock. {tribute} strikes a fire in the doorway.',
             escapeText: '{tribute} smells the magazine of {zone} before they strike a light, and strikes it somewhere else.',
             cause: 'Killed in the powder magazine',
             dodgeStat: 'intelligence',
@@ -616,7 +616,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             terrains: ['ruins'],
         },
         {
-            text: 'The crusher in {zone} was built to take boulders the size of a horse, and it does not know the difference. Somebody, somewhere, throws the breaker. {tribute} is in the hopper.',
+            text: 'The crusher in {zone} was built for boulders the size of a horse. Somebody throws the breaker with {tribute} in the hopper.',
             escapeText: '{tribute} hears the crusher of {zone} wind up and is out of the hopper with the hem of one boot still in it.',
             cause: 'Killed in the crusher',
             dodgeStat: 'agility',
@@ -627,7 +627,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         // --- reactive ---
         {
             requires: { elevationOrChoke: true },
-            text: 'The spiral road at {zone} is one lane and the drop on the outside is the whole quarry. {tribute} meets somebody coming the other way, and one of them has to be on the outside.',
+            text: 'The spiral road at {zone} is one lane with the quarry on the outside of it. {tribute} meets somebody coming the other way.',
             escapeText: '{tribute} meets somebody on the road in {zone}, and it is the other one who looks down.',
             cause: 'Pushed off the spiral road',
             dodgeStat: 'strength',
@@ -637,7 +637,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         },
         {
             requires: { effect: 'quaking' },
-            text: 'The whole wall of {zone} is talking, a grinding under the grinding, and the benches are peeling off it one at a time. {tribute} is on a bench.',
+            text: 'The whole wall of {zone} is grinding and the benches are coming off it one at a time. {tribute} is standing on one.',
             escapeText: '{tribute} gets off the bench in {zone} and onto bedrock while the wall is still deciding.',
             cause: 'Buried in a bench slide',
             dodgeStat: 'agility',
@@ -654,7 +654,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             id: 'glacier-the-serac-falls',
             oncePerRun: true,
             witnesses: true,
-            text: 'The tallest serac on the field lets go, and everyone in the arena hears it. It falls across {zone} in pieces the size of houses, and {tribute} is in the field of pieces.',
+            text: 'The tallest serac on the field goes down across {zone} in pieces the size of houses. {tribute} is in among them.',
             escapeText: '{tribute} hears the serac over {zone} crack and runs sideways along the fall line instead of down it.',
             cause: 'Crushed by the serac',
             dodgeStat: 'agility',
@@ -666,7 +666,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'glacier-the-thaw-pocket',
             oncePerRun: true,
-            text: 'Somewhere in {zone} the ice has a pocket of air warmed by rock, and in the pocket there is running water and green moss and something that smells like soil. {tribute} drinks and sleeps in it, and for one night is not cold.',
+            text: 'The ice at {zone} has a pocket warmed by rock, with running water and green moss in it. {tribute} drinks and sleeps in it and is warm for one night.',
             escapeText: '',
             cause: 'Rested in the thaw pocket',
             quench: 18,
@@ -677,7 +677,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'glacier-the-man-in-the-ice',
             oncePerRun: true,
-            text: 'A wall of the blue galleries in {zone} has a man in it. Not deep — a hand\'s breadth of clear ice, and a face behind it, and a Games uniform of a cut nobody has worn in forty years. {tribute} does not sleep in the galleries again.',
+            text: 'There is a body a hand\'s breadth inside the wall of the blue galleries at {zone}, in a Games uniform of a cut forty years old. {tribute} does not sleep in the galleries again.',
             escapeText: '',
             cause: 'Undone by the man in the ice',
             sanity: 12,
@@ -687,7 +687,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'glacier-the-moulin-fills',
             chain: 'glacier-the-moulin-drains',
-            text: 'The moulin in {zone} has stopped taking water. It is filling instead, a blue eye rising a hand a minute, and {tribute} has camped beside it because the noise stopped.',
+            text: 'The moulin in {zone} has stopped taking water and started filling, at about a hand a minute. {tribute} camped beside it when the noise stopped.',
             escapeText: '{tribute} sees the water rising in the moulin of {zone} and carries their camp to higher ice.',
             cause: 'Drowned under the glacier',
             dodgeStat: 'intelligence',
@@ -699,7 +699,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             id: 'glacier-the-moulin-drains',
             oncePerRun: true,
             weight: 0.15,
-            text: 'Whatever was blocking the moulin gives. A lake\'s worth of meltwater goes down it in a minute, and everything within twenty metres of the lip of {zone} goes with it, {tribute} included.',
+            text: 'The block in the moulin gives and a lake of meltwater goes down it in a minute. Everything within twenty metres of the lip at {zone} goes with it, {tribute} included.',
             escapeText: 'The moulin in {zone} drains with a roar and {tribute} gets an ice axe into the slope as the pull starts.',
             cause: 'Drowned under the glacier',
             dodgeStat: 'strength',
@@ -710,7 +710,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         },
         // --- signature deaths ---
         {
-            text: 'A crevasse in {zone} is bridged with snow, and the bridge has taken {tribute}\'s weight twice. It does not take it a third time. They go in feet first, and the crevasse narrows, and it holds them by the chest sixty feet down where the cold does the rest.',
+            text: 'The snow bridge over the crevasse in {zone} has taken {tribute}\'s weight twice. The third time they go in feet first and stop, held by the chest, sixty feet down.',
             escapeText: '{tribute} feels the bridge in {zone} go soft and gets their weight back onto the lip.',
             cause: 'Wedged in a crevasse',
             dodgeStat: 'intelligence',
@@ -720,7 +720,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             terrains: ['open', 'highland'],
         },
         {
-            text: 'The slick tunnels of {zone} run downhill, and downhill is a very long way. {tribute} loses their footing on the ice and picks up speed for two hundred metres before the tunnel turns and they do not.',
+            text: 'The slick tunnels of {zone} run downhill a long way. {tribute} loses their footing and picks up speed for two hundred metres before the tunnel turns.',
             escapeText: '{tribute} slips in the tunnels of {zone} and gets a hand on a rib of rock before the slope takes them.',
             cause: 'Killed in the slick tunnels',
             dodgeStat: 'agility',
@@ -731,7 +731,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         // --- reactive ---
         {
             requires: { effect: 'frozen' },
-            text: 'The cold over {zone} goes past cold into something the ice itself cannot stand, and the surface splits under the tension in cracks that run faster than a person. {tribute} is between two of them.',
+            text: 'The cold over {zone} drops far enough to split the surface, in cracks that run faster than a person. {tribute} is between two of them.',
             escapeText: '{tribute} hears the ice of {zone} tighten and stands on a rock while it splits.',
             cause: 'Killed in a cold-snap fracture',
             dodgeStat: 'agility',
@@ -741,7 +741,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         },
         {
             requires: { time: 'night' },
-            text: 'The glacier moves at night, when nobody is watching, and the gallery {tribute} sleeps in at {zone} is a metre narrower by dawn than it was at dusk. They wake with the ice against their ribs.',
+            text: 'The glacier moves in the night and the gallery {tribute} is sleeping in at {zone} is a metre narrower by dawn. They wake with the ice against their ribs.',
             escapeText: '{tribute} wakes in {zone} to the sound of ice under pressure and crawls out before the gallery closes.',
             cause: 'Crushed by the moving ice',
             dodgeStat: 'intelligence',
@@ -759,7 +759,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             id: 'floe-the-shelf-calves',
             oncePerRun: true,
             witnesses: true,
-            text: 'The ice shelf calves. Half the Cornucopia goes into the sea as one white wall, and the wave it makes rolls out across {zone} and lifts every plate in the arena a metre and lets it down again. {tribute} is on a plate.',
+            text: 'Half the Cornucopia shelf calves into the sea at once. The wave crosses {zone} and lifts every plate in the arena a metre, {tribute}\'s included.',
             escapeText: '{tribute} feels the sea lift under {zone} and lies flat in the middle of the plate while it rolls.',
             cause: 'Drowned in the calving wave',
             dodgeStat: 'agility',
@@ -771,7 +771,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'floe-the-seal-pup',
             oncePerRun: true,
-            text: 'The seal colony on {zone} has a pup that got separated, and the pup does not know what {tribute} is. It is the first warm thing they have touched in a week, and the meat lasts three days.',
+            text: 'A pup has been separated from the seal colony on {zone} and does not move off from {tribute}. The meat lasts three days.',
             escapeText: '',
             cause: 'Fed by the seal',
             feed: 24,
@@ -782,7 +782,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'floe-the-wreck-galley',
             oncePerRun: true,
-            text: 'The galley of the frozen wreck in {zone} is below the ice line, and the ice kept it. {tribute} chips a tin of ship\'s water out of the bulkhead and drinks a century-old thaw.',
+            text: 'The galley of the frozen wreck in {zone} is below the ice line and the ice kept it. {tribute} chips a tin of ship\'s water out of the bulkhead and thaws it.',
             escapeText: '',
             cause: 'Quenched in the wreck',
             quench: 22,
@@ -793,7 +793,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
         {
             id: 'floe-the-plate-is-groaning',
             chain: 'floe-the-plate-splits',
-            text: 'The plate {tribute} is on in {zone} is groaning. A long note under the feet, on and off all day, and a line of dark water at one edge that was not there at dawn.',
+            text: 'The plate {tribute} is on in {zone} has groaned on and off all day, and there is a line of dark water at one edge that was not there at dawn.',
             escapeText: '{tribute} hears the plate under {zone} groan and moves to the thickest ice they can find before dark.',
             cause: 'Lost when the plate split',
             dodgeStat: 'intelligence',
@@ -806,7 +806,7 @@ export const EXTRA_ARENA_EVENTS_GROUP2: Record<string, ArenaEventDef[]> = {
             oncePerRun: true,
             weight: 0.15,
             witnesses: true,
-            text: 'The plate splits along the line, and the line runs through the middle of {tribute}\'s camp in {zone}. Half of everything goes one way. {tribute} goes the other, into the water between.',
+            text: 'The plate splits along the line, which runs through {tribute}\'s camp in {zone}. Half of their kit goes one way and {tribute} goes into the water between.',
             escapeText: 'The plate under {zone} splits and {tribute} jumps the gap while it is still a gap and not a sea.',
             cause: 'Lost when the plate split',
             dodgeStat: 'agility',

@@ -546,13 +546,30 @@ const indicators: Indicator[] = [
         // A victor who never killed anyone is a legitimate story. A victor who
         // never killed anyone two times in five is a simulation that does not
         // reward fighting.
+        //
+        // §26 (requests): the goal is now five in a hundred, and it is met.
+        // §11 removed the arena's right to finish the second-to-last tribute
+        // and took this from 43.4% to 15.2% (n=1600); the rest of it was three
+        // more doors the same ending was walking out of, all of them closed in
+        // `resolveBreakdowns`, `resolveEncounters` and `collapseBorders`:
+        //
+        //  - the runner-up taking the nightlock or walking into the border,
+        //    which was 34 of the 58 remaining cases;
+        //  - the forced-finale meeting losing its roll to a hazard, a mutt or
+        //    a stealth check before it could happen;
+        //  - and the border leaving the arena open while the announcement said
+        //    it had been closed, so the last two were herded by an objective
+        //    they could decline and nothing else.
+        //
+        // 15.2% -> 4.4% at n=1600, 5.9% at the 400-run default. Guard ratcheted
+        // 32% -> 12% so the number can keep falling and cannot climb back.
         label: 'victors with zero kills',
         value: victorZeroKills / Math.max(1, victors),
-        guard: v => v <= 0.32,
-        guardText: '<= 32%',
-        goal: '<= 25%',
-        goalMet: v => v <= 0.25,
-        baseline: '43.4%',
+        guard: v => v <= 0.12,
+        guardText: '<= 12%',
+        goal: '<= 6%',
+        goalMet: v => v <= 0.06,
+        baseline: '43.4%; 15.2% on main at n=1600',
         fmt: asPct,
     },
     {
@@ -756,18 +773,50 @@ const indicators: Indicator[] = [
         // further design goals (best archetype, archetype spread, worst
         // archetype, wipeouts) newly met alongside it.
         //
-        // Guard ratcheted 72% -> 50%: seven points of headroom over the
-        // measured value, which is ~3 standard errors at the 400-run default.
-        // Tune this one at METRICS_RUNS=3200 or more. At the 400-run default
-        // the same build reads 42.4% against 42.9%, and a two-point swing is
-        // most of the distance between the goal and missing it.
+        // §26 (requests): second baseline correction, for the same reason as
+        // the first one above, and it is the reason CI went red on `main`.
+        //
+        // §9.4 reported 42.9% at n=3200 and ratcheted the guard to 50% on the
+        // strength of it. That figure does not reproduce either. `main` at
+        // 5a9c945 measures 52.7% at METRICS_RUNS=1600 and 50.6% at the 400-run
+        // default — so the guard was set below the value the build actually
+        // produces, and the first commit to land after it failed the check for
+        // reasons that had nothing to do with the commit. A guard a build
+        // cannot pass on a good day is not a regression guard.
+        //
+        // Re-measured rather than re-derived. At 1,600 runs: `main` 52.7%,
+        // this branch 53.6%. The 0.9 between them is inside the run-to-run
+        // spread of this indicator — seeds are fixed, but any engine change
+        // reshuffles the RNG stream, and single-lever probes at 400 runs were
+        // measured swinging ±2 points on changes that cannot touch the
+        // Careers at all. The guard below is 57%: ~3.4 points of headroom over
+        // the measured value, which is that spread rather than a round number.
+        //
+        // The design goal stays at 45% and stays unmet, and the goal is the
+        // honest number to argue with. What was tried against it this pass,
+        // measured at 1,600 runs and written down rather than replaced with a
+        // plausible cause:
+        //
+        //  - Not the §23 bloodbath work. Reverting all three of its levers
+        //    (`fightChanceCareer`, `careerKillingZoneBonus`, `careerReachBonus`)
+        //    together is worth 3.8 points at 400 runs, and no single one of
+        //    them is worth more than 3. The first morning is not the Games.
+        //  - Not the §9.4 appetite clock. See `CAREER_APPETITE` in
+        //    data/balance.ts: nearly twice as steep is worth 0.7 points,
+        //    because Careers are not reaching the endgame hungry.
+        //
+        // What the measurement does say, instrumented across 400 runs: Careers
+        // hold 54.6% of final-two slots off 25% of the cast, and then *lose*
+        // mixed final twos 68 to 91. The last fight is not where this is
+        // decided and no amount of tuning the last fight will move it. What
+        // gets them there is a pass of its own.
         label: 'Career victors',
         value: careerVictors / Math.max(1, victors),
-        guard: v => v <= 0.50,
-        guardText: '<= 50%',
+        guard: v => v <= 0.57,
+        guardText: '<= 57%',
         goal: '<= 45%',
         goalMet: v => v <= 0.45,
-        baseline: '76.3% measured (audit reported 40.1%, did not reproduce); 48.1% before §9.4',
+        baseline: '76.3% measured (audit reported 40.1%, did not reproduce); 52.7% on main at n=1600 (\u00a79.4 reported 42.9%, did not reproduce)',
         fmt: asPct,
     },
 ];

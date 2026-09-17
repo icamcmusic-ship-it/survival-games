@@ -1,5 +1,116 @@
 # Changelog
 
+## Second requests pass (this branch)
+
+Three items: finish the prose pass the last branch scoped down, get zero-kill
+victors to about five in a hundred, and fix the CI failure the last merge left
+on `main`. The third one turned out not to be a regression at all.
+
+### The last fight was not being called a draw. It was not being started. (§11)
+
+`victors with zero kills`: **15.2% -> 4.4%** at n=1600 (5.3% at the 400-run
+default), against a request of about five in a hundred.
+
+The previous pass took away the arena's right to finish the second-to-last
+tribute and the ending walked out of the next door along. Every stage of this
+was measured before it was believed, and each measurement pointed at a
+different door:
+
+    of 58 zero-kill victors at 400 runs, 34 were the runner-up
+    taking the nightlock or walking into the border
+
+Closing that moved the ending along again, to dehydration — so the problem was
+never the cause of death. It was that the two of them were not meeting:
+
+    361 runs reached a final two
+    the forced-finale branch fired in 59 of them
+    in none of the zero-kill runs did the two of them ever meet
+    finalists stood in the finale zone for 30.7% of the cycles
+    they were being herded through
+
+Four changes, in the order they were found:
+
+- **A finalist does not get to opt out.** Both self-inflicted endings are held
+  for exactly as long as the arena's own attrition is — the final-two grace
+  window — and nothing changes at any larger field size, so the nightlock stays
+  reachable. A broken finalist still stops hiding, still puts the weapon down,
+  still loses the token; every one of those puts them in front of the other
+  finalist rather than out of the Games behind their back.
+- **The forced finale runs to a conclusion.** `wantsToRetreat` has refused to
+  let either finalist break off since §7, but the duel still resolved on the
+  ordinary four-exchange ceiling, so they met, traded four rounds and
+  separated. The bloodbath already had an exemption for exactly this condition
+  — no line of retreat — and the finale now has one too.
+- **The meeting stopped losing its roll.** A hazard roll and a mutt roll each
+  `return` after firing, so in the escalated endgame most of a finalist's
+  cycles went to the arena rather than to the other finalist, and the stealth
+  check still let one of them hide in a sector the Gamemakers had stripped.
+- **The arena closes for real.** `forceFinale` has announced from the sky since
+  §7 that every route not toward the horn is shut, and then left the border on
+  its day-counted schedule. Everywhere that is not the finale zone now goes out
+  of bounds, and the existing finalist damage cap is what keeps the wall from
+  deciding the Games.
+
+Wipeouts fell with it, 4.3% -> 2.3% at n=1600, and `runs ending with no victor`
+meets its design goal for the first time. Guard ratcheted 32% -> 12%, goal 25%
+-> 6%, both met.
+
+### CI was red on `main` because of a guard, not a commit (§26)
+
+`Career victors` was guarded at <= 50% on the strength of a §9.4 measurement of
+42.9% at n=3200. That figure does not reproduce. `main` at 5a9c945 measures
+**52.7% at n=1600** and 50.6% at the 400-run default — so the guard sat below
+what the build actually produces, and the first commit to land after it failed
+a check it had nothing to do with.
+
+This is the second time this one indicator has been guarded from a number that
+did not survive instrumentation; the first is already written down directly
+above it in `metrics.ts`. Re-measured rather than re-derived, and set to 57%:
+about 3.4 points over the 53.6% this branch measures at n=1600, which is the
+observed run-to-run spread of the indicator rather than a round number. The
+design goal stays at 45% and stays unmet, which is the honest state of it.
+
+Two hypotheses tried against that goal and falsified:
+
+- **Not the §23 bloodbath work.** Reverting all three of its levers together is
+  worth 3.8 points at 400 runs, and no single one is worth more than 3. The
+  first morning is not the Games.
+- **Not the §9.4 appetite clock.** Nearly twice as steep is worth 0.7 points at
+  n=1600, with starvation's share of deaths moving 0.8% -> 0.9%. The clock is
+  not biting because Careers are not reaching the endgame hungry.
+
+What the instrumentation does say is where the next pass has to look:
+
+    Careers hold 54.6% of final-two slots off 25% of the cast
+    and then lose mixed final twos 68 to 91
+
+They are not out-fighting the field at the end. They are out-lasting it to get
+there, and that is a balance pass rather than a knob.
+
+### The rest of the prose pass (§12)
+
+The previous branch rewrote the core in-arena loop to report rather than
+interpret, and said plainly that it had left the per-arena flavour packs — some
+17,000 lines across 49 arenas — in their existing voice, with the five new
+arenas written to the plain standard so both registers were in the build and
+could be compared. This finishes it.
+
+Every pack is now at that standard: the thirty-three hand-authored arenas, the
+four procedural biome packs, the generic fallback pools every unauthored arena
+draws on, the universal event table merged into all of them, and all four
+groups of set-piece events.
+
+Three things change, line by line. A second sentence that told the reader how
+to feel about the first is cut. A run-on joined by ", and" becomes the two
+events it was actually describing. A line that withheld its subject states it.
+What does not change is the concrete detail — the tide table, the drip rate,
+the count of logs left in the shed, eleven seconds for a pebble to reach the
+bottom of the quarry — because that was always the part doing the work.
+
+`test:arenas` earned its place on the roster during this: fourteen rewrites
+dropped `{tribute}` out of an event text, which is the §22 defect appearing in
+a new file, and the check named every one of them before they were committed.
+
 ## Requests pass (this branch)
 
 Answers a twenty-five item request list rather than an audit. Three of the
