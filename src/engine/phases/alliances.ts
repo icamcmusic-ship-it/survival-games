@@ -11,7 +11,7 @@ import { ALLIANCE_TEXTS, BETRAYAL_AFTERMATH_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE
 import { adjustRel, getRel, trustOf } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, raiseSuspicion, sharedHistoryOf, suspicionOf } from '../memory';
 import { respectOf } from '../relationships';
-import { sniffPerformances, isStarCrossed } from '../alliance';
+import { careerSocialFactor, sniffPerformances, isStarCrossed } from '../alliance';
 import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal, preemptiveBetrayer } from '../betrayal';
 import { resolveDuePacts } from '../alliancePact';
@@ -82,6 +82,10 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         // And you do not knife the person who pulled you out of a fire. A debt
         // was recorded and then never charged for — this is the charge.
         weight *= betrayalReluctance(betrayer, m.id);
+        // §4 (requests): a Career turning on another Career is the pack coming
+        // apart, and the pack coming apart is a late-run event, not a day-two
+        // one. Every other target in the alliance is preferred first.
+        if (betrayer.isCareer && m.isCareer) weight *= ALLIANCES.careerInternalBetrayalFactor;
         return { m, weight: Math.max(0, weight) };
     }).filter(s => s.weight > 0);
 
@@ -479,6 +483,11 @@ export function processAlliances(ctx: SimContext) {
                         ALLIANCES.minFormChance,
                         (ALLIANCES.baseFormChance + affinity + compat + persona + history) / trustCost
                             * (1 + dread * ALLIANCES.dreadFormationWeight)
+                            // §9 (requests): a Career does not pair off with an
+                            // outer-district tribute unless that tribute is
+                            // worth having. Applied as a multiplier rather than
+                            // a hard bar so the exceptional case stays possible.
+                            * careerSocialFactor(t1, t2)
                     );
                     const relThreshold = (ALLIANCES.baseRelThreshold - compat * 100 - persona * 60) * trustCost;
 
@@ -589,10 +598,14 @@ export function processAlliances(ctx: SimContext) {
                 // is carrying them. Both were invisible to a scorer that read
                 // only temperament and regard.
                 + needBasedPull(candidate, present);
+            // §9 (requests): the pack's own appetite for this candidate, taken
+            // as the least willing member's — one Career objecting is enough.
+            const careerAppetite = Math.min(1, ...present.map(m => careerSocialFactor(m, candidate)));
             const chance = Math.max(
                 ALLIANCES.minFormChance,
                 (ALLIANCES.recruitChance + affinity - (members.length - 2) * ALLIANCES.recruitSizePenalty)
                     * (hungryPack ? ALLIANCES.careerRecruitMultiplier : 1) / distrust
+                    * careerAppetite
             );
             if (!ctx.rng.chance(chance)) return;
 

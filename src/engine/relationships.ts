@@ -373,8 +373,12 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
             } else if (isPartner) {
                 ctx.logEvent(
                     killer && killer.id !== other.id
-                        ? `${other.name} hears the cannon for ${victim.name} — the other half of District ${other.district} — and something colder than grief settles in behind the tears. Their whole district watched that happen.`
-                        : `${other.name} is the last of District ${other.district} now. ${victim.name} rode the same train, ate at the same table, and there is nobody left in the arena who knew home.`,
+                        // §12/§22: the killer is in `tributesInvolved` and was
+                        // never in the sentence, which on the most-drawn line in
+                        // the simulation meant 261 lines a sweep that named two
+                        // of the three people they were about.
+                        ? `${other.name} hears the cannon for ${victim.name}, the other tribute from District ${other.district}. ${killer!.name} killed them.`
+                        : `${other.name} is the last tribute from District ${other.district}. ${victim.name} is dead.`,
                     killer && killer.id !== other.id ? [other.id, victim.id, killer.id] : [other.id, victim.id],
                     { important: true, category: 'sanity' }
                 );

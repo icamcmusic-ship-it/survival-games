@@ -67,7 +67,13 @@ dev server and a browser; run it locally.
   list that is supposed to be a menu. A rarity label two bands off its measured
   rate is now a build failure rather than a line in a report — eight labels had
   drifted, one 'legendary' firing in a sixth of all runs — and
-  `ACHIEVEMENT_EMIT_RARITY=1` regenerates the whole set from the data.
+  `ACHIEVEMENT_EMIT_RARITY=1` regenerates the whole set from the data. The
+  ladder is Common / Rare / Legendary / **Possible?**, and the top tier is the
+  interesting one: it does not mean "very hard", it means the simulation is
+  believed to be able to do this and no measured run has ever done it. Two
+  observations disqualify it — one is sampling noise at 500 runs and would
+  make the check fail at random — so it is a standing invitation with a test
+  attached rather than a difficulty rating.
 - `npm run test:flavor` — flavour-pool depth. For arena event packs the hard
   floor (24) and the soft target (40) are now separate numbers: the floor fails
   the build, the target is reported as distance-to-go. They were one number, and
@@ -89,6 +95,18 @@ dev server and a browser; run it locally.
   most arenas that author them author four entries against a generic fallback of
   twelve, which makes an authored pool *worse* than none — so it ratchets the way
   the global allowance does and can only shrink.
+- `npm run test:unnamed` — every tribute a line is about is named in the line.
+  Plays 40 complete Games and counts log lines where somebody on the line's own
+  `tributesInvolved` never appears in its text. This is a correctness check
+  rather than a style one: that list is what links names to profiles in the
+  feed, what the per-tribute chronicle filter reads, and what the relationship
+  graph is built from, so a line involving three tributes and naming one is a
+  line the reader cannot resolve and the filters misreport. It was 12.4% of all
+  multi-tribute lines when the check was written — the worst single offender
+  fired 261 times a sweep and never named the killer — and it ratchets the way
+  the flavour allowance does: the share may fall and may not rise. The floor is
+  not zero and will not be soon, because a duel's fourth exchange legitimately
+  names only the two still swinging.
 - `npm run test:predicates` — unreachable data predicates. Walks every optional
   boolean on `Tribute` and `GameState`, finds which literal values the engine
   ever writes to it, and fails on any achievement `test` or `nearMiss` that
@@ -161,17 +179,31 @@ same Games, which is what the Share button encodes into a URL.
 
 Every logged event carries a semantic category (kill, hazard, alliance,
 sponsor, sanity, …) that drives the colour coding, the glyphs and the filters
-in the chronicle.
+in the chronicle, and an in-arena timestamp (`D3 21:40`) derived from the
+phase's own window, so it replays identically with the rest of the run.
+
+Once the field is down to six, the **convergence** fires: the Gamemakers close
+the arena to one sector and drive whatever is left of the field into it. It is
+not optional and it is not scheduled by day. On top of it, each arena draws one
+or two **set pieces** from its own event pack — a named, announced, arena-wide
+intervention — on days rolled from the seed. Both are listed in the arena
+picker before the run starts.
 
 The training phase is three narrated days, not one summary line: each day is a
 station attempt with a visible outcome (success, a public struggle, a public
 failure), mingling between tributes at the same station, pre-agreements struck
 on the floor, altercations between people who already disliked each other, an
-observation pass that writes respect and fear, and an evening beat.
+observation pass that writes respect and fear, and an evening beat. Who gets on
+with whom is weighted by what they actually have in common — the other tribute
+from their own district, neighbouring districts that trade, both at the bottom
+of the age band, one having rated the other on the floor — and the line says
+which of those it was. Each day closes with a digest naming the agreements
+standing, the bad blood, and the tributes who still have nobody.
 
 The chronicle can be read two ways. The in-arena sidebar is a live ticker; the
-`#/chronicle` page is one phase per full-width page, with event cards, tribute
-tiles, a phase scrubber and deep links (`#/chronicle?day=4&phase=night`). Both
+`#/chronicle` page is one phase per full-width page, rendered as a log — one
+entry per line in four columns that line up (time, kind, place, what happened)
+— with a phase scrubber and deep links (`#/chronicle?day=4&phase=night`). Both
 read the same filter state.
 
 ## How the simulation is put together

@@ -1303,11 +1303,20 @@ export const PHYSIQUE = {
      * legacy single-axis build survives.
      */
     massByBuild: { Frail: -2, Slight: -1, Average: 0, Athletic: 1, Stocky: 2, Muscular: 2.5 },
-    massByFrame: { Narrow: -1.6, Spare: -0.8, Even: 0, Broad: 0.9, Heavy: 1.8 },
-    massByCondition: { Wasted: -1.2, Lean: -0.4, Conditioned: 0, Padded: 0.6, Bulky: 1.2 },
-    /** Frame index, for the axis reads that want an ordinal rather than a mass. */
-    frameOrder: { Narrow: 0, Spare: 1, Even: 2, Broad: 3, Heavy: 4 },
-    conditionOrder: { Wasted: 0, Lean: 1, Conditioned: 2, Padded: 3, Bulky: 4 },
+    /**
+     * §6 (requests): seven rungs an axis rather than five.
+     *
+     * The five original rungs keep their exact step distance from the middle —
+     * `Narrow` is still -2, `Broad` still +1 — so nothing that was tuned
+     * against them moves. The two new outer rungs simply extend the scale past
+     * where it used to stop, and `rollBody` reaches them rarely, which is the
+     * point: 'Massive' should be the one tribute in a field, not a sixth of it.
+     */
+    massByFrame: { Slender: -2.6, Narrow: -1.6, Spare: -0.8, Even: 0, Broad: 0.9, Heavy: 1.8, Massive: 2.8 },
+    massByCondition: { Skeletal: -2, Wasted: -1.2, Lean: -0.4, Conditioned: 0, Padded: 0.6, Bulky: 1.2, Hulking: 1.8 },
+    /** Frame index, for the axis reads that want an ordinal rather than a mass. The middle is 3. */
+    frameOrder: { Slender: 0, Narrow: 1, Spare: 2, Even: 3, Broad: 4, Heavy: 5, Massive: 6 },
+    conditionOrder: { Skeletal: 0, Wasted: 1, Lean: 2, Conditioned: 3, Padded: 4, Bulky: 5, Hulking: 6 },
     /**
      * §3.1: what each axis buys and costs, per step away from the middle of
      * its scale. Frame raises reach, carry, grapple resistance and the damage
@@ -1387,8 +1396,37 @@ export const MEDICAL = {
 export const BLOODBATH = {
     /** Baseline willingness to go for the Cornucopia rather than the treeline. */
     fightChanceBase: 0.66,
-    /** Added for a Career: the pack came here to do exactly this. */
-    fightChanceCareer: 0.4,
+    /**
+     * Added for a Career: the pack came here to do exactly this.
+     *
+     * §23 (requests): raised from 0.4. The measured Career share of bloodbath
+     * kills was near their share of the field, which is not what a Career pack
+     * is — the entire premise of the academy districts is that the first
+     * morning belongs to them. At 0.4 roughly a fifth of Careers were still
+     * turning for the treeline; at 0.75, effectively all of them commit, which
+     * is what `fightChanceBase` plus this is meant to mean.
+     */
+    fightChanceCareer: 0.75,
+    /**
+     * §23 (requests): the pack going through one target together, rather than
+     * queueing up for duels.
+     *
+     * Left where it was, and worth writing down why, because it is the knob
+     * that looks like it should be the lever and measurably is not. Raising it
+     * from 0.6 to 0.8 was measured over 200 runs and moved the Career share of
+     * bloodbath kills *down*, 39.1% to 36.2%. The reason is throughput: a
+     * four-on-one `resolveGroupCombat` pulls four Careers and their target out
+     * of the scrum for the round and produces at most one kill, where four
+     * separate duels can produce four. Ganging up is more frightening and less
+     * productive, which is a real thing about packs and not a bug.
+     */
+    packGangUpChance: 0.6,
+    /**
+     * §23 (requests): extra damage a Career lands inside the killing zone, on
+     * top of `killingZoneDamage`. They trained for this specific sixty
+     * seconds and nobody else in the arena did.
+     */
+    careerKillingZoneBonus: 1.25,
     /** Weight on how close their plate landed to the horn. Proximity is opportunity. */
     fightChanceProximity: 0.35,
     /** Weight on agility: getting there first is most of getting there. */
@@ -1425,6 +1463,17 @@ export const BLOODBATH = {
     plateNeighbourFearScore: 9,
     /** Fear per training point over eight, felt across two metres of gravel. */
     plateNeighbourFearPerPoint: 5,
+    /**
+     * §23 (requests): how far ahead of the field a Career reaches the horn.
+     *
+     * `reachScore` was plate proximity plus agility plus noise, which treats
+     * the academy districts as simply faster. They are not simply faster: they
+     * have spent years being told what is laid out at the mouth of a
+     * Cornucopia and which end of it to run to, and arrival order is what
+     * decides who comes away armed. Measured as the largest single lever on
+     * the Career share of the opening.
+     */
+    careerReachBonus: 4,
     /** §8: how much `targetDraw` moves who gets picked in the scrum. */
     targetDrawWeight: 0.06,
     /** §5: a walled horn is a killing box — fewer commit, and they commit harder. */
@@ -1479,6 +1528,72 @@ export const ANTHEM = {
  * be the denominator under most of the lethality ratios in the metrics table.
  * A day is worth about as much depth and costs none of the guards.
  */
+/**
+ * §24 (requests): the arena's share of the killing.
+ *
+ * The Games are a story about people killing each other. When mutts, hazards,
+ * weather and set pieces take most of the cast, the run stops being that story
+ * and becomes a weather report — and the measured worst case was an arena
+ * taking fourteen of twenty-four in a canon-rules run, which leaves the social
+ * engine, the alliances and the betrayals with almost nothing to work on.
+ *
+ * So the arena gets a budget rather than a ban. Up to `softCapShare` of the
+ * cast, environmental deaths land exactly as they always did. Past it, every
+ * further environmental killing blow is rolled against `sparedChanceAtCap`,
+ * rising to `sparedChanceAtHardCap` by the time the arena has taken
+ * `hardCapShare` of the field; a spared tribute is left on one health rather
+ * than made invulnerable, so the arena has still very nearly killed them and
+ * anybody who finds them can finish it.
+ *
+ * Deliberately a share of the *cast*, not of the deaths: a 48-tribute expanded
+ * Games should tolerate more arena deaths than a 12-tribute one in absolute
+ * terms, and the same fraction is what reads as "the arena is doing too much"
+ * in both.
+ */
+/**
+ * §3 (requests): how many arena-wide set pieces a run gets.
+ *
+ * Two, plus one per law that says this arena is an active one, capped at four.
+ * The number is small on purpose — the complaint these answer is that an arena
+ * either did nothing announced all run or did something every cycle, and two
+ * loud, named, arena-wide interventions is the shape a Games is remembered by.
+ * The convergence is on top of this and is not optional.
+ */
+export const ARENA_EVENTS = {
+    basePerRun: 1,
+    /** ...and the cap once a stacked arena's laws have bought extra slots. */
+    maxPerRun: 2,
+    /** No law stack buys more than this many extra set pieces. */
+    maxLawExtras: 1,
+    defaultMinDay: 2,
+    defaultMaxDay: 7,
+    /** Two set pieces closer together than this read as one long event. */
+    minDaysApart: 2,
+    /** A mutt release passes over anybody in cover better than this. */
+    muttReleaseCoverFloor: 0.6,
+    /** ...and engages this share of everybody else. */
+    muttReleaseChance: 0.55,
+    /** How much of an exposure surge good shelter takes off. */
+    surgeShelterRelief: 0.8,
+    /** Fatigue a surge adds on top of its damage. */
+    surgeFatigue: 18,
+} as const;
+
+export const ARENA_DEATH_BUDGET = {
+    /** Environmental deaths below this share of the cast are never interfered with. */
+    softCapShare: 0.3,
+    /** The share at which sparing is at its most likely. */
+    hardCapShare: 0.5,
+    sparedChanceAtCap: 0.35,
+    sparedChanceAtHardCap: 0.9,
+    /**
+     * Never spare anyone while more than this many tributes are alive — the
+     * bloodbath and the first days are allowed to be brutal, and an arena that
+     * starts pulling punches on day one reads as broken rather than merciful.
+     */
+    activeBelowAliveShare: 0.85,
+} as const;
+
 export const ESCALATION = {
     startDay: 6,
     /**
@@ -1505,8 +1620,13 @@ export const ESCALATION = {
      * finalists to the Cornucopia and make them settle it. After this many
      * cycles at finalist count without a resolution, both are herded to the
      * horn every cycle until it ends.
+     *
+     * §11 (requests): one rather than two. The two cycles this waited were two
+     * of the four the final-two attrition grace has to spend, and the reason
+     * to wait at all — not wanting to herd a pair who were about to meet
+     * anyway — is worth much less than the ending it was costing.
      */
-    finaleAfterFinalistCycles: 2,
+    finaleAfterFinalistCycles: 1,
     hazardMultiplierPerDay: 0.27,
     hazardCeiling: 0.33,
     /**
@@ -1517,6 +1637,53 @@ export const ESCALATION = {
     altFinaleChance: 0.35,
     /** §7: what a chokepoint closing does over and above an open-ground collapse. */
     chokepointCrushMultiplier: 2.2,
+    /**
+     * §11 (requests): the convergence — the stage before the forced finale.
+     *
+     * `finalistCount` only ever herded the last two, which left the run's
+     * middle-endgame (six down to three) as a slow, passive attrition: the
+     * measured failure mode was a victor who killed one person, on the last
+     * day, having avoided everybody for a week. The convergence closes that.
+     * When the field drops into the band below, the Gamemakers take the rest
+     * of the arena away and drive everyone left into one sector.
+     */
+    convergeAtOrBelow: 6,
+    /** ...but never before this many cycles have been played, so a brutal bloodbath does not trigger it on day one. */
+    convergeEarliestDay: 3,
+    /**
+     * Once convergence is called, the field is herded every cycle and the
+     * border closes on an accelerated schedule: this many extra zones go out
+     * of bounds per cycle on top of the ordinary collapse.
+     */
+    convergeExtraZonesPerCycle: 1,
+    /** Everyone driven into the convergence zone finds everyone else: encounter odds inside it. */
+    convergeEncounterChance: 0.85,
+    /**
+     * §11 (requests): the final two are not allowed to be settled by attrition
+     * for this many cycles.
+     *
+     * Measured over 200 runs before this existed: 90 of 189 final-two endings
+     * were the runner-up dying of bleeding, infection, thirst, starvation or
+     * exhaustion, and only 43 were the victor killing them. Half of all
+     * victors finished with one kill or none. That is the complaint exactly —
+     * a Games decided by who happened to be less badly hurt, with the last
+     * fight never happening.
+     *
+     * The existing finalist protection in `applyDamage` deliberately only
+     * covers the *last* tribute alive, because an earlier version protected
+     * both and left two tributes pinned at 1 health for as long as it took
+     * them to find each other (average run length 9.3 -> 13.2 days, resolve
+     * breakdowns up sevenfold). That reasoning still holds, and this is why
+     * the grace is a *window* rather than a rule: the convergence has already
+     * closed the arena to one sector and `forceFinale` herds them, so the two
+     * of them meet within a few cycles or not at all. Four cycles is long
+     * enough to get the fight and far too short to reproduce the old pin.
+     *
+     * Only `status` damage is held back. A mutt, the border or the other
+     * finalist can still finish it — what is no longer allowed is the Games
+     * ending because somebody's arm went septic off-camera.
+     */
+    finalTwoAttritionGraceCycles: 8,
 } as const;
 
 /**
@@ -2206,6 +2373,27 @@ export const COIN_ECONOMY = {
     patronMaxDistricts: 4,
     /** Buying a locked arena outright rather than waiting for the sealed draw to find it. */
     arenaUnlockCost: 900,
+    /**
+     * §20 (requests): what the Capitol pays for a first-time achievement.
+     *
+     * Scaled by rarity, because a reward that does not distinguish 'happens in
+     * a third of Games' from 'nobody has ever done this' is not a reward, it is
+     * a participation fee. Only *new* achievements pay — they are a discovery
+     * layer, and paying again for something already unlocked would turn them
+     * into a grind.
+     *
+     * Sized against the things coins buy: a locked arena is 900 and the first
+     * patronage is 750, so a good run's worth of discoveries makes real
+     * progress toward one without ever being the fastest way to get there.
+     * Wagering remains the main economy.
+     */
+    achievementReward: {
+        common: 25,
+        rare: 75,
+        legendary: 200,
+        /** Nobody has been recorded doing one of these. It should pay like it. */
+        possible: 500,
+    },
 } as const;
 
 export const MOVEMENT = {
@@ -2784,6 +2972,31 @@ export const ARENA_LAWS = {
     dawnMercyHeal: 14,
     /** ...and what a night under the Capitol's floodlights does for the nerves. */
     dawnMercySanity: 8,
+    /**
+     * §1 `twinSuns`: how much faster thirst runs when there is no shade
+     * anywhere in the arena. Half again is the number at which water stops
+     * being a resource and becomes the clock — which is the whole premise of
+     * the law and of the arena that carries it.
+     */
+    twinSunsThirstMultiplier: 1.5,
+    /**
+     * §1 `noRest`: what a day spent resting is worth when sleep is worth
+     * nothing. Recovery is a negative fatigue delta, so this scales it; the
+     * night's recovery is cancelled outright rather than scaled.
+     */
+    noRestDayRecoveryFactor: 0.5,
+    /**
+     * §1 `tidalBorders`: the share of the map's edges the tide takes each
+     * night. A third is enough that a route scouted in daylight is a coin
+     * flip after dark, and not so much that the map stops being a map.
+     */
+    tidalSeverShare: 0.33,
+    /**
+     * §1 `meltingGround`: depletion added to a zone for every cycle a tribute
+     * spends in it, never recovered. Small per cycle and permanent, so the
+     * map degrades from wherever the traffic is.
+     */
+    meltingDepletionPerCycle: 0.09,
 } as const;
 
 export const RUN_RECORDS = {
@@ -4061,6 +4274,18 @@ export const ALLIANCES = {
     mercenaryRetainer: 6,
     /** §4.7: the Career pack recruits hard in the early game — that is its
      *  narrative function. Days it stays hungry, and how much hungrier. */
+    /**
+     * §9 (requests): a Career's appetite for an outer-district ally, as a
+     * multiplier on formation and recruitment. See `careerSocialFactor`.
+     * The pack recruits muscle; it does not make friends.
+     */
+    careerOutlierFactor: 0.12,
+    careerStrongOutlierFactor: 0.7,
+    careerRespectScore: 9,
+    careerRespectStrength: 8,
+    /** Somebody who has already killed is worth having whatever their district. */
+    careerRespectKills: 2,
+
     careerRecruitEarlyDays: 3,
     careerRecruitMultiplier: 2.5,
     careerRecruitThresholdFactor: 0.6,
@@ -4216,9 +4441,26 @@ export const ALLIANCES = {
     // three rivals for the same crown. Cohesion is a tax on them, not a
     // subsidy. Left where it was; the share has to come down from the other
     // end, by making the outer districts better rather than the Careers worse.
-    careerOptOutChance: 0.18,
-    careerMaxOptOuts: 2,
-    careerEarlyCollapseChance: 0.06,
+    //
+    // §4 (requests): "Careers should always ally at the start — only very
+    // rarely will some back out or betray." The note above is still true and
+    // still the reason the win share is not fixed from this end, so nothing
+    // here is an attempt to fix it: this is a fidelity change. The pack
+    // forming is the one fixed point of every Games in the source material,
+    // and at 0.18 an opt-out was happening in roughly a third of runs and a
+    // pre-bloodbath collapse in one in sixteen — often enough that "the
+    // Careers close ranks" stopped being something a player could rely on.
+    // One opt-out, rarely, and a collapse that is a genuine oddity.
+    careerOptOutChance: 0.04,
+    careerMaxOptOuts: 1,
+    careerEarlyCollapseChance: 0.01,
+    /**
+     * §4 (requests): how much less likely a Career is to knife another Career
+     * than to knife anybody else. The pack comes apart — that is what packs
+     * do — but it should come apart late, and it should not be the first
+     * thing that happens to it.
+     */
+    careerInternalBetrayalFactor: 0.35,
 
     /**
      * §4.1: pacts, declared at formation. A scheduled split is a telegraphed
@@ -5107,6 +5349,53 @@ export const PREGAMES = {
 
 export const TRAINING = {
     /**
+     * §9 (requests): the Career pack on the training floor.
+     *
+     * A Career has almost no social interest in an outer-district tribute, and
+     * the two exceptions are the ones the source material actually shows: a
+     * tribute strong enough that the pack wants them, and a tribute they have
+     * already made an agreement with. Everything else gets the small
+     * multiplier, which is what stops the pack being on first-name terms with
+     * the whole floor by day three.
+     */
+    /**
+     * §21 (requests): what two tributes have in common, as a multiplier on the
+     * training floor's social rolls and on the warmth they get out of them.
+     *
+     * Each is a reason a reader of the finished chronicle can follow, which is
+     * the point — the engine held every one of these facts and none of them
+     * reached the roll or the log, so every pairing on the floor was equally
+     * likely and equally unexplained. See `floorAffinity`.
+     */
+    affinityPartner: 2.6,      // the other tribute from their own district
+    affinityNeighbour: 1.5,    // districts that work next to each other
+    affinityYoung: 2,          // both at the bottom of the age band
+    affinityRated: 1.7,        // one of them rated the other in the observation pass
+    affinityOuter: 1.25,       // both outer-district, neither trained for this
+    /** Age at or below which two tributes count as the young ones in the room. */
+    affinityYoungAge: 13,
+    /** Respect at or above which somebody counts as having rated somebody else. */
+    affinityRespect: 12,
+    /** District at or above which a tribute counts as outer for this purpose. */
+    affinityOuterFrom: 7,
+    /** §21: mutual regard at or below which the digest calls two tributes bad blood. */
+    digestFeudRegard: -15,
+
+    careerOutlierMingle: 0.08,
+    careerStrongOutlierMingle: 0.55,
+    /** Training score at or above which a Career takes an outsider seriously. */
+    careerRespectScore: 9,
+    /** ...or raw strength, for the outer-district tribute nobody scored properly. */
+    careerRespectStrength: 8,
+    /** Regard the pack accrues among itself per day of training as a bloc. */
+    careerBlocWarmth: 4,
+    /** How many outer-district tributes the pack names as worth watching, per day. */
+    careerWatchlistSize: 2,
+    /** Regard a Career gains toward somebody they have decided is dangerous — the one door into the pack. */
+    careerWatchlistRegard: 6,
+    /** ...and what being openly watched by the pack does to the tribute being watched. */
+    careerWatchlistFear: 10,
+    /**
      * SIDE-04. Training used to be one line: +1 to a random attribute and a
      * score from total stats. No station choice, no private session, no
      * strategy, and the number appeared the instant it was rolled.
@@ -5248,6 +5537,17 @@ export const TRAINING = {
  * itself. See the training-score distribution band in `scripts/soak.ts`.
  */
 export const TRAINING_SCORE = {
+    /**
+     * §16 (requests): the floor a volunteering Career lands on.
+     *
+     * Eight is "a good tribute" on this board's own calibration, which is the
+     * least a tribute who trained for this and volunteered for it should read
+     * as. Not a hard clamp: `careerVolunteerFloorChance` leaves a small tail
+     * where the academy's pick has an off day in front of the panel, because
+     * a rule with no exceptions stops being a story.
+     */
+    careerVolunteerFloor: 8,
+    careerVolunteerFloorChance: 0.92,
     /** Base odds of clearing the first gate (an 8 becoming a 9). */
     eliteGateBase: 0.38,
     /**

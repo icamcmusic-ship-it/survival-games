@@ -215,6 +215,15 @@ const CLIMATES: Record<string, ClimateProfile> = {
     cabin: FROZEN,
     magmatube: FURNACE_HEAT,
     karst: QUARRY_DAMP,
+    // §1 (requests): the five new arenas. Each reuses the profile that matches
+    // what its map is actually made of rather than inventing a sixth kind of
+    // weather — the new thing about each of these arenas is its law, and a
+    // bespoke climate on top of a bespoke law is two arguments at once.
+    tidewrack: TEMPEST,
+    thresher: FURNACE_HEAT,
+    vigil: PERPETUAL_DUSK,
+    saltworks: SOLAR,
+    kiln: FURNACE_HEAT,
 };
 
 export function climateOf(arenaId: string): ClimateProfile | undefined {

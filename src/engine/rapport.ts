@@ -186,11 +186,10 @@ export function noteRivalDeath(ctx: SimContext, mourner: Tribute, victim: Tribut
     ensureMemory(mourner).vengeance = ensureMemory(mourner).vengeance.filter(id => id !== victim.id);
     if (killer) adjustRel(mourner, killer.id, -RIVALRY.stolenKillRegard);
     ctx.logEvent(
+        // §12/§22: both versions were about three people and named two.
         sworn
-            ? `${mourner.name} had promised themselves ${victim.name}. The cannon goes and it was not them, and what is left `
-              + `is not relief — it is a person standing in a clearing with nothing to do next.`
-            : `${mourner.name} and ${victim.name} had fought more than once, and something like an understanding had grown out of it. `
-              + `${mourner.name} does not celebrate the cannon.`,
+            ? `${mourner.name} had sworn to kill ${victim.name}. ${killer ? `${killer.name} got there first.` : 'The arena got there first.'}`
+            : `${mourner.name} and ${victim.name} had fought more than once. ${killer ? `${killer.name} killed ${victim.name}.` : `${victim.name} is dead.`}`,
         killer ? [mourner.id, victim.id, killer.id] : [mourner.id, victim.id],
         { important: true, category: 'sanity' }
     );

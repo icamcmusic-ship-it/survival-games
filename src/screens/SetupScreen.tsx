@@ -6,6 +6,8 @@ import { Play, ChevronDown, ChevronRight, ArrowRight, History, Lock } from 'luci
 import { gameActions, gameStore, readHallOfFame, readSavedRun } from '../store/gameStore';
 import type { SlotSummary } from '../store/gameStore';
 import { useStore } from '../store/createStore';
+import { enterFullscreen, prefsStore } from '../store/prefsStore';
+import { Hint } from '../components/Hint';
 import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
 // PERF: imported from the data module directly, not via `engine/arenaSignature`
 // — the setup screen is the app's cold-start path and must not drag the
@@ -14,6 +16,7 @@ import { SIGNATURE_BLURBS } from '../data/signatureBlurbs';
 import { readStoredConfig, writeStoredConfig } from '../utils/prefsStorage';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 import { CLIMATE_LABELS, LAW_LABELS, lawsOf, lengthEstimate, terrainMix } from '../data/arenaBriefing';
+import { packFor } from '../data/arenaEventPacks';
 import { ARENA_MUTTS } from '../data/mutts';
 import { COIN_ECONOMY } from '../data/balance';
 import { RNG } from '../utils/rng';
@@ -116,6 +119,54 @@ function effectHint(kind: 'hazard' | 'betrayal' | 'sponsor', value: number): str
     return `Roughly ${n} ${more ? 'more' : 'fewer'} parachute${n === 1 ? '' : 's'} landing per Games.`;
 }
 
+/**
+ * §8 (requests): what a given mean and spread actually produce, in the terms a
+ * player thinks in — how much of the field lands at the young end.
+ *
+ * Computed from the same clamped normal draw `drawReapingAge` uses, so the
+ * sentence under the slider is a fact about the simulation rather than a guess
+ * about it.
+ */
+function ageSpreadHint(mean: number, spread: number): string {
+    const sd = Math.max(0.35, spread);
+    const weights: number[] = [];
+    for (let age = 12; age <= 18; age++) {
+        const z = (age - mean) / sd;
+        weights.push(Math.exp(-0.5 * z * z));
+    }
+    const total = weights.reduce((a, b) => a + b, 0) || 1;
+    const young = (weights[0] + weights[1] + weights[2]) / total;   // 12-14
+    const old = (weights[5] + weights[6]) / total;                  // 17-18
+    return `About ${Math.round(young * 100)}% of the field aged 12-14, and ${Math.round(old * 100)}% aged 17-18.`;
+}
+
+/**
+ * §8 (requests): every advanced setting, rolled.
+ *
+ * Ranges mirror the sliders exactly — this must never produce a configuration
+ * the controls could not — and the age distribution is rolled *on* half the
+ * time, because leaving it off is itself one of the shapes a Games can have.
+ */
+function randomConfig(current: GameConfig): GameConfig {
+    const pick = (min: number, max: number, step: number) => {
+        const steps = Math.round((max - min) / step);
+        return Number((min + Math.round(Math.random() * steps) * step).toFixed(2));
+    };
+    const withAges = Math.random() < 0.5;
+    return {
+        ...current,
+        districtCount: pick(2, 16, 1),
+        hazardRate: pick(0.25, 2.5, 0.25),
+        betrayalRate: pick(0, 3, 0.25),
+        sponsorGenerosity: pick(0, 3, 0.25),
+        enableFeast: Math.random() < 0.75,
+        enableSanity: Math.random() < 0.75,
+        singleVictor: Math.random() < 0.3,
+        ageMean: withAges ? pick(12, 18, 0.5) : undefined,
+        ageSpread: withAges ? pick(0.5, 4, 0.1) : undefined,
+    };
+}
+
 function ConfigSlider({ label, hint, effect, value, min, max, step, format, onChange }: {
     label: string, hint?: string, effect?: string, value: number, min: number, max: number, step: number,
     format: (v: number) => string, onChange: (v: number) => void
@@ -155,6 +206,7 @@ function ArenaBriefing({ arenaId }: { arenaId: string }) {
     const laws = lawsOf(arena);
     const mutts = ARENA_MUTTS[arena.id] ?? [];
     const climate = CLIMATE_LABELS[arena.id];
+    const eventPack = packFor(arena);
     const row = (label: string, value: React.ReactNode) => (
         <div className="flex gap-3 text-[11px]">
             <span className="eyebrow flex-none w-20 pt-px">{label}</span>
@@ -162,23 +214,61 @@ function ArenaBriefing({ arenaId }: { arenaId: string }) {
         </div>
     );
     return (
-        <div className="panel-flush p-3 mt-3 space-y-1.5 bg-[var(--paper-flush)]">
+        <div className="panel-flush p-3 mt-3 space-y-2 bg-[var(--paper-flush)]">
             {row('Ground', `${arena.zones.length} sectors — ${terrainMix(arena)}`)}
             {climate && row('Climate', climate)}
+            {/* §2 (requests): a law said what it was called and never what it
+                did. Each one now opens with its name, its kind and how much it
+                changes a run, and then lists the mechanical consequences — the
+                actual numbers that move — because that is what a player picking
+                an arena on purpose rather than by vibe is choosing between. */}
             {row('Laws', laws.length === 0
                 ? 'None. The Games run on the standard rules.'
                 : (
-                    <span>
-                        {laws.map(id => (
-                            <span key={id} className="block">
-                                <strong className="text-[var(--ink)]">{LAW_LABELS[id].name}</strong>
-                                {' — '}{LAW_LABELS[id].detail}
-                                {(id === 'sponsorsFixedZone' || id === 'noWaterExceptZone') && arena.lawZone
-                                    ? ` (${arena.lawZone})` : ''}
-                            </span>
-                        ))}
+                    <span className="block space-y-1.5">
+                        {laws.map(id => {
+                            const law = LAW_LABELS[id];
+                            return (
+                                <span key={id} className="block">
+                                    <strong className="text-[var(--ink)]">{law.name}</strong>
+                                    <span className="law-kind" data-kind={law.kind}>
+                                        {law.kind === 'takes' ? 'takes away' : law.kind === 'gives' ? 'gives' : 'redirects'}
+                                        {' · '}
+                                        {law.severity === 3 ? 'changes the game' : law.severity === 2 ? 'a real constraint' : 'a texture'}
+                                    </span>
+                                    {(id === 'sponsorsFixedZone' || id === 'noWaterExceptZone'
+                                        || id === 'bountifulGround') && arena.lawZone
+                                        ? <span className="text-[var(--color-ink-500)]"> ({arena.lawZone})</span> : null}
+                                    <span className="block text-[var(--color-ink-500)]">{law.detail}</span>
+                                    <ul className="law-effects">
+                                        {law.effects.map(effect => <li key={effect}>{effect}</li>)}
+                                    </ul>
+                                </span>
+                            );
+                        })}
                     </span>
                 ))}
+            {/* §3 (requests): the arena's set-piece pack. Shown here, on an
+                arena the player has already unlocked, because knowing that the
+                Clockwork Island can strike two hours at once is exactly the
+                kind of thing that makes one arena worth picking over another. */}
+            {row('Set pieces', (
+                <span className="block">
+                    <strong className="text-[var(--ink)]">{eventPack.name}</strong>
+                    <span className="block text-[var(--color-ink-500)]">{eventPack.summary}</span>
+                    <ul className="law-effects">
+                        {eventPack.events.map(e => (
+                            <li key={e.id}>
+                                <strong className="text-[var(--color-ink-200)]">{e.name}</strong>
+                                {' — '}{e.summary}
+                            </li>
+                        ))}
+                    </ul>
+                    <span className="block text-[var(--color-ink-500)] mt-1">
+                        One or two of these fire per Games, on days drawn from the seed. The Convergence always fires.
+                    </span>
+                </span>
+            ))}
             {mutts.length > 0 && row('Mutts', mutts.map(m => m.name).join(', '))}
         </div>
     );
@@ -214,7 +304,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const [pinnedQuellId, setPinnedQuellId] = useState<string | null>(null);
     const [config, setConfigState] = useState<GameConfig>(readStoredConfig);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    // §8: both halves have to be present for either to apply, so one boolean
+    // covers the pair and the checkbox writes both or clears both.
+    const customAges = config.ageMean !== undefined && config.ageSpread !== undefined;
     const coins = useStore(gameStore, st => st.coins);
+    const prefs = useStore(prefsStore, p => p);
     const panem = useStore(gameStore, st => st.panem);
     // §10.9: arenas this player has never run. Hand-authored arenas are keyed
     // by display name in `arenasSeen` (procedural maps by mapId, so they never
@@ -271,6 +365,12 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
         // Starting a new Games discards the saved run immediately, and the
         // resume card alone was not a guard on that destructive path.
         if (savedRun && !window.confirm('A Games is already in progress. Starting a new one abandons that run — continue?')) return;
+        // §15 (requests): fullscreen when the Games begin. This click is the
+        // user gesture the browser requires, and it is the only moment in the
+        // app where one is available for this — so the request goes here
+        // rather than anywhere that looks more like "app start". Silent if
+        // refused; see `enterFullscreen`.
+        if (prefs.fullscreenOnStart) enterFullscreen();
         onStart(trimmedSeed || randomSeed(), arenaId, gamemakerMode, config, forceQuell, forceQuell ? pinnedQuellId : null);
     };
 
@@ -307,12 +407,25 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
             default: return true;
         }
     };
+    // §7 (requests): only the arenas this player can actually pick.
+    //
+    // The list was every arena in the roster — fifty-two of them now — with the
+    // locked ones rendered at 45% opacity as '🔒 Undiscovered Arena', all of
+    // them identical, none of them selectable. That is forty-odd rows of a
+    // scrolling list that exist to tell the player the same sentence forty-odd
+    // times. The count is the information; the rows are not. So the locked
+    // entries collapse to one line that says how many are left and offers the
+    // two ways to reach them, and the list itself is what the player can play.
     const arenaOptions = [
         // No SIGNATURE_BLURBS entry on purpose — the whole point is that
         // nothing about this arena is knowable until the bloodbath.
         { id: 'random-hidden', name: '❓ Random Arena (Hidden)', description: 'The Capitol picks. Its name, its layout, its rules — none of it is shown until the tributes are already standing on the plates.' },
-        ...ARENAS.filter(facetMatches).map(a => ({ id: a.id, name: a.name, description: a.description })),
+        ...ARENAS
+            .filter(a => facetMatches(a) && arenaUnlocked(a.id, a.name))
+            .map(a => ({ id: a.id, name: a.name, description: a.description })),
     ];
+    // Facets can empty the list; say so rather than showing a blank column.
+    const hiddenByFacet = ARENAS.filter(a => arenaUnlocked(a.id, a.name) && !facetMatches(a)).length;
     // §2.3 (audit): "surprise me, but with constraints" — a random pick
     // from whatever the facet leaves.
     const surpriseWithin = () => {
@@ -668,70 +781,80 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             Surprise me within this
                         </button>
                     </div>
-                    <div className="mt-2">
+                    {/* §7 (requests): a two-column grid of compact entries
+                        rather than one full-width row per arena. Fifty-two
+                        rows at two lines apiece was a column of text the
+                        length of four screens; the selected entry is the only
+                        one that needs room, and it is the only one that takes
+                        any — it spans the grid and opens its briefing. */}
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {arenaOptions.map(a => {
                             const selected = arenaId === a.id;
-                            const unlocked = arenaUnlocked(a.id, a.name);
                             return (
                                 <button
                                     key={a.id}
-                                    onClick={() => unlocked && setArenaId(a.id)}
-                                    disabled={!unlocked}
+                                    onClick={() => setArenaId(a.id)}
                                     aria-pressed={selected}
-                                    // §2: the picker conveyed selection through colour and an icon
-                                    // swap alone, unlike the patron picker beside it. The state is
-                                    // now in the accessible name as well as on screen.
-                                    // The accessible name has to match what is on
-                                    // screen: labelling a locked entry with the arena's
-                                    // real name would read the thing the lock is hiding
-                                    // out loud to exactly the users relying on it.
-                                    aria-label={unlocked
-                                        ? `${a.name}${selected ? ' — selected' : ''}`
-                                        : 'Undiscovered arena — locked'}
-                                    className={`w-full text-left flex items-center justify-between gap-4 transition-colors ${
-                                        selected
-                                            ? 'bg-[var(--ink)] px-4 py-3.5'
-                                            : `px-1 py-3.5 border-b-2 border-[var(--line)] last:border-0 ${
-                                                unlocked ? 'hover:bg-[var(--paper-flush)]' : 'opacity-45 cursor-not-allowed'
-                                            }`
-                                    }`}
+                                    aria-label={`${a.name}${selected ? ' — selected' : ''}`}
+                                    className={`arena-card${selected ? ' is-selected sm:col-span-2' : ''}`}
                                 >
-                                    <div className="min-w-0">
-                                        <div className={`font-black uppercase text-base ${selected ? 'text-white' : 'text-[var(--ink)]'}`}>
-                                            {unlocked ? a.name : '🔒 Undiscovered Arena'}
-                                            {unlocked && unseenArena(a.id, a.name) && (
-                                                <span className={`ml-2 align-middle font-mono text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 border ${selected ? 'text-[#c9b8a0] border-[#c9b8a0]' : 'text-[var(--red)] border-[var(--red)]'}`}>
-                                                    New to you
+                                    <div className="min-w-0 w-full">
+                                        <div className="flex items-baseline justify-between gap-2">
+                                            <span className={`font-black uppercase leading-tight ${selected ? 'text-white text-base' : 'text-[var(--ink)] text-[13px]'}`}>
+                                                {a.name}
+                                            </span>
+                                            {unseenArena(a.id, a.name) && (
+                                                <span className={`flex-none align-middle font-mono text-[9px] font-extrabold uppercase tracking-wider px-1 border ${selected ? 'text-[#c9b8a0] border-[#c9b8a0]' : 'text-[var(--red)] border-[var(--red)]'}`}>
+                                                    New
                                                 </span>
                                             )}
                                         </div>
-                                        <div className={`text-xs mt-0.5 ${selected ? 'text-[#c9b8a0]' : 'text-[var(--color-ink-500)]'}`}>
-                                            {unlocked
-                                                ? a.description
-                                                : 'The Capitol has not shown you this one yet. Take a sealed draw and it may be where you land — play it once and it is yours to pick.'}
+                                        {/* Unselected entries carry the one line that
+                                            distinguishes them — the signature blurb where
+                                            there is one, the description otherwise — and
+                                            nothing else. The full description and the
+                                            briefing belong to the selection. */}
+                                        <div className={`text-[11px] mt-0.5 leading-snug ${selected ? 'text-[#c9b8a0]' : 'text-[var(--color-ink-500)] line-clamp-2'}`}>
+                                            {selected ? a.description : (SIGNATURE_BLURBS[a.id] ?? a.description)}
                                         </div>
-                                    {unlocked && SIGNATURE_BLURBS[a.id] && (
-                                        <div className={`text-[10px] mt-1 font-mono ${selected ? 'text-[var(--red)]' : 'text-[var(--color-ink-600)]'}`}>
-                                            ⚙ {SIGNATURE_BLURBS[a.id]}
-                                        </div>
-                                    )}
-                                    {/* §2.1: the briefing. Picking an arena used to be a
-                                        choice made blind — no zone graph, no law, no
-                                        climate, no mutt kit until the bloodbath — and none
-                                        of that is secret once the run starts. */}
-                                    {selected && unlocked && <ArenaBriefing arenaId={a.id} />}
+                                        {selected && SIGNATURE_BLURBS[a.id] && (
+                                            <div className="text-[10px] mt-1 font-mono text-[var(--red)]">
+                                                ⚙ {SIGNATURE_BLURBS[a.id]}
+                                            </div>
+                                        )}
+                                        {/* §2.1: the briefing. Picking an arena used to be a
+                                            choice made blind — no zone graph, no law, no
+                                            climate, no mutt kit until the bloodbath — and none
+                                            of that is secret once the run starts. */}
+                                        {selected && <ArenaBriefing arenaId={a.id} />}
                                     </div>
-                                    {selected ? (
-                                        <span className="flex-none text-[var(--red)] font-mono text-[11px] font-extrabold uppercase tracking-wider">Selected</span>
-                                    ) : unlocked ? (
-                                        <ArrowRight className="w-4 h-4 flex-none text-[var(--color-ink-500)]" />
-                                    ) : (
-                                        <Lock className="w-4 h-4 flex-none text-[var(--color-ink-500)]" aria-hidden="true" />
-                                    )}
+                                    {!selected && <ArrowRight className="w-3.5 h-3.5 flex-none text-[var(--color-ink-500)]" />}
                                 </button>
                             );
                         })}
                     </div>
+                    {arenaOptions.length <= 1 && hiddenByFacet > 0 && (
+                        <p className="text-[11px] text-[var(--color-ink-500)] italic mt-2">
+                            None of the arenas you have unlocked match this filter. {hiddenByFacet} of them match a different one.
+                        </p>
+                    )}
+                    {/* §7: the locked remainder, as one line rather than forty
+                        identical rows. Both routes to them are named, because
+                        an undiscovered arena a player has no way of reaching is
+                        just a number. */}
+                    {lockedArenas.length > 0 && (
+                        <div className="panel-flush p-3 mt-2 flex items-center justify-between gap-3 flex-wrap">
+                            <div className="min-w-0">
+                                <div className="text-xs font-bold text-[var(--ink)] flex items-center gap-1.5">
+                                    <Lock className="w-3.5 h-3.5 flex-none text-[var(--color-ink-500)]" aria-hidden="true" />
+                                    {lockedArenas.length} undiscovered {lockedArenas.length === 1 ? 'arena' : 'arenas'}
+                                </div>
+                                <div className="text-[10px] text-[var(--color-ink-500)] mt-0.5">
+                                    Take a sealed draw and one of them may be where you land — play it once and it is yours to pick. Or buy one outright below.
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
                     </div>
                 )}
@@ -1054,7 +1177,71 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 format={(v) => `${v.toFixed(2)}×`}
                                 onChange={(v) => setConfig(c => ({ ...c, sponsorGenerosity: v }))}
                             />
+                            {/* §8 (requests): the shape of the reaping bowl.
+                                Off by default, and off means the canon draw —
+                                one slip per year of age plus tesserae, which
+                                skews older and skews oldest where the district
+                                is poorest. On, the bowl is replaced outright by
+                                a normal distribution the player sets, because a
+                                player who moves these is asking for a cast of a
+                                particular shape and blending their mean with
+                                the tesserae skew would quietly refuse to give
+                                them one. */}
+                            <div className="space-y-3 pt-1">
+                                <label className="flex items-center gap-2 text-xs text-[var(--color-ink-300)] cursor-pointer font-semibold">
+                                    <input
+                                        type="checkbox"
+                                        checked={customAges}
+                                        onChange={(e) => setConfig(c => e.target.checked
+                                            ? { ...c, ageMean: c.ageMean ?? 15.5, ageSpread: c.ageSpread ?? 1.8 }
+                                            : { ...c, ageMean: undefined, ageSpread: undefined })}
+                                        className="w-4 h-4 accent-[var(--red)]"
+                                    />
+                                    Set the age distribution by hand
+                                </label>
+                                {customAges ? (
+                                    <>
+                                        <ConfigSlider
+                                            label="Average tribute age"
+                                            hint="Where the middle of the field sits. The statutory band is still twelve to eighteen, so a mean near either end piles the tail up on that end."
+                                            effect={`A field centred on ${(config.ageMean ?? 15.5).toFixed(1)}-year-olds.`}
+                                            value={config.ageMean ?? 15.5}
+                                            min={12} max={18} step={0.5}
+                                            format={(v) => `${v.toFixed(1)} years`}
+                                            onChange={(v) => setConfig(c => ({ ...c, ageMean: v }))}
+                                        />
+                                        <ConfigSlider
+                                            label="Age standard deviation"
+                                            hint="How far from that average the field spreads. Half a year is a cast of near-identical ages; four years fills the whole band evenly."
+                                            effect={ageSpreadHint(config.ageMean ?? 15.5, config.ageSpread ?? 1.8)}
+                                            value={config.ageSpread ?? 1.8}
+                                            min={0.5} max={4} step={0.1}
+                                            format={(v) => `± ${v.toFixed(1)} years`}
+                                            onChange={(v) => setConfig(c => ({ ...c, ageSpread: v }))}
+                                        />
+                                    </>
+                                ) : (
+                                    <p className="text-[10px] text-[var(--color-ink-500)] -mt-1">
+                                        The bowl decides: one slip per year of age, plus a slip for every tessera taken. The field skews older, and oldest in the poorest districts.
+                                    </p>
+                                )}
+                            </div>
                             <div className="flex flex-wrap gap-5 pt-1">
+                                {/* §18 (requests): one victor, guaranteed. */}
+                                <label className="flex items-center gap-2 text-xs text-[var(--color-ink-300)] cursor-pointer font-semibold">
+                                    <input
+                                        type="checkbox"
+                                        checked={!!config.singleVictor}
+                                        onChange={(e) => setConfig(c => ({ ...c, singleVictor: e.target.checked }))}
+                                        className="w-4 h-4 accent-[var(--red)]"
+                                    />
+                                    <span>
+                                        One victor only
+                                        <span className="block font-normal text-[10px] text-[var(--color-ink-500)]">
+                                            Closes every route to two survivors: the two-may-win rule change, the district-pairs Quell, and the lovers&rsquo; exemption at the finale.
+                                        </span>
+                                    </span>
+                                </label>
                                 <label className="flex items-center gap-2 text-xs text-[var(--color-ink-300)] cursor-pointer font-semibold">
                                     <input
                                         type="checkbox"
@@ -1091,6 +1278,19 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             <button onClick={() => setConfig(DEFAULT_GAME_CONFIG)} className="btn btn-sm btn-ghost" title="Every setting back to the defaults, district count and naming included.">
                                 Reset everything
                             </button>
+                            {/* §8 (requests): roll the lot. The presets above
+                                are four fixed points; this is the rest of the
+                                space, and it is the fastest way to find out
+                                that a twelve-district blackout year with a
+                                fourteen-year-old field is a different game. */}
+                            <Hint text="Roll every advanced setting at random, within the ranges the sliders allow">
+                                <button
+                                    onClick={() => setConfig(randomConfig)}
+                                    className="btn btn-sm btn-ghost"
+                                >
+                                    Randomize all settings
+                                </button>
+                            </Hint>
                         </div>
                     )}
                 </div>

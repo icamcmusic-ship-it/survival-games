@@ -144,8 +144,10 @@ export function proposeBlocTreaties(ctx: SimContext) {
             addExcitement(aSpeaker, BLOC_TREATY.excitement);
             addExcitement(bSpeaker, BLOC_TREATY.excitement);
             ctx.logEvent(
-                `${aSpeaker.name} and ${bSpeaker.name} talk for a long time with both groups watching, and then walk back to their own people `
-                + 'with the same thing to say: not us, not yet. It is the first agreement in this arena that anybody made on behalf of somebody else.',
+                // §22: both groups are the cast of this line and only the two
+                // speakers were ever in it.
+                `${aSpeaker.name} and ${bSpeaker.name} agree a truce between their groups and take it back to them.`
+                + ` ${aMembers.map(m => m.name).join(', ')} on one side; ${bMembers.map(m => m.name).join(', ')} on the other.`,
                 [...aMembers.map(m => m.id), ...bMembers.map(m => m.id)],
                 { important: true, category: 'alliance' }
             );

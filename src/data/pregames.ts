@@ -30,48 +30,16 @@ export const REAPING_CROWDS: Record<number, string> = {
     16: 'District 16 holds its reaping on the supply pier, because half the district is offshore and the other half is waiting for them. The names are read twice: once for the square, once over the radio.',
 };
 
-export const REAPING_REACTIONS = {
-    child: [
-        '{tribute} does not move until a Peacekeeper takes their arm. Somewhere behind them a woman starts screaming and is helped out of the square.',
-        '{tribute} walks to the stage the way children walk to the front of a classroom, and the square makes no sound at all.',
-        'A boy in the fourteens tries to get to {tribute} and is put on the ground for it.',
-        '{tribute} looks for their mother in the crowd and cannot find her. They stop looking before they reach the steps, which is worse.',
-        'The escort has to say the name twice. {tribute} heard it the first time; their legs simply did not.',
-        '{tribute} carries a stuffed animal to the stage because no one thought to take it from them. The cameras cannot get enough of it.',
-        'Somebody in the square starts the three-finger salute for {tribute}, and by the time the anthem plays the whole district is holding it.',
-        '{tribute} asks the escort a question on the way up the steps. The microphone does not catch it, and the escort does not answer.',
-        '{tribute} is small enough that the Peacekeeper walking them up looks like a parent taking a child to their first day of school. The broadcast lingers on it.',
-        'The mayor will not meet {tribute}\'s eyes during the anthem. Nobody on that stage will.',
-        '{tribute} waves at someone in the crowd because they do not fully understand yet. The square understands for them.',
-        'When the escort asks for volunteers for {tribute}, the silence lasts four full seconds. The cameras count every one of them.',
-    ],
-    ordinary: [
-        '{tribute} climbs the steps without being told twice. Their district watches them do it.',
-        '{tribute} finds a face in the crowd, holds it for exactly as long as they can, and then looks at the escort instead.',
-        '{tribute} says something to the girl beside them before they go. Nobody on the broadcast hears what.',
-        '{tribute} takes a breath at the bottom of the steps that the whole square hears, and then takes the steps.',
-        '{tribute} nods once — at nobody, at everybody — and walks up like someone reporting for a shift.',
-        '{tribute} stumbles on the second step and recovers. It is the only thing about them the Capitol commentators will remember.',
-        'The escort offers {tribute} a hand up the steps. {tribute} does not take it.',
-        '{tribute}\'s friends push to the rope line to see them go. None of them can think of anything to shout.',
-        '{tribute} stands on the stage looking at the roofs of their district like they are memorising them. They are.',
-        '{tribute} keeps their hands still at their sides the entire time, which costs them more than the square will ever know.',
-        'A dog follows {tribute} to the barricade and has to be held back. It is somehow the hardest thing anyone in the square has watched all morning.',
-        '{tribute} mouths something to the sky before the anthem. The commentators decide it was a prayer. It was a name.',
-    ],
-    hardened: [
-        '{tribute} is on the stage before the escort has finished saying the name, and looks out at the square like they own it.',
-        '{tribute} takes the steps two at a time. The Capitol cameras like that very much.',
-        '{tribute} shakes the escort\'s hand. Half the square applauds and the other half does not.',
-        '{tribute} rolls their shoulders on the way up like someone stepping into a ring, because that is exactly what this is.',
-        '{tribute} smiles at the cameras before they smile at their district, and everybody watching notices the order.',
-        '{tribute} raises a fist on the stage. The academy rows answer it. The rest of the square does not.',
-        '{tribute} looks bored during the anthem, and it is not an act, and the commentators cannot decide if they love it.',
-        'The applause for {tribute} starts before their name is fully read. The betting shops in the Capitol hear it and adjust.',
-        '{tribute} finds the nearest camera and holds it for a slow three-count. The sponsors will remember that.',
-        '{tribute} pats the escort on the shoulder like a colleague. The escort visibly does not know what to do about it.',
-    ],
-};
+/*
+ * §5 (requests): `REAPING_REACTIONS` lived here — three pools of thirty-odd
+ * lines describing how each tribute took the news, drawn once per tribute and
+ * logged immediately beside their reaping note. That is the "reaping extra
+ * flavour" the request names: twenty-four lines a run, none of which said
+ * anything the tribute's own sheet does not, all of them in the register the
+ * request asks to be rid of. The square's crowd line above and the one
+ * factual note per tribute are what is left, and they are the record.
+ */
+
 
 export const GOODBYE_SCENES = [
     'Three minutes in the Justice Building. {tribute}\'s family says almost nothing useful and every word of it will be remembered.',
@@ -178,82 +146,47 @@ export const CHARIOT_ANGLES = [
 ];
 
 /**
- * §6.8: the reaping-day line — how they came to be standing on that plate.
+ * §5/§12 (requests): the reaping-day line, stripped to the facts.
  *
- * Four hardcoded strings in the generator became four one-line stories told
- * identically every Games. Each is a pool now, and the categories the square
- * actually produces — the faint, the silence, the parent held back, the escort
- * getting the name wrong — get lines of their own. Placeholders: {district}
- * always; {blurb} in the Career pool (the district craft's blurb, lowercase
- * mid-sentence); {partner} in the pair-bond pool.
+ * This was seven pools of decoration and four of information. The decoration
+ * pools — the stunned square, the defiant walk, the faint, the parent held
+ * back, the friend who shouted, the escort who got the name wrong, the tribute
+ * who took it too calmly — are gone entirely: none of them told the reader
+ * anything about the tribute that the tribute's own sheet does not already
+ * say, and two thirds of the roster arrived carrying one, which made the
+ * roster read as a short story collection rather than a list of people.
+ *
+ * What is left is the four cases that are *facts about how this tribute came
+ * to be on the plate*, and each of them now states that fact and stops.
+ * "Volunteered at a dead run, taking the steps two at a time. Whoever the slip
+ * actually named will spend the rest of their life grateful and never once say
+ * so." became "Volunteered. District 2 fields a volunteer most years."
+ *
+ * Placeholders: {district} always; {blurb} in the Career pool; {partner} in
+ * the pair-bond pool; {slips}/{tesserae} in the tesserae pool.
  */
 export const REAPING_NOTE_TEXTS = {
     tesserae: [
-        'Their name was in the bowl {slips} times — {tesserae} of those slips bought grain, one winter at a time. Everyone in the square knew whose names the bowl was heavy with.',
-        '{slips} slips carried their name, and {tesserae} of them were the price of keeping a family fed. The odds were never in their favour; the odds were purchased against them, a tessera at a time.',
-        'The escort drew one slip out of {slips} that said the same name, {tesserae} of them signed for grain. Nobody in District {district} calls that bad luck.',
-        'They took the tesserae every year the family needed it, and this year the arithmetic came due: {slips} slips in the bowl, {tesserae} of them bought with hunger.',
-        'A rich child stands in that square with one slip a year. This one stood with {slips}, {tesserae} of them traded for grain, and the bowl did what bowls full of a poor family\'s name eventually do.',
-        'The grain those {tesserae} extra slips bought is long since eaten. The slips were still in the bowl — all {slips} of them — and one of them came out.',
+        'Name in the bowl {slips} times. {tesserae} of those slips were taken for grain.',
+        '{slips} slips, {tesserae} of them tesserae.',
+        'Took tesserae {tesserae} times. That put {slips} slips in the bowl under their name.',
+        'Drawn from {slips} slips. {tesserae} were signed for grain rations.',
     ],
     careerVolunteer: [
-        'Volunteered before the escort had finished reading the card — {blurb}, and eighteen years of waiting for their turn.',
-        'Volunteered. The academy decided months ago whose year this was, and the reaped child stepped down before the applause had even settled.',
-        'Volunteered the way District {district} volunteers: loudly, first, and with the academy rows chanting the name before the stage was reached.',
-        'Volunteered. The card in the escort\'s hand never mattered — {blurb}, and everyone in that square knew the name that would answer it.',
-        'Volunteered off the academy\'s front row, exactly on cue. In District {district} the reaping is a formality with a bowl in it.',
-        'Volunteered at a dead run, taking the steps two at a time. Whoever the slip actually named will spend the rest of their life grateful and never once say so.',
+        'Volunteered. Trained at the District {district} academy — {blurb}.',
+        'Volunteered before the escort finished reading the card. Academy-trained.',
+        'Volunteered. District {district} fields a volunteer most years and this was the one they put forward.',
+        'Volunteered off the academy roster. The reaped tribute stood down.',
     ],
     siblingVolunteer: [
-        'Volunteered for a sibling. District {district} has not had a volunteer in living memory, and the crowd did not applaud — they touched three fingers to their lips instead.',
-        'Volunteered for a sibling — stepped in front of the stage before the name had finished echoing, and would not be moved. The square went silent the way a square only goes for this.',
-        'Volunteered the moment their sibling\'s name was read. The escort asked twice to be sure. They said it louder the second time.',
-        'Volunteered for a younger sibling, and the two of them had to be pulled apart at the steps. The cameras kept the shot; District {district} will never forgive them for it.',
-        'Volunteered for a sibling with a voice that did not shake until afterwards, in the goodbye room, where the cameras could not follow.',
-        'Volunteered for family. It is the only reason anyone volunteers in District {district}, and everyone in the square understood it before the sentence was finished.',
+        'Volunteered in place of a sibling.',
+        'Volunteered for a younger sibling whose name was drawn.',
+        'Volunteered for a sibling. District {district} has had no other volunteer in living memory.',
     ],
     pairBond: [
-        'Reaped as one half of a bonded pair with {partner}. Neither of them chose the other, and it will not matter.',
-        'Bound to {partner} by this year\'s rules before either of them had left the square. The Capitol calls it a twist; District {district} calls it two children instead of one.',
-        'Reaped alongside {partner} under the pair rule, and made to stand together on the stage while the escort explained what that will mean. Neither reacted, which took more than reacting would have.',
-        'One half of a bonded pair with {partner}. They looked at each other exactly once on the stage, and whatever passed between them was not for the cameras.',
-        'Paired with {partner} by a rule neither had heard of before the escort read it out. The square had no idea how to respond, so it did not.',
-    ],
-    // The square's other stories — assigned when nothing louder happened.
-    stunnedSilence: [
-        'When the name was read, the square made no sound at all — not a gasp, not a shuffle. The escort waited for a reaction that never came, and moved on.',
-        'Nobody reacted to the name. Not the crowd, not the family, not even them — a whole square deciding together that if they did not respond, it might not be true.',
-        'The silence after the name lasted long enough that the broadcast cut to the escort\'s face. District {district} gave the cameras nothing, which was the point.',
-    ],
-    defiantWalk: [
-        'Walked to the stage slowly — unhurried, head level, making the whole square and every camera wait. It is the only protest the reaping permits, and they used all of it.',
-        'Took the steps at their own pace, without help and without hurry, and looked at the escort until the escort looked away.',
-        'Did not cry, did not stumble, did not blink. Walked up like the stage owed them something, and half of District {district} stood a little straighter watching it.',
-    ],
-    fainted: [
-        'Went down on the second step — flat, sudden, the whole square lurching forward against the ropes. They finished the walk two minutes later, grey-faced, refusing the Peacekeeper\'s arm.',
-        'Fainted when the name was read and had to be carried the first ten metres. The Capitol replayed it all evening; District {district} turned its screens off.',
-        'Their legs quit before their face did. They sat down in the aisle, got up unaided, and made the stage on the second attempt — which is its own kind of resolve.',
-    ],
-    parentHeldBack: [
-        'A parent broke the rope line before the name had finished echoing, and it took three Peacekeepers to hold them. The tribute walked the rest of the way not looking back, because looking back would have finished them.',
-        'Their mother had to be restrained at the barricade, and the sound she made followed them all the way up the steps. The microphones caught every second of it.',
-        'A father\'s voice came out of the crowd once — one word, their name — and then the sound of him being quieted. The stage pretended not to hear. Nobody else in District {district} did.',
-    ],
-    allyShouted: [
-        'A friend from their crew shouted something from the roped section as they climbed the steps — quick, in district slang, and the escort did not understand a word of it. They visibly did.',
-        'Somebody their age yelled their name from the back of the square, once, like a promise. They did not turn around, and their shoulders came down half an inch.',
-        'Half their work gang was in the square, and every one of them shouted together the moment the name was read. The Peacekeepers let it go. Some things are cheaper to allow.',
-    ],
-    escortMispronounced: [
-        'The escort mispronounced the name — twice, differently each time — and they had to walk to the stage anyway, to a version of themselves that does not exist. District {district} will not forget it.',
-        'The escort got the name wrong, and they corrected it from the floor of the square, clearly, before walking up. It was the first thing the Capitol learned about them.',
-        'The name the escort read was theirs the way a Capitol accent makes anything theirs — barely. They answered to it because somebody had to, and the square hated every syllable.',
-    ],
-    tooCalm: [
-        'Reacted to the name with a nod, as if a question they had been expecting had finally been asked. It unsettled the square more than tears would have.',
-        'Was halfway to the aisle before the escort finished reading, as though they had counted the slips themselves and knew. The calm read strangely on camera, and the commentators noticed.',
-        'Handed their jacket to the person beside them, said something short, and walked up. Whatever they had been carrying that morning, they had evidently already set it down.',
+        'Reaped as one half of a bonded pair with {partner}, under this year\'s rule.',
+        'Bound to {partner} by the pair rule. Both were reaped from District {district}.',
+        'One of a bonded pair with {partner}.',
     ],
 };
 

@@ -1,7 +1,8 @@
 import { GameState, Tribute } from '../models/types';
 import { HEAD_GAMEMAKERS } from '../data/gamemakers';
 import { QUELLS } from '../data/gamesProfile';
-import { CareerTotals, evaluateAchievements, evaluateMetaAchievements, evaluateNearMisses, NearMiss } from '../data/achievements';
+import { ACHIEVEMENTS, CareerTotals, evaluateAchievements, evaluateMetaAchievements, evaluateNearMisses, NearMiss } from '../data/achievements';
+import { COIN_ECONOMY } from '../data/balance';
 import { arenaLaws } from '../engine/gamesProfile';
 import { Notable, runDelta, runNotables } from './notables';
 import { ARENAS } from '../data/constants';
@@ -404,6 +405,13 @@ export interface RunOutcome {
     /** Achievements the run came close to but did not earn. See `data/achievements.ts`. */
     nearMisses: NearMiss[];
     /**
+     * §20 (requests): Capitol Coins this run's first-time achievements are
+     * worth, scaled by rarity. Computed here because this is where
+     * `newAchievements` is decided; paid out by `resolveBets` in the store,
+     * which owns the wallet.
+     */
+    achievementCoins: number;
+    /**
      * §10.7: how this Games compared with the player's own last few in the
      * same arena. Empty on a first run, and on a run that was unremarkable
      * against its own history — there is no value in "about the same".
@@ -685,10 +693,19 @@ export function commitRun(state: GameState): RunOutcome {
         if (current !== undefined) brokenRecords.push(def.id);
     });
 
+    // §20 (requests): what the Capitol owes for this run's discoveries. Only
+    // the first time each one is earned — they are a discovery layer, and
+    // paying repeatedly for the same unlock would make them a grind.
+    const achievementCoins = newAchievements.reduce((sum, id) => {
+        const entry = ACHIEVEMENTS.find(a => a.id === id);
+        return sum + (entry ? COIN_ECONOMY.achievementReward[entry.rarity] : COIN_ECONOMY.achievementReward.common);
+    }, 0);
+
     writePanem(records);
     return {
         firstCrownDistrict,
         newAchievements,
+        achievementCoins,
         brokenRecords,
         records,
         notables: runNotables(state, records),

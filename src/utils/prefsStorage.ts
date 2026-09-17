@@ -135,6 +135,20 @@ export const CONFIG_SPEC: StorageSpec<GameConfig> = {
             // Dropped here in v1's first cut, which silently reset the
             // player's plain-names choice on every reload.
             plainNames: asBool(r.plainNames, !!DEFAULT_GAME_CONFIG.plainNames),
+            // §25 (requests): `vanillaRules` had exactly the same bug as
+            // `plainNames` did and it was never fixed — the reader listed the
+            // fields it knew about and silently dropped the rest, so a player
+            // who turned Vanilla Games on found it off again on their next
+            // visit. Same for the two settings added with the age sliders.
+            vanillaRules: asBool(r.vanillaRules, !!DEFAULT_GAME_CONFIG.vanillaRules),
+            singleVictor: asBool(r.singleVictor, !!DEFAULT_GAME_CONFIG.singleVictor),
+            // The age pair is genuinely optional: absent means the canon bowl
+            // draw, which is not the same as any particular number, so these
+            // stay undefined rather than falling back to a default.
+            ageMean: typeof r.ageMean === 'number' && Number.isFinite(r.ageMean)
+                ? Math.min(18, Math.max(12, r.ageMean)) : undefined,
+            ageSpread: typeof r.ageSpread === 'number' && Number.isFinite(r.ageSpread)
+                ? Math.min(4, Math.max(0.5, r.ageSpread)) : undefined,
         };
     },
 };

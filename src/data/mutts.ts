@@ -1800,4 +1800,201 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             role: 'ambusher',
         },
     ],
+
+    // ---- §1 (requests): rosters for the five new hand-authored arenas. ----
+    //
+    // Every terrain an arena contains must be covered by at least one mutt, or
+    // those zones are permanently safe (see `validate-arenas`), so each roster
+    // is built terrain-first: a horror for the water, a horror for the ruins, a
+    // swarm that goes anywhere, and one named thing the arena is about.
+    tidewrack: [
+        {
+            // The flats themselves. Slow, numerous, and everywhere the tide has
+            // been, which on this map is everywhere.
+            id: 'wrack-crabs', name: 'Wrack Crabs',
+            packSize: [6, 14], damage: 6, speed: 5,
+            inflicts: { bleeding: true, legs: true },
+            terrainPreference: ['wetland', 'open'],
+            role: 'swarm',
+            fearAura: 3,
+        },
+        {
+            // The channels. Nothing else in the arena hunts in deep water.
+            id: 'channel-eels', name: 'Channel Eels',
+            packSize: [2, 5], damage: 18, speed: 9,
+            inflicts: { bleeding: true },
+            terrainPreference: ['water'],
+            fearAura: 6,
+        },
+        {
+            // The reason nobody sleeps in the Drowned Village. It calls in the
+            // voice of whoever it heard last, which is a real tactical problem
+            // in an arena where the routes move every night.
+            id: 'tide-callers', name: 'Tide Callers',
+            packSize: [1, 2], damage: 22, speed: 7,
+            inflicts: { bleeding: true },
+            terrainPreference: ['ruins'],
+            persistent: true,
+            role: 'ambusher',
+            nocturnal: true,
+            fearAura: 12,
+        },
+        {
+            // Gull Rock is the only high ground on the map and it is occupied.
+            id: 'gull-mutts', name: 'Gull Mutts',
+            packSize: [4, 9], damage: 9, speed: 10,
+            inflicts: { bleeding: true, head: true },
+            terrainPreference: ['highland'],
+            role: 'swarm',
+            fearAura: 5,
+        },
+    ],
+    thresher: [
+        {
+            id: 'floor-hounds', name: 'Floor Hounds',
+            packSize: [3, 6], damage: 20, speed: 9,
+            inflicts: { bleeding: true, legs: true },
+            terrainPreference: ['open', 'urban'],
+            persistent: true,
+            fearAura: 8,
+        },
+        {
+            id: 'duct-swarm', name: 'Duct Swarm',
+            packSize: [8, 18], damage: 4, speed: 8,
+            inflicts: { infected: true },
+            terrainPreference: ['cave', 'ruins'],
+            role: 'swarm',
+            fearAura: 6,
+        },
+        {
+            // Siege, pinned to the gallery that overlooks the whole floor. The
+            // arena's law makes the horn the destination; this is what stands
+            // between a tribute and the good ground above it.
+            id: 'the-shift-boss', name: 'The Shift Boss',
+            packSize: [1, 1], damage: 34, speed: 6,
+            inflicts: { bleeding: true, arms: true },
+            persistent: true,
+            role: 'siege',
+            homeZone: 'The Foreman\'s Gallery',
+            fearAura: 14,
+        },
+        {
+            id: 'scale-rats', name: 'Scale Rats',
+            packSize: [5, 11], damage: 7, speed: 7,
+            inflicts: { infected: true, bleeding: true },
+            terrainPreference: ['water', 'ruins', 'urban'],
+            role: 'swarm',
+            fearAura: 4,
+        },
+    ],
+    vigil: [
+        {
+            id: 'watch-hounds', name: 'Watch Hounds',
+            packSize: [3, 7], damage: 21, speed: 10,
+            inflicts: { bleeding: true, legs: true },
+            terrainPreference: ['open', 'forest'],
+            persistent: true,
+            fearAura: 9,
+        },
+        {
+            // The arena's whole premise with legs: they arrive when somebody
+            // has stopped moving, which under `noRest` is the only thing
+            // anybody can do about their fatigue.
+            id: 'reveille-wasps', name: 'Reveille Wasps',
+            packSize: [7, 16], damage: 5, speed: 9,
+            inflicts: { poisoned: true },
+            terrainPreference: ['wetland', 'forest', 'open'],
+            role: 'swarm',
+            fearAura: 7,
+        },
+        {
+            id: 'the-sentry', name: 'The Sentry',
+            packSize: [1, 1], damage: 30, speed: 7,
+            inflicts: { bleeding: true },
+            persistent: true,
+            role: 'siege',
+            homeZone: 'The Bell Tower',
+            terrainPreference: ['highland'],
+            fearAura: 13,
+        },
+        {
+            id: 'fen-crawlers', name: 'Fen Crawlers',
+            packSize: [2, 5], damage: 15, speed: 6,
+            inflicts: { infected: true },
+            terrainPreference: ['wetland', 'ruins'],
+            role: 'ambusher',
+            fearAura: 6,
+        },
+    ],
+    saltworks: [
+        {
+            id: 'pan-scuttlers', name: 'Pan Scuttlers',
+            packSize: [6, 13], damage: 6, speed: 7,
+            inflicts: { bleeding: true },
+            terrainPreference: ['desert', 'open'],
+            role: 'swarm',
+            fearAura: 4,
+        },
+        {
+            // They live in the one place on the map everybody has to come to.
+            id: 'brine-wraiths', name: 'Brine Wraiths',
+            packSize: [1, 3], damage: 24, speed: 8,
+            inflicts: { bleeding: true, poisoned: true },
+            terrainPreference: ['water'],
+            role: 'ambusher',
+            fearAura: 11,
+        },
+        {
+            id: 'salt-hounds', name: 'Salt Hounds',
+            packSize: [3, 6], damage: 19, speed: 9,
+            inflicts: { bleeding: true, legs: true },
+            terrainPreference: ['desert', 'open', 'highland'],
+            persistent: true,
+            fearAura: 8,
+        },
+        {
+            id: 'stack-shrikes', name: 'Stack Shrikes',
+            packSize: [3, 8], damage: 11, speed: 10,
+            inflicts: { bleeding: true, head: true },
+            terrainPreference: ['ruins', 'highland'],
+            fearAura: 6,
+        },
+    ],
+    kiln: [
+        {
+            id: 'kiln-beetles', name: 'Kiln Beetles',
+            packSize: [7, 15], damage: 5, speed: 6,
+            inflicts: { burned: true },
+            terrainPreference: ['desert', 'open', 'ruins'],
+            role: 'swarm',
+            fearAura: 4,
+        },
+        {
+            // The flues are the only shade above the cellar, and this is why
+            // the shade is not a solution.
+            id: 'flue-stalkers', name: 'Flue Stalkers',
+            packSize: [1, 2], damage: 28, speed: 8,
+            inflicts: { bleeding: true },
+            terrainPreference: ['cave'],
+            role: 'ambusher',
+            persistent: true,
+            fearAura: 12,
+        },
+        {
+            id: 'shard-hounds', name: 'Shard Hounds',
+            packSize: [3, 6], damage: 20, speed: 9,
+            inflicts: { bleeding: true, legs: true },
+            terrainPreference: ['desert', 'open'],
+            persistent: true,
+            fearAura: 8,
+        },
+        {
+            id: 'chimney-swifts', name: 'Chimney Swifts',
+            packSize: [5, 12], damage: 8, speed: 11,
+            inflicts: { bleeding: true, head: true },
+            terrainPreference: ['highland', 'ruins'],
+            role: 'swarm',
+            fearAura: 5,
+        },
+    ],
 };

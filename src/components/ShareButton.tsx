@@ -39,6 +39,14 @@ export function ShareButton({ seed, arenaId, gamemakerMode, config, quellId }: {
             // link that left it out replayed a plain run as a modified one,
             // with a different cast.
             vanillaRules: String(!!config.vanillaRules),
+            // §8/§18 (requests): the same argument as `vanillaRules`. The age
+            // distribution decides the cast, and "one victor only" decides how
+            // the run can end, so a link that dropped either replayed somebody
+            // else's Games under their seed. 'bowl' is the absent case — the
+            // canon draw — which is not the same as any particular mean.
+            singleVictor: String(!!config.singleVictor),
+            ageMean: config.ageMean === undefined ? 'bowl' : String(config.ageMean),
+            ageSpread: config.ageSpread === undefined ? 'bowl' : String(config.ageSpread),
             // Pin this run's exact Quarter Quell (or explicit lack of one) the
             // same way HallOfFameEntry.quellId does — without it a link to a
             // forced-Quell run replays as an ordinary year.

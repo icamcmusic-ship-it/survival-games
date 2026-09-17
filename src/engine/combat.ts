@@ -5,7 +5,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES } from '../data/balance';
+import { ARENA_DEATH_BUDGET, BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -191,6 +191,47 @@ function bestWeapon(t: Tribute): Item | undefined {
  * finalist-protection block below for why that relief has to happen, not
  * just the clamp.
  */
+/**
+ * §11 (requests): whether the field is down to two and still inside the window
+ * in which the arena is not allowed to finish one of them by attrition.
+ *
+ * `finalTwoCycle` is stamped the first time this is asked with two alive, so
+ * the window is measured from the moment the final two existed rather than
+ * from the convergence (which may have been called at six) or from the day
+ * count (which says nothing about how long these two have been the only ones
+ * left).
+ */
+function inFinalTwoGrace(ctx: SimContext, alive: number): boolean {
+    if (alive !== 2) return false;
+    const now = cycleOf(ctx.state);
+    if (ctx.state.finalTwoCycle === undefined) ctx.state.finalTwoCycle = now;
+    return now - ctx.state.finalTwoCycle < ESCALATION.finalTwoAttritionGraceCycles;
+}
+
+/**
+ * §24 (requests): whether the arena has already taken more than its share of
+ * this cast, and this particular killing blow should be pulled.
+ *
+ * Returns true only when all three hold: the field has thinned past the
+ * opening (so the bloodbath and day one are untouched), the arena's own death
+ * count is past the soft cap, and the roll lands. The roll steepens between
+ * the soft and hard caps, so an arena that keeps killing keeps being reined
+ * in harder rather than hitting a wall.
+ */
+function arenaOverBudget(ctx: SimContext, alive: number): boolean {
+    const cast = ctx.state.tributes.length;
+    if (cast === 0) return false;
+    if (alive > cast * ARENA_DEATH_BUDGET.activeBelowAliveShare) return false;
+    const taken = ctx.state.environmentalDeaths ?? 0;
+    const soft = cast * ARENA_DEATH_BUDGET.softCapShare;
+    if (taken < soft) return false;
+    const hard = cast * ARENA_DEATH_BUDGET.hardCapShare;
+    const through = hard > soft ? Math.min(1, (taken - soft) / (hard - soft)) : 1;
+    const chance = ARENA_DEATH_BUDGET.sparedChanceAtCap
+        + through * (ARENA_DEATH_BUDGET.sparedChanceAtHardCap - ARENA_DEATH_BUDGET.sparedChanceAtCap);
+    return ctx.rng.chance(chance);
+}
+
 export function applyDamage(
     ctx: SimContext,
     t: Tribute,
@@ -268,6 +309,36 @@ export function applyDamage(
             amount = Math.max(0, t.health - 1);
             finalistSave = true;
         }
+        // §11 (requests): the last two settle it between them, not by whose
+        // wound went bad first and not by the weather. Bounded to a few cycles
+        // from the moment the field reached two — see
+        // `finalTwoAttritionGraceCycles` for why it is a window and not a rule.
+        // The return value matters here: the status tick reads it and relieves
+        // the actual cause, so the tribute is not merely pinned at 1 health and
+        // re-killed every cycle.
+        //
+        // Covers everything that is not another tribute. Held to `status`
+        // first, which moved the measured "victor killed the runner-up" share
+        // from 23% to 35% and then simply handed the ending to `climate` and
+        // `arena` instead — 72 of 193 endings. The arena finishing the
+        // second-to-last tribute is the same failure wearing different
+        // clothes, and §24 says so independently.
+        if (!finalistSave && amount >= t.health && inFinalTwoGrace(ctx, alive)) {
+            amount = Math.max(0, t.health - 1);
+            finalistSave = true;
+        }
+        // §24 (requests): the arena's share of the killing, capped.
+        //
+        // Same shape as the finalist save above and for a related reason: the
+        // arena is scenery for a story about people, and a run where it takes
+        // most of the cast has no story left in it. Past its budget every
+        // further environmental killing blow is rolled against, and a spared
+        // tribute is left on one health — the arena has still all but killed
+        // them, and the next person to find them will finish it.
+        if (!finalistSave && amount >= t.health && arenaOverBudget(ctx, alive)) {
+            amount = Math.max(0, t.health - 1);
+            finalistSave = true;
+        }
         if (amount <= 0) return finalistSave;
     }
 
@@ -332,6 +403,15 @@ export function checkDeath(ctx: SimContext, t: Tribute, fallbackCause?: string) 
     const killer = record?.sourceId
         ? ctx.state.tributes.find(o => o.id === record.sourceId)
         : undefined;
+    // §24 (requests): the arena's running tally, kept here because this is the
+    // one funnel every death passes through. A death with no killer and a
+    // non-`tribute` damage record is the arena having done it — mutts,
+    // hazards, climate, zone effects, set pieces and the closing border alike.
+    // A self-inflicted ending writes `kind: 'status'` with no source and is
+    // deliberately not counted: nobody needs protecting from their own choice.
+    if (!killer && record && record.kind !== 'tribute' && record.kind !== 'status') {
+        ctx.state.environmentalDeaths = (ctx.state.environmentalDeaths ?? 0) + 1;
+    }
     if (killer) {
         killTribute(ctx, t, killer, { cause: record?.cause });
     } else {

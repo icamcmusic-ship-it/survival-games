@@ -325,8 +325,13 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         const quartermaster = named('quartermaster');
         const scout = named('scout');
         if (quartermaster && scout) {
+            // §22: the group is the line's cast and only two of them were in it.
+            const rest = members
+                .filter(m => m.name !== quartermaster && m.name !== scout)
+                .map(m => m.name);
             ctx.logEvent(
-                `${quartermaster} ends up holding the supplies and ${scout} ends up walking point. Nobody votes on it; it is simply what each of them is obviously for.`,
+                `${quartermaster} takes the supplies and ${scout} walks point.`
+                + (rest.length > 0 ? ` ${rest.join(', ')} take${rest.length === 1 ? 's' : ''} no fixed role.` : ''),
                 members.map(m => m.id),
                 { category: 'alliance' }
             );
@@ -417,15 +422,16 @@ function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]
     // No heir was ever named, or they did not outlive the leader either.
     if (!heir) {
         install(favourite,
-            `With the leader gone and nothing agreed about what happens next, ${favourite.name} takes charge of what is left of the group. `
-            + 'Nobody objects out loud, which is not the same as nobody objecting.');
+            // §22: "the group" is this line's own cast list.
+            `${favourite.name} takes over the group. No heir was named and nobody objects.`
+            + ` The rest of it is ${members.filter(m => m.id !== favourite.id).map(m => m.name).join(', ')}.`);
         return;
     }
 
     if (heir.id === favourite.id) {
         install(heir,
-            `${heir.name} was named for this and steps into it without anyone needing to say so. `
-            + 'It is the only part of the morning that goes the way it was supposed to.');
+            `${heir.name} takes over the group, having been named for it.`
+            + ` ${members.filter(m => m.id !== heir.id).map(m => m.name).join(', ')} accept it.`)
         return;
     }
 
@@ -712,4 +718,33 @@ export function sniffPerformances(ctx: SimContext) {
             );
         });
     });
+}
+
+
+/**
+ * §9 (requests): how willing a Career is to attach themselves to somebody from
+ * an outer district, as a multiplier on an alliance roll.
+ *
+ * The same rule the training floor uses (`mingleWillingness` in
+ * phases/training.ts) applied to the thing that actually matters — who ends up
+ * in a group with whom. A Career allies with Careers. The exceptions are a
+ * tribute strong enough to be worth having, and a tribute the pack has already
+ * accepted: an existing shared alliance, or a training pact struck before the
+ * gong, which is exactly what "formally accepted" means in this simulation.
+ *
+ * Symmetric: it takes both of them, so an outer-district tribute who badly
+ * wants in still does not get in.
+ */
+export function careerSocialFactor(a: Tribute, b: Tribute): number {
+    const isCareerish = (t: Tribute) => t.isCareer || t.archetype === 'career';
+    const pair: Array<[Tribute, Tribute]> = [[a, b], [b, a]];
+    return pair.reduce((lowest, [self, other]) => {
+        if (!isCareerish(self) || isCareerish(other)) return lowest;
+        if (self.trainingPact?.includes(other.id)) return lowest;
+        if (self.allianceId !== undefined && self.allianceId === other.allianceId) return lowest;
+        const worthHaving = other.trainingScore >= ALLIANCES.careerRespectScore
+            || other.attributes.strength >= ALLIANCES.careerRespectStrength
+            || other.kills >= ALLIANCES.careerRespectKills;
+        return Math.min(lowest, worthHaving ? ALLIANCES.careerStrongOutlierFactor : ALLIANCES.careerOutlierFactor);
+    }, 1);
 }

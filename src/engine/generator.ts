@@ -48,7 +48,31 @@ function pickArchetype(rng: RNG, district: number, careerBias = 0, castShape?: s
  * outer-district cast arrives older and more capable, which is part of the
  * Career counterweight the win-share goals need.
  */
-function drawReapingAge(rng: RNG, district: number): number {
+function drawReapingAge(rng: RNG, district: number, config?: GameConfig): number {
+    // §8 (requests): the player's own age distribution, when they have set one.
+    //
+    // Replaces the bowl rather than biasing it: a player who has moved these
+    // sliders is asking for a cast of a particular shape, and blending their
+    // mean with the tesserae skew would quietly refuse to give them one. The
+    // statutory 12-18 band still holds, so the tail past either end piles up
+    // on the end — which is what a mean of 12 with a wide spread should look
+    // like.
+    if (config?.ageMean !== undefined && config.ageSpread !== undefined) {
+        const mean = config.ageMean;
+        const sd = Math.max(0.35, config.ageSpread);
+        const gaussian: number[] = [];
+        for (let age = GENERATION.minAge; age <= GENERATION.maxAge; age++) {
+            const z = (age - mean) / sd;
+            gaussian.push(Math.exp(-0.5 * z * z) + 1e-6);
+        }
+        let pick = rng.nextFloat() * gaussian.reduce((a, b) => a + b, 0);
+        for (let i = 0; i < gaussian.length; i++) {
+            pick -= gaussian[i];
+            if (pick <= 0) return GENERATION.minAge + i;
+        }
+        return GENERATION.maxAge;
+    }
+
     const rate = TESSERAE.ratePerTier[legacyOf(district).tier] ?? 0.5;
     const weights: number[] = [];
     for (let age = GENERATION.minAge; age <= GENERATION.maxAge; age++) {
@@ -405,7 +429,7 @@ export function generateTributes(
             // into the eligible band, so a "young field" really is younger
             // rather than merely being described that way.
             const age = Math.max(GENERATION.minAge, Math.min(GENERATION.maxAge,
-                drawReapingAge(rng, district) + (shape?.ageShift ?? 0)));
+                drawReapingAge(rng, district, config) + (shape?.ageShift ?? 0)));
 
             // §7.1: how many tessera slips this particular child carries.
             // Wealthy-tier rates round to zero for almost everyone, which is
@@ -564,7 +588,8 @@ export function generateTributes(
             if (pair.length !== 2) continue;
             const [a, b] = pair;
             const note = (other: Tribute) =>
-                `Reaped alongside their cousin ${other.name} — two slips out of the same family, the same year. The square did that arithmetic in silence.`;
+                // §12 (requests): the fact, stated. Which is all it ever was.
+                `Reaped alongside their cousin ${other.name}. Two slips, one family, the same year.`;
             a.reapingNote = a.reapingNote ? `${note(b)} ${a.reapingNote}` : note(b);
             b.reapingNote = b.reapingNote ? `${note(a)} ${b.reapingNote}` : note(a);
             // Family walks in already knowing each other.
@@ -576,24 +601,17 @@ export function generateTributes(
     // The reaping is not just a name out of a bowl.
     tributes.forEach(t => applyVolunteer(rng, t, shape));
 
-    // The square's other stories. Some tributes arrive on the plate already
-    // defined by the thirty seconds after their name was read — the faint,
-    // the silence, the parent held back, the escort getting the name wrong.
-    const MISC_NOTE_POOLS = [
-        REAPING_NOTE_TEXTS.stunnedSilence,
-        REAPING_NOTE_TEXTS.defiantWalk,
-        REAPING_NOTE_TEXTS.fainted,
-        REAPING_NOTE_TEXTS.parentHeldBack,
-        REAPING_NOTE_TEXTS.allyShouted,
-        REAPING_NOTE_TEXTS.escortMispronounced,
-        REAPING_NOTE_TEXTS.tooCalm,
-    ];
-    tributes.forEach(t => {
-        // balance-exempt: flavour frequency of the misc reaping notes, not a balance dial
-        if (t.reapingNote || !rng.chance(0.3)) return;
-        t.reapingNote = rng.pick(rng.pick(MISC_NOTE_POOLS))
-            .split('{district}').join(String(t.district));
-    });
+    // §5 (requests): the square's other stories are gone.
+    //
+    // Seven pools of reaping-day decoration used to land on roughly a third of
+    // the cast — the stunned square, the defiant walk, the faint, the parent
+    // held back, the friend who shouted, the escort who got the name wrong.
+    // None of them said anything about the tribute that the tribute's own
+    // sheet does not, and between them they made the roster read as a short
+    // story collection rather than a list of twenty-four people. The four
+    // remaining note pools are facts about how this tribute came to be on the
+    // plate — tesserae, a Career volunteer, a sibling volunteer, a bonded
+    // pair — and nothing else is written onto anybody.
 
     // Audience meta: the Capitol has favourites before the gong.
     // Charisma, a good story and a career pedigree all feed the pre-Games buzz.

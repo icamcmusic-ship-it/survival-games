@@ -3,7 +3,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import {
-    CHARIOT_ANGLES, DISTRICT_TOKENS, GOODBYE_SCENES, REAPING_CROWDS, REAPING_REACTIONS, STYLISTS, TRAIN_SCENES,
+    CHARIOT_ANGLES, DISTRICT_TOKENS, GOODBYE_SCENES, REAPING_CROWDS, STYLISTS, TRAIN_SCENES,
 } from '../../data/pregames';
 import { PREGAMES } from '../../data/balance';
 import { addExcitement } from '../audience';
@@ -17,29 +17,9 @@ import { readPanem } from '../../utils/panemStorage';
 import { ordinal } from '../gamesProfile';
 import { loseSanity } from '../sanityBands';
 
-/**
- * Everything between the bowl and the training floor.
- *
- * SIDE-06: the reaping was a static grid and the pre-Games was three clicks.
- * The source material spends roughly half its page count here, and it is where
- * the audience decides who these people are — which in this simulation is not
- * decorative, because `sponsorTrust` and `excitementRating` are read by the
- * sponsor stream, the odds board, and (since CANON-07) by the Gamemakers when
- * they decide whether to start closing the arena.
- *
- * Five beats, each producing real numbers: the reaping square and the reaction
- * to a name being read, the goodbye room, the train, the Remake Center, and the
- * chariot parade.
- */
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
-
-function reactionPool(t: Tribute) {
-    if (t.age <= PREGAMES.childAge) return REAPING_REACTIONS.child;
-    if (t.volunteered || t.isCareer || t.traits.includes('Brute')) return REAPING_REACTIONS.hardened;
-    return REAPING_REACTIONS.ordinary;
-}
 
 export function processPreGames(ctx: SimContext) {
     if (ctx.state.preGamesDone) return;
@@ -144,23 +124,26 @@ export function processPreGames(ctx: SimContext) {
         if (crowd) ctx.logEvent(crowd, [], { category: 'system' });
 
         cast.filter(t => t.district === district).forEach(t => {
-            if (t.reapingNote) {
-                // Only an actual volunteer gets the "volunteers." lead-in — the
-                // note pool now covers plenty of stories that are nothing of
-                // the kind (tesserae, kin pairs, the faint, the silence).
-                ctx.logEvent(
-                    t.volunteered ? `${t.name} volunteers. ${t.reapingNote}` : `${t.name}: ${t.reapingNote}`,
-                    [t.id],
-                    { important: true, category: 'system' }
-                );
-            }
+            // §5 (requests): one line per tribute, and it is the record.
+            //
+            // The square used to produce two: the reaping note and a reaction
+            // line drawn from `REAPING_REACTIONS`. The reaction line is the
+            // "extra flavour" the request names — the faint, the walk, the
+            // escort mispronouncing it — and it said nothing the tribute's own
+            // sheet does not, twenty-four times a run, immediately next to the
+            // note. It is gone; the note is what the reaping was.
+            //
+            // The volunteer lead-in is gone with it: every line in the two
+            // volunteer pools now opens with "Volunteered", so prefixing it
+            // with "X volunteers." printed the word twice in one sentence.
             ctx.logEvent(
-                fill(ctx.pickText(reactionPool(t)), { tribute: t.name }),
+                `${t.name} of District ${t.district}, ${t.age}.`
+                + (t.reapingNote ? ` ${t.reapingNote}` : ''),
                 [t.id],
-                { important: t.age <= PREGAMES.childAge, category: 'system' }
+                { important: true, category: 'system' }
             );
-            // The country watched that reaction, and it is the first thing the
-            // Capitol knows about them.
+            // The excitement the two removed lines used to carry is kept: it is
+            // a fact about how the country reacted, not a piece of prose.
             if (t.age <= PREGAMES.childAge) addExcitement(t, PREGAMES.childReactionExcitement);
             if (t.volunteered) addExcitement(t, PREGAMES.volunteerExcitement);
         });

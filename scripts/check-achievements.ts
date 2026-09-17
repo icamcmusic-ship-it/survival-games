@@ -203,11 +203,19 @@ console.log(`\nin the usable 5%-60% band: ${usable.length} of ${ACHIEVEMENTS.len
 
 // Authored rarity against measured rate: the label on the card should not
 // contradict what the simulation does.
+// §19 (requests): four tiers — Common, Rare, Legendary, Possible? — rather
+// than the old Common/Uncommon/Rare/Legendary ladder. The change that matters
+// is the top one: 'possible' is not "very hard", it is "this simulation has
+// never been observed doing it", which is a different and more honest claim
+// than calling something legendary because nobody has seen it. Bands still
+// overlap so run-to-run noise cannot flip a label.
 const BANDS: Record<string, [number, number]> = {
-    common: [0.3, 1],
-    uncommon: [0.08, 0.45],
-    rare: [0.005, 0.12],
-    legendary: [0, 0.02],
+    common: [0.25, 1],
+    rare: [0.03, 0.35],
+    legendary: [0.0001, 0.05],
+    // Anything measured at all is not 'possible?'; see `mislabelled` below,
+    // which only considers entries with a non-zero rate.
+    possible: [0, 0],
 };
 const mislabelled = sorted.filter(a => {
     const [lo, hi] = BANDS[a.rarity];
@@ -223,12 +231,22 @@ mislabelled.forEach(a => console.log(`  ${a.id.padEnd(24)} labelled ${a.rarity.p
 // is only wrong when the measured rate lands wholly outside its band *and*
 // outside the neighbouring one, so ordinary run-to-run noise at 200 runs
 // cannot flip the build. Regenerate the labels with ACHIEVEMENT_EMIT_RARITY=1.
-const ORDER = ['common', 'uncommon', 'rare', 'legendary'] as const;
-const bandOf = (r: number) => r >= 0.3 ? 'common' : r >= 0.08 ? 'uncommon' : r >= 0.005 ? 'rare' : 'legendary';
+const ORDER = ['common', 'rare', 'legendary', 'possible'] as const;
+const bandOf = (id: string, r: number) => r >= 0.25 ? 'common' : r >= 0.03 ? 'rare' : (unlocks[id] ?? 0) > 1 ? 'legendary' : 'possible';
 const badlyMislabelled = mislabelled.filter(a =>
-    Math.abs(ORDER.indexOf(bandOf(rate(a.id))) - ORDER.indexOf(a.rarity as typeof ORDER[number])) >= 2
-    || (a.rarity === 'legendary' && rate(a.id) >= 0.05)
-    || (a.rarity === 'common' && rate(a.id) < 0.05));
+    Math.abs(ORDER.indexOf(bandOf(a.id, rate(a.id))) - ORDER.indexOf(a.rarity as typeof ORDER[number])) >= 2
+    || (a.rarity === 'legendary' && rate(a.id) >= 0.08)
+    || (a.rarity === 'common' && rate(a.id) < 0.05)
+    // A 'possible?' entry that the simulation demonstrably produces is simply
+    // wrong: the tier means nobody has ever seen it happen.
+    //
+    // With a one-observation tolerance, and that is not slack — it is what
+    // makes the tier usable. An entry that fires once in 500 runs sits exactly
+    // on the boundary and flips between 'legendary' and 'possible' from one
+    // sweep to the next purely on which seeds were drawn, which would make
+    // this check fail at random rather than on a regression. Two hits is a
+    // thing the simulation demonstrably does; one is noise.
+    || (a.rarity === 'possible' && unlocks[a.id] > 1));
 
 /* -------------------------------------------------------------------------- */
 /* §2.4: nearMiss is mandatory wherever the test is a matter of degree         */
@@ -390,12 +408,16 @@ if (process.env.ACHIEVEMENT_EMIT_RARITY === '1') {
      * the check that follows still fails on anything two bands out, so the
      * regeneration is a convenience rather than a way to launder a real drift.
      */
-    const label = (r: number) => r >= 0.3 ? 'common' : r >= 0.08 ? 'uncommon' : r >= 0.005 ? 'rare' : 'legendary';
+    // Mirrors `bandOf` and the fail condition above, including the
+    // one-observation tolerance on 'possible?' — the writer and the check have
+    // to agree about the boundary or `fix:rarity` writes labels that fail.
+    const label = (id: string, r: number) =>
+        r >= 0.25 ? 'common' : r >= 0.03 ? 'rare' : (unlocks[id] ?? 0) > 1 ? 'legendary' : 'possible';
     const path = 'src/data/achievements.ts';
     let src = readFileSync(path, 'utf8');
     let rewritten = 0;
     ACHIEVEMENTS.forEach(a => {
-        const want = label(rate(a.id));
+        const want = label(a.id, rate(a.id));
         if (want === a.rarity) return;
         // Anchored on the id so the replacement cannot wander to another entry:
         // `id: 'x',` ... the next `rarity: '...'` after it.

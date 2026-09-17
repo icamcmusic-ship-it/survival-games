@@ -808,6 +808,10 @@ export function tickGarrisons(ctx: SimContext) {
         const current = state.garrisonedEdges[key];
         if (holder && holder.allianceId !== current) {
             state.garrisonedEdges[key] = holder.allianceId!;
+            // §25: and the permanent record, which is what anything asking
+            // whether a pass was ever held this run should read.
+            state.garrisonsFormed = state.garrisonsFormed ?? [];
+            if (!state.garrisonsFormed.includes(key)) state.garrisonsFormed.push(key);
             ctx.logEvent(
                 `${holder.name}'s people have settled onto the ground between ${a} and ${b}. Anybody who wants through it now has to ask them.`,
                 [holder.id],

@@ -1,6 +1,7 @@
 import { Arena, Item, GameConfig, Build } from '../models/types';
 import { ROLLABLE_TRAITS } from './traits';
 import { withExtraEdgeRules } from './arenaEdges';
+import { NEW_ARENAS } from './arenasNew';
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
     districtCount: 12,
@@ -12,7 +13,14 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     plainNames: false,
 };
 
-export const BUILDS: Build[] = ['Frail', 'Slight', 'Average', 'Athletic', 'Stocky', 'Muscular'];
+/**
+ * §6 (requests): the legacy build ladder, in order, eleven rungs wide. Ordered
+ * lightest to heaviest — several UI sites sort by index into this array.
+ */
+export const BUILDS: Build[] = [
+    'Skeletal', 'Frail', 'Slight', 'Wiry', 'Lean', 'Average',
+    'Athletic', 'Stocky', 'Burly', 'Muscular', 'Hulking',
+];
 
 /**
  * §Special requests: the arenas a brand-new account can pick from.
@@ -1297,6 +1305,10 @@ export const ARENAS: Arena[] = [
  * together and so `check-arena-layout` can assert things about it as a set.
  * An edge an arena declares for itself always wins — see `withExtraEdgeRules`.
  */
+// §1 (requests): the five new arenas, spread in before the edge-rule pass so
+// they are subject to exactly the same treatment as every arena above them.
+ARENAS.push(...NEW_ARENAS);
+
 ARENAS.forEach((arena, i) => { ARENAS[i] = withExtraEdgeRules(arena); });
 
 /**

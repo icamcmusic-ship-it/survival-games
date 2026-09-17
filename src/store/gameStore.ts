@@ -432,12 +432,20 @@ function settleSideBets(state: GameState, sideBets: SideBet[]): { winnings: numb
 }
 
 function resolveBets(state: GameState) {
-    const { bets, sideBets, coins: coinsAtStart, betsResolved } = gameStore.getState();
+    const { bets, sideBets, coins: coinsAtStart, betsResolved, lastRunOutcome } = gameStore.getState();
     if (betsResolved) return;
     const side = settleSideBets(state, sideBets);
-    if (side.winnings > 0) gameActions.setCoins(coinsAtStart + side.winnings);
-    if (side.lines.length > 0) {
-        gameStore.setState({ betWonMessage: side.lines.join(' '), sideBets: [] });
+    // §20 (requests): what the run's first-time achievements are worth. Paid
+    // here rather than in `commitRun` because this is where the wallet lives,
+    // and behind the same `betsResolved` guard as everything else on this path
+    // so a re-render can never pay for the same discoveries twice.
+    const earned = lastRunOutcome?.achievementCoins ?? 0;
+    if (side.winnings + earned > 0) gameActions.setCoins(coinsAtStart + side.winnings + earned);
+    const achievementLine = earned > 0
+        ? [`The Capitol pays ${earned} Capitol Coins for ${lastRunOutcome!.newAchievements.length} first-time achievement${lastRunOutcome!.newAchievements.length === 1 ? '' : 's'}.`]
+        : [];
+    if (side.lines.length > 0 || achievementLine.length > 0) {
+        gameStore.setState({ betWonMessage: [...side.lines, ...achievementLine].join(' '), sideBets: [] });
     }
     const coins = gameStore.getState().coins;
     if (Object.keys(bets).length === 0) {
@@ -468,13 +476,14 @@ function resolveBets(state: GameState) {
             betWonMessage: [
                 ...payouts.map(({ w, winnings }) => `${w.name} of District ${w.district} came home. Your ${bets[w.id].stake}-coin wager pays out ${winnings} Capitol Coins at ${bets[w.id].mult.toFixed(1)}x.`),
                 ...side.lines,
+                ...achievementLine,
             ].join(' '),
             betsResolved: true,
         });
     } else {
         const staked = Object.values(bets).reduce((a, b) => a + b.stake, 0);
         gameStore.setState({
-            betWonMessage: [`None of your ${staked} coins came back. The Capitol thanks you for your contribution.`, ...side.lines].join(' '),
+            betWonMessage: [`None of your ${staked} coins came back. The Capitol thanks you for your contribution.`, ...side.lines, ...achievementLine].join(' '),
             betsResolved: true,
         });
     }
@@ -1133,8 +1142,13 @@ export const gameActions = {
             simulator.processBloodbath();
         } else if (state.phase === 'epilogue') {
             state.phase = 'ended';
-            resolveBets(state);
+            // §20 (requests): commit first. `commitVictory` is what decides
+            // which achievements this run earned for the first time, and
+            // `resolveBets` is what pays for them — so the old order paid out
+            // against a `lastRunOutcome` from the *previous* run, or from
+            // nothing at all on a first run.
             commitVictory(state);
+            resolveBets(state);
         } else if (state.phase === 'ended') {
             return;
         } else {
@@ -1220,8 +1234,10 @@ export const gameActions = {
             }
 
             if (state.phase === 'ended') {
-                resolveBets(state);
+                // §20: same order as the phase-step path above, and for the
+                // same reason — the outcome has to exist before it is paid for.
                 commitVictory(state);
+                resolveBets(state);
             } else if (guard <= 0) {
                 // The ceiling tripped. Silently falling out of the loop left
                 // bets unresolved, no victory committed, and a half-finished run

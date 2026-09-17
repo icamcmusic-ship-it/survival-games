@@ -772,7 +772,10 @@ export function dropSupplies(ctx: SimContext) {
     // horn when it lands takes one — so the hub reads as this arena's hub
     // rather than as the same anonymous crates in all thirty-seven.
     const bias = state.arena.restockBias ?? [];
-    const takers = state.tributes.filter(t => t.status === 'alive' && t.zone === cornucopia.name);
+    // §1 `bloodPrice`: a restock is only a restock for the tributes the horn
+    // has opened for. Everyone else watches the crates land.
+    const paid = (t: Tribute) => !arenaHasLaw(state, 'bloodPrice') || t.kills > 0;
+    const takers = state.tributes.filter(t => t.status === 'alive' && t.zone === cornucopia.name && paid(t));
     let flavourNote = '';
     if (bias.length > 0 && takers.length > 0) {
         const granted: string[] = [];
@@ -786,8 +789,14 @@ export function dropSupplies(ctx: SimContext) {
         if (granted.length > 0) flavourNote = ` ${granted.join('; ')}.`;
     }
 
+    // §22: the takers are this line's cast list and were only named by the
+    // optional bias note, so an arena without a `restockBias` logged a drop
+    // involving four people and named none of them.
+    const present = takers.map(t => t.name).join(', ');
     ctx.logEvent(
-        `A supply drop lands over the Cornucopia. Everyone in range of it just recalculated the risk.${flavourNote}`,
+        `A supply drop lands at the Cornucopia.`
+        + (present ? ` ${present} ${takers.length === 1 ? 'is' : 'are'} there for it.` : ' Nobody is there for it.')
+        + flavourNote,
         takers.map(t => t.id),
         { important: true, zone: cornucopia.name, category: 'arena' }
     );

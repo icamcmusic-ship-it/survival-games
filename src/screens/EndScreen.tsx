@@ -7,7 +7,16 @@ import { ChronicleExport } from '../components/ChronicleExport';
 import { VictorArc } from '../components/VictorArc';
 import { TributeModal } from '../components/TributeModal';
 import { Trophy, MapPin, Swords, Skull, RotateCcw, Repeat, Award } from 'lucide-react';
-import { META_ACHIEVEMENTS, ACHIEVEMENTS } from '../data/achievements';
+import { META_ACHIEVEMENTS, ACHIEVEMENTS, AchievementRarity } from '../data/achievements';
+import { COIN_ECONOMY } from '../data/balance';
+
+/** §19/§20: the same four colours the record book uses, so the two pages agree. */
+const RARITY_COLOR: Record<AchievementRarity, string> = {
+    common: 'var(--color-ink-500)',
+    rare: 'var(--cat-alliance)',
+    legendary: 'var(--gold-deep)',
+    possible: 'var(--red)',
+};
 import { RECORD_DEFS } from '../utils/panemStorage';
 import { gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
@@ -241,15 +250,37 @@ export function EndScreen({
                     {outcome && (outcome.newAchievements.length > 0 || outcome.brokenRecords.length > 0) && (
                         <div className="md:col-span-2 panel p-5 space-y-3"
                             style={{ borderColor: 'var(--cat-alliance)', borderWidth: '3px' }}>
-                            <span className="eyebrow" style={{ color: 'var(--cat-alliance)' }}>
-                                First time you have seen this
-                            </span>
+                            <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                                <span className="eyebrow" style={{ color: 'var(--cat-alliance)' }}>
+                                    First time you have seen this
+                                </span>
+                                {/* §20 (requests): what the Capitol paid for them.
+                                    Shown on the same panel as the unlocks rather than
+                                    buried in the wager message, because the reward
+                                    only makes sense next to the thing it rewarded. */}
+                                {outcome.achievementCoins > 0 && (
+                                    <span className="chip chip-gold">
+                                        +{outcome.achievementCoins} <span aria-hidden="true">⨷</span>
+                                    </span>
+                                )}
+                            </div>
                             {outcome.newAchievements.map(id => {
                                 const found = ACHIEVEMENTS.find(a => a.id === id) ?? META_ACHIEVEMENTS.find(a => a.id === id);
                                 if (!found) return null;
+                                const rarity = 'rarity' in found ? found.rarity : undefined;
                                 return (
                                     <div key={id} className="panel-flush p-2.5">
-                                        <div className="text-sm font-bold text-[var(--ink)]">{found.name}</div>
+                                        <div className="flex items-baseline gap-2 flex-wrap">
+                                            <div className="text-sm font-bold text-[var(--ink)]">{found.name}</div>
+                                            {rarity && (
+                                                <span className="rarity-chip" style={{ ['--rarity' as string]: RARITY_COLOR[rarity] }}>
+                                                    {rarity === 'possible' ? 'Possible?' : rarity}
+                                                </span>
+                                            )}
+                                            <span className="text-[10px] font-mono text-[var(--gold-deep)]">
+                                                +{COIN_ECONOMY.achievementReward[rarity ?? 'common']} ⨷
+                                            </span>
+                                        </div>
                                         <div className="text-[11px] text-[var(--color-ink-500)]">{found.hint}</div>
                                     </div>
                                 );

@@ -63,7 +63,6 @@ export function DossierPanel({
     allianceAccent,
     oddsLadder,
     oddsMovement,
-    nearMisses,
     onGamemakerEvent,
 }: {
     gameState: GameState;
@@ -73,7 +72,6 @@ export function DossierPanel({
     allianceAccent: (allianceId?: string) => string | undefined;
     oddsLadder: Array<{ tribute: Tribute; pct: number; mult: number }>;
     oddsMovement: Record<string, number>;
-    nearMisses: Array<{ id: string; name: string; detail: string }>;
     onGamemakerEvent: (type: GamemakerEventType, targetId?: string) => void;
 }) {
     const followedId = useStore(chronicleStore, s => s.followedId);
@@ -643,15 +641,11 @@ export function DossierPanel({
                         </Glossed>
                     </p>
                 )}
-                {nearMisses.length > 0 && (
-                    <div className="mt-3 space-y-1" role="group" aria-label="Achievements this run is close to earning" title="Achievements this run is close to earning">
-                        {nearMisses.map(m => (
-                            <p key={m.id} className="text-[11px] text-[var(--color-ink-500)]">
-                                <span className="text-[var(--ink)] font-semibold">{m.name}</span>{' — '}{m.detail}
-                            </p>
-                        ))}
-                    </div>
-                )}
+                {/* §10 (requests): the "close to earning" list used to live
+                    here, mid-run. It is gone: an achievement named as a near
+                    miss on day six frequently gives away which of the survivors
+                    is about to win, and the end screen already shows the same
+                    list at the one moment it costs the reader nothing. */}
                 {gameState.audienceInterest !== undefined && (
                     <Explainer
                         align="left"
