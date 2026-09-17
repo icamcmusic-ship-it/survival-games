@@ -3065,50 +3065,70 @@ export const TRAINING_STRUGGLE: Record<string, string[]> = {
 };
 
 /** Two people at the same station who end up talking. */
+/**
+ * §12/§21 (requests): the training floor, reported.
+ *
+ * `{reason}` is new and is the point of the rewrite. The social engine already
+ * knew *why* two tributes were getting on — same district, neighbouring
+ * districts that trade, both from the outer ring, both twelve, one of them
+ * rated the other in the observation pass — and none of that reached the log,
+ * so three days of pairings read as twenty-four interchangeable people being
+ * vaguely warm at each other. See `floorReason` in phases/training.ts.
+ */
 export const TRAINING_MINGLE: string[] = [
-    '{tribute} and {other} spend most of the {station} session working the same drill, and by the end of it they are talking.',
-    '{other} shows {tribute} a better grip at the {station}. It takes ten seconds and it is the first kind thing anybody has done for {tribute} in a week.',
-    '{tribute} and {other} end up partnered at the {station}, and neither of them makes it awkward, which is its own small mercy.',
-    'At the {station}, {other} says something to {tribute} that makes them laugh. Twenty-two other people hear it.',
-    '{tribute} and {other} take turns at the {station} without either of them having agreed to. It just happens that way.',
-    '{other} waits for {tribute} to finish at the {station} rather than pushing past. That is a decision, and {tribute} notices it.',
-    '{tribute} and {other} compare notes at the {station} in low voices, and the Careers across the room notice them doing it.',
-    'The {station} puts {tribute} and {other} shoulder to shoulder for an hour. They spend most of it in silence and come away easier with each other anyway.',
-    '{other} corrects {tribute} at the {station} without making a thing of it, and {tribute} says thank you like they mean it.',
-    '{tribute} asks {other} something at the {station} that has nothing to do with training at all.',
-    'At the {station}, {tribute} and {other} discover they are from districts that supply each other, and talk about it for longer than either expected.',
-    '{other} and {tribute} work the {station} together well enough that a trainer comments on it, which neither of them wanted.',
-    '{tribute} covers for {other} at the {station} when a trainer looks over. It is nothing. It is not nothing.',
-    'Nobody planned it, but {tribute} and {other} spend the whole {station} rotation next to each other, and something in both of them relaxes slightly.',
-    '{tribute} and {other} do not exchange names at the {station}. They exchange something, though.',
+    '{tribute} and {other} work the same drill at the {station} for most of the session. {reason}',
+    '{other} shows {tribute} a better grip at the {station}. {reason}',
+    '{tribute} and {other} are partnered at the {station} and get on with it. {reason}',
+    '{other} says something at the {station} that makes {tribute} laugh. {reason}',
+    '{tribute} and {other} take turns at the {station} without arranging it. {reason}',
+    '{other} waits for {tribute} to finish at the {station} rather than pushing past. {reason}',
+    '{tribute} and {other} compare notes at the {station} in low voices. {reason}',
+    '{tribute} and {other} spend an hour shoulder to shoulder at the {station} without speaking. {reason}',
+    '{other} corrects {tribute} at the {station}. {tribute} thanks them. {reason}',
+    '{tribute} asks {other} something at the {station} that is not about training. {reason}',
+    '{tribute} and {other} find out at the {station} that their districts supply each other. {reason}',
+    'A trainer comments on how well {tribute} and {other} work the {station} together. {reason}',
+    '{tribute} covers for {other} at the {station} when a trainer looks over. {reason}',
+    '{tribute} and {other} spend the whole {station} rotation next to each other. {reason}',
+    '{tribute} and {other} do not exchange names at the {station}, and work together anyway. {reason}',
 ];
-
-/** A pre-agreement, struck on the floor. */
 export const TRAINING_TEAMUP: string[] = [
-    '{tribute} and {other} come to an understanding at the {station}: at the gong, they find each other. Nothing is written down. Nothing needs to be.',
-    'It is not an alliance yet, because nothing is an alliance until the gong. But {tribute} and {other} have agreed on where to meet.',
-    '{tribute} says it first, at the {station}, and {other} does not say no: whatever happens in the first minute, they run the same direction.',
-    'By the end of the {station} rotation, {tribute} and {other} have a plan for the bloodbath. It is a bad plan. It is better than not having one.',
-    '{other} makes {tribute} an offer at the {station} and gives them the rest of the day to think about it. {tribute} does not need it.',
-    '{tribute} and {other} shake on something at the {station}, briefly, and then go back to pretending they have not.',
-    'The agreement between {tribute} and {other} takes about four words. Everything that matters about it is in the look afterwards.',
-    '{tribute} and {other} decide, at the {station}, that two is better odds than one. Everybody who has ever decided that has been half right.',
-    'Careers do this on day one and everybody else does it late and badly. {tribute} and {other} do it at the {station}, and mean it.',
-    '{tribute} tells {other} where they will be standing when the plates go down. That is the whole of the arrangement.',
-    // §1.6: topped up past the repetition floor. A run averages ~650 log
-    // lines; a ten-entry pool repeats inside a single Games, and the
-    // training pools are re-read many times inside one phase.
-    '{tribute} and {other} work out at the {station} that they need exactly opposite things, which is the only durable basis for anything in here.',
-    'Nobody sees {tribute} and {other} agree at the {station}, which is how they intended it.',
-    '{other} asks {tribute} one question at the {station} and gets one answer, and that is the whole negotiation.',
-    '{tribute} and {other} rehearse the first ninety seconds at the {station} until it is boring. Boring is the point.',
-    'The agreement between {tribute} and {other} has one clause and it is about the second minute, not the first.',
-    '{tribute} names a landmark at the {station}. {other} repeats it back wrong, then right, and that is them done.',
-    '{tribute} and {other} have both been told by their mentors not to do this. They do it at the {station} anyway, quickly.',
-    'There is no trust between {tribute} and {other} at the {station}, only arithmetic, and the arithmetic holds for now.',
+    '{tribute} and {other} agree at the {station} to find each other at the gong. {reason}',
+    '{tribute} and {other} agree where to meet in the first minute. Nothing is written down. {reason}',
+    '{tribute} proposes it at the {station} and {other} agrees: they run the same direction off the plates. {reason}',
+    '{tribute} and {other} have a plan for the bloodbath by the end of the {station} rotation. {reason}',
+    '{other} makes {tribute} an offer at the {station}. {tribute} accepts the same day. {reason}',
+    '{tribute} and {other} shake on it at the {station}. {reason}',
+    'The agreement between {tribute} and {other} takes four words at the {station}. {reason}',
+    '{tribute} and {other} agree at the {station} that two is better odds than one. {reason}',
+    '{tribute} and {other} strike a bloodbath pact at the {station}. {reason}',
+    '{tribute} tells {other} where they will be standing when the plates go down. {reason}',
+    '{tribute} and {other} work out at the {station} that they need opposite things. {reason}',
+    '{tribute} and {other} agree at the {station} without anybody seeing it. {reason}',
+    '{other} asks {tribute} one question at the {station} and gets one answer. That is the agreement. {reason}',
+    '{tribute} and {other} rehearse the first ninety seconds at the {station} until it is automatic. {reason}',
+    'The agreement between {tribute} and {other} covers the second minute, not the first. {reason}',
+    '{tribute} names a landmark at the {station}. {other} repeats it back. {reason}',
+    '{tribute} and {other} have both been told by their mentors not to do this, and do it anyway. {reason}',
+    '{tribute} and {other} agree terms at the {station}. There is no trust in it, only arithmetic. {reason}',
 ];
-
-/** Two people who came into this building already disliking each other. */
+export const TRAINING_OBSERVATION: string[] = [
+    '{tribute} spends an hour of day {day} watching the floor instead of training.',
+    'By the end of day {day}, {tribute} has worked out which three tributes in the room they cannot fight.',
+    '{tribute} watches {other} at the {station} on day {day} and revises their estimate of them upward.',
+    '{tribute} notices something about {other} on day {day} that {other} was not showing on purpose.',
+    'On day {day}, {tribute} works out who in the room is fast, who is strong, and who is pretending.',
+    '{other} does something at the {station} on day {day} that {tribute} makes a note of.',
+    '{tribute} trains badly on day {day} and watches everybody else closely while doing it.',
+    'On day {day}, {tribute} stops watching the weapons and starts watching the faces.',
+    '{tribute} sees {other} succeed at the {station} on day {day} and files it.',
+    'On day {day}, {tribute} decides the most dangerous tribute in the room is not the one everybody is watching.',
+    '{tribute} watches {other} at the {station} on day {day} and does not think much of what they see.',
+    '{tribute} counts the tributes on day {day} who could beat them in a fight. The number is not small.',
+    '{other} catches {tribute} watching them at the {station} on day {day}. Neither says anything.',
+    '{tribute} spends day {day} learning names and districts rather than knots and blades.',
+    '{tribute} watches {other} at the {station} on day {day} and marks them as somebody to avoid.',
+];
 export const TRAINING_ALTERCATION: Record<string, string[]> = {
     generic: [
         '{tribute} and {other} end up at the {station} at the same time, which surprises nobody, and it goes exactly the way everybody expected. Trainers get between them inside four seconds.',
@@ -3145,31 +3165,6 @@ export const TRAINING_ALTERCATION: Record<string, string[]> = {
 };
 
 /** What a tribute takes away from watching everybody else. */
-export const TRAINING_OBSERVATION: string[] = [
-    '{tribute} spends an hour of day {day} not training at all, just watching, and comes away with a list.',
-    'By the end of day {day}, {tribute} knows exactly which three people in this room they cannot fight.',
-    '{tribute} watches {other} at the {station} on day {day} and revises their estimate sharply upward.',
-    'What {tribute} notices about {other} on day {day} is not what {other} was showing.',
-    '{tribute} counts on day {day}: who is fast, who is strong, who is pretending. The last list is the longest.',
-    '{other} does something at the {station} on day {day} that {tribute} will still be thinking about in the arena.',
-    '{tribute} makes no impression on anybody on day {day} and spends the whole time making impressions of everybody else.',
-    'Day {day}, and {tribute} has stopped watching the weapons and started watching the faces.',
-    '{tribute} sees {other} succeed at the {station} and files it under the only heading that matters this week.',
-    'On day {day}, {tribute} works out that the most dangerous person in the room is not the one everyone is looking at.',
-    // §1.6: topped up past the repetition floor. A run averages ~650 log
-    // lines; a ten-entry pool repeats inside a single Games, and the
-    // training pools are re-read many times inside one phase.
-    'On day {day}, {tribute} spends the whole {station} rotation watching hands rather than faces. Hands lie less.',
-    '{tribute} logs {other} on day {day} not for what they can do but for what they refuse to try.',
-    '{tribute} learns more on day {day} from who {other} eats lunch with than from anything either of them does at the {station}.',
-    'By day {day}, {tribute} has ranked the room. They will be wrong about two of them, and right about the rest.',
-    '{other} catches {tribute} watching on day {day}. Neither of them says anything, and both of them note it.',
-    '{tribute} spends day {day} finding out which of them can go all day and which of them is fast for ten minutes.',
-    'The thing {tribute} notices about {other} at the {station} on day {day} is a limp that is not there when {other} thinks nobody is looking.',
-    'Day {day}: {tribute} stops trying to be good at the {station} and starts trying to be forgettable at it.',
-    '{tribute} watches the Careers correct each other on day {day} and learns the shape of the pack before it exists.',
-    'On day {day}, {tribute} writes nothing down, because writing it down is how you get caught knowing it.',
-];
 
 /** The dining hall, the quarters, and the hours nobody trains in. */
 export const TRAINING_EVENING: Record<string, string[]> = {

@@ -5358,6 +5358,29 @@ export const TRAINING = {
      * multiplier, which is what stops the pack being on first-name terms with
      * the whole floor by day three.
      */
+    /**
+     * §21 (requests): what two tributes have in common, as a multiplier on the
+     * training floor's social rolls and on the warmth they get out of them.
+     *
+     * Each is a reason a reader of the finished chronicle can follow, which is
+     * the point — the engine held every one of these facts and none of them
+     * reached the roll or the log, so every pairing on the floor was equally
+     * likely and equally unexplained. See `floorAffinity`.
+     */
+    affinityPartner: 2.6,      // the other tribute from their own district
+    affinityNeighbour: 1.5,    // districts that work next to each other
+    affinityYoung: 2,          // both at the bottom of the age band
+    affinityRated: 1.7,        // one of them rated the other in the observation pass
+    affinityOuter: 1.25,       // both outer-district, neither trained for this
+    /** Age at or below which two tributes count as the young ones in the room. */
+    affinityYoungAge: 13,
+    /** Respect at or above which somebody counts as having rated somebody else. */
+    affinityRespect: 12,
+    /** District at or above which a tribute counts as outer for this purpose. */
+    affinityOuterFrom: 7,
+    /** §21: mutual regard at or below which the digest calls two tributes bad blood. */
+    digestFeudRegard: -15,
+
     careerOutlierMingle: 0.08,
     careerStrongOutlierMingle: 0.55,
     /** Training score at or above which a Career takes an outsider seriously. */

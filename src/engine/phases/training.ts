@@ -10,7 +10,7 @@ import { FEAR, PREGAMES, PRE_ARENA, RESPECT, TRAINING, TRAINING_FLOOR, TRAINING_
 import { addFear, reduceFear } from '../fear';
 import { strengthCapForAge } from '../generator';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../../data/districts';
-import { adjustMutual, adjustRel, adjustRespect, getRel } from '../relationships';
+import { adjustMutual, adjustRel, adjustRespect, getRel, respectOf } from '../relationships';
 import { noteContact, noteFight } from '../memory';
 import { archetypeAntipathy } from '../../data/archetypes';
 import { clampTribute } from '../vitals';
@@ -409,11 +409,18 @@ function runFloorSocial(
                 // agreement. Otherwise the Career is not interested, and the
                 // measured effect of the old uniform roll was a floor on which
                 // the pack was on cordial terms with half the field by day three.
-                if (!ctx.rng.chance(TRAINING.mingleChance * mingleWillingness(a, b))) continue;
-                adjustMutual(ctx.state, a, b, TRAINING.mingleWarmth);
+                // §21: and how much they have in common, which the roll and
+                // the line now agree about because both read the same call.
+                const affinity = floorAffinity(a, b);
+                if (!ctx.rng.chance(TRAINING.mingleChance * mingleWillingness(a, b) * affinity.weight)) continue;
+                // Warmth scales with the reason, so a district partner and two
+                // strangers at the same bench are no longer the same event.
+                adjustMutual(ctx.state, a, b, Math.round(TRAINING.mingleWarmth * affinity.weight));
                 noteContact(ctx.state, a, b);
                 ctx.logEvent(
-                    fillLine(ctx.pickText(TRAINING_MINGLE), { tribute: a.name, other: b.name, station }),
+                    fillLine(ctx.pickText(TRAINING_MINGLE), {
+                        tribute: a.name, other: b.name, station, reason: affinity.reason,
+                    }),
                     [a.id, b.id],
                     { category: 'training' }
                 );
@@ -433,7 +440,9 @@ function runFloorSocial(
                 recordPactTerms(ctx, a, b, day + 1);
                 adjustMutual(ctx.state, a, b, TRAINING.pactWarmth);
                 ctx.logEvent(
-                    fillLine(ctx.pickText(TRAINING_TEAMUP), { tribute: a.name, other: b.name, station }),
+                    fillLine(ctx.pickText(TRAINING_TEAMUP), {
+                        tribute: a.name, other: b.name, station, reason: affinity.reason,
+                    }),
                     [a.id, b.id],
                     { important: true, category: 'training' }
                 );
@@ -575,6 +584,48 @@ function eveningBeat(ctx: SimContext, day: number) {
  * This is the agreement that makes it likely, and the moment the rest of the
  * floor learns who has already decided about them.
  */
+/**
+ * §21 (requests): why these two are getting on, and how much.
+ *
+ * The social engine already held every one of these facts and none of them
+ * reached either the rolls or the log, so three days of pairings came out as
+ * twenty-four interchangeable people being uniformly warm at each other, and
+ * the chronicle could not say why any alliance existed. This returns both the
+ * weight and the sentence, from the same data, so the two can never disagree.
+ *
+ * Deliberately a small list of legible reasons rather than a scoring model:
+ * the point is that a reader of the finished log can follow it.
+ */
+function floorAffinity(a: Tribute, b: Tribute): { weight: number; reason: string } {
+    // District partners have known each other since before the reaping.
+    if (a.district === b.district) {
+        return { weight: TRAINING.affinityPartner, reason: `They are both from District ${a.district}.` };
+    }
+    // Districts that trade with each other: 3 and 6, 7 and 8, 9 and 10, 4 and 11.
+    if (Math.abs(a.district - b.district) === 1) {
+        return {
+            weight: TRAINING.affinityNeighbour,
+            reason: `Districts ${Math.min(a.district, b.district)} and ${Math.max(a.district, b.district)} work next to each other at home.`,
+        };
+    }
+    // Two twelve-year-olds in a room of eighteen-year-olds find each other.
+    if (a.age <= TRAINING.affinityYoungAge && b.age <= TRAINING.affinityYoungAge) {
+        return { weight: TRAINING.affinityYoung, reason: `${a.name} is ${a.age} and ${b.name} is ${b.age}. Everybody else in the room is older.` };
+    }
+    // Somebody who rates you is somebody who will talk to you.
+    const rated = Math.max(respectOf(a, b.id), respectOf(b, a.id));
+    if (rated >= TRAINING.affinityRespect) {
+        const admirer = respectOf(a, b.id) >= respectOf(b, a.id) ? a : b;
+        const rate = admirer === a ? b : a;
+        return { weight: TRAINING.affinityRated, reason: `${admirer.name} rated ${rate.name} on the floor yesterday.` };
+    }
+    // The outer districts have the reaping in common and not much else.
+    if (!isCareerish(a) && !isCareerish(b) && a.district >= TRAINING.affinityOuterFrom && b.district >= TRAINING.affinityOuterFrom) {
+        return { weight: TRAINING.affinityOuter, reason: 'Neither of them volunteered and neither of them has been trained for this.' };
+    }
+    return { weight: 1, reason: 'Neither of them has a reason beyond being put at the same station.' };
+}
+
 /** A Career by district or by temperament — both read as one on the floor. */
 function isCareerish(t: Tribute): boolean {
     return t.isCareer || t.archetype === 'career';
@@ -615,8 +666,9 @@ function declareCareerPact(ctx: SimContext, cast: Tribute[]) {
         recordPactTerms(ctx, a, b, TRAINING.careerPactDay);
     }));
     ctx.logEvent(
-        `The Careers find each other before the first rotation is over — ${careers.map(c => `${c.name} (D${c.district})`).join(', ')} — `
-        + `and spend the rest of the day training as a unit in the middle of the floor, where everybody has to walk around them.`,
+        // §12: the fact, which is the part that matters.
+        `The Careers form a pack on the training floor: ${careers.map(c => `${c.name} (D${c.district})`).join(', ')}. `
+        + `They train together for the rest of the day.`,
         careers.map(c => c.id),
         { important: true, category: 'training' }
     );
@@ -808,10 +860,78 @@ const ROUTINE_SESSIONS = [
     'They keep to the {station} and to what they know, which is the sensible thing to do and reads as exactly that.',
 ];
 
+/**
+ * §21 (requests): the day's social state, in one line.
+ *
+ * The training phase emits somewhere north of eighty lines a day — a station
+ * outcome, a mingle or an altercation per pair, an observation, an evening
+ * beat — and none of them is a summary. Read back after the Games, that is a
+ * transcript rather than a record: the reader can see that Leaf and Ash talked
+ * at the ropes on day two and cannot see who ended the week with an ally and
+ * who ended it with nobody, which is the only thing about the training floor
+ * that predicts anything.
+ *
+ * So one line per day, `important`, naming the pairs that actually agreed
+ * something, the tributes who fell out, and the count still unattached. Every
+ * number in it is read off the same state the arena will run on — no separate
+ * bookkeeping, nothing that can drift from what happens next.
+ */
+function floorDigest(ctx: SimContext, day: number, cast: Tribute[]) {
+    const seen = new Set<string>();
+    const pairs: string[] = [];
+    cast.forEach(t => (t.trainingPact ?? []).forEach(id => {
+        const other = cast.find(o => o.id === id);
+        if (!other) return;
+        const key = [t.id, other.id].sort().join('|');
+        if (seen.has(key)) return;
+        seen.add(key);
+        // The Career pact is its own announcement and would otherwise fill the
+        // whole digest with the same six names every day.
+        if (isCareerish(t) && isCareerish(other)) return;
+        pairs.push(`${t.name} (D${t.district}) and ${other.name} (D${other.district})`);
+    }));
+
+    // Somebody counts as unattached when nobody has agreed anything with them.
+    const attached = new Set<string>();
+    cast.forEach(t => {
+        if (isCareerish(t) && cast.filter(isCareerish).length > 1) { attached.add(t.id); return; }
+        if ((t.trainingPact ?? []).length > 0) attached.add(t.id);
+    });
+    const alone = cast.filter(t => !attached.has(t.id));
+
+    // The sharpest mutual dislikes on the floor, which is where the arena's
+    // first grudges come from.
+    const feuds: string[] = [];
+    cast.forEach(a => cast.forEach(b => {
+        if (a.id >= b.id) return;
+        if (Math.min(getRel(a, b.id), getRel(b, a.id)) > TRAINING.digestFeudRegard) return;
+        feuds.push(`${a.name} and ${b.name}`);
+    }));
+
+    const parts = [
+        `End of training day ${day}.`,
+        pairs.length > 0
+            ? `Agreements standing: ${pairs.join('; ')}.`
+            : 'No agreements between tributes outside the Career pack.',
+        feuds.length > 0 ? `Bad blood: ${feuds.slice(0, 3).join('; ')}.` : '',
+        alone.length > 0
+            ? `${alone.length} tribute${alone.length === 1 ? '' : 's'} with nobody: ${alone.map(t => t.name).join(', ')}.`
+            : 'Every tribute on the floor has somebody.',
+    ].filter(Boolean);
+
+    // §22: the cast list is who the line actually names, not everyone who was
+    // in the room. Claiming all twenty-four would put this digest into every
+    // tribute's own chronicle filter while naming three of them, which is
+    // exactly the defect `npm run test:unnamed` exists to catch — and it did.
+    const named = new Set<string>();
+    cast.forEach(t => { if (parts.join(' ').includes(t.name)) named.add(t.id); });
+    ctx.logEvent(parts.join(' '), [...named], { important: true, category: 'training' });
+}
+
 const DAY_HEADLINES = [
-    'DAY ONE ON THE TRAINING FLOOR. The doors open on twenty-four people who have never been in a room like this and will never be in one again.',
-    'DAY TWO. The floor has settled. Everybody now knows where they are going first and, more importantly, who else is going there.',
-    'DAY THREE. Last day before the private sessions, and it shows in everything anybody does.',
+    'TRAINING, DAY ONE. Every tribute is on the floor together for the first time.',
+    'TRAINING, DAY TWO. The tributes have settled into stations and into groups.',
+    'TRAINING, DAY THREE. The last day before the private sessions with the Gamemakers.',
 ];
 
 export function processTraining(ctx: SimContext) {
@@ -882,6 +1002,8 @@ export function processTraining(ctx: SimContext) {
         runFloorSocial(ctx, day, stationsToday, stationNames, cast);
         observeFloor(ctx, day, stationsToday, stationNames, cast);
         eveningBeat(ctx, day);
+        // §21: and then say, once, what the day actually came to.
+        floorDigest(ctx, day + 1, cast);
     }
 
     // Attributes settle once, at the end of the three days, rather than being

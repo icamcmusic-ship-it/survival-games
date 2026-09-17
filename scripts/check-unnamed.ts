@@ -34,7 +34,7 @@ import { GameState } from '../src/models/types';
  * beat's opening line named the pair — but every line above it that reads as
  * "somebody" where a name belongs is a line to fix.
  */
-const KNOWN_SHARE = 0.042;
+const KNOWN_SHARE = 0.040;
 
 const RUNS = 40;
 
