@@ -1596,7 +1596,10 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Three Fingers',
         hint: 'See a district give its tribute the salute.',
         category: 'reaping',
-        rarity: 'legendary',
+        // §(requests 21): the salute is written now (it never was), and the
+        // square gives it to the young and to volunteers who are not Careers,
+        // which lands it in a quarter of runs.
+        rarity: 'rare',
         test: state => state.log.some(e => /three[- ]finger/i.test(e.text))
             || state.tributes.some(t => /three[- ]finger|three fingers/i.test(t.reapingNote ?? '')),
     },

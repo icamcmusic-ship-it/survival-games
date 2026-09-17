@@ -121,7 +121,7 @@ const SIGNATURES: Record<string, Signature> = {
         const mark = others(ctx, t).sort((a, b) => a.health - b.health)[0];
         if (!mark) return false;
         say(ctx, t, 'careerDeclaration', [...pack.map(p => p.id), mark.id], { target: mark.name });
-        others(ctx, t).forEach(o => addFear(o, t.id, ARCHETYPE_HOOKS.declarationFear));
+        others(ctx, t).forEach(o => addFear(o, t.id, ARCHETYPE_HOOKS.declarationFear, t));
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
         return true;
     },
@@ -161,7 +161,7 @@ const SIGNATURES: Record<string, Signature> = {
     /** Trickster: the snare nobody watched them build. */
     tricksterSnare: (ctx, t) => {
         say(ctx, t, 'tricksterSnare', [t.id]);
-        others(ctx, t).forEach(o => addFear(o, t.id, ARCHETYPE_HOOKS.snareFear));
+        others(ctx, t).forEach(o => addFear(o, t.id, ARCHETYPE_HOOKS.snareFear, t));
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
         return true;
     },
@@ -206,7 +206,7 @@ const SIGNATURES: Record<string, Signature> = {
         say(ctx, t, 'zealotSermon', [t.id]);
         t.resolve = 100;
         others(ctx, t).forEach(o => {
-            addFear(o, t.id, ARCHETYPE_HOOKS.sermonFear);
+            addFear(o, t.id, ARCHETYPE_HOOKS.sermonFear, t);
             loseSanity(o, ARCHETYPE_HOOKS.sermonSanity);
             clampTribute(o);
         });
@@ -296,7 +296,7 @@ const SIGNATURES: Record<string, Signature> = {
     beastRoar: (ctx, t) => {
         say(ctx, t, 'beastRoar', [t.id]);
         others(ctx, t).forEach(o => {
-            addFear(o, t.id, ARCHETYPE_HOOKS.roarFear);
+            addFear(o, t.id, ARCHETYPE_HOOKS.roarFear, t);
             loseSanity(o, ARCHETYPE_HOOKS.roarSanity);
             clampTribute(o);
         });
@@ -363,7 +363,7 @@ const SIGNATURES: Record<string, Signature> = {
         t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust * 2);
         // ...and every other survivor now knows there is somebody they have
         // never once seen.
-        others(ctx, t).forEach(o => addFear(o, t.id, ARCHETYPE_HOOKS.namingFear));
+        others(ctx, t).forEach(o => addFear(o, t.id, ARCHETYPE_HOOKS.namingFear, t));
         return true;
     },
 

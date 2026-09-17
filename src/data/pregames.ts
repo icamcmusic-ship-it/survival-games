@@ -362,3 +362,22 @@ export const DISTRICT_TOKENS: Record<number, string[]> = {
         'a vial of the black water they pulled up on the day they were born',
     ],
 };
+
+/**
+ * §(requests 21): the salute.
+ *
+ * `three-fingers` has been in the achievement table reading the reaping notes
+ * for a district gesture that no pool has ever written — so it could not be
+ * earned, and the check reported it as unreachable. The gesture is the most
+ * recognisable thing a district does at a reaping; it belongs in the square.
+ */
+export const DISTRICT_SALUTE: string[] = [
+    'Nobody applauds. One by one, the whole square raises three fingers to {tribute}, and holds them there until the escort stops waiting.',
+    'The crowd in District {district} presses three fingers to their lips and lifts them towards {tribute}. The broadcast cuts away from it as fast as it can.',
+    'An old woman at the front raises three fingers. Then the row behind her. Then the whole of District {district}, in silence, at {tribute}.',
+    'Every hand in the square goes up with three fingers on it. {tribute} does not manage to keep their face still, and the Capitol feed holds on it a beat too long.',
+    'The three-finger salute goes up across the square for {tribute}. It is illegal in nothing and permitted in nothing, and the Peacekeepers look at the floor.',
+    'The district gives {tribute} the old salute — three fingers, no sound — and the anchor has to talk over it, and does, badly.',
+    'Three fingers, raised at {tribute} by a square that has not made a sound since the name was read.',
+    'A boy at the back raises three fingers at {tribute} before anybody else does, and gets the whole square to follow him.',
+];

@@ -36,7 +36,8 @@ import { quirkEffect } from '../data/quirks';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
-    persuasion: 'Persuasion',
+    persuasion: 'Persuasion', climbing: 'Climbing', swimming: 'Swimming', crafting: 'Crafting',
+    stealth: 'Stealth', intimidation: 'Intimidation',
 };
 
 /** A5: four tabs, defaulting to Overview. */

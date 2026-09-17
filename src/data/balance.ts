@@ -1004,6 +1004,8 @@ export const SOCIAL_AXES = {
  * that person's zone as happily as anyone else's.
  */
 export const FEAR = {
+    /** §(requests): what a point of intimidation adds to the fear you inflict. */
+    perIntimidationPoint: 0.06,
     max: 100,
     /** Watching someone kill, and losing an exchange to them. */
     witnessedKill: 30,
@@ -2285,6 +2287,8 @@ export const COMBAT = {
  * the game to give teeth to, because every tribute already has a number for it.
  */
 export const STEALTH = {
+    /** §(requests): what a point of the stealth proficiency is worth to concealment. */
+    proficiencyScale: 0.022,
     /** A1/§1.5: awareness swing from posture, migrated out of `stealth.ts`. */
     aggressiveAwareness: 1.5,
     evasiveAwareness: 1,
@@ -5388,6 +5392,10 @@ export const ACHIEVEMENT_BARS = {
 } as const;
 
 export const PREGAMES = {
+    /** §(requests 21): how often a square gives its tribute the salute. */
+    saluteChance: 0.12,
+    saluteExcitement: 3,
+    saluteTrust: 3,
     /**
      * §12: share of tributes whose district token clears the review board.
      *
@@ -5447,6 +5455,51 @@ export const TRAINING = {
      * likely and equally unexplained. See `floorAffinity`.
      */
     affinityPartner: 2.6,      // the other tribute from their own district
+    /**
+     * §(requests 8): how the district partner's pull decays across the three
+     * days, and how willing anybody is to talk to a stranger on each of them.
+     *
+     * Day one is the two of you from home in a room of twenty-two strangers;
+     * by day three the room has sorted itself by who is actually useful and
+     * the partner is just one more person you know. Indexed by day (1-3).
+     */
+    partnerDayDecay: [1.9, 1.25, 0.85],
+    strangerDayWeight: [0.45, 0.85, 1.15],
+    /** §(requests 10): the floor's hostile register. */
+    snubChance: 0.2,
+    threatChance: 0.16,
+    mockChance: 0.16,
+    theftChance: 0.07,
+    exclusionChance: 0.13,
+    /** Regard at or below which a pair is a candidate for the cold beats at all. */
+    negativeRegard: 6,
+    /** What each of the cold beats costs the pair, and what it buys the aggressor. */
+    snubRegard: -5,
+    threatRegard: -11,
+    threatFear: 13,
+    mockRegard: -8,
+    mockExcitement: 2,
+    theftRegard: -14,
+    exclusionRegard: -7,
+    aggressorTrust: 1,
+    /** A pre-Games agreement coming apart before the gong. */
+    pactBreakChance: 0.12,
+    pactBreakRegard: -12,
+    /** §(requests 9): the lunch hour. */
+    lunchPairChance: 0.55,
+    lunchWarmth: 4,
+    lunchAloneSanity: 2,
+    lunchAloneTrust: 1,
+    lunchCareerExcitement: 2,
+    lunchCareerFear: 4,
+    /** §(requests 13): how much likelier a district pair is to strike a pact than strangers. */
+    pactPartnerMultiplier: 3.2,
+    /**
+     * §(requests 13): what a cross-district offer is worth while the tribute's
+     * own district partner is still unspoken for. Not a block — the Careers
+     * cross district lines by definition — but home is tried first.
+     */
+    crossBeforePartner: 0.3,
     affinityNeighbour: 1.5,    // districts that work next to each other
     affinityYoung: 2,          // both at the bottom of the age band
     affinityRated: 1.7,        // one of them rated the other in the observation pass
@@ -5458,6 +5511,8 @@ export const TRAINING = {
     /** District at or above which a tribute counts as outer for this purpose. */
     affinityOuterFrom: 7,
     /** §21: mutual regard at or below which the digest calls two tributes bad blood. */
+    /** §(requests 14): how far a score must sit from the floor's read to be a story. */
+    scoreSurpriseGap: 3.5,
     digestFeudRegard: -15,
 
     careerOutlierMingle: 0.08,
@@ -5628,7 +5683,7 @@ export const TRAINING_SCORE = {
     careerVolunteerFloor: 8,
     careerVolunteerFloorChance: 0.92,
     /** Base odds of clearing the first gate (an 8 becoming a 9). */
-    eliteGateBase: 0.38,
+    eliteGateBase: 0.34,
     /**
      * §7.5: 0.3/0.42 measured out to 11s at 0.59% and 12s at 0.03% of all
      * scores — "unprecedented" had drifted into "unseen". 0.36/0.52 keeps the
@@ -5636,7 +5691,14 @@ export const TRAINING_SCORE = {
      * 0.2-0.4%: an 11 is a talking point most Games have one of, a 12 is a
      * story a Games *can* have.
      */
-    eliteGateDecay: 0.55,
+    /**
+     * §(requests 15): 0.55 put 1.82 scores of ten-or-better in an average
+     * Games and as many as five in a bad one, which is not what a ten is
+     * supposed to mean. At 0.42 each gate is markedly harder than the one
+     * below it: a ten stays a thing most Games have one or two of, an eleven
+     * becomes genuinely rare, and a twelve stays a story.
+     */
+    eliteGateDecay: 0.42,
     eliteGateCap: 0.55,
     /** Points above 8 that are reachable at all: 9 through 12. */
     eliteGates: 4,

@@ -222,7 +222,7 @@ function speakAngle(ctx: SimContext, t: Tribute, angle: SpokenAngle, cast: Tribu
         // the naming has just told everybody else where to look first.
         adjustRel(target, t.id, -INTERVIEWS.hostileDistrust * 2);
         adjustRel(t, target.id, -INTERVIEWS.hostileDistrust);
-        addFear(target, t.id, FEAR.lostExchange);
+        addFear(target, t.id, FEAR.lostExchange, t);
         addFear(t, target.id, FEAR.realityCorrection);
         adjustRespect(target, t.id, RESPECT.witnessKill);
         others.forEach(o => {

@@ -216,7 +216,7 @@ export function tickDowned(ctx: SimContext) {
                     finish(ctx, t, `Killed by ${decider.name} while they lay unconscious`, decider);
                     // Finishing the helpless is not fighting, and the zone knows it.
                     witnesses.forEach(w => {
-                        addFear(w, decider.id, DOWNED.executeFear);
+                        addFear(w, decider.id, DOWNED.executeFear, decider);
                         adjustRespect(w, decider.id, -DOWNED.executeRespect);
                     });
                     loseSanity(decider, DOWNED.executeSanity);

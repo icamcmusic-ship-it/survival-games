@@ -161,7 +161,19 @@ export type InjurySite = keyof Injuries;
  * would be exactly the doubling this pass exists to remove.
  */
 export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking' | 'persuasion'
-    | 'climbing' | 'swimming' | 'crafting';
+    | 'climbing' | 'swimming' | 'crafting'
+    /*
+     * §(requests, deferred from Audit 5 §12.2): the two the engine had the
+     * occasions for and no skill behind.
+     *
+     * `stealth` is an attribute and a whole subsystem — concealment, ambush,
+     * unseen streaks — with nothing that improved by doing it, so a tribute
+     * who had hidden successfully twenty times was no better at hiding than on
+     * day one. `intimidation` is the same story from the other end: fear is
+     * modelled per-target, `Feared` is the second-best earned trait, and
+     * nothing got better at frightening people.
+     */
+    | 'stealth' | 'intimidation';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'

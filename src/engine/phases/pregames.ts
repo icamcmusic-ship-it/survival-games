@@ -3,7 +3,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import {
-    CHARIOT_ANGLES, DISTRICT_TOKENS, GOODBYE_SCENES, REAPING_CROWDS, STYLISTS, TRAIN_SCENES,
+    CHARIOT_ANGLES, DISTRICT_SALUTE, DISTRICT_TOKENS, GOODBYE_SCENES, REAPING_CROWDS, STYLISTS, TRAIN_SCENES,
 } from '../../data/pregames';
 import { PREGAMES } from '../../data/balance';
 import { addExcitement } from '../audience';
@@ -163,6 +163,20 @@ export function processSquare(ctx: SimContext) {
             // a fact about how the country reacted, not a piece of prose.
             if (t.age <= PREGAMES.childAge) addExcitement(t, PREGAMES.childReactionExcitement);
             if (t.volunteered) addExcitement(t, PREGAMES.volunteerExcitement);
+            // §(requests 21): the salute. A square does this for the tribute it
+            // cannot save — the youngest, or somebody who stepped up for
+            // another, and never for a Career who wanted to be there.
+            const saluteWorthy = (t.age <= PREGAMES.childAge || (t.volunteered && !t.isCareer))
+                && !t.isCareer;
+            if (saluteWorthy && ctx.rng.chance(PREGAMES.saluteChance)) {
+                const line = ctx.pickText(DISTRICT_SALUTE)
+                    .split('{tribute}').join(t.name)
+                    .split('{district}').join(String(t.district));
+                ctx.logEvent(line, [t.id], { important: true, category: 'system' });
+                t.reapingNote = `${t.reapingNote ?? ''} The district gave them the three-finger salute.`.trim();
+                addExcitement(t, PREGAMES.saluteExcitement);
+                t.sponsorTrust = Math.min(100, t.sponsorTrust + PREGAMES.saluteTrust);
+            }
         });
     });
 

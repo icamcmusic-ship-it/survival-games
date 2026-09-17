@@ -92,6 +92,7 @@ export function arenaClock(state: GameState): string {
     // window; the clamp is a backstop for an outlier run rather than the
     // normal case it used to be.
     const offset = Math.min(window.minutes * 60 - 1, index * window.secondsPerLine);
+    // balance-exempt: a minute is sixty seconds, not a tunable
     const stamp = clockFace(window.start * 60 + offset, window.secondsPerLine < 60);
     // Day 0 is the ceremonies; everything after it is a day in the arena.
     return state.day <= 0 ? stamp : `D${state.day} ${stamp}`;
