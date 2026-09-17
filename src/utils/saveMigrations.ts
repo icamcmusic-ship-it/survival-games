@@ -540,6 +540,14 @@ function normalizeConfig(raw: unknown): GameConfig {
         sponsorGenerosity: asNum(r.sponsorGenerosity, DEFAULT_GAME_CONFIG.sponsorGenerosity),
         enableFeast: asBool(r.enableFeast, DEFAULT_GAME_CONFIG.enableFeast),
         enableSanity: asBool(r.enableSanity, DEFAULT_GAME_CONFIG.enableSanity),
+        // §(requests 2): the sanity dials. A save written before they existed
+        // carries none of them and resolves to the defaults, which are the
+        // behaviour that save was recorded under.
+        sanityDrainRate: clamp(asNum(r.sanityDrainRate, DEFAULT_GAME_CONFIG.sanityDrainRate ?? 1), 0.25, 2.5),
+        sanityRecoveryRate: clamp(asNum(r.sanityRecoveryRate, DEFAULT_GAME_CONFIG.sanityRecoveryRate ?? 1), 0.25, 2.5),
+        enableHallucinations: asBool(r.enableHallucinations, DEFAULT_GAME_CONFIG.enableHallucinations ?? true),
+        enableBreakdowns: asBool(r.enableBreakdowns, DEFAULT_GAME_CONFIG.enableBreakdowns ?? true),
+        sanityStart: clamp(asNum(r.sanityStart, DEFAULT_GAME_CONFIG.sanityStart ?? 100), 40, 100),
         plainNames: asBool(r.plainNames, DEFAULT_GAME_CONFIG.plainNames ?? false),
     };
 }

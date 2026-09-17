@@ -454,6 +454,62 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         info: 'Things happen to them. The book prices them down, and the field somehow always ends up looking their way.',
         mods: { odds: -0.3, targetDraw: 1.0 },
     },
+    // ---- requests item 3: more traits ---------------------------------
+    // Every row below is built from keys that already have a read site; no
+    // new hooks, so nothing here can be inert the way the pre-A2 table was.
+    'Dead-Eyed': {
+        info: 'Something behind the eyes has already left. Killing costs them almost nothing, and the field can tell.',
+        mods: { killSanity: -0.5, targetDraw: 0.6, allianceAffinity: -0.25, excitement: 0.15 },
+    },
+    'Rope-Handed': {
+        info: 'Grew up on lines and knots. Very hard to hold onto in a grapple, and their traps hold what other people\'s let go.',
+        mods: { wrestle: 2.5, trapSkill: 0.12, highland: 0.6 },
+    },
+    'Cold-Blooded': {
+        info: 'Does not startle and does not warm up. Frightening to stand near and slow to take fright themselves, but nobody wants them at their back.',
+        mods: { fearGain: -0.35, targetDraw: 0.4, allianceAffinity: -0.3, ambush: 0.05 },
+    },
+    'Barterer': {
+        info: 'Talks a price out of anybody. Holds truces together, gets more out of a reconciliation, and knows what a thing is worth.',
+        mods: { persuasion: 1.5, rapport: 0.3, scavenge: 0.1 },
+    },
+    'Feral': {
+        info: 'Raised half-wild, or has decided to be. Dangerous without a weapon, at home off the path, and difficult to talk to.',
+        mods: { unarmedPower: 3, forage: 0.12, allianceAffinity: -0.35, persuasion: -1 },
+    },
+    'Lightfooted': {
+        info: 'Moves without weight. Quieter than they have any right to be, and the ground never gives them away.',
+        mods: { concealment: 0.07, nightMovement: 0.7, fatigueDay: -1 },
+    },
+    'Sunburnt': {
+        info: 'A childhood spent outdoors under it. Heat is an old acquaintance; cold is not.',
+        mods: { heatResist: 0.35, coldResist: -0.15, thirstDrain: -3 },
+    },
+    'Field Surgeon': {
+        info: 'Learned it at home, badly lit, on somebody who mattered. Dressings take, and bleeding stops sooner.',
+        mods: { medicine: 0.18, bleedResist: 0.2 },
+    },
+    'Sleepless Watch': {
+        info: 'Takes the long shift and gives it to nobody else. Best eyes in the camp after dark, at a real cost by morning.',
+        mods: { awarenessNight: 2.5, fatigueDay: 2, defended: 0.6 },
+    },
+    'Contrarian': {
+        info: 'Does the opposite on principle. Impossible to predict, impossible to organise, and the book cannot price them.',
+        mods: { ambush: 0.05, treachery: 0.15, allianceAffinity: -0.2, odds: -0.15, excitement: 0.2 },
+    },
+    'Broad-Backed': {
+        info: 'Built for carrying. More in the bag, more behind a swing, less left at the end of the day.',
+        mods: { capacity: 1, meleePower: 2, fatigueDay: 1 },
+    },
+    'Thin-Skinned': {
+        info: 'Takes everything personally, including the arena. Fast to hate, slow to steady, and dangerous when slighted.',
+        mods: { vengeanceEdge: 2, sanityDrain: 0.25, aggressionScore: 1.5, griefResist: -0.2 },
+    },
+    'Devout': {
+        info: 'Believes something the Capitol did not issue. Grief lands softer, resolve holds, and dying is not the worst outcome they can name.',
+        mods: { griefResist: 0.3, resolveDrift: 0.6, retreat: -0.1, sanityRecovery: 1 },
+    },
+
     'Witness': {
         info: 'Earned by watching a betrayal happen. Grief lands harder, resolve holds longer, and they are very hard to fool twice.',
         earned: true,

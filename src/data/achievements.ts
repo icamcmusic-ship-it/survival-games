@@ -1727,10 +1727,14 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'found-first',
         name: 'Found First',
-        hint: 'See one tribute be the first to reach a downed ally three times over.',
+        // §(requests 21): the threshold was three and 500 runs never produced
+        // more than two — an entry nobody could earn. Somebody reaching a
+        // downed ally first *twice* is already the rarest kind of behaviour the
+        // downed system produces, and it is a thing the engine actually does.
+        hint: 'See one tribute be the first to reach a downed ally twice over.',
         category: 'social',
         rarity: 'legendary',
-        test: state => state.tributes.some(t => (t.reachedDownedFirst ?? 0) >= 3),
+        test: state => state.tributes.some(t => (t.reachedDownedFirst ?? 0) >= 2),
         nearMiss: state => {
             const best = state.tributes
                 .slice()
@@ -1969,6 +1973,19 @@ export const ACHIEVEMENTS: Achievement[] = [
             && !v.traits.some(t => EARNED_TRAIT_NAMES.includes(t))
             && v.startingTraitCount !== undefined
             && v.traits.length === v.startingTraitCount,
+        // §(requests 21): 0 unlocks in 500 runs and nothing told the player why,
+        // which is the one combination this check treats as a broken promise —
+        // the entry names a condition that nobody can see themselves approaching.
+        // Winning changes a tribute, so the near miss is the count of what the
+        // arena wrote onto them.
+        nearMiss: (_s, v) => {
+            if (!v) return undefined;
+            const earned = v.traits.filter(t => EARNED_TRAIT_NAMES.includes(t));
+            if (earned.length === 0) return undefined;
+            return earned.length === 1
+                ? `The victor came out of it with one trait they did not go in with: ${earned[0]}.`
+                : `The arena wrote ${earned.length} traits onto the victor that they did not go in with: ${earned.join(', ')}.`;
+        },
     },
     {
         id: 'borrowed-time',

@@ -406,6 +406,82 @@ const SIGNATURES: Record<string, Signature> = {
         return true;
     },
 
+    // ---- requests item 3: four new archetypes ----
+
+    /** Quartermaster: the stock-take, and the surplus it finds for somebody else. */
+    quartermasterInventory: (ctx, t) => {
+        if (t.inventory.length < ARCHETYPE_HOOKS.inventoryMinItems) return false;
+        const ally = getAlive(ctx.state).find(o =>
+            o.id !== t.id && o.zone === t.zone
+            && (o.allianceId !== undefined && o.allianceId === t.allianceId));
+        if (!ally) return false;
+        t.vitals.hunger = Math.max(0, t.vitals.hunger - ARCHETYPE_HOOKS.inventoryRelief);
+        t.vitals.thirst = Math.max(0, t.vitals.thirst - ARCHETYPE_HOOKS.inventoryRelief);
+        ally.vitals.hunger = Math.max(0, ally.vitals.hunger - ARCHETYPE_HOOKS.inventoryAllyRelief);
+        ally.vitals.thirst = Math.max(0, ally.vitals.thirst - ARCHETYPE_HOOKS.inventoryAllyRelief);
+        clampTribute(t);
+        clampTribute(ally);
+        say(ctx, t, 'quartermasterInventory', [t.id, ally.id], { ally: ally.name });
+        adjustMutual(ctx.state, t, ally, ARCHETYPE_HOOKS.inventoryBond);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust * ARCHETYPE_HOOKS.signatureGatedMultiplier);
+        return true;
+    },
+
+    /** Martyr: the offer, made out loud, that only costs the one making it. */
+    martyrOffer: (ctx, t) => {
+        const ward = getAlive(ctx.state).find(o =>
+            o.id !== t.id && o.zone === t.zone
+            && (o.allianceId === t.allianceId || getRel(t, o.id) > ARCHETYPE_HOOKS.martyrOfferRegard));
+        if (!ward) return false;
+        say(ctx, t, 'martyrOffer', [t.id, ward.id], { ward: ward.name });
+        // The offer is not rhetorical: they hand over the margin they were
+        // keeping for themselves, and it comes off their own health.
+        t.health = Math.max(1, t.health - ARCHETYPE_HOOKS.martyrOfferHealth);
+        ward.health = Math.min(100, ward.health + ARCHETYPE_HOOKS.martyrOfferHealth);
+        t.resolve = Math.min(100, (t.resolve ?? 50) + ARCHETYPE_HOOKS.martyrOfferResolve);
+        clampTribute(t);
+        clampTribute(ward);
+        t.objective = { kind: 'protect', wardId: ward.id, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles * 2 };
+        adjustMutual(ctx.state, t, ward, ARCHETYPE_HOOKS.martyrOfferBond);
+        witnessKindness(ctx, t, ward);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust * ARCHETYPE_HOOKS.signatureGatedMultiplier);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
+        return true;
+    },
+
+    /** Opportunist: somebody else's worst ten minutes, taken advantage of. */
+    opportunistTurn: (ctx, t) => {
+        const mark = others(ctx, t)
+            .filter(o => o.zone === t.zone
+                && (o.health < ARCHETYPE_HOOKS.opportunistHealth || o.injuries.bleeding))
+            .sort((a, b) => a.health - b.health)[0];
+        if (!mark) return false;
+        say(ctx, t, 'opportunistTurn', [t.id, mark.id], { mark: mark.name });
+        // They take what is portable and leave. The turn is the taking.
+        const idx = mark.inventory.findIndex(i => i.type !== 'weapon');
+        if (idx >= 0) giveItem(t, mark.inventory.splice(idx, 1)[0]);
+        t.objective = { kind: 'hunt', targetId: mark.id, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
+        adjustRel(mark, t.id, -ARCHETYPE_HOOKS.accordGratitude);
+        addFear(mark, t.id, ARCHETYPE_HOOKS.opportunistFear, t);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
+        return true;
+    },
+
+    /** Tracker: the read — a name, a direction, and a commitment to both. */
+    trackerRead: (ctx, t) => {
+        const quarry = others(ctx, t)
+            .filter(o => o.zone !== t.zone)
+            .sort((a, b) => b.trainingScore - a.trainingScore)[0];
+        if (!quarry) return false;
+        say(ctx, t, 'trackerRead', [t.id, quarry.id], { quarry: quarry.name, heading: quarry.zone });
+        // The only signature that hands its actor another tribute's position.
+        addZoneThreat(ctx.state, t, quarry.zone, -MEMORY.hazardThreat);
+        t.objective = { kind: 'stalk', targetId: quarry.id, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.trackerStalkCycles };
+        addFear(quarry, t.id, ARCHETYPE_HOOKS.trackerReadFear, t);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
     /** Confessor: cornered by somebody stronger, they talk — and it works. */
     confessorPlea: (ctx, t) => {
         const threat = others(ctx, t).filter(o => o.zone === t.zone && o.health > t.health && !hasTruce(ctx.state, t, o.id));

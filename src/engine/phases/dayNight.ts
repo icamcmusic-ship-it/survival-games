@@ -1067,6 +1067,8 @@ function revealSmoke(ctx: SimContext) {
 function revealNoisyBreakdowns(ctx: SimContext) {
     const alive = getAlive(ctx.state);
     if (!ctx.state.config.enableSanity) return;
+    // §(requests 2): the noisy-breakdown layer is its own switch now.
+    if (ctx.state.config.enableBreakdowns === false) return;
     const severed = severedEdgeSet(ctx.state);
 
     alive.forEach(t => {

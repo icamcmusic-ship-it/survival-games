@@ -93,6 +93,7 @@ export function RelationshipMatrix({ gameState, onSelectTribute }: {
                                     scope="col"
                                     className="px-1 py-1 text-[var(--color-ink-400)] font-bold"
                                     title={`${c.name} — District ${c.district}`}
+                                    aria-label={`${c.name}, District ${c.district}`}
                                 >
                                     <span className="block leading-none">{shortName(c)}</span>
                                     <span className="block leading-none opacity-60">{c.district}</span>
@@ -123,6 +124,13 @@ export function RelationshipMatrix({ gameState, onSelectTribute }: {
                                     const value = Math.round((raw as number | undefined) ?? 0);
                                     const isSworn = sworn.get(row.id)?.has(col.id);
                                     const ally = !!row.allianceId && row.allianceId === col.allianceId;
+                                    // One string, used as both the hover hint and the cell's
+                                    // accessible name — a matrix cell reading "-40" alone tells a
+                                    // screen reader nothing about who feels what about whom.
+                                    const cellGloss = known
+                                        ? `${row.name} → ${col.name}: ${bondLabel(value)} (${value > 0 ? '+' : ''}${value})`
+                                            + `${ally ? ', same alliance' : ''}${isSworn ? `, ${row.name} has sworn to kill ${col.name}` : ''}`
+                                        : `${row.name} has never met ${col.name}`;
                                     return (
                                         <td
                                             key={col.id}
@@ -133,10 +141,8 @@ export function RelationshipMatrix({ gameState, onSelectTribute }: {
                                                 background: ally ? 'color-mix(in srgb, var(--cat-alliance) 12%, transparent)' : undefined,
                                                 outline: isSworn ? '1px solid var(--cat-death)' : undefined,
                                             }}
-                                            title={known
-                                                ? `${row.name} → ${col.name}: ${bondLabel(value)} (${value > 0 ? '+' : ''}${value})`
-                                                    + `${ally ? ', same alliance' : ''}${isSworn ? `, ${row.name} has sworn to kill ${col.name}` : ''}`
-                                                : `${row.name} has never met ${col.name}`}
+                                            title={cellGloss}
+                                            aria-label={cellGloss}
                                         >
                                             {known ? value : '·'}
                                         </td>

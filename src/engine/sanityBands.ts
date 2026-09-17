@@ -54,8 +54,12 @@ export function sanityBandOf(t: Tribute): SanityBand {
  * Gains stay direct: what pulls somebody back up should not be discounted for
  * being needed, and there are few enough of them to read at a glance.
  */
-export function loseSanity(t: Tribute, amount: number): void {
+export function loseSanity(t: Tribute, amount: number, rate = 1): void {
     if (amount <= 0) return;
+    // §(requests 2): the config's drain dial, applied at the one funnel every
+    // sanity loss goes through. Callers that have a `ctx` pass its rate; the
+    // few that do not are left at 1 and are unaffected.
+    amount *= rate;
     const temperament = Math.max(SANITY_BANDS.minTemperamentScale, 1 + traitMod(t, 'sanityDrain'));
     const easing = SANITY.emptyGaugeDrainFloor
         + (1 - SANITY.emptyGaugeDrainFloor) * Math.max(0, Math.min(1, t.vitals.sanity / 100));

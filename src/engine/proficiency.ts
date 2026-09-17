@@ -47,6 +47,10 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     captor: 'intimidation',
     bellwether: 'crafting',
     confessor: 'persuasion',
+    quartermaster: 'crafting',
+    martyr: 'medicine',
+    opportunist: 'stealth',
+    tracker: 'tracking',
 };
 
 /**

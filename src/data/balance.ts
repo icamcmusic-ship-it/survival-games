@@ -6949,6 +6949,45 @@ export const ARCHETYPE_HOOKS = {
     ghostNamingUnseenCycles: 4,
     ghostNamingMaxKills: 1,
     namingFear: 5,
+
+    // ---- requests item 3: the four new archetypes' signatures ----
+    /**
+     * Quartermaster: the stock-take. They lay out everything they are carrying,
+     * decide what it is worth against the days left, and hand the surplus to
+     * whoever they are travelling with. The relief is smaller than the
+     * Survivalist's larder because it is not a cache — it is arithmetic on what
+     * they already had — but it lands on the ally too, which the larder never does.
+     */
+    inventoryRelief: 22,
+    inventoryAllyRelief: 14,
+    inventoryBond: 10,
+    /** Minimum items on hand before there is anything to take stock of. */
+    inventoryMinItems: 2,
+    /**
+     * Martyr: the offer, made out loud, to the person they intend to outlive
+     * nobody for. Costs them real health — the offer is not rhetorical — and
+     * buys the ward the largest single bond in the signature roster.
+     */
+    martyrOfferHealth: 12,
+    martyrOfferBond: 30,
+    martyrOfferResolve: 30,
+    /** Regard above which somebody counts as worth dying for. */
+    martyrOfferRegard: 35,
+    /**
+     * Opportunist: the turn. Somebody nearby has just been hurt badly by
+     * something that was not the Opportunist, and the Opportunist takes the
+     * consequences of it. Gated on a genuinely weakened neighbour, so it pays
+     * the gated multiplier.
+     */
+    opportunistHealth: 45,
+    opportunistFear: 7,
+    /**
+     * Tracker: the read. Names where somebody has gone and commits to it —
+     * the only signature that hands the actor another tribute's position
+     * rather than a mood.
+     */
+    trackerReadFear: 6,
+    trackerStalkCycles: 8,
 } as const;
 
 
