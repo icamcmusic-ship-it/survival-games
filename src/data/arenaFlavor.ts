@@ -9298,9 +9298,9 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
         ambient: [
             'The ground is somewhere under a fog that has not lifted since the arena was built. Nothing that has gone into it has come back.',
             'A gust crosses the web and every platform in it swings, out of phase with the next.',
-            'Needles fall constantly, a soft percussion nobody down here would ever hear.',
-            'The Rain Catch fills a little more with every passing cloud, and everyone knows exactly how full it is.',
-            'Something moves along a line two platforms over, sure-footed in a way that says it has done this before.',
+            'Needles fall constantly onto the decks and the fog takes the sound of it.',
+            'The Rain Catch has filled two-thirds since the gong and is in view from four platforms.',
+            'Something crosses a line two platforms over without once putting a hand out.',
         ],
         actions: {
             forage: [
@@ -9311,28 +9311,28 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} climbs out along a limb of {zone} for {item} nobody closer bothered to reach.',
             ],
             rest: [
-                '{tribute} lashes themself into a hammock in {zone} and lets the sway do the rocking.',
-                '{tribute} rations the hour in {zone}, listening to the wood creak under them.',
-                '{tribute} sits with their back to the trunk at {zone} and does not look down.',
+                '{tribute} lashes themself into a hammock in {zone} and sleeps in the sway of it.',
+                '{tribute} rests the hour in {zone}, listening to the deck work under them.',
+                '{tribute} sits with their back to the trunk at {zone}, three hundred feet up.',
                 '{tribute} checks their lines twice in {zone} before letting themself rest.',
-                '{tribute} counts needles falling past {zone} to keep from thinking about the drop.',
+                '{tribute} counts needles falling past {zone} for most of the hour.',
             ],
             hide: [
-                '{tribute} flattens into the moss of {zone} and lets the canopy do the rest.',
-                '{tribute} goes still on a high limb of {zone}, betting nobody looks up.',
+                '{tribute} flattens into the moss of {zone}, below the line of the deck.',
+                '{tribute} goes still on a high limb of {zone}, above every walkway in the sector.',
                 '{tribute} folds into a hollow bough at {zone} and stops moving.',
                 '{tribute} hangs motionless below a platform at {zone}, out of the sightline entirely.',
-                '{tribute} presses into bark at {zone} the colour of the shadow they\'re standing in.',
+                '{tribute} presses into bark at {zone} in the shadow of the trunk.',
             ],
             hunt: [
-                '{tribute} watches the lines into {zone} for anything that isn\'t wind.',
-                '{tribute} works the platforms of {zone}, patient, and comes up with nothing.',
+                '{tribute} watches the lines into {zone} for a sway the wind does not account for.',
+                '{tribute} works the platforms of {zone} one at a time and finds them all empty.',
                 '{tribute} holds the one crossing into {zone} that everyone else has to use.',
-                '{tribute} reads the sway of the lines near {zone} for weight that shouldn\'t be there.',
+                '{tribute} reads the sway of the lines near {zone} for a load that is not wind.',
                 '{tribute} stalks the boughs of {zone} for the better part of an hour and finds it empty.',
             ],
             travel: [
-                '{tribute} crosses the lines into {zone}, three hundred feet up and not looking down.',
+                '{tribute} crosses the lines into {zone} three hundred feet above the fog.',
                 '{tribute} climbs out along a limb toward {zone}.',
                 '{tribute} works hand over hand along a rope toward {zone}.',
                 '{tribute} times a gust and crosses into {zone} while the wood is still.',
@@ -9340,27 +9340,27 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
             fortify: [
                 '{tribute} cuts every line into their platform in {zone} but one, and sits at the top of the one they left.',
-                '{tribute} lashes the walkways around {zone} into something that will hold one person and complain loudly about two.',
-                '{tribute} has not come down from {zone} in days. The platform has a shape now, and the shape is defensive.',
+                '{tribute} re-lashes the walkways around {zone} to carry one person and sag under two.',
+                '{tribute} has not come down from {zone} in four days. Every approach to the platform has been cut or narrowed.',
                 '{tribute} re-rigs a snare across the approach to {zone} and tests it with their own weight.',
             ],
             scavenge: [
                 '{tribute} works the netting under {zone} for everything anyone has ever dropped through it.',
-                '{tribute} climbs to a platform in {zone} somebody abandoned and takes what they were too frightened to carry.',
+                '{tribute} climbs to an abandoned platform in {zone} and takes what was left on it.',
                 '{tribute} finds a pack snagged in the web below {zone} and spends an hour getting to it.',
                 '{tribute} strips a cold camp on {zone} down to the lashings.',
             ],
             shadow: [
-                '{tribute} follows the sway of the web out of {zone} — the platforms tell you where everyone is — and stays one span back.',
+                '{tribute} follows the sway of the web out of {zone} a span back, reading the platforms rather than looking.',
                 '{tribute} times their steps across {zone} to somebody else\'s, so the walkway only moves once.',
-                '{tribute} keeps a platform of {zone} between themselves and the person ahead, and lets the fog do the rest.',
+                '{tribute} keeps a platform of {zone} between themselves and the person ahead, in the fog.',
                 '{tribute} hangs below the walkway in {zone} while somebody crosses above them.',
             ],
             flail: [
-                '{tribute} crosses the web of {zone} without testing a single line.',
-                '{tribute} shouts down into the fog under {zone}, at nothing, and the fog takes it.',
-                '{tribute} makes the walkway out of {zone} swing hard enough that anybody in three sectors knows where they are.',
-                '{tribute} runs a span of {zone} that nobody runs, and arrives, which proves nothing.',
+                '{tribute} crosses the web of {zone} at a run without testing a line.',
+                '{tribute} shouts down into the fog under {zone}. Nothing comes back.',
+                '{tribute} puts the walkway out of {zone} into a swing that shows from three sectors.',
+                '{tribute} runs a span of {zone} that nobody runs and gets to the far end of it.',
             ],
         },
         events: [
@@ -9373,7 +9373,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['highland'],
             },
             {
-                text: 'A gust finds {zone} and everything not lashed down, including {tribute} for a moment, goes with it.',
+                text: 'A gust crosses {zone}. Everything not lashed down goes off the deck and {tribute} goes to the edge of it.',
                 escapeText: '{tribute} gets a line around something solid in {zone} before the gust can take them.',
                 cause: 'Blown from a platform',
                 dodgeStat: 'strength',
@@ -9381,7 +9381,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 fatigue: 12,
             },
             {
-                text: 'The fog off the ground climbs higher than it should have tonight, and {tribute} breathes too much of it before they notice.',
+                text: 'The fog off the ground climbs to deck height overnight. {tribute} has been breathing it for hours by morning.',
                 escapeText: '{tribute} feels the air in {zone} go wrong and climbs above the fog line before it matters.',
                 cause: 'Suffocated in the ground fog',
                 dodgeStat: 'intelligence',
@@ -9439,7 +9439,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'Sap runs down the trunk at {zone} and sets around {tribute}\'s hands while they are still holding on.',
+                text: 'Sap runs down the trunk at {zone} and sets around {tribute}\'s hands while they are holding on.',
                 escapeText: '{tribute} notices the sap on the trunk at {zone} before committing their weight to it.',
                 cause: 'Fell with sap on their hands',
                 dodgeStat: 'intelligence',
@@ -9448,7 +9448,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest', 'highland'],
             },
             {
-                text: 'The moss hammock at {zone} is holding a season of rainwater, and it goes all at once, with {tribute} in it.',
+                text: 'The moss hammock at {zone} is holding a season of rainwater. It gives all at once with {tribute} in it.',
                 escapeText: '{tribute} tests the moss at {zone} with one foot, feels the weight of water in it, and does not put the second foot down.',
                 cause: 'Went down with the hammock',
                 dodgeStat: 'agility',
@@ -9456,7 +9456,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest', 'wetland'],
             },
             {
-                text: '{tribute} reaches the rain catch above {zone}. It has been filling since long before these Games, and it is clean.',
+                text: '{tribute} reaches the rain catch above {zone}. It has filled since before these Games and the water is clean.',
                 escapeText: '{tribute} reaches the rain catch at {zone} and finds it already drained, the plug pulled and left hanging.',
                 cause: 'Drowned in the rain catch',
                 dodgeStat: 'agility',
@@ -9467,7 +9467,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: three hundred feet up over a fog nobody survives a
                 // minute in, and no water anywhere but the rain catch.
-                text: 'The needle bridge out of {zone} is woven and not built, and the weave has been working loose under everybody all week, and under {tribute} it finishes.',
+                text: 'The needle bridge out of {zone} is woven rather than built and the weave has worked loose all week. It parts under {tribute}.',
                 escapeText: '{tribute} crosses the needle bridge out of {zone} on the anchor lines rather than the deck, hand over hand, and never trusts the weave.',
                 cause: 'Fell into the understory fog',
                 dodgeStat: 'agility',
@@ -9480,7 +9480,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The fog below {zone} rises a hundred feet in the night the way it does perhaps twice a season, and the lowest hammocks, including the one {tribute} is asleep in, are inside it by morning.',
+                text: 'The fog below {zone} rises a hundred feet in the night. By morning the lowest hammocks are inside it and {tribute} is asleep in one.',
                 escapeText: '{tribute} watches the fog come up under {zone} in the evening and moves everything they have two levels higher before dark.',
                 cause: 'Breathed the understory fog',
                 dodgeStat: 'intelligence',
@@ -9493,7 +9493,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'contaminated',
             },
             {
-                text: 'The swaying reach at {zone} moves three metres in a gust and everything in it moves with it, which is fine until {tribute} and the deck under them move differently.',
+                text: 'The swaying reach at {zone} moves three metres in a gust. {tribute} and the deck under them go out of phase.',
                 escapeText: '{tribute} rides the sway at {zone} out with their knees rather than fighting it, the way somebody who grew up in trees would.',
                 cause: 'Shaken out of the canopy',
                 dodgeStat: 'agility',
@@ -9504,7 +9504,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['highland'],
             },
             {
-                text: 'The old nest in {zone} is dry, roofed, out of the wind and easily the best shelter in the arena, which is exactly why it is not empty when {tribute} climbs into it.',
+                text: 'The old nest in {zone} is dry, roofed and out of the wind. {tribute} climbs into it and it is not empty.',
                 escapeText: '{tribute} reads the bones worked into the walls of the old nest in {zone}, understands the arithmetic, and sleeps in the open.',
                 cause: 'Killed in the old nest',
                 dodgeStat: 'stealth',
@@ -9514,7 +9514,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The silk across the crown break at {zone} is not spider silk and it is not there for catching anything small, and {tribute} walks into it at head height.',
+                text: 'The silk across the crown break at {zone} is thick enough to hold a person. {tribute} walks into it at head height.',
                 escapeText: '{tribute} spots the line across the crown break at {zone} by the way it holds the light and goes under it on their belly.',
                 cause: 'Taken in the silk lines',
                 dodgeStat: 'stealth',
@@ -9526,7 +9526,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             },
             {
                 // The rain catch is the only water three hundred feet up.
-                text: 'The rain catch at {zone} is a hundred square metres of woven needle funnelling into one basin, and it has been raining, and {tribute} gets there first.',
+                text: 'The rain catch at {zone} funnels a hundred square metres of woven needle into one basin. It has been raining and {tribute} gets there first.',
                 escapeText: '{tribute} climbs to the rain catch at {zone} to find the basin tipped out and the weave slashed through.',
                 cause: 'Died of thirst in the canopy web',
                 quench: 60,
@@ -9538,7 +9538,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: second pass to the target. Three hundred feet up, with
                 // the ground floor a sunless fog nobody survives a minute in.
-                text: 'The web anchor at {zone} is where four bridges meet and the whole junction is taking load from all of them, and something has been cutting the far side of it since the second day, and {tribute} is on the near side.',
+                text: 'The web anchor at {zone} takes the load of four bridges. Something has been cutting the far side of it since the second day and {tribute} is on the near side.',
                 escapeText: '{tribute} checks every strand at the web anchor of {zone} before crossing and finds the cut ones from the inside.',
                 cause: 'Fell from the web anchor',
                 dodgeStat: 'intelligence',
@@ -9549,7 +9549,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 severesRoute: true,
             },
             {
-                text: 'The moss hammock grove at {zone} is the softest ground in the arena and it is grown into the weave rather than laid on it, and the patch {tribute} lies down on is older than the rest.',
+                text: 'The moss hammock grove at {zone} is grown into the weave rather than laid on it. The patch {tribute} lies down on is the oldest of them.',
                 escapeText: '{tribute} sounds the moss hammock at {zone} with an elbow before trusting a whole body to it, and finds the thin part.',
                 cause: 'Fell through the hammock grove',
                 dodgeStat: 'agility',
@@ -9560,7 +9560,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 requires: { time: 'night' },
             },
             {
-                text: 'The silk-line stalkers do not build across a bridge, they build *under* it, and {tribute} is halfway over the needle bridge at {zone} when the deck starts moving in a direction the wind is not.',
+                text: 'The silk-line stalkers build under a bridge rather than across it. {tribute} is halfway over the needle bridge at {zone} when the deck moves against the wind.',
                 escapeText: '{tribute} looks under the deck of the needle bridge at {zone} before setting foot on it, which is the one thing nobody thinks to do.',
                 cause: 'Taken under the bridge',
                 dodgeStat: 'stealth',
@@ -9572,7 +9572,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['highland'],
             },
             {
-                text: 'The needle wasps at {zone} nest in the woven deck itself, which means the nest is inside the thing everybody has to walk on, and {tribute} walks on it.',
+                text: 'The needle wasps at {zone} nest inside the woven deck. {tribute} walks over the nest.',
                 escapeText: '{tribute} spots the traffic going into the deck weave at {zone} and takes the anchor line over the top of the nest.',
                 cause: 'Killed by the needle wasps',
                 dodgeStat: 'intelligence',
@@ -9583,7 +9583,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'swarming',
             },
             {
-                text: 'The crown break at {zone} is the only gap in three hundred feet of canopy and the sun comes through it for about forty minutes a day, and everything in the arena knows exactly when, and {tribute} is standing in it.',
+                text: 'The crown break at {zone} is the only gap in the canopy and takes direct sun for forty minutes a day. {tribute} is standing in it for all of them.',
                 escapeText: '{tribute} takes the forty minutes of sun at the crown break in {zone} from under the lip of it rather than out in the middle.',
                 cause: 'Killed at the crown break',
                 dodgeStat: 'stealth',
@@ -9595,7 +9595,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The swaying reach at {zone} carries a run of resin-nuts that nothing has been up to for a season, and {tribute} spends an afternoon three hundred feet up filling a shirt with them.',
+                text: 'The swaying reach at {zone} carries a run of resin-nuts nothing has been up to in a season. {tribute} fills a shirt with them.',
                 escapeText: '{tribute} climbs the swaying reach at {zone} for the nut run and finds the whole crop taken and the husks on the deck.',
                 cause: 'Died of thirst in the canopy web',
                 feed: 40,
@@ -9607,11 +9607,11 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     },
     acousticforest: {
         ambient: [
-            'The wind finds the hollow trunks and the whole grove answers back, low and almost like a voice.',
-            'A whistle rises somewhere in the pines, holds a note no bird ever held, and stops.',
-            'The forest breathes. Every tribute in it has stopped, once, certain someone spoke.',
+            'The wind crosses the hollow trunks and the whole grove sounds at once, low, on about three notes.',
+            'A whistle rises somewhere in the pines, holds one note for about twenty seconds, and stops.',
+            'The grove makes a sound on the wind that carries the shape of a spoken word.',
             'Sawdust drifts from a bore-hole overhead, fine as flour, and settles on everything.',
-            'The wind drops for a moment and the silence afterward is worse than the noise was.',
+            'The wind drops for about a minute and the grove goes completely silent.',
         ],
         actions: {
             forage: [
@@ -9622,56 +9622,56 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} works {zone} between gusts, while the grove is quiet, and finds {item}.',
             ],
             rest: [
-                '{tribute} sits against a hollow trunk in {zone} that hums faintly even at rest.',
-                '{tribute} rations the hour in {zone}, trying not to listen to what the wind is doing.',
-                '{tribute} covers their ears in {zone} and still hears it anyway.',
-                '{tribute} counts breaths in {zone} to drown out the grove\'s own breathing.',
-                '{tribute} waits out the hour in {zone}, back to bark, telling themself it is only wind.',
+                '{tribute} sits against a hollow trunk in {zone} that carries a note even in still air.',
+                '{tribute} rests the hour in {zone} with the grove sounding the whole time.',
+                '{tribute} covers their ears in {zone}. The note carries through their hands.',
+                '{tribute} counts their own breaths in {zone} against the noise of the grove.',
+                '{tribute} waits out the hour in {zone} with their back to bark.',
             ],
             hide: [
-                '{tribute} goes still in {zone}, betting the wind-noise covers whatever they can\'t.',
+                '{tribute} goes still in {zone}, under the noise off the grove.',
                 '{tribute} folds into needle litter in {zone} and stops moving.',
-                '{tribute} presses into a hollow trunk in {zone} and lets the resonance swallow their own breathing.',
-                '{tribute} freezes in {zone}, unable to tell if what they just heard was the forest or a person.',
+                '{tribute} presses into a hollow trunk in {zone}, where the resonance covers their breathing.',
+                '{tribute} freezes in {zone}. What they heard could have been the grove or a person.',
                 '{tribute} tucks against deadfall in {zone} where the sound off the grove is loudest.',
             ],
             hunt: [
-                '{tribute} tries to track a sound through {zone} and cannot tell if it was ever really there.',
-                '{tribute} works {zone} by sight alone, since the grove has taken hearing off the table.',
-                '{tribute} waits at the edge of {zone}, distrusting every whisper the wind hands them.',
-                '{tribute} circles {zone}, straining for footsteps under the wind-organ drone, and gets nothing.',
-                '{tribute} holds a position over {zone} and lets the grove do the listening it won\'t share.',
+                '{tribute} tries to track a sound through {zone} and loses the bearing on it twice.',
+                '{tribute} works {zone} by sight alone. Nothing can be heard over the grove.',
+                '{tribute} waits at the edge of {zone} and does not move on any of the sounds.',
+                '{tribute} circles {zone} listening for footsteps under the drone and hears none.',
+                '{tribute} holds a position over {zone} and watches rather than listens.',
             ],
             travel: [
-                '{tribute} moves into {zone}, the grove\'s voice rising and falling around them the whole way.',
+                '{tribute} moves into {zone} with the grove sounding around them the whole way.',
                 '{tribute} crosses into {zone} fast, before the wind picks up again.',
-                '{tribute} picks a line into {zone}, trusting sight over the sounds the forest keeps making.',
-                '{tribute} pushes into {zone} with the whispering at their back the entire way.',
-                '{tribute} moves toward {zone}, straining to tell wind from footsteps and getting neither answer.',
+                '{tribute} picks a line into {zone} by sight and ignores every sound on the way.',
+                '{tribute} pushes into {zone} with the grove sounding behind them the whole way.',
+                '{tribute} moves toward {zone} unable to separate the wind from footsteps.',
             ],
             fortify: [
-                '{tribute} learns the exact sound their patch of {zone} makes when nothing is wrong, and settles in to hear it change.',
-                '{tribute} rings their position in {zone} with dry needles. Nothing crosses that quietly.',
-                '{tribute} has held the same hollow in {zone} for days and can now name every direction by its echo.',
-                '{tribute} re-sets a snare in {zone} and listens to it settle, because in this forest that is a check.',
+                '{tribute} learns the sound their patch of {zone} makes in ordinary wind and listens for it to change.',
+                '{tribute} rings their position in {zone} with dry needles, which carry every footfall.',
+                '{tribute} has held the same hollow in {zone} for four days and can place a direction by its echo.',
+                '{tribute} re-sets a snare in {zone} and listens to it settle.',
             ],
             scavenge: [
                 '{tribute} follows an echo across {zone} to the place somebody dropped something and did not stop for it.',
                 '{tribute} works over a camp in {zone} whose owner is not coming back, and does it in near-silence.',
                 '{tribute} searches the needle litter of {zone} for what the last search missed.',
-                '{tribute} finds a cache in {zone} by the way the ground under it does not sound right.',
+                '{tribute} finds a cache in {zone} by the sound the ground makes over it.',
             ],
             shadow: [
-                '{tribute} follows a sound through {zone} at exactly the distance where it stays a sound and not a person.',
-                '{tribute} matches their footfalls to somebody else\'s across {zone}, so the forest only hears one set.',
+                '{tribute} follows a sound through {zone} without ever closing to where it resolves into a person.',
+                '{tribute} matches their footfalls to somebody else\'s across {zone}. The grove returns one set.',
                 '{tribute} keeps a stand of trees in {zone} between themselves and the noise they are following.',
-                '{tribute} stops when the sound ahead in {zone} stops. Every time. For an hour.',
+                '{tribute} stops each time the sound ahead in {zone} stops, for an hour.',
             ],
             flail: [
-                '{tribute} makes noise in {zone} on purpose, in a forest that carries everything, and does not care who hears it.',
-                '{tribute} crashes through the needle litter of {zone} loud enough to be a broadcast.',
-                '{tribute} shouts into {zone} and the forest gives it back to them four times.',
-                '{tribute} stops listening in {zone}, which in this arena is the same as closing their eyes.',
+                '{tribute} makes noise on purpose in {zone}, which carries to every part of the forest.',
+                '{tribute} crashes through the needle litter of {zone} loud enough to be heard three sectors off.',
+                '{tribute} shouts into {zone}. It comes back four times.',
+                '{tribute} stops listening in {zone} and walks on the sightlines alone.',
             ],
         },
         events: [
@@ -9685,7 +9685,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'A whisper in {zone} says something that sounds almost like {tribute}\'s own name.',
+                text: 'The grove at {zone} makes a sound close enough to {tribute}\'s own name that they answer it.',
                 escapeText: '{tribute} tells themself the wind in {zone} does not know anyone\'s name, and mostly believes it.',
                 cause: 'Lost their mind in the whispering trees',
                 dodgeStat: 'intelligence',
@@ -9700,7 +9700,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 bleeding: true,
             },
             {
-                text: 'The wind-organ note out of {zone} settles into something that will not leave {tribute}\'s ears.',
+                text: 'The wind-organ note out of {zone} holds for an hour and stays in {tribute}\'s ears after it stops.',
                 escapeText: '{tribute} gets clear of {zone} before the note finds its worst pitch.',
                 cause: 'Driven mad by the wind-organ',
                 dodgeStat: 'intelligence',
@@ -9708,14 +9708,14 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 fatigue: 10,
             },
             {
-                text: 'A sap seam in a hollow trunk at {zone} turns out to still be running, and {tribute} makes the most of it.',
+                text: 'A sap seam in a hollow trunk at {zone} is still running. {tribute} takes what it gives.',
                 escapeText: '{tribute} finds the seam at {zone} run dry years ago.',
                 cause: 'Starved in the hollow pines',
                 feed: 18,
                 heal: 4,
             },
             {
-                text: 'The hollow trunks around {zone} start saying something in a voice {tribute} knows, and {tribute} answers it out loud.',
+                text: 'The hollow trunks around {zone} sound in a voice {tribute} recognises. They answer it out loud.',
                 escapeText: '{tribute} hears the trunks at {zone} start up, recognises the trick, and keeps their mouth shut.',
                 cause: 'Lured into the deep organ',
                 dodgeStat: 'willpower',
@@ -9724,7 +9724,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'A hollowed lodgepole at {zone} has been standing on nothing for two years, and picks the moment {tribute} passes under it to stop.',
+                text: 'A hollowed lodgepole at {zone} has stood on nothing for two years. It comes down as {tribute} passes under it.',
                 escapeText: '{tribute} hears the tone of the trunk at {zone} change, which is the only warning it gives, and is clear when it goes.',
                 cause: 'Crushed by a hollow trunk',
                 dodgeStat: 'agility',
@@ -9733,7 +9733,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The wind through {zone} rises to something no throat could make, and {tribute} cannot hear their own footsteps in it, or anyone else\'s.',
+                text: 'The wind through {zone} rises until {tribute} cannot hear their own footsteps, or anybody else\'s.',
                 escapeText: '{tribute} works out that the wind in {zone} cuts both ways and uses it, moving while the organ is loud.',
                 cause: 'Never heard them coming',
                 dodgeStat: 'intelligence',
@@ -9751,7 +9751,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest', 'ruins'],
             },
             {
-                text: 'The resonance chamber at {zone} finds a note that {tribute} can feel in their teeth, and then in everything else.',
+                text: 'The resonance chamber at {zone} finds a note {tribute} can feel in their teeth and holds it.',
                 escapeText: '{tribute} gets out of the chamber at {zone} while the note is still only in their teeth.',
                 cause: 'Killed by the resonance',
                 dodgeStat: 'endurance',
@@ -9761,7 +9761,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The sawmill blade housing at {zone} is still tensioned after a century, and {tribute} finds that out by touch.',
+                text: 'The sawmill blade housing at {zone} is still under tension after a century. {tribute} puts a hand on it.',
                 escapeText: '{tribute} looks at the old blade housing at {zone} for a while and decides not to touch any of it.',
                 cause: 'Killed by the old sawmill',
                 dodgeStat: 'intelligence',
@@ -9770,7 +9770,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'Piper\'s Creek runs clean through {zone}, and {tribute} finds the organ quiet enough here to hear anything coming.',
+                text: 'Piper\'s Creek runs clean through {zone} and the grove is quiet enough here for {tribute} to hear an approach.',
                 escapeText: '{tribute} reaches the creek at {zone} and finds someone has been standing in it upstream all morning.',
                 cause: 'Ambushed at the water',
                 dodgeStat: 'stealth',
@@ -9781,7 +9781,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: the whole canopy is a wind organ, and under `openMic`
                 // every fight in the arena is audible everywhere anyway.
-                text: 'The wind gets up through the hollow boughs of {zone} and the forest starts saying something in a voice {tribute} has not heard since the reaping, and it is using their name.',
+                text: 'The wind gets up through the hollow boughs of {zone}. The grove sounds in a voice {tribute} has not heard since the reaping, and it is saying their name.',
                 escapeText: '{tribute} identifies the bore holes in the trunks of {zone} for what they are and hears the wind as wind for the rest of the night.',
                 cause: 'Broke in the Whispering Forest',
                 dodgeStat: 'willpower',
@@ -9793,7 +9793,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'Every step {tribute} takes across the splinter field of {zone} is amplified by nine hundred hollow trunks, and the forest tells the whole arena where they are.',
+                text: 'Every step {tribute} takes across the splinter field of {zone} is carried by nine hundred hollow trunks to the whole forest.',
                 escapeText: '{tribute} crosses the splinter field of {zone} on the moss between the shards, and the forest says nothing about it at all.',
                 cause: 'Run down in the Whispering Forest',
                 dodgeStat: 'stealth',
@@ -9804,7 +9804,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The resonance chamber at {zone} does something to a shout that a room should not do, and {tribute} finds this out by making a noise in it exactly once.',
+                text: '{tribute} makes one sound in the resonance chamber at {zone}. It comes back louder than it went in.',
                 escapeText: '{tribute} works out what the resonance chamber at {zone} does before making any noise in it, and moves through it silently.',
                 cause: 'Deafened and run down at the resonance chamber',
                 dodgeStat: 'intelligence',
@@ -9813,7 +9813,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The hollow-bore beetles in {zone} have been working on the trunk {tribute} is sheltering against since before the Games, and it is now a tube and not a tree.',
+                text: 'The hollow-bore beetles in {zone} have worked the trunk {tribute} is sheltering against since before the Games. There is nothing left of it but the shell.',
                 escapeText: '{tribute} knocks on the trunk in {zone} before they lean on it, hears how hollow it is, and finds another.',
                 cause: 'Killed by a hollow tree',
                 dodgeStat: 'intelligence',
@@ -9823,7 +9823,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The wind throat above {zone} stops. All of it, at once, everywhere, and the silence is so complete that {tribute} can hear their own pulse and one other set of footsteps.',
+                text: 'The wind throat above {zone} stops all at once. In the silence {tribute} can hear their own pulse and one other set of footsteps.',
                 escapeText: '{tribute} is flat and motionless in the needle drift of {zone} before the silence is a second old.',
                 cause: 'Found in the silence',
                 dodgeStat: 'stealth',
@@ -9838,7 +9838,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // The creek is the only thing in the forest that makes an honest
                 // noise, and it covers the noise a person makes.
-                text: 'Piper’s Creek runs loud enough through {zone} to take the whole forest’s voice out of the air, and {tribute} drinks, and washes, and sleeps four hours inside the sound of it.',
+                text: 'Piper’s Creek runs loud enough through {zone} to cover the grove. {tribute} drinks, washes and sleeps four hours in the sound of it.',
                 escapeText: '{tribute} finds Piper’s Creek in {zone} run down to a trickle and the forest audible straight through it.',
                 cause: 'Died of thirst in the Whispering Forest',
                 quench: 45,
@@ -9850,7 +9850,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: second pass to the target. The forest is a wind organ and
                 // every fight in the arena is audible everywhere anyway.
-                text: 'The deep organ at {zone} is the oldest stand in the forest and the trunks in it are wide enough to stand inside, and something is already standing inside one of them when {tribute} walks past it.',
+                text: 'The trunks in the deep organ at {zone} are wide enough to stand inside. Something is standing inside one as {tribute} passes it.',
                 escapeText: '{tribute} works through the deep organ at {zone} well out from the trunks, where nothing inside one of them has the reach.',
                 cause: 'Killed in the deep organ',
                 dodgeStat: 'stealth',
@@ -9861,7 +9861,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'Every fight anywhere in this forest is heard by everybody in it, and the one {tribute} has just been in at {zone} was heard by four people who are all now walking toward the noise.',
+                text: 'Every fight in this forest is heard across it. Four tributes are walking toward the one {tribute} has just had at {zone}.',
                 escapeText: '{tribute} breaks off the fight at {zone} inside ten seconds and is two zones away before anybody can arrive at the sound of it.',
                 cause: 'Run down by what the forest told',
                 dodgeStat: 'agility',
@@ -9872,7 +9872,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The needle drift at {zone} is a metre deep in places and it is the only silent ground in the forest, and it is also the only ground where nothing can be seen under it, including the hole {tribute} puts a leg into.',
+                text: 'The needle drift at {zone} is a metre deep and the only silent ground in the forest. Nothing under it can be seen, including the hole {tribute} puts a leg into.',
                 escapeText: '{tribute} probes the needle drift at {zone} with a pole ahead of every step and finds what is under it in the safe way.',
                 cause: 'Went into the needle drift',
                 dodgeStat: 'agility',
@@ -9883,7 +9883,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The resonance moths at {zone} come to a sustained note and hold there, and {tribute} has been humming under their breath for an hour without noticing they were doing it.',
+                text: 'The resonance moths at {zone} gather on any sustained note. {tribute} has been humming under their breath for an hour.',
                 escapeText: '{tribute} catches themselves humming in {zone}, stops, and the moths that had started to gather go back into the dark.',
                 cause: 'Found by the resonance moths',
                 dodgeStat: 'intelligence',
@@ -9895,7 +9895,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'swarming',
             },
             {
-                text: 'The old sawmill at {zone} is the only stone building in the forest and its walls take sound out of the air entirely, and {tribute} has been inside it long enough to lose the habit of listening.',
+                text: 'The old sawmill at {zone} is the only stone building in the forest and nothing carries through its walls. {tribute} has been inside it for six hours.',
                 escapeText: '{tribute} spends one night in the sawmill at {zone} and goes back to sleeping where they can hear the forest.',
                 cause: 'Killed at the sawmill',
                 dodgeStat: 'intelligence',
@@ -9905,7 +9905,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The whisper hollow at {zone} is the one place where the bores are all facing away and the forest is genuinely quiet, and {tribute} sleeps in it for eight hours and hears nothing at all.',
+                text: 'The bores at the whisper hollow in {zone} all face away and the grove does not carry into it. {tribute} sleeps eight hours in silence.',
                 escapeText: '{tribute} finds the whisper hollow at {zone} taken, and the forest starts up again the moment they leave it.',
                 cause: 'Died of thirst in the Whispering Forest',
                 heal: 12,
@@ -9921,7 +9921,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             'A snag lets go somewhere out of sight, silent until it lands.',
             'Fireweed has taken every clearing the fire made, thorns first, flowers after.',
             'Ash lifts off the black ground with every step and does not settle for a long time.',
-            'Something ticks in the brush — a seed pod, heat-swollen, deciding whether this is the moment.',
+            'A heat-swollen seed pod ticks in the brush and does not open.',
         ],
         actions: {
             forage: [
