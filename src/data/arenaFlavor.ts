@@ -13200,12 +13200,12 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     storywood: {
         ambient: [
             'Every chimney in the wood is smoking. Nobody has seen anyone tending a single fire.',
-            'The wood is colder than the sky says it should be. It has been all week.',
+            'The wood is four degrees colder than the open ground outside it, and has been all week.',
             'Something between the trees says a name, quietly, and does not say it again.',
             'The millpond lies flat under a wind that is moving every branch around it.',
-            'A door opens somewhere in the dark of the wood, and closes again, unhurried.',
+            'A door opens somewhere in the dark of the wood and closes again slowly.',
             'The breadcrumb trail along the north track has been rearranged overnight into an arrow.',
-            'All the ravens in the wood lift at once, circle twice, and settle exactly where they were.',
+            'Every raven in the wood lifts at once, circles twice, and settles on the same branches.',
             'The smell of baking drifts from the deep wood. It has drifted from there for nine days.',
         ],
         actions: {
@@ -13214,70 +13214,70 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} finds a cottage garden in {zone} in full vegetable rows, and lifts {item} over the gate.',
                 '{tribute} follows a breadcrumb line through {zone} to a hollow tree with {item} inside it.',
                 '{tribute} checks a woodpile in {zone}, stacked by hands unknown, and finds {item} tucked into it.',
-                '{tribute} gathers in {zone} under the eye of a raven that does not object, and comes away with {item}.',
-                '{tribute} works the margins of {zone}, taking only what is not laid out for them, and gets {item}.',
+                '{tribute} gathers in {zone} with a raven watching from the next branch, and comes away with {item}.',
+                '{tribute} works the margins of {zone}, leaving anything that has been set out, and gets {item}.',
                 '{tribute} finds a basket sitting in the middle of {zone}, checked cloth and all, and takes {item} out of it without touching the rest.',
-                '{tribute} forages {zone} the sensible way, ignoring everything that smells of cinnamon, and finds {item}.',
+                '{tribute} forages {zone} and passes everything that smells of cinnamon. They find {item}.',
             ],
             rest: [
                 '{tribute} rests in {zone} with their back to a tree that was not there yesterday.',
                 '{tribute} sleeps in the lee of a stone wall in {zone} rather than in any of the beds on offer.',
-                '{tribute} sits by a fire in {zone} that they lit themselves, which matters here.',
-                '{tribute} rests in {zone} and does not answer the knocking, because there is no door.',
-                '{tribute} takes an hour in {zone}, counting their own fingers twice, and being glad of the number.',
-                '{tribute} dozes in {zone} and dreams in someone else\'s story.',
-                '{tribute} rests in {zone} with iron in their hand, on a theory.',
-                '{tribute} lets an hour pass in {zone}, listening to the wood decide whether to be generous.',
+                '{tribute} sits by a fire in {zone} that they laid and lit themselves.',
+                '{tribute} rests in {zone}. Something knocks three times and there is no door in the clearing.',
+                '{tribute} takes an hour in {zone} and counts their own fingers twice.',
+                '{tribute} dozes in {zone} and wakes saying a name that is not theirs.',
+                '{tribute} rests in {zone} with a piece of iron held in one hand.',
+                '{tribute} lets an hour pass in {zone} and nothing comes out of the trees.',
             ],
             hide: [
-                '{tribute} goes still among the trees of {zone}, and the trees seem willing to help.',
-                '{tribute} hides under a cottage stair in {zone}, in the one house nobody knocks at.',
+                '{tribute} goes still among the trees of {zone} and the branches close over them.',
+                '{tribute} hides under the stair of the one cottage in {zone} with a cold chimney.',
                 '{tribute} folds into the hedge line of {zone} and breathes with the wind.',
                 '{tribute} climbs into a hayloft in {zone} and pulls the ladder up after them.',
-                '{tribute} waits out footsteps in {zone} from inside a wardrobe that smells of winter.',
-                '{tribute} lies flat between the stones of {zone} and lets the mist do the rest.',
-                '{tribute} hides in {zone} the way the stories teach: off the path, and quiet.',
-                '{tribute} stays hidden in {zone} even after the voice calling their name gives up.',
+                '{tribute} waits out footsteps in {zone} from inside a wardrobe full of coats.',
+                '{tribute} lies flat between the stones of {zone} with the mist over them.',
+                '{tribute} hides in {zone} well off the path and does not move.',
+                '{tribute} stays hidden in {zone} until a quarter of an hour after the voice calling their name stops.',
             ],
             hunt: [
                 '{tribute} watches the door of a cottage in {zone}, waiting for hunger to deliver somebody to it.',
-                '{tribute} stalks the tree line of {zone} and finds tracks: boots, going in; nothing coming out.',
-                '{tribute} hunts {zone} along the breadcrumb trails, which always lead to somebody eventually.',
-                '{tribute} sets up where the path crosses {zone}, because everyone uses the path in the end.',
+                '{tribute} stalks the tree line of {zone} and finds boot tracks going in with none coming out.',
+                '{tribute} hunts {zone} along the breadcrumb trails, which all run toward the deep wood.',
+                '{tribute} sets up where the path crosses {zone}, which is the only swept ground in the wood.',
                 '{tribute} follows chimney smoke across {zone} to a hearth with nobody home.',
-                '{tribute} works {zone} with a weapon low, ignoring everything that offers to help.',
-                '{tribute} waits in the dark of {zone} for the sound of somebody accepting an invitation.',
-                '{tribute} hunts {zone} and finds only the wood, watching back.',
+                '{tribute} works {zone} with a weapon low and does not answer anything that speaks to them.',
+                '{tribute} waits in the dark of {zone} for the sound of a cottage door opening.',
+                '{tribute} hunts {zone} for an hour and finds nobody in it.',
             ],
             travel: GENERIC_ACTIONS.travel,
             fortify: [
-                '{tribute} takes a cottage in {zone} and salts the doorstep, on a theory.',
+                '{tribute} takes a cottage in {zone} and lays salt across the doorstep.',
                 '{tribute} bars the shutters of a house in {zone} against everything the wood might send visiting.',
                 '{tribute} rings their camp in {zone} with a breadcrumb line of their own, facing outward.',
-                '{tribute} digs in at {zone} and nails the door shut from the inside. Doors here open too easily.',
+                '{tribute} digs in at {zone} and nails the door shut from the inside.',
             ],
             scavenge: [
-                '{tribute} strips an abandoned camp in {zone} whose owner took a bargain and needed nothing after.',
+                '{tribute} strips an abandoned camp in {zone}. Everything in it was left packed.',
                 '{tribute} goes through a cottage in {zone} that stands exactly as somebody left it, mid-meal.',
                 '{tribute} picks over the edge of the bramble in {zone} for what people dropped going in.',
-                '{tribute} searches {zone} and finds a pack, a bedroll, and no footprints leading away.',
+                '{tribute} searches {zone} and finds a pack and a bedroll with no footprints leading away from them.',
             ],
             shadow: [
-                '{tribute} follows somebody through {zone} at the distance the wolf keeps: near enough to hear, never seen.',
+                '{tribute} follows somebody through {zone} near enough to hear them and never inside sight.',
                 '{tribute} tracks a tribute across {zone} by which doors have been opened.',
-                '{tribute} shadows somebody down the path through {zone}, letting the wood cover the sound.',
+                '{tribute} shadows somebody down the path through {zone}, off the swept ground.',
                 '{tribute} keeps one bend of {zone} between themselves and the person ahead, all day.',
             ],
             flail: [
-                '{tribute} pounds on a cottage door in {zone} demanding a bargain, and the door does not open for the desperate. It opens for the choosing.',
-                '{tribute} shouts their own name into {zone} before anything else can use it.',
-                '{tribute} eats berries in {zone} without checking them against any story at all.',
-                '{tribute} walks straight through {zone}, off the path, daring the wood to decide.',
+                '{tribute} pounds on a cottage door in {zone} and shouts at it. It does not open.',
+                '{tribute} shouts their own name into {zone} three times.',
+                '{tribute} eats berries in {zone} without checking what they are.',
+                '{tribute} walks straight through {zone} off the path the whole way.',
             ],
         },
         events: [
             {
-                text: '{tribute} finds a breadcrumb trail in {zone} and follows it backward to see where it starts. It does not start. It has always been going.',
+                text: '{tribute} follows a breadcrumb trail in {zone} backward for two hours without reaching the start of it.',
                 escapeText: '{tribute} finds breadcrumbs in {zone} and steps over the line without following it in either direction.',
                 cause: 'Ate what was offered',
                 dodgeStat: 'intelligence',
@@ -13286,7 +13286,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest', 'open'],
             },
             {
-                text: 'There is a cottage in {zone} that was not there yesterday. {tribute} has slept within sight of this spot twice. The garden is mature. The path to the door is worn.',
+                text: 'There is a cottage in {zone} that was not there yesterday, and {tribute} has slept in sight of the spot twice. The garden is mature and the path to the door is worn.',
                 escapeText: '{tribute} notes the new cottage in {zone}, notes that they are not going to think about it, and moves on.',
                 cause: 'Took a bargain',
                 dodgeStat: 'intelligence',
@@ -13294,7 +13294,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 sanity: 16,
             },
             {
-                text: 'Smoke stands up from a chimney in {zone}, straight as a rule in the moving air. {tribute} watches it for an hour. Nobody comes out. Nothing burns down. The fire is for them.',
+                text: 'Smoke stands straight up from a chimney in {zone} in moving air. {tribute} watches it for an hour and nobody comes out.',
                 escapeText: '{tribute} sees the chimney smoke over {zone} and gives the house the wide berth every story recommends.',
                 cause: 'Took a bargain',
                 dodgeStat: 'stealth',
@@ -13312,7 +13312,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['water'],
             },
             {
-                text: 'The wolf steps onto the track in front of {tribute} in {zone}, looks at them the way a person looks at a person, and steps aside to let them pass. Being let past is not a kindness. It is a note taken.',
+                text: 'The wolf steps onto the track in front of {tribute} in {zone}, looks at them, and steps aside to let them past.',
                 escapeText: '{tribute} sees the wolf ahead in {zone} and leaves the track before it can decide anything about them.',
                 cause: 'Went into the bramble',
                 dodgeStat: 'stealth',
@@ -13321,7 +13321,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: '{tribute} brushes against a spindle in the dark of {zone} — one of dozens, set at hand height through the whole room — and the prick burns far past what a needle should.',
+                text: '{tribute} brushes a spindle in the dark of {zone}, one of dozens set at hand height through the room. The prick burns well past what a needle should.',
                 escapeText: '{tribute} sees the light catch a needle point in {zone} and keeps their hands to themselves through the whole house.',
                 cause: 'Took a bargain',
                 dodgeStat: 'agility',
@@ -13331,7 +13331,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: '{tribute} walks the Field of Stones through {zone} and reads what is cut into each one. Names. First names only, the way you name children. There is room left.',
+                text: '{tribute} walks the Field of Stones through {zone} and reads them. Each carries one first name. Several stones are blank.',
                 escapeText: '{tribute} crosses the stones in {zone} without reading a single one, eyes on the far hedge the whole way.',
                 cause: 'Took a bargain',
                 dodgeStat: 'endurance',
@@ -13340,7 +13340,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open'],
             },
             {
-                text: 'Something is cooking in {zone} — bread, meat, sugar, all of it at once — and {tribute} is four days hungry. They eat standing in the doorway, which they will tell themselves was caution.',
+                text: 'Something is cooking in {zone}: bread, meat and sugar at once. {tribute} is four days hungry and eats standing in the doorway.',
                 escapeText: '{tribute} stands in the smell of cooking in {zone}, counts the cost of free things in this wood, and goes back out hungry.',
                 cause: 'Ate what was offered',
                 dodgeStat: 'intelligence',
@@ -13350,7 +13350,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'There is a door in {zone} with a name carved into it at eye height, deep and old and weathered grey. The name is {tribute}\'s. The carving is older than they are.',
+                text: 'There is a name carved at eye height into a door in {zone}, weathered grey. It is {tribute}\'s name and the cut is older than they are.',
                 escapeText: '{tribute} finds their own name carved on a door in {zone} and does not open it, which is the only move that wins.',
                 cause: 'Took a bargain',
                 dodgeStat: 'intelligence',
@@ -13361,7 +13361,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             },
             {
                 // The marquee relief: the one honest road.
-                text: '{tribute} finds the path in {zone} — the real one, swept and sunlit, that goes where it says and asks for nothing. For one whole day the wood keeps its word.',
+                text: '{tribute} finds the swept path through {zone}. It runs where the markers say it runs, all day, and nothing comes out of the trees.',
                 escapeText: '{tribute} finds the path out of {zone} and walks it warily, waiting for a toll that never comes.',
                 cause: 'Went into the bramble',
                 heal: 10,
@@ -13370,7 +13370,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 oncePerRun: true,
             },
             {
-                text: 'There is a mirror in the Spinning House reach of {zone}, and {tribute} makes the mistake of asking it nothing at all. It answers anyway.',
+                text: 'There is a mirror in the Spinning House reach of {zone}. {tribute} says nothing to it and it answers.',
                 escapeText: '{tribute} turns the mirror in {zone} to the wall without once looking into it.',
                 cause: 'Took a bargain',
                 dodgeStat: 'intelligence',
@@ -13379,7 +13379,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The light changes in {zone} — not dimmer, just older — and {tribute} understands that the wood has been reading them all this time, and has just now turned the page.',
+                text: 'The light in {zone} changes colour without getting dimmer, and every path {tribute} had marked is somewhere else.',
                 escapeText: '{tribute} feels {zone} make up its mind about them, and finds it has decided, for now, to be generous.',
                 cause: 'Went into the bramble',
                 dodgeStat: 'charisma',
@@ -13404,7 +13404,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The well in {zone} answers when {tribute} calls down it, and the voice that answers is not an echo, and it is polite.',
+                text: '{tribute} calls down the well in {zone}. What answers is not an echo and it asks a question.',
                 escapeText: '{tribute} calls down the well in {zone}, hears the echo come back exactly as an echo should, and draws their water.',
                 cause: 'Went down the well',
                 dodgeStat: 'willpower',
@@ -13415,7 +13415,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['water'],
             },
             {
-                text: 'The spinning house in {zone} is turning slowly when {tribute} arrives and it is turning faster when they are inside it, and the door is now somewhere else.',
+                text: 'The spinning house in {zone} is turning slowly when {tribute} arrives and faster once they are inside. The door is on the far side now.',
                 escapeText: '{tribute} watches the spinning house in {zone} for one full turn, times the door, and does not go in at all.',
                 cause: 'Lost in the spinning house',
                 dodgeStat: 'agility',
@@ -13426,7 +13426,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The bramble around {zone} opens for {tribute} and closes behind them, and it is a corridor now, and corridors go somewhere.',
+                text: 'The bramble around {zone} opens ahead of {tribute} and closes behind them, leaving one way on.',
                 escapeText: '{tribute} cuts a way out through the side of the bramble corridor in {zone} rather than following it to wherever it wanted them.',
                 cause: 'Taken by the Bramble',
                 dodgeStat: 'strength',
@@ -13437,7 +13437,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'There is a wolf in Grandmother’s cottage at {zone} and it is wearing what it found in the wardrobe, and it asks {tribute} in by name.',
+                text: 'There is a wolf in the cottage at {zone} wearing what was in the wardrobe. It asks {tribute} in by name.',
                 escapeText: '{tribute} does not go into Grandmother’s cottage at {zone}, whatever is calling from inside it and whatever name it uses.',
                 cause: 'Killed by the Wolf',
                 dodgeStat: 'willpower',
@@ -13452,7 +13452,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // The woodcutter is the one figure in every version of the story
                 // who is actually on your side.
-                text: 'The woodcutter’s cottage in {zone} is plain, cold and entirely honest: bread in the crock, water in the jug, a bed, an axe by the door, and nothing at all that talks, and {tribute} sleeps the night through.',
+                text: 'The woodcutter’s cottage in {zone} has bread in the crock, water in the jug, a bed and an axe by the door. {tribute} sleeps the night through.',
                 escapeText: '{tribute} finds the woodcutter’s cottage in {zone} with the door off its hinges, the crock smashed, and the axe gone.',
                 cause: 'Froze in the Story Wood',
                 feed: 38,
@@ -13466,7 +13466,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: second pass to the target. Every door opens and every one
                 // of them costs something; nothing in this wood heals a wound.
-                text: 'The path through {zone} is swept, edged and perfectly clear, and it has been going in the same direction for two hours, and {tribute} has passed the same milestone twice.',
+                text: 'The path through {zone} is swept and edged and has run straight for two hours. {tribute} has passed the same milestone twice.',
                 escapeText: '{tribute} leaves the swept path through {zone} entirely and goes through the standing trees, which is slower, and gets somewhere.',
                 cause: 'Never left the Path',
                 dodgeStat: 'willpower',
@@ -13477,7 +13477,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The millpond at {zone} is still enough to mirror and {tribute} leans over it to drink, and the reflection is a half-second behind them the whole time.',
+                text: '{tribute} leans over the millpond at {zone} to drink. The reflection is half a second behind them the whole time.',
                 escapeText: '{tribute} scoops from the millpond at {zone} without looking into it, drinks with their back to the water, and fills their bottle blind.',
                 cause: 'Taken in the millpond',
                 dodgeStat: 'willpower',
@@ -13489,7 +13489,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['water'],
             },
             {
-                text: 'The sisters in the deep wood of {zone} ask {tribute} three questions, politely, in turn, and wait for the answers, and the third question is about somebody at home.',
+                text: 'The sisters in the deep wood of {zone} ask {tribute} three questions in turn and wait for the answers. The third is about somebody at home.',
                 escapeText: '{tribute} answers none of the three questions the sisters put to them in {zone} and keeps walking while they are still asking.',
                 cause: 'Answered the Sisters',
                 dodgeStat: 'willpower',
@@ -13500,7 +13500,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The field of stones at {zone} is two hundred waist-high markers in rows, all of them cut, none of them named, and {tribute} counts exactly as many of them as there were tributes at the reaping.',
+                text: 'The field of stones at {zone} is two hundred waist-high markers in rows, cut and unnamed. {tribute} counts the same number as there were tributes at the reaping.',
                 escapeText: '{tribute} declines to count the stones in the field at {zone}, which is the single most sensible thing anybody does in this wood.',
                 cause: 'Counted the stones',
                 dodgeStat: 'willpower',
@@ -13510,7 +13510,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open'],
             },
             {
-                text: 'The ravens over {zone} have been following {tribute} since the second day, at a distance, in a number that has been going up, and today the number is eleven.',
+                text: 'The ravens over {zone} have followed {tribute} since the second day. Today there are eleven of them.',
                 escapeText: '{tribute} counts the ravens over {zone}, gets the same number as yesterday, and finds that it helps.',
                 cause: 'Taken by the ravens',
                 dodgeStat: 'willpower',
@@ -13521,7 +13521,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest', 'open'],
             },
             {
-                text: 'The well in the clearing at {zone} draws cold and sweet and nothing at all answers from the bottom of it, and {tribute} drinks and fills everything they carry and nothing happens.',
+                text: 'The well in the clearing at {zone} draws cold and sweet and nothing answers from the bottom of it. {tribute} drinks and fills everything they carry.',
                 escapeText: '{tribute} works the well in the clearing at {zone} and brings up a bucket of black water with something in the bottom of it.',
                 cause: 'Went down the well',
                 quench: 52,
