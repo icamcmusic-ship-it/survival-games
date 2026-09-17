@@ -9918,8 +9918,8 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     burnscar: {
         ambient: [
             'The ground still gives off heat three years on, and the char smell has never quite left the air.',
-            'A snag lets go somewhere out of sight, silent until it lands.',
-            'Fireweed has taken every clearing the fire made, thorns first, flowers after.',
+            'A snag lets go somewhere out of sight and makes no sound until it lands.',
+            'Fireweed has taken every clearing the fire made and is thorned the whole length.',
             'Ash lifts off the black ground with every step and does not settle for a long time.',
             'A heat-swollen seed pod ticks in the brush and does not open.',
         ],
@@ -9932,22 +9932,22 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} works the gully bottom of {zone} where the runoff left something behind: {item}.',
             ],
             rest: [
-                '{tribute} sits on ground still faintly warm in {zone} and tries not to think about why.',
-                '{tribute} rations the hour in {zone}, listening for the silent kind of deadfall.',
+                '{tribute} sits on ground in {zone} that is still warm from underneath.',
+                '{tribute} rests the hour in {zone} watching the standing dead rather than listening for it.',
                 '{tribute} picks the thorns of {zone} out of their own hands, one at a time.',
-                '{tribute} waits out the hour in {zone} with the ash smell thick enough to taste.',
-                '{tribute} counts standing char in {zone} to keep from watching all of it at once.',
+                '{tribute} waits out the hour in {zone}. The char is thick enough to taste.',
+                '{tribute} counts the standing char in {zone} and reaches a hundred and forty.',
             ],
             hide: [
-                '{tribute} goes still among the snags of {zone}, one more black shape among many.',
-                '{tribute} folds into a fireweed thicket in {zone} and takes the thorns as the price of it.',
+                '{tribute} goes still among the snags of {zone}, black against black.',
+                '{tribute} folds into a fireweed thicket in {zone} and takes the thorns to do it.',
                 '{tribute} presses into a burned hollow in {zone} and stops moving.',
-                '{tribute} freezes against char in {zone}, betting the black ground over their own outline.',
+                '{tribute} freezes against char in {zone}, ash-covered from the walk in.',
                 '{tribute} tucks below the ridge line of {zone} where the ash never fully settled.',
             ],
             hunt: [
-                '{tribute} reads footprints in the ash of {zone}, clear as a signed page, and follows them.',
-                '{tribute} works {zone}, patient, listening for a deadfall that isn\'t wind.',
+                '{tribute} reads footprints in the ash of {zone}, all of them sharp-edged, and follows them.',
+                '{tribute} works {zone} slowly, watching the standing dead for movement.',
                 '{tribute} holds the gully line of {zone} where anyone crossing has to slow down.',
                 '{tribute} watches the ridge over {zone} for a silhouette against the grey sky.',
                 '{tribute} stalks {zone} for the better part of an hour and comes up with nothing.',
@@ -9956,37 +9956,37 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} picks a line through the snags into {zone}.',
                 '{tribute} pushes through fireweed into {zone}, thorns be damned.',
                 '{tribute} crosses the gully toward {zone}, watching the ground for heat-cracks.',
-                '{tribute} moves into {zone} fast, before whatever ticked in the brush decides anything.',
+                '{tribute} moves into {zone} fast and does not stop in the brush.',
                 '{tribute} works the ridge toward {zone}, ash lifting with every step.',
             ],
             fortify: [
-                '{tribute} clears the fireweed back from a stand of black timber in {zone} and makes it somewhere with one way in.',
-                '{tribute} builds a break around their patch of {zone} — the one thing this ground cannot argue with.',
-                '{tribute} has held the same burnt hollow in {zone} long enough to have opinions about every approach to it.',
-                '{tribute} lays deadfall across the ash road into {zone} and leaves the harder route open on purpose.',
+                '{tribute} clears the fireweed back from a stand of black timber in {zone}, leaving one way in.',
+                '{tribute} scrapes a firebreak down to bare soil around their patch of {zone}.',
+                '{tribute} has held the same burnt hollow in {zone} long enough to know every approach to it.',
+                '{tribute} lays deadfall across the ash road into {zone} and leaves the harder route open.',
             ],
             scavenge: [
                 '{tribute} rakes through the ash of {zone} for whatever the fire did not finish.',
                 '{tribute} finds a cache in {zone} that burned on the outside and held on the inside.',
                 '{tribute} works the scorched ground of {zone} where the heat drove people to drop things and run.',
-                '{tribute} pulls something out of the char in {zone}, cleans it on their sleeve, and keeps it.',
+                '{tribute} pulls a blade out of the char in {zone} and cleans it on their sleeve.',
             ],
             shadow: [
-                '{tribute} follows a line of prints through the ash of {zone} — this ground keeps everything — and stays well back.',
+                '{tribute} follows a line of prints through the ash of {zone} from a long way back. This ground keeps every one of them.',
                 '{tribute} moves through the black timber of {zone} matching somebody else\'s pace exactly.',
-                '{tribute} keeps to the fireweed of {zone}, which is the only cover left, and does not close the gap.',
+                '{tribute} keeps to the fireweed of {zone}, which is the only cover left, and holds the distance.',
                 '{tribute} watches the ash settle behind somebody crossing {zone} and waits for it to settle again before moving.',
             ],
             flail: [
-                '{tribute} walks the open burn of {zone} where there is no cover at all and does not care.',
-                '{tribute} drinks from something standing in {zone} that has ash in it.',
-                '{tribute} kicks a burnt trunk in {zone} until it comes down, for no reason either of them could give.',
-                '{tribute} crosses {zone} through the deepest ash, loud, leaving a line anyone could follow.',
+                '{tribute} walks the open burn of {zone} in full view of both ridges.',
+                '{tribute} drinks from standing water in {zone} with ash sitting on top of it.',
+                '{tribute} kicks a burnt trunk in {zone} until it comes down.',
+                '{tribute} crosses {zone} through the deepest ash, leaving a line straight across it.',
             ],
         },
         events: [
             {
-                text: 'A seed pod in {zone} finds its heat threshold, and {tribute} is standing in the blast radius.',
+                text: 'A seed pod in {zone} reaches its heat threshold and opens. {tribute} is a metre from it.',
                 escapeText: '{tribute} hears the tick from the pod in {zone} and is already moving when it goes.',
                 cause: 'Killed by heat-shrapnel',
                 dodgeStat: 'agility',
@@ -9994,14 +9994,14 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 burned: true,
             },
             {
-                text: 'A standing char in {zone} lets go without a sound and comes down where {tribute} was standing a second ago.',
+                text: 'A standing char in {zone} comes down without a sound where {tribute} was standing a second before.',
                 escapeText: '{tribute} steps clear of the snag in {zone} a moment before it decides to fall.',
                 cause: 'Crushed by silent deadfall',
                 dodgeStat: 'agility',
                 damage: 24,
             },
             {
-                text: 'The ground under {tribute} in {zone} is hotter than it looks, and it takes a while to notice.',
+                text: 'The ground under {tribute} in {zone} is hotter than it looks. Their boot soles go before they notice.',
                 escapeText: '{tribute} feels the heat come up through their boots in {zone} and moves off it fast.',
                 cause: 'Burned by ground heat',
                 dodgeStat: 'intelligence',
@@ -10009,7 +10009,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 burned: true,
             },
             {
-                text: 'The thorns of {zone} open a dozen small cuts on {tribute} before they clear it, and every one of them stings for hours.',
+                text: 'The thorns of {zone} open a dozen cuts on {tribute} before they are through it.',
                 escapeText: '{tribute} finds a path around the worst of the fireweed in {zone}.',
                 cause: 'Infected by thorn wounds',
                 dodgeStat: 'agility',
@@ -10017,13 +10017,13 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 infected: true,
             },
             {
-                text: 'A cache buried before the fire turns up intact in {zone}, and {tribute} is the one who finds it sealed against three years of ash.',
+                text: 'A cache buried before the fire turns up in {zone}, still sealed against three years of ash. {tribute} opens it.',
                 escapeText: '{tribute} finds the cache in {zone} already burned through.',
                 cause: 'Starved on the burn scar',
                 feed: 20,
             },
             {
-                text: 'A snag at {zone} that has been dead three years comes down on {tribute} without a sound, the way they all do.',
+                text: 'A snag at {zone} dead three years comes down on {tribute} without a sound.',
                 escapeText: '{tribute} crosses the snag field at {zone} watching upward instead of forward, which is the only way anyone crosses it.',
                 cause: 'Killed by deadfall',
                 dodgeStat: 'intelligence',
@@ -10032,7 +10032,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins', 'forest'],
             },
             {
-                text: 'The ground at {zone} is still burning underneath, and it gives under {tribute}\'s weight into a root cavity full of embers.',
+                text: 'The ground at {zone} is still burning under the roots. It gives under {tribute} into a cavity full of embers.',
                 escapeText: '{tribute} feels the ground at {zone} go soft and hot underfoot and gets their weight back before it opens.',
                 cause: 'Burned in a root cavity',
                 dodgeStat: 'agility',
@@ -10041,7 +10041,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open', 'forest'],
             },
             {
-                text: 'Fireweed has grown thick over the gully at {zone}, and the thorns take a layer of {tribute} for every metre.',
+                text: 'Fireweed has grown thick over the gully at {zone}. {tribute} goes through it and comes out bleeding from both arms.',
                 escapeText: '{tribute} works around the fireweed at {zone} rather than through it, and loses only the time.',
                 cause: 'Bled out in the fireweed',
                 dodgeStat: 'endurance',
@@ -10051,7 +10051,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest', 'wetland'],
             },
             {
-                text: 'The erosion gully at {zone} takes {tribute}\'s footing and forty feet of loose burnt soil with it.',
+                text: 'The erosion gully at {zone} gives under {tribute} and takes forty feet of loose burnt soil down with them.',
                 escapeText: '{tribute} traverses the gully wall at {zone} on the one line of unburnt root that will still hold.',
                 cause: 'Fell in the erosion gully',
                 dodgeStat: 'agility',
@@ -10060,7 +10060,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['wetland', 'highland'],
             },
             {
-                text: 'Ash off the char ridge above {zone} comes down the slope in a grey wave and goes straight into {tribute}\'s lungs.',
+                text: 'Ash off the char ridge above {zone} comes down the slope in a grey wave over {tribute}.',
                 escapeText: '{tribute} gets a wet cloth over their face on {zone} before the ash comes off the ridge.',
                 cause: 'Choked on the ash',
                 dodgeStat: 'endurance',
@@ -10070,7 +10070,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['highland', 'open'],
             },
             {
-                text: 'The old burn line at {zone} was cut to stop a fire and is holding a season of dry bramble instead. Something has already lit it, and {tribute} is on the wrong side.',
+                text: 'The old burn line at {zone} was cut to stop a fire and is full of dry bramble. It is alight and {tribute} is on the wrong side of it.',
                 escapeText: '{tribute} is over the burn line at {zone} and moving before the bramble on it really catches.',
                 cause: 'Caught on the burn line',
                 dodgeStat: 'agility',
@@ -10080,7 +10080,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'burning',
             },
             {
-                text: '{tribute} finds the seep spring at {zone} running slow and cold out of ground that burned, and it is drinkable.',
+                text: 'The seep spring at {zone} runs slow and cold out of ground that burned. {tribute} drinks it.',
                 escapeText: '{tribute} reaches the seep at {zone} and finds it fouled — something died upstream of it and was left there.',
                 cause: 'Died of bad water',
                 dodgeStat: 'intelligence',
@@ -10091,7 +10091,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: three years burned, nothing to eat and nothing left
                 // that will take a flame twice — this arena's two laws in prose.
-                text: 'The snag standing over {zone} has been dead for three years and holding on out of habit, and it comes down without leaning first and without a sound until it lands, and {tribute} is under it.',
+                text: 'The snag standing over {zone} has been dead three years. It comes down without leaning and without a sound, and {tribute} is under it.',
                 escapeText: '{tribute} looks up before they sit down in {zone}, sees what is above them, and sits somewhere else.',
                 cause: 'Killed by a falling snag',
                 dodgeStat: 'agility',
@@ -10102,7 +10102,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins', 'forest'],
             },
             {
-                text: 'The ground through {zone} has been burning under the roots since the fire, three feet down, and {tribute} puts a leg into a cavity that is still at temperature.',
+                text: 'The ground through {zone} has burned three feet down since the fire. {tribute} puts a leg into a cavity still at temperature.',
                 escapeText: '{tribute} watches where the frost fails to settle across {zone} and walks around every warm patch in it.',
                 cause: 'Burned by the ground itself',
                 dodgeStat: 'intelligence',
@@ -10112,7 +10112,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open', 'highland'],
             },
             {
-                text: 'The fireweed on the slope of {zone} is head-high, thorned the entire length, and grown so thick that {tribute} cannot see the gully until they are in it.',
+                text: 'The fireweed on the slope of {zone} is head-high and thorned the whole length. {tribute} does not see the gully until they are in it.',
                 escapeText: '{tribute} works the fireweed slope of {zone} along the contour where the stems thin, and arrives scratched rather than opened.',
                 cause: 'Bled out in the fireweed',
                 dodgeStat: 'agility',
@@ -10124,7 +10124,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The erosion gully through {zone} has no root left anywhere in it to hold the sides, and the side {tribute} is under comes in on top of them.',
+                text: 'The erosion gully through {zone} has no root left to hold its sides. The one {tribute} is under comes in on them.',
                 escapeText: '{tribute} crosses the erosion gully in {zone} at the one place it has a rock lip rather than a soil one.',
                 cause: 'Buried in the erosion gully',
                 dodgeStat: 'intelligence',
@@ -10134,7 +10134,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['wetland'],
             },
             {
-                text: 'There is nothing at all to eat on the char ridge above {zone} and nothing on the slope below it either, and {tribute} has now gone three days on what they carried in.',
+                text: 'There is nothing to eat on the char ridge above {zone} or on the slope below it. {tribute} has gone three days on what they carried in.',
                 escapeText: '{tribute} works the old burn line of {zone} for morels coming up through the ash, which is exactly where they grow, and finds a handful.',
                 cause: 'Starved on the burn',
                 dodgeStat: 'intelligence',
@@ -10147,7 +10147,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // Fireweed grows on burns for a reason, and a seep spring is a
                 // seep spring whatever happened above it.
-                text: 'The seep spring in {zone} came through the fire with the rock over it intact, and it runs cold and clean, and the fireweed around it is in flower, and {tribute} has it to themselves.',
+                text: 'The seep spring in {zone} came through the fire with the rock over it intact and runs cold and clean. {tribute} has it to themselves.',
                 escapeText: '{tribute} gets to the seep spring in {zone} and finds it trodden to mud by everything on the mountain that got there first.',
                 cause: 'Died of thirst on the burn',
                 quench: 55,
@@ -10159,7 +10159,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: second pass to the target. Nothing to eat, nothing that
                 // will burn twice, and deadfall that drops without a sound.
-                text: 'The standing dead at {zone} is a hectare of trunks with no crowns and no roots left worth the name, and when the first one goes the second one goes, and {tribute} is in the middle of the row.',
+                text: 'The standing dead at {zone} is a hectare of trunks with no roots left. The first one goes, then the next, and {tribute} is in the middle of the row.',
                 escapeText: '{tribute} crosses the standing dead at {zone} at a diagonal to the fall line and is clear when the row goes over.',
                 cause: 'Killed in the standing dead',
                 dodgeStat: 'agility',
@@ -10171,7 +10171,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 special: 'collapse',
             },
             {
-                text: 'There is nothing on this mountain that will take a flame a second time and {tribute} has spent two hours proving it, and the night is coming in at four degrees.',
+                text: 'Nothing on this mountain will take a flame a second time. {tribute} has tried for two hours and the night is coming in at four degrees.',
                 escapeText: '{tribute} gives up on a fire at {zone} within the first ten minutes and spends the time building a thicker bed of fireweed instead.',
                 cause: 'Froze on the burn',
                 dodgeStat: 'intelligence',
@@ -10182,7 +10182,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 requires: { law: 'fireImpossible' },
             },
             {
-                text: 'The cinder-back boars work the bramble choke at {zone} for roots and they will not be moved off ground they are working, and {tribute} has come through the bramble into the middle of them.',
+                text: 'The cinder-back boars are working the bramble choke at {zone} for roots. {tribute} comes through into the middle of them.',
                 escapeText: '{tribute} hears the boars working the bramble choke at {zone} and goes round the whole thicket rather than through it.',
                 cause: 'Killed by the cinder-back boars',
                 dodgeStat: 'stealth',
@@ -10192,7 +10192,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['wetland', 'forest'],
             },
             {
-                text: 'The char ridge above {zone} is bare black rock with nothing on it for four hundred metres, and anybody anywhere on this mountain can see a person crossing it, and {tribute} is crossing it.',
+                text: 'The char ridge above {zone} is four hundred metres of bare black rock in view of the whole mountain. {tribute} is crossing it.',
                 escapeText: '{tribute} crosses the char ridge above {zone} in the last of the dark, and the mountain does not see them do it.',
                 cause: 'Shot on the char ridge',
                 dodgeStat: 'stealth',
@@ -10203,7 +10203,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The standing char at {zone} is the shape of a tree from any distance and is not one, and it has been in the same place in {tribute}’s peripheral vision for two days and is now closer.',
+                text: 'One of the standing char at {zone} has been at the edge of {tribute}’s vision for two days. This morning it is thirty metres closer.',
                 escapeText: '{tribute} walks straight up to the standing char at {zone} and puts a hand on it, and it is a burned tree, and it stays one.',
                 cause: 'Taken by the Standing Char',
                 dodgeStat: 'willpower',
@@ -10215,7 +10215,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins', 'forest'],
             },
             {
-                text: 'The deadfall hollow at {zone} came through the fire with a lens of green in the bottom of it, and there are morels up through the ash in it by the hundred, and {tribute} has it to themselves.',
+                text: 'The deadfall hollow at {zone} came through the fire with green in the bottom of it and morels are up through the ash by the hundred. {tribute} has it to themselves.',
                 escapeText: '{tribute} works the deadfall hollow at {zone} and finds every morel in it already cut at the base.',
                 cause: 'Starved on the burn',
                 feed: 42,
@@ -10228,11 +10228,11 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     },
     craterfield: {
         ambient: [
-            'The craters hold still black water, overlapping like something took a bite out of the whole field.',
-            'Vines have taken every crater wall, thick with fruit nobody here trusts.',
-            'Something metal creaks under the root mat, settling the way old ordnance settles.',
+            'The craters hold still black water and overlap each other across the whole field.',
+            'Vines have taken every crater wall and are heavy with fruit nobody has eaten.',
+            'Something metal shifts under the root mat and settles again.',
             'A pod somewhere in the tangle clicks once, softly, and goes quiet again.',
-            'Rust bleeds down a convoy wreck into the mud, the only colour in a grey field.',
+            'Rust runs down a convoy wreck into the mud, orange against a grey field.',
         ],
         actions: {
             forage: [
@@ -10244,23 +10244,23 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             ],
             rest: [
                 '{tribute} sits against a crater wall in {zone}, well clear of the vines.',
-                '{tribute} rations the hour in {zone}, listening for anything that ticks.',
+                '{tribute} rests the hour in {zone}, listening for anything ticking in the tangle.',
                 '{tribute} checks their footing twice before settling in {zone} for the hour.',
-                '{tribute} waits out the hour in {zone}, back to rusted metal, which at least won\'t explode.',
-                '{tribute} counts craters visible from {zone} to keep from thinking about what\'s under them.',
+                '{tribute} waits out the hour in {zone} with their back to a rusted hull.',
+                '{tribute} counts the craters visible from {zone} and reaches sixty-one.',
             ],
             hide: [
                 '{tribute} goes still in a shallow crater at {zone} and lets the mud do the rest.',
                 '{tribute} folds into the vine tangle of {zone}, moving nothing, touching nothing.',
                 '{tribute} presses into a bunker wall in {zone} and stops.',
-                '{tribute} freezes against rusted metal in {zone}, betting stillness over cover.',
-                '{tribute} tucks below a crater rim in {zone}, out of every sightline at once.',
+                '{tribute} freezes against rusted metal in {zone} rather than move to cover.',
+                '{tribute} tucks below a crater rim in {zone}, under the level of the field.',
             ],
             hunt: [
                 '{tribute} watches the road into {zone} for anything moving on it.',
                 '{tribute} works the crater rims of {zone}, patient, and finds nothing.',
-                '{tribute} holds the convoy road through {zone}, the only ground here anyone trusts to walk fast.',
-                '{tribute} reads boot-prints in the mud of {zone} and follows them to nothing.',
+                '{tribute} holds the convoy road through {zone}, which is the only ground anybody crosses at speed.',
+                '{tribute} reads boot-prints in the mud of {zone} and follows them until the mud ends.',
                 '{tribute} stalks the tangle at {zone} for the better part of an hour and comes up empty.',
             ],
             travel: [
@@ -10268,31 +10268,31 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} follows the convoy road into {zone}, trusting old tyre ruts over open mud.',
                 '{tribute} works through the vine tangle toward {zone}, one careful step at a time.',
                 '{tribute} skirts the crater rims on the way to {zone}.',
-                '{tribute} crosses into {zone} fast, on the theory that speed beats caution out here.',
+                '{tribute} crosses into {zone} at a run without testing the ground.',
             ],
             fortify: [
-                '{tribute} takes a crater rim in {zone} and works it: the lip cleared, the approaches sown with somebody else\'s old ordnance.',
+                '{tribute} takes a crater rim in {zone}, clears the lip and sets old ordnance along the approaches.',
                 '{tribute} settles into a shell hole in {zone} deep enough to sleep in and steep enough to be a problem.',
-                '{tribute} has not left {zone} in days, and the ground around it now has a shape somebody chose.',
+                '{tribute} has not left {zone} in four days and has cut, cleared or sown every approach to it.',
                 '{tribute} re-lays a tripline across the crater mouth of {zone} and tests it twice.',
             ],
             scavenge: [
                 '{tribute} digs through the churned ground of {zone} for whatever the last blast turned up and nobody collected.',
                 '{tribute} works a crater in {zone} that has been picked over, and finds the thing three people missed.',
-                '{tribute} pulls something metal out of the fill in {zone} and turns it over a long time before deciding what it is.',
-                '{tribute} strips a half-buried pack out of the lip of {zone} and does not ask whose it was.',
+                '{tribute} pulls something metal out of the fill in {zone} and works out it is a canteen.',
+                '{tribute} digs a half-buried pack out of the lip of {zone} and takes what is in it.',
             ],
             shadow: [
                 '{tribute} moves crater to crater across {zone}, always one behind, never on the open ground between.',
                 '{tribute} keeps a rim of {zone} between themselves and the person crossing it.',
-                '{tribute} follows a line of prints through the ash of {zone} and lets them stay ahead.',
-                '{tribute} waits in a shell hole in {zone} while somebody walks past the top of it, and does not breathe.',
+                '{tribute} follows a line of prints through the mud of {zone} without closing on them.',
+                '{tribute} waits in a shell hole in {zone} while somebody walks past the lip of it.',
             ],
             flail: [
                 '{tribute} walks the open ground of {zone} between craters, upright, in daylight.',
-                '{tribute} kicks something buried in {zone} hard enough that it could have gone either way.',
-                '{tribute} stops reading the ground in {zone}. Reading the ground was the only thing keeping them alive out here.',
-                '{tribute} shouts into a crater in {zone} and waits for whatever answers.',
+                '{tribute} kicks something buried in {zone}. It does not go off.',
+                '{tribute} stops reading the ground in {zone} and walks straight across the field.',
+                '{tribute} shouts into a crater in {zone}. Nothing answers.',
             ],
         },
         events: [
@@ -10302,7 +10302,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             // is about the ground answering itself rather than a tribute.
             {
                 id: 'sympathetic-detonation',
-                text: 'Something goes off under {zone} that nobody stepped on, and forty metres from where {tribute} is standing something else agrees with it, and then the whole field is answering itself.',
+                text: 'Something goes off under {zone} that nobody stepped on. Forty metres from {tribute} a second charge goes, and then the field starts setting itself off.',
                 escapeText: '{tribute} is flat in a shell scrape in {zone} before the second one goes, which is the only reason there is a {tribute} after the third.',
                 cause: 'Killed in a sympathetic detonation',
                 dodgeStat: 'agility',
@@ -10325,7 +10325,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 bleeding: true,
             },
             {
-                text: 'The root mat under {tribute} in {zone} gives way onto something that has waited a long time to be stepped on.',
+                text: 'The root mat under {tribute} in {zone} gives onto a charge that has sat there since the war.',
                 escapeText: '{tribute} feels the mat in {zone} shift wrong underfoot and gets clear before it matters.',
                 cause: 'Detonated buried ordnance',
                 dodgeStat: 'agility',
@@ -10340,7 +10340,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['water'],
             },
             {
-                text: 'A vine at {zone} closes around {tribute}\'s ankle with more purpose than a plant should have.',
+                text: 'A vine at {zone} closes around {tribute}\'s ankle and tightens as they pull.',
                 escapeText: '{tribute} cuts free of the vine at {zone} before it can properly close.',
                 cause: 'Strangled by crater vines',
                 dodgeStat: 'strength',
@@ -10355,7 +10355,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 grantItem: 'rope',
             },
             {
-                text: 'There is something under the root mat at {zone} that has been waiting seventy years for exactly as much weight as {tribute} is putting on it.',
+                text: 'There is a charge under the root mat at {zone} set for about the weight {tribute} is putting on it.',
                 escapeText: '{tribute} sees the shape of it under the mat at {zone} and steps off the way they came, heel first, slowly.',
                 cause: 'Killed by unexploded ordnance',
                 dodgeStat: 'intelligence',
@@ -10365,7 +10365,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The vines at {zone} have learned what warm is. They find {tribute} in the dark and they are not slow about it.',
+                text: 'The vines at {zone} grow toward warmth. They reach {tribute} in the dark inside a minute.',
                 escapeText: '{tribute} cuts clear of the tangle at {zone} before it gets more than a wrist.',
                 cause: 'Taken by the vines',
                 dodgeStat: 'strength',
@@ -10374,7 +10374,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest', 'wetland'],
             },
             {
-                text: 'The crater wall at {zone} is slick clay over rusted plate, and {tribute} goes down it faster than they went up.',
+                text: 'The crater wall at {zone} is slick clay over rusted plate. {tribute} comes down it faster than they went up.',
                 escapeText: '{tribute} finds the one line up the crater wall at {zone} that is rock rather than clay.',
                 cause: 'Fell into a crater',
                 dodgeStat: 'agility',
@@ -10383,7 +10383,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['highland'],
             },
             {
-                text: 'The pool at the bottom of {zone} has been stagnant a long time, and whatever is in it gets into a cut on {tribute}.',
+                text: 'The pool at the bottom of {zone} has stood a long time. Whatever is in it gets into a cut on {tribute}.',
                 escapeText: '{tribute} keeps out of the water at {zone} entirely, which costs them an hour and nothing else.',
                 cause: 'Died of a fouled wound',
                 dodgeStat: 'intelligence',
@@ -10392,7 +10392,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['wetland', 'water'],
             },
             {
-                text: 'The fruiting tangle at {zone} is heavy with something that looks like food, and {tribute} is hungry enough to find out that mostly it is not.',
+                text: 'The fruiting tangle at {zone} is heavy with something that looks like food. {tribute} eats it.',
                 escapeText: '{tribute} tries one of the fruits at {zone}, spits it out fast enough, and leaves the rest.',
                 cause: 'Poisoned by the tangle',
                 dodgeStat: 'intelligence',
@@ -10402,7 +10402,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The old ammo dump at {zone} cooks off one crate while {tribute} is inside it, which is enough to convince the next three.',
+                text: 'One crate in the old ammo dump at {zone} cooks off while {tribute} is inside. Three more go after it.',
                 escapeText: '{tribute} is out of the dump at {zone} and behind a berm when the first crate goes.',
                 cause: 'Killed in the ammo dump',
                 dodgeStat: 'agility',
@@ -10412,7 +10412,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'A convoy truck on the road through {zone} still has its crew locker sealed, and {tribute} finds seventy years has not got into it.',
+                text: 'A convoy truck on the road through {zone} still has its crew locker sealed. {tribute} gets it open and the contents are dry.',
                 escapeText: '{tribute} gets the locker at {zone} open and finds someone got here first and left the lid up.',
                 cause: 'Crushed under a convoy truck',
                 dodgeStat: 'strength',
@@ -10424,7 +10424,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: unexploded ordnance under a root mat, and a dark that
                 // doubles the hazard rate under this arena's law.
-                text: 'Something under the root mat in {zone} has been waiting since before the Dark Days for exactly the weight {tribute} puts on it.',
+                text: 'A charge under the root mat in {zone} has sat there since before the Dark Days. {tribute} puts their weight on it.',
                 escapeText: '{tribute} works out that the root mat across {zone} is growing over something regular and gridded, and goes the long way round it.',
                 cause: 'Killed by unexploded ordnance',
                 dodgeStat: 'intelligence',
@@ -10438,7 +10438,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 special: 'startsQuaking',
             },
             {
-                text: 'The crater wall out of {zone} is clay under a skin of vine and it is slick all the way up, and {tribute} gets three-quarters of the way and then does not.',
+                text: 'The crater wall out of {zone} is clay under vine and slick the whole way. {tribute} gets three-quarters up and comes back down.',
                 escapeText: '{tribute} cuts steps into the crater wall of {zone} with a heel and takes twenty minutes over what should be two.',
                 cause: 'Fell back into the crater',
                 dodgeStat: 'agility',
@@ -10449,7 +10449,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['highland'],
             },
             {
-                text: 'The vines in the fruiting tangle of {zone} have learned to grow something, and the something is hanging at head height in front of {tribute}, and it smells like food.',
+                text: 'The vines in the fruiting tangle of {zone} are carrying something at head height in front of {tribute}. It smells like food.',
                 escapeText: '{tribute} works out that nothing at all is eating the fruit in the tangle of {zone} and declines to be the first.',
                 cause: 'Poisoned by the tangle',
                 dodgeStat: 'intelligence',
@@ -10460,7 +10460,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The bunker under {zone} is roofed, dry and vine-choked to the doorframe, and the dark inside it does not end where a room should end, which {tribute} works out from three paces in.',
+                text: 'The bunker under {zone} is roofed, dry and choked to the doorframe. Three paces in, {tribute} finds it goes back further than a room should.',
                 escapeText: '{tribute} throws a lit brand into the bunker at {zone} before going in, watches how far the light goes, and does not go in.',
                 cause: 'Killed in the bunker',
                 dodgeStat: 'stealth',
@@ -10472,7 +10472,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 requires: { time: 'night' },
             },
             {
-                text: 'The stagnant pools across {zone} have had a century to work on whatever was dumped into them, and {tribute} has been drinking from one of them for two days.',
+                text: 'The stagnant pools across {zone} have held whatever was dumped in them for a century. {tribute} has drunk from one for two days.',
                 escapeText: '{tribute} boils what they take out of the stagnant pools of {zone}, which costs a fire and a morning and saves their life.',
                 cause: 'Poisoned by the crater water',
                 dodgeStat: 'intelligence',
@@ -10483,7 +10483,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             },
             {
                 // Somebody's convoy, and somebody's rations, sealed for a century.
-                text: 'One of the trucks on the convoy road at {zone} still has its load sealed under canvas, and the ration tins {tribute} pulls out of it are dated to a war nobody teaches.',
+                text: 'One of the trucks on the convoy road at {zone} still has its load sealed under canvas. {tribute} pulls out ration tins dated to the war.',
                 escapeText: '{tribute} gets the canvas off a convoy truck at {zone} and finds the load bay stripped to bare deck and a century of rust.',
                 cause: 'Starved in the crater field',
                 feed: 42,
@@ -10495,7 +10495,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: second pass to the target. Ordnance under the roots, and
                 // a dark that doubles everything.
-                text: 'The old ammo dump at {zone} is a bunker with a century of rain in it and a century of what the rain got into, and {tribute} is a long way inside it with a light.',
+                text: 'The old ammo dump at {zone} has taken a century of rain and whatever the rain carried. {tribute} is a long way inside it with a light.',
                 escapeText: '{tribute} reads the stencilling on the outside of the ammo dump at {zone} and does not take a light past the door.',
                 cause: 'Killed in the ammo dump',
                 dodgeStat: 'intelligence',
@@ -10506,7 +10506,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 special: 'collapse',
             },
             {
-                text: 'The dark comes down over the crater field and everything in it doubles — the adders move, the tangle moves, the salvage hound starts working the convoy road — and {tribute} is between craters with no light.',
+                text: 'The dark comes down over the crater field. The adders move, the tangle moves, the salvage hound starts working the convoy road, and {tribute} is between craters with no light.',
                 escapeText: '{tribute} is in the bunker with the entrance narrowed to a crawl before the light goes out of the crater field entirely.',
                 cause: 'Taken in the dark of the crater field',
                 dodgeStat: 'stealth',
@@ -10518,7 +10518,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The salvage hound has been working {tribute}’s track along the convoy road at {zone} since the second day, and it is not hunting them, it is waiting for them to leave something.',
+                text: 'The salvage hound has worked {tribute}’s track along the convoy road at {zone} since the second day without closing on them.',
                 escapeText: '{tribute} doubles their track twice on the convoy road at {zone} and the salvage hound loses the thread of it entirely.',
                 cause: 'Killed by the Salvage Hound',
                 dodgeStat: 'stealth',
@@ -10529,7 +10529,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open'],
             },
             {
-                text: 'The deep craters at {zone} are forty feet of stagnant water with sides of wet clay, and the thing {tribute} has waded in after is halfway across it.',
+                text: 'The deep craters at {zone} are forty feet of stagnant water in wet clay. What {tribute} waded in after is halfway across one.',
                 escapeText: '{tribute} works the rim of the deep crater at {zone} rather than the water and fishes out what they wanted with a branch.',
                 cause: 'Drowned in a deep crater',
                 dodgeStat: 'endurance',
@@ -10539,7 +10539,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['water'],
             },
             {
-                text: 'The bog adders in the shallow craters at {zone} lie under four inches of warm water in the exact colour of the mud, and {tribute} has been wading them all afternoon.',
+                text: 'The bog adders in the shallow craters at {zone} lie under four inches of warm water the colour of the mud. {tribute} has waded them all afternoon.',
                 escapeText: '{tribute} works the shallow craters at {zone} with a stick out in front of them and every adder in them moves before they do.',
                 cause: 'Killed by a bog adder',
                 dodgeStat: 'agility',
@@ -10549,7 +10549,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['wetland'],
             },
             {
-                text: 'The root mat flat at {zone} is a hundred metres of vine over ground nobody has been able to dig since the war, and everything edible on the field has grown up through it, and {tribute} eats standing.',
+                text: 'The root mat flat at {zone} is a hundred metres of vine over ground nobody has dug since the war. Everything edible on the field has come up through it and {tribute} eats standing.',
                 escapeText: '{tribute} works the root mat flat at {zone} and finds nothing on it but the vines themselves, which are not food.',
                 cause: 'Starved in the crater field',
                 feed: 38,
@@ -10561,8 +10561,8 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     },
     culdesac: {
         ambient: [
-            'The streetlights come on at the same minute they came on yesterday. Nobody is home on the whole loop.',
-            'A delivery truck idles at the loading bay, drops its pallets, and leaves. It will be back.',
+            'The streetlights come on at the same minute as yesterday. Every house on the loop is empty.',
+            'A delivery truck idles at the loading bay, drops its pallets and leaves. It came yesterday too.',
             'Somewhere down the loop a lawnmower is running. Nobody is pushing it.',
             'Every porch light on the road burns at once, sixty-two of them, over sixty-two locked doors.',
             'The pool filter kicks over on its timer. The water has not been still all week.',
