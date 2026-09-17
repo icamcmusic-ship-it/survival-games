@@ -1,3 +1,4 @@
+import { INTERVIEW_PERSONAS } from './personas';
 import { TRAIT_DEFS } from './traits';
 import { GameState, Tribute } from '../models/types';
 import { arenaFlavor } from './arenaFlavor';
@@ -1596,7 +1597,10 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Three Fingers',
         hint: 'See a district give its tribute the salute.',
         category: 'reaping',
-        rarity: 'legendary',
+        // §(requests 21): the salute is written now (it never was), and the
+        // square gives it to the young and to volunteers who are not Careers,
+        // which lands it in a quarter of runs.
+        rarity: 'rare',
         test: state => state.log.some(e => /three[- ]finger/i.test(e.text))
             || state.tributes.some(t => /three[- ]finger|three fingers/i.test(t.reapingNote ?? '')),
     },
@@ -1723,10 +1727,14 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'found-first',
         name: 'Found First',
-        hint: 'See one tribute be the first to reach a downed ally three times over.',
+        // §(requests 21): the threshold was three and 500 runs never produced
+        // more than two — an entry nobody could earn. Somebody reaching a
+        // downed ally first *twice* is already the rarest kind of behaviour the
+        // downed system produces, and it is a thing the engine actually does.
+        hint: 'See one tribute be the first to reach a downed ally twice over.',
         category: 'social',
         rarity: 'legendary',
-        test: state => state.tributes.some(t => (t.reachedDownedFirst ?? 0) >= 3),
+        test: state => state.tributes.some(t => (t.reachedDownedFirst ?? 0) >= 2),
         nearMiss: state => {
             const best = state.tributes
                 .slice()
@@ -1965,6 +1973,19 @@ export const ACHIEVEMENTS: Achievement[] = [
             && !v.traits.some(t => EARNED_TRAIT_NAMES.includes(t))
             && v.startingTraitCount !== undefined
             && v.traits.length === v.startingTraitCount,
+        // §(requests 21): 0 unlocks in 500 runs and nothing told the player why,
+        // which is the one combination this check treats as a broken promise —
+        // the entry names a condition that nobody can see themselves approaching.
+        // Winning changes a tribute, so the near miss is the count of what the
+        // arena wrote onto them.
+        nearMiss: (_s, v) => {
+            if (!v) return undefined;
+            const earned = v.traits.filter(t => EARNED_TRAIT_NAMES.includes(t));
+            if (earned.length === 0) return undefined;
+            return earned.length === 1
+                ? `The victor came out of it with one trait they did not go in with: ${earned[0]}.`
+                : `The arena wrote ${earned.length} traits onto the victor that they did not go in with: ${earned.join(', ')}.`;
+        },
     },
     {
         id: 'borrowed-time',
@@ -2634,16 +2655,18 @@ export const ACHIEVEMENTS: Achievement[] = [
     },
     {
         id: 'every-persona',
-        name: 'Thirteen Ways To Sell It',
+        name: 'Every Way To Sell It',
         hint: 'See every interview persona used in one Games.',
         category: 'reaping',
         rarity: 'legendary',
-        // Thirteen personas over a 24-cast, measured 94-478 each across 3,420
-        // tributes. Reachable and vanishingly unlikely, which is the category.
-        test: state => new Set(state.tributes.map(t => t.interviewStrategy).filter(Boolean)).size >= 13,
+        // §(requests 21): this hard-coded 13 and the roster is 18 now, so it
+        // was asking for thirteen of eighteen and firing in a third of runs.
+        // Read the table instead, and it cannot drift again.
+        test: state => new Set(state.tributes.map(t => t.interviewStrategy).filter(Boolean)).size >= INTERVIEW_PERSONAS.length,
         nearMiss: state => {
             const n = new Set(state.tributes.map(t => t.interviewStrategy).filter(Boolean)).size;
-            return n >= 11 && n < 13 ? `${n} of the thirteen personas were sold this year` : undefined;
+            const total = INTERVIEW_PERSONAS.length;
+            return n >= total - 2 && n < total ? `${n} of the ${total} personas were sold this year` : undefined;
         },
     },
     {

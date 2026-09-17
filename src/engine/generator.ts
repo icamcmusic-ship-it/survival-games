@@ -4,7 +4,7 @@ import { TRAITS, DEFAULT_GAME_CONFIG, traitFits } from '../data/constants';
 import { traitMod } from '../data/traits';
 import { ARCHETYPES, archetypeWeightsFor } from '../data/archetypes';
 import { GENERATION, TESSERAE, VOLUNTEER } from '../data/balance';
-import { DISTRICT_NAMES } from '../data/names';
+import { DISTRICT_NAMES, NEUTRAL_NAMES } from '../data/names';
 import { REAPING_NOTE_TEXTS } from '../data/pregames';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { blankMemory } from './memory';
@@ -283,6 +283,15 @@ export function generateTributes(
             }
         }
     });
+    // ...and the neutral pool, which every district draws from alongside the
+    // gendered one. Authored exclusive, so each of these counts exactly once
+    // and the exclusivity preference above prefers them — which is the point:
+    // they carry the initials the gendered pools are short of.
+    Object.values(NEUTRAL_NAMES).forEach(pool => {
+        for (const n of new Set(pool)) {
+            nameDistrictCounts.set(n, (nameDistrictCounts.get(n) ?? 0) + 1);
+        }
+    });
     const drawName = (district: number, gender: Gender): string => {
         // Pre-Games option: skip the flavour pools entirely and name every
         // tribute for their number — "District 7 Boy" — the way the books'
@@ -290,7 +299,9 @@ export function generateTributes(
         // district+gender pair is already unique across the cast, so this
         // never needs the used-name/disambiguation machinery below it.
         if (config.plainNames) return `District ${district} ${gender === 'Male' ? 'Boy' : 'Girl'}`;
-        const pool = DISTRICT_NAMES[tableDistrict(district)][gender];
+        const table = tableDistrict(district);
+        // The third pool: names either tribute of the district can carry.
+        const pool = [...DISTRICT_NAMES[table][gender], ...(NEUTRAL_NAMES[table] ?? [])];
         const available = pool.filter(n => !usedNames.has(n));
         const exclusive = available.filter(n => nameDistrictCounts.get(n) === 1);
         let name: string;
@@ -521,7 +532,8 @@ export function generateTributes(
                 archetype,
                 attributes,
                 traits,
-                vitals: { hunger: 0, thirst: 0, fatigue: 0, sanity: 100 },
+                // §(requests 2): a cast can be reaped already frayed.
+                vitals: { hunger: 0, thirst: 0, fatigue: 0, sanity: Math.max(1, Math.min(100, config.sanityStart ?? 100)) },
                 injuries: { head: false, torso: false, arms: false, legs: false, bleeding: false, infected: false, poisoned: false, burned: false, frostbitten: false },
                 health: 100,
                 status: 'alive',

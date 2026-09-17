@@ -161,6 +161,11 @@ function randomConfig(current: GameConfig): GameConfig {
         sponsorGenerosity: pick(0, 3, 0.25),
         enableFeast: Math.random() < 0.75,
         enableSanity: Math.random() < 0.75,
+        sanityDrainRate: pick(0.25, 2.5, 0.25),
+        sanityRecoveryRate: pick(0.25, 2.5, 0.25),
+        enableHallucinations: Math.random() < 0.8,
+        enableBreakdowns: Math.random() < 0.8,
+        sanityStart: pick(40, 100, 5),
         singleVictor: Math.random() < 0.3,
         ageMean: withAges ? pick(12, 18, 0.5) : undefined,
         ageSpread: withAges ? pick(0.5, 4, 0.1) : undefined,
@@ -1259,9 +1264,63 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                         onChange={(e) => setConfig(c => ({ ...c, enableSanity: e.target.checked }))}
                                         className="w-4 h-4 accent-[var(--red)]"
                                     />
-                                    Enable sanity breakdowns
+                                    Model sanity at all
                                 </label>
                             </div>
+
+                            {/* §(requests 2): sanity was one switch. The model
+                                behind it has a drain, a recovery, a set of
+                                floor behaviours and a starting point, and all
+                                four are worth being able to set. */}
+                            {config.enableSanity && (
+                                <div className="panel-flush p-3 space-y-3">
+                                    <span className="eyebrow">The mind</span>
+                                    <ConfigSlider
+                                        label="Sanity drain"
+                                        hint="How fast isolation, hunger, darkness, grief and the arena itself wear a tribute down."
+                                        value={config.sanityDrainRate ?? 1}
+                                        min={0.25} max={2.5} step={0.25}
+                                        format={(v) => `${v.toFixed(2)}×`}
+                                        onChange={(v) => setConfig(c => ({ ...c, sanityDrainRate: v }))}
+                                    />
+                                    <ConfigSlider
+                                        label="Sanity recovery"
+                                        hint="How much rest, food, safety and company give back. Low values make the bottom a trapdoor."
+                                        value={config.sanityRecoveryRate ?? 1}
+                                        min={0.25} max={2.5} step={0.25}
+                                        format={(v) => `${v.toFixed(2)}×`}
+                                        onChange={(v) => setConfig(c => ({ ...c, sanityRecoveryRate: v }))}
+                                    />
+                                    <ConfigSlider
+                                        label="Starting sanity"
+                                        hint="Where the whole cast begins. Below a hundred is a field that walked in already frayed."
+                                        value={config.sanityStart ?? 100}
+                                        min={40} max={100} step={5}
+                                        format={(v) => (v >= 100 ? 'Whole' : `${v} — already frayed`)}
+                                        onChange={(v) => setConfig(c => ({ ...c, sanityStart: v }))}
+                                    />
+                                    <div className="flex flex-wrap gap-x-5 gap-y-2">
+                                        <label className="flex items-center gap-2 text-xs text-[var(--color-ink-300)] cursor-pointer font-semibold">
+                                            <input
+                                                type="checkbox"
+                                                checked={config.enableHallucinations !== false}
+                                                onChange={(e) => setConfig(c => ({ ...c, enableHallucinations: e.target.checked }))}
+                                                className="w-4 h-4 accent-[var(--red)]"
+                                            />
+                                            Hallucinations and lost turns
+                                        </label>
+                                        <label className="flex items-center gap-2 text-xs text-[var(--color-ink-300)] cursor-pointer font-semibold">
+                                            <input
+                                                type="checkbox"
+                                                checked={config.enableBreakdowns !== false}
+                                                onChange={(e) => setConfig(c => ({ ...c, enableBreakdowns: e.target.checked }))}
+                                                className="w-4 h-4 accent-[var(--red)]"
+                                            />
+                                            Breakdowns give away a position
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
                             <button
                                 onClick={() => setConfig(c => ({
                                     ...c,
@@ -1270,6 +1329,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     sponsorGenerosity: DEFAULT_GAME_CONFIG.sponsorGenerosity,
                                     enableFeast: DEFAULT_GAME_CONFIG.enableFeast,
                                     enableSanity: DEFAULT_GAME_CONFIG.enableSanity,
+                                    sanityDrainRate: DEFAULT_GAME_CONFIG.sanityDrainRate,
+                                    sanityRecoveryRate: DEFAULT_GAME_CONFIG.sanityRecoveryRate,
+                                    enableHallucinations: DEFAULT_GAME_CONFIG.enableHallucinations,
+                                    enableBreakdowns: DEFAULT_GAME_CONFIG.enableBreakdowns,
+                                    sanityStart: DEFAULT_GAME_CONFIG.sanityStart,
                                 }))}
                                 className="btn btn-sm btn-ghost -ml-2"
                                 aria-label="Reset sliders — put the pacing sliders and toggles back; district count and naming are left as they are"

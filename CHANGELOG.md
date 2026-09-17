@@ -1,5 +1,55 @@
 # Changelog
 
+## The 21 requests, plus the two deferred items (this branch)
+
+Everything the follow-up request asked for, and the two things the previous
+branch explicitly left out. Every number below was re-measured; the roster is
+green (`lint` + 16 checks) and `npm run build` is clean.
+
+### The two deferred items
+
+- **A third name pool.** `NEUTRAL_NAMES` — 384 district-themed names, 24 per
+  district, drawn by either gender alongside the gendered pool. Every entry is
+  exclusive to its district and authored onto an initial the main pools are
+  short of, which was the point: the reapable set ran 356 names starting with
+  S against 5 starting with X, and now runs **9.6:1** rather than 71:1.
+  `check-names` asserts the spread, the exclusivity, the scarce initial, and
+  the no-surnames rule (one token, no space, apostrophe or hyphen) on the new
+  pool as it already did on the old ones.
+- **Two new proficiencies.** `stealth` and `intimidation`, both grown by doing
+  and both read by the engine rather than displayed only.
+
+### Archetypes and traits
+
+- **Four new archetypes**, each with a working signature rather than a
+  declared-but-missing one: **Quartermaster** (the stock-take, and the surplus
+  it finds for an ally), **Martyr** (the offer, paid for in their own health),
+  **Opportunist** (somebody else's worst ten minutes, taken advantage of) and
+  **Tracker** (a name, a direction, and a commitment to both — the only
+  signature that hands its actor another tribute's position). Measured fire
+  rates 26.7%–45.5%, inside the existing 24.6%–60.2% band.
+- Their base weights sit at 0.18–0.2 rather than the 0.3–0.4 tier, because
+  `DISTRICT_ARCHETYPE_WEIGHTS` pushes Career districts toward `career` and
+  every point of global weight therefore lands on the outer eight. At 0.35
+  each they moved Career victors from 55.7% to 57.1% against a 57% guard; at
+  0.2 the same measure reads **51.8%**.
+- **Fifteen new traits** — Dead-Eyed, Rope-Handed, Cold-Blooded, Barterer,
+  Feral, Lightfooted, Sunburnt, Field Surgeon, Sleepless Watch, Contrarian,
+  Broad-Backed, Thin-Skinned, Devout and the rest. Every row is built from
+  `TraitMod` keys that already have a read site, so none of them can be inert.
+  98 traits total.
+
+### Bugs found and fixed
+
+- `clean-slate` never unlocked in 500 runs and carried no near miss — an entry
+  nobody earns and nobody is told about. It now reports what the arena wrote
+  onto the victor.
+- `found-first` needed `reachedDownedFirst >= 3` and the engine's ceiling is 2.
+  Lowered to 2, hint updated.
+- `RelationshipMatrix` had two `title=` hints on non-interactive cells with no
+  accessible name; both now carry an `aria-label` built from the same string.
+
+
 ## Audit 5 fix pass, plus the requests (this branch)
 
 Everything `AUDIT-5.md` asked for, and the nine items the request added on top

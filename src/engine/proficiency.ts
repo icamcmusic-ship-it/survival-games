@@ -42,11 +42,15 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     beast: 'melee',
     diplomat: 'persuasion',
     scholar: 'forage',
-    ghost: 'tracking',
+    ghost: 'stealth',
     scavenger: 'forage',
-    captor: 'persuasion',
+    captor: 'intimidation',
     bellwether: 'crafting',
     confessor: 'persuasion',
+    quartermaster: 'crafting',
+    martyr: 'medicine',
+    opportunist: 'stealth',
+    tracker: 'tracking',
 };
 
 /**
@@ -423,6 +427,8 @@ const TEACH_PHRASE: Record<Proficiency, string> = {
     climbing: 'where to put a foot on rock that looks like it has nowhere to put one',
     swimming: 'how to let the current do most of it instead of fighting all of it',
     crafting: 'why that snare has been sprung empty three times running',
+    stealth: 'that it is the stopping and starting that gets you seen, not the moving',
+    intimidation: 'how to stand so that the other person decides it on their own',
 };
 
 /**

@@ -385,7 +385,9 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
             {pages.length === 0 ? (
                 <div className="panel p-8 empty-state">
                     {gameState.log.length === 0
-                        ? 'Nothing has happened yet.'
+                        // §(requests 7): confirming the reaping lands here, with
+                        // nothing written yet and the button below waiting.
+                        ? 'The cast is confirmed and the record is empty. Start the Games with the button below — every stage writes its own page here.'
                         : 'Every logged event is hidden by your current filters.'}
                 </div>
             ) : (

@@ -191,6 +191,91 @@ export const WEAPON_KILL_TEMPLATES: Record<string, string[]> = {
     ]
 };
 
+/**
+ * §(requests 16): the question Caesar asks *this* tribute.
+ *
+ * The couch used to run one shape for everybody: an angle, a follow-up and a
+ * closer, all keyed on the persona. Two tributes with the same persona had the
+ * same interview even if one was a fourteen-year-old from 11 who can name every
+ * plant in the arena and the other was a Career who cannot. These are the
+ * questions a broadcaster actually asks — about the trade you grew up in, the
+ * thing you turned out to be unexpectedly good at, and the kind of person the
+ * training floor says you are.
+ */
+export const CAESAR_QUESTIONS = {
+    /** Keyed on the tribute's best proficiency. */
+    skill: {
+        melee: [
+            'Caesar asks {tribute} where they learnt to hold a blade like that. The answer is "work", and the follow-up is worse.',
+            '"You have done that before," Caesar says to {tribute}, about the heavy weapons. {tribute} agrees that they have.',
+        ],
+        ranged: [
+            'Caesar wants to know what {tribute} used to shoot at home, and whether it was moving. It was.',
+            '"How far?" Caesar asks {tribute}, about the distance. The number {tribute} gives makes the front row sit up.',
+        ],
+        forage: [
+            'Caesar asks {tribute} what is safe to eat in a forest. {tribute} answers for forty seconds without repeating themselves.',
+            '"Could you feed yourself out there?" Caesar asks. {tribute} says they have been doing it for years.',
+        ],
+        tracking: [
+            'Caesar asks {tribute} how you tell a day-old track from an hour-old one. {tribute} explains, and the room listens properly.',
+            '"You would know if somebody had been past," Caesar says to {tribute}. It is not a question and {tribute} does not treat it as one.',
+        ],
+        medicine: [
+            'Caesar asks {tribute} whether they could stop somebody bleeding. {tribute} says yes, and then says how, which is more than he wanted.',
+            '"Who taught you that?" Caesar asks {tribute} about the medicine. The answer is somebody at home, and it costs {tribute} something to say so.',
+        ],
+        persuasion: [
+            'Caesar and {tribute} talk for ninety seconds and Caesar comes out of it agreeing with something he did not walk in agreeing with.',
+            '"You are very good at this," Caesar tells {tribute}, meaning the talking. {tribute} thanks him and does it again immediately.',
+        ],
+        climbing: [
+            'Caesar asks {tribute} how high they have been. The answer involves a rockface and no rope.',
+            '"Heights?" asks Caesar. {tribute} says the ground is the dangerous part, and the room laughs before it thinks about it.',
+        ],
+        swimming: [
+            'Caesar asks {tribute} whether they can swim. The way {tribute} says yes suggests most of the field cannot.',
+            '"How long could you stay in the water?" Caesar asks {tribute}. The answer changes several people\'s plans.',
+        ],
+        crafting: [
+            'Caesar asks {tribute} what they could make out of nothing. {tribute} lists four things and the last one is a weapon.',
+            '"Give me a rope and an hour," {tribute} tells Caesar, and does not finish the sentence, and does not need to.',
+        ],
+        stealth: [
+            'Caesar asks {tribute} how close they could get to somebody without being heard. {tribute} considers the question seriously, which is the unsettling part.',
+            '"Nobody saw much of you on that floor," Caesar says to {tribute}. {tribute} says that is generally the idea.',
+        ],
+        intimidation: [
+            'Caesar asks {tribute} whether they intend to frighten anybody. {tribute} says they would rather not have to, and the room is not reassured.',
+            '"Do people get out of your way?" Caesar asks {tribute}. {tribute} says it saves time.',
+        ],
+    },
+    /** Keyed on the district's trade, so a tribute is asked about home properly. */
+    district: [
+        'Caesar asks what people actually do in District {district} all day. {tribute}\u2019s answer has more detail in it than the Capitol expected.',
+        '\u201cTell me about home,\u201d Caesar says to {tribute}, and District {district} gets three minutes of national airtime it did not ask for.',
+        'Caesar gets District {district} slightly wrong and {tribute} lets it go, which is its own kind of answer.',
+        '{tribute} is asked whether District {district} is as hard as they say. {tribute} says harder, and moves on.',
+        'Caesar asks {tribute} about District {district} — {craft} — and {tribute} talks about it like somewhere real rather than a statistic.',
+        '"District {district}," says Caesar. "{craft}." {tribute} corrects one detail of it, precisely, and the correction is the best moment of the segment.',
+        'Caesar reads out what District {district} is known for. {tribute} listens to it the way you listen to somebody describe your house to you.',
+        'Asked what District {district} is actually like, {tribute} gives an answer with no Capitol in it at all.',
+        'Caesar mentions the trade — {craft} — and {tribute}\'s hands answer before they do.',
+    ],
+    /** Keyed on the archetype, so the floor's read of them gets an airing. */
+    archetype: [
+        'The Gamemakers have {tribute} down as a {archetype}. Caesar reads the note out. {tribute}\u2019s face does most of the replying.',
+        '\u201cA {archetype},\u201d Caesar says, as though it were a compliment. {tribute} accepts it as though it were one.',
+        'Caesar puts the {archetype} reading to {tribute} and gets, in return, a question about who does the reading.',
+        '{tribute} is told what the floor thinks they are. {tribute} says the floor has three days of footage and the arena will have a week.',
+        'Caesar has the Gamemakers\' note on {tribute}: {tagline} Asked whether that is fair, {tribute} does not entirely deny it.',
+        '"They are calling you a {archetype}," Caesar tells {tribute}. {tribute} asks who "they" are, which is the right question.',
+        'The floor has {tribute} down as a {archetype}. Caesar puts it to them. {tribute} neither confirms it nor manages to sound like anything else.',
+        'Caesar tries the {archetype} line on {tribute} and gets a better answer than the line deserved.',
+        '{tribute} is asked about the {archetype} label and says the arena will decide that, which is both modest and a threat.',
+    ],
+} as const;
+
 export const INTERVIEW_SCENARIOS = [
     {
         strategy: "The Star-Crossed Lover",
@@ -698,7 +783,209 @@ export const INTERVIEW_SCENARIOS = [
         ],
         charismaBuff: 1,
         trustMultiplier: 1.15
-    }
+    },
+    /*
+     * §(requests 16): five more angles, and the reason there were only thirteen
+     * is that the first thirteen are all *characters*. These are the other
+     * thing three live minutes can be: a job interview, a homesick kid, a
+     * survivor stating facts, somebody explaining why they put their hand up,
+     * and somebody who has decided to be a problem on live television.
+     */
+    {
+        strategy: "The Survivor",
+        success: [
+            "{tribute} lists, without drama, four things that have already nearly killed them at home. Caesar stops interrupting somewhere around the second.",
+            "Asked whether they are frightened, {tribute} says the arena will have to work quite hard to be worse than a bad winter in {district}. The room laughs and then stops.",
+            "{tribute} talks about hunger the way a doctor talks about a symptom, and the front row discovers it has never heard anybody do that before.",
+            "{tribute} answers every question about danger with something that has already happened to them. By the fourth one the Capitol has gone quiet.",
+            "\"I have been cold before,\" {tribute} says. \"I have been hungry before. This is just somewhere new to do it.\" The applause is slow and real.",
+            "{tribute} describes a year in {district} that killed nine people they knew, in the flat voice of somebody reading a list, and the crowd cannot look away.",
+            "Caesar asks what they will miss. {tribute} says nothing, considers it properly, and then names one small thing, and it lands harder than a speech would have.",
+            "{tribute} explains exactly how long a person can go without water, and is right, and the Capitol realises why they know.",
+            "{tribute} says they do not intend to win so much as to keep going, and somehow that is the most frightening thing said all night.",
+            "{tribute} rolls a sleeve back to answer a question about scars, and does not say anything at all, and does not need to.",
+            "Asked about the Careers, {tribute} says they have met people like that before and those people are not the ones that got them.",
+            "{tribute} is asked what they are good at and says \"lasting\", and the room takes a second to understand it was not a joke.",
+            "{tribute} talks for two minutes about a thing that happened to them at eleven, and nobody in the theatre moves.",
+            "\"You get used to it,\" {tribute} says, about something the Capitol cannot imagine getting used to. The clip runs all week.",
+            "{tribute} takes the question about strategy and answers it about weather instead, and is more convincing than anybody who answered it properly.",
+        ],
+        failure: [
+            "{tribute} starts listing hardships and the audience, who wanted a story, gets an inventory instead.",
+            "The flat delivery that makes {tribute} credible also makes them dull, and Caesar has to lift the whole segment on his own.",
+            "{tribute} describes a bad year in {district} in detail the Capitol finds tasteless rather than moving.",
+            "Asked whether they are frightened, {tribute} says no, and the room does not believe it, and the room is right.",
+            "{tribute} tries to explain hunger to people who have never been hungry, and watches it not land.",
+            "The stories are true and the delivery is not. {tribute} sounds like somebody reciting somebody else's life.",
+            "{tribute} gets halfway through a story about home and cannot work out how it was supposed to end.",
+            "{tribute} says \"you get used to it\" and Caesar says \"do you?\" and there is nowhere for the answer to go.",
+            "The Capitol has heard the hard-life angle three times already tonight, and {tribute} is the third.",
+            "{tribute} answers a question about the arena with one about {district}, twice, and the audience stops following.",
+            "{tribute} is too honest about the odds and talks half the room out of backing them.",
+            "Everything {tribute} says is true and none of it is a performance, and this is a theatre.",
+            "{tribute} mentions the word 'starving' and the front row winces, and not sympathetically.",
+            "The three minutes go by and {tribute} has established that their life has been hard and nothing else at all.",
+            "{tribute} runs out of things to say ninety seconds in and stares at the middle distance until Caesar rescues it.",
+        ],
+        charismaBuff: 0,
+        trustMultiplier: 1.25,
+    },
+    {
+        strategy: "The Professional",
+        success: [
+            "{tribute} answers every question the way a tradesman answers a question about their trade, and the effect is unnervingly reassuring.",
+            "Asked what they are best at, {tribute} says it plainly, without inflating it, and the specificity is more frightening than a boast.",
+            "{tribute} treats the interview as a briefing. By the end, half the sponsors' lounge has written the same name down.",
+            "{tribute} corrects Caesar on a technical point about the arena, politely and correctly, and the room enjoys it enormously.",
+            "\"I know what I am for,\" {tribute} says, and then describes what that is in one sentence with no adjectives in it.",
+            "{tribute} talks about their own chances in percentages, and the number they give is neither modest nor mad.",
+            "Asked about allies, {tribute} explains the criteria rather than naming anybody, and every tribute watching understands they are being assessed.",
+            "{tribute} is asked about fear and answers about preparation, and makes it sound like the same question.",
+            "The Capitol has never seen anybody make competence look like charisma before. {tribute} does it for three minutes straight.",
+            "{tribute} lists what they will do in the first ninety seconds, in order, and does not seem to care who is listening.",
+            "Caesar tries to make it emotional twice. {tribute} answers both times with method, and the room decides it prefers the method.",
+            "{tribute} says the word \"work\" eleven times and never once sounds like they are performing.",
+            "{tribute} explains why the thing they are good at matters in an arena, and two bookmakers move their line while they are still talking.",
+            "Asked what worries them, {tribute} names one specific, solvable problem, and the honesty of it wins the room.",
+            "{tribute} finishes on time, thanks Caesar, and walks off, and the applause starts late because nobody was expecting it to be over.",
+        ],
+        failure: [
+            "{tribute} gives a technically excellent answer to a question nobody asked, at length.",
+            "The Capitol wanted a person and got a specification. {tribute} loses the room by the second question.",
+            "{tribute} explains their approach in detail and hands three tributes a plan for how to deal with them.",
+            "Asked how they feel, {tribute} answers about process, and Caesar has to ask again, and gets process again.",
+            "{tribute} is precise, correct, and completely uninteresting, and the audience finds somewhere else to look.",
+            "{tribute} says a number about their own chances that is far too high, and the room laughs at the wrong moment.",
+            "The competence reads as arrogance from the fourth row back, and the fourth row back is most of the room.",
+            "{tribute} corrects Caesar on something Caesar was right about.",
+            "Asked about their district, {tribute} answers about equipment.",
+            "{tribute} rehearsed this and it shows in every pause.",
+            "The plan {tribute} outlines is a good plan and everybody in the arena now knows it.",
+            "{tribute} refuses to be drawn on anything personal and comes across as somebody with something to hide, which they are.",
+            "Two minutes in, Caesar gives up and starts answering his own questions.",
+            "{tribute} talks about the arena as a problem to be solved, and the Capitol remembers it is supposed to be entertainment.",
+            "{tribute} delivers the whole of it in the same tone and the applause is exactly as warm as that deserves.",
+        ],
+        charismaBuff: 0,
+        trustMultiplier: 1.3,
+    },
+    {
+        strategy: "The Homesick",
+        success: [
+            "{tribute} talks about {district} for three minutes and makes the Capitol want to go there, which nobody has ever managed before.",
+            "Asked about the arena, {tribute} answers about the walk to work at home, and the digression is better than the answer would have been.",
+            "{tribute} describes what {district} smells like in the morning, and the theatre — which has never smelled anything like it — believes every word.",
+            "{tribute} names four people from home in three minutes and the audience remembers all four.",
+            "\"I would like to see it again,\" {tribute} says about {district}, and does not elaborate, and the room aches.",
+            "{tribute} is asked whether they are homesick and says yes, immediately, with no attempt to dress it up, and the honesty stuns the front row.",
+            "{tribute} talks about their district the way other tributes talk about winning.",
+            "Caesar asks what home is like. {tribute} answers for ninety seconds without pausing and the crowd does not want them to stop.",
+            "{tribute} says they are doing this so that {district} has something to watch, and means it, and the district hears it.",
+            "The Capitol falls for {tribute}'s home before it falls for {tribute}, and then it falls for {tribute}.",
+            "{tribute} tells a story about {district} that has no violence in it at all, which by this point in the evening is a novelty.",
+            "Asked about the other tributes, {tribute} says they had not thought about them much, and is plainly telling the truth.",
+            "{tribute} describes one street in {district} in enough detail that three sponsors ask afterwards where it is.",
+            "{tribute} promises to say something on air that only one person at home will understand, and then does it, and the room loves being excluded.",
+            "{tribute} finishes by thanking {district} rather than the Capitol, and gets away with it because of how they say it.",
+        ],
+        failure: [
+            "{tribute} talks about {district} until the audience, which came for the Games, stops listening.",
+            "Asked three separate questions about the arena, {tribute} answers all three about home.",
+            "{tribute} starts crying about {district} in the first thirty seconds and never recovers the thread.",
+            "The Capitol does not want to hear about {district}. {tribute} has nothing else prepared.",
+            "{tribute} names so many people from home that the audience loses track of which one mattered.",
+            "{tribute} describes {district} in a way that reads, to the Capitol, as ingratitude.",
+            "Caesar tries three times to bring it back to the Games. {tribute} goes back to home each time.",
+            "{tribute} says they want to go home, which everybody in the theatre knows is not one of the options.",
+            "The homesickness is real and the performance is not, and the room can tell the difference.",
+            "{tribute} talks about a place nobody watching has been to, for three minutes, with no story in it.",
+            "{tribute} mentions the mines twice and the mood in the theatre drops both times.",
+            "Asked what they will do first in the arena, {tribute} says they do not know, and is thinking about somewhere else.",
+            "{tribute} makes {district} sound better than the Capitol, on Capitol television.",
+            "The segment ends with {tribute} mid-sentence about a river, and the applause is polite and brief.",
+            "{tribute} is asked to say something to the cameras and says it to one person, and the rest of the country feels it.",
+        ],
+        charismaBuff: 1,
+        trustMultiplier: 1.15,
+    },
+    {
+        strategy: "The Volunteer",
+        success: [
+            "Asked why they volunteered, {tribute} gives a reason so simple that the Capitol has no follow-up question for it.",
+            "{tribute} explains that somebody else's name was read, and stops there, and the silence does the rest.",
+            "{tribute} says they chose this. Caesar asks whether they would choose it again. {tribute} says yes without a pause, and the theatre erupts.",
+            "{tribute} talks about the walk from the crowd to the stage, step by step, and the room takes it step by step with them.",
+            "\"Nobody made me,\" {tribute} says, and it changes how the whole country reads every other thing they say.",
+            "{tribute} declines to explain why and the refusal reads as dignity rather than evasion.",
+            "Asked whether they are brave, {tribute} says no, and explains the difference between brave and decided, and the room is with them entirely.",
+            "{tribute} describes the face of the person whose name was called, and the Capitol has to look away first.",
+            "{tribute} says the one thing that makes volunteering make sense, and eleven other districts hear it.",
+            "{tribute} makes it clear they did this for a reason that has nothing to do with the Capitol, and the Capitol applauds anyway.",
+            "Asked what their district thought, {tribute} says they were not watching their district, they were watching one person.",
+            "{tribute} is calm about it in a way that suggests the decision was made long before the reaping.",
+            "{tribute} thanks nobody, blames nobody, and states the reason once, and it is the best answer anybody gives all night.",
+            "Caesar calls it brave. {tribute} says it was arithmetic, and the room finds that far more frightening.",
+            "{tribute} says they have already done the hardest part, and the audience believes it.",
+        ],
+        failure: [
+            "Asked why they volunteered, {tribute} gives a reason that does not hold together, and Caesar does not press but the room notices.",
+            "{tribute} says they volunteered for the glory and the theatre cools by about ten degrees.",
+            "{tribute} cannot articulate why, and the not-knowing plays as not-meaning-it.",
+            "{tribute} explains at length and the explanation is smaller than the act.",
+            "The Capitol wanted noble. {tribute} gives them practical, and practical does not sell.",
+            "{tribute} volunteered and clearly regrets it, and three minutes of live television is a long time to hide that.",
+            "Asked whether they would do it again, {tribute} takes too long to answer.",
+            "{tribute} makes the volunteering about themselves and the audience had already decided it was about somebody else.",
+            "{tribute} mentions the person they volunteered for once and then talks about weapons for two minutes.",
+            "The reason {tribute} gives is a Career's reason, and {tribute} is not a Career.",
+            "{tribute} is asked about the moment on the stage and says they do not remember it, which may be true and is not useful.",
+            "{tribute} sounds rehearsed on the one answer that needed not to be.",
+            "Caesar offers {tribute} the obvious noble line and {tribute} declines to take it, and nothing better arrives.",
+            "{tribute} says something about the odds that makes the volunteering sound like a miscalculation.",
+            "The segment leaves the country unsure whether {tribute} volunteered or was pushed.",
+        ],
+        charismaBuff: 1,
+        trustMultiplier: 1.45,
+    },
+    {
+        strategy: "The Provocateur",
+        success: [
+            "{tribute} asks Caesar a question. Caesar answers it. The room is not sure that has ever happened before.",
+            "{tribute} says something about the Gamemakers that gets exactly as far as it can get before being cut, and the crowd loves the edge of it.",
+            "{tribute} compliments the Capitol in a tone that is doing something else entirely, and half the room misses it and half does not.",
+            "Asked about their chances, {tribute} says that depends on what has been arranged, and the theatre makes a noise it has not made all night.",
+            "{tribute} is rude to Caesar in a way that is very funny, and Caesar, professionally, makes it funnier.",
+            "{tribute} answers a question about fear by asking who exactly is supposed to be frightened here.",
+            "{tribute} thanks the Capitol for its hospitality with a straight face and a pause in the wrong place.",
+            "{tribute} says the quiet thing at ordinary volume and the audience is thrilled and slightly afraid.",
+            "Asked to say something to the sponsors, {tribute} says something to the Gamemakers instead.",
+            "{tribute} takes a question meant to be warm and turns it into an observation about the price of things.",
+            "{tribute} refuses a question, explains exactly why they are refusing it, and gets applauded for both.",
+            "{tribute} makes a joke that three people in the theatre understand, and lets the other nine hundred work it out later.",
+            "{tribute} is the first tribute in years to make the front row uncomfortable and the back rows delighted.",
+            "{tribute} says they intend to be very entertaining, and makes it sound like a threat, and it is.",
+            "The producers cut to Caesar twice looking for a way back. {tribute} is in charge of the segment by the end.",
+        ],
+        failure: [
+            "{tribute} pushes it one line too far and the theatre goes cold instead of loud.",
+            "The joke does not land and {tribute} explains it, which is worse.",
+            "{tribute} is rude and not funny, and there is a great deal of difference between the two.",
+            "Caesar takes the line away from {tribute} neatly and the audience is relieved rather than disappointed.",
+            "{tribute} says something about the Gamemakers that the Gamemakers are still thinking about at the scoring meeting.",
+            "The provocation reads as nerves, which it partly is.",
+            "{tribute} goes after the Capitol and the Capitol simply declines to be interested.",
+            "{tribute} tries to make the audience uncomfortable and only manages bored.",
+            "The producers cut away from {tribute} mid-answer and do not come back.",
+            "{tribute} miscalculates the room badly, and the silence afterwards is four seconds long.",
+            "{tribute} is sharp at the expense of somebody the Capitol likes, and pays for it in the applause.",
+            "Caesar's smile does not change and the temperature drops anyway.",
+            "{tribute} makes an enemy of the wrong section of the audience and will feel it in the parachutes.",
+            "The line about the Gamemakers is repeated all night, and not fondly.",
+            "{tribute} finishes to the thinnest applause of the evening and looks, for the first time, young.",
+        ],
+        charismaBuff: 2,
+        trustMultiplier: 0.85,
+    },
 ];
 
 export const ENCOUNTER_TEXTS = {
@@ -890,8 +1177,103 @@ export const TRAINING_STATIONS: Record<string, string[]> = {
     ],
 };
 
+/**
+ * §(requests 14): the score broadcast, which used to be one line per tribute
+ * and one line for whoever topped the board.
+ *
+ * A number appearing beside a face is the least interesting part of a scoring
+ * night. What the room does with it — a district that has never seen a nine, a
+ * pack rearranging itself around a stranger, a bookmaker eating a loss, two
+ * people tied and both furious about it — is the part worth printing, and none
+ * of it existed.
+ */
+export const SCORE_REACTIONS = {
+    /** A tribute whose score is far above what the floor suggested. */
+    surprise: [
+        '{tribute} scores a {score} and three mentors immediately ask to see the session footage. There is no session footage.',
+        'The Capitol has spent three days not talking about {tribute}. A {score} ends that in one evening.',
+        '{tribute}: {score}. The anchor says the number twice, the second time as a question.',
+        'Whatever {tribute} did in that room, it was worth a {score}, and the only people who saw it are not allowed to say.',
+        'Nobody who watched {tribute} on the floor expected a {score}. The room spends the rest of the broadcast working out what they did behind that door.',
+        '{tribute} spent three days being unremarkable and comes out with a {score}. Every tribute who dismissed them is re-doing the arithmetic.',
+        'A {score} for {tribute}, and the commentary has to admit on air that it has no footage worth showing to explain it.',
+        '{tribute} scores a {score}. Two districts who had written them off are suddenly very interested in the replay.',
+    ],
+    /** A tribute whose score is far below it. */
+    collapse: [
+        '{tribute} scores a {score}. Somebody who watched them on the floor all week says, on air, that they do not believe it.',
+        'A {score}. {tribute} comes out of the session and does not speak to anybody for the rest of the night.',
+        'The board reads {score} beside {tribute}\'s face and the district feed cuts away early.',
+        '{tribute} had a week of good sessions and a bad twelve minutes, and the bad twelve minutes are what goes on the board: {score}.',
+        '{tribute} was one of the better things on that floor all week and scores a {score}. Something went wrong in that room and nobody outside it will ever know what.',
+        'A {score} for {tribute}. The trainers who watched them work exchange a look and say nothing.',
+        '{tribute} scores a {score} and the number does not match a single thing the cameras caught them doing.',
+        'The board says {score} for {tribute}. Their mentor puts a hand over their eyes.',
+    ],
+    /** Two or more tributes tied at the top. */
+    tie: [
+        '{names} both score {score}. The Capitol spends the evening inventing a difference between them.',
+        '{score} each for {names}. The bookmakers price them identically and everybody hates it.',
+        'A tie at {score} between {names}, which means neither of them gets the night the number deserves.',
+        '{names} are level at {score}. By morning the argument about which of them it flatters has its own segment.',
+        'Two {score}s: {names}. The board does not do tiebreakers and the arena will have to.',
+        '{names} finish level at {score}, which the Capitol hates, because it has to sell two favourites instead of one.',
+        'A shared {score} between {names}. Both of them spend the evening being asked how they feel about the other one.',
+        '{names} are tied at {score} and will not look at each other in the lift afterwards.',
+    ],
+    /** A district that has had nothing to celebrate in years. */
+    districtPride: [
+        'District {district} gets a {score} out of {tribute}, and for one night the district is the story rather than the footnote.',
+        'A {score} for District {district}. Somewhere in that district a very old victor is being asked for a comment.',
+        '{tribute} puts District {district} on the board at {score}. The Capitol has to find footage of the district to fill the segment.',
+        '{score}, District {district}. The other eleven districts all notice at once.',
+        'Nobody expected District {district} to produce a {score} this year. {tribute} did it anyway.',
+        'District {district} has not had a score like {tribute}\'s {score} in living memory. The square is still full at midnight.',
+        'A {score} out of District {district}. The Capitol anchor has to check the record for the last time that happened.',
+        'They are cheering in District {district} tonight, which is not a thing District {district} has done during a reaping week in a long time.',
+    ],
+    /** What the pack does about a score that is not one of theirs. */
+    careerResponse: [
+        '{tribute} scores {score} and the Careers stop being funny about the outer districts for the rest of the evening.',
+        'The pack had a plan for the first minute. {tribute}\'s {score} means they now have a plan for {tribute}.',
+        'A {score} from {tribute}. One of the Careers says a sentence about it that the microphones catch and the broadcast cuts.',
+        'The Career table goes quiet at {tribute}\'s {score}, which is the loudest thing it has done all week.',
+        '{tribute} is not from 1, 2 or 4, and has just scored {score}. The pack rearranges itself accordingly.',
+        'The Career pack watches {tribute} score a {score} and has a short conversation about it that nobody else is invited to.',
+        '{tribute}\'s {score} is the first thing all week that has made the pack change a plan.',
+        'A {score} from outside the Career districts. The pack decides, out loud, where {tribute} comes on the list.',
+    ],
+    /** The book, moving. */
+    bookmakers: [
+        '{tribute}\'s number moves the whole board. Two shorter-priced tributes drift out on the back of it.',
+        'A parlour on the Avenue suspends betting on {tribute} and reopens at half the price.',
+        'The book had {tribute} at a comfortable number this morning. It does not any more.',
+        'Capitol money is not clever, but it is fast, and tonight all of it is going the same way: {tribute}.',
+        '{tribute} at {score} rewrites the favourite\'s column before the anthem has finished.',
+        'The odds board is rewritten twice in an hour. {tribute} moves further than anybody.',
+        'Capitol money comes off three tributes and onto {tribute} inside twenty minutes of the broadcast.',
+        'The bookmakers close the market on {tribute} entirely while they work out what the {score} is worth.',
+    ],
+    /** A tribute who deliberately showed the panel nothing. */
+    concealed: [
+        '{tribute} scores a {score} and looks, for the first time all week, genuinely pleased about something.',
+        'The panel saw {tribute} do the minimum, competently, and scored it: {score}. Nobody will look twice at them again until it is far too late.',
+        'A {score} for {tribute}, who has spent three days being careful to be forgettable and has now been officially forgotten.',
+        '{tribute} gets the number they were aiming for. The Capitol moves on. That was the plan.',
+        '{score}. {tribute} has bought themselves a week of being nobody\'s problem.',
+        '{tribute} showed the panel almost nothing and was scored accordingly. That was the entire plan and it has worked.',
+        'A {score} for {tribute}, who wanted a {score}. Nobody in the Capitol is going to spend another thought on them, which is the point.',
+        '{tribute} walks out of the private session having demonstrated, carefully, that they are not worth watching.',
+    ],
+} as const;
+
 export const TRAINING_VERDICTS = {
     poor: [
+        'The panel thanks them politely. Nobody asks a follow-up question.',
+        'One Gamemaker is still writing about the tribute before them.',
+        'The number goes up and the commentary moves straight to the next district.',
+        'A Gamemaker asks the room which district that was, and has to be told twice.',
+        'The bookmakers do not move a single line on the back of it.',
         'The Gamemakers barely look up.',
         'Two of the Gamemakers are openly discussing lunch.',
         'The scoreboard flickers up the number and the room moves on.',
@@ -904,6 +1286,11 @@ export const TRAINING_VERDICTS = {
         "In the districts they will say the Gamemakers never gave {tribute} a fair look. The Gamemakers looked. That is the trouble.",
     ],
     solid: [
+        'Two of the Gamemakers make the same note at the same time.',
+        'The panel does not sit up, but it does stop talking.',
+        'Respectable, and by morning nobody outside their district will be discussing it.',
+        'A number that keeps them out of both conversations — the one about favourites and the one about bloodbath fodder.',
+        'The Capitol files them under "possible" and gets on with its evening.',
         'A respectable number. Enough to be taken seriously, not enough to be feared.',
         'The Gamemakers make a note. Nothing more.',
         'Bookmakers shift their line by a fraction and move on.',
@@ -916,6 +1303,11 @@ export const TRAINING_VERDICTS = {
         "{tribute} will not be anyone's first pick or anyone's first target, which is its own strategy.",
     ],
     elite: [
+        'The Head Gamemaker watches the replay of it twice.',
+        'Three districts rewrite their tributes\' interview angles that night.',
+        'The bookmakers shorten them before the broadcast has finished.',
+        'Every other tribute in the field now has a plan that involves avoiding them.',
+        'The sponsors\' lounge starts taking the year seriously.',
         'The Gamemakers stop talking. All of them.',
         'The room goes quiet, and every other tribute in it does the maths.',
         'Sponsor terminals light up across the Capitol before the score is even posted.',
@@ -928,6 +1320,11 @@ export const TRAINING_VERDICTS = {
         "In the tribute quarters, somebody hears the score and quietly moves {tribute} from one mental list to another.",
     ],
     legendary: [
+        'The panel is silent for four full seconds, which is the longest anybody in the Capitol can remember it being.',
+        'The Head Gamemaker does not write anything down. They simply look at the door the tribute went out of.',
+        'It goes out on every screen in Panem inside the hour, with commentary that has run out of comparisons.',
+        'Three of the Careers watch the number come up and say nothing to each other at all.',
+        'The odds board stops being a prediction and starts being a warning.',
         'Nobody has posted a number like that in living memory. The Head Gamemaker stands up.',
         'The scoreboard holds the number an extra beat, as if checking it.',
         'The Capitol crowd outside hears the score and the noise carries into the training centre.',
@@ -1434,6 +1831,209 @@ export const FEAST_TEXTS = {
 /**
  * §12 (requests): the first minute, reported.
  */
+/**
+ * §(requests 17): sixty seconds on the plates.
+ *
+ * The pedestals used to carry two things that cannot happen on them: the
+ * Careers agreeing terms with each other, and a Gamemaker briefing read out
+ * like a weather report. Nobody can talk on a plate — they are metres apart,
+ * a hovercraft is overhead, and stepping off is death — so what actually
+ * belongs here is what a tribute can *see*, and what sixty seconds of that
+ * does to them.
+ *
+ * `{arena}` is the arena's name, `{horn}` the Cornucopia's own zone name.
+ */
+export const PEDESTAL_ARENA_SHOTS: string[] = [
+    'The plates rise into {arena}. For one long moment nobody moves, because there is nothing to do yet but look at it.',
+    'Twenty-four plates come up out of the dark and {arena} is simply there, all at once, enormous and already indifferent.',
+    'The cameras pull back over {arena} and the country sees the whole ring at the same instant the tributes do.',
+    'Light, and then the arena. {arena} is bigger than any of them expected, and {horn} sits in the middle of it like a dare.',
+    'The tributes come up into {arena} on a rising plate and a rising note, and the note stops before the plate does.',
+    'The countdown starts over {arena}. Sixty seconds, and no way down that does not kill you.',
+    '{horn} catches what light there is. Everything worth having in {arena} is inside it, which is the entire design.',
+    'A hovercraft holds overhead. Below it, {arena}, and a ring of children on metal discs.',
+    'The clock over {horn} starts at sixty. Nobody in {arena} looks at anything else for the first ten of them.',
+    'From the plates, {arena} reads as two things: the horn, and everywhere that is not the horn.',
+    'The plates lock. The force field hums. {arena} waits, and the number over {horn} comes down.',
+    'Sixty seconds. {arena} is silent except for the hum, and the hum is the only thing keeping any of them alive.',
+];
+
+/** What a tribute does with the minute, keyed on nothing but who they are. */
+export const PEDESTAL_REACTIONS = {
+    /** Careers and anybody who came here intending to do this. */
+    eager: [
+        '{tribute} finds the weapon they want in {horn} inside the first five seconds and does not look away from it again.',
+        '{tribute} is already in a runner\'s crouch with forty seconds left. A trainer would have marked them down for it.',
+        '{tribute} counts the distance to {horn} twice and adjusts their feet.',
+        '{tribute} looks along the ring at the plates either side and decides, visibly, which of them is a problem.',
+        '{tribute} smiles at nothing at all. Three tributes see them do it and wish they had not.',
+        '{tribute} rolls their shoulders on the plate like somebody about to lift something heavy.',
+        '{tribute} picks their line to {horn} and then picks the second one, in case somebody is standing in the first.',
+        '{tribute} spends the minute watching the other Careers rather than the horn, which is the correct thing to be watching.',
+    ],
+    /** The ones who have already decided not to be part of it. */
+    fleeing: [
+        '{tribute} does not look at {horn} once. They are looking at the treeline behind them and working out how far it is.',
+        '{tribute} has their back half-turned before the count reaches thirty.',
+        '{tribute} picks a direction that is not the horn and does not change their mind about it.',
+        '{tribute} looks at {horn}, does the arithmetic, and looks away.',
+        '{tribute} finds the nearest cover in {arena} with their eyes and holds onto it for the whole minute.',
+        '{tribute} checks the ground between their plate and the edge of the ring for anything that would turn an ankle.',
+        '{tribute} is not going to the horn and has known it since the interviews.',
+        '{tribute} watches the Careers instead of the supplies, which is how you know they are already running.',
+    ],
+    /** Fear, in its several shapes. */
+    frightened: [
+        '{tribute} is shaking on the plate and cannot make it stop, and there are still forty seconds to go.',
+        '{tribute} says something to themselves over and over. The microphones get about half of it.',
+        '{tribute} has both fists closed so hard that a commentator remarks on it.',
+        '{tribute} looks for a face they know in the ring and does not find one.',
+        '{tribute} is crying, quietly and without any change of expression, from about twenty seconds.',
+        '{tribute} closes their eyes for most of the minute. Whether that helps is not clear.',
+        '{tribute} is breathing far too fast and somebody in the Capitol is enjoying it.',
+        '{tribute} has not moved a muscle since the plate locked, and does not appear able to.',
+    ],
+    /** The ones who spend the minute reading the board. */
+    calculating: [
+        '{tribute} spends the minute on the arena rather than the horn: the ground, the light, where the water is going to be.',
+        '{tribute} counts the plates, which tells them the field size, which tells them how long this is going to take.',
+        '{tribute} works out which way the wind is going over {arena} and files it.',
+        '{tribute} looks at what is nearest to their own plate rather than what is best in {horn}, and decides that is the plan.',
+        '{tribute} finds their district partner in the ring and holds their eye for a second and a half.',
+        '{tribute} maps the exits. There are three, and {tribute} has picked the second one before the count reaches twenty.',
+        '{tribute} watches which way the Careers are leaning and plans around it.',
+        '{tribute} spends the whole minute looking at one other tribute, and it is not the strongest one.',
+    ],
+    /** Somebody with an agreement to keep. */
+    allied: [
+        '{tribute} picks {other} out of the ring within the first five seconds and does not need to look again.',
+        '{tribute} spends most of the minute making sure {other} has seen them.',
+        '{tribute} checks {other}\u2019s plate, then the horn, then {other}\u2019s plate again.',
+        'Whatever {tribute} and {other} agreed to on the training floor, both of them are still holding to it with ten seconds left.',
+        '{tribute} finds {other} across the ring and they hold the look long enough that it is plainly an agreement being confirmed.',
+        '{tribute} locates {other} on the far side of {horn} and adjusts their plan accordingly.',
+        '{tribute} and {other} are twenty plates apart and spend the minute checking that the other one is still there.',
+        '{tribute} nods once at {other}, which is more communication than the plates are supposed to allow.',
+        '{tribute} looks for {other} first and the horn second, which says exactly what {tribute} intends to do.',
+    ],
+} as const;
+
+/**
+ * §(requests 17): stepping off early.
+ *
+ * The plates are mined for sixty seconds. It is the first rule anybody learns
+ * about the Games, and the simulation had no way for it to happen.
+ */
+export const EARLY_STEP_OFF: string[] = [
+    '{tribute} shifts their weight wrong with two seconds left, and two seconds is two seconds.',
+    'Somebody\'s plate malfunctions, or {tribute} jumps. The Capitol never says which, and the result is the same.',
+    '{tribute} is watching the horn so hard that they step toward it without deciding to, and {arena} ends them for it.',
+    'There is a noise from the far side of the ring. {tribute} turns, and steps, and the mine is not interested in why.',
+    'The gong is one second away when {tribute} moves. One second is the whole of the difference.',
+    '{tribute} steps off the plate with eleven seconds still on the clock. The mine does not care that it was an accident.',
+    'Whatever {tribute} thought they heard, they move before the gong, and {arena} answers immediately and finally.',
+    '{tribute} loses their footing on the plate and puts one hand down onto the ground. There is a crack, and then there is not a {tribute}.',
+    '{tribute} breaks early. The Capitol replays it four times that night and calls it nerves, which it was.',
+    '{tribute} goes a half-second before the gong and is the first cannon of the Games — fired before the Games have technically started.',
+    'The count is at four when {tribute} runs. It is the last decision {tribute} ever makes.',
+    '{tribute} mistakes the anthem cue for the gong. The mines under the plate do not make the same mistake.',
+];
+
+/**
+ * §(requests 18): what every tribute did when the gong went.
+ *
+ * The bloodbath used to open with one line — "the gong sounds, N tributes come
+ * off their plates" — and then start resolving fights. Who ran where is the
+ * single most consequential decision any of them makes all Games, and it was
+ * invisible.
+ */
+export const GONG_DECISIONS = {
+    /** Straight into the mouth of the horn, for what is deepest inside it. */
+    horn: [
+        '{tribute} goes into {horn} deep, past everything at the mouth, for whatever is at the back of it.',
+        '{tribute} runs the whole length to {horn} without once checking who is running beside them.',
+        '{tribute} is one of the first bodies into {horn} and knows exactly what that costs.',
+        'There is no hesitation in {tribute} at all. Plate, gong, {horn}, in a straight line.',
+        '{tribute} goes straight for the mouth of {horn} and does not look at anything on the way.',
+        '{tribute} takes the shortest line to {horn} and gets there among the first.',
+        '{tribute} is off the plate before the sound has finished and running at {horn}.',
+        '{tribute} commits to {horn} completely — no cover, no hesitation, no second option.',
+        '{tribute} runs at {horn} like somebody who has rehearsed the distance, because they have.',
+    ],
+    /** The outer ring: grab what is loose and get out. */
+    edge: [
+        '{tribute} works the scatter outside {horn} — two things, quickly — and is moving again before anybody reaches them.',
+        '{tribute} never gets closer to {horn} than the outer ring, and comes away with more than most who did.',
+        '{tribute} takes the pack that is nearest rather than the pack that is best, which is the correct trade.',
+        '{tribute} is in and out of the edge of {horn} in under fifteen seconds.',
+        '{tribute} takes the nearest pack from the outer ring of {horn} and is already turning before their hand closes on it.',
+        '{tribute} does not go into {horn}. They take what is lying at the edge of it and run.',
+        '{tribute} sweeps up whatever is closest to their plate and keeps moving.',
+        '{tribute} grabs one thing from the scatter around {horn} — one — and breaks for cover with it.',
+        '{tribute} plays the edge of {horn}: two steps in, one item, and out again.',
+    ],
+    /** Straight away from it. */
+    flee: [
+        '{tribute} is running before the sound of the gong has crossed the ring, and not towards anything.',
+        '{tribute} goes for the nearest cover in a straight line and does not stop at it either.',
+        '{tribute} abandons {horn} entirely. Whatever is in there is somebody else\u2019s problem and somebody else\u2019s death.',
+        '{tribute} runs, and keeps running long after the noise behind them has stopped meaning anything.',
+        '{tribute} turns from {horn} at the gong and runs for the treeline with nothing at all.',
+        '{tribute} does not go near {horn}. They are moving away from the first second and they do not slow down.',
+        '{tribute} leaves the ring empty-handed and alive, which is the trade they decided on days ago.',
+        '{tribute} runs from {horn} without looking back once.',
+        '{tribute} takes the shortest route out of the ring and is gone before the fighting has properly started.',
+    ],
+    /** To the person they agreed to find. */
+    ally: [
+        '{tribute} ignores {horn} completely and goes to the plate {other} is standing on.',
+        '{tribute} runs the long way round the ring to reach {other}, which costs them the supplies and gains them a person.',
+        '{tribute} and {other} converge without either of them breaking stride, and go the same way out.',
+        '{tribute} has one thing to do at the gong and it is {other}.',
+        '{tribute} reaches {other} before anybody reaches {horn}, and the two of them are gone.',
+        '{tribute} runs to {other} rather than to {horn}, exactly as the two of them arranged on the training floor.',
+        '{tribute} cuts across the ring to reach {other}, ignoring everything in {horn} on the way.',
+        '{tribute} and {other} find each other in the first ten seconds and leave together.',
+        '{tribute} goes for {other} first. Supplies are a problem for after.',
+    ],
+    /** For a specific person, with intent. */
+    hunt: [
+        '{tribute} comes off the plate on a line that has nothing to do with {horn} and everything to do with {other}.',
+        '{tribute} takes the first weapon that comes to hand and then goes looking for {other} with it.',
+        '{tribute} lets the horn go. There is only one thing in this arena {tribute} wants and it is {other}.',
+        '{tribute} is moving at {other} before most of the field has worked out which way to face.',
+        'Everybody else is deciding about supplies. {tribute} decided about {other} on the training floor.',
+        '{tribute} comes off the plate and goes straight at {other}. There was never any question about the supplies.',
+        '{tribute} does not go to {horn}. {tribute} goes to where {other} is going to be.',
+        '{tribute} has been looking at {other} for the whole minute, and at the gong they close the distance.',
+        '{tribute} picks {other} out of twenty-three people and runs at them.',
+    ],
+    /** Rooted. */
+    freeze: [
+        '{tribute} is still on the plate when the first cannon goes, and the sound is what finally moves them.',
+        '{tribute} comes down off the plate and then simply stands there, in the open, with the whole ring resolving around them.',
+        'The gong goes and {tribute} does nothing at all for four full seconds, which the cameras find and hold.',
+        '{tribute} means to run at {horn}. {tribute} means to run away from it. {tribute} does neither.',
+        'Whatever {tribute} had planned does not survive the noise. They stand in the ring and turn, once, all the way round.',
+        '{tribute} does not move. The gong goes and {tribute} is still standing on the plate with the rest of the ring emptying around them.',
+        '{tribute} takes three seconds to start, and in the bloodbath three seconds is most of it.',
+        '{tribute} comes off the plate and then stops, in the open, because no part of the plan survived the noise.',
+        '{tribute} stands in the ring turning on the spot while everybody else commits to something.',
+    ],
+    /** Holding ground near the plate, waiting for the crush to clear. */
+    wait: [
+        '{tribute} clears the plate, finds the nearest thing to hide behind, and lets the first minute belong to somebody else.',
+        '{tribute} does not contest {horn}. They get out of the open and watch who comes away with what.',
+        '{tribute} goes to ground twenty metres out and counts the people going past.',
+        '{tribute} lets the charge go in ahead of them and waits to see what walks back out.',
+        '{tribute} treats the first thirty seconds as somebody else\u2019s problem, from behind cover.',
+        '{tribute} backs off the plate and stops just outside the ring, watching {horn} rather than entering it.',
+        '{tribute} goes ten metres and drops flat, and lets the first thirty seconds happen without them.',
+        '{tribute} finds cover at the edge of the ring and waits for the horn to thin out.',
+        '{tribute} does not run at {horn} or away from it. They get out of the open and watch.',
+    ],
+} as const;
+
 export const BLOODBATH_TEXTS = {
     flee: [
         '{tribute} runs from the Cornucopia without looking back.',
@@ -2838,6 +3438,54 @@ export const BORDER_TEXTS = {
     ],
 };
 export const ARCHETYPE_SIGNATURE_TEXTS: Record<string, string[]> = {
+    quartermasterInventory: [
+        '{tribute} empties the pack out onto the ground in {zone} and counts it, twice, out loud. Then they hand {ally} the half that keeps {ally} alive longer than it would have kept them.',
+        'In {zone}, {tribute} takes stock the way a storekeeper does at close: every item out, every item counted, and {ally} walks away with the surplus.',
+        '{tribute} does arithmetic on a pack of supplies in {zone} and comes out of it knowing exactly how many days they have. It is more than anybody else in the arena knows about themselves.',
+        'Nobody films {tribute} doing anything interesting in {zone}. They count. When they finish, {ally} has water for two more days and did not have to ask.',
+        '{tribute} lays it all out in {zone} — every strip, every flask, every scrap — and divides it against the days left. {ally} gets the share that keeps {ally} standing.',
+        'What {tribute} does in {zone} is not survival, it is bookkeeping, and it is the reason {tribute} and {ally} are both going to see the end of the week.',
+        'In {zone}, {tribute} rations it out loud so {ally} can hear the numbers. There is no generosity in it and {ally} takes it anyway.',
+        '{tribute} finds half a day of slack in their own supplies in {zone} and gives it to {ally}, because the arithmetic said {ally} needed it more.',
+        '{tribute} repacks in {zone} until everything has a place and nothing rattles. {ally} is handed the difference without a word about it.',
+        'The Capitol cuts away from {zone} while {tribute} counts. Nobody in the districts does. {ally} eats tonight because of what happens in the part nobody broadcast.',
+    ],
+    martyrOffer: [
+        '{tribute} says it plainly to {ward} in {zone}, with the cameras running: whatever comes, it comes through {tribute} first, and {ward} does not get a say in it.',
+        'In {zone}, {tribute} tells {ward} the arrangement. Only one of them is going home and {tribute} has already decided which.',
+        '{tribute} gives {ward} the last of what they were keeping for themselves in {zone}, and says something about it that makes {ward} stop arguing.',
+        'There is no drama to it. {tribute} tells {ward} in {zone} what they intend to do, and then does not mention it again.',
+        '{ward} tries to refuse what {tribute} offers in {zone}. {tribute} waits {ward} out, the way they were always going to.',
+        '{tribute} makes {ward} a promise in {zone} that only costs {tribute} anything, and the whole country hears it.',
+        'What {tribute} says to {ward} in {zone} is short, and it ends the conversation, and neither of them pretends it was not a decision.',
+        'In {zone}, {tribute} hands {ward} the better half of everything and calls it practical. Nobody watching believes that and neither does {ward}.',
+        '{tribute} steps in front of {ward} in {zone} before there is anything to step in front of. That is the offer, and it has been made now.',
+        'The odds on {ward} move in {zone}, and it is not because of anything {ward} did.',
+    ],
+    opportunistTurn: [
+        'Something went badly for {mark} in {zone} and {tribute} had nothing to do with it, which does not stop {tribute} taking everything that falls out of it.',
+        '{tribute} has been waiting in {zone} for the arena to do the difficult part. In the last ten minutes it did, to {mark}, and {tribute} moves.',
+        '{mark} is in no state to stop anybody in {zone}, and {tribute} is the one who noticed first.',
+        'In {zone}, {tribute} watches {mark} come apart and does not help and does not hide it. When it is over {tribute} is the one still standing there.',
+        '{tribute} did not plan {zone}, or {mark}, or any of it. They simply arrived while it was still worth arriving.',
+        'Whatever happened to {mark} in {zone} was not {tribute}\'s doing. What happens next is entirely {tribute}\'s doing.',
+        '{tribute} steps over what is left of {mark}\'s situation in {zone} and takes the part of it that still works.',
+        'The thing about {tribute} in {zone} is that they were never going to be the reason {mark} is in trouble — only the reason it costs {mark} everything.',
+        '{tribute} finds {mark} in {zone} at exactly the worst moment of {mark}\'s week, which is the only kind of moment {tribute} is ever in.',
+        'No plan survives {zone}. {tribute} never had one, and is doing better out of {mark} than anybody who did.',
+    ],
+    trackerRead: [
+        '{tribute} crouches in {zone} over ground that means nothing to anybody else and comes up knowing that {quarry} went toward {heading}, and roughly when.',
+        'There is a mark in {zone} that {quarry} did not know they left. {tribute} reads it, stands up, and starts walking to {heading}.',
+        'In {zone}, {tribute} works out from a broken stem and a wet print how long ago {quarry} came through and which way they went. {heading}.',
+        '{quarry} has been careful. In {zone}, {tribute} finds the one place they were not, and it points at {heading}.',
+        '{tribute} spends ten minutes in {zone} looking at the ground and then says {quarry}\'s name and the word {heading}, in that order.',
+        'What {tribute} finds in {zone} would not register on the broadcast: a scuff, a bent blade, a smell. It is enough. {quarry} is heading for {heading}.',
+        '{tribute} does not need to have seen {quarry} to know where {quarry} is. {zone} told them, and {heading} is where they go.',
+        'The thing {quarry} does not understand about {tribute} is that {zone} keeps a record, and {tribute} can read it. {heading}.',
+        '{tribute} circles once in {zone}, stops, and picks the direction. The Capitol confirms later that {quarry} went to {heading}.',
+        'It takes {tribute} no time at all in {zone}. {quarry} left everything a person leaves, and {heading} is what it adds up to.',
+    ],
     careerDeclaration: [
         'The pack stops in {zone} long enough for {tribute} to say a name out loud: {target}. It is not a threat so much as a schedule.',
         '{tribute} writes {target} into the pack\'s plans in {zone}, in front of everyone, and nobody argues. That is how the Careers do it — publicly, so the rest of the arena hears.',
@@ -3145,33 +3793,223 @@ export const TRAINING_MINGLE: string[] = [
     '{tribute} and {other} work the same drill at the {station} for most of the session. {reason}',
     '{other} shows {tribute} a better grip at the {station}. {reason}',
     '{tribute} and {other} are partnered at the {station} and get on with it. {reason}',
-    '{other} says something at the {station} that makes {tribute} laugh. {reason}',
+    '{other} tells {tribute} {topic} at the {station}, and {tribute} laughs before they can stop themselves. {reason}',
     '{tribute} and {other} take turns at the {station} without arranging it. {reason}',
     '{other} waits for {tribute} to finish at the {station} rather than pushing past. {reason}',
-    '{tribute} and {other} compare notes at the {station} in low voices. {reason}',
+    '{tribute} and {other} compare notes at the {station}, in low voices, about which trainers are actually watching. {reason}',
     '{tribute} and {other} spend an hour shoulder to shoulder at the {station} without speaking. {reason}',
     '{other} corrects {tribute} at the {station}. {tribute} thanks them. {reason}',
-    '{tribute} asks {other} something at the {station} that is not about training. {reason}',
+    '{tribute} asks {other} at the {station} {topic}. {reason}',
     '{tribute} and {other} find out at the {station} that their districts supply each other. {reason}',
     'A trainer comments on how well {tribute} and {other} work the {station} together. {reason}',
     '{tribute} covers for {other} at the {station} when a trainer looks over. {reason}',
     '{tribute} and {other} spend the whole {station} rotation next to each other. {reason}',
-    '{tribute} and {other} do not exchange names at the {station}, and work together anyway. {reason}',
+    '{tribute} and {other} never get as far as names at the {station}. They work the drill together for an hour regardless. {reason}',
 ];
+/**
+ * §(requests 11): what they actually talked about.
+ *
+ * The mingle pool used to contain "{tribute} asks {other} something that is
+ * not about training", which tells a reader that a conversation happened and
+ * withholds the only part of it worth printing. A chronicle that says a thing
+ * occurred without saying what it was is not being mysterious, it is being
+ * vague — so every conversational line now names its subject, drawn from here.
+ */
+export const FLOOR_TOPICS: string[] = [
+    'what they did at home before the reaping',
+    'whether the food in the Capitol is always like this',
+    'how many people their district reaped last year',
+    'which of the trainers used to be a victor',
+    'what their mentor has told them to do at the gong',
+    'whether the arena will have water in it',
+    'who they think is the most dangerous person in the room',
+    'what their stylist has put them in for the interviews',
+    'how long the train took from their district',
+    'whether anybody came to the goodbye room',
+    'what they are going to say to Caesar',
+    'which sibling they left behind',
+    'whether they have ever been this warm in winter',
+    'what the Capitol crowd sounded like from the chariot',
+    'how the scoring actually works, since nobody has told either of them',
+    'what they would be doing today if the bowl had gone the other way',
+    'whether it is worse to be reaped or to volunteer',
+    'what they miss most already',
+    'which of the two of them the cameras have been on more',
+    'whether they can swim, and where they learnt',
+    'what the worst thing they have ever eaten is',
+    'whether the Careers have already picked their pack',
+    'how old they were when they first took tesserae',
+    'what the sky looks like at home',
+];
+
+/**
+ * §(requests 9): the lunch hour.
+ *
+ * Three days on the floor were three days of stations, and every social beat
+ * had to happen while two people were holding weapons at a drill. A cast eats
+ * in the same room every day, and lunch is where the actual politics of the
+ * pre-Games happens: who sits with whom, who is left standing with a tray, and
+ * which table the Careers have taken.
+ */
+export const TRAINING_LUNCH_SIT: string[] = [
+    '{tribute} sits down opposite {other} at lunch. Neither of them planned it, and neither of them moves.',
+    '{other} moves their tray along the bench to make room for {tribute}.',
+    '{tribute} and {other} eat at the same end of the table and talk about {topic}.',
+    '{tribute} takes the seat beside {other} at lunch, which the whole room notices.',
+    '{other} brings {tribute} a second roll from the counter without being asked.',
+    '{tribute} and {other} spend the lunch hour with their heads together over {topic}.',
+    '{tribute} finds {other} already sitting alone and joins them.',
+    '{tribute} and {other} argue amiably across the table about {topic} until the bell.',
+    '{other} saves {tribute} a place. It is the first time all week anybody has.',
+    '{tribute} and {other} eat in silence at the same table and it is somehow not awkward.',
+    '{tribute} asks {other} at lunch about {topic}, and gets a longer answer than expected.',
+    '{other} shares out what is on their tray with {tribute}, district-fashion, without comment.',
+];
+
+export const TRAINING_LUNCH_ALONE: string[] = [
+    '{tribute} carries their tray past three tables with space at them and sits at the fourth, by themselves.',
+    '{tribute} eats lunch with their back to the room, which is either strategy or something else.',
+    '{tribute} is the last one to sit and the first one to leave, and speaks to nobody in between.',
+    'Somebody says {tribute}\'s name at lunch and {tribute} looks up too fast, and it was not for them.',
+    '{tribute} eats alone at the end of the long table and watches the room instead.',
+    '{tribute} takes their tray to the window and eats standing up, back to the wall.',
+    'Nobody sits with {tribute} at lunch. {tribute} does not appear to have expected anybody to.',
+    '{tribute} eats fast, alone, and is back on the floor before the bell.',
+    '{tribute} sits at the end of a full table and nobody moves along for them.',
+    '{tribute} spends lunch counting the room: who is with whom, and who is not with anybody.',
+    '{tribute} does not eat at all. They sit with the tray in front of them and look at the door.',
+    '{tribute} eats alone and writes something on their hand with a thumbnail.',
+];
+
+export const TRAINING_LUNCH_CAREER: string[] = [
+    'The Careers eat together at lunch with {tribute} at the centre of it, and the rest of the room arranges itself around the fact.',
+    '{tribute} holds court at the Career table over lunch. Nothing said there is meant to stay there.',
+    'The pack takes lunch the way it takes everything: first, and all of it. {tribute} is served first.',
+    'At the Career table {tribute} says a number out loud, and the four of them laugh at it, and nobody else knows what it was.',
+    '{tribute} eats slowly at the head of the Career table and watches the room over the rim of a cup.',
+    'Lunch at the Career table runs long. {tribute} is the reason it does, and the reason nobody interrupts it.',
+    'The Career table fills up the way it does every year: {tribute} first, then the rest, and nobody else goes near it.',
+    '{tribute} holds the head of the Career table at lunch and lets the room see who is sitting where.',
+    'The pack eats together and loudly. {tribute} says something about {first} that makes all of them laugh at once, and the room goes quiet.',
+    '{tribute} and the pack take the whole table. {first} and {second} get halfway over with their trays, look at it, and go somewhere else.',
+    'At lunch the Careers rank the room out loud. {tribute} is doing most of the ranking, and has {first} somewhere near the bottom of it.',
+    '{tribute} calls {first}\'s name across the lunchroom. Nobody at the Career table is sure whether it was a joke, and {first} does not turn round.',
+];
+
+/**
+ * §(requests 10): the floor is not a friendly place, and it used to read like
+ * one. Mingling, team-ups and a single altercation pool were the whole social
+ * register; three days produced warmth and almost nothing else. These are the
+ * other things that happen in a room where everybody knows what is coming.
+ */
+export const TRAINING_SNUB: string[] = [
+    '{tribute} holds a door at the {station} and lets it go before {other} reaches it.',
+    '{other} says good morning to {tribute} at the {station}. {tribute} looks at them for a second and carries on.',
+    '{tribute} asks the trainer at the {station} to be moved to a different rotation. {other} is the reason and everybody knows it.',
+    '{tribute} takes the two good spots at the {station} for themselves and a friend, with {other} standing right there.',
+    '{tribute} asks {other} at the {station} about {topic}. {other} does not answer, and does not look up.',
+    '{other} moves to a different station rather than share the {station} with {tribute}.',
+    '{tribute} offers {other} a hand at the {station}. {other} leaves it there.',
+    '{other} makes a point of finishing at the {station} and walking off the moment {tribute} arrives.',
+    '{tribute} says {other}\'s name at the {station}. {other} makes them say it twice and then answers somebody else.',
+    '{other} watches {tribute} fail at the {station} and says nothing at all, which is worse.',
+    '{tribute} tries to join {other} at the {station} and is told the station is taken.',
+    '{other} steps in front of {tribute} at the {station} and takes the next turn as though nobody were waiting.',
+];
+
+export const TRAINING_THREAT: string[] = [
+    '{tribute} tells {other} at the {station} which way to run, and means it as an instruction rather than a kindness.',
+    '{tribute} stands close enough to {other} at the {station} to be a statement, and says nothing at all.',
+    '{tribute} tells {other} at the {station} that the two of them are going to have a conversation in about a week.',
+    '{other} is working the {station} when {tribute} puts a hand flat on the bench beside them and leaves it there.',
+    '{tribute} explains to {other} at the {station}, in detail and without raising their voice, how the first day is likely to go for them.',
+    '{tribute} tells {other} at the {station}, quietly and without heat, exactly where they intend to find them in the arena.',
+    '{tribute} holds a blade at the {station} a beat too long while looking at {other}, and everybody sees it.',
+    '{other} is told by {tribute} at the {station} that the first day is going to be very short for them.',
+    '{tribute} puts a spear into the target at the {station} and says {other}\'s name while they do it.',
+    '{tribute} tells {other} at the {station} not to bother running. The trainers pretend not to hear.',
+    '{tribute} walks past {other} at the {station} and says one sentence that makes {other} stop working.',
+    '{tribute} promises {other}, in front of four other tributes, that nothing personal is going to be involved.',
+];
+
+export const TRAINING_MOCK: string[] = [
+    '{tribute} repeats something {other} said at the {station} back to them in a different voice.',
+    '{other} drops something at the {station}. {tribute} applauds, once, slowly.',
+    '{tribute} asks the trainer at the {station}, loudly, whether {other} is supposed to be doing it like that.',
+    '{tribute} counts {other}\'s misses at the {station} out loud, and gets to a number that makes the room turn round.',
+    '{tribute} tells two other tributes at the {station} what {other} looked like on the chariot. All three of them laugh.',
+    '{tribute} offers to hold {other}\'s weapon at the {station} in case it is too heavy.',
+    '{tribute} does an impression of {other} at the {station}. Two other tributes laugh. {other} hears all of it.',
+    '{other} is still struggling at the {station} when {tribute} announces the time it took, out loud.',
+    '{tribute} asks {other} at the {station}, loudly, whether they have ever held one of those before.',
+    '{tribute} gives {other} a nickname at the {station}. By the evening three people are using it.',
+    '{tribute} corrects {other} at the {station} in a way that is about the audience rather than the grip.',
+    '{tribute} tells the room at the {station} what odds they would give on {other}.',
+];
+
+export const TRAINING_THEFT: string[] = [
+    '{tribute} walks off the {station} with {other}\'s water bottle and drinks from it in front of them an hour later.',
+    'Something of {other}\'s is missing from the {station} rack. {tribute} is wearing it by the evening.',
+    '{tribute} lifts a coil of wire from the {station} while {other} is being corrected by a trainer.',
+    '{other} leaves their gloves at the {station}. {tribute} does not hand them in.',
+    '{tribute} takes the last of the good flints from the {station} and leaves {other} the chipped one.',
+    '{tribute} helps {other} pack up at the {station} and keeps two of the things they packed.',
+    '{other} counts their kit after the {station} and comes up one short. They know exactly who, and can prove nothing.',
+    '{tribute} takes something off {other}\'s bench at the {station} and is gone before {other} turns round.',
+    '{other} finds their kit moved at the {station}. {tribute} is the only person who was near it.',
+    '{tribute} swaps a blunted blade into {other}\'s rack at the {station} and keeps the sharp one.',
+    '{tribute} pockets the good rope at the {station} while {other} is still coiling the frayed one.',
+    '{other} sets something down at the {station} for thirty seconds. It is not there when they reach for it, and {tribute} is.',
+];
+
+export const TRAINING_EXCLUSION: string[] = [
+    '{tribute} hands out roles at the {station} to everybody but {other}, and does it slowly enough that {other} has time to notice.',
+    '{other} is left holding one end of a rope at the {station} that {tribute} has already told somebody else to take.',
+    '{tribute} answers a question {other} asked at the {station} by explaining it to the person standing next to them instead.',
+    'When the trainer asks who is working with whom at the {station}, {tribute} accounts for everybody except {other}.',
+    '{tribute} makes room at the {station} for two people and not for the third, and {other} is the third.',
+    'The group at the {station} rearranges itself around {other} rather than including them. {tribute} started the drift.',
+    '{other} laughs at something {tribute} said at the {station}. Nobody laughs with them.',
+    '{tribute} and their people close the circle at the {station} as {other} comes over. Nobody says anything. {other} goes away.',
+    'There is a conversation at the {station} that stops when {other} is close enough to hear it. {tribute} started it.',
+    '{tribute} tells {other} at the {station} that the group is full. There is no group.',
+    '{other} is not included in what {tribute} is organising at the {station}, and is allowed to work that out alone.',
+    '{tribute} arranges four people at the {station} into pairs and leaves {other} standing.',
+];
+
+/**
+ * §(requests 10): a pact breaking before the Games have even started. The floor
+ * could form agreements and had no way to lose one.
+ */
+export const TRAINING_PACT_BROKEN: string[] = [
+    '{tribute} stops meeting {other} at the {station}, and by the afternoon that is understood to be the answer.',
+    'The arrangement between {tribute} and {other} lasted two days. {tribute} ends it at the {station} in one sentence.',
+    '{other} comes to the {station} expecting to work with {tribute} and finds {tribute} already paired with somebody else.',
+    '{tribute} tells {other} at the {station} that they have thought about it. That is the whole of the explanation.',
+    'Whatever was agreed between {tribute} and {other} is not mentioned again after the {station}, by either of them.',
+    '{tribute} takes the agreement back at the {station}, politely, which somehow makes it worse.',
+    '{other} asks {tribute} at the {station} whether they are still on. {tribute} takes too long to answer.',
+    '{tribute} tells {other} at the {station} that the arrangement is off. No reason is offered and none is asked for.',
+    'Whatever {tribute} and {other} agreed on day one does not survive the {station}. {tribute} walks away from it first.',
+    '{other} hears from a third party what {tribute} has been saying about them, and the agreement between them is over by the evening.',
+    '{tribute} and {other} have a short conversation at the {station} that ends with both of them looking somewhere else. The pact is dead.',
+    '{tribute} gets a better offer and takes it. {other} finds out at the {station}, from somebody who is not {tribute}.',
+];
+
 export const TRAINING_TEAMUP: string[] = [
     '{tribute} and {other} agree at the {station} to find each other at the gong. {reason}',
     '{tribute} and {other} agree where to meet in the first minute. Nothing is written down. {reason}',
     '{tribute} proposes it at the {station} and {other} agrees: they run the same direction off the plates. {reason}',
     '{tribute} and {other} have a plan for the bloodbath by the end of the {station} rotation. {reason}',
-    '{other} makes {tribute} an offer at the {station}. {tribute} accepts the same day. {reason}',
+    '{other} offers {tribute} the first minute at the horn — one of them takes supplies, the other takes cover. {tribute} accepts the same day. {reason}',
     '{tribute} and {other} shake on it at the {station}. {reason}',
-    'The agreement between {tribute} and {other} takes four words at the {station}. {reason}',
+    'The agreement between {tribute} and {other} takes four words at the {station}: "you, me, west side." {reason}',
     '{tribute} and {other} agree at the {station} that two is better odds than one. {reason}',
     '{tribute} and {other} strike a bloodbath pact at the {station}. {reason}',
     '{tribute} tells {other} where they will be standing when the plates go down. {reason}',
     '{tribute} and {other} work out at the {station} that they need opposite things. {reason}',
-    '{tribute} and {other} agree at the {station} without anybody seeing it. {reason}',
-    '{other} asks {tribute} one question at the {station} and gets one answer. That is the agreement. {reason}',
+    '{tribute} and {other} settle it at the {station} with a nod over a rack of spears, while the trainer is turned away. {reason}',
+    '{other} asks {tribute} at the {station} whether they can swim. {tribute} says yes. That is the whole agreement. {reason}',
     '{tribute} and {other} rehearse the first ninety seconds at the {station} until it is automatic. {reason}',
     'The agreement between {tribute} and {other} covers the second minute, not the first. {reason}',
     '{tribute} names a landmark at the {station}. {other} repeats it back. {reason}',

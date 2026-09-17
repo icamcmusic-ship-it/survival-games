@@ -1,3 +1,4 @@
+import { profOf } from './proficiency';
 import { ARCHETYPES } from '../data/archetypes';
 import { GameState, Tribute } from '../models/types';
 import { FEAR, MEMORY } from '../data/balance';
@@ -22,8 +23,13 @@ export function fearOf(t: Tribute, otherId: string): number {
     return ensureMemory(t).fear?.[otherId] ?? 0;
 }
 
-export function addFear(t: Tribute, otherId: string, amount: number) {
+export function addFear(t: Tribute, otherId: string, amount: number, source?: Tribute) {
     if (t.id === otherId) return;
+    // §(requests, deferred): being frightening is a skill. `source` is the
+    // person doing the frightening, where the caller knows who that is;
+    // everything that frightens nobody in particular (a mutt, the border, the
+    // dark) leaves it unset and is unaffected.
+    if (source && source.id === otherId) amount *= 1 + profOf(source, 'intimidation') * FEAR.perIntimidationPoint;
     // A2: a Zealot is not frightened — `fearScale: 0` on the archetype sheet,
     // alongside the other extreme-variance archetypes' own scales, rather than
     // a carve-out for one id here. `t` is the tribute *becoming* afraid, so

@@ -601,6 +601,10 @@ function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night'
  * people dying; rest, food, safety and company push back.
  */
 function applySanityPressure(ctx: SimContext, t: Tribute, time: 'day' | 'night', alliesPresent: number) {
+    // §(requests 2): the two dials, read once here — this is the only place
+    // that both drains and restores, so it is the only place they belong.
+    const drainRate = ctx.state.config.sanityDrainRate ?? 1;
+    const recoveryRate = ctx.state.config.sanityRecoveryRate ?? 1;
     if (!ctx.state.config.enableSanity) {
         // With sanity disabled the stat must not drift at all, or a config the
         // player turned off still quietly shapes stance scoring.
@@ -694,8 +698,8 @@ function applySanityPressure(ctx: SimContext, t: Tribute, time: 'day' | 'night',
      * the recovery is applied directly, because what pulls somebody back up
      * should not be discounted for being needed.
      */
-    if (recovery > 0) t.vitals.sanity = Math.min(100, t.vitals.sanity + recovery);
-    loseSanity(t, drain);
+    if (recovery > 0) t.vitals.sanity = Math.min(100, t.vitals.sanity + recovery * recoveryRate);
+    loseSanity(t, drain, drainRate);
 }
 
 /**

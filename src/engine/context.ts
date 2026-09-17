@@ -18,35 +18,59 @@ import { RNG } from '../utils/rng';
  * The day phase runs 06:00-18:00 and the night phase 18:00-06:00. The
  * pre-arena ceremonies get the hour they would actually be held at.
  */
-const PHASE_WINDOWS: Record<Phase, { start: number; minutes: number }> = {
+/**
+ * §(requests 20): the spacing is per phase, and it is measured.
+ *
+ * It used to be four minutes a line for every phase, which is fine for a day
+ * phase and nonsense for a bloodbath: the bloodbath writes a mean of 158 lines
+ * (max 207) into a sixty-minute window, so from the sixteenth line onward every
+ * stamp clamped to the same minute. Measured across 25 runs, **23.3% of all
+ * stamps were duplicates**, 3,554 of them in the bloodbath alone.
+ *
+ * `secondsPerLine` is now sized against the measured worst case for each phase
+ * so a phase cannot run out of clock, and a phase whose lines land less than a
+ * minute apart is stamped to the second — which is what a bloodbath actually
+ * is. Everything else keeps `HH:MM`.
+ */
+const PHASE_WINDOWS: Record<Phase, { start: number; minutes: number; secondsPerLine: number }> = {
     // Day 0, in broadcast order.
-    setup: { start: 8 * 60, minutes: 60 },
-    roster: { start: 8 * 60, minutes: 60 },
-    reaping: { start: 10 * 60, minutes: 120 },
-    square: { start: 10 * 60, minutes: 3 * 60 },
-    train: { start: 14 * 60, minutes: 6 * 60 },
-    parade: { start: 20 * 60, minutes: 2 * 60 },
-    training: { start: 9 * 60, minutes: 8 * 60 },
-    training1: { start: 9 * 60, minutes: 8 * 60 },
-    training2: { start: 9 * 60, minutes: 8 * 60 },
-    training3: { start: 9 * 60, minutes: 8 * 60 },
-    scores: { start: 19 * 60, minutes: 60 },
-    interviews: { start: 19 * 60, minutes: 3 * 60 },
-    // In the arena.
-    bloodbath: { start: 10 * 60, minutes: 60 },
-    day: { start: 6 * 60, minutes: 12 * 60 },
-    night: { start: 18 * 60, minutes: 12 * 60 },
-    feast: { start: 12 * 60, minutes: 2 * 60 },
-    epilogue: { start: 12 * 60, minutes: 60 },
-    ended: { start: 12 * 60, minutes: 60 },
+    setup: { start: 8 * 60, minutes: 60, secondsPerLine: 120 },
+    roster: { start: 8 * 60, minutes: 60, secondsPerLine: 120 },
+    reaping: { start: 10 * 60, minutes: 120, secondsPerLine: 120 },
+    // max 85 lines over 180 minutes
+    square: { start: 10 * 60, minutes: 3 * 60, secondsPerLine: 110 },
+    // max 24 lines over 360 minutes
+    train: { start: 14 * 60, minutes: 6 * 60, secondsPerLine: 600 },
+    // max 26 lines over 120 minutes
+    parade: { start: 20 * 60, minutes: 2 * 60, secondsPerLine: 240 },
+    // max 43 lines over 480 minutes
+    training: { start: 9 * 60, minutes: 8 * 60, secondsPerLine: 600 },
+    training1: { start: 9 * 60, minutes: 8 * 60, secondsPerLine: 600 },
+    training2: { start: 9 * 60, minutes: 8 * 60, secondsPerLine: 600 },
+    training3: { start: 9 * 60, minutes: 8 * 60, secondsPerLine: 600 },
+    // max 46 lines over 60 minutes
+    scores: { start: 19 * 60, minutes: 60, secondsPerLine: 70 },
+    // max 139 lines over 180 minutes
+    interviews: { start: 19 * 60, minutes: 3 * 60, secondsPerLine: 70 },
+    // In the arena. The bloodbath is the one phase dense enough to need
+    // seconds: 207 lines in an hour is a line every seventeen seconds, and
+    // that is genuinely how fast it happens.
+    bloodbath: { start: 10 * 60, minutes: 60, secondsPerLine: 15 },
+    day: { start: 6 * 60, minutes: 12 * 60, secondsPerLine: 300 },
+    night: { start: 18 * 60, minutes: 12 * 60, secondsPerLine: 360 },
+    feast: { start: 12 * 60, minutes: 2 * 60, secondsPerLine: 80 },
+    epilogue: { start: 12 * 60, minutes: 60, secondsPerLine: 120 },
+    ended: { start: 12 * 60, minutes: 60, secondsPerLine: 120 },
 };
 
-/** Minutes past midnight -> `21:40`. */
-function hhmm(minutes: number): string {
-    const wrapped = ((minutes % 1440) + 1440) % 1440;
-    const h = Math.floor(wrapped / 60);
-    const m = wrapped % 60;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+/** Seconds past midnight -> `21:40`, or `21:40:07` when the phase needs them. */
+function clockFace(totalSeconds: number, withSeconds: boolean): string {
+    const wrapped = ((totalSeconds % 86400) + 86400) % 86400;
+    const h = Math.floor(wrapped / 3600);
+    const m = Math.floor((wrapped % 3600) / 60);
+    const s = wrapped % 60;
+    const hm = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    return withSeconds ? `${hm}:${String(s).padStart(2, '0')}` : hm;
 }
 
 /**
@@ -64,10 +88,12 @@ export function arenaClock(state: GameState): string {
     state.clockPhaseLines = index + 1;
 
     const window = PHASE_WINDOWS[state.phase] ?? PHASE_WINDOWS.day;
-    // Four minutes a line reads at about the pace a phase actually contains:
-    // a busy day fills its twelve hours, a quiet one finishes by mid-morning.
-    const offset = Math.min(window.minutes - 1, index * 4);
-    const stamp = hhmm(window.start + offset);
+    // Sized so the measured worst case for this phase still fits inside its
+    // window; the clamp is a backstop for an outlier run rather than the
+    // normal case it used to be.
+    const offset = Math.min(window.minutes * 60 - 1, index * window.secondsPerLine);
+    // balance-exempt: a minute is sixty seconds, not a tunable
+    const stamp = clockFace(window.start * 60 + offset, window.secondsPerLine < 60);
     // Day 0 is the ceremonies; everything after it is a day in the arena.
     return state.day <= 0 ? stamp : `D${state.day} ${stamp}`;
 }

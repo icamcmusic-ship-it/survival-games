@@ -1,3 +1,6 @@
+import { Proficiency } from '../../models/types';
+import { craftOf } from '../../data/districts';
+import { profOf } from '../proficiency';
 import { SimContext, getAlive } from '../context';
 import { Tribute } from '../../models/types';
 import { RNG } from '../../utils/rng';
@@ -5,6 +8,7 @@ import { ARCHETYPES } from '../../data/archetypes';
 import { adjustRespect, getRel } from '../relationships';
 import {
     CAESAR_FOLLOWUPS, INTERVIEW_CLOSERS, INTERVIEW_SCENARIOS, PERSONA_DRIFT,
+    CAESAR_QUESTIONS,
 } from '../../data/flavorText';
 import { clampTribute } from '../vitals';
 import { adjustRel } from '../relationships';
@@ -31,6 +35,60 @@ import { COLD_PERSONAS, WARM_PERSONAS } from '../../data/personas';
  */
 
 /** How well an angle fits this tribute. The persona emerges from the person. */
+/** The highest proficiency a tribute has, which is what a professional sells. */
+function bestProficiency(t: Tribute): number {
+    const levels = Object.values(t.proficiencies ?? {}).filter((v): v is number => typeof v === 'number');
+    return levels.length > 0 ? Math.max(...levels) : 0;
+}
+
+/**
+ * §(requests 16): one question per tribute, drawn from what makes them
+ * different from the tribute before them on the couch.
+ *
+ * Which of the three kinds fires is decided by the tribute, not by a roll: a
+ * tribute with a genuinely high skill gets asked about the skill, a tribute
+ * whose district has a strong trade gets asked about home, and everybody else
+ * gets the Gamemakers' read of them put to their face.
+ */
+function caesarQuestion(ctx: SimContext, t: Tribute) {
+    const levels = Object.entries(t.proficiencies ?? {})
+        .filter((e): e is [Proficiency, number] => typeof e[1] === 'number')
+        .sort((a, b) => b[1] - a[1]);
+    const best = levels[0];
+    if (best && best[1] >= INTERVIEWS.skillQuestionLevel) {
+        const pool = CAESAR_QUESTIONS.skill[best[0]];
+        if (pool) {
+            ctx.logEvent(
+                ctx.pickText([...pool]).split('{tribute}').join(t.name),
+                [t.id],
+                { category: 'interview' }
+            );
+            return;
+        }
+    }
+    const craft = craftOf(t.district);
+    if (craft.blurb && ctx.rng.chance(INTERVIEWS.districtQuestionChance)) {
+        ctx.logEvent(
+            ctx.pickText([...CAESAR_QUESTIONS.district])
+                .split('{tribute}').join(t.name)
+                .split('{district}').join(String(t.district))
+                .split('{craft}').join(craft.blurb),
+            [t.id],
+            { category: 'interview' }
+        );
+        return;
+    }
+    const arch = ARCHETYPES[t.archetype];
+    ctx.logEvent(
+        ctx.pickText([...CAESAR_QUESTIONS.archetype])
+            .split('{tribute}').join(t.name)
+            .split('{archetype}').join(arch.name.toLowerCase())
+            .split('{tagline}').join(arch.tagline ?? arch.description),
+        [t.id],
+        { category: 'interview' }
+    );
+}
+
 function angleWeights(t: Tribute): Array<[typeof INTERVIEW_SCENARIOS[number], number]> {
     return INTERVIEW_SCENARIOS.map(scenario => {
         let weight = 1;
@@ -81,6 +139,52 @@ function angleWeights(t: Tribute): Array<[typeof INTERVIEW_SCENARIOS[number], nu
                 if (t.traits.includes('Softhearted') || t.traits.includes('Grim')) weight += INTERVIEW_ANGLES.grievingSibling.mourner;
                 if (t.age <= INTERVIEW_ANGLES.grievingSibling.youngAge) weight += INTERVIEW_ANGLES.grievingSibling.young;
                 if (t.traits.includes('Ruthless')) weight += INTERVIEW_ANGLES.grievingSibling.ruthless;
+                break;
+            /*
+             * §(requests 16): the five added angles, weighted off the things
+             * the old thirteen barely read — what a tribute is actually good
+             * at, where they are from, and which archetype they are. A cast
+             * where everybody has the same traits should still produce a
+             * different set of interviews if their districts and skills differ.
+             */
+            case 'The Survivor':
+                weight += (INTERVIEW_ANGLES.survivor.hungerPivot - (craftOf(t.district).hungerResilience ?? 1)) * INTERVIEW_ANGLES.survivor.perHungerPoint;
+                weight += t.attributes.endurance * INTERVIEW_ANGLES.survivor.perEndurance;
+                if (t.district >= INTERVIEW_ANGLES.survivor.outerFrom) weight += INTERVIEW_ANGLES.survivor.outer;
+                if (t.archetype === 'survivalist' || t.archetype === 'underdog') weight += INTERVIEW_ANGLES.survivor.archetype;
+                if (t.isCareer) weight += INTERVIEW_ANGLES.survivor.career;
+                break;
+            case 'The Professional':
+                // Whatever they are best at, measured rather than declared.
+                weight += bestProficiency(t) * INTERVIEW_ANGLES.professional.perBestProficiency;
+                weight += t.attributes.intelligence * INTERVIEW_ANGLES.professional.perIntelligence;
+                if (t.archetype === 'scholar' || t.archetype === 'strategist' || t.archetype === 'mercenary') {
+                    weight += INTERVIEW_ANGLES.professional.archetype;
+                }
+                if (t.trainingScore >= INTERVIEW_ANGLES.professional.scorePivot) weight += INTERVIEW_ANGLES.professional.scored;
+                break;
+            case 'The Homesick':
+                weight += (INTERVIEW_ANGLES.homesick.agePivot - t.age) * INTERVIEW_ANGLES.homesick.perYearUnderPivot;
+                if (t.motive === 'family' || t.motive === 'partner') weight += INTERVIEW_ANGLES.homesick.motive;
+                if (t.token) weight += INTERVIEW_ANGLES.homesick.token;
+                if (t.isCareer) weight += INTERVIEW_ANGLES.homesick.career;
+                if (t.archetype === 'diplomat' || t.archetype === 'protector') weight += INTERVIEW_ANGLES.homesick.archetype;
+                break;
+            case 'The Volunteer':
+                // The one angle that is simply unavailable to most of the cast.
+                if (!t.volunteered) { weight = 0; break; }
+                weight += INTERVIEW_ANGLES.volunteer.volunteered;
+                if (!t.isCareer) weight += INTERVIEW_ANGLES.volunteer.notCareer;
+                if (t.archetype === 'protector' || t.archetype === 'zealot') weight += INTERVIEW_ANGLES.volunteer.archetype;
+                break;
+            case 'The Provocateur':
+                weight += t.attributes.charisma * INTERVIEW_ANGLES.provocateur.perCharisma;
+                weight += Math.max(0, traitMod(t, 'treachery')) * INTERVIEW_ANGLES.provocateur.perTreachery;
+                weight += profOf(t, 'intimidation') * INTERVIEW_ANGLES.provocateur.perIntimidation;
+                if (t.archetype === 'trickster' || t.archetype === 'wildcard' || t.archetype === 'saboteur') {
+                    weight += INTERVIEW_ANGLES.provocateur.archetype;
+                }
+                if (t.reputation < INTERVIEW_ANGLES.provocateur.lowReputation) weight += INTERVIEW_ANGLES.provocateur.lowReputationBonus;
                 break;
             case 'The Cold Strategist':
                 weight += t.attributes.intelligence * INTERVIEW_ANGLES.coldStrategist.perIntelligence;
@@ -222,7 +326,7 @@ function speakAngle(ctx: SimContext, t: Tribute, angle: SpokenAngle, cast: Tribu
         // the naming has just told everybody else where to look first.
         adjustRel(target, t.id, -INTERVIEWS.hostileDistrust * 2);
         adjustRel(t, target.id, -INTERVIEWS.hostileDistrust);
-        addFear(target, t.id, FEAR.lostExchange);
+        addFear(target, t.id, FEAR.lostExchange, t);
         addFear(t, target.id, FEAR.realityCorrection);
         adjustRespect(target, t.id, RESPECT.witnessKill);
         others.forEach(o => {
@@ -414,6 +518,11 @@ export function processInterviews(ctx: SimContext) {
                 { important: true, category: 'interview' }
             );
         }
+
+        // §(requests 16): the question that is about this tribute rather than
+        // about their persona — their trade, their best skill, or the read the
+        // training floor has on them.
+        caesarQuestion(ctx, t);
 
         // §6.3: and what else they did with the three minutes. A showmance is
         // already a whole strategy; anybody who did not plan one has the other

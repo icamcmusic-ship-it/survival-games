@@ -249,7 +249,7 @@ function claimPacks(
         loseSanity(victim, PRE_ARENA.feastPackLostSanity);
         clampTribute(victim);
         adjustRel(victim, t.id, -PRE_ARENA.feastPackLostSanity);
-        addFear(victim, t.id, PRE_ARENA.feastPackLostSanity);
+        addFear(victim, t.id, PRE_ARENA.feastPackLostSanity, t);
         ctx.logEvent(
             `${victim.name} works out, from the gap in the row and the name still printed beside it, that ${t.name} has walked off with the one thing on that table that was theirs.`,
             [victim.id, t.id],

@@ -58,7 +58,7 @@ export function prefetchEngine() {
     void loadEngine().catch(() => { /* the real load path reports failures */ });
 }
 
-export type ViewName = 'setup' | 'roster' | 'game' | 'chronicle' | 'hallOfFame';
+export type ViewName = 'setup' | 'roster' | 'game' | 'chronicle' | 'hallOfFame' | 'howToPlay';
 
 /**
  * `Bet` and `SavedRun` are declared in `utils/saveMigrations` (with the schema
@@ -1115,6 +1115,10 @@ export const gameActions = {
 
         const newState: GameState = { ...gameState, phase: 'setup' };
         gameStore.setState({ gameState: newState, simulator: new engine.Simulator(newState) });
+        // §(requests 7): the cast is confirmed, so the next thing the player
+        // wants is the record. The chronicle opens empty with the button that
+        // holds the reaping; every stage after it lands on its own page.
+        gameActions.setView('chronicle');
         persistRun();
     },
 

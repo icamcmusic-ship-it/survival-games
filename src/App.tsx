@@ -19,11 +19,11 @@ import { initRouter, pathForView, redirectView, resolveView } from './store/rout
  * split out and fetched at the moment the player actually needs them.
  */
 const ReapingScreen = lazy(() => import('./screens/ReapingScreen').then(m => ({ default: m.ReapingScreen })));
-const RosterScreen = lazy(() => import('./screens/RosterScreen').then(m => ({ default: m.RosterScreen })));
 const GameScreen = lazy(() => import('./screens/GameScreen').then(m => ({ default: m.GameScreen })));
 const EndScreen = lazy(() => import('./screens/EndScreen').then(m => ({ default: m.EndScreen })));
 const ChronicleScreen = lazy(() => import('./screens/ChronicleScreen').then(m => ({ default: m.ChronicleScreen })));
 const HallOfFameScreen = lazy(() => import('./screens/HallOfFameScreen').then(m => ({ default: m.HallOfFameScreen })));
+const HowToPlayScreen = lazy(() => import('./screens/HowToPlayScreen').then(m => ({ default: m.HowToPlayScreen })));
 const VictorInterviewScreen = lazy(() => import('./screens/VictorInterviewScreen').then(m => ({ default: m.VictorInterviewScreen })));
 
 /** Shown for the moment a split screen chunk is in flight. */
@@ -175,9 +175,13 @@ export default function App() {
 
   const navItems: Array<{ id: ViewName; label: string; show: boolean }> = [
     { id: 'setup', label: 'New Game', show: true },
-    { id: 'roster', label: 'Roster', show: !!gameState },
-    { id: 'game', label: 'Arena', show: !!gameState && gameState.phase !== 'setup' && gameState.phase !== 'reaping' },
-    { id: 'chronicle', label: 'Chronicle', show: !!gameState && gameState.phase !== 'setup' && gameState.phase !== 'reaping' },
+    // §(requests 5/6): the reaping is the only roster page left, and it only
+    // exists while a cast is waiting to be confirmed. Everything else about
+    // the cast is a tab inside the arena.
+    { id: 'roster', label: 'Reaping', show: !!gameState && gameState.phase === 'reaping' },
+    { id: 'game', label: 'Arena', show: !!gameState && gameState.phase !== 'reaping' },
+    { id: 'chronicle', label: 'Chronicle', show: !!gameState && gameState.phase !== 'reaping' },
+    { id: 'howToPlay', label: 'How to Play', show: true },
     { id: 'hallOfFame', label: 'Hall of Fame', show: true },
   ];
 
@@ -264,20 +268,7 @@ export default function App() {
           />
         )}
 
-        {view === 'roster' && gameState && gameState.phase !== 'reaping' && (
-          <RosterScreen
-            tributes={gameState.tributes}
-            phase={gameState.phase}
-            coins={coins}
-            bets={bets}
-            setBets={gameActions.setBets}
-            setCoins={gameActions.setCoins}
-            onProceed={() => {
-              if (gameState.phase === 'setup') gameActions.nextPhase();
-              gameActions.setView('game');
-            }}
-          />
-        )}
+        {view === 'howToPlay' && <HowToPlayScreen />}
 
         {view === 'chronicle' && gameState && (
           <ChronicleScreen gameState={gameState} />

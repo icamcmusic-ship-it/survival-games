@@ -1036,6 +1036,10 @@ export function handleInsanity(ctx: SimContext, t: Tribute) {
 /** True once a tribute's sanity has broken far enough to cost them the turn. */
 export function isBreakingDown(ctx: SimContext, t: Tribute): boolean {
     return ctx.state.config.enableSanity
+        // §(requests 2): the set pieces a broken mind produces are their own
+        // switch. Sanity still scores stances and still kills; this is whether
+        // the arena shows it happening.
+        && ctx.state.config.enableHallucinations !== false
         && t.vitals.sanity < VITALS.breakdownThreshold
         && ctx.rng.chance(VITALS.breakdownChance);
 }

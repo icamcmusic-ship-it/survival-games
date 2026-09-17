@@ -497,3 +497,88 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
  * — recognised kin by string-comparing the suffix. That roll now stands on its
  * own in `generateTributes`, and the pool is gone with the surnames.
  */
+
+/**
+ * The third pool: names either tribute of a district can be given.
+ *
+ * Two problems, one table. The first is that `DISTRICT_NAMES` is keyed by
+ * `Gender`, so every themed name in the game had to be sorted into one of two
+ * boxes — and a great many district words ("Kernel", "Klaxon", "Verglas") do
+ * not belong in either. The second is measurable: the initial letter of a
+ * reaped name was wildly lopsided, 356 names starting with S and 5 with X,
+ * so a cast of 24 read as the same alphabet every run.
+ *
+ * Every entry below is authored to an initial the main pools are short of
+ * (X, U, Y, Z, Q, I, J, K, N, E, O, V), is exclusive to its district, and is
+ * drawn by both genders. `drawName` concatenates it onto the gendered pool,
+ * so a tribute is roughly one in three likely to carry one.
+ *
+ * Same rule as everywhere else: one token, no spaces, no apostrophes, no
+ * hyphens. There are no surnames in this game and there is no pool for them.
+ */
+export const NEUTRAL_NAMES: Record<number, string[]> = {
+    // 1 — luxury: the stones and finishes, unsexed.
+    1: ['Xanthis', 'Xerine', 'Ulric', 'Umbric', 'Yvain', 'Ysolde', 'Zircole', 'Zenobite',
+        'Quillard', 'Quintessa', 'Ivorine', 'Indigo', 'Jetstone', 'Jacinth', 'Kyanite', 'Nacrelle',
+        'Niello', 'Emerault', 'Electrum', 'Opalis', 'Ormole', 'Verdite', 'Vermeilla', 'Ziris'],
+    // 2 — masonry: the parts of a wall and the Romans who ordered it.
+    2: ['Xanthus', 'Xantia', 'Ulpius', 'Urbica', 'Yardstone', 'Yokestone', 'Zenon', 'Zosima',
+        'Quarrus', 'Quirina', 'Ironsill', 'Iulia', 'Jamb', 'Jointer', 'Keystile', 'Kilnward',
+        'Nervia', 'Nummus', 'Egeria', 'Eburnus', 'Obelisca', 'Ovilia', 'Vaultis', 'Vespera'],
+    // 3 — technology: the vocabulary of the bench, worn plain.
+    3: ['Xenon', 'Xylo', 'Ultrix', 'Uplink', 'Yotta', 'Ytter', 'Zener', 'Zettar',
+        'Quantile', 'Qubit', 'Inductor', 'Ingress', 'Jitter', 'Jumper', 'Kelvix', 'Kilobit',
+        'Nibble', 'Nodal', 'Echolon', 'Ether', 'Ohmic', 'Optic', 'Vectrix', 'Vidicon'],
+    // 4 — fishing: hull, tackle and the things in the water.
+    4: ['Xebec', 'Xiphias', 'Undertide', 'Urchin', 'Yawler', 'Yardline', 'Zostera', 'Zander',
+        'Quayside', 'Quillback', 'Isinglass', 'Islet', 'Jetsail', 'Jibhead', 'Kelpling', 'Keelson',
+        'Nereid', 'Netter', 'Ebbrise', 'Estuar', 'Oarline', 'Oysterel', 'Veer', 'Velan'],
+    // 5 — power: the grid's own words.
+    5: ['Xanthic', 'Xelia', 'Ultravolt', 'Umbrion', 'Yttrium', 'Ylem', 'Zenithe', 'Zaria',
+        'Quenchline', 'Quicksilver', 'Induct', 'Ionis', 'Jouler', 'Junctor', 'Kilowatt', 'Kindlewick',
+        'Neonis', 'Nimbral', 'Emberlight', 'Electrine', 'Ohmes', 'Outage', 'Voltaic', 'Vanelight'],
+    // 6 — transport: rail, road and air.
+    6: ['Xing', 'Xela', 'Underpass', 'Upline', 'Yaw', 'Yardrail', 'Zephyrline', 'Zeppelin',
+        'Quickline', 'Quadrant', 'Ignition', 'Inbound', 'Jitney', 'Juncture', 'Klaxon', 'Kinetic',
+        'Nomad', 'Nacelle', 'Expressway', 'Embark', 'Omnibus', 'Overland', 'Viaduct', 'Voyageur'],
+    // 7 — lumber: species and the parts of a tree.
+    7: ['Xylem', 'Xanthium', 'Underwood', 'Upland', 'Yewbark', 'Yellowpine', 'Zelkow', 'Ziricote',
+        'Quercus', 'Quaking', 'Ironwood', 'Ironroot', 'Junipine', 'Jarrah', 'Knotgrain', 'Kindlewood',
+        'Notch', 'Nurselog', 'Elmwood', 'Ebonwood', 'Oakenshaw', 'Osier', 'Veneer', 'Verdure'],
+    // 8 — textiles: cloths, mostly, and the tools that make them.
+    8: ['Xylon', 'Xantilly', 'Unspun', 'Underhem', 'Yarnwell', 'Yardage', 'Zibelin', 'Zigzag',
+        'Quiltwork', 'Quilling', 'Interlock', 'Inkle', 'Jacquarde', 'Jerseline', 'Kerseymere', 'Kapok',
+        'Nankeen', 'Needlepoint', 'Eyelette', 'Ecru', 'Organzine', 'Oilcloth', 'Velouria', 'Voilette'],
+    // 9 — grain: cultivars, the mill, and what comes off the field.
+    9: ['Xanthan', 'Xanthea', 'Ullage', 'Upsheaf', 'Yeastling', 'Yielding', 'Zea', 'Zerna',
+        'Quernstone', 'Quinoah', 'Iva', 'Ingrain', 'Jowar', 'Jasmara', 'Kamutel', 'Kernelle',
+        'Nubbin', 'Norin', 'Einkorne', 'Emmerwheat', 'Oatlin', 'Orzo', 'Vetchling', 'Vernal'],
+    // 10 — livestock: ranch-hand names, the way the district's pools already lean.
+    10: ['Xander', 'Xenia', 'Ute', 'Ullen', 'Yearman', 'Yuma', 'Zeburn', 'Zora',
+        'Quirt', 'Quincy', 'Ira', 'Isom', 'Jess', 'Jubel', 'Kip', 'Kade',
+        'Nell', 'Nate', 'Elko', 'Enid', 'Orley', 'Oxbow', 'Vance', 'Verl'],
+    // 11 — agriculture: orchard, row crop and wildflower.
+    11: ['Xeranth', 'Xylia', 'Umbel', 'Underleaf', 'Yampa', 'Yarrowen', 'Zinnial', 'Zephyranth',
+        'Quincewood', 'Quickthorn', 'Isatis', 'Ivywood', 'Jonquil', 'Jujube', 'Kudzu', 'Kalewild',
+        'Nettlewood', 'Nasturtium', 'Elder', 'Endivia', 'Orchardleigh', 'Okrel', 'Vervaine', 'Vinewood'],
+    // 12 — coal: Seam weather and merchant-class plainness, both.
+    12: ['Xara', 'Xen', 'Underbough', 'Usher', 'Yule', 'Yestin', 'Zev', 'Zola',
+        'Quillet', 'Quinn', 'Irisel', 'Ilsa', 'Jorah', 'Junon', 'Kettlewell', 'Kess',
+        'Nessa', 'Nyle', 'Ellerwick', 'Eben', 'Orrin', 'Ottilie', 'Vesperine', 'Veritas'],
+    // 13 — graphite and munitions: the mineral index and the ordnance list.
+    13: ['Xenolith', 'Xylonite', 'Uranite', 'Ulexite', 'Yttria', 'Ytterbite', 'Zincite', 'Zeolite',
+        'Quartzite', 'Quicklime', 'Ilmenite', 'Iridium', 'Jarosite', 'Javelin', 'Kaolin', 'Kiloton',
+        'Nitrel', 'Nitron', 'Epsom', 'Erbium', 'Olivine', 'Ordnant', 'Vanadium', 'Vermiculite'],
+    // 14 — salt and cold: brine, frost, and the far north.
+    14: ['Xeric', 'Xanthar', 'Umiak', 'Ural', 'Yukon', 'Yakut', 'Zero', 'Zirka',
+        'Quillane', 'Quillock', 'Icicle', 'Isohaline', 'Jotun', 'Jokul', 'Kryos', 'Krill',
+        'Nivose', 'Natron', 'Evaporite', 'Everfrore', 'Ozone', 'Osmose', 'Verglas', 'Vinegar'],
+    // 15 — glass: the furnace, the pigment and the finished pane.
+    15: ['Xenoglass', 'Xanthel', 'Uviol', 'Urania', 'Yris', 'Yvaine', 'Zaffrine', 'Zirconil',
+        'Quarl', 'Quicklight', 'Irid', 'Intaglio', 'Jena', 'Jaspis', 'Kalium', 'Krystal',
+        'Nitor', 'Novalux', 'Etchglass', 'Enamelle', 'Opalette', 'Obsidine', 'Vitrelle', 'Vitreous'],
+    // 16 — deepwater: pressure, the rig, and what lives under it.
+    16: ['Xenobath', 'Xanthid', 'Upthrust', 'Umbral', 'Ymir', 'Yonder', 'Zabel', 'Zorin',
+        'Quiver', 'Quintal', 'Isobar', 'Ironhold', 'Jackup', 'Jetspar', 'Kellybar', 'Kicker',
+        'Nadiren', 'Neap', 'Erebus', 'Ebbline', 'Offshore', 'Ooze', 'Vent', 'Void'],
+};

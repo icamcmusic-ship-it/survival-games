@@ -5,6 +5,9 @@ import {
     TRAINING_STATIONS, TRAINING_VERDICTS, INTIMIDATION_TEXTS,
     TRAINING_ALTERCATION, TRAINING_EVENING, TRAINING_FAILURE, TRAINING_MINGLE,
     TRAINING_OBSERVATION, TRAINING_STRUGGLE, TRAINING_TEAMUP,
+    FLOOR_TOPICS, TRAINING_SNUB, TRAINING_THREAT, TRAINING_MOCK, TRAINING_THEFT,
+    TRAINING_EXCLUSION, TRAINING_PACT_BROKEN, TRAINING_LUNCH_SIT, TRAINING_LUNCH_ALONE, TRAINING_LUNCH_CAREER,
+    SCORE_REACTIONS,
 } from '../../data/flavorText';
 import { FEAR, PREGAMES, PRE_ARENA, RESPECT, TRAINING, TRAINING_FLOOR, TRAINING_SCORE } from '../../data/balance';
 import { addFear, reduceFear } from '../fear';
@@ -12,7 +15,7 @@ import { strengthCapForAge } from '../generator';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../../data/districts';
 import { adjustMutual, adjustRel, adjustRespect, getRel, respectOf } from '../relationships';
 import { noteContact, noteFight } from '../memory';
-import { archetypeAntipathy } from '../../data/archetypes';
+import { ARCHETYPES, archetypeAntipathy } from '../../data/archetypes';
 import { clampTribute } from '../vitals';
 import { addExcitement } from '../audience';
 import { profOf, trainProficiency } from '../proficiency';
@@ -332,6 +335,241 @@ function runWitnessRevisions(
  * pass, which is also why `performed` measured 8 across 400 runs: a showmance
  * needs a contact streak, and there was no way to start one before the arena.
  */
+/**
+ * §(requests 8/13): district partners work together.
+ *
+ * `runFloorSocial` pairs a station's occupants off disjointly by walking the
+ * list two at a time, so who ends up with whom is decided entirely by list
+ * order. This pulls each district pair adjacent before that walk, most
+ * aggressively on day one — two people from the same district standing at the
+ * same bench on the first morning will find each other before either of them
+ * talks to a stranger.
+ */
+function pairDistrictsFirst(group: Tribute[], day: number): Tribute[] {
+    const chance = TRAINING.partnerDayDecay[day - 1] ?? 1;
+    // Above 1 the pull is certain; below it, it fades with the day.
+    if (chance < 1 && day > 2) return group;
+    const out: Tribute[] = [];
+    const taken = new Set<string>();
+    group.forEach(t => {
+        if (taken.has(t.id)) return;
+        taken.add(t.id);
+        out.push(t);
+        const partner = group.find(o => !taken.has(o.id) && o.district === t.district);
+        if (partner) { taken.add(partner.id); out.push(partner); }
+    });
+    return out;
+}
+
+/**
+ * §(requests 10): the cold half of the training floor.
+ *
+ * Returns true when it produced a beat, so the caller skips the warm path for
+ * that pair — a tribute who has just been threatened is not then going to
+ * compare grips with the person who did it. Ordered by severity: the rarest
+ * and most consequential first, so a theft is not pre-empted by a snub.
+ */
+function runNegativeBeat(ctx: SimContext, a: Tribute, b: Tribute, station: string, day: number): boolean {
+    const regard = Math.min(getRel(a, b.id), getRel(b, a.id));
+    const antipathy = archetypeAntipathy(a.archetype, b.archetype);
+    // Who is doing it to whom: the one who thinks less of the other, and who
+    // has some standing to be doing it from.
+    const aggressor = getRel(a, b.id) <= getRel(b, a.id) ? a : b;
+    const target = aggressor === a ? b : a;
+    const say = (pool: string[], category: 'training' = 'training', important = false) => {
+        ctx.logEvent(
+            fillLine(ctx.pickText(pool), {
+                tribute: aggressor.name, other: target.name, station,
+                topic: ctx.pickText(FLOOR_TOPICS),
+            }),
+            [aggressor.id, target.id],
+            { important, category }
+        );
+    };
+
+    // A pact that does not survive the week. This is checked before the regard
+    // gate below: an agreement coming apart is about the agreement, and a pair
+    // who struck one are warm almost by definition — gating it on coldness
+    // meant it fired in three runs in a hundred.
+    if (aggressor.trainingPact?.includes(target.id)
+        && ctx.rng.chance(TRAINING.pactBreakChance * (1 + Math.max(0, traitMod(aggressor, 'treachery'))))) {
+        aggressor.trainingPact = aggressor.trainingPact.filter(id => id !== target.id);
+        target.trainingPact = (target.trainingPact ?? []).filter(id => id !== aggressor.id);
+        say(TRAINING_PACT_BROKEN, 'training', true);
+        adjustMutual(ctx.state, aggressor, target, TRAINING.pactBreakRegard);
+        return true;
+    }
+
+    if (regard > TRAINING.negativeRegard && !antipathy) return false;
+
+    // Taking something is the one that carries into the arena as a grudge.
+    if (ctx.rng.chance(TRAINING.theftChance)) {
+        say(TRAINING_THEFT, 'training', true);
+        adjustMutual(ctx.state, aggressor, target, TRAINING.theftRegard);
+        addFear(target, aggressor.id, TRAINING.threatFear / 2, aggressor);
+        aggressor.sponsorTrust = Math.max(0, aggressor.sponsorTrust - TRAINING.aggressorTrust);
+        return true;
+    }
+
+    // A threat is a Career's instrument, and it is worth sponsor money.
+    // Read through the trait table rather than by name: anybody the mods row
+    // says presses is somebody who would do this.
+    if ((isCareerish(aggressor) || traitMod(aggressor, 'aggressionScore') > 0)
+        && ctx.rng.chance(TRAINING.threatChance)) {
+        say(TRAINING_THREAT, 'training', true);
+        adjustMutual(ctx.state, aggressor, target, TRAINING.threatRegard);
+        addFear(target, aggressor.id, TRAINING.threatFear, aggressor);
+        addExcitement(aggressor, TRAINING.mockExcitement);
+        trainProficiency(aggressor, 'intimidation');
+        return true;
+    }
+
+    // Mockery plays to the gallery, which is exactly why it is done.
+    if (ctx.rng.chance(TRAINING.mockChance)) {
+        say(TRAINING_MOCK);
+        adjustMutual(ctx.state, aggressor, target, TRAINING.mockRegard);
+        addExcitement(aggressor, TRAINING.mockExcitement);
+        loseSanity(target, 2);
+        return true;
+    }
+
+    // Shutting somebody out of a group is quieter and lands just as hard.
+    if (ctx.rng.chance(TRAINING.exclusionChance)) {
+        say(TRAINING_EXCLUSION);
+        adjustMutual(ctx.state, aggressor, target, TRAINING.exclusionRegard);
+        loseSanity(target, 2);
+        return true;
+    }
+
+    if (ctx.rng.chance(TRAINING.snubChance)) {
+        say(TRAINING_SNUB);
+        adjustMutual(ctx.state, aggressor, target, TRAINING.snubRegard);
+        return true;
+    }
+    // Day three is when a room that has been cold all week finally settles.
+    if (day >= TRAINING.days && regard < 0 && ctx.rng.chance(TRAINING.snubChance)) {
+        say(TRAINING_SNUB);
+        adjustMutual(ctx.state, aggressor, target, TRAINING.snubRegard);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * §(requests 13): how much these two want an agreement with each other.
+ *
+ * Most of it is the district: the person you were reaped beside is the one ally
+ * you have any reason to trust, and almost every pairing in the source material
+ * starts there. On top of that sits who they each are — an archetype that wants
+ * company, a trait that keeps a word or breaks one — so a Loyal district partner
+ * and a Treacherous one are not the same offer.
+ */
+function pactWillingness(a: Tribute, b: Tribute): number {
+    let weight = a.district === b.district ? TRAINING.pactPartnerMultiplier : 1;
+    [a, b].forEach(t => {
+        weight *= 1 + ARCHETYPES[t.archetype].allianceAffinity;
+        weight *= 1 + traitMod(t, 'allianceAffinity');
+        // Somebody who is already planning to break it is readier to make it.
+        weight *= 1 + Math.max(0, traitMod(t, 'treachery')) * 0.5;
+    });
+    return Math.max(0.05, weight);
+}
+
+/**
+ * §(requests 9): the lunch hour, which is where the politics actually happens.
+ *
+ * The three floor days were three days of stations: every social beat had to
+ * take place while two people were holding weapons at a drill, which is a very
+ * narrow window for "these two decided to trust each other". A cast eats in the
+ * same room every day. Who sits with whom is the most legible social fact of
+ * the week, and it was the one thing the pre-Games never showed.
+ *
+ * Deliberately station-free: no work happens here, only people. District pairs
+ * find each other first on day one and the room widens out across the three,
+ * which is the same curve `floorAffinity` runs on.
+ */
+function lunchPeriod(ctx: SimContext, day: number, cast: Tribute[]) {
+    ctx.logEvent(
+        day === 1
+            ? 'The lunch bell goes on the first day. Twenty-four tributes carry trays into a room with no weapons in it and have to decide, in front of each other, where to sit.'
+            : day === TRAINING.days
+                ? 'The last lunch before the scores. By now everybody knows where they sit, and everybody knows what that means.'
+                : `Lunch on the second day. The room has started to have a shape to it.`,
+        [],
+        { important: true, category: 'training' }
+    );
+
+    const careers = cast.filter(isCareerish);
+    if (careers.length >= 2) {
+        const head = [...careers].sort((x, y) => y.trainingScore - x.trainingScore || y.attributes.strength - x.attributes.strength)[0];
+        // Whoever the line points at is named in it and is in its cast — the
+        // pack is the subject, but a line about "two tributes" nobody names is
+        // exactly the vagueness §(requests 11) is about.
+        const outsiders = ctx.rng.shuffle(cast.filter(t => !isCareerish(t)));
+        const first = outsiders[0];
+        const second = outsiders[1];
+        if (first && second) {
+            // The template is drawn first so the cast can be built from the
+            // placeholders it actually uses: a line that only names the head
+            // must not claim two other people are in it.
+            const template = ctx.pickText(TRAINING_LUNCH_CAREER);
+            const involved = [head.id];
+            if (template.includes('{first}')) involved.push(first.id);
+            if (template.includes('{second}')) involved.push(second.id);
+            ctx.logEvent(
+                fillLine(template, { tribute: head.name, first: first.name, second: second.name }),
+                involved,
+                { important: true, category: 'training' }
+            );
+        }
+        careers.forEach(c => { addExcitement(c, TRAINING.lunchCareerExcitement); });
+        cast.filter(t => !isCareerish(t)).forEach(o => careers.forEach(c => addFear(o, c.id, TRAINING.lunchCareerFear, c)));
+    }
+
+    // Everyone who is not sitting at the Career table pairs off — district
+    // partners first, then whoever they have most reason to sit with.
+    const room = ctx.rng.shuffle(cast.filter(t => !(careers.length >= 2 && isCareerish(t))));
+    const seated = new Set<string>();
+    room.forEach(t => {
+        if (seated.has(t.id)) return;
+        const candidates = room.filter(o => o.id !== t.id && !seated.has(o.id));
+        if (candidates.length === 0) return;
+        // Score the room the way the floor does, so lunch and the stations
+        // agree about who these people are.
+        const best = candidates
+            .map(o => ({ o, weight: floorAffinity(t, o, day).weight * mingleWillingness(t, o) }))
+            .sort((x, y) => y.weight - x.weight);
+        const pick = best[0];
+        if (!pick || !ctx.rng.chance(TRAINING.lunchPairChance * Math.min(2, pick.weight))) return;
+        seated.add(t.id);
+        seated.add(pick.o.id);
+        const affinity = floorAffinity(t, pick.o, day);
+        adjustMutual(ctx.state, t, pick.o, Math.round(TRAINING.lunchWarmth * Math.min(2, affinity.weight)));
+        noteContact(ctx.state, t, pick.o);
+        trainProficiency(t, 'persuasion');
+        ctx.logEvent(
+            fillLine(ctx.pickText(TRAINING_LUNCH_SIT), {
+                tribute: t.name, other: pick.o.name, topic: ctx.pickText(FLOOR_TOPICS),
+            }),
+            [t.id, pick.o.id],
+            { category: 'training' }
+        );
+    });
+
+    // And the ones nobody sat with, which is its own fact about the week.
+    cast.filter(t => !seated.has(t.id) && !(careers.length >= 2 && isCareerish(t))).forEach(t => {
+        ctx.logEvent(
+            fillLine(ctx.pickText(TRAINING_LUNCH_ALONE), { tribute: t.name }),
+            [t.id],
+            { category: 'sanity' }
+        );
+        loseSanity(t, TRAINING.lunchAloneSanity);
+        // The Capitol has always had time for a tribute nobody will sit with.
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + TRAINING.lunchAloneTrust);
+        clampTribute(t);
+    });
+}
+
 function runFloorSocial(
     ctx: SimContext,
     day: number,
@@ -362,8 +600,13 @@ function runFloorSocial(
         // Sorting the group so Careers are adjacent makes the disjoint pairing
         // below pair them together whenever two of them are at the same
         // station, and leaves the outer districts to each other.
-        const partners = ctx.rng.shuffle(group)
+        // §(requests 8/13): district partners are pulled adjacent before the
+        // disjoint pairing runs, so two tributes from the same district who
+        // happen to be at the same station work together rather than being
+        // split across two other people. The pull is strongest on day one.
+        const ordered = ctx.rng.shuffle(group)
             .sort((a, b) => Number(isCareerish(b)) - Number(isCareerish(a)));
+        const partners = pairDistrictsFirst(ordered, day + 1);
         for (let i = 0; i + 1 < partners.length; i += 2) {
             {
                 const a = partners[i];
@@ -389,8 +632,8 @@ function runFloorSocial(
                     );
                     // No damage — the trainers get between them — but the feud
                     // escalation curve starts here rather than at the gong.
-                    addFear(a, b.id, TRAINING.altercationFear);
-                    addFear(b, a.id, TRAINING.altercationFear);
+                    addFear(a, b.id, TRAINING.altercationFear, b);
+                    addFear(b, a.id, TRAINING.altercationFear, a);
                     noteFight(ctx.state, a, b);
                     adjustMutual(ctx.state, a, b, TRAINING.altercationRegard);
                     [a, b].forEach(x => {
@@ -399,6 +642,14 @@ function runFloorSocial(
                     });
                     continue;
                 }
+
+                // §(requests 10): the floor's other register. Three days used
+                // to produce warmth, one altercation pool and nothing else, so
+                // a room of people who are about to kill each other read as a
+                // summer course. A hostile pair that does not come to blows
+                // still does something, and so does a confident tribute who
+                // has decided somebody is beneath them.
+                if (runNegativeBeat(ctx, a, b, station, day + 1)) continue;
 
                 // (b) Mingling.
                 //
@@ -411,7 +662,7 @@ function runFloorSocial(
                 // the pack was on cordial terms with half the field by day three.
                 // §21: and how much they have in common, which the roll and
                 // the line now agree about because both read the same call.
-                const affinity = floorAffinity(a, b);
+                const affinity = floorAffinity(a, b, day + 1);
                 if (!ctx.rng.chance(TRAINING.mingleChance * mingleWillingness(a, b) * affinity.weight)) continue;
                 // Warmth scales with the reason, so a district partner and two
                 // strangers at the same bench are no longer the same event.
@@ -420,6 +671,8 @@ function runFloorSocial(
                 ctx.logEvent(
                     fillLine(ctx.pickText(TRAINING_MINGLE), {
                         tribute: a.name, other: b.name, station, reason: affinity.reason,
+                        // §(requests 11): the lines say what was discussed.
+                        topic: ctx.pickText(FLOOR_TOPICS),
                     }),
                     [a.id, b.id],
                     { category: 'training' }
@@ -430,11 +683,25 @@ function runFloorSocial(
                 // pack's menace comes from in the source material.
                 const bothCareer = (a.isCareer || a.archetype === 'career')
                     && (b.isCareer || b.archetype === 'career');
-                const eligibleDay = bothCareer ? TRAINING.careerPactDay : 2;
+                // §(requests 13): a district pair can agree on day one. Anybody
+                // else needs to have watched each other work for a day first.
+                const samePartner = a.district === b.district;
+                const eligibleDay = bothCareer ? TRAINING.careerPactDay : samePartner ? 1 : 2;
                 if (day + 1 < eligibleDay) continue;
                 if (Math.min(getRel(a, b.id), getRel(b, a.id)) < TRAINING.pactMinRegard) continue;
                 if (a.trainingPact?.includes(b.id)) continue;
-                if (!ctx.rng.chance(TRAINING.pactChance)) continue;
+                // §(requests 13): a tribute whose own district partner is
+                // still standing and still unpartnered is not out looking yet.
+                // They can still take a cross-district offer — the Careers do
+                // nothing else — but home comes first.
+                const shopping = !samePartner
+                    && [a, b].some(t => {
+                        const partner = cast.find(o => o.id !== t.id && o.district === t.district && o.status === 'alive');
+                        return !!partner && !t.trainingPact?.includes(partner.id);
+                    });
+                const gate = TRAINING.pactChance * pactWillingness(a, b)
+                    * (shopping ? TRAINING.crossBeforePartner : 1);
+                if (!ctx.rng.chance(gate)) continue;
 
                 strikePact(a, b, day + 1);
                 recordPactTerms(ctx, a, b, day + 1);
@@ -442,6 +709,7 @@ function runFloorSocial(
                 ctx.logEvent(
                     fillLine(ctx.pickText(TRAINING_TEAMUP), {
                         tribute: a.name, other: b.name, station, reason: affinity.reason,
+                        topic: ctx.pickText(FLOOR_TOPICS),
                     }),
                     [a.id, b.id],
                     { important: true, category: 'training' }
@@ -544,7 +812,7 @@ function observeFloor(
             if (!attr) return;
             const combat = attr === 'strength' || attr === 'agility';
             if (combat && subject.attributes[attr] >= TRAINING.observationThreatAttribute) {
-                addFear(observer, subject.id, TRAINING.observationFear);
+                addFear(observer, subject.id, TRAINING.observationFear, subject);
                 adjustRespect(observer, subject.id, TRAINING.observationRespect);
             }
         });
@@ -596,34 +864,44 @@ function eveningBeat(ctx: SimContext, day: number) {
  * Deliberately a small list of legible reasons rather than a scoring model:
  * the point is that a reader of the finished log can follow it.
  */
-function floorAffinity(a: Tribute, b: Tribute): { weight: number; reason: string } {
+function floorAffinity(a: Tribute, b: Tribute, day = 3): { weight: number; reason: string } {
     // District partners have known each other since before the reaping.
+    //
+    // §(requests 8): and on day one that is nearly the only thing anybody has
+    // to go on. Twenty-three strangers and one person from home is not a hard
+    // choice, so the partner weight is at its highest on the first day and
+    // decays across the three — by day three the room has sorted itself by
+    // who is actually useful, which is what the last day is for.
     if (a.district === b.district) {
-        return { weight: TRAINING.affinityPartner, reason: `They are both from District ${a.district}.` };
+        const pull = TRAINING.affinityPartner * (TRAINING.partnerDayDecay[day - 1] ?? 1);
+        return { weight: pull, reason: `They are both from District ${a.district}.` };
     }
+    // ...and the mirror of it: on day one a stranger from another district is
+    // a stranger, and most of the room is not ready to talk to one yet.
+    const strangerPenalty = TRAINING.strangerDayWeight[day - 1] ?? 1;
     // Districts that trade with each other: 3 and 6, 7 and 8, 9 and 10, 4 and 11.
     if (Math.abs(a.district - b.district) === 1) {
         return {
-            weight: TRAINING.affinityNeighbour,
+            weight: TRAINING.affinityNeighbour * strangerPenalty,
             reason: `Districts ${Math.min(a.district, b.district)} and ${Math.max(a.district, b.district)} work next to each other at home.`,
         };
     }
     // Two twelve-year-olds in a room of eighteen-year-olds find each other.
     if (a.age <= TRAINING.affinityYoungAge && b.age <= TRAINING.affinityYoungAge) {
-        return { weight: TRAINING.affinityYoung, reason: `${a.name} is ${a.age} and ${b.name} is ${b.age}. Everybody else in the room is older.` };
+        return { weight: TRAINING.affinityYoung * strangerPenalty, reason: `${a.name} is ${a.age} and ${b.name} is ${b.age}. Everybody else in the room is older.` };
     }
     // Somebody who rates you is somebody who will talk to you.
     const rated = Math.max(respectOf(a, b.id), respectOf(b, a.id));
     if (rated >= TRAINING.affinityRespect) {
         const admirer = respectOf(a, b.id) >= respectOf(b, a.id) ? a : b;
         const rate = admirer === a ? b : a;
-        return { weight: TRAINING.affinityRated, reason: `${admirer.name} has been watching ${rate.name} work, and was impressed.` };
+        return { weight: TRAINING.affinityRated * strangerPenalty, reason: `${admirer.name} has been watching ${rate.name} work, and was impressed.` };
     }
     // The outer districts have the reaping in common and not much else.
     if (!isCareerish(a) && !isCareerish(b) && a.district >= TRAINING.affinityOuterFrom && b.district >= TRAINING.affinityOuterFrom) {
-        return { weight: TRAINING.affinityOuter, reason: 'Neither of them volunteered and neither of them has been trained for this.' };
+        return { weight: TRAINING.affinityOuter * strangerPenalty, reason: 'Neither of them volunteered and neither of them has been trained for this.' };
     }
-    return { weight: 1, reason: 'Neither of them has a reason beyond being put at the same station.' };
+    return { weight: strangerPenalty, reason: 'Neither of them has a reason beyond being put at the same station.' };
 }
 
 /** A Career by district or by temperament — both read as one on the floor. */
@@ -675,7 +953,7 @@ function declareCareerPact(ctx: SimContext, cast: Tribute[]) {
     // Twenty-odd people have just watched a pack assemble itself.
     cast.forEach(o => {
         if (careers.some(c => c.id === o.id)) return;
-        careers.forEach(c => addFear(o, c.id, TRAINING.careerPactFear));
+        careers.forEach(c => addFear(o, c.id, TRAINING.careerPactFear, c));
     });
 }
 
@@ -727,7 +1005,7 @@ function runCareerBloc(ctx: SimContext, cast: Tribute[], day: number) {
             // Being marked cuts both ways: the pack rates them, which is the
             // one door into the pack, and the marked tribute knows it.
             adjustRel(c, m.id, TRAINING.careerWatchlistRegard);
-            addFear(m, c.id, TRAINING.careerWatchlistFear);
+            addFear(m, c.id, TRAINING.careerWatchlistFear, c);
         });
     });
 }
@@ -876,6 +1154,78 @@ const ROUTINE_SESSIONS = [
  * number in it is read off the same state the arena will run on — no separate
  * bookkeeping, nothing that can drift from what happens next.
  */
+/**
+ * §(requests 14): the reactions to a scoring night, beyond the numbers.
+ *
+ * Every branch is gated on something the run actually produced — a score that
+ * contradicts three days of footage, a district that has not had one in years,
+ * a concealer whose plan worked — so a quiet scoring night stays quiet and a
+ * remarkable one says why it was remarkable.
+ */
+function scoreReactions(ctx: SimContext, cast: Tribute[]) {
+    const say = (pool: readonly string[], ids: string[], vars: Record<string, string>, important = false) =>
+        ctx.logEvent(fillLine(ctx.pickText([...pool]), vars), ids, { important, category: 'training' });
+
+    // What the floor suggested they were worth, against what the panel said.
+    const floorRead = (t: Tribute) => {
+        const log = t.trainingLog ?? [];
+        if (log.length === 0) return 0;
+        const good = log.filter(e => e.outcome === 'success').length;
+        return (good / log.length) * TRAINING_SCORE.baseCeiling;
+    };
+
+    cast.forEach(t => {
+        const read = floorRead(t);
+        if (t.trainingStrategy === 'conceal' && t.trainingScore <= TRAINING.hiddenScore) {
+            say(SCORE_REACTIONS.concealed, [t.id], { tribute: t.name, score: String(t.trainingScore) });
+            return;
+        }
+        if (read > 0 && t.trainingScore - read >= TRAINING.scoreSurpriseGap) {
+            say(SCORE_REACTIONS.surprise, [t.id], { tribute: t.name, score: String(t.trainingScore) }, true);
+        } else if (read > 0 && read - t.trainingScore >= TRAINING.scoreSurpriseGap) {
+            say(SCORE_REACTIONS.collapse, [t.id], { tribute: t.name, score: String(t.trainingScore) });
+        }
+    });
+
+    // A tie at the top, which the Capitol dislikes because it has two stories.
+    const best = Math.max(...cast.map(t => t.trainingScore));
+    const tied = cast.filter(t => t.trainingScore === best);
+    if (tied.length > 1) {
+        say(SCORE_REACTIONS.tie, tied.map(t => t.id), {
+            names: tied.map(t => t.name).join(' and '), score: String(best),
+        }, true);
+    }
+
+    // A district with nothing to celebrate, celebrating.
+    cast.forEach(t => {
+        if (t.trainingScore < TRAINING.eliteVerdictScore) return;
+        if (legacyOf(t.district).tier === 'storied' || legacyOf(t.district).tier === 'strong') return;
+        say(SCORE_REACTIONS.districtPride, [t.id], {
+            tribute: t.name, score: String(t.trainingScore), district: String(t.district),
+        }, true);
+    });
+
+    // The pack, re-ranking the room around somebody who is not one of them.
+    const careers = cast.filter(isCareerish);
+    const outsider = cast
+        .filter(t => !isCareerish(t) && t.trainingScore >= TRAINING.eliteVerdictScore)
+        .sort((a, b) => b.trainingScore - a.trainingScore)[0];
+    if (careers.length >= 2 && outsider) {
+        say(SCORE_REACTIONS.careerResponse, [outsider.id, ...careers.map(c => c.id)], {
+            tribute: outsider.name, score: String(outsider.trainingScore),
+        }, true);
+        careers.forEach(c => addFear(c, outsider.id, TRAINING.careerWatchlistFear / 2, outsider));
+    }
+
+    // And the book, which moves on whoever moved furthest.
+    const mover = [...cast].sort((a, b) => b.trainingScore - a.trainingScore)[0];
+    if (mover && mover.trainingScore >= TRAINING.strongTrustScore) {
+        say(SCORE_REACTIONS.bookmakers, [mover.id], {
+            tribute: mover.name, score: String(mover.trainingScore),
+        });
+    }
+}
+
 function floorDigest(ctx: SimContext, day: number, cast: Tribute[]) {
     const seen = new Set<string>();
     const pairs: string[] = [];
@@ -1023,6 +1373,8 @@ export function processTrainingDay(ctx: SimContext, dayNumber: number) {
         // §9: and then the pack works as a bloc, every day, for the rest of it.
         if (day + 1 >= TRAINING.careerPactDay) runCareerBloc(ctx, cast, day + 1);
         runFloorSocial(ctx, day, stationsToday, stationNames, cast);
+        // §(requests 9): stations, then lunch, then the rest of the afternoon.
+        lunchPeriod(ctx, day + 1, cast);
         observeFloor(ctx, day, stationsToday, stationNames, cast);
         eveningBeat(ctx, day);
         // §21: and then say, once, what the day actually came to.
@@ -1212,12 +1564,20 @@ export function processTrainingScores(ctx: SimContext) {
                 // The intimidation used to evaporate the moment the sanity hit
                 // landed. It should stick to the person: this is how a Career's
                 // reputation follows them into the arena.
-                addFear(other, t.id, (t.trainingScore - TRAINING_SCORE.baseCeiling) * FEAR.perTrainingPointOverEight);
+                addFear(other, t.id, (t.trainingScore - TRAINING_SCORE.baseCeiling) * FEAR.perTrainingPointOverEight, t);
             }
             clampTribute(other);
         });
         clampTribute(t);
     });
+
+    // §(requests 14): what the room does with the numbers.
+    //
+    // The broadcast used to be one verdict line per tribute and one line about
+    // whoever topped the board. A scoring night is the last public event before
+    // the arena and the only one where the whole country forms an opinion at
+    // once — these are the other things that happen in it.
+    scoreReactions(ctx, cast);
 
     // The Capitol always crowns a favourite.
     const ranked = [...cast].sort((a, b) => b.trainingScore - a.trainingScore);

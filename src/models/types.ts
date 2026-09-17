@@ -20,7 +20,13 @@ export type InterviewPersona =
     | 'The Cold Strategist'
     | 'The Reluctant Hero'
     | 'The District Loyalist'
-    | 'The Wildcard';
+    | 'The Wildcard'
+    // §(requests 16): five more.
+    | 'The Survivor'
+    | 'The Professional'
+    | 'The Homesick'
+    | 'The Volunteer'
+    | 'The Provocateur';
 /**
  * A tribute's standing posture.
  *
@@ -55,7 +61,13 @@ export type ArchetypeId =
     | 'mercenary' | 'zealot' | 'medic' | 'saboteur' | 'beast' | 'diplomat' | 'scholar' | 'ghost'
     // Audit 5 §12.4: four more, each holding a stance/objective/target
     // combination no existing archetype does.
-    | 'scavenger' | 'captor' | 'bellwether' | 'confessor';
+    | 'scavenger' | 'captor' | 'bellwether' | 'confessor'
+    /*
+     * §(requests 3): four more, on the same rule as the last batch — each has
+     * to hold a combination of stance bias, objective bias and target
+     * preference that nothing already in the table holds.
+     */
+    | 'quartermaster' | 'martyr' | 'opportunist' | 'tracker';
 
 export interface Attributes {
     strength: number;
@@ -161,7 +173,19 @@ export type InjurySite = keyof Injuries;
  * would be exactly the doubling this pass exists to remove.
  */
 export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking' | 'persuasion'
-    | 'climbing' | 'swimming' | 'crafting';
+    | 'climbing' | 'swimming' | 'crafting'
+    /*
+     * §(requests, deferred from Audit 5 §12.2): the two the engine had the
+     * occasions for and no skill behind.
+     *
+     * `stealth` is an attribute and a whole subsystem — concealment, ambush,
+     * unseen streaks — with nothing that improved by doing it, so a tribute
+     * who had hidden successfully twenty times was no better at hiding than on
+     * day one. `intimidation` is the same story from the other end: fear is
+     * modelled per-target, `Feared` is the second-best earned trait, and
+     * nothing got better at frightening people.
+     */
+    | 'stealth' | 'intimidation';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'
@@ -1913,6 +1937,27 @@ export interface GameConfig {
     enableFeast: boolean;
     enableSanity: boolean;
     /**
+     * §(requests 2): sanity was one switch, on or off, which is the least
+     * interesting thing a whole psychological model can be configured with.
+     * These are the dials the model already has behind it.
+     *
+     *  - `sanityDrainRate`  scales everything that wears a mind down.
+     *  - `sanityRecoveryRate` scales rest, food, company and safety.
+     *  - `enableHallucinations` the sanity-floor set pieces: seeing the dead,
+     *    dropping what they are holding, giving their own position away.
+     *  - `enableBreakdowns` whether a tribute far enough gone makes noise in
+     *    the dark that the rest of the arena can hear.
+     *  - `sanityStart` where the whole cast begins, so a Quell can reap a
+     *    field that is already frayed.
+     *
+     * All optional: a save written before this resolves to the old behaviour.
+     */
+    sanityDrainRate?: number;
+    sanityRecoveryRate?: number;
+    enableHallucinations?: boolean;
+    enableBreakdowns?: boolean;
+    sanityStart?: number;
+    /**
      * Pre-Games option: every tribute is named "District # Boy/Girl" instead
      * of drawing from the flavour name pools — for players who want the
      * roster to read like the source material's plainest naming, or who find
@@ -2109,6 +2154,13 @@ export interface GameState {
     kilnFiringZone?: string;
     /** Audit 5 §5.4 `theBell`: the zone named this morning, paid at nightfall. */
     bellZone?: string;
+    /**
+     * §(requests 17): what the Career pack did, recorded on the plates and
+     * reported at the gong. Nobody negotiates on a pedestal, so the pack's
+     * shape is a fact the bloodbath observes rather than a scene it plays.
+     */
+    careerOptOutIds?: string[];
+    careerPackCollapsed?: boolean;
     /**
      * Adjacency edges cut by the arena itself — a collapsed bridge, a fire that
      * burned through a crossing. Stored as `map.edgeKey()` strings. The printed

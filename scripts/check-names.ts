@@ -23,7 +23,7 @@
  *
  *   npm run test:names
  */
-import { DISTRICT_NAMES } from '../src/data/names';
+import { DISTRICT_NAMES, NEUTRAL_NAMES } from '../src/data/names';
 import { DISTRICT_LEGACY } from '../src/data/districts';
 
 /** Entries every district pool must carry, per gender. */
@@ -70,6 +70,56 @@ districts.forEach(d => {
         if (bad.length) problems.push(`district ${d} ${gender}: name(s) that read as a surname or a compound — ${bad.join(', ')}`);
     });
 });
+
+/**
+ * §(requests): the third pool, held to the same rules as the gendered two —
+ * and to one of its own. `NEUTRAL_NAMES` exists to flatten the initial-letter
+ * distribution, so an entry starting with a letter the main pools are already
+ * rich in is an entry doing no work.
+ */
+const NEUTRAL_TARGET = 20;
+/** The initials the gendered pools are short of. A neutral name must carry one. */
+const SCARCE_INITIALS = 'XUYZQIJKNEOV';
+districts.forEach(d => {
+    const pool = NEUTRAL_NAMES[d] ?? [];
+    if (pool.length < NEUTRAL_TARGET) {
+        problems.push(`district ${d} neutral: ${pool.length} names (target ${NEUTRAL_TARGET})`);
+    }
+    const dupes = pool.filter((n, i) => pool.indexOf(n) !== i);
+    if (dupes.length) problems.push(`district ${d} neutral: repeats within its own pool — ${[...new Set(dupes)].join(', ')}`);
+    const bad = pool.filter(n => /[\s'-]/.test(n));
+    if (bad.length) problems.push(`district ${d} neutral: name(s) that read as a surname or a compound — ${bad.join(', ')}`);
+    const wrongInitial = pool.filter(n => !SCARCE_INITIALS.includes(n[0]));
+    if (wrongInitial.length) {
+        problems.push(`district ${d} neutral: name(s) on an initial the main pools already carry — ${wrongInitial.join(', ')}`);
+    }
+    const clashGendered = pool.filter(n => districts.some(o =>
+        DISTRICT_NAMES[o].Male.includes(n) || DISTRICT_NAMES[o].Female.includes(n)));
+    if (clashGendered.length) {
+        problems.push(`district ${d} neutral: name(s) already in a gendered pool — ${clashGendered.join(', ')}`);
+    }
+    pool.forEach(name => {
+        if (!homes.has(name)) homes.set(name, []);
+        homes.get(name)!.push(d);
+    });
+});
+
+/**
+ * And the reason the pool exists, asserted directly: the commonest initial in
+ * the reapable set may not be more than this many times the median one. It
+ * measured 356:1 against X before `NEUTRAL_NAMES` was authored.
+ */
+const MAX_INITIAL_RATIO = 30;
+const initials = new Map<string, number>();
+districts.forEach(d => {
+    [...DISTRICT_NAMES[d].Male, ...DISTRICT_NAMES[d].Female, ...(NEUTRAL_NAMES[d] ?? [])]
+        .forEach(n => initials.set(n[0], (initials.get(n[0]) ?? 0) + 1));
+});
+const counts = [...initials.entries()].sort((a, b) => b[1] - a[1]);
+const ratio = counts[0][1] / counts[counts.length - 1][1];
+if (ratio > MAX_INITIAL_RATIO) {
+    problems.push(`initial-letter spread is ${ratio.toFixed(1)}:1 (${counts[0][0]} ${counts[0][1]} vs ${counts[counts.length - 1][0]} ${counts[counts.length - 1][1]}) — max ${MAX_INITIAL_RATIO}:1`);
+}
 
 const spread = [...homes.entries()]
     .filter(([, ds]) => ds.length > MAX_DISTRICTS_PER_NAME)
@@ -146,7 +196,7 @@ THEMES.forEach(theme => {
 
 const mentorTotal = [...mentorHomes.keys()].length;
 
-const total = districts.reduce((sum, d) => sum + DISTRICT_NAMES[d].Male.length + DISTRICT_NAMES[d].Female.length, 0);
+const total = districts.reduce((sum, d) => sum + DISTRICT_NAMES[d].Male.length + DISTRICT_NAMES[d].Female.length + (NEUTRAL_NAMES[d]?.length ?? 0), 0);
 const shared = [...homes.values()].filter(ds => ds.length > 1).length;
 
 if (problems.length) {
@@ -155,6 +205,7 @@ if (problems.length) {
     process.exit(1);
 }
 console.log(`${total} names across ${districts.length} districts; ${shared} appear in more than one pool, none in more than ${MAX_DISTRICTS_PER_NAME}.`);
+console.log(`initial-letter spread now ${ratio.toFixed(1)}:1 (${counts[0][0]} ${counts[0][1]} down to ${counts[counts.length - 1][0]} ${counts[counts.length - 1][1]}).`);
 console.log(`${mentorTotal} mentors across ${Object.keys(DISTRICT_LEGACY).length} districts; every pool at least ${MENTOR_POOL_TARGET} deep, none shared.`);
 if (themeNotes.length === 0) {
     console.log('no themed names have wandered out of the district they belong to.');

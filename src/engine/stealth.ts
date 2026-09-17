@@ -1,3 +1,4 @@
+import { profOf } from './proficiency';
 import { Tribute, Zone } from '../models/types';
 import { zoneFeatures } from './map';
 import { CRAFTING, INVENTORY, STANCE_MODES, STEALTH } from '../data/balance';
@@ -44,6 +45,13 @@ export function concealment(
     dark = false,
 ): number {
     let value = STEALTH.baseConcealment;
+
+    // §(requests, deferred): the skill of not being seen. A tribute who has
+    // spent a week successfully hiding is better at it than one who has not,
+    // which is the whole reason a proficiency exists — and `stealth` was the
+    // one subsystem in the engine with an attribute, a full model and nothing
+    // that got better by doing it.
+    value += profOf(t, 'stealth') * STEALTH.proficiencyScale;
 
     // The dark hides everybody, unless they are carrying the reason it doesn't.
     if (dark && !hasTool(t, 'light')) value += STEALTH.nightConcealment;
