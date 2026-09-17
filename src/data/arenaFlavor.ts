@@ -10575,29 +10575,29 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} goes through the kitchen cupboards of {zone} and comes out with {item}.',
                 '{tribute} works the garden beds of {zone} on their knees and lifts {item} out of the soil.',
                 '{tribute} finds a garage in {zone} still stacked to the rafters and takes {item}.',
-                '{tribute} checks the bins along {zone}, which is what it has come to, and finds {item}.',
+                '{tribute} goes through the bins along {zone} and finds {item}.',
                 '{tribute} lets themselves into a shed off {zone} and leaves with {item}.',
                 '{tribute} strips a pallet at the edge of {zone} before anyone else reaches it, taking {item}.',
                 '{tribute} works through a pantry in {zone} that somebody stocked for a family, and takes {item}.',
-                '{tribute} finds {item} in {zone} exactly where a normal person would keep it, which is the unsettling part.',
+                '{tribute} finds {item} in {zone} in the drawer where it would be kept in any house.',
             ],
             rest: [
-                '{tribute} sleeps in a made bed in {zone} and cannot decide if it is the best or worst night of the Games.',
-                '{tribute} sits at a kitchen table in {zone} and eats off a plate, because the plates are right there.',
+                '{tribute} sleeps in a made bed in {zone} for the first time since the Capitol.',
+                '{tribute} sits at a kitchen table in {zone} and eats off a plate.',
                 '{tribute} rests in {zone} with the curtains drawn, watching the street through the gap.',
-                '{tribute} lets an hour pass on a porch in {zone}, in a chair somebody bought for exactly this.',
-                '{tribute} washes in a bathroom in {zone} with the taps running warm, and does not look at the mirror.',
-                '{tribute} waits out the hour in {zone} listening to a house settle around them like it is breathing.',
-                '{tribute} lies on carpet in {zone} for the first time since the Capitol, and it undoes them a little.',
-                '{tribute} rests in {zone} and counts porch lights instead of sheep.',
+                '{tribute} lets an hour pass in a porch chair in {zone}, watching the loop.',
+                '{tribute} washes in a bathroom in {zone}. The taps still run warm.',
+                '{tribute} waits out the hour in {zone} listening to the house settle.',
+                '{tribute} lies on carpet in {zone} for the first time since the Capitol and does not get up for an hour.',
+                '{tribute} rests in {zone} and counts the porch lights along the loop.',
             ],
             hide: [
                 '{tribute} folds themselves into a wardrobe in {zone} between somebody else\'s coats.',
                 '{tribute} lies flat behind a garden wall in {zone} while footsteps pass on the pavement.',
                 '{tribute} goes under a bed in {zone} and watches the door through the gap.',
-                '{tribute} stands behind the curtains of {zone} the way children do, and it works.',
-                '{tribute} crouches in the crawlspace of {zone} with the dust of a house nobody ever lived in.',
-                '{tribute} waits in a garden shed in {zone}, hand on the mower blade they took off its housing.',
+                '{tribute} stands behind the curtains of {zone} with their boots out of the gap.',
+                '{tribute} crouches in the crawlspace of {zone}, in dust nobody has disturbed.',
+                '{tribute} waits in a garden shed in {zone} holding a mower blade taken off its housing.',
                 '{tribute} sinks to the neck in a paddling pool in {zone} and holds still.',
                 '{tribute} sits in a parked car in {zone}, low in the seat, watching the loop in the mirrors.',
             ],
@@ -10608,21 +10608,21 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} works the back fences of {zone}, listening at each one for somebody breathing.',
                 '{tribute} sets up at the mouth of {zone} where everybody has to pass, and nobody passes.',
                 '{tribute} checks which bins in {zone} have been disturbed since yesterday, and by whom.',
-                '{tribute} hunts {zone} house by house, clearing rooms like they were taught not to.',
-                '{tribute} waits at the delivery schedule\'s next stop in {zone}. Everybody learns the schedule eventually.',
+                '{tribute} hunts {zone} house by house, clearing each room before the next.',
+                '{tribute} waits at the next stop on the delivery round in {zone}, which runs at the same hour daily.',
             ],
             travel: GENERIC_ACTIONS.travel,
             fortify: [
                 '{tribute} moves furniture against the doors of a house in {zone} and takes the upstairs.',
                 '{tribute} strings wire across the garden gate of {zone} at ankle height.',
-                '{tribute} lays broken glass under every window of their house in {zone} and sleeps better for it.',
-                '{tribute} has stopped visiting {zone} and started living there, which on this street looks almost normal.',
+                '{tribute} lays broken glass under every window of their house in {zone}.',
+                '{tribute} has slept four nights in the same house in {zone} and keeps the curtains as they were.',
             ],
             scavenge: [
                 '{tribute} works through a house in {zone} somebody else already ransacked, checking the places they missed.',
                 '{tribute} follows a trail of dropped tins across {zone} to where somebody was disturbed mid-looting.',
                 '{tribute} strips a camp out of a garage in {zone}, still warm, owner gone.',
-                '{tribute} goes through {zone} drawer by drawer, because every house has one drawer full of useful things.',
+                '{tribute} goes through {zone} drawer by drawer until they find the one with the tools in it.',
             ],
             shadow: [
                 '{tribute} follows somebody down {zone} garden by garden, fence line by fence line.',
@@ -10631,17 +10631,17 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} watches somebody work through {zone} from the house next door, learning their habits.',
             ],
             flail: [
-                '{tribute} walks straight up the middle of {zone} because the pavements stopped mattering days ago.',
+                '{tribute} walks straight up the middle of the road through {zone}.',
                 '{tribute} puts a chair through a front window in {zone} rather than trying the handle.',
-                '{tribute} rings a doorbell in {zone}, and waits, and nobody comes, and they laugh at nothing.',
-                '{tribute} stops treating the houses of {zone} like homes. They were never homes.',
+                '{tribute} rings a doorbell in {zone} and waits on the step. Nobody comes.',
+                '{tribute} stops closing doors behind them in {zone}.',
             ],
         },
         events: [
             {
                 id: 'culdesac-doorbell',
                 oncePerRun: true,
-                text: 'A doorbell camera swivels to follow {tribute} across {zone}, and its chime announces them to the empty street. There is no wire to cut that stops it.',
+                text: 'A doorbell camera swivels to follow {tribute} across {zone} and chimes. {tribute} cannot find a wire to it.',
                 escapeText: '{tribute} spots the doorbell camera in {zone} and keeps to the hedge line, out of its arc.',
                 cause: 'Mauled on the green',
                 dodgeStat: 'stealth',
@@ -10652,7 +10652,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins', 'open'],
             },
             {
-                text: 'A phone starts ringing in the empty kitchen of {zone}, and {tribute} stands over it for six rings before it stops. Nobody knows this number.',
+                text: 'A phone starts ringing in the empty kitchen of {zone}. {tribute} stands over it for six rings and it stops.',
                 escapeText: '{tribute} hears the phone in {zone} and leaves the house before the second ring.',
                 cause: 'Died of fright',
                 dodgeStat: 'willpower',
@@ -10663,7 +10663,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 id: 'culdesac-bedroom',
                 oncePerRun: true,
-                text: '{tribute} opens a door in {zone} onto a child\'s bedroom, untouched: made bed, toys shelved, a name in wooden letters on the wall. They close it very quietly.',
+                text: '{tribute} opens a door in {zone} onto a child\'s bedroom: made bed, toys shelved, a name in wooden letters on the wall. They close it again.',
                 escapeText: '{tribute} sees the stickers on the door in {zone} and does not open it.',
                 cause: 'Died of fright',
                 dodgeStat: 'willpower',
@@ -10671,7 +10671,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: '{tribute} finds another tribute\'s boots drying by a back door in {zone}, laces still wet. The owner is somewhere in this house.',
+                text: '{tribute} finds another tribute\'s boots drying by a back door in {zone} with the laces still wet.',
                 escapeText: '{tribute} clocks the boots by the door in {zone} and backs out the way they came in.',
                 cause: 'Killed by an ambush',
                 dodgeStat: 'stealth',
@@ -10681,7 +10681,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The sprinklers come up under {tribute} in {zone} at four in the morning, on their timer, and the whole zone vanishes into cold spray and hiss.',
+                text: 'The sprinklers come up under {tribute} in {zone} at four in the morning on their timer.',
                 escapeText: '{tribute} hears the sprinkler heads rise across {zone} and gets under a porch before the water hits.',
                 cause: 'Mauled on the green',
                 dodgeStat: 'agility',
@@ -10692,7 +10692,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open', 'forest'],
             },
             {
-                text: 'The air in {zone} has been wrong for a while, and {tribute} works it out one headache too late: the hob in Number 27 was left on, and the kitchen has filled the house.',
+                text: 'The hob in Number 27 at {zone} was left on and the gas has filled the house. {tribute} works that out after the headache starts.',
                 escapeText: '{tribute} smells the gas in {zone} at the doorway and does not go looking for the switch.',
                 cause: 'Gas asphyxiation indoors',
                 dodgeStat: 'intelligence',
@@ -10712,14 +10712,14 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'A dog comes out of a garden in {zone} and does not attack. It walks at {tribute}\'s heel for an hour, wagging, waiting to be told it is good, and then it is gone.',
+                text: 'A dog comes out of a garden in {zone} and walks at {tribute}\'s heel for an hour before turning off down a side road.',
                 escapeText: '{tribute} keeps their distance from the dog in {zone}, and it sits at the gate watching them the whole way up the road.',
                 cause: 'Mauled on the green',
                 heal: 4,
                 terrains: ['open', 'forest'],
             },
             {
-                text: '{tribute} catches sight of the bathroom mirror in {zone} and does not recognise the person in it. They stand there longer than is safe.',
+                text: '{tribute} catches sight of themselves in the bathroom mirror in {zone} and stands in front of it for some minutes.',
                 escapeText: '{tribute} turns the bathroom mirror in {zone} to the wall without looking at it.',
                 cause: 'Died of fright',
                 dodgeStat: 'willpower',
@@ -10728,7 +10728,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'A car alarm goes off two doors down from {tribute} in {zone} and does not stop for ten minutes. Everyone on the loop now knows exactly where somebody is.',
+                text: 'A car alarm goes off two doors from {tribute} in {zone} and runs for ten minutes. It carries the length of the loop.',
                 escapeText: '{tribute} is three gardens away before the car alarm in {zone} winds up to full voice.',
                 cause: 'Killed by an ambush',
                 dodgeStat: 'agility',
@@ -10738,7 +10738,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The attic hatch in {zone} comes down on its ladder while {tribute} is on it, and the ladder, the hatch and half the ceiling come down together. The way they came in is gone.',
+                text: 'The attic hatch in {zone} comes down with {tribute} on the ladder, and takes half the ceiling with it. The way back down is gone.',
                 escapeText: '{tribute} hears the hatch frame crack in {zone} and drops clear before the ceiling follows.',
                 cause: 'Gas asphyxiation indoors',
                 dodgeStat: 'agility',
@@ -10748,7 +10748,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The family photographs on the stairs of {zone} have faces. Real ones, smiling, all the way up. {tribute} knows arena set-dressing never has faces, and climbs past without looking at the last one.',
+                text: 'The family photographs on the stairs of {zone} have faces in them, all the way up. {tribute} climbs past without looking at the last one.',
                 escapeText: '{tribute} goes up the stairs of {zone} with their eyes on the steps and never finds out.',
                 cause: 'Died of fright',
                 dodgeStat: 'intelligence',
@@ -10758,7 +10758,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: the Capitol built somewhere normal. Six events in which
                 // the horror is entirely domestic.
-                text: 'The porch light at Number 27 comes on when {tribute} walks up the path, because it is on a sensor, and everybody on the loop road sees it do it.',
+                text: 'The porch light at Number 27 in {zone} is on a sensor. It comes on as {tribute} walks up the path, in view of the whole loop.',
                 escapeText: '{tribute} comes at the house in {zone} across the back gardens, under the sensor arc, and nothing on the street lights up at all.',
                 cause: 'Killed on a lit doorstep',
                 dodgeStat: 'intelligence',
@@ -10769,7 +10769,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The gas has been leaking into the kitchen of the house in {zone} for two days, and {tribute} strikes a light in it.',
+                text: 'Gas has leaked into the kitchen of the house in {zone} for two days. {tribute} strikes a light in it.',
                 escapeText: '{tribute} smells the gas in the kitchen at {zone} from the hallway and backs out without touching a switch.',
                 cause: 'Killed in a gas explosion',
                 dodgeStat: 'intelligence',
@@ -10781,7 +10781,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 special: 'collapse',
             },
             {
-                text: 'The sprinklers on the green at {zone} come on at four in the morning, all of them, and every one of them is loud, and {tribute} is asleep in the middle of the lawn.',
+                text: 'Every sprinkler on the green at {zone} comes on at four in the morning. {tribute} is asleep in the middle of the lawn.',
                 escapeText: '{tribute} reads the heads set into the turf at {zone} and beds down on the gravel margin instead.',
                 cause: 'Found by the sprinklers',
                 dodgeStat: 'intelligence',
@@ -10793,7 +10793,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'flooded',
             },
             {
-                text: 'Something has been in the pool complex at {zone} the whole time, under the cover, in water that has not been changed since the Capitol left, and {tribute} has just put a hand in it.',
+                text: 'Something has been under the cover of the pool at {zone} since the Capitol left. {tribute} puts a hand in the water.',
                 escapeText: '{tribute} lifts one corner of the pool cover at {zone}, looks at what the water does, and puts the corner back down.',
                 cause: 'Taken in the pool',
                 dodgeStat: 'stealth',
@@ -10804,7 +10804,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['water'],
             },
             {
-                text: 'The family dogs come round the loop road at {zone} in a line, at a trot, the way a pack that used to be pets does, and they still know all the gardens, and {tribute} does not.',
+                text: 'The family dogs come round the loop road at {zone} at a trot. They know every garden on it and {tribute} does not.',
                 escapeText: '{tribute} gets a garden gate shut behind them in {zone} and the pack goes past on the road without breaking stride.',
                 cause: 'Run down by the family dogs',
                 dodgeStat: 'agility',
@@ -10816,7 +10816,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             },
             {
                 // The delivery trucks keep coming. That is the joke and the gift.
-                text: 'A delivery is sitting on the step at the show home in {zone}, boxed, labelled, and addressed to nobody, and it is a week of food for one person, and {tribute} is one person.',
+                text: 'A delivery is on the step at the show home in {zone}, boxed and labelled to nobody. It is a week of food and {tribute} takes it.',
                 escapeText: '{tribute} gets to the step at the show home in {zone} to find the box open, flattened, and the packing scattered down the path.',
                 cause: 'Starved on the loop road',
                 feed: 45,
@@ -10828,7 +10828,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: second pass to the target. Sixty-two identical houses,
                 // and the cordon comes in a street at a time from the first day.
-                text: 'The cordon takes another street off the loop road overnight and the house {tribute} has been holding at {zone} is now the wrong side of a line that was not there yesterday.',
+                text: 'The cordon takes another street off the loop overnight. The house {tribute} has been holding at {zone} is outside it by morning.',
                 escapeText: '{tribute} works out which way the cordon is eating the loop road and moves house twice a day ahead of it.',
                 cause: 'Caught outside the cordon',
                 dodgeStat: 'intelligence',
@@ -10840,7 +10840,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The substation at {zone} is what is keeping the porch lights on and the sprinklers running, and it is fenced, and the fence is live, and {tribute} goes over it for the shelter inside.',
+                text: 'The substation at {zone} runs the porch lights and the sprinklers, and its fence is live. {tribute} goes over it for the shelter inside.',
                 escapeText: '{tribute} throws a length of hose at the substation fence at {zone}, watches what it does, and goes and sleeps in a shed.',
                 cause: 'Electrocuted at the substation',
                 dodgeStat: 'intelligence',
@@ -10850,7 +10850,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The meter reader comes up the path of Number 14 at {zone} at the same time it came yesterday, and it knocks, and it waits the same length of time, and then it lets itself in on {tribute}.',
+                text: 'The meter reader comes up the path of Number 14 at {zone} at the same hour as yesterday, knocks, waits, and lets itself in on {tribute}.',
                 escapeText: '{tribute} is out the back door of Number 14 at {zone} on the first knock, having timed the round the day before.',
                 cause: 'Killed by the Meter Reader',
                 dodgeStat: 'intelligence',
@@ -10862,7 +10862,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['ruins'],
             },
             {
-                text: 'The wasps in the eaves of the show home at {zone} have had ten years of nobody putting a ladder up, and the nest is the size of a person, and {tribute} pulls at the soffit under it.',
+                text: 'The nest in the eaves of the show home at {zone} is the size of a person. {tribute} pulls at the soffit under it.',
                 escapeText: '{tribute} notices what is going in and out of the soffit at the show home in {zone} and leaves the ladder where it is.',
                 cause: 'Killed by the wasps in the eaves',
                 dodgeStat: 'intelligence',
@@ -10873,7 +10873,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'swarming',
             },
             {
-                text: 'The cut-through between the gardens at {zone} is the fastest way anywhere on the loop and it is six feet wide with a fence either side, and {tribute} is in the middle of it when both ends fill.',
+                text: 'The cut-through between the gardens at {zone} is six feet wide with a fence either side. {tribute} is in the middle of it when both ends fill.',
                 escapeText: '{tribute} goes over a garden fence out of the cut-through at {zone} rather than out either end of it.',
                 cause: 'Cornered in the cut-through',
                 dodgeStat: 'agility',
@@ -10883,7 +10883,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The back gardens at {zone} are sixty-two vegetable plots that nobody has been out to since the Capitol left, and {tribute} works four of them and eats things that came out of actual soil.',
+                text: 'The back gardens at {zone} hold sixty-two vegetable plots nobody has worked since the Capitol left. {tribute} digs four of them.',
                 escapeText: '{tribute} works the back gardens at {zone} and finds every plot on the row already turned over and dug out.',
                 cause: 'Starved on the loop road',
                 feed: 44,
@@ -10897,14 +10897,14 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     },
     labyrinth: {
         ambient: [
-            'Somewhere in the maze, a wall is moving on its rails. The grinding does not come from where the grinding is.',
+            'A wall is moving on its rails somewhere in the maze. The sound arrives from two directions at once.',
             'The fountain in the court runs on. Nobody has drunk from it since the first day.',
-            'A pair of shears is working somewhere close. Nobody has ever seen the hands.',
+            'A pair of shears is working two hedges over. Nobody has seen who is holding them.',
             'Birds cross the whole sky and none of them cross the maze. They go around.',
-            'A death in here has no cannon. The hedges take the sound the way they take everything.',
+            'The hedges take a cannon down to about the volume of a cough.',
             'The hedge mist comes up between the walls at dusk, nine metres deep, and settles in for the night.',
-            'The yew is clipped every night. Every night, somewhere, it is clipped.',
-            'From above, the Capitol can see the whole design. From inside, there is no above.',
+            'The yew is clipped somewhere in the maze every night.',
+            'The design reads whole from the Capitol\u2019s cameras. The walls are nine metres and there is no high ground in it.',
         ],
         actions: {
             forage: [
@@ -10918,59 +10918,59 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} reaches into a gap at the bottom of the yew in {zone} and their fingers close on {item}.',
             ],
             rest: [
-                '{tribute} sits with their back to nine metres of yew in {zone}. Nothing comes through nine metres of yew.',
+                '{tribute} sits with their back to nine metres of yew in {zone}.',
                 '{tribute} rests in an alcove of {zone} cut for a statue that was never installed.',
                 '{tribute} sleeps in snatches in {zone}, waking at every grind of a distant rail.',
                 '{tribute} spends the hour in {zone} drawing the maze in the gravel, and rubs it out before moving on.',
-                '{tribute} listens to the shears work somewhere beyond {zone} until the sound becomes almost restful.',
-                '{tribute} rests in {zone} at a junction, where at least the walls cannot close without warning.',
-                '{tribute} eats in {zone} facing the way they came, because the way they came is the only direction they trust.',
+                '{tribute} listens to the shears work somewhere beyond {zone} for the length of the stop.',
+                '{tribute} rests at a junction in {zone} with four approaches in view.',
+                '{tribute} eats in {zone} facing back the way they came.',
                 '{tribute} waits out the hedge mist in {zone}, still, letting it bead on their sleeves.',
             ],
             hide: [
-                '{tribute} presses backwards into the yew of {zone} until the hedge takes them like water.',
+                '{tribute} presses backwards into the yew of {zone} until the hedge closes over them.',
                 '{tribute} goes down flat against the wall of {zone}, under the line anyone watches at.',
-                '{tribute} stands in the one blind corner of {zone} and becomes part of the design.',
+                '{tribute} stands in the one blind corner of {zone} and stops moving.',
                 '{tribute} climbs into the clipped dark inside a hedge of {zone} and waits with the spiders.',
-                '{tribute} lets the hedge mist close over {zone} and simply stops being anywhere.',
+                '{tribute} lets the hedge mist close over {zone} and holds still inside it.',
                 '{tribute} folds into an alcove of {zone} and listens to footsteps choose the wrong turning.',
-                '{tribute} holds still in {zone} while somebody passes one wall away, close enough to hear them swallow.',
-                '{tribute} hides in {zone} in plain sight, standing where nobody looks: the middle of the path behind them.',
+                '{tribute} holds still in {zone} while somebody passes one wall away.',
+                '{tribute} stands in the middle of the path in {zone}, behind the turning anybody would come round.',
             ],
             hunt: [
-                '{tribute} hunts the junctions of {zone}, because everyone in a maze comes to a junction.',
-                '{tribute} follows a line of broken cobweb down {zone} at face height. Somebody tall came through.',
+                '{tribute} hunts the junctions of {zone}, which every route through the maze passes.',
+                '{tribute} follows a line of broken cobweb down {zone} at face height.',
                 '{tribute} waits one turning inside {zone} with a blade, listening for gravel.',
-                '{tribute} tracks a smear of blood along the wall of {zone} until it stops mattering whose it is.',
-                '{tribute} works {zone} against the flow, betting on meeting whoever the maze is herding their way.',
+                '{tribute} tracks a smear of blood along the wall of {zone} for forty metres until it stops.',
+                '{tribute} works {zone} against the direction the walls have been herding everybody.',
                 '{tribute} listens at the hedge of {zone} for breathing on the other side, and moves along it, patient.',
-                '{tribute} sets up where {zone} narrows, because in here every path is a chokepoint eventually.',
+                '{tribute} sets up where {zone} narrows to a body and a half wide.',
                 '{tribute} reads the clipped edges of {zone} for the gap somebody forced, and follows it through.',
             ],
             travel: GENERIC_ACTIONS.travel,
             fortify: [
                 '{tribute} blocks the narrow end of {zone} with cut yew, thorn side out.',
                 '{tribute} strings a line across the turning into {zone} at shin height, hedge to hedge.',
-                '{tribute} settles into the alcove of {zone} and arranges it so nothing can come at them from a direction they have not chosen.',
+                '{tribute} settles into the alcove of {zone} and blocks every approach but one.',
                 '{tribute} has learned the sound the rails under {zone} make when nothing is moving, and waits for it to change.',
             ],
             scavenge: [
                 '{tribute} follows drag marks through the gravel of {zone} to what was left at the end of them.',
-                '{tribute} works over an abandoned camp in an alcove of {zone}. The owner left mid-meal.',
-                '{tribute} finds where a wall shifted through somebody\'s cache in {zone} and takes what the yew did not.',
-                '{tribute} picks along the base of the walls of {zone}, where everything dropped in a maze ends up.',
+                '{tribute} works over a camp in an alcove of {zone} that was left mid-meal.',
+                '{tribute} finds where a wall shifted through a cache in {zone} and takes what the yew did not close over.',
+                '{tribute} picks along the base of the walls of {zone}, where the gravel collects.',
             ],
             shadow: [
                 '{tribute} follows the sound of footsteps through {zone}, one wall over, matching them step for step.',
                 '{tribute} tracks somebody through {zone} by the swing of the hedge tops where they brush past.',
                 '{tribute} keeps a full turning behind through {zone}, navigating by gravel-sound alone.',
-                '{tribute} lets the maze do the following for them, and walks the only path out of {zone} their quarry can take.',
+                '{tribute} walks the only path out of {zone} their quarry can take, rather than following them.',
             ],
             flail: [
-                '{tribute} tries to force a way straight through the yew of {zone} and the yew simply holds.',
-                '{tribute} shouts at the walls of {zone}. The walls take the sound the way they take everything.',
-                '{tribute} stops choosing turnings in {zone} and lets their feet do it. The feet are no worse.',
-                '{tribute} claws at the hedge of {zone} until their hands bleed, and the hedge is exactly as it was.',
+                '{tribute} tries to force a way through the yew of {zone} and gets about a metre into it.',
+                '{tribute} shouts at the walls of {zone}. Nothing carries and nothing answers.',
+                '{tribute} stops choosing turnings in {zone} and takes whichever one they are facing.',
+                '{tribute} claws at the hedge of {zone} until their hands bleed. It is unmarked.',
             ],
         },
         events: [
@@ -10985,7 +10985,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: '{tribute} finds footprints crossing the path ahead in {zone} and knows the tread, the stride, the worn left heel. They are their own.',
+                text: '{tribute} finds footprints crossing the path ahead in {zone} with a worn left heel. They are their own.',
                 escapeText: '{tribute} refuses to look at the footprints in {zone} long enough to recognise them.',
                 cause: 'Lost in the maze',
                 dodgeStat: 'intelligence',
@@ -10993,7 +10993,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 fatigue: 12,
             },
             {
-                text: 'There is a bench in an alcove of {zone}, and on the bench there is a body, sat upright, days old. No cannon ever fired for it. {tribute} counts the field again on their fingers.',
+                text: 'There is a body sat upright on a bench in an alcove of {zone}, days old. No cannon fired for it. {tribute} recounts the field.',
                 escapeText: '{tribute} smells the alcove in {zone} before they see it, and does not look in.',
                 cause: 'Lost in the maze',
                 dodgeStat: 'willpower',
@@ -11002,7 +11002,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The shears start up close to {tribute} in {zone} — close enough to hear the blades cross — and work their way around them in a slow circle.',
+                text: 'The shears start up close enough to {tribute} in {zone} to hear the blades cross, and work round them in a circle.',
                 escapeText: '{tribute} walks out of {zone} at an even pace, and the shears do not follow.',
                 cause: 'Taken by the topiary',
                 dodgeStat: 'willpower',
@@ -11020,7 +11020,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 fatigue: 10,
             },
             {
-                text: 'The fountain in {zone} runs red for a full minute while {tribute} watches, then clear, then red again, like something upstream is being rinsed.',
+                text: 'The fountain in {zone} runs red for a minute while {tribute} watches, then clear, then red again.',
                 escapeText: '{tribute} turns their back on the fountain in {zone} before it can show them anything.',
                 cause: 'Lost in the maze',
                 dodgeStat: 'willpower',
@@ -11028,7 +11028,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open', 'water'],
             },
             {
-                text: '{tribute} finds a gap at ankle height under the yew of {zone} and takes it on their belly, nine metres in the dark under the roots, with the hedge pressing down the whole way.',
+                text: '{tribute} finds a gap at ankle height under the yew of {zone} and takes nine metres of it on their belly in the dark.',
                 escapeText: '{tribute} measures the gap under the hedge of {zone} against their shoulders and decides to stay a person.',
                 cause: 'Taken by the topiary',
                 dodgeStat: 'agility',
@@ -11039,14 +11039,14 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'A whole flock reaches the maze above {zone}, banks as one, and goes around. {tribute} watches every bird in the sky refuse to cross the air they are standing under.',
+                text: 'A flock reaches the maze above {zone}, banks, and goes round it. {tribute} watches the whole sky go around them.',
                 escapeText: '{tribute} does not look up in {zone}. Whatever the birds know, they can keep.',
                 cause: 'Lost in the maze',
                 dodgeStat: 'willpower',
                 sanity: 12,
             },
             {
-                text: 'Petals come down over {tribute} in {zone} out of season and out of nowhere, and by evening the walls are in full flower and heavy with fruit that was not there this morning.',
+                text: 'Petals come down over {tribute} in {zone} out of season. By evening the walls are in flower and carrying fruit that was not there this morning.',
                 escapeText: '{tribute} watches the blossom come down over {zone} and eats nothing the maze offers.',
                 cause: 'Taken by the topiary',
                 feed: 20,
@@ -11055,7 +11055,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest', 'open'],
             },
             {
-                text: '{tribute} comes around a turning in {zone} and is in the centre — but from the north, when they were walking south, through an entrance the centre does not have.',
+                text: '{tribute} comes round a turning in {zone} into the centre, from the north, walking south, through an entrance the centre does not have.',
                 escapeText: '{tribute} stops at the turning in {zone}, checks the sun, and refuses the entrance on principle.',
                 cause: 'Lost in the maze',
                 dodgeStat: 'intelligence',
@@ -11066,7 +11066,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 id: 'labyrinth-gate-map',
                 oncePerRun: true,
-                text: 'Carved into the iron of the gate in {zone}, small and old, is the maze — the whole design, with a route worked in hard-won scratches. Somebody made it this far once. {tribute} memorises every line.',
+                text: 'The whole design of the maze is scratched small into the iron of the gate in {zone}, with a route marked through it. {tribute} memorises every line.',
                 escapeText: '{tribute} finds the carving on the gate in {zone} defaced, the route scratched out by newer, deeper strokes.',
                 cause: 'Lost in the maze',
                 heal: 10,
@@ -11074,7 +11074,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open'],
             },
             {
-                text: 'The hedge {tribute} leans on in {zone} is warm. Not sun-warm. Blood-warm, and very faintly moving, like a flank.',
+                text: 'The hedge {tribute} leans on in {zone} is at blood heat and moving very slightly.',
                 escapeText: '{tribute} takes their hand off the hedge in {zone} slowly, and steps back into the middle of the path.',
                 cause: 'Taken by the topiary',
                 dodgeStat: 'stealth',
@@ -11097,7 +11097,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The topiary in {zone} is in a different arrangement than it was an hour ago, and {tribute} is now fairly sure one of the shapes has its head turned.',
+                text: '{tribute} finds the topiary in {zone} arranged differently than it was an hour ago, and one of the shapes has its head turned toward them.',
                 escapeText: '{tribute} counts the topiary in {zone} on the way in and on the way out, gets the same number, and does not look at their faces.',
                 cause: 'Killed by the Topiary',
                 dodgeStat: 'stealth',
@@ -11109,7 +11109,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'A cannon goes off somewhere in the maze and the hedges take the whole sound of it, so that {tribute} hears a cough rather than a cannon and does not know who.',
+                text: 'A cannon goes off somewhere in the maze. What reaches {tribute} is a cough, with no direction on it.',
                 escapeText: '{tribute} is high enough on the parterre wall of {zone} to hear the cannon cleanly and count the field properly for once.',
                 cause: 'Died not knowing',
                 dodgeStat: 'intelligence',
@@ -11118,7 +11118,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 requires: { law: 'noCannons' },
             },
             {
-                text: 'The canal walk through {zone} is a metre of black water in a stone channel with yew to the waterline both sides, and there is no bank and no way out for the sixty metres {tribute} has committed to.',
+                text: 'The canal walk through {zone} is a metre of black water with yew to the waterline both sides. {tribute} is sixty metres in with no bank either side.',
                 escapeText: '{tribute} walks the coping stone of the canal in {zone} rather than the water, arms out, and stays dry.',
                 cause: 'Drowned in the canal walk',
                 dodgeStat: 'agility',
@@ -11128,7 +11128,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['water'],
             },
             {
-                text: 'The dead end {tribute} backs into in {zone} was a through-way when they walked it yesterday, and the wall behind them closes while they are looking at the one in front.',
+                text: 'The dead end {tribute} backs into in {zone} was a through-way yesterday. The wall behind them closes while they are facing the one in front.',
                 escapeText: '{tribute} keeps one hand on the left-hand hedge the entire way through {zone}, which is the oldest trick there is, and it works.',
                 cause: 'Cornered in the dead end',
                 dodgeStat: 'intelligence',
@@ -11141,7 +11141,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // The fountain court and the parterre are a garden, and a garden
                 // was designed to feed somebody.
-                text: 'The parterre in {zone} is still a kitchen garden under the weeds — beans up canes, a pear against the wall, a whole bed of roots — and {tribute} works down the row with both hands.',
+                text: 'The parterre in {zone} is a kitchen garden under the weeds: beans up canes, a pear against the wall, a bed of roots. {tribute} works down the row.',
                 escapeText: '{tribute} works the parterre beds in {zone} and finds every row dug over and the canes pulled out for kindling.',
                 cause: 'Starved in the Labyrinth',
                 feed: 44,
@@ -11154,7 +11154,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 // §7.3: second pass to the target. The walls move on rails and
                 // the hedges eat the cannon; the map is the antagonist.
-                text: 'The outer ring of {zone} is the one corridor that is supposed to go all the way round, and {tribute} has been walking it for two hours and has not come back to where they started.',
+                text: 'The outer ring of {zone} goes all the way round. {tribute} has walked it for two hours without returning to where they started.',
                 escapeText: '{tribute} counts paces along the outer ring of {zone}, notices the count does not close, and cuts inward through the hedge instead.',
                 cause: 'Lost on the outer ring',
                 dodgeStat: 'intelligence',
@@ -11166,7 +11166,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The hounds in the hedge at {zone} do not come out of it — they run inside the yew, on both sides of {tribute} at once, for the whole length of the alley.',
+                text: 'The hounds in the hedge at {zone} run inside the yew on both sides of {tribute} for the whole length of the alley without coming out.',
                 escapeText: '{tribute} gets out of the long alley at {zone} at the first sound in the hedge and into open parterre where nothing can run beside them.',
                 cause: 'Killed by the hounds in the hedge',
                 dodgeStat: 'agility',
@@ -11177,7 +11177,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The gardener is working the north spiral at {zone} with a pair of shears the length of an arm, and he is not hurrying, and he has all the time in the world and knows the way out, and {tribute} does not.',
+                text: 'The gardener is working the north spiral at {zone} with shears the length of an arm. He knows the way out of the maze and {tribute} does not.',
                 escapeText: '{tribute} hears the shears working in the north spiral at {zone} and goes back the way they came at a walk, quietly.',
                 cause: 'Killed by the Gardener',
                 dodgeStat: 'stealth',
@@ -11189,7 +11189,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The false centre of {zone} has a fountain, a bench and four ways out, and {tribute} has arrived at it three times today from three different directions.',
+                text: 'The false centre of {zone} has a fountain, a bench and four ways out. {tribute} has arrived at it three times today from three directions.',
                 escapeText: '{tribute} marks the false centre of {zone} with a cut in the bench and does not arrive at it a fourth time.',
                 cause: 'Died at the false centre',
                 dodgeStat: 'intelligence',
@@ -11200,7 +11200,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The gardener’s gate at {zone} is the only gap in the outer wall and it is standing open, and it has been standing open since the first morning, and {tribute} walks toward it.',
+                text: 'The gardener’s gate at {zone} is the only gap in the outer wall and has stood open since the first morning. {tribute} walks toward it.',
                 escapeText: '{tribute} looks at the open gardener’s gate at {zone} for a long while and does not go through it, which is correct.',
                 cause: 'Went through the gardener’s gate',
                 dodgeStat: 'willpower',
@@ -11211,7 +11211,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 terrains: ['open'],
             },
             {
-                text: 'The topiary garden at {zone} is standing in four inches of yesterday’s rain held in the clipped beds, and it is clean, and {tribute} drinks out of a hedge bed like an animal and does not care.',
+                text: 'The clipped beds of the topiary garden at {zone} are holding four inches of yesterday’s rain, and it is clean. {tribute} drinks out of one.',
                 escapeText: '{tribute} finds the topiary beds at {zone} drained to the gravel and the hedges standing at attention around nothing.',
                 cause: 'Starved in the Labyrinth',
                 quench: 48,
@@ -11222,7 +11222,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
     },
     ashgrove: {
         ambient: [
-            'The bell rings, on the minute, through a school that has nothing left to teach.',
+            'The bell rings on the minute through an empty school.',
             'The timetable in the main corridor is posted a week ahead. Somebody keeps it current.',
             'A door swings shut somewhere down a wing, unhurried, the way doors close when nobody closed them.',
             'The heating pipes knock all night, carrying sound from rooms nobody is in.',
