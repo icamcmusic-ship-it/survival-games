@@ -20,7 +20,13 @@ export type InterviewPersona =
     | 'The Cold Strategist'
     | 'The Reluctant Hero'
     | 'The District Loyalist'
-    | 'The Wildcard';
+    | 'The Wildcard'
+    // §(requests 16): five more.
+    | 'The Survivor'
+    | 'The Professional'
+    | 'The Homesick'
+    | 'The Volunteer'
+    | 'The Provocateur';
 /**
  * A tribute's standing posture.
  *
@@ -2121,6 +2127,13 @@ export interface GameState {
     kilnFiringZone?: string;
     /** Audit 5 §5.4 `theBell`: the zone named this morning, paid at nightfall. */
     bellZone?: string;
+    /**
+     * §(requests 17): what the Career pack did, recorded on the plates and
+     * reported at the gong. Nobody negotiates on a pedestal, so the pack's
+     * shape is a fact the bloodbath observes rather than a scene it plays.
+     */
+    careerOptOutIds?: string[];
+    careerPackCollapsed?: boolean;
     /**
      * Adjacency edges cut by the arena itself — a collapsed bridge, a fire that
      * burned through a crossing. Stored as `map.edgeKey()` strings. The printed

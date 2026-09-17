@@ -1,3 +1,4 @@
+import { dreadOf } from '../intent';
 import { targetDrawOf } from '../targeting';
 import { SimContext, getAlive } from '../context';
 import { tickRunRecords } from '../runRecords';
@@ -8,12 +9,14 @@ import { traitMod } from '../../data/traits';
 import { ARCHETYPES } from '../../data/archetypes';
 import { ALLIANCES, BLOODBATH, QUALITY_BIAS, TRAINING } from '../../data/balance';
 import { registerAlliance } from '../alliance';
-import { resolveCombat, resolveGroupCombat } from '../combat';
-import { BLOODBATH_TEXTS } from '../../data/flavorText';
+import { resolveCombat, resolveGroupCombat, selfInflictedDeath } from '../combat';
+import { BLOODBATH_TEXTS,
+    PEDESTAL_ARENA_SHOTS, PEDESTAL_REACTIONS, EARLY_STEP_OFF, GONG_DECISIONS,
+} from '../../data/flavorText';
 import { giveItem, itemPhrase, mintItem, itemPoolFor } from '../items';
 import { personaThreat } from './alliances';
 import { getRel, setRel } from '../relationships';
-import { noteContact, noteSighting } from '../memory';
+import { noteContact, noteSighting, ensureMemory } from '../memory';
 import { addFear } from '../fear';
 import { wildcardIs, arenaHasLaw } from '../gamesProfile';
 import { arenaBriefingLog } from '../arenaBriefingLog';
@@ -54,23 +57,17 @@ function initializeCareerAlliance(ctx: SimContext) {
         if (capped.length - optOuts.length <= 2) return;
         if (!ctx.rng.chance(ALLIANCES.careerOptOutChance)) return;
         optOuts.push(t);
-        ctx.logEvent(
-            `${t.name} of District ${t.district} looks at the pack forming around the Cornucopia and walks the other way. ` +
-            `Some years the academy's arithmetic does not convince everybody.`,
-            [t.id],
-            { important: true, category: 'alliance' }
-        );
+        // §(requests 17): recorded, not narrated here. Nobody is talking to
+        // anybody on a plate — this is a decision that shows itself at the gong
+        // and is reported then, by what the tribute does.
+        ctx.state.careerOptOutIds = [...(ctx.state.careerOptOutIds ?? []), t.id];
     });
 
     const careers = capped.filter(t => !optOuts.includes(t));
 
     if (careers.length > 1 && ctx.rng.chance(ALLIANCES.careerEarlyCollapseChance)) {
-        ctx.logEvent(
-            `The Careers get as far as dividing the Cornucopia between them and no further. ` +
-            `${careers.map(c => c.name).join(', ')} scatter before the bloodbath is even finished — there is no pack this year.`,
-            careers.map(c => c.id),
-            { important: true, category: 'alliance' }
-        );
+        // Same rule: this is a fact about the bloodbath, reported after it.
+        ctx.state.careerPackCollapsed = true;
     } else if (careers.length > 1) {
         const allianceId = `career-pack-${ctx.state.seed}`;
         careers.forEach(t => {
@@ -85,11 +82,6 @@ function initializeCareerAlliance(ctx: SimContext) {
             });
         });
         registerAlliance(ctx, allianceId, careers);
-        ctx.logEvent(
-            `The Careers — ${careers.map(c => `${c.name} (D${c.district})`).join(', ')} — close ranks into a single pack. Everyone else in the arena just became prey.`,
-            careers.map(c => c.id),
-            { important: true, category: 'alliance' }
-        );
     }
 }
 
@@ -137,6 +129,114 @@ function hornWeaponsPool(ctx: SimContext): Item[] {
     return wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? lootPool(ctx) : HORN_WEAPONS;
 }
 
+/**
+ * §(requests 17): the sixty seconds, as the country sees them.
+ *
+ * One arena-wide shot, then one line for as many tributes as the minute has
+ * room for — chosen by who they are rather than by a roll, so the same cast
+ * produces the same minute and a frightened fourteen-year-old never reads as
+ * a Career limbering up. Capped: twenty-four reaction lines before the gong
+ * would bury the gong.
+ */
+function pedestalMinute(ctx: SimContext, alive: Tribute[]) {
+    const horn = ctx.state.arena.zones[0]?.name ?? 'the Cornucopia';
+    ctx.logEvent(
+        ctx.pickText(PEDESTAL_ARENA_SHOTS)
+            .split('{arena}').join(ctx.state.arena.name)
+            .split('{horn}').join(horn),
+        [],
+        { important: true, category: 'arena' }
+    );
+
+    const kindOf = (t: Tribute): keyof typeof PEDESTAL_REACTIONS => {
+        const partner = t.trainingPact?.length
+            ? alive.find(o => t.trainingPact!.includes(o.id))
+            : undefined;
+        if (partner && ctx.rng.chance(BLOODBATH.pedestalAlliedShare)) return 'allied';
+        if (t.isCareer || traitMod(t, 'hornCommitment') > 0) return 'eager';
+        const dread = dreadOf(ctx, t);
+        if (dread >= BLOODBATH.pedestalFrightenedDread || t.vitals.sanity < BLOODBATH.pedestalFrightenedSanity) return 'frightened';
+        if (ARCHETYPES[t.archetype].caution > ARCHETYPES[t.archetype].aggression) return 'fleeing';
+        return 'calculating';
+    };
+
+    ctx.rng.shuffle([...alive]).slice(0, BLOODBATH.pedestalReactionCap).forEach(t => {
+        const kind = kindOf(t);
+        const partner = t.trainingPact?.length
+            ? alive.find(o => t.trainingPact!.includes(o.id))
+            : undefined;
+        if (kind === 'allied' && !partner) return;
+        const involved = kind === 'allied' && partner ? [t.id, partner.id] : [t.id];
+        ctx.logEvent(
+            ctx.pickText([...PEDESTAL_REACTIONS[kind]])
+                .split('{tribute}').join(t.name)
+                .split('{other}').join(partner?.name ?? '')
+                .split('{arena}').join(ctx.state.arena.name)
+                .split('{horn}').join(horn),
+            involved,
+            { category: kind === 'frightened' ? 'sanity' : 'system' }
+        );
+    });
+}
+
+/**
+ * §(requests 18): one line per tribute, naming what they did at the gong.
+ *
+ * The decision is derived, not rolled: the fighter/runner split has already
+ * been decided by plate position, archetype, traits, the horn's shape and the
+ * persona they sold on the couch, so this reads that decision back and says
+ * which *kind* of it this tribute's was. A fighter who is going for a person
+ * rather than for supplies is a hunt; a runner who has somebody to meet is an
+ * ally; a runner with a very low read of their own chances freezes.
+ */
+function announceGongDecisions(ctx: SimContext, alive: Tribute[], fighters: Tribute[], runners: Tribute[]) {
+    const horn = ctx.state.arena.zones[0]?.name ?? 'the Cornucopia';
+    const isFighter = new Set(fighters.map(t => t.id));
+    // Arrival order tells us who is going *into* the horn and who is working
+    // its edge: the front of the charge gets the mouth, the back gets scraps.
+    const order = scrambleOrder(ctx, fighters);
+    const deepIds = new Set(order.slice(0, Math.max(1, Math.ceil(order.length * BLOODBATH.gongDeepShare))).map(t => t.id));
+
+    alive.forEach(t => {
+        const partner = (t.trainingPact ?? [])
+            .map(id => alive.find(o => o.id === id))
+            .find((o): o is Tribute => !!o);
+        const sworn = ensureMemory(t).vengeance
+            .map(id => alive.find(o => o.id === id))
+            .find((o): o is Tribute => !!o);
+
+        let kind: keyof typeof GONG_DECISIONS;
+        let other: Tribute | undefined;
+        if (isFighter.has(t.id)) {
+            if (sworn && ctx.rng.chance(BLOODBATH.gongHuntShare)) { kind = 'hunt'; other = sworn; }
+            else if (deepIds.has(t.id)) kind = 'horn';
+            else kind = 'edge';
+        } else if (partner && ctx.rng.chance(BLOODBATH.gongAllyShare)) {
+            kind = 'ally'; other = partner;
+        } else if ((dreadOf(ctx, t) >= BLOODBATH.gongFreezeDread || t.age <= BLOODBATH.gongFreezeAge)
+            && ctx.rng.chance(BLOODBATH.gongFreezeShare)) {
+            // Sanity is full on the plates by construction, so freezing reads
+            // off the two things that are actually true up there: how much of
+            // the field this tribute is already afraid of, and how young they
+            // are. A fourteen-year-old who has not moved is the shot.
+            kind = 'freeze';
+        } else if (ARCHETYPES[t.archetype].caution > BLOODBATH.gongWaitCaution && ctx.rng.chance(BLOODBATH.gongWaitShare)) {
+            kind = 'wait';
+        } else {
+            kind = 'flee';
+        }
+
+        ctx.logEvent(
+            ctx.pickText([...GONG_DECISIONS[kind]])
+                .split('{tribute}').join(t.name)
+                .split('{other}').join(other?.name ?? '')
+                .split('{horn}').join(horn),
+            other ? [t.id, other.id] : [t.id],
+            { category: kind === 'hunt' || kind === 'horn' ? 'combat' : 'travel' }
+        );
+    });
+}
+
 export function processBloodbath(ctx: SimContext) {
     ctx.state.phase = 'bloodbath';
     ctx.rng = new RNG(`${ctx.state.seed}-bloodbath`);
@@ -178,13 +278,33 @@ export function processBloodbath(ctx: SimContext) {
         );
     }
 
-    // §13.2: the Gamemakers' own opening notes on the arena, in-fiction, at
-    // the moment the tributes actually rise into it — immediately before the
-    // gong, and only if the player has left the briefing on.
-    if (ctx.state.arenaBriefingOnDrop !== false) arenaBriefingLog(ctx);
+    // §(requests 17): the minute on the plates, as the tributes experience it.
+    //
+    // This replaces the Gamemakers' arena briefing, which was a specification
+    // read aloud at the one moment nobody in the fiction is reading anything.
+    // What is here instead is the shot the country actually gets: the arena
+    // arriving all at once, and sixty seconds of twenty-four people looking at
+    // it. Still gated on the same preference, which now controls this.
+    if (ctx.state.arenaBriefingOnDrop !== false) pedestalMinute(ctx, alive);
 
+    // §(requests 17): the plates are mined until the gong, which is the first
+    // rule anybody learns about the Games and was the one thing the plates
+    // could not do. Half a percent, per tribute, per Games.
+    const steppedOff = alive.filter(t => ctx.rng.chance(BLOODBATH.earlyStepOffChance));
+    steppedOff.forEach(t => {
+        ctx.logEvent(
+            ctx.pickText(EARLY_STEP_OFF)
+                .split('{tribute}').join(t.name)
+                .split('{arena}').join(ctx.state.arena.name),
+            [t.id],
+            { important: true, category: 'death' }
+        );
+        selfInflictedDeath(ctx, t, 'Stepped off the plate before the gong', true);
+    });
+
+    const onTheGong = getAlive(ctx.state);
     ctx.logEvent(
-        `The gong sounds. ${alive.length} tributes come off their plates at once.`,
+        `The gong sounds. ${onTheGong.length} tributes come off their plates at once.`,
         [],
         { important: true, category: 'system' }
     );
@@ -251,6 +371,45 @@ export function processBloodbath(ctx: SimContext) {
         to.push(follower);
         sideOf.set(follower.id, sideOf.get(follower.id) === 'fight' ? 'run' : 'fight');
     });
+
+    // §(requests 18): what each of them decided, said out loud, before any of
+    // it resolves.
+    //
+    // The bloodbath opened with a headcount and then started printing fights,
+    // so the single most consequential decision any tribute makes all Games —
+    // which way they went at the gong — was inferred by the reader from who
+    // turned up dead. Every tribute gets a line, and which line they get is
+    // read off the same state that decides what actually happens to them.
+    announceGongDecisions(ctx, onTheGong, fighters, runners);
+
+    // §(requests 17): and what the pack turned out to be, now that the plates
+    // have emptied and it is a thing that can be observed rather than agreed.
+    const optedOut = (ctx.state.careerOptOutIds ?? [])
+        .map(id => ctx.state.tributes.find(o => o.id === id))
+        .filter((t): t is Tribute => !!t && t.status === 'alive');
+    optedOut.forEach(t => ctx.logEvent(
+        `${t.name} of District ${t.district} comes off the plate and goes the other way from the rest of the Careers. Some years the academy's arithmetic does not convince everybody.`,
+        [t.id],
+        { important: true, category: 'alliance' }
+    ));
+    const pack = getAlive(ctx.state).filter(t => t.allianceId?.startsWith('career-pack-'));
+    if (ctx.state.careerPackCollapsed) {
+        const careers = getAlive(ctx.state).filter(t => t.isCareer);
+        if (careers.length > 1) {
+            ctx.logEvent(
+                `The Careers reach ${ctx.state.arena.zones[0]?.name ?? 'the Cornucopia'} together and get no further than that. `
+                + `${careers.map(c => c.name).join(', ')} scatter before the bloodbath is finished — there is no pack this year.`,
+                careers.map(c => c.id),
+                { important: true, category: 'alliance' }
+            );
+        }
+    } else if (pack.length > 1) {
+        ctx.logEvent(
+            `The Careers — ${pack.map(c => `${c.name} (D${c.district})`).join(', ')} — converge on the horn and close ranks around it. Everyone else in the arena just became prey.`,
+            pack.map(c => c.id),
+            { important: true, category: 'alliance' }
+        );
+    }
 
     // 2. The race itself. Arrival order decides who is inside the horn when the
     //    knot closes, and the front of the pack is the part that gets armed.

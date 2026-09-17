@@ -57,6 +57,19 @@ const PERSONA_TESTS: Record<InterviewPersona, PersonaTest> = {
     // A Career who sold the room a humble underdog is the one shape of this
     // the crowd will not forgive.
     'The Humble Underdog': t => !t.isCareer,
+    // §(requests 16): what the five added angles promised.
+    //
+    // The survivor promised endurance, which is simply still being here; the
+    // professional promised method, which looks like a plan or a weapon; the
+    // homesick promised a person rather than a strategy; the volunteer
+    // promised they meant it, which is not running; and the provocateur
+    // promised to be entertaining, which is the one thing a tribute can fail
+    // at by being careful.
+    'The Survivor': t => t.status === 'alive',
+    'The Professional': t => t.allianceId !== undefined || t.inventory.some(i => i.type === 'weapon'),
+    'The Homesick': () => undefined,
+    'The Volunteer': t => stanceFamily(t.stance) !== 'evasive',
+    'The Provocateur': t => stanceFamily(t.stance) === 'aggressive' || t.kills > 0,
     // Grief that has already turned into a body count was never grief.
     'The Grieving Sibling': t => t.kills === 0,
     // The reluctant hero is held by standing with somebody, or by having stood

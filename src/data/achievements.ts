@@ -1,3 +1,4 @@
+import { INTERVIEW_PERSONAS } from './personas';
 import { TRAIT_DEFS } from './traits';
 import { GameState, Tribute } from '../models/types';
 import { arenaFlavor } from './arenaFlavor';
@@ -2637,16 +2638,18 @@ export const ACHIEVEMENTS: Achievement[] = [
     },
     {
         id: 'every-persona',
-        name: 'Thirteen Ways To Sell It',
+        name: 'Every Way To Sell It',
         hint: 'See every interview persona used in one Games.',
         category: 'reaping',
         rarity: 'legendary',
-        // Thirteen personas over a 24-cast, measured 94-478 each across 3,420
-        // tributes. Reachable and vanishingly unlikely, which is the category.
-        test: state => new Set(state.tributes.map(t => t.interviewStrategy).filter(Boolean)).size >= 13,
+        // §(requests 21): this hard-coded 13 and the roster is 18 now, so it
+        // was asking for thirteen of eighteen and firing in a third of runs.
+        // Read the table instead, and it cannot drift again.
+        test: state => new Set(state.tributes.map(t => t.interviewStrategy).filter(Boolean)).size >= INTERVIEW_PERSONAS.length,
         nearMiss: state => {
             const n = new Set(state.tributes.map(t => t.interviewStrategy).filter(Boolean)).size;
-            return n >= 11 && n < 13 ? `${n} of the thirteen personas were sold this year` : undefined;
+            const total = INTERVIEW_PERSONAS.length;
+            return n >= total - 2 && n < total ? `${n} of the ${total} personas were sold this year` : undefined;
         },
     },
     {

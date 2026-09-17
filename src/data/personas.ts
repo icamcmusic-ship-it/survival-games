@@ -38,6 +38,11 @@ const DECLARED: Record<InterviewPersona, true> = {
     'The Reluctant Hero': true,
     'The District Loyalist': true,
     'The Wildcard': true,
+    'The Survivor': true,
+    'The Professional': true,
+    'The Homesick': true,
+    'The Volunteer': true,
+    'The Provocateur': true,
 };
 
 
@@ -68,6 +73,13 @@ export const PERSONA_THREAT: Record<InterviewPersona, number> = {
     'The Quirky Oddball': -0.05,
     'The Silent Threat': 0.25,
     'The Cold Strategist': 0.2,
+    // §(requests 16): a professional says out loud that they know their job,
+    // and a provocateur has spent three minutes making enemies of the room.
+    'The Survivor': 0.05,
+    'The Professional': 0.3,
+    'The Homesick': -0.15,
+    'The Volunteer': 0.1,
+    'The Provocateur': 0.2,
     'The Grieving Sibling': -0.15,
     'The Reluctant Hero': -0.1,
     'The District Loyalist': -0.05,

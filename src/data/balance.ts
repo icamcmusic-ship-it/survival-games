@@ -1398,6 +1398,26 @@ export const MEDICAL = {
  * day 6, the environment out-killing the tributes — starts here.
  */
 export const BLOODBATH = {
+    /**
+     * §(requests 17): the plates are mined until the gong. Per tribute, per
+     * Games — so a twenty-four field loses somebody to it about once in eight
+     * Games, which is roughly how often the broadcast should have that shot.
+     */
+    earlyStepOffChance: 0.005,
+    /** §(requests 17): how much of the minute the broadcast has room for. */
+    pedestalReactionCap: 9,
+    pedestalAlliedShare: 0.5,
+    pedestalFrightenedDread: 0.35,
+    pedestalFrightenedSanity: 60,
+    /** §(requests 18): how the gong decisions divide up. */
+    gongDeepShare: 0.55,
+    gongHuntShare: 0.5,
+    gongAllyShare: 0.7,
+    gongFreezeShare: 0.4,
+    gongFreezeDread: 0.25,
+    gongFreezeAge: 13,
+    gongWaitCaution: 0.15,
+    gongWaitShare: 0.45,
     /** Baseline willingness to go for the Cornucopia rather than the treeline. */
     fightChanceBase: 0.66,
     /**
@@ -5205,6 +5225,10 @@ export const TESSERAE = {
  * persona — the most consequential value the pre-Games produces — a coin flip.
  */
 export const INTERVIEWS = {
+    /** §(requests 16): the proficiency level at which Caesar asks about it. */
+    skillQuestionLevel: 1.6,
+    /** Otherwise, how often he falls back to the district's trade. */
+    districtQuestionChance: 0.55,
     /** Poise needed to land the opening angle at all. */
     openingThreshold: 5,
     /** Holding the angle under Caesar's follow-up. */
@@ -5269,6 +5293,12 @@ export const INTERVIEWS = {
  * trait, which is the intended trade.
  */
 export const INTERVIEW_ANGLES = {
+    /** §(requests 16): the five added angles. */
+    survivor: { hungerPivot: 1.1, perHungerPoint: 3.0, perEndurance: 0.12, outerFrom: 9, outer: 0.7, archetype: 0.9, career: -1.2 },
+    professional: { perBestProficiency: 0.35, perIntelligence: 0.1, archetype: 1.0, scorePivot: 8, scored: 0.8 },
+    homesick: { agePivot: 16, perYearUnderPivot: 0.25, motive: 0.9, token: 0.5, career: -1.0, archetype: 0.6 },
+    volunteer: { volunteered: 1.8, notCareer: 1.0, archetype: 0.7 },
+    provocateur: { perCharisma: 0.14, perTreachery: 2.0, perIntimidation: 0.3, archetype: 1.0, lowReputation: 35, lowReputationBonus: 0.8 },
     /** Floor so no angle is ever strictly impossible for anyone. */
     minWeight: 0.15,
 
