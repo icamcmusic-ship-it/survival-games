@@ -377,16 +377,16 @@ export function applyDamage(
  * clamp there exists to stop the arena wiping the field out, and a tribute
  * choosing to stop is not the arena.
  */
-export function selfInflictedDeath(ctx: SimContext, t: Tribute, cause: string) {
+export function selfInflictedDeath(ctx: SimContext, t: Tribute, cause: string, silent = false) {
     if (t.status !== 'alive') return;
     t.lastDamage = { cause, kind: 'status', cycle: cycleOf(ctx.state), amount: t.health };
     t.health = 0;
     clampTribute(t);
-    checkDeath(ctx, t, cause);
+    checkDeath(ctx, t, cause, silent);
 }
 
 /** Kills the tribute if the last wound finished them, attributing it correctly. */
-export function checkDeath(ctx: SimContext, t: Tribute, fallbackCause?: string) {
+export function checkDeath(ctx: SimContext, t: Tribute, fallbackCause?: string, silent = false) {
     if (t.health > 0 || t.status !== 'alive') return;
     // §9.1: a tribute in the rescue window is at zero health on purpose.
     // `tickDowned` owns their ending; nothing else may fire the cannon.
@@ -414,9 +414,9 @@ export function checkDeath(ctx: SimContext, t: Tribute, fallbackCause?: string) 
         ctx.state.environmentalDeaths = (ctx.state.environmentalDeaths ?? 0) + 1;
     }
     if (killer) {
-        killTribute(ctx, t, killer, { cause: record?.cause });
+        killTribute(ctx, t, killer, { cause: record?.cause, silent });
     } else {
-        killTribute(ctx, t, undefined, { cause: record?.cause || fallbackCause });
+        killTribute(ctx, t, undefined, { cause: record?.cause || fallbackCause, silent });
     }
 }
 
@@ -1429,8 +1429,17 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
     });
 }
 
-export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, opts: { weapon?: Item; cause?: string } = {}) {
-    const { weapon, cause } = opts;
+/**
+ * §(requests 1): `silent` exists because some callers have already narrated
+ * the death in their own words.
+ *
+ * `downed.ts` writes the line about dying in a rescuer's hands and `resolve.ts`
+ * writes the nightlock and border-walk lines, and then both called into here,
+ * which announced the same death a second time out of the generic pool. Two
+ * red lines, one cannon. The caller that has the better sentence keeps it.
+ */
+export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, opts: { weapon?: Item; cause?: string; silent?: boolean } = {}) {
+    const { weapon, cause, silent } = opts;
     if (victim.status === 'dead') return;
     victim.status = 'dead';
     // Carry capacity can shrink under a tribute — losing the Backpack is the
@@ -1568,10 +1577,12 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
                 mem.vengeance = mem.vengeance.filter(id => id !== victim.id);
                 killer.vitals.sanity = Math.min(100, killer.vitals.sanity + COMBAT.vengeanceSanityRelief);
                 addExcitement(killer, COMBAT.vengeanceExcitement);
+                // §(requests 1): the discharge is about the killer's head, not
+                // a second announcement of the death. Off the red channel.
                 ctx.logEvent(
                     `${killer.name} settles the debt. ${victim.name} is dead, and whatever was driving ${killer.name} goes quiet.`,
                     [killer.id, victim.id],
-                    { important: true, category: 'kill' }
+                    { important: true, category: 'sanity' }
                 );
             }
 
@@ -1594,19 +1605,22 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
                 const dropped = giveItem(killer, ...spoils);
                 const taken = spoils.filter(i => !dropped.includes(i));
                 const lootNames = taken.map(i => i.name).join(', ');
+                // A caller that narrated the death still reports the looting —
+                // it is a different fact — but without repeating the killing.
+                const opener = silent ? `${killer.name} goes through what ${victim.name} was carrying.` : text;
                 if (dropped.length > 0) {
                     ctx.logEvent(
-                        `${text} ${killer.name} takes what they can carry — ${lootNames || 'nothing they can use'} — and leaves ${dropped.map(i => i.name).join(', ')} in the dirt.`,
+                        `${opener} ${killer.name} takes what they can carry — ${lootNames || 'nothing they can use'} — and leaves ${dropped.map(i => i.name).join(', ')} in the dirt.`,
                         [killer.id, victim.id],
-                        { important: true, category: 'kill' }
+                        { important: !silent, category: silent ? 'loot' : 'kill' }
                     );
                 } else {
-                    ctx.logEvent(`${text} ${killer.name} strips the body: ${lootNames}.`, [killer.id, victim.id], { important: true, category: 'kill' });
+                    ctx.logEvent(`${opener} ${killer.name} strips the body: ${lootNames}.`, [killer.id, victim.id], { important: !silent, category: silent ? 'loot' : 'kill' });
                 }
-            } else {
+            } else if (!silent) {
                 ctx.logEvent(text, [killer.id, victim.id], { important: true, category: 'kill' });
             }
-        } else {
+        } else if (!silent) {
             ctx.logEvent(text, [killer.id, victim.id], { important: true, category: 'kill' });
         }
     } else {
@@ -1621,7 +1635,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             .split('{cause}').join(victim.causeOfDeath)
             .split('{age}').join(String(victim.age))
             .split('{witness}').join(witness?.name ?? 'someone nearby');
-        ctx.logEvent(text, witness ? [victim.id, witness.id] : [victim.id], { important: true, category: 'death' });
+        if (!silent) ctx.logEvent(text, witness ? [victim.id, witness.id] : [victim.id], { important: true, category: 'death' });
     }
 
     // §6.9: the district token goes home with the body. The cameras do not
@@ -1629,11 +1643,14 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     // is deterministic from the death itself rather than an rng draw — a
     // per-kill draw here would shift every roll downstream of every kill,
     // which perturbs the whole run for the sake of one flavour line.
+    // §(requests 1): the hovercraft shot is a broadcast beat about a token
+    // going home, not the announcement of a death. It was the second red line
+    // on every death that happened to have one.
     if (victim.token && (victim.district + ctx.state.day + victim.age) % 4 === 0) {
         ctx.logEvent(
             `The hovercraft lifts ${victim.name} with their district token still on them — ${victim.token}. District ${victim.district} sent it out with them, and District ${victim.district} gets it back.`,
             [victim.id],
-            { category: 'death' }
+            { category: 'system' }
         );
     }
 

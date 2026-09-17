@@ -7,8 +7,9 @@ import { ArenaMap } from '../components/ArenaMap';
 import { ZoneDossier } from '../components/ZoneDossier';
 import { TributeModal } from '../components/TributeModal';
 import { TributeCompare } from '../components/TributeCompare';
-import { CoachMarks } from '../components/CoachMark';
-import { EventFeed, FeedLine, VISIBLE_CAP, passesDensity, tierOf } from '../components/EventFeed';
+import { RosterPanel } from './RosterScreen';
+import { RelationshipMatrix } from '../components/RelationshipMatrix';
+import { FeedLine, VISIBLE_CAP, passesDensity, tierOf } from '../components/EventFeed';
 import { ChronicleFilters } from '../components/ChronicleFilters';
 import { BroadcastBar } from '../components/BroadcastBar';
 import { DossierPanel } from '../components/DossierPanel';
@@ -80,7 +81,9 @@ function pacedDelay(
     return Math.round(base * multiplier * perPhase);
 }
 
-type StageTab = 'chronicle' | 'map' | 'standings';
+
+// §(requests 5/6): the chronicle is its own page now; the roster is a tab here.
+type StageTab = 'roster' | 'map' | 'standings';
 type MobilePane = StageTab | 'tributes';
 
 /**
@@ -141,6 +144,9 @@ export function GameScreen({
         onPaletteHandled?.();
     }, [paletteTributeId, onPaletteHandled]);
     const coins = useStore(gameStore, s => s.coins);
+    // §(requests 5): the roster tab keeps the betting parlour, so the arena
+    // needs the wager state the roster page used to be handed.
+    const bets = useStore(gameStore, s => s.bets);
     const runProgress = useStore(gameStore, s => s.runProgress);
 
     /**
@@ -164,8 +170,10 @@ export function GameScreen({
         onGamemakerEvent(type, targetId);
     };
 
-    const [stageTab, setStageTab] = useState<StageTab>('chronicle');
-    const [mobilePane, setMobilePane] = useState<MobilePane>('chronicle');
+
+    const [stageTab, setStageTab] = useState<StageTab>('standings');
+    const [mobilePane, setMobilePane] = useState<MobilePane>('standings');
+    const [rosterView, setRosterView] = useState<'list' | 'matrix'>('list');
     const [showFilters, setShowFilters] = useState(false);
     const [pauseNotice, setPauseNotice] = useState<string | null>(null);
     const [playUntil, setPlayUntil] = useState<PlayUntil>(null);
@@ -208,57 +216,19 @@ export function GameScreen({
         }
     }, [gameState.phase, gameState.day]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Chronicle scroll tracking (UX-04): auto-follow the bottom while the
-    // reader is already there; once they have scrolled up, surface a pill.
-    const chronicleRef = useRef<HTMLDivElement>(null);
-    const currentDayInViewRef = useRef<number | null>(null);
-    /** §2.5: the last `focusLogId` this screen actually scrolled to. */
-    const scrolledToRef = useRef<string | null>(null);
-    const [scrolledAway, setScrolledAway] = useState(false);
-    const prevLogCountRef = useRef(gameState.log.length);
-
-    const nearBottom = (el: HTMLElement) => el.scrollHeight - el.scrollTop - el.clientHeight <= 24;
-    useEffect(() => {
-        const el = chronicleRef.current;
-        if (!el) return;
-        const grew = gameState.log.length > prevLogCountRef.current;
-        prevLogCountRef.current = gameState.log.length;
-        if (grew && nearBottom(el)) el.scrollTop = el.scrollHeight;
-        else if (grew) setScrolledAway(true);
-    }, [gameState.log.length]);
-
     /**
-     * §2.5: scroll the chronicle to whatever asked to be looked at.
-     *
-     * One effect serves both the D / Shift+D death jump and the command
-     * palette's "jump to the next death", so the two cannot drift. The
-     * position stays in the store afterwards: it is the bookmark "next" is
-     * measured from.
+     * §(requests 6): the arena no longer carries the feed, so "look at this
+     * line" is a navigation to the chronicle page rather than a scroll inside
+     * this one. The store keeps `focusLogId`; the chronicle deep-links from it.
      */
+    const scrolledToRef = useRef<string | null>(null);
     useEffect(() => {
         const id = filters.focusLogId;
         if (!id || scrolledToRef.current === id) return;
         scrolledToRef.current = id;
-        const target = gameState.log.find(l => l.id === id);
-        setStageTab('chronicle');
-        setMobilePane('chronicle');
-        if (target) currentDayInViewRef.current = target.day;
-        setScrolledAway(true);
-        requestAnimationFrame(() => {
-            const el = chronicleRef.current?.querySelector(`[data-log-id="${id}"]`)
-                // A filter or a reading density can hide the line itself; its
-                // day heading is still a useful landing place.
-                ?? (target ? chronicleRef.current?.querySelector(`[data-day="${target.day}"]`) : null);
-            el?.scrollIntoView({ block: 'center' });
-        });
+        gameActions.setView('chronicle');
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters.focusLogId]);
-
-    const jumpToLatest = () => {
-        const el = chronicleRef.current;
-        if (el) el.scrollTop = el.scrollHeight;
-        setScrolledAway(false);
-    };
 
     const aliveCount = gameState.tributes.filter(t => t.status === 'alive').length;
     const deadCount = gameState.tributes.length - aliveCount;
@@ -276,8 +246,8 @@ export function GameScreen({
     // must not be left looking at a pane that is no longer rendered.
     useEffect(() => {
         if (inArena) return;
-        setStageTab(t => (t === 'map' ? 'chronicle' : t));
-        setMobilePane(p => (p === 'map' ? 'chronicle' : p));
+        setStageTab(t => (t === 'map' ? 'standings' : t));
+        setMobilePane(p => (p === 'map' ? 'standings' : p));
     }, [inArena]);
 
     const compareTribute = compareTributeId
@@ -398,18 +368,15 @@ export function GameScreen({
                 return next < 0 || next >= list.length ? null : list[next];
             };
             const days = [...new Set(gameState.log.map(l => l.day))].sort((a, b) => a - b);
+            // §(requests 6): paging by day is the chronicle's job now. The
+            // key filters the record to that day and opens the page on it.
             const jumpDay = (step: number) => {
                 if (days.length === 0) return;
-                setStageTab('chronicle');
-                setMobilePane('chronicle');
-                const currentDay = currentDayInViewRef.current ?? days[days.length - 1];
+                const currentDay = filters.filterDay ?? days[days.length - 1];
                 const at = days.indexOf(currentDay);
                 const target = days[Math.min(days.length - 1, Math.max(0, (at === -1 ? days.length - 1 : at) + step))];
-                currentDayInViewRef.current = target;
-                requestAnimationFrame(() => {
-                    const el = chronicleRef.current?.querySelector(`[data-day="${target}"]`);
-                    el?.scrollIntoView({ block: 'start' });
-                });
+                setChronicle({ filterDay: target });
+                gameActions.setView('chronicle');
                 announceShortcut(target === 0 ? 'Jumped to before the Games' : `Jumped to day ${target}`);
             };
 
@@ -469,14 +436,14 @@ export function GameScreen({
                     announceShortcut('The arena is not open until the Games begin');
                 } else {
                     setStageTab(t => {
-                        const next = t === 'map' ? 'chronicle' : 'map';
+                        const next = t === 'map' ? 'standings' : 'map';
                         setMobilePane(next);
                         return next;
                     });
                 }
             } else if (lower === 'c') {
-                setStageTab('chronicle');
-                setMobilePane('chronicle');
+                // §(requests 6): the chronicle is a page, so C navigates to it.
+                gameActions.setView('chronicle');
                 announceShortcut('Chronicle');
             } else if (lower === 's') {
                 setStageTab('standings');
@@ -773,9 +740,9 @@ export function GameScreen({
                                     which is not a spoiler so much as a lie.
                                     The tab comes back at the gong. */}
                                 {([
-                                    ['chronicle', 'Chronicle'],
-                                    ...(inArena ? [['map', 'Map'] as const] : []),
                                     ['standings', 'Standings'],
+                                    ...(inArena ? [['map', 'Map'] as const] : []),
+                                    ['roster', 'Roster'],
                                 ] as const).map(([id, label]) => (
                                     <button
                                         key={id}
@@ -789,34 +756,14 @@ export function GameScreen({
                             </div>
 
                             <div className="flex items-center gap-2 flex-wrap">
-                                {/* A6: density is the highest-value reading control
-                                    and it was two clicks deep in a filter drawer. */}
-                                {stageTab === 'chronicle' && (
-                                    <div className="seg" role="group" aria-label="Reading density">
-                                        {([
-                                            ['headlines', 'Headlines', 'Deaths, kills, betrayals and the Gamemakers — the skeleton of the Games'],
-                                            ['scenes', 'Scenes', 'Headlines plus combat, mutts, hazards and sponsors'],
-                                            ['everything', 'Everything', 'Every logged line, with the quiet moments folded per phase'],
-                                        ] as const).map(([id, label, tip]) => (
-                                            <Hint key={id} text={tip}>
-                                                <button
-                                                    onClick={() => setChronicle({ density: id })}
-                                                    aria-pressed={filters.density === id}
-                                                    className="seg-item"
-                                                >
-                                                    {label}
-                                                </button>
-                                            </Hint>
-                                        ))}
-                                    </div>
-                                )}
-                                <Hint text="Open the chronicle as a full page, one phase at a time">
+                                {/* §(requests 6): the record lives on its own page. */}
+                                <Hint text="Read the chronicle, one phase at a time (C)">
                                     <a
                                         href={`#${pathForView('chronicle')}`}
                                         onClick={() => gameActions.setView('chronicle')}
                                         className="seg-item no-underline"
                                     >
-                                        Full page ↗
+                                        Chronicle ↗
                                     </a>
                                 </Hint>
                                 <Hint text="Toggle filters (F)">
@@ -842,32 +789,16 @@ export function GameScreen({
                             </div>
                         </div>
 
-                        {/* §2.7: the density tiers are invisible until somebody
-                            finds the control, so say it once. */}
-                        {!filters.densityHintSeen && stageTab === 'chronicle' && (
-                            <div className="panel-flush p-3 text-[11px] text-[var(--color-ink-300)] flex items-start gap-3">
-                                <span className="flex-1">
-                                    A run produces around six hundred lines. <strong>Scenes</strong> shows the action,
-                                    <strong> Headlines</strong> shows only the deaths and the turns, and <strong>Everything</strong>{' '}
-                                    keeps the quiet moments too. You can change it any time — the control is right there.
-                                </span>
-                                <button className="btn btn-sm btn-ghost flex-none" onClick={() => setChronicle({ densityHintSeen: true })}>
-                                    Got it
-                                </button>
-                            </div>
-                        )}
-
                         {followed && (
                             <span className="chip chip-accent inline-flex items-center gap-1">
                                 <Star className="w-3 h-3" aria-hidden="true" />
                                 Following {followed.name}{followed.status === 'dead' ? ' †' : ''}
-                                <Hint text="Filter the chronicle to their story">
+                                <Hint text="Open the chronicle filtered to their story">
                                 <button
                                     className="underline ml-1"
                                     onClick={() => {
                                         setChronicle({ filterTributeId: filters.followedId, filterTributeId2: null });
-                                        setStageTab('chronicle');
-                                        setMobilePane('chronicle');
+                                        gameActions.setView('chronicle');
                                     }}
                                 >
                                     story
@@ -975,55 +906,30 @@ export function GameScreen({
                             </div>
                         </div>
                     ) : (
-                        <div className="panel p-4 relative">
-                            {filters.selectedZone && (
-                                <div className="flex justify-between items-center panel-flush px-3 py-2 text-xs text-[var(--red)] mb-3">
-                                    <span>Filtered to sector <strong>{filters.selectedZone}</strong></span>
-                                    <button onClick={() => setChronicle({ selectedZone: null })} className="btn btn-sm btn-ghost">Clear</button>
-                                </div>
-                            )}
-                            {scrolledAway && (
-                                <button
-                                    onClick={jumpToLatest}
-                                    className="chip chip-accent absolute top-3 right-5 z-10 shadow-[var(--shadow-ink-sm)]"
-                                >
-                                    ↓ Jump to newest
-                                </button>
-                            )}
-                            {/* §2.9: one line, once, at the moment the thing
-                                first happens — above the feed rather than
-                                inside it, so it does not become a log entry
-                                the reader has to scroll past forever. */}
-                            <CoachMarks gameState={gameState} />
-                            <div
-                                ref={chronicleRef}
-                                onScroll={(e) => setScrolledAway(!nearBottom(e.currentTarget))}
-                                className={`max-h-[70vh] overflow-y-auto pr-1 custom-scrollbar ${
-                                    filters.textScale === 'small' ? 'chronicle-text-sm' : filters.textScale === 'large' ? 'chronicle-text-lg' : ''
-                                }`}
-                            >
-                                {readableCount > 0 ? (
-                                    <EventFeed
-                                        logs={filteredLogs}
-                                        cast={gameState.tributes}
-                                        onSelectTribute={setSelectedTributeId}
-                                        density={filters.density}
-                                        hideZones={arenaSealed}
-                                        gameState={gameState}
-                                    />
-                                ) : (
-                                    <div className="empty-state">
-                                        {gameState.log.length === 0
-                                            ? 'Nothing has happened yet. Hit Proceed to begin.'
-                                            : filteredLogs.length > 0
-                                                // The category filters let these through and the
-                                                // reading density then hid every one of them, which
-                                                // used to render as a silently blank feed.
-                                                ? `${filteredLogs.length} events match your filters, but none of them are loud enough for the “${filters.density}” reading density.`
-                                                : 'Every logged event is hidden by your current filters.'}
-                                    </div>
-                                )}
+                        <div className="panel p-4">
+                            {/* §(requests 5): the roster used to be a page of its
+                                own, which meant leaving the arena to look at the
+                                cast and navigating back. It is a tab. */}
+                            <div className="seg mb-3" role="group" aria-label="Roster view">
+                                {([['list', 'Tributes'], ['matrix', 'Relationship board']] as const).map(([id, label]) => (
+                                    <button key={id} onClick={() => setRosterView(id)} aria-pressed={rosterView === id} className="seg-item">
+                                        {label}
+                                    </button>
+                                ))}
                             </div>
+                            {rosterView === 'matrix' ? (
+                                /* §(requests 12): the whole board, every ordered pair. */
+                                <RelationshipMatrix gameState={gameState} onSelectTribute={setSelectedTributeId} />
+                            ) : (
+                                <RosterPanel
+                                    tributes={gameState.tributes}
+                                    phase={gameState.phase}
+                                    coins={coins}
+                                    bets={bets}
+                                    setBets={gameActions.setBets}
+                                    setCoins={gameActions.setCoins}
+                                />
+                            )}
                         </div>
                     )}
                 </div>
@@ -1047,10 +953,10 @@ export function GameScreen({
                 controls and a tab bar all at once. */}
             <nav aria-label="Arena panes" className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[var(--ink)] border-t-[3px] border-[var(--red)] flex items-stretch">
                 {([
-                    { id: 'chronicle', label: 'Chronicle' },
+                    { id: 'standings', label: 'Table' },
                     // §17: the map pane follows the same rule as the tab above it.
                     ...(inArena ? [{ id: 'map' as const, label: 'Map' }] : []),
-                    { id: 'standings', label: 'Table' },
+                    { id: 'roster', label: 'Roster' },
                     { id: 'tributes', label: `Cast ${aliveCount}` },
                 ] as const).map(tab => (
                     <button
@@ -1112,8 +1018,7 @@ export function GameScreen({
                             filterDay: null,
                             searchText: '',
                         });
-                        setStageTab('chronicle');
-                        setMobilePane('chronicle');
+                        gameActions.setView('chronicle');
                         setSelectedTributeId(null);
                     }}
                 />

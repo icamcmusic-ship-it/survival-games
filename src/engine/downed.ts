@@ -99,7 +99,7 @@ export function goDown(ctx: SimContext, t: Tribute, cause: string, byId?: string
  * two regression indicators at once. Elaborate after the prefix, never
  * before it.
  */
-function finish(ctx: SimContext, t: Tribute, cause: string, killer?: Tribute) {
+function finish(ctx: SimContext, t: Tribute, cause: string, killer?: Tribute, silent = false) {
     delete t.downed;
     t.lastDamage = {
         cause,
@@ -108,16 +108,16 @@ function finish(ctx: SimContext, t: Tribute, cause: string, killer?: Tribute) {
         cycle: cycleOf(ctx.state),
         amount: t.lastDamage?.amount ?? 0,
     };
-    killTribute(ctx, t, killer, { cause });
+    killTribute(ctx, t, killer, { cause, silent });
 }
 
 /**
  * The tribute bleeds out where they lie. Whoever struck the blow gets the
  * kill, days later — which is why the cause has to say so.
  */
-function bleedOut(ctx: SimContext, t: Tribute, describe: (killerName: string) => string, fallback: string) {
+function bleedOut(ctx: SimContext, t: Tribute, describe: (killerName: string) => string, fallback: string, silent = false) {
     const by = t.downed?.byId ? ctx.state.tributes.find(o => o.id === t.downed!.byId) : undefined;
-    finish(ctx, t, by ? describe(by.name) : fallback, by);
+    finish(ctx, t, by ? describe(by.name) : fallback, by, silent);
 }
 
 /**
@@ -145,7 +145,7 @@ export function tickDowned(ctx: SimContext) {
                 [t.id],
                 { important: true, category: 'death' }
             );
-            bleedOut(ctx, t, name => `Killed by ${name}, who left them for dead`, t.downed!.cause);
+            bleedOut(ctx, t, name => `Killed by ${name}, who left them for dead`, t.downed!.cause, true);
             return;
         }
 
@@ -253,6 +253,7 @@ export function tickDowned(ctx: SimContext) {
                 ctx, t,
                 name => `Killed by ${name} — bled out in ${failedRescuer.name}'s hands`,
                 'Bled out during a rescue attempt',
+                true,
             );
             return;
         }
@@ -279,6 +280,8 @@ export function tickDowned(ctx: SimContext) {
             const hops = hopsTo(ctx.state.arena, o.zone, t.zone, collapsed, severed);
             return hops !== undefined && hops <= 1;
         });
+        // Only the branch that wrote its own sentence suppresses the generic one.
+        const narrated = !!nearAlly;
         if (nearAlly) {
             ctx.state.diedWithinReach = (ctx.state.diedWithinReach ?? 0) + 1;
             ctx.logEvent(
@@ -291,6 +294,6 @@ export function tickDowned(ctx: SimContext) {
                 { important: true, category: 'death' }
             );
         }
-        bleedOut(ctx, t, name => `Killed by ${name} — bled out where they fell`, marker.cause);
+        bleedOut(ctx, t, name => `Killed by ${name} — bled out where they fell`, marker.cause, narrated);
     });
 }

@@ -185,7 +185,7 @@ export function resolveBreakdowns(ctx: SimContext) {
                 [t.id],
                 { important: true, category: 'death' }
             );
-            selfInflictedDeath(ctx, t, 'Took the nightlock rather than keep playing');
+            selfInflictedDeath(ctx, t, 'Took the nightlock rather than keep playing', true);
             return;
         }
 
@@ -202,7 +202,7 @@ export function resolveBreakdowns(ctx: SimContext) {
                 [t.id],
                 { important: true, category: 'death' }
             );
-            selfInflictedDeath(ctx, t, 'Walked into the arena border rather than keep playing');
+            selfInflictedDeath(ctx, t, 'Walked into the arena border rather than keep playing', true);
             return;
         }
 

@@ -14,7 +14,7 @@ import { Stat } from '../components/Stat';
 import { tributeOdds } from '../engine/odds';
 import { Bet, gameActions, gameStore } from '../store/gameStore';
 import { SideQuote } from '../engine/sideMarkets';
-import { Swords, Zap, Brain, Eye, User, FastForward, Search, Heart, Flame } from 'lucide-react';
+import { Swords, Zap, Brain, Eye, User, Search, Heart, Flame } from 'lucide-react';
 
 type SortKey = 'district' | 'odds' | 'training' | 'name' | 'age' | 'archetype';
 
@@ -36,10 +36,18 @@ const FILTERS: Array<{ id: RosterFilter; label: string; test: (t: Tribute) => bo
     { id: 'career', label: 'Careers', test: t => t.isCareer },
 ];
 
-export function RosterScreen({
+/**
+ * §(requests 5): the roster is a panel inside the arena, not a page.
+ *
+ * It used to be its own route, which meant that once the Games had started the
+ * player had to leave the arena to look at the cast and then navigate back.
+ * Everything below is unchanged except that the masthead and the "proceed"
+ * button are gone — the arena owns the phase clock now — and the component is
+ * embedded as the arena's Roster tab.
+ */
+export function RosterPanel({
     tributes,
     phase,
-    onProceed,
     coins,
     bets,
     setBets,
@@ -47,13 +55,15 @@ export function RosterScreen({
 }: {
     tributes: Tribute[],
     phase: Phase,
-    onProceed: () => void,
     coins: number,
     bets: Record<string, Bet>,
     setBets: (bets: Record<string, Bet> | ((prev: Record<string, Bet>) => Record<string, Bet>)) => void,
     setCoins: (coins: number | ((prev: number) => number)) => void
 }) {
-    const bettingOpen = phase === 'setup';
+    // §(requests 5/7): betting used to be gated on the one phase the roster
+    // page was reachable in. The page is gone; the parlour is open for as long
+    // as the Games have not started, which is what it always meant.
+    const bettingOpen = !['bloodbath', 'day', 'night', 'feast', 'epilogue', 'ended'].includes(phase);
     const sideBets = useStore(gameStore, s => s.sideBets);
     // §6.1: the live proposition board. Eleven markets exist in the engine;
     // the roster hardcoded three at a fixed stake with no price shown.
@@ -64,7 +74,6 @@ export function RosterScreen({
     // UX-16: the audience learns things when the Capitol broadcasts them, not
     // all at once the moment the reaping ends.
     const disclosure = disclosureFor(phase);
-    const buttonText = bettingOpen ? 'Begin training' : 'Return to arena';
 
     const units = useStore(prefsStore, p => p.units);
     const [query, setQuery] = useState('');
@@ -144,22 +153,14 @@ export function RosterScreen({
     };
 
     return (
-        <div className="space-y-6">
-            <div className="masthead dot-texture">
-                <span className="masthead-ghost" aria-hidden="true">03</span>
-                <span className="masthead-eyebrow">03 — Review The Roster</span>
-                <div className="flex flex-wrap justify-between items-end gap-4">
-                    <div>
-                        <h2 className="masthead-title text-4xl md:text-5xl">The Tributes</h2>
-                        <p className="text-[var(--gold-line)] font-semibold text-sm mt-2">
-                            {tributes.length} reaped · {tributes.filter(t => t.isCareer).length} careers
-                            {!bettingOpen && ' · betting is closed once the Games begin'}
-                        </p>
-                    </div>
-                    <button onClick={onProceed} className="btn btn-primary flex-none">
-                        {buttonText} <FastForward className="w-4 h-4" />
-                    </button>
-                </div>
+        <div className="space-y-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <h3 className="panel-title">The Tributes</h3>
+                <p className="text-[var(--color-ink-500)] text-xs">
+                    {tributes.filter(t => t.status === 'alive').length} standing of {tributes.length} reaped
+                    · {tributes.filter(t => t.isCareer).length} careers
+                    {!bettingOpen && ' · betting closed'}
+                </p>
             </div>
 
             {bettingOpen && (

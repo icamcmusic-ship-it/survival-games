@@ -17,11 +17,16 @@ import { ViewName, gameStore } from './gameStore';
 /** The one place a screen's name and its URL are tied together. */
 const ROUTES: Array<{ view: ViewName; path: string }> = [
     { view: 'setup', path: '/' },
+    // §(requests 5): the roster is a tab inside the arena now. The path is kept
+    // so an old bookmark resolves instead of 404ing; it lands on the reaping
+    // while one is open, and on the arena once the Games are running.
     { view: 'roster', path: '/roster' },
     { view: 'game', path: '/arena' },
     // A3: the chronicle as a page of its own, not a scrollbox inside the arena.
     { view: 'chronicle', path: '/chronicle' },
     { view: 'hallOfFame', path: '/hall-of-fame' },
+    // §(requests 4): always reachable, run or no run.
+    { view: 'howToPlay', path: '/how-to-play' },
 ];
 
 /**
@@ -33,18 +38,23 @@ const ROUTES: Array<{ view: ViewName; path: string }> = [
  */
 function routeIsAvailable(view: ViewName): boolean {
     const { gameState } = gameStore.getState();
-    if (view === 'roster') return !!gameState;
-    // The chronicle mirrors the arena: both need a run that has left the
-    // reaping, because before that there is nothing to page through.
-    if (view === 'game' || view === 'chronicle') {
-        return !!gameState && gameState.phase !== 'setup' && gameState.phase !== 'reaping';
-    }
+    // §(requests 5): only the reaping still renders here. Everything the old
+    // roster page did lives in the arena's Roster tab.
+    if (view === 'roster') return !!gameState && gameState.phase === 'reaping';
+    if (view === 'game') return !!gameState && gameState.phase !== 'reaping';
+    // §(requests 7): confirming the reaping lands on the chronicle, which at
+    // that point has no pages yet and offers the button that starts the run.
+    if (view === 'chronicle') return !!gameState && gameState.phase !== 'reaping';
     return true;
 }
 
 /** Where a route falls back to when it can't render. */
 export function fallbackFor(view: ViewName): ViewName {
-    if ((view === 'game' || view === 'chronicle') && gameStore.getState().gameState) return 'roster';
+    const { gameState } = gameStore.getState();
+    if (!gameState) return 'setup';
+    // A run still on the plates goes to the reaping; anything else to the arena.
+    if (gameState.phase === 'reaping') return 'roster';
+    if (view === 'roster') return 'game';
     return 'setup';
 }
 
