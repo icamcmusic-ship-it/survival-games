@@ -72,6 +72,50 @@ for (const a of all) {
     }
 }
 
+/**
+ * Audit 4 §8.6: hard-coded `traits.includes('X')` sites, ratcheted.
+ *
+ * `data/traits.ts` opens by documenting the failure it exists to remove: "the
+ * old table was fifteen strings and a documentation file, consumed by a dozen
+ * scattered `traits.includes('...')` checks... the fix is not to add more
+ * if-statements". A grep found 56 of them still in the engine three audits
+ * later, because nothing counted.
+ *
+ * They are not all wrong. A trait with genuinely bespoke behaviour — Pacifist
+ * refusing a fight, Merciful sparing somebody downed — has to be read by name
+ * somewhere, and turning each into a `TraitMod` hook is real design work per
+ * trait rather than a rename. What is wrong is the number drifting upward
+ * unobserved, and what was *clearly* wrong was `Star-Crossed` at twelve sites:
+ * a state flag stored in the trait array, with no `mods` row because there is
+ * nothing for one to say, read by name in twelve places. It has a predicate
+ * now (`isStarCrossed`), which is what any of these should get once they earn
+ * a second read site.
+ *
+ * The ceiling is a ratchet. Lower it when a conversion lands; never raise it.
+ */
+{
+    const TRAIT_LITERAL_CEILING = 44;
+    const files = walk('src');
+    const counts = new Map<string, number>();
+    let total = 0;
+    files.forEach(file => {
+        if (file.endsWith('data/traits.ts')) return;
+        const src = readFileSync(file, 'utf8');
+        for (const m of src.matchAll(/traits\.includes\('([A-Z][A-Za-z' -]*)'\)/g)) {
+            counts.set(m[1], (counts.get(m[1]) ?? 0) + 1);
+            total += 1;
+        }
+    });
+    const heaviest = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+    console.log(`\nhard-coded traits.includes() sites: ${total} (ceiling ${TRAIT_LITERAL_CEILING})`
+        + `; heaviest ${heaviest.map(([name, n]) => `${name} ${n}`).join(', ')}`);
+    if (total > TRAIT_LITERAL_CEILING) {
+        problems.push(
+            `${total} hard-coded \`traits.includes('X')\` sites, over the ceiling of ${TRAIT_LITERAL_CEILING}. `
+            + 'Give the trait a `mods` row, or a named predicate where it is a state flag rather than a disposition.');
+    }
+}
+
 console.log(`predicate check: ${optionalBooleans.size} optional booleans on Tribute/GameState, `
     + `${all.length} achievements read`);
 if (problems.length > 0) {
@@ -80,3 +124,4 @@ if (problems.length > 0) {
     process.exit(1);
 }
 console.log('No achievement compares an optional boolean against a value it never takes.');
+

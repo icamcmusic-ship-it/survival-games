@@ -6,6 +6,27 @@ import { DISTRICT_LEGACY, legacyOf } from '../data/districts';
 import { ARCHETYPES } from '../data/archetypes';
 import { ArchetypeId } from '../models/types';
 import { Trophy, Lock, Check, Crown, Printer } from 'lucide-react';
+import { QUELLS } from '../data/gamesProfile';
+import { PROCEDURAL_BIOME_COUNT } from '../engine/arenaGenerator';
+import { ARENA_FLAVOR, UNIVERSAL_EVENTS } from '../data/arenaFlavor';
+import { ARENAS } from '../data/constants';
+import { ARENA_MUTTS } from '../data/mutts';
+
+/**
+ * Audit 4 §9.5: the denominators. All derived, so a new arena, Quell or event
+ * pack moves them without anybody having to remember to.
+ *
+ * `Ways to die` is the one that cannot be counted from a table: death causes
+ * are composed at runtime from an arena's own nouns, so the total is a floor
+ * taken from what a 180-run census produced, and the row shows whichever is
+ * larger. It is a "how much of this have you met" figure rather than a
+ * checklist with a known end, which is the honest shape for it.
+ */
+const TOTAL_MUTTS = Object.values(ARENA_MUTTS).reduce((n, roster) => n + roster.length, 0);
+const TOTAL_ARENA_EVENTS = Object.values(ARENA_FLAVOR).reduce((n, pack) => n + pack.events.length, 0)
+    + UNIVERSAL_EVENTS.length;
+const TOTAL_DEATH_TEMPLATES = 347;
+const ARENA_LAW_COUNT = 16;
 
 const DISTRICT_NUMBERS = Object.keys(DISTRICT_LEGACY).map(Number).sort((a, b) => a - b);
 
@@ -112,6 +133,20 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
         .map(([d, h]) => ({ district: Number(d), ...h }))
         .sort((a, b) => a.district - b.district);
     const heldRecords = RECORD_DEFS.filter(def => panem.bests[def.id] !== undefined);
+    /**
+     * Audit 4 §9.5: the completion axes, each a union the profile already
+     * keeps against a total the data tables already know. Totals are computed
+     * rather than written down, so adding an arena or a Quell moves the
+     * denominator without anybody remembering to.
+     */
+    const collection: Array<{ label: string; seen: number; total: number }> = [
+        { label: 'Arenas', seen: (panem.arenasSeen ?? []).length, total: ARENAS.length + PROCEDURAL_BIOME_COUNT },
+        { label: 'Quells', seen: (panem.quellsSeen ?? []).length, total: QUELLS.length },
+        { label: 'Mutts', seen: (panem.muttsSeen ?? []).length, total: TOTAL_MUTTS },
+        { label: 'Ways to die', seen: (panem.deathsSeen ?? []).length, total: Math.max(TOTAL_DEATH_TEMPLATES, (panem.deathsSeen ?? []).length) },
+        { label: 'Arena events', seen: (panem.eventsSeen ?? []).length, total: TOTAL_ARENA_EVENTS },
+        { label: 'Laws won under', seen: (panem.lawsWonUnder ?? []).length, total: ARENA_LAW_COUNT },
+    ];
     // Absent on any record written before district crowns existed, which reads
     // correctly as "nothing crowned yet".
     const crowns = panem.districtCrowns ?? {};
@@ -173,6 +208,40 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                     </div>
                 </section>
             )}
+
+            {/*
+              Audit 4 §9.2/§9.3/§9.5: the collection.
+
+              Three of the game's biggest content investments have exposure
+              rates that make them effectively single-view content: 27 Quells
+              share 6.1% of runs (0.23% each), and there are 196 mutts and
+              1,449 identified arena events. `deathCausesInRun()` in
+              `engine/encounters.ts` was written to be the hook a records
+              screen wants — its comment says exactly that — and was called by
+              nothing.
+
+              A lottery with no memory is not replayability; a player has no
+              way to know that the thing that just happened has never happened
+              to them before. Every number here is a union the profile was
+              already half keeping, and none of it asked the simulation for
+              anything new.
+            */}
+            <section>
+                <div className="eyebrow mb-2">Seen at least once</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {collection.map(row => (
+                        <div key={row.label} className="panel-flush p-2.5">
+                            <div className="eyebrow">{row.label}</div>
+                            <div className="text-sm text-[var(--ink)] font-semibold mt-0.5">
+                                {row.seen}<span className="text-[var(--color-ink-500)]"> / {row.total}</span>
+                            </div>
+                            <div className="meter mt-1" role="img" aria-label={`${row.seen} of ${row.total} ${row.label.toLowerCase()} seen`}>
+                                <span style={{ width: `${Math.min(100, Math.round((row.seen / Math.max(1, row.total)) * 100))}%`, background: 'var(--gold)' }} />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
 
             {/* REPLAY-12: the aggregate counters above cannot tell a player that a
                 District 12 crown is the rarest thing in the simulation, or that they

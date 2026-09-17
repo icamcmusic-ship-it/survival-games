@@ -15,6 +15,7 @@ import { clampTribute } from './vitals';
 import { trainProficiency } from './proficiency';
 import { earnTrait } from './earnedTraits';
 import { wildcardIs } from './gamesProfile';
+import { loseSanity } from './sanityBands';
 
 /**
  * Mutt resolution (ARENA-04): every mutt used to be a name string, a fixed
@@ -144,7 +145,7 @@ function tryFacesOfTheFallen(ctx: SimContext, t: Tribute, mutt: Mutt) {
     const fallen = ctx.rng.pick(mourned);
     const fallenTribute = ctx.state.tributes.find(o => o.id === fallen);
     const fallenName = fallenTribute?.name ?? 'someone they lost';
-    t.vitals.sanity -= MUTTS.facesOfFallenSanityLoss;
+    loseSanity(t, MUTTS.facesOfFallenSanityLoss);
     ctx.logEvent(
         `${mutt.name} turns toward ${t.name} wearing ${fallenName}'s face. ${t.name} freezes, and something in them breaks all over again.`,
         [t.id],
@@ -181,7 +182,7 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     const packSize = ctx.rng.nextInt(mutt.packSize[0], mutt.packSize[1]);
 
     // Proximity dread lands whether or not the tribute gets touched.
-    if (mutt.fearAura) t.vitals.sanity -= mutt.fearAura;
+    if (mutt.fearAura) loseSanity(t, mutt.fearAura);
 
     // Roll evasion once per mutt in the pack — more mutts, more chances to connect.
     let hits = 0;
@@ -210,7 +211,7 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
             const from = t.zone;
             const dest = ctx.rng.pick(options);
             t.zone = dest.name;
-            t.vitals.sanity -= MUTTS.herderSanityLoss;
+            loseSanity(t, MUTTS.herderSanityLoss);
             addZoneThreat(ctx.state, t, from, MEMORY.hazardThreat);
             ctx.logEvent(`${mutt.name} drives ${t.name} out of ${from} and into ${dest.name}.`, [t.id], { important: true, category: 'mutt' });
         }
@@ -228,7 +229,7 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
         applyMuttInjuries(t, mutt);
         // Whatever it carries is now in them, whether or not the bite was.
         if (!t.injuries.infected && ctx.rng.chance(MUTTS.parasiteInfectChance)) injure(t, 'infected');
-        t.vitals.sanity -= MUTTS.parasiteSanityLoss;
+        loseSanity(t, MUTTS.parasiteSanityLoss);
         addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
         ctx.logEvent(
             `${mutt.name} get into ${t.name}'s sleeves and collar in ${t.zone}, and out again, and it is a full minute before ${t.name} finds where they got in.`,

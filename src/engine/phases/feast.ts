@@ -22,6 +22,7 @@ import { QUALITY_BIAS } from '../../data/balance';
 import { hopsTo, severedEdgeSet } from '../map';
 import { pickNeededGift } from '../sponsors';
 import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
+import { loseSanity } from '../sanityBands';
 
 /**
  * The global attribute ceiling, borrowed as a normaliser: arrival order needs
@@ -245,7 +246,7 @@ function claimPacks(
         if (!victim || victim.status !== 'alive') return;
         // Finding the space where your own name should have been is worse than
         // never having been offered anything.
-        victim.vitals.sanity = Math.max(0, victim.vitals.sanity - PRE_ARENA.feastPackLostSanity);
+        loseSanity(victim, PRE_ARENA.feastPackLostSanity);
         clampTribute(victim);
         adjustRel(victim, t.id, -PRE_ARENA.feastPackLostSanity);
         addFear(victim, t.id, PRE_ARENA.feastPackLostSanity);

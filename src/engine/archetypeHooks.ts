@@ -14,6 +14,7 @@ import { healInjury, clearBleeding } from './wounds';
 import { clampTribute } from './vitals';
 import { getZone, zoneNames } from './map';
 import { ARCHETYPE_SIGNATURE_TEXTS } from '../data/flavorText';
+import { loseSanity } from './sanityBands';
 
 /**
  * A2: the behavioural half of an archetype.
@@ -167,7 +168,7 @@ const SIGNATURES: Record<string, Signature> = {
     wildcardTurn: (ctx, t) => {
         say(ctx, t, 'wildcardTurn', [t.id]);
         t.momentum = Math.min(HUNTING.momentumMax, (t.momentum ?? 0) + ARCHETYPE_HOOKS.wildcardMomentum);
-        t.vitals.sanity = Math.max(0, t.vitals.sanity - ARCHETYPE_HOOKS.wildcardSanity);
+        loseSanity(t, ARCHETYPE_HOOKS.wildcardSanity);
         clampTribute(t);
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
         return true;
@@ -204,7 +205,7 @@ const SIGNATURES: Record<string, Signature> = {
         t.resolve = 100;
         others(ctx, t).forEach(o => {
             addFear(o, t.id, ARCHETYPE_HOOKS.sermonFear);
-            o.vitals.sanity = Math.max(0, o.vitals.sanity - ARCHETYPE_HOOKS.sermonSanity);
+            loseSanity(o, ARCHETYPE_HOOKS.sermonSanity);
             clampTribute(o);
         });
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
@@ -294,7 +295,7 @@ const SIGNATURES: Record<string, Signature> = {
         say(ctx, t, 'beastRoar', [t.id]);
         others(ctx, t).forEach(o => {
             addFear(o, t.id, ARCHETYPE_HOOKS.roarFear);
-            o.vitals.sanity = Math.max(0, o.vitals.sanity - ARCHETYPE_HOOKS.roarSanity);
+            loseSanity(o, ARCHETYPE_HOOKS.roarSanity);
             clampTribute(o);
         });
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * 2);
@@ -321,7 +322,12 @@ const SIGNATURES: Record<string, Signature> = {
         const elsewhere = zoneNames(ctx.state.arena).find(z => z !== t.zone) ?? t.zone;
         say(ctx, t, 'scholarReading', [t.id], { read: zone?.name ?? t.zone, elsewhere });
         // §8: and being right is now worth something. The next arena event
-        // that comes for them, they have already worked out — once.
+        // that comes for them, they have already worked out.
+        //
+        // Audit 4 §8.3: the signature is once per run and so was the payoff,
+        // which made the Scholar's whole method a one-shot consumable. It is
+        // renewed whenever they hold still long enough to read the ground
+        // again — see `tickScholarReading`.
         t.arenaForeknowledge = true;
         // Being right about the arena is worth more than being strong in it.
         t.objective = {
@@ -401,6 +407,38 @@ export function tickGhosts(ctx: SimContext) {
         t.sponsorTrust = Math.min(100, t.sponsorTrust + credit);
         // ...and the crowd, which cannot love what it cannot find, drifts.
         addExcitement(t, -ARCHETYPE_HOOKS.ghostExcitementDrain);
+    });
+}
+
+/**
+ * Audit 4 §8.3: the Scholar reads the ground again.
+ *
+ * `scholarReading` fires once per run and granted `arenaForeknowledge` once,
+ * so the archetype whose premise is continuous knowledge of the arena had a
+ * single-use consumable. Scholar measured **3.82% at n=1,231, the worst win
+ * rate in the game**, with the lowest kill count (0.31) and the third-highest
+ * signature fire rate — the set piece lands and converts into nothing.
+ *
+ * The renewal costs them the thing it should cost: standing still. A Scholar
+ * who has held one zone long enough to have watched it has worked out what it
+ * does; one who has been running has not. `zoneHeld` and `zoneHeldName` are
+ * already maintained by the conditional-stance layer, so this reads state that
+ * exists and adds none.
+ */
+export function tickScholars(ctx: SimContext) {
+    getAlive(ctx.state).forEach(t => {
+        if (t.archetype !== 'scholar' || t.arenaForeknowledge) return;
+        // The signature has to have fired: this renews a reading, it does not
+        // hand one to a Scholar who has never made one.
+        if (!t.signatureFired) return;
+        if (t.zoneHeldName !== t.zone) return;
+        if ((t.zoneHeld ?? 0) < ARCHETYPE_HOOKS.scholarRereadCycles) return;
+        t.arenaForeknowledge = true;
+        ctx.logEvent(
+            `${t.name} has been in ${t.zone} long enough to have watched it, and says out loud what it is going to do next.`,
+            [t.id],
+            { category: 'survival' }
+        );
     });
 }
 

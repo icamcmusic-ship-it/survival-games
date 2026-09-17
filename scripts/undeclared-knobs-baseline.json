@@ -8,8 +8,6 @@
   "src/engine/combat.ts :: accumulate :: chance += 0.15": 1,
   "src/engine/combat.ts :: accumulate :: chance -= 0.1": 1,
   "src/engine/combat.ts :: accumulate :: chance -= 0.12": 1,
-  "src/engine/combat.ts :: accumulate :: killer.vitals.sanity += 20": 1,
-  "src/engine/combat.ts :: accumulate :: killer.vitals.sanity -= 12": 1,
   "src/engine/combat.ts :: accumulate :: power += ARCHETYPES[t.archetype].aggression * 4": 1,
   "src/engine/combat.ts :: accumulate :: power -= 3": 1,
   "src/engine/combat.ts :: accumulate :: weapon.durability -= 10": 1,

@@ -1,5 +1,6 @@
 import { GameState, Tribute } from '../models/types';
 import { PanemRecords } from './panemStorage';
+import { isStarCrossed } from '../engine/alliance';
 
 /**
  * "How did that happen."
@@ -71,7 +72,7 @@ export function runNotables(state: GameState, records: PanemRecords): Notable[] 
                 text: `District ${victor.district} has a victor. The odds board never had ${victor.name} anywhere near the top of it.`,
             });
         }
-        if (victor.traits.includes('Star-Crossed')) {
+        if (isStarCrossed(victor)) {
             notables.push({
                 weight: 9,
                 text: `${victor.name} went into these Games in love and came out of them alone. The broadcast will not dwell on the arithmetic of that.`,
@@ -214,7 +215,7 @@ export function runNotables(state: GameState, records: PanemRecords): Notable[] 
     }
     const romances = state.log.filter(l => l.category === 'romance');
     if (romances.length > 0) {
-        const lovers = state.tributes.filter(t => t.traits.includes('Star-Crossed'));
+        const lovers = state.tributes.filter(t => isStarCrossed(t));
         const bothGone = lovers.length >= 2 && lovers.every(l => l.status === 'dead');
         if (bothGone) {
             notables.push({

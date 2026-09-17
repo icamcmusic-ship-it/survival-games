@@ -18,6 +18,7 @@ import { getRel } from './relationships';
 import { grantTruce } from './parley';
 import { tributeOdds } from './odds';
 import { CONTINUITY, ENDGAME, ESCALATION } from '../data/balance';
+import { loseSanity } from './sanityBands';
 
 /**
  * The Head Gamemaker actually doing something.
@@ -76,7 +77,7 @@ export function runGrudgeIntervention(ctx: SimContext) {
         { important: true, category: 'gamemaker' },
     );
     marked.forEach(t => {
-        t.vitals.sanity -= CONTINUITY.grudgeSanity;
+        loseSanity(t, CONTINUITY.grudgeSanity);
         t.vitals.fatigue += CONTINUITY.grudgeFatigue;
         clampTribute(t);
         addZoneThreat(ctx.state, t, t.zone, CONTINUITY.grudgeThreat);
@@ -266,7 +267,7 @@ export function runGamemakerSignature(ctx: SimContext) {
                     applyDamage(ctx, t, GAMEMAKER_AGENCY.punishAllianceDamage, {
                         cause: `Singled out for travelling in company in ${zone}`, kind: 'gamemaker',
                     });
-                    t.vitals.sanity -= GAMEMAKER_AGENCY.punishAllianceSanity;
+                    loseSanity(t, GAMEMAKER_AGENCY.punishAllianceSanity);
                     clampTribute(t);
                     checkDeath(ctx, t, `Singled out for travelling in company in ${zone}`);
                 });

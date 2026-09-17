@@ -9,6 +9,8 @@ import { ChronicleExport } from './ChronicleExport';
 import { prefsStore, setPrefs } from '../store/prefsStore';
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
+import { Glossed } from './Glossed';
+import { ARENA_MUTTS } from '../data/mutts';
 
 /**
  * A6: the sticky broadcast bar.
@@ -85,13 +87,25 @@ export function BroadcastBar({
         : 'Nothing to undo yet';
 
     const front = gameState.weatherFront;
+    // Audit 4 §2.1: see the comment in the header below.
+    const hornHolder = gameState.cornucopiaHolder
+        ? gameState.tributes.find(t => t.id === gameState.cornucopiaHolder && t.status === 'alive')
+        : undefined;
+    // An `ActiveMutt` stores the mutt's id and who it is hunting; the name
+    // comes from the arena's roster and the zone from the quarry.
+    const muttRoster = ARENA_MUTTS[gameState.arena.id] ?? gameState.arena.muttRoster ?? [];
+    const loose = (gameState.activeMutts ?? []).flatMap(active => {
+        const mutt = muttRoster.find(m => m.id === active.muttId);
+        const quarry = gameState.tributes.find(t => t.id === active.targetId && t.status === 'alive');
+        return mutt && quarry ? [{ name: mutt.name, zone: quarry.zone }] : [];
+    });
 
     return (
         <div className="panel sticky top-[3.75rem] z-20 px-4 py-2.5 mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2 flex-wrap">
                     <h2 className="display-title text-lg leading-none">{phaseLabel}</h2>
-                    <span className="text-[var(--color-ink-500)] text-xs truncate" title={arenaSealed ? 'Sealed until the Games begin.' : undefined}>
+                    <span className="text-[var(--color-ink-500)] text-xs truncate" role="group" aria-label={arenaSealed ? 'Sealed until the Games begin.' : undefined} title={arenaSealed ? 'Sealed until the Games begin.' : undefined}>
                         {arenaSealed ? '❓ Arena sealed' : gameState.arena.name}
                     </span>
                 </div>
@@ -111,6 +125,48 @@ export function BroadcastBar({
                             <span className="text-[var(--red)] font-black">
                                 ⛈ {frontName(front)} over {front.zone}
                             </span>
+                        </>
+                    )}
+                    {/*
+                      Audit 4 §2.1: three pieces of live run state that no
+                      component in the app named.
+
+                      `timeOfDay` has three values and the header showed the
+                      phase, which has two — so dusk, the window several
+                      mechanics key off, was never visible. `cornucopiaHolder`
+                      and `maxHornHold` record who is sitting on the horn and
+                      how long the longest hold has run. `activeMutts` is what
+                      is loose in the arena right now, with its zone; before
+                      this the reader learned about a mutt pack only from the
+                      line where it caught somebody.
+                    */}
+                    {!arenaSealed && gameState.timeOfDay === 'dusk' && (
+                        <>
+                            {' / '}
+                            <Glossed text="Dusk — the window between the day and night phases. Stealth, sightlines and several arena events key off it.">
+                                <span className="text-[var(--gold)] font-black">◐ dusk</span>
+                            </Glossed>
+                        </>
+                    )}
+                    {hornHolder && !arenaSealed && (
+                        <>
+                            {' / '}
+                            <Glossed text={`${hornHolder.name} is holding the Cornucopia. The longest hold this Games has run ${gameState.maxHornHold ?? 0} cycle${(gameState.maxHornHold ?? 0) === 1 ? '' : 's'}.`}>
+                                <span className="text-[var(--gold)] font-black">⌂ {hornHolder.name} holds the horn</span>
+                            </Glossed>
+                        </>
+                    )}
+                    {loose.length > 0 && !arenaSealed && (
+                        <>
+                            {' / '}
+                            <Glossed
+                                align="right"
+                                text={`Loose in the arena: ${loose.map(m => `${m.name} in ${m.zone}`).join('; ')}.`}
+                            >
+                                <span className="text-[var(--cat-mutt)] font-black">
+                                    ☣ {loose.length} pack{loose.length === 1 ? '' : 's'} loose
+                                </span>
+                            </Glossed>
                         </>
                     )}
                 </div>
@@ -198,6 +254,10 @@ export function BroadcastBar({
                     )}
                     <span
                         className="chip font-mono"
+                        role="group"
+                        aria-label={speed === 'manual'
+                            ? 'Playback is manual — advance with space or the button'
+                            : `Playing automatically at ${speed}`}
                         title={speed === 'manual'
                             ? 'Playback is manual — advance with space or the button'
                             : `Playing automatically at ${speed}`}

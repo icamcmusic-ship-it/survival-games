@@ -78,9 +78,29 @@ export function isHostileTo(t: Tribute, o: Tribute): boolean {
     return o.allianceId === undefined || t.allianceId === undefined || o.allianceId !== t.allianceId;
 }
 
+/**
+ * Audit 4 §8.6: `Star-Crossed` is a mechanic, not a trait.
+ *
+ * `data/traits.ts` opens by documenting that a trait should be a row of
+ * modifiers against named hooks, and that a scattered
+ * `traits.includes('...')` check is the failure the file exists to remove. A
+ * grep found **56** of them still in the engine, and `Star-Crossed` was twelve
+ * — by a distance the largest, and the clearest case, because it is not a
+ * disposition at all. It is a *state flag* that happens to be stored in the
+ * trait array: the showmance layer sets it, the romance beats read it, the
+ * epilogue reads it, and it carries no `mods` row because there is nothing for
+ * one to say.
+ *
+ * So it gets a predicate rather than twelve string literals, next to
+ * `areLovers`, which is the function it exists to support.
+ */
+export function isStarCrossed(t: Pick<Tribute, 'traits'>): boolean {
+    return t.traits.includes('Star-Crossed');
+}
+
 export function areLovers(a: Tribute, b: Tribute): boolean {
     if (a.id === b.id) return false;
-    if (!a.traits.includes('Star-Crossed') || !b.traits.includes('Star-Crossed')) return false;
+    if (!isStarCrossed(a) || !isStarCrossed(b)) return false;
     // The bond id names both of them, so it survives one of them losing the id
     // (pulled into another group, or the record pruned) without ever matching a
     // pair who merely both happen to be in love with somebody.
@@ -168,8 +188,31 @@ export function assignRoles(members: Tribute[], leader: Tribute): Alliance['role
         ['scout', t => t.attributes.stealth * 1.4 + t.attributes.agility],
         ['medic', t => t.attributes.intelligence * 1.2 + (t.proficiencies?.medicine ?? 0) * 2],
     ];
-    // A pair names one job, a trio three, four or more the lot.
-    const slots = members.length === 2 ? 1 : Math.min(jobs.length, members.length);
+    /**
+     * A pair names one job, a trio three, four or more the lot.
+     *
+     * Audit 4 §4.2: and for a pair that job used to be `quartermaster`,
+     * because it is first in the list. 47.6% of all alliance-samples are
+     * pairs, so for roughly half of all alliance-time the only named role in
+     * the game was the one with no effect in a pair: quartermaster's three
+     * read sites are a betrayal weight, the cache being lost when they die,
+     * and a log line. `muscle` and `medic` — the two roles with combat teeth —
+     * are both gated on `allyPresent`, and in a pair the ally is by definition
+     * the other role-holder, which a pair does not have.
+     *
+     * So a pair names the job that does something when there are two of you.
+     * Whoever is the better fighter is the muscle; the other one is not
+     * nothing, they are the one who patches them up. Two people, two jobs, and
+     * both of the combat hooks reachable at the group size that is half the
+     * game.
+     */
+    if (members.length === 2) {
+        const [a, b] = members;
+        const fighter = jobs[1][1](a) >= jobs[1][1](b) ? a : b;
+        const other = fighter === a ? b : a;
+        return { muscle: fighter.id, medic: other.id };
+    }
+    const slots = Math.min(jobs.length, members.length);
     const roles: NonNullable<Alliance['roles']> = {};
     const taken = new Set<string>();
     jobs.slice(0, slots).forEach(([role, score]) => {

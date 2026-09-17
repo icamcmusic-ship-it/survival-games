@@ -34,6 +34,7 @@ import { traitMod } from '../data/traits';
 import { OBJECTIVES, QUALITY_BIAS } from '../data/balance';
 import { isAggressiveStance, isDefensiveStance, isEvasiveStance } from '../data/stances';
 import { exhaustedHere, freshGround, isBeingFollowed, layFalseTrail, noteForageFailure, noteForageSuccess } from './intent';
+import { loseSanity } from './sanityBands';
 
 export function fill(template: string, vars: Record<string, string>): string {
     return Object.entries(vars).reduce(
@@ -96,7 +97,15 @@ function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: b
     const penalty = injuryGrade(t, 'legs') * ENCOUNTERS.legsDodgePenaltyPerGrade;
 
     // §8: the Scholar worked this out days ago. Spent on the first arena
-    // event that would otherwise land, and only once per run.
+    // event that would otherwise land.
+    //
+    // Audit 4 §8.3: once per run, against a 10.2% arena-death share, is worth
+    // about one avoided event in a lifetime — while the Career's signature is
+    // a standing pack. Scholar measured 3.82% at n=1,231, the worst in the
+    // game, with the lowest kill count (0.31) and the third-highest signature
+    // fire rate: the set piece lands and converts into nothing. The archetype
+    // whose entire premise is *continuous* knowledge of the arena is the one
+    // whose knowledge was a single-use item. `scholarReading` renews it.
     if (t.arenaForeknowledge && !isBoon) {
         t.arenaForeknowledge = false;
         ctx.logEvent(
@@ -193,7 +202,7 @@ function applyEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef, narrate
     if (event.burned) injure(t, 'burned');
     if (event.frostbitten) injure(t, 'frostbitten');
     if (event.infected) injure(t, 'infected');
-    if (event.sanity) t.vitals.sanity -= event.sanity;
+    if (event.sanity) loseSanity(t, event.sanity);
     if (event.thirst) t.vitals.thirst += event.thirst;
     if (event.hunger) t.vitals.hunger += event.hunger;
     if (event.fatigue) t.vitals.fatigue += event.fatigue;
@@ -963,7 +972,7 @@ export function handleInsanity(ctx: SimContext, t: Tribute) {
     const vars = { tribute: t.name, zone: t.zone };
     if (roll < ENCOUNTER_BRANCH.breakdownHallucinate) {
         ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.hallucination), vars), [t.id], { important: true, category: 'sanity' });
-        t.vitals.sanity -= ENCOUNTER_BRANCH.breakdownSanityCost;
+        loseSanity(t, ENCOUNTER_BRANCH.breakdownSanityCost);
     } else if (roll < ENCOUNTER_BRANCH.breakdownRuinStealth) {
         // A generated identity stat should not ratchet toward zero every time
         // sanity dips below the breakdown threshold — cap the lifetime damage
@@ -976,7 +985,7 @@ export function handleInsanity(ctx: SimContext, t: Tribute) {
             t.sanityStealthLoss = lost + loss;
         } else {
             ctx.logEvent(fill(ctx.pickText(SANITY_TEXTS.hallucination), vars), [t.id], { important: true, category: 'sanity' });
-            t.vitals.sanity -= ENCOUNTER_BRANCH.breakdownSanityCost;
+            loseSanity(t, ENCOUNTER_BRANCH.breakdownSanityCost);
         }
     } else if (t.inventory.length > 0) {
         const itemIdx = ctx.rng.nextInt(0, t.inventory.length - 1);

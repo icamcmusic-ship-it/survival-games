@@ -1,3 +1,4 @@
+import { isVeteran } from '../veterans';
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
@@ -14,6 +15,7 @@ import { resolveContinuity, standingEffect, standingLine } from '../continuity';
 import { addNotoriety } from '../notoriety';
 import { readPanem } from '../../utils/panemStorage';
 import { ordinal } from '../gamesProfile';
+import { loseSanity } from '../sanityBands';
 
 /**
  * Everything between the bowl and the training floor.
@@ -51,9 +53,7 @@ export function processPreGames(ctx: SimContext) {
     // Announced before anything else, because it changes how the whole
     // broadcast reads: a field with a past victor in it is not an ordinary
     // reaping and the Capitol would not pretend otherwise.
-    (ctx.state.veteransSeated ?? []).forEach(name => {
-        const vet = cast.find(t => t.name === name);
-        if (!vet) return;
+    cast.filter(t => isVeteran(ctx.state.veteransSeated, t)).forEach(vet => {
         ctx.logEvent(
             `${vet.name} of District ${vet.district} walks onto the stage for the second time. `
             + `They won the ${vet.veteranOf} Games. There is a rule against this, or there was, and nobody in the Capitol is discussing it tonight.`,
@@ -197,7 +197,7 @@ export function processPreGames(ctx: SimContext) {
         const alone = scene.startsWith('Nobody comes');
         ctx.logEvent(fill(scene, { tribute: t.name }), [t.id], { category: 'sanity' });
         if (alone) {
-            t.vitals.sanity = Math.max(0, t.vitals.sanity - PREGAMES.aloneGoodbyeSanity);
+            loseSanity(t, PREGAMES.aloneGoodbyeSanity);
             // The Capitol has always liked a tribute nobody came for.
             t.sponsorTrust = Math.min(100, t.sponsorTrust + PREGAMES.aloneGoodbyeTrust);
         } else {

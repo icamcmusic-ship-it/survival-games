@@ -12,6 +12,7 @@ import { checkTraps } from './fieldcraft';
 import { openWound } from './wounds';
 import { adjustRel, applyBetrayalFallout } from './relationships';
 import { addExcitement } from './audience';
+import { loseSanity } from './sanityBands';
 
 /**
  * Betrayal, in more than one shape.
@@ -172,7 +173,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             // asking about is a cycle worse for having gone untreated.
             betrayer.betrayalsCommitted = (betrayer.betrayalsCommitted ?? 0) + 1;
             openWound(victim, BLEEDING.hazardSeverity);
-            victim.vitals.sanity = Math.max(0, victim.vitals.sanity - BETRAYAL.withholdSanity);
+            loseSanity(victim, BETRAYAL.withholdSanity);
             ctx.logEvent(
                 `${victim.name} asks ${betrayer.name} for the ${med.name}. ${betrayer.name} says they used it days ago, ` +
                 `and keeps their hand over the pocket it is in.`,

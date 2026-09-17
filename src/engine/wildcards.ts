@@ -12,6 +12,7 @@ import { calendarOf } from './gamesProfile';
 import { cycleOf, noteSighting, rememberedRivals, addZoneThreat } from './memory';
 import { fearOf } from './fear';
 import { OBJECTIVES } from '../data/balance';
+import { loseSanity } from './sanityBands';
 
 /**
  * REPLAY-01: the one scheduled disruption a run gets.
@@ -164,7 +165,7 @@ function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
             // severed route, and a field that suddenly trusts nothing.
             withGamemakerMode(ctx, () => triggerGamemakerEvent(ctx, 'weather', undefined, true));
             alive.forEach(t => {
-                t.vitals.sanity = Math.max(0, t.vitals.sanity - WILDCARD.malfunctionSanity);
+                loseSanity(t, WILDCARD.malfunctionSanity);
                 clampTribute(t);
             });
             break;
@@ -321,7 +322,7 @@ function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
             if (!liveOne) break;
             alive.filter(o => o.id !== liveOne.id).forEach(o => {
                 if ((o.relationships[liveOne.id] ?? 0) <= 0) return;
-                o.vitals.sanity -= WILDCARD.falseFaceSanity;
+                loseSanity(o, WILDCARD.falseFaceSanity);
                 clampTribute(o);
             });
             ctx.logEvent(

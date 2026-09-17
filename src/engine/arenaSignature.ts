@@ -12,6 +12,7 @@ import { strengthCapForAge } from './physique';
 import { hasTool } from './items';
 import { isUnlitZone } from './map';
 import { ARENA_SIGNATURES, BLEEDING, ESCALATION, MEMORY, PROC_SIGNATURE, SIGNATURE_RULES } from '../data/balance';
+import { loseSanity } from './sanityBands';
 
 /**
  * Arena signature mechanics.
@@ -114,7 +115,7 @@ function vaultSignature(ctx: SimContext, cycle: number, rng: RNG) {
     getAlive(ctx.state).forEach(t => {
         if (!rng.chance(ARENA_SIGNATURES.vault.stumbleChance)) return;
         applyDamage(ctx, t, 6, { cause: 'Walked into something in the dark', kind: 'arena' });
-        t.vitals.sanity -= ARENA_SIGNATURES.vault.stumbleSanity;
+        loseSanity(t, ARENA_SIGNATURES.vault.stumbleSanity);
         clampTribute(t);
         checkDeath(ctx, t, 'Walked into something in the dark');
     });
@@ -311,7 +312,7 @@ function toxicSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     tributesIn(ctx, target).forEach(t => {
         const covered = t.inventory.some(i => i.purifies) || rng.chance(t.attributes.intelligence * 0.05);
         if (covered) return;
-        t.vitals.sanity -= ARENA_SIGNATURES.bog.sanity;
+        loseSanity(t, ARENA_SIGNATURES.bog.sanity);
         injure(t, 'poisoned');
         applyDamage(ctx, t, 6, { cause: `Breathed the swamp gas in ${target}`, kind: 'arena' });
         clampTribute(t);
@@ -373,7 +374,7 @@ function saltflatsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
             if (rivals > 0) noteSighting(ctx.state, observer, z, rivals, 0);
         });
         observer.vitals.thirst += ARENA_SIGNATURES.saltFlats.thirst;
-        if (rng.chance(ARENA_SIGNATURES.saltFlats.glareChance)) observer.vitals.sanity -= ARENA_SIGNATURES.saltFlats.glareSanity;
+        if (rng.chance(ARENA_SIGNATURES.saltFlats.glareChance)) loseSanity(observer, ARENA_SIGNATURES.saltFlats.glareSanity);
         clampTribute(observer);
     });
 }
@@ -405,7 +406,7 @@ function sporefieldsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} eats well in ${target}, and picks right.`, [t.id], { zone: target, category: 'survival' });
         } else {
             injure(t, 'poisoned');
-            t.vitals.sanity -= ARENA_SIGNATURES.bloom.poisonSanity;
+            loseSanity(t, ARENA_SIGNATURES.bloom.poisonSanity);
             applyDamage(ctx, t, 14, { cause: `Poisoned by the bloom in ${target}`, kind: 'arena' });
             ctx.logEvent(`${t.name} eats well in ${target}, and picks wrong.`, [t.id], { important: true, zone: target, category: 'hazard' });
         }
@@ -497,7 +498,7 @@ function eclipseSignature(ctx: SimContext, cycle: number, rng: RNG) {
     getAlive(ctx.state).forEach(t => {
         if (!rng.chance(SIGNATURE_RULES.eclipseStumbleChance)) return;
         applyDamage(ctx, t, 5, { cause: 'Walked off a bearing that no longer existed', kind: 'arena' });
-        t.vitals.sanity -= SIGNATURE_RULES.eclipseSanityLoss;
+        loseSanity(t, SIGNATURE_RULES.eclipseSanityLoss);
         clampTribute(t);
         checkDeath(ctx, t, 'Walked off a bearing that no longer existed');
     });
@@ -530,7 +531,7 @@ function reefSignature(ctx: SimContext, _cycle: number, rng: RNG) {
             return;
         }
         injure(t, 'poisoned');
-        t.vitals.sanity -= SIGNATURE_RULES.reefSanityLoss;
+        loseSanity(t, SIGNATURE_RULES.reefSanityLoss);
         applyDamage(ctx, t, 12, { cause: `Stung down by the bloom in ${target}`, kind: 'arena' });
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -590,7 +591,7 @@ function carnivalSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         { important: true, zone: target, category: 'arena' }
     );
     caught.forEach(t => {
-        t.vitals.sanity -= SIGNATURE_RULES.carnivalSanityLoss;
+        loseSanity(t, SIGNATURE_RULES.carnivalSanityLoss);
         clampTribute(t);
     });
     // The whole park sees where the lights are — and who is standing in them.
@@ -880,7 +881,7 @@ function acousticforestSignature(ctx: SimContext, cycle: number, rng: RNG) {
         }
         applyDamage(ctx, t, 24, { cause: `Caught in the shattering trees of ${target}`, kind: 'arena' });
         openWound(t, BLEEDING.hazardSeverity);
-        t.vitals.sanity -= SIGNATURE_RULES.acousticforestSanityLoss;
+        loseSanity(t, SIGNATURE_RULES.acousticforestSanityLoss);
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
         checkDeath(ctx, t, `Caught in the shattering trees of ${target}`);
@@ -994,7 +995,7 @@ function culdesacSignature(ctx: SimContext, cycle: number, rng: RNG) {
         });
         // Being named by a house you were hiding in costs something.
         inside.forEach(t => {
-            t.vitals.sanity -= SIGNATURE_RULES.culdesacNamedSanity;
+            loseSanity(t, SIGNATURE_RULES.culdesacNamedSanity);
             if (rng.chance(SIGNATURE_RULES.culdesacRestlessChance)) t.vitals.fatigue += SIGNATURE_RULES.culdesacRestlessFatigue;
             clampTribute(t);
         });
@@ -1119,7 +1120,7 @@ function ashgroveSignature(ctx: SimContext, cycle: number, rng: RNG) {
             return;
         }
         applyDamage(ctx, t, 20, { cause: 'Locked in during session', kind: 'arena' });
-        t.vitals.sanity -= SIGNATURE_RULES.ashgroveSessionSanity;
+        loseSanity(t, SIGNATURE_RULES.ashgroveSessionSanity);
         addZoneThreat(ctx.state, t, striking, MEMORY.hazardThreat * 2);
         clampTribute(t);
         checkDeath(ctx, t, 'Locked in during session');
@@ -1298,7 +1299,7 @@ function nooneplaceSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         if (neighbours.length === 0) return;
 
         t.zone = rng.pick(neighbours);
-        t.vitals.sanity -= SIGNATURE_RULES.nooneplaceSlipSanity;
+        loseSanity(t, SIGNATURE_RULES.nooneplaceSlipSanity);
         addZoneThreat(ctx.state, t, from, MEMORY.hazardThreat);
         clampTribute(t);
         checkDeath(ctx, t, 'Went into a wall');
@@ -1452,7 +1453,7 @@ function storywoodSignature(ctx: SimContext, cycle: number, rng: RNG) {
                 // A full belly, and everything in the wood smells it on you.
                 t.vitals.hunger = 0;
                 t.vitals.thirst = 0;
-                t.vitals.sanity -= SIGNATURE_RULES.storywoodGingerbreadSanity;
+                loseSanity(t, SIGNATURE_RULES.storywoodGingerbreadSanity);
                 getAlive(ctx.state).filter(o => o.id !== t.id).forEach(o => {
                     addZoneThreat(ctx.state, o, t.zone, MEMORY.cannonThreat);
                     noteSighting(ctx.state, o, t.zone, 1, 0);
@@ -1470,7 +1471,7 @@ function storywoodSignature(ctx: SimContext, cycle: number, rng: RNG) {
                 // The axe cannot make anyone stronger than their frame allows,
                 // and the wheel of bargains must never breach the age cap.
                 t.attributes.strength = Math.min(strengthCapForAge(t.age), t.attributes.strength + 1);
-                t.vitals.sanity -= SIGNATURE_RULES.storywoodAxeSanity;
+                loseSanity(t, SIGNATURE_RULES.storywoodAxeSanity);
                 ctx.logEvent(
                     `THE BARGAIN: ${t.name} takes up the woodcutter's axe, and the work makes them whole and strong and quiet in a way that does not entirely come back off.`,
                     [t.id],
@@ -1514,7 +1515,7 @@ function storywoodSignature(ctx: SimContext, cycle: number, rng: RNG) {
                     noteSighting(ctx.state, t, z, rivals, 0);
                     addZoneThreat(ctx.state, t, z, MEMORY.cannonThreat);
                 });
-                t.vitals.sanity -= SIGNATURE_RULES.storywoodWellSanity;
+                loseSanity(t, SIGNATURE_RULES.storywoodWellSanity);
                 ctx.logEvent(
                     `THE BARGAIN: ${t.name} asks the well, and the water shows them every living soul in the wood at once — where they stand, where they sleep. The well keeps its fee out of whatever leaned over to look.`,
                     [t.id],
@@ -1673,7 +1674,7 @@ function applySignaturePayload(ctx: SimContext, zones: string[], payload: Signat
         case 'drainVital':
             zones.forEach(zone => {
                 tributesIn(ctx, zone).forEach(t => {
-                    t.vitals.sanity -= payload.amount ?? PROC_SIGNATURE.sanityDrain;
+                    loseSanity(t, payload.amount ?? PROC_SIGNATURE.sanityDrain);
                     t.vitals.fatigue += PROC_SIGNATURE.fatigueDrain;
                     clampTribute(t);
                 });
@@ -1817,7 +1818,7 @@ function karstSignature(ctx: SimContext, cycle: number, rng: RNG) {
         // dark and its ambusher's eligibility cannot drift apart.
         const lit = !dimmed && !isUnlitZone(ctx.state.arena, t.zone);
         if (lit || hasTool(t, 'light')) return;
-        t.vitals.sanity -= ARENA_SIGNATURES.undermere.darkSanity;
+        loseSanity(t, ARENA_SIGNATURES.undermere.darkSanity);
         t.vitals.fatigue += ARENA_SIGNATURES.undermere.darkFatigue;
         if (rng.chance(ARENA_SIGNATURES.undermere.blindStumbleChance)) {
             applyDamage(ctx, t, ARENA_SIGNATURES.undermere.stumbleDamage, { cause: `Lost in the dark under ${t.zone}`, kind: 'arena' });

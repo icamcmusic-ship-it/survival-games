@@ -21,11 +21,31 @@ import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG, traitsConflict } from '../src/data/constants';
 import { ARENA_FLAVOR, DERIVED_ID_COLLISIONS, UNIVERSAL_EVENTS } from '../src/data/arenaFlavor';
 /**
- * Audit 3 §1.4: share of authored arena events that must fire at least once
- * across this sweep. A regression bound rather than a design goal — see the
- * comment on `eventIdsFired`.
+ * Audit 4 §1.5: **per-run** reach, not sweep reach.
+ *
+ * This used to be `EVENT_REACH_FLOOR = 0.45` on the share of all 1,388
+ * authored events that fired at least once across the whole sweep, and the
+ * line it printed — "695/1388 (50.1%)" — reads like half the authored content
+ * is unreachable. It is not. The sweep runs 400 runs across 41 arena ids, so
+ * each arena gets about ten runs; measured at 120 runs on one arena, reach is
+ * 94-100% (eclipse, the sweep's thinnest pack at 8/33, reaches all 33).
+ *
+ * The old statistic was therefore a function of `RUNS / arenaIds.length`: it
+ * falls when somebody adds an arena and rises when somebody raises the run
+ * count, which are the two changes a ratchet must not react to. What is stable,
+ * and is what the player actually experiences, is how much of its own pack an
+ * arena shows in a single Games. Measured range across four arenas at 120 runs
+ * each on the default config: frozen 3.7, reef 5.5, eclipse 6.7, labyrinth 8.0
+ * of 33.
+ *
+ * The floor is on the **sweep-wide** mean, not per arena. This sweep gives each
+ * arena about ten runs and sweeps two- and three-district configs that end in a
+ * few days (the same reason the `avgDays` comment above exists), so a
+ * per-arena mean at n=10 swings a whole event either way on one short run and
+ * is not a threshold anybody could act on. The per-arena figures are printed
+ * so a genuinely thin pack is visible; only the aggregate is guarded.
  */
-const EVENT_REACH_FLOOR = 0.45;
+const EVENT_REACH_PER_RUN_FLOOR = 3.5;
 import { ALLIANCES, FEAR, GENERATION, HUNTING, NOTORIETY, PROFICIENCY, RELATIONSHIPS, ZONES } from '../src/data/balance';
 import { carryCapacity } from '../src/engine/items';
 import { emptyPickCount } from '../src/utils/rng';
@@ -37,6 +57,13 @@ const problems: string[] = [];
 const note = (m: string) => { if (!problems.includes(m)) problems.push(m); };
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
+/** Phases in which the arena exists and a tribute's behaviour means something. */
+const ARENA_PHASES = new Set(['bloodbath', 'day', 'night', 'feast']);
+/** Every `ZoneEffectKind`, so the sweep can assert each one actually occurs. */
+const ZONE_EFFECT_KINDS = [
+  'burning', 'flooded', 'frozen', 'contaminated', 'fogbound', 'stripped',
+  'blooming', 'irradiated', 'quaking', 'swarming',
+] as const;
 // Note on avgDays: this sweep and `metrics.ts` both count `state.day` at the
 // end of the run, but they sweep different configs. Two of the four here are
 // two- and three-district fields that end in a few days, which is why the
@@ -104,6 +131,10 @@ const trueRumourKinds: Record<string, number> = {};
  * that is expected. What is not expected is the number going down.
  */
 const eventIdsFired = new Set<string>();
+// Audit 4 §1.5: distinct authored event ids that fired *within one run*,
+// accumulated per arena so the report can say how much of its own pack an
+// arena shows in a single Games.
+const perRunReach: Record<string, number[]> = {};
 const rumourIdsCounted = new Set<string>();
 let vengeancePacts = 0, vengeancePaid = 0, vengeanceStolen = 0, vengeanceAbandoned = 0;
 let treatiesSworn = 0, treatiesBroken = 0, treatiesLapsed = 0, treatiesOutgrown = 0;
@@ -187,6 +218,23 @@ let trucesRenewed = 0, trucesLapsed = 0, trucesTurned = 0;
 let resolveBreakdowns = 0, nightlockDeaths = 0;
 let debtsRepaid = 0, charterBreaches = 0, performedBonds = 0, districtBonds = 0;
 let weatherFronts = 0, trapsDestroyed = 0, gamemakerSignatures = 0;
+// Audit 4 §1.1: the three edge mechanics that ran in every game and did
+// nothing, because `contested`, `collapsing`/`oneWayAfter` and `hidden` were
+// authored 1, 5 and 2 times across forty arenas. Counted so the next time a
+// kind falls out of the roster it shows up here rather than in an audit.
+let garrisonRuns = 0, garrisonCycles = 0, edgeCrossingsMade = 0, hiddenEdgesFound = 0;
+/**
+ * Audit 4 §1.8/§1.9: every `ZoneEffectKind`, counted off live state rather
+ * than off a log line.
+ *
+ * `irradiated` had forty-five lines of engine behind it — a 999-cycle
+ * duration, its own damage, and the only *creeping* effect in the game — and
+ * fired zero times in 340 complete runs, because six authored events across
+ * forty arenas were the only thing that could start one. Nothing said so,
+ * because nothing counted it. The `every kind must occur` assertion below is
+ * the same shape as the one `trapKinds` grew for exactly this reason.
+ */
+const zoneEffectKinds: Record<string, number> = {};
 let cornucopiaHeld = 0, cornucopiaPayouts = 0;
 let signatureBeats = 0, calendarBeats = 0;
 let maxAbsRelationship = 0;
@@ -207,6 +255,19 @@ for (let i = 0; i < 400; i++) {
   let guard = 3000;
   let state = sim.getState();
   let gamemakerFired = false;
+  let sawGarrison = false;
+  /**
+   * Audit 4 §1.10: sampling through the simulator's own observation hook
+   * rather than a `sample()` call the loop has to remember to make.
+   *
+   * The old shape called `sample()` at exactly one of the six places the run
+   * advances — inside the `processTurn` branch — so the bloodbath, the
+   * training floor, the interviews and the feast were never sampled at all,
+   * and every counter below silently measured the day/night loop only. That is
+   * the same class of mistake as reading pruned state at the end of a run, and
+   * it is the reason `Simulator.observe` exists.
+   */
+  sim.observe(() => sample());
 
   // Per-run behavioural tracking.
   const stanceSamples = new Map<string, { last: Stance; changes: number; samples: number }>();
@@ -216,7 +277,25 @@ for (let i = 0; i < 400; i++) {
   const gongPct = new Map<string, number>();
 
   const sample = () => {
+    /**
+     * Audit 4 §1.10: only once the Games are actually running.
+     *
+     * Routing this through `Simulator.observe` fixed a real gap — the old
+     * shape called `sample()` from inside the `processTurn` branch alone, so
+     * the bloodbath and the feast were never sampled — but it also started
+     * sampling the reaping, the training floor and the interviews, where every
+     * tribute holds the default `survive` objective and the arena does not
+     * exist yet. That turned "objectives held: survive 7.3%" into 45.1%
+     * without anything in the simulation changing, which is a measurement bug
+     * of exactly the kind this hook exists to prevent.
+     *
+     * The bloodbath and the feast are in. The pre-arena phases are out.
+     */
+    if (!ARENA_PHASES.has(state.phase)) return;
     Object.keys(state.eventLastFired ?? {}).forEach(id => eventIdsFired.add(id));
+    if (Object.keys(state.garrisonedEdges ?? {}).length > 0) { garrisonCycles++; sawGarrison = true; }
+    Object.values(state.zoneEffects ?? {}).forEach(list =>
+      list.forEach(e => { zoneEffectKinds[e.kind] = (zoneEffectKinds[e.kind] ?? 0) + 1; }));
     (state.rumours ?? []).forEach(r => {
       if (!r.isTrue || rumourIdsCounted.has(r.id)) return;
       rumourIdsCounted.add(r.id);
@@ -286,7 +365,6 @@ for (let i = 0; i < 400; i++) {
         sim.triggerGamemakerEvent('feast');
       }
       if (!sim.processTurn()) break;
-      sample();
     }
     state = sim.getState();
     phasesSeen.add(state.phase);
@@ -296,6 +374,20 @@ for (let i = 0; i < 400; i++) {
   { const L = truceLedger(state); (Object.keys(L) as Array<keyof typeof L>).forEach(k => { TRUCE_LEDGER[k] += L[k]; }); }
 
   runs++;
+  if (sawGarrison) garrisonRuns++;
+  edgeCrossingsMade += Object.values(state.edgeCrossings ?? {}).reduce((a, b) => a + b, 0);
+  hiddenEdgesFound += state.tributes.reduce((a, t) => a + (t.knownEdges?.length ?? 0), 0);
+  {
+    // Audit 4 §1.5: this run's own reach, before the ids are unioned into the
+    // sweep-wide set. Counts only ids belonging to this arena's pack or the
+    // universal pool, so a procedural run is measured against what it drew.
+    const firedThisRun = new Set(Object.keys(state.eventLastFired ?? {}));
+    const own = ARENA_FLAVOR[state.arena.id]?.events ?? [];
+    const ownIds = new Set([...own, ...UNIVERSAL_EVENTS].map(e => e.id).filter((x): x is string => x !== undefined));
+    let hits = 0;
+    firedThisRun.forEach(id => { if (ownIds.has(id)) hits++; });
+    (perRunReach[arenaId] ??= []).push(hits);
+  }
   totalDays += state.day;
   totalLogs += state.log.length;
   if ((state.feastsHeld ?? 0) > 0) feastRuns++;
@@ -798,6 +890,12 @@ if (debtsRepaid === 0) note('no debt was ever repaid');
 if (charterBreaches === 0) note('no alliance charter was ever broken');
 if (districtBonds === 0) note('no district pair ever reached the late game together');
 if (weatherFronts === 0) note('no weather front ever crossed the arena');
+ZONE_EFFECT_KINDS.forEach(kind => {
+  if (!zoneEffectKinds[kind]) note(`no zone was ever ${kind} — ZoneEffectKind declares it and nothing the engine does can produce it`);
+});
+if (garrisonRuns === 0) note('no alliance ever garrisoned a contested edge — tickGarrisons runs every cycle and reaches nothing');
+if (edgeCrossingsMade === 0) note('no collapsing or oneWayAfter edge was ever crossed — countCrossing has nothing to count');
+if (hiddenEdgesFound === 0) note('no hidden edge was ever discovered — tickHiddenEdges reaches nothing');
 if (gamemakerSignatures === 0) note('no Head Gamemaker ever used their signature intervention');
 if (cornucopiaHeld === 0) note('nobody ever held the Cornucopia');
 if (calendarBeats === 0) note('no scheduled calendar beat ever fired');
@@ -912,13 +1010,26 @@ console.log(`bluffs: landed=${bluffsLanded} caught=${bluffsCaught}`);
   });
   worst.sort((a, b) => (a[1] / a[2]) - (b[1] / b[2]));
   const share = authored > 0 ? reached / authored : 0;
-  console.log(`arena events: ${reached}/${authored} authored events fired at least once (${(share * 100).toFixed(1)}%)`);
-  console.log(`  thinnest reach: ${worst.slice(0, 5).map(([id, h, n]) => `${id} ${h}/${n}`).join(', ')}`);
+
+  // Audit 4 §1.5: the number that describes the player's experience, and the
+  // one that is guarded. Sweep-wide reach is still printed below it, without a
+  // guard, because "no pack is entirely dead" is a real assertion and the
+  // cumulative figure is useful context — it is just not a threshold.
+  const perArena = Object.entries(perRunReach)
+    .map(([id, xs]) => [id, xs.reduce((a, b) => a + b, 0) / xs.length, xs.length] as [string, number, number])
+    .sort((a, b) => a[1] - b[1]);
+  if (perArena.length > 0) {
+    const overall = perArena.reduce((sum, [, avg, n]) => sum + avg * n, 0) / perArena.reduce((sum, [, , n]) => sum + n, 0);
+    console.log(`arena events: ${overall.toFixed(1)} distinct authored events fired per run (floor ${EVENT_REACH_PER_RUN_FLOOR.toFixed(1)})`);
+    console.log(`  thinnest per run: ${perArena.slice(0, 5).map(([id, avg, n]) => `${id} ${avg.toFixed(1)} (n=${n})`).join(', ')}`);
+    if (overall < EVENT_REACH_PER_RUN_FLOOR) {
+      note(`a run shows only ${overall.toFixed(1)} distinct authored arena events, under the floor of ${EVENT_REACH_PER_RUN_FLOOR.toFixed(1)}`);
+    }
+  }
+  console.log(`  cumulative over the whole sweep: ${reached}/${authored} fired at least once (${(share * 100).toFixed(1)}%) — a function of runs-per-arena, not of reach; see the comment on EVENT_REACH_PER_RUN_FLOOR`);
+  console.log(`  thinnest cumulative: ${worst.slice(0, 5).map(([id, h, n]) => `${id} ${h}/${n}`).join(', ')}`);
   const dead = Object.entries(packs).filter(([, ids]) => ids.every(x => !eventIdsFired.has(x)));
   dead.forEach(([id]) => note(`not one authored event in the "${id}" pack ever fired`));
-  if (share < EVENT_REACH_FLOOR) {
-    note(`authored arena events reached ${(share * 100).toFixed(1)}% of the pool, under the ${(EVENT_REACH_FLOOR * 100).toFixed(0)}% floor`);
-  }
   if (DERIVED_ID_COLLISIONS.length > 0) {
     console.log(`  ${DERIVED_ID_COLLISIONS.length} derived id(s) needed a collision suffix: ${DERIVED_ID_COLLISIONS.slice(0, 4).join(', ')}`);
   }
@@ -1002,6 +1113,9 @@ console.log(`politics: factionActions=${factionActions} expulsions=${expulsions}
 console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} paidInInformation=${tributesPaidInformation} truces=${trucesStruck} trucesHeld=${trucesHeld} trucesBroken=${trucesBroken} trucesRenewed=${trucesRenewed} trucesLapsed=${trucesLapsed} trucesTurned=${trucesTurned} soloDepartures=${soloDepartures} schisms=${schisms}`);
 console.log(`bonds: debtsRepaid=${debtsRepaid} charterBreaches=${charterBreaches} performed=${performedBonds} districtPairs=${districtBonds}`);
 console.log(`resolve: breakdowns=${resolveBreakdowns} nightlock=${nightlockDeaths}`);
+console.log('zone effects (live instances sampled per cycle): '
+  + Object.entries(zoneEffectKinds).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k}=${n}`).join(' '));
+console.log(`edges: garrisonRuns=${garrisonRuns} garrisonCycles=${garrisonCycles} crossingsCounted=${edgeCrossingsMade} hiddenEdgesFound=${hiddenEdgesFound}`);
 console.log(`arena2: weatherFronts=${weatherFronts} trapsDestroyed=${trapsDestroyed} gmSignatures=${gamemakerSignatures}`);
 console.log(`zoneControl: held=${cornucopiaHeld} payouts=${cornucopiaPayouts}`);
 console.log(`schedule: signatureBeats=${signatureBeats} calendarBeats=${calendarBeats}`);

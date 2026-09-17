@@ -31,8 +31,16 @@ function slotFor(field: Tribute[], entry: HallOfFameEntry, taken: Set<string>): 
 }
 
 /**
- * Grafts up to two archived victors onto the reaped field. Returns the names
- * actually seated, for the reaping copy.
+ * Grafts up to two archived victors onto the reaped field. Returns the tribute
+ * **ids** actually seated.
+ *
+ * Audit 4 §1.2: this used to return `entry.winnerName`, and two of the three
+ * read sites matched on the name while `TributeModal` matched on
+ * `tribute.id` — so the "Returning victor" chip could never render. Names are
+ * the wrong key regardless: the reaping guarantees them unique inside one
+ * cast and nothing guarantees it across a Grudge Match graft, where the name
+ * is copied in from an archive. Every read site now goes through
+ * `isVeteran()`, which still accepts a legacy save's names.
  */
 export function seatVeterans(seed: string, field: Tribute[], entries: HallOfFameEntry[]): string[] {
     const rng = new RNG(`${seed}-grudge`);
@@ -65,8 +73,21 @@ export function seatVeterans(seed: string, field: Tribute[], entries: HallOfFame
         slot.epithet = rng.chance(VETERANS.keepsEpithetChance)
             ? `Victor of the ${entry.arenaName} Games`
             : slot.epithet;
-        seated.push(entry.winnerName);
+        seated.push(slot.id);
     });
 
     return seated;
+}
+
+/**
+ * Audit 4 §1.2: the one predicate every read site shares.
+ *
+ * `veteransSeated` holds tribute ids as of this version. A save written before
+ * it did holds names, and `normalizeGameState` spreads the field through
+ * untouched, so both shapes have to read correctly or a resumed Grudge Match
+ * loses its markers.
+ */
+export function isVeteran(seated: readonly string[] | undefined, t: Pick<Tribute, 'id' | 'name'>): boolean {
+    if (!seated || seated.length === 0) return false;
+    return seated.includes(t.id) || seated.includes(t.name);
 }

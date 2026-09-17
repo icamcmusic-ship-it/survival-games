@@ -172,7 +172,7 @@ export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: 
                                                 key={c}
                                                 className={`inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider ${muted ? 'opacity-40' : ''}`}
                                                 style={{ color: meta.color }}
-                                                title={meta.label}
+                                                role="group" aria-label={meta.label} title={meta.label}
                                             >
                                                 <span className="cat-glyph" aria-hidden="true">{meta.glyph}</span>
                                                 {meta.label}

@@ -20,6 +20,7 @@ import { profOf, trainProficiency } from './proficiency';
 import { clampTribute } from './vitals';
 import { addExcitement } from './audience';
 import { isAggressiveStance } from '../data/stances';
+import { loseSanity } from './sanityBands';
 
 /**
  * Talking instead of fighting.
@@ -415,7 +416,7 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
                 if (worst) addZoneThreat(ctx.state, stronger, worst.zone, worst.threat);
                 adjustMutual(ctx.state, weaker, stronger, -PARLEY.tollInfoResentment);
                 addExcitement(stronger, PARLEY.tributeExcitement);
-                weaker.vitals.sanity -= PARLEY.tollInfoSanityCost;
+                loseSanity(weaker, PARLEY.tollInfoSanityCost);
                 clampTribute(weaker);
                 clampTribute(stronger);
                 ctx.logEvent(
@@ -437,7 +438,7 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
             // Being extorted is not being befriended, and the crowd loves it.
             adjustMutual(ctx.state, weaker, stronger, -PARLEY.tributeResentment);
             addExcitement(stronger, PARLEY.tributeExcitement);
-            weaker.vitals.sanity -= PARLEY.tributeSanityCost;
+            loseSanity(weaker, PARLEY.tributeSanityCost);
             clampTribute(weaker);
             clampTribute(stronger);
             ctx.logEvent(
@@ -751,7 +752,7 @@ function attemptBluff(ctx: SimContext, bluffer: Tribute, mark: Tribute): boolean
         - (mark.attributes.intelligence - 5) * PARLEY.bluffPerMarkIntelligence
         - profOf(mark, 'tracking') * PARLEY.bluffPerMarkTracking));
 
-    bluffer.vitals.sanity -= PARLEY.bluffSanityCost;
+    loseSanity(bluffer, PARLEY.bluffSanityCost);
     clampTribute(bluffer);
     trainProficiency(bluffer, 'persuasion');
 

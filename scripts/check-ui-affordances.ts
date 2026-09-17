@@ -45,7 +45,7 @@ const files = [...walk('src/components'), ...walk('src/screens')].sort();
  *
  * The ceiling is a ratchet. Lower it whenever a conversion lands; never raise it.
  */
-const TITLE_CEILING = 31;
+const TITLE_CEILING = 30;
 
 const INTERACTIVE = /<(button|a|input|select|textarea)\b/;
 
@@ -88,6 +88,69 @@ if (titles > TITLE_CEILING) {
 }
 
 /**
+ * Audit 4 §2.2: hover-only hints on *values*, which the check above is
+ * deliberately silent about.
+ *
+ * The comment on `hoverOnlyControlHints` argues that a `title` on a span is a
+ * reasonable use of the attribute — "the value is visible, the title is an
+ * unabbreviation, and nothing is lost if it never opens". A census found that
+ * is not what most of them are. There are **63** of them (the audit's own
+ * figure of 47 was a `grep 'title="'` that missed every `title={...}`), and on
+ * the dossier and the standings table the `title` is frequently the only
+ * statement of what a number *means* — "Steadied 4 last cycle", "Current stock
+ * 40% · potential 80%" — not an unabbreviation of anything on screen.
+ *
+ * Those now carry `role="group"` and an `aria-label`, so the text reaches a
+ * screen reader instead of sitting in an attribute most of them skip over an
+ * element that already has content. Touch is still not solved for a value:
+ * `components/Glossed.tsx` is the surface that does solve it, and converting
+ * the rest to it is the remaining work this ratchet holds the line on.
+ */
+const UNNAMED_VALUE_HINT_CEILING = 0;
+
+function hoverOnlyValueHints(src: string): number {
+    let count = 0;
+    const tagStart = /<([a-zA-Z][\w.]*)/g;
+    let m: RegExpExecArray | null;
+    while ((m = tagStart.exec(src)) !== null) {
+        // Lowercase tags only: an uppercase name is a component, and `title` on
+        // a component is an ordinary prop (`Explainer`, `Hint`), not the HTML
+        // attribute this check is about.
+        if (!/^[a-z]/.test(m[1])) continue;
+        if (INTERACTIVE.test(`<${m[1]}`)) continue;
+        let depth = 0, i = m.index + m[0].length, end = -1;
+        for (; i < src.length; i++) {
+            const c = src[i];
+            if (c === '{') depth++;
+            else if (c === '}') depth--;
+            else if (c === '>' && depth === 0) { end = i; break; }
+        }
+        if (end < 0) continue;
+        const attrs = src.slice(m.index, end);
+        // A gloss that also states itself accessibly is fine. One that does not
+        // is invisible to touch, to the keyboard and to most screen readers.
+        if (/\btitle=/.test(attrs) && !/aria-label=/.test(attrs)) count++;
+    }
+    return count;
+}
+
+let valueHints = 0;
+const perFileValues: Array<[string, number]> = [];
+files.forEach(file => {
+    const n = hoverOnlyValueHints(readFileSync(file, 'utf8'));
+    if (n > 0) perFileValues.push([file.replace('src/', ''), n]);
+    valueHints += n;
+});
+perFileValues.sort((a, b) => b[1] - a[1]);
+
+if (valueHints > UNNAMED_VALUE_HINT_CEILING) {
+    problems.push(
+        `${valueHints} \`title=\` hints on non-interactive elements carry no accessible name, over the ceiling of ${UNNAMED_VALUE_HINT_CEILING}. `
+        + 'Use `components/Glossed.tsx`, or at minimum add `role="group"` and an `aria-label`.'
+    );
+}
+
+/**
  * Components with no accessibility surface at all. A file that renders nothing
  * interactive and no graphics does not need one; the list below is the set that
  * was audited and found to genuinely not need it, so a new file lands here
@@ -111,6 +174,8 @@ bare.forEach(f => problems.push(`${f} renders controls or graphics and carries n
 
 notes.push(`${files.length} component/screen files scanned`);
 notes.push(`hover-only hints on controls: ${titles} (ceiling ${TITLE_CEILING}); heaviest ${perFile.slice(0, 5).map(([f, n]) => `${f} ${n}`).join(', ')}`);
+notes.push(`value hints with no accessible name: ${valueHints} (ceiling ${UNNAMED_VALUE_HINT_CEILING})`
+    + (perFileValues.length ? `; heaviest ${perFileValues.slice(0, 5).map(([f, n]) => `${f} ${n}`).join(', ')}` : ''));
 
 console.log(notes.map(n => `  ${n}`).join('\n'));
 if (problems.length) {

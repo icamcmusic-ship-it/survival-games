@@ -1,5 +1,6 @@
 import { Arena, Item, GameConfig, Build } from '../models/types';
 import { ROLLABLE_TRAITS } from './traits';
+import { withExtraEdgeRules } from './arenaEdges';
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
     districtCount: 12,
@@ -1287,6 +1288,16 @@ export const ARENAS: Arena[] = [
         ]
     },
 ];
+
+/**
+ * Audit 4 §1.1: the `contested`, `collapsing`, `hidden` and `oneWayAfter`
+ * edges nobody had authored, folded in from `data/arenaEdges.ts`.
+ *
+ * Applied here rather than written inline above so the whole set reads
+ * together and so `check-arena-layout` can assert things about it as a set.
+ * An edge an arena declares for itself always wins — see `withExtraEdgeRules`.
+ */
+ARENAS.forEach((arena, i) => { ARENAS[i] = withExtraEdgeRules(arena); });
 
 /**
  * The reaping's trait pool. The definitions — and every effect — live in

@@ -12,6 +12,7 @@ import { GamesProfile, calendarOf, ordinal, profileHeadline } from '../engine/ga
 import { standingLine } from '../engine/continuity';
 import { INTERVIEW_PERSONAS } from '../data/personas';
 import { InterviewPersona } from '../models/types';
+import { isVeteran } from '../engine/veterans';
 
 export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, onReroll, onConfirm, onCoach }: {
     tributes: Tribute[],
@@ -28,7 +29,10 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
     const units = useStore(prefsStore, p => p.units);
     const coaching = gameState?.playerCoaching;
     const [coachId, setCoachId] = useState<string>(coaching?.tributeId ?? '');
-    const veterans = new Set(gameState?.veteransSeated ?? []);
+    // Audit 4 §1.2: `veteransSeated` holds ids (names, in a legacy save).
+    // `isVeteran` is the one predicate that reads both.
+    const seatedVeterans = gameState?.veteransSeated ?? [];
+    const veteranCount = tributes.filter(t => isVeteran(seatedVeterans, t)).length;
     const continuity = gameState?.continuity;
     const byDistrict = new Map<number, Tribute[]>();
     tributes.forEach(t => {
@@ -102,7 +106,7 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
             {/* §9.3: what the last few Games left behind. Resolved by the
                 engine at the reaping and, until now, printed only into the
                 feed nobody reads before the arena opens. */}
-            {continuity && (continuity.grudgeLine || Object.keys(continuity.standings).length > 0 || veterans.size > 0) && (
+            {continuity && (continuity.grudgeLine || Object.keys(continuity.standings).length > 0 || veteranCount > 0) && (
                 <div className="panel p-4 space-y-2 animate-riseIn" style={{ borderColor: 'var(--gold)', borderWidth: 3 }}>
                     <div className="eyebrow" style={{ color: 'var(--gold)' }}>Your Panem remembers</div>
                     {continuity.grudgeLine && (
@@ -115,10 +119,10 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                             <span className="chip mr-1.5">{standing}</span>{standingLine(Number(d), standing)}
                         </p>
                     ))}
-                    {veterans.size > 0 && (
+                    {veteranCount > 0 && (
                         <p className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
                             <span className="chip chip-gold mr-1.5">Grudge match</span>
-                            {tributes.filter(t => veterans.has(t.id)).map(t => `${t.name} (D${t.district})`).join(' and ')} have stood on the podium before, and are reaped again.
+                            {tributes.filter(t => isVeteran(seatedVeterans, t)).map(t => `${t.name} (D${t.district})`).join(' and ')} have stood on the podium before, and are reaped again.
                         </p>
                     )}
                 </div>
@@ -205,11 +209,11 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                                 <div className="min-w-0">
                                     <div className="font-black text-[var(--ink)] truncate">
                                         {t.name}
-                                        {veterans.has(t.id) && (
-                                            <span className="ml-1.5 chip chip-gold" title="A past victor from your Hall of Fame, reaped again.">Victor</span>
+                                        {isVeteran(seatedVeterans, t) && (
+                                            <span className="ml-1.5 chip chip-gold" role="group" aria-label="A past victor from your Hall of Fame, reaped again." title="A past victor from your Hall of Fame, reaped again.">Victor</span>
                                         )}
                                         {t.fanFavourite && (
-                                            <span className="ml-1.5 text-[var(--gold)]" title="A Capitol favourite before the Games have even begun.">★</span>
+                                            <span className="ml-1.5 text-[var(--gold)]" role="group" aria-label="A Capitol favourite before the Games have even begun." title="A Capitol favourite before the Games have even begun.">★</span>
                                         )}
                                     </div>
                                     <div className="eyebrow mt-0.5">

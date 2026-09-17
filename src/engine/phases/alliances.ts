@@ -11,7 +11,7 @@ import { ALLIANCE_TEXTS, BETRAYAL_AFTERMATH_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE
 import { adjustRel, getRel, trustOf } from '../relationships';
 import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, raiseSuspicion, sharedHistoryOf, suspicionOf } from '../memory';
 import { respectOf } from '../relationships';
-import { sniffPerformances } from '../alliance';
+import { sniffPerformances, isStarCrossed } from '../alliance';
 import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal, preemptiveBetrayer } from '../betrayal';
 import { resolveDuePacts } from '../alliancePact';
@@ -881,7 +881,7 @@ function growRomance(ctx: SimContext) {
         for (let j = i + 1; j < alive.length; j++) {
             const t1 = alive[i];
             const t2 = alive[j];
-            if (t1.traits.includes('Star-Crossed') || t2.traits.includes('Star-Crossed')) continue;
+            if (isStarCrossed(t1) || isStarCrossed(t2)) continue;
 
             const recentContact = cyclesSinceContact(ctx.state, t1, t2.id) <= ROMANCE.contactWindow;
             if (!recentContact) continue;
@@ -1071,7 +1071,7 @@ function tickBondBeats(ctx: SimContext) {
     });
 
     alive.forEach(t1 => {
-        if (!t1.traits.includes('Star-Crossed')) return;
+        if (!isStarCrossed(t1)) return;
         const t2 = alive.find(o => o.id !== t1.id && areLovers(t1, o));
         if (!t2) return;
         const key = [t1.id, t2.id].sort().join('|');

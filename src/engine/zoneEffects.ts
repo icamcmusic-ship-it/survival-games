@@ -1,6 +1,7 @@
 import { GameState, Terrain, Tribute, ZoneEffect, ZoneEffectKind } from '../models/types';
 import { injure, openWound } from './wounds';
 import { BLEEDING, TERRAIN_DRYNESS as TERRAIN_DRYNESS_TABLE, ZONE_EFFECTS } from '../data/balance';
+import { structuralFatigueOf } from './loadBearing';
 import { SimContext } from './context';
 import { traitMod } from '../data/traits';
 import { applyDamage, checkDeath } from './combat';
@@ -13,6 +14,7 @@ import { ITEMS } from '../data/constants';
 import { QUALITY_BIAS } from '../data/balance';
 import { giveItem, itemPhrase, mintItem } from './items';
 import { earnTrait } from './earnedTraits';
+import { loseSanity } from './sanityBands';
 
 /**
  * Zone effects: the arena in a state other than its printed one.
@@ -339,7 +341,7 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                     injure(t, 'poisoned');
                     ctx.logEvent(`${t.name} has been breathing whatever is wrong with ${zoneName} for too long.`, [t.id], { important: true, category: 'injury' });
                 }
-                t.vitals.sanity -= ZONE_EFFECTS.contaminatedSanityLoss * severity;
+                loseSanity(t, ZONE_EFFECTS.contaminatedSanityLoss * severity);
                 clampTribute(t);
                 break;
 
@@ -355,7 +357,7 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
 
             case 'irradiated':
                 applyDamage(ctx, t, Math.round(ZONE_EFFECTS.irradiatedDamage * severity), { cause: `Poisoned by whatever is loose in ${zoneName}`, kind: 'arena' });
-                t.vitals.sanity -= ZONE_EFFECTS.irradiatedSanityLoss * severity;
+                loseSanity(t, ZONE_EFFECTS.irradiatedSanityLoss * severity);
                 if (!t.injuries.poisoned) injure(t, 'poisoned');
                 clampTribute(t);
                 checkDeath(ctx, t, `Poisoned by whatever is loose in ${zoneName}`);
@@ -365,7 +367,7 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                 // §7: the footing risk first — a running cost of standing on
                 // ground that will not hold still.
                 t.vitals.fatigue += ZONE_EFFECTS.quakingFatigue * severity;
-                t.vitals.sanity -= ZONE_EFFECTS.quakingSanityLoss * severity;
+                loseSanity(t, ZONE_EFFECTS.quakingSanityLoss * severity);
                 if (ctx.rng.chance(ZONE_EFFECTS.quakingFootingChance * severity)) {
                     applyDamage(ctx, t, Math.round(ZONE_EFFECTS.quakingFootingDamage * severity), { cause: `Fell on unstable ground in ${zoneName}`, kind: 'arena' });
                     openWound(t, BLEEDING.hazardSeverity);
@@ -396,7 +398,7 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                 // §7: no attacker, no evasion roll — the zone is simply
                 // uninhabitable for as long as it is crawling.
                 t.vitals.fatigue += ZONE_EFFECTS.swarmingFatigue * severity;
-                t.vitals.sanity -= ZONE_EFFECTS.swarmingSanityLoss * severity;
+                loseSanity(t, ZONE_EFFECTS.swarmingSanityLoss * severity);
                 if (!t.injuries.infected && ctx.rng.chance(ZONE_EFFECTS.swarmingInfectChance * severity)) {
                     injure(t, 'infected');
                     ctx.logEvent(`Something in the swarm over ${zoneName} has been at ${t.name}, and one of the bites has gone bad.`, [t.id], { important: true, category: 'injury' });
@@ -409,7 +411,7 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                 // it is tiring and disorienting to be inside, which used to
                 // cost nothing.
                 t.vitals.fatigue += ZONE_EFFECTS.fogboundFatigue * severity;
-                t.vitals.sanity -= ZONE_EFFECTS.fogboundSanityLoss * severity;
+                loseSanity(t, ZONE_EFFECTS.fogboundSanityLoss * severity);
                 clampTribute(t);
                 break;
             case 'stripped':
@@ -581,12 +583,75 @@ export function rollAmbientZoneEffects(ctx: SimContext) {
     if (quakable.length > 0 && ctx.rng.chance(ZONE_EFFECTS.ambientQuakeChance)) {
         startZoneEffect(ctx, ctx.rng.pick(quakable).name, 'quaking');
     }
+    /**
+     * Audit 4 §1.9: `quaking` reached 2.1% of sampled cycles against
+     * `fogbound`'s 31.3% — a 15x spread — and the reason was never the ambient
+     * chance, which is 0.025 against fog's 0.03. It is that fog has a *second*
+     * source (every weather front lays it down, 454 of them per 400 runs) and
+     * quaking had one.
+     *
+     * Here is its second source, and it costs no new state: `loadBearing` has
+     * been tracking `structuralFatigue` per ruins zone all along, and a
+     * structure most of the way to coming down is exactly a place where the
+     * footing is a running risk. A zone that has been walked on all week starts
+     * to shift before it falls; the collapse roll in `tickStructuralFatigue` is
+     * still the thing that finishes it.
+     */
+    const straining = active.filter(z =>
+        !hasEffect(state, z.name, 'quaking')
+        && structuralFatigueOf(state, z.name) >= ZONE_EFFECTS.quakingFatigueThreshold);
+    if (straining.length > 0 && ctx.rng.chance(ZONE_EFFECTS.quakingFromFatigueChance)) {
+        startZoneEffect(ctx, ctx.rng.pick(straining).name, 'quaking');
+    }
 
     // §7: an infestation hatching. Anywhere with something for it to hatch out
     // of — and much likelier where the ground is already producing.
     const swarmable = active.filter(z => z.terrain !== 'open' && !hasEffect(state, z.name, 'swarming'));
     if (swarmable.length > 0 && ctx.rng.chance(ZONE_EFFECTS.ambientSwarmChance)) {
         startZoneEffect(ctx, ctx.rng.pick(swarmable).name, 'swarming');
+    }
+    /**
+     * Audit 4 §1.9: `swarming` reached 1.0% of sampled cycles — the rarest
+     * reachable effect in the game — for the same reason as `quaking`: one
+     * ambient roll and fourteen authored events, against fog's second system.
+     *
+     * Its second source is the one the flavour was always pointing at. The
+     * engine already records where cannons have fired (`zoneDeaths`, kept for
+     * the whole run), and something hatching out of what has been left lying
+     * in a zone is both the obvious reading of "an infestation" and a reason
+     * for the arena to punish ground people keep dying on. It cannot fire in
+     * open terrain, same as the ambient roll.
+     */
+    const graves = active.filter(z =>
+        z.terrain !== 'open'
+        && !hasEffect(state, z.name, 'swarming')
+        && (state.zoneDeaths?.[z.name] ?? 0) >= ZONE_EFFECTS.swarmDeathsThreshold);
+    if (graves.length > 0 && ctx.rng.chance(ZONE_EFFECTS.swarmFromDeathsChance)) {
+        startZoneEffect(ctx, ctx.rng.pick(graves).name, 'swarming');
+    }
+    /**
+     * Audit 4 §1.8: `irradiated` — the only permanent zone effect, and the only
+     * one that *creeps* to a neighbour — fired **zero times in 340 complete
+     * runs**. Six authored events across forty arenas were the only thing that
+     * could start it, so forty-five lines of engine, including the creep, had
+     * never reached a player.
+     *
+     * The gate here is deliberately narrow, because the last fix pass has a
+     * cautionary tale in the CHANGELOG about adding lethality to the ambient
+     * layer and costing the medic archetype a point of win rate. This takes no
+     * new ground: it only fires on a zone that has *already* been contaminated
+     * or stripped and stayed that way, and only once the arena has started
+     * closing. Ground that was spoiled becomes ground that is finished, at the
+     * point in the run when the Gamemakers are narrowing the map anyway — and
+     * the creep then has somewhere to go.
+     */
+    if (state.escalationDay !== undefined) {
+        const spoiled = active.filter(z =>
+            !hasEffect(state, z.name, 'irradiated')
+            && (hasEffect(state, z.name, 'contaminated') || hasEffect(state, z.name, 'stripped')));
+        if (spoiled.length > 0 && ctx.rng.chance(ZONE_EFFECTS.irradiatedFromSpoiledChance)) {
+            startZoneEffect(ctx, ctx.rng.pick(spoiled).name, 'irradiated');
+        }
     }
 
     // A route giving out — a bridge, a tunnel, a crossing the arena decides to

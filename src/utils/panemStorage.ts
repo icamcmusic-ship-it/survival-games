@@ -7,6 +7,7 @@ import { Notable, runDelta, runNotables } from './notables';
 import { ARENAS } from '../data/constants';
 import { dailySeed } from '../data/replayHooks';
 import { ARENA_MUTTS } from '../data/mutts';
+import { deathCausesInRun } from '../engine/encounters';
 import {
     STORAGE_KEYS, StorageSpec, asNum, asObjMap, asRecord, asStrArray, readStored, removeStored,
     writeStored,
@@ -128,6 +129,26 @@ export interface PanemRecords {
     muttsSeen?: string[];
     /** §10.9: every distinct arena (mapId ?? name) ever played, win or lose — the picker marks the rest as new. */
     arenasSeen?: string[];
+    /**
+     * Audit 4 §9.3/§9.5: the two completion axes the engine was already
+     * computing and nobody was keeping.
+     *
+     * `quellsSeen`, `muttsSeen`, `arenasSeen`, `lawsWonUnder` and `biomesWon`
+     * above were the start of a collection; these close it. The simulation
+     * produces 347 distinct death templates and 1,449 identified arena events,
+     * and `deathCausesInRun()` in `engine/encounters.ts` — written for exactly
+     * this, with a comment saying so — was exported and called by nothing.
+     *
+     * The point is not a completionist checklist for its own sake. It is that
+     * 27 Quells sharing 6% of runs, 196 mutts and 1,449 events are a lottery
+     * with no memory: a player has no way to know that the thing that just
+     * happened has never happened to them before. A union of ids is the
+     * cheapest possible way to turn that into a collection, and it needs no new
+     * mechanics and no new simulation state.
+     */
+    deathsSeen?: string[];
+    /** Distinct authored arena-event ids that have fired in a finished run. */
+    eventsSeen?: string[];
     /** §10.1: victories brought home by the player's standing patron district. */
     patronWins?: number;
     /**
@@ -342,6 +363,8 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
             districtCrowns: asObjMap<DistrictCrown>(r.districtCrowns),
             arenasWon: asStrArray(r.arenasWon),
             quellsSeen: asStrArray(r.quellsSeen),
+            deathsSeen: asStrArray(r.deathsSeen),
+            eventsSeen: asStrArray(r.eventsSeen),
             lawsWonUnder: asStrArray(r.lawsWonUnder),
             biomesWon: asStrArray(r.biomesWon),
             muttsSeen: asStrArray(r.muttsSeen),
@@ -483,6 +506,15 @@ export function commitRun(state: GameState): RunOutcome {
             };
         }
     }
+
+    // Audit 4 §9.5: union this run's death templates and fired event ids into
+    // the collection. Both are already computed by the simulation; nothing
+    // here asks it for anything new.
+    records.deathsSeen = [...new Set([...(records.deathsSeen ?? []), ...deathCausesInRun(state)])].sort();
+    records.eventsSeen = [...new Set([
+        ...(records.eventsSeen ?? []),
+        ...Object.keys(state.eventLastFired ?? {}),
+    ])].sort();
 
     records.recentRuns = [
         {

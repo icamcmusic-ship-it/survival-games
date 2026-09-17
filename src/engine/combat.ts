@@ -33,6 +33,7 @@ import { earnTrait } from './earnedTraits';
 import { PREGAMES } from '../data/balance';
 import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
+import { loseSanity } from './sanityBands';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -1445,7 +1446,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             // and everything between is a row in the trait table.
             const baseToll = killer.isCareer ? COMBAT.careerKillSanity : COMBAT.killSanity;
             const toll = Math.max(0, baseToll * Math.max(0, 1 + traitMod(killer, 'killSanity')));
-            killer.vitals.sanity -= toll;
+            loseSanity(killer, toll);
             if (toll >= COMBAT.killSanityBreakdown) {
                 ctx.logEvent(
                     `${killer.name} stares at what they have done and cannot stop shaking. This is not who they were.`,
@@ -1455,14 +1456,14 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             }
             // Killing someone you were allied with is its own kind of wound.
             if (killerWasAllied) {
-                killer.vitals.sanity -= 12;
+                loseSanity(killer, COMBAT.killAllySanity);
             }
             // Vengeance discharged.
             const mem = ensureMemory(killer);
             if (mem.vengeance.includes(victim.id)) {
                 mem.vengeance = mem.vengeance.filter(id => id !== victim.id);
-                killer.vitals.sanity += 20;
-                addExcitement(killer, 30);
+                killer.vitals.sanity = Math.min(100, killer.vitals.sanity + COMBAT.vengeanceSanityRelief);
+                addExcitement(killer, COMBAT.vengeanceExcitement);
                 ctx.logEvent(
                     `${killer.name} settles the debt. ${victim.name} is dead, and whatever was driving ${killer.name} goes quiet.`,
                     [killer.id, victim.id],

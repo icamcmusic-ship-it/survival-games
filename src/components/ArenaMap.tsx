@@ -143,7 +143,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                     <span style={{ color: dangerColor(zone.danger) }}>⚠ {dangerLabel(zone.danger)}</span>
                                     <span className="text-[var(--color-ink-500)]">{zone.terrain}</span>
                                 </div>
-                                <div className="meter" title={`Current stock ${Math.round(stock * 100)}% · potential ${Math.round(zone.resources * 100)}%`}>
+                                <div className="meter" role="group" aria-label={`Current stock ${Math.round(stock * 100)}% · potential ${Math.round(zone.resources * 100)}%`} title={`Current stock ${Math.round(stock * 100)}% · potential ${Math.round(zone.resources * 100)}%`}>
                                     <span style={{ width: `${stock * 100}%`, background: 'var(--cat-loot)' }} />
                                     <span className="meter-ghost" style={{ width: `${zone.resources * 100}%` }} />
                                 </div>
@@ -170,7 +170,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                             return (
                                                 <span
                                                     key={t.id}
-                                                    title={`${t.name} (District ${t.district}) — ${t.health}% health, ${band}`}
+                                                    role="group" aria-label={`${t.name} (District ${t.district}) — ${t.health}% health, ${band}`} title={`${t.name} (District ${t.district}) — ${t.health}% health, ${band}`}
                                                     className="inline-flex items-center gap-0.5 font-mono text-[10px] leading-none px-1 py-0.5 border"
                                                     style={{ color, borderColor: color }}
                                                 >

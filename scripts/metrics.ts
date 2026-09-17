@@ -121,6 +121,23 @@ const runLengths: number[] = [];
 let aliveSamples = 0, armedSamples = 0;
 const stanceSamples: Record<Stance, number> = Object.fromEntries(STANCES.map((s: Stance) => [s, 0])) as Record<Stance, number>;
 let bleedingSamples = 0;
+/**
+ * Audit 4 §3.2: the sanity distribution, which had no indicator for four
+ * audits and was the worst-shaped distribution in the simulation.
+ *
+ * Measured before the fix: **31.4% of all live tribute-cycles at sanity 0-9
+ * and 31.3% at 90+**, with the four middle deciles holding 17% between them
+ * and p25 at literal zero. Half the cast went all the way down and one in a
+ * thousand ever came back. Sanity was a two-state flag wearing a 0-100 scale,
+ * and it was simultaneously the largest single category of feed line in the
+ * game (12.9%), so the most common thing the broadcast said was a beat from a
+ * state a third of the cast occupied permanently.
+ *
+ * Two indicators, because a single mean hides exactly this failure: how much
+ * of tribute-time is spent pinned at the bottom, and how much is spent in the
+ * two middle bands `sanityBands.ts` exists to create.
+ */
+let sanityFloorSamples = 0, sanityMidSamples = 0;
 // Proficiency growth: is anyone actually getting better at anything?
 let profSamples = 0, profTotal = 0, profMax = 0;
 // Social systems: the ones the design review measured directly.
@@ -136,6 +153,8 @@ const sampleBoard = (tributes: Tribute[]) => {
         if (t.inventory.some(i => i.type === 'weapon')) armedSamples++;
         stanceSamples[t.stance]++;
         if (t.injuries.bleeding) bleedingSamples++;
+        if (t.vitals.sanity < 10) sanityFloorSamples++;
+        if (t.vitals.sanity >= 15 && t.vitals.sanity < 70) sanityMidSamples++;
         const prof = (t as Tribute & { proficiencies?: Record<string, number> }).proficiencies;
         if (prof) {
             const best = Math.max(0, ...Object.values(prof));
@@ -619,6 +638,34 @@ const indicators: Indicator[] = [
         fmt: asPct,
     },
     {
+        // Audit 4 §3.2: sanity must not be a two-state flag. A tribute pinned
+        // at the floor has stopped being a character and become a status
+        // effect, and the bottom band's residues fire every cycle they are
+        // there — which is why this was 12.9% of every line in the feed.
+        label: 'tribute-time spent at the sanity floor',
+        value: sanityFloorSamples / Math.max(1, aliveSamples),
+        guard: v => v <= 0.22,
+        guardText: '<= 22%',
+        goal: '<= 15%',
+        goalMet: (v: number) => v <= 0.15,
+        baseline: '31.4%',
+        fmt: asPct,
+    },
+    {
+        // The other half of the same finding: the two middle bands are the
+        // ones `sanityBands.ts` was written to create — cover starting to slip,
+        // foraging you no longer trust — and they held 22% of tribute-time
+        // between them while the two ends held 78%.
+        label: 'tribute-time in the middle sanity bands',
+        value: sanityMidSamples / Math.max(1, aliveSamples),
+        guard: v => v >= 0.22,
+        guardText: '>= 22%',
+        goal: '>= 30%',
+        goalMet: (v: number) => v >= 0.30,
+        baseline: '22.3%',
+        fmt: asPct,
+    },
+    {
         // §7. Every canonical Games produces a victor — sometimes two, which
         // this simulation already models deliberately. A run that ends with an
         // empty arena is the single largest canon-fidelity gap available, and
@@ -929,21 +976,37 @@ if (underSampled.length) {
  * These carry no guard for exactly the reason above. They carry the goal, so
  * the gap is visible, and the run count needed to close the confidence gap is
  * named rather than left as an exercise.
+ *
+ * Audit 4 §1.6: and they now *withhold the verdict* below the sample size at
+ * which it reproduces. At the default 400 runs this block printed
+ * `spread 2.77x SHORT of goal` and `worst zealot 2.79% SHORT of goal`; at
+ * 1,600 the same two lines read 1.92x and 3.82%, both MET. Eight of fifteen
+ * archetypes draw under `GUARD_MIN_SAMPLE` at 400 runs, so the whole-field
+ * spread is set by whichever small archetype got unlucky — zealot needed four
+ * more victors. A default invocation telling its reader that balance is
+ * failing when it is not is worse than one that says it cannot yet tell.
  */
 {
     const fullSpread = spreadOf(archetypeRates);
     const worstFull = archetypeRates[archetypeRates.length - 1];
     const bestFull = archetypeRates[0];
-    const band = (v: number, goalMet: boolean) => `${v.toFixed(2)}x  ${goalMet ? 'goal MET' : 'SHORT of goal'}`;
+    // Every member of the field has to clear the guard sample before a
+    // best/worst verdict over the whole field means anything: the extremes are
+    // by definition the rows most sensitive to one victor.
+    const canJudge = archetypeRates.every(([, , n]) => n >= GUARD_MIN_SAMPLE);
+    const verdict = (met: boolean) => (canJudge ? (met ? 'goal MET' : 'SHORT of goal') : 'not yet judgeable');
     console.log('\nwhole-field archetype balance (every archetype, no guard — see GUARD_MIN_SAMPLE):');
-    console.log(`  spread (best/worst)   ${band(fullSpread, fullSpread <= 2.3)}  (goal <= 2.3x)`);
+    console.log(`  spread (best/worst)   ${fullSpread.toFixed(2)}x  ${verdict(fullSpread <= 2.3)}  (goal <= 2.3x)`);
     console.log(`  best   ${bestFull[0]} ${(bestFull[1] * 100).toFixed(2)}% (n=${bestFull[2]})`);
     console.log(`  worst  ${worstFull[0]} ${(worstFull[1] * 100).toFixed(2)}% (n=${worstFull[2]})`
-        + `  ${worstFull[1] >= 0.035 ? 'goal MET' : 'SHORT of goal (>= 3.5%)'}`);
-    if (fullSpread > 2.3 || worstFull[1] < 0.035) {
-        console.log(`  These two lines are the design targets over the real cast. They are reported`);
-        console.log(`  rather than guarded because ${underSampled.length} archetype(s) are under ${GUARD_MIN_SAMPLE} entrants at`);
-        console.log(`  ${runs} runs; confirm a change to them with METRICS_RUNS=1600.`);
+        + `  ${verdict(worstFull[1] >= 0.035)}${canJudge ? '' : ''} (goal >= 3.5%)`);
+    if (!canJudge) {
+        console.log(`  Reported without a verdict: ${underSampled.length} archetype(s) are under ${GUARD_MIN_SAMPLE}`);
+        console.log(`  entrants at ${runs} runs, and the best/worst rows are the two most sensitive`);
+        console.log(`  to a single victor. Re-run with METRICS_RUNS=1600 to judge these two lines.`);
+    } else if (fullSpread > 2.3 || worstFull[1] < 0.035) {
+        console.log(`  These two lines are the design targets over the real cast, and every`);
+        console.log(`  archetype cleared ${GUARD_MIN_SAMPLE} entrants at ${runs} runs, so the verdict stands.`);
     }
 }
 console.log(failed ? `\n${failed} regression guard(s) breached.` : '\nAll regression guards hold.');

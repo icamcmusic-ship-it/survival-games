@@ -14,6 +14,7 @@ import { resolveLoansOnDeath } from './debts';
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
+import { loseSanity } from './sanityBands';
 
 /**
  * The social graph, and everything that writes to it.
@@ -288,7 +289,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 + (isPartner ? DEBTS.partnerGriefSanity : 0);
 
             // Some people have buried someone before, and some people have not.
-            other.vitals.sanity -= sanityHit * Math.max(0, 1 - traitMod(other, 'griefResist'));
+            loseSanity(other, sanityHit * Math.max(0, 1 - traitMod(other, 'griefResist')));
             addExcitement(other, Math.round(10 + intensity * 25));
             // The crowd rewards visible grief.
             other.sponsorTrust += Math.round(intensity * RELATIONSHIPS.griefTrustPerIntensity);
@@ -463,7 +464,7 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
     if (!victimMem.betrayedBy.includes(betrayer.id)) victimMem.betrayedBy.push(betrayer.id);
     swearVengeance(victim, betrayer.id);
 
-    victim.vitals.sanity -= RELATIONSHIPS.betrayalSanityCost;
+    loseSanity(victim, RELATIONSHIPS.betrayalSanityCost);
     earnTrait(ctx, victim, 'Marked');
     addExcitement(betrayer, RELATIONSHIPS.betrayalExcitement);
     // The Capitol loves the drama and distrusts the man.
