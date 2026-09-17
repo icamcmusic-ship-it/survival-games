@@ -1059,7 +1059,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             requires: { effect: 'burning' },
         },
         {
-            text: 'The glowcaps in {zone} light at dusk, and they light {tribute} with them, a warm blue silhouette visible from three zones away.',
+            text: 'The glowcaps in {zone} light at dusk and light {tribute} with them. They show from three zones off.',
             escapeText: '{tribute} smears themselves with rot from {zone} and the glow goes out on their skin.',
             cause: 'Lit up in the glowcap wood',
             dodgeStat: 'stealth',
@@ -1077,7 +1077,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'canopy-the-rain-in-the-crown',
             oncePerRun: true,
-            text: 'The rain comes to the crown before it comes anywhere else, and in {zone} every leaf and cup and bromeliad fills at once. {tribute} lies on their back with their mouth open and lets the tree pour into them.',
+            text: 'The rain reaches the crown first and every leaf and bromeliad in {zone} fills at once. {tribute} lies on their back with their mouth open under it.',
             escapeText: '',
             cause: 'Drowned in the crown',
             quench: 25,
@@ -1088,7 +1088,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'canopy-the-view-of-the-ground',
             oncePerRun: true,
-            text: 'The mist under {zone} clears for the first time and {tribute} sees the ground. It is two hundred metres down, and it is moving, all of it, and it is looking up.',
+            text: 'The mist under {zone} clears for the first time and {tribute} sees the ground. It is two hundred metres down and all of it is moving.',
             escapeText: '{tribute} feels the mist under {zone} begin to thin and does not look.',
             cause: 'Went to see the ground',
             dodgeStat: 'willpower',
@@ -1101,7 +1101,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'canopy-the-bough-breaks',
             oncePerRun: true,
-            text: 'The Great Bough has held the Cornucopia for the whole Games and today the tree decides it has held it long enough. The crack goes through {zone} like a shot and the platform tilts thirty degrees toward the drop with {tribute} on it.',
+            text: 'The Great Bough has carried the Cornucopia since the gong. It cracks through {zone} and the platform tilts thirty degrees toward the drop with {tribute} on it.',
             escapeText: '{tribute} feels {zone} shift under them and is on the trunk side with both arms round a branch when the platform goes.',
             cause: 'Fell with the Great Bough',
             dodgeStat: 'agility',
@@ -1127,7 +1127,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             id: 'canopy-the-bridge-goes',
             oncePerRun: true,
             weight: 0.15,
-            text: 'The bridge out of {zone} lets go under {tribute} at the midpoint, and for a moment they are holding a rope that is holding nothing.',
+            text: 'The bridge out of {zone} lets go under {tribute} at the midpoint. They are left holding a rope with nothing on the far end of it.',
             escapeText: '{tribute} would not cross the frayed bridge out of {zone}, and watches it fall from the platform with something like grief.',
             cause: 'Fell when the bridge went',
             dodgeStat: 'agility',
@@ -1141,7 +1141,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         },
         // ---- signature deaths ----
         {
-            text: 'The crown is the highest point in the arena and the wind in {zone} knows it. {tribute} reaches for a branch that was there a moment ago, and then there is no more canopy under them, only the long grey fall through it.',
+            text: 'The wind takes the crown at {zone}. {tribute} reaches for a branch that has moved and goes through the canopy.',
             escapeText: '{tribute} keeps three points on the tree at all times in {zone} and the gust finds nothing to take.',
             cause: 'Fell from the crown',
             dodgeStat: 'agility',
@@ -1152,7 +1152,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             terrains: ['highland'],
         },
         {
-            text: 'The moss on the limb in {zone} is a skin over rot, and {tribute}\'s foot goes through the limb, and the limb goes through the platform, and everything under it is air.',
+            text: 'The moss on the limb in {zone} is a skin over rot. {tribute}\'s foot goes through the limb, the limb goes through the platform, and there is nothing under that.',
             escapeText: '{tribute} tests the limb in {zone} with a heel before trusting it and it powders under the tap.',
             cause: 'Fell through a rotten limb',
             dodgeStat: 'intelligence',
@@ -1164,7 +1164,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         },
         // ---- reactive ----
         {
-            text: 'The storm has the whole tree moving and in {zone} the platform is a deck in a heavy sea. {tribute} is thrown against the rail, and the rail is rope.',
+            text: 'The storm has the whole tree moving and the platform at {zone} with it. {tribute} is thrown against the rail, which is rope.',
             escapeText: '{tribute} lashes themselves to the trunk in {zone} and lets the storm throw the platform around under them.',
             cause: 'Thrown from the canopy in the storm',
             dodgeStat: 'agility',
@@ -1178,7 +1178,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             zoneWide: true,
         },
         {
-            text: 'The wind gap in {zone} has one way across and it is a single beam, and with the field this thin {tribute} finds somebody sitting at the far end of it, waiting, with a good long stick.',
+            text: 'The wind gap in {zone} is crossed by one beam. {tribute} finds somebody sitting at the far end of it with a long stick.',
             escapeText: '{tribute} sees the shape at the far end of the beam in {zone} and goes back the way they came.',
             cause: 'Knocked off the beam',
             dodgeStat: 'agility',
@@ -1196,7 +1196,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'vault-the-lights-stay-off',
             oncePerRun: true,
-            text: 'The lights go out on schedule in {zone} and do not come back. An hour. Four. The faces on the ceiling are the only light left in the Vault, and {tribute} sits under them and learns their own breathing.',
+            text: 'The lights go out on schedule in {zone} and stay out for four hours. The faces on the ceiling are the only light left and {tribute} sits under them.',
             escapeText: '{tribute} had a candle and a corner in {zone} ready for exactly this, and sits it out with their back to a wall.',
             cause: 'Died in the long dark',
             dodgeStat: 'intelligence',
@@ -1210,7 +1210,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'vault-the-sealed-store',
             oncePerRun: true,
-            text: 'A wall in {zone} that was never a wall opens on a code {tribute} did not enter, and behind it are the stores that built the Vault: sealed water, tinned protein, a bunk with a blanket. The door stays open exactly long enough.',
+            text: 'A wall in {zone} opens on a code nobody entered. Behind it are sealed water, tinned protein and a bunk with a blanket. {tribute} is inside before it shuts.',
             escapeText: '',
             cause: 'Sealed in the store',
             feed: 20,
@@ -1221,7 +1221,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'vault-the-projection',
             oncePerRun: true,
-            text: 'The ceiling over {zone} changes. The faces of the fallen slide aside and what comes up in their place is the face of {tribute}, alive, in real time, from a camera they cannot find. Everyone still breathing in the Vault is looking at it.',
+            text: 'The faces of the fallen slide aside on the ceiling over {zone} and {tribute}\'s own face comes up live, from a camera they cannot find.',
             escapeText: '{tribute} sees their own face come up on the ceiling of {zone} and is already moving before anyone can act on it.',
             cause: 'Killed under their own face',
             dodgeStat: 'stealth',
@@ -1236,7 +1236,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'vault-the-reactor-hum',
             chain: 'vault-the-reactor-scram',
-            text: 'The hum under {zone} has changed pitch. {tribute} does not know what the reactor sounds like when it is well, but they know this is not it.',
+            text: 'The hum under {zone} has held one note since the gong. {tribute} hears it change pitch.',
             escapeText: '',
             cause: 'Died of what the reactor gave them',
             sanity: 6,
@@ -1246,7 +1246,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             id: 'vault-the-reactor-scram',
             oncePerRun: true,
             weight: 0.15,
-            text: 'The reactor scrams. Every light in {zone} goes red, then out, and a heat comes up through the deck plates that {tribute} can feel through their boots and then through their teeth.',
+            text: 'The reactor scrams. Every light in {zone} goes red and then out, and the deck plates under {tribute} start to warm.',
             escapeText: '{tribute} took the changed hum under {zone} seriously and is as far from the reactor level as the Vault allows when it goes.',
             cause: 'Killed in the reactor scram',
             dodgeStat: 'intelligence',
@@ -1262,7 +1262,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         },
         // ---- signature deaths ----
         {
-            text: 'The blast door in {zone} closes on its own schedule and {tribute} is a step too slow through it. It does not stop for them. It was built not to.',
+            text: 'The blast door in {zone} closes on its schedule. {tribute} is a step short of the gap.',
             escapeText: '{tribute} hears the door motor in {zone} start up and throws themselves through before it seals.',
             cause: 'Crushed in a blast door',
             dodgeStat: 'agility',
@@ -1272,7 +1272,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             terrains: ['ruins', 'open', 'highland'],
         },
         {
-            text: 'The air in {zone} has been getting thinner all day and nobody noticed, because that is what thin air does. {tribute} sits down to rest and does not think to get up.',
+            text: 'The air in {zone} has been thinning all day. {tribute} sits down to rest and does not get up.',
             escapeText: '{tribute} notices the candle in {zone} burning low and blue and crawls for the vents.',
             cause: 'Suffocated when the scrubbers failed',
             dodgeStat: 'intelligence',
@@ -1284,7 +1284,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         },
         // ---- reactive ----
         {
-            text: 'The lights are out on schedule in {zone} and the pallid things that live in the walls know the schedule better than {tribute} does.',
+            text: 'The lights are out on schedule in {zone}, and the pallid things come out of the walls on the same schedule, onto {tribute}.',
             escapeText: '{tribute} does not move and does not breathe in the dark of {zone}, and the things pass by close enough to smell.',
             cause: 'Taken in the scheduled dark',
             dodgeStat: 'stealth',
@@ -1296,7 +1296,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             requires: { time: 'night' },
         },
         {
-            text: 'There are twelve faces on the ceiling of {zone} now and {tribute} knows all of them, and the ceiling has started, very slightly, to move.',
+            text: 'There are twelve faces on the ceiling of {zone} now. {tribute} knows all of them, and the ceiling has started to move.',
             escapeText: '{tribute} stops looking at the ceiling of {zone} and does not start again.',
             cause: 'Lost under the faces',
             dodgeStat: 'willpower',
@@ -1313,7 +1313,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'warren-the-cistern',
             oncePerRun: true,
-            text: 'Behind a fall of rock in {zone} there is a chamber the miners lined with lead and filled a century ago, and it is still full. {tribute} drinks water older than Panem and it is the sweetest thing they have ever tasted.',
+            text: 'Behind a fall of rock in {zone} is a lead-lined chamber the miners filled a century ago. It is still full and {tribute} drinks from it.',
             escapeText: '',
             cause: 'Drowned in the old cistern',
             quench: 25,
@@ -1324,7 +1324,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'warren-the-shaft-of-light',
             oncePerRun: true,
-            text: 'A cave-in somewhere above opens a crack to the surface, and for one hour a shaft of daylight stands in {zone} like a pillar. Every tribute who can find it comes to stand in it. {tribute} is one of them, and not the only one.',
+            text: 'A cave-in above opens a crack to the surface and a shaft of daylight stands in {zone} for an hour. {tribute} goes to stand in it and is not the only one who does.',
             escapeText: '{tribute} sees the light come down in {zone} and watches who else comes to it from the dark.',
             cause: 'Killed in the shaft of light',
             dodgeStat: 'stealth',
@@ -1338,7 +1338,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'warren-the-warden-passes',
             oncePerRun: true,
-            text: 'The Warden goes through {zone}. Not hunting: passing, the whole length of it, and it takes a minute to pass, and {tribute} lies against the wall with their eyes shut and feels the breath of it go over them like weather.',
+            text: 'The Warden goes the whole length of {zone} without stopping. It takes a full minute to pass and {tribute} lies against the wall for all of it.',
             escapeText: '{tribute} is in a side drift with a rock over the mouth when the Warden goes past {zone}.',
             cause: 'Taken by the Warden',
             dodgeStat: 'willpower',
@@ -1355,7 +1355,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'warren-the-props-creak',
             chain: 'warren-the-roof-comes-in',
-            text: 'The timber props in {zone} have started to speak, a slow creak every few minutes, and {tribute} has begun counting the gap between them.',
+            text: 'The timber props in {zone} creak every few minutes. {tribute} has started counting the gap between them and it is shortening.',
             escapeText: '',
             cause: 'Buried in a tunnel collapse',
             terrains: ['ruins', 'highland'],
@@ -1364,7 +1364,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             id: 'warren-the-roof-comes-in',
             oncePerRun: true,
             weight: 0.15,
-            text: 'The gap runs out. The props in {zone} go together and the roof comes in along the whole drift, and {tribute} is under the middle of it.',
+            text: 'The props in {zone} go together and the roof comes in along the whole drift. {tribute} is under the middle of it.',
             escapeText: '{tribute} has been counting the props in {zone} and is out of the drift on the last creak before the long one.',
             cause: 'Buried when the roof came in',
             dodgeStat: 'agility',
@@ -1379,7 +1379,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         },
         // ---- signature deaths ----
         {
-            text: '{tribute}\'s light goes out in {zone}, and does not come back. The dark in the Warren is a solid thing. They walk into it with a hand on the wall, and the wall ends.',
+            text: '{tribute}\'s light goes out in {zone} and will not relight. They walk on with a hand on the wall, and the wall ends.',
             escapeText: '{tribute} sits down where they are in {zone} the moment the light dies, and waits for it, and does not move.',
             cause: 'Walked into the dark',
             dodgeStat: 'willpower',
@@ -1390,7 +1390,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             terrains: ['ruins', 'highland', 'open', 'forest'],
         },
         {
-            text: 'The ore cart in {zone} has sat on its rail for a century, and the rail runs downhill, and something upslope has just knocked its chock away. {tribute} hears it coming for a long time.',
+            text: 'The ore cart in {zone} has sat chocked on a downhill rail for a century. Something upslope knocks the chock out and {tribute} hears it coming for a long way.',
             escapeText: '{tribute} hears the wheels start up in {zone} and gets into the refuge hole before the cart goes past.',
             cause: 'Run down by an ore cart',
             dodgeStat: 'agility',
@@ -1401,7 +1401,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         },
         // ---- reactive ----
         {
-            text: 'The choke at {zone} is the only way through and there are too many people still alive for it to be empty. {tribute} comes round the bend into three of them.',
+            text: 'The choke at {zone} is the only way through. {tribute} comes round the bend into three tributes in it.',
             escapeText: '{tribute} hears voices in the choke at {zone} and waits in the dark until it clears.',
             cause: 'Killed in the choke',
             dodgeStat: 'stealth',
@@ -1413,7 +1413,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             witnesses: true,
         },
         {
-            text: 'The fire in {zone} is eating the air, and the Warren has no more of it to give. {tribute} lies down flat under the smoke and the floor is warm and the dark gets bigger.',
+            text: 'The fire in {zone} is taking the air out of the drift. {tribute} lies flat under the smoke and stops moving.',
             escapeText: '{tribute} goes upslope against the draught in {zone} and finds the air the fire has not reached.',
             cause: 'Suffocated by the mine fire',
             dodgeStat: 'intelligence',
@@ -1432,7 +1432,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'islands-the-fog-lifts',
             oncePerRun: true,
-            text: 'The fog drops. For one hour every island in the arena hangs in clear air over a sea nobody has seen, and {tribute} stands at the edge of {zone} and counts the other figures standing at the edges of theirs.',
+            text: 'The fog drops for an hour and every island comes into view of every other. {tribute} stands at the edge of {zone} and counts five figures on five other islands.',
             escapeText: '',
             cause: 'Killed when the fog lifted',
             sanity: 10,
@@ -1444,7 +1444,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'islands-the-ferry-cargo',
             oncePerRun: true,
-            text: 'The hold of the ferry in {zone} has been under fog since it went down, and today the fog is thin enough to go in. It was carrying provisions. {tribute} comes out with an armful and does not go back for the rest.',
+            text: 'The fog off the ferry in {zone} thins enough to go into the hold. It was carrying provisions. {tribute} comes out with an armful.',
             escapeText: '',
             cause: 'Lost in the ferry\'s hold',
             feed: 22,
@@ -1454,7 +1454,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'islands-the-compass-swings',
             oncePerRun: true,
-            text: 'Something under the fog changes and every rope in the arena creaks the same way at once. The islands are moving. {zone} swings a quarter turn on its cables, and {tribute} is on the outer edge of the swing.',
+            text: 'Every rope in the arena creaks at once and the islands start moving. {zone} swings a quarter turn on its cables with {tribute} on the outer edge of it.',
             escapeText: '{tribute} feels the cables under {zone} take up and is flat on the deck with a hand through the rope before it moves.',
             cause: 'Thrown when the islands swung',
             dodgeStat: 'agility',
@@ -1471,7 +1471,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         {
             id: 'islands-the-anchor-drags',
             chain: 'islands-the-island-goes-adrift',
-            text: 'The island under {zone} has begun to tilt toward one corner, slowly, and the cable on that side is humming a note {tribute} does not like.',
+            text: 'The island under {tribute} has begun to tilt toward one corner of {zone}, and the cable on that side is under enough load to hum.',
             escapeText: '',
             cause: 'Went into the fog with the island',
             terrains: ['open', 'wetland', 'forest', 'highland', 'ruins'],
@@ -1480,7 +1480,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             id: 'islands-the-island-goes-adrift',
             oncePerRun: true,
             weight: 0.15,
-            text: 'The cable parts and {zone} goes. Not down: sideways, into the fog, spinning, with {tribute} on it, and the last thing they see of the arena is the far end of a bridge that is no longer attached to anything.',
+            text: 'The cable parts and {zone} goes sideways into the fog, turning, with {tribute} on it and the bridge stub trailing behind.',
             escapeText: '{tribute} would not sleep on the tilting island and is across the bridge to solid rock when {zone} goes adrift.',
             cause: 'Adrift in the fog',
             dodgeStat: 'agility',
@@ -1496,7 +1496,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
         },
         // ---- signature deaths ----
         {
-            text: 'The zip-line out of {zone} is fine. The brake on the far end is not there anymore. {tribute} sees this at about the halfway point, at speed, and then sees the rock.',
+            text: 'The zip-line out of {zone} is sound and the brake at the far end is gone. {tribute} sees that at the halfway point, at speed.',
             escapeText: '{tribute} checks the far end of the line from {zone} before clipping on and does not like what they cannot see.',
             cause: 'Hit the far end at speed',
             dodgeStat: 'intelligence',
@@ -1507,7 +1507,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             terrains: ['open', 'highland', 'forest', 'ruins'],
         },
         {
-            text: 'The fog comes up over the edge of {zone} in a tongue and {tribute} takes one step back from it, and the island is not that wide.',
+            text: 'The fog comes up over the edge of {zone}. {tribute} steps back from it and off the far side.',
             escapeText: '{tribute} keeps a rope round their waist and a hand on the stake in {zone} whenever the fog comes up.',
             cause: 'Stepped back into the fog',
             dodgeStat: 'agility',
@@ -1532,7 +1532,7 @@ export const EXTRA_ARENA_EVENTS_GROUP1: Record<string, ArenaEventDef[]> = {
             requires: { storm: true, elevationOrChoke: true },
         },
         {
-            text: 'The fog on {zone} is thickest at night, and at night the compasses do not spin, they point. All of them, the same way, toward something out in the shallows that {tribute} did not want to know was there.',
+            text: 'At night the compasses on {zone} stop spinning and point, all of them the same way, at something out in the shallows. {tribute} follows the bearing.',
             escapeText: '{tribute} puts the compass away in {zone} and does not take it out again until morning.',
             cause: 'Followed the needle into the fog',
             dodgeStat: 'willpower',
