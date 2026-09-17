@@ -574,7 +574,10 @@ for (let i = 0; i < 400; i++) {
     if (l.text.includes('fog bank rolls into')) zoneFogs++;
     if (l.text.includes('burned down to ash')) zoneStripped++;
     if (l.text.includes('route between') || l.text.includes('route gives out')) zoneSevered++;
-    if (l.text.includes('border will close around')) borderTelegraphs++;
+    // Keyed on the line's stable marker rather than a fragment of its prose —
+    // the previous matcher read 'border will close around', which is one
+    // telegraph line out of ten and went to zero the moment it was reworded.
+    if (l.text.startsWith('BORDER WARNING:')) borderTelegraphs++;
     if (l.text.includes('A supply drop lands at the Cornucopia')) cornucopiaRestocks++;
     if (l.category === 'mutt') muttEncounters++;
   });
