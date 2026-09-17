@@ -13562,7 +13562,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 '{tribute} picks ticks off their legs in {zone} and rests.',
             ],
             hide: [
-                '{tribute} vanishes into the undergrowth of {zone}, green on green.',
+                '{tribute} goes into the undergrowth of {zone} and stops moving.',
                 '{tribute} climbs high into the canopy above {zone} and stops moving.',
                 '{tribute} slides behind a buttress root in {zone} and waits.',
             ],
@@ -13602,7 +13602,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 sanity: 12,
             },
             {
-                text: 'The cut on {tribute} has been wet since the first day. In {zone} it turns, and it turns fast.',
+                text: 'The cut on {tribute} has been wet since the first day. In {zone} it goes hot within the hour.',
                 escapeText: '{tribute} gets a fire going in {zone} long enough to dry a dressing properly.',
                 cause: 'Killed by a tropical infection',
                 dodgeStat: 'intelligence',
@@ -13675,7 +13675,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
             {
                 // §7.3: the fallback packs sat at the same twelve as every
                 // hand-authored arena. Six more per biome, in the biome's voice.
-                text: 'The rain over {zone} does not let up for eleven hours and {tribute} has not been dry long enough for their skin to remember what dry is.',
+                text: 'The rain over {zone} does not let up for eleven hours. {tribute} has not been dry since the bloodbath.',
                 escapeText: '{tribute} gets a leaf roof up over {zone} that actually sheds, and sits under it dry while the forest drowns.',
                 cause: 'Rotted through in the rain',
                 dodgeStat: 'endurance',
@@ -13686,7 +13686,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The column of army ants crossing {zone} is a metre wide and four hundred metres long and it does not go around anything at all, {tribute} included.',
+                text: 'The column of army ants crossing {zone} is a metre wide and four hundred long, and it goes over {tribute} rather than round.',
                 escapeText: '{tribute} spots the ant column in {zone} from the noise the forest makes ahead of it and gets well off the line.',
                 cause: 'Taken by the ants',
                 dodgeStat: 'agility',
@@ -13706,7 +13706,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The river through {zone} comes up two metres overnight on rain that fell somewhere nobody can see, and {tribute} wakes on an island.',
+                text: 'The river through {zone} comes up two metres overnight on rain that fell upstream. {tribute} wakes on an island.',
                 escapeText: '{tribute} reads the drift line on the trunks at {zone} and camps above it, which turns out to have been the whole trick.',
                 cause: 'Swept away in the flood',
                 dodgeStat: 'intelligence',
@@ -13718,7 +13718,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'flooded',
             },
             {
-                text: 'Something goes through the understory of {zone} at chest height, fast, twice, and does not come back a third time, which {tribute} finds is somehow worse.',
+                text: 'Something goes through the understory of {zone} at chest height twice, fast, within arm\'s reach of {tribute}, and does not come back.',
                 escapeText: '{tribute} puts a tree at their back in {zone} and whatever has been circling decides against it.',
                 cause: 'Killed in the understory',
                 dodgeStat: 'stealth',
@@ -13729,7 +13729,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The fruiting tree above {zone} has dropped a season’s worth onto the forest floor and half of it is still good, and nothing else has found it before {tribute}.',
+                text: 'The fruiting tree above {zone} has dropped a season onto the forest floor and half of it is still good. Nothing has been at it before {tribute}.',
                 escapeText: '{tribute} gets to the fallen fruit under {zone} to find it fermenting and crawling and worth nothing at all.',
                 cause: 'Starved in the rainforest',
                 feed: 36,
@@ -13742,7 +13742,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
             {
                 // §7.3: second pass, bringing the fallback packs to the target
                 // alongside the hand-authored roster.
-                text: 'The leaf litter in {zone} is a foot deep and everything in the forest that bites lives in the top two inches of it, and {tribute} has been sleeping on the ground.',
+                text: 'The leaf litter in {zone} is a foot deep and everything that bites lives in the top two inches. {tribute} has slept on the ground three nights.',
                 escapeText: '{tribute} sleeps off the ground in {zone}, slung between two trunks, and nothing comes up out of the litter to find them.',
                 cause: 'Killed in the leaf litter',
                 dodgeStat: 'intelligence',
@@ -13753,7 +13753,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The strangler growth around {zone} has closed a route that was open yesterday and {tribute} has to cut the whole way through it with whatever is in their hand.',
+                text: 'The strangler growth around {zone} has closed a route that was open yesterday. {tribute} cuts the whole way through it.',
                 escapeText: '{tribute} finds the game trail under the strangler growth at {zone} and follows it through without cutting a single stem.',
                 cause: 'Lost in the strangler growth',
                 dodgeStat: 'strength',
@@ -13764,7 +13764,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'The canopy over {zone} falls silent, entirely, the way it does when something large is under it, and {tribute} is under it.',
+                text: 'The canopy over {zone} goes completely silent. {tribute} is under it and so is something else.',
                 escapeText: '{tribute} stops dead in {zone} when the canopy goes quiet and stays stopped until it starts up again.',
                 cause: 'Taken under the silent canopy',
                 dodgeStat: 'stealth',
@@ -13776,7 +13776,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['forest'],
             },
             {
-                text: 'Everything {tribute} owns has been wet for six days and the pack straps have gone through the skin of both shoulders, and there is nothing anywhere in {zone} that will dry any of it.',
+                text: 'Everything {tribute} owns has been wet for six days and the pack straps have gone through the skin of both shoulders. Nothing in {zone} is dry enough to change that.',
                 escapeText: '{tribute} gets a fire going under a leaf roof in {zone}, dries their straps and their feet, and starts the next day as a different person.',
                 cause: 'Rotted through in the rain',
                 dodgeStat: 'endurance',
@@ -13786,7 +13786,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 fatigue: 22,
             },
             {
-                text: 'The stream through {zone} looks clean because it is moving and {tribute} has been drinking from it since the second day without treating a drop of it.',
+                text: 'The stream through {zone} is moving and clear. {tribute} has drunk from it untreated since the second day.',
                 escapeText: '{tribute} boils everything they take out of the stream in {zone}, every time, which is dull and is why they are still upright.',
                 cause: 'Died of bad water',
                 dodgeStat: 'intelligence',
@@ -13796,7 +13796,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['water', 'wetland'],
             },
             {
-                text: 'The bromeliads in the canopy over {zone} each hold a litre of rain that has never touched the ground, and {tribute} climbs for an hour and works down the whole branch.',
+                text: 'The bromeliads in the canopy over {zone} hold a litre each of rain that has never touched the ground. {tribute} climbs for an hour and works the whole branch.',
                 escapeText: '{tribute} climbs for the bromeliads over {zone} and finds every one of them tipped and the water gone into the moss.',
                 cause: 'Starved in the rainforest',
                 quench: 50,
@@ -13811,7 +13811,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
         ambient: [
             'Ash falls like grey snow across the whole arena.',
             'The ground shudders. Somewhere, a new vent has opened.',
-            'The sky over the caldera glows orange all night. Nobody sleeps well.',
+            'The sky over the caldera stays orange from dusk to dawn.',
         ],
         actions: {
             forage: [
@@ -13820,14 +13820,14 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 '{tribute} works a fissure in {zone} and recovers {item}.',
             ],
             rest: [
-                '{tribute} sleeps on warm stone in {zone}, the only comfort this arena offers.',
+                '{tribute} sleeps on warm stone in {zone} without a fire.',
                 '{tribute} shakes ash out of everything they own in {zone}.',
                 '{tribute} wraps cloth over their mouth in {zone} and rests shallowly.',
             ],
             hide: [
                 '{tribute} slips into a lava tube beneath {zone} and goes quiet.',
-                '{tribute} lies in the ash of {zone} until they are just another grey shape.',
-                '{tribute} wedges between basalt columns in {zone}, unseen.',
+                '{tribute} lies in the ash of {zone} and lets the fall settle over them.',
+                '{tribute} wedges between two basalt columns in {zone}.',
             ],
             hunt: [
                 '{tribute} follows fresh prints through the ash of {zone} until they stop.',
@@ -13943,7 +13943,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 sanity: 12,
             },
             {
-                text: 'The ground through {zone} is warm to the hand and warmer to the knee, and the crust {tribute} is crossing is thinner than the crust they crossed yesterday.',
+                text: 'The ground through {zone} is warm to the hand. The crust {tribute} is crossing is thinner than the one they crossed yesterday.',
                 escapeText: '{tribute} tests the crust across {zone} ahead of every step and finds the thin part with a pole rather than a leg.',
                 cause: 'Went through the crust',
                 dodgeStat: 'intelligence',
@@ -13954,7 +13954,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['open', 'highland'],
             },
             {
-                text: 'A vent opens on the slope above {zone} with no warning at all and puts a column of gas down the hill ahead of the heat and over {tribute}.',
+                text: 'A vent opens on the slope above {zone} and puts a column of gas down the hill ahead of the heat and over {tribute}.',
                 escapeText: '{tribute} smells the vent above {zone} open before they hear it and is upslope and crosswind by the time it arrives.',
                 cause: 'Suffocated by volcanic gas',
                 dodgeStat: 'agility',
@@ -13966,7 +13966,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'contaminated',
             },
             {
-                text: 'The lava tube under {zone} is the only shade for a mile, and the roof of it, which {tribute} is lying under, has been thinning from above since long before anybody arrived.',
+                text: 'The lava tube under {zone} is the only shade for a mile and its roof has thinned from above for years. {tribute} is lying under it.',
                 escapeText: '{tribute} reads the skylights along the lava tube at {zone} and works out exactly where not to sit.',
                 cause: 'Buried in a lava tube',
                 dodgeStat: 'intelligence',
@@ -13976,7 +13976,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 special: 'collapse',
             },
             {
-                text: 'The mountain shifts under {zone} for about forty seconds, and nothing falls, and everything {tribute} thought was level is now not quite.',
+                text: 'The mountain shifts under {zone} for about forty seconds. Nothing falls, and nothing {tribute} had levelled is level afterwards.',
                 escapeText: '{tribute} rides the tremor out flat on the ground at {zone} and loses nothing to it but an hour of nerve.',
                 cause: 'Killed in the tremor',
                 dodgeStat: 'agility',
@@ -13987,7 +13987,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The fresh glass across {zone} breaks to an edge that has no business existing outside a surgery, and {tribute} puts a hand down on it.',
+                text: 'The fresh glass across {zone} breaks to a surgical edge. {tribute} puts a hand down on it.',
                 escapeText: '{tribute} crosses the glass field of {zone} on the flats of their boots with their hands nowhere near the ground.',
                 cause: 'Bled out on volcanic glass',
                 dodgeStat: 'agility',
@@ -13996,7 +13996,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['open', 'ruins'],
             },
             {
-                text: 'The hot spring at the edge of {zone} is the right side of scalding and mineral-clean, and {tribute} gets warm all the way through for the first time in days.',
+                text: 'The hot spring at the edge of {zone} runs just short of scalding and mineral-clean. {tribute} gets warm through for the first time in days.',
                 escapeText: '{tribute} tests the hot spring at {zone} with a wrist, finds it far past bearable, and settles for filling a bottle to cool.',
                 cause: 'Boiled alive',
                 heal: 12,
@@ -14006,7 +14006,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['water', 'wetland'],
             },
             {
-                text: 'The ash falling over {zone} has been getting heavier all day and {tribute} has been breathing it without anything over their face since the morning.',
+                text: 'The ash over {zone} has fallen heavier all day. {tribute} has breathed it with nothing over their face since morning.',
                 escapeText: '{tribute} gets a wet cloth over their face in {zone} early, while the ash is still light, and keeps it there.',
                 cause: 'Drowned in ash',
                 dodgeStat: 'endurance',
@@ -14016,7 +14016,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The slope above {zone} lets go a river of loose scoria that moves like water and arrives like stone, and {tribute} is on the flat below it.',
+                text: 'The slope above {zone} lets go a river of loose scoria. It moves at running pace and {tribute} is on the flat below it.',
                 escapeText: '{tribute} hears the scoria start above {zone} and gets behind a standing block before the front of it arrives.',
                 cause: 'Buried in the scoria',
                 dodgeStat: 'agility',
@@ -14027,7 +14027,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'Nothing on this mountain holds water and the only thing running anywhere near {zone} is running hot and full of dissolved rock, and {tribute} has been looking at it for an hour.',
+                text: 'Nothing on this mountain holds water and the only stream near {zone} runs hot and full of dissolved rock. {tribute} has sat looking at it for an hour.',
                 escapeText: '{tribute} condenses off a steaming rock face in {zone} with a strip of cloth, a mouthful at a time, and does not drink the spring.',
                 cause: 'Poisoned at the spring',
                 dodgeStat: 'intelligence',
@@ -14038,7 +14038,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['water', 'wetland'],
             },
             {
-                text: 'The ground at {zone} is warm enough to sleep on without a fire and it stays warm all night, which is the single best thing about this arena, and it is very slightly warmer under {tribute} this morning than it was last night.',
+                text: 'The ground at {zone} is warm enough to sleep on without a fire. This morning it is a few degrees warmer under {tribute} than it was last night.',
                 escapeText: '{tribute} moves off the warm ground at {zone} the morning it gets warmer, on the grounds that a trend is a trend.',
                 cause: 'Cooked in their sleep',
                 dodgeStat: 'intelligence',
@@ -14049,7 +14049,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 requires: { time: 'night' },
             },
             {
-                text: 'The gas pocket sitting in the hollow at {zone} is heavier than air and completely invisible and has been there since before anybody arrived, and {tribute} walks down into it.',
+                text: 'The gas pocket in the hollow at {zone} is heavier than air and invisible. {tribute} walks down into it.',
                 escapeText: '{tribute} notices there is nothing alive in the hollow at {zone} — no insect, no bird, nothing — and does not go down into it.',
                 cause: 'Suffocated in the hollow',
                 dodgeStat: 'intelligence',
@@ -14059,7 +14059,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['wetland', 'ruins'],
             },
             {
-                text: 'The steam coming off the fissure at {zone} condenses on the cold face opposite it and runs down clean, and {tribute} works a whole day’s water off the rock with a rag and a cup.',
+                text: 'The steam off the fissure at {zone} condenses clean on the cold face opposite. {tribute} works a day’s water off the rock with a rag and a cup.',
                 escapeText: '{tribute} works the cold face at {zone} for an hour and gets a cupful of grit and sulphur for their trouble.',
                 cause: 'Boiled alive',
                 quench: 52,
@@ -14073,7 +14073,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
         ambient: [
             'The storm front stalls directly over the arena and simply stays there.',
             'The tide goes out far enough to expose a land bridge that was not there this morning.',
-            'Gulls scatter off the water all at once. Something below them is hunting.',
+            'Every gull on the water lifts at once and does not come back down.',
         ],
         actions: {
             forage: [
@@ -14092,7 +14092,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 '{tribute} hides among the wreck timbers of {zone}.',
             ],
             hunt: [
-                '{tribute} watches the crossing to {zone} for anyone foolish enough to swim it.',
+                '{tribute} watches the crossing to {zone} for anybody trying to swim it.',
                 '{tribute} patrols the beach of {zone}, weapon in hand.',
                 '{tribute} searches the rocks of {zone} for a rival and finds only crabs.',
             ],
@@ -14118,7 +14118,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 bleeding: true,
             },
             {
-                text: 'The sandbar {tribute} is standing on in {zone} is not a sandbar. The tide has been coming in for an hour.',
+                text: 'The sandbar {tribute} is standing on in {zone} is the top of a reef, and the tide has been flooding for an hour.',
                 escapeText: '{tribute} reads the tide line in {zone} and is off the bar before it goes under.',
                 cause: 'Cut off by the tide',
                 dodgeStat: 'intelligence',
@@ -14144,7 +14144,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 sanity: 12,
             },
             {
-                text: 'The shellfish {tribute} pulls off the rocks of {zone} taste of nothing at all, which is the tell they miss.',
+                text: 'The shellfish {tribute} pulls off the rocks of {zone} taste of nothing at all. They eat two dozen.',
                 escapeText: '{tribute} looks hard at the shellfish on the rocks of {zone} and puts them back.',
                 cause: 'Killed by shellfish poisoning',
                 dodgeStat: 'intelligence',
@@ -14201,7 +14201,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 quench: 30,
             },
             {
-                text: 'The channel between {zone} and the next island runs harder on the ebb than anybody swimming it expects, and {tribute} is committed by the time they find out.',
+                text: 'The channel between {zone} and the next island runs hardest on the ebb. {tribute} is halfway across before they find that out.',
                 escapeText: '{tribute} waits the tide out at {zone} and crosses the channel at the slack, which costs four hours and nothing else.',
                 cause: 'Taken by the channel',
                 dodgeStat: 'endurance',
@@ -14223,7 +14223,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 severesRoute: true,
             },
             {
-                text: 'The cliff above {zone} is nesting ground and everything nesting on it has decided {tribute} is the problem, all at once, from above.',
+                text: 'The cliff above {zone} is a nesting colony. All of it comes off the rock onto {tribute} at once.',
                 escapeText: '{tribute} works below the nesting line at {zone} with something over their head and the colony never commits.',
                 cause: 'Driven off the cliff by the birds',
                 dodgeStat: 'agility',
@@ -14233,7 +14233,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['highland'],
             },
             {
-                text: 'The squall comes across the water to {zone} in about four minutes flat and there is no cover on the whole island above {tribute}’s knee.',
+                text: 'The squall crosses the water to {zone} in four minutes and there is no cover on the island above knee height. {tribute} takes it in the open.',
                 escapeText: '{tribute} sees the squall line coming across the water to {zone} and is in the lee of the rock before it lands.',
                 cause: 'Died of exposure in the squall',
                 dodgeStat: 'endurance',
@@ -14244,7 +14244,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'Everything drinkable on {zone} is rainwater and it has not rained in three days, and the sea is right there, and {tribute} is beginning to reason about it.',
+                text: 'Everything drinkable on {zone} is rainwater and it has not rained in three days. {tribute} fills a cup from the sea.',
                 escapeText: '{tribute} digs a seep behind the strand line at {zone} and gets brackish water out of the sand that is nearly drinkable, which is enough.',
                 cause: 'Drank the sea',
                 dodgeStat: 'willpower',
@@ -14255,7 +14255,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['open', 'water'],
             },
             {
-                text: 'The tide is out at {zone} and the rock pools are full of things that do not run away, and {tribute} eats shellfish until their jaw aches.',
+                text: 'The tide is out at {zone} and the rock pools are full. {tribute} eats shellfish until their jaw aches.',
                 escapeText: '{tribute} works the rock pools at {zone} on a tide that has barely gone anywhere and comes away with two mouthfuls.',
                 cause: 'Starved on the island',
                 feed: 40,
@@ -14264,7 +14264,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['water', 'wetland'],
             },
             {
-                text: 'The swell running past {zone} has been building all day off something a long way out, and the ledge {tribute} is working is going to be under water inside the hour.',
+                text: 'The swell past {zone} has built all day. The ledge {tribute} is working will be under water inside the hour.',
                 escapeText: '{tribute} watches the swell running past {zone} for ten minutes before committing to the ledge, and does not commit to it.',
                 cause: 'Washed off the ledge',
                 dodgeStat: 'intelligence',
@@ -14274,7 +14274,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['water', 'open'],
             },
             {
-                text: 'The fog comes in across {zone} and takes the other islands away, and {tribute} has been navigating by them, and now there is only the sound of water on rock in four directions.',
+                text: 'The fog comes in across {zone} and takes the other islands out of sight. {tribute} has navigated by them all week and can now hear water on rock in four directions.',
                 escapeText: '{tribute} takes a bearing off the sun before the fog closes on {zone} and sits down and waits it out rather than guessing.',
                 cause: 'Lost in the fog',
                 dodgeStat: 'intelligence',
@@ -14285,7 +14285,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'fogbound',
             },
             {
-                text: 'Something works the shallows off {zone} at the turn of the tide, every tide, and {tribute} is in the water at the turn of the tide.',
+                text: 'Something works the shallows off {zone} at every turn of the tide. {tribute} is in the water at the turn.',
                 escapeText: '{tribute} works out which hour the shallows off {zone} are not safe in, and is on the rock for all of it.',
                 cause: 'Taken in the shallows',
                 dodgeStat: 'stealth',
@@ -14296,7 +14296,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['water', 'wetland'],
             },
             {
-                text: 'There is nothing on this island above waist height and no way off it that is not wet, and {tribute} has been on it for two days with everybody able to see them the whole time.',
+                text: 'Nothing on this island stands above waist height and every way off it is wet. {tribute} has been on it two days in full view.',
                 escapeText: '{tribute} gets in among the boulders on the weather side of {zone} where nothing across the water has an angle on them.',
                 cause: 'Shot on open ground',
                 dodgeStat: 'stealth',
@@ -14307,7 +14307,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The wind across {zone} has not dropped below a gale since the first morning and {tribute} has not had a dry night or a lit fire in any of it.',
+                text: 'The wind across {zone} has not dropped below a gale since the first morning. {tribute} has had no dry night and no fire in any of it.',
                 escapeText: '{tribute} digs in behind the strand line at {zone} and builds a wall of driftwood, and gets one night out of the wind.',
                 cause: 'Died of exposure in the wind',
                 dodgeStat: 'endurance',
@@ -14318,7 +14318,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The rain squall over {zone} lasts twenty minutes and {tribute} has every container they own laid out on the rock for all of it, and they fill.',
+                text: 'The rain squall over {zone} lasts twenty minutes. {tribute} has every container they own out on the rock and all of them fill.',
                 escapeText: '{tribute} is caught away from their kit when the squall crosses {zone} and watches twenty minutes of drinking water go into the sand.',
                 cause: 'Starved on the island',
                 quench: 55,
@@ -14346,14 +14346,14 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 '{tribute} lies out of the wind in {zone}, watching the ridge.',
             ],
             hide: [
-                '{tribute} lies flat in the heather of {zone} and disappears.',
-                '{tribute} slips into the fog bank over {zone} and is gone.',
-                '{tribute} crouches in a peat cutting in {zone}, still as stone.',
+                '{tribute} lies flat in the heather of {zone} and stops moving.',
+                '{tribute} slips into the fog bank over {zone} and is out of sight in three paces.',
+                '{tribute} crouches in a peat cutting in {zone}, below the level of the moor.',
             ],
             hunt: [
                 '{tribute} works the ridge above {zone}, glassing the ground below.',
                 '{tribute} tracks bootprints through the peat of {zone} until the rain fills them.',
-                '{tribute} hunts the moor of {zone} and finds it empty.',
+                '{tribute} hunts the moor of {zone} for an hour and finds nobody on it.',
             ],
             travel: GENERIC_ACTIONS.travel,
         },
@@ -14377,7 +14377,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 sanity: 14,
             },
             {
-                text: 'The wind on the ridge above {zone} does not gust so much as lean, and it leans {tribute} off the line.',
+                text: 'The wind on the ridge above {zone} holds steady rather than gusting. It puts {tribute} off the line.',
                 escapeText: '{tribute} drops off the ridge above {zone} and takes the sheltered side instead.',
                 cause: 'Blown from the ridge',
                 dodgeStat: 'strength',
@@ -14394,7 +14394,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 fatigue: 25,
             },
             {
-                text: 'Something the size of a dog and far less friendly comes off the crag over {zone} at {tribute}, feet first.',
+                text: 'Something the size of a dog comes off the crag over {zone} onto {tribute}, feet first.',
                 escapeText: '{tribute} keeps to the open in {zone}, and whatever is on the crag stays on the crag.',
                 cause: 'Killed on the high crags',
                 dodgeStat: 'agility',
@@ -14402,7 +14402,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 bleeding: true,
             },
             {
-                text: 'The burn running through {zone} is clean and cold and running off ground {tribute} has not seen.',
+                text: 'The burn through {zone} runs clean and cold off ground {tribute} has not seen. They drink it.',
                 escapeText: '{tribute} follows the burn in {zone} up to a dead sheep and drinks nothing at all.',
                 cause: 'Killed by fouled water',
                 dodgeStat: 'intelligence',
@@ -14410,7 +14410,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 heal: 4,
             },
             {
-                text: 'Frost gets into {zone} overnight and into everything {tribute} owns with it.',
+                text: 'Frost gets into {zone} overnight and into everything {tribute} owns.',
                 escapeText: '{tribute} builds the fire up in {zone} before the frost comes and keeps it in.',
                 cause: 'Frozen on the tops',
                 dodgeStat: 'endurance',
@@ -14427,7 +14427,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 bleeding: true,
             },
             {
-                text: 'A fog bank closes over {zone} and {tribute} walks in circles for hours, freezing and disoriented.',
+                text: 'A fog bank closes over {zone}. {tribute} walks for three hours and comes back to their own tracks.',
                 escapeText: '{tribute} navigates the fog over {zone} by the slope of the ground alone.',
                 cause: 'Lost in the fog',
                 dodgeStat: 'intelligence',
@@ -14446,7 +14446,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 burned: true,
             },
             {
-                text: 'A peat bog in {zone} takes {tribute} to the thigh, and the cold water takes everything else.',
+                text: 'A peat bog in {zone} takes {tribute} to the thigh. The water in it is a degree above freezing.',
                 escapeText: '{tribute} tests the peat in {zone} with a staff and finds the firm line across.',
                 cause: 'Drowned in a peat bog',
                 dodgeStat: 'intelligence',
@@ -14463,7 +14463,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 bleeding: true,
             },
             {
-                text: 'The weather comes over the ridge above {zone} in ten minutes and {tribute} is an hour from anything that could be called shelter.',
+                text: 'The weather comes over the ridge above {zone} in ten minutes. {tribute} is an hour from the nearest shelter.',
                 escapeText: '{tribute} reads the cloud coming over the ridge above {zone} and is off the tops and into the corrie before it lands.',
                 cause: 'Died of exposure on the tops',
                 dodgeStat: 'intelligence',
@@ -14475,7 +14475,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The scree slope out of {zone} is a thousand tonnes of loose rock at the exact angle it will hold, and {tribute}’s weight is the argument against it.',
+                text: 'The scree slope out of {zone} is a thousand tonnes of loose rock at the steepest angle it will hold. It goes under {tribute}.',
                 escapeText: '{tribute} takes the scree out of {zone} on the solid rib at its margin and lets the rest of the slope stay where it is.',
                 cause: 'Carried down the scree',
                 dodgeStat: 'agility',
@@ -14485,7 +14485,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['highland'],
             },
             {
-                text: 'The peat hag in {zone} is six feet deep where it looks like a foot, and once {tribute} is in it to the thigh there is nothing solid anywhere to push off.',
+                text: 'The peat hag in {zone} is six feet deep where it looks like one. {tribute} goes in to the thigh and finds nothing solid to push off.',
                 escapeText: '{tribute} reads the colour of the moss across {zone} and crosses the peat on the heather rather than the black.',
                 cause: 'Went into the peat',
                 dodgeStat: 'intelligence',
@@ -14495,7 +14495,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['wetland'],
             },
             {
-                text: 'The cloud comes down onto {zone} and stays down, and everything more than five metres off stops existing, including the way {tribute} came in.',
+                text: 'The cloud comes down onto {zone} and stays down. Nothing over five metres off is visible, including the way {tribute} came in.',
                 escapeText: '{tribute} takes a bearing off the burn below {zone} before the cloud sits down, and walks out on it.',
                 cause: 'Lost in the cloud',
                 dodgeStat: 'intelligence',
@@ -14507,7 +14507,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 startsZoneEffect: 'fogbound',
             },
             {
-                text: 'There is nothing above the treeline at {zone} that will take a flame and nothing below it that is dry, and {tribute} spends the night without a fire in weather that needed one.',
+                text: 'Nothing above the treeline at {zone} will take a flame and nothing below it is dry. {tribute} spends the night without a fire at two degrees.',
                 escapeText: '{tribute} gets a fire lit at {zone} out of dead heather roots and bog pine, which should not work, and does.',
                 cause: 'Froze without a fire',
                 dodgeStat: 'intelligence',
@@ -14518,7 +14518,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 requires: { time: 'night' },
             },
             {
-                text: 'The burn coming off the corrie at {zone} runs off bare rock the whole way down, cold and clean enough to drink from without a thought, and {tribute} does.',
+                text: 'The burn off the corrie at {zone} runs over bare rock the whole way down. {tribute} drinks from it and fills everything they carry.',
                 escapeText: '{tribute} follows the burn at {zone} up to find a dead sheep in it forty metres above where they were about to drink.',
                 cause: 'Died of thirst on the tops',
                 quench: 52,
@@ -14527,7 +14527,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['water'],
             },
             {
-                text: 'The wind across the tops above {zone} has been at gale force for two days and it does not stop at night, and {tribute} has been sleeping in it without a wall.',
+                text: 'The wind across the tops above {zone} has been at gale force for two days and does not drop at night. {tribute} has slept in it without a wall.',
                 escapeText: '{tribute} builds a turf wall on the windward side at {zone} in an hour of hard work and sleeps behind it properly.',
                 cause: 'Died of exposure on the tops',
                 dodgeStat: 'endurance',
@@ -14539,7 +14539,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 zoneWide: true,
             },
             {
-                text: 'The burn through {zone} comes up in spate off rain that fell on ground {tribute} cannot see, and the crossing that was ankle-deep this morning is chest-deep and moving.',
+                text: 'The burn through {zone} comes up in spate off rain that fell out of sight. The crossing {tribute} waded this morning at ankle depth is chest-deep and running.',
                 escapeText: '{tribute} reads the colour of the burn at {zone}, sees it running peat-brown, and waits the spate out on the bank.',
                 cause: 'Swept away in the burn',
                 dodgeStat: 'intelligence',
@@ -14550,7 +14550,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 severesRoute: true,
             },
             {
-                text: 'There is no cover of any kind above the treeline at {zone} and {tribute} has been on the open hill all day, visible from every other hill within five kilometres.',
+                text: 'There is no cover above the treeline at {zone}. {tribute} has been on the open hill all day, in view from five kilometres in every direction.',
                 escapeText: '{tribute} works the dead ground in the folds of the hill at {zone} and is out of sight of everything the whole way across.',
                 cause: 'Shot on the open hill',
                 dodgeStat: 'stealth',
@@ -14561,7 +14561,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 witnesses: true,
             },
             {
-                text: 'The boulder field below {zone} is car-sized blocks with gaps between them deep enough to lose a person in, and the moss on top of them hides every edge, and {tribute} is crossing it in the rain.',
+                text: 'The boulder field below {zone} is house-sized blocks with gaps deep enough to lose a person in, and the moss hides every edge. {tribute} crosses it in the rain.',
                 escapeText: '{tribute} crosses the boulder field at {zone} block by block on their hands, testing every one, and takes an hour over three hundred metres.',
                 cause: 'Fell into the boulder field',
                 dodgeStat: 'agility',
@@ -14571,7 +14571,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 terrains: ['highland'],
             },
             {
-                text: 'The cloud has been down on {zone} for three days and {tribute} has seen nothing further away than ten metres in all of it, and the hill has stopped having a shape.',
+                text: 'The cloud has been down on {zone} for three days. {tribute} has seen nothing further off than ten metres in any of it.',
                 escapeText: '{tribute} walks a compass bearing off the burn through the cloud at {zone} and comes out exactly where they intended to.',
                 cause: 'Lost in the cloud',
                 dodgeStat: 'intelligence',
@@ -14581,7 +14581,7 @@ export const PROCEDURAL_FLAVOR_PACKS: Record<string, ArenaFlavor> = {
                 fatigue: 22,
             },
             {
-                text: 'The corrie below {zone} is thick with blaeberry and the season is exactly right, and {tribute} sits down in the middle of it and eats for an hour without moving.',
+                text: 'The corrie below {zone} is thick with blaeberry and in season. {tribute} sits down in the middle of it and eats for an hour.',
                 escapeText: '{tribute} works the corrie below {zone} and finds the whole bank picked over and the stems stripped bare.',
                 cause: 'Died of thirst on the tops',
                 feed: 38,
