@@ -1,3 +1,4 @@
+import { dayPhaseLabel } from '../ui/phaseLabels';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Hint } from '../components/Hint';
 import { EventCategory, GameState, Phase } from '../models/types';
@@ -55,6 +56,13 @@ const PHASE_PACING: Partial<Record<Phase, number>> = {
     epilogue: 1.6,
     interviews: 0.75,
     training: 0.6,
+    training1: 0.6,
+    training2: 0.6,
+    training3: 0.6,
+    scores: 0.8,
+    square: 0.75,
+    train: 0.6,
+    parade: 0.8,
     reaping: 0.75,
 };
 
@@ -632,9 +640,7 @@ export function GameScreen({
 
     const phaseLabel = isOver
         ? 'The Games Have Ended'
-        : gameState.day === 0
-            ? gameState.phase.toUpperCase()
-            : `Day ${gameState.day} — ${gameState.phase.toUpperCase()}`;
+        : dayPhaseLabel(gameState.day, gameState.phase).toUpperCase();
 
     const latestHeadline = useMemo(() => {
         for (let i = gameState.log.length - 1; i >= 0; i--) {

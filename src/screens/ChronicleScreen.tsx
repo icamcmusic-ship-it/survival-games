@@ -11,6 +11,8 @@ import { prefsStore } from '../store/prefsStore';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTransientFlag } from '../ui/useTransientFlag';
+import { PRE_ARENA_PHASE_SET, phaseLabel as prettyPhase } from '../ui/phaseLabels';
+import { gameActions, gameStore } from '../store/gameStore';
 
 /**
  * A3: the chronicle as its own page.
@@ -45,10 +47,31 @@ interface Page {
  * page that puts the zone on every card it reads as the whole cast training
  * inside the Cornucopia.
  */
-const PRE_ARENA_PHASES = new Set(['setup', 'reaping', 'training', 'interviews']);
+const PRE_ARENA_PHASES = PRE_ARENA_PHASE_SET;
 
 function phaseLabel(phase: string): string {
-    return phase.replace(/([a-z])([A-Z])/g, '$1 $2').toUpperCase();
+    return prettyPhase(phase).toUpperCase();
+}
+
+/** What pressing Advance will run next, as the button's own label. */
+function nextStageLabel(phase: string): string {
+    switch (phase) {
+        case 'setup': case 'roster': case 'reaping': return 'Hold the reaping';
+        case 'square': return 'Board the train';
+        case 'train': return 'Run the parade';
+        case 'parade': return 'Open the training floor';
+        case 'training1': return 'Training day 2';
+        case 'training2': return 'Training day 3';
+        case 'training3': return 'Read the scores';
+        case 'training': case 'scores': return 'Start the interviews';
+        case 'interviews': return 'Sound the gong';
+        case 'bloodbath': return 'Run the bloodbath';
+        case 'day': return 'Into the night';
+        case 'night': return 'Next day';
+        case 'feast': return 'After the feast';
+        case 'epilogue': return 'Close the Games';
+        default: return 'Advance';
+    }
 }
 
 /** One page per (day, phase), in chronological order. */
@@ -247,6 +270,34 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     const page = pages[clamped];
     useEffect(() => { writeDeepLink(page); }, [page?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // §(requests): a new page starts at the top of the log. Paging forward
+    // used to leave the reader wherever the previous page had scrolled them,
+    // which on a long night was the footer.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        window.scrollTo({ top: 0, behavior: 'auto' });
+    }, [page?.key]);
+
+    // §(requests): the Games can be advanced from here. The chronicle used to
+    // be read-only — reaching the last page meant going back to the arena
+    // screen to press Next, then returning. One button, and it lands on the
+    // page it just wrote.
+    const simulator = useStore(gameStore, s => s.simulator);
+    const runProgress = useStore(gameStore, s => s.runProgress);
+    const canAdvance = !!simulator && gameState.phase !== 'ended' && !runProgress;
+    const onLastPage = clamped >= pages.length - 1;
+    const [advanceArmed, setAdvanceArmed] = useState(false);
+    useEffect(() => {
+        if (!advanceArmed) return;
+        setAdvanceArmed(false);
+        setPageIndex(Math.max(0, pages.length - 1));
+    }, [pages.length, advanceArmed]);
+    const advanceGames = () => {
+        if (!canAdvance) return;
+        setAdvanceArmed(true);
+        gameActions.nextPhase();
+    };
+
     const beats = useMemo(() => (page ? groupBeats(page.entries) : []), [page]);
 
     const fallenThisPage = useMemo(() => {
@@ -382,9 +433,9 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                     className="btn"
                     onClick={() => go(-1)}
                     disabled={clamped === 0}
-                    title="Previous phase (Left arrow)"
+                    aria-label="Previous page (Left arrow)"
                 >
-                    <ChevronLeft className="w-4 h-4" /> Previous phase
+                    <ChevronLeft className="w-4 h-4" /> Previous page
                 </button>
 
                 <div className="flex items-center gap-3 flex-wrap justify-center flex-1 min-w-0">
@@ -429,14 +480,25 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                     </span>
                 </div>
 
-                <button
-                    className="btn"
-                    onClick={() => go(1)}
-                    disabled={clamped >= pages.length - 1}
-                    title="Next phase (Right arrow)"
-                >
-                    Next phase <ChevronRight className="w-4 h-4" />
-                </button>
+                {onLastPage && canAdvance ? (
+                    <button
+                        className="btn"
+                        onClick={advanceGames}
+                        style={{ background: 'var(--red)', color: '#fff', borderColor: 'var(--red)' }}
+                        aria-label={`Advance the Games: ${nextStageLabel(gameState.phase)}`}
+                    >
+                        {nextStageLabel(gameState.phase)} <ChevronRight className="w-4 h-4" />
+                    </button>
+                ) : (
+                    <button
+                        className="btn"
+                        onClick={() => go(1)}
+                        disabled={clamped >= pages.length - 1}
+                        aria-label="Next page (Right arrow)"
+                    >
+                        Next page <ChevronRight className="w-4 h-4" />
+                    </button>
+                )}
             </footer>
 
             {/* §2.5: paging is a navigation event with no visual anchor for a

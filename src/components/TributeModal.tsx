@@ -1273,38 +1273,8 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                     )}
 
                     <section>
-                        <h4 className="panel-title mb-2">Social graph</h4>
-                        <RelationshipGraph tribute={tribute} gameState={gameState} />
-                    </section>
-
-                    <section>
                         <h4 className="panel-title mb-2">Relationships</h4>
-                        <div className="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pr-1">
-                            {relationships.length === 0 ? (
-                                <span className="text-sm text-[var(--color-ink-400)]">Has not met anyone yet</span>
-                            ) : relationships.map(({ other, value, sworn, streak }) => (
-                                <div key={other!.id} className="flex justify-between items-center text-sm gap-2">
-                                    <span className={`truncate ${other!.status === 'dead' ? 'text-[var(--color-ink-500)] line-through' : 'text-[var(--color-ink-200)]'}`}>
-                                        {other!.name}
-                                    </span>
-                                    {streak >= ROMANCE.sustainedCycles && other!.status === 'alive' && (
-                                        <span
-                                            className="font-mono text-[10px] flex-none text-[var(--color-ink-500)] ml-auto"
-                                            role="group" aria-label={`They have kept each other's company ${streak} cycles running — sustained contact, not one shared scene.`} title={`They have kept each other's company ${streak} cycles running — sustained contact, not one shared scene.`}
-                                        >
-                                            {streak}c together
-                                        </span>
-                                    )}
-                                    <span
-                                        className="font-mono text-xs flex-none"
-                                        style={{ color: value > 0 ? 'var(--cat-alliance)' : value < 0 ? 'var(--cat-death)' : 'var(--color-ink-500)' }}
-                                        role="group" aria-label={sworn ? `${tribute.name} has sworn to kill ${other!.name}` : undefined} title={sworn ? `${tribute.name} has sworn to kill ${other!.name}` : undefined}
-                                    >
-                                        {sworn ? '⚔ ' : ''}{value > 0 ? `+${value}` : value}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
+                        <RelationshipGraph tribute={tribute} gameState={gameState} />
                     </section>
 
                     </>}

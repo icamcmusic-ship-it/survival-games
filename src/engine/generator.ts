@@ -265,8 +265,6 @@ export function generateTributes(
     // Names must be unique across the whole cast — two tributes called "Amber"
     // made the chronicle feed and the kill log ambiguous.
     const usedNames = new Set<string>();
-    // Districts whose two slips came out of the same family this year.
-    const kinDistricts = new Set<number>();
     // A name is supposed to encode its district's export, but ~200 of the
     // 2,400 pool entries appear in more than one district's pool (Clover in
     // five of them). Prefer names exclusive to this district so the flavour
@@ -318,16 +316,13 @@ export function generateTributes(
     };
 
     for (let district = 1; district <= districtCount; district++) {
-        // Tributes go by one name.
-        //
-        // Panem's reaping is a card with a name on it, and the broadcast, the
-        // chronicle and the kill log all used the first name anyway — the
-        // surname existed only to be split back off again by the kin check
-        // below. It is gone; the kin beat it was carrying survives as its own
-        // roll, which is what it always actually was.
-        // balance-exempt: flavour frequency of the kin-pair beat, not a balance dial
-        const kinPair = rng.chance(0.15);
-        if (kinPair) kinDistricts.add(district);
+        // Tributes go by one name. Panem's reaping is a card with a name on
+        // it, and the broadcast, the chronicle and the kill log all use the
+        // first name. §(requests): the "reaped alongside their cousin" beat
+        // that used to ride on the surname is gone too — it landed on about
+        // one district in six, every year, which is not a story, it is a rate.
+        // The RNG draw it made is kept so every seed still reaps the same cast.
+        rng.chance(0.15);
         for (const gender of ['Male', 'Female'] as const) {
             const isCareer = [1, 2, 4].includes(district);
 
@@ -575,26 +570,6 @@ export function generateTributes(
                         .split('{district}').join(String(district))
                     : undefined,
             });
-        }
-    }
-
-    // Two slips, one family, the same year — a story the square already knows.
-    // Flag it before the volunteer pass so a volunteer note composes on top of
-    // it the way it does with the tesserae note.
-    if (!config.plainNames) {
-        for (let district = 1; district <= districtCount; district++) {
-            if (!kinDistricts.has(district)) continue;
-            const pair = tributes.filter(t => t.district === district);
-            if (pair.length !== 2) continue;
-            const [a, b] = pair;
-            const note = (other: Tribute) =>
-                // §12 (requests): the fact, stated. Which is all it ever was.
-                `Reaped alongside their cousin ${other.name}. Two slips, one family, the same year.`;
-            a.reapingNote = a.reapingNote ? `${note(b)} ${a.reapingNote}` : note(b);
-            b.reapingNote = b.reapingNote ? `${note(a)} ${b.reapingNote}` : note(a);
-            // Family walks in already knowing each other.
-            a.relationships[b.id] = Math.max(a.relationships[b.id] ?? 0, 25);
-            b.relationships[a.id] = Math.max(b.relationships[a.id] ?? 0, 25);
         }
     }
 

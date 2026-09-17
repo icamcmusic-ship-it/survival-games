@@ -2,8 +2,8 @@ import { GameState } from '../models/types';
 import { RNG } from '../utils/rng';
 import { snapshotState } from '../utils/snapshot';
 import { SimContext, createContext, getAlive } from './context';
-import { processTraining } from './phases/training';
-import { processPreGames } from './phases/pregames';
+import { processTraining, processTrainingDay, processTrainingScores } from './phases/training';
+import { processParade, processPreGames, processSquare, processTrain } from './phases/pregames';
 import { processInterviews } from './phases/interviews';
 import { startGames, processBloodbath } from './phases/bloodbath';
 import { processAlliances } from './phases/alliances';
@@ -87,6 +87,52 @@ export class Simulator {
         processPreGames(this.ctx);
         processTraining(this.ctx);
         this.notifyObservers();
+    }
+
+    /**
+     * §(requests): one stage at a time, whatever the stage is.
+     *
+     * The store used to know the whole pre-Games dispatch table; now the
+     * simulator does, and the UI asks for "the next thing" without caring
+     * whether that is a train ride, a day on the floor, or a night in the
+     * arena. Returns false when there is nothing left to advance.
+     */
+    public advance(): boolean {
+        const phase = this.state.phase;
+        switch (phase) {
+            case 'setup':
+            case 'roster':
+            case 'reaping':
+                processSquare(this.ctx); break;
+            case 'square':
+                processTrain(this.ctx); break;
+            case 'train':
+                processParade(this.ctx); break;
+            case 'parade':
+                processTrainingDay(this.ctx, 1); break;
+            case 'training1':
+                processTrainingDay(this.ctx, 2); break;
+            case 'training2':
+                processTrainingDay(this.ctx, 3); break;
+            case 'training3':
+                processTrainingScores(this.ctx); break;
+            // A save from before the split lands here with the floor already
+            // run; the scores phase is idempotent on its own phase check.
+            case 'training':
+            case 'scores':
+                processInterviews(this.ctx); break;
+            case 'interviews':
+                startGames(this.ctx); break;
+            case 'bloodbath':
+                processBloodbath(this.ctx); break;
+            case 'epilogue':
+            case 'ended':
+                return false;
+            default:
+                return this.processTurn();
+        }
+        this.notifyObservers();
+        return true;
     }
 
     public processInterviews() {

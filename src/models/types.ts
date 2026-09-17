@@ -1059,6 +1059,8 @@ export interface Tribute {
     trainingLog?: Array<{
         day: number;
         station: string;
+        /** The discipline the station drilled. Lets a later floor day know what has already been worked. */
+        attr?: keyof Attributes;
         outcome: 'success' | 'struggle' | 'failure';
         witnessIds?: string[];
     }>;
@@ -1839,7 +1841,26 @@ export interface Arena {
     muttRoster?: Mutt[];
 }
 
-export type Phase = 'setup' | 'roster' | 'reaping' | 'training' | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'epilogue' | 'ended';
+/**
+ * §(requests): the pre-Games are staged rather than dumped.
+ *
+ * `processTraining` used to run the reaping square, the goodbyes, the train,
+ * the parade and three days on the floor in one call, and the chronicle got
+ * one 'TRAINING' page with everything in it. Each of those is its own phase
+ * now, so the arena screen advances through them one at a time and the
+ * chronicle pages them the way it pages a day and a night. `training` is kept
+ * as a legacy value for saves written before the split.
+ */
+export type Phase = 'setup' | 'roster' | 'reaping'
+    | 'square' | 'train' | 'parade'
+    | 'training' | 'training1' | 'training2' | 'training3' | 'scores'
+    | 'interviews' | 'bloodbath' | 'day' | 'night' | 'feast' | 'epilogue' | 'ended';
+
+/** Every phase that happens before anyone is in the arena, in order. */
+export const PRE_GAMES_PHASES: Phase[] = ['square', 'train', 'parade', 'training1', 'training2', 'training3', 'scores', 'interviews'];
+
+/** The phase a training-floor day is logged under. */
+export const trainingPhaseFor = (day: number): Phase => (`training${Math.min(3, Math.max(1, day))}` as Phase);
 
 /**
  * Semantic category for every logged event. Drives the colour coding of the

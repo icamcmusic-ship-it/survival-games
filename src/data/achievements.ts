@@ -2639,15 +2639,13 @@ export const ACHIEVEMENTS: Achievement[] = [
     },
     {
         id: 'the-kin-pair',
-        name: 'Two Slips, One Family',
-        hint: 'Crown a victor who was reaped alongside their own family.',
+        name: 'In Their Place',
+        hint: 'Crown a victor who volunteered to take a sibling\'s place.',
         category: 'reaping',
         rarity: 'rare',
-        // `generator.ts` rolls a kin pair at 15% per district, so *somebody*
-        // is kin in 86% of twelve-district years — which is what the first
-        // draft measured, and is a fact about the reaping rather than about
-        // this run. The victor being one of them is the story.
-        test: (_s, v) => /\b(sibling|brother|sister|cousin|twin)\b/i.test(v?.reapingNote ?? ''),
+        // §(requests): the cousin pairing is gone from the generator; the
+        // sibling volunteer is the one family story the reaping still tells.
+        test: (_s, v) => !!v?.volunteered && /\bsibling\b/i.test(v?.reapingNote ?? ''),
     },
     {
         id: 'quirked',

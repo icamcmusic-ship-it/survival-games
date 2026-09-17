@@ -1132,15 +1132,7 @@ export const gameActions = {
         const state = simulator.getState();
         // Snapshot the state this advance is leaving, for "step back one phase".
         if (state.phase !== 'ended' && state.phase !== 'epilogue') pushRewind(state);
-        if (state.phase === 'setup') {
-            simulator.processTraining();
-        } else if (state.phase === 'training') {
-            simulator.processInterviews();
-        } else if (state.phase === 'interviews') {
-            simulator.startGames();
-        } else if (state.phase === 'bloodbath') {
-            simulator.processBloodbath();
-        } else if (state.phase === 'epilogue') {
+        if (state.phase === 'epilogue') {
             state.phase = 'ended';
             // §20 (requests): commit first. `commitVictory` is what decides
             // which achievements this run earned for the first time, and
@@ -1152,7 +1144,9 @@ export const gameActions = {
         } else if (state.phase === 'ended') {
             return;
         } else {
-            simulator.processTurn();
+            // §(requests): every stage of the pre-Games, every day and every
+            // night, one press each. The simulator owns the dispatch table.
+            simulator.advance();
         }
 
         gameActions.syncFromSimulator();
@@ -1210,17 +1204,9 @@ export const gameActions = {
                 // cancelled loop cannot land another turn after the player has
                 // already started a new one.
                 if (stale()) return;
-                if (state.phase === 'setup') {
-                    simulator.processTraining();
-                } else if (state.phase === 'training') {
-                    simulator.processInterviews();
-                } else if (state.phase === 'interviews') {
-                    simulator.startGames();
-                } else if (state.phase === 'bloodbath') {
-                    simulator.processBloodbath();
-                } else if (state.phase === 'epilogue') {
+                if (state.phase === 'epilogue') {
                     state.phase = 'ended';
-                } else if (!simulator.processTurn()) {
+                } else if (!simulator.advance()) {
                     break;
                 }
                 state = simulator.getState();

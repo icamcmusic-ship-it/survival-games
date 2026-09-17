@@ -1,6 +1,6 @@
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
-import { Attributes, Proficiency, TrainingPact, Tribute } from '../../models/types';
+import { Attributes, Proficiency, TrainingPact, Tribute, trainingPhaseFor } from '../../models/types';
 import {
     TRAINING_STATIONS, TRAINING_VERDICTS, INTIMIDATION_TEXTS,
     TRAINING_ALTERCATION, TRAINING_EVENING, TRAINING_FAILURE, TRAINING_MINGLE,
@@ -233,7 +233,7 @@ function attemptStation(
     // training montage — and nothing downstream could ask the one question
     // that matters about a training floor, which is who saw it.
     const entry: TrainingLogEntry = {
-        day: day + 1, station, outcome,
+        day: day + 1, station, attr, outcome,
         witnessIds: witnesses.filter(w => w.id !== t.id).map(w => w.id),
     };
     t.trainingLog = [...(t.trainingLog ?? []), entry];
@@ -617,7 +617,7 @@ function floorAffinity(a: Tribute, b: Tribute): { weight: number; reason: string
     if (rated >= TRAINING.affinityRespect) {
         const admirer = respectOf(a, b.id) >= respectOf(b, a.id) ? a : b;
         const rate = admirer === a ? b : a;
-        return { weight: TRAINING.affinityRated, reason: `${admirer.name} rated ${rate.name} on the floor yesterday.` };
+        return { weight: TRAINING.affinityRated, reason: `${admirer.name} has been watching ${rate.name} work, and was impressed.` };
     }
     // The outer districts have the reaping in common and not much else.
     if (!isCareerish(a) && !isCareerish(b) && a.district >= TRAINING.affinityOuterFrom && b.district >= TRAINING.affinityOuterFrom) {
@@ -934,26 +934,49 @@ const DAY_HEADLINES = [
     'TRAINING, DAY THREE. The last day before the private sessions with the Gamemakers.',
 ];
 
+/**
+ * §(requests): the three days on the floor and the scores are four phases.
+ *
+ * This wrapper runs them all for the headless scripts; the store advances one
+ * at a time through `Simulator.advance`, so the chronicle pages
+ * `TRAINING — DAY 1`, `DAY 2`, `DAY 3` and `THE SCORES` separately.
+ */
 export function processTraining(ctx: SimContext) {
-    ctx.state.phase = 'training';
-    ctx.rng = new RNG(`${ctx.state.seed}-training`);
-    const cast = getAlive(ctx.state);
+    for (let day = 1; day <= TRAINING.days; day++) processTrainingDay(ctx, day);
+    processTrainingScores(ctx);
+}
 
-    // ---- 1-2. A decision about being watched, then three days on the floor ----
-    cast.forEach(t => {
-        // §6.10: player coaching. A pinned strategy for the chosen tribute
-        // replaces the roll; everyone else decides for themselves.
-        const coached = ctx.state.playerCoaching;
-        t.trainingStrategy = coached?.tributeId === t.id && coached.trainingStrategy
-            ? coached.trainingStrategy
-            : pickStrategy(ctx, t);
-        t.trainingLog = [];
-    });
+/** The station history per tribute across the floor days. Rebuilt from `trainingLog`. */
+function workedSoFar(t: Tribute): Array<keyof Attributes> {
+    return (t.trainingLog ?? []).map(e => e.attr).filter((a): a is keyof Attributes => !!a);
+}
+
+/** One day on the training floor. `day` is 1-based. */
+export function processTrainingDay(ctx: SimContext, dayNumber: number) {
+    const phase = trainingPhaseFor(dayNumber);
+    if (ctx.state.phase === phase) return;
+    ctx.state.phase = phase;
+    const cast = getAlive(ctx.state);
+    const day = dayNumber - 1;
+
+    if (day === 0) {
+        ctx.rng = new RNG(`${ctx.state.seed}-training`);
+        // ---- 1. A decision about being watched ----
+        cast.forEach(t => {
+            // §6.10: player coaching. A pinned strategy for the chosen tribute
+            // replaces the roll; everyone else decides for themselves.
+            const coached = ctx.state.playerCoaching;
+            t.trainingStrategy = coached?.tributeId === t.id && coached.trainingStrategy
+                ? coached.trainingStrategy
+                : pickStrategy(ctx, t);
+            t.trainingLog = [];
+        });
+    }
 
     const worked = new Map<string, Array<keyof Attributes>>();
-    cast.forEach(t => worked.set(t.id, []));
+    cast.forEach(t => worked.set(t.id, workedSoFar(t)));
 
-    for (let day = 0; day < TRAINING.days; day++) {
+    {
         // A4: each day gets its own stream so the three days are independently
         // replayable — a change to day three must not reshuffle day one.
         ctx.rng = new RNG(`${ctx.state.seed}-training-day${day + 1}`);
@@ -1005,6 +1028,13 @@ export function processTraining(ctx: SimContext) {
         // §21: and then say, once, what the day actually came to.
         floorDigest(ctx, day + 1, cast);
     }
+}
+
+/** The private sessions and the broadcast of the scores. */
+export function processTrainingScores(ctx: SimContext) {
+    if (ctx.state.phase === 'scores') return;
+    ctx.state.phase = 'scores';
+    const cast = getAlive(ctx.state);
 
     // Attributes settle once, at the end of the three days, rather than being
     // rounded three separate times.
