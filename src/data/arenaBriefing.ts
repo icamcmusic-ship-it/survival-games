@@ -364,6 +364,12 @@ export const CLIMATE_LABELS: Record<string, string> = {
     nooneplace: 'Perpetual dusk. It has been the last minute before dark for eleven days.',
     redcathedral: 'Desert heat. Water is the whole game and there is not much of it.',
     'procedural-archipelago': 'Storm-bound. The weather is the arena, and it does not stall for long.',
+    // §1 (requests): the five new arenas.
+    tidewrack: 'Storm-bound and tidal. The map is a different map twice a day.',
+    thresher: 'Furnace heat, indoors, all day and all night.',
+    vigil: 'Perpetual dusk. It has been the last minute before dark for eleven days.',
+    saltworks: 'Desert heat. Water is the whole game and there is not much of it.',
+    kiln: 'Furnace heat, and two suns over it. There is no shade above ground.',
 };
 
 const TERRAIN_LABELS: Record<Terrain, string> = {

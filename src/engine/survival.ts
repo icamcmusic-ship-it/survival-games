@@ -1,5 +1,5 @@
 import { Tribute, attr } from '../models/types';
-import { CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
+import { ARENA_LAWS, CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -73,7 +73,7 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     // phase — fatigue drains at the day rate even during the scheduled
     // 'night' phase, and never gets the night's recovery.
     const noNight = arenaHasLaw(ctx.state, 'noNight');
-    let fatigue = time === 'day' || noNight ? VITALS.fatigueDayDrain : VITALS.fatigueNightRecovery;
+    let fatigue: number = time === 'day' || noNight ? VITALS.fatigueDayDrain : VITALS.fatigueNightRecovery;
 
     const zone = getZone(ctx.state.arena, t.zone);
     if (zone) {
@@ -100,6 +100,22 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     if (climate?.drains) {
         if (climate.drains.thirstMultiplier) thirst *= climate.drains.thirstMultiplier;
         if (climate.drains.fatigue) fatigue += climate.drains.fatigue;
+    }
+
+    // §1 `twinSuns`: there is nowhere in this arena out of the light. Applied
+    // after the climate rather than as part of it, because it is not weather —
+    // shade, cover and shelter all still work against being *seen*, and none
+    // of them work against this. The one enforcement site for the law.
+    if (arenaHasLaw(ctx.state, 'twinSuns')) thirst *= ARENA_LAWS.twinSunsThirstMultiplier;
+
+    // §1 `noRest`: sleep does nothing here. `fatigue` at this point is either
+    // the day's drain or the night's recovery; under this law the recovery is
+    // cancelled entirely and the day's rest is worth half. Nobody in this
+    // arena gets a night back.
+    if (arenaHasLaw(ctx.state, 'noRest')) {
+        fatigue = fatigue < 0
+            ? (time === 'day' ? fatigue * ARENA_LAWS.noRestDayRecoveryFactor : 0)
+            : fatigue;
     }
 
     // Some districts have been hungry before. District 12 rations better than

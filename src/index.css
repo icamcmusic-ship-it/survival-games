@@ -923,6 +923,25 @@ html[data-reduce-motion='true'] {
         }
     }
 
+    /* §19 (requests): the achievement rarity chip. Filled, so the tier is
+       visible at a glance in a list of a hundred and ninety, and it carries its
+       own word so colour is never the only signal. */
+    .rarity-chip {
+        display: inline-block;
+        padding: 0.05rem 0.4rem;
+        border: 1px solid var(--rarity, var(--line-soft));
+        border-radius: 1px;
+        font-family: var(--font-mono);
+        font-size: 0.55rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--rarity, var(--color-ink-500));
+        background: color-mix(in srgb, var(--rarity, var(--line-soft)) 12%, transparent);
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
     .cat-glyph {
         font-family: var(--font-mono);
         font-size: 0.6875rem;

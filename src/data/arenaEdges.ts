@@ -206,6 +206,43 @@ export const EXTRA_EDGE_RULES: Record<string, EdgeMap> = {
         },
         'Rot Hollow|The Fruiting Body': { kind: 'contested' },
     },
+
+    // ---- §1 (requests): the five new arenas -------------------------------
+    //
+    // Each gets a contested bottleneck of its own. Without one they would
+    // dilute the roster rather than add to it: `tickGarrisons` only ever
+    // considers contested edges, so five more arenas carrying none means five
+    // more arenas in which holding a crossing is not a thing that can happen,
+    // and the measured garrison rate falls for every run that lands in one.
+    tidewrack: {
+        // The only crossing between the wreck side of the estuary and the
+        // horn, and it is a chokepoint at both ends.
+        'Boathouse Row|The Spit': { kind: 'contested' },
+        // The deep channel is a rope-and-plank thing at low water and is not
+        // there at all at high.
+        'The Deep Cut|The Drowned Village': { kind: 'collapsing', crossings: SPANS },
+    },
+    thresher: {
+        // The ducts are the only way between the chutes and the kiln row that
+        // is not across the open floor, and they are shoulder width.
+        'Intake Chutes|Underfloor Ducts': { kind: 'contested' },
+        'The Coolant Race|Underfloor Ducts': { kind: 'hidden' },
+    },
+    vigil: {
+        // The tower stair. One way up, and whoever is on it decides.
+        'The Bell Tower|The Quiet Ward': { kind: 'contested' },
+        'Barrack Rows|Drainage Cut': { kind: 'tolled', toll: { fatigue: 5 } },
+    },
+    saltworks: {
+        // Everybody has to come to the well and there is one way in to it.
+        'Evaporation Pan Two|The Brine Well': { kind: 'contested' },
+        'Crust Ridge|The Barrow Track': { kind: 'tolled', toll: { fatigue: 6 } },
+    },
+    kiln: {
+        // The cellar mouth: the only fresh water in the arena is behind it.
+        'Clay Banks|The Slip Cellar': { kind: 'contested' },
+        'Kilnhead|The Flue Tunnels': { kind: 'timeGated', gatedTime: 'night' },
+    },
 };
 
 /**

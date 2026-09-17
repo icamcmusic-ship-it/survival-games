@@ -2902,6 +2902,31 @@ export const ARENA_LAWS = {
     dawnMercyHeal: 14,
     /** ...and what a night under the Capitol's floodlights does for the nerves. */
     dawnMercySanity: 8,
+    /**
+     * §1 `twinSuns`: how much faster thirst runs when there is no shade
+     * anywhere in the arena. Half again is the number at which water stops
+     * being a resource and becomes the clock — which is the whole premise of
+     * the law and of the arena that carries it.
+     */
+    twinSunsThirstMultiplier: 1.5,
+    /**
+     * §1 `noRest`: what a day spent resting is worth when sleep is worth
+     * nothing. Recovery is a negative fatigue delta, so this scales it; the
+     * night's recovery is cancelled outright rather than scaled.
+     */
+    noRestDayRecoveryFactor: 0.5,
+    /**
+     * §1 `tidalBorders`: the share of the map's edges the tide takes each
+     * night. A third is enough that a route scouted in daylight is a coin
+     * flip after dark, and not so much that the map stops being a map.
+     */
+    tidalSeverShare: 0.33,
+    /**
+     * §1 `meltingGround`: depletion added to a zone for every cycle a tribute
+     * spends in it, never recovered. Small per cycle and permanent, so the
+     * map degrades from wherever the traffic is.
+     */
+    meltingDepletionPerCycle: 0.09,
 } as const;
 
 export const RUN_RECORDS = {

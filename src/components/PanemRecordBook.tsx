@@ -34,7 +34,34 @@ function archetypeName(id: string): string {
     return ARCHETYPES[id as ArchetypeId]?.name ?? id;
 }
 
-const RARITY_ORDER: Record<AchievementRarity, number> = { common: 0, uncommon: 1, rare: 2, legendary: 3 };
+const RARITY_ORDER: Record<AchievementRarity, number> = { common: 0, rare: 1, legendary: 2, possible: 3 };
+
+/**
+ * §19 (requests): rarity, colour-coded.
+ *
+ * The tier was printed as four grey letters in the same ink as the hint, which
+ * is a label rather than a signal — a player scanning a hundred and ninety
+ * entries for the one worth going after could not see it. Each tier now has a
+ * colour and a filled chip, and the chip carries its own word, so the coding is
+ * never the only thing carrying the meaning.
+ *
+ * Colours are pulled from the existing palette rather than invented: the same
+ * tokens the event feed uses for its categories, so the two pages agree.
+ */
+const RARITY_STYLE: Record<AchievementRarity, { label: string; color: string }> = {
+    common: { label: 'Common', color: 'var(--color-ink-500)' },
+    rare: { label: 'Rare', color: 'var(--cat-alliance)' },
+    legendary: { label: 'Legendary', color: 'var(--gold-deep)' },
+    possible: { label: 'Possible?', color: 'var(--red)' },
+};
+
+/** What each tier claims, spelled out — the chip's accessible name and its tooltip. */
+const RARITY_DESCRIPTION: Record<AchievementRarity, string> = {
+    common: 'Common: happens in about a quarter of Games or more.',
+    rare: 'Rare: happens in a few Games out of a hundred.',
+    legendary: 'Legendary: measured, but only just — a handful of runs in a thousand.',
+    possible: 'Possible? Believed to be reachable. No run has ever been recorded doing it.',
+};
 
 /**
  * §11: one row. `data-locked` is what the print stylesheet reads to spell out
@@ -60,7 +87,17 @@ function AchievementRow({ a, unlocked, stamp, progress }: {
                 <div className="flex items-baseline gap-2 flex-wrap">
                     <div className={`text-sm font-bold achievement-name ${unlocked ? 'text-[var(--ink)]' : 'text-[var(--color-ink-400)]'}`}>{a.name}</div>
                     {a.rarity && (
-                        <span className="text-[9px] font-mono uppercase tracking-wide text-[var(--color-ink-500)]">{a.rarity}</span>
+                        <span
+                            className="rarity-chip"
+                            style={{ ['--rarity' as string]: RARITY_STYLE[a.rarity].color }}
+                            role="note"
+                            // The chip is colour plus a word; the accessible
+                            // name is what the colour is for, spelled out.
+                            aria-label={RARITY_DESCRIPTION[a.rarity]}
+                            title={RARITY_DESCRIPTION[a.rarity]}
+                        >
+                            {RARITY_STYLE[a.rarity].label}
+                        </span>
                     )}
                 </div>
                 <div className="text-[11px] text-[var(--color-ink-500)]">{a.hint}</div>
@@ -352,7 +389,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                         </div>
                         <select className="field text-xs w-auto" aria-label="Rarity" value={rarity} onChange={e => setRarity(e.target.value as AchievementRarity | 'any')}>
                             <option value="any">any rarity</option>
-                            {(['common', 'uncommon', 'rare', 'legendary'] as AchievementRarity[]).map(r => <option key={r} value={r}>{r}</option>)}
+                            {(['common', 'rare', 'legendary', 'possible'] as AchievementRarity[]).map(r => <option key={r} value={r}>{RARITY_STYLE[r].label.toLowerCase()}</option>)}
                         </select>
                     </div>
                 </div>

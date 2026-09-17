@@ -772,7 +772,10 @@ export function dropSupplies(ctx: SimContext) {
     // horn when it lands takes one — so the hub reads as this arena's hub
     // rather than as the same anonymous crates in all thirty-seven.
     const bias = state.arena.restockBias ?? [];
-    const takers = state.tributes.filter(t => t.status === 'alive' && t.zone === cornucopia.name);
+    // §1 `bloodPrice`: a restock is only a restock for the tributes the horn
+    // has opened for. Everyone else watches the crates land.
+    const paid = (t: Tribute) => !arenaHasLaw(state, 'bloodPrice') || t.kills > 0;
+    const takers = state.tributes.filter(t => t.status === 'alive' && t.zone === cornucopia.name && paid(t));
     let flavourNote = '';
     if (bias.length > 0 && takers.length > 0) {
         const granted: string[] = [];

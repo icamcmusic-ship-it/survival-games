@@ -8,7 +8,7 @@ import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SU
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons, tickOpeningEdges, restoreEdge } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, severEdge, depleteZone, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons, tickOpeningEdges, restoreEdge } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, checkIntelLies, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteRivalSighting, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
@@ -166,6 +166,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             ctx.logEvent(ctx.pickText(pool), [], { category: 'arena' });
         }
     }
+
+    // §1 `tidalBorders` / `meltingGround`: the two laws that re-shape the map
+    // rather than taxing the people on it. Before anybody moves, so the routes
+    // and the ground a tribute scores this cycle are the ones they will get.
+    runTidalBorders(ctx, time);
 
     // 0. The audience decides how much arena the tributes get to keep.
     updateAudienceInterest(ctx, time);
@@ -339,6 +344,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // The regrowth beat already told the field the ground was worth returning
     // to; now it is.
     regenerateZones(ctx).forEach(zone => startZoneEffect(ctx, zone, 'blooming', false));
+    // §1 `meltingGround`: ...and, in the one arena where nothing grows back,
+    // the ground everybody has been standing on gives up a little more. After
+    // the regeneration pass on purpose: the law is that recovery loses.
+    runMeltingGround(ctx);
     // §5.5: a way nobody has found yet is the most valuable thing in an arena
     // that has one. Run in upkeep, after this cycle's movement has settled
     // `zoneHeld`, so finding one takes actually having sat somewhere.
@@ -796,6 +805,68 @@ function updateAudienceInterest(ctx: SimContext, time: 'day' | 'night') {
             { important: true, category: 'gamemaker' }
         );
     }
+}
+
+/**
+ * §1 `tidalBorders`: the map re-cut every night.
+ *
+ * A third of the arena's edges are severed and everything the last tide took
+ * is given back, so a route scouted in daylight is a different question after
+ * dark and a dead end may not stay one. The set is drawn from `(seed, day)`,
+ * which keeps it replayable, and a zone is never cut off entirely — a sector
+ * nobody can reach with somebody standing in it is a tribute removed from
+ * their own Games.
+ *
+ * The one enforcement site for the law.
+ */
+function runTidalBorders(ctx: SimContext, time: 'day' | 'night') {
+    if (time !== 'night' || !arenaHasLaw(ctx.state, 'tidalBorders')) return;
+
+    // Everything the last tide took comes back first.
+    const zones = ctx.state.arena.zones;
+    zones.forEach(z => z.adjacent.forEach(n => restoreEdge(ctx.state, z.name, n)));
+
+    const rng = new RNG(`${ctx.state.seed}-tide-${ctx.state.day}`);
+    const edges: Array<[string, string]> = [];
+    zones.forEach(z => z.adjacent.forEach(n => {
+        if (z.name < n) edges.push([z.name, n]);
+    }));
+    const wanted = Math.floor(edges.length * ARENA_LAWS.tidalSeverShare);
+    // Track the degree left to each zone as the tide takes edges, so the last
+    // route into a sector is never the one that goes.
+    const degree = new Map<string, number>();
+    zones.forEach(z => degree.set(z.name, z.adjacent.length));
+    const cut: string[] = [];
+    rng.shuffle(edges).forEach(([a, b]) => {
+        if (cut.length >= wanted) return;
+        if ((degree.get(a) ?? 0) <= 1 || (degree.get(b) ?? 0) <= 1) return;
+        severEdge(ctx.state, a, b);
+        degree.set(a, (degree.get(a) ?? 1) - 1);
+        degree.set(b, (degree.get(b) ?? 1) - 1);
+        cut.push(`${a} to ${b}`);
+    });
+    if (cut.length === 0) return;
+    ctx.logEvent(
+        `The tide turns. These routes are closed until morning: ${cut.join('; ')}.`,
+        [],
+        { important: true, category: 'arena' },
+    );
+}
+
+/**
+ * §1 `meltingGround`: whatever a sector had, it has less of once somebody has
+ * been through it, and it does not come back.
+ *
+ * `depleteZone` is the existing mechanism and the recovery pass is what makes
+ * it temporary everywhere else; this simply adds depletion for occupancy and
+ * never removes it. The map therefore degrades from wherever the traffic is,
+ * which drives the field outward and then together without the border moving
+ * at all. The one enforcement site for the law.
+ */
+function runMeltingGround(ctx: SimContext) {
+    if (!arenaHasLaw(ctx.state, 'meltingGround')) return;
+    const occupied = new Set(getAlive(ctx.state).map(t => t.zone));
+    occupied.forEach(zone => depleteZone(ctx.state, zone, ARENA_LAWS.meltingDepletionPerCycle));
 }
 
 /**

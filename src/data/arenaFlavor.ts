@@ -2,6 +2,7 @@ import { Arena, ArenaLawId, Attributes, Stance, Terrain, ZoneEffectKind } from '
 import type { SanityBand } from '../engine/sanityBands';
 import { proceduralArenaFlavor } from './proceduralFlavor';
 import { EXTRA_ARENA_EVENTS } from './arenaEvents';
+import { NEW_ARENA_FLAVOR } from './arenaFlavorNew';
 
 /**
  * Arena-specific colour: every arena gets its own hazards, its own idle
@@ -15421,6 +15422,11 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         cause: 'Drank from clean rock', quench: 45, fatigue: 8, weight: 0.5,
     },
 ];
+
+// §1 (requests): the five new arenas' packs, folded in before the extra-event
+// merge below so they are subject to exactly the same passes as every other
+// hand-authored pack — the shared pool, the derived ids, the coverage scripts.
+Object.assign(ARENA_FLAVOR, NEW_ARENA_FLAVOR);
 
 // §7.4: fold the per-group extra event files into the authored packs once,
 // at load, so every reader of `ARENA_FLAVOR[id].events` (the picker, the

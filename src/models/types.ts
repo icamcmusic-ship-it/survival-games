@@ -2231,6 +2231,19 @@ export interface GameState {
      * anybody else pays a combat check to come through.
      */
     garrisonedEdges?: Record<string, string>;
+    /**
+     * §25 (requests): every contested edge that has *ever* been garrisoned this
+     * run, by `edgeKey`.
+     *
+     * `garrisonedEdges` is a live map — an entry is deleted the moment the
+     * holders stop standing on the ground — so anything asking "did an
+     * alliance hold a pass this year?" against it was really asking "is one
+     * being held at this exact instant?". That is the wrong question at the
+     * end of a run by construction, because by then the field is down to one
+     * or two people and nobody is garrisoning anything. This is the historical
+     * record, and it is never cleared.
+     */
+    garrisonsFormed?: string[];
     /** §9.1: tributes who bled out with an ally standing one zone away. */
     diedWithinReach?: number;
     /** §9.7: map intelligence handed over at a parley or in camp, honest or not. */

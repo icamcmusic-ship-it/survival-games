@@ -715,6 +715,15 @@ function attemptForage(
         noteForageFailure(t, t.zone);
         return false;
     }
+    // §1 `bloodPrice`: the horn does not open for a tribute who has not paid
+    // for it. The one enforcement site for the law, and deliberately the
+    // forage path rather than the loot pool — the Cornucopia's contents are
+    // still there and still visible, and the tribute with nothing on the board
+    // simply cannot take any of it.
+    if (arenaHasLaw(ctx.state, 'bloodPrice') && /cornucopia/i.test(t.zone) && t.kills === 0) {
+        noteForageFailure(t, t.zone);
+        return false;
+    }
     if (!ctx.rng.chance(chance)) {
         depleteZone(ctx.state, t.zone, ZONES.depletionPerAttempt);
         // §3.2: repeated failure in the same place is a fact about the place,
