@@ -1877,7 +1877,26 @@ export const VOLUNTEER = {
 export const CAREER_APPETITE = {
     /** Cycles of the horn's supplies before the academy stomach starts to tell. */
     graceDays: 2,
-    /** Added to the hunger-drain multiplier for each cycle past the grace period. */
+    /**
+     * Added to the hunger-drain multiplier for each cycle past the grace period.
+     *
+     * §26 (requests): left where §9.4 set it, and worth writing down why.
+     *
+     * This is the knob that argues with the Career share, so it was the first
+     * one tried against it. Steepening it to 0.3 with the cap below raised
+     * 1.2 -> 2.2 was measured over 1,600 runs and moved `Career victors`
+     * 52.7% -> 52.0%: seven tenths of a point for a hunger clock nearly twice
+     * as steep, with `starvation` as a share of deaths moving 0.8% -> 0.9%.
+     * The clock is not biting because Careers are not going hungry — they are
+     * reaching the endgame fed, and a steeper drain on a tribute who is eating
+     * is arithmetic with nothing on the other side of it.
+     *
+     * The cause is upstream and is written up at `Career victors` in
+     * `scripts/metrics.ts`: they hold 54.6% of final-two slots off 25% of the
+     * cast, while losing mixed final twos 68 to 91. They are not out-fighting
+     * the field at the end. They are out-lasting it to get there, and that is
+     * a balance pass rather than a knob.
+     */
     perDayPastGrace: 0.22,
     /** Ceiling on that addition, so a long run does not become a starvation clock. */
     multiplierCap: 1.2,
@@ -2120,6 +2139,30 @@ export const COMBAT = {
      * reach; a scrum at the horn runs until somebody is on the ground.
      */
     bloodbathExtraRounds: 3,
+    /**
+     * §11 (requests, second pass): extra exchanges once the Gamemakers have
+     * forced the finale.
+     *
+     * The bloodbath's exemption above names the condition — no line of retreat
+     * — and the forced finale is that condition in its purest form: the arena
+     * has been drained to one zone, `wantsToRetreat` already returns false for
+     * both of them, and there is nobody else left to interrupt it. It was
+     * nonetheless resolving on the ordinary four-exchange ceiling, so the last
+     * two met, traded four rounds, and separated at whatever health those four
+     * rounds left them with.
+     *
+     * That is the whole of the remaining zero-kill-victor problem. Measured
+     * across 400 runs with the attrition grace and the finalist opt-out both
+     * closed: 361 runs reached a final two, they were standing in the same
+     * zone for 38% of those cycles, and the runner-up still died of thirst.
+     * They were meeting. The fight was being called a draw.
+     *
+     * Twelve rather than four. A duel that goes the distance at this ceiling
+     * is sixteen exchanges, which is long — but a finale that does not end is
+     * the failure this whole section exists to remove, and the grace window is
+     * the backstop that stops it running forever.
+     */
+    finaleExtraRounds: 12,
     /** Damage a clean hit lands before modifiers. */
     baseHitDamage: 14,
     /** Extra damage per point of power advantage in the round. */

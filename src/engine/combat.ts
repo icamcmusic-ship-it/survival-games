@@ -201,7 +201,7 @@ function bestWeapon(t: Tribute): Item | undefined {
  * count (which says nothing about how long these two have been the only ones
  * left).
  */
-function inFinalTwoGrace(ctx: SimContext, alive: number): boolean {
+export function inFinalTwoGrace(ctx: SimContext, alive: number): boolean {
     if (alive !== 2) return false;
     const now = cycleOf(ctx.state);
     if (ctx.state.finalTwoCycle === undefined) ctx.state.finalTwoCycle = now;
@@ -891,7 +891,16 @@ export function resolveCombat(
         );
     }
 
-    const maxRounds = isBloodbath ? COMBAT.maxRounds + COMBAT.bloodbathExtraRounds : COMBAT.maxRounds;
+    // §11 (requests, second pass): the forced finale runs until it is settled.
+    // `wantsToRetreat` already refuses to let either of them break off here;
+    // without the matching round ceiling that only meant they stood there for
+    // four exchanges and then the encounter ended anyway. See
+    // `COMBAT.finaleExtraRounds`.
+    const inForcedFinale = ctx.state.tributes.filter(o => o.status === 'alive').length <= ESCALATION.finalistCount
+        && (ctx.state.finalistCycles ?? 0) >= ESCALATION.finaleAfterFinalistCycles;
+    const maxRounds = COMBAT.maxRounds
+        + (isBloodbath ? COMBAT.bloodbathExtraRounds : 0)
+        + (inForcedFinale ? COMBAT.finaleExtraRounds : 0);
     let round = 0;
     let ended = false;
 

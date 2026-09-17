@@ -6,7 +6,7 @@ import { agedResolveDecay } from './physique';
 import { ensureMemory, cyclesSinceContact } from './memory';
 import { clampTribute } from './vitals';
 import { rhetoricOf } from './composure';
-import { selfInflictedDeath } from './combat';
+import { inFinalTwoGrace, selfInflictedDeath } from './combat';
 import { getZone } from './map';
 import { traitMod } from '../data/traits';
 import { getRel } from './relationships';
@@ -133,7 +133,29 @@ export function tickResolve(ctx: SimContext) {
  * out endings, it only makes them available.
  */
 export function resolveBreakdowns(ctx: SimContext) {
-    getAlive(ctx.state).forEach(t => {
+    const alive = getAlive(ctx.state);
+    /**
+     * §11 (requests, second pass): a finalist does not get to opt out.
+     *
+     * The first pass at this stopped the *arena* finishing the second-to-last
+     * tribute, and the ending promptly moved one door along: of 58 zero-kill
+     * victors measured across 400 runs afterwards, 34 were the runner-up
+     * taking the nightlock or walking into the border. That is the same
+     * complaint again — the last fight never happens — and it is worse than
+     * the attrition version, because a tribute choosing to stop is a scene the
+     * Capitol would not have broadcast.
+     *
+     * So both self-inflicted endings are held back for exactly as long as the
+     * arena's own attrition is: the final-two grace window. Outside it, and at
+     * any larger field size, nothing changes — the nightlock is the source
+     * material's most famous ending and it stays reachable. What a broken
+     * finalist does instead is what the rest of this function was always for:
+     * they stop hiding, they put the weapon down, they lose the token. Every
+     * one of those puts them in front of the other finalist rather than out of
+     * the Games behind their back.
+     */
+    const finalTwoHolds = inFinalTwoGrace(ctx, alive.length);
+    alive.forEach(t => {
         if (!hasBroken(t)) return;
         if (!ctx.rng.chance(RESOLVE.breakdownChance)) return;
 
@@ -152,7 +174,7 @@ export function resolveBreakdowns(ctx: SimContext) {
             && (zone?.resources ?? 0) > RESOLVE.nightlockForageResources
             && ctx.rng.chance(RESOLVE.nightlockFindChance);
 
-        if ((carried || canFind) && resolveOf(t) <= RESOLVE.nightlockThreshold && ctx.rng.chance(RESOLVE.nightlockChance)) {
+        if (!finalTwoHolds && (carried || canFind) && resolveOf(t) <= RESOLVE.nightlockThreshold && ctx.rng.chance(RESOLVE.nightlockChance)) {
             if (carried) t.inventory = t.inventory.filter(i => i !== carried);
             ctx.logEvent(
                 carried
@@ -170,7 +192,8 @@ export function resolveBreakdowns(ctx: SimContext) {
         // T-6: walking into the border. Once the arena has started closing,
         // the wall is always there, humming, and a tribute who is finished
         // does not have to find nightlock — they only have to keep walking.
-        if (ctx.state.escalationDay !== undefined
+        if (!finalTwoHolds
+            && ctx.state.escalationDay !== undefined
             && resolveOf(t) <= RESOLVE.nightlockThreshold
             && ctx.rng.chance(RESOLVE.borderWalkChance)) {
             ctx.logEvent(
