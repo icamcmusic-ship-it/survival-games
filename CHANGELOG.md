@@ -1,5 +1,111 @@
 # Changelog
 
+## Requests pass (this branch)
+
+Answers a twenty-five item request list rather than an audit. Three of the
+items turned out to be the same defect wearing different clothes — the
+simulation knew something and the log would not say it — and two of the
+quantitative ones were wrong in the direction nobody expected, which is the
+part worth reading.
+
+### The endgame was being decided by septicaemia (§11)
+
+Half of all victors finished a run with one kill or none, and a quarter with
+none at all. The obvious reading is that tributes were hiding successfully,
+and it is wrong. Measured over 200 full runs: of 189 final-two endings, **90
+were the runner-up dying of bleeding, infection, thirst, starvation or
+exhaustion, and 43 were the victor killing them.** The Games were being
+decided by which of the last two was less badly hurt, off camera, with the
+last fight simply never happening.
+
+Two changes. A **convergence** at six survivors — the Gamemakers close the
+arena to one sector and drive whatever is left of the field into it, which
+fires in 95% of runs — and an eight-cycle window at the final two in which
+nothing except another tribute may finish them. The window is bounded on
+purpose: an earlier build protected both finalists unconditionally and left
+two tributes pinned at 1 health for as long as it took them to meet.
+
+    victor kills the runner-up    23% -> 58%
+    victors with <= 1 kill      50.3% -> 37.3%
+    zero-kill victors (of 200)     51 -> 29
+
+### The Career knob that made Careers worse (§23)
+
+Careers took 39.1% of bloodbath kills from 25% of the field. The obvious lever
+is the pack ganging up on one target, so it was raised from 0.6 to 0.8 — and
+the Career share went **down**, to 36.2%. A four-on-one pulls five tributes out
+of the scrum for a round and yields one kill where four duels yield four.
+Ganging up is more frightening and less productive, which is a real thing
+about packs and not a bug; it is left at 0.6 with that written down.
+
+What works is arriving first. A Career has spent years being told what is laid
+out at the mouth of a Cornucopia, and arrival order decides who comes away
+armed.
+
+    Career share of bloodbath kills   39.1% -> 46.5%
+    Career share of crowns                     34.7%  (design goal 45%)
+
+### Lines that would not say who they were about (§22)
+
+`tributesInvolved` is what links names to profiles, what the per-tribute
+chronicle filter reads, and what the relationship graph is built from — so a
+line involving three tributes and naming one is a defect, not a style. A new
+`npm run test:unnamed` plays 40 full Games and measures it: **12.4%** of all
+multi-tribute lines left somebody out. The district-partner cannon was the
+worst, 261 a sweep, and it never named the killer; the named-heir line was
+next at 153 and never named the group who heard it said. Now 4.0%, ratcheted.
+
+The guard then caught the training digest added in the *next* commit, which
+claimed all twenty-four tributes while naming three.
+
+### Everything else
+
+- **Five new arenas** (§1), each with a law that exists nowhere else, paired
+  with an existing law chosen to argue with it: the Tidewrack Flats re-cut by
+  the tide every night, the Thresher Floor where the horn only opens for a
+  tribute who has killed, the Vigil where sleep does nothing, the Saltworks
+  where the ground does not recover, the Kiln with two suns and one cold
+  cellar. Full flavour packs, mutt rosters covering every terrain, climates,
+  and a contested bottleneck each so they add to the roster rather than
+  dilute it.
+- **Laws say what they do** (§2): kind, severity, systems touched, and the
+  concrete mechanical consequences in the player's terms.
+- **Arena event packs** (§3): one or two named, arena-wide set pieces a run,
+  drawn from the seed, plus the convergence, all listed in the picker.
+- **Careers** (§4, §9): the pack forms in effectively every Games rather than
+  two thirds of them, holds together longer, trains as a bloc for all three
+  days and names who it is watching — and has almost no social appetite for an
+  outer-district tribute who is not worth having.
+- **Bodies** (§6): frame and condition go from five rungs to seven, the
+  original five keeping their exact distance from the middle.
+- **The arena's death budget** (§24): past 30% of the cast, further
+  environmental killing blows are rolled against and leave the tribute on one
+  health. Worst single run across 200 is now 33%; "sometimes more than half"
+  does not happen.
+- **The chronicle is a log** (§13, §14): an in-arena timestamp on every line,
+  and the full page is one entry per line in four columns that line up,
+  replacing a two-column masonry grid of variable-height cards.
+- **The setup screen** (§7, §8, §18): unlocked arenas only in a two-column
+  grid, age mean and standard-deviation sliders with live readouts, a
+  randomize-everything button, and a one-victor-only rule.
+- **Achievements** (§10, §19, §20): revealed at the end of a run and nowhere
+  else, on a Common / Rare / Legendary / **Possible?** ladder regenerated from
+  measured unlock rates, colour-coded, and paying Capitol Coins by tier.
+- **Plainer prose** (§5, §12): the reaping square is one factual line per
+  tribute, and the highest-traffic pools in the simulation — grief, vengeance,
+  relief, sanity, betrayal aftermath, duels, group fights, the training floor
+  — report rather than interpret. The per-arena flavour packs (~17,000 lines
+  across 49 arenas) keep their existing voice; the five new arenas are written
+  to the plain standard, so both are in the build and can be compared.
+- **Fullscreen on start** (§15) and **no map tab before the gong** (§17).
+- **Bugs found on the way** (§25): 'The Toll' could never be earned (it asked
+  a live map at the one moment it is always empty — 0% to 13.8%);
+  `applyWearAndTear` added the desert and ice drains after the cycle's last
+  clamp and never clamped itself; `vanillaRules` was silently dropped by the
+  config reader on every reload; the achievement payout ran before the pass
+  that decides it; `VENGEANCE_TEXTS` shipped an unfilled `{zone}`; and the
+  'Possible?' tier flapped the build on single-observation noise.
+
 ## Audit 4 fix pass (this branch)
 
 Answers `AUDIT-4.md`. That report's theme was that the repository had reached
