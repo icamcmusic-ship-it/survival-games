@@ -191,6 +191,8 @@ function DeathCard({ log, tribute, animate, cast, onSelectTribute }: {
                 </div>
                 <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
+                        {/* §13 (requests): the cannon has a time on it too. */}
+                        {log.clock && <span className="feed-clock">{log.clock}</span>}
                         <span className="eyebrow" style={{ color: meta.color }}>{meta.label}</span>
                         {tribute && (
                             <span className="font-black uppercase text-sm text-[var(--ink)]">
@@ -229,7 +231,7 @@ const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * `tributesInvolved` are matched, so this can never invent a link out of a
  * coincidental word in the flavour text.
  */
-function withTributeLinks(
+export function withTributeLinks(
     text: string,
     cast: Tribute[] | undefined,
     involved: string[],
@@ -300,6 +302,7 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
                 className={`feed-item ${animate ? 'animate-riseIn' : ''} is-important`}
                 style={{ ['--cat' as string]: meta.color }}
             >
+                {log.clock && <span className="feed-clock">{log.clock}</span>}
                 {showTag && (
                     <span className="feed-tag">
                         <span className="cat-glyph mr-1" aria-hidden="true">{meta.glyph}</span>
@@ -332,6 +335,11 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
             className={`feed-item ${animate ? 'animate-riseIn' : ''} ${log.important ? 'is-important' : ''} ${continuation ? 'ml-4 text-[13px] opacity-90' : ''}`}
             style={{ ['--cat' as string]: meta.color }}
         >
+            {/* §13 (requests): the arena clock. Every line is stamped with the
+                in-arena time it happened at, which is what a reader of a
+                chronicle wants — the day/phase header says which twelve hours
+                they are looking at and never said where inside them. */}
+            {log.clock && <span className="feed-clock">{log.clock}</span>}
             {showTag && !continuation && (
                 <span className="feed-tag">
                     {/* §2.5: the glyph, so the category is legible without colour. */}

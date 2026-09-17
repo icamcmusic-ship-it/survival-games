@@ -2324,6 +2324,27 @@ export const COIN_ECONOMY = {
     patronMaxDistricts: 4,
     /** Buying a locked arena outright rather than waiting for the sealed draw to find it. */
     arenaUnlockCost: 900,
+    /**
+     * §20 (requests): what the Capitol pays for a first-time achievement.
+     *
+     * Scaled by rarity, because a reward that does not distinguish 'happens in
+     * a third of Games' from 'nobody has ever done this' is not a reward, it is
+     * a participation fee. Only *new* achievements pay — they are a discovery
+     * layer, and paying again for something already unlocked would turn them
+     * into a grind.
+     *
+     * Sized against the things coins buy: a locked arena is 900 and the first
+     * patronage is 750, so a good run's worth of discoveries makes real
+     * progress toward one without ever being the fastest way to get there.
+     * Wagering remains the main economy.
+     */
+    achievementReward: {
+        common: 25,
+        rare: 75,
+        legendary: 200,
+        /** Nobody has been recorded doing one of these. It should pay like it. */
+        possible: 500,
+    },
 } as const;
 
 export const MOVEMENT = {

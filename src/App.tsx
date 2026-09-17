@@ -111,6 +111,15 @@ export default function App() {
         const raw = params.get(key);
         return raw === null ? fallback : raw === 'true';
       };
+      // Absent, 'bowl' or unparseable all mean "this setting was not set",
+      // which for the age pair is a real and different state from any number.
+      const optionalNumParam = (key: string, min: number, max: number) => {
+        const raw = params.get(key);
+        if (raw === null || raw === 'bowl') return undefined;
+        const n = Number(raw);
+        if (!Number.isFinite(n)) return undefined;
+        return Math.min(max, Math.max(min, n));
+      };
       // Ranges mirror the setup screen's sliders — a shared link is untrusted
       // input and must not be able to exceed what the UI itself allows.
       const config = {
@@ -124,6 +133,14 @@ export default function App() {
         // §2.6: a Vanilla Games link replays vanilla. Links written before the
         // parameter existed read as false, which is what they always were.
         vanillaRules: boolParam('vanillaRules', !!DEFAULT_GAME_CONFIG.vanillaRules),
+        // §18 (requests): a one-victor link replays as a one-victor run.
+        singleVictor: boolParam('singleVictor', !!DEFAULT_GAME_CONFIG.singleVictor),
+        // §8 (requests): the age distribution decides the cast, so a link that
+        // dropped it replayed a different set of tributes under the same seed.
+        // 'bowl' — and a link written before the parameter existed — means the
+        // canon tesserae-weighted draw, which is what every such link had.
+        ageMean: optionalNumParam('ageMean', 12, 18),
+        ageSpread: optionalNumParam('ageSpread', 0.5, 4),
       };
       // A shared link pins the run's exact Quarter Quell (or explicit lack of
       // one) so it replays the same Games it was copied from — the same

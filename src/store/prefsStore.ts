@@ -73,6 +73,15 @@ export interface Prefs {
      * but a player who would rather discover the map blind can turn it off.
      */
     arenaBriefingOnDrop: boolean;
+    /**
+     * §15 (requests): go fullscreen when the Games begin.
+     *
+     * Default on. The browser will only grant fullscreen from inside a user
+     * gesture, so this is honoured on the click that reaps the tributes and
+     * nowhere else — there is no way to make a page load fullscreen and
+     * pretending otherwise would just fail silently on every load.
+     */
+    fullscreenOnStart: boolean;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -90,7 +99,29 @@ export const DEFAULT_PREFS: Prefs = {
     reduceMotion: false,
     seenShortcutHint: false,
     arenaBriefingOnDrop: true,
+    fullscreenOnStart: true,
 };
+
+/**
+ * §15 (requests): ask for fullscreen, from inside a user gesture.
+ *
+ * Deliberately best-effort and completely silent on failure. Fullscreen is
+ * refused in an iframe without `allow="fullscreen"`, refused on iOS Safari for
+ * anything that is not a video, and refused whenever the call has drifted
+ * outside the gesture that authorised it. None of those is a problem the
+ * player needs telling about — the game works identically either way — so the
+ * rejection is swallowed rather than surfaced.
+ */
+export function enterFullscreen(): void {
+    try {
+        if (typeof document === 'undefined') return;
+        if (document.fullscreenElement) return;
+        const el = document.documentElement;
+        void el.requestFullscreen?.({ navigationUI: 'hide' })?.catch(() => { /* refused; carry on windowed */ });
+    } catch {
+        /* no Fullscreen API here */
+    }
+}
 
 /**
  * §1.8 (audit): the toggle used to default to "off" for a user whose OS said
@@ -131,6 +162,7 @@ export const PREFS_SPEC: StorageSpec<Prefs> = {
             reduceMotion: asBool(r.reduceMotion, systemReduceMotion()),
             seenShortcutHint: asBool(r.seenShortcutHint, DEFAULT_PREFS.seenShortcutHint),
             arenaBriefingOnDrop: asBool(r.arenaBriefingOnDrop, DEFAULT_PREFS.arenaBriefingOnDrop),
+            fullscreenOnStart: asBool(r.fullscreenOnStart, DEFAULT_PREFS.fullscreenOnStart),
         };
     },
 };

@@ -142,6 +142,25 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                     </label>
                 </div>
 
+                {/* §15 (requests): fullscreen when the Games begin. Only the
+                    reap click can ask for it — the browser refuses anywhere
+                    else — so the setting is worded as what actually happens. */}
+                <div className="space-y-1.5">
+                    <span className="eyebrow">Display</span>
+                    <label className="flex items-center gap-2 cursor-pointer text-xs text-[var(--color-ink-300)] font-semibold">
+                        <input
+                            type="checkbox"
+                            checked={prefs.fullscreenOnStart}
+                            onChange={e => setPrefs({ fullscreenOnStart: e.target.checked })}
+                            className="w-4 h-4 accent-[var(--red)]"
+                        />
+                        Go fullscreen when a Games starts
+                    </label>
+                    <p className="text-[10px] text-[var(--color-ink-500)]">
+                        Asked for on the reaping click. Some browsers refuse it — in a frame, or on iOS — and the Games run windowed instead.
+                    </p>
+                </div>
+
                 <div className="space-y-1.5">
                     <span className="eyebrow">Auto-play brakes</span>
                     <p className="text-[10px] text-[var(--color-ink-500)]">Auto-advance drops back to manual when any of these land.</p>

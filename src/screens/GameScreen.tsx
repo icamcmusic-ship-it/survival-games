@@ -16,7 +16,6 @@ import { CATEGORY_GROUPS } from '../ui/eventStyles';
 import { tributeOdds } from '../engine/odds';
 import { Filter, Star } from 'lucide-react';
 import { GAMEMAKER_COSTS } from '../data/balance';
-import { evaluateInRunNearMisses, evaluateAchievements, ACHIEVEMENTS } from '../data/achievements';
 import { GamemakerEventType, gamemakerCooldownRemaining, gamemakerEventCost } from '../engine/gamemaker';
 import { gameActions, gameStore } from '../store/gameStore';
 import { pathForView } from '../store/router';
@@ -164,10 +163,6 @@ export function GameScreen({
     const [showHelp, setShowHelp] = useState(false);
     const prefs = useStore(prefsStore, p => p);
     const panem = useStore(gameStore, s => s.panem);
-    const nearMisses = useMemo(
-        () => evaluateInRunNearMisses(gameState, panem?.unlocked ?? []),
-        [gameState, panem]
-    );
     const nextPhaseRef = useRef(onNextPhase);
     nextPhaseRef.current = onNextPhase;
 
@@ -259,6 +254,22 @@ export function GameScreen({
     const aliveCount = gameState.tributes.filter(t => t.status === 'alive').length;
     const deadCount = gameState.tributes.length - aliveCount;
     const isOver = gameState.phase === 'ended';
+    /**
+     * §17 (requests): whether the tributes are actually in the arena.
+     *
+     * The pre-Games phases run on this screen too, and through all of them
+     * `Tribute.zone` is seeded to the Cornucopia — so the map showed
+     * twenty-four tributes standing in a zone none of them has ever been to,
+     * on a map they are not in yet. `bloodbath` is the gong.
+     */
+    const inArena = !['setup', 'roster', 'reaping', 'training', 'interviews'].includes(gameState.phase);
+    // A resumed run, or a player who was on the map when the phase rolled back,
+    // must not be left looking at a pane that is no longer rendered.
+    useEffect(() => {
+        if (inArena) return;
+        setStageTab(t => (t === 'map' ? 'chronicle' : t));
+        setMobilePane(p => (p === 'map' ? 'chronicle' : p));
+    }, [inArena]);
 
     const compareTribute = compareTributeId
         ? gameState.tributes.find(t => t.id === compareTributeId) ?? null
@@ -442,11 +453,18 @@ export function GameScreen({
             } else if (lower === 'f') {
                 setShowFilters(v => !v);
             } else if (lower === 'm') {
-                setStageTab(t => {
-                    const next = t === 'map' ? 'chronicle' : 'map';
-                    setMobilePane(next);
-                    return next;
-                });
+                // §17: the shortcut follows the tab. Before the gong there is
+                // no map, and a key that silently switches to a pane that is
+                // not there is worse than a key that says so.
+                if (!inArena) {
+                    announceShortcut('The arena is not open until the Games begin');
+                } else {
+                    setStageTab(t => {
+                        const next = t === 'map' ? 'chronicle' : 'map';
+                        setMobilePane(next);
+                        return next;
+                    });
+                }
             } else if (lower === 'c') {
                 setStageTab('chronicle');
                 setMobilePane('chronicle');
@@ -648,58 +666,21 @@ export function GameScreen({
         return () => clearTimeout(settle);
     }, [gameState.log.length]);
 
-    // §2: achievements, as they happen.
+    // §10 (requests): achievements are an end-of-run reveal, and only that.
     //
-    // Everything a run earns was banked silently and shown in one block on the
-    // end screen, which is the one moment the player is least able to connect
-    // it to what they were watching. Achievements are evaluated against the
-    // live state at each phase boundary and the newly-true ones are surfaced
-    // as they land. Nothing is *recorded* here — the end-of-run pass in
-    // `panemStorage` remains the only writer, so a toast can never award
-    // something a rewind then un-earns.
+    // They used to surface twice while the run was still going: a toast the
+    // moment a predicate went true, and a live "close to earning" panel in the
+    // dossier. Both spoil, and the second spoils badly — an entry called
+    // "Crowned Without A Kill" appearing as a near miss on day six tells the
+    // reader which of the six people still alive the simulation is about to
+    // crown, and there is no way to un-read it. The end screen already carries
+    // both lists (`outcome.newAchievements` and `outcome.nearMisses`), which
+    // is the moment a player can actually look at them without it costing them
+    // the rest of the Games.
     //
-    // Each toast carries its own expiry and a single sweep retires whatever is
-    // due, rather than each batch arming a timer that slices a captured count
-    // off the *front* of the stack. That arrangement retired the wrong toasts
-    // whenever two batches overlapped, and — because the effect's own cleanup
-    // cleared the pending timer and its early returns armed no replacement — a
-    // phase that produced no new achievements left the previous batch on screen
-    // for the rest of the run.
-    const [toasts, setToasts] = useState<Array<{ id: string; name: string; hint: string; expiresAt: number }>>([]);
-    const shownToasts = useRef<Set<string>>(new Set());
-    // Read through a ref so evaluating ~180 predicates over the whole state is
-    // tied to the phase boundaries this is documented to run on, and not to
-    // every store write that happens to produce a new state object.
-    const liveState = useRef(gameState);
-    liveState.current = gameState;
-    useEffect(() => {
-        if (isOver) return;
-        // The store already holds the record book; this used to parse it
-        // out of localStorage — and run its migration — on every phase.
-        const already = new Set(panem.unlocked);
-        const live = evaluateAchievements(liveState.current).filter(id =>
-            !already.has(id) && !shownToasts.current.has(id));
-        if (live.length === 0) return;
-        live.forEach(id => shownToasts.current.add(id));
-        const expiresAt = Date.now() + TOAST_MS;
-        const fresh = live
-            .map(id => ACHIEVEMENTS.find(a => a.id === id))
-            .filter((a): a is NonNullable<typeof a> => !!a)
-            .map(a => ({ id: a.id, name: a.name, hint: a.hint, expiresAt }));
-        if (fresh.length === 0) return;
-        setToasts(prev => [...prev, ...fresh].slice(-TOAST_MAX));
-    }, [gameState.phase, gameState.day, isOver, panem.unlocked]);
-
-    // One sweep, armed for whichever toast expires next.
-    useEffect(() => {
-        if (toasts.length === 0) return;
-        const due = Math.min(...toasts.map(t => t.expiresAt));
-        const timer = window.setTimeout(
-            () => setToasts(prev => prev.filter(t => t.expiresAt > Date.now())),
-            Math.max(0, due - Date.now()),
-        );
-        return () => window.clearTimeout(timer);
-    }, [toasts]);
+    // Nothing was ever *recorded* here — the end-of-run pass in `panemStorage`
+    // remains the only writer — so removing the live evaluation changes what
+    // the player is told and not what they earn.
 
     const urgentAnnouncement = useMemo(() => {
         const lastDeath = [...gameState.log]
@@ -770,9 +751,17 @@ export function GameScreen({
                     <div className="panel p-4 space-y-3">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="seg">
+                                {/* §17 (requests): no arena page until the
+                                    Games start. Through the reaping, training
+                                    and the interviews there is no arena to
+                                    show — every tribute is seeded to the
+                                    Cornucopia so the map drew the whole cast
+                                    standing in a horn none of them have seen,
+                                    which is not a spoiler so much as a lie.
+                                    The tab comes back at the gong. */}
                                 {([
                                     ['chronicle', 'Chronicle'],
-                                    ['map', 'Map'],
+                                    ...(inArena ? [['map', 'Map'] as const] : []),
                                     ['standings', 'Standings'],
                                 ] as const).map(([id, label]) => (
                                     <button
@@ -1019,7 +1008,6 @@ export function GameScreen({
                         allianceAccent={allianceAccent}
                         oddsLadder={oddsLadder}
                         oddsMovement={oddsMovement}
-                        nearMisses={nearMisses}
                         onGamemakerEvent={spendGamemaker}
                     />
                 </div>
@@ -1030,7 +1018,8 @@ export function GameScreen({
             <nav aria-label="Arena panes" className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[var(--ink)] border-t-[3px] border-[var(--red)] flex items-stretch">
                 {([
                     { id: 'chronicle', label: 'Chronicle' },
-                    { id: 'map', label: 'Map' },
+                    // §17: the map pane follows the same rule as the tab above it.
+                    ...(inArena ? [{ id: 'map' as const, label: 'Map' }] : []),
                     { id: 'standings', label: 'Table' },
                     { id: 'tributes', label: `Cast ${aliveCount}` },
                 ] as const).map(tab => (
@@ -1063,30 +1052,6 @@ export function GameScreen({
             </div>
             <div aria-live="assertive" className="sr-only">{urgentAnnouncement}</div>
             <div ref={shortcutHintRef} role="status" aria-live="polite" className="sr-only" />
-
-            {/* §2: in-run achievement toasts. Bottom-left so they never sit
-                under the sticky control bar or the mobile action row. */}
-            {toasts.length > 0 && (
-                <div className="fixed bottom-28 left-4 z-40 space-y-2 max-w-[18rem]" role="status" aria-live="polite">
-                    {toasts.map(t => (
-                        <div key={t.id} className="panel px-3 py-2 animate-fadeIn relative">
-                            <div className="eyebrow text-[var(--gold-deep)]">Achievement</div>
-                            <div className="font-bold text-sm">{t.name}</div>
-                            <div className="text-[11px] text-[var(--color-ink-500)]">{t.hint}</div>
-                            {/* Dismissible: a toast that can only be waited out is
-                                a toast a keyboard reader cannot get past. */}
-                            <button
-                                type="button"
-                                aria-label={`Dismiss the ${t.name} achievement notice`}
-                                className="absolute top-1 right-1 px-2 py-1 text-[11px] leading-none text-[var(--color-ink-500)] hover:text-[var(--color-ink-900)]"
-                                onClick={() => setToasts(prev => prev.filter(o => o.id !== t.id))}
-                            >
-                                ✕
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
 
             {showHelp && <HelpOverlay onClose={() => setShowHelp(false)} />}
 

@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { EventCategory, EventLog, GameState, Tribute } from '../models/types';
 import { CATEGORY_GROUPS, categoryMeta } from '../ui/eventStyles';
-import { Beat, FeedLine, groupBeats, passesDensity, stripZoneClause, tierOf } from '../components/EventFeed';
-import { TributeTile } from '../components/TributeTile';
+import { groupBeats, passesDensity, stripZoneClause, tierOf, withTributeLinks } from '../components/EventFeed';
 import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { TributeModal } from '../components/TributeModal';
 import { ChronicleFilters } from '../components/ChronicleFilters';
@@ -114,64 +113,55 @@ function writeDeepLink(page: Page | undefined) {
 }
 
 /**
- * One beat as a card: the involved tributes as district tiles, the zone, a
- * category stripe from the existing `--cat-*` variables, and the prose at
- * reading size rather than the 13px the sidebar feed uses.
+ * §14 (requests): one line at a time.
+ *
+ * The page used to render `groupBeats` into a two-column grid of cards, each
+ * with its own category header, its own row of tribute tiles and its own
+ * paragraph block. Two columns of variable-height blocks do not line up with
+ * each other by construction, so the archive of a run read as a ragged
+ * masonry wall in which nothing was in order: the left column ran ahead of the
+ * right, a two-line beat sat beside a nine-line one, and a reader looking for
+ * what happened next had to scan both columns and compare.
+ *
+ * A chronicle is a log. It wants one entry per line, in order, in columns that
+ * line up — the time, the category, the place, and what happened. That is what
+ * this is. The beat grouping is still what decides which lines belong together
+ * (it indents continuations and suppresses a repeated zone), but it no longer
+ * decides the layout.
  */
-function BeatCard({ beat, cast, onSelectTribute, showZone, revealed }: {
-    beat: Beat;
+function LogRow({ log, cast, onSelectTribute, showZone, continuation, revealed, zone }: {
+    log: EventLog;
     cast: Tribute[];
     onSelectTribute: (id: string) => void;
     showZone: boolean;
-    /** §2.5: false while the run is still going and spoiler-safe is on. */
+    /** Not the first line of its beat: the zone is already on the row above. */
+    continuation: boolean;
     revealed: boolean;
+    zone?: string;
 }) {
-    const meta = categoryMeta(beat.logs[0].category);
-    const people = [...beat.cast]
-        .map(id => cast.find(t => t.id === id))
-        .filter((t): t is Tribute => !!t)
-        .slice(0, 4);
-
+    const meta = categoryMeta(log.category);
+    const hidden = !revealed && (log.category === 'death' || log.category === 'kill');
+    const text = !continuation && showZone && zone && log.zone === zone
+        ? stripZoneClause(log.text, zone)
+        : log.text;
     return (
-        <article
-            className="panel-flush border-l-[6px] p-4 space-y-2.5 break-inside-avoid"
-            style={{ borderLeftColor: meta.color }}
+        <div
+            className={`log-row${log.important ? ' is-important' : ''}${continuation ? ' is-continuation' : ''}`}
+            style={{ ['--cat' as string]: meta.color }}
+            data-log-id={log.id}
         >
-            <header className="flex items-center justify-between gap-3 flex-wrap">
-                <span className="eyebrow flex items-center gap-1.5" style={{ color: meta.color }}>
-                    <span className="cat-glyph" aria-hidden="true">{meta.glyph}</span>
-                    {meta.label}
-                </span>
-                {showZone && beat.zone && (
-                    <span className="font-mono text-[10px] font-black uppercase tracking-[0.12em] text-[var(--color-ink-500)]">
-                        {beat.zone}
-                    </span>
-                )}
-            </header>
-
-            {people.length > 0 && (
-                <div className="flex flex-wrap gap-x-4 gap-y-2">
-                    {people.map(t => (
-                        <TributeTile key={t.id} tribute={t} size="sm" onSelect={onSelectTribute} />
-                    ))}
-                </div>
-            )}
-
-            <div className="chronicle-prose space-y-1.5">
-                {beat.logs.map(log => (
-                    <p key={log.id} className={log.important ? 'font-semibold text-[var(--ink)]' : 'text-[var(--color-ink-200)]'}>
-                        {/* §2.5: the chronicle page is reachable mid-run, so it
-                            has to respect spoiler-safe viewing too — held back
-                            only while the run is still going. */}
-                        {!revealed && (log.category === 'death' || log.category === 'kill')
-                            ? <span className="italic text-[var(--color-ink-500)]">A cannon. Hidden while spoiler-safe viewing is on.</span>
-                            : showZone && beat.zone && log.zone === beat.zone
-                                ? stripZoneClause(log.text, beat.zone)
-                                : log.text}
-                    </p>
-                ))}
-            </div>
-        </article>
+            <span className="log-time">{log.clock ?? ''}</span>
+            <span className="log-cat">
+                <span className="cat-glyph" aria-hidden="true">{meta.glyph}</span>
+                <span className="log-cat-label">{meta.label}</span>
+            </span>
+            <span className="log-zone">{showZone && !continuation ? (log.zone ?? '') : ''}</span>
+            <span className="log-text">
+                {hidden
+                    ? <span className="italic text-[var(--color-ink-500)]">A cannon. Hidden while spoiler-safe viewing is on.</span>
+                    : withTributeLinks(text, cast, log.tributesInvolved, onSelectTribute)}
+            </span>
+        </div>
     );
 }
 
@@ -349,17 +339,27 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                 </div>
             ) : (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                        {beats.map((beat, i) => (
-                            <BeatCard
-                                key={`${beat.logs[0].id}-${i}`}
-                                beat={beat}
+                    {/* §14: one column, one line per entry, columns that line
+                        up. The header row is the key to the four columns. */}
+                    <div className="log-table" role="table" aria-label={`${page.label} — event log`}>
+                        <div className="log-row log-head" role="row">
+                            <span className="log-time">Time</span>
+                            <span className="log-cat">Kind</span>
+                            <span className="log-zone">Where</span>
+                            <span className="log-text">What happened</span>
+                        </div>
+                        {beats.map((beat, bi) => beat.logs.map((log, li) => (
+                            <LogRow
+                                key={log.id}
+                                log={log}
                                 cast={gameState.tributes}
                                 onSelectTribute={setSelectedTributeId}
                                 showZone={!arenaSealed && !PRE_ARENA_PHASES.has(page.phase)}
+                                continuation={li > 0 && beat.logs.length > 1}
+                                zone={beat.zone}
                                 revealed={revealed}
                             />
-                        ))}
+                        )))}
                     </div>
 
                     {/* A phase in which somebody died closes with the strip. */}
