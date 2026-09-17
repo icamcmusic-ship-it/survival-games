@@ -60,6 +60,7 @@ import { formVengeancePacts, tickVengeancePacts } from '../vengeancePact';
 import { checkRumours, mintTrueRumours, shareRumoursInCamp } from '../rumours';
 import { gamemakerProfile } from '../../data/gamemakers';
 import { arenaHasLaw, arenaIsSilent, escalationShift, wildcardIs } from '../gamesProfile';
+import { tickArenaEvents, tickConvergence } from '../arenaEventPacks';
 import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
@@ -168,6 +169,12 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
     // 0. The audience decides how much arena the tributes get to keep.
     updateAudienceInterest(ctx, time);
+    // §3/§11 (requests): this run's arena set pieces, and the convergence that
+    // drives whatever is left of the field into one sector. Before the border
+    // collapse below, because a set piece can take zones out of bounds itself
+    // and the collapse should see the map the set piece left.
+    if (time === 'day') tickArenaEvents(ctx);
+    tickConvergence(ctx);
     forceFinale(ctx);
     const isEscalated = collapseBorders(ctx, time);
     const collapsed = ctx.state.collapsedZones || [];
@@ -843,7 +850,10 @@ function forceFinale(ctx: SimContext) {
     // 74th's original terms: the revocation, announced from the sky.)
     if (alive.length === 2
         && alive[0].allianceId !== undefined && alive[0].allianceId === alive[1].allianceId
-        && !areLovers(alive[0], alive[1])) {
+        // §18 (requests): the lovers' exemption exists so the nightlock
+        // standoff stays reachable. With one victor guaranteed there is no
+        // standoff to reach, so the alliance is revoked for them too.
+        && (ctx.state.config.singleVictor || !areLovers(alive[0], alive[1]))) {
         const [a, b] = alive;
         delete a.allianceId;
         delete b.allianceId;
@@ -1552,11 +1562,16 @@ function resolveEncounters(
         // do and nowhere to do it. Two finalists standing in the same zone
         // meet, rather than rolling for it and drifting apart again — that
         // roll is what let a forced finale run for hundreds of days.
+        // §11 (requests): and the convergence does the same thing one stage
+        // earlier. Once the arena has been closed to one sector, two tributes
+        // standing in it have run out of arena to drift apart into.
         const meetChance = ctx.state.finaleZone
             ? 1
-            : isAggressiveStance(t.stance)
-                ? Math.min(0.95, ENCOUNTERS.meetChance * HUNTING.meetChanceMultiplier)
-                : ENCOUNTERS.meetChance;
+            : ctx.state.convergenceZone
+                ? ESCALATION.convergeEncounterChance
+                : isAggressiveStance(t.stance)
+                    ? Math.min(0.95, ENCOUNTERS.meetChance * HUNTING.meetChanceMultiplier)
+                    : ENCOUNTERS.meetChance;
 
         if (ctx.rng.chance(meetChance)) {
             // Three or more free bodies in one zone is a group problem.

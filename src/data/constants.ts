@@ -12,7 +12,14 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     plainNames: false,
 };
 
-export const BUILDS: Build[] = ['Frail', 'Slight', 'Average', 'Athletic', 'Stocky', 'Muscular'];
+/**
+ * §6 (requests): the legacy build ladder, in order, eleven rungs wide. Ordered
+ * lightest to heaviest — several UI sites sort by index into this array.
+ */
+export const BUILDS: Build[] = [
+    'Skeletal', 'Frail', 'Slight', 'Wiry', 'Lean', 'Average',
+    'Athletic', 'Stocky', 'Burly', 'Muscular', 'Hulking',
+];
 
 /**
  * §Special requests: the arenas a brand-new account can pick from.

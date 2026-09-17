@@ -32,8 +32,15 @@ function initializeCareerAlliance(ctx: SimContext) {
     // The pack is subject to the same ALLIANCES.maxSize cap as any other
     // alliance — a career field bigger than that splits into a pack and
     // stragglers rather than one oversized, permanently-outnumbering gang.
-    const capped = allCareers.length > ALLIANCES.maxSize
-        ? ctx.rng.shuffle(allCareers).slice(0, ALLIANCES.maxSize)
+    // §9 (requests): the pack is allowed to be larger than an ordinary
+    // alliance. A Career year in the source material is one bloc that
+    // outnumbers everything else in the arena, and capping it at the generic
+    // `maxSize` split a six-Career field into a pack and two loose Careers who
+    // then read as ordinary solo tributes. `grandCoalitionExtra` is the same
+    // allowance the recruitment ceiling already grants a Career-heavy year.
+    const packCap = ALLIANCES.maxSize + ALLIANCES.grandCoalitionExtra;
+    const capped = allCareers.length > packCap
+        ? ctx.rng.shuffle(allCareers).slice(0, packCap)
         : allCareers;
 
     // The pack is a marriage of convenience, and it should look like one. Some
@@ -309,7 +316,10 @@ export function processBloodbath(ctx: SimContext) {
     // 3. The scrum. The pool is the arrival order, so the tributes who got there
     //    first meet each other rather than being paired off at random.
     const pool = arrivals.filter(t => t.status === 'alive');
-    const zoneMultiplier = (t: Tribute) => (killingZone.has(t.id) ? BLOODBATH.killingZoneDamage : 1);
+    // §23: a Career inside the knot hits harder than anybody else inside it.
+    const zoneMultiplier = (t: Tribute) => (killingZone.has(t.id)
+        ? BLOODBATH.killingZoneDamage * (t.isCareer ? BLOODBATH.careerKillingZoneBonus : 1)
+        : 1);
 
     let rounds = pool.length * 6 + 12;
     while (pool.length > 1 && rounds-- > 0) {
@@ -317,7 +327,7 @@ export function processBloodbath(ctx: SimContext) {
         // the scrum they pick one target and go through them together, which is
         // the entire reason a Career pack is frightening.
         const packed = pool.filter(t => t.isCareer && t.allianceId);
-        if (packed.length >= 2 && pool.length > packed.length && ctx.rng.chance(0.6)) {
+        if (packed.length >= 2 && pool.length > packed.length && ctx.rng.chance(BLOODBATH.packGangUpChance)) {
             const prey = pool.filter(t => !packed.includes(t));
             const target = prey[pickOpponentIndex(ctx, packed[0], prey)];
             const party = [...packed.slice(0, 3), target];

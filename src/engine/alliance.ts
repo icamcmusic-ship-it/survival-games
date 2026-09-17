@@ -713,3 +713,32 @@ export function sniffPerformances(ctx: SimContext) {
         });
     });
 }
+
+
+/**
+ * §9 (requests): how willing a Career is to attach themselves to somebody from
+ * an outer district, as a multiplier on an alliance roll.
+ *
+ * The same rule the training floor uses (`mingleWillingness` in
+ * phases/training.ts) applied to the thing that actually matters — who ends up
+ * in a group with whom. A Career allies with Careers. The exceptions are a
+ * tribute strong enough to be worth having, and a tribute the pack has already
+ * accepted: an existing shared alliance, or a training pact struck before the
+ * gong, which is exactly what "formally accepted" means in this simulation.
+ *
+ * Symmetric: it takes both of them, so an outer-district tribute who badly
+ * wants in still does not get in.
+ */
+export function careerSocialFactor(a: Tribute, b: Tribute): number {
+    const isCareerish = (t: Tribute) => t.isCareer || t.archetype === 'career';
+    const pair: Array<[Tribute, Tribute]> = [[a, b], [b, a]];
+    return pair.reduce((lowest, [self, other]) => {
+        if (!isCareerish(self) || isCareerish(other)) return lowest;
+        if (self.trainingPact?.includes(other.id)) return lowest;
+        if (self.allianceId !== undefined && self.allianceId === other.allianceId) return lowest;
+        const worthHaving = other.trainingScore >= ALLIANCES.careerRespectScore
+            || other.attributes.strength >= ALLIANCES.careerRespectStrength
+            || other.kills >= ALLIANCES.careerRespectKills;
+        return Math.min(lowest, worthHaving ? ALLIANCES.careerStrongOutlierFactor : ALLIANCES.careerOutlierFactor);
+    }, 1);
+}

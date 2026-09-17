@@ -123,7 +123,12 @@ export interface SavedRun {
 export const SAVED_RUN_VERSION = 1;
 
 const GENDERS: Gender[] = ['Male', 'Female'];
-const BUILDS: Build[] = ['Frail', 'Slight', 'Average', 'Athletic', 'Stocky', 'Muscular'];
+// §6 (requests): the widened ladder. Kept as its own list rather than imported
+// from `data/constants` so save normalisation stays free of the data modules.
+const BUILDS: Build[] = [
+    'Skeletal', 'Frail', 'Slight', 'Wiry', 'Lean', 'Average',
+    'Athletic', 'Stocky', 'Burly', 'Muscular', 'Hulking',
+];
 const ARCHETYPES: readonly string[] = Object.keys(ARCHETYPE_DEFS);
 
 function oneOf<T extends string>(value: unknown, allowed: readonly string[], fallback: T): T {

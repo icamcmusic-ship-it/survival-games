@@ -48,7 +48,31 @@ function pickArchetype(rng: RNG, district: number, careerBias = 0, castShape?: s
  * outer-district cast arrives older and more capable, which is part of the
  * Career counterweight the win-share goals need.
  */
-function drawReapingAge(rng: RNG, district: number): number {
+function drawReapingAge(rng: RNG, district: number, config?: GameConfig): number {
+    // §8 (requests): the player's own age distribution, when they have set one.
+    //
+    // Replaces the bowl rather than biasing it: a player who has moved these
+    // sliders is asking for a cast of a particular shape, and blending their
+    // mean with the tesserae skew would quietly refuse to give them one. The
+    // statutory 12-18 band still holds, so the tail past either end piles up
+    // on the end — which is what a mean of 12 with a wide spread should look
+    // like.
+    if (config?.ageMean !== undefined && config.ageSpread !== undefined) {
+        const mean = config.ageMean;
+        const sd = Math.max(0.35, config.ageSpread);
+        const gaussian: number[] = [];
+        for (let age = GENERATION.minAge; age <= GENERATION.maxAge; age++) {
+            const z = (age - mean) / sd;
+            gaussian.push(Math.exp(-0.5 * z * z) + 1e-6);
+        }
+        let pick = rng.nextFloat() * gaussian.reduce((a, b) => a + b, 0);
+        for (let i = 0; i < gaussian.length; i++) {
+            pick -= gaussian[i];
+            if (pick <= 0) return GENERATION.minAge + i;
+        }
+        return GENERATION.maxAge;
+    }
+
     const rate = TESSERAE.ratePerTier[legacyOf(district).tier] ?? 0.5;
     const weights: number[] = [];
     for (let age = GENERATION.minAge; age <= GENERATION.maxAge; age++) {
@@ -405,7 +429,7 @@ export function generateTributes(
             // into the eligible band, so a "young field" really is younger
             // rather than merely being described that way.
             const age = Math.max(GENERATION.minAge, Math.min(GENERATION.maxAge,
-                drawReapingAge(rng, district) + (shape?.ageShift ?? 0)));
+                drawReapingAge(rng, district, config) + (shape?.ageShift ?? 0)));
 
             // §7.1: how many tessera slips this particular child carries.
             // Wealthy-tier rates round to zero for almost everyone, which is

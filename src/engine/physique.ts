@@ -15,15 +15,23 @@ import { injuryGrade } from './wounds';
  *
  * So `build` splits in two.
  *
- *   Frame       skeleton. Narrow · Spare · Even · Broad · Heavy. Fixed at the
- *               reaping, correlates with height. Raises reach, carry capacity,
- *               grapple resistance and the damage floor; lowers concealment,
- *               chokepoint passage, climb speed and hunger drain.
- *   Condition   soft tissue. Wasted · Lean · Conditioned · Padded · Bulky.
- *               Mutable. Raises cold insulation, starvation buffer and injury
- *               absorption; lowers agility, heat tolerance and water need.
+ *   Frame       skeleton. Slender · Narrow · Spare · Even · Broad · Heavy ·
+ *               Massive. Fixed at the reaping, correlates with height. Raises
+ *               reach, carry capacity, grapple resistance and the damage floor;
+ *               lowers concealment, chokepoint passage, climb speed and hunger
+ *               drain.
+ *   Condition   soft tissue. Skeletal · Wasted · Lean · Conditioned · Padded ·
+ *               Bulky · Hulking. Mutable. Raises cold insulation, starvation
+ *               buffer and injury absorption; lowers agility, heat tolerance
+ *               and water need.
  *
- * Twenty-five combinations, each with a name a human would use, and the two
+ * §6 (requests): seven rungs an axis rather than five. The original five keep
+ * their exact distance from the middle, so nothing tuned against them moved;
+ * the outer rungs are new ground, and `rollBody` reaches them rarely on
+ * purpose — 'Massive' is meant to be the one tribute in a field who is that
+ * size, not a seventh of it.
+ *
+ * Forty-nine combinations, each with a name a human would use, and the two
  * axes deliberately pull in opposite directions so the grid is a set of
  * trade-offs rather than a longer ladder. The key move is that condition
  * *degrades*: six days of starvation walks a tribute Padded -> Lean -> Wasted,
@@ -33,17 +41,23 @@ import { injuryGrade } from './wounds';
  * reads dangerous from across a zone.
  */
 
-export const FRAMES: Frame[] = ['Narrow', 'Spare', 'Even', 'Broad', 'Heavy'];
-export const CONDITIONS: Condition[] = ['Wasted', 'Lean', 'Conditioned', 'Padded', 'Bulky'];
+export const FRAMES: Frame[] = ['Slender', 'Narrow', 'Spare', 'Even', 'Broad', 'Heavy', 'Massive'];
+export const CONDITIONS: Condition[] = ['Skeletal', 'Wasted', 'Lean', 'Conditioned', 'Padded', 'Bulky', 'Hulking'];
+
+/** The middle rung of both seven-rung scales, which is what a step is measured from. */
+// balance-exempt: structural. This is the index of the middle rung of a
+// seven-entry scale, not a tunable — changing it does not retune anything, it
+// silently redefines what "a step from the middle" means on both axes.
+const AXIS_MIDDLE = 3;
 
 /** Steps from the middle of the frame scale, signed. */
 export function frameStep(t: Tribute): number {
-    return (PHYSIQUE.frameOrder[frameOf(t)] ?? 2) - 2;
+    return (PHYSIQUE.frameOrder[frameOf(t)] ?? AXIS_MIDDLE) - AXIS_MIDDLE;
 }
 
 /** Steps from the middle of the condition scale, signed. */
 export function conditionStep(t: Tribute): number {
-    return (PHYSIQUE.conditionOrder[conditionOf(t)] ?? 2) - 2;
+    return (PHYSIQUE.conditionOrder[conditionOf(t)] ?? AXIS_MIDDLE) - AXIS_MIDDLE;
 }
 
 /**
@@ -55,8 +69,9 @@ export function conditionStep(t: Tribute): number {
 export function frameOf(t: Tribute): Frame {
     if (t.frame) return t.frame;
     const legacy: Record<Build, Frame> = {
-        Frail: 'Narrow', Slight: 'Spare', Average: 'Even',
-        Athletic: 'Even', Stocky: 'Broad', Muscular: 'Heavy',
+        Skeletal: 'Slender', Frail: 'Narrow', Slight: 'Spare', Wiry: 'Spare',
+        Lean: 'Even', Average: 'Even', Athletic: 'Even',
+        Stocky: 'Broad', Burly: 'Broad', Muscular: 'Heavy', Hulking: 'Massive',
     };
     return legacy[t.build as Build] ?? 'Even';
 }
@@ -64,8 +79,9 @@ export function frameOf(t: Tribute): Frame {
 export function conditionOf(t: Tribute): Condition {
     if (t.condition) return t.condition;
     const legacy: Record<Build, Condition> = {
-        Frail: 'Wasted', Slight: 'Lean', Average: 'Conditioned',
-        Athletic: 'Conditioned', Stocky: 'Padded', Muscular: 'Bulky',
+        Skeletal: 'Skeletal', Frail: 'Wasted', Slight: 'Lean', Wiry: 'Lean',
+        Lean: 'Lean', Average: 'Conditioned', Athletic: 'Conditioned',
+        Stocky: 'Padded', Burly: 'Padded', Muscular: 'Bulky', Hulking: 'Hulking',
     };
     return legacy[t.build as Build] ?? 'Conditioned';
 }
@@ -198,6 +214,8 @@ export function bodyLabel(t: Tribute): string {
 }
 
 const FRAME_PHRASE: Record<Frame, string> = {
+    Slender: 'a slender frame',
+    Massive: 'a massive frame',
     Narrow: 'a narrow frame',
     Spare: 'a spare frame',
     Even: 'an even frame',
@@ -210,6 +228,31 @@ const FRAME_PHRASE: Record<Frame, string> = {
  * generic "<condition>, on a <frame> frame", which still reads properly.
  */
 const BODY_PHRASES: Record<string, string> = {
+    // §6: the two new frames and the two new conditions.
+    'Slender/Skeletal': 'starved down to the frame, and the frame was never much',
+    'Slender/Wasted': 'birdlike, and running on nothing',
+    'Slender/Lean': 'reed-thin',
+    'Slender/Conditioned': 'very slight, and fitter than it looks',
+    'Slender/Padded': 'a small frame with something still on it',
+    'Slender/Bulky': 'soft over almost no frame at all',
+    'Slender/Hulking': 'carrying far more than that frame was built for',
+    'Massive/Skeletal': 'an enormous frame with nothing left on it',
+    'Massive/Wasted': 'huge and hollowed out',
+    'Massive/Lean': 'enormous and stripped to the cable',
+    'Massive/Conditioned': 'the biggest tribute in the field, and in condition',
+    'Massive/Padded': 'sheer size, well fed',
+    'Massive/Bulky': 'a frightening amount of person',
+    'Massive/Hulking': 'the largest tribute anyone here has seen on a plate',
+    'Narrow/Skeletal': 'skin over a narrow frame',
+    'Spare/Skeletal': 'starved down past lean',
+    'Even/Skeletal': 'wasted to nothing',
+    'Broad/Skeletal': 'a broad frame with the meat gone off it',
+    'Heavy/Skeletal': 'a big frame starved past recognising',
+    'Narrow/Hulking': 'heavy on a frame that cannot really carry it',
+    'Spare/Hulking': 'thickset over a narrow build',
+    'Even/Hulking': 'heavy through the shoulders and the middle',
+    'Broad/Hulking': 'broad and genuinely heavy with it',
+    'Heavy/Hulking': 'a very large person carrying a great deal',
     'Narrow/Wasted': 'all bone and no reserve',
     'Narrow/Lean': 'whippet-thin',
     'Narrow/Conditioned': 'slight and quick with it',
@@ -242,8 +285,14 @@ const BODY_PHRASES: Record<string, string> = {
  * every pre-existing display site keeps working.
  */
 export function deriveBuild(frame: Frame, condition: Condition): Build {
-    const total = (PHYSIQUE.frameOrder[frame] ?? 2) + (PHYSIQUE.conditionOrder[condition] ?? 2);
-    const ladder: Build[] = ['Frail', 'Frail', 'Slight', 'Average', 'Average', 'Athletic', 'Stocky', 'Stocky', 'Muscular'];
+    const total = (PHYSIQUE.frameOrder[frame] ?? AXIS_MIDDLE) + (PHYSIQUE.conditionOrder[condition] ?? AXIS_MIDDLE);
+    // Thirteen possible totals (0-12) across eleven rungs: the two ends are
+    // narrow on purpose, because a Slender/Skeletal or Massive/Hulking tribute
+    // is a specific thing and should not share a word with anybody else.
+    const ladder: Build[] = [
+        'Skeletal', 'Frail', 'Slight', 'Wiry', 'Lean', 'Average',
+        'Average', 'Athletic', 'Stocky', 'Burly', 'Muscular', 'Muscular', 'Hulking',
+    ];
     return ladder[Math.max(0, Math.min(ladder.length - 1, total))];
 }
 
@@ -301,16 +350,30 @@ export function rollBody(pickIndex: (max: number) => number, strength: number, h
     // Frame correlates with height and, more weakly, with strength — the two
     // things that are actually skeleton-shaped — but keeps an independent roll
     // so a wiry powerhouse and a heavy-set average tribute both exist.
+    //
+    // §6: the roll is made on the original five-rung scale and then offset into
+    // the seven-rung one, so the common case is distributed exactly as it was.
+    // The outer two rungs are reached only by the extra roll below, which is
+    // what keeps 'Slender' and 'Massive' rare.
     const heightPull = (heightCm - PHYSIQUE.neutralHeightCm) / 12;
-    const frameIdx = Math.round(
-        pickIndex(FRAMES.length - 1) * GENERATION.buildFrameWeight
+    const innerIdx = Math.round(
+        pickIndex(4) * GENERATION.buildFrameWeight
         + (strength / 2.5 + heightPull) * (1 - GENERATION.buildFrameWeight)
     );
-    const frame = FRAMES[Math.min(FRAMES.length - 1, Math.max(0, frameIdx))];
-    // Nobody walks into an arena Wasted; everyone has been fed for a week in
-    // the Capitol. The bottom of the condition scale is somewhere the run
-    // takes you, not somewhere you start.
-    const condition = CONDITIONS[Math.min(CONDITIONS.length - 1, Math.max(1, pickIndex(CONDITIONS.length - 1)))];
+    let frameIdx = Math.min(4, Math.max(0, innerIdx)) + 1;
+    // A tribute already at an end of the old scale can be pushed past it: one
+    // roll in five, and only in the direction their body was already going.
+    if (frameIdx === 1 && pickIndex(4) === 0) frameIdx = 0;
+    else if (frameIdx === 5 && pickIndex(4) === 0) frameIdx = 6;
+    const frame = FRAMES[frameIdx];
+
+    // Nobody walks into an arena Wasted, let alone Skeletal; everyone has been
+    // fed for a week in the Capitol. The bottom of the condition scale is
+    // somewhere the run takes you, not somewhere you start — and the top is
+    // rare for the same reason the top of the frame scale is.
+    let conditionIdx = Math.min(4, Math.max(0, pickIndex(4))) + 2;  // Lean .. Bulky
+    if (conditionIdx === 5 && pickIndex(4) === 0) conditionIdx = 6;
+    const condition = CONDITIONS[conditionIdx];
     return { frame, condition, build: deriveBuild(frame, condition) };
 }
 

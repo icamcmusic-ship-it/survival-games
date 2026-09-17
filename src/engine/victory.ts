@@ -36,6 +36,13 @@ export function checkDualVictory(ctx: SimContext): [Tribute, Tribute] | undefine
     if (alive.length !== 2) return undefined;
     const [a, b] = alive;
 
+    // §18 (requests): "one victor, guaranteed". Every route out of this
+    // function returns a pair, so closing the whole function is the complete
+    // implementation — the run falls through to the forced finale, which is
+    // exactly what the setting promises. Checked before the Quell rather than
+    // after it so the player's explicit choice outranks a drawn twist.
+    if (ctx.state.config.singleVictor) return undefined;
+
     const allied = (a.allianceId !== undefined && a.allianceId === b.allianceId) || areLovers(a, b);
 
     // 'Two Victors': the Capitol's own promise, tested at the last possible

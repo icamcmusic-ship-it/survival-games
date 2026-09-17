@@ -226,6 +226,25 @@ function chooseObjective(
     //    been drained down to one place to be, so there is no decision left to
     //    model — go there, and if the other finalist is already standing in it,
     //    the intention is them. See `forceFinale` in phases/dayNight.ts.
+    // §11 (requests): the convergence outranks everything except the forced
+    // finale itself, and for the same reason — the arena has been closed to one
+    // sector, so "go there" is not a preference the tribute is weighing. It
+    // reads exactly like `finaleZone` below it, one stage earlier and for a
+    // field of up to six rather than two, which is the whole point: the run's
+    // middle endgame should be people meeting, not people politely orbiting.
+    if (state.convergenceZone && !state.finaleZone) {
+        const rival = state.tributes.find(o =>
+            o.status === 'alive' && o.id !== t.id && o.zone === t.zone && o.allianceId !== t.allianceId);
+        if (rival) {
+            const o = offer(99, { kind: 'hunt', targetId: rival.id, expires: expiry(OBJECTIVES.huntCycles) });
+            if (o) return o;
+        }
+        if (t.zone !== state.convergenceZone) {
+            const o = offer(99, { kind: 'reach', zone: state.convergenceZone, reason: 'feast', expires: expiry(OBJECTIVES.reachCycles) });
+            if (o) return o;
+        }
+    }
+
     if (state.finaleZone) {
         // Co-location belongs inside the predicate. Picking the first living
         // non-lover in roster order and *then* asking where they are meant that

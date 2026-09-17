@@ -354,7 +354,16 @@ function runFloorSocial(
         // conversation with all four of the others. The full cross-product
         // produced roughly eighty social lines a day, which drowned the
         // station outcomes it was supposed to sit alongside.
-        const partners = ctx.rng.shuffle(group);
+        // §9 (requests): Careers at a station work with each other first.
+        //
+        // The shuffle paired everybody uniformly, so a Career spent most of the
+        // three days making small talk with District 8 — which is neither what
+        // the source material shows nor what the pack's menace is built out of.
+        // Sorting the group so Careers are adjacent makes the disjoint pairing
+        // below pair them together whenever two of them are at the same
+        // station, and leaves the outer districts to each other.
+        const partners = ctx.rng.shuffle(group)
+            .sort((a, b) => Number(isCareerish(b)) - Number(isCareerish(a)));
         for (let i = 0; i + 1 < partners.length; i += 2) {
             {
                 const a = partners[i];
@@ -392,7 +401,15 @@ function runFloorSocial(
                 }
 
                 // (b) Mingling.
-                if (!ctx.rng.chance(TRAINING.mingleChance)) continue;
+                //
+                // §9 (requests): a Career does not chat with an outer-district
+                // tribute. They will if that tribute is genuinely dangerous —
+                // the pack recruits exactly one kind of outsider, and it is the
+                // kind that can fight — or if the two of them already have an
+                // agreement. Otherwise the Career is not interested, and the
+                // measured effect of the old uniform roll was a floor on which
+                // the pack was on cordial terms with half the field by day three.
+                if (!ctx.rng.chance(TRAINING.mingleChance * mingleWillingness(a, b))) continue;
                 adjustMutual(ctx.state, a, b, TRAINING.mingleWarmth);
                 noteContact(ctx.state, a, b);
                 ctx.logEvent(
@@ -558,6 +575,35 @@ function eveningBeat(ctx: SimContext, day: number) {
  * This is the agreement that makes it likely, and the moment the rest of the
  * floor learns who has already decided about them.
  */
+/** A Career by district or by temperament — both read as one on the floor. */
+function isCareerish(t: Tribute): boolean {
+    return t.isCareer || t.archetype === 'career';
+}
+
+/**
+ * §9 (requests): how much a Career wants anything to do with an outer-district
+ * tribute, as a multiplier on the social rolls.
+ *
+ * Three ways through: be a Career yourself, be strong enough that the pack
+ * wants you (they recruit muscle and nothing else), or already have an
+ * agreement with them, which is the "formally accepted into an alliance" case.
+ * Everyone else gets `careerOutlierMingle`, which is small on purpose.
+ *
+ * Symmetric, because it takes two people to have a conversation: an outer
+ * tribute who is keen is still not getting one.
+ */
+function mingleWillingness(a: Tribute, b: Tribute): number {
+    const pair: Array<[Tribute, Tribute]> = [[a, b], [b, a]];
+    return pair.reduce((lowest, [self, other]) => {
+        if (!isCareerish(self) || isCareerish(other)) return lowest;
+        if (self.trainingPact?.includes(other.id)) return lowest;
+        if (self.allianceId !== undefined && self.allianceId === other.allianceId) return lowest;
+        const dangerous = other.trainingScore >= TRAINING.careerRespectScore
+            || other.attributes.strength >= TRAINING.careerRespectStrength;
+        return Math.min(lowest, dangerous ? TRAINING.careerStrongOutlierMingle : TRAINING.careerOutlierMingle);
+    }, 1);
+}
+
 function declareCareerPact(ctx: SimContext, cast: Tribute[]) {
     const careers = cast.filter(t => t.isCareer || t.archetype === 'career');
     if (careers.length < 2) return;
@@ -578,6 +624,59 @@ function declareCareerPact(ctx: SimContext, cast: Tribute[]) {
     cast.forEach(o => {
         if (careers.some(c => c.id === o.id)) return;
         careers.forEach(c => addFear(o, c.id, TRAINING.careerPactFear));
+    });
+}
+
+/**
+ * §9/§21/§22 (requests): the pack's daily block, and the list it makes.
+ *
+ * Two problems at once. The Careers had no group behaviour on the training
+ * floor beyond the day-one declaration, so "they train in a bloc" was a
+ * sentence rather than a mechanic; and the floor's social beats regularly said
+ * somebody was watching somebody without saying who, which is the one thing a
+ * reader of the chronicle actually wants to know.
+ *
+ * So the pack works as a unit each day, and each day it names — by name — the
+ * outer-district tributes it has decided are worth paying attention to. Those
+ * tributes learn they are being watched, and the pack's regard for them rises,
+ * which is the only route by which an outsider is ever "formally accepted".
+ */
+function runCareerBloc(ctx: SimContext, cast: Tribute[], day: number) {
+    const careers = cast.filter(isCareerish);
+    if (careers.length < 2) return;
+    const outsiders = cast.filter(t => !isCareerish(t));
+    if (outsiders.length === 0) return;
+
+    // Training as a unit: everybody in the pack drills with everybody else in
+    // it, which is worth real warmth and a real proficiency tick.
+    careers.forEach(a => careers.forEach(b => {
+        if (a.id === b.id) return;
+        adjustRel(a, b.id, TRAINING.careerBlocWarmth);
+    }));
+    careers.forEach(c => trainProficiency(c, 'melee'));
+
+    // Who the pack has marked. Strength first, because that is what a Career
+    // is actually assessing, and the list is short so it reads as a decision.
+    const marked = [...outsiders]
+        .sort((x, y) => (y.trainingScore + y.attributes.strength) - (x.trainingScore + x.attributes.strength))
+        .slice(0, TRAINING.careerWatchlistSize);
+    if (marked.length === 0) return;
+
+    ctx.logEvent(
+        `The Careers train as one block for the ${day === 1 ? 'first' : day === 2 ? 'second' : 'third'} day: `
+        + `${careers.map(c => `${c.name} (D${c.district})`).join(', ')}. `
+        + `They spend part of it watching ${marked.map(m => `${m.name} (D${m.district})`).join(' and ')}.`,
+        [...careers.map(c => c.id), ...marked.map(m => m.id)],
+        { important: true, category: 'training' },
+    );
+
+    marked.forEach(m => {
+        careers.forEach(c => {
+            // Being marked cuts both ways: the pack rates them, which is the
+            // one door into the pack, and the marked tribute knows it.
+            adjustRel(c, m.id, TRAINING.careerWatchlistRegard);
+            addFear(m, c.id, TRAINING.careerWatchlistFear);
+        });
     });
 }
 
@@ -778,6 +877,8 @@ export function processTraining(ctx: SimContext) {
         // same drill, which is exactly the thing the pack does not leave to
         // chance.
         if (day + 1 === TRAINING.careerPactDay) declareCareerPact(ctx, cast);
+        // §9: and then the pack works as a bloc, every day, for the rest of it.
+        if (day + 1 >= TRAINING.careerPactDay) runCareerBloc(ctx, cast, day + 1);
         runFloorSocial(ctx, day, stationsToday, stationNames, cast);
         observeFloor(ctx, day, stationsToday, stationNames, cast);
         eveningBeat(ctx, day);
@@ -856,6 +957,22 @@ export function processTraining(ctx: SimContext) {
         if (attempted && !stunt) score += landed ? PRE_ARENA.privateSessionSwing : -PRE_ARENA.privateSessionSwing;
 
         score = Math.min(TRAINING_SCORE.baseCeiling, Math.max(TRAINING_SCORE.baseFloor, score));
+
+        // §16 (requests): a Career who volunteered has a floor.
+        //
+        // These are the tributes who spent eighteen years in an academy for
+        // this exact week and then put their hand up for it, in front of the
+        // whole district. A 5 from that tribute is not a story about an
+        // underrated Career, it is the score generator failing to model who
+        // they are — and it wrecks the odds board, the sponsor weighting and
+        // every threat read the rest of the cast makes at them. So they land
+        // at or above the floor unless they deliberately concealed, which is
+        // the one case where a low score is a choice rather than an accident.
+        if (t.isCareer && t.volunteered && t.trainingStrategy !== 'conceal'
+            && score < TRAINING_SCORE.careerVolunteerFloor
+            && ctx.rng.chance(TRAINING_SCORE.careerVolunteerFloorChance)) {
+            score = TRAINING_SCORE.careerVolunteerFloor;
+        }
 
         // Elite band: 9-12, each step exponentially harder than the last.
         if (score === TRAINING_SCORE.baseCeiling) {

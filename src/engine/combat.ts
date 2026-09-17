@@ -5,7 +5,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES } from '../data/balance';
+import { ARENA_DEATH_BUDGET, BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -191,6 +191,30 @@ function bestWeapon(t: Tribute): Item | undefined {
  * finalist-protection block below for why that relief has to happen, not
  * just the clamp.
  */
+/**
+ * §24 (requests): whether the arena has already taken more than its share of
+ * this cast, and this particular killing blow should be pulled.
+ *
+ * Returns true only when all three hold: the field has thinned past the
+ * opening (so the bloodbath and day one are untouched), the arena's own death
+ * count is past the soft cap, and the roll lands. The roll steepens between
+ * the soft and hard caps, so an arena that keeps killing keeps being reined
+ * in harder rather than hitting a wall.
+ */
+function arenaOverBudget(ctx: SimContext, alive: number): boolean {
+    const cast = ctx.state.tributes.length;
+    if (cast === 0) return false;
+    if (alive > cast * ARENA_DEATH_BUDGET.activeBelowAliveShare) return false;
+    const taken = ctx.state.environmentalDeaths ?? 0;
+    const soft = cast * ARENA_DEATH_BUDGET.softCapShare;
+    if (taken < soft) return false;
+    const hard = cast * ARENA_DEATH_BUDGET.hardCapShare;
+    const through = hard > soft ? Math.min(1, (taken - soft) / (hard - soft)) : 1;
+    const chance = ARENA_DEATH_BUDGET.sparedChanceAtCap
+        + through * (ARENA_DEATH_BUDGET.sparedChanceAtHardCap - ARENA_DEATH_BUDGET.sparedChanceAtCap);
+    return ctx.rng.chance(chance);
+}
+
 export function applyDamage(
     ctx: SimContext,
     t: Tribute,
@@ -268,6 +292,18 @@ export function applyDamage(
             amount = Math.max(0, t.health - 1);
             finalistSave = true;
         }
+        // §24 (requests): the arena's share of the killing, capped.
+        //
+        // Same shape as the finalist save above and for a related reason: the
+        // arena is scenery for a story about people, and a run where it takes
+        // most of the cast has no story left in it. Past its budget every
+        // further environmental killing blow is rolled against, and a spared
+        // tribute is left on one health — the arena has still all but killed
+        // them, and the next person to find them will finish it.
+        if (!finalistSave && amount >= t.health && arenaOverBudget(ctx, alive)) {
+            amount = Math.max(0, t.health - 1);
+            finalistSave = true;
+        }
         if (amount <= 0) return finalistSave;
     }
 
@@ -332,6 +368,15 @@ export function checkDeath(ctx: SimContext, t: Tribute, fallbackCause?: string) 
     const killer = record?.sourceId
         ? ctx.state.tributes.find(o => o.id === record.sourceId)
         : undefined;
+    // §24 (requests): the arena's running tally, kept here because this is the
+    // one funnel every death passes through. A death with no killer and a
+    // non-`tribute` damage record is the arena having done it — mutts,
+    // hazards, climate, zone effects, set pieces and the closing border alike.
+    // A self-inflicted ending writes `kind: 'status'` with no source and is
+    // deliberately not counted: nobody needs protecting from their own choice.
+    if (!killer && record && record.kind !== 'tribute' && record.kind !== 'status') {
+        ctx.state.environmentalDeaths = (ctx.state.environmentalDeaths ?? 0) + 1;
+    }
     if (killer) {
         killTribute(ctx, t, killer, { cause: record?.cause });
     } else {

@@ -287,7 +287,19 @@ export interface Item {
  * real axes below) so old saves, the roster's public record and the disclosure
  * rules keep working unchanged.
  */
-export type Build = 'Frail' | 'Slight' | 'Average' | 'Athletic' | 'Stocky' | 'Muscular';
+/**
+ * §6 (requests): the legacy one-axis build ladder, widened.
+ *
+ * Six rungs could not name the bodies the two-axis model already produced — a
+ * long, light frame and a short, dense one both collapsed onto 'Slight', and
+ * everything past 'Muscular' had nowhere to go. Eleven rungs cover the widened
+ * 7x7 frame/condition grid without changing what any of them mean: the ladder
+ * is still ordered, still derived, and every old value still exists, so saves
+ * written before this keep reading.
+ */
+export type Build =
+    | 'Skeletal' | 'Frail' | 'Slight' | 'Wiry' | 'Lean' | 'Average'
+    | 'Athletic' | 'Stocky' | 'Burly' | 'Muscular' | 'Hulking';
 
 /**
  * §3.1: bodies, on two axes instead of one.
@@ -309,8 +321,18 @@ export type Build = 'Frail' | 'Slight' | 'Average' | 'Athletic' | 'Stocky' | 'Mu
  * Lean -> Wasted and loses their cold resistance and their starvation buffer at
  * exactly the moment they need both, while their reach is unchanged.
  */
-export type Frame = 'Narrow' | 'Spare' | 'Even' | 'Broad' | 'Heavy';
-export type Condition = 'Wasted' | 'Lean' | 'Conditioned' | 'Padded' | 'Bulky';
+/**
+ * §6 (requests): two more rungs on each axis.
+ *
+ * 'Slender' below 'Narrow' and 'Massive' above 'Heavy' give the frame scale the
+ * extremes a twelve-year-old from District 11 and an eighteen-year-old from
+ * District 2 actually occupy; 'Skeletal' and 'Hulking' do the same for soft
+ * tissue. Forty-nine combinations rather than twenty-five, and the middle of
+ * both scales is unchanged, so nothing that reads `frameStep`/`conditionStep`
+ * shifts under an existing save.
+ */
+export type Frame = 'Slender' | 'Narrow' | 'Spare' | 'Even' | 'Broad' | 'Heavy' | 'Massive';
+export type Condition = 'Skeletal' | 'Wasted' | 'Lean' | 'Conditioned' | 'Padded' | 'Bulky' | 'Hulking';
 
 /**
  * §3.1: limb length relative to height, independent of it. Long-limbed buys
@@ -1670,7 +1692,16 @@ export type ArenaLawId =
      * are, and both are declarable by a hand-authored arena.
      */
     | 'bountifulGround'    // `Arena.lawZone` is permanently in bloom: it feeds, heals and settles
-    | 'dawnMercy';         // every morning, whoever slept at the horn is treated
+    | 'dawnMercy'          // every morning, whoever slept at the horn is treated
+    /*
+     * §1-2 (requests): five more, one apiece for the five new arenas, each
+     * enforced at exactly one site the way the seventeen above are.
+     */
+    | 'tidalBorders'       // the map re-cuts itself every night: edges sever and re-open on a tide
+    | 'bloodPrice'         // the horn only opens for a tribute who has already killed
+    | 'noRest'             // sleep restores nothing; fatigue is paid down only by standing still in daylight
+    | 'meltingGround'      // every zone a tribute lingers in is depleted permanently behind them
+    | 'twinSuns';          // no shade anywhere: heat load applies in every zone, all day
 
 /** A traversal rule layered on top of plain adjacency for one edge. Keyed by `edgeKey(a,b)` on `Arena.edgeRules`. */
 export interface EdgeRule {
@@ -1754,6 +1785,16 @@ export interface Arena {
     laws?: ArenaLawId[];
     /** The zone a law's "except here"/"only here" clause refers to (`noWaterExceptZone`, `sponsorsFixedZone`). */
     lawZone?: string;
+    /**
+     * §3 (requests): the arena-wide set-piece pack this map draws from.
+     *
+     * Distinct from `events` (flavour strings) and from the per-cycle
+     * signature: a pack is a short list of named, arena-wide interventions of
+     * which at most two fire in a run, plus the convergence that always closes
+     * it. Named here, defined in `data/arenaEventPacks.ts`. Absent means the
+     * arena draws from the universal pack.
+     */
+    eventPack?: string;
     /**
      * §5.7: what this arena's Cornucopia leans toward when it restocks.
      *
@@ -1862,6 +1903,26 @@ export interface GameConfig {
      * before it existed keeps the full-chaos behaviour it was recorded under.
      */
     vanillaRules?: boolean;
+    /**
+     * §8 (requests): the shape of the reaping bowl, as the player wants it.
+     *
+     * Absent (the default) means the canon draw — one slip per year of age
+     * plus tesserae, which skews older and skews oldest where the district is
+     * poorest. Set, the bowl is replaced by a normal distribution with this
+     * mean and `ageSpread` as its standard deviation, clamped to the statutory
+     * 12-18 band. Both must be present for either to apply.
+     */
+    ageMean?: number;
+    /** Standard deviation of the age draw. See `ageMean`. */
+    ageSpread?: number;
+    /**
+     * §18 (requests): guarantee exactly one victor.
+     *
+     * Every dual-victory route — the two-may-win rule change, the district
+     * pairs Quell, the lovers' exemption in the forced finale — is closed off
+     * for the run, so the Games cannot end with two people standing.
+     */
+    singleVictor?: boolean;
 }
 
 import type { GamesProfile } from '../engine/gamesProfile';
@@ -1896,6 +1957,31 @@ export interface GameState {
     epilogueInterview?: EpilogueQA[];
     /** Day the next Gamemaker feast is scheduled for (undefined = none scheduled). Cleared once the feast resolves. */
     feastDay?: number;
+    /**
+     * §3 (requests): this run's arena set pieces, drawn once at the bloodbath.
+     *
+     * At most two ordinary events, each with the day it is scheduled for, plus
+     * the convergence, which is not scheduled by day at all — it fires on the
+     * field shrinking to the closing band. See `engine/arenaEventPacks.ts`.
+     */
+    arenaEventPlan?: Array<{ id: string; day: number }>;
+    /** Ids from `arenaEventPlan` that have already resolved. */
+    arenaEventsFired?: string[];
+    /**
+     * §3/§11 (requests): the day the convergence was called, and the zone the
+     * field is being driven into. Set once and never cleared — the arena does
+     * not reopen because the finalists took their time.
+     */
+    convergenceDay?: number;
+    convergenceZone?: string;
+    /**
+     * §24 (requests): how many tributes the arena itself has killed — mutts,
+     * hazards, climate, zone effects and set pieces, but never another
+     * tribute. Read by the soft cap in `applyDamage`, which starts sparing
+     * tributes from environmental death once the arena has taken more than its
+     * share of the cast.
+     */
+    environmentalDeaths?: number;
     /** Indices into `gamesProfile.calendar` that have already resolved. */
     firedWildcards?: number[];
     /** The storm currently crossing the arena, if any. See `engine/weatherFront.ts`. */
@@ -1957,6 +2043,15 @@ export interface GameState {
     finaleZone?: string;
     /** Monotonic counter guaranteeing unique event log ids. */
     logCounter?: number;
+    /**
+     * §13 (requests): how many lines the current (day, phase) has already
+     * produced, and which (day, phase) that is. The arena clock walks forward
+     * through a phase as its lines land, so a stamp is a position in the phase
+     * rather than a number pulled out of the air. Reset whenever the phase
+     * changes; see `arenaClock` in `engine/context.ts`.
+     */
+    clockPhaseKey?: string;
+    clockPhaseLines?: number;
     /**
      * Anti-repeat memory for `pickText`, keyed by each pool's first line.
      * Serialised with the save so a resumed run picks the same prose the
@@ -2339,6 +2434,14 @@ export interface EventLog {
     id: string;
     day: number;
     phase: Phase;
+    /**
+     * §13 (requests): the in-arena timestamp, as `D3 21:40` — arena clock, not
+     * wall clock. Derived at log time from the day, the phase and how far into
+     * the phase the line landed, so it is stable across a replay of the same
+     * seed. Optional: entries written before this existed have no stamp and
+     * the feed falls back to the day/phase header.
+     */
+    clock?: string;
     text: string;
     tributesInvolved: string[];
     important: boolean;
