@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { EventCategory, EventLog, GameState, Tribute } from '../models/types';
 import { CATEGORY_GROUPS, categoryMeta } from '../ui/eventStyles';
-import { groupBeats, passesDensity, stripZoneClause, tierOf, withTributeLinks } from '../components/EventFeed';
+import { MomentShare, groupBeats, passesDensity, stripZoneClause, tierOf, withTributeLinks } from '../components/EventFeed';
 import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { TributeModal } from '../components/TributeModal';
+import { TributeCompare } from '../components/TributeCompare';
 import { ChronicleFilters } from '../components/ChronicleFilters';
 import { chronicleStore, filtersActive, setChronicle } from '../store/chronicleStore';
 import { useStore } from '../store/createStore';
@@ -152,7 +153,7 @@ function writeDeepLink(page: Page | undefined) {
  * (it indents continuations and suppresses a repeated zone), but it no longer
  * decides the layout.
  */
-function LogRow({ log, cast, onSelectTribute, showZone, continuation, revealed, zone }: {
+function LogRow({ log, cast, onSelectTribute, showZone, continuation, revealed, zone, gameState }: {
     log: EventLog;
     cast: Tribute[];
     onSelectTribute: (id: string) => void;
@@ -161,6 +162,11 @@ function LogRow({ log, cast, onSelectTribute, showZone, continuation, revealed, 
     continuation: boolean;
     revealed: boolean;
     zone?: string;
+    /**
+     * AUDIT-6 §2.6: needed for the per-moment copy, which is the whole reason
+     * this prop exists on a row that otherwise needs nothing but its own log.
+     */
+    gameState: GameState;
 }) {
     const meta = categoryMeta(log.category);
     const hidden = !revealed && (log.category === 'death' || log.category === 'kill');
@@ -183,6 +189,23 @@ function LogRow({ log, cast, onSelectTribute, showZone, continuation, revealed, 
                 {hidden
                     ? <span className="italic text-[var(--color-ink-500)]">A cannon. Hidden while spoiler-safe viewing is on.</span>
                     : withTributeLinks(text, cast, log.tributesInvolved, onSelectTribute)}
+                {/*
+                 * AUDIT-6 §2.6: the single-moment copy.
+                 *
+                 * `MomentShare` has existed in `EventFeed` since the audit that
+                 * asked for it, wired into `FeedLine` — and a walkthrough of
+                 * the live app found **zero** of them on any screen, because
+                 * the chronicle renders `LogRow` and the arena's sidebar no
+                 * longer renders `FeedLine` at all. A run produces around a
+                 * thousand lines and the only export granularity was the whole
+                 * chronicle. This is the reading surface; this is where it
+                 * belongs.
+                 *
+                 * Only on `important` lines, which is the set the headline
+                 * density already uses, so the page does not grow a button per
+                 * row. Hidden lines get none: there is nothing to copy yet.
+                 */}
+                {log.important && !hidden && <MomentShare gameState={gameState} log={log} />}
             </span>
         </div>
     );
@@ -191,6 +214,7 @@ function LogRow({ log, cast, onSelectTribute, showZone, continuation, revealed, 
 export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     const filters = useStore(chronicleStore, s => s);
     const [selectedTributeId, setSelectedTributeId] = useState<string | null>(null);
+    const [compareTributeId, setCompareTributeId] = useState<string | null>(null);
     const [showFilters, setShowFilters] = useState(false);
     const arenaSealed = !!gameState.arenaHidden && !canSeeArena(disclosureFor(gameState.phase));
     // §2.5: once the run has ended there is nothing left to spoil, so the
@@ -319,6 +343,9 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     const selectedTribute = selectedTributeId
         ? gameState.tributes.find(t => t.id === selectedTributeId) ?? null
         : null;
+    const compareTribute = compareTributeId
+        ? gameState.tributes.find(t => t.id === compareTributeId) ?? null
+        : null;
 
     const days = useMemo(() => [...new Set(pages.map(p => p.day))], [pages]);
 
@@ -362,11 +389,18 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    {/* AUDIT-6 §2.6: the bullet was the only statement that
+                        filters were active, which a screen reader does not read
+                        as anything and a reader has to already know. The count
+                        says it out loud, and the name stops colliding with
+                        "Reset filters" inside the panel. */}
                     <button
                         className="seg-item"
                         aria-pressed={showFilters}
                         onClick={() => setShowFilters(v => !v)}
-                        title="Filters, density, search and export"
+                        aria-label={filtersActive(filters)
+                            ? 'Filters, density, search and export — filters are active'
+                            : 'Filters, density, search and export'}
                     >
                         Filters{filtersActive(filters) ? ' •' : ''}
                     </button>
@@ -411,6 +445,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                                 continuation={li > 0 && beat.logs.length > 1}
                                 zone={beat.zone}
                                 revealed={revealed}
+                                gameState={gameState}
                             />
                         )))}
                     </div>
@@ -443,7 +478,10 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                 <div className="flex items-center gap-3 flex-wrap justify-center flex-1 min-w-0">
                     {/* Scrubber: one tick per phase, so the whole run's shape is
                         reachable in one gesture rather than N presses. */}
-                    <div className="flex gap-0.5 flex-wrap justify-center" role="group" aria-label="Jump to a phase">
+                    {/* AUDIT-6 §1.4: an empty scrubber and a day picker with
+                        nothing to pick are both announced to a screen reader as
+                        real controls. With no pages there is nothing to jump to. */}
+                    <div className="flex gap-0.5 flex-wrap justify-center" role="group" aria-label="Jump to a phase" hidden={pages.length === 0}>
                         {pages.map((p, i) => {
                             const deadly = gameState.tributes.some(t => t.status === 'dead' && t.dayOfDeath === p.day)
                                 && p.phase === 'night';
@@ -465,6 +503,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                     </div>
                     <select
                         className="field text-xs w-auto"
+                        hidden={pages.length === 0}
                         aria-label="Jump to a day"
                         value={page?.day ?? ''}
                         onChange={e => {
@@ -477,8 +516,14 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                             <option key={d} value={d}>{d === 0 ? 'Before the Games' : `Day ${d}`}</option>
                         ))}
                     </select>
+                    {/* AUDIT-6 §1.4: `{clamped + 1} / {pages.length}` printed
+                        `1 / 0` on the screen the player lands on straight after
+                        confirming the reaping, when the record is empty by
+                        design. "Page one of none" is arithmetic that cannot be
+                        true, and it sat directly under the empty-state copy
+                        that correctly explains there is nothing here yet. */}
                     <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-500)]">
-                        {clamped + 1} / {pages.length}
+                        {pages.length === 0 ? 'No pages yet' : `${clamped + 1} / ${pages.length}`}
                     </span>
                 </div>
 
@@ -509,11 +554,30 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                 {page ? `${page.label}. ${beats.length} moments. ${survivorsAtPage} still standing.` : ''}
             </div>
 
-            {selectedTribute && (
+            {/*
+              * AUDIT-6 §2: side-by-side comparison was wired only on the arena
+              * screen, so the reader who most wants it — somebody paging back
+              * through the chronicle asking "how did those two differ" — could
+              * not reach it. The arena's own comment says the moment somebody
+              * wants this is the moment a rivalry sharpens; that moment is
+              * usually being *read about*, not watched live.
+              */}
+            {selectedTribute && compareTribute && (
+                <TributeCompare
+                    a={selectedTribute}
+                    b={compareTribute}
+                    gameState={gameState}
+                    onClose={() => { setCompareTributeId(null); setSelectedTributeId(null); }}
+                    onSwap={() => setCompareTributeId(null)}
+                />
+            )}
+
+            {selectedTribute && !compareTribute && (
                 <TributeModal
                     tribute={selectedTribute}
                     gameState={gameState}
-                    onClose={() => setSelectedTributeId(null)}
+                    onCompare={setCompareTributeId}
+                    onClose={() => { setSelectedTributeId(null); setCompareTributeId(null); }}
                     onShowInChronicle={() => {
                         setChronicle({
                             filterTributeId: selectedTribute.id,

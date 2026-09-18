@@ -18,7 +18,6 @@ import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
 import { seatVeterans } from '../engine/veterans';
 import { COIN_ECONOMY, VETERANS } from '../data/balance';
-import { applyOffSeason, offSeasonFor } from '../data/offSeason';
 
 /**
  * PERF: the engine is loaded on demand.
@@ -911,7 +910,7 @@ export const gameActions = {
         clearRewind();
         autosaveNote = undefined;
 
-        const { Simulator, generateArena, generateTributes, gamesProfileFor, configForProfile } = await loadEngine();
+        const { Simulator, resolveArenaForRun, generateTributes, gamesProfileFor, configForProfile } = await loadEngine();
 
         const safeSeed = seed.trim() || Math.random().toString(36).substring(2, 8).toUpperCase();
 
@@ -949,48 +948,11 @@ export const gameActions = {
         const resolvedArenaId = arenaHidden
             ? new RNG(`${safeSeed}-random-arena`).pick(freshPool.length >= 2 ? freshPool : fullPool)
             : arenaId;
-        // BUG-1.1: `procedural-<biome>` from a share link pins the biome — the
-        // old check only saw the `procedural` prefix, so the specific arena
-        // identity the link encoded was thrown away. `generateArena` itself
-        // keys off the base seed, so a rerolled cast (`base~SUFFIX`) replays
-        // the arena it was actually played on.
-        const proceduralBiome = resolvedArenaId.startsWith('procedural-')
-            ? resolvedArenaId.slice('procedural-'.length)
-            : undefined;
-        const baseArena = resolvedArenaId.startsWith('procedural')
-            ? generateArena(safeSeed, proceduralBiome)
-            : (ARENAS.find(a => a.id === resolvedArenaId) || ARENAS[0]);
-        // Never mutate the shared ARENAS/generated-arena objects: a per-zone
-        // shallow clone gives this run its own zone objects (arenaLawOverride
-        // below, and the Moving Arena Quell later, both write to them).
-        const arena = { ...baseArena, zones: baseArena.zones.map(z => ({ ...z })) };
-        // §5/§6.4: the off-season skin. Rolled from the seed, so a shared seed
-        // still replays exactly — and no longer only a change of paragraph:
-        // a season may lift the arena's own law, impose one of its own, or
-        // shift what the ground yields and what it costs to cross. Applied to
-        // this run's clone only; `applyOffSeason` never touches ARENAS.
-        const skin = offSeasonFor(safeSeed, arena);
-        if (skin) applyOffSeason(arena, skin);
-        if (gamesProfile.quell?.arenaLawOverride) {
-            arena.law = gamesProfile.quell.arenaLawOverride;
-            // 'sponsorsFixedZone' and 'noWaterExceptZone' both compare a
-            // tribute's zone against `arena.lawZone` — on the handful of
-            // arenas that define one of these laws natively that's already
-            // set, but a Quell forces the law onto whichever arena the
-            // player (or the hidden-arena roll) picked, most of which carry
-            // no `lawZone` at all. Left undefined, `t.zone === lawZone` is
-            // never true for any real zone: sponsor gifts would land nowhere
-            // for the entire run, or every zone would come up dry, for a
-            // Quell whose entire point was to concentrate the drama on one
-            // sector of the map. Defaulting to the Cornucopia keeps the
-            // mechanic meaningful regardless of which arena it lands on.
-            if (
-                (gamesProfile.quell.arenaLawOverride === 'sponsorsFixedZone' || gamesProfile.quell.arenaLawOverride === 'noWaterExceptZone')
-                && !arena.lawZone
-            ) {
-                arena.lawZone = arena.zones[0]?.name;
-            }
-        }
+        // AUDIT-6 §1.3: the clone, the off-season skin, the Quell law override
+        // and the `lawZone` default all live in `resolveArenaForRun` now, so
+        // every headless check plays the same arena the player is handed. This
+        // block used to be inline here, which is why no test ever saw a skin.
+        const arena = resolveArenaForRun(safeSeed, resolvedArenaId, gamesProfile);
         const startZone = arena.zones[0].name;
 
         const tributes = generateTributes(safeSeed, config, startZone, gamesProfile.castShape, gamesProfile.quell);

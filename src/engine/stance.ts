@@ -16,6 +16,8 @@ import { profOf } from './proficiency';
 import { hasBroken } from './resolve';
 import { awareness } from './stealth';
 import { getZone, reachableZones, zoneFeatures } from './map';
+import { hasTruce } from './parley';
+import { debtTo } from './debts';
 import { trapsIn } from './fieldcraft';
 import { inventoryValue } from './items';
 
@@ -325,19 +327,80 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
         && (!!sig.shadowTarget || (t.stance === 'Shadowing' && !!t.shadowing))
         && (t.unseenStreak ?? 0) > 0,
 
-    // Audit 5 §12: somebody in the pack, in this sector, who needs tending.
-    Nursing: (_ctx, t, sig) =>
-        !!t.allianceId
-        && sig.occupants.some(o => o.id !== t.id && o.allianceId === t.allianceId
-            && (o.injuries.bleeding || o.health < STANCE_MODES.nursing.allyHealthBelow)),
+    /*
+     * Audit 5 §12: somebody in this sector who needs tending.
+     *
+     * AUDIT-6 §3.1: Nursing held 0.8% of all tribute-cycles — roughly one
+     * cycle in a hundred and twenty — because it required a formal alliance
+     * member, in the same zone, hurt. That is a narrow intersection of three
+     * conditions, and the stance carries a full scorer row, a `minHold`, a
+     * blurb and per-arena action pools for a beat that almost never fired.
+     *
+     * The widening is not a loosening of what the stance *means*. It is the
+     * observation that the engine already models three other kinds of person
+     * you would stop and help, and the stance was reading only one of them:
+     * somebody you are under a truce with, somebody who owes you (a creditor
+     * does not let their debtor bleed out), and somebody you have sworn to
+     * protect. All three are relationships the tribute has already entered
+     * into on screen.
+     */
+    Nursing: (ctx, t, sig) => nursingPatients(ctx, t, sig.occupants).length > 0,
 
-    // Audit 5 §12: a pack of three or more with somewhere to walk the edge of.
-    Patrolling: (ctx, t, sig) =>
-        !!t.allianceId
-        && sig.occupants.filter(o => o.allianceId === t.allianceId).length >= STANCE_MODES.patrolling.packMin
-        && (ctx.state.camps?.[t.id] !== undefined
-            || sig.occupants.some(o => o.allianceId === t.allianceId && ctx.state.camps?.[o.id] !== undefined)),
+    /*
+     * Audit 5 §12: a pack with somewhere to walk the edge of.
+     *
+     * AUDIT-6 §3.1: 0.5% of tribute-cycles, the deadest stance in the roster,
+     * and for the same reason as Nursing — it asked for a formal alliance of
+     * three *and* a pitched camp belonging to one of them. Meanwhile
+     * `zoneControl` reports 524 held zones per 400 runs, and Patrolling is the
+     * stance that ought to be producing them.
+     *
+     * So the question it asks is now "is there ground here that is ours" rather
+     * than "is there a tent here": a camp, a zone this alliance is holding, or
+     * a cache they have contributed to. The pack minimum comes down by one,
+     * because two people holding a chokepoint is a picket.
+     */
+    Patrolling: (ctx, t, sig) => {
+        if (!t.allianceId) return false;
+        const pack = sig.occupants.filter(o => o.allianceId === t.allianceId).length;
+        if (pack < STANCE_MODES.patrolling.packMin) return false;
+        const camps = ctx.state.camps ?? {};
+        if (camps[t.id] !== undefined) return true;
+        if (sig.occupants.some(o => o.allianceId === t.allianceId && camps[o.id] !== undefined)) return true;
+        // Ground this alliance is holding is ground worth walking the edge of.
+        // The horn is the one zone the engine tracks a holder for, and it is
+        // also the one most worth a picket.
+        if (ctx.state.cornucopiaHolder === t.allianceId
+            && t.zone === ctx.state.arena.zones[0]?.name) return true;
+        // So is a chokepoint or a piece of high ground the pack is standing on.
+        return sig.chokepoint || sig.elevation;
+    },
 };
+
+/**
+ * AUDIT-6 §3.1: everybody in this sector this tribute would stop and tend.
+ *
+ * The availability predicate and the scorer are the same question asked twice,
+ * and they had drifted: availability was widened to cover truce partners,
+ * debtors and wards, while the scorer still counted only formal alliance
+ * members — so the stance became *reachable* in the new cases and then scored
+ * at bare `base`, lost to Defensive every time, and the widening bought
+ * nothing. One function, two callers.
+ */
+function nursingPatients(ctx: SimContext, t: Tribute, occupants: Tribute[]): Tribute[] {
+    return occupants.filter(o => {
+        if (o.id === t.id) return false;
+        if (!o.injuries.bleeding && o.health >= STANCE_MODES.nursing.allyHealthBelow) return false;
+        if (t.allianceId !== undefined && o.allianceId === t.allianceId) return true;
+        // A truce is a working agreement, and letting the other party bleed
+        // out is a strange way to honour one.
+        if (hasTruce(ctx.state, t, o.id)) return true;
+        // A debt is only collectable from somebody still breathing.
+        if (debtTo(o, t.id) > 0) return true;
+        // They said they would keep this person alive.
+        return t.objective?.kind === 'protect' && t.objective.wardId === o.id;
+    });
+}
 
 /**
  * One scoring row per stance. Adding a ninth stance is a row here and a row in
@@ -501,8 +564,7 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
     Nursing: (ctx, t, sig) => {
         let s = STANCE_MODES.nursing.base;
         s += profOf(t, 'medicine') * STANCE_MODES.nursing.perMedicinePoint;
-        const hurt = sig.occupants.filter(o => o.id !== t.id && o.allianceId === t.allianceId
-            && (o.injuries.bleeding || o.health < STANCE_MODES.nursing.allyHealthBelow)).length;
+        const hurt = nursingPatients(ctx, t, sig.occupants).length;
         s += hurt * STANCE_MODES.nursing.perHurtAlly;
         if (t.objective?.kind === 'protect') s += STANCE.protectDefensive;
         // Somebody with a weapon in the sector is a reason to stop tending and start standing.

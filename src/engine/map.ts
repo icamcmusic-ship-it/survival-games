@@ -5,6 +5,7 @@ import { BLEEDING, EDGE_RULES, EDGE_TOLL, ZONE_EFFECTS, ZONES } from '../data/ba
 import { injuryGrade, openWound } from './wounds';
 import { chokepointModifier, climbModifier, massOf } from './physique';
 import { SimContext, getAlive } from './context';
+import { profOf, trainProficiency } from './proficiency';
 import { resolveCombat } from './combat';
 
 export function zoneNames(arena: Arena): string[] {
@@ -715,11 +716,19 @@ export function tickHiddenEdges(ctx: SimContext) {
             if (t.knownEdges?.includes(key)) continue;
             const [a, b] = key.split('|');
             if (t.zone !== a && t.zone !== b) continue;
+            /*
+             * AUDIT-6 §12.4 `navigation`: a hidden edge is the most valuable
+             * thing in the arena and it was found on a flat roll against
+             * intelligence, so a tribute who had spent a week reading this map
+             * was no better at reading it than one who arrived yesterday.
+             */
             const chance = EDGE_RULES.discoverBase
                 + attr(t, 'intelligence') * EDGE_RULES.discoverPerIntelligence
+                + profOf(t, 'navigation') * EDGE_RULES.discoverPerNavigation
                 + traitMod(t, 'awareness') * EDGE_RULES.discoverPerAwareness;
             if (!ctx.rng.chance(chance)) continue;
             learnEdge(t, key);
+            trainProficiency(t, 'navigation');
             const other = t.zone === a ? b : a;
             ctx.logEvent(
                 `${t.name} finds the way out of ${t.zone} that is not on anybody's map — a seam, a gap, a stair — and it comes out in ${other}.`,

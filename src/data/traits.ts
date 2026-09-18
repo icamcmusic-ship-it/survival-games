@@ -78,6 +78,24 @@ export type TraitMod =
     // twenty-six combat ones. Two more, each read at exactly one site.
     | 'persuasion'           // flat, added to the persuasion proficiency where a truce is held together (parley.ts)
     | 'rapport'              // flat, scales the regard two people gain from reconciling (rapport.ts)
+    /*
+     * AUDIT-6 §12.2: the social half of the vocabulary, which was still a third
+     * the size of the combat half.
+     *
+     * Counted by what they touch, `TraitMod` was roughly 26 combat-and-body keys
+     * against 8 social ones — in a game whose deepest subsystem is social, and
+     * whose own §8.3 comment says so. Eight more, each read at exactly one
+     * existing site, following the rule this file was built on: a new trait
+     * costs a data row and no read site at all.
+     */
+    | 'trustGain'            // multiplier offset on how fast trust moves (relationships.ts)
+    | 'suspicionResist'      // fraction removed from suspicion accrued (memory.ts)
+    | 'leadership'           // flat, added to the pickLeader score (alliance.ts)
+    | 'charterHold'          // fraction removed from the chance of breaching a charter clause (allianceCharter.ts)
+    | 'rumourCredibility'    // flat, how much a claim from this tribute is believed (rumours.ts)
+    | 'debtHonour'           // flat, added to repayment likelihood (debts.ts)
+    | 'intimidation'         // flat, added to the intimidation proficiency (fear.ts)
+    | 'haggle'               // flat, on the parley bargaining scale (parley.ts)
     // audience
     | 'sponsorTrust'         // flat, per-cycle drift
     | 'excitement'           // multiplier offset on excitement earned
@@ -624,6 +642,117 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         // `sponsorTrust` is a per-cycle drift: -1 a cycle was -20 over a run,
         // the same failure mode Unremarkable's comment describes being fixed.
         mods: { scavenge: 0.12, capacity: 1, sponsorTrust: -0.3 },
+    },
+
+    // ---- AUDIT-6 §12.3: the social ten -------------------------------------
+    //
+    // The category the trait table needed most. Every one of these reads
+    // through a key added in §12.2, so none of them costs a read site.
+    'Vouched': {
+        info: 'Somebody in the field already speaks for them. Trust comes faster than it should, and they are asked into things.',
+        mods: { trustGain: 0.3, allianceAffinity: 0.1 },
+    },
+    'Stone-Faced': {
+        info: 'Nothing shows. Very hard to suspect of anything, and nearly impossible to warm to.',
+        mods: { suspicionResist: 0.4, rapport: -0.2 },
+    },
+    'Standard-Bearer': {
+        info: 'People follow them. So does everybody else: the field knows exactly who to take out of a group first.',
+        mods: { leadership: 2, targetDraw: 1 },
+    },
+    'Bookkeeper': {
+        info: 'Keeps the accounts and keeps the terms. Pays what they owe and holds the charter they signed.',
+        mods: { debtHonour: 0.4, charterHold: 0.3 },
+    },
+    'Fabulist': {
+        info: 'Lies well and often. What they say is believed, whether or not it is true.',
+        mods: { rumourCredibility: 0.3, sponsorTrust: -0.2 },
+    },
+    'Quiet Room': {
+        info: 'Talks people round when nothing is happening, and not at all when something is. Persuasive out of a fight, useless in one.',
+        mods: { persuasion: 1.5, combatPower: -1 },
+    },
+    'Sworn Off': {
+        info: 'Will not join anything early. Once they do, they stay — and the arena has usually thinned by then.',
+        mods: { allianceAffinity: -0.25, betrayalResist: 0.3 },
+    },
+    'Tallyman': {
+        info: 'Remembers every slight and forgives none of them. Hard to betray twice; takes a death badly.',
+        mods: { betrayalResist: 0.3, griefResist: -0.2, treachery: 0.1 },
+    },
+    'Open Hand': {
+        info: 'Gives things away. Warm to, easy to trust, and never carrying as much as they should be.',
+        mods: { rapport: 0.4, treachery: -0.3, capacity: -1 },
+    },
+    'Hard Bargain': {
+        info: 'Drives a price. Gets more out of a standoff than anybody and less out of the Capitol.',
+        mods: { haggle: 0.4, sponsorAppeal: -0.5, sponsorTrust: -0.2 },
+    },
+
+    // ---- AUDIT-6 §12.3: the body and the ground ----------------------------
+    'Thin-Blooded': {
+        info: 'Bleeds badly and does not feel the cold. A wound is worse for them; a night in the open is not.',
+        mods: { bleedResist: -0.3, coldResist: 0.4 },
+    },
+    'Gut-Wise': {
+        info: 'Knows what is safe to eat and eats more of it. Finds food, shrugs off bad water, and is hungry either way.',
+        mods: { poisonResist: 0.4, forage: 0.15, hungerDrain: 3 },
+    },
+    'Sun-Blind': {
+        info: 'Useless in daylight glare and very good after dark. The night watch nobody wants to relieve.',
+        mods: { awareness: -1, awarenessNight: 3 },
+    },
+    'Salt-Cured': {
+        info: 'Built for heat and thirsty for it. Takes the sun better than anyone and drinks more than anyone.',
+        mods: { thirstDrain: 4, heatResist: 0.5 },
+    },
+    'Second Wind': {
+        info: 'Comes back from exhaustion once. Recovers hard at night and pays for it during the day.',
+        mods: { fatigueNight: -8, fatigueDay: 4 },
+    },
+    'Deep-Rooted': {
+        info: 'Settles. Forages the same ground long after anybody else would have moved on, and does better at it.',
+        mods: { forage: 0.12, campSkill: 0.15, highland: -0.8 },
+    },
+
+    // ---- AUDIT-6 §12.3: the fight ------------------------------------------
+    'Left-Handed': {
+        info: 'Fights from the wrong side. The first exchange goes their way more often than it should.',
+        mods: { ambush: 0.12, meleePower: 1 },
+    },
+    'Shield-Wise': {
+        info: 'Knows what armour is for. Whatever they are wearing works better than it does on anybody else.',
+        mods: { defended: 1.5, wrestle: 1 },
+    },
+    'Reach': {
+        info: 'Long arms and the sense to use them. Better with anything held at a distance; poor in close.',
+        mods: { meleePower: 2, unarmedPower: -2 },
+    },
+    'Cold Opener': {
+        info: 'Starts a fight well and finishes one badly. Ambushes hard, and does not know when to break off.',
+        mods: { ambush: 0.25, retreat: -0.2 },
+    },
+
+    // ---- AUDIT-6 §12.3: four more earned in the arena ----------------------
+    'Oath-Breaker': {
+        info: 'Earned breaking terms they agreed to. Nobody signs anything with them again.',
+        earned: true,
+        mods: { treachery: 0.3, allianceAffinity: -0.4, trustGain: -0.3 },
+    },
+    'Fire-Walker': {
+        info: 'Earned walking out of a burning sector twice. Fire has stopped being a reason to go around.',
+        earned: true,
+        mods: { burnResist: 0.5, targetDraw: 0.5 },
+    },
+    'Twice-Downed': {
+        info: 'Earned getting up twice. They know exactly how much a body can take, which is more than they thought.',
+        earned: true,
+        mods: { retreat: 0.3, combatPower: 1 },
+    },
+    'Namesake': {
+        info: 'Earned carrying a named weapon to a second kill. The Capitol talks about the blade, and about them.',
+        earned: true,
+        mods: { sponsorAppeal: 2, targetDraw: 1, meleePower: 1 },
     },
 };
 

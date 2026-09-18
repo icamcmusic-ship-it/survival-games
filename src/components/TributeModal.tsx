@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { Hint } from './Hint';
 import { useDialogFocus } from '../ui/useDialogFocus';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { GameState, Tribute } from '../models/types';
@@ -137,7 +138,9 @@ function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: Gam
                                     disabled={!affordable}
                                     onClick={() => setMessage(gameActions.sponsorTribute(tribute.id, item.id).message)}
                                     className="panel-flush p-2 flex justify-between items-center gap-2 text-left disabled:opacity-40"
-                                    title={affordable ? `Send ${item.name} to ${tribute.name}` : `You cannot afford this`}
+                                    aria-label={affordable
+                                        ? `${item.name}, ${cost} — send to ${tribute.name}`
+                                        : `${item.name}, ${cost} — you cannot afford this`}
                                 >
                                     <span className="text-sm text-[var(--ink)] truncate">{item.name}</span>
                                     <span className="text-[11px] font-mono flex-none" style={{ color: affordable ? 'var(--gold)' : 'var(--color-ink-500)' }}>
@@ -672,14 +675,15 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                     <div className="panel-flush p-3 mb-4 text-sm text-[var(--cat-death)]">
                         Died on day {tribute.dayOfDeath ?? '—'} · {tribute.causeOfDeath ?? 'Eliminated'}
                         {onShowInChronicle && (
-                            <button
-                                type="button"
-                                className="btn btn-sm btn-ghost ml-2"
-                                onClick={onShowInChronicle}
-                                title="Filter the chronicle to this tribute — their final moment is at the top"
-                            >
-                                Show in chronicle
-                            </button>
+                            <Hint text="Filter the chronicle to this tribute — their final moment is at the top">
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-ghost ml-2"
+                                    onClick={onShowInChronicle}
+                                >
+                                    Show in chronicle
+                                </button>
+                            </Hint>
                         )}
                     </div>
                 )}
@@ -988,11 +992,30 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                             ) : tribute.inventory.map((item, i) => (
                                 <div key={`${item.id}-${i}`} className="panel-flush p-2 flex justify-between items-center gap-2">
                                     <span className="text-sm text-[var(--ink)] truncate">
+                                        {/*
+                                          * AUDIT-6 §6.2: a weapon that has earned a name is a
+                                          * titled possession, not another line item. 227 weapons
+                                          * earned one across 300 runs and the sheet rendered them
+                                          * identically to an unused knife.
+                                          */}
+                                        {item.legendName && (
+                                            <span className="font-semibold text-[var(--gold)]">{item.legendName} — </span>
+                                        )}
                                         {displayName(item)}
                                         {item.stack !== undefined && item.stack > 1 && (
                                             <span className="text-[var(--color-ink-500)]"> ×{item.stack}</span>
                                         )}
                                         {item.poison && <span className="ml-1 text-[var(--cat-death)]" role="group" aria-label="Coated with poison." title="Coated with poison.">☠</span>}
+                                        {(item.bloodDrawn ?? 0) > 0 && (
+                                            <span
+                                                className="ml-1 text-[11px] text-[var(--color-ink-500)]"
+                                                role="group"
+                                                aria-label={`${item.bloodDrawn} taken. Lives this weapon has taken, which is what earns it a name.`}
+                                                title={`${item.bloodDrawn} taken. Lives this weapon has taken, which is what earns it a name.`}
+                                            >
+                                                {item.bloodDrawn} taken
+                                            </span>
+                                        )}
                                     </span>
                                     <span className="flex items-center gap-2 flex-none">
                                         {item.durability !== undefined && (

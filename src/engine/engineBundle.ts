@@ -13,6 +13,7 @@
 export { Simulator } from './simulator';
 export { generateTributes } from './generator';
 export { generateArena } from './arenaGenerator';
+export { resolveArenaForRun } from './arenaSetup';
 export { configForProfile, gamesProfileFor } from './gamesProfile';
 export { sendPlayerParachute, sponsorCost, sponsorableItems } from './playerSponsor';
 export { tributeOdds } from './odds';

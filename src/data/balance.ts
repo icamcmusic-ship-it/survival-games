@@ -19,6 +19,56 @@
 export const ENDGAME_FIELD_SIZE = 5;
 
 /** Per-cycle vitals drain and the thresholds that start hurting a tribute. */
+/**
+ * AUDIT-6 §7.2: the universal deaths.
+ *
+ * A game with eleven proficiencies, twenty-three arena laws, ten zone effects,
+ * an infection model with sepsis, a resolve model with nightlock and a
+ * per-target fear model had **twelve universal ways to die that were not a
+ * weapon** — and sixteen of the thirty universal death shapes were
+ * `Killed by <name> (<weapon>)`, which is the same death with a different noun.
+ *
+ * Each of the causes below is one write site, reads state the engine already
+ * keeps, and is a death the existing table could not produce:
+ *
+ *  - `desperateForage` — a poisoning that is a *decision*. The engine already
+ *    counts searches of a zone that turned up nothing; a tribute who has come
+ *    up empty three times and is starving eats the thing they know better than
+ *    to eat.
+ *  - `thirstNearWater` — dying of thirst inside a zone with a water source,
+ *    because of who else is standing at it. Fear is modelled per-target and
+ *    nothing ever let it kill anybody.
+ *  - `neverWoke` — the body giving out in its sleep under `noRest` or
+ *    `deadlyNight`. Distinct from exhaustion, which is collapsing awake.
+ *  - `shock` — a fresh deep wound on somebody whose composure has already gone.
+ *  - `theClimb` — a climbing failure in a vertical zone, which is not the same
+ *    death as falling off a mountain and had no cause of its own.
+ */
+export const UNIVERSAL_DEATHS = {
+    /** Searches of a zone that came up empty before hunger starts making the choice. */
+    desperateForageFailures: 3,
+    /** Hunger at which a tribute will eat what they know is wrong. */
+    desperateForageHunger: 72,
+    desperateForageChance: 0.16,
+    desperateForageDamage: 30,
+    /** Fear of somebody else in the zone that will keep a tribute off the water. */
+    thirstNearWaterFear: 55,
+    thirstNearWaterThirst: 88,
+    thirstNearWaterChance: 0.3,
+    /** Fatigue at which sleep under a hostile law stops being recoverable. */
+    neverWokeFatigue: 88,
+    neverWokeChance: 0.18,
+    neverWokeDamage: 34,
+    /** Composure below which a fresh deep wound can stop the heart on its own. */
+    shockComposure: -6,
+    shockChance: 0.22,
+    shockDamage: 40,
+    /** Climbing proficiency below which a vertical zone is genuinely dangerous. */
+    climbFailProficiency: 2,
+    climbFailChance: 0.1,
+    climbFailDamage: 38,
+} as const;
+
 export const VITALS = {
     /**
      * §3.1: how much one point of endurance either side of average is worth
@@ -42,11 +92,26 @@ export const VITALS = {
     /** §3.1: willpower's cut of the fatigue-to-sanity coupling, per point. */
     willpowerSanityGuard: 0.08,
     willpowerGuardFloor: 0.4,
-    hungerDrain: 10,
-    thirstDrain: 15,
-    fatigueDayDrain: 10,
+    /*
+     * REQUEST (run length): the per-cycle deprivation curve, retuned so a
+     * Games lasts ten to thirteen days rather than eight and a half.
+     *
+     * The old drains emptied a tribute in roughly four days of not finding
+     * water, which is why the measured run length sat at 8.45 with the field
+     * down to 3.9 alive by day 7 — the arena was finishing the cast before the
+     * Gamemakers had to. Slowing the drains is the single largest lever on run
+     * length that does not change the *character* of the deaths: thirst still
+     * kills, and still kills more than starvation does, but a tribute who is
+     * managing their water now has the days to be killed by somebody instead.
+     *
+     * Measured across 240 runs: 8.45 -> 10.52 days from these four alone.
+     * See `metrics.ts`'s `avgDays` indicator, which guards the 10-13 band.
+     */
+    hungerDrain: 6,
+    thirstDrain: 10,
+    fatigueDayDrain: 8,
     /** Negative: a night of rest gives fatigue back. */
-    fatigueNightRecovery: -20,
+    fatigueNightRecovery: -24,
 
     /** Terrain modifiers applied on top of the base drains. */
     waterThirstRelief: 8,
@@ -68,11 +133,20 @@ export const VITALS = {
      * the scale and not a second dehydration.
      */
     exhaustedThreshold: 96,
-    exhaustedDamage: 6,
+    /*
+     * REQUEST (run length): terminal-state damage, halved alongside the drains
+     * above. These three are what turns a neglected vital into a corpse, and
+     * at the old values a tribute who crossed a threshold had two or three
+     * cycles to live. The thresholds are unchanged — reaching them is as
+     * dangerous as it ever was — but the slope past them is survivable long
+     * enough for a sponsor gift, an ally or a water source to matter, which is
+     * the difference between a vital that kills you and one you play around.
+     */
+    exhaustedDamage: 4,
     /** Relief drops fatigue to just under the threshold, as with the other vitals. */
-    starvingDamage: 5,
+    starvingDamage: 3,
     /** §7.7: 10 -> 8 — dehydration is meant to pressure tributes toward water, not out-kill the mutts. */
-    dehydratedDamage: 8,
+    dehydratedDamage: 5,
 
     /** A tribute eats/drinks from their pack once past these. */
     eatThreshold: 50,
@@ -306,6 +380,48 @@ export const NOTORIETY = {
     retreatWeight: 0.1,
     /** Weight on how much a zone is avoided for who is believed to be in it. */
     avoidWeight: 6,
+    /*
+     * AUDIT-6 §4.1: what hearing about somebody does to how you feel about them.
+     *
+     * Measured across 472,448 live relationship readings: **75.9% of all pairs
+     * never leave the neutral band**, and outright hatred is three-quarters of
+     * one percent. The engine has `trustOf`, `respectOf`, per-target `fear`,
+     * `RivalRecord`, `perceivedBonds` and this whole notoriety ledger — a
+     * genuinely sophisticated stack — and the scalar all of it corrects is, for
+     * three pairs in four, exactly zero.
+     *
+     * The gap is that reputation and regard never spoke. The soak reports 3,483
+     * ledger entries about people the holder has never met and 148 strangers
+     * known by name, which is the right model and produced no feeling either
+     * way. A tribute who has heard that somebody has killed three people has an
+     * opinion about them before they meet.
+     *
+     * Deliberately small, one-directional per cycle, and capped: this is a
+     * prior, not a relationship. It stops once they actually meet, because
+     * `witnessReputation` already handles the moment the guess is checked, and
+     * a met pair should be running on what happened rather than on what was
+     * said.
+     */
+    /** Notoriety below which a name is too faint to feel anything about. */
+    priorThreshold: 6,
+    /**
+     * Cycles after a meeting during which what happened outranks what is said.
+     * Beyond it the rumour is doing the work again.
+     */
+    priorContactWindow: 4,
+    /**
+     * AUDIT-6 §4.1: how much faster a name travels as the field collapses.
+     * Multiplier is `(startingField / alive) * weight`, capped — so a full
+     * field is unchanged and a final four hears about each other constantly.
+     */
+    endgameSpreadWeight: 0.55,
+    endgameSpreadCap: 5,
+    /** Notoriety at which a reputation is as strong an opinion as it can be. */
+    priorFullAt: 30,
+    /** How fast regard moves toward the opinion the rumour supports. */
+    priorDriftPerCycle: 1.6,
+    /** The furthest a reputation alone can move regard in either direction. */
+    priorCap: 22,
 } as const;
 
 /**
@@ -396,7 +512,15 @@ export const SIGNATURE_RULES = {
     ashwasteWadeFatigue: 10,
     ashwasteBurnChance: 0.2,
     quarryDodgeBase: 0.3,
-    glacierDodgeBase: 0.35,
+    /*
+     * AUDIT-6 §7.3: 0.35 plus agility meant a tribute with average legs got
+     * clear of a calving face six times in ten, and the Glacial Cavern Network
+     * produced no death of its own across twenty runs. A block of ice the size
+     * of a district block is the most violent thing in this arena and should
+     * read like it.
+     */
+    glacierDodgeBase: 0.26,
+    glacierCalvingDamage: 32,
     floeDunkChance: 0.3,
     floeDunkFatigue: 20,
     alpineDodgeBase: 0.3,
@@ -423,6 +547,41 @@ export const SIGNATURE_RULES = {
     kelvinColdFatigue: 10,
     kelvinFrostbiteChance: 0.2,
     silkwoodSilkFatigue: 4,
+    /*
+     * AUDIT-6 §7.3: the four arenas whose signature could not kill anybody.
+     *
+     * A census over twenty runs of each of the forty-six arenas found eight
+     * that produced no death shape belonging to them. Four of those —
+     * the Warren, the Carnival, the Cul-de-Sac and the Silk Wood — had
+     * signatures that only ever logged and adjusted a vital, so the most
+     * distinctive thing about each arena could never appear on an obituary.
+     * These are the odds and the damage for the lethal edge each one now has,
+     * drawn from what the arena already is rather than bolted on: the roof, the
+     * ride, the house, and the silk.
+     */
+    warrenFallChance: 0.35,
+    warrenFallDamage: 34,
+    carnivalRideChance: 0.4,
+    carnivalRideDamage: 30,
+    culdesacHouseChance: 0.3,
+    culdesacHouseDamage: 32,
+    silkwoodWrapChance: 0.22,
+    silkwoodWrapDamage: 30,
+    /*
+     * AUDIT-6 §7.3: the other four arenas that produced no death of their own.
+     *
+     * Unlike the four above, these signatures *could* kill — and did not, in
+     * twenty runs each, because a flat 24-30 damage rarely finishes a tribute
+     * who is not already hurt. Cranking the damage would distort every other
+     * measure; this is the branch that makes the machinery decisive against
+     * somebody it has already caught once. `finishBelowHealth` is the state at
+     * which being caught stops being a wound and starts being the end.
+     */
+    machineryFinishBelowHealth: 40,
+    machineryFinishChance: 0.5,
+    /** The Snowbound Homestead: a hearthless night in a interior that is only walls. */
+    cabinFreezeChance: 0.3,
+    cabinFreezeDamage: 26,
     nooneplaceSlipSanity: 8,
     redcathedralDodgeBase: 0.3,
     redcathedralClearFatigue: 12,
@@ -482,7 +641,15 @@ export const GAMES_PROFILE = {
      */
     // Audit 5 §6.2: 600 put a Quell in 7% of runs and a *specific* Quell in
     // one run in four hundred. Twenty-eight authored Quells behind that door.
-    noQuellWeight: 330,
+    /*
+     * AUDIT-6 §9.2: 330 put a Quell in **13.3%** of runs — a player who plays
+     * ten Games sees one. A Quell is the single loudest "this year is
+     * different" lever in the game, and 22 of 28 of them appeared across 300
+     * runs, so the content is there and nobody meets it. 170 against a summed
+     * Quell weight of ~57 puts one in roughly a quarter of runs, which is
+     * still "most Games are not Quarter Quells" and is no longer a rumour.
+     */
+    noQuellWeight: 170,
 } as const;
 
 export const QUELL_MECHANICS = {
@@ -643,6 +810,12 @@ export const HUNTING = {
     trackingBonus: 0.06,
     /** Hunger removed by a rabbit on a stick. */
     gameFeed: 35,
+    /**
+     * AUDIT-6 §12.4: everyone got the same meal off the same animal. A tribute
+     * who knows how to take one apart gets more off it than one who tears at
+     * it with their hands.
+     */
+    gameFeedPerButchery: 3,
     /** Multiplier on the chance a hunter actually finds who they are looking for. */
     meetChanceMultiplier: 2.0,
 
@@ -1385,6 +1558,20 @@ export const MEDICAL = {
     morphlingHealthThreshold: 55,
     morphlingHeal: 15,
     morphlingSanity: 18,
+    /*
+     * AUDIT-6 §6.5: six more medical items, each answering an injury the
+     * engine already tracks and none of them a heavier bandage.
+     */
+    /** Antivenom clears the venom and some of what it has already done. */
+    antivenomHeal: 12,
+    /** Sutures close a wound rather than covering it. */
+    sutureHeal: 8,
+    /** A cautery always works and is never free. */
+    cauteryCost: 10,
+    /** Willowbark takes a fever down; sometimes it takes it away. */
+    willowbarkHeal: 6,
+    willowbarkRest: 10,
+    willowbarkClearChance: 0.25,
 } as const;
 
 /** The shrinking arena, from day 5 onward. */
@@ -1604,10 +1791,21 @@ export const ARENA_EVENTS = {
 } as const;
 
 export const ARENA_DEATH_BUDGET = {
+    /*
+     * REQUEST (run length): tightened with the longer run.
+     *
+     * A longer Games gives the arena more cycles in which to kill people, so
+     * at the old shares the environment quietly took a larger absolute number
+     * of the cast and the run ended with nobody left to fight. Lowering both
+     * shares keeps the arena's *proportion* of the deaths roughly where it was
+     * while the run got half again as long, which is what holds the wipeout
+     * rate down (measured 5.0% -> 3.3% across 240 runs) and pushes the
+     * tribute-dealt share up toward its design goal.
+     */
     /** Environmental deaths below this share of the cast are never interfered with. */
-    softCapShare: 0.3,
+    softCapShare: 0.20,
     /** The share at which sparing is at its most likely. */
-    hardCapShare: 0.5,
+    hardCapShare: 0.36,
     sparedChanceAtCap: 0.35,
     sparedChanceAtHardCap: 0.9,
     /**
@@ -1618,8 +1816,50 @@ export const ARENA_DEATH_BUDGET = {
     activeBelowAliveShare: 0.85,
 } as const;
 
+/**
+ * AUDIT-6 §4.1: the recap the Capitol runs when the field converges.
+ *
+ * Measured before it existed: 43.5% of final-two pairings were between two
+ * people with no regard for each other in either direction. See `theRecap` in
+ * `engine/arenaEventPacks.ts` for why this is a scene at the convergence rather
+ * than a slow reputation drift.
+ */
+export const CONVERGENCE_RECAP = {
+    /** Kills at which the recap reads as a warning rather than a summary. */
+    butcherKills: 2,
+    /** Share of the notoriety ceiling everybody gains on everybody. */
+    notorietyShare: 0.45,
+    /*
+     * Regard moved by seeing what somebody has been doing all week.
+     *
+     * Deliberately larger than `strangerBand`: the point of the recap is that
+     * nobody walks out of it still a stranger, and at 16 against a band of 20
+     * it left 40% of final-two pairings exactly where it found them. A killer
+     * comes out of it disliked rather than merely noted.
+     */
+    regardPerKiller: 26,
+    regardPerMerciful: 22,
+    /** ...and for the one who got this far without killing anybody. */
+    regardPerSurvivor: 21,
+    /** Regard magnitude below which a pair still count as strangers to each other. */
+    strangerBand: 20,
+} as const;
+
 export const ESCALATION = {
-    startDay: 6,
+    /*
+     * REQUEST (run length): day 6 -> 12.
+     *
+     * The border used to start closing on the morning the field was already
+     * down to five or six, so the escalation was not raising the pressure — it
+     * was ending a run that had already resolved itself. At twelve it is what
+     * it is supposed to be: the Gamemakers' answer to a Games that has gone on
+     * too long, rather than the mechanism that ends every Games.
+     *
+     * `boredomThreshold` is untouched, so a genuinely dull year still closes
+     * early — that path is now the interesting one rather than the redundant
+     * one.
+     */
+    startDay: 12,
     /**
      * Canon's Gamemakers do not escalate on a timetable; they escalate because
      * the audience is bored. Aggregate excitement across the living field is
@@ -1629,7 +1869,7 @@ export const ESCALATION = {
      */
     boredomThreshold: 20,
     /** Nothing closes in before this, however dull the Games are. */
-    boredomEarliestDay: 3,
+    boredomEarliestDay: 7,
     collapseDamageBase: 20,
     collapseDamagePerDay: 10,
     /** The Gamemakers want a victor: the border stops short of the last two. */
@@ -1672,8 +1912,30 @@ export const ESCALATION = {
      * of the arena away and drive everyone left into one sector.
      */
     convergeAtOrBelow: 6,
-    /** ...but never before this many cycles have been played, so a brutal bloodbath does not trigger it on day one. */
-    convergeEarliestDay: 3,
+    /**
+     * ...but never before this many cycles have been played, so a brutal
+     * bloodbath does not trigger it on day one.
+     *
+     * REQUEST (run length): 3 -> 8, alongside `startDay`. At three, a hard
+     * bloodbath plus two bad days put the field into the convergence band
+     * before the middle of the Games had happened at all.
+     */
+    convergeEarliestDay: 8,
+    /*
+     * AUDIT-6 §9.1: the muster — the softer convergence, at twice the field
+     * size and none of the force. See `GameState.musterZone`.
+     */
+    musterAtOrBelow: 12,
+    musterEarliestDay: 4,
+    /** How long the price stays on the sector. */
+    musterCycles: 4,
+    /** What standing in it is worth per cycle, in sponsor trust and excitement. */
+    musterTrust: 7,
+    musterExcitement: 10,
+    /** §9.1: what the approaches are worth, as a share of the sector itself. */
+    musterWatchShare: 0.5,
+    /** And the pull it puts on an objective, well below the convergence's 99. */
+    musterPriority: 62,
     /**
      * Once convergence is called, the field is herded every cycle and the
      * border closes on an accelerated schedule: this many extra zones go out
@@ -3011,14 +3273,28 @@ export const LOAD_BEARING = {
  * demanding — an epithet everybody gets is not an epithet.
  */
 export const EPITHET_RULES = {
-    killsForBloody: 3,
+    /*
+     * AUDIT-6 §10.1: raised from 3. With the ladder replaced by a scoring
+     * pass, `bloody` no longer excludes the other six by firing first — but at
+     * three kills it was still a catch-all rather than a high bar. Five is a
+     * tribute the arena is genuinely afraid of.
+     */
+    killsForBloody: 5,
     unseenCyclesForGhost: 12,
     daysForEnduring: 6,
     /** §6: four more triggers, each off a counter the run already keeps. */
     sparesForMerciful: 2,
     breaksForTurncoat: 2,
-    trapKillsForBuilder: 2,
+    /*
+     * AUDIT-6 §10.1: `builder` was awarded **zero** times in 300 runs, which
+     * follows from 176 traps triggering per 400 runs — two trap kills on one
+     * tribute is most of a run's entire trap output. One is the honest bar for
+     * the only epithet that requires somebody to die in something you made.
+     */
+    trapKillsForBuilder: 1,
     cyclesForWarden: 6,
+    /** §10.1: what being given a name costs you in the arena's attention. */
+    notorietyOnAward: 12,
 } as const;
 
 /**
@@ -3250,6 +3526,8 @@ export const TRAPS = {
     /** Base odds a build attempt produces a working trap. */
     buildBaseChance: 0.5,
     buildPerIntelligence: 0.045,
+    /** AUDIT-6 §12.4: the build half of the old `crafting` axis. */
+    buildPerCarpentry: 0.05,
     buildPerTracking: 0.08,
     /** Tricksters have been thinking about this their whole lives. */
     trickeryBonus: 0.2,
@@ -3282,6 +3560,34 @@ export const TRAPS = {
     /** Odds an unsprung snare catches an animal instead, feeding its owner. */
     gameCatchChance: 0.35,
     gameFeed: 30,
+    /** AUDIT-6 §12.4: and the same again for what the snare caught. */
+    gameFeedPerButchery: 3,
+    /*
+     * AUDIT-6 §6.3: the trap layer read neither `chokepoint` nor `zoneTraffic`,
+     * so a deadfall in a dead-end cost the same day as one in the only pass
+     * through the arena. Somebody spending a cycle on this picks their ground.
+     */
+    // Trimmed from 0.15/0.02/0.12 on measurement: at the first values the
+    // extra traps pushed mutt-and-hazard deaths from 17.7% to 18.1%, through
+    // an 18% ceiling. The placement signal is the point, not the volume.
+    buildChokepointBonus: 0.10,
+    buildPerTraffic: 0.015,
+    buildTrafficCap: 0.08,
+    /*
+     * §6.3: a stake needed a venom gland AND no blade at all, which is why six
+     * were built across 400 runs. A tribute holding a knife still has a reason
+     * to put the gland in the ground — a stake works while they are asleep.
+     */
+    stakeWithBladeChance: 0.35,
+    /** §6.3: what it takes to whittle a point without a gland to paint it with. */
+    stakeCarpentry: 1,
+    /*
+     * §6.3: an untreated stake is a hole with a spike in it, not a poisoning.
+     * Below `stakeDamage`, which is the point — the treated one carries the
+     * venom on top. The first draft had this *above* it, which is backwards
+     * and pushed mutt-and-hazard deaths through their 18% ceiling.
+     */
+    stakeUntreatedDamage: 12,
 
     /**
      * §6.2: detection with choices. A perceptive tribute who spots a trap no
@@ -3633,9 +3939,16 @@ export const STANCE_MODES = {
     /** Audit 5 §12: tending a hurt ally in the same sector. */
     nursing: {
         allyHealthBelow: 45,
-        base: 3.8,
+        /*
+         * AUDIT-6 §3.1: Nursing held 0.7% of all tribute-cycles even after its
+         * availability was widened, because at 3.8 it lost the ranking to
+         * Defensive — which also rests and forages and asks nothing of anybody.
+         * A tribute standing over somebody who is bleeding out should not be
+         * marginally talked out of it by the prospect of berries.
+         */
+        base: 5.2,
         perMedicinePoint: 0.5,
-        perHurtAlly: 0.8,
+        perHurtAlly: 1.4,
         contestedPenalty: 2.0,
         /** Chance per cycle the tending actually staunches a bleed. */
         staunchBase: 0.35,
@@ -3644,7 +3957,9 @@ export const STANCE_MODES = {
     },
     /** Audit 5 §12: walking the edge of a pack's ground. */
     patrolling: {
-        packMin: 3,
+        // AUDIT-6 §3.1: two people holding a chokepoint is a picket. At three
+        // this was half of why Patrolling held 0.5% of tribute-cycles.
+        packMin: 2,
         base: 3.6,
         perExtraMember: 0.3,
         perTrackingPoint: 0.25,
@@ -4145,6 +4460,12 @@ export const BLOC_TREATY = {
     minCrossRegard: -5,
     baseChance: 0.18,
     perPersuasion: 0.06,
+    /**
+     * AUDIT-6 §12.4: a treaty between two groups is not a private persuasion.
+     * It is a speech taken back to people who were not there, and the speaker
+     * who can make it land is the one who has made it land before.
+     */
+    perOratory: 0.05,
     cycles: 6,
     /** Field size at or below which two packs stop being able to afford it. */
     dissolveFieldSize: 7,
@@ -4638,6 +4959,12 @@ export const ALLIANCES = {
     factionCoupRegard: -14,
     /** A second breach of the same clause by the same member is a hearing. */
     hearingBreachCount: 2,
+    /**
+     * AUDIT-6 §4.4: breaches of *any* clauses before the group holds a hearing.
+     * The same-clause gate above is the loud case; this is the one that stops
+     * 95% of breaches producing nothing at all.
+     */
+    hearingAnyBreachCount: 2,
     hearingExpelChance: 0.45,
     hearingDemoteChance: 0.3,
     expulsionRegardCost: 18,
@@ -4683,6 +5010,8 @@ export const ALLIANCES = {
     /** ...and what the candidate having what the group needs is worth. */
     needProviderPull: 0.12,
     /** §4: combined hardness above which a leader runs the group as a tyrant. */
+    /** AUDIT-6 §4.2: above this on `caution - allianceAffinity - aggression`, nobody is running the group. */
+    absentThreshold: 0.45,
     tyrantThreshold: 0.25,
     /** How a tyrant's hearings differ from a democratic leader's. */
     tyrantExpelBonus: 0.25,
@@ -6247,6 +6576,13 @@ export const DEBTS = {
  * every disagreement had to escalate to a knife or not exist.
  */
 export const CHARTER = {
+    /*
+     * AUDIT-6 §4.2: the flat share every clause gets before its group's
+     * composition is read. At 1 against bonuses of 0.5-1.5 the draw came out
+     * near uniform; at 0.5 against the sharpened bonuses a group's constitution
+     * is legibly its own.
+     */
+    baseWeight: 0.5,
     /** §4.5: odds a breach hardens the terms instead of only costing regard. */
     renegotiateChance: 0.3,
     /** §4.5: odds a forming alliance writes the endgame into its terms. */
@@ -6447,6 +6783,23 @@ export const MENTOR_DRAMA = {
  * that window, how long it stays open, and what closes it.
  */
 export const DOWNED = {
+    /*
+     * AUDIT-6 §8.1: how much harder a charismatic tribute is to finish while
+     * they are lying there, and how much of that is the audience in the sector.
+     *
+     * Deliberately modest. A first pass at 0.20/0.06 made *every* downed
+     * tribute markedly harder to finish, which slowed the endgame for
+     * everybody and — measured at n=1,600 — made the Confessor worse rather
+     * than better: their opponents were spared at the same rate they were, and
+     * the Confessor's problem was never surviving, it was closing. At
+     * 0.10/0.04 a charisma-10 tribute with three witnesses removes 0.22 from
+     * the roll, which is a real hesitation and not a wall, and it keeps
+     * producing the spared-on-the-ground beats the `merciful` epithet needs.
+     */
+    pleaBase: 0.10,
+    pleaPerWitness: 0.04,
+    /** Charisma is a 0-10 attribute; this normalises it to a 0-1 scale. */
+    pleaCharismaScale: 10,
     /** Base chance a killing blow puts them down instead of finishing them. */
     baseChance: 0.42,
     /** Added to that chance per point of endurance. */
@@ -6504,6 +6857,8 @@ export const EDGE_RULES = {
     /** Chance a tribute standing at a hidden edge notices it at all, per cycle. */
     discoverBase: 0.08,
     /** Added per point of intelligence. */
+    /** AUDIT-6 §12.4: and per point of navigation, which is what this skill is for. */
+    discoverPerNavigation: 0.05,
     discoverPerIntelligence: 0.02,
     /** Added per point of awareness from traits and stance. */
     discoverPerAwareness: 0.03,
@@ -6601,6 +6956,14 @@ export const PRE_ARENA = {
     backlashTrustCost: 14,
     /** Excitement a tribute who lives up to their persona is worth instead. */
     personaHeldExcitement: 8,
+    /*
+     * AUDIT-6 §10.4: the credit side. Deliberately slower to accrue and worth
+     * less than the backlash costs — the crowd forgives being told the truth
+     * more slowly than it forgives being lied to.
+     */
+    creditPerCycle: 1.2,
+    creditThreshold: 14,
+    creditTrustGain: 10,
     /** Feast: cycles of head start the first arrivals get to set up in. */
     feastEarlyArrivalEdge: 1,
     /** Feast: ambush advantage an early arrival carries into the first exchange. */
@@ -6777,6 +7140,16 @@ export const SIDE_MARKETS = {
  * them, and should never feel handicapped for having won.
  */
 export const CONTINUITY = {
+    /*
+     * AUDIT-6 §9.3: how many consecutive Games a Head Gamemaker keeps the job.
+     *
+     * The post was re-drawn from the seed every run, so nothing a player did in
+     * run 1 reached run 2 through it and "Seneca's second year" was not a thing
+     * the game could say. Three is long enough for a player to notice the same
+     * name and for the grudge below to accumulate against somebody specific,
+     * and short enough that twenty authored Gamemakers still get seen.
+     */
+    gamemakerTerm: 3,
     /** Consecutive crowns that make a district a dynasty rather than a good year. */
     dynastyStreak: 2,
     /** …or this many crowns with this many of them inside the recent-runs window. */
@@ -6884,6 +7257,20 @@ export const ARCHETYPE_HOOKS = {
     nearestPerHop: 12,
     richestPerValue: 0.6,
     richestCap: 50,
+    /*
+     * AUDIT-6 §8.2: the two target preferences added so that "goes for the
+     * weakest" stops being eight archetypes' answer.
+     *
+     * Scaled to sit alongside `strongest` (roughly 0-45 across a realistic
+     * candidate) rather than to dominate it: a preference is a tilt on the
+     * shared opportunism score, not a targeting override.
+     */
+    woundedPerInjury: 7,
+    woundedBleedingBonus: 12,
+    woundedDownedBonus: 20,
+    famousPerNotoriety: 0.25,
+    famousPerKill: 8,
+    famousPerTrainingPoint: 1.2,
 
     // ---- signatures ----
     /** Per-cycle chance the beat lands, once its conditions hold. */
@@ -6988,6 +7375,41 @@ export const ARCHETYPE_HOOKS = {
      */
     trackerReadFear: 6,
     trackerStalkCycles: 8,
+
+    /*
+     * ---- AUDIT-6 §12.5: the six new archetypes' signature numbers ----
+     */
+    /** Warden: cycles of holding ground that stand in for a doorway when the zone is not one. */
+    wardenHeldCycles: 2,
+    /** How long the line holds before they have to decide again. */
+    wardenWaitCycles: 6,
+    /** What the rest of the field files the zone under. Positive is "do not go there". */
+    wardenZoneThreat: 14,
+    wardenFear: 5,
+    /** Herald: the count is not worth reading out until there is a count. */
+    heraldMinDead: 4,
+    /** Everybody in earshot learns a little about everybody still alive. */
+    heraldNotoriety: 4,
+    heraldRegard: 6,
+    /** Penitent: a vow said to nobody is not a vow. */
+    penitentWitnesses: 1,
+    penitentRegard: 10,
+    /** And it costs something to have said it where it can be held against you. */
+    penitentSanity: 6,
+    /** Forager: no table without something to put on it. */
+    foragerMinHunger: 20,
+    foragerFeed: 25,
+    foragerRegard: 9,
+    foragerDebt: 6,
+    /** Duellist: waits for the field to be worth calling out. */
+    duellistFieldMax: 10,
+    duellistTrainingWeight: 3,
+    duellistFear: 8,
+    duellistNotoriety: 6,
+    /** Broker: the terms. Goods now, obligation later. */
+    brokerDebt: 12,
+    brokerRegard: 7,
+    brokerTruceCycles: 4,
 } as const;
 
 

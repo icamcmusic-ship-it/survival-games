@@ -21,7 +21,7 @@ import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor } from '../alliance';
 import { decayFear } from '../fear';
-import { decayNotoriety, spreadNotoriety } from '../notoriety';
+import { decayNotoriety, reputationPriors, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
 import { runStanceBeats } from '../stanceBeats';
 import { runArchetypeSignatures, tickGhosts, tickScholars } from '../archetypeHooks';
@@ -141,8 +141,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             ctx.logEvent(
                 `First light at ${horn.name}, and the Capitol is generous to exactly one of the people who stayed: `
                 + `${patient.name}, who needed it most and is the best television. `
+                // §22: the cast is everybody who slept at the horn, so the
+                // line says who watched rather than "everybody else".
                 + (atHorn.length > 1
-                    ? 'Everybody else who slept there watches it happen and does the arithmetic on what being the worst hurt is worth.'
+                    ? `${atHorn.filter(t => t.id !== patient.id).map(t => t.name).join(', ')} watch it happen and do the `
+                        + 'arithmetic on what being the worst hurt is worth.'
                     : 'There was nobody else there to watch, which the Capitol will have found disappointing.'),
                 atHorn.map(t => t.id),
                 { important: true, category: 'gamemaker', zone: horn.name }
@@ -418,6 +421,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // `decayFear` for the same reason: this cycle's belief is built on top of
     // what survived last cycle's forgetting, not underneath it.
     spreadNotoriety(ctx);
+    // AUDIT-6 §4.1: and what the field has heard becomes what it thinks.
+    reputationPriors(ctx);
     decayNotoriety(ctx.state);
     // §9.7: and knowledge moves. After the discovery pass above, so a lie found
     // out this cycle is not immediately papered over by a fresh trade.
@@ -529,6 +534,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             : 0;
         // §10.1: 'The Long Con' reads the high-water mark, not the live streak.
         t.maxPerformingStreak = Math.max(t.maxPerformingStreak ?? 0, t.performingStreak);
+        // AUDIT-6 §11.2: and the run keeps its own, so the entry survives the
+        // performer not being the one who wins.
+        ctx.state.longestPerformance = Math.max(ctx.state.longestPerformance ?? 0, t.performingStreak);
         // §11: cycles holding a named role in their group, for 'Quartermaster'.
         const roles = t.allianceId ? allianceRecords(ctx.state)[t.allianceId]?.roles : undefined;
         if (roles && Object.values(roles).includes(t.id)) t.roleCycles = (t.roleCycles ?? 0) + 1;

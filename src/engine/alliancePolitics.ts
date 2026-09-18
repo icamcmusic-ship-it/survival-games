@@ -154,7 +154,23 @@ export function noteBreach(ctx: SimContext, record: Alliance, offender: Tribute,
     record.breachesBy = record.breachesBy ?? {};
     const ledger = record.breachesBy[offender.id] = [...(record.breachesBy[offender.id] ?? []), rule];
     const repeats = ledger.filter(r => r === rule).length;
-    if (repeats < ALLIANCES.hearingBreachCount) return;
+    /*
+     * AUDIT-6 §4.4: the hearing is what a breach *is for*, and 95% of breaches
+     * skipped it.
+     *
+     * Measured over 400 runs: 148 charter breaches against 7 hearings. The gate
+     * was a second breach of *the same clause* by the same person, which is a
+     * far narrower event than it reads — a member who breaks the food rule and
+     * then the camp rule has broken the charter twice and triggered nothing.
+     * `alliancePolitics.ts` is three hundred lines of machinery a player would
+     * typically never see fire.
+     *
+     * A repeat of one clause is still the loudest case and still counts on its
+     * own. The second door is simply breaking the charter twice, whichever
+     * clauses: the group notices a pattern, not a statute.
+     */
+    const total = ledger.length;
+    if (repeats < ALLIANCES.hearingBreachCount && total < ALLIANCES.hearingAnyBreachCount) return;
 
     const others = members.filter(m => m.id !== offender.id);
     if (others.length === 0) return;
@@ -164,6 +180,30 @@ export function noteBreach(ctx: SimContext, record: Alliance, offender: Tribute,
     // people out; a democratic leader talks it round. Same hearing, and the
     // difference between the two groups is visible from the outside.
     const style = record.leaderStyle ?? 'democratic';
+    /*
+     * AUDIT-6 §4.2: and an absent leader does not hold the hearing at all.
+     *
+     * Nobody convenes it, so the breach simply sits there — which is worse than
+     * either of the other two outcomes, because the group keeps the person and
+     * keeps the grievance. This is the beat the succession data implied and the
+     * engine could not produce.
+     */
+    if (style === 'absent') {
+        ctx.logEvent(
+            `Somebody ought to say something to ${offender.name} about it. Nobody does. `
+            + 'The group carries on with the thing unsaid in it, which is heavier than carrying it said.',
+            members.map(m => m.id),
+            { important: true, category: 'alliance' }
+        );
+        others.forEach(m => adjustRel(m, offender.id, -ALLIANCES.expulsionRegardCost / 3));
+        // ...and they trust the person who did not deal with it a little less too.
+        const leader = members.find(m => m.id === record.leaderId);
+        if (leader && leader.id !== offender.id) {
+            others.filter(m => m.id !== leader.id)
+                .forEach(m => adjustRel(m, leader.id, -ALLIANCES.expulsionRegardCost / 4));
+        }
+        return;
+    }
     const expelChance = style === 'tyrant'
         ? ALLIANCES.hearingExpelChance + ALLIANCES.tyrantExpelBonus
         : Math.max(0, ALLIANCES.hearingExpelChance - ALLIANCES.democratExpelRelief);
@@ -226,11 +266,28 @@ export function expel(ctx: SimContext, record: Alliance, offender: Tribute, memb
     others.forEach(m => adjustRel(m, offender.id, -ALLIANCES.expulsionRegardCost));
     adjustRel(offender, others[0].id, -ALLIANCES.expulsionRegardCost);
 
+    /*
+     * §22 / AUDIT-6: the whole group is the cast of this line, so the whole
+     * group has to be in it.
+     *
+     * `because` names whoever moved against them; everybody else was standing
+     * there and was claimed by `tributesInvolved` without ever being mentioned,
+     * which is the single largest source of unnamed-tribute lines in the
+     * repository. Naming them is also the better sentence — an expulsion is
+     * mostly made of the people who did not say anything.
+     */
+    const named = new Set<string>();
+    members.forEach(m => { if (because.includes(m.name)) named.add(m.id); });
+    named.add(offender.id);
+    const silent = others.filter(m => !named.has(m.id));
     ctx.logEvent(
         `${because} ${offender.name} is put out of the group.`
         + (takes.length > 0
             ? ` They take ${takes.map(i => i.name).join(' and ')} with them — they put more into that cache than anyone, and say so.`
-            : ' They leave with what they walked in with, which is not much.'),
+            : ' They leave with what they walked in with, which is not much.')
+        + (silent.length > 0
+            ? ` ${silent.map(m => m.name).join(', ')} ${silent.length > 1 ? 'say' : 'says'} nothing, which is its own kind of vote.`
+            : ''),
         members.map(m => m.id),
         { important: true, category: 'alliance' }
     );

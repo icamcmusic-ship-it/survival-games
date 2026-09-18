@@ -217,7 +217,7 @@ export function RosterPanel({
                                     <button
                                         className="btn btn-sm flex-none"
                                         disabled={coins < sideStake || placed.has(key)}
-                                        title={placed.has(key) ? 'Already placed' : `Stake ${sideStake} on this`}
+                                        aria-label={placed.has(key) ? 'Already placed' : `Stake ${sideStake} on this`}
                                         onClick={() => gameActions.placeSideBet(q.kind, sideStake, q.targetId, { targetDistrict: q.targetDistrict, line: q.line })}
                                     >
                                         {placed.has(key) ? 'Placed' : `Stake ${sideStake}`}
@@ -432,7 +432,7 @@ export function RosterPanel({
                                                 onClick={() => gameActions.placeSideBet('first-blood', sideStake, t.id)}
                                                 disabled={coins < sideStake || sideBets.some(b => b.kind === 'first-blood')}
                                                 className="btn btn-sm"
-                                                title={`Side bet: this tribute draws first blood (${sideStake} coins)`}
+                                                aria-label={`1st blood — side bet that this tribute draws first blood (${sideStake} coins)`}
                                             >
                                                 1st blood
                                             </button>
@@ -440,12 +440,12 @@ export function RosterPanel({
                                                 onClick={() => gameActions.placeSideBet('top-three', sideStake, t.id)}
                                                 disabled={coins < sideStake || sideBets.some(b => b.kind === 'top-three' && b.targetId === t.id)}
                                                 className="btn btn-sm"
-                                                title={`Side bet: this tribute is among the last three standing (${sideStake} coins)`}
+                                                aria-label={`Top 3 — side bet that this tribute is among the last three standing (${sideStake} coins)`}
                                             >
                                                 Top 3
                                             </button>
                                             {currentBet > 0 && (
-                                                <button onClick={() => clearBet(t)} className="btn btn-sm" title="Refund this wager">Clear</button>
+                                                <button onClick={() => clearBet(t)} className="btn btn-sm" aria-label="Clear — refund this wager">Clear</button>
                                             )}
                                         </div>
                                         {currentBet > 0 && (

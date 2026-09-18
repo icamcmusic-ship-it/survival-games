@@ -268,11 +268,29 @@ const DRAWS_PER_RUN: Array<{ pool: string; lines: number; draws: number }> = [
     { pool: 'AMBIENT_TEXTS', lines: FLAVOR.AMBIENT_TEXTS.length, draws: 1.6 },
     { pool: 'RELIEF_TEXTS', lines: FLAVOR.RELIEF_TEXTS.length, draws: 1.3 },
 ];
+/*
+ * AUDIT-6 §10.3: 1x was the wrong bar and it is now 4x.
+ *
+ * "At least as many lines as draws" only promises that a player does not hear
+ * the same sentence twice inside one Games. It says nothing about the second
+ * Games, and the measured picture was that a player read **over half** of
+ * `ruinStealth` in a single run and then re-read it every run afterwards. The
+ * replay-facing question is how many runs it takes to exhaust a pool, and 4x
+ * is "four Games before you have seen all of it", which is the same standard
+ * the arena event floors already hold themselves to.
+ *
+ * Deliberately relative rather than absolute: the existing HARD_FLOOR and
+ * POOL_TARGET are line counts, and the problem this measures is a ratio. A
+ * twelve-line pool drawn once a run is fine; a twenty-line pool drawn twelve
+ * times a run is not, and no fixed line count can tell the two apart.
+ */
+const DRAWS_DEPTH_FLOOR = 4;
 DRAWS_PER_RUN.forEach(row => {
-    if (row.lines < row.draws) {
+    if (row.lines < row.draws * DRAWS_DEPTH_FLOOR) {
         structuralProblems.push(
-            `${row.pool} holds ${row.lines} lines against ${row.draws} draws in an average run — `
-            + 'the player hears the same sentence twice inside one Games');
+            `${row.pool} holds ${row.lines} lines against ${row.draws} draws in an average run `
+            + `(${(row.lines / row.draws).toFixed(1)}x, floor ${DRAWS_DEPTH_FLOOR}x) — `
+            + 'the player reads the whole pool inside a few Games and every run after that repeats it');
     }
 });
 console.log('\npool depth against measured draws per run (Audit 4 §10.4):');

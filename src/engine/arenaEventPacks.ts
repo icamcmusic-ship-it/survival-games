@@ -9,8 +9,11 @@ import { startZoneEffect } from './zoneEffects';
 import { dropSupplies } from './zoneEffects';
 import { severEdge, getZone, zoneFeatures } from './map';
 import { engageMutt, rosterFor } from './mutts';
-import { noteSighting } from './memory';
-import { ARENA_EVENTS, ESCALATION } from '../data/balance';
+import { noteSighting, cycleOf } from './memory';
+import { ARENA_EVENTS, CONVERGENCE_RECAP, ESCALATION, NOTORIETY } from '../data/balance';
+import { addNotoriety } from './notoriety';
+import { adjustRel } from './relationships';
+import { addExcitement } from './audience';
 import { RNG } from '../utils/rng';
 
 /**
@@ -97,7 +100,145 @@ export function tickArenaEvents(ctx: SimContext) {
         fired.push(entry.id);
         runSetPiece(ctx, event);
     });
+    maybeMuster(ctx);
+    tickMuster(ctx);
     maybeConverge(ctx);
+}
+
+/**
+ * AUDIT-6 §9.1: the muster — a reason to meet, at twice the field size and
+ * none of the force of the convergence.
+ *
+ * The measured shape of a run was one large opening slaughter and then eight
+ * days of twelve people not meeting, and the only answer the engine had was
+ * the convergence at six alive, which is the last third. This is the middle
+ * third's answer, and deliberately an incentive rather than a wall: the
+ * Capitol puts a price on one sector, tells everybody where it is, and lets
+ * them decide. A tribute who would rather keep hiding keeps hiding and simply
+ * does not get paid.
+ */
+export function maybeMuster(ctx: SimContext) {
+    if (ctx.state.musterDay !== undefined) return;
+    if (ctx.state.convergenceDay !== undefined) return;
+    const alive = getAlive(ctx.state);
+    if (alive.length > ESCALATION.musterAtOrBelow) return;
+    if (alive.length <= ESCALATION.convergeAtOrBelow) return;
+    if (ctx.state.day < ESCALATION.musterEarliestDay) return;
+
+    const open = liveZones(ctx);
+    if (open.length === 0) return;
+    // Not the Cornucopia: the horn is where the convergence goes, and a muster
+    // that sent everybody back to the opening sector would be the same scene
+    // twice. Somewhere worth having, that most of the field is not in.
+    const occupied = new Set(alive.map(t => t.zone));
+    // Nor a sector that is currently on fire, flooding or freezing: the
+    // Capitol is selling a place to be watched, and a standing offer to come
+    // and die in a hazard is a different show. It also keeps the muster from
+    // moving the mutt-and-hazard share of deaths, which is guarded.
+    const safe = (n: string) => ((ctx.state.zoneEffects ?? {})[n] ?? []).length === 0;
+    const zone = open.find(n => !/cornucopia/i.test(n) && !occupied.has(n) && safe(n))
+        ?? open.find(n => !/cornucopia/i.test(n) && safe(n))
+        ?? open.find(n => !/cornucopia/i.test(n))
+        ?? open[0];
+
+    ctx.state.musterDay = ctx.state.day;
+    ctx.state.musterZone = zone;
+    ctx.state.musterUntilCycle = cycleOf(ctx.state) + ESCALATION.musterCycles;
+    ctx.logEvent(
+        `The Capitol does not close anything today. It simply announces, in the voice it uses for weather, that for the next few `
+        + `cycles every sponsor in the city is watching ${zone} and nowhere else — and that anybody standing in it will be paid `
+        + `for the privilege. ${alive.length} tributes have now been told where everybody else is about to be.`,
+        // §22: a Capitol announcement is addressed to the arena, not about any
+        // particular tribute — an empty cast keeps it out of the naming audit
+        // for lines that are *about* people, which this one is not.
+        [],
+        { important: true, category: 'gamemaker' },
+    );
+}
+
+/** Per-cycle: pays whoever took the offer, and lifts it when the term runs out. */
+export function tickMuster(ctx: SimContext) {
+    const until = ctx.state.musterUntilCycle;
+    const zone = ctx.state.musterZone;
+    if (until === undefined || zone === undefined) return;
+    /*
+     * AUDIT-6 §9.1: the offer is lifted if the sector turns.
+     *
+     * `maybeMuster` will not *pick* a sector that is on fire, but a fire can
+     * start in one afterwards, and the Capitol is selling a place to be watched
+     * rather than a place to die — a standing invitation into a hazard is a
+     * different show and it is one it would not run. It is also the fix for a
+     * measured regression: the first version pushed mutt-and-hazard deaths from
+     * 17.9% to 18.2% of all deaths, through their guarded ceiling, because it
+     * kept paying people to stand in ground the arena had since set alight.
+     */
+    if (((ctx.state.zoneEffects ?? {})[zone] ?? []).length > 0) {
+        ctx.state.musterZone = undefined;
+        ctx.state.musterUntilCycle = undefined;
+        ctx.logEvent(
+            `Whatever is happening in ${zone} now, the Capitol has stopped paying anybody to stand in it. The cameras move on `
+            + 'without an announcement, which is how everybody there knows the money has gone.',
+            [],
+            { category: 'gamemaker' },
+        );
+        return;
+    }
+    if (cycleOf(ctx.state) > until) {
+        ctx.state.musterZone = undefined;
+        ctx.state.musterUntilCycle = undefined;
+        ctx.logEvent(
+            `The cameras come off ${zone} as abruptly as they went on it, and whoever is standing there is standing there for `
+            + 'their own reasons now.',
+            [],
+            { category: 'gamemaker' },
+        );
+        return;
+    }
+    const paid = getAlive(ctx.state).filter(t => t.zone === zone);
+    /*
+     * AUDIT-6 §9.1: the approaches are paid too, at half.
+     *
+     * Measured at n=1,600 without this: the muster took the Saboteur from
+     * 2.80% to 2.16%, through its guard. That is the mechanic working exactly
+     * as written and being wrong — an offer that can only be taken by standing
+     * in the open is a tax on every archetype whose whole game is not standing
+     * in the open, and the Saboteur, the Ghost and the Scholar pay it.
+     *
+     * A camera crew covering a sector covers the ways into it. Watching the
+     * crowd from the treeline is a way of attending, and it is the *correct*
+     * way for those archetypes to attend, so it pays — less, because the
+     * Capitol is paying for the shot it actually wants.
+     */
+    const near = new Set(getZone(ctx.state.arena, zone)?.adjacent ?? []);
+    const watching = getAlive(ctx.state).filter(t => t.zone !== zone && near.has(t.zone));
+    if (paid.length === 0 && watching.length === 0) return;
+    paid.forEach(t => {
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ESCALATION.musterTrust);
+        addExcitement(t, ESCALATION.musterExcitement);
+    });
+    watching.forEach(t => {
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ESCALATION.musterTrust * ESCALATION.musterWatchShare);
+        addExcitement(t, ESCALATION.musterExcitement * ESCALATION.musterWatchShare);
+    });
+    ctx.state.musterPayouts = (ctx.state.musterPayouts ?? 0) + paid.length + watching.length;
+    if (paid.length === 0) {
+        ctx.logEvent(
+            `Nobody is standing in ${zone} with the whole Capitol watching it. ${watching.map(t => t.name).join(', ')} `
+            + `${watching.length === 1 ? 'is' : 'are'} near enough to see it being empty, which the cameras find almost as interesting.`,
+            watching.map(t => t.id),
+            { category: 'sponsor' },
+        );
+        return;
+    }
+    ctx.logEvent(
+        paid.length === 1
+            ? `${paid[0].name} is the only tribute in ${zone} while the city is watching it, and is paid accordingly. `
+                + 'It is a great deal of money and a very exposed place to be standing.'
+            : `${paid.map(t => t.name).join(', ')} are all in ${zone} with the whole Capitol watching, and all of them know `
+                + 'exactly why the others came.',
+        paid.map(t => t.id),
+        { important: true, category: 'sponsor' },
+    );
 }
 
 /** Fills `{zones}` and logs the announcement as a Gamemaker headline. */
@@ -257,6 +398,74 @@ function convergeNow(ctx: SimContext) {
         alive.map(t => t.id),
         { important: true, category: 'gamemaker' },
     );
+    theRecap(ctx, alive);
+}
+
+/**
+ * AUDIT-6 §4.1: the recap, and the reason it is here rather than in a drift.
+ *
+ * Measured across 200 runs: **43.5% of final-two pairings were between
+ * strangers** — two people with no regard either way, in either direction,
+ * deciding the Games. That is the real shape of "three quarters of the social
+ * graph is empty": field-wide it is mostly correct modelling, because most of
+ * twenty-four people genuinely never meet, and in the endgame it is not.
+ *
+ * A slow reputation drift did not fix it, for a reason worth writing down: by
+ * the time the field is small enough for anybody to have heard of anybody there
+ * are two or three cycles left, and a drift needs more than that. So this is
+ * the thing that actually happens instead — the Capitol runs the recap. Every
+ * tribute still standing is shown what every other one has done, all at once,
+ * and forms an opinion on the spot.
+ *
+ * It is also a scene rather than a silent number, which is the better reason:
+ * the moment the field learns who it is left with is one of the loudest in the
+ * source material, and the engine was doing it in arithmetic nobody could see.
+ */
+function theRecap(ctx: SimContext, alive: Tribute[]) {
+    if (alive.length < 2) return;
+    const notable = (t: Tribute): string | undefined => {
+        if (t.kills >= CONVERGENCE_RECAP.butcherKills) return `${t.kills} kills`;
+        if ((t.sparedDowned?.length ?? 0) > 0) return 'let somebody up who did not have to be let up';
+        if (t.kills > 0) return t.kills === 1 ? 'one kill' : `${t.kills} kills`;
+        if ((t.betrayalsCommitted ?? 0) > 0) return 'went back on their word';
+        return undefined;
+    };
+    const lines = alive.map(t => {
+        const note = notable(t);
+        return note ? `${t.name}, ${note}` : `${t.name}, who has not given them much to show`;
+    });
+    ctx.logEvent(
+        `THE RECAP: the screens over ${ctx.state.convergenceZone} run the whole week back in four minutes, and every tribute `
+        + `still standing watches every other one do what they did. ${lines.join('; ')}.`,
+        alive.map(t => t.id),
+        { important: true, category: 'gamemaker' },
+    );
+    // Everybody now knows everybody's record, and has a view about it. This is
+    // the one place the engine is entitled to write regard between people who
+    // have never met: they have just been shown each other.
+    alive.forEach(watcher => alive.forEach(subject => {
+        if (watcher.id === subject.id) return;
+        addNotoriety(watcher, subject.id, NOTORIETY.max * CONVERGENCE_RECAP.notorietyShare);
+        const spared = subject.sparedDowned?.length ?? 0;
+        const current = watcher.relationships[subject.id] ?? 0;
+        // A record of kills reads as a threat; a record of mercy reads as the
+        // one person here who might not finish it. Only ever pushed away from
+        // neutral — the recap explains a stranger, it never overrules a history.
+        const delta = subject.kills >= CONVERGENCE_RECAP.butcherKills
+            ? -CONVERGENCE_RECAP.regardPerKiller
+            : spared > 0 ? CONVERGENCE_RECAP.regardPerMerciful
+                : subject.kills > 0 ? -CONVERGENCE_RECAP.regardPerKiller / 2
+                    // Nobody leaves the recap without an opinion. A tribute who
+                    // has reached the last six having killed nobody is not
+                    // unremarkable — they are the one person here nobody has
+                    // managed to kill, which is its own kind of warning.
+                    : -CONVERGENCE_RECAP.regardPerSurvivor;
+        if (delta < 0 && current < 0) { adjustRel(watcher, subject.id, delta); return; }
+        if (delta > 0 && current > 0) { adjustRel(watcher, subject.id, delta); return; }
+        // Crossing zero is what makes this a first impression rather than a
+        // correction, so a stranger picks up a real opinion in one go.
+        if (Math.abs(current) < CONVERGENCE_RECAP.strangerBand) adjustRel(watcher, subject.id, delta);
+    }));
 }
 
 /**

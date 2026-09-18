@@ -63,6 +63,7 @@ export const NEW_ARENAS: Arena[] = [
     },
     {
         id: 'thresher',
+        effectVocab: { quaking: { label: 'the floor running again', severityMult: 1.25 } },
         name: 'The Thresher Floor',
         description: 'A working processing plant. The Cornucopia opens only for tributes who have already killed, and every fight on the floor is heard from every other part of it.',
         // §1: `bloodPrice` is the arena's whole argument, and `openMic` is what
@@ -93,6 +94,7 @@ export const NEW_ARENAS: Arena[] = [
     },
     {
         id: 'vigil',
+        effectVocab: { fogbound: { label: 'the watch fires going out', durationMult: 1.25 } },
         name: 'The Vigil',
         description: 'A garrison ground where sleep does nothing at all. Anyone who spends the night at the Cornucopia is treated at first light, which is the only mercy in it.',
         // §1: `noRest` takes the night away as a resource; `dawnMercy` puts one

@@ -33,6 +33,26 @@ import { loseSanity } from './sanityBands';
  */
 
 /** Zones a signature can touch: alive, not already out of bounds. */
+/**
+ * AUDIT-6 §7.3: the branch that lets an arena's own machinery finish somebody.
+ *
+ * The Abattoir, the Thresher Floor and the Undermere all had a lethal path and
+ * none of them produced a single death of their own across twenty runs each,
+ * because a flat 24-30 damage almost never finishes a tribute who walked in
+ * healthy. The answer is not more damage on every hit — that moves the whole
+ * death table — it is that being caught by an industrial arena a second time,
+ * already hurt, should be decisive. Called after the ordinary damage has
+ * landed, so it reads as the wound that finished them rather than a new one.
+ */
+function machineryMayFinish(ctx: SimContext, t: Tribute, rng: RNG, cause: string, line: string, zone: string): void {
+    if (t.status !== 'alive' || t.health <= 0) return;
+    if (t.health > SIGNATURE_RULES.machineryFinishBelowHealth) return;
+    if (!rng.chance(SIGNATURE_RULES.machineryFinishChance)) return;
+    applyDamage(ctx, t, t.health, { cause, kind: 'arena' });
+    ctx.logEvent(line, [t.id], { important: true, zone, category: 'hazard' });
+    checkDeath(ctx, t, cause);
+}
+
 function activeZones(ctx: SimContext): string[] {
     const collapsed = ctx.state.collapsedZones ?? [];
     return ctx.state.arena.zones.map(z => z.name).filter(n => !collapsed.includes(n));
@@ -91,6 +111,7 @@ function clockworkSignature(ctx: SimContext, cycle: number, rng: RNG) {
     // Everyone alive learns the rotation by watching it, which is what makes it
     // a mechanic rather than a random tax.
     getAlive(ctx.state).forEach(t => addZoneThreat(ctx.state, t, next, MEMORY.cannonThreat));
+
 }
 
 /**
@@ -444,6 +465,31 @@ function warrenSignature(ctx: SimContext, cycle: number, rng: RNG) {
             { important: true, category: 'arena' }
         );
     }
+    /*
+     * AUDIT-6 §7.3: a mine that redraws itself has to be able to redraw itself
+     * on top of somebody.
+     *
+     * The Shifting moved the map and never touched a tribute, so the Warren —
+     * six chambers of old timber and loose rock with no sky over any of it —
+     * could not produce a single death that was recognisably its own across
+     * twenty runs. Anyone standing in the chamber that just closed is under it.
+     * Agility is the save, because the warning is the sound.
+     */
+    tributesIn(ctx, zone).forEach(t => {
+        if (!rng.chance(SIGNATURE_RULES.warrenFallChance - t.attributes.agility * 0.03)) {
+            ctx.logEvent(
+                `${t.name} hears the timbers go in ${zone} and is out from under them before the roof follows.`,
+                [t.id], { zone, category: 'arena' },
+            );
+            return;
+        }
+        applyDamage(ctx, t, SIGNATURE_RULES.warrenFallDamage, { cause: `Brought down by the roof of ${zone}`, kind: 'arena' });
+        ctx.logEvent(
+            `The roof of ${zone} comes in on ${t.name}. In a mine this old the difference between a passage and a grave is which way the timber falls.`,
+            [t.id], { important: true, zone, category: 'hazard' },
+        );
+        checkDeath(ctx, t, `Brought down by the roof of ${zone}`);
+    });
 }
 
 /**
@@ -563,6 +609,9 @@ function abattoirSignature(ctx: SimContext, cycle: number, rng: RNG) {
             return;
         }
         applyDamage(ctx, t, 24, { cause: `Caught in the machinery of ${striking}`, kind: 'arena' });
+        machineryMayFinish(ctx, t, rng, `Rendered on the floor of ${striking}`,
+            `${t.name} does not get up off the line in ${striking}. The plant was built to keep going whatever is on it, and it does.`,
+            striking);
         openWound(t, BLEEDING.hazardSeverity);
         t.vitals.fatigue += SIGNATURE_RULES.abattoirFatigue;
         addZoneThreat(ctx.state, t, striking, MEMORY.hazardThreat * 2);
@@ -593,6 +642,22 @@ function carnivalSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     caught.forEach(t => {
         loseSanity(t, SIGNATURE_RULES.carnivalSanityLoss);
         clampTribute(t);
+        /*
+         * AUDIT-6 §7.3: a ride that starts mid-song with people standing on it
+         * is not only frightening.
+         *
+         * The Carnival's signature cost twelve sanity and nothing else, so the
+         * one thing this arena does that nowhere else does could not kill. The
+         * machinery is eighty years unmaintained and it has just been switched
+         * on around them.
+         */
+        if (!rng.chance(SIGNATURE_RULES.carnivalRideChance - t.attributes.agility * 0.03)) return;
+        applyDamage(ctx, t, SIGNATURE_RULES.carnivalRideDamage, { cause: `Taken by the ride in ${target}`, kind: 'arena' });
+        ctx.logEvent(
+            `The ride in ${target} finds ${t.name} in the dark. It was built to be safe and it has not been safe for a very long time.`,
+            [t.id], { important: true, zone: target, category: 'hazard' },
+        );
+        checkDeath(ctx, t, `Taken by the ride in ${target}`);
     });
     // The whole park sees where the lights are — and who is standing in them.
     if (caught.length > 0) {
@@ -691,7 +756,14 @@ function glacierSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} reads the crack running overhead in ${target} and is out before the roof follows it.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, 22, { cause: `Buried in the calving at ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, SIGNATURE_RULES.glacierCalvingDamage, { cause: `Buried in the calving at ${target}`, kind: 'arena' });
+        // AUDIT-6 §7.3: the same branch the industrial arenas needed. 22 damage
+        // and a frostbite almost never finishes anybody, so a block of ice the
+        // size of a district coming down on somebody produced no deaths of its
+        // own in twenty runs.
+        machineryMayFinish(ctx, t, rng, `Buried under the calving face at ${target}`,
+            `${t.name} is under it when the face comes down in ${target}. The glacier does not notice.`,
+            target);
         injure(t, 'frostbitten');
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -998,6 +1070,25 @@ function culdesacSignature(ctx: SimContext, cycle: number, rng: RNG) {
             loseSanity(t, SIGNATURE_RULES.culdesacNamedSanity);
             if (rng.chance(SIGNATURE_RULES.culdesacRestlessChance)) t.vitals.fatigue += SIGNATURE_RULES.culdesacRestlessFatigue;
             clampTribute(t);
+            /*
+             * AUDIT-6 §7.3: a house that reports its guests is a house with
+             * opinions about them.
+             *
+             * The Watch cost sanity and a little sleep, so sixty-two working
+             * houses on a loop road — the single strangest premise in the
+             * roster — could not produce one death of their own. A house that
+             * has decided about you locks, and the things inside a home that
+             * are dangerous are dangerous at close range: the stair, the gas,
+             * the garage door. Intelligence is the save, because the way out is
+             * a thing you notice on the way in.
+             */
+            if (!rng.chance(SIGNATURE_RULES.culdesacHouseChance - t.attributes.intelligence * 0.025)) return;
+            applyDamage(ctx, t, SIGNATURE_RULES.culdesacHouseDamage, { cause: `Kept by the house in ${zone}`, kind: 'arena' });
+            ctx.logEvent(
+                `${zone} stops announcing ${t.name} and simply keeps them. The porch light stays on.`,
+                [t.id], { important: true, zone, category: 'hazard' },
+            );
+            checkDeath(ctx, t, `Kept by the house in ${zone}`);
         });
     });
 }
@@ -1247,6 +1338,31 @@ function silkwoodSignature(ctx: SimContext, cycle: number, _rng: RNG) {
         { zone: next, category: 'arena' }
     );
     getAlive(ctx.state).forEach(t => addZoneThreat(ctx.state, t, next, MEMORY.cannonThreat));
+
+    /*
+     * AUDIT-6 §7.3: "you will notice the silk before you notice the spiders.
+     * Not much before."
+     *
+     * The Re-Spin closed a road and taxed fatigue and never once killed
+     * anybody, so the Silk Wood's own description promised something the arena
+     * could not deliver. Whoever is standing in the sector being spun over is
+     * being spun over with it. Strength is the save: it is a question of
+     * whether you get an arm free.
+     *
+     * Its own stream, seeded off the run and the cycle, because this signature
+     * takes its target from a deterministic per-night draw rather than from the
+     * shared `rng` — the telegraph one cycle earlier has to name the same zone.
+     */
+    const wrapRng = new RNG(`${ctx.state.seed}-silkwood-wrap-${cycle}`);
+    tributesIn(ctx, target).forEach(t => {
+        if (!wrapRng.chance(SIGNATURE_RULES.silkwoodWrapChance - t.attributes.strength * 0.02)) return;
+        applyDamage(ctx, t, SIGNATURE_RULES.silkwoodWrapDamage, { cause: `Spun over in ${target}`, kind: 'arena' });
+        ctx.logEvent(
+            `The re-spin closes over ${t.name} in ${target}. They notice the silk first. They do not notice the rest of it for long.`,
+            [t.id], { important: true, zone: target, category: 'hazard' },
+        );
+        checkDeath(ctx, t, `Spun over in ${target}`);
+    });
 }
 
 /**
@@ -1732,6 +1848,27 @@ function cabinSignature(ctx: SimContext, _cycle: number, rng: RNG) {
             // not warmth. Expressed through the existing effect vocabulary,
             // which this arena renames for exactly this beat.
             if (rng.chance(ARENA_SIGNATURES.hearth.coldSnapChance)) startZoneEffect(ctx, zone, 'frozen');
+            /*
+             * AUDIT-6 §7.3: the cold in here has to be able to finish somebody.
+             *
+             * "A working woodstove behind four thin walls, and a killing cold
+             * on the other side of them" is the whole premise, and the
+             * signature expressed it as a `frozen` zone effect and nothing
+             * else — so the Snowbound Homestead could not produce a single
+             * death that was recognisably its own. An unlit interior on this
+             * property is worse than outside: it is the room you believed
+             * would be warm. Endurance is the save.
+             */
+            present.forEach(t => {
+                if (!rng.chance(SIGNATURE_RULES.cabinFreezeChance - t.attributes.endurance * 0.02)) return;
+                applyDamage(ctx, t, SIGNATURE_RULES.cabinFreezeDamage, { cause: `Froze in the unlit ${zone}`, kind: 'arena' });
+                injure(t, 'frostbitten');
+                ctx.logEvent(
+                    `The stove in ${zone} is out and stays out. ${t.name} went indoors to get warm, which on this property is the mistake.`,
+                    [t.id], { important: true, zone, category: 'hazard' },
+                );
+                checkDeath(ctx, t, `Froze in the unlit ${zone}`);
+            });
             return;
         }
         present.forEach(t => {
@@ -1822,6 +1959,9 @@ function karstSignature(ctx: SimContext, cycle: number, rng: RNG) {
         t.vitals.fatigue += ARENA_SIGNATURES.undermere.darkFatigue;
         if (rng.chance(ARENA_SIGNATURES.undermere.blindStumbleChance)) {
             applyDamage(ctx, t, ARENA_SIGNATURES.undermere.stumbleDamage, { cause: `Lost in the dark under ${t.zone}`, kind: 'arena' });
+            machineryMayFinish(ctx, t, rng, `Went into the sump under ${t.zone}`,
+                `${t.name} puts a foot into nothing under ${t.zone}. The sound it makes arrives a very long time afterwards.`,
+                t.zone);
             ctx.logEvent(
                 `${t.name} walks into something in the dark of ${t.zone} that turns out to be the floor arriving early.`,
                 [t.id],
@@ -1948,6 +2088,9 @@ function thresherSignature(ctx: SimContext, cycle: number, rng: RNG) {
             return;
         }
         applyDamage(ctx, t, knobs.damage, { cause: `Caught in the machinery of ${target}`, kind: 'arena' });
+        machineryMayFinish(ctx, t, rng, `Taken into the intake of ${target}`,
+            `The floor of ${target} takes ${t.name} the rest of the way. There is a reason this room has a drain in it.`,
+            target);
         if (rng.chance(knobs.bleedChance)) openWound(t, BLEEDING.hazardSeverity);
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);

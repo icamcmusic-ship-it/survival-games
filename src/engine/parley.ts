@@ -745,8 +745,11 @@ function attemptBluff(ctx: SimContext, bluffer: Tribute, mark: Tribute): boolean
     const nerve = PARLEY.bluffChance + Math.max(0, treacheryOf(bluffer)) * PARLEY.bluffTreacheryWeight;
     if (!ctx.rng.chance(nerve)) return false;
 
+    // AUDIT-6 §12.2 `haggle`: talking a shakedown down is the bargaining the
+    // parley layer actually contains, so this is where a hard bargainer shows.
     const odds = Math.max(PARLEY.bluffMinChance, Math.min(PARLEY.bluffMaxChance,
         PARLEY.bluffBase
+        + traitMod(bluffer, 'haggle')
         + profOf(bluffer, 'persuasion') * PARLEY.bluffPerPersuasion
         + (bluffer.attributes.charisma - 5) * PARLEY.bluffPerCharisma
         - (mark.attributes.intelligence - 5) * PARLEY.bluffPerMarkIntelligence

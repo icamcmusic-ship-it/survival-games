@@ -73,7 +73,7 @@ const TRAP_SET_LINES: Record<Trap['kind'], (name: string, zone: string) => strin
     deadfall: (n, z) => `${n} balances a deadfall over a gap in ${z} and backs away from it very carefully.`,
     pit: (n, z) => `${n} spends most of the day digging in ${z}, and most of the rest of it making the ground look untouched.`,
     tripwire: (n, z) => `${n} runs a line at ankle height across the approach to ${z}. It is not meant to hurt anybody. It is meant to say something.`,
-    stake: (n, z) => `${n} sets a line in ${z} over something sharpened, and paints the point with what came off the last thing that tried to kill them.`,
+    stake: (n, z) => `${n} sets a line in ${z} over something sharpened, and considers for a while whether there is anything left to paint the point with.`,
 };
 
 const TRAP_SPRING_LINES: Record<Trap['kind'], (name: string, zone: string) => string> = {
@@ -81,7 +81,7 @@ const TRAP_SPRING_LINES: Record<Trap['kind'], (name: string, zone: string) => st
     deadfall: (n, z) => `A deadfall comes down on ${n} in ${z} with a sound like the arena clearing its throat.`,
     pit: (n, z) => `The ground in ${z} stops being ground under ${n}, and they are at the bottom of it before they have finished falling.`,
     tripwire: (n, z) => `${n} walks through a line strung across ${z}. Nothing happens to them at all, which is the worst part of it.`,
-    stake: (n, z) => `Something sharpened comes up out of the floor of ${z} into ${n}, and it has been treated.`,
+    stake: (n, z) => `Something sharpened comes up out of the floor of ${z} into ${n}, and whatever else is true of it, it went all the way in.`,
 };
 
 /** Spends the turn setting a snare or a deadfall in the tribute's current zone. */
@@ -98,7 +98,17 @@ export function setTrap(ctx: SimContext, t: Tribute) {
     // weapon you have.
     const venomIdx = t.inventory.findIndex(i => (POISONING.sources as readonly string[]).includes(i.id));
     const hasBlade = t.inventory.some(i => i.type === 'weapon');
-    const venomIsTheWeapon = venomIdx >= 0 && !hasBlade;
+    /*
+     * AUDIT-6 §6.3: measured over 400 runs the five-kind menu read
+     * deadfall 223 · pit 211 · snare 105 · tripwire 53 · stake 6. Two of five
+     * kinds were statistically absent, and the cause for `stake` was this
+     * conjunction: a venom gland AND no blade at all. A tribute holding a
+     * knife who also has a gland still has a reason to put the gland in the
+     * ground rather than on the edge — a stake works while they are asleep —
+     * they just have it less often than somebody with no other option.
+     */
+    const venomIsTheWeapon = venomIdx >= 0
+        && (!hasBlade || ctx.rng.chance(TRAPS.stakeWithBladeChance));
     // §6: what they build is what they have and what they mean to do with it.
     // A line plus a gland is a stake; a line alone is a snare, or an alarm if
     // they are hiding rather than hunting; a shovel-worth of soft ground is a
@@ -123,18 +133,63 @@ export function setTrap(ctx: SimContext, t: Tribute) {
         || (improvisable && profOf(t, 'tracking') >= TRAPS.improvisedLineTracking);
     // A gland is what makes a stake a stake; the sharpened point is whittled
     // from whatever is to hand, which is why this no longer also wants a line.
+    /*
+     * §6.3: and a stake without venom is still a stake. Soft ground plus
+     * somebody who can work wood is all a sharpened point needs; the gland is
+     * what makes it a *treated* one, which is the difference between a wound
+     * and a death sentence. `Trap.treated` carries that.
+     */
+    const canWhittle = diggable && profOf(t, 'carpentry') >= TRAPS.stakeCarpentry;
     const kind: Trap['kind'] =
         venomIsTheWeapon ? 'stake'
-            : hasLine && isEvasiveStance(t.stance) ? 'tripwire'
+            // §6.3: and `tripwire` was gated on the Evasive family alone.
+            // Patrolling is the stance whose entire content is knowing who is
+            // coming — an alarm on the approach is what it wants most.
+            : hasLine && (isEvasiveStance(t.stance) || t.stance === 'Patrolling') ? 'tripwire'
                 : hasLine ? 'snare'
-                    : diggable && t.attributes.strength >= TRAPS.pitStrength ? 'pit'
-                        : 'deadfall';
+                    // §6.3: an untreated stake is what somebody builds when
+                    // they have no line to run. Deliberately *below* the line
+                    // kinds rather than above them — the first draft put it at
+                    // the top and every trapper with a rope started building
+                    // stakes instead of snares, which took the Saboteur from
+                    // 3% to 2.05% at n=1,600.
+                    : canWhittle ? 'stake'
+                        : diggable && t.attributes.strength >= TRAPS.pitStrength ? 'pit'
+                            : 'deadfall';
 
+    /*
+     * AUDIT-6 §12.4 `carpentry`: the build. `crafting` was doing this *and*
+     * repair, so the tribute who can fix a blade and the tribute who can put up
+     * a deadfall that holds were the same person by definition.
+     */
     let chance = TRAPS.buildBaseChance
         + t.attributes.intelligence * TRAPS.buildPerIntelligence
+        + profOf(t, 'carpentry') * TRAPS.buildPerCarpentry
         + profOf(t, 'tracking') * TRAPS.buildPerTracking;
-    if (t.archetype === 'trickster') chance += TRAPS.trickeryBonus;
+    /*
+     * AUDIT-6 §9.1/§8: the Saboteur gets this too, which it never did.
+     *
+     * The trap bonus sat on `trickster` alone, and the archetype whose own
+     * description is "poisons caches, springs other people's traps, and takes
+     * the bridge out behind them" built traps at the field rate. It has been
+     * the worst archetype in the game across three audits — 2.21%, then
+     * 2.37% — and the mechanic it is named for was somebody else's.
+     */
+    if (t.archetype === 'trickster' || t.archetype === 'saboteur') chance += TRAPS.trickeryBonus;
     chance += traitMod(t, 'trapSkill');
+    /*
+     * AUDIT-6 §6.3: 598 traps set and 176 triggered — 29% — so trap-setting
+     * was mostly a way to spend a cycle. The engine knows `chokepoint` on
+     * every zone and knows `zoneTraffic` on every edge, and the trap layer read
+     * neither: a deadfall in a dead-end and a deadfall in the only pass through
+     * the arena were built at exactly the same rate. Somebody who has decided
+     * to spend a day on this picks the ground people have to walk over.
+     */
+    if (zone && zoneFeatures(zone).chokepoint) chance += TRAPS.buildChokepointBonus;
+    const traffic = Object.entries(ctx.state.zoneTraffic ?? {})
+        .filter(([key]) => key.split('|').includes(t.zone))
+        .reduce((a, [, n]) => a + n, 0);
+    chance += Math.min(TRAPS.buildTrafficCap, traffic * TRAPS.buildPerTraffic);
 
     if (!ctx.rng.chance(Math.min(0.95, chance))) {
         ctx.logEvent(
@@ -148,7 +203,8 @@ export function setTrap(ctx: SimContext, t: Tribute) {
     // Improvised cordage costs no item; carried cordage is spent, and only by
     // the kinds that actually run a line. A stake burns the gland instead.
     const spendsLine = (kind === 'snare' || kind === 'tripwire') && materialIdx >= 0;
-    if (kind === 'stake' && venomIdx >= 0) t.inventory.splice(venomIdx, 1);
+    const treated = kind === 'stake' && venomIsTheWeapon;
+    if (treated) t.inventory.splice(venomIdx, 1);
     // Only a stake spends the venom, and a stake never also spends a line, so
     // `materialIdx` is never shifted by the splice above.
     if (spendsLine) t.inventory.splice(materialIdx, 1);
@@ -160,6 +216,7 @@ export function setTrap(ctx: SimContext, t: Tribute) {
         ownerId: t.id,
         concealment: concealmentFor(ctx, t),
         setCycle: cycleOf(ctx.state),
+        treated,
     });
     t.trapsSet = (t.trapsSet ?? 0) + 1;
     trainProficiency(t, 'tracking');
@@ -211,7 +268,7 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
             let disarmChance = TRAPS.disarmBaseChance
                 + t.attributes.intelligence * TRAPS.disarmPerIntelligence
                 + profOf(t, 'tracking') * TRAPS.disarmPerTracking;
-            if (t.archetype === 'trickster') disarmChance += TRAPS.trickeryBonus;
+            if (t.archetype === 'trickster' || t.archetype === 'saboteur') disarmChance += TRAPS.trickeryBonus;
             if (ctx.rng.chance(Math.min(0.95, disarmChance))) {
                 removeTrap(ctx, trap.id);
                 trainProficiency(t, 'tracking');
@@ -280,7 +337,8 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     const baseDamage =
         trap.kind === 'snare' ? TRAPS.snareDamage
             : trap.kind === 'pit' ? TRAPS.pitDamage
-                : trap.kind === 'stake' ? TRAPS.stakeDamage
+                // §6.3: an untreated point is a hole with a spike in it.
+                : trap.kind === 'stake' ? (trap.treated ? TRAPS.stakeDamage : TRAPS.stakeUntreatedDamage)
                     : TRAPS.deadfallDamage;
     const damage = baseDamage * (fortifiedOwner ? STANCE_MODES.fortified.trapTriggerMultiplier : 1);
     // A trap whose owner is still breathing is a kill and credited as one —
@@ -302,8 +360,10 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     if (ctx.rng.chance(bleedChance)) openWound(t, BLEEDING.combatSeverity);
     if (trap.kind === 'snare' && ctx.rng.chance(TRAPS.snareLegInjuryChance)) injure(t, 'legs');
     if (trap.kind === 'pit' && ctx.rng.chance(TRAPS.pitLegInjuryChance)) injure(t, 'legs');
-    // A treated point is the whole reason to build one.
-    if (trap.kind === 'stake') injure(t, 'poisoned');
+    // A treated point is the whole reason to build one — when there was
+    // anything to treat it with. §6.3: an untreated stake is a hole with a
+    // spike in it, which is still a very bad afternoon.
+    if (trap.kind === 'stake' && trap.treated) injure(t, 'poisoned');
     // §3.4: walking into someone's trap is exactly the kind of moment that rattles.
     rattle(t, HUNTING.rattledPerTrap);
 
@@ -355,12 +415,13 @@ function springOwnTrap(ctx: SimContext, t: Tribute, trap: Trap) {
     const damage =
         trap.kind === 'snare' ? TRAPS.snareDamage
             : trap.kind === 'pit' ? TRAPS.pitDamage
-                : trap.kind === 'stake' ? TRAPS.stakeDamage
+                // §6.3: an untreated point is a hole with a spike in it.
+                : trap.kind === 'stake' ? (trap.treated ? TRAPS.stakeDamage : TRAPS.stakeUntreatedDamage)
                     : TRAPS.deadfallDamage;
     applyDamage(ctx, t, damage, { cause, kind: 'hazard' });
     openWound(t, BLEEDING.combatSeverity);
     if (trap.kind === 'snare' || trap.kind === 'pit') injure(t, 'legs');
-    if (trap.kind === 'stake') injure(t, 'poisoned');
+    if (trap.kind === 'stake' && trap.treated) injure(t, 'poisoned');
     const line: Record<Trap['kind'], string> = {
         snare: `${t.name} walks into a snare in ${t.zone} tied with their own knot, at their own working height, by themselves, days ago. They do not appear to recognise it.`,
         deadfall: `${t.name} trips their own deadfall in ${t.zone}. They set it. They have not been able to hold on to that kind of thing for a while now.`,
@@ -393,7 +454,9 @@ export function tickTraps(ctx: SimContext) {
         if (trap.kind === 'snare' && ctx.rng.chance(TRAPS.gameCatchChance)) {
             // Only useful to an owner who is actually there to collect it.
             if (owner.zone === trap.zone) {
-                owner.vitals.hunger = Math.max(0, owner.vitals.hunger - TRAPS.gameFeed);
+                const feed = TRAPS.gameFeed + profOf(owner, 'butchery') * TRAPS.gameFeedPerButchery;
+                owner.vitals.hunger = Math.max(0, owner.vitals.hunger - feed);
+                trainProficiency(owner, 'butchery');
                 clampTribute(owner);
                 ctx.logEvent(
                     `${owner.name}'s snare in ${trap.zone} has something in it. They eat well for once.`,

@@ -216,7 +216,7 @@ export function DossierPanel({
                                     <button
                                         onClick={() => onSelectTribute(t.id)}
                                         className="min-w-0 text-left flex-1"
-                                        title={dead ? `${t.name} — deceased` : `${t.name} — open profile`}
+                                        aria-label={dead ? `${t.name} — deceased` : `${t.name} — open profile`}
                                     >
                                         <span className="flex items-center gap-1.5 flex-wrap">
                                             <span className={`font-bold text-sm truncate ${dead ? 'line-through text-[var(--color-ink-500)]' : 'text-[var(--color-ink-100)]'}`}>
@@ -293,7 +293,6 @@ export function DossierPanel({
                                                                 style={{ color: 'var(--cat-sanity)' }}
                                                                 role="group"
                                                                 aria-label={`Torn — they nearly ${objectiveLabel(gameState, { ...t, objective: t.objectiveTension.runnerUp }).toLowerCase()} instead`}
-                                                                title={`Torn — they nearly ${objectiveLabel(gameState, { ...t, objective: t.objectiveTension.runnerUp }).toLowerCase()} instead`}
                                                             >
                                                                 ⟂ torn
                                                             </span>
@@ -373,7 +372,7 @@ export function DossierPanel({
                                     key={tribute.id}
                                     onClick={() => onSelectTribute(tribute.id)}
                                     className="w-full text-left flex items-center gap-2 px-1.5 py-1 hover:bg-[var(--paper-flush)] transition-colors"
-                                    title={`${tribute.name} — ${pct}% survival chance, ${mult.toFixed(1)}× payout.\n${oddsFactors(tribute).slice(0, 3).map(f => `${f.delta > 0 ? '+' : ''}${Math.round(f.delta)} ${f.label}`).join('\n')}`}
+                                    aria-label={`${tribute.name} — ${pct}% survival chance, ${mult.toFixed(1)}× payout. ${oddsFactors(tribute).slice(0, 3).map(f => `${f.delta > 0 ? '+' : ''}${Math.round(f.delta)} ${f.label}`).join(', ')}`}
                                 >
                                     <span className="font-mono text-[10px] text-[var(--color-ink-500)] w-4 flex-none">{i + 1}</span>
                                     <span className="text-xs font-bold text-[var(--color-ink-100)] truncate flex-1 min-w-0">
@@ -424,7 +423,9 @@ export function DossierPanel({
                             onClick={() => onGamemakerEvent('feast')}
                             className="btn w-full"
                             disabled={!gameState.config.enableFeast}
-                            title={gameState.config.enableFeast ? 'Call a feast at the Cornucopia' : "Feasts are disabled in this run's settings"}
+                            aria-label={gameState.config.enableFeast
+                                ? 'Announce feast — call a feast at the Cornucopia'
+                                : "Announce feast — feasts are disabled in this run's settings"}
                         >
                             Announce feast
                         </button>

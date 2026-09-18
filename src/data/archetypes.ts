@@ -28,7 +28,22 @@ export interface ArchetypeDef {
     /** Pull toward particular standing intentions when objectives are chosen. */
     objectiveBias?: Partial<Record<Objective['kind'], number>>;
     /** Who they go for when they have a choice. */
-    targetPreference?: 'weakest' | 'strongest' | 'nearest' | 'richest' | 'rival';
+    /*
+     * AUDIT-6 §8.2: five values, and eight of twenty-three archetypes picked
+     * `weakest` — "goes for whoever is hurt" had become the default rather
+     * than a characterisation. Two more, both read off state the engine
+     * already keeps:
+     *
+     *  - `mostWounded` is distinct from `weakest`. `weakest` reads current
+     *    health, which a tribute who has never been touched can share with one
+     *    who has been patched up four times; `mostWounded` reads the open
+     *    wounds and the bleeding, which is what an opportunist actually sees
+     *    across a clearing.
+     *  - `mostFamous` is the reading no preference had: some tributes pick
+     *    their target by who the arena is already talking about. It is the
+     *    counterpart to `targetDraw` from the hunter's side.
+     */
+    targetPreference?: 'weakest' | 'strongest' | 'nearest' | 'richest' | 'rival' | 'mostWounded' | 'mostFamous';
     /**
      * §8: how much the rest of the field wants this archetype dead, on the
      * same hunt-scoring scale as the `targetDraw` trait modifier.
@@ -106,16 +121,41 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // fight — so the archetype that dominates the bloodbath is the one
         // that struggles once the Cornucopia is picked clean. Deliberately not
         // a combat nerf: the Career should still win the fight it picks.
-        statBias: { strength: 1, agility: 1, intelligence: -1 },
+        /*
+         * AUDIT-6 §8.1: Career measured 10.69% at n=1,600 against a 5.0% field
+         * — the best win rate, the longest survival (5.72 days against a field
+         * around 4.2) AND the most kills (1.22 against 0.55). Dominant on
+         * every axis at once means there is nothing left to trade against.
+         *
+         * Two physical stats compounded: strength feeds combat power and
+         * agility feeds both dodging and ambush, so a Career was ahead in the
+         * exchange, ahead at starting it, and ahead at leaving it. Keeping the
+         * strength and dropping the agility leaves them exactly what they are
+         * — the best-fed, best-drilled fighter in the arena — without making
+         * them the most slippery one as well.
+         */
+        statBias: { strength: 1, intelligence: -1 },
         preferredTraits: ['Bloodthirsty', 'Brute'],
         aggression: 0.25,
         allianceAffinity: 0.2,
-        treachery: 0.15,
+        /*
+         * §8.1: the pack is the Career's whole advantage and, in the source
+         * material, its whole problem. At 0.15 it held together almost to the
+         * end. The pack should be the reason they dominate the first half and
+         * the reason they do not survive the second.
+         */
+        treachery: 0.3,
         caution: -0.2,
         stanceBias: { Aggressive: 0.6, Hunting: 0.5, Evasive: -0.8 },
         objectiveBias: { hunt: 0.4, hold: 0.2 },
         targetPreference: 'weakest',
-        targetDraw: 5,
+        /*
+         * §8.1: 5 was not enough. This is the only weakness that follows from
+         * what a Career actually is — the whole arena has been told to be
+         * afraid of them, so they are who everybody else agrees to deal with
+         * first.
+         */
+        targetDraw: 8,
         riskCurve: 'front-loaded',
         signature: 'careerDeclaration',
         hatesArchetypes: ['underdog', 'ghost'],
@@ -139,6 +179,18 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'weakest',
         riskCurve: 'escalating',
         signature: 'strategistGambit',
+        /*
+         * AUDIT-6 §8.2: `targetDraw` is the only dial that says "the field has
+         * decided about you", and four archetypes still had no reading of it.
+         * A Strategist is the tribute everyone suspects of having a plan for
+         * them specifically, which is a mild but real reason to be dealt with
+         * early.
+         */
+        targetDraw: 0.5,
+        // §8.2: a plan survives contact with anything except somebody who
+        // does not have one. The Wildcard is the Strategist's whole problem,
+        // and the antipathy already runs the other way.
+        hatesArchetypes: ['wildcard', 'beast'],
         tagline: 'Counts the board.',
         // Audit 4 §8.3: Nothing is frightening once it has been priced.
         fearScale: 0.9,
@@ -163,6 +215,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // appetite as the odds shorten.
         riskCurve: 'escalating',
         signature: 'survivalistLarder',
+        // §8.2: the two archetypes who take without growing. A Survivalist
+        // who has spent a week learning which roots are safe has a specific
+        // contempt for whoever eats out of a dead tribute's pack.
+        hatesArchetypes: ['scavenger'],
         tagline: 'Outlasts the arena.',
         // Audit 4 §8.3: Nobody is frightened of somebody who has never come for them.
         targetDraw: -0.5,
@@ -214,6 +270,12 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'richest',
         riskCurve: 'escalating',
         signature: 'tricksterSnare',
+        // §8.2: the field learns after the first snare. Being known as the
+        // one who cheats is worth being looked for.
+        targetDraw: 1.0,
+        // §8.2: the Tracker is the one kind of tribute a trick does not work
+        // on twice.
+        hatesArchetypes: ['tracker'],
         tagline: 'Nobody sees them twice.',
         fearScale: 1.0,
     },
@@ -235,6 +297,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'flat',
         signature: 'wildcardTurn',
         hatesArchetypes: ['strategist'],
+        // §8.2: nobody hunts a Wildcard on purpose, because nobody can
+        // predict where they will be. The only archetype whose unreadability
+        // is a defence.
+        targetDraw: -1.0,
         fearScale: 0.7,
         tagline: 'Unmodellable.',
     },
@@ -248,12 +314,30 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         allianceAffinity: 0.2,
         treachery: -0.15,
         caution: 0.25,
-        stanceBias: { Evasive: 0.4, Scavenging: 0.5, Shadowing: 0.2 },
+        /*
+         * AUDIT-6 §8.1/§3.1: the worst-performing common archetype at 2.86%,
+         * and the reason was visible in this line. Half its stance investment
+         * went into `Scavenging`, which is 1.6% of all tribute-time — the
+         * archetype's identity was spent on a stance it almost never got to
+         * hold. Kept, because scavenging *is* what an Underdog does, but no
+         * longer the largest share.
+         */
+        stanceBias: { Evasive: 0.4, Scavenging: 0.3, Shadowing: 0.2, Desperate: 0.3 },
         objectiveBias: { survive: 0.3, flee: 0.2 },
         // The one target-preference no archetype used: an underdog does not pick
         // fights by the odds, they pick the one person who has earned it.
         targetPreference: 'rival',
-        riskCurve: 'escalating',
+        /*
+         * §8.1: `escalating` gets warier as the field narrows, which is the
+         * exact opposite of what an Underdog run has to do. The convergence
+         * closes the arena to one sector and forces a fight; a tribute whose
+         * caution is still climbing at that point cannot close, which is how
+         * an archetype built on grit ended up with the lowest win rate in the
+         * game. `late-blooming` is the shape the description always described:
+         * head down while the field is big, committed once there is little
+         * left to hide from.
+         */
+        riskCurve: 'late-blooming',
         signature: 'underdogRefusal',
         hatesArchetypes: ['career'],
         tagline: 'Written off.',
@@ -277,7 +361,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: 0.0,
         stanceBias: { Scavenging: 0.5, Aggressive: 0.3 },
         objectiveBias: { hunt: 0.2, reach: 0.2 },
-        targetPreference: 'richest',
+        // §8.2: a contract is worth what the name is worth. A Mercenary goes
+        // where the reputation is.
+        targetPreference: 'mostFamous',
                 // Audit 2 §8.2: was `flat`. A contract is worth most while there is
         // still a field to be paid by; they spend early and coast, which is
         // also why they die fastest.
@@ -361,6 +447,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          */
         riskCurve: 'late-blooming',
         signature: 'medicTriage',
+        // §8.2: a Medic's objection is not to violence in general. It is to
+        // the people who make more work.
+        hatesArchetypes: ['beast', 'captor'],
         tagline: 'Keeps them standing.',
         // Audit 4 §8.3: Killing the person keeping everybody alive is a decision most fields put off.
         targetDraw: -1.0,
@@ -371,7 +460,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'saboteur',
         name: 'Saboteur',
         description: 'Does not fight. Poisons caches, springs other people\'s traps, and takes the bridge out behind them.',
-        statBias: { intelligence: 2, stealth: 1 },
+        statBias: { intelligence: 2, stealth: 2 },
         preferredTraits: ['Pyromaniac', 'Paranoid', 'Trapper', 'Chameleon'],
         aggression: -0.1,
         allianceAffinity: -0.05,
@@ -382,11 +471,30 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // do and then breaks it, which is a stalk followed by a plan.
         objectiveBias: { hold: 0.4, stalk: 0.3 },
         targetPreference: 'richest',
-                // Audit 2 §8.2: was `flat`. Somebody who works from cover has less
-        // cover every day.
-        riskCurve: 'escalating',
+        /*
+         * Audit 2 §8.2: was `flat`. Somebody who works from cover has less
+         * cover every day.
+         *
+         * AUDIT-6: and that reasoning produced the Saboteur's actual problem.
+         * Measured at n=1,600 it survives 4.35 days against a field around 4.4
+         * and takes 0.41 kills against 0.55 — it is not dying early, it is
+         * never closing, which is the identical shape `late-blooming` was
+         * written for when the Ghost had it. An archetype that gets *warier*
+         * as the field narrows cannot win a Games that ends in one sector.
+         */
+        riskCurve: 'late-blooming',
         signature: 'saboteurStrike',
         hatesArchetypes: ['career'],
+        /*
+         * §8.2: a Saboteur is not feared until the cache is found poisoned,
+         * and then they are the first name on everybody's list.
+         *
+         * AUDIT-6: halved. The note two lines below this one — "they are rarely
+         * the one in the room when it happens" — is the argument against a
+         * whole point of hunt-scoring pressure, and the measured win rate
+         * (bottom of the table in three consecutive audits) is the evidence.
+         */
+        targetDraw: 0.5,
         tagline: 'Breaks the board, not the pieces.',
         // Audit 4 §8.3: They are rarely the one in the room when it happens.
         fearScale: 0.9,
@@ -415,10 +523,13 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: -0.05,
         stanceBias: { Aggressive: 0.7, Hunting: 0.5, Desperate: 0.5, Defensive: -0.2 },
         objectiveBias: { hunt: 0.5 },
-        targetPreference: 'nearest',
+        // §8.2: blood in the water. The Beast reads injury, not strength.
+        targetPreference: 'mostWounded',
         riskCurve: 'front-loaded',
         signature: 'beastRoar',
         fearScale: 0.5,
+        // §8.2: everything that talks first.
+        hatesArchetypes: ['diplomat', 'confessor'],
         tagline: 'Underestimated on paper.',
         // Audit 4 §8.3: A tribute the arena made. Everybody left alive has already decided this one is the problem.
         targetDraw: 2.5,
@@ -470,6 +581,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // than anyone else left alive, and that is the moment to use it.
         riskCurve: 'late-blooming',
         signature: 'scholarReading',
+        // §8.2: a Scholar reads the arena; a Saboteur edits it while they are
+        // reading. Nothing is more annoying.
+        hatesArchetypes: ['saboteur'],
         tagline: 'Reads the arena.',
         // Audit 4 §8.3: Reads as harmless, and is right up until the arena does what they said it would.
         targetDraw: -1.5,
@@ -524,6 +638,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'late-blooming',
         signature: 'scavengerClaim',
         hatesArchetypes: ['beast'],
+        // §8.2: a Scavenger has watched more deaths up close than anybody and has
+        // built a working relationship with the fact. Fear lands; less of it stays.
+        fearScale: 0.8,
         tagline: 'Waste is for people with sponsors.',
         targetDraw: -0.5,
     },
@@ -543,6 +660,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'flat',
         signature: 'captorLeverage',
         hatesArchetypes: ['protector', 'diplomat'],
+        // §8.2: a Captor's whole method is being the calmest person in the room
+        // while somebody else is not. They do not frighten easily and it is not
+        // bravery.
+        fearScale: 0.7,
         tagline: 'You are worth more to me breathing.',
         targetDraw: 1.0,
     },
@@ -558,10 +679,14 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: 0.15,
         stanceBias: { Fortified: 1.2, Defensive: 0.5, Evasive: -0.4 },
         objectiveBias: { hold: 0.7 },
-        targetPreference: 'rival',
+        // §8.2: holding the ground only means something if the person you take
+        // it from is somebody the arena has heard of.
+        targetPreference: 'mostFamous',
         riskCurve: 'escalating',
         signature: 'bellwetherHold',
         hatesArchetypes: ['career', 'trickster'],
+        // §8.2: standing on ground you chose is the cure for being afraid of it.
+        fearScale: 0.85,
         tagline: 'This is where it happens.',
         targetDraw: 1.5,
     },
@@ -581,6 +706,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'escalating',
         signature: 'quartermasterInventory',
         hatesArchetypes: ['scavenger'],
+        // §8.2: the one who counts the water is the one who knows exactly how
+        // bad it is. Nobody is more frightened, and nobody hides it better.
+        fearScale: 1.15,
         tagline: 'Everything, accounted for.',
         targetDraw: -0.5,
     },
@@ -593,10 +721,24 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         aggression: -0.1,
         allianceAffinity: 0.5,
         treachery: -0.4,
-        caution: -0.15,
+        /*
+         * AUDIT-6 §8.1: a Martyr has to still be alive to be standing in front
+         * of somebody. At -0.15 they died on day 3.86, which is before most of
+         * the run's protect beats exist to be taken — the archetype was
+         * spending itself before it had anybody to spend itself on.
+         */
+        caution: 0.05,
         stanceBias: { Nursing: 1.2, Defensive: 0.6, Evasive: -0.5 },
         objectiveBias: { protect: 0.8 },
-        targetPreference: 'strongest',
+        /*
+         * AUDIT-6 §8.1: `strongest` with `aggression: -0.1` meant a Martyr
+         * picked the one fight they could not win and then declined to start
+         * it. `mostWounded` is the truer reading and the one the description
+         * already gives: a Martyr does not go looking for the biggest tribute
+         * in the arena, they put themselves between an ally and whoever is
+         * about to finish them — which is nearly always somebody already hurt.
+         */
+        targetPreference: 'mostWounded',
         riskCurve: 'front-loaded',
         signature: 'martyrOffer',
         hatesArchetypes: ['captor', 'mercenary'],
@@ -616,10 +758,15 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: 0.1,
         stanceBias: { Scavenging: 0.8, Shadowing: 0.6, Fortified: -0.8 },
         objectiveBias: { reach: 0.4, stalk: 0.3 },
-        targetPreference: 'weakest',
+        // §8.2: an Opportunist does not pick the weakest — they pick whoever is
+        // visibly coming apart in front of them right now.
+        targetPreference: 'mostWounded',
         riskCurve: 'flat',
         signature: 'opportunistTurn',
         hatesArchetypes: ['bellwether'],
+        // §8.2: fear is information, and an Opportunist acts on information
+        // faster than anyone. They are afraid and it makes them quicker.
+        fearScale: 1.1,
         tagline: 'Something will come up.',
         targetDraw: 0.5,
     },
@@ -635,10 +782,15 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: 0.1,
         stanceBias: { Hunting: 1.0, Shadowing: 0.7, Patrolling: 0.5 },
         objectiveBias: { hunt: 0.5, stalk: 0.4 },
-        targetPreference: 'nearest',
+        // §8.2: a Tracker follows the trail everyone is talking about, because
+        // that is the one worth following.
+        targetPreference: 'mostFamous',
         riskCurve: 'late-blooming',
         signature: 'trackerRead',
         hatesArchetypes: ['ghost'],
+        // §8.2: a Tracker knows precisely where everybody is, which is the
+        // difference between dread and a map.
+        fearScale: 0.8,
         tagline: 'You went that way.',
         targetDraw: 1.5,
     },
@@ -646,21 +798,245 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'confessor',
         name: 'Confessor',
         description: 'Wins by being the person nobody can justify killing. Unarmed by choice and never alone for long.',
-        statBias: { charisma: 3 },
+        /*
+         * AUDIT-6 §8.1: three points of charisma and nothing else was the whole
+         * problem. Charisma buys sponsors, alliances and the plea below — none
+         * of which is any use in the fight the convergence forces on everybody
+         * — so the Confessor reliably reached the endgame (4.7 days, third
+         * longest in the game) and reliably lost it, at 2.4% the worst win rate
+         * on the board.
+         *
+         * The willpower is not a combat stat either, and that is the point: it
+         * is what keeps them upright and deciding when the resolve system would
+         * otherwise have them put their weapons down. The archetype still
+         * cannot fight. It can now still be standing.
+         */
+        statBias: { charisma: 3, willpower: 2 },
         preferredTraits: ['Pacifist', 'Softhearted', 'Peacemaker', 'Charismatic'],
         aggression: -0.35,
         allianceAffinity: 0.45,
         treachery: -0.3,
         caution: 0.2,
-        stanceBias: { Defensive: 0.6, Aggressive: -1.2, Evasive: 0.2 },
+        /*
+         * AUDIT-6 §8.1: 2.37%, the lowest in the game, and `Aggressive: -1.2`
+         * was why. The convergence drives whoever is left into one sector and
+         * makes them settle it; a tribute who is barred from pressing cannot
+         * finish, so a Confessor's run ended the same way every time.
+         *
+         * The refusal is still the character — this is much the strongest
+         * negative on the board — but it is now a reluctance rather than a
+         * prohibition, and `Desperate` is the release valve. A Confessor who
+         * has run out of people to talk to is the most frightening version of
+         * themselves, and that is a beat the archetype could never reach.
+         */
+        stanceBias: { Defensive: 0.6, Aggressive: -0.4, Evasive: 0.2, Desperate: 0.8 },
         objectiveBias: { protect: 0.5, survive: 0.4 },
         targetPreference: 'nearest',
-        riskCurve: 'flat',
+        // §8.1: as with the Underdog — the archetype's whole argument is that
+        // it is still standing at the end, so its caution has to come off then.
+        riskCurve: 'late-blooming',
         signature: 'confessorPlea',
         hatesArchetypes: ['zealot', 'beast'],
         tagline: 'Nobody wants to be the one who did it.',
         targetDraw: -1.5,
         fearScale: 0.8,
+    },
+
+    /*
+     * ---- AUDIT-6 §12.5 ----
+     *
+     * The audit's condition for adding any of these was that the draw
+     * distribution be flattened first: six new archetypes on top of a table
+     * where eight of twenty-three already drew too few entrants to guard would
+     * have bought variety by making the balance unmeasurable. §8.1 did that,
+     * so these land on a flat baseline and every archetype still clears the
+     * guard sample.
+     */
+
+    /**
+     * The one who picks a doorway and makes it cost something. The `wait`
+     * objective and the `Patrolling` stance both existed and neither was any
+     * archetype's first choice, so the game could express "holding the ground
+     * worth watching" and no tribute was ever characterised by it.
+     */
+    warden: {
+        id: 'warden',
+        name: 'Warden',
+        description: 'Finds the one way through and stands in it. Does not chase, does not hide — decides where the arena is closed and makes that true.',
+        statBias: { endurance: 2, strength: 1, agility: -1 },
+        preferredTraits: ['Steadfast', 'Shield-Wise', 'Broad-Backed', 'Stone-Faced'],
+        aggression: 0.05,
+        allianceAffinity: 0.1,
+        treachery: -0.15,
+        caution: 0.15,
+        stanceBias: { Patrolling: 1.0, Fortified: 0.8, Defensive: 0.4 },
+        objectiveBias: { wait: 0.7, hold: 0.5 },
+        // Whoever walks into the doorway is who they fight. It is the only
+        // target preference that is really a property of the ground.
+        targetPreference: 'nearest',
+        riskCurve: 'flat',
+        signature: 'wardenLine',
+        hatesArchetypes: ['opportunist'],
+        // A tribute standing in the open on purpose has already decided about
+        // the thing coming toward them.
+        fearScale: 0.75,
+        tagline: 'Not through here.',
+        targetDraw: 0.5,
+    },
+
+    /**
+     * The one who tells the arena what the arena just did. Reads as the
+     * counterpart to the Tracker: the Tracker finds out where somebody is, the
+     * Herald makes sure everybody knows.
+     */
+    herald: {
+        id: 'herald',
+        name: 'Herald',
+        description: 'Keeps the count and says it out loud. Survives by being the person everyone would rather hear from than kill.',
+        statBias: { charisma: 2, intelligence: 1, strength: -1 },
+        preferredTraits: ['Showman', 'Silver-Tongued', 'Crowd-Pleaser', 'Witness'],
+        aggression: -0.1,
+        allianceAffinity: 0.3,
+        treachery: -0.05,
+        caution: 0.2,
+        stanceBias: { Evasive: 0.6, Patrolling: 0.5, Defensive: 0.3 },
+        objectiveBias: { wait: 0.5, reach: 0.45 },
+        // They go where the story is, and the story is whoever the arena is
+        // already talking about.
+        targetPreference: 'mostFamous',
+        riskCurve: 'flat',
+        signature: 'heraldCall',
+        tagline: 'You will want to hear this.',
+        // Useful to everybody and dangerous to nobody, right up until there is
+        // nobody left to be useful to.
+        targetDraw: 0.5,
+        fearScale: 1.0,
+    },
+
+    /**
+     * The one who will not strike first and has to live with what that costs.
+     * Distinct from the Confessor, who talks their way out, and the Martyr,
+     * who spends themselves on somebody else: the Penitent's whole position is
+     * a refusal, and the engine has to make the refusal expensive.
+     */
+    penitent: {
+        id: 'penitent',
+        name: 'Penitent',
+        description: 'Came here having already decided what they will not do. Tends the hurt, takes the hit, and does not open the fight.',
+        statBias: { endurance: 2, charisma: 1, strength: -1 },
+        preferredTraits: ['Pacifist', 'Merciful', 'Devout', 'Softhearted'],
+        aggression: -0.3,
+        allianceAffinity: 0.25,
+        treachery: -0.3,
+        caution: 0.1,
+        stanceBias: { Nursing: 0.9, Evasive: 0.6, Defensive: 0.3 },
+        objectiveBias: { survive: 0.5, protect: 0.45 },
+        targetPreference: 'nearest',
+        riskCurve: 'escalating',
+        signature: 'penitentVow',
+        hatesArchetypes: ['beast', 'mercenary'],
+        // Nothing is dulled for them. That is rather the point.
+        fearScale: 1.3,
+        tagline: 'Not by my hand.',
+        targetDraw: -2,
+    },
+
+    /**
+     * The one who makes food out of nothing. The Scavenger takes what the dead
+     * left; the Forager never needed anybody to die first, which is a different
+     * character and, with `butchery` and `foraging` now both read by the
+     * engine, a different set of numbers.
+     */
+    forager: {
+        id: 'forager',
+        name: 'Forager',
+        description: 'Never went hungry at home either. Knows which half of a plant is dinner and which half is a funeral, and feeds whoever is standing nearby.',
+        statBias: { intelligence: 2, endurance: 1, strength: -1 },
+        preferredTraits: ['Herbalist', 'Gut-Wise', 'Butcher', 'Deep-Rooted'],
+        aggression: -0.2,
+        allianceAffinity: 0.25,
+        treachery: -0.1,
+        caution: 0.25,
+        stanceBias: { Scavenging: 0.9, Nursing: 0.4, Defensive: 0.3 },
+        objectiveBias: { hold: 0.5, survive: 0.4 },
+        targetPreference: 'weakest',
+        riskCurve: 'escalating',
+        signature: 'foragerTable',
+        tagline: 'Sit down. Eat something.',
+        targetDraw: -1.5,
+        fearScale: 1.05,
+    },
+
+    /**
+     * The one who wants a fight and wants it clean. The Career fights because
+     * the pack is winning; the Beast fights whatever is bleeding. The Duellist
+     * fights the best person available, alone, on purpose — which is the one
+     * aggressive shape the table did not have, and the only one whose alliance
+     * affinity is negative *because* of how it fights.
+     */
+    duellist: {
+        id: 'duellist',
+        name: 'Duellist',
+        description: 'Will not take a fight three against one, in either direction. Picks the best left standing and asks them, out loud, for a straight one.',
+        /*
+         * AUDIT-6 §12.5: measured 8.86% at n=1,600 on first landing — the best
+         * in the table. Two physical stats plus a target preference that walks
+         * them into the strongest tribute in the arena should not also be the
+         * safest place to stand. The agility comes off and the field's
+         * attention goes up: calling somebody out in front of the cameras is
+         * the loudest thing a tribute can do, and the arena hears it too.
+         */
+        statBias: { agility: 1, strength: 1, charisma: 1, endurance: -1 },
+        preferredTraits: ['Left-Handed', 'Reach', 'Marksman', 'Dead-Eyed'],
+        aggression: 0.3,
+        allianceAffinity: -0.35,
+        treachery: -0.2,
+        caution: -0.05,
+        stanceBias: { Aggressive: 0.8, Patrolling: 0.5 },
+        objectiveBias: { hunt: 0.55, wait: 0.35 },
+        targetPreference: 'strongest',
+        // They are waiting for the field to be worth the fight.
+        riskCurve: 'late-blooming',
+        signature: 'duellistChallenge',
+        hatesArchetypes: ['career', 'opportunist'],
+        tagline: 'One of us. Not four of you.',
+        targetDraw: 2.5,
+        fearScale: 0.7,
+    },
+
+    /**
+     * The one who makes the debts. The Quartermaster hoards, the Scavenger
+     * collects, the Trickster steals — nobody in the table ran the ledger, and
+     * the debt system was the deepest social mechanic in the game with no
+     * archetype whose character it was.
+     */
+    broker: {
+        id: 'broker',
+        name: 'Broker',
+        description: 'Arrives owing nothing and leaves with everyone owing them. Would rather hold a favour than a knife, and knows exactly what both are worth.',
+        /*
+         * AUDIT-6 §12.5: measured 2.84% at n=1,600, the bottom of the table —
+         * a tribute with no physical stat at all, a `richest` preference that
+         * points them at whoever is best equipped, and enough treachery for
+         * the field to notice. The endurance is what lets them survive being
+         * owed money by somebody dangerous, and nobody hunts the banker first.
+         */
+        statBias: { charisma: 2, intelligence: 1, endurance: 1, strength: -1 },
+        preferredTraits: ['Barterer', 'HardBargain', 'Bookkeeper', 'Broker'],
+        aggression: -0.05,
+        allianceAffinity: 0.2,
+        treachery: 0.2,
+        caution: 0.15,
+        stanceBias: { Evasive: 0.6, Scavenging: 0.5, Shadowing: 0.3 },
+        objectiveBias: { reach: 0.5, protect: 0.35 },
+        // What somebody is carrying is what they can be charged.
+        targetPreference: 'richest',
+        riskCurve: 'escalating',
+        signature: 'brokerTerms',
+        hatesArchetypes: ['zealot'],
+        tagline: 'Everything is worth something to somebody.',
+        targetDraw: -0.5,
+        fearScale: 1.1,
     },
 };
 
@@ -675,69 +1051,99 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
 export type ArchetypeWeights = Partial<Record<ArchetypeId, number>>;
 
 const BASE_WEIGHTS: ArchetypeWeights = {
+    /*
+     * AUDIT-6 §8.1: the draw was 12.6:1 top to bottom, and that was the single
+     * biggest obstacle to balancing anything.
+     *
+     * Measured across 1,600 complete Games: `career` drew 3,227 entrants and
+     * `martyr` drew 210. Eight of the twenty-three archetypes came in under
+     * 500 entrants, which is the threshold `metrics.ts` will not render a
+     * verdict below — so the whole-field spread reported 2.94x in one audit
+     * and 4.35x in the next without a single archetype changing, because the
+     * best and worst rows were whichever rare archetype got lucky. A balance
+     * table nobody can read is not a balance table.
+     *
+     * It was also a content problem. At 0.88% of the draw a Martyr appeared in
+     * roughly one Games in twelve: a full character sheet — stance bias,
+     * objective bias, target preference, risk curve, a once-per-run signature,
+     * a tagline, preferred traits — that most players would never meet.
+     *
+     * So the tiers are gone. Every archetype outside the original seven sits at
+     * 0.8, which puts the whole-field draw at 2.8:1 with nothing under 2.5%,
+     * and leaves the district tables (below) as the thing that decides who a
+     * district actually reaps. The seven keep their 1.0 because they are the
+     * faces a Games is *made* of — a field with no survivalist in it does not
+     * read as a Reaping — but the gap between "common" and "distinctive" is
+     * now a tilt rather than an order of magnitude.
+     *
+     * The earlier reasoning for keeping this tier low is in the git history and
+     * was sound at the time: raising these archetypes diluted the outer
+     * districts with archetypes that lost more often, which pushed Career
+     * victors up against their guard. That is addressed at the source in this
+     * same change — the weakest archetypes get the `targetDraw`, `fearScale`
+     * and `hatesArchetypes` columns they were missing, and Career's all-axis
+     * dominance is trimmed — rather than by keeping them rare enough not to
+     * matter.
+     */
     strategist: 1,
     survivalist: 1,
     protector: 1,
     trickster: 1,
     wildcard: 1,
     underdog: 1,
-    // A2: the eight added archetypes sit at a lower baseline than the original
-    // seven on purpose. They are meant to be *distinctive* rather than common
-    // — an arena with two Beasts and two Ghosts in it stops reading as a
-    // Reaping and starts reading as a bestiary.
-    mercenary: 0.4,
-    zealot: 0.4,
-    medic: 0.4,
-    saboteur: 0.4,
-    // §8.1: at 0.25 the sample was too thin to balance against (n=152 across
-    // 400 runs). Raised to match its peers so the survival-floor work can be
-    // measured rather than guessed at.
-    beast: 0.4,
-    diplomat: 0.4,
-    scholar: 0.4,
-    ghost: 0.4,
-    // Audit 5 §12.4: distinctive rather than common, like the eight above.
-    scavenger: 0.35,
-    captor: 0.3,
-    bellwether: 0.35,
-    confessor: 0.3,
-    /**
-     * §(requests 3): four more, and deliberately rarer than the 0.3-0.4 tier
-     * above them. `DISTRICT_ARCHETYPE_WEIGHTS` pushes Career districts hard
-     * toward `career`, so every point of *global* weight added here lands
-     * almost entirely on the outer eight — at 0.35 each the four of them
-     * diluted the outer districts' rolls enough to move Career victors from
-     * 55.7% to 57.1% at n=400, against a 57% guard. At 0.2 they are still a
-     * face a player meets regularly across a few runs, and the same measure
-     * reads 51.8%.
+    /*
+     * `career` is deliberately absent, as it always has been: it has no
+     * baseline at all and exists only where `DISTRICT_ARCHETYPE_WEIGHTS` says a
+     * district trains for it. That is what stops District 9 reaping a Career,
+     * and it is load-bearing — adding a base weight here put career at the top
+     * of the whole-field draw at 9.1%, which is not what a Career is.
      */
-    quartermaster: 0.2,
-    martyr: 0.18,
-    opportunist: 0.2,
-    tracker: 0.2,
+    mercenary: 0.8,
+    zealot: 0.8,
+    medic: 0.8,
+    saboteur: 0.8,
+    beast: 0.8,
+    diplomat: 0.8,
+    scholar: 0.8,
+    ghost: 0.8,
+    scavenger: 0.8,
+    captor: 0.8,
+    bellwether: 0.8,
+    confessor: 0.8,
+    quartermaster: 0.8,
+    martyr: 0.8,
+    opportunist: 0.8,
+    tracker: 0.8,
+    // §12.5.
+    warden: 0.8,
+    herald: 0.8,
+    penitent: 0.8,
+    forager: 0.8,
+    duellist: 0.8,
+    broker: 0.8,
 };
 
 /** Career districts train for it; everyone else is shaped by their industry. */
 export const DISTRICT_ARCHETYPE_WEIGHTS: Record<number, ArchetypeWeights> = {
-    1:  { career: 7, trickster: 1.5, strategist: 1, diplomat: 1.2 },
-    2:  { career: 8, protector: 1.5, wildcard: 1, zealot: 1.5 },
-    3:  { strategist: 4, trickster: 2, underdog: 1.5, saboteur: 1.5, scholar: 1.5 },
-    4:  { career: 6, survivalist: 2, protector: 1.5, medic: 1.2 },
-    5:  { strategist: 2.5, trickster: 2, wildcard: 1.5, mercenary: 1.5, scholar: 1.5 },
-    6:  { wildcard: 2.5, underdog: 2, trickster: 1.5, mercenary: 1.5, ghost: 1.5 },
-    7:  { protector: 2.5, survivalist: 2, wildcard: 1.5, beast: 1.2 },
-    8:  { underdog: 2.5, trickster: 2, protector: 1.5, saboteur: 1.5 },
-    9:  { survivalist: 2.5, underdog: 2, protector: 1.5, ghost: 1.5 },
-    10: { protector: 2.5, survivalist: 2, wildcard: 1.5, beast: 1.2 },
-    11: { survivalist: 3.5, underdog: 2.5, protector: 1.5, zealot: 1.2, medic: 1.5 },
-    12: { survivalist: 3, underdog: 3, trickster: 1.5, diplomat: 1.2, ghost: 1.5 },
+    1:  { career: 7, trickster: 1.5, strategist: 1, diplomat: 1.2, herald: 1.2, duellist: 1.2 },
+    2:  { career: 8, protector: 1.5, wildcard: 1, zealot: 1.5, duellist: 1.5, warden: 1.2 },
+    3:  { strategist: 4, trickster: 2, underdog: 1.5, saboteur: 1.5, scholar: 1.5, broker: 1.2 },
+    4:  { career: 6, survivalist: 2, protector: 1.5, medic: 1.2, forager: 1.5 },
+    5:  { strategist: 2.5, trickster: 2, wildcard: 1.5, mercenary: 1.5, scholar: 1.5, broker: 1.5 },
+    6:  { wildcard: 2.5, underdog: 2, trickster: 1.5, mercenary: 1.5, ghost: 1.5, broker: 1.2 },
+    7:  { protector: 2.5, survivalist: 2, wildcard: 1.5, beast: 1.2, warden: 1.5, forager: 1.2 },
+    8:  { underdog: 2.5, trickster: 2, protector: 1.5, saboteur: 1.5, broker: 1.2 },
+    9:  { survivalist: 2.5, underdog: 2, protector: 1.5, ghost: 1.5, forager: 2 },
+    10: { protector: 2.5, survivalist: 2, wildcard: 1.5, beast: 1.2, forager: 1.5, warden: 1.2 },
+    11: { survivalist: 3.5, underdog: 2.5, protector: 1.5, zealot: 1.2, medic: 1.5, forager: 2, penitent: 1.5 },
+    12: { survivalist: 3, underdog: 3, trickster: 1.5, diplomat: 1.2, ghost: 1.5, penitent: 1.5, herald: 1.2 },
     // §1.1: the expanded Games. Districts 13-16 previously had no entry at all,
     // so they fell through to the bare baseline and could never roll a Career
     // — a documented, slider-reachable configuration with an unwritten cast.
-    13: { survivalist: 3, saboteur: 2.5, strategist: 2, scholar: 1.5 },
-    14: { career: 3, mercenary: 2.5, wildcard: 2, beast: 1.2 },
-    15: { protector: 2.5, medic: 2, underdog: 2, zealot: 1.5 },
-    16: { ghost: 2.5, trickster: 2, survivalist: 2, diplomat: 1.5 },
+    13: { survivalist: 3, saboteur: 2.5, strategist: 2, scholar: 1.5, warden: 2, penitent: 1.2 },
+    14: { career: 3, mercenary: 2.5, wildcard: 2, beast: 1.2, duellist: 2, broker: 1.2 },
+    15: { protector: 2.5, medic: 2, underdog: 2, zealot: 1.5, penitent: 2, herald: 1.2 },
+    16: { ghost: 2.5, trickster: 2, survivalist: 2, diplomat: 1.5, herald: 2, broker: 1.5 },
 };
 
 /**
@@ -748,12 +1154,12 @@ export const DISTRICT_ARCHETYPE_WEIGHTS: Record<number, ArchetypeWeights> = {
  * rather than something the reader could see in the roster.
  */
 export const CAST_SHAPE_ARCHETYPE_WEIGHTS: Record<string, ArchetypeWeights> = {
-    'career-heavy': { career: 3, zealot: 1, mercenary: 0.8, ghost: -0.2 },
-    'outer-districts': { career: -6, underdog: 1.5, ghost: 1.2, survivalist: 1, saboteur: 0.8 },
+    'career-heavy': { career: 3, zealot: 1, mercenary: 0.8, ghost: -0.2, duellist: 1 },
+    'outer-districts': { career: -6, underdog: 1.5, ghost: 1.2, survivalist: 1, saboteur: 0.8, forager: 1.2, penitent: 0.8 },
     'young-field': { underdog: 2, ghost: 1, protector: 1, beast: -0.15 },
-    'veteran-field': { strategist: 1.5, scholar: 1.2, mercenary: 1, career: 1 },
-    'all-volunteer': { career: 2, zealot: 1.5, protector: 1.2 },
-    'bonded-pairs': { protector: 1.5, medic: 1.2, diplomat: 1 },
+    'veteran-field': { strategist: 1.5, scholar: 1.2, mercenary: 1, career: 1, broker: 1.2, warden: 1 },
+    'all-volunteer': { career: 2, zealot: 1.5, protector: 1.2, duellist: 1.2, herald: 1 },
+    'bonded-pairs': { protector: 1.5, medic: 1.2, diplomat: 1, penitent: 1 },
     'victors-field': { strategist: 1.5, career: 1.5, scholar: 1, beast: 0.5 },
 };
 
@@ -804,6 +1210,22 @@ const COMPATIBLE: Array<[ArchetypeId, ArchetypeId]> = [
     ['mercenary', 'career'],
     ['zealot', 'career'],
     ['ghost', 'survivalist'],
+    // §12.5: what the six new ones are for, socially. The Warden is a wall
+    // somebody else can stand behind; the Forager is the reason a camp holds
+    // together; the Broker is the reason two strangers talk at all.
+    ['warden', 'medic'],
+    ['warden', 'quartermaster'],
+    ['warden', 'protector'],
+    ['forager', 'medic'],
+    ['forager', 'survivalist'],
+    ['forager', 'underdog'],
+    ['herald', 'diplomat'],
+    ['herald', 'bellwether'],
+    ['broker', 'quartermaster'],
+    ['broker', 'scavenger'],
+    ['penitent', 'medic'],
+    ['penitent', 'martyr'],
+    ['duellist', 'zealot'],
 ];
 
 export function archetypeCompatibility(a: ArchetypeId, b: ArchetypeId): number {

@@ -26,14 +26,35 @@ export const LEGACY_EFFECTS: Record<LegacyTier, {
     reputation: number;
     /** Multiplier on the training elite-gate: good coaching shows on the floor. */
     trainingMerit: number;
+    /**
+     * AUDIT-6 §8.5: how much the rest of the field bothers about a tribute from
+     * this district, on the same hunt-scoring scale as the `targetDraw` trait
+     * modifier and the archetype column.
+     *
+     * Every other number in this table was a penalty, so a legacy tier was
+     * purely a statement of how much worse your Games was going to be: two of
+     * three columns negative for `forgotten` and nothing anywhere to trade
+     * against. Measured per entrant (not per victor — the audit's first pass
+     * read share-of-victors and got this badly wrong for districts 13-16, which
+     * enter a quarter as often), the outer districts win 2.0-2.9% against 8.0-
+     * 8.3% for the three Career districts.
+     *
+     * This is the column that gives the bottom of the table something the top
+     * does not have, and it is the one weakness a storied district cannot
+     * train away: the Capitol has a wall of your victors, so the other
+     * twenty-three tributes have heard of you. Nobody has heard of District 9.
+     * Being unwatched is the only edge an unfancied tribute starts with, and it
+     * is exactly the edge the source material gives them.
+     */
+    targetDraw: number;
     /** Description used in the roster and the victor's debrief. */
     blurb: string;
 }> = {
-    storied:   { reputation: 12, trainingMerit: 0.2,  blurb: 'a wall of past victors and a mentor who has stood on the podium' },
-    strong:    { reputation: 7,  trainingMerit: 0.12, blurb: 'a proud record and a mentor who knows exactly what the arena costs' },
-    modest:    { reputation: 2,  trainingMerit: 0.05, blurb: 'a handful of victories and a mentor doing their best' },
-    thin:      { reputation: -3, trainingMerit: 0,    blurb: 'one or two names on the wall and very little else' },
-    forgotten: { reputation: -8, trainingMerit: -0.05, blurb: 'almost nothing — a mentor who barely survived their own Games' },
+    storied:   { reputation: 12, trainingMerit: 0.2,  targetDraw: 3,    blurb: 'a wall of past victors and a mentor who has stood on the podium' },
+    strong:    { reputation: 7,  trainingMerit: 0.12, targetDraw: 2,    blurb: 'a proud record and a mentor who knows exactly what the arena costs' },
+    modest:    { reputation: 2,  trainingMerit: 0.05, targetDraw: 0,    blurb: 'a handful of victories and a mentor doing their best' },
+    thin:      { reputation: -3, trainingMerit: 0,    targetDraw: -1.5, blurb: 'one or two names on the wall and very little else' },
+    forgotten: { reputation: -8, trainingMerit: -0.05, targetDraw: -3,   blurb: 'almost nothing — a mentor who barely survived their own Games, and an arena that has never once been told to watch you' },
 };
 
 export const DISTRICT_LEGACY: Record<number, DistrictLegacy> = {

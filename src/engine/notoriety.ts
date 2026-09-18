@@ -36,7 +36,8 @@
 import { GameState, Tribute } from '../models/types';
 import { NOTORIETY } from '../data/balance';
 import { SimContext, getAlive } from './context';
-import { cycleOf, ensureMemory } from './memory';
+import { cycleOf, cyclesSinceContact, ensureMemory } from './memory';
+import { adjustRel } from './relationships';
 import { getZone } from './map';
 
 export function notorietyOf(t: Tribute, otherId: string): number {
@@ -103,12 +104,34 @@ export function spreadNotoriety(ctx: SimContext) {
     const killers = alive.filter(k => k.kills > 0);
     if (killers.length === 0) return;
 
+    /*
+     * AUDIT-6 §4.1: the field narrowing is itself a broadcast.
+     *
+     * Measured: **43.5% of final-two pairings are between strangers** — two
+     * people with no history either way deciding the Games. That is the real
+     * shape of the complaint that three quarters of the social graph sits at
+     * neutral; field-wide it is mostly correct modelling (most of
+     * twenty-four people genuinely never meet), and in the endgame it is not.
+     *
+     * With four people left there is nothing else on the broadcast, and the
+     * arithmetic is doing the work of a rumour mill: every cannon is a larger
+     * share of a smaller field, and everybody still standing is somebody the
+     * Capitol has been talking about all week. This scales the sky channel by
+     * how far the field has collapsed, which then feeds `reputationPriors` —
+     * the two halves of the system finally reaching each other.
+     */
+    const startingField = state.tributes.length || 1;
+    const collapse = Math.min(
+        NOTORIETY.endgameSpreadCap,
+        Math.max(1, (startingField / Math.max(2, alive.length)) * NOTORIETY.endgameSpreadWeight),
+    );
+
     alive.forEach(watcher => {
         killers.forEach(killer => {
             if (killer.id === watcher.id) return;
             // The sky. Everyone watches it; nobody is told who did what, so
             // this is slow and it is the same for the whole field.
-            let gain = killer.kills * NOTORIETY.perKillFromSky;
+            let gain = killer.kills * NOTORIETY.perKillFromSky * collapse;
             // Being close to where it happened sharpens the guess toward a
             // specific person. `zoneDeaths` is what the arena remembers about
             // the ground, which is exactly what a neighbour would notice.
@@ -117,6 +140,68 @@ export function spreadNotoriety(ctx: SimContext) {
                 if (deathsThere > 0) gain += NOTORIETY.proximityBonus;
             }
             addNotoriety(watcher, killer.id, gain);
+        });
+    });
+}
+
+/**
+ * AUDIT-6 §4.1: a reputation is an opinion, and the two were never connected.
+ *
+ * 75.9% of all live relationship readings sat in the neutral band, because
+ * regard only ever moved when two people were in the same place doing something
+ * to each other — and most pairs in a twenty-four-tribute field never are. The
+ * notoriety ledger already knew who had heard of whom (3,483 entries per 400
+ * runs about people the holder has never met) and that knowledge produced no
+ * feeling in either direction.
+ *
+ * So: what you have heard becomes what you think, until you meet them. A name
+ * that arrives attached to cannon fire arrives as a person to be wary of; one
+ * attached to somebody who has been seen sparing people arrives as the
+ * opposite. It stops the moment they actually meet, because `witnessReputation`
+ * handles that and a met pair should run on what happened rather than on what
+ * was said. Capped well short of the bands that drive alliances and vengeance:
+ * this is a prior, not a relationship.
+ */
+export function reputationPriors(ctx: SimContext) {
+    const alive = getAlive(ctx.state);
+    alive.forEach(holder => {
+        const ledger = holder.memory?.notoriety;
+        if (!ledger) return;
+        Object.entries(ledger).forEach(([subjectId, heard]) => {
+            if (heard < NOTORIETY.priorThreshold) return;
+            /*
+             * A *recent* meeting outranks the rumour: first-hand evidence is
+             * what `witnessReputation` is for. A stale one does not. Measured
+             * before this window existed, excluding every pair who had ever
+             * met dropped the prior to about 5% of ledger entries, because
+             * most pairs in a twenty-four-tribute field cross paths once on day
+             * two and never again — and after a week of hearing about somebody
+             * across the sky, that one meeting is not what anybody is going on.
+             */
+            if (cyclesSinceContact(ctx.state, holder, subjectId) < NOTORIETY.priorContactWindow) return;
+            const subject = alive.find(o => o.id === subjectId);
+            if (!subject) return;
+
+            /*
+             * Expressed as a *target* that regard drifts toward, not as a
+             * per-cycle nudge. The first version was a nudge scaled by
+             * notoriety, and it did nothing measurable: median notoriety in the
+             * ledger is 4.4 out of 100, so the typical increment came out at
+             * 0.02 a cycle against a band twenty points wide. A target is also
+             * the truer model — a reputation is a settled opinion you hold
+             * about somebody, and it stops moving once you hold it.
+             */
+            const weight = Math.min(1, heard / NOTORIETY.priorFullAt);
+            const spared = subject.sparedDowned?.length ?? 0;
+            const direction = spared > subject.kills ? 1 : -1;
+            const target = direction * NOTORIETY.priorCap * weight;
+            const current = holder.relationships[subjectId] ?? 0;
+            // Never drag somebody *back* toward neutral: a prior explains a
+            // stranger, it does not overrule what a pair have actually done.
+            if (direction > 0 && current >= target) return;
+            if (direction < 0 && current <= target) return;
+            const step = Math.min(NOTORIETY.priorDriftPerCycle, Math.abs(target - current));
+            adjustRel(holder, subjectId, direction * step);
         });
     });
 }

@@ -13,6 +13,7 @@
  *   npm run test:metrics
  */
 import { generateTributes } from '../src/engine/generator';
+import { resolveArenaForRun } from '../src/engine/arenaSetup';
 import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
@@ -37,10 +38,12 @@ const configs: GameConfig[] = [
 ];
 
 function start(seed: string, arenaId: string, config: GameConfig): GameState {
-    const arena = arenaId.startsWith('procedural') ? generateArena(seed) : ARENAS.find(a => a.id === arenaId)!;
     // REPLAY-01: measure the game the player actually gets, which is their
     // config multiplied through this year's announced temperament.
     const gamesProfile = gamesProfileFor(seed);
+    // AUDIT-6 §1.3: off-season skins are balance-affecting and were reachable
+    // from no check at all. This is the store's own resolver.
+    const arena = resolveArenaForRun(seed, arenaId, gamesProfile);
     const resolved = configForProfile(config, gamesProfile);
     const tributes = generateTributes(seed, resolved, arena.zones[0].name, gamesProfile.castShape);
     return {
@@ -142,6 +145,17 @@ let sanityFloorSamples = 0, sanityMidSamples = 0;
 let profSamples = 0, profTotal = 0, profMax = 0;
 // Social systems: the ones the design review measured directly.
 let runsWithLovers = 0, loverDaySum = 0, loverRuns = 0;
+/*
+ * AUDIT-6 §4.1: whether the last two know each other.
+ *
+ * The audit's headline was that 75.9% of all live relationship readings sit in
+ * the neutral band. Field-wide that is mostly correct modelling — most of
+ * twenty-four people never meet — and the number that actually matters is this
+ * one: measured at **43.5%**, nearly half of all Games were decided between two
+ * people with no regard for each other in either direction.
+ */
+let finalTwoSamples = 0, finalTwoStrangers = 0;
+const STRANGER_BAND = 20;
 let vengeanceSworn = 0, betrayals = 0;
 const allianceSizeHistogram: Record<number, number> = {};
 let organicTrios = 0;
@@ -212,6 +226,13 @@ for (let i = 0; i < RUNS; i++) {
         state = sim.getState();
         if (state.phase === 'day' || state.phase === 'night') {
             sampleBoard(state.tributes);
+            const standing = state.tributes.filter(t => t.status === 'alive');
+            if (standing.length === 2) {
+                const [a, b] = standing;
+                finalTwoSamples++;
+                const known = Math.max(Math.abs(a.relationships[b.id] ?? 0), Math.abs(b.relationships[a.id] ?? 0));
+                if (known < STRANGER_BAND) finalTwoStrangers++;
+            }
             const counts = new Map<string, number>();
             state.tributes.forEach(t => {
                 if (t.status !== 'alive' || !t.allianceId) return;
@@ -310,6 +331,18 @@ interface Indicator {
     goalMet?: (v: number) => boolean;
     baseline: string;
     fmt: (v: number) => string;
+    /**
+     * AUDIT-6 §12.5: when the population behind an indicator is too small to
+     * guard, the indicator reports and does not vote.
+     *
+     * Adding six archetypes made this real rather than theoretical. The three
+     * archetype rows read off `guardable()`, and at 400 runs across 29
+     * archetypes *nothing* clears GUARD_MIN_SAMPLE — so `worstArchetypeRate`
+     * fell back to 0 and failed a `>= 2.6%` guard that no measurement had
+     * been taken for. A guard with an empty sample behind it was asserting
+     * about nothing.
+     */
+    judgeable?: () => boolean;
 }
 
 const asPct = (v: number) => `${(v * 100).toFixed(1)}%`;
@@ -414,32 +447,46 @@ const indicators: Indicator[] = [
         // 4.6x the worst archetype; Strategist at 2.56% was a flavour label.
         label: 'archetype win-rate spread (best/worst)',
         value: archetypeSpread,
-        guard: v => v <= 4.6,
-        guardText: '<= 4.6',
+        /*
+         * AUDIT-6 §8.1: ratcheted after the draw was flattened. The old bound
+         * was set when eight of twenty-three archetypes drew under 500 entrants
+         * at n=1,600 and the best/worst rows were therefore whichever rare
+         * archetype got lucky — the same commit measured 2.94x and 4.35x in two
+         * consecutive audits without an archetype changing. Every archetype now
+         * draws 760+ at n=1,600, so this number finally means something and can
+         * be held to.
+         */
+        guard: v => v <= 3.4,
+        guardText: '<= 3.4',
         goal: '<= 2.3',
         goalMet: v => v <= 2.3,
         baseline: '4.6',
         fmt: v => `${v.toFixed(2)}x`,
+        judgeable: () => archetypeGuardRates.length >= 2,
     },
     {
         label: 'worst archetype win rate',
         value: worstArchetypeRate,
-        guard: v => v >= 0.02,
-        guardText: '>= 2.0%',
+        // §8.1: ratcheted with the spread above. Measured 3.02% at n=1,600.
+        guard: v => v >= 0.026,
+        guardText: '>= 2.6%',
         goal: '>= 3.5%',
         goalMet: v => v >= 0.035,
         baseline: '2.56%',
         fmt: v => `${(v * 100).toFixed(2)}%`,
+        judgeable: () => archetypeGuardRates.length > 0,
     },
     {
         label: 'best archetype win rate',
         value: bestArchetypeRate,
-        guard: v => v <= 0.13,
-        guardText: '<= 13%',
+        // §8.1: ratcheted. Measured 9.02% at n=1,600, 7.38% at n=400.
+        guard: v => v <= 0.102,
+        guardText: '<= 10.2%',
         goal: '<= 8%',
         goalMet: v => v <= 0.08,
         baseline: '11.8%',
         fmt: v => `${(v * 100).toFixed(2)}%`,
+        judgeable: () => archetypeGuardRates.length > 0,
     },
     {
         // §8b/§8d: reaping-assigned traits only. Earned traits are excluded
@@ -453,6 +500,32 @@ const indicators: Indicator[] = [
         goalMet: v => v <= 2.5,
         baseline: '4.31 measured here (the audit reported 4.3)',
         fmt: v => `${v.toFixed(2)}x`,
+    },
+    {
+        /*
+         * REQUEST: the average length of a Games, which is the one number a
+         * player feels directly and which nothing guarded.
+         *
+         * Measured at 8.45 days before this landed, with the field down to 3.9
+         * alive by day 7 — the arena was finishing the cast before the
+         * Gamemakers ever had to, and the escalation that was supposed to be
+         * the pressure was instead the full stop. The target is ten to
+         * thirteen: long enough that the middle of a run is a middle rather
+         * than a slide, short enough that a reader can hold the whole
+         * chronicle in their head.
+         *
+         * Guarded as a band in both directions. A run-length indicator with
+         * only a floor is how a simulation drifts into a fortnight of two
+         * people not finding each other.
+         */
+        label: 'average run length (days)',
+        value: totalDays / runs,
+        guard: v => v >= 10 && v <= 13,
+        guardText: '10-13',
+        goal: '10.5-12',
+        goalMet: v => v >= 10.5 && v <= 12,
+        baseline: '8.5',
+        fmt: v => v.toFixed(2),
     },
     {
         // REPLAY-01. Every run used to have the same shape: mean 8.0 days in a
@@ -531,6 +604,55 @@ const indicators: Indicator[] = [
         goal: '>= 40%',
         goalMet: v => v >= 0.40,
         baseline: '25.7%',
+        fmt: asPct,
+    },
+    {
+        /*
+         * AUDIT-6 §3.1: the rarest stance in the roster, as a share of all live
+         * tribute-cycles.
+         *
+         * Ten stances exist and five of them were under 3%, with Nursing at
+         * 0.8% and Patrolling at 0.5% — roughly one tribute-cycle in a hundred
+         * and twenty. Each carries a scorer row, a `minHold`, a blurb and
+         * per-arena conditional action pools, so a stance that never fires is a
+         * large authored surface doing nothing.
+         *
+         * Guarded as a floor on the *minimum* rather than as ten separate
+         * indicators: what matters is that no stance has quietly become
+         * decoration. A stance genuinely meant to be rare can still sit near
+         * the floor; one that has fallen off the board cannot hide.
+         */
+        label: 'rarest stance share',
+        value: (() => {
+            const total = STANCES.reduce((a: number, st: Stance) => a + stanceSamples[st], 0);
+            if (total === 0) return 0;
+            return Math.min(...STANCES.map((st: Stance) => stanceSamples[st] / total));
+        })(),
+        guard: v => v >= 0.01,
+        guardText: '>= 1%',
+        goal: '>= 1.5%',
+        goalMet: v => v >= 0.015,
+        baseline: '0.5%',
+        fmt: asPct,
+    },
+    {
+        /*
+         * AUDIT-6 §4.1: the share of final-two standoffs between strangers.
+         *
+         * Two people with no regard for each other in either direction, deciding
+         * the Games. The convergence runs a recap now — every tribute still
+         * standing is shown what every other one has done, and forms an opinion
+         * on the spot — which took this from 43.5% to 31.5%. The remainder are
+         * runs where the field fell past the convergence band before it could
+         * fire, which is a legitimate shape for a Games to have.
+         */
+        label: 'final-two standoffs between strangers',
+        value: finalTwoSamples === 0 ? 0 : finalTwoStrangers / finalTwoSamples,
+        guard: v => v <= 0.42,
+        guardText: '<= 42%',
+        goal: '<= 30%',
+        goalMet: v => v <= 0.30,
+        baseline: '43.5%',
         fmt: asPct,
     },
     {
@@ -736,8 +858,33 @@ const indicators: Indicator[] = [
         // lower one.
         label: 'deaths from mutts and hazards',
         value: ((deathsByCause['mutts'] ?? 0) + (deathsByCause['arena/hazard'] ?? 0)) / Math.max(1, deaths),
-        guard: v => v >= 0.05 && v <= 0.18,
-        guardText: '5%-18%',
+        /*
+         * AUDIT-6 §7: the ceiling goes 18% to 20%, and the reason is that the
+         * ceiling and the work now disagree.
+         *
+         * It was set when this number was 2.3% and its job was to stop the
+         * arena out-killing the cast. §7 of this audit then asked for the
+         * opposite of what the ceiling assumes: **eight of forty-five arenas
+         * could not produce a death that belonged to them**, and five new
+         * universal deaths and thirty-four arena packs were written to fix it.
+         * The result is 13.2% from arena hazards and 4.9% from mutts, which is
+         * the design goal on the same row (`>= 7%`) being met rather handsomely
+         * and the ceiling being brushed from underneath.
+         *
+         * It was also no longer resolvable at the run count CI uses. The value
+         * reads **17.6% at n=1,600** and 18.0%–18.2% across three n=400 sweeps
+         * of the same commit — so an 18% line failed or passed on which seeds
+         * were drawn, which is the failure mode `GUARD_MIN_SAMPLE` exists to
+         * prevent elsewhere in this file. A guard that fires at random is worse
+         * than no guard, because it trains the reader to re-run it.
+         *
+         * What the ceiling was protecting is still protected, and by a number
+         * with room in it: `deaths caused by another tribute` guards `>= 33%`
+         * and measures **58.3%**. The cast is emphatically still the main cause
+         * of death in this arena.
+         */
+        guard: v => v >= 0.05 && v <= 0.20,
+        guardText: '5%-20%',
         goal: '>= 7%',
         goalMet: v => v >= 0.07,
         baseline: '2.3%',
@@ -812,8 +959,9 @@ const indicators: Indicator[] = [
         // gets them there is a pass of its own.
         label: 'Career victors',
         value: careerVictors / Math.max(1, victors),
-        guard: v => v <= 0.57,
-        guardText: '<= 57%',
+        // §8.1: ratcheted. Measured 52.1% at n=1,600, 47.0% at n=400.
+        guard: v => v <= 0.55,
+        guardText: '<= 55%',
         goal: '<= 45%',
         goalMet: v => v <= 0.45,
         baseline: '76.3% measured (audit reported 40.1%, did not reproduce); 52.7% on main at n=1600 (\u00a79.4 reported 42.9%, did not reproduce)',
@@ -989,11 +1137,19 @@ console.log('\nindicators (guard = regression bound, goal = design intent):');
 let failed = 0;
 let shortOfGoal = 0;
 indicators.forEach(ind => {
+    const judgeable = ind.judgeable ? ind.judgeable() : true;
     const ok = ind.guard(ind.value);
-    if (!ok) failed++;
+    if (judgeable && !ok) failed++;
     const shown = ind.fmt(ind.value);
     const metGoal = ind.goalMet ? ind.goalMet(ind.value) : true;
     const goalNote = ind.goal ? `  goal ${ind.goal}${metGoal ? ' MET' : ' unmet'}` : '';
+    if (!judgeable) {
+        console.log(
+            `  ----  ${ind.label.padEnd(36)} ${shown.padStart(7)}` +
+            `  (no population over ${GUARD_MIN_SAMPLE} entrants at this run count — reported, not guarded)`
+        );
+        return;
+    }
     console.log(
         `  ${ok ? 'PASS' : 'FAIL'}  ${ind.label.padEnd(36)} ${shown.padStart(7)}` +
         `  (was ${ind.baseline}, guard ${ind.guardText}${goalNote})`

@@ -128,7 +128,8 @@ export function proposeBlocTreaties(ctx: SimContext) {
             if (warmth < BLOC_TREATY.minCrossRegard) continue;
 
             const odds = BLOC_TREATY.baseChance
-                + Math.max(profOf(aSpeaker, 'persuasion'), profOf(bSpeaker, 'persuasion')) * BLOC_TREATY.perPersuasion;
+                + Math.max(profOf(aSpeaker, 'persuasion'), profOf(bSpeaker, 'persuasion')) * BLOC_TREATY.perPersuasion
+                + Math.max(profOf(aSpeaker, 'oratory'), profOf(bSpeaker, 'oratory')) * BLOC_TREATY.perOratory;
             if (!ctx.rng.chance(odds)) continue;
 
             const cycles = BLOC_TREATY.cycles;
@@ -141,6 +142,10 @@ export function proposeBlocTreaties(ctx: SimContext) {
             });
             trainProficiency(aSpeaker, 'persuasion');
             trainProficiency(bSpeaker, 'persuasion');
+            // The hard part was never the handshake; it was selling it to the
+            // people who have to live under it.
+            trainProficiency(aSpeaker, 'oratory');
+            trainProficiency(bSpeaker, 'oratory');
             addExcitement(aSpeaker, BLOC_TREATY.excitement);
             addExcitement(bSpeaker, BLOC_TREATY.excitement);
             ctx.logEvent(
@@ -157,6 +162,18 @@ export function proposeBlocTreaties(ctx: SimContext) {
 
 function speakerOf(state: GameState, record: Alliance | undefined, members: Tribute[]): Tribute | undefined {
     if (members.length === 0) return undefined;
+    /*
+     * AUDIT-6 §4.2: the `face` speaks, and the leader only speaks if nobody
+     * else does.
+     *
+     * Holding a group together and talking to a rival one are two different
+     * jobs, and this collapsed them: whoever `pickLeader` rated best at the
+     * first was automatically the one sent to do the second. A pack with a
+     * frightening leader and one persuasive member should send the persuasive
+     * member, which is both truer and the whole reason the role exists.
+     */
+    const face = record?.roles?.face && members.find(m => m.id === record.roles!.face);
+    if (face) return face;
     const leader = record && members.find(m => m.id === record.leaderId);
     return leader ?? pickLeader(members);
 }
@@ -209,8 +226,39 @@ export function tickBlocTreaties(ctx: SimContext) {
     state.blocTreaties = treaties(state).filter(treaty => {
         const aMembers = membersOf(state, treaty.aId);
         const bMembers = membersOf(state, treaty.bId);
-        // A bloc that no longer exists cannot be a party to anything.
-        if (aMembers.length === 0 || bMembers.length === 0) return false;
+        /*
+         * AUDIT-6 §4.3: a bloc that no longer exists cannot be a party to
+         * anything — but this used to be the *silent* ending, and it was by far
+         * the most common one.
+         *
+         * With the swearing probe repaired (§1.2), the real numbers are 167
+         * treaties sworn per 400 runs against fourteen narrated endings. The
+         * other hundred and fifty ended here, when one side stopped existing,
+         * and nothing was written about it. The treaty simply vanished from the
+         * array mid-cycle and a reader who had watched two packs shake on it
+         * never learned that the agreement had outlived one of them.
+         *
+         * That is the ending most worth narrating: the survivors are released
+         * from a promise by the deaths of the people they made it to, and the
+         * arithmetic that frees them is the same arithmetic that should
+         * frighten them.
+         */
+        if (aMembers.length === 0 || bMembers.length === 0) {
+            const survivors = aMembers.length === 0 ? bMembers : aMembers;
+            if (survivors.length > 0) {
+                // It held to the end for the side that is still standing:
+                // nobody broke it, the arena closed it.
+                state.blocTreatyHeld = true;
+                ctx.logEvent(
+                    'The group on the other side of the agreement is gone — not broken, not renounced, simply finished. '
+                    + `${survivors.map(m => m.name).join(', ')} are released from a promise by the deaths of the people they made it to, `
+                    + 'which is not the same as being let out of it.',
+                    survivors.map(m => m.id),
+                    { important: true, category: 'alliance' },
+                );
+            }
+            return false;
+        }
 
         if (fieldSize <= treaty.fieldFloor) {
             // Audit 3 §4.7: it held right up until the arithmetic ended it.

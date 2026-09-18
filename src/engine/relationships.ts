@@ -86,7 +86,11 @@ export function trustHistoryOf(a: Tribute, bId: string): number {
  * negative ones: trust is earned slowly and lost at once.
  */
 export function adjustTrust(a: Tribute, bId: string, delta: number): void {
-    const next = Math.max(-RELATIONSHIPS.trustHistoryMax, Math.min(RELATIONSHIPS.trustHistoryMax, trustHistoryOf(a, bId) + delta));
+    // AUDIT-6 §12.2 `trustGain`: how fast this tribute's trust moves at all.
+    // Applied to the upward direction only — a trait that makes somebody quick
+    // to trust should not also make them quick to stop.
+    const scaled = delta > 0 ? delta * Math.max(0, 1 + traitMod(a, 'trustGain')) : delta;
+    const next = Math.max(-RELATIONSHIPS.trustHistoryMax, Math.min(RELATIONSHIPS.trustHistoryMax, trustHistoryOf(a, bId) + scaled));
     a.trusts = { ...(a.trusts ?? {}), [bId]: Math.round(next * 10) / 10 };
 }
 

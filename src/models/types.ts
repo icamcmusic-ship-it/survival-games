@@ -67,7 +67,18 @@ export type ArchetypeId =
      * to hold a combination of stance bias, objective bias and target
      * preference that nothing already in the table holds.
      */
-    | 'quartermaster' | 'martyr' | 'opportunist' | 'tracker';
+    | 'quartermaster' | 'martyr' | 'opportunist' | 'tracker'
+    /*
+     * AUDIT-6 §12.5: six more, on the same rule the last two batches were held
+     * to — each has to hold a stance/objective/target combination nothing in
+     * the table already holds. Three of them exist because the `wait`
+     * objective and the `Patrolling` and `Nursing` stances were reachable by
+     * the engine and by nobody's character: `wait` was the top objective bias
+     * of zero of twenty-three archetypes, so the one intention in the game
+     * that wants nobody else to arrive was something tributes did only by
+     * accident.
+     */
+    | 'warden' | 'herald' | 'penitent' | 'forager' | 'duellist' | 'broker';
 
 export interface Attributes {
     strength: number;
@@ -185,7 +196,26 @@ export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking
      * modelled per-target, `Feared` is the second-best earned trait, and
      * nothing got better at frightening people.
      */
-    | 'stealth' | 'intimidation';
+    | 'stealth' | 'intimidation'
+    /*
+     * AUDIT-6 §12.4: four more, each splitting an axis that was doing two jobs
+     * or naming a competence the engine had occasions for and no skill behind.
+     *
+     *  - `butchery` — field-dressing a corpse for food. `Butcher`, `Vulture`
+     *    and the `salvage` law all describe it and nothing improved at it.
+     *  - `navigation` — crossing ground efficiently, and finding the ways
+     *    nobody has found. `hidden` edges were discovered on a flat roll, so a
+     *    tribute who had spent a week reading the map was no better at it than
+     *    one who arrived yesterday.
+     *  - `carpentry` — splits from `crafting`: shelters and traps. `crafting`
+     *    keeps repair, so the tribute who can fix a blade and the tribute who
+     *    can build a deadfall stop being the same person by definition.
+     *  - `oratory` — splits from `persuasion`: addressing a *group*.
+     *    `persuasion` is one-to-one, and the bloc treaty — the one mechanic
+     *    where a single tribute's word binds people who are not present — was
+     *    reading the one-to-one skill.
+     */
+    | 'butchery' | 'navigation' | 'carpentry' | 'oratory';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'
@@ -302,6 +332,16 @@ export interface Item {
     capacity?: number;
     /** Makes foul water safe to drink without a fire. */
     purifies?: boolean;
+    /**
+     * AUDIT-6 §6.5: a purifier that is not used up.
+     *
+     * Every `purifies` item was consumed on use, because tablets were the
+     * first one written and `consumeOne` was the only path. A charcoal filter
+     * and a solar still are apparatus, not doses: the whole reason to carry
+     * the heavier thing is that it is still there tomorrow. Read once, at the
+     * foul-water drink in `survival.ts`.
+     */
+    reusable?: boolean;
     /** Turns the night from a handicap into ordinary ground. */
     light?: boolean;
     /** Sleeping warm: the famous parachute. Improves overnight recovery. */
@@ -1189,6 +1229,17 @@ export interface Tribute {
      * is spent as crowd backlash on sponsor trust.
      */
     personaBacklash?: number;
+    /**
+     * AUDIT-6 §10.4: the other half of the bet.
+     *
+     * `personaBacklash` accrued for playing against type and was spent, out
+     * loud, in sponsor money. Living up to the persona accrued excitement and
+     * nothing else — so the persona was a one-way penalty rather than a
+     * wager, and the tribute who spent three minutes promising a short Games
+     * and then delivered one got applause and no parachute. This accrues the
+     * same way and pays out the same way.
+     */
+    personaCredit?: number;
     /** §6.3: the rival they named on air, for 'target-callout'. */
     interviewCalloutId?: string;
     /** §6.4: whose named feast pack they walked away with, if not their own. */
@@ -1351,7 +1402,17 @@ export interface Alliance {
      * expels. Roles already existed; nothing said what having the leader's
      * role actually meant.
      */
-    leaderStyle?: 'democratic' | 'tyrant';
+    /*
+     * AUDIT-6 §4.2: two values for "how is this group run" was the same shape
+     * of problem as two useful roles.
+     *
+     * `absent` is the third, and it is the one the succession data was crying
+     * out for — 6 heirs passed over and 11 groups split in 400 runs, both of
+     * which are what happens when the person nominally in charge has not been
+     * deciding anything. A group with an absent leader holds no hearings,
+     * throws nobody out, and comes apart the first time it matters.
+     */
+    leaderStyle?: 'democratic' | 'tyrant' | 'absent';
     /**
      * §4: what each member's ledger read when the charter was sworn, so
      * 'no-looting-the-fallen' and 'share-intel' catch what somebody did
@@ -1431,7 +1492,30 @@ export interface Faction {
 export type TruceReason = 'mutual-threat' | 'both-wounded' | 'brokered' | 'extortion';
 
 /** §4.4: a job inside an alliance, held by exactly one member. */
-export type AllianceRole = 'quartermaster' | 'scout' | 'muscle' | 'medic';
+/*
+ * AUDIT-6 §4.2: four roles, two of which were near-automatic.
+ *
+ * Measured over 3,384 alliance samples of size two or more: muscle filled 96.5%
+ * of the time and medic 90.8%, against scout at 48.1% and quartermaster at
+ * 46.8%. So "who are you in this group" had effectively two answers — are you
+ * the scout or the quartermaster, or not — and a pack of five looked exactly
+ * like a pack of four with somebody standing behind it.
+ *
+ * Four more, each read at exactly one site that already existed and was being
+ * answered by `pickLeader` or by nobody:
+ *
+ *  - `face` speaks for the group in `parley.ts` and `blocTreaty.ts`. Those both
+ *    used `pickLeader`, which means the person best at holding a group together
+ *    was automatically also the person best at talking to a rival one — two
+ *    quite different jobs collapsed into one.
+ *  - `runner` carries the cache. `contributeToCache` had no owner at all, so a
+ *    group's supplies belonged to everybody and therefore to nobody.
+ *  - `watch` owns the night posting the soak already counts (78 per 400 runs).
+ *  - `keeper` holds the group's debts, which `debts.ts` tracked per-person with
+ *    nobody responsible for them.
+ */
+export type AllianceRole = 'quartermaster' | 'scout' | 'muscle' | 'medic'
+    | 'face' | 'runner' | 'watch' | 'keeper';
 
 /** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
 export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone' | 'split-at-eight'
@@ -1531,6 +1615,15 @@ export interface Trap {
      * standing. They walk around it from then on; everyone else still rolls.
      */
     knownBy?: string[];
+    /**
+     * AUDIT-6 §6.3: whether the point was painted.
+     *
+     * A stake used to require a venom gland, so every stake was poisoned by
+     * definition and six were built in 400 runs. A sharpened point in soft
+     * ground is a stake whether or not anybody had venom to put on it; the
+     * venom is what makes it a *treated* one, and only a treated one poisons.
+     */
+    treated?: boolean;
 }
 
 /**
@@ -2057,6 +2150,28 @@ export interface GameState {
     convergenceDay?: number;
     convergenceZone?: string;
     /**
+     * AUDIT-6 §9.1: the softer convergence, and why there are two.
+     *
+     * Measured: 35.4% of the field dies in the bloodbath and the victor
+     * averages 2.56 kills, so a typical run is one large opening slaughter and
+     * then eight days in which twelve people mostly do not meet. The hard
+     * convergence answers that at six alive, which is the last third of the
+     * run; the middle of it had nothing.
+     *
+     * The muster is a *reason* to meet rather than a forced merge: the Capitol
+     * puts a standing price on one sector for a few cycles, everybody is told
+     * where it is, and anybody who wants the money has to go and stand in it
+     * with whoever else wanted the money. Nothing is closed, nothing is
+     * herded, and a tribute who would rather keep hiding may.
+     */
+    musterZone?: string;
+    /** Cycle the price comes off the sector again. */
+    musterUntilCycle?: number;
+    /** Day it was called, so it fires once per run. */
+    musterDay?: number;
+    /** How many payouts it made, for the soak and the record book. */
+    musterPayouts?: number;
+    /**
      * §24 (requests): how many tributes the arena itself has killed — mutts,
      * hazards, climate, zone effects and set pieces, but never another
      * tribute. Read by the soft cap in `applyDamage`, which starts sparing
@@ -2074,6 +2189,22 @@ export interface GameState {
     firedWildcards?: number[];
     /** The storm currently crossing the arena, if any. See `engine/weatherFront.ts`. */
     weatherFront?: WeatherFront;
+    /**
+     * AUDIT-6 §11.2: the longest performed bond anybody sustained this run.
+     *
+     * 'The Long Con' and 'Performed to the End' both read the *victor's*
+     * `maxPerformingStreak`, and the conjunction is near-unreachable: a
+     * performance only starts from a showmance, only one of the pair performs,
+     * `sniffPerformances` can end it at any cycle, and then that specific
+     * person has to win. Measured across the whole field, 39 of 46 performers
+     * reach a streak of two or more — but only 3% of victors do, so a 500-run
+     * sample sees it or does not on a coin flip, which is how an entry becomes
+     * a promise the game cannot keep.
+     *
+     * The act is the achievement. Whether the person running it also happened
+     * to win is a second, unrelated lottery.
+     */
+    longestPerformance?: number;
     /** Alliance id currently holding the Cornucopia. See `engine/zoneControl.ts`. */
     cornucopiaHolder?: string;
     /** §10.1: the longest unbroken Cornucopia hold this run, in cycles. */

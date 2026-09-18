@@ -175,7 +175,12 @@ export function processAlliances(ctx: SimContext) {
                 checkDeath(ctx, m, 'Struck down for defying the Gamemakers\' Quell');
             });
             ctx.logEvent(
-                `The Gamemakers make an example of the pack still travelling ${members.length} strong. This year, that costs them.`,
+                // §22: the cast of this line is the whole pack, so the line
+                // says who they are. It was the single worst offender in
+                // `check-unnamed` — thirteen hits across forty runs, all of
+                // them a group of named people described as a number.
+                `The Gamemakers make an example of the pack still travelling ${members.length} strong: `
+                + `${members.map(m => m.name).join(', ')}. This year, that costs them.`,
                 members.map(m => m.id),
                 { important: true, category: 'gamemaker' }
             );

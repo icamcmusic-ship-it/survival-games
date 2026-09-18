@@ -214,7 +214,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                     type="button"
                     onClick={() => window.print()}
                     className="btn btn-sm btn-ghost print-hide ml-auto"
-                    title="Print the record book, or save it as a PDF"
+                    aria-label="Print — the record book, or save it as a PDF"
                 >
                     <Printer className="w-3.5 h-3.5" /> Print
                 </button>

@@ -4,6 +4,7 @@ import { severRandomEdge } from './zoneEffects';
 import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING, MEMORY } from '../data/balance';
 import { earnTrait } from './earnedTraits';
 import { SimContext, getAlive } from './context';
+import { notorietyOf } from './notoriety';
 import { getRel, adjustMutual, adjustRel } from './relationships';
 import { fearOf, addFear } from './fear';
 import { addExcitement } from './audience';
@@ -17,6 +18,9 @@ import { addZoneThreat } from './memory';
 import { hasTruce } from './parley';
 import { ARCHETYPE_SIGNATURE_TEXTS } from '../data/flavorText';
 import { loseSanity } from './sanityBands';
+import { addNotoriety } from './notoriety';
+import { incurDebt } from './debts';
+import { chokepointByName } from '../models/types';
 
 /**
  * A2: the behavioural half of an archetype.
@@ -87,6 +91,28 @@ export function targetPreferenceScore(t: Tribute, candidate: Tribute, hopsAway: 
             return Math.min(ARCHETYPE_HOOKS.richestCap, inventoryValue(candidate) * ARCHETYPE_HOOKS.richestPerValue);
         case 'rival':
             return Math.max(0, -getRel(t, candidate.id)) * w;
+        /*
+         * §8.2: what an opportunist reads. Not "who has the least health" —
+         * that is `weakest` and it cannot tell a tribute who was never touched
+         * from one who has been patched up four times — but "who is visibly
+         * coming apart": open wounds, bleeding, and being on the ground.
+         */
+        case 'mostWounded': {
+            const wounds = Object.values(candidate.injuries).filter(Boolean).length;
+            return wounds * ARCHETYPE_HOOKS.woundedPerInjury
+                + (candidate.injuries.bleeding ? ARCHETYPE_HOOKS.woundedBleedingBonus : 0)
+                + (candidate.downed ? ARCHETYPE_HOOKS.woundedDownedBonus : 0);
+        }
+        /*
+         * §8.2: some tributes pick by reputation rather than by opportunity —
+         * the counterpart to `targetDraw` from the hunter's side of the
+         * clearing. Notoriety is what the arena is saying about somebody;
+         * kills and training score are what it is saying it about.
+         */
+        case 'mostFamous':
+            return notorietyOf(t, candidate.id) * ARCHETYPE_HOOKS.famousPerNotoriety
+                + candidate.kills * ARCHETYPE_HOOKS.famousPerKill
+                + candidate.trainingScore * ARCHETYPE_HOOKS.famousPerTrainingPoint;
         default:
             return 0;
     }
@@ -492,6 +518,147 @@ const SIGNATURES: Record<string, Signature> = {
         adjustRel(other, t.id, ARCHETYPE_HOOKS.accordGratitude);
         t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * 2);
+        return true;
+    },
+
+    // ---- AUDIT-6 §12.5: the six new archetypes' beats ----
+
+    /**
+     * Warden: names a chokepoint and stands in it. The only signature that
+     * hands its actor a `wait` objective, which is the one intention in the
+     * game that wants nobody else to arrive.
+     */
+    wardenLine: (ctx, t) => {
+        // A doorway, or failing that the ground they are already holding: the
+        // beat is the declaration, not the terrain.
+        const choke = chokepointByName(t.zone);
+        if (!choke && (t.zoneHeld ?? 0) < ARCHETYPE_HOOKS.wardenHeldCycles) return false;
+        say(ctx, t, 'wardenLine', [t.id]);
+        t.objective = { kind: 'wait', zone: t.zone, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.wardenWaitCycles };
+        // Everybody else files it under "somewhere to not go".
+        getAlive(ctx.state)
+            .filter(o => o.id !== t.id)
+            .forEach(o => {
+                addZoneThreat(ctx.state, o, t.zone, ARCHETYPE_HOOKS.wardenZoneThreat);
+                addFear(o, t.id, ARCHETYPE_HOOKS.wardenFear, t);
+            });
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /**
+     * Herald: reads the count out to whoever is left. Every survivor learns
+     * something about every name still in the arena — the one signature whose
+     * whole effect is on other people's information rather than their mood.
+     */
+    heraldCall: (ctx, t) => {
+        const alive = getAlive(ctx.state);
+        const dead = ctx.state.tributes.filter(o => o.status === 'dead').length;
+        if (dead < ARCHETYPE_HOOKS.heraldMinDead) return false;
+        const audience = alive.filter(o => o.zone === t.zone && o.id !== t.id);
+        if (audience.length === 0) return false;
+        const loudest = alive
+            .filter(o => o.id !== t.id)
+            .sort((a, b) => b.kills - a.kills)[0];
+        say(ctx, t, 'heraldCall', [t.id, ...audience.map(a => a.id)], {
+            dead: String(dead),
+            left: String(alive.length),
+            loudest: loudest ? loudest.name : t.name,
+        });
+        audience.forEach(o => {
+            alive.filter(x => x.id !== o.id).forEach(x => addNotoriety(o, x.id, ARCHETYPE_HOOKS.heraldNotoriety));
+            adjustRel(o, t.id, ARCHETYPE_HOOKS.heraldRegard);
+        });
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * 2);
+        return true;
+    },
+
+    /**
+     * Penitent: says the thing out loud, to somebody who could kill them, and
+     * then has to live inside it. Costs sanity — a vow is only a vow if
+     * keeping it is expensive — and buys the regard of everybody who heard.
+     */
+    penitentVow: (ctx, t) => {
+        const witnesses = getAlive(ctx.state).filter(o => o.zone === t.zone && o.id !== t.id);
+        if (witnesses.length < ARCHETYPE_HOOKS.penitentWitnesses) return false;
+        say(ctx, t, 'penitentVow', [t.id, ...witnesses.map(w => w.id)]);
+        witnesses.forEach(w => {
+            adjustRel(w, t.id, ARCHETYPE_HOOKS.penitentRegard);
+            witnessKindness(ctx, t, w);
+        });
+        // What it costs: everybody now knows the one thing they will not do.
+        loseSanity(t, ARCHETYPE_HOOKS.penitentSanity);
+        earnTrait(ctx, t, 'SwornOff');
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /**
+     * Forager: sets a table. Feeds everyone standing in the zone, including
+     * people who have no business being fed by them, which is the entire
+     * character in one beat.
+     */
+    foragerTable: (ctx, t) => {
+        const guests = getAlive(ctx.state).filter(o => o.zone === t.zone && o.id !== t.id);
+        if (guests.length === 0) return false;
+        if (t.vitals.hunger < ARCHETYPE_HOOKS.foragerMinHunger) return false;
+        say(ctx, t, 'foragerTable', [t.id, ...guests.map(g => g.id)], { guests: guests.map(g => g.name).join(', ') });
+        [t, ...guests].forEach(o => {
+            o.vitals.hunger = Math.max(0, o.vitals.hunger - ARCHETYPE_HOOKS.foragerFeed);
+            clampTribute(o);
+        });
+        guests.forEach(g => {
+            adjustRel(g, t.id, ARCHETYPE_HOOKS.foragerRegard);
+            witnessKindness(ctx, t, g);
+            incurDebt(g, t, ARCHETYPE_HOOKS.foragerDebt, ctx);
+        });
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /**
+     * Duellist: names the best tribute still standing and asks for a straight
+     * one. Unlike every other hunt signature, the challenge is public — the
+     * whole field hears who was called out, and so does the called-out.
+     */
+    duellistChallenge: (ctx, t) => {
+        const rivals = others(ctx, t).filter(o => !o.downed);
+        if (rivals.length === 0) return false;
+        if (getAlive(ctx.state).length > ARCHETYPE_HOOKS.duellistFieldMax) return false;
+        const mark = rivals.sort((a, b) =>
+            (b.health + b.trainingScore * ARCHETYPE_HOOKS.duellistTrainingWeight)
+            - (a.health + a.trainingScore * ARCHETYPE_HOOKS.duellistTrainingWeight))[0];
+        say(ctx, t, 'duellistChallenge', [t.id, mark.id], { mark: mark.name });
+        t.objective = { kind: 'hunt', targetId: mark.id, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
+        // Being named in front of the cameras is its own kind of pressure, and
+        // it cuts both ways: the Duellist cannot take it back either.
+        addFear(mark, t.id, ARCHETYPE_HOOKS.duellistFear, t);
+        getAlive(ctx.state).forEach(o => addNotoriety(o, t.id, ARCHETYPE_HOOKS.duellistNotoriety));
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * 2);
+        return true;
+    },
+
+    /**
+     * Broker: writes the terms down. Hands over something portable and takes a
+     * debt for it — the only signature that creates an obligation rather than
+     * a truce, a fear or a mood.
+     */
+    brokerTerms: (ctx, t) => {
+        const client = others(ctx, t)
+            .filter(o => o.zone === t.zone && o.inventory.length < t.inventory.length)
+            .sort((a, b) => b.vitals.hunger - a.vitals.hunger)[0];
+        if (!client) return false;
+        const idx = t.inventory.findIndex(i => i.type !== 'weapon');
+        if (idx < 0) return false;
+        const goods = t.inventory[idx];
+        say(ctx, t, 'brokerTerms', [t.id, client.id], { client: client.name, goods: goods.name });
+        giveItem(client, t.inventory.splice(idx, 1)[0]);
+        incurDebt(client, t, ARCHETYPE_HOOKS.brokerDebt, ctx);
+        adjustRel(client, t.id, ARCHETYPE_HOOKS.brokerRegard);
+        grantTruce(ctx, t, client, ARCHETYPE_HOOKS.brokerTruceCycles, 'brokered');
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
         return true;
     },
 };

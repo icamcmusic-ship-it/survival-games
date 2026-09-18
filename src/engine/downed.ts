@@ -140,10 +140,33 @@ export function tickDowned(ctx: SimContext) {
         // happily call for two — so the Gamemakers close the window instead.
         const standing = ctx.state.tributes.filter(isActive).length;
         if (standing <= DOWNED.finalistFloor) {
+            /*
+             * REQUEST (run length), found by the soak: the kill is credited
+             * here and, until this line said so, nothing in the chronicle tied
+             * it to anybody.
+             *
+             * `bleedOut` below writes "Killed by <name>, who left them for
+             * dead" onto the obituary and increments that tribute's kill
+             * count — but it passes `silent`, because this branch has already
+             * narrated the death, and `killTribute`'s silent path emits no
+             * `kill`-category line at all. The result was a victor who
+             * finished with kills and had no kill in the log: the soak caught
+             * it as "epilogue never quotes a real event despite the victor
+             * having kills", and Caesar's closing question had nothing to
+             * quote. It is rare — one run in five hundred — and it is exactly
+             * the sort of gap a longer Games makes more likely, because the
+             * rescue window has more cycles in which to time out.
+             *
+             * Naming the credit is also the truer line. A tribute who opened
+             * somebody up two days ago and walked away has killed them, and
+             * the Capitol is scrupulous about who the cannon belongs to.
+             */
+            const by = t.downed?.byId ? ctx.state.tributes.find(o => o.id === t.downed!.byId) : undefined;
             ctx.logEvent(
-                `The Gamemakers are done waiting on ${t.name}. Whatever was keeping them breathing in ${t.zone} stops.`,
-                [t.id],
-                { important: true, category: 'death' }
+                `The Gamemakers are done waiting on ${t.name}. Whatever was keeping them breathing in ${t.zone} stops.`
+                + (by ? ` The kill is credited to ${by.name}, who put them there and did not stay to watch.` : ''),
+                by ? [t.id, by.id] : [t.id],
+                { important: true, category: by ? 'kill' : 'death' }
             );
             bleedOut(ctx, t, name => `Killed by ${name}, who left them for dead`, t.downed!.cause, true);
             return;
@@ -210,6 +233,33 @@ export function tickDowned(ctx: SimContext) {
                     + ARCHETYPES[decider.archetype].aggression * DOWNED.executePerAggression
                     - traitMod(decider, 'killSanity') * DOWNED.executePerAggression;
                 chance += traitMod(decider, 'executeDrive');
+                /*
+                 * AUDIT-6 §8.1: the Confessor's win condition, which the
+                 * archetype advertised and the engine never implemented.
+                 *
+                 * "Wins by being the person nobody can justify killing" was
+                 * carried entirely by a once-per-run signature that granted a
+                 * single truce, so a Confessor survived to the end (4.70 days,
+                 * third-longest in the game) and could not close (0.38 kills,
+                 * the lowest) and won 3.15% of the time — last on the board.
+                 *
+                 * This is the standing version, at the one moment where "can
+                 * you justify it" is literally the question being asked: a
+                 * tribute deciding whether to finish somebody on the ground.
+                 * Charisma is what makes it hard, and it is hardest in front of
+                 * an audience — the witnesses are the whole point. Somebody
+                 * alone in a sector with a downed Confessor still mostly does
+                 * it; somebody with three people watching finds it much harder
+                 * to be the one who did.
+                 *
+                 * Deliberately scaled off the victim's charisma rather than
+                 * keyed to the archetype id, so a charismatic anybody gets some
+                 * of it and the Confessor — with `statBias: { charisma: 3 }` —
+                 * gets most of it.
+                 */
+                const watching = here.filter(o => o.id !== decider.id).length;
+                chance -= (t.attributes.charisma / DOWNED.pleaCharismaScale)
+                    * (DOWNED.pleaBase + watching * DOWNED.pleaPerWitness);
                 const witnesses = here.filter(o => o.id !== decider.id);
                 if (ctx.rng.chance(Math.max(0, Math.min(1, chance)))) {
                     decider.finishedDowned = [...(decider.finishedDowned ?? []), t.id];

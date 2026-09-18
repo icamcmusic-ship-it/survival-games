@@ -21,6 +21,7 @@
  *   DECISION_RUNS=200 npm run test:decisions
  */
 import { generateTributes } from '../src/engine/generator';
+import { resolveArenaForRun } from '../src/engine/arenaSetup';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameState } from '../src/models/types';
@@ -30,8 +31,8 @@ import { DECISION_TRACE } from '../src/data/balance';
 const RUNS = Number(process.env.DECISION_RUNS ?? 40);
 
 function start(seed: string, arenaId: string): GameState {
-    const arena = ARENAS.find(a => a.id === arenaId)!;
     const gamesProfile = gamesProfileFor(seed, false);
+    const arena = resolveArenaForRun(seed, arenaId, gamesProfile);
     const resolved = configForProfile(DEFAULT_GAME_CONFIG, gamesProfile);
     const tributes = generateTributes(seed, resolved, arena.zones[0].name, gamesProfile.castShape, gamesProfile.quell);
     return {

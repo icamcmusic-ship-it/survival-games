@@ -314,7 +314,7 @@ export function BroadcastBar({
                                         <button
                                             key={slot}
                                             className="btn btn-sm"
-                                            title={`Save a copy of this run into slot ${slot} — resume it later from the setup screen`}
+                                            aria-label={`Slot ${slot} — save a copy of this run, to resume later from the setup screen`}
                                             onClick={() => setSlotNotice(gameActions.saveToSlot(slot)
                                                 ? { slot, text: `Saved to slot ${slot}` }
                                                 : { slot, text: 'Save failed' })}

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Hint } from '../components/Hint';
 import { GameState } from '../models/types';
 import { EventFeed } from '../components/EventFeed';
 import { ReplayScrubber } from '../components/ReplayScrubber';
@@ -140,14 +141,18 @@ export function EndScreen({
                     {/* The end of a run is the highest-intent moment in the loop
                         and it used to dump the reader on a blank setup screen. */}
                     {onPlayAgain && (
-                        <button onClick={onPlayAgain} className="btn btn-primary btn-sm" title="Same arena and rules, a new seed">
-                            <Repeat className="w-3.5 h-3.5" /> Next year, same arena
-                        </button>
+                        <Hint text="Same arena and rules, a new seed">
+                            <button onClick={onPlayAgain} className="btn btn-primary btn-sm">
+                                <Repeat className="w-3.5 h-3.5" /> Next year, same arena
+                            </button>
+                        </Hint>
                     )}
                     {onReplaySeed && (
-                        <button onClick={onReplaySeed} className="btn btn-sm" title="Run this exact seed again to watch it back">
-                            <RotateCcw className="w-3.5 h-3.5" /> Replay this seed
-                        </button>
+                        <Hint text="Run this exact seed again to watch it back">
+                            <button onClick={onReplaySeed} className="btn btn-sm">
+                                <RotateCcw className="w-3.5 h-3.5" /> Replay this seed
+                            </button>
+                        </Hint>
                     )}
                     {onHallOfFame && (
                         <button onClick={onHallOfFame} className="btn btn-sm">
