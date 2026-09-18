@@ -19,6 +19,56 @@
 export const ENDGAME_FIELD_SIZE = 5;
 
 /** Per-cycle vitals drain and the thresholds that start hurting a tribute. */
+/**
+ * AUDIT-6 §7.2: the universal deaths.
+ *
+ * A game with eleven proficiencies, twenty-three arena laws, ten zone effects,
+ * an infection model with sepsis, a resolve model with nightlock and a
+ * per-target fear model had **twelve universal ways to die that were not a
+ * weapon** — and sixteen of the thirty universal death shapes were
+ * `Killed by <name> (<weapon>)`, which is the same death with a different noun.
+ *
+ * Each of the causes below is one write site, reads state the engine already
+ * keeps, and is a death the existing table could not produce:
+ *
+ *  - `desperateForage` — a poisoning that is a *decision*. The engine already
+ *    counts searches of a zone that turned up nothing; a tribute who has come
+ *    up empty three times and is starving eats the thing they know better than
+ *    to eat.
+ *  - `thirstNearWater` — dying of thirst inside a zone with a water source,
+ *    because of who else is standing at it. Fear is modelled per-target and
+ *    nothing ever let it kill anybody.
+ *  - `neverWoke` — the body giving out in its sleep under `noRest` or
+ *    `deadlyNight`. Distinct from exhaustion, which is collapsing awake.
+ *  - `shock` — a fresh deep wound on somebody whose composure has already gone.
+ *  - `theClimb` — a climbing failure in a vertical zone, which is not the same
+ *    death as falling off a mountain and had no cause of its own.
+ */
+export const UNIVERSAL_DEATHS = {
+    /** Searches of a zone that came up empty before hunger starts making the choice. */
+    desperateForageFailures: 3,
+    /** Hunger at which a tribute will eat what they know is wrong. */
+    desperateForageHunger: 72,
+    desperateForageChance: 0.16,
+    desperateForageDamage: 30,
+    /** Fear of somebody else in the zone that will keep a tribute off the water. */
+    thirstNearWaterFear: 55,
+    thirstNearWaterThirst: 88,
+    thirstNearWaterChance: 0.3,
+    /** Fatigue at which sleep under a hostile law stops being recoverable. */
+    neverWokeFatigue: 88,
+    neverWokeChance: 0.18,
+    neverWokeDamage: 34,
+    /** Composure below which a fresh deep wound can stop the heart on its own. */
+    shockComposure: -6,
+    shockChance: 0.22,
+    shockDamage: 40,
+    /** Climbing proficiency below which a vertical zone is genuinely dangerous. */
+    climbFailProficiency: 2,
+    climbFailChance: 0.1,
+    climbFailDamage: 38,
+} as const;
+
 export const VITALS = {
     /**
      * §3.1: how much one point of endurance either side of average is worth
@@ -420,7 +470,15 @@ export const SIGNATURE_RULES = {
     ashwasteWadeFatigue: 10,
     ashwasteBurnChance: 0.2,
     quarryDodgeBase: 0.3,
-    glacierDodgeBase: 0.35,
+    /*
+     * AUDIT-6 §7.3: 0.35 plus agility meant a tribute with average legs got
+     * clear of a calving face six times in ten, and the Glacial Cavern Network
+     * produced no death of its own across twenty runs. A block of ice the size
+     * of a district block is the most violent thing in this arena and should
+     * read like it.
+     */
+    glacierDodgeBase: 0.26,
+    glacierCalvingDamage: 32,
     floeDunkChance: 0.3,
     floeDunkFatigue: 20,
     alpineDodgeBase: 0.3,
@@ -447,6 +505,41 @@ export const SIGNATURE_RULES = {
     kelvinColdFatigue: 10,
     kelvinFrostbiteChance: 0.2,
     silkwoodSilkFatigue: 4,
+    /*
+     * AUDIT-6 §7.3: the four arenas whose signature could not kill anybody.
+     *
+     * A census over twenty runs of each of the forty-six arenas found eight
+     * that produced no death shape belonging to them. Four of those —
+     * the Warren, the Carnival, the Cul-de-Sac and the Silk Wood — had
+     * signatures that only ever logged and adjusted a vital, so the most
+     * distinctive thing about each arena could never appear on an obituary.
+     * These are the odds and the damage for the lethal edge each one now has,
+     * drawn from what the arena already is rather than bolted on: the roof, the
+     * ride, the house, and the silk.
+     */
+    warrenFallChance: 0.35,
+    warrenFallDamage: 34,
+    carnivalRideChance: 0.4,
+    carnivalRideDamage: 30,
+    culdesacHouseChance: 0.3,
+    culdesacHouseDamage: 32,
+    silkwoodWrapChance: 0.22,
+    silkwoodWrapDamage: 30,
+    /*
+     * AUDIT-6 §7.3: the other four arenas that produced no death of their own.
+     *
+     * Unlike the four above, these signatures *could* kill — and did not, in
+     * twenty runs each, because a flat 24-30 damage rarely finishes a tribute
+     * who is not already hurt. Cranking the damage would distort every other
+     * measure; this is the branch that makes the machinery decisive against
+     * somebody it has already caught once. `finishBelowHealth` is the state at
+     * which being caught stops being a wound and starts being the end.
+     */
+    machineryFinishBelowHealth: 40,
+    machineryFinishChance: 0.5,
+    /** The Snowbound Homestead: a hearthless night in a interior that is only walls. */
+    cabinFreezeChance: 0.3,
+    cabinFreezeDamage: 26,
     nooneplaceSlipSanity: 8,
     redcathedralDodgeBase: 0.3,
     redcathedralClearFatigue: 12,

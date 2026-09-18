@@ -48,6 +48,9 @@ export const STARTER_ARENA_IDS: readonly string[] = [
 export const ARENAS: Arena[] = [
     {
         id: 'clockwork',
+        cornucopiaLayout: 'walled',
+        restockBias: ['whetstone', 'rope', 'glow-stick', 'hardtack'],
+        effectVocab: { flooded: { label: 'a sector tidal wave', severityMult: 1.25 } },
         name: 'The Clockwork Island',
         description: 'A shifting map layout divided into sectors, each unleashing a different horror at a specific hour.',
         mutts: ['Tick-Tock Monkeys', 'Lightning Birds', 'Acid Fog', 'Jabberjays', 'Reef Barracuda'],
@@ -72,6 +75,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'frozen',
+        cornucopiaLayout: 'plate',
         // §5.2: nothing grows under a metre of snow, and the dark is the thing
         // that actually kills up here — the two rules the arena's own
         // description has always claimed and never enforced.
@@ -103,6 +107,9 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'concrete',
+        cornucopiaLayout: 'walled',
+        restockBias: ['helmet', 'bandages', 'canteen', 'crackers'],
+        effectVocab: { quaking: { label: 'a structural failure', severityMult: 1.3 } },
         // §5.2: a fight between two tower blocks is heard by the whole city.
         law: 'openMic',
         name: 'The Concrete Jungle',
@@ -139,6 +146,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'toxic',
+        cornucopiaLayout: 'island',
         // §5.2: everything here is wet and everything here is poisoned. The
         // same already-tested stack the Drowned Reef carries, which is the
         // cheapest variety available — a law that exists in one arena is a law
@@ -172,6 +180,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'solar',
+        cornucopiaLayout: 'plate',
         // §5.7: in a desert the drop is water and shade, in that order.
         restockBias: ['canteen', 'waterskin', 'tablets', 'iodine'],
         name: 'The Solar Desert',
@@ -198,6 +207,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'ashfall',
+        cornucopiaLayout: 'plate',
+        restockBias: ['charcoal-filter', 'thermal-cloak', 'iodine', 'hardtack'],
         // §5.2: no parachute finds the ground through that much falling ash.
         law: 'noSponsors',
         name: 'The Ashfall Basin',
@@ -226,6 +237,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'tempest',
+        cornucopiaLayout: 'island',
         // §5.2: nothing stays lit in that wind and nothing can be dropped into it.
         laws: ['fireImpossible', 'noSponsors'],
         // §5.7: a flooded arena's horn leans toward water gear.
@@ -261,6 +273,9 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'saltflats',
+        cornucopiaLayout: 'plate',
+        restockBias: ['waterskin', 'canteen', 'iodine', 'thermal-cloak'],
+        effectVocab: { stripped: { label: 'the mirror glare', severityMult: 1.2, durationMult: 1.2 } },
         // §5.2: a salt pan surrounded by water, none of it drinkable. The one
         // seep is in the scrub, and everybody works that out on day two.
         law: 'noWaterExceptZone',
@@ -288,6 +303,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'sporefields',
+        cornucopiaLayout: 'plate',
+        restockBias: ['antidote', 'tablets', 'charcoal-filter', 'crackers'],
         name: 'The Spore Fields',
         description: 'A fungal forest grown for the occasion. Everything here is edible, and roughly half of it will kill you for trying.',
         mutts: ['Spore Moths', 'Mycelial Hounds', 'Puffball Swarms', 'Cordyceps Ticks'],
@@ -315,6 +332,9 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'canopy',
+        cornucopiaLayout: 'island',
+        restockBias: ['rope', 'bracers', 'fishing-kit', 'dried-fruit'],
+        effectVocab: { fogbound: { label: 'the understory fog', durationMult: 1.3 } },
         // §5.2: `oneWayBorders` was declared by no arena at all — a law with a
         // tested enforcement site and nowhere to happen. A hanging garden is
         // exactly where it belongs: every route is a drop to the next bough,
@@ -346,6 +366,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'vault',
+        restockBias: ['glow-stick', 'lantern', 'crackers', 'tablets'],
         name: 'The Vault',
         description: 'A sealed underground complex with no sky at all. The faces of the fallen are projected onto the ceiling, and the lights go out on a schedule nobody explains.',
         mutts: ['Pallid Stalkers', 'Rebar Hounds', 'Circuit Wasps', 'Sump Eels'],
@@ -383,6 +404,8 @@ export const ARENAS: Arena[] = [
         // at all, and the smallest bestiary in the game: one apex predator and
         // the mine's own rats. Claustrophobia as a design, not a smaller copy.
         id: 'warren',
+        restockBias: ['lantern', 'glow-stick', 'helmet', 'hardtack'],
+        effectVocab: { contaminated: { label: 'rock dust in the galleries', severityMult: 1.15, durationMult: 1.3 } },
         name: 'The Warren',
         description: 'A mine that was old before Panem was young: six chambers of tunnel and dust, no open sky, and no standing water anywhere. Everything a tribute drinks down here, somebody carried in. And something else lives in the dark.',
         mutts: ['The Warden', 'Pit Rats'],
@@ -433,6 +456,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'eclipse',
+        cornucopiaLayout: 'walled',
         // §5.2: an arena named for the dark that had no rule about the dark.
         law: 'deadlyNight',
         name: 'The Perpetual Eclipse Forest',
@@ -460,6 +484,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'reef',
+        restockBias: ['trident', 'net', 'waterskin', 'groosling'],
+        effectVocab: { swarming: { label: 'the anemone fields waking', severityMult: 1.25 } },
         name: 'The Dead Coral Reef',
         description: 'A drained ocean floor, bleach-white and razor-edged: fossilised coral heads, deep dry trenches, and vast fields of anemones that did not die when the water left. Everything sharp, nothing soft, and the only water is brine.',
         mutts: ['Trench Morays', 'Anemone Colonies', 'Bonefish Swarms', 'The Dry Shark'],
@@ -485,6 +511,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'abattoir',
+        cornucopiaLayout: 'walled',
+        restockBias: ['machete', 'bandages', 'vest', 'dried-meat'],
         // §5.2: a killing floor is a tiled room. Everything in it is audible.
         law: 'openMic',
         // Audit 5 §5.4: bodies as supplies is what the place is.
@@ -512,6 +540,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'carnival',
+        cornucopiaLayout: 'walled',
         name: 'The Forgotten Carnival',
         description: 'A decayed amusement park swallowed by a fog-choked pine forest. The paint is gone, the music boxes are not, and some of the rides still have power from somewhere.',
         mutts: ['Calliope Jays', 'The Barker', 'Prize Hounds', 'Ticket Wasps'],
@@ -547,6 +576,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'ashwaste',
+        cornucopiaLayout: 'plate',
         // §5.2: ash is not soil. Nothing has come up out of it in years.
         law: 'noForage',
         name: 'The Ash Wasteland',
@@ -571,6 +601,9 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'quarry',
+        cornucopiaLayout: 'walled',
+        restockBias: ['rope', 'helmet', 'bandages', 'hardtack'],
+        effectVocab: { quaking: { label: 'a bench letting go', severityMult: 1.3 } },
         // §5.2: `shrinkingArena` was the other law no arena declared. A working
         // quarry is the one place where the ground itself is being taken away
         // on a schedule, so the border starts closing from the first morning.
@@ -596,6 +629,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'glacier',
+        cornucopiaLayout: 'plate',
+        restockBias: ['thermal-cloak', 'sleeping-bag', 'rope', 'lamb-stew'],
         // §5.2: there is nothing on a glacier that will take a flame.
         law: 'fireImpossible',
         name: 'The Glacial Cavern Network',
@@ -625,6 +660,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'floe',
+        restockBias: ['thermal-cloak', 'rope', 'fishing-kit', 'lamb-stew'],
+        effectVocab: { flooded: { label: 'a lead opening in the pack', severityMult: 1.3 } },
         // §5.2: polar summer. The sun goes round the horizon and never sets,
         // which is the second-cruellest thing about the place. Spreads `noNight`
         // off the single arena that was carrying it alone.
@@ -653,6 +690,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'alpine',
+        cornucopiaLayout: 'plate',
         // §5.2: the updraughts off the faces take every parachute over the ridge.
         law: 'noSponsors',
         name: 'The Pine Forest & Avalanche Peaks',
@@ -679,6 +717,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'terraces',
+        cornucopiaLayout: 'walled',
         // §5.2: you go down a terraced mine. You do not go back up one.
         law: 'oneWayBorders',
         name: 'The Abandoned Terraced Mines',
@@ -707,6 +746,9 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'seapeaks',
+        cornucopiaLayout: 'island',
+        restockBias: ['rope', 'thermal-cloak', 'bracers', 'hardtack'],
+        effectVocab: { frozen: { label: 'rime ice on the faces', severityMult: 1.2, durationMult: 1.2 } },
         // §5.2: peaks in an ocean. Salt water everywhere and one place the ice
         // gives up anything anybody can drink.
         law: 'noWaterExceptZone',
@@ -732,6 +774,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'canopyweb',
+        cornucopiaLayout: 'island',
         name: 'The Suspended Canopy Web',
         description: 'A forest of giant three-hundred-foot conifers, the ground floor buried under a sunless layer of toxic nitrogen fog nobody survives a minute in. Everything worth doing happens hundreds of feet up, on woven needle-bridges and swaying moss webs.',
         mutts: ['Silk-Line Stalkers', 'Needle Wasps', 'The Understory Reach'],
@@ -756,6 +799,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'acousticforest',
+        cornucopiaLayout: 'plate',
         name: 'The Whispering Acoustic Forest',
         description: 'A lodgepole pine forest hollowed out by engineered wood-boring insects, the whole canopy one vast wind organ. The breeze through the hollow trunks sounds uncannily human — and drowns out anyone actually trying to sneak.',
         mutts: ['Wind-Throat Owls', 'Resonance Moths', 'Hollow-Bore Beetles'],
@@ -781,6 +825,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'burnscar',
+        cornucopiaLayout: 'plate',
         // §5.2: the fire already came through. There is nothing left to eat and
         // nothing left that will take a flame twice.
         laws: ['fireImpossible', 'noForage'],
@@ -807,6 +852,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'craterfield',
+        cornucopiaLayout: 'plate',
         name: 'The Overgrown Ordnance Crater Field',
         description: 'A former military proving ground, pockmarked with deep overlapping craters flooded into stagnant ponds and choked by fast-growing vines. Unexploded ordnance sleeps under the root mats, and the vines have learned to grow something worse.',
         mutts: ['Bog Adders', 'Root-Mat Crawlers', 'The Salvage Hound'],
@@ -832,6 +878,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'culdesac',
+        cornucopiaLayout: 'walled',
+        restockBias: ['matches', 'sleeping-bag', 'crackers', 'cheese'],
         name: 'The Cul-de-Sac',
         description: 'Sixty-two identical houses on a loop road. The lawns are cut, the porch lights work, and the delivery trucks keep coming. The Capitol built somewhere normal, and now it has to be ransacked.',
         mutts: ['The Family Dogs', 'The Meter Reader', 'Wasps in the Eaves', 'Something in the Pool'],
@@ -871,6 +919,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'labyrinth',
+        cornucopiaLayout: 'walled',
+        restockBias: ['sickle', 'wire', 'berries', 'waterskin'],
         name: 'The Green Labyrinth',
         description: 'Nine metres of yew in every direction. It was this shape yesterday. The hedges eat the cannon fire, the walls move on rails, and the map itself is the antagonist.',
         mutts: ['The Topiary', 'The Hounds in the Hedge', 'The Gardener', 'Canal Eels'],
@@ -911,6 +961,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'ashgrove',
+        cornucopiaLayout: 'walled',
+        restockBias: ['knife', 'bandages', 'crackers', 'matches'],
         name: 'Ashgrove Secondary',
         description: 'An abandoned school. The bell still rings; nothing else about it works. Tight corridors, hard chokepoints, and a timetable posted in the main corridor that everyone would do well to read.',
         mutts: ['The Register', 'Lab Escapees', 'Something in the Pool Filter', 'The Field Dogs'],
@@ -954,6 +1006,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'kelvin',
+        restockBias: ['thermal-cloak', 'lantern', 'lamb-stew', 'sleeping-bag'],
         name: 'Station Kelvin-9',
         description: 'A polar research station abandoned mid-season, and the ice shelf it stands on. The generator has eleven days of fuel in it. The Games have more than eleven days in them.',
         mutts: ['The Dogs That Were Left', 'Under the Ice', 'The Contamination', 'Whiteout'],
@@ -992,6 +1045,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'silkwood',
+        cornucopiaLayout: 'walled',
+        restockBias: ['machete', 'wire', 'antidote', 'dried-fruit'],
         name: 'The Silk Wood',
         description: 'An old-growth wood strung tree to tree with silk. You will notice the silk before you notice the spiders. Not much before.',
         mutts: ['Trap-Door Spiders', 'The Drift', 'The Broodmother', 'Wolf Spiders', 'The Wrapped'],
@@ -1027,6 +1082,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'nooneplace',
+        cornucopiaLayout: 'walled',
+        restockBias: ['glow-stick', 'crackers', 'canteen', 'bandages'],
         name: 'The Nooneplace',
         description: 'Halls, offices, stairs, carpet, hum. It goes on. That is the whole of it. It goes on.',
         mutts: ['The Hum', 'Something In The Hall Behind You', 'The Others', 'Wall-Walkers', 'The Filing'],
@@ -1063,6 +1120,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'redcathedral',
+        cornucopiaLayout: 'island',
+        restockBias: ['rope', 'waterskin', 'iodine', 'dried-fruit'],
         name: 'The Red Cathedral',
         description: 'A mile-deep canyon. Water at the bottom, shade at the top, and no way to hold both — the rim and the river sit a stone\'s throw apart and days of climbing between them.',
         mutts: ['Condors', 'Rattlers in the Talus', 'Cliff Cats', 'The Thing in the Seeps', 'Pinyon Jays'],
@@ -1110,6 +1169,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'menagerie',
+        cornucopiaLayout: 'walled',
+        restockBias: ['net', 'spear', 'antidote', 'groosling'],
         name: 'The Menagerie',
         description: 'A zoo, opening. The keeper\'s release schedule is posted at the gate, and it is accurate — every enclosure in the park opens on time, in order, and everyone knows exactly when.',
         mutts: ['Raptors', 'The Troop', 'Constrictors & Vipers', 'The Bears', 'The Herd', 'The Cats', 'Quarantine'],
@@ -1145,6 +1206,8 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'storywood',
+        cornucopiaLayout: 'walled',
+        restockBias: ['axe', 'matches', 'bread', 'cheese'],
         name: 'The Story Wood',
         description: 'A forest of fairytale cottages, every chimney smoking, every door unlocked. Every one of them opens. Every one of them costs something. The wood is always slightly colder than it should be.',
         mutts: ['The Wolf', 'The Bramble', 'Ravens', 'Something in the Millpond', 'The Sisters'],
@@ -1199,6 +1262,7 @@ export const ARENAS: Arena[] = [
     // interior winter siege, the descent, and true darkness.
     {
         id: 'cabin',
+        cornucopiaLayout: 'walled',
         // §5.7: a snowbound homestead's drop is cold-weather kit and food.
         restockBias: ['sleeping-bag', 'thermal-cloak', 'lamb-stew', 'hardtack', 'matches'],
         name: 'The Snowbound Homestead',
@@ -1273,6 +1337,7 @@ export const ARENAS: Arena[] = [
     },
     {
         id: 'karst',
+        cornucopiaLayout: 'walled',
         // §5.7: in a cave with no light, light is the supply drop.
         restockBias: ['lantern', 'glow-stick', 'rope', 'tablets', 'iodine'],
         name: 'The Undermere',

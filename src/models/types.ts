@@ -2074,6 +2074,22 @@ export interface GameState {
     firedWildcards?: number[];
     /** The storm currently crossing the arena, if any. See `engine/weatherFront.ts`. */
     weatherFront?: WeatherFront;
+    /**
+     * AUDIT-6 §11.2: the longest performed bond anybody sustained this run.
+     *
+     * 'The Long Con' and 'Performed to the End' both read the *victor's*
+     * `maxPerformingStreak`, and the conjunction is near-unreachable: a
+     * performance only starts from a showmance, only one of the pair performs,
+     * `sniffPerformances` can end it at any cycle, and then that specific
+     * person has to win. Measured across the whole field, 39 of 46 performers
+     * reach a streak of two or more — but only 3% of victors do, so a 500-run
+     * sample sees it or does not on a coin flip, which is how an entry becomes
+     * a promise the game cannot keep.
+     *
+     * The act is the achievement. Whether the person running it also happened
+     * to win is a second, unrelated lottery.
+     */
+    longestPerformance?: number;
     /** Alliance id currently holding the Cornucopia. See `engine/zoneControl.ts`. */
     cornucopiaHolder?: string;
     /** §10.1: the longest unbroken Cornucopia hold this run, in cycles. */

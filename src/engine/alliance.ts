@@ -597,7 +597,11 @@ export function reconcileAlliances(ctx: SimContext) {
                 ctx.state.allianceDeposals = ctx.state.allianceDeposals ?? {};
                 ctx.state.allianceDeposals[id] = (ctx.state.allianceDeposals[id] ?? 0) + 1;
                 ctx.logEvent(
-                    `${challenger.name} stops deferring to ${leader.name}, and nobody in the group argues. The pack has a new leader.`,
+                    // §22: "nobody in the group" is the rest of the group, and
+                    // they were on this line without being in it.
+                    `${challenger.name} stops deferring to ${leader.name}, and nobody in the group argues.`
+                    + ` ${members.filter(m => m.id !== challenger.id && m.id !== leader.id).map(m => m.name).join(', ') || 'Nobody else'}`
+                    + ` ${members.length > 3 ? 'have' : 'has'} a new leader by the end of the sentence.`,
                     members.map(m => m.id),
                     { important: true, category: 'alliance' }
                 );

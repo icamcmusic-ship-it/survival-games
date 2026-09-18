@@ -1,5 +1,5 @@
 import { Tribute, attr } from '../models/types';
-import { ARENA_LAWS, CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
+import { ARENA_LAWS, CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, UNIVERSAL_DEATHS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
@@ -12,6 +12,7 @@ import { sanityBandOf } from './sanityBands';
 import { decayIdleDrift, profOf, trainProficiency, trainTerrainSkills } from './proficiency';
 import { bleedDamage, clearBleeding, gradeDamageScale, healInjury, injure, tickBleeding, tickWoundRecovery, injuryGrade } from './wounds';
 import { rememberedThreat } from './memory';
+import { fearOf } from './fear';
 import { hasCamp } from './fieldcraft';
 import { applySepsisDrain, isSeptic, tickInfection, treatInfection } from './infection';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
@@ -274,9 +275,57 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
         }
     }
     if (t.vitals.thirst > VITALS.dehydratedThreshold) {
-        if (applyDamage(ctx, t, VITALS.dehydratedDamage, { cause: 'Died of dehydration', kind: 'status' })) {
+        /*
+         * AUDIT-6 §7.2: dying of thirst with the water in sight.
+         *
+         * Fear is modelled per-target — the whole cast can be terrified of the
+         * boy from District 2 while nobody gives the girl from 11 a thought —
+         * and nothing in the engine ever let that fear kill anybody. A tribute
+         * standing in a zone that has water, too frightened of whoever else is
+         * standing at it to go and drink, is the cleanest expression of that
+         * model there is, and it was unreachable.
+         */
+        const zone = getZone(ctx.state.arena, t.zone);
+        const scaredOff = zoneFeatures(zone ?? { features: undefined } as never).waterSource !== undefined
+            && t.vitals.thirst > UNIVERSAL_DEATHS.thirstNearWaterThirst
+            && getAlive(ctx.state).some(o => o.id !== t.id && o.zone === t.zone
+                && fearOf(t, o.id) >= UNIVERSAL_DEATHS.thirstNearWaterFear)
+            && ctx.rng.chance(UNIVERSAL_DEATHS.thirstNearWaterChance);
+        const cause = scaredOff ? `Died of thirst within sight of the water in ${t.zone}` : 'Died of dehydration';
+        if (applyDamage(ctx, t, VITALS.dehydratedDamage, { cause, kind: 'status' })) {
             reliefFor(t, 'thirst');
         }
+        if (scaredOff && t.status !== 'alive') {
+            ctx.logEvent(
+                `${t.name} dies of thirst in ${t.zone}, a hundred feet from water, because of who else is standing at it.`,
+                [t.id], { important: true, zone: t.zone, category: 'death' },
+            );
+        }
+    }
+
+    /*
+     * AUDIT-6 §7.2: eating the thing they knew better than to eat.
+     *
+     * `forageFailures` counts searches of a zone that turned up nothing, and it
+     * existed to make repeated failure a *decision* — leave, or stop foraging
+     * and start trapping. This is the third option, and the one the source
+     * material is most interested in: a tribute who has come up empty three
+     * times running and is genuinely starving eats it anyway. It is a poisoning
+     * that is a choice rather than an accident, which nothing else in the
+     * death table is.
+     */
+    if (t.status === 'alive'
+        && t.vitals.hunger > UNIVERSAL_DEATHS.desperateForageHunger
+        && (t.memory?.forageFailures?.[t.zone] ?? 0) >= UNIVERSAL_DEATHS.desperateForageFailures
+        && ctx.rng.chance(UNIVERSAL_DEATHS.desperateForageChance - traitMod(t, 'poisonResist'))) {
+        ctx.logEvent(
+            `${t.name} has searched ${t.zone} three times and found nothing three times. What they eat in the end, `
+            + 'they know about. They eat it looking at it.',
+            [t.id], { important: true, zone: t.zone, category: 'survival' },
+        );
+        injure(t, 'poisoned');
+        applyDamage(ctx, t, UNIVERSAL_DEATHS.desperateForageDamage, { cause: 'Ate what they knew better than to eat', kind: 'status' });
+        checkDeath(ctx, t, 'Ate what they knew better than to eat');
     }
     // §7: the body failing rather than the will. Distinct from the nightlock
     // and border-walk endings, which are a tribute deciding to stop — this is
@@ -287,6 +336,32 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
         if (applyDamage(ctx, t, VITALS.exhaustedDamage, { cause: 'Collapsed from exhaustion', kind: 'status' })) {
             reliefFor(t, 'fatigue');
         }
+    }
+
+    /*
+     * AUDIT-6 §7.2: not waking up.
+     *
+     * Distinct from exhaustion above, which is a tribute collapsing awake and
+     * on their feet. This is the body giving out in the night, and it is only
+     * reachable in an arena whose law has taken sleep away — `noRest` (sleep
+     * restores nothing) or `deadlyNight` (the dark is the hazard). The Vigil
+     * already has a line for it and no other arena could produce one, which is
+     * the wrong way round: the law is universal and the death should be too.
+     */
+    if (t.status === 'alive'
+        && ctx.state.timeOfDay === 'night'
+        && t.vitals.fatigue > UNIVERSAL_DEATHS.neverWokeFatigue
+        && (arenaHasLaw(ctx.state, 'noRest') || arenaHasLaw(ctx.state, 'deadlyNight'))
+        && ctx.rng.chance(UNIVERSAL_DEATHS.neverWokeChance)) {
+        applyDamage(ctx, t, UNIVERSAL_DEATHS.neverWokeDamage, { cause: 'Did not wake', kind: 'status' });
+        if (t.status !== 'alive') {
+            ctx.logEvent(
+                `${t.name} lies down in ${t.zone} and does not get up in the morning. There is no wound on them. `
+                + 'Some arenas do not need one.',
+                [t.id], { important: true, zone: t.zone, category: 'death' },
+            );
+        }
+        checkDeath(ctx, t, 'Did not wake');
     }
     if (t.injuries.bleeding) {
         // Cost scales with how badly the wound is running, and the wound gets a

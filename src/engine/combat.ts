@@ -6,7 +6,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { ARENA_DEATH_BUDGET, BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES , ARENA_LAWS } from '../data/balance';
+import { ARENA_DEATH_BUDGET, BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES, UNIVERSAL_DEATHS, ARENA_LAWS } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -35,6 +35,7 @@ import { PREGAMES } from '../data/balance';
 import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { loseSanity } from './sanityBands';
+import { composureOf } from './composure';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -139,6 +140,28 @@ function weightedPick<T>(ctx: SimContext, items: T[], weight: (item: T) => numbe
  */
 export function enterShock(ctx: SimContext, t: Tribute, cause: string) {
     if (t.status !== 'alive') return;
+    /*
+     * AUDIT-6 §7.2: shock that is fatal on its own.
+     *
+     * Shock existed as a two-cycle debuff and could never be the thing that
+     * killed anybody, so a tribute whose composure had already gone and who
+     * then took a deep wound died of the wound like anyone else. Composure is a
+     * whole modelled axis and this is the one place it should be able to be
+     * decisive: the difference between a fighter who absorbs a blow and one who
+     * has nothing left to absorb it with is not how deep the cut was.
+     */
+    if (composureOf(t) <= UNIVERSAL_DEATHS.shockComposure && ctx.rng.chance(UNIVERSAL_DEATHS.shockChance)) {
+        applyDamage(ctx, t, UNIVERSAL_DEATHS.shockDamage, { cause: 'Went into shock', kind: 'status' });
+        if (t.status !== 'alive' || t.health <= 0) {
+            ctx.logEvent(
+                `${t.name} sits down in ${t.zone} and stops. The wound is not the worst anybody has taken today. `
+                + 'They simply had nothing left to take it with.',
+                [t.id], { important: true, zone: t.zone, category: 'death' },
+            );
+            checkDeath(ctx, t, 'Went into shock');
+            return;
+        }
+    }
     t.shock = { untilCycle: (ctx.state.cycle ?? 0) + SHOCK.cycles, cause };
     if (ctx.rng.chance(SHOCK.lineChance)) {
         ctx.logEvent(

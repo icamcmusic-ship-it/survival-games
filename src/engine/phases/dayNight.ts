@@ -529,6 +529,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             : 0;
         // §10.1: 'The Long Con' reads the high-water mark, not the live streak.
         t.maxPerformingStreak = Math.max(t.maxPerformingStreak ?? 0, t.performingStreak);
+        // AUDIT-6 §11.2: and the run keeps its own, so the entry survives the
+        // performer not being the one who wins.
+        ctx.state.longestPerformance = Math.max(ctx.state.longestPerformance ?? 0, t.performingStreak);
         // §11: cycles holding a named role in their group, for 'Quartermaster'.
         const roles = t.allianceId ? allianceRecords(ctx.state)[t.allianceId]?.roles : undefined;
         if (roles && Object.values(roles).includes(t.id)) t.roleCycles = (t.roleCycles ?? 0) + 1;

@@ -1,7 +1,8 @@
 import { Arena, Tribute, ZoneLevel } from '../models/types';
 import { SimContext } from './context';
-import { VERTICALITY } from '../data/balance';
+import { UNIVERSAL_DEATHS, VERTICALITY } from '../data/balance';
 import { getZone, zoneFeatures } from './map';
+import { profOf } from './proficiency';
 import { applyDamage, checkDeath } from './combat';
 import { injure, openWound } from './wounds';
 import { BLEEDING } from '../data/balance';
@@ -102,6 +103,32 @@ export function tickVerticality(ctx: SimContext) {
         if (!t.levelsStood.includes(going)) t.levelsStood.push(going);
         if (!(t.verticalZonesStood ?? []).includes(t.zone)) {
             t.verticalZonesStood = [...(t.verticalZonesStood ?? []), t.zone];
+        }
+
+        /*
+         * AUDIT-6 §7.2: going *up* badly.
+         *
+         * "Going up is slow and safe" was true of everybody equally, which
+         * meant `climbing` — a whole proficiency, with a trait head start
+         * (`Climber`) feeding it — could not affect the one act it is named
+         * for. A tribute who has never climbed anything, on a face they have no
+         * business on, is in more danger going up than a practised one is going
+         * down. Distinct from the fall below: that is a descent that got away
+         * from somebody, this is a climb somebody could not make.
+         */
+        if (going === 'upper'
+            && profOf(t, 'climbing') < UNIVERSAL_DEATHS.climbFailProficiency
+            && ctx.rng.chance(UNIVERSAL_DEATHS.climbFailChance)) {
+            applyDamage(ctx, t, UNIVERSAL_DEATHS.climbFailDamage, { cause: `Could not make the climb in ${t.zone}`, kind: 'arena' });
+            openWound(t, BLEEDING.combatSeverity);
+            ctx.logEvent(
+                `${t.name} gets most of the way up ${t.zone} and runs out of the thing that was getting them up it. `
+                + 'The last part is not a climb, it is a drop.',
+                [t.id], { important: true, zone: t.zone, category: 'hazard' },
+            );
+            clampTribute(t);
+            checkDeath(ctx, t, `Could not make the climb in ${t.zone}`);
+            if (t.status !== 'alive') return;
         }
 
         // Going down fast is how people get hurt; going up is slow and safe.

@@ -226,11 +226,28 @@ export function expel(ctx: SimContext, record: Alliance, offender: Tribute, memb
     others.forEach(m => adjustRel(m, offender.id, -ALLIANCES.expulsionRegardCost));
     adjustRel(offender, others[0].id, -ALLIANCES.expulsionRegardCost);
 
+    /*
+     * §22 / AUDIT-6: the whole group is the cast of this line, so the whole
+     * group has to be in it.
+     *
+     * `because` names whoever moved against them; everybody else was standing
+     * there and was claimed by `tributesInvolved` without ever being mentioned,
+     * which is the single largest source of unnamed-tribute lines in the
+     * repository. Naming them is also the better sentence — an expulsion is
+     * mostly made of the people who did not say anything.
+     */
+    const named = new Set<string>();
+    members.forEach(m => { if (because.includes(m.name)) named.add(m.id); });
+    named.add(offender.id);
+    const silent = others.filter(m => !named.has(m.id));
     ctx.logEvent(
         `${because} ${offender.name} is put out of the group.`
         + (takes.length > 0
             ? ` They take ${takes.map(i => i.name).join(' and ')} with them — they put more into that cache than anyone, and say so.`
-            : ' They leave with what they walked in with, which is not much.'),
+            : ' They leave with what they walked in with, which is not much.')
+        + (silent.length > 0
+            ? ` ${silent.map(m => m.name).join(', ')} ${silent.length > 1 ? 'say' : 'says'} nothing, which is its own kind of vote.`
+            : ''),
         members.map(m => m.id),
         { important: true, category: 'alliance' }
     );

@@ -6,6 +6,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ARENAS } from '../src/data/constants';
 import { ARENA_FLAVOR, GENERIC_ARENA_FLAVOR, PROCEDURAL_FLAVOR_PACKS } from '../src/data/arenaFlavor';
+import { NEW_ARENA_FLAVOR } from '../src/data/arenaFlavorNew';
 import { DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { ArenaLawId, GameState } from '../src/models/types';
 import { ARENA_MUTTS } from '../src/data/mutts';
@@ -591,10 +592,22 @@ console.log(ARENAS.map(a => `  ${a.id.padEnd(12)} ${a.zones.length} zones  ${a.n
         ['a water source', a => a.zones.some(z => z.features?.waterSource !== undefined)],
     ];
     notes.push('authored-layer coverage across ' + ARENAS.length + ' arenas:');
+    /*
+     * AUDIT-6 §5.1: every column here is now complete, so every column is now
+     * required. These were 34/45, 34/45, 22/45 and 12/45 when the audit
+     * measured them — an arena could ship without the layer that makes it a
+     * place rather than a zone list, and nothing said so. A water source is the
+     * one exception: the Frozen Wasteland, the Warren and the Silk Wood have
+     * none by design, and that is the point of all three.
+     */
+    const REQUIRED = new Set(['own event pack', 'effectVocab', 'restockBias', 'cornucopiaLayout']);
     for (const [label, has] of cols) {
         const missing = ARENAS.filter(a => !has(a));
         notes.push(`    ${label}: ${ARENAS.length - missing.length}/${ARENAS.length}`
             + (missing.length ? ` — missing: ${missing.map(a => a.id).join(' ')}` : ''));
+        if (REQUIRED.has(label) && missing.length > 0) {
+            problems.push(`${missing.length} arena(s) declare no ${label}: ${missing.map(a => a.id).join(' ')}`);
+        }
     }
     /*
      * The ratchet. Every arena is meant to have a set piece of its own; the
@@ -607,6 +620,54 @@ console.log(ARENAS.map(a => `  ${a.id.padEnd(12)} ${a.zones.length} zones  ${a.n
     if (universal.length > UNIVERSAL_PACK_CEILING) {
         problems.push(`${universal.length} arena(s) draw the universal Gamemaker pack and have no set piece of their own `
             + `(ceiling ${UNIVERSAL_PACK_CEILING}): ` + universal.map(a => a.id).join(' '));
+    }
+}
+
+/*
+ * AUDIT-6 §7.3: every arena has to be able to kill you in a way that is its own.
+ *
+ * A census over twenty runs of each of the forty-six arenas found eight that
+ * produced no death shape belonging to them. Four had signatures that only ever
+ * logged and adjusted a vital — the Warren moved the map without ever bringing
+ * it down on anybody, the Carnival started a ride nobody could be caught in,
+ * the Cul-de-Sac's houses announced their guests and then let them leave, the
+ * Silk Wood spun a road shut and never spun over a person. The other four could
+ * kill in principle and never did, because a flat 22-30 damage does not finish
+ * a tribute who walked in healthy.
+ *
+ * This is the static half of the guarantee: a signature that contains no death
+ * cause at all cannot possibly produce one, and that is checkable by reading
+ * rather than by sampling. The sampled half is the count reported below it,
+ * which is about *rate* rather than existence and is deliberately not a
+ * failure — a rare arena death is a design choice; an impossible one is a bug.
+ */
+{
+    const source = readFileSync('src/engine/arenaSignature.ts', 'utf8');
+    const allFlavor = { ...ARENA_FLAVOR, ...NEW_ARENA_FLAVOR } as Record<string, { events: Array<{ cause: string; damage?: number }> }>;
+    const silent: string[] = [];
+    let viaSignature = 0;
+    for (const arena of ARENAS) {
+        // (a) the per-cycle signature.
+        const start = source.indexOf(`function ${arena.id}Signature`);
+        let lethalSignature = false;
+        if (start >= 0) {
+            const end = source.indexOf('\n}', start);
+            lethalSignature = /checkDeath\(/.test(source.slice(start, end < 0 ? undefined : end));
+        }
+        if (lethalSignature) viaSignature++;
+        // (b) the authored event pool. An event with a `cause` and real damage
+        // is a death this arena can produce, and four arenas — the Salt Mirror,
+        // the Hanging Gardens, the Shattered Archipelago and the Menagerie —
+        // do all their killing this way rather than through the signature.
+        const lethalEvent = (allFlavor[arena.id]?.events ?? [])
+            .some(e => !!e.cause && (e.damage ?? 0) > 0);
+        if (!lethalSignature && !lethalEvent) silent.push(arena.id);
+    }
+    notes.push(`arenas that can produce a death of their own: ${ARENAS.length - silent.length}/${ARENAS.length}`
+        + ` (${viaSignature} through the signature, the rest through authored events)`);
+    if (silent.length > 0) {
+        problems.push(`${silent.length} arena(s) cannot kill anybody in a way that is theirs, so the most distinctive `
+            + `thing about each can never appear on an obituary: ${silent.join(' ')}`);
     }
 }
 
