@@ -78,7 +78,17 @@ export type ArchetypeId =
      * that wants nobody else to arrive was something tributes did only by
      * accident.
      */
-    | 'warden' | 'herald' | 'penitent' | 'forager' | 'duellist' | 'broker';
+    | 'warden' | 'herald' | 'penitent' | 'forager' | 'duellist' | 'broker'
+    /*
+     * AUDIT-7 §12.5: six more, on the rule the last three batches were held to
+     * — each holds a stance/objective/target combination nothing already in the
+     * table holds — plus one this pass added: **every signature must be
+     * reachable by a soloist.** Three of the four lowest-firing set pieces in
+     * the roster were alliance-gated (§8.2), so an archetype whose beat needs
+     * somebody else standing in the zone is an archetype most players never see
+     * do its thing.
+     */
+    | 'cartographer' | 'debtor' | 'forecaster' | 'understudy' | 'archivist' | 'quiet';
 
 export interface Attributes {
     strength: number;
@@ -2602,6 +2612,15 @@ export interface GameState {
     blocTreaties?: Array<{
         /** Cycle a member last decided the treaty did not bind them. Log de-dup only. */
         strainedCycle?: number;
+        /**
+         * AUDIT-7 §4.5: how many times both sides have come back and said
+         * again. A treaty used to have exactly one possible history — it was
+         * sworn and then something happened to it — and 80.6% of the time the
+         * something was one side ceasing to exist. A renewal count is what
+         * makes "these two packs have held this for a fortnight" a fact the
+         * feed can state.
+         */
+        renewals?: number;
         aId: string;
         bId: string;
         /** Cycle it lapses on its own. */

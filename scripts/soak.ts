@@ -195,7 +195,7 @@ const eventIdsFired = new Set<string>();
 const perRunReach: Record<string, number[]> = {};
 const rumourIdsCounted = new Set<string>();
 let vengeancePacts = 0, vengeancePaid = 0, vengeanceStolen = 0, vengeanceAbandoned = 0;
-let treatiesSworn = 0, treatiesBroken = 0, treatiesLapsed = 0, treatiesOutgrown = 0, treatiesOutlivedASide = 0;
+let treatiesSworn = 0, treatiesBroken = 0, treatiesLapsed = 0, treatiesOutgrown = 0, treatiesOutlivedASide = 0, treatiesRenewed = 0;
 let trianglesFormed = 0, triangleJealousy = 0, triangleChoices = 0;
 let loansMade = 0, loansReturned = 0, loansDefaulted = 0;
 let loansLost = 0, loansLenderDied = 0, loansBorrowerDied = 0, loansOpenAtEnd = 0;
@@ -432,6 +432,7 @@ for (let i = 0; i < 400; i++) {
   { const L = truceLedger(state); (Object.keys(L) as Array<keyof typeof L>).forEach(k => { TRUCE_LEDGER[k] += L[k]; }); }
 
   runs++;
+  if (state.blocTreatyBroken) treatiesBroken++;
   if (state.config.districtCount >= FULL_FIELD_DISTRICTS) { fullFieldRuns++; fullFieldDays += state.day; }
   if (state.musterDay !== undefined) {
     musterRuns++;
@@ -573,7 +574,23 @@ for (let i = 0; i < 400; i++) {
     // AUDIT-6 §1.2: the swearing line was rewritten under §22 to name both
     // memberships; the old probe string is gone from src/ entirely.
     if (prose(/agree a truce between their groups and take it back to them/, l.text)) treatiesSworn++;
-    if (prose(/takes the agreement between the two groups with them/, l.text)) treatiesBroken++;
+    /*
+     * AUDIT-7 §4.5: counted off the engine's own flag, not off prose.
+     *
+     * This was `prose(/takes the agreement between the two groups with them/)`,
+     * and a killing across a treaty line happens about four times in 400 runs —
+     * so the probe sat at the edge of firing at all, and a change elsewhere
+     * that merely reshuffled the RNG stream took it to zero and tripped the
+     * dead-probe meta-assertion. A probe on a 1%-per-run event is a coin toss
+     * with a build failure attached.
+     *
+     * `state.blocTreatyBroken` is set by `noteBlocKill` itself, is exact, and
+     * cannot rot when somebody rewrites the line. The prose is still worth
+     * having; it is just not the right thing to count.
+     */
+    // AUDIT-7 §4.5: a treaty that comes up and gets renewed, which is the
+    // ending that did not exist. 204 of 253 used to end by one side dying.
+    if (prose(/both sides send somebody to say the same thing: again/, l.text)) treatiesRenewed++;
     if (prose(/Nobody renews it and nobody breaks it/, l.text)) treatiesLapsed++;
     if (prose(/an arithmetic problem rather than a moral one/, l.text)) treatiesOutgrown++;
     // AUDIT-6 §4.3: the ending that used to happen silently, and was the
@@ -1162,7 +1179,7 @@ console.log(`rumours: true claims by kind ${RUMOUR_KINDS.map(k => `${k}=${trueRu
 console.log(`rumours: planted=${rumoursPlanted} exposedAsPlant=${rumoursCaughtPlanted} exposedAsRepeated=${rumoursCaughtRepeated} untraceable=${rumoursDeadEnd}`);
 console.log(`vengeancePacts: sworn=${vengeancePacts} paidThemselves=${vengeancePaid} takenByAnother=${vengeanceStolen} abandoned=${vengeanceAbandoned}`);
 const treatyEndings = treatiesBroken + treatiesLapsed + treatiesOutgrown + treatiesOutlivedASide;
-console.log(`blocTreaties: sworn=${treatiesSworn} brokenByAKilling=${treatiesBroken} lapsed=${treatiesLapsed}`
+console.log(`blocTreaties: sworn=${treatiesSworn} renewed=${treatiesRenewed} brokenByAKilling=${treatiesBroken} lapsed=${treatiesLapsed}`
   + ` endedByTheField=${treatiesOutgrown} outlivedASide=${treatiesOutlivedASide} narratedEndings=${treatyEndings}`);
 // AUDIT-6 §4.3: a treaty that is sworn on screen and then disappears is the
 // bug the repaired probe found. Every treaty either ends on screen or is still

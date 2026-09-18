@@ -4522,7 +4522,19 @@ export const BLOC_TREATY = {
      * who can make it land is the one who has made it land before.
      */
     perOratory: 0.05,
-    cycles: 6,
+    /*
+     * AUDIT-7 §4.5: a shorter term, because a term nobody reaches is not a term.
+     *
+     * At six cycles, 192 of 231 treaties across 400 runs ended when one bloc
+     * stopped existing and only a handful ever reached their own expiry — so
+     * the renewal beat added on this pass had almost nothing to fire on, and
+     * the *decision* a treaty is supposed to represent was being made by
+     * attrition. Four cycles is inside the lifetime of a bloc, so the question
+     * "again?" actually gets asked; renewal extends by another four, so two
+     * groups that keep saying yes still hold it as long as they ever did, and
+     * now the feed says so each time.
+     */
+    cycles: 4,
     /** Field size at or below which two packs stop being able to afford it. */
     dissolveFieldSize: 7,
     excitement: 15,
@@ -4539,6 +4551,20 @@ export const BLOC_TREATY = {
     breachEndgameBonus: 0.08,
     breachWoundedHealth: 40,
     breachWoundedBonus: 0.06,
+    /*
+     * AUDIT-7 §4.5: renewal, so a treaty can end by a decision.
+     *
+     * 204 of 253 treaties across 400 runs ended because one side stopped
+     * existing. `truceLedger` gets this right at two-person scale — renewed 199
+     * against lapsed 195 — because a truce comes up and somebody decides. These
+     * are the numbers that give a bloc treaty the same shape.
+     */
+    /** The share of the breach roll that survives however much they get on. */
+    breachRegardFloor: 0.3,
+    renewChance: 0.45,
+    renewMinRegard: -5,
+    /** Renewing inside a cycle of the dissolve floor is not a decision. */
+    renewFieldSlack: 2,
     breachMaxChance: 0.4,
 } as const;
 
@@ -7544,6 +7570,26 @@ export const ARCHETYPE_HOOKS = {
     brokerDebt: 12,
     brokerRegard: 7,
     brokerTruceCycles: 4,
+
+    /*
+     * AUDIT-7 §12.5: the six set pieces that do not need anybody else there.
+     */
+    /** Zones a Cartographer has to have walked before naming a route is a claim. */
+    cartographerMinZones: 3,
+    cartographerRouteCycles: 5,
+    /** What settling up in front of the cameras is worth to the other party. */
+    debtorRegard: 12,
+    debtorResolve: 10,
+    /** Reading the sky right is rest, whether or not the sky cooperates. */
+    forecasterRelief: 8,
+    understudyResolve: 12,
+    understudySanity: 6,
+    /** Names to read before a roll-call is a roll-call rather than a remark. */
+    archivistMinFallen: 3,
+    archivistSanityCost: 4,
+    /** Cycles unseen before the arena's not having noticed becomes the beat. */
+    quietUnseenCycles: 4,
+    quietThreatShed: 0.15,
 } as const;
 
 

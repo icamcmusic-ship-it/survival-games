@@ -719,7 +719,10 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Front-Loaded',
         hint: 'Crown a Career who never left the Cornucopia.',
         category: 'combat',
-        rarity: 'possible',
+        // AUDIT-7: observed across 500 runs, so no longer 'possible?' — the label
+        // means the simulation is believed able to do this and no measured run
+        // ever has, and a measured run now has.
+        rarity: 'legendary',
         // Audit 3 §1.6: `arena.zones[0]` is the Cornucopia in the hand-authored
         // arenas and is not guaranteed to be in a generated one, so on every
         // procedural map this asked for a sector that was not the horn. Matched
@@ -1045,7 +1048,10 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nobody Came Home',
         hint: 'See a Games end with no victor at all.',
         category: 'games',
-        rarity: 'possible',
+        // AUDIT-7: observed across 500 runs, so no longer 'possible?' — the label
+        // means the simulation is believed able to do this and no measured run
+        // ever has, and a measured run now has.
+        rarity: 'legendary',
         test: state => alive(state).length === 0,
         /*
          * REQUEST (run length): this became genuinely rare and needed to start
@@ -2514,7 +2520,10 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Never Left the Horn',
         hint: 'Crown a victor who only ever stood in one sector of the arena.',
         category: 'oddity',
-        rarity: 'possible',
+        // AUDIT-7: observed across 500 runs, so no longer 'possible?' — the label
+        // means the simulation is believed able to do this and no measured run
+        // ever has, and a measured run now has.
+        rarity: 'legendary',
         test: (_s, v) => !!v && (v.visitedZones?.length ?? 0) === 1,
         nearMiss: (_s, v) => {
             const n = v?.visitedZones?.length ?? 0;
@@ -2878,7 +2887,10 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Full Table',
         hint: 'See an alliance still standing at the end that named all four of its roles.',
         category: 'social',
-        rarity: 'possible',
+        // AUDIT-7: observed across 500 runs, so no longer 'possible?' — the label
+        // means the simulation is believed able to do this and no measured run
+        // ever has, and a measured run now has.
+        rarity: 'legendary',
         test: state => Object.values(state.alliances ?? {}).some(a => Object.values(a.roles ?? {}).filter(Boolean).length >= 4),
         nearMiss: state => {
             const best = Math.max(0, ...Object.values(state.alliances ?? {}).map(a => Object.values(a.roles ?? {}).filter(Boolean).length));

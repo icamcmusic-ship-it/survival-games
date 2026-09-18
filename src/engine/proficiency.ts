@@ -59,6 +59,19 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     forager: 'butchery',
     duellist: 'melee',
     broker: 'persuasion',
+    /*
+     * AUDIT-7 §12.5. Three of these are deliberately the axes §3.5 had just
+     * made trainable — a speciality in a skill nothing could train was the
+     * shape of the problem, and these are the archetypes that give
+     * `navigation`, `carpentry` and `intimidation` somebody whose character
+     * they are.
+     */
+    cartographer: 'navigation',
+    debtor: 'persuasion',
+    forecaster: 'navigation',
+    understudy: 'forage',
+    archivist: 'oratory',
+    quiet: 'stealth',
 };
 
 /**

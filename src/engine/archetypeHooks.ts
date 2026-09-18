@@ -13,6 +13,7 @@ import { witnessKindness } from './rapport';
 import { giveItem, inventoryValue } from './items';
 import { healInjury, clearBleeding } from './wounds';
 import { clampTribute } from './vitals';
+import { trainProficiency } from './proficiency';
 import { getZone, zoneNames, zoneFeatures } from './map';
 import { addZoneThreat } from './memory';
 import { hasTruce } from './parley';
@@ -738,6 +739,110 @@ const SIGNATURES: Record<string, Signature> = {
         adjustRel(client, t.id, ARCHETYPE_HOOKS.brokerRegard);
         grantTruce(ctx, t, client, ARCHETYPE_HOOKS.brokerTruceCycles, 'brokered');
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /*
+     * ---- AUDIT-7 §12.5: six set pieces a tribute can do alone ---------------
+     *
+     * The rule this batch was written to. §8.2 measured the roster's four
+     * lowest-firing signatures and three of them needed another tribute in the
+     * same zone in the same alliance at the same moment; every one below turns
+     * on the archetype's own state, so it fires for somebody who has not seen
+     * anybody in three days.
+     */
+
+    /** Cartographer: names a route and holds to it while everyone else reacts. */
+    cartographerRoute: (ctx, t) => {
+        const seen = (t.visitedZones ?? []).length;
+        if (seen < ARCHETYPE_HOOKS.cartographerMinZones) return false;
+        const unseen = ctx.state.arena.zones
+            .filter(z => !(t.visitedZones ?? []).includes(z.name)
+                && !(ctx.state.collapsedZones ?? []).includes(z.name));
+        if (unseen.length === 0) return false;
+        const target = unseen.sort((a, b) => b.resources - a.resources)[0];
+        say(ctx, t, 'cartographerRoute', [t.id], { target: target.name, seen: String(seen) });
+        t.objective = { kind: 'reach', zone: target.name, reason: 'forage', expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.cartographerRouteCycles };
+        // Knowing the ground is the reward, and it is the skill §3.5 made real.
+        trainProficiency(t, 'navigation', ctx);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        return true;
+    },
+
+    /** Debtor: the thing they owe comes due, out loud, whether or not the creditor is alive. */
+    debtorReckoning: (ctx, t) => {
+        const owed = Object.keys(t.debts ?? {})[0];
+        const creditor = owed ? ctx.state.tributes.find(o => o.id === owed) : undefined;
+        // Alive and here, alive and elsewhere, or dead — all three are a
+        // reckoning, and only the first needs anybody else to be standing here.
+        if (creditor && creditor.status === 'alive' && creditor.zone === t.zone) {
+            say(ctx, t, 'debtorReckoningHere', [t.id, creditor.id], { creditor: creditor.name });
+            adjustRel(creditor, t.id, ARCHETYPE_HOOKS.debtorRegard);
+            grantTruce(ctx, t, creditor, ARCHETYPE_HOOKS.brokeredTruceCycles, 'brokered');
+        } else if (creditor) {
+            say(ctx, t, 'debtorReckoningAbsent', [t.id], { creditor: creditor.name });
+        } else {
+            say(ctx, t, 'debtorReckoningAlone', [t.id]);
+        }
+        t.resolve = Math.min(100, (t.resolve ?? 50) + ARCHETYPE_HOOKS.debtorResolve);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /** Forecaster: says what is coming, and is somewhere else when it arrives. */
+    forecasterCall: (ctx, t) => {
+        const front = ctx.state.weatherFront?.kind;
+        const zone = getZone(ctx.state.arena, t.zone);
+        const sheltered = zone ? (zoneFeatures(zone).shelterQuality ?? 0) > 0 : false;
+        say(ctx, t, front ? 'forecasterCallFront' : 'forecasterCallQuiet', [t.id],
+            { front: String(front ?? 'nothing'), ground: sheltered ? 'ground that will hold' : 'open ground' });
+        // Reading it is worth something whether or not anybody listens.
+        t.vitals.fatigue = Math.max(0, t.vitals.fatigue - ARCHETYPE_HOOKS.forecasterRelief);
+        clampTribute(t);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        return true;
+    },
+
+    /** Understudy: says whose place they are standing in. */
+    understudyReason: (ctx, t) => {
+        say(ctx, t, 'understudyReason', [t.id], { days: String(t.daysSurvived) });
+        t.resolve = Math.min(100, (t.resolve ?? 50) + ARCHETYPE_HOOKS.understudyResolve);
+        t.vitals.sanity = Math.min(100, t.vitals.sanity + ARCHETYPE_HOOKS.understudySanity);
+        clampTribute(t);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /** Archivist: says the fallen, in order, to whoever is or is not there. */
+    archivistRoll: (ctx, t) => {
+        const fallen = ctx.state.tributes
+            .filter(o => o.status !== 'alive' && o.dayOfDeath !== undefined)
+            .sort((a, b) => (a.dayOfDeath ?? 0) - (b.dayOfDeath ?? 0));
+        if (fallen.length < ARCHETYPE_HOOKS.archivistMinFallen) return false;
+        const first = fallen[0].name;
+        const last = fallen[fallen.length - 1].name;
+        say(ctx, t, 'archivistRoll', [t.id, ...fallen.slice(0, 3).map(o => o.id)],
+            { count: String(fallen.length), first, last });
+        // Everybody in earshot is reminded what the number is.
+        getAlive(ctx.state)
+            .filter(o => o.id !== t.id && o.zone === t.zone)
+            .forEach(o => { o.vitals.sanity = Math.max(0, o.vitals.sanity - ARCHETYPE_HOOKS.archivistSanityCost); clampTribute(o); });
+        trainProficiency(t, 'oratory', ctx);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /** Quiet Professional: the arena notices it has not noticed them. */
+    quietWork: (ctx, t) => {
+        if ((t.unseenStreak ?? 0) < ARCHETYPE_HOOKS.quietUnseenCycles) return false;
+        say(ctx, t, 'quietWork', [t.id], { days: String(t.daysSurvived) });
+        // Being un-looked-for is the whole of the advantage, and this is the
+        // moment it becomes one: the field's model of them is empty.
+        getAlive(ctx.state)
+            .filter(o => o.id !== t.id)
+            .forEach(o => addZoneThreat(ctx.state, o, t.zone, -ARCHETYPE_HOOKS.quietThreatShed));
+        trainProficiency(t, 'stealth', ctx);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
         return true;
     },
 };
