@@ -431,6 +431,33 @@ function requirementsHold(ctx: SimContext, t: Tribute, event: ArenaEventDef): bo
         if (need.minSurvivors !== undefined && alive < need.minSurvivors) return false;
         if (need.maxSurvivors !== undefined && alive > need.maxSurvivors) return false;
     }
+    /*
+     * AUDIT-7 §7.2: the tribute's own body.
+     *
+     * These are what let a *universal* death be specific. Before them the pool
+     * could ask about the zone, the weather, the law and the field size, so
+     * every generic death read as weather — and the four categories §7.2 found
+     * missing (thirst-driven error, the body's own failure, equipment, a failed
+     * alliance act) all turn on state that only the tribute has.
+     */
+    if (need.thirstAbove !== undefined && t.vitals.thirst < need.thirstAbove) return false;
+    if (need.hungerAbove !== undefined && t.vitals.hunger < need.hungerAbove) return false;
+    if (need.fatigueAbove !== undefined && t.vitals.fatigue < need.fatigueAbove) return false;
+    if (need.healthBelow !== undefined && t.health > need.healthBelow) return false;
+    if (need.condition && t.condition !== need.condition) return false;
+    if (need.carrying && !t.inventory.some(i => i.type === need.carrying)) return false;
+    if (need.wounded !== undefined) {
+        const hurt = t.injuries.bleeding
+            || Object.values(t.injuries).some(Boolean)
+            || Object.values(t.woundInfection ?? {}).some(v => (v ?? 0) > 0);
+        if (hurt !== need.wounded) return false;
+    }
+    if (need.alone !== undefined) {
+        const company = ctx.state.tributes.some(o =>
+            o.id !== t.id && o.status === 'alive' && o.zone === t.zone);
+        if (company === need.alone) return false;
+    }
+    if (need.daysAbove !== undefined && t.daysSurvived < need.daysAbove) return false;
     return true;
 }
 

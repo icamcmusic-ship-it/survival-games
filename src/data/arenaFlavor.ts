@@ -1,4 +1,4 @@
-import { Arena, ArenaLawId, Attributes, Stance, Terrain, ZoneEffectKind } from '../models/types';
+import { Arena, ArenaLawId, Attributes, Condition, Item, Stance, Terrain, ZoneEffectKind } from '../models/types';
 import type { SanityBand } from '../engine/sanityBands';
 import { proceduralArenaFlavor } from './proceduralFlavor';
 import { EXTRA_ARENA_EVENTS } from './arenaEvents';
@@ -102,6 +102,36 @@ export interface ArenaEventDef {
         trait?: string;
         /** §7: only at or below this sanity band. See `engine/sanityBands.ts`. */
         sanityBand?: SanityBand;
+        /*
+         * AUDIT-7 §7.2: the tribute's own body.
+         *
+         * The universal pool had 88 events and 61 causes of death, and the
+         * non-combat half was thin in a specific way: nothing killed by
+         * thirst-driven error, by the body's own failure, by equipment, or by
+         * a failed alliance act. Every one of those needs a gate on the
+         * tribute's state rather than on the zone's — "drank from the wrong
+         * place because they had not drunk in three days" is exactly the sort
+         * of death the vitals model tracks precisely enough to gate and the
+         * event schema could not ask for.
+         */
+        /** Thirst at or above this. The vitals scale is 0-100, 100 being dying of it. */
+        thirstAbove?: number;
+        /** Hunger at or above this. */
+        hungerAbove?: number;
+        /** Fatigue at or above this. */
+        fatigueAbove?: number;
+        /** Health at or below this. */
+        healthBelow?: number;
+        /** Soft-tissue condition, from `engine/physique.ts`. */
+        condition?: Condition;
+        /** Carrying at least one item of this type. */
+        carrying?: Item['type'];
+        /** Carrying an open wound, an infection, or bleeding. */
+        wounded?: boolean;
+        /** Nobody else alive in the zone, or somebody. */
+        alone?: boolean;
+        /** Days survived at or above this. */
+        daysAbove?: number;
     };
     /**
      * §7: a mechanical consequence beyond the stat block above, dispatched by
@@ -13641,6 +13671,240 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
  * second, uncoordinated stance system fighting the real one.
  */
 export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
+    /*
+     * ---- AUDIT-7 §7.2: twenty deaths that turn on the tribute's own body ----
+     *
+     * The pool was 88 events across 61 causes, and the non-combat half was thin
+     * in four specific ways. Nothing killed by **thirst-driven error** — three
+     * drowning causes and two water-poisonings, none of them gated on thirst,
+     * so nobody ever drank from the wrong place because they had not drunk in
+     * three days. Nothing killed by **a failed alliance act**: 88 events and not
+     * one of them was dying covering somebody's retreat, although
+     * `bledOutDuringARescue` existed as an engine cause with no authored event
+     * behind it. Nothing killed by **the body's own failure** — a tribute who
+     * had walked Padded to Lean to Wasted could starve but could not simply
+     * stop. And nothing killed by **equipment**, in a game with 70 items.
+     *
+     * All four needed a gate on the tribute rather than on the zone, which the
+     * `requires` block could not express; it can now. Every one below carries
+     * a weight of 1 or more, for the reason the Audit 3 note below sets out: the
+     * universal pool takes a fixed share of every arena's draw, so twenty
+     * additions at full weight would be a real rise in ambient lethality across
+     * every run and would show up as a medic nerf — which is why the *ungated*
+     * hazards that pass carry 0.5.
+     *
+     * Every death below is gated, and that changes the arithmetic in a way
+     * worth stating because it is not obvious. A `requires` gate does not make
+     * an event rarer in the draw — it removes it from the pool **entirely**
+     * until the gate holds — so a narrow gate and a halved weight *compound*.
+     * At 0.5 these fired between zero and a handful of times across 250 runs;
+     * the four narrowest (a body that has stopped recovering, a heart on a
+     * climb, a fire that will not light, an edge in the dark) fired zero. The
+     * weight is what an event is worth **within the pool it is eligible for**,
+     * and for a gated event that pool is small and the moment is specific.
+     * 1, and 1.5 for the four narrowest. Measured after, not assumed: 20 of 20
+     * reach a player across 250 runs and the mutts-and-hazards death share
+     * stays inside its guard.
+     */
+
+    // -- thirst-driven error ---------------------------------------------------
+    {
+        id: 'u-a7-bad-water-desperate',
+        text: 'There is water in {zone} and {tribute} has not had any for two days. They know what the film on it means. They drink anyway.',
+        escapeText: '{tribute} looks at the water in {zone} for a long moment, and then keeps walking, which costs them more than it sounds.',
+        cause: 'Drank from standing water they knew was bad',
+        dodgeStat: 'willpower', dodgeAlt: 'intelligence', dodgeDifficulty: 7,
+        damage: 18, poisoned: true, quench: 25, weight: 1,
+        // Placed on the measured distribution rather than above it: thirst
+        // runs p50 22 / p90 80 / p95 100, so 65 is the top sixth of the field
+        // and this competes with dehydration rather than arriving after it.
+        requires: { thirstAbove: 65 },
+    },
+    {
+        id: 'u-a7-ate-after-the-first-turned',
+        text: 'The first handful made {tribute} ill in {zone}. The second handful is from the same bush, because there is nothing else and they are past arguing with themselves about it.',
+        escapeText: '{tribute} throws the rest of it away in {zone} and goes hungry, which is the correct answer and does not feel like one.',
+        cause: 'Ate the second thing after the first one turned',
+        dodgeStat: 'intelligence', dodgeAlt: 'willpower', dodgeDifficulty: 7,
+        damage: 20, poisoned: true, feed: 20, weight: 1,
+        requires: { hungerAbove: 55 },
+    },
+    {
+        id: 'u-a7-drank-the-crossing',
+        text: '{tribute} crosses the water in {zone} and drinks while they are in it, which is two mistakes wearing the same coat.',
+        escapeText: '{tribute} crosses the water in {zone} with their mouth shut and fills the canteen upstream of themselves.',
+        cause: 'Poisoned by water they were standing in',
+        dodgeStat: 'intelligence', dodgeAlt: 'endurance',
+        damage: 14, poisoned: true, quench: 20, weight: 1,
+        terrains: ['water', 'wetland'],
+        requires: { thirstAbove: 50 },
+    },
+
+    // -- a failed alliance act -------------------------------------------------
+    {
+        id: 'u-a7-covering-the-retreat',
+        text: 'Somebody has to be last out of {zone} and {tribute} does not make anybody else decide who.',
+        escapeText: '{tribute} is last out of {zone} and gets out of it, which is not the same as having been safe.',
+        cause: 'Died covering a retreat',
+        dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7,
+        damage: 38, bleeding: true, weight: 1, witnesses: true,
+        requires: { alone: false, stance: ['Defensive', 'Fortified', 'Nursing', 'Tending'] },
+    },
+    {
+        id: 'u-a7-went-back-for-them',
+        text: '{tribute} is out of {zone} and clear, and then {tribute} turns round and goes back in, because of who is still in there.',
+        escapeText: '{tribute} goes back into {zone} for somebody and comes out of it again with them, which is the rarest thing in this arena.',
+        cause: 'Went back for somebody and did not come out',
+        dodgeStat: 'agility', dodgeAlt: 'willpower', dodgeDifficulty: 8,
+        damage: 42, bleeding: true, weight: 1, witnesses: true,
+        requires: { alone: false },
+    },
+    {
+        id: 'u-a7-wound-taken-for-somebody',
+        text: 'The wound {tribute} is carrying through {zone} was meant for somebody else. It does not know that, and today it opens.',
+        escapeText: '{tribute} checks the wound they took for somebody else, in {zone}, and finds it holding.',
+        cause: 'Bled out from a wound taken for somebody else',
+        dodgeStat: 'endurance', dodgeAlt: 'willpower', dodgeDifficulty: 7,
+        damage: 30, bleeding: true, weight: 1,
+        requires: { wounded: true },
+    },
+
+    // -- the body's own failure ------------------------------------------------
+    {
+        id: 'u-a7-body-simply-stopped',
+        text: 'There is nothing left of {tribute} to spend. In {zone}, without any particular drama, the body stops taking instructions.',
+        escapeText: '{tribute} sits down in {zone} because the alternative was falling down, and gets up again an hour later.',
+        cause: 'The body simply stopped',
+        dodgeStat: 'endurance', dodgeAlt: 'willpower', dodgeDifficulty: 8,
+        damage: 45, fatigue: 25, weight: 1.5,
+        // `Wasted` is 0.1% of live samples — a gate nothing reaches. `Lean`
+        // plus a week and a body that has stopped recovering is the same
+        // tribute, in a state the engine actually produces.
+        requires: { condition: 'Lean', fatigueAbove: 40, daysAbove: 4 },
+    },
+    {
+        id: 'u-a7-heart-on-the-climb',
+        text: '{tribute} is most of the way up the ground in {zone} when their chest decides it has finished with this.',
+        escapeText: '{tribute} stops halfway up in {zone}, hangs there until the hammering stops, and goes on more slowly.',
+        cause: 'Heart gave out on the climb',
+        dodgeStat: 'endurance', dodgeAlt: 'strength', dodgeDifficulty: 8,
+        damage: 40, fatigue: 20, weight: 1.5,
+        requires: { elevationOrChoke: true, fatigueAbove: 40 },
+    },
+    {
+        id: 'u-a7-seizure-at-the-floor',
+        text: 'Whatever has been building behind {tribute}\'s eyes arrives in {zone} all at once, and they go down in it.',
+        escapeText: 'Something goes through {tribute} in {zone} like current and lets go of them again, and they do not know what it was.',
+        cause: 'Seizure',
+        dodgeStat: 'willpower', dodgeAlt: 'endurance', dodgeDifficulty: 8,
+        damage: 35, sanity: 10, weight: 1,
+        requires: { sanityBand: 'gone' },
+    },
+    {
+        id: 'u-a7-fever-nobody-could-name',
+        text: 'The thing in {tribute}\'s blood in {zone} has no name anybody here would know and it is winning.',
+        escapeText: 'The fever in {tribute} breaks in {zone}, on its own, for no reason they will ever learn.',
+        cause: 'Died of a fever nobody could name',
+        dodgeStat: 'endurance', dodgeAlt: 'willpower', dodgeDifficulty: 8,
+        damage: 34, infected: true, fatigue: 20, weight: 1,
+        requires: { wounded: true, alone: true },
+    },
+    {
+        id: 'u-a7-starved-within-reach',
+        text: 'There is food in {zone}. {tribute} has walked past it twice. They are not seeing it any more.',
+        escapeText: '{tribute} makes themselves look properly in {zone}, the way they would have on day one, and there it is.',
+        cause: 'Starved within reach of food',
+        dodgeStat: 'intelligence', dodgeAlt: 'willpower', dodgeDifficulty: 7,
+        damage: 32, hunger: 15, weight: 1,
+        requires: { hungerAbove: 48 },
+    },
+
+    // -- equipment ---------------------------------------------------------------
+    {
+        id: 'u-a7-rope-parted',
+        text: 'The rope {tribute} has been trusting all week parts in {zone}, at the worst possible height, with a sound like a word.',
+        escapeText: 'The rope goes in {zone} and {tribute} is already holding something else with the other hand.',
+        cause: 'Rope parted on the descent',
+        dodgeStat: 'agility', dodgeAlt: 'strength', dodgeDifficulty: 7,
+        damage: 40, bleeding: true, weight: 1,
+        requires: { elevationOrChoke: true, carrying: 'utility' },
+    },
+    {
+        id: 'u-a7-weapon-broke',
+        text: 'The blade {tribute} is holding in {zone} has been going since the horn. It picks the exchange it matters in to stop being a blade.',
+        escapeText: '{tribute} feels the blade go loose in {zone} and gets out of the exchange before it matters.',
+        cause: 'Weapon broke in the wrong exchange',
+        dodgeStat: 'agility', dodgeAlt: 'strength', dodgeDifficulty: 7,
+        damage: 30, bleeding: true, weight: 1,
+        requires: { carrying: 'weapon' },
+    },
+    {
+        id: 'u-a7-drowned-under-the-weight',
+        text: '{tribute} goes into the water in {zone} carrying everything they own, and everything they own goes in with them.',
+        escapeText: '{tribute} drops the pack at the edge of the water in {zone} and swims it, and loses the pack and keeps the rest.',
+        cause: 'Drowned under the weight of what they carried',
+        dodgeStat: 'agility', dodgeAlt: 'strength', dodgeDifficulty: 8,
+        damage: 48, weight: 1,
+        terrains: ['water', 'wetland'],
+        requires: { carrying: 'utility' },
+    },
+    {
+        id: 'u-a7-own-poison',
+        text: 'The blade {tribute} coated in {zone} does what it was coated to do, to the hand that coated it.',
+        escapeText: '{tribute} nicks themselves on their own treated blade in {zone} and gets it washed out in time.',
+        cause: 'Poisoned by their own poisoned weapon',
+        dodgeStat: 'agility', dodgeAlt: 'intelligence', dodgeDifficulty: 7,
+        damage: 22, poisoned: true, bleeding: true, weight: 1,
+        requires: { carrying: 'weapon', wounded: true },
+    },
+
+    // -- the arena, on a body that has stopped coping ----------------------------
+    {
+        id: 'u-a7-fire-would-not-take',
+        text: 'It takes {tribute} an hour in {zone} to accept that the fire is not going to light, and by then the cold has had the hour too.',
+        escapeText: '{tribute} gets a flame out of wet wood in {zone} on the ninth attempt, which is the whole of the skill.',
+        cause: 'Froze because the fire would not take',
+        dodgeStat: 'intelligence', dodgeAlt: 'endurance', dodgeDifficulty: 7,
+        damage: 28, frostbitten: true, fatigue: 18, weight: 1.5,
+        requires: { time: 'night', fatigueAbove: 35 },
+    },
+    {
+        id: 'u-a7-shelter-failed',
+        text: 'What {tribute} built in {zone} holds until about three in the morning, and then it does not, and there is nothing to build it again with.',
+        escapeText: 'The shelter in {zone} sags and {tribute} is awake enough to catch it before it goes.',
+        cause: 'Killed by the cold after the shelter failed',
+        dodgeStat: 'intelligence', dodgeAlt: 'strength', dodgeDifficulty: 7,
+        damage: 26, frostbitten: true, fatigue: 22, weight: 1,
+        requires: { time: 'night' },
+    },
+    {
+        id: 'u-a7-walked-off-in-the-dark',
+        text: '{tribute} is moving in {zone} after dark on legs that stopped reporting back some hours ago, and the ground ends.',
+        escapeText: '{tribute} finds the edge in {zone} with a foot rather than with all of themselves, and sits down where they are until light.',
+        cause: 'Walked off an edge in the dark',
+        dodgeStat: 'agility', dodgeAlt: 'intelligence', dodgeDifficulty: 8,
+        damage: 44, bleeding: true, weight: 1.5,
+        requires: { time: 'night', elevationOrChoke: true, fatigueAbove: 30 },
+    },
+    {
+        id: 'u-a7-own-trap-in-the-dark',
+        text: '{tribute} comes back to {zone} in the dark and forgets, for four steps, what they spent yesterday afternoon doing to it.',
+        escapeText: '{tribute} remembers their own trap line in {zone} a half-step before it remembers them.',
+        cause: 'Caught in their own trap in the dark',
+        dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 7,
+        damage: 34, bleeding: true, weight: 1,
+        requires: { time: 'night' },
+    },
+    {
+        id: 'u-a7-killed-by-the-silence',
+        text: 'Nobody has come into {zone} for days and {tribute} has stopped being sure that is good news. They walk out into the open to find out.',
+        escapeText: '{tribute} nearly walks out into the open in {zone} to be found, and sits back down, shaking, having talked themselves out of it.',
+        cause: 'Killed by the silence',
+        dodgeStat: 'willpower', dodgeAlt: 'intelligence', dodgeDifficulty: 8,
+        damage: 30, sanity: 18, weight: 1,
+        requires: { alone: true, sanityBand: 'frayed', daysAbove: 3 },
+    },
+
     /*
      * Audit 3 §7.2: and the other half of the same change.
      *
