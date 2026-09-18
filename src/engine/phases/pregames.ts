@@ -5,7 +5,7 @@ import { Tribute } from '../../models/types';
 import {
     CHARIOT_ANGLES, DISTRICT_SALUTE, DISTRICT_TOKENS, GOODBYE_SCENES, REAPING_CROWDS, STYLISTS, TRAIN_SCENES,
 } from '../../data/pregames';
-import { PREGAMES } from '../../data/balance';
+import { CONTINUITY, PREGAMES } from '../../data/balance';
 import { addExcitement } from '../audience';
 import { adjustRel } from '../relationships';
 import { clampTribute } from '../vitals';
@@ -60,13 +60,38 @@ export function processSquare(ctx: SimContext) {
     });
 
     // ---- 0. The Head Gamemaker ----
-    const headGamemaker = ctx.rng.pick(HEAD_GAMEMAKERS);
+    /*
+     * AUDIT-6 §9.3: the post has a term.
+     *
+     * This was a fresh draw off the run's seed every time, so a player's
+     * twentieth Games shared no more history with their nineteenth than with
+     * their first — and twenty authored Gamemakers each carried a persistent
+     * record that the broadcast read out and nothing else used. The incumbent
+     * now keeps the job for `CONTINUITY.gamemakerTerm` consecutive Games,
+     * which is what makes the grudge in `continuity.ts` accumulate against
+     * somebody specific rather than against whoever happened to be drawn.
+     *
+     * The draw is still the fallback, and still seeded: an empty record book, a
+     * finished term, or a stored name no longer in the roster all land back on
+     * exactly the old behaviour.
+     */
+    const panem = readPanem();
+    const term = panem.headGamemakerTerm;
+    const incumbent = term && term.runsServed < CONTINUITY.gamemakerTerm
+        ? HEAD_GAMEMAKERS.find(g => g.name === term.name)
+        : undefined;
+    const headGamemaker = incumbent ?? ctx.rng.pick(HEAD_GAMEMAKERS);
     ctx.state.headGamemaker = headGamemaker.name;
     ctx.logEvent(headGamemaker.openingLine, [], { important: true, category: 'gamemaker' });
-    // REPLAY-10: they have a record in this player's Panem, and the broadcast
-    // brings it up — which is what makes the country continuous between runs
-    // rather than a series of unrelated Games.
-    const panem = readPanem();
+    if (incumbent) {
+        const year = (term?.runsServed ?? 0) + 1;
+        ctx.logEvent(
+            `${incumbent.name} is running these Games for the ${year === 2 ? 'second' : year === 3 ? 'third' : `${year}th`} year `
+            + 'in a row, which the Capitol treats as continuity and the districts treat as something else.',
+            [],
+            { important: true, category: 'gamemaker' },
+        );
+    }
 
     /*
      * §9.3: what the last few Games left behind.

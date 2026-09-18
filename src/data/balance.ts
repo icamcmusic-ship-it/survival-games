@@ -7140,6 +7140,16 @@ export const SIDE_MARKETS = {
  * them, and should never feel handicapped for having won.
  */
 export const CONTINUITY = {
+    /*
+     * AUDIT-6 §9.3: how many consecutive Games a Head Gamemaker keeps the job.
+     *
+     * The post was re-drawn from the seed every run, so nothing a player did in
+     * run 1 reached run 2 through it and "Seneca's second year" was not a thing
+     * the game could say. Three is long enough for a player to notice the same
+     * name and for the grudge below to accumulate against somebody specific,
+     * and short enough that twenty authored Gamemakers still get seen.
+     */
+    gamemakerTerm: 3,
     /** Consecutive crowns that make a district a dynasty rather than a good year. */
     dynastyStreak: 2,
     /** …or this many crowns with this many of them inside the recent-runs window. */

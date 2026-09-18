@@ -177,6 +177,24 @@ export interface PanemRecords {
         victorKills?: number;
         deaths: number;
     }>;
+    /**
+     * AUDIT-6 §9.3: the Panem calendar — who is running the Games, and for how
+     * much longer.
+     *
+     * The Head Gamemaker was drawn fresh from the seed every single run, so a
+     * player's twentieth Games had exactly as much shared history with their
+     * nineteenth as with their first. Twenty Head Gamemakers each carried a
+     * persistent record that the broadcast read out and nothing else used.
+     *
+     * A term fixes that for the cost of one stored field: the incumbent keeps
+     * the job for a few consecutive Games, so "Seneca's second year" is a thing
+     * the player can notice, and a Gamemaker whose Games this player keeps
+     * winning stays in post long enough for the grudge in `continuity.ts` to
+     * mean something. Absent, or a name no longer in the roster, falls back to
+     * drawing one — so an old store and a renamed Gamemaker both degrade to
+     * exactly the old behaviour.
+     */
+    headGamemakerTerm?: { name: string; runsServed: number };
     /** §10.1: the district that won the most recent finished run, and how many consecutive runs it has now won. */
     lastVictorDistrict?: number;
     victorDistrictStreak?: number;
@@ -395,6 +413,27 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
             patronWins: Math.max(0, asNum(r.patronWins, 0)),
             lastVictorDistrict: Number.isFinite(asNum(r.lastVictorDistrict, NaN)) ? asNum(r.lastVictorDistrict, 0) : undefined,
             victorDistrictStreak: Math.max(0, asNum(r.victorDistrictStreak, 0)),
+            /*
+             * AUDIT-6 §9.3: `recentRuns` was written by `commitRun` and not
+             * listed here, and `migrate` runs on *every* read — so the
+             * comparison window was silently emptied the first time the store
+             * was read back, exactly the bug this spec's own v0 note documents
+             * happening to `patronDistrict`. Two things read it and both were
+             * quietly wrong across a reload: the end screen's "what was
+             * different about this one", and `districtStanding`'s dynasty
+             * clause, which needs a district to have won recently and not
+             * merely often. `check-storage-migrations` now asserts that no
+             * field of a committed record is lost on a round trip, so this
+             * cannot happen to the next field either.
+             */
+            headGamemakerTerm: (() => {
+                const term = asRecord(r.headGamemakerTerm);
+                if (!term || typeof term.name !== 'string') return undefined;
+                return { name: term.name, runsServed: Math.max(0, asNum(term.runsServed, 0)) };
+            })(),
+            recentRuns: Array.isArray(r.recentRuns)
+                ? (r.recentRuns as PanemRecords['recentRuns'])
+                : undefined,
         };
     },
 };
@@ -559,6 +598,14 @@ export function commitRun(state: GameState): RunOutcome {
         },
         ...(records.recentRuns ?? []),
     ].slice(0, RECENT_RUN_WINDOW);
+
+    // §9.3: and the term they are serving advances with it.
+    if (state.headGamemaker) {
+        const term = records.headGamemakerTerm;
+        records.headGamemakerTerm = term && term.name === state.headGamemaker
+            ? { name: term.name, runsServed: term.runsServed + 1 }
+            : { name: state.headGamemaker, runsServed: 1 };
+    }
 
     // The Head Gamemaker who ran these Games carries the result forward.
     const gmName = state.headGamemaker;

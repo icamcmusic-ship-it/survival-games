@@ -329,6 +329,59 @@ test('v0 Panem keeps patronage and gamemaker records the old reader dropped', ()
     assert.equal(envelopeVersion(STORAGE_KEYS.panem), PANEM_SPEC.version);
 });
 
+/*
+ * AUDIT-6 §9.3: the whole-record round trip.
+ *
+ * `migrate` runs on every read and names the fields it keeps, so a field added
+ * to `PanemRecords` and written by `commitRun` but not listed in the spec is
+ * silently erased the first time the store is read back. That is precisely the
+ * bug the spec's own v0 note records happening to `patronDistrict`, and it had
+ * happened again to `recentRuns` — which two readers depend on, both of them
+ * quietly wrong across a reload.
+ *
+ * Testing the fields one at a time cannot catch the next one, because the test
+ * would have to be written by the same person who forgot the field. So this
+ * asserts the general property instead: every key present on a written record
+ * is still present, and equal, after a read.
+ */
+test('no field of a written Panem record is lost on a round trip', () => {
+    const full: Record<string, unknown> = {
+        runs: 12,
+        victors: 9,
+        unlocked: ['first-blood'],
+        unlockedAt: { 'first-blood': { run: 3, date: 'd' } },
+        bests: { 'most-kills': { value: 6, name: 'Cato', district: 2, seed: 'S', arenaName: 'A', date: 'd' } },
+        gamemakerRecords: { Seneca: { games: 3, victors: 2, totalDays: 21, deaths: 22 } },
+        patronDistrict: 11,
+        patronDistricts: [11, 4],
+        arenasBought: ['reef'],
+        stipendsTaken: 2,
+        dailyBests: { 'daily-1': { day: 9, deaths: 23, victorName: 'Rue', victorDistrict: 11, date: 'd' } },
+        victorMentors: { 2: { name: 'Cato', archetype: 'career', run: 4 } },
+        districtCrowns: { 11: { victories: 1, lastRun: 4, lastVictorName: 'Rue', lastDate: 'd' } },
+        arenasWon: ['reef'],
+        quellsSeen: ['the-reflection'],
+        deathsSeen: ['bleeding'],
+        eventsSeen: ['the-bell'],
+        lawsWonUnder: ['openMic'],
+        biomesWon: ['tundra'],
+        muttsSeen: ['Tracker Jackers'],
+        arenasSeen: ['reef'],
+        patronWins: 2,
+        lastVictorDistrict: 11,
+        victorDistrictStreak: 2,
+        headGamemakerTerm: { name: 'Seneca', runsServed: 2 },
+        recentRuns: [{ seed: 'S1', arenaName: 'A', day: 9, victorName: 'Rue', victorDistrict: 11, victorArchetype: 'underdog', victorKills: 0, deaths: 23 }],
+    };
+    raw().set(STORAGE_KEYS.panem, JSON.stringify({ v: PANEM_SPEC.version, data: full }));
+    const back = readStored(PANEM_SPEC)! as unknown as Record<string, unknown>;
+    const lost = Object.keys(full).filter(k => back[k] === undefined);
+    assert.deepEqual(lost, [], `Panem fields dropped by migrate: ${lost.join(', ')}`);
+    Object.keys(full).forEach(k => {
+        assert.deepEqual(back[k], full[k], `Panem field ${k} changed on a round trip`);
+    });
+});
+
 test('feed filters and setup config round-trip and repair partial v0 data', () => {
     seedLegacy(STORAGE_KEYS.feedFilters, { mutedGroups: ['ambient', 7], importantOnly: 'yes' });
     const f = readStored(FILTERS_SPEC)!;
