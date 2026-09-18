@@ -141,14 +141,21 @@ export function setTrap(ctx: SimContext, t: Tribute) {
      */
     const canWhittle = diggable && profOf(t, 'carpentry') >= TRAPS.stakeCarpentry;
     const kind: Trap['kind'] =
-        venomIsTheWeapon || canWhittle ? 'stake'
+        venomIsTheWeapon ? 'stake'
             // §6.3: and `tripwire` was gated on the Evasive family alone.
             // Patrolling is the stance whose entire content is knowing who is
             // coming — an alarm on the approach is what it wants most.
             : hasLine && (isEvasiveStance(t.stance) || t.stance === 'Patrolling') ? 'tripwire'
                 : hasLine ? 'snare'
-                    : diggable && t.attributes.strength >= TRAPS.pitStrength ? 'pit'
-                        : 'deadfall';
+                    // §6.3: an untreated stake is what somebody builds when
+                    // they have no line to run. Deliberately *below* the line
+                    // kinds rather than above them — the first draft put it at
+                    // the top and every trapper with a rope started building
+                    // stakes instead of snares, which took the Saboteur from
+                    // 3% to 2.05% at n=1,600.
+                    : canWhittle ? 'stake'
+                        : diggable && t.attributes.strength >= TRAPS.pitStrength ? 'pit'
+                            : 'deadfall';
 
     /*
      * AUDIT-6 §12.4 `carpentry`: the build. `crafting` was doing this *and*
@@ -159,7 +166,16 @@ export function setTrap(ctx: SimContext, t: Tribute) {
         + t.attributes.intelligence * TRAPS.buildPerIntelligence
         + profOf(t, 'carpentry') * TRAPS.buildPerCarpentry
         + profOf(t, 'tracking') * TRAPS.buildPerTracking;
-    if (t.archetype === 'trickster') chance += TRAPS.trickeryBonus;
+    /*
+     * AUDIT-6 §9.1/§8: the Saboteur gets this too, which it never did.
+     *
+     * The trap bonus sat on `trickster` alone, and the archetype whose own
+     * description is "poisons caches, springs other people's traps, and takes
+     * the bridge out behind them" built traps at the field rate. It has been
+     * the worst archetype in the game across three audits — 2.21%, then
+     * 2.37% — and the mechanic it is named for was somebody else's.
+     */
+    if (t.archetype === 'trickster' || t.archetype === 'saboteur') chance += TRAPS.trickeryBonus;
     chance += traitMod(t, 'trapSkill');
     /*
      * AUDIT-6 §6.3: 598 traps set and 176 triggered — 29% — so trap-setting
@@ -252,7 +268,7 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
             let disarmChance = TRAPS.disarmBaseChance
                 + t.attributes.intelligence * TRAPS.disarmPerIntelligence
                 + profOf(t, 'tracking') * TRAPS.disarmPerTracking;
-            if (t.archetype === 'trickster') disarmChance += TRAPS.trickeryBonus;
+            if (t.archetype === 'trickster' || t.archetype === 'saboteur') disarmChance += TRAPS.trickeryBonus;
             if (ctx.rng.chance(Math.min(0.95, disarmChance))) {
                 removeTrap(ctx, trap.id);
                 trainProficiency(t, 'tracking');

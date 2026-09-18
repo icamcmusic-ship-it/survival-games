@@ -1921,6 +1921,21 @@ export const ESCALATION = {
      * before the middle of the Games had happened at all.
      */
     convergeEarliestDay: 8,
+    /*
+     * AUDIT-6 §9.1: the muster — the softer convergence, at twice the field
+     * size and none of the force. See `GameState.musterZone`.
+     */
+    musterAtOrBelow: 12,
+    musterEarliestDay: 4,
+    /** How long the price stays on the sector. */
+    musterCycles: 4,
+    /** What standing in it is worth per cycle, in sponsor trust and excitement. */
+    musterTrust: 7,
+    musterExcitement: 10,
+    /** §9.1: what the approaches are worth, as a share of the sector itself. */
+    musterWatchShare: 0.5,
+    /** And the pull it puts on an objective, well below the convergence's 99. */
+    musterPriority: 62,
     /**
      * Once convergence is called, the field is herded every cycle and the
      * border closes on an accelerated schedule: this many extra zones go out
@@ -3552,9 +3567,12 @@ export const TRAPS = {
      * so a deadfall in a dead-end cost the same day as one in the only pass
      * through the arena. Somebody spending a cycle on this picks their ground.
      */
-    buildChokepointBonus: 0.15,
-    buildPerTraffic: 0.02,
-    buildTrafficCap: 0.12,
+    // Trimmed from 0.15/0.02/0.12 on measurement: at the first values the
+    // extra traps pushed mutt-and-hazard deaths from 17.7% to 18.1%, through
+    // an 18% ceiling. The placement signal is the point, not the volume.
+    buildChokepointBonus: 0.10,
+    buildPerTraffic: 0.015,
+    buildTrafficCap: 0.08,
     /*
      * §6.3: a stake needed a venom gland AND no blade at all, which is why six
      * were built across 400 runs. A tribute holding a knife still has a reason
@@ -3563,8 +3581,13 @@ export const TRAPS = {
     stakeWithBladeChance: 0.35,
     /** §6.3: what it takes to whittle a point without a gland to paint it with. */
     stakeCarpentry: 1,
-    /** §6.3: an untreated stake is a hole with a spike in it, not a poisoning. */
-    stakeUntreatedDamage: 26,
+    /*
+     * §6.3: an untreated stake is a hole with a spike in it, not a poisoning.
+     * Below `stakeDamage`, which is the point — the treated one carries the
+     * venom on top. The first draft had this *above* it, which is backwards
+     * and pushed mutt-and-hazard deaths through their 18% ceiling.
+     */
+    stakeUntreatedDamage: 12,
 
     /**
      * §6.2: detection with choices. A perceptive tribute who spots a trap no

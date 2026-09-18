@@ -460,7 +460,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'saboteur',
         name: 'Saboteur',
         description: 'Does not fight. Poisons caches, springs other people\'s traps, and takes the bridge out behind them.',
-        statBias: { intelligence: 2, stealth: 1 },
+        statBias: { intelligence: 2, stealth: 2 },
         preferredTraits: ['Pyromaniac', 'Paranoid', 'Trapper', 'Chameleon'],
         aggression: -0.1,
         allianceAffinity: -0.05,
@@ -471,14 +471,30 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // do and then breaks it, which is a stalk followed by a plan.
         objectiveBias: { hold: 0.4, stalk: 0.3 },
         targetPreference: 'richest',
-                // Audit 2 §8.2: was `flat`. Somebody who works from cover has less
-        // cover every day.
-        riskCurve: 'escalating',
+        /*
+         * Audit 2 §8.2: was `flat`. Somebody who works from cover has less
+         * cover every day.
+         *
+         * AUDIT-6: and that reasoning produced the Saboteur's actual problem.
+         * Measured at n=1,600 it survives 4.35 days against a field around 4.4
+         * and takes 0.41 kills against 0.55 — it is not dying early, it is
+         * never closing, which is the identical shape `late-blooming` was
+         * written for when the Ghost had it. An archetype that gets *warier*
+         * as the field narrows cannot win a Games that ends in one sector.
+         */
+        riskCurve: 'late-blooming',
         signature: 'saboteurStrike',
         hatesArchetypes: ['career'],
-        // §8.2: a Saboteur is not feared until the cache is found poisoned,
-        // and then they are the first name on everybody's list.
-        targetDraw: 1.0,
+        /*
+         * §8.2: a Saboteur is not feared until the cache is found poisoned,
+         * and then they are the first name on everybody's list.
+         *
+         * AUDIT-6: halved. The note two lines below this one — "they are rarely
+         * the one in the room when it happens" — is the argument against a
+         * whole point of hunt-scoring pressure, and the measured win rate
+         * (bottom of the table in three consecutive audits) is the evidence.
+         */
+        targetDraw: 0.5,
         tagline: 'Breaks the board, not the pieces.',
         // Audit 4 §8.3: They are rarely the one in the room when it happens.
         fearScale: 0.9,

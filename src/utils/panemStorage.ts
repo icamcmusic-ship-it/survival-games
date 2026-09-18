@@ -325,6 +325,28 @@ export const RECORD_DEFS: Array<{
         extract: (_s, victor) => (victor && (victor.tesserae ?? 0) > 0) ? { value: victor.tesserae!, holder: victor } : undefined,
         format: v => `${v} slip${v === 1 ? '' : 's'}`,
     },
+    {
+        /*
+         * AUDIT-6 §6.2: the legendary-weapon layer works — across 300 runs,
+         * 705 weapons had drawn blood and 227 had earned a name across 98
+         * distinct names — and nothing in the game ever said so. A named blade
+         * travelled with the object, which is a lovely mechanic the inventory
+         * rendered as another line item. This is the half of the fix that
+         * belongs in the record book: the most-blooded weapon in Panem's
+         * history, and who was holding it.
+         */
+        id: 'most-blooded-weapon',
+        label: 'Most lives taken by one weapon',
+        extract: state => {
+            let best: { value: number; holder: Tribute } | undefined;
+            state.tributes.forEach(t => t.inventory.forEach(i => {
+                const blood = i.bloodDrawn ?? 0;
+                if (blood > 0 && (best === undefined || blood > best.value)) best = { value: blood, holder: t };
+            }));
+            return best;
+        },
+        format: v => `${v} ${v === 1 ? 'life' : 'lives'}`,
+    },
 ];
 
 /**

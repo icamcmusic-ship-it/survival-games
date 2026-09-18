@@ -992,11 +992,30 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                             ) : tribute.inventory.map((item, i) => (
                                 <div key={`${item.id}-${i}`} className="panel-flush p-2 flex justify-between items-center gap-2">
                                     <span className="text-sm text-[var(--ink)] truncate">
+                                        {/*
+                                          * AUDIT-6 §6.2: a weapon that has earned a name is a
+                                          * titled possession, not another line item. 227 weapons
+                                          * earned one across 300 runs and the sheet rendered them
+                                          * identically to an unused knife.
+                                          */}
+                                        {item.legendName && (
+                                            <span className="font-semibold text-[var(--gold)]">{item.legendName} — </span>
+                                        )}
                                         {displayName(item)}
                                         {item.stack !== undefined && item.stack > 1 && (
                                             <span className="text-[var(--color-ink-500)]"> ×{item.stack}</span>
                                         )}
                                         {item.poison && <span className="ml-1 text-[var(--cat-death)]" role="group" aria-label="Coated with poison." title="Coated with poison.">☠</span>}
+                                        {(item.bloodDrawn ?? 0) > 0 && (
+                                            <span
+                                                className="ml-1 text-[11px] text-[var(--color-ink-500)]"
+                                                role="group"
+                                                aria-label={`${item.bloodDrawn} taken. Lives this weapon has taken, which is what earns it a name.`}
+                                                title={`${item.bloodDrawn} taken. Lives this weapon has taken, which is what earns it a name.`}
+                                            >
+                                                {item.bloodDrawn} taken
+                                            </span>
+                                        )}
                                     </span>
                                     <span className="flex items-center gap-2 flex-none">
                                         {item.durability !== undefined && (

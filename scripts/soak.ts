@@ -142,6 +142,12 @@ let fullFieldRuns = 0, fullFieldDays = 0;
 // yields and costs — measured here for the first time.
 const offSeasonSeen = new Map<string, number>();
 let offSeasonRuns = 0;
+// AUDIT-6 §9.1: the muster — the softer convergence at twice the field size.
+let musterRuns = 0;
+let musterPayouts = 0;
+let musterAttended = 0;
+let musterCalls = 0;
+let musterScenes = 0;
 const phasesSeen = new Set<string>();
 const categoriesSeen = new Set<string>();
 
@@ -427,6 +433,11 @@ for (let i = 0; i < 400; i++) {
 
   runs++;
   if (state.config.districtCount >= FULL_FIELD_DISTRICTS) { fullFieldRuns++; fullFieldDays += state.day; }
+  if (state.musterDay !== undefined) {
+    musterRuns++;
+    musterPayouts += state.musterPayouts ?? 0;
+    if ((state.musterPayouts ?? 0) > 0) musterAttended++;
+  }
   if (state.arena.offSeason) {
     offSeasonRuns++;
     offSeasonSeen.set(state.arena.offSeason, (offSeasonSeen.get(state.arena.offSeason) ?? 0) + 1);
@@ -495,6 +506,9 @@ for (let i = 0; i < 400; i++) {
     if (prose(/hears the cannon and stops dead|face in the sky|says .*'s name out loud|something closes behind their eyes/, l.text)) griefEvents++;
     if (prose(/never knows it|does not move a muscle|until .* has gone|is right there|never once looks up|until the footsteps go away/, l.text)) hiddenMoments++;
     if (prose(/wave .* in\.|worth more inside|nobody asks them to leave|makes their case/, l.text)) recruitments++;
+    // AUDIT-6 §9.1: the muster, both halves — the offer and somebody taking it.
+    if (prose(/every sponsor in the city is watching/, l.text)) musterCalls++;
+    if (prose(/with the whole Capitol watching, and all of them know|is the only tribute in .* while the city is watching/, l.text)) musterScenes++;
     if (l.text.includes('cannot carry it all') || l.text.includes('leaves') && l.text.includes('in the dirt')) overloadedDrops++;
     if (l.text.includes('already stripped bare')) depletedForages++;
     // --- Tribute-logic overhaul: each new system must actually fire. ---
@@ -1214,6 +1228,19 @@ console.log('zone effects (live instances sampled per cycle): '
   + Object.entries(zoneEffectKinds).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k}=${n}`).join(' '));
 console.log(`edges: garrisonRuns=${garrisonRuns} garrisonCycles=${garrisonCycles} crossingsCounted=${edgeCrossingsMade} hiddenEdgesFound=${hiddenEdgesFound}`);
 console.log(`arena2: weatherFronts=${weatherFronts} trapsDestroyed=${trapsDestroyed} gmSignatures=${gamemakerSignatures}`);
+console.log(
+  `muster: called in ${musterRuns}/${runs} runs (${(musterRuns / runs * 100).toFixed(1)}%), `
+  + `attended in ${musterAttended} of those, ${musterPayouts} tribute-cycles paid `
+  + `(narrated: ${musterCalls} calls, ${musterScenes} scenes)`);
+/*
+ * AUDIT-6 §9.1: the muster is an *incentive*, so "nobody came" is a legitimate
+ * outcome of any single run and "nobody ever came" is the bug. The assertion is
+ * that the offer is taken at all, not that it is taken often.
+ */
+if (musterRuns > 0 && musterAttended === 0) {
+  problems.push(
+    `the muster was called in ${musterRuns} runs and nobody ever stood in the sector — the pull is not reaching objectives`);
+}
 {
   const authored = Object.values(OFF_SEASON_SKINS).reduce((n, list) => n + list.length, 0);
   console.log(`offSeason: ${offSeasonRuns}/${runs} runs skinned (${(offSeasonRuns / runs * 100).toFixed(1)}%),`

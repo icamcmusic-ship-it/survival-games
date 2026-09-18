@@ -2150,6 +2150,28 @@ export interface GameState {
     convergenceDay?: number;
     convergenceZone?: string;
     /**
+     * AUDIT-6 §9.1: the softer convergence, and why there are two.
+     *
+     * Measured: 35.4% of the field dies in the bloodbath and the victor
+     * averages 2.56 kills, so a typical run is one large opening slaughter and
+     * then eight days in which twelve people mostly do not meet. The hard
+     * convergence answers that at six alive, which is the last third of the
+     * run; the middle of it had nothing.
+     *
+     * The muster is a *reason* to meet rather than a forced merge: the Capitol
+     * puts a standing price on one sector for a few cycles, everybody is told
+     * where it is, and anybody who wants the money has to go and stand in it
+     * with whoever else wanted the money. Nothing is closed, nothing is
+     * herded, and a tribute who would rather keep hiding may.
+     */
+    musterZone?: string;
+    /** Cycle the price comes off the sector again. */
+    musterUntilCycle?: number;
+    /** Day it was called, so it fires once per run. */
+    musterDay?: number;
+    /** How many payouts it made, for the soak and the record book. */
+    musterPayouts?: number;
+    /**
      * §24 (requests): how many tributes the arena itself has killed — mutts,
      * hazards, climate, zone effects and set pieces, but never another
      * tribute. Read by the soft cap in `applyDamage`, which starts sparing

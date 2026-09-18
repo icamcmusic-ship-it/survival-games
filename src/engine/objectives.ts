@@ -1,7 +1,7 @@
 import { targetDrawOf } from './targeting';
 import { GameState, Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { ENDGAME, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
+import { ENDGAME, ESCALATION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
 import { SimContext } from './context';
 import { cycleOf, cyclesSinceContact, ensureMemory, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet, zoneFeatures } from './map';
@@ -243,6 +243,19 @@ function chooseObjective(
             const o = offer(99, { kind: 'reach', zone: state.convergenceZone, reason: 'feast', expires: expiry(OBJECTIVES.reachCycles) });
             if (o) return o;
         }
+    }
+
+    /*
+     * AUDIT-6 §9.1: the muster's pull. Deliberately well below the
+     * convergence's 99 — the arena has *not* been closed, so this is a
+     * preference the tribute is weighing against everything else they might
+     * do, which is the whole difference between the two.
+     */
+    if (state.musterZone && !state.convergenceZone && !state.finaleZone && t.zone !== state.musterZone) {
+        const o = offer(ESCALATION.musterPriority, {
+            kind: 'reach', zone: state.musterZone, reason: 'feast', expires: expiry(OBJECTIVES.reachCycles),
+        });
+        if (o) return o;
     }
 
     if (state.finaleZone) {
