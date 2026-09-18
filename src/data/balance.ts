@@ -3688,9 +3688,16 @@ export const STANCE_MODES = {
     /** Audit 5 §12: tending a hurt ally in the same sector. */
     nursing: {
         allyHealthBelow: 45,
-        base: 3.8,
+        /*
+         * AUDIT-6 §3.1: Nursing held 0.7% of all tribute-cycles even after its
+         * availability was widened, because at 3.8 it lost the ranking to
+         * Defensive — which also rests and forages and asks nothing of anybody.
+         * A tribute standing over somebody who is bleeding out should not be
+         * marginally talked out of it by the prospect of berries.
+         */
+        base: 5.2,
         perMedicinePoint: 0.5,
-        perHurtAlly: 0.8,
+        perHurtAlly: 1.4,
         contestedPenalty: 2.0,
         /** Chance per cycle the tending actually staunches a bleed. */
         staunchBase: 0.35,
@@ -3699,7 +3706,9 @@ export const STANCE_MODES = {
     },
     /** Audit 5 §12: walking the edge of a pack's ground. */
     patrolling: {
-        packMin: 3,
+        // AUDIT-6 §3.1: two people holding a chokepoint is a picket. At three
+        // this was half of why Patrolling held 0.5% of tribute-cycles.
+        packMin: 2,
         base: 3.6,
         perExtraMember: 0.3,
         perTrackingPoint: 0.25,
@@ -6502,6 +6511,23 @@ export const MENTOR_DRAMA = {
  * that window, how long it stays open, and what closes it.
  */
 export const DOWNED = {
+    /*
+     * AUDIT-6 §8.1: how much harder a charismatic tribute is to finish while
+     * they are lying there, and how much of that is the audience in the sector.
+     *
+     * Deliberately modest. A first pass at 0.20/0.06 made *every* downed
+     * tribute markedly harder to finish, which slowed the endgame for
+     * everybody and — measured at n=1,600 — made the Confessor worse rather
+     * than better: their opponents were spared at the same rate they were, and
+     * the Confessor's problem was never surviving, it was closing. At
+     * 0.10/0.04 a charisma-10 tribute with three witnesses removes 0.22 from
+     * the roll, which is a real hesitation and not a wall, and it keeps
+     * producing the spared-on-the-ground beats the `merciful` epithet needs.
+     */
+    pleaBase: 0.10,
+    pleaPerWitness: 0.04,
+    /** Charisma is a 0-10 attribute; this normalises it to a 0-1 scale. */
+    pleaCharismaScale: 10,
     /** Base chance a killing blow puts them down instead of finishing them. */
     baseChance: 0.42,
     /** Added to that chance per point of endurance. */
@@ -6939,6 +6965,20 @@ export const ARCHETYPE_HOOKS = {
     nearestPerHop: 12,
     richestPerValue: 0.6,
     richestCap: 50,
+    /*
+     * AUDIT-6 §8.2: the two target preferences added so that "goes for the
+     * weakest" stops being eight archetypes' answer.
+     *
+     * Scaled to sit alongside `strongest` (roughly 0-45 across a realistic
+     * candidate) rather than to dominate it: a preference is a tilt on the
+     * shared opportunism score, not a targeting override.
+     */
+    woundedPerInjury: 7,
+    woundedBleedingBonus: 12,
+    woundedDownedBonus: 20,
+    famousPerNotoriety: 0.25,
+    famousPerKill: 8,
+    famousPerTrainingPoint: 1.2,
 
     // ---- signatures ----
     /** Per-cycle chance the beat lands, once its conditions hold. */

@@ -4,6 +4,7 @@ import { severRandomEdge } from './zoneEffects';
 import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING, MEMORY } from '../data/balance';
 import { earnTrait } from './earnedTraits';
 import { SimContext, getAlive } from './context';
+import { notorietyOf } from './notoriety';
 import { getRel, adjustMutual, adjustRel } from './relationships';
 import { fearOf, addFear } from './fear';
 import { addExcitement } from './audience';
@@ -87,6 +88,28 @@ export function targetPreferenceScore(t: Tribute, candidate: Tribute, hopsAway: 
             return Math.min(ARCHETYPE_HOOKS.richestCap, inventoryValue(candidate) * ARCHETYPE_HOOKS.richestPerValue);
         case 'rival':
             return Math.max(0, -getRel(t, candidate.id)) * w;
+        /*
+         * §8.2: what an opportunist reads. Not "who has the least health" —
+         * that is `weakest` and it cannot tell a tribute who was never touched
+         * from one who has been patched up four times — but "who is visibly
+         * coming apart": open wounds, bleeding, and being on the ground.
+         */
+        case 'mostWounded': {
+            const wounds = Object.values(candidate.injuries).filter(Boolean).length;
+            return wounds * ARCHETYPE_HOOKS.woundedPerInjury
+                + (candidate.injuries.bleeding ? ARCHETYPE_HOOKS.woundedBleedingBonus : 0)
+                + (candidate.downed ? ARCHETYPE_HOOKS.woundedDownedBonus : 0);
+        }
+        /*
+         * §8.2: some tributes pick by reputation rather than by opportunity —
+         * the counterpart to `targetDraw` from the hunter's side of the
+         * clearing. Notoriety is what the arena is saying about somebody;
+         * kills and training score are what it is saying it about.
+         */
+        case 'mostFamous':
+            return notorietyOf(t, candidate.id) * ARCHETYPE_HOOKS.famousPerNotoriety
+                + candidate.kills * ARCHETYPE_HOOKS.famousPerKill
+                + candidate.trainingScore * ARCHETYPE_HOOKS.famousPerTrainingPoint;
         default:
             return 0;
     }

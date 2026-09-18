@@ -417,8 +417,17 @@ const indicators: Indicator[] = [
         // 4.6x the worst archetype; Strategist at 2.56% was a flavour label.
         label: 'archetype win-rate spread (best/worst)',
         value: archetypeSpread,
-        guard: v => v <= 4.6,
-        guardText: '<= 4.6',
+        /*
+         * AUDIT-6 §8.1: ratcheted after the draw was flattened. The old bound
+         * was set when eight of twenty-three archetypes drew under 500 entrants
+         * at n=1,600 and the best/worst rows were therefore whichever rare
+         * archetype got lucky — the same commit measured 2.94x and 4.35x in two
+         * consecutive audits without an archetype changing. Every archetype now
+         * draws 760+ at n=1,600, so this number finally means something and can
+         * be held to.
+         */
+        guard: v => v <= 3.4,
+        guardText: '<= 3.4',
         goal: '<= 2.3',
         goalMet: v => v <= 2.3,
         baseline: '4.6',
@@ -427,8 +436,9 @@ const indicators: Indicator[] = [
     {
         label: 'worst archetype win rate',
         value: worstArchetypeRate,
-        guard: v => v >= 0.02,
-        guardText: '>= 2.0%',
+        // §8.1: ratcheted with the spread above. Measured 3.02% at n=1,600.
+        guard: v => v >= 0.026,
+        guardText: '>= 2.6%',
         goal: '>= 3.5%',
         goalMet: v => v >= 0.035,
         baseline: '2.56%',
@@ -437,8 +447,9 @@ const indicators: Indicator[] = [
     {
         label: 'best archetype win rate',
         value: bestArchetypeRate,
-        guard: v => v <= 0.13,
-        guardText: '<= 13%',
+        // §8.1: ratcheted. Measured 9.02% at n=1,600, 7.38% at n=400.
+        guard: v => v <= 0.102,
+        guardText: '<= 10.2%',
         goal: '<= 8%',
         goalMet: v => v <= 0.08,
         baseline: '11.8%',
@@ -560,6 +571,35 @@ const indicators: Indicator[] = [
         goal: '>= 40%',
         goalMet: v => v >= 0.40,
         baseline: '25.7%',
+        fmt: asPct,
+    },
+    {
+        /*
+         * AUDIT-6 §3.1: the rarest stance in the roster, as a share of all live
+         * tribute-cycles.
+         *
+         * Ten stances exist and five of them were under 3%, with Nursing at
+         * 0.8% and Patrolling at 0.5% — roughly one tribute-cycle in a hundred
+         * and twenty. Each carries a scorer row, a `minHold`, a blurb and
+         * per-arena conditional action pools, so a stance that never fires is a
+         * large authored surface doing nothing.
+         *
+         * Guarded as a floor on the *minimum* rather than as ten separate
+         * indicators: what matters is that no stance has quietly become
+         * decoration. A stance genuinely meant to be rare can still sit near
+         * the floor; one that has fallen off the board cannot hide.
+         */
+        label: 'rarest stance share',
+        value: (() => {
+            const total = STANCES.reduce((a: number, st: Stance) => a + stanceSamples[st], 0);
+            if (total === 0) return 0;
+            return Math.min(...STANCES.map((st: Stance) => stanceSamples[st] / total));
+        })(),
+        guard: v => v >= 0.01,
+        guardText: '>= 1%',
+        goal: '>= 1.5%',
+        goalMet: v => v >= 0.015,
+        baseline: '0.5%',
         fmt: asPct,
     },
     {
@@ -841,8 +881,9 @@ const indicators: Indicator[] = [
         // gets them there is a pass of its own.
         label: 'Career victors',
         value: careerVictors / Math.max(1, victors),
-        guard: v => v <= 0.57,
-        guardText: '<= 57%',
+        // §8.1: ratcheted. Measured 52.1% at n=1,600, 47.0% at n=400.
+        guard: v => v <= 0.55,
+        guardText: '<= 55%',
         goal: '<= 45%',
         goalMet: v => v <= 0.45,
         baseline: '76.3% measured (audit reported 40.1%, did not reproduce); 52.7% on main at n=1600 (\u00a79.4 reported 42.9%, did not reproduce)',

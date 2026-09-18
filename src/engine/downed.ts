@@ -233,6 +233,33 @@ export function tickDowned(ctx: SimContext) {
                     + ARCHETYPES[decider.archetype].aggression * DOWNED.executePerAggression
                     - traitMod(decider, 'killSanity') * DOWNED.executePerAggression;
                 chance += traitMod(decider, 'executeDrive');
+                /*
+                 * AUDIT-6 §8.1: the Confessor's win condition, which the
+                 * archetype advertised and the engine never implemented.
+                 *
+                 * "Wins by being the person nobody can justify killing" was
+                 * carried entirely by a once-per-run signature that granted a
+                 * single truce, so a Confessor survived to the end (4.70 days,
+                 * third-longest in the game) and could not close (0.38 kills,
+                 * the lowest) and won 3.15% of the time — last on the board.
+                 *
+                 * This is the standing version, at the one moment where "can
+                 * you justify it" is literally the question being asked: a
+                 * tribute deciding whether to finish somebody on the ground.
+                 * Charisma is what makes it hard, and it is hardest in front of
+                 * an audience — the witnesses are the whole point. Somebody
+                 * alone in a sector with a downed Confessor still mostly does
+                 * it; somebody with three people watching finds it much harder
+                 * to be the one who did.
+                 *
+                 * Deliberately scaled off the victim's charisma rather than
+                 * keyed to the archetype id, so a charismatic anybody gets some
+                 * of it and the Confessor — with `statBias: { charisma: 3 }` —
+                 * gets most of it.
+                 */
+                const watching = here.filter(o => o.id !== decider.id).length;
+                chance -= (t.attributes.charisma / DOWNED.pleaCharismaScale)
+                    * (DOWNED.pleaBase + watching * DOWNED.pleaPerWitness);
                 const witnesses = here.filter(o => o.id !== decider.id);
                 if (ctx.rng.chance(Math.max(0, Math.min(1, chance)))) {
                     decider.finishedDowned = [...(decider.finishedDowned ?? []), t.id];

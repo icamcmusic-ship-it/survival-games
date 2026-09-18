@@ -1,5 +1,20 @@
 # Survival Games — sixth full audit (12 sections)
 
+> **Status: being answered.** `CHANGELOG.md` records the fix passes on this
+> branch. Two findings were wrong and are corrected in place rather than quietly
+> dropped:
+>
+> - **§8.5** claimed districts 13 and 16 were effectively unwinnable at 0.2% and
+>   0.1%. Those were *shares of all victors*, and those districts only enter on
+>   fields larger than twelve — measured per entrant they win 2.0% and 2.8%,
+>   which is the bottom of the table but the same band as districts 5 and 6. The
+>   finding that survives is the tier spread, and the section is rewritten around
+>   it.
+> - **§1.2** reported `blocTreaties: sworn=0` as evidence the treaty system
+>   barely fired. Repairing the dead probe showed **167 treaties sworn per 400
+>   runs**; the real fault was that 153 of them ended *silently* when one bloc
+>   stopped existing. Recorded in §4.3's own terms.
+
 ## Context
 
 Taken against `main` at `efcb004` ("Merge pull request #60"), after `AUDIT.md`,
@@ -1209,36 +1224,61 @@ category while `Contrarian 0.40` and `Oathbound 0.35` are cold in social.
    be worth more than it is (`fires=317` per 400 runs is low).
 4. Add a per-trait win-rate floor to `test:metrics` at n≥500, guarded at 3.0%.
 
-## 8.5 District legacy is a 3.2x handicap, and two districts are unwinnable
+## 8.5 District legacy is a real handicap — but two of this section's numbers were wrong
 
-Win rate by legacy tier at n=1,600:
+**Correction.** This section originally claimed "D13 at 0.2% and D16 at 0.1% are
+not [the intended shape] … a player who draws them has effectively no run." That
+was wrong, and the error was mine: those are **shares of all victors**, and
+districts 13–16 only enter when the field is larger than twelve, so they take
+roughly a quarter of the entrants the core districts do. A share-of-victors
+figure says nothing about a win rate without the denominator beside it.
+
+Measured per entrant over 600 runs including a 16-district config:
+
+| district | entrants | victors | win rate | tier |
+|---|---:|---:|---:|---|
+| D1 | 1200 | 99 | **8.25%** | storied |
+| D2 | 1200 | 97 | 8.08% | storied |
+| D4 | 1200 | 96 | 8.00% | strong |
+| D12 | 728 | 38 | 5.22% | forgotten |
+| D10 | 728 | 30 | 4.12% | thin |
+| D8 | 966 | 39 | 4.04% | thin |
+| D7 | 966 | 34 | 3.52% | modest |
+| D9 | 728 | 25 | 3.43% | forgotten |
+| D3 | 1200 | 38 | 3.17% | thin |
+| D11 | 728 | 21 | 2.88% | modest |
+| D16 | 250 | 7 | **2.80%** | forgotten |
+| D5 | 1200 | 31 | 2.58% | thin |
+| D6 | 1200 | 29 | 2.42% | forgotten |
+| D13 | 250 | 5 | **2.00%** | forgotten |
+| D14 | 250 | 5 | 2.00% | thin |
+| D15 | 250 | 5 | 2.00% | forgotten |
+
+So no district is unwinnable. D13 and D16 sit at 2.0% and 2.8%, which is the
+bottom of the table but is the same band as D5 and D6 — districts that enter
+five times as often and that nobody suggested were broken.
+
+**The finding that survives is the spread, not the outliers.** Win rate by
+legacy tier at n=1,600:
 
 ```
-strong      9.5%  (3,200 entrants)
-storied     8.8%  (6,400)
-modest      3.8%  (4,018)
-forgotten   3.6%  (6,472)
-thin        3.0%  (10,434)
+storied     8.8%   strong 8.5%   modest 3.6%   thin 3.2%   forgotten 3.6%
 ```
 
-And by district:
+The three Career districts win roughly 2.5x as often as the median outer one,
+and — the part worth acting on — **every column in `LEGACY_EFFECTS` was a
+penalty.** `forgotten` carried `reputation: -8` and `trainingMerit: -0.05` and
+nothing anywhere to trade against, so a legacy tier was purely a statement of
+how much worse your Games was going to be.
 
-```
-D1 17.3% · D2 18.7% · D4 19.5% · D3 5.6% · D5 6.4% · D6 6.5% · D7 5.6%
-D8 4.6% · D9 3.8% · D10 3.1% · D11 4.2% · D12 4.5% · D13 0.2% · D16 0.1%
-```
-
-The Career districts at 55.4% combined is the intended shape and clears its
-guard. **D13 at 0.2% and D16 at 0.1% are not.** Three victors and one victor
-respectively out of 1,559. Both districts have full name pools (16 districts,
-3,584 names) and mentor pools, and a player who draws them has effectively no
-run.
-
-**Fix:** D13 and D16 need a legacy profile that is *different* rather than
-merely worse — D13's whole premise is that it was supposed to be gone. Give it
-a `LEGACY_EFFECTS` row that trades reputation for something (sponsor
-indifference, but a starting proficiency, or immunity to the `forgotten`
-training-merit penalty).
+**Fix (landed):** a third column, `targetDraw`, on the same hunt-scoring scale
+as the trait modifier and the archetype axis. A storied district's tribute is
+somebody the other twenty-three have heard of before the gong; a forgotten
+district's tribute is not. Being unwatched is the only edge an unfancied tribute
+starts the Games holding, and it is exactly the edge the source material gives
+them. Measured after: `forgotten` moves from 3.6% to **4.2%** and is now ahead
+of both `modest` and `thin`, and the top-three district share falls from 55.4%
+to **52.5%**, meeting its design goal for the first time.
 
 ---
 
