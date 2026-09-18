@@ -45,8 +45,15 @@ const files = [...walk('src/components'), ...walk('src/screens')].sort();
  *
  * The ceiling is a ratchet. Lower it whenever a conversion lands; never raise it.
  */
-// Audit 5 §2.3: a ceiling that has been reached has stopped ratcheting. 30 -> 21.
-const TITLE_CEILING = 21;
+/*
+ * AUDIT-6 §2.5: the ratchet is finished, so it is an invariant now.
+ *
+ * 30 -> 21 -> 0. Every remaining `title` on a control has been converted to
+ * either a `Hint` (real DOM, shown on hover *and* focus, wired through
+ * `aria-describedby`) or an `aria-label` where the hint *was* the control's
+ * name. A ceiling above zero is a promise to finish later; zero is the rule.
+ */
+const TITLE_CEILING = 0;
 
 const INTERACTIVE = /<(button|a|input|select|textarea)\b/;
 

@@ -15,9 +15,20 @@ name: CI
 # `pages` concurrency group and the `deploy` job, and none of those should be
 # reachable from a pull request. This one only reads the repository.
 #
-# `test:ui` is not here — it needs `npm run dev` on port 3000 and a Playwright
-# browser download, which is its own job and its own runtime budget. Run it
-# locally against a dev server before pushing UI work.
+# AUDIT-6 §1.1: `test:ui` is here now, as its own job.
+#
+# It used to be excluded because it needs `npm run dev` on port 3000 and a
+# Playwright browser download — true, and the wrong conclusion. Nothing else in
+# this workflow executes a single line of `src/components` or `src/screens`, so
+# 13,000 lines of interface had no gate on any pull request. The cost of that was
+# measured rather than argued: **24 of the harness's 46 steps were failing on
+# `main`**, every one of them a stale assertion following an intentional UI
+# change, and a genuine regression in the arena screen, the tribute sheet, the
+# Gamemaker booth or the phone layout would have been indistinguishable from the
+# wall of red. A harness nobody runs decays into one nobody can read.
+#
+# Separate job so a browser download never blocks the simulation checks, and so
+# the two failure modes are told apart at a glance.
 
 on:
   pull_request:
@@ -72,3 +83,28 @@ jobs:
       - run: npm run test:storage
 
       - run: npm run build
+
+  # The interface, in a real browser. Everything under src/components and
+  # src/screens is invisible to every check in the job above.
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # The static interface checks. Cheap, and they ratchet: hover-only hints
+      # on controls, value hints with no accessible name, and unnamed values.
+      - run: npm run test:ui-affordances
+      - run: npm run test:unnamed
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start the dev server
+        run: |
+          npm run dev &
+          npx wait-on http://localhost:3000/survival-games/ --timeout 120000
+      # Drives every screen, tab, dialog and keyboard shortcut, fails on any
+      # console or page error, and censuses tap targets at 380px.
+      - run: npm run test:ui

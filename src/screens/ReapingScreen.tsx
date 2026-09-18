@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Hint } from '../components/Hint';
 import { GameState, Tribute } from '../models/types';
 import { RunProfileCard } from '../components/RunProfileCard';
 import { heightLabel } from '../engine/physique';
@@ -169,9 +170,11 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
             )}
 
             <div className="flex justify-center gap-2">
-                <button onClick={onReroll} className="btn" title="Draw a different cast from a new sub-seed">
-                    <Shuffle className="w-4 h-4" /> Reroll cast
-                </button>
+                <Hint text="Draw a different cast from a new sub-seed">
+                    <button onClick={onReroll} className="btn">
+                        <Shuffle className="w-4 h-4" /> Reroll cast
+                    </button>
+                </Hint>
                 <button onClick={onConfirm} className="btn btn-primary">
                     Confirm tributes <FastForward className="w-4 h-4" />
                 </button>

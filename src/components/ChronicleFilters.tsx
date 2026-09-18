@@ -1,3 +1,4 @@
+import { Hint } from './Hint';
 import React from 'react';
 import { GameState } from '../models/types';
 import { CATEGORY_GROUPS, categoryMeta } from '../ui/eventStyles';
@@ -44,10 +45,10 @@ export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: 
             {/* ---------- quick chips ---------- */}
             <div className="flex flex-wrap gap-2 items-center">
                 <span className="eyebrow flex-none">Quick</span>
+                <Hint text="Show only the violent events — kills, deaths, combat and injury">
                 <button
                     className={deathsOnly ? 'chip chip-accent' : 'chip'}
                     aria-pressed={deathsOnly}
-                    title="Show only the violent events — kills, deaths, combat and injury"
                     onClick={() => setChronicle({
                         mutedGroups: deathsOnly
                             ? []
@@ -56,13 +57,14 @@ export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: 
                 >
                     Deaths only
                 </button>
+                </Hint>
                 <button
                     className={followingHere ? 'chip chip-accent' : 'chip'}
                     aria-pressed={followingHere}
                     disabled={!f.followedId}
-                    title={f.followedId
-                        ? 'Show only the lines involving the tribute you are following'
-                        : 'Follow a tribute from the standings or their sheet first'}
+                    aria-label={f.followedId
+                        ? 'My tribute — show only the lines involving the tribute you are following'
+                        : 'My tribute — follow a tribute from the standings or their sheet first'}
                     onClick={() => setChronicle({ filterTributeId: followingHere ? null : f.followedId })}
                 >
                     My tribute
@@ -155,7 +157,7 @@ export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: 
                                 <button
                                     className="btn btn-sm btn-ghost text-[10px]"
                                     aria-pressed={soloed}
-                                    title={`Show only ${group.label.toLowerCase()} events`}
+                                    aria-label={`Solo — show only ${group.label.toLowerCase()} events`}
                                     onClick={() => setChronicle({
                                         mutedGroups: soloed
                                             ? []

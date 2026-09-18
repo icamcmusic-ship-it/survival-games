@@ -729,6 +729,23 @@ html[data-reduce-motion='true'] {
         white-space: nowrap;
     }
 
+    /* AUDIT-6 §2.2: an interactive chip is a control and needs a control's
+       target. A `.chip` used as a static label keeps its compact padding; one
+       that is a button or a link gets the 24px WCAG 2.5.8 minimum, and a real
+       44px where the pointer is a fingertip. The seed chip — the single most
+       copied value in the app — was 97x20. */
+    button.chip,
+    a.chip {
+        min-height: 24px;
+    }
+
+    @media (hover: none) {
+        button.chip,
+        a.chip {
+            min-height: 44px;
+        }
+    }
+
     .chip-accent {
         border-color: var(--red);
         background: var(--red);
@@ -1034,8 +1051,14 @@ html[data-reduce-motion='true'] {
         transition: opacity 120ms ease;
     }
 
+    /* AUDIT-6 §2.6: `.log-row` is the chronicle's row class and `.feed-item`
+       is the arena sidebar's. The share only ever rendered on the second, and
+       the arena sidebar stopped rendering `FeedLine` at all — so this rule
+       matched nothing anywhere. The chronicle is the reading surface. */
     .feed-item:hover .feed-share,
     .feed-item:focus-within .feed-share,
+    .log-row:hover .feed-share,
+    .log-row:focus-within .feed-share,
     .feed-share:focus-visible {
         opacity: 1;
     }
@@ -1045,14 +1068,27 @@ html[data-reduce-motion='true'] {
         border-bottom-color: var(--red);
     }
 
-    @media (hover: none) {
-        /* No hover to reveal it, and a 44px target rather than a 9px one. */
+    /* AUDIT-6 §2.2: sized by viewport as well as by pointer.
+       `hover: none` is the right signal for a touchscreen and the wrong one to
+       rely on alone: a narrow window on a laptop reports hover, and so does
+       every headless browser, so the tap-target census saw these at 25x14 while
+       the rule that was supposed to fix them sat unapplied. A narrow screen gets
+       the big target whether or not the pointer is coarse. */
+    @media (hover: none), (max-width: 640px) {
         .feed-share {
             opacity: 1;
             display: inline-block;
+            min-height: 24px;
+            line-height: 24px;
+            padding-inline: 0.5rem;
+        }
+    }
+
+    @media (hover: none) {
+        /* A real 44px target where the pointer is genuinely a fingertip. */
+        .feed-share {
             min-height: 44px;
             line-height: 44px;
-            padding-inline: 0.5rem;
         }
     }
 

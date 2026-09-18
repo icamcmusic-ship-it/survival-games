@@ -381,7 +381,7 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
  * the seed attached — a moment out of context is just a sentence, and the seed
  * is what turns it into something the reader can go and watch for themselves.
  */
-function MomentShare({ gameState, log }: { gameState: GameState; log: EventLog }) {
+export function MomentShare({ gameState, log }: { gameState: GameState; log: EventLog }) {
     const [state, setState] = useTransientFlag<'idle' | 'ok' | 'fail'>('idle', 1600);
     return (
         <button

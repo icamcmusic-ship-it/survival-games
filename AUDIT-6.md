@@ -345,29 +345,28 @@ to assert a real DOM tap-target floor at 380px, baselined and ratcheted the way
 `inline-block` box so they reach 24px without breaking the line; (c) raise nav
 links and chips to 32px at phone width.
 
-## 2.3 The arena picker's cards are single buttons with 1,500-character names
+## 2.3 The arena picker's accessible names — **this finding was wrong**
 
-Selecting an arena on the setup screen means activating a button whose entire
-card body — description, law explainer, terrain mix, the full set-piece list,
-the mutt roster — is inside the button. The accessible name of one card, read
-verbatim:
+**Correction.** This section claimed each arena card was a single button whose
+accessible name was its entire body — description, law explainer, terrain mix,
+set-piece list and mutt roster — and that "a screen-reader user must listen to
+all of it to learn the button's name".
 
-> "The Clockwork Island A shifting map layout divided into sectors, each
-> unleashing a different horror at a specific hour. ⚙ The clock: one sector is
-> struck every cycle… Ground 11 sectors — 2 open ground · 2 forest … Laws The
-> horn refills gives · a real constraint … Set pieces The Twelve Hours … The
-> Convergence — When six or fewer tributes are left … Mutts Tick-Tock Monkeys,
-> Lightning Birds, Acid Fog, Jabberjays, Reef Barracuda"
+That is not what the app does. Every card already carries
+`aria-label={a.name}`, and an `aria-label` replaces the element's contents for
+naming purposes. Measured with the accessibility tree rather than with
+`textContent`, the names are `"The Concrete Jungle"` (19 characters) and
+`"The Toxic Swamps"` (16). The 1,500-character string in the original report was
+`textContent` of the *selected* card, which expands to show its full briefing —
+visible prose inside a card, which is what a card is for.
 
-A screen-reader user must listen to all of it to learn the button's name, for
-each of the arenas in the list, and there is no way to skim. `check-ui-affordances`
-cannot see this because the element *does* have an accessible name — an enormous
-one.
+The error was in the probe. It is recorded here rather than deleted because a
+report that quietly drops its own mistakes is not one anybody can check.
 
-**Fix:** make the card a region with a heading; put the selection on a short
-control inside it (`Pick The Clockwork Island`); keep the body as static content
-the user can read or skip. Add a check that fails any interactive element whose
-accessible name exceeds ~120 characters.
+**What did land:** the invariant is worth holding even though it passes, because
+a card-shaped control is exactly what invites this mistake and nothing was
+watching for it. `test:ui` now fails any control whose accessible name runs past
+160 characters.
 
 ## 2.4 Pre-Games is a quarter of the whole broadcast
 
