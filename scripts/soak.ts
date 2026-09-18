@@ -208,7 +208,7 @@ let zoneDrinks = 0, pursuits = 0, desperationFights = 0, fearFelt = 0;
 let bestProficiencySeen = 0;
 // Relationships and alliances.
 let exoticBetrayals = 0, preemptiveBetrayals = 0, merges = 0, leadershipChanges = 0, pactsDeclared = 0, pactsHonoured = 0;
-let factionActions = 0, expulsions = 0, hearings = 0, trucesOutlived = 0, brokeredHeld = 0;
+let factionCoups = 0, factionExpulsions = 0, factionWalkouts = 0, expulsions = 0, hearings = 0, trucesOutlived = 0, brokeredHeld = 0;
 let feuds = 0, freeForAlls = 0, careerDefections = 0, cacheContributions = 0;
 // Intentions and fieldcraft.
 let objectivesFormed = 0, trapsSet = 0, trapsTriggered = 0;
@@ -622,7 +622,23 @@ for (let i = 0; i < 400; i++) {
     // §4.1: pacts are a union of six shapes now, all sworn with `shake on it:`.
     if (prose(/shake on it: they /, l.text)) pactsDeclared++;
     if (prose(/agreed this was where it ended|keep their word without any ceremony/, l.text)) pactsHonoured++;
-    if (prose(/simply stop pretending|the group is two groups now/, l.text)) factionActions++;
+    /*
+     * AUDIT-7 §4.3: this probe read a third of what it named.
+     *
+     * `alliancePolitics.resolveFactions` has three outcomes — a coup, an
+     * expulsion and a walk-out — and this counted the coup line plus a
+     * walk-out line that does not exist: the prose reads "There are two groups
+     * now.", not "the group is two groups now". So "factionActions=13 across
+     * 400 runs" was the coup branch alone, reported as the whole mechanic, and
+     * AUDIT-7 §4.3 read it as a near-dead subsystem. It is the same class of
+     * bug AUDIT-6 §1.2 found and the meta-assertion below cannot catch, because
+     * the probe *did* match — just not everything it claimed to.
+     *
+     * Three counters now, one per branch, so no branch can hide behind another.
+     */
+    if (prose(/simply stop pretending/, l.text)) factionCoups++;
+    if (prose(/and this morning they say it to their face/, l.text)) factionExpulsions++;
+    if (prose(/take their share and leave the group over/, l.text)) factionWalkouts++;
     if (prose(/is put out of the group/, l.text)) expulsions++;
     /*
      * AUDIT-6 §4.4: this counted two of the four ways a hearing ends.
@@ -1220,7 +1236,9 @@ if (ledgerTerms !== ledgerEndings) {
 if (Math.abs(truceTerms - truceEndings - L.dissolved - L.buried) > truceTerms * 0.1) {
   note(`truce endings on screen: ${truceEndings + L.dissolved + L.buried} of ${truceTerms} terms narrated`);
 }
-console.log(`politics: factionActions=${factionActions} expulsions=${expulsions} hearings=${hearings}`);
+console.log(`politics: factionActions=${factionCoups + factionExpulsions + factionWalkouts}`
+    + ` (coups=${factionCoups} expulsions=${factionExpulsions} walkouts=${factionWalkouts})`
+    + ` charterExpulsions=${expulsions} hearings=${hearings}`);
 console.log(`parley: standoffs=${standoffs} tributesPaid=${tributesPaid} paidInInformation=${tributesPaidInformation} truces=${trucesStruck} trucesHeld=${trucesHeld} trucesBroken=${trucesBroken} trucesRenewed=${trucesRenewed} trucesLapsed=${trucesLapsed} trucesTurned=${trucesTurned} soloDepartures=${soloDepartures} schisms=${schisms}`);
 console.log(`bonds: debtsRepaid=${debtsRepaid} charterBreaches=${charterBreaches} performed=${performedBonds} districtPairs=${districtBonds}`);
 console.log(`resolve: breakdowns=${resolveBreakdowns} nightlock=${nightlockDeaths}`);

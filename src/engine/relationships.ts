@@ -487,6 +487,18 @@ export function applyBetrayalFallout(ctx: SimContext, betrayer: Tribute, victim:
         if (!mem.betrayedBy.includes(betrayer.id)) mem.betrayedBy.push(betrayer.id);
         // §4.2: watching someone get knifed makes you watch the knife.
         raiseSuspicion(w, betrayer.id, SUSPICION.perWitnessedBetrayal);
+        /*
+         * AUDIT-7 §4.1: and it costs the betrayer the witness's trust, which
+         * is a different thing from watching them.
+         *
+         * The README names betrayal as one of the four things that move the
+         * stored trust axis and it was the one never wired: `adjustTrust` had
+         * three call sites, all of them promise-and-debt ceremonies. Suspicion
+         * says "I think you will"; trust says "I know what you did". A group
+         * that watches somebody knife an ally and goes on trusting them at the
+         * same rate is not a group anybody was modelling.
+         */
+        adjustTrust(w, betrayer.id, -RELATIONSHIPS.trustWitnessedBetrayal);
         // Audit 5 §12.3: the second betrayal somebody watches changes them.
         w.betrayalsWitnessed = (w.betrayalsWitnessed ?? 0) + 1;
         if (w.betrayalsWitnessed >= EARNED_TRAIT_RULES.witnessBetrayals) earnTrait(ctx, w, 'Witness');

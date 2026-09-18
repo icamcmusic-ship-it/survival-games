@@ -1,11 +1,11 @@
 import { traitMod } from '../data/traits';
 import { ARCHETYPES } from '../data/archetypes';
 import { Alliance, GameState, Item, Tribute } from '../models/types';
-import { ALLIANCES, ROMANCE } from '../data/balance';
+import { ALLIANCES, RELATIONSHIPS, ROMANCE } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext, getAlive } from './context';
 import { cycleOf, noteFormerAllies, noteSharedCycle } from './memory';
-import { adjustRel, getRel } from './relationships';
+import { adjustRel, adjustTrust, getRel } from './relationships';
 import { pactOath, pactStrictness, rollPact } from './alliancePact';
 import { noteTookOverLead } from './runRecords';
 
@@ -202,7 +202,7 @@ export function assignRoles(members: Tribute[], leader: Tribute): Alliance['role
         ['runner', t => t.attributes.agility * 1.4 + t.attributes.endurance],
         ['keeper', t => t.attributes.intelligence * 1.3 + t.attributes.willpower],
     ];
-    /**
+    /*
      * A pair names one job, a trio three, four or more the lot.
      *
      * Audit 4 §4.2: and for a pair that job used to be `quartermaster`,
@@ -219,6 +219,24 @@ export function assignRoles(members: Tribute[], leader: Tribute): Alliance['role
      * nothing, they are the one who patches them up. Two people, two jobs, and
      * both of the combat hooks reachable at the group size that is half the
      * game.
+     *
+     * AUDIT-7 §4.2: "four or more the lot" was not true, and two roles were
+     * unreachable because of it.
+     *
+     * `slots` was `min(jobs.length, members.length)`, so role *n* needed a
+     * group of *n+1*: `runner` at index 6 needed seven members and `keeper` at
+     * index 7 needed eight. `ALLIANCES.maxSize` is 6 and the grand-coalition
+     * extra is 2, so eight is the absolute ceiling of the game — and across
+     * 7,680 live alliance samples neither role was filled once. They were also
+     * read by nothing: the comment on `AllianceRole` in types.ts says `runner`
+     * carries the cache and `keeper` holds the group's debts, and neither
+     * sentence had an implementation. A role nobody can hold, that nothing
+     * reads, is three lines of scoring and a union member.
+     *
+     * A group of four or more now fills every job, doubling a member up where
+     * there are more jobs than people — which is what a small group does, and
+     * what the paragraph above always claimed. `taken` still spreads the work
+     * first: nobody holds a second job until everybody holds a first.
      */
     if (members.length === 2) {
         const [a, b] = members;
@@ -226,13 +244,15 @@ export function assignRoles(members: Tribute[], leader: Tribute): Alliance['role
         const other = fighter === a ? b : a;
         return { muscle: fighter.id, medic: other.id };
     }
-    const slots = Math.min(jobs.length, members.length);
+    const slots = members.length >= ALLIANCES.allRolesFrom ? jobs.length : Math.min(jobs.length, members.length);
     const roles: NonNullable<Alliance['roles']> = {};
     const taken = new Set<string>();
     jobs.slice(0, slots).forEach(([role, score]) => {
         const free = members.filter(m => !taken.has(m.id));
         // Everybody already holds something: fall back to the whole group
-        // rather than leaving the role unfilled.
+        // rather than leaving the role unfilled. With `allRolesFrom` this is
+        // now the ordinary case for a group of four to seven rather than a
+        // safety net that never fired.
         const pool = free.length > 0 ? free : members;
         const pick = pool.reduce((top, m) => (score(m) > score(top) ? m : top));
         roles[role] = pick.id;
@@ -684,6 +704,22 @@ export function contributeToCache(ctx: SimContext, record: Alliance, members: Tr
         // when it splits, and a reason for the quartermaster to play favourites.
         record.cacheContributions = record.cacheContributions ?? {};
         record.cacheContributions[m.id] = (record.cacheContributions[m.id] ?? 0) + spare.value;
+        /*
+         * AUDIT-7 §4.1: feeding the group is the commonest trust-building act
+         * in the arena and moved no trust at all.
+         *
+         * `cacheContributions` already records who fed the group, because it is
+         * a *claim* when the group splits. It is also the plainest evidence
+         * anybody in an alliance ever gets that a member is in it for more than
+         * themselves, and the stored trust axis — which had three ceremonial
+         * write sites and 12.3% fill across ally pairs — is exactly where that
+         * belongs. Small per act, because it is a small act; it accumulates
+         * over a run the way the ceremonies cannot.
+         */
+        members.forEach(other => {
+            if (other.id === m.id) return;
+            adjustTrust(other, m.id, RELATIONSHIPS.trustSharedCache);
+        });
         ctx.logEvent(
             `${m.name} adds their ${spare.name} to the group's stash in ${record.campZone ?? m.zone}.`,
             [m.id],

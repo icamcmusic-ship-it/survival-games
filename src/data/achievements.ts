@@ -1604,7 +1604,8 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nothing but Hands',
         hint: 'Crown a victor who never once carried a weapon.',
         category: 'combat',
-        rarity: 'possible',
+        // AUDIT-7: observed at 0.4% of 500 runs, so no longer 'possible?'.
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.everCarriedWeapon !== true,
         // Audit 3 §11.4: an entry the sweep never sees unlock, with nothing
         // told to the player, is unreachable and invisible at once.
@@ -1890,7 +1891,9 @@ export const ACHIEVEMENTS: Achievement[] = [
         // people rather than fighting them, which is what the name is for.
         hint: 'Crown a victor who worked two sides of the arena economy — extorting, being extorted, or brokering a truce.',
         category: 'social',
-        rarity: 'possible',
+        // AUDIT-7: the §4.1 trust wiring and the §4.2 keeper role between them
+        // made the arena economy busy enough for this to land. 0.4% of 500 runs.
+        rarity: 'legendary',
         test: (_s, v) => !!v
             && [(v.extortedIds?.length ?? 0) > 0,
                 (v.extortedByIds?.length ?? 0) > 0,
@@ -3160,7 +3163,8 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Empty Handed',
         hint: 'Crown a victor who never picked up a weapon at all.',
         category: 'combat',
-        rarity: 'possible',
+        // AUDIT-7: observed at 0.4% of 500 runs, so no longer 'possible?'.
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.everCarriedWeapon !== true,
         // §11.4: right on the edge of what the simulation produces, so the
         // near-miss carries the information the card cannot.

@@ -486,6 +486,10 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
             PARLEY.truceRegard + talker * PROFICIENCY.persuasionRegardWeight);
         noteStoodBy(t, other.id);
         noteStoodBy(other, t.id);
+        // AUDIT-7 §4.1: see the note on `noteStoodBy` — it owns `stoodBy` and
+        // suspicion, and the caller owns the trust.
+        adjustTrust(t, other.id, RELATIONSHIPS.trustStoodBy);
+        adjustTrust(other, t.id, RELATIONSHIPS.trustStoodBy);
         ctx.logEvent(
             fill(ctx.pickText(PARLEY_TEXTS.truce), { t1: t.name, t2: other.name, zone: t.zone }),
             [t.id, other.id],

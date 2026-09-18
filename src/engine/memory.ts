@@ -461,6 +461,17 @@ export function noteStoodBy(t: Tribute, otherId: string) {
     if (!mem.stoodBy.includes(otherId)) mem.stoodBy.push(otherId);
     // Somebody who took a risk for you is somebody you doubt less.
     easeSuspicion(t, otherId, SUSPICION.easedByStoodBy);
+    /*
+     * AUDIT-7 §4.1: the *trust* this earns is written by the caller, not here.
+     *
+     * `relationships.ts` imports this module, so this module cannot import
+     * `adjustTrust` back without a cycle. The three call sites — a combat
+     * defence, a parley stand and a debt incurred by helping — each call
+     * `adjustTrust` alongside, and `check-flavor-pools` would not catch a
+     * fourth that forgot, so the rule is written here where somebody adding one
+     * will read it: **standing by somebody moves `stoodBy`, suspicion and
+     * trust, and this function owns only the first two.**
+     */
 }
 
 export function hasStoodBy(t: Tribute, otherId: string): boolean {

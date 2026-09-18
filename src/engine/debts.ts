@@ -41,6 +41,9 @@ export function incurDebt(debtor: Tribute, creditor: Tribute, amount: number, ct
     debtor.debts[creditor.id] = Math.min(DEBTS.max, debtTo(debtor, creditor.id) + amount);
     // The creditor knows what they did, even if nobody says so.
     noteStoodBy(creditor, debtor.id);
+    // AUDIT-7 §4.1: helping somebody at a cost is the clearest trust signal the
+    // engine has, and it moved only the derived half.
+    adjustTrust(debtor, creditor.id, RELATIONSHIPS.trustStoodBy);
 }
 
 export function clearDebt(debtor: Tribute, creditorId: string) {
@@ -125,7 +128,22 @@ export function repayDebts(ctx: SimContext) {
         if (!creditor || creditor.zone !== debtor.zone) return;
         if (debtTo(debtor, creditorId) < DEBTS.repayThreshold) return;
         // AUDIT-6 §12.2 `debtHonour`: a Bookkeeper pays what they owe.
-        if (!ctx.rng.chance(DEBTS.repayChance + traitMod(debtor, 'debtHonour'))) return;
+        /*
+         * AUDIT-7 §4.2: ...and a group with a `keeper` remembers who owes what.
+         *
+         * `types.ts` says the keeper "holds the group's debts, which `debts.ts`
+         * tracked per-person with nobody responsible for them" — a sentence
+         * with no implementation, on a role that `assignRoles` could not reach
+         * in the first place. This is it: an alliance that has named somebody
+         * to keep the books settles up more often, because somebody is asking.
+         * It reads the *debtor's* group, since that is whose books the debt is
+         * on, and the keeper asking themselves is still somebody asking.
+         */
+        const keeperId = debtor.allianceId
+            ? ctx.state.alliances?.[debtor.allianceId]?.roles?.keeper
+            : undefined;
+        const keeperPush = keeperId ? DEBTS.repayKeeperBonus : 0;
+        if (!ctx.rng.chance(DEBTS.repayChance + traitMod(debtor, 'debtHonour') + keeperPush)) return;
 
         // Pay in whatever they can spare that the creditor actually needs.
         const spare = debtor.inventory.filter(i => i.type !== 'weapon' || debtor.inventory.filter(w => w.type === 'weapon').length > 1);

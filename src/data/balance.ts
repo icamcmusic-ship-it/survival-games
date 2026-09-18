@@ -4152,6 +4152,28 @@ export const RELATIONSHIPS = {
     trustKeptPromise: 8,
     trustBrokenPromise: 25,
     trustRepaidDebt: 10,
+    /*
+     * AUDIT-7 §4.1: the axis had three writers and no traffic.
+     *
+     * `trusts` is the stored half of the trust model — the part the README
+     * describes as making "I don't like you any more but I've come to trust
+     * you" a state the engine can hold — and `adjustTrust` was called from
+     * exactly three places: a kept truce term, a broken one, and a repaid debt.
+     * All three are ceremonies. Measured at the end of a run, only 12.3% of
+     * ally pairs carried a stored trust value at all, against suspicion's
+     * 24.8%, and `decayTrust` deletes the entry the moment it reaches zero.
+     *
+     * The three below are the ordinary things allies do to each other, which is
+     * where an axis about ordinary trust ought to live. Each is wired at a site
+     * that already exists and already fires thousands of times a sweep.
+     */
+    /** Standing in front of somebody, in a fight or a standoff. `noteStoodBy`. */
+    trustStoodBy: 6,
+    /** Putting your own food or water into the group's cache. `contributeToCache`. */
+    trustSharedCache: 3,
+    /** Watching somebody knife an ally. The victim's own loss is the betrayal
+     *  penalty above; this is what it costs them with everybody watching. */
+    trustWitnessedBetrayal: 14,
     /** Per-cycle heal toward zero from below, and fade toward zero from above. */
     trustHealPerCycle: 0.6,
     trustFadePerCycle: 1.2,
@@ -4603,7 +4625,23 @@ export const ROMANCE = {
      * performed bond still fires ~24 times per 400-run soak, so the mechanic
      * ships (the complaint it was raised to fix was 1-2 firings in 240 runs).
      */
-    performedChance: 0.12,
+    /*
+     * AUDIT-7 §4.1: retuned again, for a reason that is worth writing down.
+     *
+     * Wiring the stored trust axis into standing-by, cache-sharing and
+     * witnessed betrayal (§4.1) raised trust between allies from 12.3% of ally
+     * pairs to 45.2% — and `trustOf` feeds the gates a bond forms behind, so
+     * the combined star-crossed rate drifted 21.5% to 22.3% and tipped a guard
+     * band that was already sitting on its own ceiling. That is the guard doing
+     * its job: a social change with a social side effect, caught on the same
+     * pass rather than three audits later.
+     *
+     * 0.10 puts the combined rate back inside the band. The ceiling is still
+     * the thing to fix — the design goal is 10-15% and the measured rate has
+     * been over it for three audits — but that is a retune of the genuine bond,
+     * not of the performed one, and it is not this change's to make.
+     */
+    performedChance: 0.10,
     /** Per-cycle odds a sharp observer in the same zone reads the act. */
     performedSniffChance: 0.22,
     /** Intelligence at or above which a tribute can read a performance at all. */
@@ -4961,7 +4999,24 @@ export const ALLIANCES = {
      * `factionResentRegard` reads.
      */
     factionSuspicion: 9,
-    factionResentRegard: -18,
+    /*
+     * AUDIT-7 §4.3: the second detection path was set where nobody stands.
+     *
+     * "A bloc can also be people who simply cannot stand the same member" is
+     * the right idea and -18 is the wrong number for it: allies *like* each
+     * other by construction, and in-alliance regard measures p05 +10.5, p25
+     * +57, p50 +77.5. Only **0.26%** of in-alliance pairs were ever at or under
+     * -18, so the path the comment above calls "commoner and just as real" was
+     * firing about one time in four hundred.
+     *
+     * Placed on the measured distribution rather than on a guess, the way
+     * `investigateThreshold` below already is: 12 is inside the bottom decile
+     * of how allies actually regard each other, which is what "the two people
+     * in this group I have the least time for" looks like from the inside. Two
+     * members both have to be under it, so it stays a second route rather than
+     * the main one.
+     */
+    factionResentRegard: 12,
     factionMinMembers: 2,
     factionHeatPerCycle: 6,
     factionCoupHeat: 16,
@@ -4978,6 +5033,18 @@ export const ALLIANCES = {
     hearingExpelChance: 0.45,
     hearingDemoteChance: 0.3,
     expulsionRegardCost: 18,
+    /**
+     * AUDIT-7 §4.2: the group size at which every job gets a name.
+     *
+     * `assignRoles` filled `min(jobs, members)` roles, so the last two of the
+     * eight needed seven and eight members — and the alliance cap is six plus
+     * a two-member grand-coalition extra, so `keeper` was reachable only at the
+     * theoretical maximum and was never once filled in 7,680 samples. Four is
+     * what the function's own docstring always claimed ("four or more the
+     * lot"), and it means a group doubles somebody up rather than leaving a job
+     * unnamed.
+     */
+    allRolesFrom: 4,
     /** A member who fed the group has a claim on the cache when it splits. */
     cacheClaimShare: 0.5,
     /** The leader names an heir once the group is this big. */
@@ -6550,6 +6617,14 @@ export const DEBTS = {
     /** Settling up. */
     repayThreshold: 1,
     repayChance: 0.25,
+    /**
+     * AUDIT-7 §4.2: what a `keeper` is worth.
+     *
+     * The alliance role that "holds the group's debts" had no implementation
+     * and could not be assigned in the first place. A group with somebody
+     * keeping the books settles up more often, because somebody is asking.
+     */
+    repayKeeperBonus: 0.12,
     repayRegard: 12,
     repayExcitement: 10,
     repayRestRelief: 15,
