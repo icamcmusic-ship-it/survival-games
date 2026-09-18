@@ -59,6 +59,19 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     forager: 'butchery',
     duellist: 'melee',
     broker: 'persuasion',
+    /*
+     * AUDIT-7 §12.5. Three of these are deliberately the axes §3.5 had just
+     * made trainable — a speciality in a skill nothing could train was the
+     * shape of the problem, and these are the archetypes that give
+     * `navigation`, `carpentry` and `intimidation` somebody whose character
+     * they are.
+     */
+    cartographer: 'navigation',
+    debtor: 'persuasion',
+    forecaster: 'navigation',
+    understudy: 'forage',
+    archivist: 'oratory',
+    quiet: 'stealth',
 };
 
 /**
@@ -442,6 +455,11 @@ const TEACH_PHRASE: Record<Proficiency, string> = {
     navigation: 'how to hold a bearing when there is nothing to take one from',
     carpentry: 'why that stake holds and this one comes out in your hand',
     oratory: 'how to say it so that fifteen people all hear the same sentence',
+    // AUDIT-7 §12.4
+    signalling: 'that two broken twigs mean nothing and three mean somebody wanted you to see them',
+    fieldcookery: 'how long that has to sit on the coals before it stops being a gamble',
+    pacing: 'to go slower now so that there is still something left at dusk',
+    readingPeople: 'to watch the hands rather than the face, because the face has been practised',
 };
 
 /**

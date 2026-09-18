@@ -5,7 +5,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ARENAS } from '../src/data/constants';
-import { ARENA_FLAVOR, GENERIC_ARENA_FLAVOR, PROCEDURAL_FLAVOR_PACKS } from '../src/data/arenaFlavor';
+import { ARENA_FLAVOR, GENERIC_ARENA_FLAVOR } from '../src/data/arenaFlavor';
 import { NEW_ARENA_FLAVOR } from '../src/data/arenaFlavorNew';
 import { DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { ArenaLawId, GameState } from '../src/models/types';
@@ -62,20 +62,32 @@ const EFFECT_KINDS = new Set<string>([
  * Games; twenty-four is the point at which an arena can carry a run in its own
  * voice. That is what the target is set to, and the floor walks up to meet it.
  */
-const AUTHORED_EVENT_TARGET = 24;
+const AUTHORED_EVENT_TARGET = 40;
 /**
  * The guaranteed minimum. Raise it — never lower it — when the thinnest pack
  * clears a new number. History: 12 (every pack authored to exactly the old
- * note's threshold) -> 18 -> 24.
+ * note's threshold) -> 18 -> 24 -> 33.
+ *
+ * AUDIT-7 §1.7/§1.8: 24 was not what the roster guaranteed, it was what the
+ * four dead `PROCEDURAL_FLAVOR_PACKS` entries happened to carry — and the floor
+ * was computed across every pack at once, so four packs no player could reach
+ * were holding the number nine events below what all 45 hand-authored packs
+ * actually clear. The dead packs are gone and the floor is the real one.
  */
-const AUTHORED_EVENT_FLOOR = 24;
+const AUTHORED_EVENT_FLOOR = 33;
 /**
  * Packs still under the target. It is not allowed to rise, so a trimmed pack
- * or a thin new arena fails the build. All 44 packs are at the target as of
- * this pass, so the allowance is zero — which means the next number to move is
- * the target itself, not this one.
+ * or a thin new arena fails the build.
+ *
+ * AUDIT-7 §1.7: this used to read 0, because `AUTHORED_EVENT_TARGET` had been
+ * set equal to `AUTHORED_EVENT_FLOOR`. Two numbers that are the same number are
+ * one number: `underTarget` was structurally always empty, the distance-to-go
+ * was structurally always zero, and the note printed "0 of 44 pack(s) under the
+ * target" while `check-flavor-pools` — measuring the same statistic against the
+ * 40 the README documents — printed "277 events to go". The target is 40 again
+ * and this is the measured backlog.
  */
-const KNOWN_UNDER_TARGET = 0;
+const KNOWN_UNDER_TARGET = 40;
 
 ARENAS.forEach(arena => {
     const names = new Set(arena.zones.map(z => z.name));
@@ -248,14 +260,9 @@ ARENAS.forEach(arena => {
 // PROCEDURAL_FLAVOR_PACKS now), and every procedural pack key is a tag.
 const arenaIds = new Set(ARENAS.map(a => a.id));
 Object.keys(ARENA_FLAVOR).forEach(id => {
-    if (!arenaIds.has(id)) problems.push(`${id}: flavour pack has no matching arena (typo, or belongs in PROCEDURAL_FLAVOR_PACKS)`);
+    if (!arenaIds.has(id)) problems.push(`${id}: flavour pack has no matching arena (typo, or belongs in data/proceduralBiomeEvents.ts)`);
 });
-Object.keys(PROCEDURAL_FLAVOR_PACKS).forEach(id => {
-    if (!id.startsWith('procedural-')) problems.push(`${id}: procedural pack key must start with 'procedural-'`);
-    if (arenaIds.has(id)) problems.push(`${id}: procedural pack shadows a hand-authored arena id`);
-});
-
-Object.entries({ ...ARENA_FLAVOR, ...PROCEDURAL_FLAVOR_PACKS }).forEach(([id, flavor]) => {
+Object.entries(ARENA_FLAVOR).forEach(([id, flavor]) => {
     if (flavor.events.length < 3) problems.push(`${id}: flavour pack has fewer than 3 events`);
     // §7.3: the floor is a build failure — it is the guarantee that no arena
     // in the roster has ever been allowed to fall back below.
@@ -300,10 +307,13 @@ if (underTarget.length > KNOWN_UNDER_TARGET) {
         + `up from a baseline of ${KNOWN_UNDER_TARGET}. Author the new one up, or raise KNOWN_UNDER_TARGET on purpose.`);
     underTarget.slice(0, 12).forEach(u => problems.push(`   ${u}`));
 } else {
-    const thinnest = Math.min(...Object.values({ ...ARENA_FLAVOR, ...PROCEDURAL_FLAVOR_PACKS }).map(f => f.events.length));
+    const thinnest = Math.min(...Object.values(ARENA_FLAVOR).map(f => f.events.length));
+    const eventsToGo = Object.values(ARENA_FLAVOR)
+        .reduce((sum, f) => sum + Math.max(0, AUTHORED_EVENT_TARGET - f.events.length), 0);
     notes.push(
         `authored events: floor ${AUTHORED_EVENT_FLOOR} (thinnest pack ${thinnest}), `
-        + `${underTarget.length} of 44 pack(s) under the target of ${AUTHORED_EVENT_TARGET} (baseline ${KNOWN_UNDER_TARGET})`);
+        + `${underTarget.length} of ${Object.keys(ARENA_FLAVOR).length} pack(s) under the target of ${AUTHORED_EVENT_TARGET}`
+        + ` (baseline ${KNOWN_UNDER_TARGET}, ${eventsToGo} events to go)`);
     if (underTarget.length < KNOWN_UNDER_TARGET) {
         notes.push(`lower KNOWN_UNDER_TARGET to ${underTarget.length} in scripts/validate-arenas.ts to lock that in`);
     }

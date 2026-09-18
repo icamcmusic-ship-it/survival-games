@@ -1,7 +1,6 @@
 import { isVeteran } from '../veterans';
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
-import { Tribute } from '../../models/types';
 import {
     CHARIOT_ANGLES, DISTRICT_SALUTE, DISTRICT_TOKENS, GOODBYE_SCENES, REAPING_CROWDS, STYLISTS, TRAIN_SCENES,
 } from '../../data/pregames';

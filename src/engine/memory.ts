@@ -107,7 +107,17 @@ const MEMORY_THREAT_CAP = 6;
 
 export function addZoneThreat(state: GameState, t: Tribute, zone: string, amount: number) {
     const slot = zoneSlot(t, zone);
-    slot.threat = Math.min(MEMORY_THREAT_CAP, slot.threat + amount);
+    /*
+     * AUDIT-7 §12.5: clamped at both ends, not just the top.
+     *
+     * This clamped to `MEMORY_THREAT_CAP` above and to nothing below, so the
+     * first caller to pass a negative amount — a Quiet Professional shedding
+     * the field's attention — drove a zone's remembered threat under zero and
+     * tripped the soak's range invariant. Easing a memory is a legitimate thing
+     * to want (`easeSuspicion` is the same shape), so the fix is the floor
+     * rather than a rule that the argument must be positive.
+     */
+    slot.threat = Math.max(0, Math.min(MEMORY_THREAT_CAP, slot.threat + amount));
     slot.seen = Math.max(slot.seen, cycleOf(state));
 }
 
@@ -461,6 +471,17 @@ export function noteStoodBy(t: Tribute, otherId: string) {
     if (!mem.stoodBy.includes(otherId)) mem.stoodBy.push(otherId);
     // Somebody who took a risk for you is somebody you doubt less.
     easeSuspicion(t, otherId, SUSPICION.easedByStoodBy);
+    /*
+     * AUDIT-7 §4.1: the *trust* this earns is written by the caller, not here.
+     *
+     * `relationships.ts` imports this module, so this module cannot import
+     * `adjustTrust` back without a cycle. The three call sites — a combat
+     * defence, a parley stand and a debt incurred by helping — each call
+     * `adjustTrust` alongside, and `check-flavor-pools` would not catch a
+     * fourth that forgot, so the rule is written here where somebody adding one
+     * will read it: **standing by somebody moves `stoodBy`, suspicion and
+     * trust, and this function owns only the first two.**
+     */
 }
 
 export function hasStoodBy(t: Tribute, otherId: string): boolean {

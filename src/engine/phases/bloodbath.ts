@@ -19,7 +19,6 @@ import { getRel, setRel } from '../relationships';
 import { noteContact, noteSighting, ensureMemory } from '../memory';
 import { addFear } from '../fear';
 import { wildcardIs, arenaHasLaw } from '../gamesProfile';
-import { arenaBriefingLog } from '../arenaBriefingLog';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -189,7 +188,7 @@ function pedestalMinute(ctx: SimContext, alive: Tribute[]) {
  * rather than for supplies is a hunt; a runner who has somebody to meet is an
  * ally; a runner with a very low read of their own chances freezes.
  */
-function announceGongDecisions(ctx: SimContext, alive: Tribute[], fighters: Tribute[], runners: Tribute[]) {
+function announceGongDecisions(ctx: SimContext, alive: Tribute[], fighters: Tribute[], _runners: Tribute[]) {
     const horn = ctx.state.arena.zones[0]?.name ?? 'the Cornucopia';
     const isFighter = new Set(fighters.map(t => t.id));
     // Arrival order tells us who is going *into* the horn and who is working
@@ -290,7 +289,7 @@ export function processBloodbath(ctx: SimContext) {
     // §(requests 17): the plates are mined until the gong, which is the first
     // rule anybody learns about the Games and was the one thing the plates
     // could not do. Half a percent, per tribute, per Games.
-    const steppedOff = alive.filter(t => ctx.rng.chance(BLOODBATH.earlyStepOffChance));
+    const steppedOff = alive.filter(_t => ctx.rng.chance(BLOODBATH.earlyStepOffChance));
     steppedOff.forEach(t => {
         ctx.logEvent(
             ctx.pickText(EARLY_STEP_OFF)

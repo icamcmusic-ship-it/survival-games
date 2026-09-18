@@ -729,7 +729,7 @@ function runFloorSocial(
  * finalised after the broadcast (`settlePacts`), because half of what a
  * tribute is agreeing to depends on a number neither of them has seen yet.
  */
-function strikePact(a: Tribute, b: Tribute, day: number) {
+function strikePact(a: Tribute, b: Tribute, _day: number) {
     a.trainingPact = [...(a.trainingPact ?? []), b.id];
     b.trainingPact = [...(b.trainingPact ?? []), a.id];
 }

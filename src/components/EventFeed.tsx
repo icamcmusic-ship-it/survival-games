@@ -264,7 +264,13 @@ export function withTributeLinks(
                 // reaches. `inline-block` with vertical padding lifts the hit box
                 // off 19px, which is what made these un-tappable on a phone.
                 aria-label={`${person.name} — District ${person.district}, ${person.gender}, age ${person.age}${person.status === 'dead' ? ', deceased' : ''}. Open profile.`}
-                className="font-bold underline decoration-dotted underline-offset-2 hover:text-[var(--red)] focus-visible:outline focus-visible:outline-1 inline-block py-[3px] align-baseline"
+                /* AUDIT-7 §2.1: `in-prose` is WCAG 2.5.8's own inline
+                   exception, taken deliberately and marked so the tap-target
+                   census can see that it was. This is a tribute's name inside a
+                   sentence; padding it to 44px would put a gap between the
+                   words either side of it, and the criterion exempts exactly
+                   this case. It still clears the 24px AA line. */
+                className="in-prose font-bold underline decoration-dotted underline-offset-2 hover:text-[var(--red)] focus-visible:outline focus-visible:outline-1 inline-block py-[3px] align-baseline"
             >
                 {part}
                 {/* AUDIT-6 §1.6: the badge is decoration for the eye and noise
@@ -386,7 +392,9 @@ export function MomentShare({ gameState, log }: { gameState: GameState; log: Eve
     return (
         <button
             type="button"
-            className="feed-share"
+            /* AUDIT-7 §2.1: same exception — this sits at the end of a log
+               line, inside its text flow. Clears 24px. */
+            className="feed-share in-prose"
             aria-label={state === 'ok' ? 'Moment copied' : 'Copy this moment'}
             onClick={async e => {
                 e.stopPropagation();

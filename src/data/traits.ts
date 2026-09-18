@@ -262,7 +262,14 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Brute': {
         info: 'Built for it. Hits harder with anything heavy and with nothing at all, and the field reads them as dangerous.',
-        mods: { meleePower: 2, unarmedPower: 2.5, odds: 1.5, ambush: -0.04 },
+        // AUDIT-7 §1.4: `intimidation` is read at `fear.ts:36` and, until this
+        // pass, was carried by no trait and no quirk in the game — so the whole
+        // term contributed a flat zero to every fear roll ever made. Three
+        // traits whose own `info` already said they frighten people now say it
+        // in the modifier table too. See the rule at the top of this file: a
+        // key with a read site and no writer is the same bug as a modifier with
+        // no read site, wearing the other hat.
+        mods: { meleePower: 2, unarmedPower: 2.5, odds: 1.5, ambush: -0.04, intimidation: 0.8 },
     },
     'Marksman': {
         info: 'Trained on the range. Genuinely dangerous with a bow, a slingshot or a blowgun.',
@@ -477,7 +484,7 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     // new hooks, so nothing here can be inert the way the pre-A2 table was.
     'Dead-Eyed': {
         info: 'Something behind the eyes has already left. Killing costs them almost nothing, and the field can tell.',
-        mods: { killSanity: -0.5, targetDraw: 0.6, allianceAffinity: -0.25, excitement: 0.15 },
+        mods: { killSanity: -0.5, targetDraw: 0.6, allianceAffinity: -0.25, excitement: 0.15, intimidation: 1.2 },
     },
     'Rope-Handed': {
         info: 'Grew up on lines and knots. Very hard to hold onto in a grapple, and their traps hold what other people\'s let go.',
@@ -653,8 +660,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { trustGain: 0.3, allianceAffinity: 0.1 },
     },
     'Stone-Faced': {
-        info: 'Nothing shows. Very hard to suspect of anything, and nearly impossible to warm to.',
-        mods: { suspicionResist: 0.4, rapport: -0.2 },
+        info: 'Nothing shows. Very hard to suspect of anything, nearly impossible to warm to, and unreadable across a clearing.',
+        mods: { suspicionResist: 0.4, rapport: -0.2, intimidation: 0.6 },
     },
     'Standard-Bearer': {
         info: 'People follow them. So does everybody else: the field knows exactly who to take out of a group first.',
@@ -753,6 +760,153 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         info: 'Earned carrying a named weapon to a second kill. The Capitol talks about the blade, and about them.',
         earned: true,
         mods: { sponsorAppeal: 2, targetDraw: 1, meleePower: 1 },
+    },
+
+    /*
+     * ---- AUDIT-7 §12.3: thirty, and the first thirteen have a job ----------
+     *
+     * The vocabulary was 59 `TraitMod` keys against 119 traits, and thirteen of
+     * those keys were carried by two traits or fewer — six of them by exactly
+     * one. A key carried by a single trait is a key whose effect is
+     * indistinguishable from that trait: you cannot tell whether `haggle`
+     * matters or whether Barterer matters, because they are the same row.
+     *
+     * So the first thirteen below are chosen to double up the thinnest keys
+     * rather than to be individually clever, which is also how the roster stops
+     * being 42 combat modifiers against 26 social ones. The rest fill out the
+     * families the measured tail of §8.1 says are weak.
+     */
+
+    // -- carrying an under-used key ------------------------------------------
+    'Watchful': {
+        info: 'Hard to work on. Slow to take against somebody on nothing but a feeling, and misses very little.',
+        mods: { suspicionResist: 0.25, awareness: 0.3 },
+    },
+    "Standard-Bearer's Second": {
+        info: 'Has carried somebody else\'s colours before. The group finds itself deferring without deciding to.',
+        mods: { leadership: 1.2, allianceAffinity: 0.05, rapport: 0.1 },
+    },
+    'Good For It': {
+        info: 'Pays what they owe, and is known for it. A debt to them is worth more than a debt to anybody else.',
+        mods: { debtHonour: 0.4, trustGain: 0.2 },
+    },
+    'Letter Of The Law': {
+        info: 'Holds to what was agreed past the point of sense. Will not breach a charter clause and cannot see why anyone would.',
+        mods: { charterHold: 0.3, treachery: -0.05 },
+    },
+    'Straight Story': {
+        info: 'Tells it the way it happened. Believed when it counts, and hopeless at getting a price.',
+        mods: { rumourCredibility: 0.8, haggle: -0.2 },
+    },
+    'Horse Trader': {
+        info: 'Knows what a thing is worth to the person who needs it, which is never what it is worth.',
+        mods: { haggle: 0.6, persuasion: 0.4 },
+    },
+    'Finisher': {
+        info: 'Does not leave people on the ground. It costs them something every time and they do it anyway.',
+        mods: { executeDrive: 0.15, killSanity: 0.2 },
+    },
+    'Long Sight': {
+        info: 'Reads distance better than anybody. Formidable at range and awkward once it closes.',
+        mods: { rangedPower: 1.5, meleePower: -0.5 },
+    },
+    'First Off The Plate': {
+        info: 'Moves on the gong before the sound has finished. Goes for the horn, and does not know how to break off.',
+        mods: { hornCommitment: 0.2, retreat: -0.03 },
+    },
+    'Cinder-Handed': {
+        info: 'Something about them and fire. What they hit tends to catch, and what catches does not catch them.',
+        mods: { burnOnHit: 0.1, burnResist: 0.2 },
+    },
+    'Grudge-Fed': {
+        info: 'Fights hardest against the one they swore about. It eats them the rest of the time.',
+        mods: { vengeanceEdge: 2, sanityDrain: 0.1 },
+    },
+    'Beast-Wise': {
+        info: 'Grew up around animals that could kill them. Reads a mutt the way other people read weather.',
+        mods: { muttDamage: -0.2, awareness: 0.2 },
+    },
+    'Takes People As They Come': {
+        info: 'Slow to suspect and quick to trust, which is either the best or the worst way to play this.',
+        mods: { trustGain: 0.4, suspicionResist: 0.15 },
+    },
+
+    // -- body and deprivation -------------------------------------------------
+    'Thrifty': {
+        info: 'Makes a day\'s food last two. Pays for it in the legs by the afternoon.',
+        mods: { hungerDrain: -3, fatigueDay: 0.5 },
+    },
+    'Sun-Fed': {
+        info: 'Comes alive in heat and shuts down in cold. Whichever arena they drew, they know by the first evening.',
+        mods: { heatResist: 0.3, coldResist: -0.15 },
+    },
+    'Slow Burn': {
+        info: 'Sleeps properly and starts badly. Worth having on the fourth day and not the first.',
+        mods: { fatigueNight: -1.5, fatigueDay: 0.8 },
+    },
+    'Hollow Leg': {
+        info: 'Can go a long time without water and will drink anything when they do.',
+        mods: { thirstDrain: -3, poisonResist: -0.1 },
+    },
+    'Set Bones': {
+        info: 'Has been broken before and healed straight. Bleeds less and moves like somebody remembering an injury.',
+        mods: { bleedResist: 0.2, fatigueDay: 0.4 },
+    },
+
+    // -- combat ----------------------------------------------------------------
+    'Left-Guard': {
+        info: 'Fights from the wrong side. Keeps somebody else standing, and is dangerous with nothing in their hands.',
+        mods: { defended: 0.15, unarmedPower: 1 },
+    },
+    'Overreach': {
+        info: 'Hits harder than their frame should allow by committing to it. Cannot take the blow back.',
+        mods: { meleePower: 2, retreat: -0.08 },
+    },
+    'Counterpuncher': {
+        info: 'Better at being attacked than at attacking. Very hard to hold on to.',
+        mods: { wrestle: 0.5, defended: 0.1 },
+    },
+    'Spent': {
+        info: 'Earned by surviving something that used everything they had. Quieter afterwards, and rests properly for the first time.',
+        earned: true,
+        mods: { combatPower: -1.5, sanityRecovery: 2, resolveDrift: 0.2 },
+    },
+    'Blooded Twice': {
+        info: 'Earned killing a second time. The fear that came with the first one is gone, and so is something else.',
+        earned: true,
+        mods: { vengeanceEdge: 1.5, fearGain: -0.15 },
+    },
+
+    // -- social ------------------------------------------------------------------
+    'Reads The Room': {
+        info: 'Knows when to speak and, more usefully, when somebody else has already decided.',
+        mods: { rapport: 0.5, persuasion: 0.3 },
+    },
+    'Owes Nobody': {
+        info: 'Will not be put under an obligation. Hard to buy, hard to betray, and hard to like.',
+        mods: { debtHonour: -0.3, betrayalResist: 0.2, allianceAffinity: -0.1 },
+    },
+    'Keeps Books': {
+        info: 'Writes down what was agreed, in their head, exactly. The group ends up running on it.',
+        mods: { charterHold: 0.25, leadership: 0.4 },
+    },
+    'Spoken For': {
+        info: 'Somebody at home is watching, and the arena knows it. Sponsors like it; so do hunters.',
+        mods: { allianceAffinity: 0.1, targetDraw: 0.5, sponsorAppeal: 1 },
+    },
+
+    // -- field and mind ------------------------------------------------------------
+    'Reads Ground': {
+        info: 'Can tell what a place will give before walking into it, and remembers the way back.',
+        mods: { forage: 0.06, highland: 0.4 },
+    },
+    'Night Ear': {
+        info: 'Hears everything after dark and misses things in daylight, which nobody warns them about.',
+        mods: { awarenessNight: 0.6, awareness: -0.1 },
+    },
+    'Steady Hand': {
+        info: 'Does fiddly work under pressure. Dressings hold and snares sit where they were put.',
+        mods: { medicine: 0.08, trapSkill: 0.05 },
     },
 };
 

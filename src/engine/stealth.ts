@@ -1,7 +1,7 @@
-import { profOf } from './proficiency';
+import { profOf, trainProficiency } from './proficiency';
 import { Tribute, Zone } from '../models/types';
 import { zoneFeatures } from './map';
-import { CRAFTING, INVENTORY, STANCE_MODES, STEALTH } from '../data/balance';
+import { CRAFTING, INVENTORY, PROFICIENCY, STANCE_MODES, STEALTH } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { traitMod } from '../data/traits';
 import { concealmentModifier, effectiveIntelligence } from './physique';
@@ -64,6 +64,17 @@ export function concealment(
     if (t.stance === 'Hunting') value -= STANCE_MODES.hunting.concealmentPenalty;
     if (t.stance === 'Shadowing') value += STANCE_MODES.shadowing.concealmentBonus;
     if (t.stance === 'Desperate') value -= STANCE_MODES.desperate.concealmentPenalty;
+    /*
+     * AUDIT-7 §12.6: Baiting gives it away on purpose, which is the whole
+     * stance. It is the only row here where the tribute *wants* the number
+     * lower, and it is only available on ground they have already trapped or
+     * hold a chokepoint on — so the concealment is being spent rather than
+     * lost.
+     */
+    if (t.stance === 'Baiting') value -= STANCE_MODES.baiting.concealmentCost;
+    // ...and Tending is standing still with both hands busy, which is the
+    // opposite trade and roughly the same size.
+    if (t.stance === 'Tending') value += STANCE_MODES.tending.concealmentBonus;
 
     // A fire is warmth, hot food and a beacon. Camouflage is the reverse trade.
     if (camp?.fire) value -= CRAFTING.fireConcealmentPenalty;
@@ -172,7 +183,23 @@ export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone
     // good stealth in the final zone simply never meet and the Games never end.
     hidden *= endgameVisibility(ctx);
 
-    return !ctx.rng.chance(hidden);
+    const noticed = ctx.rng.chance(hidden);
+    /*
+     * AUDIT-7 §3.5: `stealth` had no `trainProficiency` call site at all.
+     *
+     * Its peak across 6,000 tributes was 1.00 — the value everybody starts at —
+     * in a game with a `ghost` archetype, this whole module, an `ambush`
+     * modifier and 965 measured ambushes per 400 runs. The skill existed on the
+     * sheet and nothing in the arena could move it.
+     *
+     * Getting away with it is the lesson; being seen is a smaller one, which is
+     * exactly what `share` is for. Gated on a real attempt — allies are not
+     * hiding from each other and the function returns above for them — so this
+     * is once per seeker who might have found them.
+     */
+    if (!noticed) trainProficiency(hider, 'stealth');
+    else trainProficiency(hider, 'stealth', undefined, PROFICIENCY.stealthCaughtShare);
+    return !noticed;
 }
 
 /** Multiplier on concealment as the field narrows: 1 early, 0 at the end. */

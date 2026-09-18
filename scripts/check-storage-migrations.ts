@@ -17,7 +17,11 @@ import assert from 'node:assert/strict';
 import { HOF_SPEC } from '../src/utils/hofStorage';
 import { PANEM_SPEC } from '../src/utils/panemStorage';
 import { COINS_SPEC, CONFIG_SPEC, FILTERS_SPEC, readCoins } from '../src/utils/prefsStorage';
-import { REWIND_PERSIST, SAVED_RUN_SPEC, normalizeTribute } from '../src/utils/saveMigrations';
+import { CONFIG_KEYS, REWIND_PERSIST, SAVED_RUN_SPEC, normalizeConfig, normalizeTribute } from '../src/utils/saveMigrations';
+import { normalizeEntry } from '../src/utils/hofStorage';
+import { DEFAULT_GAME_CONFIG } from '../src/data/constants';
+import { GameConfig } from '../src/models/types';
+import { SHARE_OMITS, shareParams } from '../src/components/ShareButton';
 import { ARCHETYPES as ARCHETYPE_DEFS } from '../src/data/archetypes';
 import { STANCES } from '../src/data/stances';
 import {
@@ -421,6 +425,168 @@ test('a resumed tribute keeps every archetype and every stance the data tables d
         const t = normalizeTribute({ id: 'x', name: 'X', archetype: 'career', stance })!;
         assert.equal(t.stance, stance, `stance ${stance} lost on resume`);
     });
+});
+
+/*
+ * AUDIT-7 §1.2: the check that was missing while two normalisers deleted nine
+ * fields between them.
+ *
+ * `normalizeConfig` used to be an object literal naming twelve of `GameConfig`'s
+ * sixteen keys, and `hofStorage` carried a second copy naming seven. Everything
+ * else here passed, because nothing asserted that a config survives a round
+ * trip *whole* — only that individual named fields did. A field added to the
+ * type and forgotten in a normaliser was invisible until somebody resumed a
+ * one-victor run and got two victors.
+ *
+ * So the assertion is over `Object.keys` of a fully-populated config rather
+ * than over a hand-written list: adding a field to `GameConfig` extends this
+ * check automatically, and forgetting it in either path fails the build.
+ */
+const FULL_CONFIG: Required<GameConfig> = {
+    districtCount: 10,
+    hazardRate: 1.75,
+    betrayalRate: 2,
+    sponsorGenerosity: 0.5,
+    enableFeast: false,
+    enableSanity: false,
+    sanityDrainRate: 2.25,
+    sanityRecoveryRate: 0.5,
+    enableHallucinations: false,
+    enableBreakdowns: false,
+    sanityStart: 55,
+    plainNames: true,
+    vanillaRules: true,
+    singleVictor: true,
+    ageMean: 15,
+    ageSpread: 2.5,
+};
+
+test('CONFIG_KEYS covers every field on GameConfig', () => {
+    // `Required<GameConfig>` above is the type-level half; this is the runtime
+    // half, so a key present in the type and absent from the rules table is
+    // caught even if a future `as` cast hides the compile error.
+    const declared = Object.keys(FULL_CONFIG).sort();
+    assert.deepEqual([...CONFIG_KEYS].sort(), declared,
+        'CONFIG_KEYS and GameConfig have drifted apart');
+});
+
+test('a save slot round-trips every config field it was written with', () => {
+    const saved = {
+        gameState: {
+            seed: 'ROUNDTRIP',
+            arena: { id: 'frozen', zones: [{ name: 'The Cornucopia' }] },
+            tributes: [{ id: 't1', name: 'Test' }],
+            phase: 'day', day: 3, log: [], gamemakerMode: false,
+            config: FULL_CONFIG, baseConfig: FULL_CONFIG,
+        },
+    };
+    const out = SAVED_RUN_SPEC.migrate!(saved, 0) as { gameState: { config: GameConfig; baseConfig: GameConfig } } | null;
+    assert.ok(out, 'a well-formed save was rejected');
+    (Object.keys(FULL_CONFIG) as Array<keyof GameConfig>).forEach(key => {
+        assert.equal(out!.gameState.baseConfig[key], FULL_CONFIG[key],
+            `baseConfig.${key} did not survive a save-slot read`);
+        assert.equal(out!.gameState.config[key], FULL_CONFIG[key],
+            `config.${key} did not survive a save-slot read`);
+    });
+});
+
+test('a Hall of Fame entry round-trips every config field it was archived with', () => {
+    const entry = normalizeEntry({
+        id: 'hof-roundtrip', seed: 'ROUNDTRIP', arenaName: 'The Frozen Wasteland',
+        arenaId: 'frozen', quellId: null, winnerName: 'Test', winnerDistrict: 4,
+        kills: 2, date: '2026-01-01', config: FULL_CONFIG,
+    });
+    assert.ok(entry?.config, 'an archived config was dropped entirely');
+    (Object.keys(FULL_CONFIG) as Array<keyof GameConfig>).forEach(key => {
+        assert.equal(entry!.config![key], FULL_CONFIG[key],
+            `config.${key} did not survive a Hall of Fame read`);
+    });
+    // The replay fields themselves, which the same normaliser used to guard.
+    assert.equal(entry!.arenaId, 'frozen');
+    assert.equal(entry!.quellId, null, 'an explicit "no Quell" became "unknown"');
+});
+
+test('an unset age pair stays unset rather than being defaulted', () => {
+    // Absent is a real and different state from any number: it means the canon
+    // tesserae-weighted bowl. A normaliser that defaults it silently replaces
+    // the draw that decides the whole cast.
+    const bare = { ...DEFAULT_GAME_CONFIG };
+    delete (bare as Partial<GameConfig>).ageMean;
+    delete (bare as Partial<GameConfig>).ageSpread;
+    const out = normalizeConfig(bare);
+    assert.ok(!('ageMean' in out), 'ageMean was invented on read');
+    assert.ok(!('ageSpread' in out), 'ageSpread was invented on read');
+});
+
+/*
+ * AUDIT-7 §1.1: the Share URL is the other replay path, and it was dropping
+ * five fields.
+ *
+ * `vanillaRules` went missing once, `singleVictor` and the age pair a second
+ * time, and the five sanity dials a third — each found by somebody noticing a
+ * link that did not replay, never by a check. The assertion below is over
+ * `Object.keys(FULL_CONFIG)` rather than a hand-written list, so adding a field
+ * to `GameConfig` extends it automatically.
+ */
+test('the Share URL carries every GameConfig field, or declares why not', () => {
+    const params = shareParams({
+        seed: 'SHARE', arenaId: 'frozen', gamemakerMode: false,
+        config: FULL_CONFIG, quellId: null,
+    });
+    const missing = (Object.keys(FULL_CONFIG) as Array<keyof GameConfig>)
+        .filter(key => !params.has(key) && !SHARE_OMITS.includes(key));
+    assert.deepEqual(missing, [],
+        `these settings change the run and are not in the share link: ${missing.join(', ')}`
+        + ' — add them to shareParams() and to the parser in App.tsx, or name them in SHARE_OMITS with a reason');
+});
+
+test('a shared link round-trips every config field through the parser', () => {
+    // Mirrors the parsing block in App.tsx. If the two drift, a link encodes a
+    // setting nobody reads back, which is the same failure wearing a hat.
+    const params = shareParams({
+        seed: 'SHARE', arenaId: 'frozen', gamemakerMode: false,
+        config: FULL_CONFIG, quellId: null,
+    });
+    const num = (key: keyof GameConfig) => Number(params.get(key));
+    const bool = (key: keyof GameConfig) => params.get(key) === 'true';
+    assert.equal(num('districtCount'), FULL_CONFIG.districtCount);
+    assert.equal(num('hazardRate'), FULL_CONFIG.hazardRate);
+    assert.equal(num('betrayalRate'), FULL_CONFIG.betrayalRate);
+    assert.equal(num('sponsorGenerosity'), FULL_CONFIG.sponsorGenerosity);
+    assert.equal(bool('enableFeast'), FULL_CONFIG.enableFeast);
+    assert.equal(bool('enableSanity'), FULL_CONFIG.enableSanity);
+    assert.equal(bool('plainNames'), FULL_CONFIG.plainNames);
+    assert.equal(bool('vanillaRules'), FULL_CONFIG.vanillaRules);
+    assert.equal(bool('singleVictor'), FULL_CONFIG.singleVictor);
+    assert.equal(num('ageMean'), FULL_CONFIG.ageMean);
+    assert.equal(num('ageSpread'), FULL_CONFIG.ageSpread);
+    assert.equal(num('sanityDrainRate'), FULL_CONFIG.sanityDrainRate);
+    assert.equal(num('sanityRecoveryRate'), FULL_CONFIG.sanityRecoveryRate);
+    assert.equal(num('sanityStart'), FULL_CONFIG.sanityStart);
+    assert.equal(bool('enableHallucinations'), FULL_CONFIG.enableHallucinations);
+    assert.equal(bool('enableBreakdowns'), FULL_CONFIG.enableBreakdowns);
+    // The absent age pair encodes as 'bowl', not as a number.
+    const bowl = shareParams({
+        seed: 'S', arenaId: 'frozen', gamemakerMode: false,
+        config: { ...FULL_CONFIG, ageMean: undefined, ageSpread: undefined }, quellId: null,
+    });
+    assert.equal(bowl.get('ageMean'), 'bowl');
+    assert.equal(bowl.get('ageSpread'), 'bowl');
+});
+
+test('config values out of range are clamped rather than trusted', () => {
+    const hostile = normalizeConfig({
+        ...FULL_CONFIG, districtCount: 999, hazardRate: 99, betrayalRate: -5,
+        sponsorGenerosity: 99, sanityStart: 1, sanityDrainRate: 99, ageMean: 40, ageSpread: 99,
+    });
+    assert.equal(hostile.districtCount, 16);
+    assert.equal(hostile.hazardRate, 2.5);
+    assert.equal(hostile.betrayalRate, 0);
+    assert.equal(hostile.sponsorGenerosity, 3);
+    assert.equal(hostile.sanityStart, 40);
+    assert.equal(hostile.sanityDrainRate, 2.5);
+    assert.equal(hostile.ageMean, 18);
+    assert.equal(hostile.ageSpread, 4);
 });
 
 console.log(failures === 0 ? '\nall storage migration checks passed' : `\n${failures} check(s) failed`);

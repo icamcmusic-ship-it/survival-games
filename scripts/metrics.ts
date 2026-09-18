@@ -14,7 +14,6 @@
  */
 import { generateTributes } from '../src/engine/generator';
 import { resolveArenaForRun } from '../src/engine/arenaSetup';
-import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig, GameState, Stance, Tribute } from '../src/models/types';
@@ -431,7 +430,32 @@ const spreadOf = (rates: Array<[string, number, number]>) => {
 const guardable = (rates: Array<[string, number, number]>) => rates.filter(r => r[2] >= GUARD_MIN_SAMPLE);
 const archetypeGuardRates = guardable(archetypeRates);
 const archetypeSpread = spreadOf(archetypeGuardRates);
-const reapingTraitSpread = spreadOf(guardable(reapingTraitRates));
+/*
+ * AUDIT-7 §1.6: this row printed a verdict on a two-element population.
+ *
+ * At the 400 runs CI uses, exactly two reaping traits clear GUARD_MIN_SAMPLE —
+ * Charismatic (n=501) and Trapper (n=728) — so `spreadOf(guardable(...))` was
+ * 5.79/4.81 = 1.20x, and the indicator printed "goal <= 2.5 MET". The real
+ * spread over the 50 traits that clear the threshold at n=1,600 is 2.20x. The
+ * number it printed was not a noisy version of the right answer; it was a
+ * different statistic.
+ *
+ * The archetype rows above already handled this correctly, abstaining with
+ * "no population over 500 entrants at this run count — reported, not guarded".
+ * The trait row had no `judgeable` predicate, so it printed green where its
+ * neighbours printed an abstention. It has one now, and it needs a population
+ * rather than a pair: a spread is a statement about a *table*.
+ */
+const reapingTraitGuardRates = guardable(reapingTraitRates);
+const reapingTraitSpread = spreadOf(reapingTraitGuardRates);
+/** A spread over fewer traits than this is two rows of a table, not a table. */
+const TRAIT_SPREAD_MIN_POPULATION = 10;
+/**
+ * The whole-table spread, printed without a verdict beside the guarded one — so
+ * the shape of the tail is visible at 400 runs instead of only at 1,600, and so
+ * nobody has to infer it from the printed table by hand.
+ */
+const reapingTraitFullSpread = spreadOf(reapingTraitRates);
 const worstArchetypeRate = archetypeGuardRates.length ? archetypeGuardRates[archetypeGuardRates.length - 1][1] : 0;
 const bestArchetypeRate = archetypeGuardRates.length ? archetypeGuardRates[0][1] : 0;
 const underSampled = archetypeRates.filter(r => r[2] < GUARD_MIN_SAMPLE).map(r => r[0]);
@@ -498,8 +522,11 @@ const indicators: Indicator[] = [
         guardText: '<= 4.5',
         goal: '<= 2.5',
         goalMet: v => v <= 2.5,
-        baseline: '4.31 measured here (the audit reported 4.3)',
+        baseline: '4.31 measured here (the audit reported 4.3); 2.20 at n=1,600',
         fmt: v => `${v.toFixed(2)}x`,
+        // AUDIT-7 §1.6: a spread needs a table. At 400 runs two traits clear
+        // GUARD_MIN_SAMPLE and this row read 1.20x against a real 2.20x.
+        judgeable: () => reapingTraitGuardRates.length >= TRAIT_SPREAD_MIN_POPULATION,
     },
     {
         /*
@@ -1063,6 +1090,7 @@ console.log(`  currently bleeding ${pct(bleedingSamples, aliveSamples)}`);
  * that fires for one archetype in twenty is a design promise the player never
  * sees kept, and it is invisible in a win-rate table.
  */
+let signatureFailures = 0;
 console.log('\narchetype signature fire rate (share of entrants whose set piece fired):');
 {
     const rates = Object.keys(ARCHETYPES)
@@ -1074,6 +1102,51 @@ console.log('\narchetype signature fire rate (share of entrants whose set piece 
     if (fired.length > 1) {
         const best = fired[0], worst = fired[fired.length - 1];
         console.log(`  spread: ${best[0]} ${pct(best[1] * best[2], best[2])} vs ${worst[0]} ${pct(worst[1] * worst[2], worst[2])}`);
+    }
+    /*
+     * AUDIT-7 §8.2: the floor this table printed and never enforced.
+     *
+     * At n=1,600 the spread ran survivalist 60.4% to quartermaster 19.8% —
+     * 3.05x — and the bottom four (captor, warden, broker, quartermaster) were
+     * all below the *old* floor of the fifteen-archetype roster AUDIT-6
+     * measured. Three of the four were alliance-gated: their set piece needed
+     * another tribute, in the same zone, in the same group, at the same moment.
+     *
+     * A signature is the once-per-run beat that makes an archetype a character
+     * rather than four bias scalars, so a rate of one in five is a promise the
+     * player mostly does not see kept. Guarded over adequately-sampled
+     * archetypes only, for the same reason every other guard here is.
+     */
+    /*
+     * Two numbers, not one — the lesson of AUDIT-7 §1.7, where a floor set
+     * equal to its own target made the backlog structurally always zero.
+     *
+     * `SIGNATURE_FLOOR` is the hard minimum every adequately-sampled signature
+     * clears *today*; it fails the build and may only be raised.
+     * `SIGNATURE_TARGET` is where the roster is going, reported as
+     * distance-to-go and never failed. History of the floor: the roster ran
+     * 16.7% to 64.6% when this section was written.
+     */
+    const SIGNATURE_FLOOR = 0.29;
+    const SIGNATURE_TARGET = 0.35;
+    const starved = fired.filter(([, rate]) => rate < SIGNATURE_FLOOR);
+    const shortOfTarget = fired.filter(([, rate]) => rate < SIGNATURE_TARGET);
+    if (starved.length > 0) {
+        console.log(`  ${starved.length} signature(s) under the ${(SIGNATURE_FLOOR * 100).toFixed(0)}% floor: `
+            + starved.map(([id, rate]) => `${id} ${(rate * 100).toFixed(1)}%`).join(', '));
+        signatureFailures = starved.length;
+    } else if (fired.length > 0) {
+        const lowest = fired[fired.length - 1];
+        console.log(`  every adequately-sampled signature clears the ${(SIGNATURE_FLOOR * 100).toFixed(0)}% floor`
+            + ` (${fired.length} of ${rates.length} archetypes over ${GUARD_MIN_SAMPLE} entrants);`
+            + ` thinnest ${lowest[0]} ${(lowest[1] * 100).toFixed(1)}%.`);
+        if (shortOfTarget.length > 0) {
+            console.log(`  ${shortOfTarget.length} still under the ${(SIGNATURE_TARGET * 100).toFixed(0)}% target: `
+                + shortOfTarget.map(([id, rate]) => `${id} ${(rate * 100).toFixed(1)}%`).join(', '));
+        }
+        if (lowest[1] > SIGNATURE_FLOOR + 0.02) {
+            console.log(`  raise SIGNATURE_FLOOR to ${(lowest[1] * 100).toFixed(0) }% in scripts/metrics.ts to lock that in.`);
+        }
     }
 }
 
@@ -1146,7 +1219,8 @@ indicators.forEach(ind => {
     if (!judgeable) {
         console.log(
             `  ----  ${ind.label.padEnd(36)} ${shown.padStart(7)}` +
-            `  (no population over ${GUARD_MIN_SAMPLE} entrants at this run count — reported, not guarded)`
+            `  (fewer than the minimum population over ${GUARD_MIN_SAMPLE} entrants at this run count`
+            + ` — reported, not guarded; re-run with METRICS_RUNS=1600)`
         );
         return;
     }
@@ -1214,5 +1288,47 @@ if (underSampled.length) {
         console.log(`  archetype cleared ${GUARD_MIN_SAMPLE} entrants at ${runs} runs, so the verdict stands.`);
     }
 }
+
+/*
+ * AUDIT-7 §1.6: the same treatment for reaping traits, which had none.
+ *
+ * The guarded row above is computed over traits clearing GUARD_MIN_SAMPLE, and
+ * at 400 runs that is two of them. Printing only that left a reader with no way
+ * to see the tail without adding up the printed table by hand — and the tail is
+ * where trait balance actually lives: the bottom four rows are all one- and
+ * two-modifier traits.
+ *
+ * So the whole-table spread is printed beside the guarded one, with the same
+ * withheld verdict, and the bottom of the table is named.
+ */
+{
+    const worstFull = reapingTraitRates[reapingTraitRates.length - 1];
+    const bestFull = reapingTraitRates[0];
+    const canJudge = reapingTraitGuardRates.length >= TRAIT_SPREAD_MIN_POPULATION;
+    console.log('\nwhole-table reaping-trait balance (every trait over MIN_SAMPLE, no guard):');
+    // A trait with zero victors on a 109-entrant sample makes the ratio
+    // infinite, which is a statement about the sample and not about the trait.
+    // Print it as what it is rather than as a number.
+    const spreadText = Number.isFinite(reapingTraitFullSpread)
+        ? `${reapingTraitFullSpread.toFixed(2)}x`
+        : 'unbounded (a trait at zero victors)';
+    console.log(`  spread (best/worst)   ${spreadText}`
+        + `  ${canJudge ? (reapingTraitFullSpread <= 2.5 ? 'goal MET' : 'SHORT of goal') : 'not yet judgeable'}  (goal <= 2.5x)`);
+    if (bestFull && worstFull) {
+        console.log(`  best   ${bestFull[0]} ${(bestFull[1] * 100).toFixed(2)}% (n=${bestFull[2]})`);
+        console.log(`  worst  ${worstFull[0]} ${(worstFull[1] * 100).toFixed(2)}% (n=${worstFull[2]})`);
+    }
+    console.log(`  ${reapingTraitGuardRates.length} of ${reapingTraitRates.length} traits clear ${GUARD_MIN_SAMPLE} entrants`
+        + ` (the guarded row needs ${TRAIT_SPREAD_MIN_POPULATION}).`);
+    if (!canJudge) {
+        console.log(`  The guarded row above abstains at this run count. Re-run with METRICS_RUNS=1600.`);
+    }
+    // The tail is the actionable part: a trait far off the mean on a small
+    // sample is noise, but a *cluster* at the bottom is a family that is weak.
+    const tail = reapingTraitRates.slice(-6).map(([k, v, n]) => `${k} ${(v * 100).toFixed(2)}% (n=${n})`);
+    console.log(`  bottom six: ${tail.join(', ')}`);
+}
+// AUDIT-7 §8.2: counted alongside the indicator guards rather than beside them.
+failed += signatureFailures;
 console.log(failed ? `\n${failed} regression guard(s) breached.` : '\nAll regression guards hold.');
 if (failed) process.exit(1);

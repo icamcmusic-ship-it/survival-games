@@ -1038,6 +1038,153 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetDraw: -0.5,
         fearScale: 1.1,
     },
+
+    /*
+     * ---- AUDIT-7 §12.5 ------------------------------------------------------
+     *
+     * Six more, on the rule the last three batches were held to — each holds a
+     * stance/objective/target combination nothing already in the table holds —
+     * and one this pass added: **every signature below is reachable by a
+     * tribute standing alone.** §8.2 found that three of the four lowest-firing
+     * set pieces in the roster needed another tribute in the same zone in the
+     * same group at the same moment, which is how an archetype ends up doing
+     * its one characteristic thing for a fifth of the people who draw it.
+     */
+
+    /** The only archetype whose objective bias is `reach` as a *plan* rather than a need. */
+    cartographer: {
+        id: 'cartographer',
+        name: 'Cartographer',
+        description: 'Treats the arena as a thing to be known rather than survived. Walks it deliberately, early, while everyone else is reacting — and by the fourth day is the only person who is never lost.',
+        statBias: { intelligence: 2, endurance: 1, agility: 1, strength: -1 },
+        preferredTraits: ['Reads Ground', 'Eagle-Eyed', 'Sure-Footed', 'Tracker'],
+        aggression: -0.15,
+        allianceAffinity: 0.05,
+        treachery: 0.05,
+        caution: 0.2,
+        stanceBias: { Evasive: 0.5, Shadowing: 0.4, Fortified: -0.3 },
+        objectiveBias: { reach: 0.6, hold: -0.2 },
+        targetPreference: 'nearest',
+        riskCurve: 'escalating',
+        signature: 'cartographerRoute',
+        hatesArchetypes: ['ghost'],
+        tagline: 'It is only a maze if you have not walked it.',
+        targetDraw: -1,
+        fearScale: 1,
+    },
+
+    /** Arrives owing somebody in the field, which no other archetype does. */
+    debtor: {
+        id: 'debtor',
+        name: 'Debtor',
+        description: 'Walked into the arena already owing somebody in it. Spends the run deciding whether that means protecting them, avoiding them, or settling it where the cameras can see.',
+        statBias: { endurance: 2, willpower: 1, charisma: 1, intelligence: -1 },
+        preferredTraits: ['Good For It', 'Sworn', 'Loyal', 'Steadfast'],
+        aggression: 0,
+        allianceAffinity: 0.3,
+        treachery: -0.1,
+        caution: 0.05,
+        stanceBias: { Defensive: 0.4, Nursing: 0.5, Aggressive: -0.2 },
+        objectiveBias: { protect: 0.6, flee: -0.2 },
+        targetPreference: 'strongest',
+        riskCurve: 'front-loaded',
+        signature: 'debtorReckoning',
+        hatesArchetypes: ['broker', 'opportunist'],
+        tagline: 'It comes due somewhere.',
+        targetDraw: 0,
+        fearScale: 0.95,
+    },
+
+    /** The only archetype that reads weather as information rather than weather. */
+    forecaster: {
+        id: 'forecaster',
+        name: 'Forecaster',
+        description: 'Reads sky and ground the way other tributes read faces. Is somewhere sheltered before the front arrives, and has usually said so out loud first, which nobody believes until the second time.',
+        statBias: { intelligence: 2, willpower: 1, endurance: 1, strength: -1 },
+        preferredTraits: ['Reads Ground', 'Gut-Wise', 'Frost-Born', 'Deep-Rooted'],
+        aggression: -0.2,
+        allianceAffinity: 0.15,
+        treachery: 0,
+        caution: 0.35,
+        stanceBias: { Fortified: 0.6, Defensive: 0.3, Aggressive: -0.5 },
+        objectiveBias: { hold: 0.5, reach: 0.2 },
+        targetPreference: 'weakest',
+        riskCurve: 'late-blooming',
+        signature: 'forecasterCall',
+        hatesArchetypes: ['wildcard'],
+        tagline: 'It is coming from the west.',
+        targetDraw: -1.5,
+        fearScale: 1.05,
+    },
+
+    /** Reaped in somebody else's place, and the only archetype defined by that. */
+    understudy: {
+        id: 'understudy',
+        name: 'Understudy',
+        description: 'Standing here instead of somebody who would have died on the first morning. Says so, to anybody, constantly — and is the only tribute in the arena with a reason to be alive that is not their own.',
+        statBias: { willpower: 2, endurance: 1, charisma: 1, agility: -1 },
+        preferredTraits: ['Spoken For', 'Steadfast', 'Devout', 'Second Wind'],
+        aggression: -0.05,
+        allianceAffinity: 0.2,
+        treachery: -0.05,
+        caution: 0.15,
+        stanceBias: { Defensive: 0.4, Evasive: 0.3, Desperate: 0.3 },
+        objectiveBias: { survive: 0.5, protect: 0.2 },
+        targetPreference: 'nearest',
+        riskCurve: 'late-blooming',
+        signature: 'understudyReason',
+        hatesArchetypes: ['martyr'],
+        tagline: 'Somebody else was supposed to be here.',
+        targetDraw: -1,
+        fearScale: 1.1,
+    },
+
+    /** The second archetype in the table whose top objective bias is `wait`. */
+    archivist: {
+        id: 'archivist',
+        name: 'Archivist',
+        description: 'Keeps the count. Knows who fell, where, on which day, and in what order — and says the list out loud at intervals that unnerve everybody within earshot, including the Capitol.',
+        statBias: { intelligence: 2, willpower: 2, strength: -1, agility: -1 },
+        preferredTraits: ['Keeps Books', 'Tallyman', 'Bookkeeper', 'Watchful'],
+        aggression: -0.25,
+        allianceAffinity: 0.1,
+        treachery: 0,
+        caution: 0.3,
+        stanceBias: { Shadowing: 0.5, Evasive: 0.4, Patrolling: 0.3, Aggressive: -0.6 },
+        objectiveBias: { wait: 0.6, hold: 0.2 },
+        targetPreference: 'weakest',
+        riskCurve: 'late-blooming',
+        signature: 'archivistRoll',
+        hatesArchetypes: ['confessor', 'herald'],
+        tagline: 'Fourteen. I will say them in order.',
+        targetDraw: -1.5,
+        fearScale: 1,
+    },
+
+    /** No persona, no interview angle, no declared antipathy at anybody. */
+    quiet: {
+        id: 'quiet',
+        name: 'Quiet Professional',
+        description: 'Does not perform, does not threaten, does not befriend. The field realises on about the fifth day that nobody has seen them and nobody can say what they are good at, which by then is the answer.',
+        statBias: { stealth: 2, endurance: 1, intelligence: 1, charisma: -2 },
+        preferredTraits: ['Unremarkable', 'Quiet Room', 'Stone-Faced', 'Lightfooted'],
+        aggression: 0.05,
+        allianceAffinity: -0.2,
+        treachery: 0.1,
+        caution: 0.25,
+        stanceBias: { Evasive: 0.5, Hunting: 0.3, Shadowing: 0.4 },
+        objectiveBias: { survive: 0.4, stalk: 0.4 },
+        targetPreference: 'weakest',
+        riskCurve: 'late-blooming',
+        signature: 'quietWork',
+        // Declares no antipathy on purpose — it is the only archetype in the
+        // table that does not, and that is the character rather than a gap.
+        // `hatesArchetypes` is optional and §8.5 filled the last two genuine
+        // holes; this one is a statement.
+        tagline: 'Nobody asked.',
+        targetDraw: -2.5,
+        fearScale: 0.9,
+    },
 };
 
 /**
@@ -1121,6 +1268,19 @@ const BASE_WEIGHTS: ArchetypeWeights = {
     forager: 0.8,
     duellist: 0.8,
     broker: 0.8,
+    /*
+     * AUDIT-7 §12.5. Same 0.8 as every other non-Career entry: the point of
+     * the flat baseline is that the draw spread stays narrow enough for
+     * `metrics.ts` to judge every archetype at n=1,600, which is the thing
+     * AUDIT-6 §8.1 fixed and is easy to undo by giving a new batch a thumb on
+     * the scale.
+     */
+    cartographer: 0.8,
+    debtor: 0.8,
+    forecaster: 0.8,
+    understudy: 0.8,
+    archivist: 0.8,
+    quiet: 0.8,
 };
 
 /** Career districts train for it; everyone else is shaped by their industry. */

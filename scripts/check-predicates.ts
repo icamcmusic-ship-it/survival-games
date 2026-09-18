@@ -20,6 +20,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ACHIEVEMENTS, META_ACHIEVEMENTS } from '../src/data/achievements';
+import { calendarOf, gamesProfileFor } from '../src/engine/gamesProfile';
 
 function walk(dir: string, out: string[] = []): string[] {
     readdirSync(dir).forEach(name => {
@@ -113,6 +114,35 @@ for (const a of all) {
         problems.push(
             `${total} hard-coded \`traits.includes('X')\` sites, over the ceiling of ${TRAIT_LITERAL_CEILING}. `
             + 'Give the trait a `mods` row, or a named predicate where it is a state flag rather than a disposition.');
+    }
+}
+
+/*
+ * AUDIT-7: the wildcard calendar must not carry the same beat twice.
+ *
+ * A Quell's `standingWildcards` are appended to the free draw, and nothing
+ * stopped the draw from having produced the same kind on the same day — The
+ * Silence stands `silent-arena`, which is also in the pool. The reaping keys
+ * its calendar by `day-kind`, so the run rendered two children with the key
+ * `0-silent-arena` and React logged it. 50 of 4,000 forced-Quell seeds hit it,
+ * which is exactly the density that makes the browser test a coin flip: it
+ * caught this one in CI having passed locally on the same commit. This is the
+ * deterministic version of that guard.
+ */
+{
+    const CALENDAR_SEEDS = 4000;
+    const bad: string[] = [];
+    for (let i = 0; i < CALENDAR_SEEDS; i++) {
+        const seed = `calendar-${i}`;
+        // Forced, because a Quell is the only source of a standing beat that
+        // can collide with the draw, and it is rare enough otherwise that a
+        // sweep this size would mostly test the uncollidable case.
+        const keys = calendarOf(gamesProfileFor(seed, true)).map(w => `${w.day}-${w.kind}`);
+        if (new Set(keys).size !== keys.length) bad.push(`${seed}: ${keys.join(', ')}`);
+    }
+    console.log(`\nwildcard calendars swept: ${CALENDAR_SEEDS}; with a repeated day-kind: ${bad.length}`);
+    if (bad.length > 0) {
+        problems.push(`${bad.length} seed(s) roll a calendar with the same beat twice — e.g. ${bad[0]}`);
     }
 }
 

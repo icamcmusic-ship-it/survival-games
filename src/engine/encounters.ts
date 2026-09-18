@@ -14,7 +14,7 @@ import { isSeptic, syncInfectedFlag, treatInfection } from './infection';
 import { tradeReputations } from './notoriety';
 import { tradeRumours } from './rumours';
 import { sleepForagePenalty } from './survival';
-import { cycleOf, addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy, raiseSuspicion } from './memory';
+import { cycleOf, addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, raiseSuspicion } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { hasTruce, tryParley } from './parley';
 import { areLovers, maintainPerformance } from './alliance';
@@ -431,6 +431,33 @@ function requirementsHold(ctx: SimContext, t: Tribute, event: ArenaEventDef): bo
         if (need.minSurvivors !== undefined && alive < need.minSurvivors) return false;
         if (need.maxSurvivors !== undefined && alive > need.maxSurvivors) return false;
     }
+    /*
+     * AUDIT-7 §7.2: the tribute's own body.
+     *
+     * These are what let a *universal* death be specific. Before them the pool
+     * could ask about the zone, the weather, the law and the field size, so
+     * every generic death read as weather — and the four categories §7.2 found
+     * missing (thirst-driven error, the body's own failure, equipment, a failed
+     * alliance act) all turn on state that only the tribute has.
+     */
+    if (need.thirstAbove !== undefined && t.vitals.thirst < need.thirstAbove) return false;
+    if (need.hungerAbove !== undefined && t.vitals.hunger < need.hungerAbove) return false;
+    if (need.fatigueAbove !== undefined && t.vitals.fatigue < need.fatigueAbove) return false;
+    if (need.healthBelow !== undefined && t.health > need.healthBelow) return false;
+    if (need.condition && t.condition !== need.condition) return false;
+    if (need.carrying && !t.inventory.some(i => i.type === need.carrying)) return false;
+    if (need.wounded !== undefined) {
+        const hurt = t.injuries.bleeding
+            || Object.values(t.injuries).some(Boolean)
+            || Object.values(t.woundInfection ?? {}).some(v => (v ?? 0) > 0);
+        if (hurt !== need.wounded) return false;
+    }
+    if (need.alone !== undefined) {
+        const company = ctx.state.tributes.some(o =>
+            o.id !== t.id && o.status === 'alive' && o.zone === t.zone);
+        if (company === need.alone) return false;
+    }
+    if (need.daysAbove !== undefined && t.daysSurvived < need.daysAbove) return false;
     return true;
 }
 
@@ -946,6 +973,48 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
             trainProficiency(t, 'medicine');
             clampTribute(ally);
         }
+        return;
+    }
+
+    /*
+     * AUDIT-7 §12.6: the turn is themselves.
+     *
+     * Nursing needs a patient who is not you, so the commonest version of
+     * stopping to do medicine had no stance and got folded into Defensive,
+     * which also forages and rests. A tribute with an open wound and a quiet
+     * sector now has somewhere for the cycle to go, and the cycle does
+     * something: it closes wounds, it sheds fatigue, and it settles them.
+     */
+    if (t.stance === 'Tending') {
+        say('tend');
+        if (t.injuries.bleeding
+            && ctx.rng.chance(STANCE_MODES.tending.mendBase + profOf(t, 'medicine') * STANCE_MODES.tending.mendPerMedicine)) {
+            clearBleeding(t);
+            ctx.logEvent(`${t.name} gets their own bleeding stopped in ${t.zone}.`, [t.id], { category: 'injury', zone: t.zone });
+        }
+        t.vitals.fatigue = Math.max(0, t.vitals.fatigue - STANCE_MODES.tending.fatigueRelief);
+        t.vitals.sanity = Math.min(100, t.vitals.sanity + STANCE_MODES.tending.sanityRelief);
+        // Doing it to yourself is still doing it.
+        trainProficiency(t, 'medicine');
+        clampTribute(t);
+        return;
+    }
+
+    /*
+     * AUDIT-7 §12.6: the turn is being worth finding.
+     *
+     * `fieldcraft` sets 1,107 traps per 400 runs and 72.7% are never sprung,
+     * because a trap is a bet on somebody else's movement and nothing let a
+     * tribute influence that movement. Baiting trades concealment for traffic
+     * on ground the tribute has already prepared — the payoff the trapping
+     * layer never had.
+     */
+    if (t.stance === 'Baiting') {
+        say('bait');
+        // Everybody who can see this sector is told there is something in it.
+        getAlive(ctx.state)
+            .filter(o => o.id !== t.id && o.zone !== t.zone)
+            .forEach(o => noteSighting(ctx.state, o, t.zone, 1, depletionOf(ctx.state, t.zone)));
         return;
     }
 

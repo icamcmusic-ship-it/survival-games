@@ -1,7 +1,7 @@
 import { arenaHasLaw } from './gamesProfile';
 import { Arena, EdgeRule, GameState, Tribute, Zone, ResolvedZoneFeatures, attr, chokepointByName } from '../models/types';
 import { traitMod } from '../data/traits';
-import { BLEEDING, EDGE_RULES, EDGE_TOLL, ZONE_EFFECTS, ZONES } from '../data/balance';
+import { BLEEDING, EDGE_RULES, EDGE_TOLL, PROFICIENCY, ZONE_EFFECTS, ZONES } from '../data/balance';
 import { injuryGrade, openWound } from './wounds';
 import { chokepointModifier, climbModifier, massOf } from './physique';
 import { SimContext, getAlive } from './context';
@@ -25,15 +25,26 @@ export function getZone(arena: Arena, name: string): Zone | undefined {
  * case the crossing is ordinary ground to them.
  */
 export function travelCost(t: Tribute, dest: Zone): number {
+    /*
+     * AUDIT-7 §12.4: `pacing` — how far somebody goes before the fatigue curve
+     * bites — is the one thing crossing ground was never about.
+     *
+     * This read terrain, injury grade, trait mods and physique, and no
+     * proficiency at all, so a tribute who had crossed the whole arena twice
+     * moved exactly as expensively as one who arrived yesterday. A full level
+     * of pacing takes a cycle off a long crossing; the floor of 1 below means
+     * it can never make a crossing free.
+     */
+    const paced = profOf(t, 'pacing') >= PROFICIENCY.pacingCrossingLevel ? 1 : 0;
     // T-5/A-5: a badly injured leg finally slows a tribute down — a grade-2+
     // leg turns any crossing into a slow one. `injuries.legs` was a boolean
     // with no travel consequence at all.
     const limping = injuryGrade(t, 'legs') >= 2 ? 1 : 0;
     if (dest.terrain === 'water' || dest.terrain === 'wetland') {
-        return (traitMod(t, 'water') > 0 ? 1 : 2) + limping;
+        return Math.max(1, (traitMod(t, 'water') > 0 ? 1 : 2) + limping - paced);
     }
     if (dest.terrain === 'highland') {
-        return Math.max(1, (traitMod(t, 'highland') > 0 ? 1 : 2) + limping - Math.round(climbModifier(t)));
+        return Math.max(1, (traitMod(t, 'highland') > 0 ? 1 : 2) + limping - paced - Math.round(climbModifier(t)));
     }
     // §10: the four terrains added in §10 each cost something specific.
     // Ice is the slowest ground in the game for anybody who is hurt; a cave is
@@ -41,10 +52,10 @@ export function travelCost(t: Tribute, dest: Zone): number {
     // have crossed (the thirst is charged in the survival layer); streets are
     // ordinary going for anybody who is not carrying half a camp.
     if (dest.terrain === 'ice') {
-        return Math.max(1, 2 + limping * 2 - Math.round(chokepointModifier(t)));
+        return Math.max(1, 2 + limping * 2 - paced - Math.round(chokepointModifier(t)));
     }
     if (dest.terrain === 'cave') {
-        return Math.max(1, 2 + limping - Math.round(chokepointModifier(t)));
+        return Math.max(1, 2 + limping - paced - Math.round(chokepointModifier(t)));
     }
     if (dest.terrain === 'desert' || dest.terrain === 'urban') {
         return Math.max(1, 1 + limping - Math.round(chokepointModifier(t)));
@@ -52,7 +63,7 @@ export function travelCost(t: Tribute, dest: Zone): number {
     // §3.1: chokepoints, burrows and steep ground. A broad frame pays to get
     // through a gap; long limbs pay again, and a compact tribute climbs.
     const shape = dest.terrain === 'ruins' ? climbModifier(t) : chokepointModifier(t);
-    return Math.max(1, Math.round(1 + limping - shape));
+    return Math.max(1, Math.round(1 + limping - paced - shape));
 }
 
 /**

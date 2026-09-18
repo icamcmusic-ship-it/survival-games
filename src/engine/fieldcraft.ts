@@ -1,5 +1,5 @@
 import { Item, Tribute, Trap } from '../models/types';
-import { BLEEDING, CRAFTING, EARNED_TRAIT_RULES, ENDGAME, HUNTING, POISONING, TRAPS, STANCE_MODES } from '../data/balance';
+import { BLEEDING, CRAFTING, EARNED_TRAIT_RULES, ENDGAME, HUNTING, POISONING, PROFICIENCY, TRAPS, STANCE_MODES } from '../data/balance';
 import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { addZoneThreat, cycleOf, rattle, noteSighting } from './memory';
@@ -219,7 +219,10 @@ export function setTrap(ctx: SimContext, t: Tribute) {
         treated,
     });
     t.trapsSet = (t.trapsSet ?? 0) + 1;
+    // AUDIT-7 §3.5: a trap is read *and* built. Tracking is choosing where it
+    // goes; carpentry is making it hold. The second half was not being trained.
     trainProficiency(t, 'tracking');
+    trainProficiency(t, 'carpentry', ctx, PROFICIENCY.trapCarpentryShare);
     ctx.logEvent(TRAP_SET_LINES[kind](t.name, t.zone), [t.id], { category: 'survival' });
 }
 
@@ -583,10 +586,25 @@ export function buildShelter(ctx: SimContext, t: Tribute): boolean {
     if (!ctx.rng.chance(buildChance(t))) return false;
 
     campOf(ctx, t).shelter = cycleOf(ctx.state) + CRAFTING.shelterCycles;
-    trainProficiency(t, 'forage', ctx);
+    /*
+     * AUDIT-7 §3.5: building a shelter trains `carpentry`, which is what
+     * building is.
+     *
+     * It used to train `forage` — gathering the branches, at a stretch — and
+     * `carpentry` had **no `trainProficiency` call site anywhere in the
+     * engine**. Measured across 6,000 tributes its peak value was 1.00, the
+     * value everybody starts at: a whole axis on the tribute sheet that no
+     * tribute could ever move. `crafting` peaked at 5.85 off one call site,
+     * which is the same verb wearing the other name.
+     *
+     * Forage keeps a share, because finding the materials is genuinely part of
+     * it, and `share` is what a partial contribution is for.
+     */
+    trainProficiency(t, 'carpentry', ctx);
+    trainProficiency(t, 'forage', ctx, PROFICIENCY.shelterForageShare);
     // §3.10: a shelter going up in front of you is a lesson whether or not
     // the person building it meant it as one.
-    observeProficiency(ctx, t, 'forage');
+    observeProficiency(ctx, t, 'carpentry');
     ctx.logEvent(
         `${t.name} lashes together a shelter in ${t.zone} — branches, a rock overhang, and something almost like a roof.`,
         [t.id],

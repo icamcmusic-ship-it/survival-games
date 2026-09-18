@@ -50,6 +50,18 @@ export type Stance =
     | 'Desperate'
     | 'Scavenging'
     | 'Shadowing'
+    /*
+     * AUDIT-7 §12.6. The roster's three unconditional stances hold 80% of all
+     * stance-time and the seven conditional ones share the rest, so an eleventh
+     * lands at about 1.5% unless it takes share from somewhere specific. These
+     * two are chosen for that: `Tending` takes from Nursing and Evasive (the
+     * case of somebody working on *themselves*, which Nursing could never
+     * express because it needs a patient who is not you), and `Baiting` takes
+     * from Hunting — and is the first stance that makes fieldcraft's 72.7%
+     * untriggered traps into a plan rather than a bet.
+     */
+    | 'Tending'
+    | 'Baiting'
     // Audit 5 §12: two more conditional stances — tending an ally, and walking a pack's perimeter.
     | 'Nursing'
     | 'Patrolling';
@@ -78,7 +90,17 @@ export type ArchetypeId =
      * that wants nobody else to arrive was something tributes did only by
      * accident.
      */
-    | 'warden' | 'herald' | 'penitent' | 'forager' | 'duellist' | 'broker';
+    | 'warden' | 'herald' | 'penitent' | 'forager' | 'duellist' | 'broker'
+    /*
+     * AUDIT-7 §12.5: six more, on the rule the last three batches were held to
+     * — each holds a stance/objective/target combination nothing already in the
+     * table holds — plus one this pass added: **every signature must be
+     * reachable by a soloist.** Three of the four lowest-firing set pieces in
+     * the roster were alliance-gated (§8.2), so an archetype whose beat needs
+     * somebody else standing in the zone is an archetype most players never see
+     * do its thing.
+     */
+    | 'cartographer' | 'debtor' | 'forecaster' | 'understudy' | 'archivist' | 'quiet';
 
 export interface Attributes {
     strength: number;
@@ -215,7 +237,28 @@ export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking
      *    where a single tribute's word binds people who are not present — was
      *    reading the one-to-one skill.
      */
-    | 'butchery' | 'navigation' | 'carpentry' | 'oratory';
+    | 'butchery' | 'navigation' | 'carpentry' | 'oratory'
+    /*
+     * AUDIT-7 §12.4: four more, each taking over a gate that reads a raw
+     * attribute or borrows a proficiency from a different skill. All four read
+     * sites were checked before the axis was added, which is the rule the
+     * batch above set and this one keeps:
+     *
+     *  - `signalling` — laying and reading marks, whistles and false trails.
+     *    `intent.ts`'s false-trail gate reads raw `intelligence` plus
+     *    `tracking` doing borrowed duty.
+     *  - `fieldcookery` — turning found food into food that does not turn.
+     *    The poison-contraction roll in `exposure.ts` reads a terrain profile
+     *    and a trait mod and **no proficiency at all**.
+     *  - `pacing` — how far somebody goes before the fatigue curve bites.
+     *    `map.ts:travelCost` reads terrain, injury grade, trait mods and
+     *    physique, and **no proficiency at all**.
+     *  - `readingPeople` — telling a bluff from a threat. `parley.ts`'s
+     *    see-through-it roll reads raw `attributes.intelligence`, with
+     *    `tracking` standing in again — which is why tracking shows up in
+     *    seeing through a bluff.
+     */
+    | 'signalling' | 'fieldcookery' | 'pacing' | 'readingPeople';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'
@@ -806,6 +849,13 @@ export interface Tribute {
      * sitting inertly at grade 2 forever. See `engine/infection.ts`.
      */
     woundInfection?: Partial<Record<InjurySite, number>>;
+    /**
+     * AUDIT-7 §11.4: the high-water mark of any infection this tribute has
+     * carried, kept after the site clears. `woundInfection` is pruned the
+     * moment a wound closes, so nothing downstream could tell a tribute who
+     * shrugged off a graze from one who came back from grade 3.
+     */
+    worstInfectionGrade?: number;
     /**
      * §3.1: cycles each open site has gone without closing or being dressed.
      * The incubation clock — an infection that landed with the blow would just
@@ -2602,6 +2652,15 @@ export interface GameState {
     blocTreaties?: Array<{
         /** Cycle a member last decided the treaty did not bind them. Log de-dup only. */
         strainedCycle?: number;
+        /**
+         * AUDIT-7 §4.5: how many times both sides have come back and said
+         * again. A treaty used to have exactly one possible history — it was
+         * sworn and then something happened to it — and 80.6% of the time the
+         * something was one side ceasing to exist. A renewal count is what
+         * makes "these two packs have held this for a fortnight" a fact the
+         * feed can state.
+         */
+        renewals?: number;
         aId: string;
         bId: string;
         /** Cycle it lapses on its own. */

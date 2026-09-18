@@ -1,10 +1,10 @@
 import { Tribute } from '../models/types';
 import { SimContext, getAlive } from './context';
-import { HUNTING, RELATIONSHIPS, STANCE_MODES } from '../data/balance';
+import { HUNTING, STANCE_MODES } from '../data/balance';
 import { resolveCombat } from './combat';
 import { awareness, isNoticed } from './stealth';
 import { getZone } from './map';
-import { adjustMutual, adjustRel } from './relationships';
+import { adjustRel } from './relationships';
 import { addFear } from './fear';
 import { giveItem } from './items';
 import { rattle } from './memory';

@@ -219,7 +219,20 @@ export function gamesProfileFor(
     const quell = pinnedQuell !== undefined ? pinnedQuell ?? undefined : drawQuell(new RNG(`${baseSeedOf(seed)}-quell`), forceQuell);
     const quellBeats = quell ? quellWildcards(quell) : [];
     const rng = new RNG(`${seed}-games-profile`);
-    const calendar = rollCalendar(rng);
+    /*
+     * AUDIT-7: a Quell whose standing wildcard is also in the draw pool put
+     * the same beat in the calendar twice.
+     *
+     * The Silence's `standingWildcards: ['silent-arena']` and the free draw
+     * both produce a day-0 `silent-arena`, so the reaping printed the beat
+     * twice and React saw two children keyed `0-silent-arena`. The Quell's
+     * copy is the one to keep — it carries the Quell's own name and
+     * announcement — so the drawn duplicate is dropped. Filtering after the
+     * roll rather than excluding the kind from the pool leaves the RNG stream
+     * untouched, so no existing seed replays differently.
+     */
+    const standing = new Set(quellBeats.map(w => w.kind));
+    const calendar = rollCalendar(rng).filter(w => !standing.has(w.kind));
     calendar.push(...quellBeats);
     calendar.sort((a, b) => a.day - b.day);
 

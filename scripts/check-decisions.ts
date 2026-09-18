@@ -94,10 +94,24 @@ console.log(`stance rank histogram (0=best, 3=outside top ${DECISION_TRACE.topN}
 console.log(`destination = best:  ${pct(destBest, destSamples)}`);
 console.log(`destination in bottom fifth of its own scoring: ${pct(destBottomQuintile, destSamples)}`);
 
+/*
+ * AUDIT-7 §1.9: the headline number was the one with no guard.
+ *
+ * This file asserted trace presence, stance-in-top-three, stance-best and
+ * bottom-quintile destinations — and not destination-best, which is the number
+ * the README quotes and the one that moved most. It went 72.8% at AUDIT-6 to
+ * 63.7% with nothing failing, because nothing was watching it. A ratchet on a
+ * statistic nobody guards is a statistic that drifts.
+ *
+ * The bound is set under the measured value rather than at it, for the same
+ * reason every other guard here is: this is a regression bound, not a design
+ * target, and it should fire on a real fall rather than on a reshuffle.
+ */
 const GUARDS: Array<[string, number, number, string]> = [
     ['trace present', traced / Math.max(1, aliveSamples), 0.9, '>='],
     ['stance held outside the top three', stanceOutsideTop / Math.max(1, stanceSamples), 0.15, '<='],
     ['stance held = best', stanceHeldBest / Math.max(1, stanceSamples), 0.5, '>='],
+    ['destination = best', destBest / Math.max(1, destSamples), 0.58, '>='],
     ['destination pick in bottom fifth', destBottomQuintile / Math.max(1, destSamples), 0.15, '<='],
 ];
 const failures = GUARDS.filter(([, v, bound, op]) => op === '>=' ? v < bound : v > bound);

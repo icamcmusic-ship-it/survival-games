@@ -130,6 +130,7 @@ export function tickInfection(ctx: SimContext, t: Tribute) {
                 const next = Math.min(INFECTION.maxGrade, septic + 1);
                 if (next !== septic) {
                     t.woundInfection![site] = next;
+                    t.worstInfectionGrade = Math.max(t.worstInfectionGrade ?? 0, next);
                     ctx.logEvent(
                         next >= INFECTION.maxGrade
                             ? `The skin around ${t.name}'s ${siteWord(site)} has gone dark and the heat of it is coming off them in waves. `
@@ -150,6 +151,7 @@ export function tickInfection(ctx: SimContext, t: Tribute) {
         if (!ctx.rng.chance(infectionChance(ctx, t, grade))) return;
 
         t.woundInfection![site] = 1;
+        t.worstInfectionGrade = Math.max(t.worstInfectionGrade ?? 0, 1);
         injure(t, 'infected');
         ctx.logEvent(
             `The ${siteWord(site)} ${t.name} has been walking on for days has stopped looking like a wound and started looking like a problem. `

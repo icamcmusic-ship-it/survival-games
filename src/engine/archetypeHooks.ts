@@ -1,4 +1,4 @@
-import { ArchetypeId, Objective, Tribute } from '../models/types';
+import { Objective, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { severRandomEdge } from './zoneEffects';
 import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING, MEMORY } from '../data/balance';
@@ -6,13 +6,14 @@ import { earnTrait } from './earnedTraits';
 import { SimContext, getAlive } from './context';
 import { notorietyOf } from './notoriety';
 import { getRel, adjustMutual, adjustRel } from './relationships';
-import { fearOf, addFear } from './fear';
+import { addFear } from './fear';
 import { addExcitement } from './audience';
 import { grantTruce, truceLedger } from './parley';
 import { witnessKindness } from './rapport';
 import { giveItem, inventoryValue } from './items';
 import { healInjury, clearBleeding } from './wounds';
 import { clampTribute } from './vitals';
+import { trainProficiency } from './proficiency';
 import { getZone, zoneNames, zoneFeatures } from './map';
 import { addZoneThreat } from './memory';
 import { hasTruce } from './parley';
@@ -298,7 +299,7 @@ const SIGNATURES: Record<string, Signature> = {
         if (traps.length > 0) {
             const sprung = traps.slice(0, ARCHETYPE_HOOKS.sabotageTraps);
             ctx.state.traps = (ctx.state.traps ?? []).filter(tr => !sprung.includes(tr));
-            sprung.forEach(tr => { t.trapsDisarmed = (t.trapsDisarmed ?? 0) + 1; });
+            sprung.forEach(_tr => { t.trapsDisarmed = (t.trapsDisarmed ?? 0) + 1; });
             // The count was being written here and read nowhere. `Trapwise` is
             // granted off `trapsDisarmed` at exactly one site — the ordinary
             // spot-and-disarm in `fieldcraft.ts` — so the archetype whose whole
@@ -440,7 +441,26 @@ const SIGNATURES: Record<string, Signature> = {
         const ally = getAlive(ctx.state).find(o =>
             o.id !== t.id && o.zone === t.zone
             && (o.allianceId !== undefined && o.allianceId === t.allianceId));
-        if (!ally) return false;
+        /*
+         * AUDIT-7 §8.2: the version of this a soloist can reach.
+         *
+         * This set piece fired for 19.8% of quartermaster entrants, the lowest
+         * rate of all 29 archetypes, because it needed an allied tribute in the
+         * same zone at the same moment — and a quartermaster is not an
+         * especially sociable archetype. Taking stock is the *character*; the
+         * ally is one thing they might do with the answer. So a quartermaster
+         * alone still does the arithmetic, gets the smaller relief of having
+         * planned rather than the larger one of having shared, and the beat is
+         * theirs either way.
+         */
+        if (!ally) {
+            t.vitals.hunger = Math.max(0, t.vitals.hunger - ARCHETYPE_HOOKS.inventoryAloneRelief);
+            t.vitals.thirst = Math.max(0, t.vitals.thirst - ARCHETYPE_HOOKS.inventoryAloneRelief);
+            clampTribute(t);
+            say(ctx, t, 'quartermasterAlone', [t.id]);
+            t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+            return true;
+        }
         t.vitals.hunger = Math.max(0, t.vitals.hunger - ARCHETYPE_HOOKS.inventoryRelief);
         t.vitals.thirst = Math.max(0, t.vitals.thirst - ARCHETYPE_HOOKS.inventoryRelief);
         ally.vitals.hunger = Math.max(0, ally.vitals.hunger - ARCHETYPE_HOOKS.inventoryAllyRelief);
@@ -531,8 +551,20 @@ const SIGNATURES: Record<string, Signature> = {
     wardenLine: (ctx, t) => {
         // A doorway, or failing that the ground they are already holding: the
         // beat is the declaration, not the terrain.
+        /*
+         * AUDIT-7 §8.2: a warden declares ground, and the ground did not have
+         * to be a doorway.
+         *
+         * This needed a named chokepoint or two cycles already spent holding,
+         * and fired for 24.3% of warden entrants. The archetype's whole posture
+         * is "this is mine and you are not coming through it" — a zone worth
+         * having is enough of a reason, and `zone.resources` is the engine's
+         * own measure of that. The chokepoint and the held-cycles routes are
+         * unchanged; this is a third way in, not a loosening of the first two.
+         */
         const choke = chokepointByName(t.zone);
-        if (!choke && (t.zoneHeld ?? 0) < ARCHETYPE_HOOKS.wardenHeldCycles) return false;
+        const worthHolding = (getZone(ctx.state.arena, t.zone)?.resources ?? 0) >= ARCHETYPE_HOOKS.wardenWorthHolding;
+        if (!choke && !worthHolding && (t.zoneHeld ?? 0) < ARCHETYPE_HOOKS.wardenHeldCycles) return false;
         say(ctx, t, 'wardenLine', [t.id]);
         t.objective = { kind: 'wait', zone: t.zone, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.wardenWaitCycles };
         // Everybody else files it under "somewhere to not go".
@@ -646,11 +678,59 @@ const SIGNATURES: Record<string, Signature> = {
      * a truce, a fear or a mood.
      */
     brokerTerms: (ctx, t) => {
-        const client = others(ctx, t)
-            .filter(o => o.zone === t.zone && o.inventory.length < t.inventory.length)
-            .sort((a, b) => b.vitals.hunger - a.vitals.hunger)[0];
+        /*
+         * AUDIT-7 §8.2: `o.inventory.length < t.inventory.length` was the wrong
+         * question, and it held this set piece to 24.2% of broker entrants.
+         *
+         * A broker does not need to be richer than the client overall; they
+         * need to be holding the *particular thing* the client is short of.
+         * Somebody with four weapons and no water is a client, not a rival
+         * supplier. The filter is need now — the hungriest or thirstiest person
+         * standing here who is worse off than the broker on that axis — and the
+         * `goods` check below already proves the broker has something to trade.
+         */
+        const need = (o: Tribute) => Math.max(o.vitals.hunger, o.vitals.thirst);
+        /*
+         * AUDIT-7 §8.2: ...and the client pool excluded the people a broker
+         * actually stands next to.
+         *
+         * `others()` filters out the tribute's own alliance, which is right for
+         * the signatures about strangers and exactly wrong for this one. A
+         * non-ally in your zone is usually a fight; an ally in your zone is
+         * somebody you can hand a flask to and mention, pleasantly, that you
+         * will remember. `incurDebt` already works between allies and
+         * `debts.ts` is built on it — this was the archetype named after it
+         * being locked out of it.
+         *
+         * Everybody alive in the zone, then. That took the set piece from 26.1%
+         * of broker entrants to comfortably over the floor, and it is the more
+         * characterful reading besides.
+         */
+        const client = getAlive(ctx.state)
+            .filter(o => o.id !== t.id && o.zone === t.zone
+                && (o.inventory.length < t.inventory.length
+                    || need(o) > need(t) + ARCHETYPE_HOOKS.brokerNeedGap))
+            .sort((a, b) => need(b) - need(a))[0];
         if (!client) return false;
-        const idx = t.inventory.findIndex(i => i.type !== 'weapon');
+        /*
+         * AUDIT-7 §8.2: and a broker holding only weapons is still a broker.
+         *
+         * This required a non-weapon item, and the item distribution is
+         * weapon-heavy by a wide margin (§6.5: eleven of the fifteen
+         * most-held objects are weapons), so the archetype whose entire
+         * character is having the thing you need was routinely disqualified
+         * for having the wrong kind of thing. Handing somebody a blade against
+         * a debt is arguably the *most* broker-ish version of this: it is the
+         * one where they know exactly what they are arming.
+         *
+         * Non-weapons first, because a broker parts with the cheap thing when
+         * they can; a weapon only when it is all they have, and never their
+         * last one.
+         */
+        let idx = t.inventory.findIndex(i => i.type !== 'weapon');
+        if (idx < 0 && t.inventory.filter(i => i.type === 'weapon').length > ARCHETYPE_HOOKS.brokerSpareWeapons) {
+            idx = t.inventory.findIndex(i => i.type === 'weapon');
+        }
         if (idx < 0) return false;
         const goods = t.inventory[idx];
         say(ctx, t, 'brokerTerms', [t.id, client.id], { client: client.name, goods: goods.name });
@@ -659,6 +739,110 @@ const SIGNATURES: Record<string, Signature> = {
         adjustRel(client, t.id, ARCHETYPE_HOOKS.brokerRegard);
         grantTruce(ctx, t, client, ARCHETYPE_HOOKS.brokerTruceCycles, 'brokered');
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /*
+     * ---- AUDIT-7 §12.5: six set pieces a tribute can do alone ---------------
+     *
+     * The rule this batch was written to. §8.2 measured the roster's four
+     * lowest-firing signatures and three of them needed another tribute in the
+     * same zone in the same alliance at the same moment; every one below turns
+     * on the archetype's own state, so it fires for somebody who has not seen
+     * anybody in three days.
+     */
+
+    /** Cartographer: names a route and holds to it while everyone else reacts. */
+    cartographerRoute: (ctx, t) => {
+        const seen = (t.visitedZones ?? []).length;
+        if (seen < ARCHETYPE_HOOKS.cartographerMinZones) return false;
+        const unseen = ctx.state.arena.zones
+            .filter(z => !(t.visitedZones ?? []).includes(z.name)
+                && !(ctx.state.collapsedZones ?? []).includes(z.name));
+        if (unseen.length === 0) return false;
+        const target = unseen.sort((a, b) => b.resources - a.resources)[0];
+        say(ctx, t, 'cartographerRoute', [t.id], { target: target.name, seen: String(seen) });
+        t.objective = { kind: 'reach', zone: target.name, reason: 'forage', expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.cartographerRouteCycles };
+        // Knowing the ground is the reward, and it is the skill §3.5 made real.
+        trainProficiency(t, 'navigation', ctx);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        return true;
+    },
+
+    /** Debtor: the thing they owe comes due, out loud, whether or not the creditor is alive. */
+    debtorReckoning: (ctx, t) => {
+        const owed = Object.keys(t.debts ?? {})[0];
+        const creditor = owed ? ctx.state.tributes.find(o => o.id === owed) : undefined;
+        // Alive and here, alive and elsewhere, or dead — all three are a
+        // reckoning, and only the first needs anybody else to be standing here.
+        if (creditor && creditor.status === 'alive' && creditor.zone === t.zone) {
+            say(ctx, t, 'debtorReckoningHere', [t.id, creditor.id], { creditor: creditor.name });
+            adjustRel(creditor, t.id, ARCHETYPE_HOOKS.debtorRegard);
+            grantTruce(ctx, t, creditor, ARCHETYPE_HOOKS.brokeredTruceCycles, 'brokered');
+        } else if (creditor) {
+            say(ctx, t, 'debtorReckoningAbsent', [t.id], { creditor: creditor.name });
+        } else {
+            say(ctx, t, 'debtorReckoningAlone', [t.id]);
+        }
+        t.resolve = Math.min(100, (t.resolve ?? 50) + ARCHETYPE_HOOKS.debtorResolve);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /** Forecaster: says what is coming, and is somewhere else when it arrives. */
+    forecasterCall: (ctx, t) => {
+        const front = ctx.state.weatherFront?.kind;
+        const zone = getZone(ctx.state.arena, t.zone);
+        const sheltered = zone ? (zoneFeatures(zone).shelterQuality ?? 0) > 0 : false;
+        say(ctx, t, front ? 'forecasterCallFront' : 'forecasterCallQuiet', [t.id],
+            { front: String(front ?? 'nothing'), ground: sheltered ? 'ground that will hold' : 'open ground' });
+        // Reading it is worth something whether or not anybody listens.
+        t.vitals.fatigue = Math.max(0, t.vitals.fatigue - ARCHETYPE_HOOKS.forecasterRelief);
+        clampTribute(t);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        return true;
+    },
+
+    /** Understudy: says whose place they are standing in. */
+    understudyReason: (ctx, t) => {
+        say(ctx, t, 'understudyReason', [t.id], { days: String(t.daysSurvived) });
+        t.resolve = Math.min(100, (t.resolve ?? 50) + ARCHETYPE_HOOKS.understudyResolve);
+        t.vitals.sanity = Math.min(100, t.vitals.sanity + ARCHETYPE_HOOKS.understudySanity);
+        clampTribute(t);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /** Archivist: says the fallen, in order, to whoever is or is not there. */
+    archivistRoll: (ctx, t) => {
+        const fallen = ctx.state.tributes
+            .filter(o => o.status !== 'alive' && o.dayOfDeath !== undefined)
+            .sort((a, b) => (a.dayOfDeath ?? 0) - (b.dayOfDeath ?? 0));
+        if (fallen.length < ARCHETYPE_HOOKS.archivistMinFallen) return false;
+        const first = fallen[0].name;
+        const last = fallen[fallen.length - 1].name;
+        say(ctx, t, 'archivistRoll', [t.id, ...fallen.slice(0, 3).map(o => o.id)],
+            { count: String(fallen.length), first, last });
+        // Everybody in earshot is reminded what the number is.
+        getAlive(ctx.state)
+            .filter(o => o.id !== t.id && o.zone === t.zone)
+            .forEach(o => { o.vitals.sanity = Math.max(0, o.vitals.sanity - ARCHETYPE_HOOKS.archivistSanityCost); clampTribute(o); });
+        trainProficiency(t, 'oratory', ctx);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
+
+    /** Quiet Professional: the arena notices it has not noticed them. */
+    quietWork: (ctx, t) => {
+        if ((t.unseenStreak ?? 0) < ARCHETYPE_HOOKS.quietUnseenCycles) return false;
+        say(ctx, t, 'quietWork', [t.id], { days: String(t.daysSurvived) });
+        // Being un-looked-for is the whole of the advantage, and this is the
+        // moment it becomes one: the field's model of them is empty.
+        getAlive(ctx.state)
+            .filter(o => o.id !== t.id)
+            .forEach(o => addZoneThreat(ctx.state, o, t.zone, -ARCHETYPE_HOOKS.quietThreatShed));
+        trainProficiency(t, 'stealth', ctx);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
         return true;
     },
 };

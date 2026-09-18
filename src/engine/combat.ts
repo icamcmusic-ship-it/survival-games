@@ -6,7 +6,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { ARENA_DEATH_BUDGET, BLEEDING, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES, UNIVERSAL_DEATHS, ARENA_LAWS } from '../data/balance';
+import { ARENA_DEATH_BUDGET, BLEEDING, RELATIONSHIPS as REL_KNOBS, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES, UNIVERSAL_DEATHS, ARENA_LAWS } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -18,7 +18,7 @@ import { noteFightOpened } from './runRecords';
 import { displayName } from './epithets';
 import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
 import { incurDebt } from './debts';
-import { adjustRel, getRel, propagateDeathFallout } from './relationships';
+import { adjustRel, adjustTrust, getRel, propagateDeathFallout } from './relationships';
 import { injure, injuryGrade, openWound } from './wounds';
 import { isUnfamiliar, noteWeaponUse, profOf, trainProficiency, weaponAffinity, weaponHandling, weaponProficiency } from './proficiency';
 import { addFear, fearFraction, reduceFear } from './fear';
@@ -1308,7 +1308,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             return wantsToRetreat(ctx, t, perceived, rounds, attackers.includes(t) ? target : lead);
         });
         if (breaking.length > 0) {
-            breaking.forEach(t => forceStance(t, 'Evasive'));
+            breaking.forEach(t => forceStance(t, 'Evasive', 'broke off a fight'));
             ctx.logEvent(
                 fill(ctx.pickText(breaking.length === 1 ? GROUP_COMBAT_TEXTS.scatterSolo : GROUP_COMBAT_TEXTS.scatter), { names: breaking.map(t => t.name).join(', '), zone }),
                 breaking.map(t => t.id),
@@ -1342,6 +1342,10 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
                 incurDebt(other, t, DEBTS.savedInFight, ctx);
             } else {
                 noteStoodBy(t, other.id);
+                // AUDIT-7 §4.1: and the trust it earns. `stoodBy` is a set, so
+                // the fact of it can only be said once; the stored axis is
+                // where the fifth time somebody steps in front of you counts.
+                adjustTrust(t, other.id, REL_KNOBS.trustStoodBy);
             }
         });
         checkDeath(ctx, t);
@@ -1420,7 +1424,7 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
         });
         if (breaking.length > 0) {
             breaking.forEach(t => {
-                forceStance(t, 'Evasive');
+                forceStance(t, 'Evasive', 'broke off a fight');
                 // Only the pair who actually traded blows record who they fled
                 // from; a bystander scattering out of the melee was not in a
                 // fight with either of them.
@@ -1704,9 +1708,23 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     // scattered where they fell, for whoever comes through next.
     if (formerAlliance) {
         const record = ctx.state.alliances?.[formerAlliance];
-        if (record?.roles?.quartermaster === victim.id && record.sharedCache.length > 0) {
+        /*
+         * AUDIT-7 §4.2: the runner carries it too.
+         *
+         * `types.ts` describes the role as "carries the cache — `contributeToCache`
+         * had no owner at all, so a group's supplies belonged to everybody and
+         * therefore to nobody". The quartermaster *decides* about the cache
+         * (they are the betrayal weight and the political object); the runner
+         * is the one physically carrying it. Killing either scatters it, which
+         * is what makes a group of five have two people worth killing for their
+         * job rather than one.
+         */
+        const carrier = record?.roles?.quartermaster === victim.id ? 'quartermaster'
+            : record?.roles?.runner === victim.id ? 'runner'
+            : undefined;
+        if (record && carrier && record.sharedCache.length > 0) {
             const scattered = emptyCache(record);
-            delete record.roles.quartermaster;
+            delete record.roles![carrier];
             ctx.state.abandonedCamps = ctx.state.abandonedCamps ?? [];
             ctx.state.abandonedCamps.push({
                 zone: victim.zone,

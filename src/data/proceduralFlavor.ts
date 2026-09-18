@@ -1,6 +1,6 @@
 import { Arena, Terrain } from '../models/types';
 import { ArenaActions, ArenaEventDef, ArenaFlavor, GENERIC_ARENA_FLAVOR } from './arenaFlavor';
-import { PROCEDURAL_BIOME_AMBIENT, PROCEDURAL_BIOME_EVENTS } from './proceduralBiomeEvents';
+import { PROCEDURAL_BIOME_ACTIONS, PROCEDURAL_BIOME_AMBIENT, PROCEDURAL_BIOME_EVENTS } from './proceduralBiomeEvents';
 
 /**
  * ARENA-08: procedural arenas used to fall back on one of four pre-written
@@ -661,11 +661,26 @@ export function proceduralArenaFlavor(arena: Arena): ArenaFlavor {
         ...(PROCEDURAL_BIOME_AMBIENT[biomeId] ?? []),
     ];
 
+    /*
+     * AUDIT-7 §1.8: the biome's own prose in front of the tag-derived pool.
+     *
+     * These four pools were built from terrain tags alone, so two generated
+     * arenas standing on the same ground foraged and rested in identical words
+     * however different their biomes were. The retired fixed packs each carried
+     * twelve authored lines written for exactly this and reachable from no call
+     * site; they are merged in front here, the way `actionPool` merges an
+     * arena's own lines in front of the generic set. A biome with none falls
+     * through to the tag pools, which is what all twelve did before.
+     */
+    const biomeActions = PROCEDURAL_BIOME_ACTIONS[biomeId] ?? {};
+    const withBiome = (key: 'forage' | 'rest' | 'hide' | 'hunt', tagged: string[]) =>
+        [...(biomeActions[key] ?? []), ...tagged];
+
     const actions: ArenaActions = {
-        forage: pickActions(active, FORAGE_VARIANTS, GENERIC_PROCEDURAL_ACTIONS.forage),
-        rest: pickActions(active, REST_VARIANTS, GENERIC_PROCEDURAL_ACTIONS.rest),
-        hide: pickActions(active, HIDE_VARIANTS, GENERIC_PROCEDURAL_ACTIONS.hide),
-        hunt: pickActions(active, HUNT_VARIANTS, GENERIC_PROCEDURAL_ACTIONS.hunt),
+        forage: withBiome('forage', pickActions(active, FORAGE_VARIANTS, GENERIC_PROCEDURAL_ACTIONS.forage)),
+        rest: withBiome('rest', pickActions(active, REST_VARIANTS, GENERIC_PROCEDURAL_ACTIONS.rest)),
+        hide: withBiome('hide', pickActions(active, HIDE_VARIANTS, GENERIC_PROCEDURAL_ACTIONS.hide)),
+        hunt: withBiome('hunt', pickActions(active, HUNT_VARIANTS, GENERIC_PROCEDURAL_ACTIONS.hunt)),
         travel: GENERIC_PROCEDURAL_ACTIONS.travel,
         // A1: the conditional stances get the same treatment. `actionPool`
         // would fall back to the generic set without these, which would make

@@ -90,7 +90,18 @@ function breachChance(state: GameState, t: Tribute, other: Tribute): number {
     const alive = state.tributes.filter(o => o.status === 'alive').length;
     if (alive <= BLOC_TREATY.breachEndgameFieldSize) chance += BLOC_TREATY.breachEndgameBonus;
     if (other.health < BLOC_TREATY.breachWoundedHealth) chance += BLOC_TREATY.breachWoundedBonus;
-    chance *= Math.max(0.1, 1 - Math.max(0, getRel(t, other.id)) / 100);
+    /*
+     * AUDIT-7 §4.5: damped by regard, but not to nothing.
+     *
+     * Two blocs only sign because their members can stand each other, so the
+     * population this roll runs over is by construction the high-regard one —
+     * and dividing by 100 meant a pair at +70 regard kept 30% of an already
+     * small base. A killing across a treaty line happened four times in 400
+     * runs. `breachRegardFloor` is the share that survives however well they
+     * get on, because the whole premise of the mechanic is that an agreement
+     * made by somebody else on your behalf is not the same as a friendship.
+     */
+    chance *= Math.max(BLOC_TREATY.breachRegardFloor, 1 - Math.max(0, getRel(t, other.id)) / 100);
     return Math.max(0, Math.min(BLOC_TREATY.breachMaxChance, chance));
 }
 
@@ -273,6 +284,42 @@ export function tickBlocTreaties(ctx: SimContext) {
             return false;
         }
         if (cycle >= treaty.until) {
+            /*
+             * AUDIT-7 §4.5: a treaty that comes up for renewal is a decision.
+             *
+             * Measured over 400 runs, 253 treaties were sworn and **204 of them
+             * ended because one side stopped existing** — 80.6% ended by
+             * attrition rather than by anybody choosing anything. Four were
+             * broken by a killing. A bloc treaty was a thing that got outlived,
+             * which is bookkeeping rather than politics.
+             *
+             * `truceLedger` already does the two-person version of this
+             * properly: its endings run renewed 199 / lapsed 195, a near-even
+             * split, because a truce between two people comes up and somebody
+             * decides. This is the same beat at bloc scale. Both sides still
+             * standing and still able to stand each other renew; otherwise it
+             * lapses exactly as it always did.
+             */
+            const crossRegard = aMembers.length && bMembers.length
+                ? aMembers.reduce((sum, m) => sum + bMembers.reduce((s2, o) => s2 + getRel(m, o.id), 0), 0)
+                    / (aMembers.length * bMembers.length)
+                : 0;
+            const renews = crossRegard >= BLOC_TREATY.renewMinRegard
+                && fieldSize > treaty.fieldFloor + BLOC_TREATY.renewFieldSlack
+                && ctx.rng.chance(BLOC_TREATY.renewChance);
+            if (renews) {
+                treaty.until = cycle + BLOC_TREATY.cycles;
+                treaty.renewals = (treaty.renewals ?? 0) + 1;
+                state.blocTreatyHeld = true;
+                ctx.logEvent(
+                    'The agreement between the two groups comes up, and both sides send somebody to say the same thing: '
+                    + `again. It runs for another ${BLOC_TREATY.cycles} cycles, and it is the ${
+                        treaty.renewals === 1 ? 'second' : `${treaty.renewals + 1}th`} time neither of them has had to think hard about it.`,
+                    [...aMembers.map(m => m.id), ...bMembers.map(m => m.id)],
+                    { important: true, category: 'alliance' }
+                );
+                return true;
+            }
             state.blocTreatyHeld = true;
             ctx.logEvent(
                 `The agreement between the two groups runs out. Nobody renews it and nobody breaks it; `

@@ -35,6 +35,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Aurelian', 'Cashton', 'Gleam', 'Burnish', 'Silvano', 'Goldwin', 'Gemson', 'Lazule', 'Satine', 'Clasp',
             'Adorno', 'Bijan', 'Crispin', 'Eston', 'Florian', 'Jareth', 'Luxor', 'Orian', 'Percival', 'Sterlyn',
             'Brocade', 'Lustrine', 'Tessellate', 'Wrought', 'Xantolin',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Ormer', 'Illume', 'Yttrian', 'Orfevre', 'Xoana', 'Yale', 'Oriel', 'Xanthene', 'Ulmira', 'Ouvert',
         ],
         Female: [
             'Glimmer', 'Crystal', 'Diamond', 'Opal', 'Sapphire', 'Silk', 'Solitaria', 'Amber', 'Auriel', 'Ruby',
@@ -48,6 +50,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Pashmina', 'Preciosa', 'Sabelle', 'Trove', 'Vanity', 'Verity', 'Chiffonne', 'Dazzle', 'Elegance', 'Jacinthe',
             'Bijoux', 'Coronet', 'Estelle', 'Gloriana', 'Lucia', 'Odalys', 'Priscilla', 'Solange', 'Valencia', 'Vermeille',
             'Xanthine', 'Quillonne', 'Nacrissa', 'Verdigris', 'Yardleigh',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Uvarov', 'Ouro', 'Ursine', 'Zendal', 'Quadrille', 'Zibel', 'Yestre', 'Ormolet', 'Xantheon', 'Yvane',
         ],
     },
     // District 2 — Masonry & Peacekeepers: Roman names, stone, and
@@ -65,6 +69,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Fortis', 'Ferrus', 'Granius', 'Petram', 'Scutum', 'Aquilo', 'Cordon', 'Cornice', 'Redoubt', 'Wallace',
             'Stone', 'Boulder', 'Crag', 'Ridge', 'Cliff', 'Mace', 'Blade', 'Hammer', 'Spar', 'Wedge',
             'Xanthorn', 'Quarrel', 'Keystonee', 'Voussoir', 'Jambeau',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Zosim', 'Yeomanry', 'Unctor', 'Ossuar', 'Zanthe', 'Oubliette', 'Ingar', 'Yrsa', 'Zorath', 'Yvarr',
         ],
         Female: [
             'Clove', 'Enobaria', 'Lyme', 'Livia', 'Diana', 'Victoria', 'Aurelia', 'Octavia', 'Portia', 'Juno',
@@ -78,6 +84,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Sentina', 'Bellira', 'Castella', 'Ferra', 'Gradia', 'Petronia', 'Pillara', 'Rampara', 'Turria', 'Alba',
             'Carrara', 'Gemina', 'Honora', 'Palla', 'Sestia', 'Tremora', 'Valora', 'Vera', 'Vesper', 'Ashlarine',
             'Ashlare', 'Xanthe', 'Quoin', 'Dentil', 'Kerf',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Obdur', 'Zelot', 'Xiphos', 'Ylva', 'Ulfheim', 'Zemin', 'Ogmund', 'Uldric', 'Ostrog', 'Xenos',
         ],
     },
     // District 3 — Technology: circuitry words worn plain, plus Beetee-style
@@ -95,6 +103,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Emmett', 'Filament', 'Gauss', 'Grid', 'Ledger', 'Magnet', 'Neuron', 'Photon', 'Probe', 'Radian',
             'Reboot', 'Signal', 'Solan', 'Static', 'Terminus', 'Vertex', 'Voltaire', 'Weld', 'Widget', 'Rhett',
             'Xenark', 'Kelvinor', 'Quantic', 'Jitteren', 'Verilog',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Ustor', 'Xand', 'Opto', 'Ionn', 'Quibit', 'Zolta', 'Xantic', 'Ondel', 'Uvex', 'Quarz',
         ],
         Female: [
             'Wiress', 'Cyra', 'Nova', 'Beta', 'Echo', 'Ada', 'Dot', 'Logic', 'Spark', 'Meg',
@@ -108,6 +118,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Polara', 'Query', 'Radia', 'Rhea', 'Reva', 'Schema', 'Senna', 'Servane', 'Simona', 'Solura',
             'Stacia', 'Sinead', 'Tekla', 'Torsion', 'Voltara', 'Wafa', 'Wilda', 'Wren', 'Zetta', 'Solveig',
             'Yottara', 'Xyliane', 'Quantae', 'Nibblet', 'Kibi',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Oscillo', 'Querl', 'Zed', 'Xenna', 'Ulvex', 'Ydris', 'Querin', 'Yttrix', 'Ixel', 'Orbit',
         ],
     },
     // District 4 — Fishing: sea, sail, and shore. Career-polished, so the
@@ -125,6 +137,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Ketch', 'Kraken', 'Mako', 'Moray', 'Wrasse', 'Oar', 'Pelagius', 'Prow', 'Sailor', 'Scale',
             'Seaton', 'Sinker', 'Skiff', 'Sloop', 'Squall', 'Swells', 'Breakwater', 'Trawl', 'Wake', 'Weir',
             'Xebeck', 'Quarterdeck', 'Yawle', 'Kedge', 'Vang',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Quahog', 'Orca', 'Ulva', 'Zeeman', 'Xandine', 'Zephyral', 'Yolde', 'Yarrowreef', 'Quillara', 'Ostrean',
         ],
         Female: [
             'Annie', 'Cresta', 'Mags', 'Nerida', 'Trawler', 'Coral', 'Siren', 'Delta', 'Marina', 'Ocean',
@@ -138,6 +152,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Inlet', 'Jetsam', 'Lira', 'Maritima', 'Minnow', 'Mist', 'Murrel', 'Nixie', 'Reefa', 'Roe',
             'Salara', 'Sardine', 'Scilla', 'Seawyn', 'Shoala', 'Sirenna', 'Tidesse', 'Trilla', 'Wavella', 'Skerry',
             'Xiphia', 'Quayle', 'Yarrowene', 'Nerissae', 'Kelpiee',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Ushant', 'Yare', 'Iselin', 'Ythan', 'Yssel', 'Xebecca', 'Umbriel', 'Ondelle', 'Ulvine', 'Yvelle',
         ],
     },
     // District 5 — Power: current, light, and the grid. Words that hum,
@@ -155,6 +171,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Neutron', 'Nimbus', 'Orin', 'Phase', 'Pierce', 'Perrin', 'Radian', 'Rayden', 'Rhys', 'Shock',
             'Solar', 'Steam', 'Strobe', 'Tinder', 'Voltan', 'Whitley', 'Wick', 'Zeb', 'Zephyr', 'Rennick',
             'Xanthol', 'Quench', 'Yokel', 'Kilowatte', 'Vane',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Urd', 'Xelas', 'Xanthin', 'Xerus', 'Yonge', 'Zephyrin', 'Xandor', 'Ohmura', 'Uvolt',
         ],
         Female: [
             'Electra', 'Nova', 'Astra', 'Flare', 'Aurora', 'Lumina', 'Solara', 'Nebula', 'Helix', 'Voltina',
@@ -168,6 +186,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Ozona', 'Phasia', 'Photona', 'Pietra', 'Reatha', 'Rheona', 'Shimra', 'Sola', 'Sparrow', 'Stasia',
             'Surya', 'Tindra', 'Tabina', 'Vita', 'Voltara', 'Wattie', 'Wilhelmina', 'Zara', 'Zella', 'Retta',
             'Xandra', 'Quiescent', 'Yielda', 'Nernst', 'Kilne',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Zolt', 'Ovolt', 'Oersted', 'Orrey', 'Ionel', 'Ultima', 'Querent', 'Yseult', 'Zinnober',
         ],
     },
     // District 6 — Transportation: rails, roads, and flight. Grounded nouns
@@ -185,6 +205,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Fleet', 'Ford', 'Gantry', 'Glide', 'Hubert', 'Ivor', 'Journey', 'Lorne', 'Mack', 'Navigator',
             'Pace', 'Ramble', 'Rigby', 'Rodrick', 'Rudy', 'Spencer', 'Stratton', 'Tredway', 'Trek', 'Wayne',
             'Xandar', 'Quay', 'Yardarm', 'Klaxonis', 'Vectra',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Unar', 'Onward', 'Ulrich', 'Yancy', 'Xantho', 'Oaklan', 'Ultan', 'Quintin', 'Yarrel',
         ],
         Female: [
             'Lane', 'Piper', 'Stella', 'Velocity', 'Siena', 'Mercedes', 'Cheyenne', 'Carline', 'Aviara', 'Raven',
@@ -198,6 +220,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Ramla', 'Rhona', 'Rosetta', 'Ronda', 'Samara', 'Sigrid', 'Susanna', 'Sprig', 'Estelle', 'Strada',
             'Tamsin', 'Terra', 'Tamara', 'Tessa', 'Trixie', 'Tressa', 'Maybell', 'Willa', 'Sloane', 'Caroline',
             'Xeniel', 'Quartermile', 'Yarder', 'Nacellia', 'Kerbside',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Zephyros', 'Yarding', 'Oakum', 'Ulmar', 'Querry', 'Zephyrel', 'Xandry', 'Ostler', 'Urbain',
         ],
     },
     // District 7 — Lumber: trees named straight off the hillside, plus
@@ -215,6 +239,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Linden', 'Lodgepole', 'Moss', 'Mulch', 'Needle', 'Pitch', 'Root', 'Rowan', 'Sylvan', 'Tamarack',
             'Timberlake', 'Torch', 'Trunk', 'Understory', 'Wedge', 'Willows', 'Woody', 'Peavey', 'Yoke', 'Loggan',
             'Xylan', 'Quirtan', 'Yewell', 'Knothole', 'Veneera',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Umbrel', 'Yewen', 'Quickset', 'Ulmus', 'Yarrowood', 'Yewel', 'Undertimber', 'Ordrey', 'Ulmwood',
         ],
         Female: [
             'Johanna', 'Knotwood', 'Willow', 'Larchen', 'Alderly', 'Leafwyn', 'Cedarlyn', 'Fern', 'Leaf', 'Cedarly',
@@ -228,6 +254,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Lignia', 'Mossy', 'Oakleigh', 'Piney', 'Fernwood', 'Sappho', 'Willowen', 'Sprucia', 'Whittlyn', 'Boughetta',
             'Terra', 'Timberly', 'Shakewood', 'Verdance', 'Verna', 'Wilda', 'Woodrow', 'Wrenna', 'Yewberry', 'Zelkova',
             'Xylona', 'Quakena', 'Yewlin', 'Nurselogh', 'Kindlinge',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Zirco', 'Undergrowth', 'Oakhew', 'Ossier', 'Quirin', 'Zephyrwood', 'Quillwood', 'Yarden', 'Iselwood',
         ],
     },
     // District 8 — Textiles: fabric, thread, and the sewing table. Plain
@@ -245,6 +273,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Mohair', 'Oxford', 'Pique', 'Plaid', 'Rayon', 'Orlo', 'Skye', 'Sly', 'Swatch', 'Taylor',
             'Thread', 'Tickell', 'Toile', 'Tuck', 'Vesper', 'Walden', 'Webb', 'Wynn', 'Yarn', 'Ziba',
             'Xandrel', 'Quilte', 'Yarnwelle', 'Kerseye', 'Velvetine',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Zibellin', 'Quiller', 'Yarnell', 'Xestile', 'Ombre', 'Ingram', 'Querda', 'Ysolt', 'Orlon',
         ],
         Female: [
             'Cecelia', 'Paylor', 'Wilma', 'Nan', 'Taffet', 'Lace', 'Damaris', 'Percale', 'Chiffon', 'Taffeta',
@@ -258,6 +288,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Marla', 'Mindel', 'Melina', 'Pintuck', 'Plisse', 'Purl', 'Raelyn', 'Satine', 'Selva', 'Sybil',
             'Sheridan', 'Silka', 'Sallie', 'Sacha', 'Tafeta', 'Tessaly', 'Tricot', 'Winnie', 'Wenda', 'Organdy',
             'Xantheya', 'Quiltrey', 'Yarnly', 'Nankeena', 'Kashmir',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Undyed', 'Ottoman', 'Zendale', 'Quinsy', 'Youghal', 'Xanthide', 'Oakweft', 'Ulmine', 'Yardwell',
         ],
     },
     // District 9 — Grain: the harvest and the mill. Bread words, field words,
@@ -275,6 +307,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Leaven', 'Lofton', 'Malton', 'Merle', 'Millard', 'Morrow', 'Paddy', 'Reece', 'Ricker', 'Rylan',
             'Ruskin', 'Scythe', 'Seeley', 'Semyon', 'Sickle', 'Sorley', 'Stubbs', 'Swain', 'Tasso', 'Windrow',
             'Xerophyte', 'Querne', 'Yeoman', 'Kernele', 'Vetch',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Yeld', 'Oryza', 'Undercrop', 'Oakhull', 'Xandel', 'Ostgrain', 'Ultgrain', 'Orsey', 'Umberly',
         ],
         Female: [
             'Grainne', 'Acacia', 'Bushra', 'Charlene', 'Cerealia', 'Garner', 'Sibella', 'Poppy', 'Ryetta', 'Saffron',
@@ -288,6 +322,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Kerna', 'Leanne', 'Lova', 'Maizie', 'Malvina', 'Meala', 'Milla', 'Panna', 'Rae', 'Rikki',
             'Risa', 'Ryanne', 'Scylla', 'Seedra', 'Shea', 'Sicily', 'Sorghina', 'Spelta', 'Swanna', 'Tilly',
             'Xantheia', 'Quinoae', 'Yeasty', 'Nixtamal', 'Kamute',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Zephyrum', 'Zizania', 'Quickgrass', 'Ulmer', 'Querlot', 'Yarrowe', 'Ixil', 'Yestergrain', 'Zolder',
         ],
     },
     // District 10 — Livestock: herd, hide, and range. Ranch-hand real names
@@ -305,6 +341,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Dobbin', 'Foster', 'Gaucho', 'Grayson', 'Hurd', 'Hereford', 'Hyde', 'Hitchcock', 'Milton', 'Oxford',
             'Piebald', 'Ramsey', 'Roper', 'Rowdy', 'Shearer', 'Heller', 'Stockton', 'Tate', 'Trowe', 'Woolley',
             'Xerxes', 'Quirtley', 'Yearlingus', 'Kine', 'Vealwell',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Urial', 'Zircol', 'Yarrowmine',
         ],
         Female: [
             'Brandy', 'Lassie', 'Fawn', 'Doe', 'Filly', 'Rodella', 'Sierra', 'Bryanna', 'Meadow', 'Dixie',
@@ -318,6 +356,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Ewa', 'Fara', 'Gingham', 'Goldie', 'Hedda', 'Heidi', 'Lambie', 'Marabel', 'Milla', 'Mowline',
             'Painter', 'Pinta', 'Rochelle', 'Rhoda', 'Sherrin', 'Drea', 'Spurgeon', 'Tallie', 'Veda', 'Wilona',
             'Xanthia', 'Quirte', 'Yearlynn', 'Nannette', 'Kidling',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Zuccar', 'Ozmun',
         ],
     },
     // District 11 — Agriculture: orchards, row crops, and wildflowers, cut
@@ -335,6 +375,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Flax', 'Gather', 'Glean', 'Hay', 'Lentil', 'Marrow', 'Melon', 'Peach', 'Pip', 'Pomme',
             'Quince', 'Rake', 'Rush', 'Vetiver', 'Sap', 'Shuck', 'Sow', 'Sugar', 'Ezra', 'Lemuel',
             'Xerant', 'Quincel', 'Yarrowin', 'Kalen', 'Vernalis',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Zebu', 'Undermere', 'Undervein',
         ],
         Female: [
             'Rue', 'Seeder', 'Blossom', 'Feverfew', 'Holly', 'Lily', 'Rose', 'Petal', 'Flora', 'Rosemary',
@@ -348,6 +390,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Pomona', 'Bloom', 'Bounty', 'Bramblerose', 'Cassava', 'Chive', 'Currant', 'Sloe', 'Filbert', 'Gourdine',
             'Chamomile', 'Magnolia', 'Melba', 'Okrah', 'Pearblossom', 'Primula', 'Amaryllis', 'Tulip', 'Vervain', 'Violet',
             'Xylema', 'Quinceta', 'Yarrowyn', 'Nectarina', 'Kumquat',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Ochre', 'Ylsa',
         ],
     },
     // District 12 — Coal mining, split by class. Seam names come from wild
@@ -366,6 +410,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Aidan', 'Bellamy', 'Canaan', 'Chert', 'Cokey', 'Delvin', 'Galen', 'Hewitt', 'Marl', 'Garrison',
             'Pick', 'Quarrier', 'Seamus', 'Shaft', 'Sledge', 'Smelter', 'Spade', 'Tinder', 'Winch', 'Zinc',
             'Xanthite', 'Quartzon', 'Yieldshaft', 'Kerogen', 'Veinar',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Xolo', 'Orepeak',
         ],
         Female: [
             'Katniss', 'Primrose', 'Maysilee', 'Ember', 'Eglantine', 'Hazel', 'Iris', 'Violet', 'Willow', 'Bramble',
@@ -379,6 +425,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Colette', 'Emberly', 'Flinta', 'Galena', 'Graphite', 'Hearth', 'Lignia', 'Anthea', 'Frostwyn', 'Campion',
             'Seema', 'Shalene', 'Slaine', 'Sootie', 'Tallow', 'Vena', 'Wickie', 'Xanthe', 'Lamplight', 'Fireweed',
             'Xantheline', 'Quarrelle', 'Yieldra', 'Nubbina', 'Kohl',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Yestreen', 'Zephyrion',
         ],
     },
     // §BUG-5: these four shipped at 30 entries per gender against the original
@@ -412,6 +460,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Stockard', 'Barrick', 'Kegan', 'Torrin', 'Ansel', 'Wendell', 'Pryce', 'Garrick', 'Ormond', 'Gunnar',
             'Roderic', 'Bramwell', 'Fenrick', 'Halvard', 'Torvald', 'Aldwyn', 'Brannock', 'Cadmon', 'Delvin', 'Edric',
             'Xenolithe', 'Quellon', 'Yellowcake', 'Kelvinite', 'Voidwell',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Ovis', 'Yestermine',
         ],
         Female: [
             'Petra', 'Nitya', 'Salvo', 'Cordelia', 'Fusella', 'Mensa', 'Quill', 'Adamanta', 'Emberline', 'Grisel',
@@ -425,6 +475,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Thaddea', 'Ella', 'Cassiana', 'Verrina', 'Holla', 'Stoka', 'Barra', 'Keagan', 'Torin', 'Anselma',
             'Wendla', 'Priya', 'Lucana', 'Garrie', 'Ormsby', 'Gunna', 'Roderika', 'Bramwyn', 'Fenna', 'Halva',
             'Xeniya', 'Quietus', 'Yttriane', 'Nuclide', 'Kilotonne',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Ulmic', 'Ulvaine',
         ],
     },
     // District 14 — Salt and refrigeration: brine, preservation, cold, and the
@@ -442,6 +494,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Umber', 'Vandry', 'Westmore', 'Zenobar', 'Sarnath', 'Crayle', 'Wold', 'Hesper', 'Corbin', 'Brinkley',
             'Cranmer', 'Dunstan', 'Elsworth', 'Frostmere', 'Gildersleeve', 'Hallam', 'Icewold', 'Jorvik', 'Kelsey', 'Lathrop',
             'Xystus', 'Quadrel', 'Yardstane', 'Kerbwell', 'Verge',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Ungula', 'Ironhew',
         ],
         Female: [
             'Frigga', 'Brinna', 'Rimma', 'Isewell', 'Frosta', 'Marlene', 'Curra', 'Winterly', 'Kelvina', 'Ossa',
@@ -455,6 +509,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Selina', 'Taranta', 'Umbra', 'Vanda', 'Westra', 'Yarrow', 'Sarna', 'Crayla', 'Brackenne', 'Wolde',
             'Hesperia', 'Nimba', 'Larcha', 'Corbina', 'Sedge', 'Aldous', 'Brinley', 'Cressida', 'Dunne', 'Elsa',
             'Xanthica', 'Quadra', 'Yardleen', 'Nogging', 'Kerbe',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Xanthate', 'Xanterra',
         ],
     },
     // District 15 — Glassworks: heat, clarity, fragility, and the vocabulary
@@ -472,6 +528,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Kickham', 'Lehrmaster', 'Murrine', 'Nithe', 'Panell', 'Quillon', 'Rakes', 'Sandcast', 'Tinctor', 'Ventwyn',
             'Wheelcut', 'Aventurine', 'Bullseye', 'Chalcedon', 'Craquelure', 'Dalle', 'Emboss', 'Flash', 'Gaffrey', 'Hobnail',
             'Xanthicus', 'Quivera', 'Yielder', 'Kenner', 'Vellum',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Xiphoid', 'Xandric',
         ],
         Female: [
             'Vitra', 'Prisma', 'Clarity', 'Lumen', 'Silica', 'Annealla', 'Sharda', 'Facette', 'Crazia', 'Collette',
@@ -485,6 +543,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Embra', 'Flama', 'Grozia', 'Hallow', 'Ignisa', 'Jarra', 'Kikina', 'Lehra', 'Murrina', 'Neva',
             'Panella', 'Quilla', 'Raka', 'Sandra', 'Tinctura', 'Venna', 'Wheela', 'Aventura', 'Bulla', 'Chalcedony',
             'Xanthippe', 'Quire', 'Yieldine', 'Nibbe', 'Kalamos',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Quartzel', 'Quarnell',
         ],
     },
     // District 16 — Deepwater drilling: months offshore, pressure, dark water,
@@ -502,6 +562,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Yardarm', 'Zigmund', 'Brimmer', 'Currach', 'Dowsett', 'Fendall', 'Grimsby', 'Holdfast', 'Amberjack', 'Brailsford',
             'Cardwell', 'Dedric', 'Ebbtide', 'Fairlead', 'Groundswell', 'Hullwright', 'Ironmoor', 'Jibsail', 'Knightshead', 'Longshore',
             'Xericon', 'Quorum', 'Yondar', 'Kestrelin', 'Vantage',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Yester', 'Querhold',
         ],
         Female: [
             'Phaedra', 'Aurora', 'Nerissa', 'Rosalie', 'Bathsheba', 'Caisson', 'Pontoon', 'Sirena', 'Plumbline', 'Ancora',
@@ -515,6 +577,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Norda', 'Oarla', 'Pilota', 'Quanda', 'Rowena', 'Seaborn', 'Tacklia', 'Ulsta', 'Waterwyn', 'Yarda',
             'Zigga', 'Brimma', 'Dorothea', 'Fenella', 'Grimsa', 'Holda', 'Amberlee', 'Brails', 'Cardea', 'Dedra',
             'Xerica', 'Quorra', 'Yonda', 'Nimbus', 'Kestrelle',
+            // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
+            'Oremund', 'Ostrel',
         ],
     },
 };

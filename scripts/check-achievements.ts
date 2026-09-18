@@ -18,7 +18,6 @@
  */
 import { generateTributes } from '../src/engine/generator';
 import { resolveArenaForRun } from '../src/engine/arenaSetup';
-import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig, GameState } from '../src/models/types';

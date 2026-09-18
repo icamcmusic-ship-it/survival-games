@@ -868,6 +868,43 @@ export const HUNTING = {
  * out-weighs the first.
  */
 export const PROFICIENCY = {
+    /*
+     * AUDIT-7 §3.5: the four axes that never left their floor.
+     *
+     * Measured across 6,000 tributes, peak value against a cap of 6:
+     * `stealth` 1.00, `carpentry` 1.00, `intimidation` 1.68, `navigation` 2.53.
+     * The first two had **no `trainProficiency` call site anywhere in the
+     * engine** — a whole axis on the tribute sheet that no tribute could move,
+     * in a game with a `ghost` archetype and a `master-of-one` achievement that
+     * presents all fifteen as things somebody can be good at. An inert
+     * proficiency is worse than a missing one.
+     *
+     * The shares below are what a partial or failed contribution is worth,
+     * following the `share` argument AUDIT-4 §3.4 added for exactly this.
+     */
+    /** Finding the branches, when the building itself trains carpentry. */
+    shelterForageShare: 0.4,
+    /** A trap is chosen with tracking and built with carpentry. */
+    trapCarpentryShare: 0.6,
+    /** Being found is a smaller lesson than getting away with it. */
+    stealthCaughtShare: 0.3,
+    /** Crossing ground you have not crossed before. */
+    navigationNewZoneShare: 0.5,
+    /** Facing somebody down without a blow landing. */
+    intimidationStandoffShare: 0.8,
+    /*
+     * AUDIT-7 §12.4: the four new axes, and what each is worth at its read site.
+     */
+    /** Per point of `fieldcookery`, the share taken off a poisoning roll. */
+    fieldcookeryPoisonResist: 0.1,
+    /** Pacing at or above this takes a cycle off a long crossing. */
+    pacingCrossingLevel: 3,
+    /** A cycle spent mid-crossing. Small, because there are a great many of them. */
+    pacingPerCrossingShare: 0.25,
+    /** Standing in something that could poison you is the lesson. */
+    fieldcookeryExposureShare: 0.5,
+    /** Being lied to, or lying. Both teach the same thing. */
+    readingBluffShare: 0.7,
     /**
      * Audit 4 §3.4: what a failed attempt is worth, as a share of a successful
      * one. Used by the wound-dressing path, which is the one skill in the game
@@ -2841,6 +2878,16 @@ export const SLEEP = {
 export const PLANNING = {
     /** Depth of the objective queue. Two is a person; three is a planner. */
     queueDepth: 2,
+    /**
+     * AUDIT-7 §1.3: how long past its own expiry a queued goal is still worth
+     * coming back to.
+     *
+     * The queue can hold a goal across cycles now, which it never could before,
+     * so it needs a clock: "hold the ridge" is reachable forever, and without
+     * this a goal nobody gets round to would sit at the head of the queue for
+     * the rest of the run and stop a second one from ever being remembered.
+     */
+    queueStaleAfter: 6,
     /** Vitals at which a goal needs an errand run in front of it. */
     prerequisiteThirst: 72,
     prerequisiteHunger: 76,
@@ -2862,6 +2909,9 @@ export const PLANNING = {
     falseTrailTraffic: 3,
     /** Intelligence at which somebody reads the ground rather than the story. */
     falseTrailSeeThrough: 8,
+    /** AUDIT-7 §12.4: reading marks helps you fake them, but is not the skill. */
+    falseTrailTrackingShare: 0.5,
+    falseTrailPerSignalling: 0.05,
 } as const;
 
 export const OBJECTIVES = {
@@ -3966,6 +4016,54 @@ export const STANCE_MODES = {
         cannonBonus: 0.8,
         woundedPenalty: 1.5,
     },
+    /*
+     * AUDIT-7 §12.6: working on yourself rather than on the arena.
+     *
+     * Nursing needs a patient who is not you, so the commonest version of
+     * standing still and doing medicine — doing it to yourself — had no stance.
+     * It was folded into Defensive, which also forages and rests and asks
+     * nothing, so a tribute with an open wound and a quiet sector read as
+     * somebody having a nice afternoon.
+     */
+    tending: {
+        /** Health, or an untreated wound, that makes stopping the priority. */
+        healthBelow: 60,
+        base: 5.5,
+        perMedicinePoint: 0.45,
+        /** Per open wound site being worked on. */
+        perWound: 1.2,
+        /** Somebody armed in the sector ends it. */
+        contestedPenalty: 2.6,
+        /** Chance per cycle of actually closing something. */
+        mendBase: 0.4,
+        mendPerMedicine: 0.14,
+        fatigueRelief: 10,
+        sanityRelief: 4,
+        /** Standing still with both hands busy, out of the way. */
+        concealmentBonus: 0.08,
+    },
+    /*
+     * AUDIT-7 §12.6: deliberately visible, on ground you prepared.
+     *
+     * `fieldcraft` sets 1,107 traps per 400 runs and 72.7% of them are never
+     * triggered, because a trap is a bet on somebody else's movement and
+     * nothing in the engine let a tribute *influence* that movement. Baiting is
+     * the verb that was missing: it is only available where the tribute has
+     * already done the work, and it trades concealment for traffic.
+     */
+    baiting: {
+        base: 4.6,
+        /** Per trap of the tribute's own in this sector. */
+        perOwnTrap: 1.5,
+        /** Holding a chokepoint is its own kind of prepared ground. */
+        chokepointBonus: 1.2,
+        /** Being hurt makes drawing a crowd a worse idea. */
+        woundedPenalty: 2.2,
+        /** How much concealment is deliberately given away. */
+        concealmentCost: 0.25,
+        /** Added to the chance somebody else walks into this sector. */
+        trafficDraw: 0.2,
+    },
     /** How much of the archetype's temperament a conditional stance inherits. */
     conditionalArchetypeWeight: 0.5,
     hunting: {
@@ -4142,6 +4240,28 @@ export const RELATIONSHIPS = {
     trustKeptPromise: 8,
     trustBrokenPromise: 25,
     trustRepaidDebt: 10,
+    /*
+     * AUDIT-7 §4.1: the axis had three writers and no traffic.
+     *
+     * `trusts` is the stored half of the trust model — the part the README
+     * describes as making "I don't like you any more but I've come to trust
+     * you" a state the engine can hold — and `adjustTrust` was called from
+     * exactly three places: a kept truce term, a broken one, and a repaid debt.
+     * All three are ceremonies. Measured at the end of a run, only 12.3% of
+     * ally pairs carried a stored trust value at all, against suspicion's
+     * 24.8%, and `decayTrust` deletes the entry the moment it reaches zero.
+     *
+     * The three below are the ordinary things allies do to each other, which is
+     * where an axis about ordinary trust ought to live. Each is wired at a site
+     * that already exists and already fires thousands of times a sweep.
+     */
+    /** Standing in front of somebody, in a fight or a standoff. `noteStoodBy`. */
+    trustStoodBy: 6,
+    /** Putting your own food or water into the group's cache. `contributeToCache`. */
+    trustSharedCache: 3,
+    /** Watching somebody knife an ally. The victim's own loss is the betrayal
+     *  penalty above; this is what it costs them with everybody watching. */
+    trustWitnessedBetrayal: 14,
     /** Per-cycle heal toward zero from below, and fade toward zero from above. */
     trustHealPerCycle: 0.6,
     trustFadePerCycle: 1.2,
@@ -4466,7 +4586,19 @@ export const BLOC_TREATY = {
      * who can make it land is the one who has made it land before.
      */
     perOratory: 0.05,
-    cycles: 6,
+    /*
+     * AUDIT-7 §4.5: a shorter term, because a term nobody reaches is not a term.
+     *
+     * At six cycles, 192 of 231 treaties across 400 runs ended when one bloc
+     * stopped existing and only a handful ever reached their own expiry — so
+     * the renewal beat added on this pass had almost nothing to fire on, and
+     * the *decision* a treaty is supposed to represent was being made by
+     * attrition. Four cycles is inside the lifetime of a bloc, so the question
+     * "again?" actually gets asked; renewal extends by another four, so two
+     * groups that keep saying yes still hold it as long as they ever did, and
+     * now the feed says so each time.
+     */
+    cycles: 4,
     /** Field size at or below which two packs stop being able to afford it. */
     dissolveFieldSize: 7,
     excitement: 15,
@@ -4483,6 +4615,20 @@ export const BLOC_TREATY = {
     breachEndgameBonus: 0.08,
     breachWoundedHealth: 40,
     breachWoundedBonus: 0.06,
+    /*
+     * AUDIT-7 §4.5: renewal, so a treaty can end by a decision.
+     *
+     * 204 of 253 treaties across 400 runs ended because one side stopped
+     * existing. `truceLedger` gets this right at two-person scale — renewed 199
+     * against lapsed 195 — because a truce comes up and somebody decides. These
+     * are the numbers that give a bloc treaty the same shape.
+     */
+    /** The share of the breach roll that survives however much they get on. */
+    breachRegardFloor: 0.3,
+    renewChance: 0.45,
+    renewMinRegard: -5,
+    /** Renewing inside a cycle of the dissolve floor is not a decision. */
+    renewFieldSlack: 2,
     breachMaxChance: 0.4,
 } as const;
 
@@ -4593,7 +4739,23 @@ export const ROMANCE = {
      * performed bond still fires ~24 times per 400-run soak, so the mechanic
      * ships (the complaint it was raised to fix was 1-2 firings in 240 runs).
      */
-    performedChance: 0.12,
+    /*
+     * AUDIT-7 §4.1: retuned again, for a reason that is worth writing down.
+     *
+     * Wiring the stored trust axis into standing-by, cache-sharing and
+     * witnessed betrayal (§4.1) raised trust between allies from 12.3% of ally
+     * pairs to 45.2% — and `trustOf` feeds the gates a bond forms behind, so
+     * the combined star-crossed rate drifted 21.5% to 22.3% and tipped a guard
+     * band that was already sitting on its own ceiling. That is the guard doing
+     * its job: a social change with a social side effect, caught on the same
+     * pass rather than three audits later.
+     *
+     * 0.10 puts the combined rate back inside the band. The ceiling is still
+     * the thing to fix — the design goal is 10-15% and the measured rate has
+     * been over it for three audits — but that is a retune of the genuine bond,
+     * not of the performed one, and it is not this change's to make.
+     */
+    performedChance: 0.10,
     /** Per-cycle odds a sharp observer in the same zone reads the act. */
     performedSniffChance: 0.22,
     /** Intelligence at or above which a tribute can read a performance at all. */
@@ -4951,7 +5113,24 @@ export const ALLIANCES = {
      * `factionResentRegard` reads.
      */
     factionSuspicion: 9,
-    factionResentRegard: -18,
+    /*
+     * AUDIT-7 §4.3: the second detection path was set where nobody stands.
+     *
+     * "A bloc can also be people who simply cannot stand the same member" is
+     * the right idea and -18 is the wrong number for it: allies *like* each
+     * other by construction, and in-alliance regard measures p05 +10.5, p25
+     * +57, p50 +77.5. Only **0.26%** of in-alliance pairs were ever at or under
+     * -18, so the path the comment above calls "commoner and just as real" was
+     * firing about one time in four hundred.
+     *
+     * Placed on the measured distribution rather than on a guess, the way
+     * `investigateThreshold` below already is: 12 is inside the bottom decile
+     * of how allies actually regard each other, which is what "the two people
+     * in this group I have the least time for" looks like from the inside. Two
+     * members both have to be under it, so it stays a second route rather than
+     * the main one.
+     */
+    factionResentRegard: 12,
     factionMinMembers: 2,
     factionHeatPerCycle: 6,
     factionCoupHeat: 16,
@@ -4968,6 +5147,18 @@ export const ALLIANCES = {
     hearingExpelChance: 0.45,
     hearingDemoteChance: 0.3,
     expulsionRegardCost: 18,
+    /**
+     * AUDIT-7 §4.2: the group size at which every job gets a name.
+     *
+     * `assignRoles` filled `min(jobs, members)` roles, so the last two of the
+     * eight needed seven and eight members — and the alliance cap is six plus
+     * a two-member grand-coalition extra, so `keeper` was reachable only at the
+     * theoretical maximum and was never once filled in 7,680 samples. Four is
+     * what the function's own docstring always claimed ("four or more the
+     * lot"), and it means a group doubles somebody up rather than leaving a job
+     * unnamed.
+     */
+    allRolesFrom: 4,
     /** A member who fed the group has a claim on the cache when it splits. */
     cacheClaimShare: 0.5,
     /** The leader names an heir once the group is this big. */
@@ -6450,6 +6641,8 @@ export const PARLEY = {
     bluffPerCharisma: 0.03,
     bluffPerMarkIntelligence: 0.035,
     bluffPerMarkTracking: 0.05,
+    /** AUDIT-7 §12.4: and the skill of it, which is neither of the above. */
+    bluffPerMarkReading: 0.05,
     bluffMaxChance: 0.85,
     bluffMinChance: 0.08,
     /** Regard lost by the mark when the bluff works and they later think about it. */
@@ -6540,6 +6733,14 @@ export const DEBTS = {
     /** Settling up. */
     repayThreshold: 1,
     repayChance: 0.25,
+    /**
+     * AUDIT-7 §4.2: what a `keeper` is worth.
+     *
+     * The alliance role that "holds the group's debts" had no implementation
+     * and could not be assigned in the first place. A group with somebody
+     * keeping the books settles up more often, because somebody is asking.
+     */
+    repayKeeperBonus: 0.12,
     repayRegard: 12,
     repayExcitement: 10,
     repayRestRelief: 15,
@@ -7351,6 +7552,11 @@ export const ARCHETYPE_HOOKS = {
     /** Minimum items on hand before there is anything to take stock of. */
     inventoryMinItems: 2,
     /**
+     * AUDIT-7 §8.2: what taking stock is worth with nobody to share it with.
+     * Less than `inventoryRelief`, because the gain there is partly the bond.
+     */
+    inventoryAloneRelief: 6,
+    /**
      * Martyr: the offer, made out loud, to the person they intend to outlive
      * nobody for. Costs them real health — the offer is not rhetorical — and
      * buys the ward the largest single bond in the signature roster.
@@ -7381,6 +7587,26 @@ export const ARCHETYPE_HOOKS = {
      */
     /** Warden: cycles of holding ground that stand in for a doorway when the zone is not one. */
     wardenHeldCycles: 2,
+    /**
+     * AUDIT-7 §8.2: ground worth declaring, when there is no doorway to stand
+     * in. `OBJECTIVES.holdMinResources` is 0.5 for the same judgement, so this
+     * sits just above it: a warden wants somewhere better than merely adequate.
+     */
+    wardenWorthHolding: 0.6,
+    /**
+     * AUDIT-7 §8.2: how much hungrier or thirstier than the broker somebody has
+     * to be to read as a client rather than as a rival supplier.
+     */
+    brokerNeedGap: 15,
+    /**
+     * AUDIT-7 §8.2: how many weapons a broker keeps before they will trade one.
+     *
+     * One. Measured both ways at n=1,600: keeping two spares dropped the set
+     * piece from 29.3% of entrants to 27.9% and left the win rate identical at
+     * 3.00%, so the caution bought nothing. A broker holding two blades can
+     * part with one.
+     */
+    brokerSpareWeapons: 1,
     /** How long the line holds before they have to decide again. */
     wardenWaitCycles: 6,
     /** What the rest of the field files the zone under. Positive is "do not go there". */
@@ -7410,6 +7636,26 @@ export const ARCHETYPE_HOOKS = {
     brokerDebt: 12,
     brokerRegard: 7,
     brokerTruceCycles: 4,
+
+    /*
+     * AUDIT-7 §12.5: the six set pieces that do not need anybody else there.
+     */
+    /** Zones a Cartographer has to have walked before naming a route is a claim. */
+    cartographerMinZones: 3,
+    cartographerRouteCycles: 5,
+    /** What settling up in front of the cameras is worth to the other party. */
+    debtorRegard: 12,
+    debtorResolve: 10,
+    /** Reading the sky right is rest, whether or not the sky cooperates. */
+    forecasterRelief: 8,
+    understudyResolve: 12,
+    understudySanity: 6,
+    /** Names to read before a roll-call is a roll-call rather than a remark. */
+    archivistMinFallen: 3,
+    archivistSanityCost: 4,
+    /** Cycles unseen before the arena's not having noticed becomes the beat. */
+    quietUnseenCycles: 4,
+    quietThreatShed: 0.15,
 } as const;
 
 

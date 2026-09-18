@@ -145,7 +145,7 @@ export function StandingsTable({
                                     >
                                         <button
                                             onClick={() => toggleSort(col.id)}
-                                            className="eyebrow inline-flex items-center gap-0.5 hover:text-[var(--red)]"
+                                            className="eyebrow inline-flex items-center gap-0.5 hover:text-[var(--red)] tap-target"
                                         >
                                             {col.label}
                                             {active && (sort.desc
@@ -176,7 +176,10 @@ export function StandingsTable({
                                             onClick={() => onFollow(followedId === t.id ? null : t.id)}
                                             aria-pressed={followedId === t.id}
                                             aria-label={followedId === t.id ? `Stop following ${t.name}` : `Follow ${t.name}`}
-                                            className={followedId === t.id ? 'text-[var(--red)]' : 'text-[var(--color-ink-600)]'}
+                                            // AUDIT-7 §2.1: 11x16 at 380px, one
+                                            // of 24 in a column, next to another
+                                            // 24 name buttons. See `.tap-target-cell`.
+                                            className={`tap-target-cell justify-center ${followedId === t.id ? 'text-[var(--red)]' : 'text-[var(--color-ink-600)]'}`}
                                             disabled={dead}
                                         >
                                             ★
@@ -200,7 +203,7 @@ export function StandingsTable({
                                     <td className="p-1">
                                         <button
                                             onClick={() => onSelectTribute(t.id)}
-                                            className={`font-bold text-left hover:text-[var(--red)] ${dead ? 'line-through' : ''}`}
+                                            className={`tap-target-cell font-bold text-left hover:text-[var(--red)] ${dead ? 'line-through' : ''}`}
                                             style={accent ? { borderLeft: `3px solid ${accent}`, paddingLeft: 4 } : undefined}
                                         >
                                             {t.name}
