@@ -64,6 +64,17 @@ export function concealment(
     if (t.stance === 'Hunting') value -= STANCE_MODES.hunting.concealmentPenalty;
     if (t.stance === 'Shadowing') value += STANCE_MODES.shadowing.concealmentBonus;
     if (t.stance === 'Desperate') value -= STANCE_MODES.desperate.concealmentPenalty;
+    /*
+     * AUDIT-7 §12.6: Baiting gives it away on purpose, which is the whole
+     * stance. It is the only row here where the tribute *wants* the number
+     * lower, and it is only available on ground they have already trapped or
+     * hold a chokepoint on — so the concealment is being spent rather than
+     * lost.
+     */
+    if (t.stance === 'Baiting') value -= STANCE_MODES.baiting.concealmentCost;
+    // ...and Tending is standing still with both hands busy, which is the
+    // opposite trade and roughly the same size.
+    if (t.stance === 'Tending') value += STANCE_MODES.tending.concealmentBonus;
 
     // A fire is warmth, hot food and a beacon. Camouflage is the reverse trade.
     if (camp?.fire) value -= CRAFTING.fireConcealmentPenalty;

@@ -266,6 +266,23 @@ export const CAESAR_QUESTIONS = {
             'Caesar asks {tribute} to say something to the country. {tribute} does, and it is to the country rather than to Caesar, and the room notices.',
             '"You are good at this," Caesar says, meaning the talking. {tribute} says they have had to be.',
         ],
+        // AUDIT-7 §12.4
+        signalling: [
+            'Caesar asks how {tribute} and their brother used to talk across two fields. {tribute} whistles it, and the room does not know what it means.',
+            '"You leave messages," Caesar says. {tribute} says everybody does; most people just do not mean to.',
+        ],
+        fieldcookery: [
+            'Caesar asks {tribute} what the worst thing they have ever eaten was. The answer takes a while and nobody laughs at the end of it.',
+            '"You can cook," Caesar says, delighted. {tribute} clarifies: they can make things safe, which is not the same and matters more.',
+        ],
+        pacing: [
+            'Caesar asks how far {tribute} can walk. {tribute} asks him how many days he would like it to be.',
+            '"You are not fast," Caesar observes. {tribute} agrees, pleasantly, that they are not fast.',
+        ],
+        readingPeople: [
+            'Caesar asks {tribute} what he is thinking. {tribute} tells him, and Caesar moves the interview on rather quickly.',
+            '"You are reading me," Caesar says. {tribute} says they are reading the hands, and that the face is very good.',
+        ],
     },
     /** Keyed on the district's trade, so a tribute is asked about home properly. */
     district: [

@@ -375,6 +375,41 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
         // So is a chokepoint or a piece of high ground the pack is standing on.
         return sig.chokepoint || sig.elevation;
     },
+
+    /*
+     * AUDIT-7 §12.6: the case Nursing could never express — the patient is you.
+     *
+     * Nursing needs somebody else in the sector who is hurt, so a tribute
+     * working on their own wound was folded into Defensive, which also forages
+     * and rests and asks nothing of anybody. The commonest version of stopping
+     * to do medicine had no stance of its own.
+     *
+     * Available when there is something to work on and nobody armed here to
+     * interrupt it, which is the same shape as Nursing's contested penalty.
+     */
+    Tending: (_ctx, t, sig) => {
+        const hurt = t.injuries.bleeding
+            || t.health < STANCE_MODES.tending.healthBelow
+            || Object.values(t.woundInfection ?? {}).some(v => (v ?? 0) > 0);
+        if (!hurt) return false;
+        return !sig.occupants.some(o => o.id !== t.id
+            && (o.allianceId === undefined || o.allianceId !== t.allianceId));
+    },
+
+    /*
+     * AUDIT-7 §12.6: deliberately visible, on ground you already prepared.
+     *
+     * `fieldcraft` sets 1,107 traps per 400 runs and 72.7% of them are never
+     * triggered, because a trap is a bet on somebody else's movement and
+     * nothing let a tribute influence that movement. This is the verb that was
+     * missing — and it is deliberately only available where the work is already
+     * done, so it is a payoff for trapping rather than a substitute for it.
+     */
+    Baiting: (_ctx, t, sig) => {
+        if (sig.wounded) return false;
+        // `sig.ownTrapsHere` is already computed for the Fortified row.
+        return sig.ownTrapsHere > 0 || sig.chokepoint;
+    },
 };
 
 /**
@@ -571,6 +606,28 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         if (sig.ratio > STANCE.outmatchedRatio) s -= STANCE_MODES.nursing.contestedPenalty;
         s += sig.arch.allianceAffinity * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
         s += sig.arch.stanceBias?.Nursing ?? 0;
+        return s;
+    },
+
+    Tending: (_ctx, t, sig) => {
+        let s = STANCE_MODES.tending.base;
+        s += profOf(t, 'medicine') * STANCE_MODES.tending.perMedicinePoint;
+        const wounds = Object.values(t.injuries).filter(Boolean).length
+            + (t.injuries.bleeding ? 1 : 0);
+        s += wounds * STANCE_MODES.tending.perWound;
+        if (sig.ratio > STANCE.outmatchedRatio) s -= STANCE_MODES.tending.contestedPenalty;
+        s += sig.arch.caution * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
+        s += sig.arch.stanceBias?.Tending ?? 0;
+        return s;
+    },
+
+    Baiting: (_ctx, t, sig) => {
+        let s = STANCE_MODES.baiting.base;
+        s += sig.ownTrapsHere * STANCE_MODES.baiting.perOwnTrap;
+        if (sig.chokepoint) s += STANCE_MODES.baiting.chokepointBonus;
+        if (sig.wounded) s -= STANCE_MODES.baiting.woundedPenalty;
+        s += sig.arch.aggression * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
+        s += sig.arch.stanceBias?.Baiting ?? 0;
         return s;
     },
 

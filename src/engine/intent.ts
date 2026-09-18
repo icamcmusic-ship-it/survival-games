@@ -3,7 +3,7 @@ import { OBJECTIVES, PLANNING } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { cycleOf, ensureMemory, rememberedBarren } from './memory';
 import { getZone, reachableZones } from './map';
-import { profOf } from './proficiency';
+import { profOf, trainProficiency } from './proficiency';
 import { fearOf } from './fear';
 
 /**
@@ -166,9 +166,21 @@ export function isCowed(ctx: SimContext, t: Tribute): boolean {
  * the arena's own record of where people have been say the wrong thing.
  */
 export function layFalseTrail(ctx: SimContext, t: Tribute) {
+    /*
+     * AUDIT-7 §12.4: `signalling` is the skill this gate was borrowing.
+     *
+     * It read raw `intelligence` plus `tracking`, which is the skill for
+     * *reading* marks rather than leaving them — so the tribute who could tell
+     * a day-old print from an hour-old one was, by definition, also the best
+     * liar about their own. They are related and they are not the same, and the
+     * false trail is the one place in the engine where the difference matters.
+     * Tracking still counts, because you cannot fake a trail you cannot read.
+     */
     if (t.attributes.intelligence < PLANNING.falseTrailIntelligence) return;
-    if (profOf(t, 'tracking') < PLANNING.falseTrailSkill) return;
-    if (!ctx.rng.chance(PLANNING.falseTrailChance)) return;
+    const craft = profOf(t, 'signalling') + profOf(t, 'tracking') * PLANNING.falseTrailTrackingShare;
+    if (craft < PLANNING.falseTrailSkill) return;
+    if (!ctx.rng.chance(PLANNING.falseTrailChance + profOf(t, 'signalling') * PLANNING.falseTrailPerSignalling)) return;
+    trainProficiency(t, 'signalling');
 
     const options = reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? [])
         .filter(z => z.name !== t.zone);

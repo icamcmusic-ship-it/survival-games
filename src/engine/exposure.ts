@@ -1,7 +1,8 @@
 import { earnTrait } from './earnedTraits';
 import { Tribute } from '../models/types';
 import { injure } from './wounds';
-import { CLIMATE, CRAFTING, PHYSIQUE, TOOLS , EARNED_TRAIT_RULES } from '../data/balance';
+import { CLIMATE, CRAFTING, PHYSIQUE, PROFICIENCY, TOOLS , EARNED_TRAIT_RULES } from '../data/balance';
+import { profOf, trainProficiency } from './proficiency';
 import { hasTool } from './items';
 import { hasCamp } from './fieldcraft';
 import { getZone, zoneFeatures } from './map';
@@ -132,7 +133,15 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
             { category: 'injury' }
         );
     }
-    if (profile.poison && !t.injuries.poisoned && ctx.rng.chance(profile.poison * scale * resist('poisonResist'))) {
+    /*
+     * AUDIT-7 §12.4: `fieldcookery` is what stands between found food and
+     * poisoning, and this roll read a terrain profile and a trait mod and no
+     * proficiency at all. Somebody who has spent a week making questionable
+     * things safe should be better at it than somebody who has not.
+     */
+    const cookery = Math.max(0, 1 - profOf(t, 'fieldcookery') * PROFICIENCY.fieldcookeryPoisonResist);
+    if (profile.poison) trainProficiency(t, 'fieldcookery', undefined, PROFICIENCY.fieldcookeryExposureShare);
+    if (profile.poison && !t.injuries.poisoned && ctx.rng.chance(profile.poison * scale * resist('poisonResist') * cookery)) {
         injure(t, 'poisoned');
         ctx.logEvent(
             profile.onPoison?.(t) ?? `${t.name} takes in a lungful of ${profile.name} and the toxins take hold.`,

@@ -94,6 +94,24 @@ export const STANCE_PROFILES: Record<Stance, StanceProfile> = {
         conditional: true, minHold: 2,
         blurb: 'Walking the edge of a pack\'s ground. Learns what is in the neighbouring sectors, and is the first to be met.',
     },
+    /*
+     * AUDIT-7 §12.6: two more, chosen to take share from somewhere specific.
+     *
+     * The three unconditional stances hold 80% of all stance-time and the seven
+     * conditional ones share 20%, so an eleventh stance lands at about 1.5% of
+     * cycles unless it has a case the roster genuinely could not express. These
+     * two do.
+     */
+    Tending: {
+        id: 'Tending', label: 'Tending', family: 'defensive',
+        conditional: true, minHold: 2,
+        blurb: 'Working on themselves rather than on the arena: dressing a wound, drying out, sleeping properly for once.',
+    },
+    Baiting: {
+        id: 'Baiting', label: 'Baiting', family: 'aggressive',
+        conditional: true, minHold: 2,
+        blurb: 'Deliberately visible, on ground they prepared. Wants to be found, in the one place being found is survivable.',
+    },
 };
 
 /** Every stance, in display order. The single source of truth for iteration. */

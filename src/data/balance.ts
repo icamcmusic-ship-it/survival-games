@@ -892,6 +892,19 @@ export const PROFICIENCY = {
     navigationNewZoneShare: 0.5,
     /** Facing somebody down without a blow landing. */
     intimidationStandoffShare: 0.8,
+    /*
+     * AUDIT-7 §12.4: the four new axes, and what each is worth at its read site.
+     */
+    /** Per point of `fieldcookery`, the share taken off a poisoning roll. */
+    fieldcookeryPoisonResist: 0.1,
+    /** Pacing at or above this takes a cycle off a long crossing. */
+    pacingCrossingLevel: 3,
+    /** A cycle spent mid-crossing. Small, because there are a great many of them. */
+    pacingPerCrossingShare: 0.25,
+    /** Standing in something that could poison you is the lesson. */
+    fieldcookeryExposureShare: 0.5,
+    /** Being lied to, or lying. Both teach the same thing. */
+    readingBluffShare: 0.7,
     /**
      * Audit 4 §3.4: what a failed attempt is worth, as a share of a successful
      * one. Used by the wound-dressing path, which is the one skill in the game
@@ -2896,6 +2909,9 @@ export const PLANNING = {
     falseTrailTraffic: 3,
     /** Intelligence at which somebody reads the ground rather than the story. */
     falseTrailSeeThrough: 8,
+    /** AUDIT-7 §12.4: reading marks helps you fake them, but is not the skill. */
+    falseTrailTrackingShare: 0.5,
+    falseTrailPerSignalling: 0.05,
 } as const;
 
 export const OBJECTIVES = {
@@ -3999,6 +4015,54 @@ export const STANCE_MODES = {
         perTrackingPoint: 0.25,
         cannonBonus: 0.8,
         woundedPenalty: 1.5,
+    },
+    /*
+     * AUDIT-7 §12.6: working on yourself rather than on the arena.
+     *
+     * Nursing needs a patient who is not you, so the commonest version of
+     * standing still and doing medicine — doing it to yourself — had no stance.
+     * It was folded into Defensive, which also forages and rests and asks
+     * nothing, so a tribute with an open wound and a quiet sector read as
+     * somebody having a nice afternoon.
+     */
+    tending: {
+        /** Health, or an untreated wound, that makes stopping the priority. */
+        healthBelow: 60,
+        base: 5.5,
+        perMedicinePoint: 0.45,
+        /** Per open wound site being worked on. */
+        perWound: 1.2,
+        /** Somebody armed in the sector ends it. */
+        contestedPenalty: 2.6,
+        /** Chance per cycle of actually closing something. */
+        mendBase: 0.4,
+        mendPerMedicine: 0.14,
+        fatigueRelief: 10,
+        sanityRelief: 4,
+        /** Standing still with both hands busy, out of the way. */
+        concealmentBonus: 0.08,
+    },
+    /*
+     * AUDIT-7 §12.6: deliberately visible, on ground you prepared.
+     *
+     * `fieldcraft` sets 1,107 traps per 400 runs and 72.7% of them are never
+     * triggered, because a trap is a bet on somebody else's movement and
+     * nothing in the engine let a tribute *influence* that movement. Baiting is
+     * the verb that was missing: it is only available where the tribute has
+     * already done the work, and it trades concealment for traffic.
+     */
+    baiting: {
+        base: 4.6,
+        /** Per trap of the tribute's own in this sector. */
+        perOwnTrap: 1.5,
+        /** Holding a chokepoint is its own kind of prepared ground. */
+        chokepointBonus: 1.2,
+        /** Being hurt makes drawing a crowd a worse idea. */
+        woundedPenalty: 2.2,
+        /** How much concealment is deliberately given away. */
+        concealmentCost: 0.25,
+        /** Added to the chance somebody else walks into this sector. */
+        trafficDraw: 0.2,
     },
     /** How much of the archetype's temperament a conditional stance inherits. */
     conditionalArchetypeWeight: 0.5,
@@ -6577,6 +6641,8 @@ export const PARLEY = {
     bluffPerCharisma: 0.03,
     bluffPerMarkIntelligence: 0.035,
     bluffPerMarkTracking: 0.05,
+    /** AUDIT-7 §12.4: and the skill of it, which is neither of the above. */
+    bluffPerMarkReading: 0.05,
     bluffMaxChance: 0.85,
     bluffMinChance: 0.08,
     /** Regard lost by the mark when the bluff works and they later think about it. */

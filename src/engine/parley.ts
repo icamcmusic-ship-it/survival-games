@@ -756,6 +756,13 @@ function creditBroker(ctx: SimContext, a: Tribute, b: Tribute, outcome: BrokerOu
  * worse one, and never into a neutral one.
  */
 function attemptBluff(ctx: SimContext, bluffer: Tribute, mark: Tribute): boolean {
+    /*
+     * AUDIT-7 §12.4: being lied to is how anybody learns to spot it, so the
+     * mark trains `readingPeople` whether or not they see through this one.
+     * The bluffer trains it too — running one teaches you what they look for.
+     */
+    trainProficiency(mark, 'readingPeople', undefined, PROFICIENCY.readingBluffShare);
+    trainProficiency(bluffer, 'readingPeople', undefined, PROFICIENCY.readingBluffShare);
     // Somebody has to be the sort of person who tries it.
     const nerve = PARLEY.bluffChance + Math.max(0, treacheryOf(bluffer)) * PARLEY.bluffTreacheryWeight;
     if (!ctx.rng.chance(nerve)) return false;
@@ -768,6 +775,13 @@ function attemptBluff(ctx: SimContext, bluffer: Tribute, mark: Tribute): boolean
         + profOf(bluffer, 'persuasion') * PARLEY.bluffPerPersuasion
         + (bluffer.attributes.charisma - 5) * PARLEY.bluffPerCharisma
         - (mark.attributes.intelligence - 5) * PARLEY.bluffPerMarkIntelligence
+        /*
+         * AUDIT-7 §12.4: `readingPeople` is the skill this was reaching for.
+         * The comment above says "seeing through it is intelligence and
+         * tracking" — and tracking is for footprints. Somebody who has been
+         * lied to in an arena for a week gets better at it.
+         */
+        - profOf(mark, 'readingPeople') * PARLEY.bluffPerMarkReading
         - profOf(mark, 'tracking') * PARLEY.bluffPerMarkTracking));
 
     loseSanity(bluffer, PARLEY.bluffSanityCost);

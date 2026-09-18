@@ -140,6 +140,9 @@ export interface ArenaActions {
     /** Audit 5 §12: the two added conditional stances. Generic-only for now. */
     nurse?: string[];
     patrol?: string[];
+    /** AUDIT-7 §12.6: working on yourself, and making yourself worth finding. */
+    tend?: string[];
+    bait?: string[];
 }
 
 /** The keys `actionPool` will fall back on. */
@@ -274,6 +277,41 @@ const GENERIC_ACTIONS: ArenaActions = {
         '{tribute} goes through the packs in {zone} for anything that could pass as medicine, and finds something that will have to.',
         '{tribute} holds the ally still in {zone} while the worst of it passes.',
         '{tribute} does not leave {zone}. Somebody has to be here when they wake.',
+    ],
+    /*
+     * AUDIT-7 §12.6. `tend` is Nursing with the patient being the tribute
+     * themselves — the case the roster could not express, because Nursing needs
+     * somebody else in the sector who is hurt. `bait` is the payoff for the
+     * 72.7% of traps that are never triggered: deliberately visible, on ground
+     * the tribute already prepared.
+     */
+    tend: [
+        '{tribute} sits down in {zone} and finally looks at the wound properly, which they have been avoiding for two days.',
+        '{tribute} boils water in {zone} and cleans the cut out again, teeth set, taking as long as it takes.',
+        '{tribute} re-dresses their own arm in {zone} one-handed, badly, and then unwraps it and does it again better.',
+        '{tribute} strips off in {zone} and dries everything they are wearing, which is the first warm hour they have had.',
+        '{tribute} splints their own fingers in {zone} with a strip of bark and does not make a sound doing it.',
+        'In {zone}, {tribute} does nothing at all except stop bleeding, which turns out to be a full afternoon\'s work.',
+        '{tribute} sleeps in {zone}, properly, for the first time since the gong, and wakes up different.',
+        '{tribute} picks the grit out of a wound in {zone} by feel, because looking at it makes it worse.',
+        'In {zone}, {tribute} decides that the next thing is not distance, it is the leg, and sits down.',
+        '{tribute} chews something bitter in {zone} that their district swears by, and waits to see.',
+        '{tribute} washes in {zone} — actually washes — and something about them straightens afterwards.',
+        'In {zone}, {tribute} spends the whole cycle on themselves and does not apologise to the cameras for it.',
+    ],
+    bait: [
+        '{tribute} builds the fire in {zone} bigger than it needs to be and sits back where the light does not reach.',
+        '{tribute} leaves something worth having in the open in {zone} and goes very still about forty paces off.',
+        'In {zone}, {tribute} makes exactly as much noise as somebody careless would, and waits.',
+        '{tribute} walks the same line through {zone} three times, leaving a trail a child could read, ending where they want it to end.',
+        '{tribute} sets out a pack in {zone} with the flap open and nothing in it worth dying for.',
+        'In {zone}, {tribute} checks the snare line once more and then does the hardest part, which is being visible.',
+        '{tribute} sings in {zone}. Badly, and on purpose, and only in the sector they have spent two days preparing.',
+        '{tribute} stands in the open in {zone} where the ground is theirs and lets whoever is watching keep watching.',
+        'In {zone}, {tribute} stops hiding. It is a decision, and the ground under them is the reason it is a good one.',
+        '{tribute} drops a canteen in {zone} where it will catch the light, and withdraws to the place they chose.',
+        '{tribute} lights a fire in {zone}, banks it, and settles in above the deadfall with a clear view of both.',
+        'In {zone}, {tribute} makes themselves the most interesting thing for a sector in every direction, and means it.',
     ],
     patrol: [
         '{tribute} walks the edge of {zone} once, slowly, and comes back with a report the pack did not ask for.',

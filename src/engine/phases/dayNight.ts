@@ -491,6 +491,14 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
              */
             trainProficiency(t, 'navigation', undefined, PROFICIENCY.navigationNewZoneShare);
         }
+        /*
+         * AUDIT-7 §12.4: `pacing` is trained by the walking rather than by
+         * arriving somewhere new, which is what separates it from navigation:
+         * one is knowing the ground and the other is having legs left at the
+         * end of it. Every cycle on the move counts, including the repetitive
+         * ones — especially the repetitive ones.
+         */
+        if (t.transit) trainProficiency(t, 'pacing', undefined, PROFICIENCY.pacingPerCrossingShare);
         // §8.9: cycles spent with no hostile in the zone. Enough of them in a
         // row and quiet has become who they are.
         const hostileHere = board.some(o => o.id !== t.id && o.zone === t.zone

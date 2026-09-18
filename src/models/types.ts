@@ -50,6 +50,18 @@ export type Stance =
     | 'Desperate'
     | 'Scavenging'
     | 'Shadowing'
+    /*
+     * AUDIT-7 §12.6. The roster's three unconditional stances hold 80% of all
+     * stance-time and the seven conditional ones share the rest, so an eleventh
+     * lands at about 1.5% unless it takes share from somewhere specific. These
+     * two are chosen for that: `Tending` takes from Nursing and Evasive (the
+     * case of somebody working on *themselves*, which Nursing could never
+     * express because it needs a patient who is not you), and `Baiting` takes
+     * from Hunting — and is the first stance that makes fieldcraft's 72.7%
+     * untriggered traps into a plan rather than a bet.
+     */
+    | 'Tending'
+    | 'Baiting'
     // Audit 5 §12: two more conditional stances — tending an ally, and walking a pack's perimeter.
     | 'Nursing'
     | 'Patrolling';
@@ -225,7 +237,28 @@ export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking
      *    where a single tribute's word binds people who are not present — was
      *    reading the one-to-one skill.
      */
-    | 'butchery' | 'navigation' | 'carpentry' | 'oratory';
+    | 'butchery' | 'navigation' | 'carpentry' | 'oratory'
+    /*
+     * AUDIT-7 §12.4: four more, each taking over a gate that reads a raw
+     * attribute or borrows a proficiency from a different skill. All four read
+     * sites were checked before the axis was added, which is the rule the
+     * batch above set and this one keeps:
+     *
+     *  - `signalling` — laying and reading marks, whistles and false trails.
+     *    `intent.ts`'s false-trail gate reads raw `intelligence` plus
+     *    `tracking` doing borrowed duty.
+     *  - `fieldcookery` — turning found food into food that does not turn.
+     *    The poison-contraction roll in `exposure.ts` reads a terrain profile
+     *    and a trait mod and **no proficiency at all**.
+     *  - `pacing` — how far somebody goes before the fatigue curve bites.
+     *    `map.ts:travelCost` reads terrain, injury grade, trait mods and
+     *    physique, and **no proficiency at all**.
+     *  - `readingPeople` — telling a bluff from a threat. `parley.ts`'s
+     *    see-through-it roll reads raw `attributes.intelligence`, with
+     *    `tracking` standing in again — which is why tracking shows up in
+     *    seeing through a bluff.
+     */
+    | 'signalling' | 'fieldcookery' | 'pacing' | 'readingPeople';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'
