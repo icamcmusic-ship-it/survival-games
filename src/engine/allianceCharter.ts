@@ -6,6 +6,7 @@ import { allianceOf } from './alliance';
 import { noteBreach } from './alliancePolitics';
 import { adjustRel, getRel } from './relationships';
 import { RNG } from '../utils/rng';
+import { traitMod } from '../data/traits';
 import { isAggressiveStance } from '../data/stances';
 
 /**
@@ -165,7 +166,9 @@ export function enforceCharters(ctx: SimContext) {
             if (last !== undefined && cycle - last < CHARTER.rebreachCooldownCycles) return;
             const offender = findBreach(ctx, rule, record, members);
             if (!offender) return;
-            if (!ctx.rng.chance(CHARTER.noticeChance)) return;
+            // AUDIT-6 §12.2 `charterHold`: a Bookkeeper keeps the terms they
+            // signed, so the group has less to notice in the first place.
+            if (!ctx.rng.chance(CHARTER.noticeChance * Math.max(0, 1 - traitMod(offender, 'charterHold')))) return;
             record.lastBreachCycle = { ...(record.lastBreachCycle ?? {}), [rule]: cycle };
             // The counted clauses move their baseline forward: the offence is
             // the bodies stripped *since the last time it came up*.

@@ -406,7 +406,10 @@ export function raiseSuspicion(t: Tribute, otherId: string, amount: number) {
     // let it go. The multiplier applies to the upward direction only; it
     // used to scale a clearing investigation too, so a Paranoid cleared a
     // suspect 30% *harder* than anybody else.
-    const sharpened = amount > 0 ? amount * (1 + traitMod(t, 'betrayalResist')) : amount;
+    // AUDIT-6 §12.2 `suspicionResist`: and Stone-Faced is the other direction —
+    // a fraction of what would have been read into it, removed.
+    const guarded = amount > 0 ? amount * Math.max(0, 1 - traitMod(t, 'suspicionResist')) : amount;
+    const sharpened = guarded > 0 ? guarded * (1 + traitMod(t, 'betrayalResist')) : guarded;
     mem.suspicion[otherId] = Math.min(SUSPICION.max, (mem.suspicion[otherId] ?? 0) + sharpened);
 }
 

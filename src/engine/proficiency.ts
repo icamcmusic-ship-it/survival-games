@@ -51,6 +51,14 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     martyr: 'medicine',
     opportunist: 'stealth',
     tracker: 'tracking',
+    // §12.5: the six new archetypes, and the four new proficiencies mean four
+    // of them lean on something no archetype could lean on before.
+    warden: 'carpentry',
+    herald: 'oratory',
+    penitent: 'medicine',
+    forager: 'butchery',
+    duellist: 'melee',
+    broker: 'persuasion',
 };
 
 /**
@@ -429,6 +437,11 @@ const TEACH_PHRASE: Record<Proficiency, string> = {
     crafting: 'why that snare has been sprung empty three times running',
     stealth: 'that it is the stopping and starting that gets you seen, not the moving',
     intimidation: 'how to stand so that the other person decides it on their own',
+    // AUDIT-6 §12.4
+    butchery: 'which joint comes apart if you put the blade there instead',
+    navigation: 'how to hold a bearing when there is nothing to take one from',
+    carpentry: 'why that stake holds and this one comes out in your hand',
+    oratory: 'how to say it so that fifteen people all hear the same sentence',
 };
 
 /**

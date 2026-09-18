@@ -25,6 +25,7 @@ import { GameState, Tribute } from '../models/types';
 import { RUMOURS } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { cycleOf, ensureMemory } from './memory';
+import { traitMod } from '../data/traits';
 import { adjustRel, getRel } from './relationships';
 import { raiseSuspicion } from './memory';
 import { depletionOf, getZone } from './map';
@@ -241,7 +242,10 @@ export function tradeRumours(ctx: SimContext, a: Tribute, b: Tribute) {
     // And the deliberate half. Only somebody with a reason to.
     [[a, b], [b, a]].forEach(([planter, mark]) => {
         if (getRel(planter, mark.id) > RUMOURS.plantMaxRegard) return;
-        if (!ctx.rng.chance(RUMOURS.plantChance)) return;
+        // AUDIT-6 §12.2 `rumourCredibility`: a Fabulist is believed. The roll is
+        // whether the mark takes the claim, so this is the one place in the
+        // rumour layer where being convincing is the whole question.
+        if (!ctx.rng.chance(RUMOURS.plantChance + traitMod(planter, 'rumourCredibility'))) return;
         plantRumour(ctx, planter, mark);
     });
 }

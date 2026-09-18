@@ -29,7 +29,12 @@ export function addFear(t: Tribute, otherId: string, amount: number, source?: Tr
     // person doing the frightening, where the caller knows who that is;
     // everything that frightens nobody in particular (a mutt, the border, the
     // dark) leaves it unset and is unaffected.
-    if (source && source.id === otherId) amount *= 1 + profOf(source, 'intimidation') * FEAR.perIntimidationPoint;
+    // AUDIT-6 §12.2 `intimidation`: read on the same scale as the proficiency,
+    // so a trait that makes somebody frightening stacks with having got better
+    // at it — the pattern `traitProficiencyFloor` already establishes.
+    if (source && source.id === otherId) {
+        amount *= 1 + (profOf(source, 'intimidation') + traitMod(source, 'intimidation')) * FEAR.perIntimidationPoint;
+    }
     // A2: a Zealot is not frightened — `fearScale: 0` on the archetype sheet,
     // alongside the other extreme-variance archetypes' own scales, rather than
     // a carve-out for one id here. `t` is the tribute *becoming* afraid, so

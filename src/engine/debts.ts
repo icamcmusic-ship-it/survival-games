@@ -2,6 +2,7 @@ import { Tribute } from '../models/types';
 import { DEBTS, RELATIONSHIPS, SUSPICION } from '../data/balance';
 import { DEBT_TEXTS } from '../data/flavorText';
 import { SimContext, getAlive } from './context';
+import { traitMod } from '../data/traits';
 import { adjustMutual, adjustRel, getRel, trustOf, adjustTrust } from './relationships';
 import { cycleOf, cyclesSinceContact, easeSuspicion, ensureMemory, noteStoodBy, raiseSuspicion } from './memory';
 import { witnessKindness } from './rapport';
@@ -123,7 +124,8 @@ export function repayDebts(ctx: SimContext) {
         // A debt to the dead cannot be paid, only carried.
         if (!creditor || creditor.zone !== debtor.zone) return;
         if (debtTo(debtor, creditorId) < DEBTS.repayThreshold) return;
-        if (!ctx.rng.chance(DEBTS.repayChance)) return;
+        // AUDIT-6 §12.2 `debtHonour`: a Bookkeeper pays what they owe.
+        if (!ctx.rng.chance(DEBTS.repayChance + traitMod(debtor, 'debtHonour'))) return;
 
         // Pay in whatever they can spare that the creditor actually needs.
         const spare = debtor.inventory.filter(i => i.type !== 'weapon' || debtor.inventory.filter(w => w.type === 'weapon').length > 1);

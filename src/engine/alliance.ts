@@ -133,8 +133,10 @@ export function membersOf(state: GameState, id: string): Tribute[] {
 /** Who the group would follow: presence and capability, not array order. */
 export function pickLeader(members: Tribute[]): Tribute {
     return members.reduce((best, m) => {
+        // AUDIT-6 §12.2 `leadership`: whether people actually follow this one.
         const score = (t: Tribute) =>
-            t.attributes.charisma * 1.6 + t.attributes.strength + t.trainingScore * 0.5 + t.kills * 2;
+            t.attributes.charisma * 1.6 + t.attributes.strength + t.trainingScore * 0.5 + t.kills * 2
+            + traitMod(t, 'leadership');
         return score(m) > score(best) ? m : best;
     });
 }

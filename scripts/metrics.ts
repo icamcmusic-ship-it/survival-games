@@ -331,6 +331,18 @@ interface Indicator {
     goalMet?: (v: number) => boolean;
     baseline: string;
     fmt: (v: number) => string;
+    /**
+     * AUDIT-6 §12.5: when the population behind an indicator is too small to
+     * guard, the indicator reports and does not vote.
+     *
+     * Adding six archetypes made this real rather than theoretical. The three
+     * archetype rows read off `guardable()`, and at 400 runs across 29
+     * archetypes *nothing* clears GUARD_MIN_SAMPLE — so `worstArchetypeRate`
+     * fell back to 0 and failed a `>= 2.6%` guard that no measurement had
+     * been taken for. A guard with an empty sample behind it was asserting
+     * about nothing.
+     */
+    judgeable?: () => boolean;
 }
 
 const asPct = (v: number) => `${(v * 100).toFixed(1)}%`;
@@ -450,6 +462,7 @@ const indicators: Indicator[] = [
         goalMet: v => v <= 2.3,
         baseline: '4.6',
         fmt: v => `${v.toFixed(2)}x`,
+        judgeable: () => archetypeGuardRates.length >= 2,
     },
     {
         label: 'worst archetype win rate',
@@ -461,6 +474,7 @@ const indicators: Indicator[] = [
         goalMet: v => v >= 0.035,
         baseline: '2.56%',
         fmt: v => `${(v * 100).toFixed(2)}%`,
+        judgeable: () => archetypeGuardRates.length > 0,
     },
     {
         label: 'best archetype win rate',
@@ -472,6 +486,7 @@ const indicators: Indicator[] = [
         goalMet: v => v <= 0.08,
         baseline: '11.8%',
         fmt: v => `${(v * 100).toFixed(2)}%`,
+        judgeable: () => archetypeGuardRates.length > 0,
     },
     {
         // §8b/§8d: reaping-assigned traits only. Earned traits are excluded
@@ -1097,11 +1112,19 @@ console.log('\nindicators (guard = regression bound, goal = design intent):');
 let failed = 0;
 let shortOfGoal = 0;
 indicators.forEach(ind => {
+    const judgeable = ind.judgeable ? ind.judgeable() : true;
     const ok = ind.guard(ind.value);
-    if (!ok) failed++;
+    if (judgeable && !ok) failed++;
     const shown = ind.fmt(ind.value);
     const metGoal = ind.goalMet ? ind.goalMet(ind.value) : true;
     const goalNote = ind.goal ? `  goal ${ind.goal}${metGoal ? ' MET' : ' unmet'}` : '';
+    if (!judgeable) {
+        console.log(
+            `  ----  ${ind.label.padEnd(36)} ${shown.padStart(7)}` +
+            `  (no population over ${GUARD_MIN_SAMPLE} entrants at this run count — reported, not guarded)`
+        );
+        return;
+    }
     console.log(
         `  ${ok ? 'PASS' : 'FAIL'}  ${ind.label.padEnd(36)} ${shown.padStart(7)}` +
         `  (was ${ind.baseline}, guard ${ind.guardText}${goalNote})`

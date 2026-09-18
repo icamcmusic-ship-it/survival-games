@@ -128,7 +128,8 @@ export function proposeBlocTreaties(ctx: SimContext) {
             if (warmth < BLOC_TREATY.minCrossRegard) continue;
 
             const odds = BLOC_TREATY.baseChance
-                + Math.max(profOf(aSpeaker, 'persuasion'), profOf(bSpeaker, 'persuasion')) * BLOC_TREATY.perPersuasion;
+                + Math.max(profOf(aSpeaker, 'persuasion'), profOf(bSpeaker, 'persuasion')) * BLOC_TREATY.perPersuasion
+                + Math.max(profOf(aSpeaker, 'oratory'), profOf(bSpeaker, 'oratory')) * BLOC_TREATY.perOratory;
             if (!ctx.rng.chance(odds)) continue;
 
             const cycles = BLOC_TREATY.cycles;
@@ -141,6 +142,10 @@ export function proposeBlocTreaties(ctx: SimContext) {
             });
             trainProficiency(aSpeaker, 'persuasion');
             trainProficiency(bSpeaker, 'persuasion');
+            // The hard part was never the handshake; it was selling it to the
+            // people who have to live under it.
+            trainProficiency(aSpeaker, 'oratory');
+            trainProficiency(bSpeaker, 'oratory');
             addExcitement(aSpeaker, BLOC_TREATY.excitement);
             addExcitement(bSpeaker, BLOC_TREATY.excitement);
             ctx.logEvent(

@@ -781,7 +781,11 @@ function huntAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeof arena
         : 0;
     const gameChance = HUNTING.gameChance + profOf(t, 'tracking') * HUNTING.trackingBonus + fishingEdge;
     if (ctx.rng.chance(gameChance)) {
-        t.vitals.hunger = Math.max(0, t.vitals.hunger - HUNTING.gameFeed);
+        t.vitals.hunger = Math.max(
+            0,
+            t.vitals.hunger - (HUNTING.gameFeed + profOf(t, 'butchery') * HUNTING.gameFeedPerButchery)
+        );
+        trainProficiency(t, 'butchery');
         trainProficiency(t, 'tracking');
         clampTribute(t);
         ctx.logEvent(

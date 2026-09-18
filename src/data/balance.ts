@@ -802,6 +802,12 @@ export const HUNTING = {
     trackingBonus: 0.06,
     /** Hunger removed by a rabbit on a stick. */
     gameFeed: 35,
+    /**
+     * AUDIT-6 §12.4: everyone got the same meal off the same animal. A tribute
+     * who knows how to take one apart gets more off it than one who tears at
+     * it with their hands.
+     */
+    gameFeedPerButchery: 3,
     /** Multiplier on the chance a hunter actually finds who they are looking for. */
     meetChanceMultiplier: 2.0,
 
@@ -3469,6 +3475,8 @@ export const TRAPS = {
     /** Base odds a build attempt produces a working trap. */
     buildBaseChance: 0.5,
     buildPerIntelligence: 0.045,
+    /** AUDIT-6 §12.4: the build half of the old `crafting` axis. */
+    buildPerCarpentry: 0.05,
     buildPerTracking: 0.08,
     /** Tricksters have been thinking about this their whole lives. */
     trickeryBonus: 0.2,
@@ -3501,6 +3509,8 @@ export const TRAPS = {
     /** Odds an unsprung snare catches an animal instead, feeding its owner. */
     gameCatchChance: 0.35,
     gameFeed: 30,
+    /** AUDIT-6 §12.4: and the same again for what the snare caught. */
+    gameFeedPerButchery: 3,
 
     /**
      * §6.2: detection with choices. A perceptive tribute who spots a trap no
@@ -4373,6 +4383,12 @@ export const BLOC_TREATY = {
     minCrossRegard: -5,
     baseChance: 0.18,
     perPersuasion: 0.06,
+    /**
+     * AUDIT-6 §12.4: a treaty between two groups is not a private persuasion.
+     * It is a speech taken back to people who were not there, and the speaker
+     * who can make it land is the one who has made it land before.
+     */
+    perOratory: 0.05,
     cycles: 6,
     /** Field size at or below which two packs stop being able to afford it. */
     dissolveFieldSize: 7,
@@ -6764,6 +6780,8 @@ export const EDGE_RULES = {
     /** Chance a tribute standing at a hidden edge notices it at all, per cycle. */
     discoverBase: 0.08,
     /** Added per point of intelligence. */
+    /** AUDIT-6 §12.4: and per point of navigation, which is what this skill is for. */
+    discoverPerNavigation: 0.05,
     discoverPerIntelligence: 0.02,
     /** Added per point of awareness from traits and stance. */
     discoverPerAwareness: 0.03,
@@ -7262,6 +7280,41 @@ export const ARCHETYPE_HOOKS = {
      */
     trackerReadFear: 6,
     trackerStalkCycles: 8,
+
+    /*
+     * ---- AUDIT-6 §12.5: the six new archetypes' signature numbers ----
+     */
+    /** Warden: cycles of holding ground that stand in for a doorway when the zone is not one. */
+    wardenHeldCycles: 2,
+    /** How long the line holds before they have to decide again. */
+    wardenWaitCycles: 6,
+    /** What the rest of the field files the zone under. Positive is "do not go there". */
+    wardenZoneThreat: 14,
+    wardenFear: 5,
+    /** Herald: the count is not worth reading out until there is a count. */
+    heraldMinDead: 4,
+    /** Everybody in earshot learns a little about everybody still alive. */
+    heraldNotoriety: 4,
+    heraldRegard: 6,
+    /** Penitent: a vow said to nobody is not a vow. */
+    penitentWitnesses: 1,
+    penitentRegard: 10,
+    /** And it costs something to have said it where it can be held against you. */
+    penitentSanity: 6,
+    /** Forager: no table without something to put on it. */
+    foragerMinHunger: 20,
+    foragerFeed: 25,
+    foragerRegard: 9,
+    foragerDebt: 6,
+    /** Duellist: waits for the field to be worth calling out. */
+    duellistFieldMax: 10,
+    duellistTrainingWeight: 3,
+    duellistFear: 8,
+    duellistNotoriety: 6,
+    /** Broker: the terms. Goods now, obligation later. */
+    brokerDebt: 12,
+    brokerRegard: 7,
+    brokerTruceCycles: 4,
 } as const;
 
 

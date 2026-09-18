@@ -67,7 +67,18 @@ export type ArchetypeId =
      * to hold a combination of stance bias, objective bias and target
      * preference that nothing already in the table holds.
      */
-    | 'quartermaster' | 'martyr' | 'opportunist' | 'tracker';
+    | 'quartermaster' | 'martyr' | 'opportunist' | 'tracker'
+    /*
+     * AUDIT-6 §12.5: six more, on the same rule the last two batches were held
+     * to — each has to hold a stance/objective/target combination nothing in
+     * the table already holds. Three of them exist because the `wait`
+     * objective and the `Patrolling` and `Nursing` stances were reachable by
+     * the engine and by nobody's character: `wait` was the top objective bias
+     * of zero of twenty-three archetypes, so the one intention in the game
+     * that wants nobody else to arrive was something tributes did only by
+     * accident.
+     */
+    | 'warden' | 'herald' | 'penitent' | 'forager' | 'duellist' | 'broker';
 
 export interface Attributes {
     strength: number;
@@ -185,7 +196,26 @@ export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking
      * modelled per-target, `Feared` is the second-best earned trait, and
      * nothing got better at frightening people.
      */
-    | 'stealth' | 'intimidation';
+    | 'stealth' | 'intimidation'
+    /*
+     * AUDIT-6 §12.4: four more, each splitting an axis that was doing two jobs
+     * or naming a competence the engine had occasions for and no skill behind.
+     *
+     *  - `butchery` — field-dressing a corpse for food. `Butcher`, `Vulture`
+     *    and the `salvage` law all describe it and nothing improved at it.
+     *  - `navigation` — crossing ground efficiently, and finding the ways
+     *    nobody has found. `hidden` edges were discovered on a flat roll, so a
+     *    tribute who had spent a week reading the map was no better at it than
+     *    one who arrived yesterday.
+     *  - `carpentry` — splits from `crafting`: shelters and traps. `crafting`
+     *    keeps repair, so the tribute who can fix a blade and the tribute who
+     *    can build a deadfall stop being the same person by definition.
+     *  - `oratory` — splits from `persuasion`: addressing a *group*.
+     *    `persuasion` is one-to-one, and the bloc treaty — the one mechanic
+     *    where a single tribute's word binds people who are not present — was
+     *    reading the one-to-one skill.
+     */
+    | 'butchery' | 'navigation' | 'carpentry' | 'oratory';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'

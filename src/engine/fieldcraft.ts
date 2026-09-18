@@ -130,8 +130,14 @@ export function setTrap(ctx: SimContext, t: Tribute) {
                     : diggable && t.attributes.strength >= TRAPS.pitStrength ? 'pit'
                         : 'deadfall';
 
+    /*
+     * AUDIT-6 §12.4 `carpentry`: the build. `crafting` was doing this *and*
+     * repair, so the tribute who can fix a blade and the tribute who can put up
+     * a deadfall that holds were the same person by definition.
+     */
     let chance = TRAPS.buildBaseChance
         + t.attributes.intelligence * TRAPS.buildPerIntelligence
+        + profOf(t, 'carpentry') * TRAPS.buildPerCarpentry
         + profOf(t, 'tracking') * TRAPS.buildPerTracking;
     if (t.archetype === 'trickster') chance += TRAPS.trickeryBonus;
     chance += traitMod(t, 'trapSkill');
@@ -393,7 +399,9 @@ export function tickTraps(ctx: SimContext) {
         if (trap.kind === 'snare' && ctx.rng.chance(TRAPS.gameCatchChance)) {
             // Only useful to an owner who is actually there to collect it.
             if (owner.zone === trap.zone) {
-                owner.vitals.hunger = Math.max(0, owner.vitals.hunger - TRAPS.gameFeed);
+                const feed = TRAPS.gameFeed + profOf(owner, 'butchery') * TRAPS.gameFeedPerButchery;
+                owner.vitals.hunger = Math.max(0, owner.vitals.hunger - feed);
+                trainProficiency(owner, 'butchery');
                 clampTribute(owner);
                 ctx.logEvent(
                     `${owner.name}'s snare in ${trap.zone} has something in it. They eat well for once.`,
