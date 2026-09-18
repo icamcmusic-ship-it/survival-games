@@ -328,7 +328,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                     || ctx.rng.chance(RELATIONSHIPS.vengeanceDistantChance);
                 if (sworn && (personal || now <= RELATIONSHIPS.vengeanceThreshold)) {
                     swearVengeance(other, killer.id);
-                    forceStance(other, 'Aggressive');
+                    forceStance(other, 'Aggressive', 'watched a friend die');
                     ctx.logEvent(
                         fill(ctx.pickText(VENGEANCE_TEXTS), { mourner: other.name, victim: victim.name, killer: killer.name }),
                         [other.id, killer.id, victim.id],

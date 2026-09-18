@@ -673,7 +673,20 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
  * being whipsawed is left where they are. Somebody who has flipped three times
  * in four cycles is not going to be talked into a fourth by the same fight.
  */
-export function forceStance(t: Tribute, stance: Stance): boolean {
+export function forceStance(t: Tribute, stance: Stance, reason = 'imposed by an event'): boolean {
+    /*
+     * AUDIT-7 §3.1: a forced stance is not a choice, and the decision-quality
+     * check was scoring it as one.
+     *
+     * `updateStance` writes the trace when it scores, and these callers run
+     * *after* it — so a tribute whom combat pushed into Evasive was audited
+     * against a ranking that never considered being pushed. That read as
+     * "held a stance outside its own top three" on every such cycle, and it
+     * was 99.5% of the offending samples: 778 Evasive (break-off), 285
+     * Aggressive (vengeance), 71 Defensive (a resolve collapse). Shock
+     * already marked its trace `forced`; the other three now do the same, so
+     * the guard measures the scorer and not the story beats that overrule it.
+     */
     if (t.stance === stance) { t.stanceHeld = 0; return true; }
     // Returns whether the posture actually changed. It has to: every caller
     // narrates the beat it is forcing — a surrender, a walk into the open, an
@@ -683,6 +696,7 @@ export function forceStance(t: Tribute, stance: Stance): boolean {
     t.stance = stance;
     t.stanceHeld = 0;
     t.stanceChurn = Math.min(STANCE.churnMax, (t.stanceChurn ?? 0) + 1);
+    if (t.decisionTrace) t.decisionTrace = { ...t.decisionTrace, forced: reason };
     return true;
 }
 

@@ -1308,7 +1308,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             return wantsToRetreat(ctx, t, perceived, rounds, attackers.includes(t) ? target : lead);
         });
         if (breaking.length > 0) {
-            breaking.forEach(t => forceStance(t, 'Evasive'));
+            breaking.forEach(t => forceStance(t, 'Evasive', 'broke off a fight'));
             ctx.logEvent(
                 fill(ctx.pickText(breaking.length === 1 ? GROUP_COMBAT_TEXTS.scatterSolo : GROUP_COMBAT_TEXTS.scatter), { names: breaking.map(t => t.name).join(', '), zone }),
                 breaking.map(t => t.id),
@@ -1424,7 +1424,7 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
         });
         if (breaking.length > 0) {
             breaking.forEach(t => {
-                forceStance(t, 'Evasive');
+                forceStance(t, 'Evasive', 'broke off a fight');
                 // Only the pair who actually traded blows record who they fled
                 // from; a bystander scattering out of the melee was not in a
                 // fight with either of them.

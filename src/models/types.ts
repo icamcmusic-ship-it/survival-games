@@ -850,6 +850,13 @@ export interface Tribute {
      */
     woundInfection?: Partial<Record<InjurySite, number>>;
     /**
+     * AUDIT-7 §11.4: the high-water mark of any infection this tribute has
+     * carried, kept after the site clears. `woundInfection` is pruned the
+     * moment a wound closes, so nothing downstream could tell a tribute who
+     * shrugged off a graze from one who came back from grade 3.
+     */
+    worstInfectionGrade?: number;
+    /**
      * §3.1: cycles each open site has gone without closing or being dressed.
      * The incubation clock — an infection that landed with the blow would just
      * be a second damage type, so a wound has to be *neglected* first.

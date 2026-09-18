@@ -239,7 +239,7 @@ export function resolveBreakdowns(ctx: SimContext) {
         // leaves the tribute standing there in a hunting stance is not one. It
         // is asked *before* the weapons go on the ground, so a refused beat
         // costs nothing rather than disarming somebody mid-sentence.
-        if (hostile && armed && ctx.rng.chance(RESOLVE.surrenderChance) && forceStance(t, 'Defensive')) {
+        if (hostile && armed && ctx.rng.chance(RESOLVE.surrenderChance) && forceStance(t, 'Defensive', 'surrendered')) {
             t.inventory = t.inventory.filter(i => i.type !== 'weapon');
             t.stanceHeld = 0;
             ctx.logEvent(
@@ -268,7 +268,7 @@ export function resolveBreakdowns(ctx: SimContext) {
         // Walking into the open. Not a death wish exactly — an end to caring
         // which way it goes. The whole beat *is* the change of posture, so a
         // refusal means it does not happen rather than that it is narrated.
-        if (!isEvasiveStance(t.stance) && ctx.rng.chance(0.5) && forceStance(t, 'Aggressive')) {
+        if (!isEvasiveStance(t.stance) && ctx.rng.chance(0.5) && forceStance(t, 'Aggressive', 'resolve broke the other way')) {
             t.stanceHeld = 0;
             adjustResolve(t, RESOLVE.breakdownRebound);
             ctx.logEvent(
@@ -286,7 +286,7 @@ export function resolveBreakdowns(ctx: SimContext) {
         // asymmetry is what makes the bottom of the scale reachable at all: a
         // rebound on every breakdown put a floor under resolve well above the
         // point where a tribute could ever make the last choice.
-        if (!forceStance(t, 'Defensive')) return;
+        if (!forceStance(t, 'Defensive', 'resolve collapsed')) return;
         t.stanceHeld = 0;
         t.objective = { kind: 'hold', zone: t.zone, expires: (ctx.state.cycle ?? 0) + 2 };
         adjustResolve(t, -RESOLVE.sittingDownPenalty);
