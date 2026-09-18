@@ -10,7 +10,9 @@ import { dropSupplies } from './zoneEffects';
 import { severEdge, getZone, zoneFeatures } from './map';
 import { engageMutt, rosterFor } from './mutts';
 import { noteSighting } from './memory';
-import { ARENA_EVENTS, ESCALATION } from '../data/balance';
+import { ARENA_EVENTS, CONVERGENCE_RECAP, ESCALATION, NOTORIETY } from '../data/balance';
+import { addNotoriety } from './notoriety';
+import { adjustRel } from './relationships';
 import { RNG } from '../utils/rng';
 
 /**
@@ -257,6 +259,74 @@ function convergeNow(ctx: SimContext) {
         alive.map(t => t.id),
         { important: true, category: 'gamemaker' },
     );
+    theRecap(ctx, alive);
+}
+
+/**
+ * AUDIT-6 §4.1: the recap, and the reason it is here rather than in a drift.
+ *
+ * Measured across 200 runs: **43.5% of final-two pairings were between
+ * strangers** — two people with no regard either way, in either direction,
+ * deciding the Games. That is the real shape of "three quarters of the social
+ * graph is empty": field-wide it is mostly correct modelling, because most of
+ * twenty-four people genuinely never meet, and in the endgame it is not.
+ *
+ * A slow reputation drift did not fix it, for a reason worth writing down: by
+ * the time the field is small enough for anybody to have heard of anybody there
+ * are two or three cycles left, and a drift needs more than that. So this is
+ * the thing that actually happens instead — the Capitol runs the recap. Every
+ * tribute still standing is shown what every other one has done, all at once,
+ * and forms an opinion on the spot.
+ *
+ * It is also a scene rather than a silent number, which is the better reason:
+ * the moment the field learns who it is left with is one of the loudest in the
+ * source material, and the engine was doing it in arithmetic nobody could see.
+ */
+function theRecap(ctx: SimContext, alive: Tribute[]) {
+    if (alive.length < 2) return;
+    const notable = (t: Tribute): string | undefined => {
+        if (t.kills >= CONVERGENCE_RECAP.butcherKills) return `${t.kills} kills`;
+        if ((t.sparedDowned?.length ?? 0) > 0) return 'let somebody up who did not have to be let up';
+        if (t.kills > 0) return t.kills === 1 ? 'one kill' : `${t.kills} kills`;
+        if ((t.betrayalsCommitted ?? 0) > 0) return 'went back on their word';
+        return undefined;
+    };
+    const lines = alive.map(t => {
+        const note = notable(t);
+        return note ? `${t.name}, ${note}` : `${t.name}, who has not given them much to show`;
+    });
+    ctx.logEvent(
+        `THE RECAP: the screens over ${ctx.state.convergenceZone} run the whole week back in four minutes, and every tribute `
+        + `still standing watches every other one do what they did. ${lines.join('; ')}.`,
+        alive.map(t => t.id),
+        { important: true, category: 'gamemaker' },
+    );
+    // Everybody now knows everybody's record, and has a view about it. This is
+    // the one place the engine is entitled to write regard between people who
+    // have never met: they have just been shown each other.
+    alive.forEach(watcher => alive.forEach(subject => {
+        if (watcher.id === subject.id) return;
+        addNotoriety(watcher, subject.id, NOTORIETY.max * CONVERGENCE_RECAP.notorietyShare);
+        const spared = subject.sparedDowned?.length ?? 0;
+        const current = watcher.relationships[subject.id] ?? 0;
+        // A record of kills reads as a threat; a record of mercy reads as the
+        // one person here who might not finish it. Only ever pushed away from
+        // neutral — the recap explains a stranger, it never overrules a history.
+        const delta = subject.kills >= CONVERGENCE_RECAP.butcherKills
+            ? -CONVERGENCE_RECAP.regardPerKiller
+            : spared > 0 ? CONVERGENCE_RECAP.regardPerMerciful
+                : subject.kills > 0 ? -CONVERGENCE_RECAP.regardPerKiller / 2
+                    // Nobody leaves the recap without an opinion. A tribute who
+                    // has reached the last six having killed nobody is not
+                    // unremarkable — they are the one person here nobody has
+                    // managed to kill, which is its own kind of warning.
+                    : -CONVERGENCE_RECAP.regardPerSurvivor;
+        if (delta < 0 && current < 0) { adjustRel(watcher, subject.id, delta); return; }
+        if (delta > 0 && current > 0) { adjustRel(watcher, subject.id, delta); return; }
+        // Crossing zero is what makes this a first impression rather than a
+        // correction, so a stranger picks up a real opinion in one go.
+        if (Math.abs(current) < CONVERGENCE_RECAP.strangerBand) adjustRel(watcher, subject.id, delta);
+    }));
 }
 
 /**

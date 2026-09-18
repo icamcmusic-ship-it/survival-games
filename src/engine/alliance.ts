@@ -1,3 +1,4 @@
+import { traitMod } from '../data/traits';
 import { ARCHETYPES } from '../data/archetypes';
 import { Alliance, GameState, Item, Tribute } from '../models/types';
 import { ALLIANCES, ROMANCE } from '../data/balance';
@@ -187,6 +188,17 @@ export function assignRoles(members: Tribute[], leader: Tribute): Alliance['role
         ['muscle', t => t.attributes.strength * 1.5 + t.kills],
         ['scout', t => t.attributes.stealth * 1.4 + t.attributes.agility],
         ['medic', t => t.attributes.intelligence * 1.2 + (t.proficiencies?.medicine ?? 0) * 2],
+        /*
+         * AUDIT-6 §4.2: four more, ordered after the original four so a small
+         * group still fills the jobs it cannot do without first. A group only
+         * reaches these once it is big enough that specialising is possible —
+         * which is exactly when "who are you in this group" stopped having an
+         * answer under the old roster.
+         */
+        ['face', t => t.attributes.charisma * 1.5 + (t.proficiencies?.persuasion ?? 0) * 2],
+        ['watch', t => t.attributes.stealth + t.attributes.willpower * 1.2 + traitMod(t, 'awarenessNight') * 2],
+        ['runner', t => t.attributes.agility * 1.4 + t.attributes.endurance],
+        ['keeper', t => t.attributes.intelligence * 1.3 + t.attributes.willpower],
     ];
     /**
      * A pair names one job, a trio three, four or more the lot.
@@ -274,10 +286,20 @@ function brandFor(ctx: SimContext, id: string, leader: Tribute, members: Tribute
  * Deterministic — no RNG draw — so it survives a seeded replay and so two
  * runs of the same seed put the same person in charge the same way.
  */
-export function leaderStyleOf(leader: Tribute): 'democratic' | 'tyrant' {
+export function leaderStyleOf(leader: Tribute): 'democratic' | 'tyrant' | 'absent' {
     const arch = ARCHETYPES[leader.archetype];
     const hard = arch.aggression + arch.treachery - arch.allianceAffinity;
-    return hard > ALLIANCES.tyrantThreshold ? 'tyrant' : 'democratic';
+    if (hard > ALLIANCES.tyrantThreshold) return 'tyrant';
+    /*
+     * AUDIT-6 §4.2: the third style. A leader who is cautious, unassertive and
+     * disinclined to bind anybody is not running a democracy — they are not
+     * running anything, and the group knows it. Read off the same three
+     * archetype dials as the tyrant, from the other end: low aggression, low
+     * alliance affinity, high caution.
+     */
+    const detached = arch.caution - arch.allianceAffinity - arch.aggression;
+    if (detached > ALLIANCES.absentThreshold) return 'absent';
+    return 'democratic';
 }
 
 export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]): Alliance {

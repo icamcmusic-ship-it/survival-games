@@ -380,6 +380,48 @@ export const NOTORIETY = {
     retreatWeight: 0.1,
     /** Weight on how much a zone is avoided for who is believed to be in it. */
     avoidWeight: 6,
+    /*
+     * AUDIT-6 §4.1: what hearing about somebody does to how you feel about them.
+     *
+     * Measured across 472,448 live relationship readings: **75.9% of all pairs
+     * never leave the neutral band**, and outright hatred is three-quarters of
+     * one percent. The engine has `trustOf`, `respectOf`, per-target `fear`,
+     * `RivalRecord`, `perceivedBonds` and this whole notoriety ledger — a
+     * genuinely sophisticated stack — and the scalar all of it corrects is, for
+     * three pairs in four, exactly zero.
+     *
+     * The gap is that reputation and regard never spoke. The soak reports 3,483
+     * ledger entries about people the holder has never met and 148 strangers
+     * known by name, which is the right model and produced no feeling either
+     * way. A tribute who has heard that somebody has killed three people has an
+     * opinion about them before they meet.
+     *
+     * Deliberately small, one-directional per cycle, and capped: this is a
+     * prior, not a relationship. It stops once they actually meet, because
+     * `witnessReputation` already handles the moment the guess is checked, and
+     * a met pair should be running on what happened rather than on what was
+     * said.
+     */
+    /** Notoriety below which a name is too faint to feel anything about. */
+    priorThreshold: 6,
+    /**
+     * Cycles after a meeting during which what happened outranks what is said.
+     * Beyond it the rumour is doing the work again.
+     */
+    priorContactWindow: 4,
+    /**
+     * AUDIT-6 §4.1: how much faster a name travels as the field collapses.
+     * Multiplier is `(startingField / alive) * weight`, capped — so a full
+     * field is unchanged and a final four hears about each other constantly.
+     */
+    endgameSpreadWeight: 0.55,
+    endgameSpreadCap: 5,
+    /** Notoriety at which a reputation is as strong an opinion as it can be. */
+    priorFullAt: 30,
+    /** How fast regard moves toward the opinion the rumour supports. */
+    priorDriftPerCycle: 1.6,
+    /** The furthest a reputation alone can move regard in either direction. */
+    priorCap: 22,
 } as const;
 
 /**
@@ -1744,6 +1786,35 @@ export const ARENA_DEATH_BUDGET = {
      * starts pulling punches on day one reads as broken rather than merciful.
      */
     activeBelowAliveShare: 0.85,
+} as const;
+
+/**
+ * AUDIT-6 §4.1: the recap the Capitol runs when the field converges.
+ *
+ * Measured before it existed: 43.5% of final-two pairings were between two
+ * people with no regard for each other in either direction. See `theRecap` in
+ * `engine/arenaEventPacks.ts` for why this is a scene at the convergence rather
+ * than a slow reputation drift.
+ */
+export const CONVERGENCE_RECAP = {
+    /** Kills at which the recap reads as a warning rather than a summary. */
+    butcherKills: 2,
+    /** Share of the notoriety ceiling everybody gains on everybody. */
+    notorietyShare: 0.45,
+    /*
+     * Regard moved by seeing what somebody has been doing all week.
+     *
+     * Deliberately larger than `strangerBand`: the point of the recap is that
+     * nobody walks out of it still a stranger, and at 16 against a band of 20
+     * it left 40% of final-two pairings exactly where it found them. A killer
+     * comes out of it disliked rather than merely noted.
+     */
+    regardPerKiller: 26,
+    regardPerMerciful: 22,
+    /** ...and for the one who got this far without killing anybody. */
+    regardPerSurvivor: 21,
+    /** Regard magnitude below which a pair still count as strangers to each other. */
+    strangerBand: 20,
 } as const;
 
 export const ESCALATION = {
@@ -4795,6 +4866,12 @@ export const ALLIANCES = {
     factionCoupRegard: -14,
     /** A second breach of the same clause by the same member is a hearing. */
     hearingBreachCount: 2,
+    /**
+     * AUDIT-6 §4.4: breaches of *any* clauses before the group holds a hearing.
+     * The same-clause gate above is the loud case; this is the one that stops
+     * 95% of breaches producing nothing at all.
+     */
+    hearingAnyBreachCount: 2,
     hearingExpelChance: 0.45,
     hearingDemoteChance: 0.3,
     expulsionRegardCost: 18,
@@ -4840,6 +4917,8 @@ export const ALLIANCES = {
     /** ...and what the candidate having what the group needs is worth. */
     needProviderPull: 0.12,
     /** §4: combined hardness above which a leader runs the group as a tyrant. */
+    /** AUDIT-6 §4.2: above this on `caution - allianceAffinity - aggression`, nobody is running the group. */
+    absentThreshold: 0.45,
     tyrantThreshold: 0.25,
     /** How a tyrant's hearings differ from a democratic leader's. */
     tyrantExpelBonus: 0.25,
@@ -6404,6 +6483,13 @@ export const DEBTS = {
  * every disagreement had to escalate to a knife or not exist.
  */
 export const CHARTER = {
+    /*
+     * AUDIT-6 §4.2: the flat share every clause gets before its group's
+     * composition is read. At 1 against bonuses of 0.5-1.5 the draw came out
+     * near uniform; at 0.5 against the sharpened bonuses a group's constitution
+     * is legibly its own.
+     */
+    baseWeight: 0.5,
     /** §4.5: odds a breach hardens the terms instead of only costing regard. */
     renegotiateChance: 0.3,
     /** §4.5: odds a forming alliance writes the endgame into its terms. */

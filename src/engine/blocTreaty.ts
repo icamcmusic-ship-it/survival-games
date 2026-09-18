@@ -157,6 +157,18 @@ export function proposeBlocTreaties(ctx: SimContext) {
 
 function speakerOf(state: GameState, record: Alliance | undefined, members: Tribute[]): Tribute | undefined {
     if (members.length === 0) return undefined;
+    /*
+     * AUDIT-6 §4.2: the `face` speaks, and the leader only speaks if nobody
+     * else does.
+     *
+     * Holding a group together and talking to a rival one are two different
+     * jobs, and this collapsed them: whoever `pickLeader` rated best at the
+     * first was automatically the one sent to do the second. A pack with a
+     * frightening leader and one persuasive member should send the persuasive
+     * member, which is both truer and the whole reason the role exists.
+     */
+    const face = record?.roles?.face && members.find(m => m.id === record.roles!.face);
+    if (face) return face;
     const leader = record && members.find(m => m.id === record.leaderId);
     return leader ?? pickLeader(members);
 }

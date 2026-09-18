@@ -610,7 +610,16 @@ for (let i = 0; i < 400; i++) {
     if (prose(/agreed this was where it ended|keep their word without any ceremony/, l.text)) pactsHonoured++;
     if (prose(/simply stop pretending|the group is two groups now/, l.text)) factionActions++;
     if (prose(/is put out of the group/, l.text)) expulsions++;
-    if (prose(/takes the .* job off them|account for it in front of everyone/, l.text)) hearings++;
+    /*
+     * AUDIT-6 §4.4: this counted two of the four ways a hearing ends.
+     *
+     * A hearing that ends in an expulsion was logged as an expulsion and
+     * counted as one, so the reported figure (7 per 400 runs) was the tail of
+     * the mechanic rather than the mechanic — the same class of measurement bug
+     * as the two dead probes in §1.2, and it is why the hearing looked
+     * near-dead when what was actually rare was a hearing somebody survived.
+     */
+    if (prose(/takes the .* job off them|account for it in front of everyone|the second time nobody argues for them|Somebody ought to say something/, l.text)) hearings++;
     if (prose(/does not notice their .* going/, l.text)) sleepDrops++;
     if (prose(/not their weapon, not yet/, l.text)) coldWeaponSwings++;
     if (prose(/decides this is not worth finding out about|does not call it, and the moment passes/, l.text)) bluffsLanded++;

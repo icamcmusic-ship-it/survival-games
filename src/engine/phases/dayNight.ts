@@ -21,7 +21,7 @@ import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor } from '../alliance';
 import { decayFear } from '../fear';
-import { decayNotoriety, spreadNotoriety } from '../notoriety';
+import { decayNotoriety, reputationPriors, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
 import { runStanceBeats } from '../stanceBeats';
 import { runArchetypeSignatures, tickGhosts, tickScholars } from '../archetypeHooks';
@@ -418,6 +418,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // `decayFear` for the same reason: this cycle's belief is built on top of
     // what survived last cycle's forgetting, not underneath it.
     spreadNotoriety(ctx);
+    // AUDIT-6 §4.1: and what the field has heard becomes what it thinks.
+    reputationPriors(ctx);
     decayNotoriety(ctx.state);
     // §9.7: and knowledge moves. After the discovery pass above, so a lie found
     // out this cycle is not immediately papered over by a fresh trade.

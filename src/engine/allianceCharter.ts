@@ -46,14 +46,29 @@ export function rollCharter(rng: RNG, members: Tribute[]): CharterRule[] {
     // — the doc said "from its members' natures" and the body rolled flat.
     const has = (pred: (t: Tribute) => boolean) => members.some(pred);
     const regardFloor = Math.min(...members.flatMap(m => members.filter(o => o.id !== m.id).map(o => getRel(m, o.id))));
+    /*
+     * AUDIT-6 §4.2: the biases were right and far too quiet.
+     *
+     * Measured over 200 runs the eight clauses came out at 833/723/681/676/
+     * 642/618/576/558 — near enough uniform that a Career pack and four
+     * frightened outer-district kids signed the same constitution. The reason
+     * is arithmetic rather than design: a flat base of 1 against bonuses of
+     * 0.5-1.5 meant even a maximally-biased group only moved a clause from 12%
+     * to 25% of the draw.
+     *
+     * Base down to `CHARTER.baseWeight`, bonuses up. A group whose composition
+     * points hard at a clause now writes that clause most of the time, which is
+     * what "from its members' natures" was always supposed to mean.
+     */
+    const base = CHARTER.baseWeight;
     const weights: Array<[CharterRule, number]> = [
-        ['share-food', 1 + (has(t => t.vitals.hunger > 50) ? 1 : 0) + (has(t => t.archetype === 'survivalist') ? 0.5 : 0)],
-        ['no-fighting', 1 + (regardFloor < 10 ? 1.5 : 0) + (has(t => t.archetype === 'diplomat' || t.traits.includes('Pacifist')) ? 0.5 : 0)],
-        ['hold-the-camp', 1 + (has(t => t.archetype === 'protector' || t.archetype === 'medic') ? 1 : 0)],
-        ['no-hunting-alone', 1 + (has(t => t.isCareer || isAggressiveStance(t.stance)) ? 1 : 0)],
-        ['no-looting-the-fallen', 1 + (has(t => t.traits.includes('Merciful') || t.traits.includes('Softhearted')) ? 1.5 : 0)],
-        ['share-intel', 1 + (has(t => t.archetype === 'strategist' || t.archetype === 'scholar') ? 1.5 : 0)],
-        ['leader-decides-targets', 1 + (has(t => t.archetype === 'career' || t.archetype === 'zealot') ? 1.5 : 0)],
+        ['share-food', base + (has(t => t.vitals.hunger > 50) ? 2 : 0) + (has(t => t.archetype === 'survivalist' || t.archetype === 'quartermaster') ? 1.5 : 0)],
+        ['no-fighting', base + (regardFloor < 10 ? 2.5 : 0) + (has(t => t.archetype === 'diplomat' || t.archetype === 'confessor' || t.traits.includes('Pacifist')) ? 2 : 0)],
+        ['hold-the-camp', base + (has(t => t.archetype === 'protector' || t.archetype === 'medic' || t.archetype === 'bellwether') ? 2.5 : 0)],
+        ['no-hunting-alone', base + (has(t => t.isCareer || isAggressiveStance(t.stance)) ? 2 : 0) + (has(t => t.archetype === 'tracker') ? 1 : 0)],
+        ['no-looting-the-fallen', base + (has(t => t.traits.includes('Merciful') || t.traits.includes('Softhearted') || t.archetype === 'martyr') ? 2.5 : 0)],
+        ['share-intel', base + (has(t => t.archetype === 'strategist' || t.archetype === 'scholar') ? 2.5 : 0)],
+        ['leader-decides-targets', base + (has(t => t.archetype === 'career' || t.archetype === 'zealot') ? 2.5 : 0)],
     ];
     const count = rng.chance(CHARTER.twoClauseChance) ? 2 : 1;
     const chosen: CharterRule[] = [];

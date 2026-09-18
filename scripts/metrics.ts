@@ -145,6 +145,17 @@ let sanityFloorSamples = 0, sanityMidSamples = 0;
 let profSamples = 0, profTotal = 0, profMax = 0;
 // Social systems: the ones the design review measured directly.
 let runsWithLovers = 0, loverDaySum = 0, loverRuns = 0;
+/*
+ * AUDIT-6 §4.1: whether the last two know each other.
+ *
+ * The audit's headline was that 75.9% of all live relationship readings sit in
+ * the neutral band. Field-wide that is mostly correct modelling — most of
+ * twenty-four people never meet — and the number that actually matters is this
+ * one: measured at **43.5%**, nearly half of all Games were decided between two
+ * people with no regard for each other in either direction.
+ */
+let finalTwoSamples = 0, finalTwoStrangers = 0;
+const STRANGER_BAND = 20;
 let vengeanceSworn = 0, betrayals = 0;
 const allianceSizeHistogram: Record<number, number> = {};
 let organicTrios = 0;
@@ -215,6 +226,13 @@ for (let i = 0; i < RUNS; i++) {
         state = sim.getState();
         if (state.phase === 'day' || state.phase === 'night') {
             sampleBoard(state.tributes);
+            const standing = state.tributes.filter(t => t.status === 'alive');
+            if (standing.length === 2) {
+                const [a, b] = standing;
+                finalTwoSamples++;
+                const known = Math.max(Math.abs(a.relationships[b.id] ?? 0), Math.abs(b.relationships[a.id] ?? 0));
+                if (known < STRANGER_BAND) finalTwoStrangers++;
+            }
             const counts = new Map<string, number>();
             state.tributes.forEach(t => {
                 if (t.status !== 'alive' || !t.allianceId) return;
@@ -600,6 +618,26 @@ const indicators: Indicator[] = [
         goal: '>= 1.5%',
         goalMet: v => v >= 0.015,
         baseline: '0.5%',
+        fmt: asPct,
+    },
+    {
+        /*
+         * AUDIT-6 §4.1: the share of final-two standoffs between strangers.
+         *
+         * Two people with no regard for each other in either direction, deciding
+         * the Games. The convergence runs a recap now — every tribute still
+         * standing is shown what every other one has done, and forms an opinion
+         * on the spot — which took this from 43.5% to 31.5%. The remainder are
+         * runs where the field fell past the convergence band before it could
+         * fire, which is a legitimate shape for a Games to have.
+         */
+        label: 'final-two standoffs between strangers',
+        value: finalTwoSamples === 0 ? 0 : finalTwoStrangers / finalTwoSamples,
+        guard: v => v <= 0.42,
+        guardText: '<= 42%',
+        goal: '<= 30%',
+        goalMet: v => v <= 0.30,
+        baseline: '43.5%',
         fmt: asPct,
     },
     {

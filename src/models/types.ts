@@ -1351,7 +1351,17 @@ export interface Alliance {
      * expels. Roles already existed; nothing said what having the leader's
      * role actually meant.
      */
-    leaderStyle?: 'democratic' | 'tyrant';
+    /*
+     * AUDIT-6 §4.2: two values for "how is this group run" was the same shape
+     * of problem as two useful roles.
+     *
+     * `absent` is the third, and it is the one the succession data was crying
+     * out for — 6 heirs passed over and 11 groups split in 400 runs, both of
+     * which are what happens when the person nominally in charge has not been
+     * deciding anything. A group with an absent leader holds no hearings,
+     * throws nobody out, and comes apart the first time it matters.
+     */
+    leaderStyle?: 'democratic' | 'tyrant' | 'absent';
     /**
      * §4: what each member's ledger read when the charter was sworn, so
      * 'no-looting-the-fallen' and 'share-intel' catch what somebody did
@@ -1431,7 +1441,30 @@ export interface Faction {
 export type TruceReason = 'mutual-threat' | 'both-wounded' | 'brokered' | 'extortion';
 
 /** §4.4: a job inside an alliance, held by exactly one member. */
-export type AllianceRole = 'quartermaster' | 'scout' | 'muscle' | 'medic';
+/*
+ * AUDIT-6 §4.2: four roles, two of which were near-automatic.
+ *
+ * Measured over 3,384 alliance samples of size two or more: muscle filled 96.5%
+ * of the time and medic 90.8%, against scout at 48.1% and quartermaster at
+ * 46.8%. So "who are you in this group" had effectively two answers — are you
+ * the scout or the quartermaster, or not — and a pack of five looked exactly
+ * like a pack of four with somebody standing behind it.
+ *
+ * Four more, each read at exactly one site that already existed and was being
+ * answered by `pickLeader` or by nobody:
+ *
+ *  - `face` speaks for the group in `parley.ts` and `blocTreaty.ts`. Those both
+ *    used `pickLeader`, which means the person best at holding a group together
+ *    was automatically also the person best at talking to a rival one — two
+ *    quite different jobs collapsed into one.
+ *  - `runner` carries the cache. `contributeToCache` had no owner at all, so a
+ *    group's supplies belonged to everybody and therefore to nobody.
+ *  - `watch` owns the night posting the soak already counts (78 per 400 runs).
+ *  - `keeper` holds the group's debts, which `debts.ts` tracked per-person with
+ *    nobody responsible for them.
+ */
+export type AllianceRole = 'quartermaster' | 'scout' | 'muscle' | 'medic'
+    | 'face' | 'runner' | 'watch' | 'keeper';
 
 /** One clause of an alliance's charter. See `engine/allianceCharter.ts`. */
 export type CharterRule = 'share-food' | 'no-fighting' | 'hold-the-camp' | 'no-hunting-alone' | 'split-at-eight'
