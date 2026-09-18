@@ -339,6 +339,28 @@ await step('arena map tab + sector selection', async () => {
   await page.getByRole('button', { name: /^standings$/i }).first().click();
 });
 
+// AUDIT-6 §6.4: the belief view. The rumour layer was the best-modelled side
+// system in the repository and drew nothing on screen, so the check is that the
+// third map view exists, names a tribute, and renders their impressions rather
+// than the truth.
+await step('the belief view reads the arena through one tribute', async () => {
+  await page.getByRole('button', { name: /^map$/i }).first().click();
+  await page.getByRole('button', { name: /^belief$/i }).first().click();
+  const picker = page.getByLabel(/read the arena as this tribute believes it to be/i);
+  await picker.waitFor();
+  const options = await picker.locator('option').count();
+  if (options === 0) throw new Error('the belief view offered no tribute to read the arena as');
+  // Every sector gets a card, and each one says where the impression came from.
+  const cards = page.locator('[aria-label*="has never set eyes on it"], [aria-label*="seen first hand"], [aria-label*="told to"]');
+  if (await cards.count() === 0) throw new Error('the belief view rendered no sector impressions');
+  if (options > 1) {
+    await picker.selectOption({ index: 1 });
+    await page.waitForTimeout(150);
+    if (await cards.count() === 0) throw new Error('switching tribute emptied the belief view');
+  }
+  await page.getByRole('button', { name: /^map$/i }).first().click();
+});
+
 await step('standings tab sorts', async () => {
   await page.getByRole('button', { name: /^standings$/i }).first().click();
   await page.getByRole('button', { name: /^kills$/i }).first().click();

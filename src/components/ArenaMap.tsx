@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { GameState, Tribute } from '../models/types';
 import { effectiveResources } from '../engine/map';
 import { ArenaGraph } from './ArenaGraph';
+import { BeliefMap } from './BeliefMap';
 
 const TERRAIN_ICONS: Record<string, string> = {
     open: '🏳️', forest: '🌲', water: '🌊', highland: '⛰️', ruins: '🏚️', wetland: '🥀',
@@ -39,7 +40,11 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
     const collapsed = gameState.collapsedZones || [];
     // The graph is the honest view — it is the structure the simulation actually
     // moves over — but the card grid remains for reading the numbers at a glance.
-    const [view, setView] = useState<'graph' | 'grid'>('graph');
+    /*
+     * AUDIT-6 §6.4: a third view, reading the same sectors through one
+     * tribute's memory instead of the truth. See `BeliefMap`.
+     */
+    const [view, setView] = useState<'graph' | 'grid' | 'belief'>('graph');
 
     return (
         <div className="space-y-3 text-left">
@@ -47,11 +52,14 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                 <span className="panel-title">Arena sectors</span>
                 <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-[10px] text-[var(--color-ink-500)]">
-                        Click a sector to isolate its log{collapsed.length > 0 && ` · ${collapsed.length} sector${collapsed.length === 1 ? '' : 's'} collapsed`}
+                        {view === 'belief'
+                            ? 'What one tribute believes is out there, which is not the same as what is'
+                            : `Click a sector to isolate its log${collapsed.length > 0 ? ` · ${collapsed.length} sector${collapsed.length === 1 ? '' : 's'} collapsed` : ''}`}
                     </span>
                     <div className="seg">
                         <button onClick={() => setView('graph')} aria-pressed={view === 'graph'} className="seg-item">Map</button>
                         <button onClick={() => setView('grid')} aria-pressed={view === 'grid'} className="seg-item">Detail</button>
+                        <button onClick={() => setView('belief')} aria-pressed={view === 'belief'} className="seg-item">Belief</button>
                     </div>
                 </div>
             </div>
@@ -105,6 +113,10 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                         </div>
                     </details>
                 </div>
+            )}
+
+            {view === 'belief' && (
+                <BeliefMap gameState={gameState} tributes={tributes} />
             )}
 
             {view === 'grid' && (
