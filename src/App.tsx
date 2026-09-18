@@ -71,7 +71,6 @@ export default function App() {
   const view = useStore(gameStore, s => s.view);
   const simulator = useStore(gameStore, s => s.simulator);
   const coins = useStore(gameStore, s => s.coins);
-  const bets = useStore(gameStore, s => s.bets);
   const betWonMessage = useStore(gameStore, s => s.betWonMessage);
   // A tribute chosen from the command palette opens here rather than inside
   // whichever screen happens to be showing — the palette works from all of them.
@@ -163,7 +162,10 @@ export default function App() {
       window.history.replaceState(null, '', window.location.pathname);
     }
     return initRouter(!bootedFromLink);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // AUDIT-7 §1.10: the `exhaustive-deps` disable that used to sit here was
+    // suppressing nothing — the rule has no complaint about a genuinely
+    // mount-only effect with an empty deps array. One of two such directives
+    // found the moment a linter was actually pointed at this file.
   }, []);
 
   // Warm the engine chunk once the shell is up, so pressing Start doesn't pay
@@ -218,7 +220,11 @@ export default function App() {
                 already what it's about to become. */}
             <button
               onClick={() => setShowSettings(true)}
-              className="px-2 py-1.5"
+              // AUDIT-7 §2.1: `tap-target` is the opt-in for a control that is
+              // neither a `.btn` nor a nav link and still needs a thumb's worth
+              // of room on a phone. This one is icon-only, so it has no text to
+              // make it tall — it measured 44x28 at 380px.
+              className="px-2 py-1.5 tap-target inline-flex items-center justify-center"
               title="Settings — units, sound, auto-play brakes"
               aria-label="Open settings"
               aria-haspopup="dialog"

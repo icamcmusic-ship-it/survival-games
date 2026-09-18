@@ -1,5 +1,11 @@
 export function xmur3(str: string) {
-    for(var i = 0, h = 1779033703 ^ str.length; i < str.length; i++) {
+    // AUDIT-7 §1.10: `h` is declared outside the loop because the closure below
+    // reads it after the loop has ended. It used to be `var` in the loop header,
+    // which hoisted it to function scope and worked by accident; `let` in the
+    // same place scopes it to the loop and would have silently broken every
+    // seeded run. Kept explicit so the next person does not move it back.
+    let h = 1779033703 ^ str.length;
+    for (let i = 0; i < str.length; i++) {
         h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
         h = h << 13 | h >>> 19;
     } return function() {
@@ -12,7 +18,7 @@ export function xmur3(str: string) {
 export function sfc32(a: number, b: number, c: number, d: number) {
     return function() {
       a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0; 
-      var t = (a + b | 0) + d | 0;
+      const t = (a + b | 0) + d | 0;
       d = d + 1 | 0;
       a = b ^ b >>> 9;
       b = c + (c << 3) | 0;

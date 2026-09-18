@@ -64,7 +64,11 @@ export function Explainer({
                 onClick={() => setOpen(v => !v)}
                 aria-expanded={open}
                 aria-controls={open ? popoverId : undefined}
-                className="inline-flex items-center gap-1 border-b border-dotted border-[var(--color-ink-500)] hover:border-[var(--red)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--red)]"
+                /* AUDIT-7 §2.1: 88x21 at 380px, and there are fourteen of them
+                   in a row on the roster. Not in prose — these are standalone
+                   chips — so they take the full target rather than the inline
+                   exception. */
+                className="tap-target-cell inline-flex items-center gap-1 border-b border-dotted border-[var(--color-ink-500)] hover:border-[var(--red)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--red)]"
             >
                 {label}
                 <span aria-hidden="true" className="text-[9px] text-[var(--color-ink-500)]">ⓘ</span>

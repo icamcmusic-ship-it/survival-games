@@ -13,7 +13,7 @@
  */
 import {
     Alliance, AlliancePact, Attributes, Build, Condition, EventLog, Frame, Handedness, LimbRatio, GameConfig, GameState, Gender, Injuries, InjurySite, Item,
-    Objective, Stance, StandingGoal, Tribute, TributeMemory, Vitals,
+    Objective, StandingGoal, Tribute, TributeMemory, Vitals,
 } from '../models/types';
 import { DEFAULT_GAME_CONFIG } from '../data/constants';
 import { ALLIANCES, BLOC_TREATY } from '../data/balance';

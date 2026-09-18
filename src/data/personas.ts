@@ -24,26 +24,6 @@ export const INTERVIEW_PERSONAS: InterviewPersona[] =
  * fails to compile, because a `Record<InterviewPersona, …>` cannot be built
  * from a list missing one of its keys.
  */
-const DECLARED: Record<InterviewPersona, true> = {
-    'The Star-Crossed Lover': true,
-    'The Ruthless Warrior': true,
-    'The Humble Underdog': true,
-    'The Mysterious Enigma': true,
-    'The Charming Flirt': true,
-    'The Arrogant Brute': true,
-    'The Quirky Oddball': true,
-    'The Silent Threat': true,
-    'The Grieving Sibling': true,
-    'The Cold Strategist': true,
-    'The Reluctant Hero': true,
-    'The District Loyalist': true,
-    'The Wildcard': true,
-    'The Survivor': true,
-    'The Professional': true,
-    'The Homesick': true,
-    'The Volunteer': true,
-    'The Provocateur': true,
-};
 
 
 /** Personas the crowd reads as warm, and the ones it reads as cold. */

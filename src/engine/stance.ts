@@ -1,7 +1,7 @@
 import { GameState, Stance, TraceReason, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { DECISION_TRACE, FEAR, RISK, RIVAL_READ, STANCE, STANCE_HOLD, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
-import { STANCES, STANCE_PROFILES, isEvasiveStance } from '../data/stances';
+import { STANCES, STANCE_PROFILES } from '../data/stances';
 import { SimContext } from './context';
 import { sleepStanceHold } from './survival';
 import { cycleOf, cyclesSinceContact, ensureMemory, readOf, rivalRecord } from './memory';

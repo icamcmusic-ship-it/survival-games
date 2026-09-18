@@ -19,7 +19,6 @@ import { SURVIVAL_TEXTS } from '../data/flavorText';
 import { fill } from './encounters';
 import { isAggressiveStance } from '../data/stances';
 import { objectiveBiasFor, targetPreferenceScore } from './archetypeHooks';
-import { traitMod } from '../data/traits';
 import { resolveOf } from './resolve';
 
 /**

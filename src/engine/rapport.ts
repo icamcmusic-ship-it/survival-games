@@ -3,8 +3,8 @@ import { RELATIONSHIPS, RESPECT, RIVALRY } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { adjustMutual, adjustRel, getRel, adjustRespect, respectOf } from './relationships';
 import { traitMod } from '../data/traits';
-import { cycleOf, ensureMemory, rivalRecord } from './memory';
-import { addFear, fearOf, reduceFear } from './fear';
+import { cycleOf, ensureMemory } from './memory';
+import { fearOf, reduceFear } from './fear';
 import { loseSanity } from './sanityBands';
 
 /**

@@ -14,7 +14,7 @@ import { isSeptic, syncInfectedFlag, treatInfection } from './infection';
 import { tradeReputations } from './notoriety';
 import { tradeRumours } from './rumours';
 import { sleepForagePenalty } from './survival';
-import { cycleOf, addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, noteStoodBy, raiseSuspicion } from './memory';
+import { cycleOf, addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, raiseSuspicion } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { hasTruce, tryParley } from './parley';
 import { areLovers, maintainPerformance } from './alliance';

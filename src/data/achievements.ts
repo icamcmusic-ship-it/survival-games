@@ -2239,7 +2239,8 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Rumour Mill',
         hint: 'See three or more rumours still in circulation when the Games end.',
         category: 'social',
-        rarity: 'possible',
+        // AUDIT-7: measured at 0.4% across 500 runs, so no longer 'possible?'.
+        rarity: 'legendary',
         test: state => (state.rumours?.length ?? 0) >= 3,
         nearMiss: state => (state.rumours?.length ?? 0) === 2
             ? 'two rumours were still going round at the end — Rumour Mill wants three'
@@ -3196,7 +3197,12 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Master of One',
         hint: 'Crown a victor who reached the top of a single skill.',
         category: 'survival',
-        rarity: 'possible',
+        // AUDIT-7: it fires now. 'Possible?' means the simulation is believed
+        // able to do this and no measured run ever has — two observations
+        // disqualify it, and this reached 0.6% of 500 runs once §3.5 gave
+        // `stealth`, `carpentry`, `navigation` and `intimidation` a way up
+        // from their floors. Sub-1% and real is exactly what 'legendary' is for.
+        rarity: 'legendary',
         test: (_s, v) => !!v && Object.values(v.proficiencies ?? {}).some(n => (n ?? 0) >= 6),
         nearMiss: (_s, v) => {
             const best = Math.max(0, ...Object.values(v?.proficiencies ?? {}).map(n => n ?? 0));

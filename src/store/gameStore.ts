@@ -5,7 +5,7 @@ import { SideBetTarget, SideQuote, priceSideBet, quoteSideMarkets, settleSideBet
 import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
 import { clearAllStoredData } from '../utils/storage';
 import { readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
-import { readStored, removeStored, tryWriteStored, writeStored } from '../utils/storage';
+import { readStored, removeStored, tryWriteStored } from '../utils/storage';
 import { snapshotState } from '../utils/snapshot';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { QUELLS } from '../data/gamesProfile';
@@ -13,7 +13,7 @@ import { RNG } from '../utils/rng';
 import type { Simulator } from '../engine/simulator';
 import type { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
-import { PanemRecords, RunOutcome, addPatronDistrict, buyArena, clearPanem, commitRun, dropPatronDistrict, noteStipendTaken, readPanem, setPatronDistrict } from '../utils/panemStorage';
+import { PanemRecords, RunOutcome, addPatronDistrict, buyArena, clearPanem, commitRun, dropPatronDistrict, noteStipendTaken, readPanem } from '../utils/panemStorage';
 import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
 import { seatVeterans } from '../engine/veterans';

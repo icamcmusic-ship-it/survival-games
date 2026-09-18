@@ -104,8 +104,6 @@ type MobilePane = StageTab | 'tributes';
 const NEW_EVENT_SETTLE_MS = 1200;
 
 /** §2: how long an achievement toast stays up, and how many can stack. */
-const TOAST_MS = 6000;
-const TOAST_MAX = 3;
 
 export function GameScreen({
     gameState,
@@ -179,7 +177,6 @@ export function GameScreen({
     const [playUntil, setPlayUntil] = useState<PlayUntil>(null);
     const [showHelp, setShowHelp] = useState(false);
     const prefs = useStore(prefsStore, p => p);
-    const panem = useStore(gameStore, s => s.panem);
     const nextPhaseRef = useRef(onNextPhase);
     nextPhaseRef.current = onNextPhase;
 
@@ -227,7 +224,9 @@ export function GameScreen({
         if (!id || scrolledToRef.current === id) return;
         scrolledToRef.current = id;
         gameActions.setView('chronicle');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // AUDIT-7 §1.10: the second dead `exhaustive-deps` disable. Everything
+        // this effect reads beyond `filters.focusLogId` is a stable module
+        // binding, so the rule never had anything to say about it.
     }, [filters.focusLogId]);
 
     const aliveCount = gameState.tributes.filter(t => t.status === 'alive').length;

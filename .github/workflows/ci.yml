@@ -58,6 +58,11 @@ jobs:
       # The build chain is what deploys; a high-severity advisory in it is a
       # release blocker, so it fails here too rather than only at deploy time.
       - run: npm audit --audit-level=high
+      # AUDIT-7 §1.10: `lint` is `tsc --noEmit && eslint .` now. It was tsc
+      # alone, with no ESLint dependency and no config, while thirteen
+      # `eslint-disable react-hooks/exhaustive-deps` comments sat in the
+      # interface suppressing a rule that was not running. Two of the thirteen
+      # turned out to be suppressing nothing at all.
       - run: npm run lint
 
       # Balance discipline, both directions: no declared knob goes unread, and
@@ -83,6 +88,32 @@ jobs:
       - run: npm run test:storage
 
       - run: npm run build
+
+  # AUDIT-7 §8.7: the balance numbers, at the sample size that can judge them.
+  #
+  # `test:metrics` runs at 400 runs in the job above, which is the right cost
+  # for a pull request and the wrong sample for half of what it measures. At
+  # 400 runs not one of the 29 archetypes clears GUARD_MIN_SAMPLE and two of
+  # the 86 reaping traits do, so the archetype rows abstain and — until §1.6 —
+  # the trait row printed a verdict on a population of two. The numbers the
+  # design targets are written against (archetype spread 2.36x, trait spread
+  # 2.20x) only exist at 1,600.
+  #
+  # So it runs on push to `main` only: a merge is where a balance regression
+  # needs catching, and a few minutes there costs nobody a review cycle. A
+  # pull request keeps the fast 400-run pass.
+  balance:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Balance at the sample size that can judge it
+        run: METRICS_RUNS=1600 npm run test:metrics
 
   # The interface, in a real browser. Everything under src/components and
   # src/screens is invisible to every check in the job above.

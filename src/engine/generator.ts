@@ -151,7 +151,7 @@ function applyPersonalVariance(rng: RNG, attributes: Attributes, archetype: Arch
     // are genuinely bimodal — talent that is never merely average, and twice
     // the spikes and dumps. Everyone else keeps the global profile.
     let spread: number = GENERATION.talentSpread;
-    let shift = 0;
+    const shift = 0;
     let spikeCount: number = GENERATION.spikeCount;
     let dumpCount: number = GENERATION.dumpCount;
     let spikeSize: number = GENERATION.spikeSize;

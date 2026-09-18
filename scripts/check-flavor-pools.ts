@@ -16,7 +16,8 @@
  */
 import * as FLAVOR from '../src/data/flavorText';
 import { INTERVIEW_SCENARIOS } from '../src/data/flavorText';
-import { ARENA_FLAVOR, PROCEDURAL_FLAVOR_PACKS, GENERIC_ARENA_FLAVOR, actionPool } from '../src/data/arenaFlavor';
+import { ARENA_FLAVOR, GENERIC_ARENA_FLAVOR, actionPool } from '../src/data/arenaFlavor';
+import { PROCEDURAL_BIOME_AMBIENT, PROCEDURAL_BIOME_EVENTS } from '../src/data/proceduralBiomeEvents';
 import { QUIRK_MODS, QUIRKS } from '../src/data/quirks';
 import { TRAIT_DEFS } from '../src/data/traits';
 
@@ -87,7 +88,7 @@ if (thin.length > KNOWN_THIN) {
 const structuralProblems: string[] = [];
 
 // Per-arena authored event pools, thinnest first.
-const arenaPools = Object.entries({ ...ARENA_FLAVOR, ...PROCEDURAL_FLAVOR_PACKS })
+const arenaPools = Object.entries(ARENA_FLAVOR)
     .map(([id, flavor]) => [id, flavor.events.length] as const)
     .sort((a, b) => a[1] - b[1]);
 const thinArenas = arenaPools.filter(([, n]) => n < POOL_TARGET);
@@ -105,7 +106,12 @@ console.log(`   ${thinArenas.length} arena pack(s) under the target; generic fal
  * because they are what makes one run of an arena differ from the next, and
  * 'Every Door' is only reachable in an arena carrying at least two.
  */
-const ARENA_EVENT_FLOOR = 24;
+// AUDIT-7 §1.7/§1.8: the floor is what the hand-authored roster actually
+// guarantees, now that the four unreachable procedural packs that were holding
+// it at 24 have been folded into `PROCEDURAL_BIOME_EVENTS` and deleted. It
+// matches `AUTHORED_EVENT_FLOOR` in validate-arenas, which is the other half of
+// the same statistic; the two used to disagree by nine.
+const ARENA_EVENT_FLOOR = 33;
 const ARENA_EVENT_TARGET = 40;
 const ONCE_PER_RUN_FLOOR = 2;
 const authoredArenaPools = Object.entries(ARENA_FLAVOR)
@@ -310,6 +316,36 @@ if (thinQuirks.length > 0) {
 QUIRKS.filter(q => new Set(q.lines).size !== q.lines.length).forEach(q => {
     structuralProblems.push(`quirk '${q.label}' repeats a line inside its own pool`);
 });
+/*
+ * AUDIT-7 §9.5: the procedural biomes, which had no depth report of their own.
+ *
+ * The generator covers twelve biomes and `check-flavor-pools` only ever
+ * measured the 45 hand-authored packs, so "a player who picks procedural gets
+ * the thinnest content in the game" was true and invisible. Four biomes carry
+ * the events folded out of the retired `PROCEDURAL_FLAVOR_PACKS` (§1.8); the
+ * other eight are the backlog, and it is printed as distance-to-go rather than
+ * as a pass.
+ */
+{
+    const BIOME_EVENT_FLOOR = 8;
+    const BIOME_EVENT_TARGET = 32;
+    const BIOME_AMBIENT_FLOOR = 4;
+    const rows = Object.entries(PROCEDURAL_BIOME_EVENTS)
+        .map(([id, list]) => [id, list.length, (PROCEDURAL_BIOME_AMBIENT[id] ?? []).length] as const)
+        .sort((a, b) => a[1] - b[1]);
+    const thin = rows.filter(([, n]) => n < BIOME_EVENT_TARGET);
+    const toGo = rows.reduce((sum, [, n]) => sum + Math.max(0, BIOME_EVENT_TARGET - n), 0);
+    console.log(`\nprocedural biome packs (floor ${BIOME_EVENT_FLOOR}, target ${BIOME_EVENT_TARGET}, ${rows.length} biomes):`);
+    rows.slice(0, 6).forEach(([id, n, a]) => console.log(`   ${n < BIOME_EVENT_TARGET ? '!' : ' '} ${id.padEnd(13)} ${n} events, ${a} ambient`));
+    console.log(`   ${thin.length} biome(s) under the target, ${toGo} events to go.`);
+    rows.forEach(([id, n, a]) => {
+        if (n < BIOME_EVENT_FLOOR) structuralProblems.push(`procedural biome '${id}': ${n} authored events, under the floor of ${BIOME_EVENT_FLOOR}`);
+        if (a < BIOME_AMBIENT_FLOOR) structuralProblems.push(`procedural biome '${id}': ${a} ambient lines, under the floor of ${BIOME_AMBIENT_FLOOR}`);
+    });
+    const ids = Object.values(PROCEDURAL_BIOME_EVENTS).flat().map(e => e.id).filter(Boolean);
+    if (new Set(ids).size !== ids.length) structuralProblems.push('procedural biome events carry a duplicate id');
+}
+
 console.log(`\n${QUIRKS.length} quirks, ${Math.min(...QUIRKS.map(q => q.lines.length))} line variants in the thinnest (floor ${QUIRK_LINE_FLOOR}).`);
 
 /*

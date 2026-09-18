@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Hint } from './Hint';
 import { useDialogFocus } from '../ui/useDialogFocus';
 import { useTransientFlag } from '../ui/useTransientFlag';
@@ -9,7 +9,7 @@ import { fearOf } from '../engine/fear';
 import { bodyLabel, heightLabel, isGrowingInto } from '../engine/physique';
 import { pactLabel } from '../engine/alliancePact';
 import { prefsStore } from '../store/prefsStore';
-import { HUNTING, PROFICIENCY, ROMANCE, SUSPICION } from '../data/balance';
+import { HUNTING, PROFICIENCY, SUSPICION } from '../data/balance';
 import { bandLabel } from '../engine/proficiency';
 import { resolveOf, hasBroken } from '../engine/resolve';
 import { hasTruce, truceWith } from '../engine/parley';
@@ -26,7 +26,7 @@ import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 import { copyTributeStory, downloadTributeStory } from '../utils/tributeStory';
-import { BODY_SITES, severityOf, summarySentence, vitalWord, worstFear } from './TributeSummary';
+import { BODY_SITES, severityOf, summarySentence, vitalWord } from './TributeSummary';
 import { BodyDiagram } from './BodyDiagram';
 import { STANCE_PROFILES, STANCES } from '../data/stances';
 import { believedRumours } from '../engine/rumours';
@@ -271,21 +271,6 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
     const compare = compareId ? gameState.tributes.find(o => o.id === compareId) ?? null : null;
     const archetype = ARCHETYPES[tribute.archetype];
     const injuries = Object.entries(tribute.injuries).filter(([, v]) => v).map(([k]) => k);
-    const sworn = new Set(tribute.memory?.vengeance ?? []);
-    const relationships = Object.entries(tribute.relationships)
-        .map(([id, val]) => ({
-            other: gameState.tributes.find(t => t.id === id),
-            // Decay leaves fractional values in the graph; the reader wants a number.
-            value: Math.round(val as number),
-            sworn: sworn.has(id),
-            // The streak is only stored on one side of each pair, so read both.
-            streak: Math.max(
-                tribute.memory?.contactStreak?.[id] ?? 0,
-                gameState.tributes.find(o => o.id === id)?.memory?.contactStreak?.[tribute.id] ?? 0,
-            ),
-        }))
-        .filter(r => !!r.other)
-        .sort((a, b) => b.value - a.value);
     // UX-05: every event already records who was in it, so a tribute's whole
     // story is one filter away.
     const personalLog = useMemo(

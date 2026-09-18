@@ -188,7 +188,10 @@ export function BroadcastBar({
                             to reach past the top of it. */}
                         <button
                             onClick={() => setCheckpointsOpen(o => !o)}
-                            className="btn btn-sm btn-ghost px-1"
+                            // AUDIT-7 §2.1: one glyph wide (19px at 380px), so
+                            // `min-width` has to come from somewhere other than
+                            // the label.
+                            className="btn btn-sm btn-ghost px-1 tap-target"
                             disabled={!gameActions.canStepBack()}
                             aria-expanded={checkpointsOpen}
                             aria-haspopup="menu"

@@ -435,7 +435,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                             <span className="log-zone">Where</span>
                             <span className="log-text">What happened</span>
                         </div>
-                        {beats.map((beat, bi) => beat.logs.map((log, li) => (
+                        {beats.map((beat, _bi) => beat.logs.map((log, li) => (
                             <LogRow
                                 key={log.id}
                                 log={log}
@@ -491,7 +491,16 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                                     onClick={() => setPageIndex(i)}
                                     aria-current={i === clamped ? 'true' : undefined}
                                     aria-label={p.label}
-                                    className="w-2.5 h-5 border border-[var(--color-ink-700)]"
+                                    /* AUDIT-7 §2.1: the tick stays 10x20 and the
+                                       *target* does not. A scrubber is a row of
+                                       marks whose spacing carries the meaning, so
+                                       it cannot be a row of 44px squares — but a
+                                       10px-wide button is a 10px-wide button. The
+                                       padding is transparent and the negative
+                                       margin pulls the row back to its old width,
+                                       so nothing moves and every tick gains a
+                                       thumb's worth of reach. */
+                                    className="scrubber-tick tap-target-cell border border-[var(--color-ink-700)]"
                                     style={{
                                         background: i === clamped ? 'var(--red)'
                                             : deadly ? 'var(--cat-death)'

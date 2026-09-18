@@ -1411,3 +1411,108 @@ input[type="range"]:focus-visible {
     font-size: 0.55rem;
     letter-spacing: 0.04em;
 }
+
+    /* AUDIT-7 §2.1: the scrubber tick's own dimensions, so the markup no longer
+       carries them as utility classes and the phone rule has something to grow. */
+    .scrubber-tick {
+        width: 0.625rem;
+        height: 1.25rem;
+        box-sizing: content-box;
+        flex: none;
+    }
+
+    /*
+     * AUDIT-7 §2.1: the 44px tap target, on a phone, for every control that is
+     * not inside a sentence.
+     *
+     * Two audits reported this and neither closed it: AUDIT-6 measured 168 of
+     * 168 controls under 44px at 380px and AUDIT-7 measured 119 of 119, because
+     * the harness printed the number and only *guarded* the 24px one. 44px is
+     * what WCAG 2.5.8 (AAA) and both platform HIGs name, and 100% of controls
+     * under it is not a missed enhancement on a screen whose primary surface is
+     * a dense four-column log read with a thumb.
+     *
+     * Three deliberate choices:
+     *
+     *  - Keyed on `max-width: 640px`, not on `hover: none`. The AUDIT-6 note
+     *    further up this file learned that the hard way: a narrow window on a
+     *    laptop reports hover and so does every headless browser, so a rule
+     *    gated on pointer type is a rule the check cannot see. A 380px viewport
+     *    is a phone whatever it claims about its pointer.
+     *  - Inline controls are exempt, which is WCAG 2.5.8's own exception: a
+     *    tribute's name inside running prose is a target in a sentence, and
+     *    padding it to 44px would wreck the line box it lives in. `min-height`
+     *    is inert on a genuinely inline box anyway, so this is the standard and
+     *    the layout agreeing with each other.
+     *  - `min-width` only for controls with no text, because a wide short
+     *    button fails on height alone and stretching it sideways helps nobody.
+     */
+    @media (max-width: 640px) {
+        .btn,
+        .seg-item,
+        button.chip,
+        a.chip,
+        [role="tab"],
+        select,
+        input[type="checkbox"],
+        input[type="radio"],
+        input[type="text"],
+        input[type="search"],
+        input[type="number"],
+        input[type="range"],
+        .skip-link,
+        nav a[href],
+        .tap-target {
+            min-height: 44px;
+        }
+
+        /* A control whose whole label is an icon or a single glyph has no text
+           to make it wide, so the width has to be asked for. */
+        .btn:has(> svg:only-child),
+        button:has(> svg:only-child),
+        a[href]:has(> svg:only-child),
+        .tap-target,
+        input[type="checkbox"],
+        input[type="radio"] {
+            min-width: 44px;
+        }
+
+        /* The chronicle's phase scrubber. The ticks are 10x20 marks in a row
+           whose *spacing* is the information — a row of 44px squares would not
+           be a scrubber — so the visible tick keeps its size and the target
+           grows around it. Transparent padding out to the target, negative
+           margin to pull the row back to the width it always had. */
+        .scrubber-tick {
+            padding-inline: 7px;
+            padding-block: 12px;
+            margin-inline: -7px;
+            margin-block: -12px;
+            background-clip: content-box;
+        }
+
+        /* The compact variants exist to save room on a wide screen; on a phone
+           the room they save is the room a thumb needs. */
+        .btn-sm {
+            padding-block: 0.6rem;
+        }
+
+        /* A segmented control whose whole label is one glyph. */
+        .seg-item {
+            min-width: 44px;
+        }
+
+        /*
+         * A control inside a dense data table. The standings table is 24 rows
+         * of five columns on a 380px screen, so a 44px *width* on the star
+         * toggle would push the table off the side — and the harness checks for
+         * horizontal overflow too. So: the full 44px of height, which is what a
+         * thumb needs to land on the right row, and WCAG 2.5.8's 24px on the
+         * narrow axis, which is the AA line and the one this project guards.
+         */
+        .tap-target-cell {
+            min-height: 44px;
+            min-width: 24px;
+            display: inline-flex;
+            align-items: center;
+        }
+    }

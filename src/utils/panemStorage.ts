@@ -29,7 +29,6 @@ import {
  * than breaking a screen.
  */
 
-const PANEM_STORAGE_KEY = STORAGE_KEYS.panem;
 
 export interface RecordHolder {
     /** The number this record is for. */

@@ -4,7 +4,6 @@ import { MOTIVES, RESOLVE, SOCIAL_AXES } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { agedResolveDecay } from './physique';
 import { ensureMemory, cyclesSinceContact } from './memory';
-import { clampTribute } from './vitals';
 import { rhetoricOf } from './composure';
 import { inFinalTwoGrace, selfInflictedDeath } from './combat';
 import { getZone } from './map';

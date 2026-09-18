@@ -2,7 +2,7 @@ import { GameState, Item, Tribute } from '../models/types';
 import { forceStance } from './stance';
 import { noteRivalDeath } from './rapport';
 import { RNG } from '../utils/rng';
-import { BETRAYAL, DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, RIVALRY, SUSPICION , EARNED_TRAIT_RULES } from '../data/balance';
+import { BETRAYAL, DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, SUSPICION , EARNED_TRAIT_RULES } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
 import { carryCapacity, giveItem } from './items';

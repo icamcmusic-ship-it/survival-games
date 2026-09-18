@@ -1,5 +1,5 @@
 import { Hint } from '../components/Hint';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { HallOfFameEntry } from '../models/types';
 import { readHallOfFame, writeHallOfFame, clearHallOfFame, serializeHallOfFame } from '../utils/hofStorage';
