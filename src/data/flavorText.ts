@@ -3639,6 +3639,31 @@ export const BORDER_TEXTS = {
     ],
 };
 export const ARCHETYPE_SIGNATURE_TEXTS: Record<string, string[]> = {
+    /*
+     * AUDIT-7 §8.2: the quartermaster's set piece for a tribute with nobody to
+     * hand the surplus to.
+     *
+     * `quartermasterInventory` fired for 19.8% of quartermaster entrants — the
+     * lowest of all 29 archetypes, against survivalist's 60.4% — because it
+     * required an alliance ally standing in the same zone. Three of the four
+     * lowest-firing signatures were alliance-gated; an archetype whose whole
+     * character is knowing exactly what it has should be able to do that
+     * alone, and doing it alone is arguably more in character.
+     */
+    quartermasterAlone: [
+        '{tribute} empties the pack out onto the ground in {zone} and counts it, twice, out loud, to nobody. The number is the number.',
+        'In {zone}, {tribute} takes stock the way a storekeeper does at close, and the closing balance is four days if nothing goes wrong.',
+        '{tribute} divides what they have by the days they think are left, in {zone}, and does not like the answer enough to do it again.',
+        'Nobody films {tribute} doing anything interesting in {zone}. They count, they re-pack in an order that means something, and they sleep.',
+        '{tribute} lays it all out in {zone} — every strip, every flask, every scrap — and rations it against a week they have no reason to expect.',
+        'What {tribute} does in {zone} is not survival, it is bookkeeping, and it is the only reason {tribute} is still solvent.',
+        'In {zone}, {tribute} says the numbers out loud with nobody to hear them. Saying them makes them true, which is most of the job.',
+        '{tribute} finds half a day of slack in their own supplies in {zone} and spends it on sleep instead of on distance.',
+        'The pack comes apart in {zone} and goes back together lighter and better ordered. {tribute} has not eaten yet; that is scheduled.',
+        '{tribute} knows to the mouthful what is left, in {zone}, which is more than anybody else in the arena knows about themselves.',
+        'In {zone}, {tribute} writes the count in the dirt, looks at it, and rubs it out before moving on.',
+        '{tribute} re-ties every knot on the pack in {zone}, in the dark, by feel, because a pack that spills is a pack that is gone.',
+    ],
     quartermasterInventory: [
         '{tribute} empties the pack out onto the ground in {zone} and counts it, twice, out loud. Then they hand {ally} the half that keeps {ally} alive longer than it would have kept them.',
         'In {zone}, {tribute} takes stock the way a storekeeper does at close: every item out, every item counted, and {ally} walks away with the surplus.',

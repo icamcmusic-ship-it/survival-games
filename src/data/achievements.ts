@@ -538,7 +538,8 @@ export const ACHIEVEMENTS: Achievement[] = [
         // best streak and requires that it was still live going into the end.
         hint: 'Crown a victor who was still keeping up a performed bond when the field came down to the last two.',
         category: 'social',
-        rarity: 'possible',
+        // AUDIT-7: observed at 0.4% of 500 runs, so no longer 'possible?'.
+        rarity: 'legendary',
         /*
          * AUDIT-6 §11.2: the victor scope is the whole point of this one — it
          * is about the act still running at the end — so it keeps it. What it
@@ -3238,10 +3239,26 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'the-carpenter',
         name: 'Made It Out of Sticks',
-        hint: 'Crown a victor who built something in the arena that held.',
+        /*
+         * AUDIT-7 §3.5: this asked for `carpentry >= 1` — the value every
+         * tribute starts at — and was 'legendary' because, until this pass,
+         * nothing in the engine could train carpentry at all, so the only way
+         * to hold any was to be born with it. Giving shelters and traps a
+         * training site turned a never-fires entry into a 49.4% one overnight,
+         * which is the same entry being wrong in the other direction.
+         *
+         * Re-asked against what the skill now means. 4 is the top of the
+         * measured range (peak 4.17 across 6,000 tributes), so this is a victor
+         * who spent the run building rather than one who walked past a tree.
+         */
+        hint: 'Crown a victor who became genuinely good at building things out of what the arena had.',
         category: 'survival',
         rarity: 'legendary',
-        test: (_s, v) => !!v && (v.proficiencies?.carpentry ?? 0) >= 1,
+        test: (_s, v) => !!v && (v.proficiencies?.carpentry ?? 0) >= 4,
+        nearMiss: (_s, v) => {
+            const c = v?.proficiencies?.carpentry ?? 0;
+            return c >= 3 && c < 4 ? `the victor's carpentry topped out at ${c.toFixed(1)}` : undefined;
+        },
     },
     {
         /*

@@ -1090,6 +1090,7 @@ console.log(`  currently bleeding ${pct(bleedingSamples, aliveSamples)}`);
  * that fires for one archetype in twenty is a design promise the player never
  * sees kept, and it is invisible in a win-rate table.
  */
+let signatureFailures = 0;
 console.log('\narchetype signature fire rate (share of entrants whose set piece fired):');
 {
     const rates = Object.keys(ARCHETYPES)
@@ -1101,6 +1102,51 @@ console.log('\narchetype signature fire rate (share of entrants whose set piece 
     if (fired.length > 1) {
         const best = fired[0], worst = fired[fired.length - 1];
         console.log(`  spread: ${best[0]} ${pct(best[1] * best[2], best[2])} vs ${worst[0]} ${pct(worst[1] * worst[2], worst[2])}`);
+    }
+    /*
+     * AUDIT-7 §8.2: the floor this table printed and never enforced.
+     *
+     * At n=1,600 the spread ran survivalist 60.4% to quartermaster 19.8% —
+     * 3.05x — and the bottom four (captor, warden, broker, quartermaster) were
+     * all below the *old* floor of the fifteen-archetype roster AUDIT-6
+     * measured. Three of the four were alliance-gated: their set piece needed
+     * another tribute, in the same zone, in the same group, at the same moment.
+     *
+     * A signature is the once-per-run beat that makes an archetype a character
+     * rather than four bias scalars, so a rate of one in five is a promise the
+     * player mostly does not see kept. Guarded over adequately-sampled
+     * archetypes only, for the same reason every other guard here is.
+     */
+    /*
+     * Two numbers, not one — the lesson of AUDIT-7 §1.7, where a floor set
+     * equal to its own target made the backlog structurally always zero.
+     *
+     * `SIGNATURE_FLOOR` is the hard minimum every adequately-sampled signature
+     * clears *today*; it fails the build and may only be raised.
+     * `SIGNATURE_TARGET` is where the roster is going, reported as
+     * distance-to-go and never failed. History of the floor: the roster ran
+     * 16.7% to 64.6% when this section was written.
+     */
+    const SIGNATURE_FLOOR = 0.29;
+    const SIGNATURE_TARGET = 0.35;
+    const starved = fired.filter(([, rate]) => rate < SIGNATURE_FLOOR);
+    const shortOfTarget = fired.filter(([, rate]) => rate < SIGNATURE_TARGET);
+    if (starved.length > 0) {
+        console.log(`  ${starved.length} signature(s) under the ${(SIGNATURE_FLOOR * 100).toFixed(0)}% floor: `
+            + starved.map(([id, rate]) => `${id} ${(rate * 100).toFixed(1)}%`).join(', '));
+        signatureFailures = starved.length;
+    } else if (fired.length > 0) {
+        const lowest = fired[fired.length - 1];
+        console.log(`  every adequately-sampled signature clears the ${(SIGNATURE_FLOOR * 100).toFixed(0)}% floor`
+            + ` (${fired.length} of ${rates.length} archetypes over ${GUARD_MIN_SAMPLE} entrants);`
+            + ` thinnest ${lowest[0]} ${(lowest[1] * 100).toFixed(1)}%.`);
+        if (shortOfTarget.length > 0) {
+            console.log(`  ${shortOfTarget.length} still under the ${(SIGNATURE_TARGET * 100).toFixed(0)}% target: `
+                + shortOfTarget.map(([id, rate]) => `${id} ${(rate * 100).toFixed(1)}%`).join(', '));
+        }
+        if (lowest[1] > SIGNATURE_FLOOR + 0.02) {
+            console.log(`  raise SIGNATURE_FLOOR to ${(lowest[1] * 100).toFixed(0) }% in scripts/metrics.ts to lock that in.`);
+        }
     }
 }
 
@@ -1282,5 +1328,7 @@ if (underSampled.length) {
     const tail = reapingTraitRates.slice(-6).map(([k, v, n]) => `${k} ${(v * 100).toFixed(2)}% (n=${n})`);
     console.log(`  bottom six: ${tail.join(', ')}`);
 }
+// AUDIT-7 §8.2: counted alongside the indicator guards rather than beside them.
+failed += signatureFailures;
 console.log(failed ? `\n${failed} regression guard(s) breached.` : '\nAll regression guards hold.');
 if (failed) process.exit(1);

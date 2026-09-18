@@ -440,7 +440,26 @@ const SIGNATURES: Record<string, Signature> = {
         const ally = getAlive(ctx.state).find(o =>
             o.id !== t.id && o.zone === t.zone
             && (o.allianceId !== undefined && o.allianceId === t.allianceId));
-        if (!ally) return false;
+        /*
+         * AUDIT-7 §8.2: the version of this a soloist can reach.
+         *
+         * This set piece fired for 19.8% of quartermaster entrants, the lowest
+         * rate of all 29 archetypes, because it needed an allied tribute in the
+         * same zone at the same moment — and a quartermaster is not an
+         * especially sociable archetype. Taking stock is the *character*; the
+         * ally is one thing they might do with the answer. So a quartermaster
+         * alone still does the arithmetic, gets the smaller relief of having
+         * planned rather than the larger one of having shared, and the beat is
+         * theirs either way.
+         */
+        if (!ally) {
+            t.vitals.hunger = Math.max(0, t.vitals.hunger - ARCHETYPE_HOOKS.inventoryAloneRelief);
+            t.vitals.thirst = Math.max(0, t.vitals.thirst - ARCHETYPE_HOOKS.inventoryAloneRelief);
+            clampTribute(t);
+            say(ctx, t, 'quartermasterAlone', [t.id]);
+            t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+            return true;
+        }
         t.vitals.hunger = Math.max(0, t.vitals.hunger - ARCHETYPE_HOOKS.inventoryRelief);
         t.vitals.thirst = Math.max(0, t.vitals.thirst - ARCHETYPE_HOOKS.inventoryRelief);
         ally.vitals.hunger = Math.max(0, ally.vitals.hunger - ARCHETYPE_HOOKS.inventoryAllyRelief);
@@ -531,8 +550,20 @@ const SIGNATURES: Record<string, Signature> = {
     wardenLine: (ctx, t) => {
         // A doorway, or failing that the ground they are already holding: the
         // beat is the declaration, not the terrain.
+        /*
+         * AUDIT-7 §8.2: a warden declares ground, and the ground did not have
+         * to be a doorway.
+         *
+         * This needed a named chokepoint or two cycles already spent holding,
+         * and fired for 24.3% of warden entrants. The archetype's whole posture
+         * is "this is mine and you are not coming through it" — a zone worth
+         * having is enough of a reason, and `zone.resources` is the engine's
+         * own measure of that. The chokepoint and the held-cycles routes are
+         * unchanged; this is a third way in, not a loosening of the first two.
+         */
         const choke = chokepointByName(t.zone);
-        if (!choke && (t.zoneHeld ?? 0) < ARCHETYPE_HOOKS.wardenHeldCycles) return false;
+        const worthHolding = (getZone(ctx.state.arena, t.zone)?.resources ?? 0) >= ARCHETYPE_HOOKS.wardenWorthHolding;
+        if (!choke && !worthHolding && (t.zoneHeld ?? 0) < ARCHETYPE_HOOKS.wardenHeldCycles) return false;
         say(ctx, t, 'wardenLine', [t.id]);
         t.objective = { kind: 'wait', zone: t.zone, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.wardenWaitCycles };
         // Everybody else files it under "somewhere to not go".
@@ -646,11 +677,59 @@ const SIGNATURES: Record<string, Signature> = {
      * a truce, a fear or a mood.
      */
     brokerTerms: (ctx, t) => {
-        const client = others(ctx, t)
-            .filter(o => o.zone === t.zone && o.inventory.length < t.inventory.length)
-            .sort((a, b) => b.vitals.hunger - a.vitals.hunger)[0];
+        /*
+         * AUDIT-7 §8.2: `o.inventory.length < t.inventory.length` was the wrong
+         * question, and it held this set piece to 24.2% of broker entrants.
+         *
+         * A broker does not need to be richer than the client overall; they
+         * need to be holding the *particular thing* the client is short of.
+         * Somebody with four weapons and no water is a client, not a rival
+         * supplier. The filter is need now — the hungriest or thirstiest person
+         * standing here who is worse off than the broker on that axis — and the
+         * `goods` check below already proves the broker has something to trade.
+         */
+        const need = (o: Tribute) => Math.max(o.vitals.hunger, o.vitals.thirst);
+        /*
+         * AUDIT-7 §8.2: ...and the client pool excluded the people a broker
+         * actually stands next to.
+         *
+         * `others()` filters out the tribute's own alliance, which is right for
+         * the signatures about strangers and exactly wrong for this one. A
+         * non-ally in your zone is usually a fight; an ally in your zone is
+         * somebody you can hand a flask to and mention, pleasantly, that you
+         * will remember. `incurDebt` already works between allies and
+         * `debts.ts` is built on it — this was the archetype named after it
+         * being locked out of it.
+         *
+         * Everybody alive in the zone, then. That took the set piece from 26.1%
+         * of broker entrants to comfortably over the floor, and it is the more
+         * characterful reading besides.
+         */
+        const client = getAlive(ctx.state)
+            .filter(o => o.id !== t.id && o.zone === t.zone
+                && (o.inventory.length < t.inventory.length
+                    || need(o) > need(t) + ARCHETYPE_HOOKS.brokerNeedGap))
+            .sort((a, b) => need(b) - need(a))[0];
         if (!client) return false;
-        const idx = t.inventory.findIndex(i => i.type !== 'weapon');
+        /*
+         * AUDIT-7 §8.2: and a broker holding only weapons is still a broker.
+         *
+         * This required a non-weapon item, and the item distribution is
+         * weapon-heavy by a wide margin (§6.5: eleven of the fifteen
+         * most-held objects are weapons), so the archetype whose entire
+         * character is having the thing you need was routinely disqualified
+         * for having the wrong kind of thing. Handing somebody a blade against
+         * a debt is arguably the *most* broker-ish version of this: it is the
+         * one where they know exactly what they are arming.
+         *
+         * Non-weapons first, because a broker parts with the cheap thing when
+         * they can; a weapon only when it is all they have, and never their
+         * last one.
+         */
+        let idx = t.inventory.findIndex(i => i.type !== 'weapon');
+        if (idx < 0 && t.inventory.filter(i => i.type === 'weapon').length > ARCHETYPE_HOOKS.brokerSpareWeapons) {
+            idx = t.inventory.findIndex(i => i.type === 'weapon');
+        }
         if (idx < 0) return false;
         const goods = t.inventory[idx];
         say(ctx, t, 'brokerTerms', [t.id, client.id], { client: client.name, goods: goods.name });

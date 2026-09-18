@@ -868,6 +868,30 @@ export const HUNTING = {
  * out-weighs the first.
  */
 export const PROFICIENCY = {
+    /*
+     * AUDIT-7 §3.5: the four axes that never left their floor.
+     *
+     * Measured across 6,000 tributes, peak value against a cap of 6:
+     * `stealth` 1.00, `carpentry` 1.00, `intimidation` 1.68, `navigation` 2.53.
+     * The first two had **no `trainProficiency` call site anywhere in the
+     * engine** — a whole axis on the tribute sheet that no tribute could move,
+     * in a game with a `ghost` archetype and a `master-of-one` achievement that
+     * presents all fifteen as things somebody can be good at. An inert
+     * proficiency is worse than a missing one.
+     *
+     * The shares below are what a partial or failed contribution is worth,
+     * following the `share` argument AUDIT-4 §3.4 added for exactly this.
+     */
+    /** Finding the branches, when the building itself trains carpentry. */
+    shelterForageShare: 0.4,
+    /** A trap is chosen with tracking and built with carpentry. */
+    trapCarpentryShare: 0.6,
+    /** Being found is a smaller lesson than getting away with it. */
+    stealthCaughtShare: 0.3,
+    /** Crossing ground you have not crossed before. */
+    navigationNewZoneShare: 0.5,
+    /** Facing somebody down without a blow landing. */
+    intimidationStandoffShare: 0.8,
     /**
      * Audit 4 §3.4: what a failed attempt is worth, as a share of a successful
      * one. Used by the wound-dressing path, which is the one skill in the game
@@ -7436,6 +7460,11 @@ export const ARCHETYPE_HOOKS = {
     /** Minimum items on hand before there is anything to take stock of. */
     inventoryMinItems: 2,
     /**
+     * AUDIT-7 §8.2: what taking stock is worth with nobody to share it with.
+     * Less than `inventoryRelief`, because the gain there is partly the bond.
+     */
+    inventoryAloneRelief: 6,
+    /**
      * Martyr: the offer, made out loud, to the person they intend to outlive
      * nobody for. Costs them real health — the offer is not rhetorical — and
      * buys the ward the largest single bond in the signature roster.
@@ -7466,6 +7495,26 @@ export const ARCHETYPE_HOOKS = {
      */
     /** Warden: cycles of holding ground that stand in for a doorway when the zone is not one. */
     wardenHeldCycles: 2,
+    /**
+     * AUDIT-7 §8.2: ground worth declaring, when there is no doorway to stand
+     * in. `OBJECTIVES.holdMinResources` is 0.5 for the same judgement, so this
+     * sits just above it: a warden wants somewhere better than merely adequate.
+     */
+    wardenWorthHolding: 0.6,
+    /**
+     * AUDIT-7 §8.2: how much hungrier or thirstier than the broker somebody has
+     * to be to read as a client rather than as a rival supplier.
+     */
+    brokerNeedGap: 15,
+    /**
+     * AUDIT-7 §8.2: how many weapons a broker keeps before they will trade one.
+     *
+     * One. Measured both ways at n=1,600: keeping two spares dropped the set
+     * piece from 29.3% of entrants to 27.9% and left the win rate identical at
+     * 3.00%, so the caution bought nothing. A broker holding two blades can
+     * part with one.
+     */
+    brokerSpareWeapons: 1,
     /** How long the line holds before they have to decide again. */
     wardenWaitCycles: 6,
     /** What the rest of the field files the zone under. Positive is "do not go there". */

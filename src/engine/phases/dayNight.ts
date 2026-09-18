@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ARENA_LAWS, BLEEDING, ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, QUELL_MECHANICS, RESOLVE, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
+import { ARENA_LAWS, BLEEDING, ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, PROFICIENCY, QUELL_MECHANICS, RESOLVE, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
 import { traitMod } from '../../data/traits';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
@@ -50,7 +50,7 @@ import { resolveTruces } from '../parley';
 import { postWatches } from '../watch';
 import { offerLoans, repayDebts, settleLoans, tickDistrictBonds, tickRetainers } from '../debts';
 import { reconcileRivals } from '../rapport';
-import { decaySkillsUnderInjury, profOf, teachSkills } from '../proficiency';
+import { decaySkillsUnderInjury, profOf, teachSkills, trainProficiency } from '../proficiency';
 import { enforceCharters } from '../allianceCharter';
 import { earnTrait } from '../earnedTraits';
 import { tickTraitArcs } from '../traitArcs';
@@ -477,7 +477,20 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     board.forEach(t => {
         // §10.1: the personal map — every zone they have stood in.
         t.visitedZones = t.visitedZones ?? [];
-        if (!t.visitedZones.includes(t.zone)) t.visitedZones.push(t.zone);
+        if (!t.visitedZones.includes(t.zone)) {
+            t.visitedZones.push(t.zone);
+            /*
+             * AUDIT-7 §3.5: standing somewhere you have not stood is how
+             * anybody learns ground, and `navigation` had one training site in
+             * the whole engine. Its peak across 6,000 tributes was 2.53 against
+             * a cap of 6, on the skill that decides whether a tribute can read
+             * a route — so the arena's own map was teaching nobody anything.
+             * A partial share: arriving is not the same as knowing your way
+             * back, and a tribute who crosses the whole arena should end the
+             * run able to.
+             */
+            trainProficiency(t, 'navigation', undefined, PROFICIENCY.navigationNewZoneShare);
+        }
         // §8.9: cycles spent with no hostile in the zone. Enough of them in a
         // row and quiet has become who they are.
         const hostileHere = board.some(o => o.id !== t.id && o.zone === t.zone

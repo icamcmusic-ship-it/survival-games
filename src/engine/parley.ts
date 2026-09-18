@@ -505,6 +505,17 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
         // They learn nothing about each other except that it was not worth it.
         t.vitals.fatigue += PARLEY.standoffFatigue;
         other.vitals.fatigue += PARLEY.standoffFatigue;
+        /*
+         * AUDIT-7 §3.5: ...except how to do this, which is the whole of what
+         * `intimidation` is.
+         *
+         * The skill had one training site — a training-floor altercation — and
+         * peaked at 1.68 of 6 across 6,000 tributes, while `fear.ts:36` reads
+         * it on every fear roll in the game. A standoff is two people making
+         * each other decide it is not worth it, which is the act itself.
+         */
+        trainProficiency(t, 'intimidation', undefined, PROFICIENCY.intimidationStandoffShare);
+        trainProficiency(other, 'intimidation', undefined, PROFICIENCY.intimidationStandoffShare);
         clampTribute(t);
         clampTribute(other);
         ctx.logEvent(
