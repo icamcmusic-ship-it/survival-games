@@ -1,5 +1,165 @@
 # Changelog
 
+## AUDIT-6 fix pass (this branch)
+
+`AUDIT-6.md` is the sixth full audit, written to twelve headings the request
+named. This is the answer to it, plus the one thing the request added: **a Games
+should run ten to thirteen days.** Every number below was measured on this
+branch by the repository's own check roster, at `METRICS_RUNS=1600` wherever an
+archetype or a trait is being judged. The roster is green: `lint` plus twenty
+checks, `npm run build`, and `test:ui` at 51 steps.
+
+### The run length request
+
+- **8.45 days to 10.94** at n=1,600, inside the 10–13 the request asked for,
+  with run-length spread up from 1.1 to 3.01 days. Retuned across vitals drains,
+  escalation days and the arena death budget rather than by lengthening the
+  calendar, so the extra days are days somebody could die in.
+- Wipeouts fell from 3.8% of runs to 0.3% on the way: the last survivor was
+  taking the nightlock with nobody left to keep playing for.
+
+### The three findings that were wrong
+
+Corrected in `AUDIT-6.md` in place rather than quietly dropped.
+
+- **§8.5** read *shares of all victors* as win rates and concluded districts 13
+  and 16 were unwinnable at 0.2% and 0.1%. Per entrant they win 2.0% and 2.8%,
+  which is the bottom of the table and the same band as districts 5 and 6.
+- **§2.3**'s probe read `textContent` where it needed the accessible name.
+- **§7.2**'s own-trap claim and **§7.3**'s magnitude did not reproduce.
+
+### Bugs (§1)
+
+- The soak's prose probes had rotted: probes were matching nothing and reporting
+  zero as a finding. All 100 are now registered, and a **meta-assertion fails
+  the build naming any probe that matched nothing across the sweep** — a dead
+  probe cannot be silent again. 108 probes, all live.
+- Off-season skins were unreachable from every headless harness, so 120 skin
+  definitions had no test coverage at all. `engine/arenaSetup.ts` hoists the
+  per-zone clone, the skin, the Quell law override and the `lawZone` default out
+  of the store, so every harness plays the arena the player gets.
+- 34 arenas shared one Gamemaker menu; `packFor` was documented as
+  arena-specific and was not.
+- `PanemRecords.recentRuns` was written by `commitRun` and absent from the
+  storage spec's `migrate`, which runs on every read — so the comparison window
+  was erased the first time the store was read back, exactly the bug the spec's
+  own v0 note records happening to `patronDistrict`. The end screen's "what was
+  different about this run" and the dynasty clause were both quietly wrong
+  across a reload. `check-storage-migrations` now asserts the general property:
+  no key of a written record is lost on a round trip.
+
+### Interface (§1.1, §2)
+
+- `test:ui` was 22 of 46 steps passing against an interface that had moved on.
+  Rewritten: **51 of 51**, and it runs in CI now — a browser harness nothing
+  runs is a file, not a test.
+- Tap targets under 24px: **155 to 5**. Hover-only hints on controls: **18 to
+  0**, with a ceiling at 0.
+- A third arena view, **Belief**: the same sectors read through one tribute's
+  memory. The rumour layer models belief separately from truth — 163 planted
+  claims per 400 runs, 81 traced back to their author — and every map view drew
+  the true state, so a two-hundred-line system was invisible and a tribute
+  walking into a sector they had been told was empty looked stupid.
+
+### Balance (§8, §12)
+
+- The archetype draw was **12.6:1** between the commonest and rarest; it is now
+  **2.8:1**, which is what made the win table judgeable. Archetype win spread
+  **4.35x to 2.54x** at n=1,600, with every one of the 29 archetypes over 500
+  entrants.
+- The **Saboteur** has been bottom of that table for three consecutive audits.
+  The cause was not its traps: it survives 4.35 days against a field of 4.4 and
+  takes 0.41 kills against 0.55 — it was never closing, the shape
+  `late-blooming` was written for. 2.37% to **3.88%**. The trap-building bonus
+  also sat on `trickster` alone, so the archetype whose description is "springs
+  other people's traps" built them at the field rate.
+- **Six new archetypes** — Warden, Herald, Penitent, Forager, Duellist, Broker —
+  each holding a stance/objective/target combination nothing in the table held.
+  Three exist because `wait`, `Patrolling` and `Nursing` were reachable by the
+  engine and by nobody's character: `wait` was the top objective bias of zero of
+  twenty-three archetypes.
+- **Four new proficiencies**, each wired to a read site rather than displayed:
+  `carpentry` (the trap build), `navigation` (hidden-edge discovery — a tribute
+  who has spent a week reading the map is now better at reading it),
+  `oratory` (the bloc treaty) and `butchery` (what comes off an animal).
+- **24 new traits** and 8 new `TraitMod` keys, every key with exactly one read
+  site, because an unread modifier is the bug that file exists to prevent.
+- `scripts/metrics.ts` gains a `judgeable` flag. Adding six archetypes meant no
+  archetype cleared `GUARD_MIN_SAMPLE` at 400 runs, so the worst-archetype guard
+  fell back to 0% and failed a bound no measurement had been taken for. A guard
+  with an empty sample behind it now reports and does not vote.
+
+### The arena, and ways to die (§5, §7)
+
+- Arenas that could not produce a death of their own: **8 to 0**. Five new
+  universal deaths and 34 new arena event packs.
+- **THE RECAP** at the convergence: every survivor is shown what every other one
+  has done. Final-two standoffs between strangers **43.5% to 30.3%** — a slow
+  reputation drift could not fix that, because by the time the field is small
+  enough for anybody to have heard of anybody there are two cycles left.
+- Off-season seasons for the five newest arenas, which had none: 120 skin
+  definitions to **135**, and every arena now has one.
+
+### Replayability (§9)
+
+- **The muster.** A run was one large opening slaughter and then eight days of
+  twelve people not meeting; the convergence answers that at six alive, which is
+  the last third. At twelve alive the Capitol now puts a price on one sector for
+  four cycles and lets everybody decide — an incentive, not a wall, with the
+  objective pull at 62 against the convergence's 99. Called in 47.3% of runs,
+  attended in 181 of 189. The approaches are paid at half, because an offer that
+  can only be taken by standing in the open is a tax on every archetype whose
+  game is not standing in the open, and the first version measurably was.
+- **Quells: 13.3% of runs to 25.0%**, with all 28 drawn across 600 profiles. A
+  player who played ten Games used to see one, with twenty-eight authored Quells
+  behind that door. The `ordinary` cast shape came down with it: 36% of runs to
+  29.8%.
+- **The Head Gamemaker has a term.** The post was re-drawn from the seed every
+  run, so run 20 shared no history with run 19, while twenty authored Gamemakers
+  each carried a record the broadcast read out and nothing else used.
+
+### Side systems and shallow features (§6, §10)
+
+- **Epithets are scored, not laddered.** Awards were checked in priority order
+  with blood first, so `bloody` took 68.7% of 504 awards and `builder` took
+  none. All seven kinds now report how far past their own bar a tribute is and
+  the loudest thing they did wins. Being given a name costs notoriety across the
+  field: the name still belongs to the audience, the consequence to the arena.
+- **Flavour pools**: `ruinStealth` ran 20 lines against 11.7 draws a run, so a
+  player read half of it in one Games and re-read it forever. 137 new lines
+  across four pools, and `check-flavor-pools` now holds a **relative** floor —
+  four Games' worth of draws, not one. The old 1x bar said nothing about the
+  second run.
+- **Twelve new items**, six water and six medical, every one with a read site: a
+  medical item the engine does not look for by id is a heavier bandage with a
+  different name on it. `Item.reusable` fixes the related shallowness — every
+  `purifies` item was consumed on use because tablets were written first, so a
+  charcoal filter was a one-shot.
+- **Traps**: `stake` was built six times in 400 runs and `tripwire` 53 against
+  deadfall's 223. A stake no longer needs a venom gland *and* no blade — it
+  needs soft ground and somebody who can whittle, with the gland deciding
+  whether it is a *treated* one. Placement finally reads `chokepoint` and
+  `zoneTraffic`, which the engine had and the trap layer ignored.
+- **The persona pays both ways.** Playing against type accrued backlash and
+  spent it in sponsor money; living up to it accrued excitement and nothing, so
+  the persona was a penalty in a costume.
+- A named weapon is a titled possession on the tribute sheet with the lives it
+  has taken, and "Most lives taken by one weapon" is a Panem record. 227 weapons
+  earned a name across 300 runs and nothing outside the feed ever said so.
+
+### Content (§11, §12)
+
+- **Sixty achievements**, 207 to **267**, covering the systems that had no entry
+  at all. Every threshold was calibrated against a measurement probe rather than
+  guessed, which caught five unreachable and four near-automatic drafts before
+  they shipped — and turned up a pre-existing bug in `even-field`, which counted
+  bloodbath deaths as `dayOfDeath === 0`, a value nothing writes. Near-automatic
+  entries **8 to 4**; the usable 5–60% band **128 to 163**.
+- **160 names**, 3,584 to **3,744**, initial-letter spread 9.6:1 to 7.6:1. Still
+  one given name each: `check-names` fails any entry containing whitespace, an
+  apostrophe or a hyphen.
+
+
 ## The 21 requests, plus the two deferred items (this branch)
 
 Everything the follow-up request asked for, and the two things the previous

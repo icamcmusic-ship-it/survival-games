@@ -1,7 +1,14 @@
 # Survival Games — sixth full audit (12 sections)
 
-> **Status: being answered.** `CHANGELOG.md` records the fix passes on this
-> branch. Two findings were wrong and are corrected in place rather than quietly
+> **Status: answered.** `CHANGELOG.md` records the fix passes on this branch,
+> which close every section of this report. Headline measurements, all taken on
+> this branch: run length **8.45 to 10.94 days** at n=1,600 (the request's own
+> item); archetype win spread **4.35x to 2.54x** with all 29 archetypes over 500
+> entrants; `test:ui` **22 of 46 steps to 51 of 51**, now running in CI; arenas
+> that cannot produce a death of their own **8 to 0**; achievements **207 to
+> 267** with the near-automatic count **8 to 4**; Quell rate **13.3% to 25.0%**.
+>
+> Three findings were wrong and are corrected in place rather than quietly
 > dropped:
 >
 > - **§8.5** claimed districts 13 and 16 were effectively unwinnable at 0.2% and
@@ -14,6 +21,14 @@
 >   barely fired. Repairing the dead probe showed **167 treaties sworn per 400
 >   runs**; the real fault was that 153 of them ended *silently* when one bloc
 >   stopped existing. Recorded in §4.3's own terms.
+> - **§7.2**'s claim that a tribute never walks into their own trap, and
+>   **§7.3**'s magnitude, did not reproduce on measurement.
+>
+> One bug this report did not find turned up while answering §9.3:
+> `PanemRecords.recentRuns` was written on every commit and absent from the
+> storage spec's `migrate`, which runs on every read — so the comparison window
+> was erased the first time the store was read back, and both of its readers were
+> quietly wrong across a reload.
 
 ## Context
 
