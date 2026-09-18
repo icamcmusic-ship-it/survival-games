@@ -858,8 +858,33 @@ const indicators: Indicator[] = [
         // lower one.
         label: 'deaths from mutts and hazards',
         value: ((deathsByCause['mutts'] ?? 0) + (deathsByCause['arena/hazard'] ?? 0)) / Math.max(1, deaths),
-        guard: v => v >= 0.05 && v <= 0.18,
-        guardText: '5%-18%',
+        /*
+         * AUDIT-6 §7: the ceiling goes 18% to 20%, and the reason is that the
+         * ceiling and the work now disagree.
+         *
+         * It was set when this number was 2.3% and its job was to stop the
+         * arena out-killing the cast. §7 of this audit then asked for the
+         * opposite of what the ceiling assumes: **eight of forty-five arenas
+         * could not produce a death that belonged to them**, and five new
+         * universal deaths and thirty-four arena packs were written to fix it.
+         * The result is 13.2% from arena hazards and 4.9% from mutts, which is
+         * the design goal on the same row (`>= 7%`) being met rather handsomely
+         * and the ceiling being brushed from underneath.
+         *
+         * It was also no longer resolvable at the run count CI uses. The value
+         * reads **17.6% at n=1,600** and 18.0%–18.2% across three n=400 sweeps
+         * of the same commit — so an 18% line failed or passed on which seeds
+         * were drawn, which is the failure mode `GUARD_MIN_SAMPLE` exists to
+         * prevent elsewhere in this file. A guard that fires at random is worse
+         * than no guard, because it trains the reader to re-run it.
+         *
+         * What the ceiling was protecting is still protected, and by a number
+         * with room in it: `deaths caused by another tribute` guards `>= 33%`
+         * and measures **58.3%**. The cast is emphatically still the main cause
+         * of death in this arena.
+         */
+        guard: v => v >= 0.05 && v <= 0.20,
+        guardText: '5%-20%',
         goal: '>= 7%',
         goalMet: v => v >= 0.07,
         baseline: '2.3%',

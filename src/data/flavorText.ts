@@ -1691,7 +1691,9 @@ export const BETRAYAL_AFTERMATH_TEXTS = [
     '{victim} goes back over everything {betrayer} said to them and finds where it started.',
     '{betrayer} takes a two-hour detour around {zone} rather than cross the ridge {victim} is on.',
     '{victim} cuts the pack strap {betrayer} tied rather than untie it.',
-    'Nobody in {betrayer}\'s group will take a watch with them. Nobody has said why.',
+    // §22: named both halves. The line was about {betrayer} and {victim} and
+    // mentioned one of them.
+    'Nobody in {betrayer}\'s group will take a watch with them since {victim}. Nobody has said why out loud.',
     '{betrayer} explains what they did to {victim} to two people who did not ask.',
     '{victim} has been polite to everyone since {betrayer}, and has not trusted any of them.',
     '{betrayer} watches the broadcast replay who they were before {zone}.',

@@ -211,7 +211,11 @@ export function enforceCharters(ctx: SimContext) {
                     const added = ctx.rng.pick(missing);
                     record.charter = [...record.charter!, added];
                     ctx.logEvent(
-                        `The terms get harsher around the fire that night: from now on, ${RULE_TEXT[added]}. Nobody looks at ${offender.name} while it is agreed.`,
+                        // §22: the cast is the whole group agreeing to it, so
+                        // the line says which of them are at the fire.
+                        `The terms get harsher around the fire that night: from now on, ${RULE_TEXT[added]}. `
+                        + `${members.filter(m => m.id !== offender.id).map(m => m.name).join(', ')} agree it. `
+                        + `Nobody looks at ${offender.name} while they do.`,
                         members.map(m => m.id),
                         { category: 'alliance' }
                     );

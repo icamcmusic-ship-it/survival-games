@@ -141,8 +141,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
             ctx.logEvent(
                 `First light at ${horn.name}, and the Capitol is generous to exactly one of the people who stayed: `
                 + `${patient.name}, who needed it most and is the best television. `
+                // §22: the cast is everybody who slept at the horn, so the
+                // line says who watched rather than "everybody else".
                 + (atHorn.length > 1
-                    ? 'Everybody else who slept there watches it happen and does the arithmetic on what being the worst hurt is worth.'
+                    ? `${atHorn.filter(t => t.id !== patient.id).map(t => t.name).join(', ')} watch it happen and do the `
+                        + 'arithmetic on what being the worst hurt is worth.'
                     : 'There was nobody else there to watch, which the Capitol will have found disappointing.'),
                 atHorn.map(t => t.id),
                 { important: true, category: 'gamemaker', zone: horn.name }

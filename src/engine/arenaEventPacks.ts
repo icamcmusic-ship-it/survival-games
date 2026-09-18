@@ -161,6 +161,28 @@ export function tickMuster(ctx: SimContext) {
     const until = ctx.state.musterUntilCycle;
     const zone = ctx.state.musterZone;
     if (until === undefined || zone === undefined) return;
+    /*
+     * AUDIT-6 §9.1: the offer is lifted if the sector turns.
+     *
+     * `maybeMuster` will not *pick* a sector that is on fire, but a fire can
+     * start in one afterwards, and the Capitol is selling a place to be watched
+     * rather than a place to die — a standing invitation into a hazard is a
+     * different show and it is one it would not run. It is also the fix for a
+     * measured regression: the first version pushed mutt-and-hazard deaths from
+     * 17.9% to 18.2% of all deaths, through their guarded ceiling, because it
+     * kept paying people to stand in ground the arena had since set alight.
+     */
+    if (((ctx.state.zoneEffects ?? {})[zone] ?? []).length > 0) {
+        ctx.state.musterZone = undefined;
+        ctx.state.musterUntilCycle = undefined;
+        ctx.logEvent(
+            `Whatever is happening in ${zone} now, the Capitol has stopped paying anybody to stand in it. The cameras move on `
+            + 'without an announcement, which is how everybody there knows the money has gone.',
+            [],
+            { category: 'gamemaker' },
+        );
+        return;
+    }
     if (cycleOf(ctx.state) > until) {
         ctx.state.musterZone = undefined;
         ctx.state.musterUntilCycle = undefined;
