@@ -262,7 +262,14 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Brute': {
         info: 'Built for it. Hits harder with anything heavy and with nothing at all, and the field reads them as dangerous.',
-        mods: { meleePower: 2, unarmedPower: 2.5, odds: 1.5, ambush: -0.04 },
+        // AUDIT-7 §1.4: `intimidation` is read at `fear.ts:36` and, until this
+        // pass, was carried by no trait and no quirk in the game — so the whole
+        // term contributed a flat zero to every fear roll ever made. Three
+        // traits whose own `info` already said they frighten people now say it
+        // in the modifier table too. See the rule at the top of this file: a
+        // key with a read site and no writer is the same bug as a modifier with
+        // no read site, wearing the other hat.
+        mods: { meleePower: 2, unarmedPower: 2.5, odds: 1.5, ambush: -0.04, intimidation: 0.8 },
     },
     'Marksman': {
         info: 'Trained on the range. Genuinely dangerous with a bow, a slingshot or a blowgun.',
@@ -477,7 +484,7 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     // new hooks, so nothing here can be inert the way the pre-A2 table was.
     'Dead-Eyed': {
         info: 'Something behind the eyes has already left. Killing costs them almost nothing, and the field can tell.',
-        mods: { killSanity: -0.5, targetDraw: 0.6, allianceAffinity: -0.25, excitement: 0.15 },
+        mods: { killSanity: -0.5, targetDraw: 0.6, allianceAffinity: -0.25, excitement: 0.15, intimidation: 1.2 },
     },
     'Rope-Handed': {
         info: 'Grew up on lines and knots. Very hard to hold onto in a grapple, and their traps hold what other people\'s let go.',
@@ -653,8 +660,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { trustGain: 0.3, allianceAffinity: 0.1 },
     },
     'Stone-Faced': {
-        info: 'Nothing shows. Very hard to suspect of anything, and nearly impossible to warm to.',
-        mods: { suspicionResist: 0.4, rapport: -0.2 },
+        info: 'Nothing shows. Very hard to suspect of anything, nearly impossible to warm to, and unreadable across a clearing.',
+        mods: { suspicionResist: 0.4, rapport: -0.2, intimidation: 0.6 },
     },
     'Standard-Bearer': {
         info: 'People follow them. So does everybody else: the field knows exactly who to take out of a group first.',

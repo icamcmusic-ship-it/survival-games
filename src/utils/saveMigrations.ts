@@ -527,29 +527,82 @@ function normalizeStandingGoal(raw: unknown): StandingGoal | undefined {
     return { goal, reason, setCycle: asNum(g.setCycle, 0) };
 }
 
-function normalizeConfig(raw: unknown): GameConfig {
+/**
+ * AUDIT-7 §1.2: the one config normaliser, and the reason it is a table.
+ *
+ * This used to be an object literal naming twelve keys. `GameConfig` has
+ * eighteen, so four — `vanillaRules`, `singleVictor`, `ageMean`, `ageSpread` —
+ * were dropped on **every read of every save slot**, silently and by omission.
+ * That is not cosmetic: `victory.ts` reads `singleVictor` to close off every
+ * dual-victory route, so a player who asked for exactly one victor, saved, and
+ * resumed could get two; `gameStore.rerollCast` reads `vanillaRules` and the
+ * age pair, so a reroll after a resume drew a different cast under the same
+ * seed.
+ *
+ * `hofStorage` had a *second*, divergent copy of this that kept only seven
+ * keys, so a Hall-of-Fame "relaunch this victory" replayed the wrong Games.
+ * It now calls this one.
+ *
+ * The shape below is the fix for the class rather than the instance. It is a
+ * `Record<keyof GameConfig, …>`, so a new field on `GameConfig` is a **type
+ * error here** until it is given a rule. Omission cannot be the bug again.
+ *
+ * `ageMean` and `ageSpread` are deliberately `undefined`-preserving: absent is
+ * a real and different state from any number (it means the canon tesserae
+ * bowl), so they are not defaulted, only clamped when present.
+ */
+type ConfigRule<K extends keyof GameConfig> = (raw: Record<string, unknown>) => GameConfig[K];
+type ConfigRules = { [K in keyof Required<GameConfig>]: ConfigRule<K> };
+
+/** Absent, or unparseable, means "not set" — which for the age pair is a state. */
+function optionalNum(value: unknown, min: number, max: number): number | undefined {
+    if (value === undefined || value === null) return undefined;
+    const n = Number(value);
+    if (!Number.isFinite(n)) return undefined;
+    return clamp(n, min, max);
+}
+
+const CONFIG_RULES: ConfigRules = {
+    // §1.6: floor of 2, not 1. Every other reader of this field
+    // (prefsStorage, hofStorage, the arena generator) clamps to 2-16 and
+    // types.ts documents the range as 2-16; a migrated save carrying a
+    // districtCount of 1 was a value nothing downstream agreed with.
+    districtCount: r => clamp(asNum(r.districtCount, DEFAULT_GAME_CONFIG.districtCount), 2, 16),
+    hazardRate: r => clamp(asNum(r.hazardRate, DEFAULT_GAME_CONFIG.hazardRate), 0.25, 2.5),
+    betrayalRate: r => clamp(asNum(r.betrayalRate, DEFAULT_GAME_CONFIG.betrayalRate), 0, 3),
+    sponsorGenerosity: r => clamp(asNum(r.sponsorGenerosity, DEFAULT_GAME_CONFIG.sponsorGenerosity), 0, 3),
+    enableFeast: r => asBool(r.enableFeast, DEFAULT_GAME_CONFIG.enableFeast),
+    enableSanity: r => asBool(r.enableSanity, DEFAULT_GAME_CONFIG.enableSanity),
+    // §(requests 2): the sanity dials. A save written before they existed
+    // carries none of them and resolves to the defaults, which are the
+    // behaviour that save was recorded under.
+    sanityDrainRate: r => clamp(asNum(r.sanityDrainRate, DEFAULT_GAME_CONFIG.sanityDrainRate ?? 1), 0.25, 2.5),
+    sanityRecoveryRate: r => clamp(asNum(r.sanityRecoveryRate, DEFAULT_GAME_CONFIG.sanityRecoveryRate ?? 1), 0.25, 2.5),
+    enableHallucinations: r => asBool(r.enableHallucinations, DEFAULT_GAME_CONFIG.enableHallucinations ?? true),
+    enableBreakdowns: r => asBool(r.enableBreakdowns, DEFAULT_GAME_CONFIG.enableBreakdowns ?? true),
+    sanityStart: r => clamp(asNum(r.sanityStart, DEFAULT_GAME_CONFIG.sanityStart ?? 100), 40, 100),
+    plainNames: r => asBool(r.plainNames, DEFAULT_GAME_CONFIG.plainNames ?? false),
+    // AUDIT-7 §1.2: the four that were being dropped.
+    vanillaRules: r => asBool(r.vanillaRules, DEFAULT_GAME_CONFIG.vanillaRules ?? false),
+    singleVictor: r => asBool(r.singleVictor, DEFAULT_GAME_CONFIG.singleVictor ?? false),
+    ageMean: r => optionalNum(r.ageMean, 12, 18),
+    ageSpread: r => optionalNum(r.ageSpread, 0.5, 4),
+};
+
+/** Every `GameConfig` key, for the round-trip assertion in `check-storage-migrations`. */
+export const CONFIG_KEYS = Object.keys(CONFIG_RULES) as Array<keyof GameConfig>;
+
+export function normalizeConfig(raw: unknown): GameConfig {
     const r = asRecord(raw) ?? {};
-    return {
-        // §1.6: floor of 2, not 1. Every other reader of this field
-        // (prefsStorage, hofStorage, the arena generator) clamps to 2-16 and
-        // types.ts documents the range as 2-16; a migrated save carrying a
-        // districtCount of 1 was a value nothing downstream agreed with.
-        districtCount: clamp(asNum(r.districtCount, DEFAULT_GAME_CONFIG.districtCount), 2, 16),
-        hazardRate: asNum(r.hazardRate, DEFAULT_GAME_CONFIG.hazardRate),
-        betrayalRate: asNum(r.betrayalRate, DEFAULT_GAME_CONFIG.betrayalRate),
-        sponsorGenerosity: asNum(r.sponsorGenerosity, DEFAULT_GAME_CONFIG.sponsorGenerosity),
-        enableFeast: asBool(r.enableFeast, DEFAULT_GAME_CONFIG.enableFeast),
-        enableSanity: asBool(r.enableSanity, DEFAULT_GAME_CONFIG.enableSanity),
-        // §(requests 2): the sanity dials. A save written before they existed
-        // carries none of them and resolves to the defaults, which are the
-        // behaviour that save was recorded under.
-        sanityDrainRate: clamp(asNum(r.sanityDrainRate, DEFAULT_GAME_CONFIG.sanityDrainRate ?? 1), 0.25, 2.5),
-        sanityRecoveryRate: clamp(asNum(r.sanityRecoveryRate, DEFAULT_GAME_CONFIG.sanityRecoveryRate ?? 1), 0.25, 2.5),
-        enableHallucinations: asBool(r.enableHallucinations, DEFAULT_GAME_CONFIG.enableHallucinations ?? true),
-        enableBreakdowns: asBool(r.enableBreakdowns, DEFAULT_GAME_CONFIG.enableBreakdowns ?? true),
-        sanityStart: clamp(asNum(r.sanityStart, DEFAULT_GAME_CONFIG.sanityStart ?? 100), 40, 100),
-        plainNames: asBool(r.plainNames, DEFAULT_GAME_CONFIG.plainNames ?? false),
-    };
+    const out = {} as Record<string, unknown>;
+    for (const key of CONFIG_KEYS) {
+        const value = CONFIG_RULES[key](r);
+        // `ageMean`/`ageSpread` resolve to undefined when unset, and an explicit
+        // `undefined` property is not the same as an absent one to a `in` check
+        // or to `JSON.stringify`. Absent is what "not set" has always looked like.
+        if (value !== undefined) out[key] = value;
+    }
+    return out as unknown as GameConfig;
 }
 
 function normalizeLog(raw: unknown): EventLog[] {

@@ -141,6 +141,15 @@ export default function App() {
         // canon tesserae-weighted draw, which is what every such link had.
         ageMean: optionalNumParam('ageMean', 12, 18),
         ageSpread: optionalNumParam('ageSpread', 0.5, 4),
+        // AUDIT-7 §1.1: the sanity block. Absent — which is every link written
+        // before this — falls back to the defaults, which is the behaviour
+        // those links always replayed. Ranges mirror the setup screen's
+        // sliders, because a shared link is untrusted input.
+        sanityDrainRate: numParam('sanityDrainRate', DEFAULT_GAME_CONFIG.sanityDrainRate ?? 1, 0.25, 2.5),
+        sanityRecoveryRate: numParam('sanityRecoveryRate', DEFAULT_GAME_CONFIG.sanityRecoveryRate ?? 1, 0.25, 2.5),
+        sanityStart: numParam('sanityStart', DEFAULT_GAME_CONFIG.sanityStart ?? 100, 40, 100),
+        enableHallucinations: boolParam('enableHallucinations', DEFAULT_GAME_CONFIG.enableHallucinations ?? true),
+        enableBreakdowns: boolParam('enableBreakdowns', DEFAULT_GAME_CONFIG.enableBreakdowns ?? true),
       };
       // A shared link pins the run's exact Quarter Quell (or explicit lack of
       // one) so it replays the same Games it was copied from — the same

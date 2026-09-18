@@ -18,6 +18,7 @@ import * as FLAVOR from '../src/data/flavorText';
 import { INTERVIEW_SCENARIOS } from '../src/data/flavorText';
 import { ARENA_FLAVOR, PROCEDURAL_FLAVOR_PACKS, GENERIC_ARENA_FLAVOR, actionPool } from '../src/data/arenaFlavor';
 import { QUIRK_MODS, QUIRKS } from '../src/data/quirks';
+import { TRAIT_DEFS } from '../src/data/traits';
 
 /** Entries a pool should carry to outlast a single Games without repeating. */
 const POOL_TARGET = 12;
@@ -310,6 +311,55 @@ QUIRKS.filter(q => new Set(q.lines).size !== q.lines.length).forEach(q => {
     structuralProblems.push(`quirk '${q.label}' repeats a line inside its own pool`);
 });
 console.log(`\n${QUIRKS.length} quirks, ${Math.min(...QUIRKS.map(q => q.lines.length))} line variants in the thinnest (floor ${QUIRK_LINE_FLOOR}).`);
+
+/*
+ * AUDIT-7 §1.4 and §1.5: the modifier table, from both ends.
+ *
+ * `data/traits.ts` opens with a rule — "Every key below is read somewhere. If
+ * you add a key, add the read site in the same change; an unread modifier is
+ * the bug this file exists to fix." The inverse was unguarded, and one key was
+ * in that state: `intimidation` had a read site at `fear.ts:36` and was carried
+ * by **no trait and no quirk**, so the whole intimidation term of every fear
+ * roll in the game evaluated to a flat zero. A modifier nothing writes is the
+ * same bug as a modifier nothing reads, wearing the other hat.
+ *
+ * The second half is cheaper and just as silent: two quirks shipped
+ * `capacity: 0`, a modifier that was written and never given a number.
+ */
+{
+    const unionSource = readFileSync('src/data/traits.ts', 'utf8');
+    const union = unionSource.slice(
+        unionSource.indexOf('export type TraitMod ='),
+        unionSource.indexOf("| 'scavenge';") + "| 'scavenge';".length);
+    const declared = [...new Set([...union.matchAll(/'([a-zA-Z]+)'/g)].map(m => m[1]))];
+
+    const written = new Set<string>();
+    Object.values(TRAIT_DEFS).forEach(def => Object.keys(def.mods ?? {}).forEach(k => written.add(k)));
+    Object.values(QUIRK_MODS).forEach(mods => Object.keys(mods).forEach(k => written.add(k)));
+
+    const unwritten = declared.filter(k => !written.has(k));
+    if (unwritten.length > 0) {
+        structuralProblems.push(
+            `TraitMod key(s) declared and read by the engine but carried by no trait and no quirk — `
+            + `every read of them returns a flat zero: ${unwritten.join(', ')}. `
+            + 'Put them on a trait, or delete the key and its read site.');
+    }
+
+    const noOps: string[] = [];
+    Object.entries(TRAIT_DEFS).forEach(([name, def]) =>
+        Object.entries(def.mods ?? {}).forEach(([k, v]) => { if (v === 0) noOps.push(`trait '${name}'.${k}`); }));
+    Object.entries(QUIRK_MODS).forEach(([label, mods]) =>
+        Object.entries(mods).forEach(([k, v]) => { if (v === 0) noOps.push(`quirk '${label}'.${k}`); }));
+    if (noOps.length > 0) {
+        structuralProblems.push(
+            `modifier(s) declared with a value of 0, which is a modifier somebody forgot to fill in: `
+            + noOps.join(', '));
+    }
+
+    console.log(
+        `TraitMod: ${declared.length} keys declared, ${written.size} carried by a trait or quirk, `
+        + `${unwritten.length} unwritten (ceiling 0); ${noOps.length} modifier(s) set to zero (ceiling 0).`);
+}
 
 /**
  * §10.2 (audit): the nested pools the flat walk could not see.

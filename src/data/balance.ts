@@ -2841,6 +2841,16 @@ export const SLEEP = {
 export const PLANNING = {
     /** Depth of the objective queue. Two is a person; three is a planner. */
     queueDepth: 2,
+    /**
+     * AUDIT-7 §1.3: how long past its own expiry a queued goal is still worth
+     * coming back to.
+     *
+     * The queue can hold a goal across cycles now, which it never could before,
+     * so it needs a clock: "hold the ridge" is reachable forever, and without
+     * this a goal nobody gets round to would sit at the head of the queue for
+     * the rest of the run and stop a second one from ever being remembered.
+     */
+    queueStaleAfter: 6,
     /** Vitals at which a goal needs an errand run in front of it. */
     prerequisiteThirst: 72,
     prerequisiteHunger: 76,

@@ -1017,7 +1017,9 @@ export const QUIRK_MODS: Record<string, Partial<Record<TraitMod, number>>> = {
     'braids or knots something when thinking': { trapSkill: 0.04, campSkill: 0.03 },
     'tastes rain': { thirstDrain: -1.5 },
     'keeps their laces double-tied': { fatigueDay: -0.8 },
-    'collects one thing from every zone': { scavenge: 0.04, capacity: 0 },
+    // AUDIT-7 §1.5: both of these shipped `capacity: 0` — a modifier that was
+    // written and never given a number. Both quirks are about carrying things.
+    'collects one thing from every zone': { scavenge: 0.04, capacity: 1 },
     'apologises to plants they cut': { forage: 0.03, treachery: -0.03 },
     'refuses to drink first': { poisonResist: 0.1, thirstDrain: 1 },
     'marks the trees as they pass': { awareness: 0.25 },
@@ -1046,7 +1048,7 @@ export const QUIRK_MODS: Record<string, Partial<Record<TraitMod, number>>> = {
     'eats standing up': { awareness: 0.2, hungerDrain: 0.5 },
     'apologises when they take supplies': { rapport: 0.06, treachery: -0.04 },
     'draws maps in the dirt and erases them': { awareness: 0.3 },
-    'hoards string': { trapSkill: 0.05, capacity: 0 },
+    'hoards string': { trapSkill: 0.05, capacity: 1 },
     'names their weapons': { meleePower: 0.25, rangedPower: 0.15 },
     'refuses to eat meat they did not catch': { poisonResist: 0.12, hungerDrain: 1 },
     'stacks their supplies in the same order': { scavenge: 0.04 },

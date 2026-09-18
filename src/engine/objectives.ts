@@ -1,7 +1,7 @@
 import { targetDrawOf } from './targeting';
 import { GameState, Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { ENDGAME, ESCALATION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
+import { ENDGAME, ESCALATION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
 import { SimContext } from './context';
 import { cycleOf, cyclesSinceContact, ensureMemory, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet, zoneFeatures } from './map';
@@ -145,6 +145,21 @@ export function isObjectiveValid(ctx: SimContext, t: Tribute): boolean {
  * Deliberately looser than `isObjectiveValid` — a plan is allowed to be a
  * little stale, it is only not allowed to be impossible.
  */
+/**
+ * AUDIT-7 §1.3: whether a goal parked in the queue is still worth coming back to.
+ *
+ * Reachability alone is not enough once the queue can hold a goal across more
+ * than one cycle: "hold the ridge" stays reachable forever, so without a clock
+ * a goal nobody ever gets round to would sit at the head of the queue for the
+ * rest of the run and keep a second one from ever being remembered. A goal is
+ * dropped once it is this far past the expiry it was queued with.
+ */
+function queuedGoalStillStands(ctx: SimContext, t: Tribute, goal: Objective, cycle: number): boolean {
+    if (!isObjectiveReachable(ctx, t, goal)) return false;
+    if (!('expires' in goal)) return false;
+    return cycle - goal.expires <= PLANNING.queueStaleAfter;
+}
+
 function isObjectiveReachable(ctx: SimContext, t: Tribute, goal: Objective): boolean {
     const collapsed = ctx.state.collapsedZones ?? [];
     const living = (id: string) => ctx.state.tributes.find(o => o.id === id && o.status === 'alive');
@@ -683,24 +698,47 @@ export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
         return;
     }
 
-    // §3.2: the errand is done; the thing it was in service of is still there.
-    // This is the whole of the planning horizon — a tribute who went for water
-    // so they could set up on the chokepoint now goes and does that, instead of
-    // re-deriving their life from scratch against the state of this instant.
-    const queued = t.objectiveQueue?.shift();
-    if (t.objectiveQueue?.length === 0) t.objectiveQueue = undefined;
-    if (queued && isObjectiveReachable(ctx, t, queued)) {
-        t.objective = { ...queued, expires: cycleOf(ctx.state) + OBJECTIVES.reachCycles } as Objective;
-        announce(ctx, t, t.objective);
-        return;
-    }
+    /*
+     * §3.2: the errand is done; the thing it was in service of is still there.
+     * This is the whole of the planning horizon — a tribute who went for water
+     * so they could set up on the chokepoint now goes and does that, instead of
+     * re-deriving their life from scratch against the state of this instant.
+     *
+     * AUDIT-7 §1.3: and until now it could only ever remember one thing.
+     *
+     * `PLANNING.queueDepth` has said 2 since the queue was written, with the
+     * comment "Two is a person; three is a planner". It was never reachable.
+     * The old shape `shift()`ed the head here and then, further down, called
+     * `queueGoal` — the queue's only writer — on what was left. So the queue
+     * was always emptied before it could be written to, `[goal, ...rest]` could
+     * never find a `rest`, and the state could not bootstrap. Measured over
+     * 53,996 living-tribute cycles: depth 0 = 51,382, depth 1 = 2,614,
+     * **depth 2 = zero**. `test:knobs` passed throughout, because the knob was
+     * read; nothing checked that it could ever bind.
+     *
+     * Two changes, and the second is the one that matters:
+     *
+     *  1. The head is no longer consumed unless it is taken, and a head that
+     *     has gone stale or unreachable is dropped without taking whatever is
+     *     behind it with it.
+     *  2. A queued goal now *competes* instead of preempting. It used to
+     *     outrank the whole cascade unconditionally, which is both why the
+     *     queue drained every cycle and why a tribute would walk back to a
+     *     chokepoint while somebody was standing over them. It now gets first
+     *     refusal on the same terms the standing goal already had — it wins
+     *     when the cascade has settled for something unambitious, and loses to
+     *     anything urgent. So a goal can sit in the queue across a cycle, which
+     *     is the state depth 2 needs in order to exist at all.
+     */
+    const cycle = cycleOf(ctx.state);
+    const liveQueue = (t.objectiveQueue ?? []).filter(g => queuedGoalStillStands(ctx, t, g, cycle));
 
     // A §3: the standing goal — the third slot behind the two-deep errand
-    // queue. The queue is consumed by the next errand that comes along, so a
-    // goal that survives *more than one* interruption had nowhere to live: a
-    // tribute who set out for the feast and stopped twice for water simply
-    // forgot about the feast. This is picked back up whenever the cascade
-    // would otherwise settle for something unambitious.
+    // queue. Even a two-deep queue is consumed by errands eventually, so a
+    // goal that survives *more than two* interruptions needs somewhere to live:
+    // a tribute who set out for the feast and stopped three times for water
+    // should not simply forget about the feast. This is picked back up whenever
+    // the cascade would otherwise settle for something unambitious.
     const standing = resumeStandingGoal(ctx, t);
 
     const previous = t.objective;
@@ -708,11 +746,25 @@ export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
     if (previous && previous.kind !== 'survive') recordObjectiveOutcome(ctx, t, previous);
     const chosenTier = { tier: 0 };
     let next = chooseObjective(ctx, t, here, undefined, chosenTier);
+    const settledForLittle = chosenTier.tier < STANDING_GOAL.resumeBelowTier;
 
-    // ...and it only reasserts itself over something unambitious. A tribute
-    // fleeing a zone or dying of thirst has a better reason to be doing what
-    // they are doing than a goal they set four cycles ago.
-    if (standing && chosenTier.tier < STANDING_GOAL.resumeBelowTier) {
+    // The queue gets first refusal — ahead of the standing goal, because it is
+    // both more recent and more specific — and only over something unambitious.
+    const head = liveQueue[0];
+    if (head && settledForLittle) {
+        const rest = liveQueue.slice(1);
+        t.objectiveQueue = rest.length ? rest : undefined;
+        t.objective = { ...head, expires: cycle + OBJECTIVES.reachCycles } as Objective;
+        announce(ctx, t, t.objective);
+        return;
+    }
+    // Not taken: it keeps its place, minus anything that has gone stale.
+    t.objectiveQueue = liveQueue.length ? liveQueue : undefined;
+
+    // ...and the standing goal only reasserts itself over something unambitious
+    // too. A tribute fleeing a zone or dying of thirst has a better reason to be
+    // doing what they are doing than a goal they set four cycles ago.
+    if (standing && settledForLittle) {
         t.objective = standing;
         announce(ctx, t, standing);
         return;

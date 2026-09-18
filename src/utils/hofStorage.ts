@@ -1,4 +1,5 @@
 import { HallOfFameEntry, TributeHoFSummary } from '../models/types';
+import { normalizeConfig } from './saveMigrations';
 import { LEGACY_KEYS, STORAGE_KEYS, StorageSpec, readStored, removeStored, tryWriteStored } from './storage';
 
 /**
@@ -110,24 +111,27 @@ export function normalizeEntry(raw: unknown): HallOfFameEntry | null {
         ? r.tributeSummaries.map(normalizeSummary).filter((s): s is TributeHoFSummary => s !== null)
         : undefined;
 
-    // The replay fields (arenaId, config, quellId) and the wipeout/pin flags
-    // must survive normalisation — this runs on every archive *read*, and
-    // dropping them here silently broke exact relaunches of stored entries.
-    const config = ((): HallOfFameEntry['config'] => {
-        const c = r.config;
-        if (!c || typeof c !== 'object' || Array.isArray(c)) return undefined;
-        const rc = c as Record<string, unknown>;
-        const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
-        return {
-            districtCount: Math.min(16, Math.max(2, Math.round(num(rc.districtCount, 12)))),
-            hazardRate: num(rc.hazardRate, 1),
-            betrayalRate: num(rc.betrayalRate, 1),
-            sponsorGenerosity: num(rc.sponsorGenerosity, 1),
-            enableFeast: typeof rc.enableFeast === 'boolean' ? rc.enableFeast : true,
-            enableSanity: typeof rc.enableSanity === 'boolean' ? rc.enableSanity : true,
-            plainNames: typeof rc.plainNames === 'boolean' ? rc.plainNames : false,
-        };
-    })();
+    /*
+     * The replay fields (arenaId, config, quellId) and the wipeout/pin flags
+     * must survive normalisation — this runs on every archive *read*, and
+     * dropping them here silently broke exact relaunches of stored entries.
+     *
+     * AUDIT-7 §1.2: and until now it was dropping them one level down. This
+     * function used to carry its own config normaliser — a second, divergent
+     * copy of the one in `saveMigrations` — which rebuilt the object from seven
+     * named keys and therefore deleted nine: the five sanity dials,
+     * `vanillaRules`, `singleVictor`, `ageMean` and `ageSpread`. So the comment
+     * above was true of the `config` *reference* and false of its contents, and
+     * "relaunch this victory" replayed a Vanilla Games run as a full-chaos one
+     * and a one-victor run as a Games that could end with two.
+     *
+     * One normaliser now, shared with the save slots, built from a
+     * `Record<keyof GameConfig, …>` so a new field cannot be dropped by
+     * omission from either path.
+     */
+    const config = r.config === undefined || r.config === null || typeof r.config !== 'object' || Array.isArray(r.config)
+        ? undefined
+        : normalizeConfig(r.config);
 
     return {
         id: asString(r.id) || `imported-${date}-${winnerName}`,
