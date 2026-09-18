@@ -458,6 +458,32 @@ const indicators: Indicator[] = [
         fmt: v => `${v.toFixed(2)}x`,
     },
     {
+        /*
+         * REQUEST: the average length of a Games, which is the one number a
+         * player feels directly and which nothing guarded.
+         *
+         * Measured at 8.45 days before this landed, with the field down to 3.9
+         * alive by day 7 — the arena was finishing the cast before the
+         * Gamemakers ever had to, and the escalation that was supposed to be
+         * the pressure was instead the full stop. The target is ten to
+         * thirteen: long enough that the middle of a run is a middle rather
+         * than a slide, short enough that a reader can hold the whole
+         * chronicle in their head.
+         *
+         * Guarded as a band in both directions. A run-length indicator with
+         * only a floor is how a simulation drifts into a fortnight of two
+         * people not finding each other.
+         */
+        label: 'average run length (days)',
+        value: totalDays / runs,
+        guard: v => v >= 10 && v <= 13,
+        guardText: '10-13',
+        goal: '10.5-12',
+        goalMet: v => v >= 10.5 && v <= 12,
+        baseline: '8.5',
+        fmt: v => v.toFixed(2),
+    },
+    {
         // REPLAY-01. Every run used to have the same shape: mean 8.0 days in a
         // tight 5-14 band, same escalation schedule, same sponsor climate. A
         // simulation sold on replayability cannot have one shape, so the spread

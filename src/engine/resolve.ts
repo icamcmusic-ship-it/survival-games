@@ -155,6 +155,28 @@ export function resolveBreakdowns(ctx: SimContext) {
      * the Games behind their back.
      */
     const finalTwoHolds = inFinalTwoGrace(ctx, alive.length);
+    /*
+     * REQUEST (run length): the sole survivor has already won.
+     *
+     * A wipeout probe over 600 runs found that **nine of twenty-three
+     * no-victor runs ended with the last tribute alive killing themselves** —
+     * seven took the nightlock, two walked into the border. `applyDamage`'s
+     * finalist protection could not stop it, because that guard only pulls
+     * *arena* damage and a resolve breakdown is a decision rather than a hit.
+     *
+     * It is also wrong on its own terms. Both endings below are written as a
+     * tribute deciding they are done playing, and there is nobody left to play
+     * against: the cannon that would sound is their own victory cannon. The
+     * two self-inflicted endings stay reachable for everybody else, including
+     * the final two (where `finalTwoHolds` already gates them during the
+     * grace window), because "I will not be the one who kills you" is the beat
+     * they exist for.
+     *
+     * The rest of the breakdown ladder — surrender, dropping the token,
+     * abandoning a stance — still applies to the last survivor. Winning is
+     * allowed to have cost them something.
+     */
+    const soleSurvivor = alive.length <= 1;
     alive.forEach(t => {
         if (!hasBroken(t)) return;
         if (!ctx.rng.chance(RESOLVE.breakdownChance)) return;
@@ -174,7 +196,7 @@ export function resolveBreakdowns(ctx: SimContext) {
             && (zone?.resources ?? 0) > RESOLVE.nightlockForageResources
             && ctx.rng.chance(RESOLVE.nightlockFindChance);
 
-        if (!finalTwoHolds && (carried || canFind) && resolveOf(t) <= RESOLVE.nightlockThreshold && ctx.rng.chance(RESOLVE.nightlockChance)) {
+        if (!finalTwoHolds && !soleSurvivor && (carried || canFind) && resolveOf(t) <= RESOLVE.nightlockThreshold && ctx.rng.chance(RESOLVE.nightlockChance)) {
             if (carried) t.inventory = t.inventory.filter(i => i !== carried);
             ctx.logEvent(
                 carried
@@ -193,6 +215,7 @@ export function resolveBreakdowns(ctx: SimContext) {
         // the wall is always there, humming, and a tribute who is finished
         // does not have to find nightlock — they only have to keep walking.
         if (!finalTwoHolds
+            && !soleSurvivor
             && ctx.state.escalationDay !== undefined
             && resolveOf(t) <= RESOLVE.nightlockThreshold
             && ctx.rng.chance(RESOLVE.borderWalkChance)) {

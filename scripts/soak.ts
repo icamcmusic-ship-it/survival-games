@@ -71,6 +71,15 @@ const ZONE_EFFECT_KINDS = [
 // two- and three-district fields that end in a few days, which is why the
 // soak's average sits ~2 days under the metrics sweep's. Neither is wrong;
 // they are measuring different Games.
+//
+// REQUEST (run length): the ten-to-thirteen-day target is a statement about a
+// *full* Games, and it is guarded in `metrics.ts`, whose four configs are all
+// six-to-twelve-district fields. A two-district Games is four people and is
+// supposed to be over quickly. So this file reports both numbers — the whole
+// sweep's average, and the average over the full fields only, which is the one
+// comparable to the metrics guard. Reporting one without the other is how
+// "the soak says 8.1" gets mistaken for a regression.
+const FULL_FIELD_DISTRICTS = 6;
 const configs: GameConfig[] = [
   DEFAULT_GAME_CONFIG,
   { ...DEFAULT_GAME_CONFIG, districtCount: 2, hazardRate: 2.5, betrayalRate: 3, sponsorGenerosity: 0 },
@@ -126,6 +135,7 @@ function start(seed: string, arenaId: string, config: GameConfig, gamemaker: boo
 
 const trainingHistogram: Record<number, number> = {};
 let runs = 0, victors = 0, wipeouts = 0, totalDays = 0, totalLogs = 0, feastRuns = 0;
+let fullFieldRuns = 0, fullFieldDays = 0;
 // AUDIT-6 §1.3/§6.1: the off-season skins, which were reachable from no check
 // at all until `resolveArenaForRun` landed. 120 definitions across 40 arenas,
 // each able to lift the arena's law, impose another, and change what the ground
@@ -416,6 +426,7 @@ for (let i = 0; i < 400; i++) {
   { const L = truceLedger(state); (Object.keys(L) as Array<keyof typeof L>).forEach(k => { TRUCE_LEDGER[k] += L[k]; }); }
 
   runs++;
+  if (state.config.districtCount >= FULL_FIELD_DISTRICTS) { fullFieldRuns++; fullFieldDays += state.day; }
   if (state.arena.offSeason) {
     offSeasonRuns++;
     offSeasonSeen.set(state.arena.offSeason, (offSeasonSeen.get(state.arena.offSeason) ?? 0) + 1);
@@ -1022,6 +1033,15 @@ firingFloors.forEach(([label, count, floor]) => {
 });
 
 console.log(`runs=${runs} victors=${victors} wipeouts=${wipeouts} avgDays=${(totalDays/runs).toFixed(1)} avgLogs=${(totalLogs/runs).toFixed(0)} runsWithFeast=${feastRuns}`);
+{
+  const fullAvg = fullFieldRuns > 0 ? fullFieldDays / fullFieldRuns : 0;
+  console.log(`avgDays on full fields only (>= ${FULL_FIELD_DISTRICTS} districts, n=${fullFieldRuns}): ${fullAvg.toFixed(1)} (target 10-13)`);
+  // The same band `metrics.ts` guards, asserted here too so a pacing change
+  // cannot pass one harness and fail the other unnoticed.
+  if (fullFieldRuns >= 20 && (fullAvg < 10 || fullAvg > 13)) {
+    note(`full-field average run length is ${fullAvg.toFixed(1)} days, outside the 10-13 target`);
+  }
+}
 console.log('phases seen:', [...phasesSeen].sort().join(', '));
 console.log('categories seen:', [...categoriesSeen].sort().join(', '));
 // `foragedOutZones` (forage depletion, behavioural) is a different metric

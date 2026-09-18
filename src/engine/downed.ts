@@ -140,10 +140,33 @@ export function tickDowned(ctx: SimContext) {
         // happily call for two — so the Gamemakers close the window instead.
         const standing = ctx.state.tributes.filter(isActive).length;
         if (standing <= DOWNED.finalistFloor) {
+            /*
+             * REQUEST (run length), found by the soak: the kill is credited
+             * here and, until this line said so, nothing in the chronicle tied
+             * it to anybody.
+             *
+             * `bleedOut` below writes "Killed by <name>, who left them for
+             * dead" onto the obituary and increments that tribute's kill
+             * count — but it passes `silent`, because this branch has already
+             * narrated the death, and `killTribute`'s silent path emits no
+             * `kill`-category line at all. The result was a victor who
+             * finished with kills and had no kill in the log: the soak caught
+             * it as "epilogue never quotes a real event despite the victor
+             * having kills", and Caesar's closing question had nothing to
+             * quote. It is rare — one run in five hundred — and it is exactly
+             * the sort of gap a longer Games makes more likely, because the
+             * rescue window has more cycles in which to time out.
+             *
+             * Naming the credit is also the truer line. A tribute who opened
+             * somebody up two days ago and walked away has killed them, and
+             * the Capitol is scrupulous about who the cannon belongs to.
+             */
+            const by = t.downed?.byId ? ctx.state.tributes.find(o => o.id === t.downed!.byId) : undefined;
             ctx.logEvent(
-                `The Gamemakers are done waiting on ${t.name}. Whatever was keeping them breathing in ${t.zone} stops.`,
-                [t.id],
-                { important: true, category: 'death' }
+                `The Gamemakers are done waiting on ${t.name}. Whatever was keeping them breathing in ${t.zone} stops.`
+                + (by ? ` The kill is credited to ${by.name}, who put them there and did not stay to watch.` : ''),
+                by ? [t.id, by.id] : [t.id],
+                { important: true, category: by ? 'kill' : 'death' }
             );
             bleedOut(ctx, t, name => `Killed by ${name}, who left them for dead`, t.downed!.cause, true);
             return;

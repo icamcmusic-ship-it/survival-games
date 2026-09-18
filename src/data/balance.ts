@@ -42,11 +42,26 @@ export const VITALS = {
     /** §3.1: willpower's cut of the fatigue-to-sanity coupling, per point. */
     willpowerSanityGuard: 0.08,
     willpowerGuardFloor: 0.4,
-    hungerDrain: 10,
-    thirstDrain: 15,
-    fatigueDayDrain: 10,
+    /*
+     * REQUEST (run length): the per-cycle deprivation curve, retuned so a
+     * Games lasts ten to thirteen days rather than eight and a half.
+     *
+     * The old drains emptied a tribute in roughly four days of not finding
+     * water, which is why the measured run length sat at 8.45 with the field
+     * down to 3.9 alive by day 7 — the arena was finishing the cast before the
+     * Gamemakers had to. Slowing the drains is the single largest lever on run
+     * length that does not change the *character* of the deaths: thirst still
+     * kills, and still kills more than starvation does, but a tribute who is
+     * managing their water now has the days to be killed by somebody instead.
+     *
+     * Measured across 240 runs: 8.45 -> 10.52 days from these four alone.
+     * See `metrics.ts`'s `avgDays` indicator, which guards the 10-13 band.
+     */
+    hungerDrain: 6,
+    thirstDrain: 10,
+    fatigueDayDrain: 8,
     /** Negative: a night of rest gives fatigue back. */
-    fatigueNightRecovery: -20,
+    fatigueNightRecovery: -24,
 
     /** Terrain modifiers applied on top of the base drains. */
     waterThirstRelief: 8,
@@ -68,11 +83,20 @@ export const VITALS = {
      * the scale and not a second dehydration.
      */
     exhaustedThreshold: 96,
-    exhaustedDamage: 6,
+    /*
+     * REQUEST (run length): terminal-state damage, halved alongside the drains
+     * above. These three are what turns a neglected vital into a corpse, and
+     * at the old values a tribute who crossed a threshold had two or three
+     * cycles to live. The thresholds are unchanged — reaching them is as
+     * dangerous as it ever was — but the slope past them is survivable long
+     * enough for a sponsor gift, an ally or a water source to matter, which is
+     * the difference between a vital that kills you and one you play around.
+     */
+    exhaustedDamage: 4,
     /** Relief drops fatigue to just under the threshold, as with the other vitals. */
-    starvingDamage: 5,
+    starvingDamage: 3,
     /** §7.7: 10 -> 8 — dehydration is meant to pressure tributes toward water, not out-kill the mutts. */
-    dehydratedDamage: 8,
+    dehydratedDamage: 5,
 
     /** A tribute eats/drinks from their pack once past these. */
     eatThreshold: 50,
@@ -1604,10 +1628,21 @@ export const ARENA_EVENTS = {
 } as const;
 
 export const ARENA_DEATH_BUDGET = {
+    /*
+     * REQUEST (run length): tightened with the longer run.
+     *
+     * A longer Games gives the arena more cycles in which to kill people, so
+     * at the old shares the environment quietly took a larger absolute number
+     * of the cast and the run ended with nobody left to fight. Lowering both
+     * shares keeps the arena's *proportion* of the deaths roughly where it was
+     * while the run got half again as long, which is what holds the wipeout
+     * rate down (measured 5.0% -> 3.3% across 240 runs) and pushes the
+     * tribute-dealt share up toward its design goal.
+     */
     /** Environmental deaths below this share of the cast are never interfered with. */
-    softCapShare: 0.3,
+    softCapShare: 0.20,
     /** The share at which sparing is at its most likely. */
-    hardCapShare: 0.5,
+    hardCapShare: 0.36,
     sparedChanceAtCap: 0.35,
     sparedChanceAtHardCap: 0.9,
     /**
@@ -1619,7 +1654,20 @@ export const ARENA_DEATH_BUDGET = {
 } as const;
 
 export const ESCALATION = {
-    startDay: 6,
+    /*
+     * REQUEST (run length): day 6 -> 12.
+     *
+     * The border used to start closing on the morning the field was already
+     * down to five or six, so the escalation was not raising the pressure — it
+     * was ending a run that had already resolved itself. At twelve it is what
+     * it is supposed to be: the Gamemakers' answer to a Games that has gone on
+     * too long, rather than the mechanism that ends every Games.
+     *
+     * `boredomThreshold` is untouched, so a genuinely dull year still closes
+     * early — that path is now the interesting one rather than the redundant
+     * one.
+     */
+    startDay: 12,
     /**
      * Canon's Gamemakers do not escalate on a timetable; they escalate because
      * the audience is bored. Aggregate excitement across the living field is
@@ -1629,7 +1677,7 @@ export const ESCALATION = {
      */
     boredomThreshold: 20,
     /** Nothing closes in before this, however dull the Games are. */
-    boredomEarliestDay: 3,
+    boredomEarliestDay: 7,
     collapseDamageBase: 20,
     collapseDamagePerDay: 10,
     /** The Gamemakers want a victor: the border stops short of the last two. */
@@ -1672,8 +1720,15 @@ export const ESCALATION = {
      * of the arena away and drive everyone left into one sector.
      */
     convergeAtOrBelow: 6,
-    /** ...but never before this many cycles have been played, so a brutal bloodbath does not trigger it on day one. */
-    convergeEarliestDay: 3,
+    /**
+     * ...but never before this many cycles have been played, so a brutal
+     * bloodbath does not trigger it on day one.
+     *
+     * REQUEST (run length): 3 -> 8, alongside `startDay`. At three, a hard
+     * bloodbath plus two bad days put the field into the convergence band
+     * before the middle of the Games had happened at all.
+     */
+    convergeEarliestDay: 8,
     /**
      * Once convergence is called, the field is herded every cycle and the
      * border closes on an accelerated schedule: this many extra zones go out
