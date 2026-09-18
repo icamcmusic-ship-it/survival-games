@@ -157,7 +157,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Whisper Campaign',
         hint: 'Have three or more planted rumours in circulation at once in a single Games.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'legendary',
         // Audit 3 §1.6: the live pool, read at the end. Three at once is a
         // thing that happens mid-run and is gone by the epilogue.
         test: state => (state.maxPlantedInCirculation ?? 0) >= 3,
@@ -194,7 +194,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // window in which the country naming somebody is genuinely early.
         hint: 'Have a tribute earn an epithet within the first two cycles of the Games.',
         category: 'capitol',
-        rarity: 'common',
+        rarity: 'rare',
         test: state => state.tributes.some(t => t.epithet !== undefined && (t.epithetCycle ?? 99) <= 2),
         nearMiss: state => { const e = state.tributes.filter(t => !!t.epithet).map(t => t.epithetCycle ?? 99).sort((a, b) => a - b)[0]; return e !== undefined && e > 2 && e <= 5 ? `The first epithet of these Games was awarded on cycle ${e} — ${e - 2} cycles late` : undefined; },
     },
@@ -474,7 +474,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // them: they broke faith twice and nobody ever got to do it to them.
         hint: 'Crown a victor who broke faith twice and was never once betrayed themselves.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'legendary',
         // Audit 3 §11: and the axis moved, because the rung could not.
         // `betrayalsCommitted` counts one specific act — walking out of an
         // alliance on somebody — and a victor tops out at one of those across
@@ -568,7 +568,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Turncoat Twice',
         hint: 'Crown a victor who broke faith with somebody who trusted them at least twice.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'legendary',
         // Audit 3 §11: see 'Sold Out Everybody' — same axis, same reason.
         test: (_s, v) => !!v && faithlessness(v) >= 2,
         nearMiss: (_s, v) => (v && faithlessness(v) === 1)
@@ -692,7 +692,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // legendary and not a 'possible?'.
         hint: 'Crown a victor who sold what they knew to somebody else.',
         category: 'social',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v && (v.intelSold ?? 0) >= 1,
         nearMiss: (_s, v) => (v && (v.intelSold ?? 0) === 0 && (v.sharedIntelWith?.length ?? 0) > 0)
             ? `${v.name} gave away what they knew all Games and never once charged for it`
@@ -759,7 +759,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Cold Hands',
         hint: 'Crown a victor still carrying frostbite.',
         category: 'survival',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && v.injuries.frostbitten === true,
     },
     {
@@ -778,7 +778,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Youngest',
         hint: 'Crown a victor aged fourteen or under.',
         category: 'reaping',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.age <= 14,
         nearMiss: (_s, v) => (v && v.age > 14 && v.age <= 16)
             ? `${v.name} was ${v.age} — ${v.age - 14} year${v.age - 14 === 1 ? '' : 's'} over`
@@ -1044,7 +1044,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nobody Came Home',
         hint: 'See a Games end with no victor at all.',
         category: 'games',
-        rarity: 'legendary',
+        rarity: 'possible',
         test: state => alive(state).length === 0,
         /*
          * REQUEST (run length): this became genuinely rare and needed to start
@@ -1106,7 +1106,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Both of Them',
         hint: 'See a Games end with two victors.',
         category: 'games',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: state => (state.victorIds?.length ?? 0) >= 2,
         nearMiss: state => {
             // Only meaningful once a single victor is standing: the question is
@@ -1388,7 +1388,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // contract, carried to the end and honoured, is the achievement.
         hint: 'Crown a victor who was paid for their protection and delivered it.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && (v.retainersHonoured ?? 0) >= 1,
         nearMiss: (_s, v) => (v && (v.retainersHonoured ?? 0) === 0 && v.archetype === 'mercenary')
             ? `${v.name} took the crown without ever once being paid to keep somebody else alive`
@@ -1890,7 +1890,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // people rather than fighting them, which is what the name is for.
         hint: 'Crown a victor who worked two sides of the arena economy — extorting, being extorted, or brokering a truce.',
         category: 'social',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v
             && [(v.extortedIds?.length ?? 0) > 0,
                 (v.extortedByIds?.length ?? 0) > 0,
@@ -2521,7 +2521,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Two Crowns',
         hint: 'End a Games with two victors still standing.',
         category: 'oddity',
-        rarity: 'rare',
+        rarity: 'legendary',
         // Gives `victorIds` its first reader: it is only ever written on a dual
         // victory, so every other run left the field empty and unread.
         test: state => (state.victorIds?.length ?? 0) >= 2
@@ -2873,7 +2873,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Full Table',
         hint: 'See an alliance still standing at the end that named all four of its roles.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'possible',
         test: state => Object.values(state.alliances ?? {}).some(a => Object.values(a.roles ?? {}).filter(Boolean).length >= 4),
         nearMiss: state => {
             const best = Math.max(0, ...Object.values(state.alliances ?? {}).map(a => Object.values(a.roles ?? {}).filter(Boolean).length));
@@ -3175,7 +3175,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Four Fights, None Theirs',
         hint: 'Crown a victor with four kills or more who opened none of the fights that produced them.',
         category: 'combat',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.kills >= 4 && (v.fightsOpened ?? 0) === 0,
         nearMiss: (_s, v) => (v && v.kills >= 4 && (v.fightsOpened ?? 0) === 1
             ? `${v.name} took ${v.kills} and started one of them`
@@ -3188,7 +3188,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Master of One',
         hint: 'Crown a victor who reached the top of a single skill.',
         category: 'survival',
-        rarity: 'legendary',
+        rarity: 'possible',
         test: (_s, v) => !!v && Object.values(v.proficiencies ?? {}).some(n => (n ?? 0) >= 6),
         nearMiss: (_s, v) => {
             const best = Math.max(0, ...Object.values(v?.proficiencies ?? {}).map(n => n ?? 0));
@@ -3373,7 +3373,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Walked It All',
         hint: 'Crown a victor who set foot in every sector of the arena.',
         category: 'arena',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => !!v && state.arena.zones.every(z => (v.visitedZones ?? []).includes(z.name)),
         nearMiss: (state, v) => {
             if (!v) return undefined;
@@ -3525,7 +3525,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Sold the Arena',
         hint: 'Crown a victor who traded what they knew about the map for something they needed.',
         category: 'capitol',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v && (v.intelSold ?? 0) >= 1,
     },
     {

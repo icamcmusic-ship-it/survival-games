@@ -3236,14 +3236,28 @@ export const LOAD_BEARING = {
  * demanding — an epithet everybody gets is not an epithet.
  */
 export const EPITHET_RULES = {
-    killsForBloody: 3,
+    /*
+     * AUDIT-6 §10.1: raised from 3. With the ladder replaced by a scoring
+     * pass, `bloody` no longer excludes the other six by firing first — but at
+     * three kills it was still a catch-all rather than a high bar. Five is a
+     * tribute the arena is genuinely afraid of.
+     */
+    killsForBloody: 5,
     unseenCyclesForGhost: 12,
     daysForEnduring: 6,
     /** §6: four more triggers, each off a counter the run already keeps. */
     sparesForMerciful: 2,
     breaksForTurncoat: 2,
-    trapKillsForBuilder: 2,
+    /*
+     * AUDIT-6 §10.1: `builder` was awarded **zero** times in 300 runs, which
+     * follows from 176 traps triggering per 400 runs — two trap kills on one
+     * tribute is most of a run's entire trap output. One is the honest bar for
+     * the only epithet that requires somebody to die in something you made.
+     */
+    trapKillsForBuilder: 1,
     cyclesForWarden: 6,
+    /** §10.1: what being given a name costs you in the arena's attention. */
+    notorietyOnAward: 12,
 } as const;
 
 /**
@@ -3511,6 +3525,24 @@ export const TRAPS = {
     gameFeed: 30,
     /** AUDIT-6 §12.4: and the same again for what the snare caught. */
     gameFeedPerButchery: 3,
+    /*
+     * AUDIT-6 §6.3: the trap layer read neither `chokepoint` nor `zoneTraffic`,
+     * so a deadfall in a dead-end cost the same day as one in the only pass
+     * through the arena. Somebody spending a cycle on this picks their ground.
+     */
+    buildChokepointBonus: 0.15,
+    buildPerTraffic: 0.02,
+    buildTrafficCap: 0.12,
+    /*
+     * §6.3: a stake needed a venom gland AND no blade at all, which is why six
+     * were built across 400 runs. A tribute holding a knife still has a reason
+     * to put the gland in the ground — a stake works while they are asleep.
+     */
+    stakeWithBladeChance: 0.35,
+    /** §6.3: what it takes to whittle a point without a gland to paint it with. */
+    stakeCarpentry: 1,
+    /** §6.3: an untreated stake is a hole with a spike in it, not a poisoning. */
+    stakeUntreatedDamage: 26,
 
     /**
      * §6.2: detection with choices. A perceptive tribute who spots a trap no

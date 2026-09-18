@@ -1594,6 +1594,15 @@ export interface Trap {
      * standing. They walk around it from then on; everyone else still rolls.
      */
     knownBy?: string[];
+    /**
+     * AUDIT-6 §6.3: whether the point was painted.
+     *
+     * A stake used to require a venom gland, so every stake was poisoned by
+     * definition and six were built in 400 runs. A sharpened point in soft
+     * ground is a stake whether or not anybody had venom to put on it; the
+     * venom is what makes it a *treated* one, and only a treated one poisons.
+     */
+    treated?: boolean;
 }
 
 /**
