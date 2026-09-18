@@ -332,6 +332,16 @@ export interface Item {
     capacity?: number;
     /** Makes foul water safe to drink without a fire. */
     purifies?: boolean;
+    /**
+     * AUDIT-6 §6.5: a purifier that is not used up.
+     *
+     * Every `purifies` item was consumed on use, because tablets were the
+     * first one written and `consumeOne` was the only path. A charcoal filter
+     * and a solar still are apparatus, not doses: the whole reason to carry
+     * the heavier thing is that it is still there tomorrow. Read once, at the
+     * foul-water drink in `survival.ts`.
+     */
+    reusable?: boolean;
     /** Turns the night from a handicap into ordinary ground. */
     light?: boolean;
     /** Sleeping warm: the famous parachute. Improves overnight recovery. */
@@ -1219,6 +1229,17 @@ export interface Tribute {
      * is spent as crowd backlash on sponsor trust.
      */
     personaBacklash?: number;
+    /**
+     * AUDIT-6 §10.4: the other half of the bet.
+     *
+     * `personaBacklash` accrued for playing against type and was spent, out
+     * loud, in sponsor money. Living up to the persona accrued excitement and
+     * nothing else — so the persona was a one-way penalty rather than a
+     * wager, and the tribute who spent three minutes promising a short Games
+     * and then delivered one got applause and no parachute. This accrues the
+     * same way and pays out the same way.
+     */
+    personaCredit?: number;
     /** §6.3: the rival they named on air, for 'target-callout'. */
     interviewCalloutId?: string;
     /** §6.4: whose named feast pack they walked away with, if not their own. */

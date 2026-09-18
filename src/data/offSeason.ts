@@ -3,6 +3,7 @@ import { RNG } from '../utils/rng';
 import { OFF_SEASON } from './balance';
 import { OFF_SEASON_SKINS_EXTRA1 } from './offSeasonSkins/extra1';
 import { OFF_SEASON_SKINS_EXTRA2 } from './offSeasonSkins/extra2';
+import { OFF_SEASON_SKINS_EXTRA3 } from './offSeasonSkins/extra3';
 
 /**
  * §5: the off-season skin.
@@ -332,7 +333,7 @@ export const OFF_SEASON_SKINS: Record<string, OffSeasonSkin[]> = {
 
 // §6.1: fold the extra season files in once, at load, so every reader sees
 // one roster per arena.
-for (const group of [OFF_SEASON_SKINS_EXTRA1, OFF_SEASON_SKINS_EXTRA2]) {
+for (const group of [OFF_SEASON_SKINS_EXTRA1, OFF_SEASON_SKINS_EXTRA2, OFF_SEASON_SKINS_EXTRA3]) {
     for (const [id, skins] of Object.entries(group)) {
         OFF_SEASON_SKINS[id] = [...(OFF_SEASON_SKINS[id] ?? []), ...skins];
     }

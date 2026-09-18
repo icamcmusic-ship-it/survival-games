@@ -641,7 +641,15 @@ export const GAMES_PROFILE = {
      */
     // Audit 5 §6.2: 600 put a Quell in 7% of runs and a *specific* Quell in
     // one run in four hundred. Twenty-eight authored Quells behind that door.
-    noQuellWeight: 330,
+    /*
+     * AUDIT-6 §9.2: 330 put a Quell in **13.3%** of runs — a player who plays
+     * ten Games sees one. A Quell is the single loudest "this year is
+     * different" lever in the game, and 22 of 28 of them appeared across 300
+     * runs, so the content is there and nobody meets it. 170 against a summed
+     * Quell weight of ~57 puts one in roughly a quarter of runs, which is
+     * still "most Games are not Quarter Quells" and is no longer a rumour.
+     */
+    noQuellWeight: 170,
 } as const;
 
 export const QUELL_MECHANICS = {
@@ -1550,6 +1558,20 @@ export const MEDICAL = {
     morphlingHealthThreshold: 55,
     morphlingHeal: 15,
     morphlingSanity: 18,
+    /*
+     * AUDIT-6 §6.5: six more medical items, each answering an injury the
+     * engine already tracks and none of them a heavier bandage.
+     */
+    /** Antivenom clears the venom and some of what it has already done. */
+    antivenomHeal: 12,
+    /** Sutures close a wound rather than covering it. */
+    sutureHeal: 8,
+    /** A cautery always works and is never free. */
+    cauteryCost: 10,
+    /** Willowbark takes a fever down; sometimes it takes it away. */
+    willowbarkHeal: 6,
+    willowbarkRest: 10,
+    willowbarkClearChance: 0.25,
 } as const;
 
 /** The shrinking arena, from day 5 onward. */
@@ -6911,6 +6933,14 @@ export const PRE_ARENA = {
     backlashTrustCost: 14,
     /** Excitement a tribute who lives up to their persona is worth instead. */
     personaHeldExcitement: 8,
+    /*
+     * AUDIT-6 §10.4: the credit side. Deliberately slower to accrue and worth
+     * less than the backlash costs — the crowd forgives being told the truth
+     * more slowly than it forgives being lied to.
+     */
+    creditPerCycle: 1.2,
+    creditThreshold: 14,
+    creditTrustGain: 10,
     /** Feast: cycles of head start the first arrivals get to set up in. */
     feastEarlyArrivalEdge: 1,
     /** Feast: ambush advantage an early arrival carries into the first exchange. */

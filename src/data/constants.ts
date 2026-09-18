@@ -1519,6 +1519,28 @@ export const ITEMS: Item[] = [
     // Poison sources beyond the berry bushes — see POISONING.sources.
     { id: 'venom-vial', name: 'Venom Vial', type: 'utility', value: 35 },
     { id: 'venom-gland', name: 'Mutt Venom Gland', type: 'utility', value: 18 },
+
+    /*
+     * AUDIT-6 §6.5: the table ran eighteen weapons against three water items
+     * and seven medical ones, in a game where dehydration is 4.7% of deaths
+     * and the fourth-largest cause. Six more of each, and every one of them
+     * has a read site — a medical item the engine does not look for by id is
+     * a heavier bandage with a different name on it.
+     */
+    // Water. Two of these are apparatus rather than doses: see `reusable`.
+    { id: 'still', name: 'Solar Still', type: 'water', value: 55, purifies: true, reusable: true },
+    { id: 'condenser', name: 'Capitol Condenser', type: 'water', value: 70, purifies: true, reusable: true },
+    { id: 'gourd', name: 'Sealed Gourd', type: 'water', value: 18, stack: 3 },
+    { id: 'rain-tarp', name: 'Rain Tarp', type: 'water', value: 32, stack: 2 },
+    { id: 'snowmelt', name: 'Flask of Snowmelt', type: 'water', value: 22, stack: 2 },
+    { id: 'birch-tap', name: 'Birch Tap', type: 'water', value: 26, stack: 2 },
+    // Medical, each answering a specific injury the engine tracks.
+    { id: 'tourniquet', name: 'Field Tourniquet', type: 'medical', value: 28, stack: 2 },
+    { id: 'sutures', name: 'Suture Thread', type: 'medical', value: 42, stack: 2 },
+    { id: 'cautery-kit', name: 'Cautery Kit', type: 'medical', value: 50 },
+    { id: 'antivenom', name: 'Antivenom Ampoule', type: 'medical', value: 65 },
+    { id: 'splint', name: 'Field Splint', type: 'medical', value: 35 },
+    { id: 'willowbark', name: 'Willowbark Tea', type: 'medical', value: 24, stack: 3 },
 ];
 
 /**

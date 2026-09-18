@@ -87,6 +87,17 @@ const BACKLASH_LINES: Record<string, (t: Tribute) => string> = {
     generic: t => `${t.name} sold the country one person on that couch and has spent every cycle since being somebody else. The Capitol has noticed, and the Capitol is not sentimental about being lied to.`,
 };
 
+/**
+ * §10.4: the mirror of `BACKLASH_LINES`. Keyed the same way, because the crowd
+ * is making the same comparison and reaching the opposite conclusion.
+ */
+const CREDIT_LINES: Record<string, (t: Tribute) => string> = {
+    aggressive: t => `Caesar's panel runs ${t.name}'s interview back beside this morning's feed and does not have to say anything clever about the two of them. They said what they were going to do. The sponsor rooms have been quoting it all afternoon.`,
+    romantic: t => `Whatever the country decided about ${t.name} on that couch, ${t.name} has spent every cycle since proving it in a place where lying is difficult. Somebody in the Capitol opens their book and writes a much larger number in it.`,
+    quiet: t => `A week in and the Capitol still cannot explain ${t.name}, which is precisely what ${t.name} promised them. The mystery has gone from a gimmick to a following.`,
+    generic: t => `${t.name} sold the country a person on that couch and has been that person every cycle since. It is rarer than it sounds, and the sponsor rooms price it accordingly.`,
+};
+
 function backlashLine(persona: InterviewPersona): keyof typeof BACKLASH_LINES {
     if (persona === 'The Ruthless Warrior' || persona === 'The Arrogant Brute' || persona === 'The Silent Threat') return 'aggressive';
     if (persona === 'The Star-Crossed Lover' || persona === 'The Charming Flirt') return 'romantic';
@@ -113,6 +124,23 @@ export function tickPersona(ctx: SimContext) {
             // Living it in front of the cameras is the whole trade the persona
             // was: the crowd paid attention on the couch and is being paid back.
             addExcitement(t, PRE_ARENA.personaHeldExcitement);
+            /*
+             * AUDIT-6 §10.4: and it is paid in the same currency the failure
+             * costs. A persona that can only ever lose you sponsor trust is a
+             * penalty with a costume on; the tribute who promised the country
+             * a short Games and then delivered one should be the one the
+             * sponsor rooms are arguing over.
+             */
+            t.personaCredit = (t.personaCredit ?? 0) + PRE_ARENA.creditPerCycle;
+            if ((t.personaCredit ?? 0) < PRE_ARENA.creditThreshold) return;
+            t.personaCredit = 0;
+            t.sponsorTrust = Math.min(100, t.sponsorTrust + PRE_ARENA.creditTrustGain);
+            clampTribute(t);
+            ctx.logEvent(
+                CREDIT_LINES[backlashLine(persona)](t),
+                [t.id],
+                { important: true, category: 'sponsor' }
+            );
             return;
         }
 

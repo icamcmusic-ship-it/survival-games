@@ -482,8 +482,10 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
         return;
     }
 
-    // Tablets are consumed by using them; boiling is not.
-    if (foul && purifier?.purifies) consumeOne(t, i => i === purifier);
+    // Tablets are consumed by using them; boiling is not — and §6.5, neither
+    // is apparatus. A still and a charcoal filter are the heavier thing you
+    // carry precisely because they are still there tomorrow.
+    if (foul && purifier?.purifies && !purifier.reusable) consumeOne(t, i => i === purifier);
     t.vitals.thirst = Math.max(0, t.vitals.thirst - WATER.zoneDrinkRelief);
     ctx.logEvent(
         fill(ctx.pickText(foul ? SURVIVAL_TEXTS.drinkTreated : SURVIVAL_TEXTS.drinkClean), { tribute: t.name, zone: t.zone }),
@@ -565,7 +567,21 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
      */
     // Antidote cures poison before it becomes lethal.
     if (t.injuries.poisoned) {
-        if (consumeOne(t, i => i.id === 'antidote')) {
+        /*
+         * §6.5: antivenom is the Capitol's version of the same vial — it works
+         * on the venom *and* the damage it has already done, which is what
+         * separates a sponsor's answer from a scavenged one.
+         */
+        if (consumeOne(t, i => i.id === 'antivenom')) {
+            healInjury(t, 'poisoned');
+            t.health = Math.min(100, t.health + MEDICAL.antivenomHeal);
+            trainProficiency(t, 'medicine', ctx);
+            ctx.logEvent(
+                `${t.name} breaks the seal on an antivenom ampoule and puts it in properly, the way somebody showed them once. The shaking stops inside a minute.`,
+                [t.id], { important: true, category: 'survival' }
+            );
+            earnTrait(ctx, t, 'Venom-Wise');
+        } else if (consumeOne(t, i => i.id === 'antidote')) {
             healInjury(t, 'poisoned');
             trainProficiency(t, 'medicine', ctx);
             ctx.logEvent(`${t.name} downs an Antidote Vial just in time, purging the venom from their blood.`, [t.id], { important: true, category: 'survival' });
@@ -580,7 +596,65 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
             clearBleeding(t);
             trainProficiency(t, 'medicine', ctx);
             ctx.logEvent(`${t.name} winds sterile bandages over the wound until the bleeding gives up.`, [t.id], { category: 'survival' });
+        } else if (consumeOne(t, i => i.id === 'sutures')) {
+            // §6.5: the good answer. Closes the wound rather than covering it.
+            clearBleeding(t);
+            t.health = Math.min(100, t.health + MEDICAL.sutureHeal);
+            trainProficiency(t, 'medicine', ctx);
+            ctx.logEvent(
+                `${t.name} sews the wound shut in ${t.zone} with their own hands and their own thread, badly, and it holds.`,
+                [t.id], { category: 'survival' }
+            );
+        } else if (consumeOne(t, i => i.id === 'tourniquet')) {
+            // §6.5: the cheap answer. Stops the bleeding and costs the limb
+            // some of what it had — a tourniquet is a decision, not a dressing.
+            clearBleeding(t);
+            // balance-exempt: which limb the wound was on is a coin, not a dial.
+            injure(t, ctx.rng.chance(0.5) ? 'arms' : 'legs');
+            ctx.logEvent(
+                `${t.name} puts a tourniquet on above the wound and winds it until it stops. Everything below it goes cold and stays cold.`,
+                [t.id], { important: true, category: 'survival' }
+            );
+        } else if (consumeOne(t, i => i.id === 'cautery-kit')) {
+            // §6.5: the last answer. It always works and it is never free.
+            clearBleeding(t);
+            t.health = Math.max(1, t.health - MEDICAL.cauteryCost);
+            trainProficiency(t, 'medicine', ctx);
+            injure(t, 'burned');
+            ctx.logEvent(
+                `${t.name} heats the iron in ${t.zone}, bites down on a strap, and closes the wound with it. The screaming carries.`,
+                [t.id], { important: true, category: 'survival' }
+            );
         }
+    }
+
+    /*
+     * §6.5: a splint. The engine tracks four limb sites and nothing in the
+     * medical table addressed one — a broken arm was cleared only by a full
+     * First Aid Kit, which is the most valuable item in the game.
+     */
+    if ((t.injuries.arms || t.injuries.legs) && consumeOne(t, i => i.id === 'splint')) {
+        healInjury(t, t.injuries.legs ? 'legs' : 'arms');
+        trainProficiency(t, 'medicine', ctx);
+        ctx.logEvent(
+            `${t.name} splints the limb in ${t.zone} and tests it, carefully, twice, before trusting it with any weight.`,
+            [t.id], { category: 'survival' }
+        );
+    }
+
+    /*
+     * §6.5: willowbark. Not a cure — it takes a fever down a grade, which is
+     * what a tribute with a turning wound and no kit actually has access to.
+     */
+    if (t.injuries.infected && consumeOne(t, i => i.id === 'willowbark')) {
+        t.health = Math.min(100, t.health + MEDICAL.willowbarkHeal);
+        t.vitals.fatigue = Math.max(0, t.vitals.fatigue - MEDICAL.willowbarkRest);
+        trainProficiency(t, 'medicine', ctx);
+        if (ctx.rng.chance(MEDICAL.willowbarkClearChance)) healInjury(t, 'infected');
+        ctx.logEvent(
+            `${t.name} boils willowbark down to something bitter in ${t.zone} and drinks it. The fever comes off the top, at least.`,
+            [t.id], { category: 'survival' }
+        );
     }
 
     const medkitIdx = t.inventory.findIndex(i => i.id === 'medkit');

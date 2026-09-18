@@ -365,7 +365,14 @@ export const CAST_SHAPES: CastShape[] = [
     {
         id: 'ordinary', name: 'an ordinary reaping',
         blurb: 'Twenty-four names out of twenty-four bowls. Nothing about the draw is remarkable, which is its own kind of cruelty.',
-        ageShift: 0, volunteerChance: 0, careerBias: 0, talentBonus: 0, pairBond: 0, weight: 10,
+        /*
+         * AUDIT-6 §9.2: `ordinary` ran 109 of 300 runs against `career-heavy`'s
+         * fourteen. Every other shape is authored content with a blurb, a
+         * reaping and an archetype weighting behind it, and an ordinary reaping
+         * is the one that needs no introduction. Lowered so the seven written
+         * shapes share a larger half of the draw.
+         */
+        ageShift: 0, volunteerChance: 0, careerBias: 0, talentBonus: 0, pairBond: 0, weight: 7,
     },
     {
         id: 'young-field', name: 'an unusually young field',
