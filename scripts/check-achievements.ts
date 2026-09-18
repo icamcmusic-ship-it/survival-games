@@ -17,6 +17,7 @@
  *   ACHIEVEMENT_RUNS=600 npm run test:achievements
  */
 import { generateTributes } from '../src/engine/generator';
+import { resolveArenaForRun } from '../src/engine/arenaSetup';
 import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
@@ -52,8 +53,8 @@ const configs: GameConfig[] = [
 ];
 
 function start(seed: string, arenaId: string, config: GameConfig, gamemaker = false): GameState {
-    const arena = arenaId.startsWith('procedural') ? generateArena(seed) : ARENAS.find(a => a.id === arenaId)!;
     const gamesProfile = gamesProfileFor(seed, seed.endsWith('7'));
+    const arena = resolveArenaForRun(seed, arenaId, gamesProfile);
     const resolved = configForProfile(config, gamesProfile);
     const tributes = generateTributes(seed, resolved, arena.zones[0].name, gamesProfile.castShape, gamesProfile.quell);
     return {

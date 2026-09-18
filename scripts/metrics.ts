@@ -13,6 +13,7 @@
  *   npm run test:metrics
  */
 import { generateTributes } from '../src/engine/generator';
+import { resolveArenaForRun } from '../src/engine/arenaSetup';
 import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
@@ -37,10 +38,12 @@ const configs: GameConfig[] = [
 ];
 
 function start(seed: string, arenaId: string, config: GameConfig): GameState {
-    const arena = arenaId.startsWith('procedural') ? generateArena(seed) : ARENAS.find(a => a.id === arenaId)!;
     // REPLAY-01: measure the game the player actually gets, which is their
     // config multiplied through this year's announced temperament.
     const gamesProfile = gamesProfileFor(seed);
+    // AUDIT-6 §1.3: off-season skins are balance-affecting and were reachable
+    // from no check at all. This is the store's own resolver.
+    const arena = resolveArenaForRun(seed, arenaId, gamesProfile);
     const resolved = configForProfile(config, gamesProfile);
     const tributes = generateTributes(seed, resolved, arena.zones[0].name, gamesProfile.castShape);
     return {

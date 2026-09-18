@@ -209,8 +209,39 @@ export function tickBlocTreaties(ctx: SimContext) {
     state.blocTreaties = treaties(state).filter(treaty => {
         const aMembers = membersOf(state, treaty.aId);
         const bMembers = membersOf(state, treaty.bId);
-        // A bloc that no longer exists cannot be a party to anything.
-        if (aMembers.length === 0 || bMembers.length === 0) return false;
+        /*
+         * AUDIT-6 §4.3: a bloc that no longer exists cannot be a party to
+         * anything — but this used to be the *silent* ending, and it was by far
+         * the most common one.
+         *
+         * With the swearing probe repaired (§1.2), the real numbers are 167
+         * treaties sworn per 400 runs against fourteen narrated endings. The
+         * other hundred and fifty ended here, when one side stopped existing,
+         * and nothing was written about it. The treaty simply vanished from the
+         * array mid-cycle and a reader who had watched two packs shake on it
+         * never learned that the agreement had outlived one of them.
+         *
+         * That is the ending most worth narrating: the survivors are released
+         * from a promise by the deaths of the people they made it to, and the
+         * arithmetic that frees them is the same arithmetic that should
+         * frighten them.
+         */
+        if (aMembers.length === 0 || bMembers.length === 0) {
+            const survivors = aMembers.length === 0 ? bMembers : aMembers;
+            if (survivors.length > 0) {
+                // It held to the end for the side that is still standing:
+                // nobody broke it, the arena closed it.
+                state.blocTreatyHeld = true;
+                ctx.logEvent(
+                    'The group on the other side of the agreement is gone — not broken, not renounced, simply finished. '
+                    + `${survivors.map(m => m.name).join(', ')} are released from a promise by the deaths of the people they made it to, `
+                    + 'which is not the same as being let out of it.',
+                    survivors.map(m => m.id),
+                    { important: true, category: 'alliance' },
+                );
+            }
+            return false;
+        }
 
         if (fieldSize <= treaty.fieldFloor) {
             // Audit 3 §4.7: it held right up until the arithmetic ended it.

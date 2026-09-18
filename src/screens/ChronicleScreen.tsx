@@ -443,7 +443,10 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                 <div className="flex items-center gap-3 flex-wrap justify-center flex-1 min-w-0">
                     {/* Scrubber: one tick per phase, so the whole run's shape is
                         reachable in one gesture rather than N presses. */}
-                    <div className="flex gap-0.5 flex-wrap justify-center" role="group" aria-label="Jump to a phase">
+                    {/* AUDIT-6 §1.4: an empty scrubber and a day picker with
+                        nothing to pick are both announced to a screen reader as
+                        real controls. With no pages there is nothing to jump to. */}
+                    <div className="flex gap-0.5 flex-wrap justify-center" role="group" aria-label="Jump to a phase" hidden={pages.length === 0}>
                         {pages.map((p, i) => {
                             const deadly = gameState.tributes.some(t => t.status === 'dead' && t.dayOfDeath === p.day)
                                 && p.phase === 'night';
@@ -465,6 +468,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                     </div>
                     <select
                         className="field text-xs w-auto"
+                        hidden={pages.length === 0}
                         aria-label="Jump to a day"
                         value={page?.day ?? ''}
                         onChange={e => {
@@ -477,8 +481,14 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                             <option key={d} value={d}>{d === 0 ? 'Before the Games' : `Day ${d}`}</option>
                         ))}
                     </select>
+                    {/* AUDIT-6 §1.4: `{clamped + 1} / {pages.length}` printed
+                        `1 / 0` on the screen the player lands on straight after
+                        confirming the reaping, when the record is empty by
+                        design. "Page one of none" is arithmetic that cannot be
+                        true, and it sat directly under the empty-state copy
+                        that correctly explains there is nothing here yet. */}
                     <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-500)]">
-                        {clamped + 1} / {pages.length}
+                        {pages.length === 0 ? 'No pages yet' : `${clamped + 1} / ${pages.length}`}
                     </span>
                 </div>
 

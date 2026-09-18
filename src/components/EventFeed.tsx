@@ -257,11 +257,27 @@ export function withTributeLinks(
                 key={`${person.id}-${i}`}
                 type="button"
                 onClick={() => onSelect?.(person.id)}
-                title={`${person.name} — District ${person.district}, ${person.gender}, age ${person.age}${person.status === 'dead' ? ' (deceased)' : ''}`}
-                className="font-bold underline decoration-dotted underline-offset-2 hover:text-[var(--red)] focus-visible:outline focus-visible:outline-1"
+                // AUDIT-6 §1.6/§2.2: `title` was a hover-only hint on a control —
+                // invisible on touch, invisible to the keyboard, and usually
+                // unannounced because the button already had a name. The same
+                // sentence is the accessible name now, which every input method
+                // reaches. `inline-block` with vertical padding lifts the hit box
+                // off 19px, which is what made these un-tappable on a phone.
+                aria-label={`${person.name} — District ${person.district}, ${person.gender}, age ${person.age}${person.status === 'dead' ? ', deceased' : ''}. Open profile.`}
+                className="font-bold underline decoration-dotted underline-offset-2 hover:text-[var(--red)] focus-visible:outline focus-visible:outline-1 inline-block py-[3px] align-baseline"
             >
                 {part}
-                <span className="font-mono text-[9px] font-black text-[var(--color-ink-500)] ml-0.5 align-super">
+                {/* AUDIT-6 §1.6: the badge is decoration for the eye and noise
+                    for everything else. Un-hidden, the button's accessible name
+                    came out as "Scepter1M" — a screen reader announces "Scepter
+                    one M" several times per line, and anything reading
+                    `textContent` (a copy, a snapshot test, a share) got the same
+                    glued string. The district and gender are on the button's
+                    `aria-label` instead, spelled out, where they belong. */}
+                <span
+                    aria-hidden="true"
+                    className="font-mono text-[9px] font-black text-[var(--color-ink-500)] ml-0.5 align-super"
+                >
                     {person.district}{person.gender === 'Male' ? 'M' : 'F'}
                 </span>
             </button>

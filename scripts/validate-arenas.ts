@@ -10,6 +10,8 @@ import { DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { ArenaLawId, GameState } from '../src/models/types';
 import { ARENA_MUTTS } from '../src/data/mutts';
 import { CLIMATE_LABELS } from '../src/data/arenaBriefing';
+import { usesUniversalPack } from '../src/data/arenaEventPacks';
+import { OFF_SEASON_SKINS } from '../src/data/offSeason';
 import { Simulator } from '../src/engine/simulator';
 import { hasSignature } from '../src/engine/arenaSignature';
 import { SIGNATURE_BLURBS } from '../src/data/signatureBlurbs';
@@ -567,6 +569,47 @@ walk('src').forEach(file => {
 
 console.log(`arenas=${ARENAS.length} flavourPacks=${Object.keys(ARENA_FLAVOR).length} sourcesScanned=${walk('src').length}`);
 console.log(ARENAS.map(a => `  ${a.id.padEnd(12)} ${a.zones.length} zones  ${a.name}`).join('\n'));
+/*
+ * AUDIT-6 §1.5/§5.1/§5.2: the authored-layer census.
+ *
+ * Every column below is optional in the type and each one is the difference
+ * between an arena that is a place and an arena that is a zone list. Nothing
+ * reported them, so they drifted: thirty-four of forty-five arenas shared one
+ * Gamemaker menu and `packFor`'s own docstring claimed "most have their own".
+ *
+ * Reported rather than asserted for now, with a hard floor on the one that
+ * matters most. A number in the roster is what stops the next arena shipping
+ * without its layer.
+ */
+{
+    const cols: Array<[string, (a: typeof ARENAS[number]) => boolean]> = [
+        ['own event pack', a => !usesUniversalPack(a)],
+        ['effectVocab', a => a.effectVocab !== undefined],
+        ['restockBias', a => a.restockBias !== undefined && a.restockBias.length > 0],
+        ['cornucopiaLayout', a => a.cornucopiaLayout !== undefined],
+        ['off-season skins', a => (OFF_SEASON_SKINS[a.id]?.length ?? 0) > 0],
+        ['a water source', a => a.zones.some(z => z.features?.waterSource !== undefined)],
+    ];
+    notes.push('authored-layer coverage across ' + ARENAS.length + ' arenas:');
+    for (const [label, has] of cols) {
+        const missing = ARENAS.filter(a => !has(a));
+        notes.push(`    ${label}: ${ARENAS.length - missing.length}/${ARENAS.length}`
+            + (missing.length ? ` — missing: ${missing.map(a => a.id).join(' ')}` : ''));
+    }
+    /*
+     * The ratchet. Every arena is meant to have a set piece of its own; the
+     * count only ever comes down. Lower `UNIVERSAL_PACK_CEILING` whenever a
+     * pack lands, and never raise it.
+     */
+    const UNIVERSAL_PACK_CEILING = 0;
+    const universal = ARENAS.filter(a => usesUniversalPack(a));
+    notes.push(`    arenas on the universal Gamemaker pack: ${universal.length} (ceiling ${UNIVERSAL_PACK_CEILING})`);
+    if (universal.length > UNIVERSAL_PACK_CEILING) {
+        problems.push(`${universal.length} arena(s) draw the universal Gamemaker pack and have no set piece of their own `
+            + `(ceiling ${UNIVERSAL_PACK_CEILING}): ` + universal.map(a => a.id).join(' '));
+    }
+}
+
 if (notes.length) {
     console.log('\nNOTES (not failures):\n' + notes.map(n => ' - ' + n).join('\n'));
 }
